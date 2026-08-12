@@ -61,7 +61,7 @@ function parseArgs(argv) {
   const args = {
     set: null,
     photo: null,
-    promptVersion: "v2",
+    promptVersion: "v3",
     dryRun: false,
     visionOnly: false,
     reprocess: false,
@@ -464,7 +464,7 @@ async function main() {
 
   --set smoke|full        set foto (default: smoke)
   --photo <path>          jalankan satu foto saja
-  --prompt-version v2     versi prompt di backend/prompts/ (default: v2)
+  --prompt-version v3     versi prompt di backend/prompts/ (default: v3)
   --dry-run               tidak memanggil API sama sekali
   --vision-only           panggil Vision saja, tanpa image generation
   --reprocess             susun ulang sheet dari raw.png hasil run sebelumnya,

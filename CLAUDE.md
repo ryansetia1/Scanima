@@ -41,10 +41,15 @@ backend/prompts/
 │   ├── vision_schema.json        # responseSchema Gemini (subset OpenAPI, bukan JSON Schema penuh)
 │   ├── sprite_sheet.md           # baseline nano-banana-pro
 │   └── sprite_sheet_evolve.md    # varian untuk evolusi, pakai sprite lama sebagai image_input
-└── v2/
-    ├── vision_system.md          # gate yang sama dengan v1
-    ├── vision_schema.json        # kontrak yang sama dengan v1
-    ├── sprite_sheet.md           # GPT Image 2 medium + anime cel-shaded style
+├── v2/
+│   ├── vision_system.md          # gate yang sama dengan v1
+│   ├── vision_schema.json        # kontrak yang sama dengan v1
+│   ├── sprite_sheet.md           # GPT Image 2 medium + anime cel-shaded style
+│   └── sprite_sheet_evolve.md
+└── v3/                           # DEFAULT: v2 + blok BRAND MARKS
+    ├── vision_system.md          # identik v2
+    ├── vision_schema.json        # identik v2
+    ├── sprite_sheet.md           # logo merek diganti marking ciptaan, bukan cuma dilarang
     └── sprite_sheet_evolve.md
 ```
 
@@ -53,6 +58,8 @@ backend/prompts/
 Setiap row di tabel `generations` menyimpan `prompt_version`. Ini yang memungkinkan A/B test dan rollback ketika kualitas art turun. Kalau mengubah prompt, buat versi baru — jangan edit versi yang sudah dipakai produksi.
 
 Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-engineering.md) dan sumber art direction v2 ada di [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md). Jangan mengarang aturan style baru; konsistensi visual antar Anima bergantung pada style lock itu.
+
+**Larangan negatif saja tidak menghapus logo merek.** v2 sudah memuat "no logos, brand names" di blok FORBIDDEN dan GPT Image 2 tetap menggambar swoosh Nike di keempat pose sheet sepatu, karena logonya datang dari foto di `input_images`, bukan dari teks prompt — Vision malah tidak pernah menyebutnya. Yang berhasil di v3 adalah instruksi PENGGANTI di dekat konteks objek: perlakukan mark sebagai tidak ada, lalu gambar permukaan polos atau marking geometris ciptaan sendiri. Terbukti sekali jalan, `species_key` tetap `shoe_fabric_sneaker` sehingga dedup cache tidak pecah.
 
 ## Fakta teknis yang mudah salah
 
@@ -106,7 +113,7 @@ cd backend && supabase start
 supabase functions serve create_anima --env-file .env.local
 ```
 
-Default-nya `smoke`, prompt `v2`, dan GPT Image 2 `medium`. Jangan jalankan `full` sebagai bagian dari iterasi biasa — ia enam kali lebih mahal dan tidak memberi informasi tambahan sampai Smoke Set sudah bersih. Sebelum memicu satu pun generation gambar, `--vision-only` sudah cukup untuk menguji gate keamanan dan pemetaan stat dengan biaya ~$0.015.
+Default-nya `smoke`, prompt `v3`, dan GPT Image 2 `medium`. Jangan jalankan `full` sebagai bagian dari iterasi biasa — ia enam kali lebih mahal dan tidak memberi informasi tambahan sampai Smoke Set sudah bersih. Sebelum memicu satu pun generation gambar, `--vision-only` sudah cukup untuk menguji gate keamanan dan pemetaan stat dengan biaya ~$0.015.
 
 **Kalau yang diubah cuma post-processing, jangan bayar generation lagi.** `--reprocess` menyusun ulang sheet, manifest, dan contact sheet dari `raw.png` run sebelumnya tanpa satu pun panggilan API, jadi perubahan keying/slicing bisa diverifikasi terhadap gambar model sungguhan dengan biaya nol. Ia sengaja tidak menimpa `vision.json` dan `prompt.txt`, karena keduanya catatan run yang menghasilkan `raw.png` itu.
 

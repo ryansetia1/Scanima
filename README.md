@@ -15,6 +15,8 @@ Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`**
 
 **Smoke Set berbayar dengan template v2 final sudah dijalankan** (mouse, mug putih, sepatu): 3 dari 3 sheet lengkap 4/4 pose, gate menolak keduanya dengan benar, residu hijau 0,001–0,008% (target di bawah 0,1%), selisih skala Idle vs Attack 6–13%, dan latensi 61–74 detik per sheet. Biaya run: ~$0.225. Hasilnya ada di `eval/results/v2/smoke/index.html`.
 
+Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu mereproduksi logo merek dari fotonya di keempat pose. Larangan tekstual sudah ada di v2 dan tidak cukup, karena logonya datang dari foto referensi. **Prompt v3 kini jadi default**: ia memerintahkan model mengganti mark merek dengan permukaan polos atau marking geometris ciptaan sendiri. Uji satu foto sepatu (~$0.073) memberi 4/4 sel, residu 0,014%, logo hilang, dan `species_key` tidak bergeser. Mouse dan mug belum diulang di v3.
+
 Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: halo hijau di tepi sprite (0,21% → 0,014%), anggota tubuh pose kanan yang melewati garis tengah sheet, dan penjaga "keying gagal" yang salah membuang pose Attack karena speed line membuat bbox-nya seluas kuadran. Slicing sekarang menetapkan kepemilikan per komponen piksel, jadi tangan/kabel yang tersambung tidak dipotong dan bagian pose tetangga tidak ikut tercopy.
 
 | Phase | Isi | Status |
@@ -50,10 +52,10 @@ node eval/selftest.mjs --emit /tmp/scanima_e2e
 Post-processing bisa diuji ulang terhadap sheet yang sudah dibayar, juga gratis:
 
 ```bash
-node eval/run.mjs --set smoke --reprocess   # susun ulang dari raw.png, 0 panggilan API
+node eval/run.mjs --set smoke --reprocess --prompt-version v2   # susun ulang dari raw.png, 0 panggilan API
 ```
 
-Untuk mengulang run berbayarnya: taruh 5 foto di `eval/photos/` (lihat [panduannya](eval/photos/README.md)), jalankan `--vision-only` dulu (~$0.015), lalu `npm run smoke` (~$0.225). Hasil v2 ditulis ke `eval/results/v2/smoke/index.html`.
+Untuk mengulang run berbayarnya: taruh 5 foto di `eval/photos/` (lihat [panduannya](eval/photos/README.md)), jalankan `--vision-only` dulu (~$0.015), lalu `npm run smoke` (~$0.225). Hasil ditulis ke `eval/results/<versi prompt>/smoke/index.html`.
 
 ## Tech stack
 
@@ -109,6 +111,7 @@ scanima/
 ├── backend/
 │   ├── prompts/v1/               # baseline nano-banana-pro, tidak diubah
 │   ├── prompts/v2/               # GPT Image 2 medium + anime cel-shaded style
+│   ├── prompts/v3/               # default: v2 + blok BRAND MARKS
 │   └── supabase/                 # Phase 2: Edge Functions + migrations
 ├── eval/
 │   ├── run.mjs                   # foto -> Vision -> Replicate -> sheet + HTML

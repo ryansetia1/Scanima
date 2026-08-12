@@ -273,7 +273,7 @@ Jumlah stat dinormalisasi ke rentang 200-350 kalau LLM meleset, dengan penskalaa
 
 ## 3. Style lock: konstanta, bukan variabel
 
-Style production aktif adalah **monster-style v2**, bersumber dari [Monster Camera — Anime Cel-Shaded Style Guide](monster_camera_anime_cel_shaded_style_guide.md) dan diwujudkan di `backend/prompts/v2/sprite_sheet.md`. V1 tetap utuh sebagai baseline nano-banana-pro; perubahan ini dibuat sebagai direktori baru agar aset lama tetap bisa direproduksi.
+Style production aktif adalah **monster-style v2**, bersumber dari [Monster Camera — Anime Cel-Shaded Style Guide](monster_camera_anime_cel_shaded_style_guide.md) dan diwujudkan di `backend/prompts/v2/sprite_sheet.md`. Versi default sekarang **v3**, yaitu v2 ditambah satu blok penanganan logo merek yang dijelaskan di bawah; style lock-nya sendiri tidak berubah. V1 tetap utuh sebagai baseline nano-banana-pro; setiap perubahan dibuat sebagai direktori baru agar aset lama tetap bisa direproduksi.
 
 Style lock v2 yang identik untuk setiap Anima:
 
@@ -292,6 +292,14 @@ Ada dua adaptasi teknis dari mockup guide:
 
 Sudut pandang tetap 3/4 dari sedikit atas. White keyline dinaikkan menjadi 3–5px. Setiap appendage dan efek diminta berjarak minimal 6% dari center seam, tetapi post-processing juga wajib tahan jika model melanggar.
 
+### Logo merek: harus diganti, bukan cuma dilarang
+
+Foto pemain akan sering berisi logo, dan logo itu masuk ke gambar lewat `input_images`, bukan lewat teks prompt. Ini terbukti: v2 sudah memuat "no logos, brand names" di blok FORBIDDEN, Vision tidak pernah menyebut merek apa pun di `signature_features`, dan GPT Image 2 tetap menggambar swoosh Nike di keempat pose sheet sepatu. Larangan negatif tidak menang melawan bukti visual yang ada di gambar referensi.
+
+Yang dipakai di v3 adalah instruksi pengganti, ditaruh dekat konteks objek supaya terbaca saat model memutuskan cara memperlakukan permukaan objek: anggap semua mark merek tidak ada, lalu di tempatnya gambar permukaan polos atau satu marking geometris ciptaan sendiri yang tidak terkait perusahaan mana pun. Model gambar jauh lebih patuh pada perintah "gambar X sebagai ganti" dibandingkan "jangan gambar Y". Hasil uji satu foto: swoosh hilang, diganti chevron ciptaan model, 4/4 sel, residu hijau 0,014%, dan `species_key` tetap `shoe_fabric_sneaker` sehingga dedup cache tidak pecah.
+
+Ini bukan pengganti tinjauan hukum, tetapi ia memindahkan risiko dari "pasti mereproduksi merek dagang" ke "tidak mereproduksinya kecuali model gagal patuh", dan kegagalan itu bisa dilihat di contact sheet sebelum aset masuk `species_library`.
+
 ## 4. Template prompt sprite sheet
 
 File production adalah `backend/prompts/v2/sprite_sheet.md`; file itu sumber kebenaran lengkap dan tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
@@ -299,6 +307,7 @@ File production adalah `backend/prompts/v2/sprite_sheet.md`; file itu sumber keb
 ```text
 [GLOBAL STYLE LOCK]
 [OBJECT CONTEXT]
+[BRAND MARKS]                       (v3 dan setelahnya)
 [OBJECT-TO-CREATURE TRANSFORMATION]
 [COLOR + PERSONALITY]
 [CHARACTER CONSISTENCY]
@@ -418,7 +427,12 @@ backend/prompts/
 │   ├── vision_schema.json
 │   ├── sprite_sheet.md
 │   └── sprite_sheet_evolve.md
-└── v2/
+├── v2/
+│   ├── vision_system.md
+│   ├── vision_schema.json
+│   ├── sprite_sheet.md
+│   └── sprite_sheet_evolve.md
+└── v3/                    <- default
     ├── vision_system.md
     ├── vision_schema.json
     ├── sprite_sheet.md
@@ -493,9 +507,9 @@ Dijalankan sekali sebagai gerbang penerimaan, bukan sebagai alat iterasi. Tiga f
 ### Cara menjalankan
 
 ```bash
-node eval/run.mjs --prompt-version v2 --set smoke   # 5 foto, ~$0.225
-node eval/run.mjs --prompt-version v2 --set full    # 20 foto, ~$1.32
-node eval/run.mjs --set smoke --reprocess           # gratis, susun ulang dari raw.png
+node eval/run.mjs --set smoke                       # v3, 5 foto, ~$0.225
+node eval/run.mjs --set full                        # v3, 20 foto, ~$1.32
+node eval/run.mjs --set smoke --prompt-version v2 --reprocess   # gratis, dari raw.png
 ```
 
 Ketiganya memakai harness yang sama dan hanya berbeda daftar foto, jadi tidak ada kode terpisah yang bisa menyimpang. `--reprocess` ada karena perubahan post-processing tidak boleh menuntut generation baru: ia memakai `raw.png` yang sudah dibayar, menyusun ulang sheet, manifest, dan contact sheet tanpa satu pun panggilan API, dan sengaja tidak menimpa `vision.json` maupun `prompt.txt` karena keduanya catatan run yang menghasilkan gambar itu. Hasil disimpan ke `eval/results/<version>/<set>/` sebagai contact sheet HTML (foto asli di kiri, sheet hasil di kanan, JSON Vision di bawahnya) plus metrik otomatis.
