@@ -33,11 +33,15 @@ Pemain **kedua** lalu memfoto mug yang sama: `cache_hit` dalam **11 detik**, Gen
 
 Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya, dan `test_sprite_slicing.gd` lulus **75 dari 75** check terhadapnya. Bukan sheet buatan uji — art produksi yang keluar dari Edge Function.
 
+**Sisi client sudah menyusul, dan sudah dijalankan sungguhan terhadap produksi.** Godot kini punya dua autoload — `GameState` (pemilik satu-satunya `user://state.json`) dan `Backend` (transport ke auth, REST, Storage, dan Edge Function) — plus scene `scan_flow` yang menjadi entry point: sign-in anonim, pilih foto, unggah ke bucket sendiri, `create_anima`, Incubator, lalu Anima hidup di layar. Uji headless `live_scan.gd` menjalankan rantai itu terhadap produksi dengan biaya ~$0.003: `create_anima` balik **11–16 detik**, sheet ~1 MB terunduh dari CDN, `AnimaLoader` menerimanya dengan keempat pose, dan saldo berkurang tepat satu Scan Charge tanpa menyentuh Genesis Core. Screenshot layarnya menunjukkan saldo dari server, Anima dari cache lokal, dan tombol pose yang dibangun dari manifest.
+
+Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan terlihat seperti pemulihan sementara seluruh Anima pemain tertinggal di akun yang tidak bisa dijangkau lagi, dan pemain anonim tidak punya email untuk kembali. Kedua, **kunci idempotency dibuat sekali per scan dan bertahan di disk**, sehingga app yang mati di tengah scan melanjutkan scan yang sama alih-alih membayar Core kedua. Keduanya dijaga oleh 34 check di `test_client_state.gd`, yang juga membuktikan cache art setengah terunduh dibaca sebagai tidak ada, bukan dimuat dan gagal di tengah.
+
 | Phase | Isi | Status |
 | --- | --- | --- |
 | 0 | Arsitektur, prompt spec, desain sistem | Selesai |
 | 1 | MVP: buktikan pipeline art end-to-end | Terbukti — Smoke Set v2 3/3 sheet 4/4 pose, gate 2/2 |
-| 2 | Backend Supabase + core game loop | Berjalan — skema, RLS, kuota, dan kedua Edge Function live dan lulus uji pagar |
+| 2 | Backend Supabase + core game loop | Berjalan — backend live, client sudah scan sampai Anima tampil; sisanya loop perawatan |
 | 3 | Battle, evolusi, UI/UX, audio, monetisasi | Belum mulai |
 | 4 | Soft launch itch.io lalu Play Store | Belum mulai |
 
@@ -47,12 +51,19 @@ Yang sudah bisa dijalankan sekarang, gratis:
 npm install
 npm run selftest                 # 19 skenario + 12 uji tanda tangan webhook, tanpa API
 
-# Godot: 75 pemeriksaan slicing sprite, tanpa jendela
+# Godot: 72 pemeriksaan slicing sprite, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_sprite_slicing.gd
 
-# Demo: Anima placeholder yang bisa berganti pose dan memantul
+# Godot: 34 pemeriksaan sesi, kunci idempotency, dan cache art — tanpa jaringan
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
+    --script res://tests/test_client_state.gd
+
+# Game: scan_flow, layar sungguhan. Butuh jaringan untuk sign-in.
 /Applications/Godot.app/Contents/MacOS/Godot --path game
+
+# Demo art: Anima placeholder yang bisa berganti pose dan memantul
+/Applications/Godot.app/Contents/MacOS/Godot --path game res://scenes/anima_demo.tscn
 ```
 
 Kontrak antara kedua sisi juga diuji tanpa biaya. Node menghasilkan sheet, Godot memuatnya:
@@ -114,14 +125,22 @@ Satu Anima = satu panggilan image generation = **~$0.07** pada GPT Image 2 mediu
 ```
 scanima/
 ├── game/                         # Godot 4.6 project
-│   ├── scenes/anima_demo.tscn
+│   ├── scenes/
+│   │   ├── scan_flow.tscn        # entry point: scan -> Incubator -> Anima
+│   │   └── anima_demo.tscn       # alat periksa art, dipanggil eksplisit
 │   ├── scripts/
+│   │   ├── game_state.gd         # autoload: sesi, scan tertunda, cache art
+│   │   ├── backend.gd            # autoload: auth, REST, Storage, functions
+│   │   ├── scan_flow.gd          # alur scan dan dua status penantian
 │   │   ├── anima_loader.gd       # manifest + PNG -> SpriteFrames
 │   │   ├── anima_presenter.gd    # pose + gerak prosedural via Tween
 │   │   ├── placeholder_sheet.gd  # sheet buatan, untuk demo & test
 │   │   └── anima_demo.gd
 │   ├── shaders/chroma_key.gdshader   # cadangan, jalur BYOK saja
-│   └── tests/test_sprite_slicing.gd  # headless
+│   └── tests/
+│       ├── test_sprite_slicing.gd    # headless, gratis
+│       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
+│       └── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 ├── backend/
 │   ├── prompts/v1/               # baseline nano-banana-pro, tidak diubah
 │   ├── prompts/v2/               # GPT Image 2 medium + anime cel-shaded style

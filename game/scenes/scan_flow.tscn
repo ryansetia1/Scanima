@@ -1,0 +1,73 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/scan_flow.gd" id="1_flow"]
+[ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
+
+[node name="ScanFlow" type="Node2D"]
+script = ExtResource("1_flow")
+
+; Latar dari default_clear_color di project.godot. Control di bawah Node2D tidak
+; punya induk Control, jadi UI-nya hidup di CanvasLayer supaya anchor-nya
+; menempel ke viewport.
+
+[node name="Stage" type="Node2D" parent="."]
+position = Vector2(360, 760)
+
+[node name="Anima" type="AnimatedSprite2D" parent="Stage"]
+unique_name_in_owner = true
+script = ExtResource("2_presenter")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Margin" type="MarginContainer" parent="UI"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Column" type="VBoxContainer" parent="UI/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="Label" parent="UI/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Scanima"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="UI/Margin/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Status" type="Label" parent="UI/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "memuat..."
+autowrap_mode = 2
+horizontal_alignment = 1
+
+[node name="ScanButton" type="Button" parent="UI/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 64)
+text = "Pilih Foto"
+
+[node name="PoseRow" type="HBoxContainer" parent="UI/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PhotoDialog" type="FileDialog" parent="UI"]
+unique_name_in_owner = true
+title = "Pilih foto benda"
+initial_position = 2
+size = Vector2i(640, 720)
+ok_button_text = "Pakai foto ini"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.jpg,*.jpeg,*.png ; Foto")

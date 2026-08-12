@@ -563,7 +563,11 @@ graph LR
     L3 -->|miss| Gen["Generation, ~$0.07, 57-63 s terukur"]
 ```
 
-**Lapis 1 — device.** `user://animas/<species_key>_<color_bucket>_<stage>.png` plus `.json`. Kunci cache memakai species, bukan `anima_id`, supaya dua Anima dengan spesies sama hanya menyimpan satu file. Eviction: LRU sederhana dengan plafon 100 MB, dicek saat startup.
+**Lapis 1 — device.** Satu folder per varian art: `user://animas/<species_key>_<color_bucket>_<stage>/` berisi `manifest.json` dan sheet PNG dengan nama hash asli dari server. Kunci cache memakai species, bukan `anima_id`, supaya dua Anima dengan spesies sama hanya menyimpan satu salinan.
+
+Folder, bukan dua file bernama sama di satu direktori, karena `AnimaLoader` sudah mencari sheet dari field `sheet` di manifest **relatif terhadap folder manifest itu**. Menyimpan apa adanya berarti art dari jaringan memakai jalur muat yang sama persis dengan art hasil eval di laptop; tata letak rata membutuhkan penggantian nama sheet plus penulisan ulang manifest, yaitu jalur kode kedua yang bisa berbeda diam-diam.
+
+Manifest ditulis **terakhir**. `GameState.has_sprite()` menuntut manifest ada *dan* sheet yang disebutnya ada, jadi unduhan yang mati di tengah terbaca sebagai belum ada dan diulang, bukan dimuat lalu menampilkan Anima yang rusak. Eviction: LRU sederhana dengan plafon 100 MB, dicek saat startup — belum diimplementasikan.
 
 **Lapis 2 — Storage/CDN.** Sheet RGBA hasil olahan, disajikan lewat CDN Supabase dengan cache header panjang. Nama file memakai hash konten sehingga bisa `Cache-Control: immutable`.
 
@@ -628,6 +632,16 @@ Aplikasi masuk background bukan kasus tepi, itu perilaku normal orang menunggu. 
 Godot melakukan `SELECT status` ke row miliknya sendiri setiap 2 detik, dengan backoff naik ke 8 detik setelah 30 detik pertama. Supabase Realtime lewat WebSocket lebih elegan tapi menambah dependensi dan penanganan reconnect di client untuk keuntungan yang tidak dirasakan pemain pada skala ini.
 
 Batas atas pendekatan ini kira-kira beberapa ratus hatch bersamaan sebelum beban query jadi terasa. Kalau kena, upgrade-nya jelas: pindah ke Realtime subscription pada tabel `animas`. Tandai di kode dengan komentar `ponytail:` yang menyebut plafon itu.
+
+### Yang sudah berjalan di client
+
+`scenes/scan_flow.tscn` mengimplementasikan rantainya dan sudah diuji terhadap produksi. Tiga hal berbeda dari rancangan di atas, dan ketiganya karena pengukuran atau karena bentuk kegagalannya:
+
+**Penantiannya dua fase, bukan satu.** `create_anima` menahan request selama Vision berjalan — 11–16 detik terukur dari client — sebab hasil Vision-lah yang menentukan apakah server berhak mendebit Core. Baru sesudah itu gambarnya dibuat, sekitar satu menit lagi. Jadi teks statusnya berganti dua kali, dan cache hit melewati fase kedua sepenuhnya.
+
+**Polling berhenti di 180 detik tanpa menyatakan gagal.** State `Failed` hanya dimasuki kalau baris `animas` benar-benar berkata `failed`, sebab yang berhak menyatakan kegagalan dan melakukan refund adalah server, bukan stopwatch di client. Kalau batas waktunya lewat, client berkata scan-nya tersimpan dan bisa dilihat lagi nanti — webhook mungkin masih jalan, dan menuduh gagal sementara Core-nya belum direfund adalah cara tercepat membuat pemain merasa dicurangi.
+
+**Scan yang tertunda dilanjutkan, bukan dimulai ulang.** `idempotency_key` dibuat sekali per scan dan disimpan ke `user://state.json` sebelum foto diunggah, beserta `photo_path` yang diturunkan dari kunci itu. App yang mati di antara unggah dan balasan akan memanggil `create_anima` lagi dengan kunci yang sama saat dibuka — yang dijawab server dengan hasil yang sama, bukan Core kedua. Karena bucket `photos` sengaja tidak memberi hak menimpa, unggahan ulang dijawab 409 dan client memperlakukannya sebagai berhasil.
 
 ## 9. Jalur BYOK
 

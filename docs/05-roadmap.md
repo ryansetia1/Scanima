@@ -99,7 +99,11 @@ Uji live itu menemukan satu hal yang tidak akan pernah ditemukan oleh test berba
 
 **Jalur uangnya sudah dijalankan utuh sekali di produksi (~$0.076).** Foto mug putih dari pemain anonim: `create_anima` balik 15 detik dengan Vision selesai, webhook menyelesaikan hatch-nya, hasilnya 4/4 pose, residu hijau 0,005%, nol piksel lintas kuadran, dan foto mentah terhapus sendiri. Pemain kedua yang memfoto mug yang sama mendapat `cache_hit` dalam 11 detik tanpa satu Core pun tersentuh, dengan `times_reused` naik ke 1. Sheet itu lalu diunduh dari CDN dan `test_sprite_slicing.gd` lulus 75/75 terhadapnya — art produksi, bukan fixture.
 
-Dengan itu, lima dari exit criteria fase ini sudah terbukti; sisanya butuh client. Yang belum sama sekali: sisi Godot dan loop perawatan.
+**Sisi client sudah menyusul sampai Anima tampil di layar.** Dua autoload (`GameState` untuk sesi dan scan tertunda, `Backend` untuk transport) plus scene `scan_flow` sebagai entry point, dan rantainya sudah dijalankan sungguhan terhadap produksi lewat `tests/live_scan.gd` (~$0.003 per jalan): sign-in anonim, unggah ke folder sendiri, `create_anima` balik 11–16 detik, sheet ~1 MB dari CDN, `AnimaLoader` menerima keempat pose, saldo turun tepat satu Scan Charge tanpa menyentuh Core. Dua fase penantian dibedakan di UI karena panjangnya beda jauh: belasan detik untuk `create_anima`, lalu sekitar satu menit untuk gambarnya — satu spinner untuk keduanya akan terasa macet.
+
+Dua invarian client yang dijaga oleh `tests/test_client_state.gd` (34 check, tanpa jaringan): kunci idempotency bertahan di disk sehingga app yang mati di tengah scan melanjutkan scan yang sama alih-alih membayar Core kedua, dan refresh token yang ditolak tidak pernah dijawab dengan sign-in anonim baru, sebab itu akan meninggalkan seluruh koleksi pemain di akun yang tidak bisa dijangkau lagi.
+
+Dengan itu, enam dari exit criteria fase ini sudah terbukti. Yang belum: loop perawatan, dan kamera — Godot 4 tidak punya API kamera untuk Android, jadi `scan_flow` sementara memakai `FileDialog`. Itu tidak menghambat jalur mana pun, sebab `create_anima` tidak peduli foto datang dari mana.
 
 Lalu Edge Functions: `create_anima` dan `replicate_webhook`, dengan post-processing dari Phase 1 dipakai apa adanya di Deno lewat satu modul bersama. Unggah foto tidak dapat endpoint sendiri — policy Storage per-folder sudah menjadi pagarnya, jadi menulis penerbit signed URL berarti menulis ulang sesuatu yang sudah ada.
 

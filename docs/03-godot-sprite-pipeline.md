@@ -64,7 +64,7 @@ Alasan `AnimaSprite` ada di dalam `Body` yang terpisah: animasi prosedural meman
 
 ```mermaid
 graph TD
-    Need["Butuh Anima X"] --> Local{"user://animas/<key>.png ada?"}
+    Need["Butuh Anima X"] --> Local{"user://animas/&lt;key&gt;/ ada?"}
     Local -->|ya| Load["Baca dari disk"]
     Local -->|tidak| Fetch["HTTPRequest ke CDN Storage"]
     Fetch --> Save["Simpan ke user://animas/"]
@@ -75,7 +75,21 @@ graph TD
     Frames --> Play["AnimatedSprite2D siap"]
 ```
 
-### Autoload `AnimaLoader`
+### Yang benar-benar dibangun
+
+Tanggung jawab di rancangan bawah ini akhirnya terpecah tiga, bukan satu autoload:
+
+| Bagian | Di mana | Bentuknya |
+| --- | --- | --- |
+| manifest + PNG → `SpriteFrames` | `scripts/anima_loader.gd` | `RefCounted` dengan fungsi statis, tanpa state dan tanpa I/O jaringan |
+| unduh dari CDN | `scripts/backend.gd` (autoload `Backend`) | satu `_send()` untuk semua HTTP |
+| cache di `user://` | `scripts/game_state.gd` (autoload `GameState`) | `store_sprite()` / `has_sprite()` |
+
+Alasannya bukan selera: `AnimaLoader` yang tidak menyentuh jaringan maupun disk bisa diuji dengan sheet yang dibuat di memori, dan itulah yang membuat 72 check `test_sprite_slicing.gd` berjalan gratis tanpa satu pun PNG fixture di repo. Begitu ia juga bertugas mengunduh, setiap uji region butuh jaringan atau mock.
+
+Konsekuensinya, cache **tidak** memakai signal `sheet_ready` / `sheet_failed`. Pemanggilnya `await` langsung ke `Backend`, lalu memuat dari disk secara sinkron — sebab file yang sudah ada di `user://` dibaca dalam hitungan milidetik, dan signal untuk operasi yang tidak menunggu hanya menambah jalur yang harus dibaca.
+
+### Autoload `AnimaLoader` (rancangan awal, tidak dipakai apa adanya)
 
 ```gdscript
 extends Node

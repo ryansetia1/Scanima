@@ -11,8 +11,14 @@ config_version=5
 [application]
 
 config/name="Scanima"
-run/main_scene="res://scenes/anima_demo.tscn"
+run/main_scene="res://scenes/scan_flow.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
+
+[autoload]
+
+; GameState lebih dulu: Backend memakainya untuk menyimpan sesi, bukan sebaliknya.
+GameState="*res://scripts/game_state.gd"
+Backend="*res://scripts/backend.gd"
 
 [display]
 

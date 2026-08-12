@@ -22,6 +22,10 @@ Game mobile virtual pet. Pemain memfoto objek nyata, foto itu jadi monster (**An
 - Cek validitas objek dengan `is_instance_valid()` sebelum akses, khususnya untuk node yang bisa di-free saat async request masih jalan.
 - Semua state game yang persist lewat satu autoload `GameState`; jangan sebar `save()` ke banyak node.
 - Sprite Anima **tidak** diimpor sebagai resource `.import` — datang saat runtime dari server, disimpan di `user://animas/`.
+- Dua autoload, dan urutannya penting: `GameState` (pemilik `user://state.json`) lalu `Backend` (transport HTTP). Ketergantungannya satu arah — `Backend` menulis sesi ke `GameState`, `GameState` tidak pernah memanggil `Backend`. Yang mengorkestrasi adalah scene: `await Backend.ensure_session()`.
+- Entry point-nya `scenes/scan_flow.tscn`. `scenes/anima_demo.tscn` tetap ada sebagai alat periksa art dan harus dipanggil eksplisit: `godot --path game res://scenes/anima_demo.tscn -- --manifest=...`.
+- `Backend.gd` satu-satunya tempat yang tahu URL project dan kunci. Kuncinya **publishable** (`sb_publishable_...`) dan memang ikut ke dalam build; yang membatasi akses RLS, bukan kerahasiaannya. Terukur diterima kelima endpoint yang dipakai client: `auth/signup`, `auth/token`, REST, Storage, dan `functions/v1`. Yang tidak boleh masuk ke sana sampai kapan pun: `REPLICATE_API_TOKEN` atau service role key.
+- Yang persist hanya sesi dan scan yang sedang berjalan. Saldo dan daftar Anima **selalu** dibaca ulang dari Postgres — server yang berwenang, dan salinan lokal cuma menambah satu sumber kebenaran yang bisa salah.
 
 ## Konvensi backend
 
@@ -81,6 +85,13 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **Enam WARN `auth_allow_anonymous_sign_ins` juga disengaja, dan "memperbaikinya" akan mematikan game.** Advisor memberi peringatan untuk `profiles`, `animas`, `generations`, `quota_ledger`, `pending_discoveries`, dan `species_library` karena policy-nya `to authenticated`, dan user anonim memakai peran itu. Di Scanima user anonim **adalah** pemainnya — bukan tamu yang menyusup. Yang membatasi tetap `auth.uid() = owner_id`, jadi pemain anonim A tidak bisa membaca data pemain anonim B; `species_library` memang dibaca semua orang karena ia pustaka art bersama. Menambahkan `and not (auth.jwt() ->> 'is_anonymous')::boolean` akan menutup satu-satunya jenis akun yang dimiliki game ini.
 - **Dua INFO performa dibiarkan sadar:** `generations.anima_id` tanpa indeks penutup, dan `generations_prediction_idx` yang belum terpakai. Yang pertama hanya menyakitkan saat baris `animas` dihapus, dan itu jalur langka; tambahkan indeksnya kalau fitur melepas Anima jadi rutin. Yang kedua wajar di database tanpa trafik.
 
+- **Refresh token yang ditolak tidak boleh dijawab dengan sign-in anonim baru.** Ini terlihat seperti pemulihan yang sopan — app kembali jalan, pemain bisa main lagi — padahal seluruh Anima-nya tertinggal di akun yang tidak bisa dijangkau lagi, dan tidak ada email atau password untuk kembali ke sana. `Backend.refresh_session()` mengembalikan galat dan berhenti; scene menampilkannya sebagai kegagalan jaringan. Gagal yang kelihatan jauh lebih murah daripada kehilangan data yang tidak kelihatan.
+- **Node autoload SUDAH ada dalam mode `--script`, tetapi nama globalnya belum.** Menulis `GameState` di skrip yang dijalankan `--script` gagal saat kompilasi dengan `Identifier not found`, sebab skrip itu dikompilasi sebelum autoload terdaftar sebagai global — sementara node-nya sendiri terpasang di bawah root dan bisa diambil dengan `get_root().get_node("GameState")`. Itu yang dipakai `tests/test_client_state.gd` dan `tests/live_scan.gd`. Konstanta dan fungsi statis diambil dari `get_script()`, bukan dari instance-nya.
+- **Skrip `--script` jalan lebih awal daripada saat node autoload benar-benar masuk tree.** `HTTPRequest` yang ditambahkan di titik itu menolak dengan `ERR_UNCONFIGURED` (`Condition "!is_inside_tree()" is true`). Satu `await process_frame` di awal harness menyelesaikannya; scene sungguhan tidak pernah kena karena `_ready()` jalan setelah tree berdiri.
+- **Godot 4 tidak punya API kamera untuk Android.** `CameraServer` tidak menutup platform itu, jadi ambil-foto-dari-kamera butuh plugin. `scan_flow` sementara memakai `FileDialog`, dan itu tidak menghambat apa pun: `create_anima` tidak peduli foto datang dari mana, jadi seluruh jalur sesudahnya sudah final. Upgrade cukup mengganti `_on_pick_pressed`.
+- **Balasan biner tidak boleh dikonversi ke String untuk dicoba jadi JSON.** Sheet 1 MB dari CDN yang dipaksa lewat `get_string_from_utf8()` memberi `Unicode parsing error` plus galat parser JSON di log setiap unduhan, dan menyalin satu megabyte tanpa guna, padahal pemanggilnya memakai `bytes`. `Backend._maybe_json()` memeriksa byte pertama dulu.
+- **Terukur dari client sungguhan (headless, jalur cache hit):** `create_anima` balik 11–16 detik, dan seluruh rantai sampai `AnimaLoader` menerima art 14–19 detik termasuk unduh sheet ~1 MB dari CDN. Konsisten dengan 15 detik yang terukur di sisi server, jadi jaringan client bukan biaya tambahan yang berarti — yang panjang tetap Vision di dalam `create_anima`.
+
 - **Jalur image production tidak punya alpha.** Runtime `openai/gpt-image-2` menolak `background: "transparent"` dengan `invalid_value` walaupun opsi itu tercantum di schema wrapper; nano-banana-pro juga tidak memberi alpha yang bisa diandalkan. Transparansi tetap berasal dari chroma key `#00FF00` + post-processing.
 - **Vision dan image generation dua-duanya lewat Replicate**, bukan API provider langsung. Default Vision `google/gemini-2.5-flash`; default gambar `openai/gpt-image-2` dengan `quality: "medium"`, `aspect_ratio: "1024x1024"`, dan `background: "opaque"`. Jangan tambahkan `GEMINI_API_KEY` atau `OPENAI_API_KEY`; satu token Replicate tetap cukup.
 - **Wrapper Gemini di Replicate tidak punya `response_schema`.** Parameter yang tersedia cuma `prompt`, `images`, `videos`, `system_instruction`, `temperature`, `top_p`, `max_output_tokens`, `thinking_budget`, `dynamic_thinking`. Jadi JSON valid tidak dijamin API: kontrak skema disisipkan ke `system_instruction`, dan `extractJson()` di `_shared/vision.mjs` menangani bungkus ```json serta kalimat pengantar. Jangan hapus parser itu dengan asumsi model selalu patuh.
@@ -109,6 +120,7 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 # gratis, jalankan ini dulu
 npm run selftest                       # 19 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
+godot --headless --path game --script res://tests/test_client_state.gd  # sesi, kunci scan, cache art
 node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
 
 # setelah mengubah prompt: regenerasi bundel yang dipakai Edge Function
@@ -124,9 +136,21 @@ godot --headless --path game --script res://tests/test_sprite_slicing.gd \
     -- --manifest=/tmp/scanima_e2e/manifest.json
 
 # game
-godot --path game                      # demo, pakai sheet placeholder
-godot --path game -- --manifest=<abs>.json --pose=sleep --screenshot=/tmp/a.png
+godot --path game                      # scan_flow: sesi, saldo, Anima dari cache
+godot --path game -- --screenshot=/tmp/scan.png       # periksa layar tanpa editor
 godot --headless --path game --import  # rebuild cache class, cek parse error
+
+# alat periksa art, sekarang harus ditunjuk eksplisit karena main scene bukan demo
+godot --path game res://scenes/anima_demo.tscn        # sheet placeholder
+godot --path game res://scenes/anima_demo.tscn \
+    -- --manifest=<abs>.json --pose=sleep --screenshot=/tmp/a.png
+
+# jalur client sungguhan terhadap produksi, BERBIAYA ~$0.003 (satu Vision)
+# Pakai foto yang spesiesnya SUDAH ada di species_library, kalau tidak ia
+# memicu generation $0.07. Sesi uji disimpan di user://live_scan_state.json dan
+# sengaja dipertahankan supaya jalan berikutnya memakai pemain uji yang sama.
+godot --headless --path game --script res://tests/live_scan.gd \
+    -- --photo=$PWD/eval/photos/mug-putih.jpg
 
 # eval prompt, BERBIAYA
 node eval/run.mjs --set smoke --vision-only  # gate + stat saja, ~$0.015
