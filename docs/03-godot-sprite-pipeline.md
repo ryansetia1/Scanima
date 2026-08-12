@@ -421,6 +421,14 @@ Satu `ImageTexture` per spesies, dibagi keempat `AtlasTexture`. Untuk sheet 1024
 
 Ada satu jebakan yang perlu disebut karena gejalanya membingungkan: `AtlasTexture` menyimpan referensi ke `atlas`, jadi selama satu `AtlasTexture` masih dipakai, seluruh sheet tetap di memori. Membebaskan satu pose tidak membebaskan apa pun. Pembebasan memori dilakukan pada level `SpriteFrames` di `_cache`, bukan per pose.
 
+### Visual shell dan kepemilikan motion
+
+UI production dan `anima_demo` memakai `themes/mobile_theme.tres` yang sama. Theme itu menyimpan palette serta variasi semantik—CTA utama, navigasi, empat aksi Care, status, dan modal—supaya scene hanya memilih peran, bukan menyalin StyleBox. Satu pengecualian yang disengaja adalah fill empat meter Care: warna lapar, energi, kebersihan, dan bond membawa arti gameplay sehingga tetap menjadi override lokal.
+
+Latar chamber tidak berupa PNG. `ScanimaBackground` menggambar gradient, ring, partikel, floor glow, dan perspective grid dari primitive CanvasItem pada 15 fps. Ini menjaga visual tajam pada aspect ratio berbeda dan tidak menambah asset APK. Incubator tetap menggambar sendiri pada 30 fps karena scanner dan burst memang focal animation; jangan menaikkan latar ke 60 fps hanya karena scene lain bergerak.
+
+Semua motion milik Control lewat `UiJuice`: button press/release/hover/focus, reveal awal, buka-tutup modal, status pop, dan tween meter. Dynamic pose button dipasang saat dibuat. Helper menyimpan tween aktif di metadata Control dan membunuhnya sebelum gerak baru dimulai, sehingga rapid tap tidak menumpuk dua writer pada `scale` atau `modulate`. Transform Anima tetap milik `AnimaPresenter` dan transform inkubator milik `IncubatorEffect`; pembagian ini mencegah hatch, idle bob, dan UI motion saling berebut properti.
+
 ## 7. Pemeriksaan yang wajib ada
 
 Satu file, tanpa framework, dijalankan lewat `godot --headless --script res://tests/test_sprite_slicing.gd`. Yang diuji adalah hal-hal yang kalau rusak akan menghasilkan bug visual yang sulit dilacak:

@@ -14,6 +14,7 @@ const TOUCH_MIN := 96.0
 
 var _checks := 0
 var _failures: PackedStringArray = []
+var _ui_juice: GDScript = load("res://scripts/ui_juice.gd") as GDScript
 
 
 func _initialize() -> void:
@@ -56,6 +57,34 @@ func _initialize() -> void:
 	_check(margin != null and margin.theme != null, "theme mobile harus terpasang")
 	if margin != null and margin.theme != null:
 		_check(margin.theme.default_font_size >= 32, "font default minimal 32 px")
+		_check_eq(
+			margin.theme.get_type_variation_base(&"PrimaryButton"),
+			&"Button",
+			"theme harus menyediakan variasi CTA bersama"
+		)
+		_check_eq(
+			margin.theme.get_type_variation_base(&"ModalPanel"),
+			&"PanelContainer",
+			"theme harus menyediakan panel modal bersama"
+		)
+
+	var background := scene.find_child("Background", true, false) as Node2D
+	_check(background != null and background.get_script() != null, "latar procedural wajib terpasang")
+	_check(scene.find_child("HeaderCard", true, false) is PanelContainer, "HUD wajib punya kartu header")
+	_check(scene.find_child("StageBadge", true, false) is PanelContainer, "Stage wajib punya badge chamber")
+	_check(scene.find_child("StatusPanel", true, false) is PanelContainer, "status wajib punya panel terbaca")
+	var scan_button := scene.find_child("ScanButton", true, false) as Button
+	if scan_button != null:
+		_check_eq(scan_button.theme_type_variation, &"PrimaryButton", "scan harus menjadi CTA utama")
+	var collection_panel := scene.get_node("UI/CollectionOverlay/CollectionMargin/Panel") as PanelContainer
+	var stats_panel := scene.get_node("UI/StatsOverlay/StatsMargin/Panel") as PanelContainer
+	_check_eq(collection_panel.theme_type_variation, &"ModalPanel", "Koleksi memakai chrome modal")
+	_check_eq(stats_panel.theme_type_variation, &"ModalPanel", "Stats memakai chrome modal")
+
+	var juice_probe := Button.new()
+	_ui_juice.install_button(juice_probe)
+	_check(juice_probe.has_meta(&"_scanima_juice_installed"), "button juice harus idempoten dan terpasang")
+	juice_probe.free()
 
 	var care_panel := scene.find_child("CarePanel", true, false) as PanelContainer
 	_check(care_panel != null, "CarePanel wajib ada")

@@ -11,6 +11,8 @@ extends Node2D
 
 const PLACEHOLDER_DIR := "user://animas/placeholder"
 
+var _ui_juice: GDScript = load("res://scripts/ui_juice.gd") as GDScript
+
 @onready var _anima: AnimaPresenter = %Anima
 @onready var _info: Label = %Info
 @onready var _pose_row: HBoxContainer = %PoseRow
@@ -38,6 +40,12 @@ func _ready() -> void:
 	_build_pose_buttons(loaded["poses"])
 	_hop_button.pressed.connect(_anima.hop)
 	_show_info(loaded, manifest_path)
+	await get_tree().process_frame
+	_ui_juice.install_buttons(self)
+	_ui_juice.reveal($UI/Margin/Column/HeaderCard, 0.02)
+	_ui_juice.reveal($UI/Margin/Column/InfoCard, 0.10)
+	_ui_juice.reveal(_pose_row, 0.18)
+	_ui_juice.reveal(_hop_button, 0.24)
 
 	var pose := _arg_value("--pose=")
 	if not pose.is_empty():
@@ -68,7 +76,7 @@ func _arg_value(prefix: String) -> String:
 ## menembus lantai. Untuk itu perlu benar-benar melihatnya.
 func _capture_and_quit(path: String) -> void:
 	# Beberapa frame supaya tween sudah mulai dan layout container sudah tetap.
-	for _i in 5:
+	for _i in 24:
 		await get_tree().process_frame
 
 	var image := get_viewport().get_texture().get_image()
@@ -93,12 +101,14 @@ func _build_pose_buttons(poses: PackedStringArray) -> void:
 	for pose in poses:
 		var button := Button.new()
 		button.text = pose.capitalize()
-		button.custom_minimum_size = Vector2(0, 56)
+		button.custom_minimum_size = Vector2(0, 96)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.theme_type_variation = &"PoseButton"
 		# Bind, bukan closure yang menangkap variabel loop: di GDScript variabel
 		# loop bisa berubah sebelum callback dipanggil.
 		button.pressed.connect(_anima.set_pose.bind(pose))
 		_pose_row.add_child(button)
+		_ui_juice.install_button(button)
 
 
 func _show_info(loaded: Dictionary, manifest_path: String) -> void:

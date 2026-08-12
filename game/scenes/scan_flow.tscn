@@ -1,9 +1,10 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/scan_flow.gd" id="1_flow"]
 [ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
 [ext_resource type="Theme" path="res://themes/mobile_theme.tres" id="3_theme"]
 [ext_resource type="Script" path="res://scripts/incubator_effect.gd" id="4_incubator"]
+[ext_resource type="Script" path="res://scripts/scanima_background.gd" id="5_background"]
 
 [sub_resource type="StyleBoxFlat" id="NeedBackground"]
 bg_color = Color(0.105, 0.12, 0.16, 1)
@@ -43,6 +44,10 @@ corner_radius_bottom_left = 10
 [node name="ScanFlow" type="Node2D"]
 script = ExtResource("1_flow")
 
+[node name="Background" type="Node2D" parent="."]
+z_index = -10
+script = ExtResource("5_background")
+
 ; Latar dari default_clear_color di project.godot. Control di bawah Node2D tidak
 ; punya induk Control, jadi UI-nya hidup di CanvasLayer supaya anchor-nya
 ; menempel ke viewport.
@@ -54,6 +59,7 @@ position = Vector2(360, 760)
 [node name="Incubator" type="Node2D" parent="Stage"]
 unique_name_in_owner = true
 visible = false
+position = Vector2(0, -180)
 script = ExtResource("4_incubator")
 
 [node name="Anima" type="AnimatedSprite2D" parent="Stage"]
@@ -79,12 +85,44 @@ theme_override_constants/margin_bottom = 32
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Header" type="Label" parent="UI/Margin/Column"]
+[node name="HeaderCard" type="PanelContainer" parent="UI/Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
+
+[node name="HeaderColumn" type="VBoxContainer" parent="UI/Margin/Column/HeaderCard"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="BrandRow" type="HBoxContainer" parent="UI/Margin/Column/HeaderCard/HeaderColumn"]
+layout_mode = 2
+
+[node name="Brand" type="Label" parent="UI/Margin/Column/HeaderCard/HeaderColumn/BrandRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.278, 0.902, 1, 1)
+theme_override_colors/font_outline_color = Color(0.2, 0.55, 1, 0.32)
+theme_override_constants/outline_size = 8
 theme_override_font_sizes/font_size = 48
-text = "Scanima"
-horizontal_alignment = 1
+text = "SCANIMA"
+
+[node name="LiveBadge" type="Label" parent="UI/Margin/Column/HeaderCard/HeaderColumn/BrandRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.4, 1)
+theme_override_font_sizes/font_size = 20
+text = "●  ONLINE"
+vertical_alignment = 1
+
+[node name="Header" type="Label" parent="UI/Margin/Column/HeaderCard/HeaderColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.965, 1, 1)
+theme_override_font_sizes/font_size = 25
+text = "— SCANS    ◈ — CORES    ◆ — BITS"
+
+[node name="Tagline" type="Label" parent="UI/Margin/Column/HeaderCard/HeaderColumn"]
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "REAL OBJECT  //  DIGITAL SOUL"
 
 ; Foto yang akan dipindai, ditampilkan sebelum Scan Charge terpakai. Bukan hanya
 ; kenyamanan: auto_rotate_image di plugin mengaku "tidak 100%", dan foto miring
@@ -92,10 +130,23 @@ horizontal_alignment = 1
 [node name="PhotoPreview" type="TextureRect" parent="UI/Margin/Column"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(0, 220)
+custom_minimum_size = Vector2(0, 260)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
+
+[node name="StageBadgeCenter" type="CenterContainer" parent="UI/Margin/Column"]
+layout_mode = 2
+
+[node name="StageBadge" type="PanelContainer" parent="UI/Margin/Column/StageBadgeCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ResourceChip"
+
+[node name="Label" type="Label" parent="UI/Margin/Column/StageBadgeCenter/StageBadge"]
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "SYNTHESIS CHAMBER  //  ACTIVE"
 
 [node name="Spacer" type="Control" parent="UI/Margin/Column"]
 layout_mode = 2
@@ -108,14 +159,13 @@ layout_mode = 2
 
 [node name="CareColumn" type="VBoxContainer" parent="UI/Margin/Column/CarePanel"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 12
 
 [node name="CareSummary" type="Label" parent="UI/Margin/Column/CarePanel/CareColumn"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "Care Score 0"
-horizontal_alignment = 1
+theme_type_variation = &"EyebrowLabel"
+text = "CARE SCORE 000  //  ACTIVE"
 
 [node name="NeedsGrid" type="GridContainer" parent="UI/Margin/Column/CarePanel/CareColumn"]
 layout_mode = 2
@@ -130,8 +180,9 @@ theme_override_constants/separation = 2
 
 [node name="Label" type="Label" parent="UI/Margin/Column/CarePanel/CareColumn/NeedsGrid/HungerBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "Hunger"
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 22
+text = "HUNGER"
 
 [node name="NeedHunger" type="ProgressBar" parent="UI/Margin/Column/CarePanel/CareColumn/NeedsGrid/HungerBox"]
 unique_name_in_owner = true
@@ -149,8 +200,9 @@ theme_override_constants/separation = 2
 
 [node name="Label" type="Label" parent="UI/Margin/Column/CarePanel/CareColumn/NeedsGrid/EnergyBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "Energy"
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 22
+text = "ENERGY"
 
 [node name="NeedEnergy" type="ProgressBar" parent="UI/Margin/Column/CarePanel/CareColumn/NeedsGrid/EnergyBox"]
 unique_name_in_owner = true
@@ -168,8 +220,9 @@ theme_override_constants/separation = 2
 
 [node name="Label" type="Label" parent="UI/Margin/Column/CarePanel/CareColumn/NeedsGrid/HygieneBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "Hygiene"
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 22
+text = "HYGIENE"
 
 [node name="NeedHygiene" type="ProgressBar" parent="UI/Margin/Column/CarePanel/CareColumn/NeedsGrid/HygieneBox"]
 unique_name_in_owner = true
@@ -187,8 +240,9 @@ theme_override_constants/separation = 2
 
 [node name="Label" type="Label" parent="UI/Margin/Column/CarePanel/CareColumn/NeedsGrid/BondBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "Bond"
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 22
+text = "BOND"
 
 [node name="NeedBond" type="ProgressBar" parent="UI/Margin/Column/CarePanel/CareColumn/NeedsGrid/BondBox"]
 unique_name_in_owner = true
@@ -207,34 +261,43 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Makan"
+theme_type_variation = &"CareFeedButton"
+text = "FEED\n+35"
 
 [node name="CleanButton" type="Button" parent="UI/Margin/Column/CarePanel/CareColumn/CareActions"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Bersih"
+theme_type_variation = &"CareCleanButton"
+text = "CLEAN\n+35"
 
 [node name="SleepButton" type="Button" parent="UI/Margin/Column/CarePanel/CareColumn/CareActions"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Tidur"
+theme_type_variation = &"CareSleepButton"
+text = "SLEEP"
 
 [node name="PlayButton" type="Button" parent="UI/Margin/Column/CarePanel/CareColumn/CareActions"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Main"
+theme_type_variation = &"CarePlayButton"
+text = "PLAY\nBOND"
 
-[node name="Status" type="Label" parent="UI/Margin/Column"]
+[node name="StatusPanel" type="PanelContainer" parent="UI/Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 30
-text = "memuat..."
+theme_type_variation = &"StatusPanel"
+
+[node name="Status" type="Label" parent="UI/Margin/Column/StatusPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 27
+text = "INITIALIZING LINK…"
 autowrap_mode = 2
 horizontal_alignment = 1
 
@@ -242,7 +305,8 @@ horizontal_alignment = 1
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 104)
-text = "Pilih Foto"
+theme_type_variation = &"PrimaryButton"
+text = "SCAN REAL OBJECT"
 
 [node name="ActionsRow" type="HBoxContainer" parent="UI/Margin/Column"]
 layout_mode = 2
@@ -253,7 +317,8 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Koleksi"
+theme_type_variation = &"NavButton"
+text = "COLLECTION"
 
 [node name="StatsButton" type="Button" parent="UI/Margin/Column/ActionsRow"]
 unique_name_in_owner = true
@@ -261,7 +326,8 @@ custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 disabled = true
-text = "Stats"
+theme_type_variation = &"NavButton"
+text = "ANIMA STATS"
 
 [node name="PoseRow" type="HBoxContainer" parent="UI/Margin/Column"]
 unique_name_in_owner = true
@@ -273,6 +339,7 @@ unique_name_in_owner = true
 title = "Pilih foto benda"
 initial_position = 2
 size = Vector2i(640, 720)
+theme = ExtResource("3_theme")
 ok_button_text = "Pakai foto ini"
 file_mode = 0
 access = 2
@@ -295,7 +362,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0, 0, 0, 0.72)
+color = Color(0.008, 0.012, 0.04, 0.84)
 
 [node name="CollectionMargin" type="MarginContainer" parent="UI/CollectionOverlay"]
 unique_name_in_owner = true
@@ -312,21 +379,35 @@ theme_override_constants/margin_bottom = 48
 
 [node name="Panel" type="PanelContainer" parent="UI/CollectionOverlay/CollectionMargin"]
 layout_mode = 2
+theme_type_variation = &"ModalPanel"
 
 [node name="Column" type="VBoxContainer" parent="UI/CollectionOverlay/CollectionMargin/Panel"]
 layout_mode = 2
 theme_override_constants/separation = 16
 
+[node name="Accent" type="ColorRect" parent="UI/CollectionOverlay/CollectionMargin/Panel/Column"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.278, 0.902, 1, 0.9)
+
+[node name="Eyebrow" type="Label" parent="UI/CollectionOverlay/CollectionMargin/Panel/Column"]
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "ANIMA ARCHIVE  //  READY UNITS"
+horizontal_alignment = 1
+
 [node name="CollectionTitle" type="Label" parent="UI/CollectionOverlay/CollectionMargin/Panel/Column"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 44
-text = "Koleksi Anima"
+theme_type_variation = &"ModalTitle"
+text = "Your Collection"
 horizontal_alignment = 1
 
 [node name="CollectionStatus" type="Label" parent="UI/CollectionOverlay/CollectionMargin/Panel/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Belum ada Anima."
+theme_type_variation = &"MutedLabel"
+text = "No Anima synchronized."
 autowrap_mode = 2
 horizontal_alignment = 1
 
@@ -336,7 +417,7 @@ custom_minimum_size = Vector2(0, 640)
 layout_mode = 2
 size_flags_vertical = 3
 fixed_icon_size = Vector2i(128, 128)
-fixed_column_width = 280
+fixed_column_width = 264
 icon_mode = 0
 max_columns = 2
 same_column_width = true
@@ -346,7 +427,8 @@ theme_override_font_sizes/font_size = 28
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
-text = "Tutup"
+theme_type_variation = &"NavButton"
+text = "CLOSE ARCHIVE"
 
 [node name="StatsOverlay" type="Control" parent="UI"]
 unique_name_in_owner = true
@@ -365,7 +447,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0, 0, 0, 0.72)
+color = Color(0.008, 0.012, 0.04, 0.84)
 
 [node name="StatsMargin" type="MarginContainer" parent="UI/StatsOverlay"]
 unique_name_in_owner = true
@@ -382,16 +464,29 @@ theme_override_constants/margin_bottom = 128
 
 [node name="Panel" type="PanelContainer" parent="UI/StatsOverlay/StatsMargin"]
 layout_mode = 2
+theme_type_variation = &"ModalPanel"
 
 [node name="Column" type="VBoxContainer" parent="UI/StatsOverlay/StatsMargin/Panel"]
 layout_mode = 2
 theme_override_constants/separation = 20
 
+[node name="Accent" type="ColorRect" parent="UI/StatsOverlay/StatsMargin/Panel/Column"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.67, 0.42, 1, 0.92)
+
+[node name="Eyebrow" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column"]
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "BIOMETRIC PROFILE  //  LIVE DATA"
+horizontal_alignment = 1
+
 [node name="StatsTitle" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 44
-text = "Stats Anima"
+theme_type_variation = &"ModalTitle"
+text = "Anima Stats"
 horizontal_alignment = 1
 
 [node name="StatsGrid" type="GridContainer" parent="UI/StatsOverlay/StatsMargin/Panel/Column"]
@@ -403,78 +498,103 @@ columns = 2
 
 [node name="HpName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 layout_mode = 2
+theme_type_variation = &"StatNameLabel"
 text = "HP"
 
 [node name="StatHp" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+horizontal_alignment = 2
 text = "—"
 
 [node name="AtkName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 layout_mode = 2
+theme_type_variation = &"StatNameLabel"
 text = "ATK"
 
 [node name="StatAtk" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+horizontal_alignment = 2
 text = "—"
 
 [node name="DefName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 layout_mode = 2
+theme_type_variation = &"StatNameLabel"
 text = "DEF"
 
 [node name="StatDef" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+horizontal_alignment = 2
 text = "—"
 
 [node name="SpdName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 layout_mode = 2
+theme_type_variation = &"StatNameLabel"
 text = "SPD"
 
 [node name="StatSpd" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+horizontal_alignment = 2
 text = "—"
 
 [node name="SpecialName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 layout_mode = 2
+theme_type_variation = &"StatNameLabel"
 text = "SPECIAL"
 
 [node name="StatSpecial" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+horizontal_alignment = 2
 text = "—"
 
 [node name="ElementName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 layout_mode = 2
-text = "Element"
+theme_type_variation = &"StatNameLabel"
+text = "ELEMENT"
 
 [node name="StatElement" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+horizontal_alignment = 2
 text = "—"
 
 [node name="RarityName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 layout_mode = 2
-text = "Rarity"
+theme_type_variation = &"StatNameLabel"
+text = "RARITY"
 
 [node name="StatRarity" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+horizontal_alignment = 2
 text = "—"
 
 [node name="StageName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 layout_mode = 2
-text = "Stage"
+theme_type_variation = &"StatNameLabel"
+text = "STAGE"
 
 [node name="StatStage" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+horizontal_alignment = 2
 text = "—"
 
 [node name="CloseStatsButton" type="Button" parent="UI/StatsOverlay/StatsMargin/Panel/Column"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
-text = "Tutup"
+theme_type_variation = &"NavButton"
+text = "CLOSE PROFILE"

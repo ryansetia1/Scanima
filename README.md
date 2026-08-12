@@ -39,7 +39,7 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 **Jeda generation sekarang punya inkubator yang benar-benar hidup.** Setelah Genesis dimulai, foto atau Anima lama diganti telur energi procedural dengan orbit cyan-violet, scanner, spark emas, dan core yang berdenyut—tanpa asset tambahan. Ia tetap berjalan selama polling Replicate, termasuk saat pending scan dilanjutkan setelah restart. Saat webhook selesai, ring meledak menjadi flash lalu Anima muncul dengan bounce, squash-and-stretch, dan settle; kegagalan/timeout mengembalikan Anima lama. Cache hit tetap instan dan tidak memalsukan proses hatch.
 
-**Koleksi, Stats, dan Care loop sekarang ada di vertical slice.** Empat meter berlabel dan tombol Makan/Bersih/Tidur/Main memakai target sentuh 96px. Feed/Clean menghabiskan 5 Bits secara atomik, Play memakai Energy, Sleep pulih linear enam jam, decay dihitung server saat dibuka dengan grace 8 jam/cap 48 jam, dan Dormant tetap berada di roster. Satu `pending_care` bertahan di disk agar timeout/app kill me-replay key yang sama. `test_scan_ui.gd` menjaga 69 kontrak layout, care, dan inkubator; `test_game_rules.gd` menjaga 27 aturan decay/sleep/score/Dormant.
+**Koleksi, Stats, Care loop, dan visual shell sekarang ada di vertical slice.** Empat meter berlabel dan tombol Feed/Clean/Sleep/Play memakai target sentuh 96px. Feed/Clean menghabiskan 5 Bits secara atomik, Play memakai Energy, Sleep pulih linear enam jam, decay dihitung server saat dibuka dengan grace 8 jam/cap 48 jam, dan Dormant tetap berada di roster. Seluruh permukaan memakai satu theme cyan-violet-gold, latar chamber procedural, modal glass panel, CTA semantik, meter yang bergerak halus, serta bounce/press/focus yang dipasang oleh `UiJuice`; tidak ada texture UI tambahan atau dependency baru. Satu `pending_care` bertahan di disk agar timeout/app kill me-replay key yang sama. `test_scan_ui.gd` menjaga 79 kontrak layout, theme, motion hook, care, dan inkubator; `test_game_rules.gd` menjaga 27 aturan decay/sleep/score/Dormant.
 
 Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan meninggalkan koleksi di akun yang tidak bisa dijangkau lagi. Kedua, **kunci idempotency scan dan care bertahan di disk**, sehingga app yang mati tidak membayar Core/Bits kedua. Keduanya dijaga oleh 42 check di `test_client_state.gd`.
 
@@ -51,8 +51,8 @@ Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan
 | --- | --- | --- |
 | 0 | Arsitektur, prompt spec, desain sistem | Selesai |
 | 1 | MVP: buktikan pipeline art end-to-end | Terbukti — Smoke Set v2 3/3 sheet 4/4 pose, gate 2/2 |
-| 2 | Backend Supabase + core game loop | Berjalan — backend live, client sudah scan sampai Anima tampil; sisanya loop perawatan |
-| 3 | Battle, evolusi, UI/UX, audio, monetisasi | Belum mulai |
+| 2 | Backend Supabase + core game loop | Selesai — scan, hatch, Koleksi, Stats, Care, dan visual shell sudah hidup |
+| 3 | Battle, evolusi, onboarding, audio, monetisasi | Belum mulai |
 | 4 | Soft launch itch.io lalu Play Store | Belum mulai |
 
 Yang sudah bisa dijalankan sekarang, gratis:
@@ -68,6 +68,10 @@ npm run selftest                 # 20 skenario + 12 uji tanda tangan webhook, ta
 # Godot: 42 pemeriksaan sesi, pending scan/care, dan cache art — tanpa jaringan
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
+
+# Godot: 79 pemeriksaan layout, theme, motion hook, care, dan inkubator
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
+    --script res://tests/test_scan_ui.gd
 
 # Godot: 27 pemeriksaan decay, sleep, score harian, dan Dormant
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
@@ -149,16 +153,18 @@ scanima/
 │   │   ├── scan_flow.gd          # alur scan, koleksi, dan care
 │   │   ├── care_rules.gd         # mirror murni decay/sleep untuk preview + test
 │   │   ├── incubator_effect.gd   # telur energi procedural + burst
+│   │   ├── scanima_background.gd # chamber holografik procedural, tanpa texture
+│   │   ├── ui_juice.gd           # motion bersama untuk button, meter, dan modal
 │   │   ├── anima_loader.gd       # manifest + PNG -> SpriteFrames
 │   │   ├── anima_presenter.gd    # pose + gerak prosedural via Tween
 │   │   ├── placeholder_sheet.gd  # sheet buatan, untuk demo & test
 │   │   └── anima_demo.gd
-│   ├── themes/mobile_theme.tres  # tipografi mobile bersama, basis 720×1280
+│   ├── themes/mobile_theme.tres  # palette, cards, CTA, modal, basis 720×1280
 │   ├── shaders/chroma_key.gdshader   # cadangan, jalur BYOK saja
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 69 kontrak layout + care + inkubator
+│       ├── test_scan_ui.gd           # 79 kontrak layout + theme + care + inkubator
 │       ├── test_game_rules.gd        # 27 kontrak care tanpa jaringan
 │       └── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 ├── backend/

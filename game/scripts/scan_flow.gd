@@ -26,6 +26,7 @@ extends Node2D
 const POLL_INTERVAL_SEC := 2.0
 const POLL_TIMEOUT_SEC := 180.0
 const MAX_FOTO_BYTE := 6 * 1024 * 1024
+const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
 ## 1280 px bukan angka pilihan bebas: seluruh foto di eval/photos/ berada di atau
 ## di bawah ukuran itu, jadi Smoke Set sudah membuktikan gate dan pemetaan stat
@@ -39,6 +40,8 @@ const TOUCH_MIN := 96.0
 const THUMBNAIL_SIZE := 128
 const BASE_MARGIN := 32.0
 
+var _ui_juice: GDScript = load("res://scripts/ui_juice.gd") as GDScript
+
 @onready var _stage: Node2D = %Stage
 @onready var _incubator: IncubatorEffect = %Incubator
 @onready var _anima: AnimaPresenter = %Anima
@@ -51,6 +54,9 @@ const BASE_MARGIN := 32.0
 @onready var _main_margin: MarginContainer = %Margin
 @onready var _collection_margin: MarginContainer = %CollectionMargin
 @onready var _stats_margin: MarginContainer = %StatsMargin
+@onready var _header_card: PanelContainer = %HeaderCard
+@onready var _stage_badge: PanelContainer = %StageBadge
+@onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _collection_button: Button = %CollectionButton
 @onready var _stats_button: Button = %StatsButton
 @onready var _collection_overlay: Control = %CollectionOverlay
@@ -76,6 +82,8 @@ const BASE_MARGIN := 32.0
 @onready var _clean_button: Button = %CleanButton
 @onready var _sleep_button: Button = %SleepButton
 @onready var _play_button: Button = %PlayButton
+@onready var _collection_panel: PanelContainer = $UI/CollectionOverlay/CollectionMargin/Panel
+@onready var _stats_panel: PanelContainer = $UI/StatsOverlay/StatsMargin/Panel
 
 var _busy := false
 var _roster: Array[Dictionary] = []
@@ -102,6 +110,13 @@ func _ready() -> void:
 	_dialog.file_selected.connect(_scan_file)
 	get_viewport().size_changed.connect(_layout_for_viewport)
 	_layout_for_viewport()
+	await get_tree().process_frame
+	_ui_juice.install_buttons(self)
+	_ui_juice.reveal(_header_card, 0.02)
+	_ui_juice.reveal(_stage_badge, 0.08)
+	_ui_juice.reveal(_status_panel, 0.14)
+	_ui_juice.reveal(_scan_button, 0.20)
+	_ui_juice.reveal($UI/Margin/Column/ActionsRow, 0.26)
 	_setup_picker()
 	_show_cached_anima()
 	await _boot()
@@ -120,9 +135,9 @@ func _ready() -> void:
 			var jalur := arg.trim_prefix("--preview=")
 			_show_preview(FileAccess.get_file_as_bytes(jalur), jalur.get_extension().to_lower() == "png")
 		if arg == "--collection":
-			_on_collection_pressed()
+			await _on_collection_pressed()
 		if arg == "--stats":
-			_on_stats_pressed()
+			await _on_stats_pressed()
 		if arg == "--incubator":
 			_start_incubation()
 			_say("Menyintesis Anima… energi sedang dibentuk.")
@@ -218,7 +233,7 @@ func _active_row() -> Dictionary:
 
 
 func _on_collection_pressed() -> void:
-	_collection_overlay.visible = true
+	await _ui_juice.show_overlay(_collection_overlay, _collection_panel)
 	if not _roster_error.is_empty():
 		_collection_button.disabled = true
 		await _reload_roster()
@@ -226,18 +241,18 @@ func _on_collection_pressed() -> void:
 
 
 func _close_collection() -> void:
-	_collection_overlay.visible = false
+	await _ui_juice.hide_overlay(_collection_overlay, _collection_panel)
 
 
 func _on_stats_pressed() -> void:
 	if _current_anima.is_empty() or GameState.as_dict(_current_anima.get("base_stats")).is_empty():
 		return
 	_refresh_stats()
-	_stats_overlay.visible = true
+	await _ui_juice.show_overlay(_stats_overlay, _stats_panel)
 
 
 func _close_stats() -> void:
-	_stats_overlay.visible = false
+	await _ui_juice.hide_overlay(_stats_overlay, _stats_panel)
 
 
 func _on_anima_selected(index: int) -> void:
@@ -246,7 +261,7 @@ func _on_anima_selected(index: int) -> void:
 	var row := GameState.as_dict(_anima_list.get_item_metadata(index))
 	if row.is_empty():
 		return
-	_collection_overlay.visible = false
+	await _ui_juice.hide_overlay(_collection_overlay, _collection_panel)
 	_set_busy(true)
 	await _present_row(row)
 	_set_busy(false)
@@ -425,7 +440,7 @@ func _setup_picker() -> void:
 	_picker.connect("image_request_completed", _on_photo_taken)
 	_picker.connect("permission_not_granted_by_user", _on_camera_denied)
 	_picker.connect("error", _on_picker_error)
-	_scan_button.text = "Foto Benda"
+	_scan_button.text = "SCAN REAL OBJECT"
 
 
 func _on_pick_pressed() -> void:
@@ -725,7 +740,7 @@ static func normalize_anima_data(anima_data: Dictionary) -> Dictionary:
 	if not normalized.has("base_stats") and typeof(normalized.get("stats")) == TYPE_DICTIONARY:
 		normalized["base_stats"] = normalized["stats"]
 	if normalized.has("care") or normalized.has("care_synced_at"):
-		normalized["care"] = CareRules.normalized_care(normalized.get("care"))
+		normalized["care"] = CARE_RULES.normalized_care(normalized.get("care"))
 	return normalized
 
 
@@ -764,8 +779,10 @@ func _build_pose_buttons(poses: PackedStringArray) -> void:
 		button.text = pose.capitalize()
 		button.custom_minimum_size = Vector2(0, TOUCH_MIN)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.theme_type_variation = &"PoseButton"
 		button.pressed.connect(_anima.set_pose.bind(pose))
 		_pose_row.add_child(button)
+		_ui_juice.install_button(button)
 
 
 func _upsert_roster(row: Dictionary) -> void:
@@ -842,7 +859,7 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 func _refresh_stats() -> void:
 	var stats := GameState.as_dict(_current_anima.get("base_stats"))
 	var nama := str(_current_anima.get("nickname", _current_anima.get("species_key", "Anima")))
-	_stats_title.text = "Stats · %s" % nama
+	_stats_title.text = "%s // BIOMETRICS" % nama.to_upper()
 	_stat_hp.text = _stat_value(stats, "hp")
 	_stat_atk.text = _stat_value(stats, "atk")
 	_stat_def.text = _stat_value(stats, "def")
@@ -856,25 +873,28 @@ func _refresh_stats() -> void:
 
 func _refresh_care() -> void:
 	var has_care := typeof(_current_anima.get("care")) == TYPE_DICTIONARY
+	var should_reveal := has_care and not _care_panel.visible
 	_care_panel.visible = has_care
 	if not has_care:
 		_set_care_buttons_disabled(true)
 		return
+	if should_reveal:
+		_ui_juice.reveal(_care_panel)
 
-	var care := CareRules.normalized_care(_current_anima.get("care"))
-	_need_hunger.value = care["hunger"]
-	_need_energy.value = care["energy"]
-	_need_hygiene.value = care["hygiene"]
-	_need_bond.value = care["bond"]
+	var care: Dictionary = CARE_RULES.normalized_care(_current_anima.get("care"))
+	_ui_juice.tween_meter(_need_hunger, care["hunger"])
+	_ui_juice.tween_meter(_need_energy, care["energy"])
+	_ui_juice.tween_meter(_need_hygiene, care["hygiene"])
+	_ui_juice.tween_meter(_need_bond, care["bond"])
 
 	var sleeping := _is_sleeping(_current_anima)
 	var dormant := _has_timestamp(_current_anima.get("dormant_since"))
-	var state := "Dormant" if dormant else ("Tidur" if sleeping else "Aktif")
-	_care_summary.text = "Care Score %d  ·  %s" % [
+	var state := "DORMANT" if dormant else ("SLEEPING" if sleeping else "ACTIVE")
+	_care_summary.text = "CARE SCORE %03d  //  %s" % [
 		int(_current_anima.get("care_score", 0)),
 		state,
 	]
-	_sleep_button.text = "Bangun" if sleeping else "Tidur"
+	_sleep_button.text = "WAKE" if sleeping else "SLEEP"
 	_set_care_buttons_disabled(_busy)
 	if _anima.sprite_frames != null:
 		_anima.apply_care_state(sleeping, dormant)
@@ -937,7 +957,7 @@ func _layout_for_viewport() -> void:
 static func stage_position_for(viewport_size: Vector2, insets: Vector4) -> Vector2:
 	var safe_top := insets.y
 	var safe_bottom := viewport_size.y - insets.w
-	return Vector2(viewport_size.x * 0.5, lerpf(safe_top, safe_bottom, 0.54))
+	return Vector2(viewport_size.x * 0.5, lerpf(safe_top, safe_bottom, 0.57))
 
 
 func _apply_margins(node: MarginContainer, insets: Vector4, side: float, vertical: float) -> void:
@@ -984,17 +1004,19 @@ func _restore_previous_anima() -> void:
 
 func _say(text: String) -> void:
 	_status.text = text
+	_ui_juice.pop(_status_panel, 1.025)
 	print(text)
 
 
 func _refresh_header() -> void:
 	var p := GameState.profile
 	if p.is_empty():
-		_header.text = "Scanima"
+		_header.text = "— SCANS    ◈ — CORES    ◆ — BITS"
 		return
-	_header.text = "%d Scan  ·  %d Core  ·  %d Bits" % [
+	_header.text = "%02d SCANS    ◈ %02d CORES    ◆ %03d BITS" % [
 		int(p.get("scan_charges", 0)), int(p.get("genesis_cores", 0)), int(p.get("bits", 0))
 	]
+	_ui_juice.pop(_header_card, 1.018)
 
 
 func _set_busy(busy: bool) -> void:
@@ -1026,7 +1048,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _capture_and_quit(path: String) -> void:
-	for _i in 5:
+	for _i in 24:
 		await get_tree().process_frame
 
 	var image := get_viewport().get_texture().get_image()
