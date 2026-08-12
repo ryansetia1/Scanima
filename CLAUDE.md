@@ -93,6 +93,10 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **`resendPermission()` ada di README plugin tapi `private` di `.aar` yang dirilis.** Memanggilnya dari GDScript gagal saat runtime. Terverifikasi lewat `javap` pada `classes.jar`: yang publik hanya `setOptions`, `getGalleryImage`, `getGalleryImages`, `hasCamera`, `getCameraImage`. Pemulihan setelah izin ditolak adalah memanggil `getCameraImage()` lagi — permintaan izinnya menempel di sana — jadi UI harus menyuruh pemain menekan tombolnya sekali lagi, bukan memanggil metode yang tidak ada.
 - **Ketiga signal plugin membawa argumen, termasuk yang izin.** Dari bytecode `getPluginSignals()`: `image_request_completed(Dictionary)`, `error(String)`, dan `permission_not_granted_by_user(String)` — yang terakhir tidak terbaca demikian dari README. Arity yang salah membuat `connect` gagal dan handler-nya tidak pernah terpanggil, tanpa galat yang jelas.
 - **Tombol foto TIDAK dikunci saat kamera terbuka.** Kamera itu Activity terpisah dan pembatalan tidak memancarkan signal apa pun, jadi kunci yang dipasang saat permintaan dikirim akan mati selamanya bagi pemain yang berubah pikiran. Kuncinya dipasang di `_scan_bytes`, saat byte-nya sudah ada.
+- **Izin `INTERNET` MATI secara default di ekspor Android Godot 4, dan ini kegagalan yang paling mahal waktunya.** APK pertama yang dibangun di sini keluar dengan `CAMERA` sebagai satu-satunya izin: ia terpasang, terbuka, lalu mati di sign-in anonim — tanpa dialog izin, tanpa crash, cuma galat jaringan yang menyesatkan, sebab Android menolak socket-nya secara senyap. Preset **wajib** memuat `permissions/internet=true`. `export_presets.cfg` di-gitignore, jadi tidak ada uji di repo yang bisa menjaga ini; catatan ini adalah pagarnya, dan `aapt2 dump permissions` sesudah build adalah pemeriksaannya.
+- **Terverifikasi pada APK sungguhan: tepat dua izin, `INTERNET` dan `CAMERA`.** Nol `READ_MEDIA_IMAGES`, nol `READ_EXTERNAL_STORAGE` — jadi pilihan fork PhotoPicker terbukti di artefak akhir, bukan cuma di manifest sumbernya. Kelas `GodotGetImage` juga terkonfirmasi ada di `classes.dex`. Periksa keduanya setiap kali plugin atau versi engine berubah; manifest yang ter-merge tidak membuktikan kodenya ikut.
+- **Template Android 4.6.2 mematok Gradle 8.11.1, jadi JDK-nya tidak boleh lebih baru dari 23.** Mesin ini punya JDK 26 dan build-nya berhenti di `Unsupported class file major version 70` sebelum menyentuh kode kita. Yang dipakai: `brew install openjdk@17` — **formula, bukan cask `temurin@17`**, sebab cask memasang ke `/Library/Java/...` dan menuntut sudo sementara formula tidak. JDK 26 **tidak** perlu dihapus walau banyak jawaban forum menyuruhnya: Godot punya setelan `Java SDK Path` sendiri, jadi keduanya hidup berdampingan. Alternatif menaikkan `distributionUrl` di `gradle-wrapper.properties` menukar satu masalah pasti dengan pasangan Gradle/AGP yang tidak diuji siapa pun.
+- **Godot membaca `ANDROID_HOME` tapi TIDAK membaca `JAVA_HOME`.** SDK-nya terdeteksi sendiri; jalur JDK harus ada di `export/android/java_sdk_path` pada `editor_settings-4.6.tres` (nama file-nya per-minor, bukan `editor_settings-4.tres`). Menulisnya lewat file **hanya aman saat editor tertutup** — editor menyimpan setelannya sendiri ketika keluar dan akan menimpa suntingan dari luar. `export/android/debug_keystore` juga sudah diisi sendiri oleh editor ke keystore yang belum ada; ia dibuat lambat memakai `keytool` dari JDK, jadi preset di sini menunjuk `~/.android/debug.keystore` yang nyata ada supaya hasilnya deterministik.
 - **`FOTO_MAX_PX` di `scan_flow.gd` bukan angka bebas: ia sengaja sama dengan foto terbesar di `eval/photos/` (1280 px).** Menaikkannya berarti produksi memberi Vision gambar yang lebih besar daripada apa pun yang pernah diuji Smoke Set, dan yang bergeser bukan cuma stat — `species_key` yang berubah memecah dedup cache, jadi scan yang seharusnya gratis membayar $0.07. Skenario 18 di `npm run selftest` menegakkan batas itu secara gratis. Naikkan hanya bersamaan dengan eval ulang.
 - **Plugin men-decode lalu meng-encode ulang fotonya**, jadi EXIF ikut hilang — termasuk koordinat GPS. Rotasi dibakar ke piksel lewat `rotateImageIfRequired`, bukan ditinggalkan sebagai tag. Konsekuensi baiknya: server tidak pernah menerima lokasi pemain. Konsekuensi lainnya: `auto_rotate_image` mengaku sendiri "tidak 100%", jadi `scan_flow` menampilkan preview foto plus mencetak dimensinya — potret yang keluar sebagai lanskap adalah satu-satunya gejala yang terlihat sebelum ia menjelma jadi stat yang aneh.
 - **Balasan biner tidak boleh dikonversi ke String untuk dicoba jadi JSON.** Sheet 1 MB dari CDN yang dipaksa lewat `get_string_from_utf8()` memberi `Unicode parsing error` plus galat parser JSON di log setiap unduhan, dan menyalin satu megabyte tanpa guna, padahal pemanggilnya memakai `bytes`. `Backend._maybe_json()` memeriksa byte pertama dulu.
@@ -124,7 +128,7 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 20 skenario + 12 uji tanda tangan webhook
+npm run selftest                       # 19 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 godot --headless --path game --script res://tests/test_client_state.gd  # sesi, kunci scan, cache art
 node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
@@ -163,20 +167,30 @@ godot --path game res://scenes/anima_demo.tscn \
 godot --headless --path game --script res://tests/live_scan.gd \
     -- --photo=$PWD/eval/photos/mug-putih.jpg
 
-# Android. Dua langkah pertama HARUS lewat editor, tidak ada padanan CLI-nya:
-#   Project > Install Android Build Template
-#   Project > Export > Add Android, lalu isi debug keystore
+# Android. Tidak ada langkah editor yang wajib: --install-android-build-template
+# adalah flag CLI, dipakai bersama --export-debug, dan export_presets.cfg boleh
+# ditulis tangan. Sekali saja per mesin; sesudahnya cukup baris --export-debug.
 # Jangan menambahkan izin storage apa pun di preset — CAMERA sudah datang dari
 # manifest plugin, dan izin galeri adalah yang membuat Play menolak. Preset dan
 # game/android/ di-gitignore karena keduanya memuat jalur keystore.
-godot --headless --path game --export-debug Android /tmp/scanima.apk
+godot --headless --path game --install-android-build-template \
+    --export-debug Android /tmp/scanima.apk
+
+# Verifikasi APK. Yang diperiksa bukan "file-nya ada" tetapi tepat dua izin dan
+# kelas plugin benar-benar masuk dex; manifest yang ter-merge saja tidak cukup.
+B=~/Library/Android/sdk/build-tools/36.1.0
+$B/aapt2 dump permissions /tmp/scanima.apk | grep permission  # INTERNET + CAMERA
+unzip -p /tmp/scanima.apk classes.dex | strings | grep -c GodotGetImage
+$B/apksigner verify /tmp/scanima.apk && echo tertandatangani
 
 # Uji kamera di perangkat sungguhan. Tidak ada versi headless-nya: satu-satunya
 # hal di client yang tidak dijaga npm run selftest. Foto benda yang spesiesnya
 # SUDAH ada di species_library supaya jalurnya cache hit (~$0.003, bukan $0.07).
 # Yang dibuktikan: izin diminta sekali dan pemulihannya jalan, dimensi di log
 # menunjukkan <=1280 px dengan orientasi benar, dan Anima-nya tampil.
-adb install -r /tmp/scanima.apk && adb logcat -s godot:V
+# adb tidak ada di PATH di mesin ini; ia hidup di platform-tools SDK.
+A=~/Library/Android/sdk/platform-tools/adb
+$A install -r /tmp/scanima.apk && $A logcat -s godot:V
 
 # eval prompt, BERBIAYA
 node eval/run.mjs --set smoke --vision-only  # gate + stat saja, ~$0.015

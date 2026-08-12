@@ -618,6 +618,53 @@ console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set"
   );
 }
 
+console.log("19. tidak ada kredensial mahal di sumber client Godot");
+{
+  // Kriteria lama "verifikasi dengan strings pada APK" terukur TIDAK BISA GAGAL:
+  // pack Godot terkompresi, jadi string kontrol yang jelas ada di backend.gd pun
+  // memberi nol hit pada APK jadi. Uji yang selalu lulus lebih buruk daripada
+  // tidak ada uji, sebab ia memberi rasa aman. Yang bisa gagal adalah memeriksa
+  // sumbernya: apa pun yang tidak ada di game/ tidak mungkin ada di APK.
+  //
+  // Yang dijaga: REPLICATE_API_TOKEN (r8_) dan service role key tidak boleh
+  // ikut ke build. KEY_PUBLISHABLE sengaja TIDAK dilarang — ia memang ikut, dan
+  // yang membatasi akses adalah RLS, bukan kerahasiaannya.
+  const { readFile, readdir } = await import("node:fs/promises");
+  const terlarang = [
+    [/r8_[A-Za-z0-9]{20}/, "token Replicate"],
+    [/sbp_[A-Za-z0-9]{20}/, "PAT Supabase"],
+    [/service_role/, "service role key"],
+    [/sb_secret_/, "secret key Supabase"],
+  ];
+
+  // addons/ dan android/ dilewati: milik pihak ketiga dan artefak build.
+  const akar = new URL("../game/", import.meta.url);
+  const berkas = [];
+  const jelajah = async (dir) => {
+    for (const e of await readdir(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) {
+        if (["addons", "android", ".godot"].includes(e.name)) continue;
+        await jelajah(new URL(`${e.name}/`, dir));
+      } else if (/\.(gd|tscn|cfg|gdshader|json)$/.test(e.name)) {
+        berkas.push(new URL(e.name, dir));
+      }
+    }
+  };
+  await jelajah(akar);
+  assert.ok(berkas.length > 5, `hanya ${berkas.length} berkas terpindai, penjelajahannya salah`);
+
+  for (const f of berkas) {
+    const isi = await readFile(f, "utf8");
+    for (const [pola, nama] of terlarang) {
+      assert.ok(
+        !pola.test(isi),
+        `${nama} ditemukan di ${f.pathname.split("/game/")[1]}. Kredensial ini tidak ` +
+          "boleh ikut ke APK; ia hanya hidup di Edge Function secrets."
+      );
+    }
+  }
+}
+
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang
 // menutup kontrak antara Node dan Godot tanpa memanggil API berbayar:
 //
