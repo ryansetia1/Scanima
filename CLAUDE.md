@@ -63,6 +63,8 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **Output wrapper Vision itu array potongan string**, bukan satu string. Harus disambung sebelum di-parse. Model gambar sebaliknya mengembalikan satu URI.
 - **`gemini-2.5-flash` retirement 20 Oktober 2026.** Ini plafon yang sudah diketahui, bukan kejutan: `# ponytail: Vision di 2.5-flash karena satu vendor satu token. Plafon 20 Okt 2026; upgrade dengan mengganti env VISION_MODEL ke google/gemini-3-flash, tanpa ubah kode.` Jangan diam-diam mengganti modelnya tanpa menjalankan ulang Smoke Set, karena stat dan `species_key` bisa bergeser.
 - **Slicing sheet bukan pembagian grid atau bbox kuadran keras.** GPT Image 2 terbukti menggambar tangan Attack melewati center seam. `segmentPosePixels()` menetapkan komponen alpha 8-connected ke kuadran yang memuat mayoritas pikselnya, menyimpan ownership per piksel, lalu `blitOwned()` menyalin hanya piksel milik pose itu. Mengganti ini dengan crop 512×512 akan memotong tangan/kabel lagi.
+- **Fragmen yang terlepas ikut kuadran mayoritasnya, bukan body terdekat.** Terlihat menggoda untuk menempelkan percikan atau simbol Z ke body yang paling dekat, tapi di sheet mouse v2 fragmen Z tidur berjarak 37 px ke body Idle dan 39 px ke body Sleep: aturan "body terdekat" akan memindahkannya ke pose yang salah, sementara mayoritas kuadran benar. Sudah diukur di enam sheet, 24 pose, tanpa satu pun fragmen salah alamat.
+- **Sel ditolak kalau bbox-nya seluas kuadran DAN terisi padat, bukan salah satu saja.** Kedua syarat wajib berpasangan. Versi lama hanya mengukur luas bbox terhadap kuadran dan itu membuang pose Attack yang sah di run v2 pertama: speed line dan percikan membuat bbox-nya 96% kuadran padahal cuma 42% opak. Sebaliknya kepadatan sendirian akan menolak sprite bersilhouette kotak. Lihat `maxCellFillRatio` di `eval/postprocess.mjs`.
 - **Halo hijau di tepi TIDAK diperbaiki dengan menurunkan ambang saturasi.** Campuran keyline putih dengan `#00FF00` berbentuk `(t,255,t)` dan bersaturasi bisa hanya 0,5 — untuk menghapusnya lewat ambang, ambangnya harus turun di bawah saturasi hijau daun (0,63) dan tubuh Anima `plant` jadi bolong. Yang dipakai: erosi hanya pada cincin 1px terluar (harus bertetangga piksel transparan) dengan syarat `g >= 220` dan hijau dominan. Terukur menurunkan residu dari 0,21% ke 0,014%. Lihat `isKeyContaminatedEdge()` di `eval/postprocess.mjs`.
 - **Ambang chroma key harus ketat: `sat > 0.85`, `val > 0.5`.** Resep chroma key umum memakai 0,3 dan itu akan **melubangi tubuh Anima berelemen `plant`**, karena hijau daun `rgb(60,160,70)` punya saturasi 0,63 dan hue 126°. Nilai ini muncul di tiga tempat dan harus selalu sama: `eval/postprocess.mjs`, `game/shaders/chroma_key.gdshader`, dan Edge Function nanti.
 - **Keempat region wajib berukuran sama.** `AnimatedSprite2D` cuma punya satu `offset` untuk seluruh animasi, jadi region yang ukurannya beda membuat sprite tersentak berpindah tiap ganti pose. `AnimaLoader` menolak manifest yang melanggar ini; jangan "perbaiki" dengan melonggarkan pemeriksaannya.
@@ -77,9 +79,12 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 17 skenario, termasuk lintas center seam
+npm run selftest                       # 18 skenario, termasuk lintas center seam
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
+
+# menguji ulang post-processing pada sheet yang SUDAH dibayar, nol panggilan API
+node eval/run.mjs --set smoke --reprocess
 
 # kontrak Node <-> Godot, juga gratis
 node eval/selftest.mjs --emit /tmp/scanima_e2e
@@ -102,6 +107,8 @@ supabase functions serve create_anima --env-file .env.local
 ```
 
 Default-nya `smoke`, prompt `v2`, dan GPT Image 2 `medium`. Jangan jalankan `full` sebagai bagian dari iterasi biasa — ia enam kali lebih mahal dan tidak memberi informasi tambahan sampai Smoke Set sudah bersih. Sebelum memicu satu pun generation gambar, `--vision-only` sudah cukup untuk menguji gate keamanan dan pemetaan stat dengan biaya ~$0.015.
+
+**Kalau yang diubah cuma post-processing, jangan bayar generation lagi.** `--reprocess` menyusun ulang sheet, manifest, dan contact sheet dari `raw.png` run sebelumnya tanpa satu pun panggilan API, jadi perubahan keying/slicing bisa diverifikasi terhadap gambar model sungguhan dengan biaya nol. Ia sengaja tidak menimpa `vision.json` dan `prompt.txt`, karena keduanya catatan run yang menghasilkan `raw.png` itu.
 
 ## Definition of done untuk perubahan non-trivial
 

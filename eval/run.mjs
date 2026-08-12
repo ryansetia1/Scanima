@@ -7,6 +7,7 @@
 //   node eval/run.mjs --photo eval/photos/mouse.jpg
 //   node eval/run.mjs --set smoke --dry-run    # gratis: cek foto & prompt saja
 //   node eval/run.mjs --set smoke --vision-only  # murah: gate + stat saja
+//   node eval/run.mjs --set smoke --reprocess  # gratis: susun ulang dari raw.png
 //
 // Kedua model berjalan lewat Replicate, jadi hanya butuh SATU kredensial:
 // REPLICATE_API_TOKEN. Ini bukan cuma soal kenyamanan setup — di mode BYOK,
@@ -57,7 +58,14 @@ const POLL_TIMEOUT_MS = 180_000;
 // ---------------------------------------------------------------- argumen
 
 function parseArgs(argv) {
-  const args = { set: null, photo: null, promptVersion: "v2", dryRun: false, visionOnly: false };
+  const args = {
+    set: null,
+    photo: null,
+    promptVersion: "v2",
+    dryRun: false,
+    visionOnly: false,
+    reprocess: false,
+  };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--set") args.set = argv[++i];
@@ -65,6 +73,7 @@ function parseArgs(argv) {
     else if (a === "--prompt-version") args.promptVersion = argv[++i];
     else if (a === "--dry-run") args.dryRun = true;
     else if (a === "--vision-only") args.visionOnly = true;
+    else if (a === "--reprocess") args.reprocess = true;
     else if (a === "--help" || a === "-h") args.help = true;
     else throw new Error(`argumen tidak dikenal: ${a}`);
   }
@@ -457,7 +466,9 @@ async function main() {
   --photo <path>          jalankan satu foto saja
   --prompt-version v2     versi prompt di backend/prompts/ (default: v2)
   --dry-run               tidak memanggil API sama sekali
-  --vision-only           panggil Vision saja, tanpa image generation`);
+  --vision-only           panggil Vision saja, tanpa image generation
+  --reprocess             susun ulang sheet dari raw.png hasil run sebelumnya,
+                          nol panggilan API, untuk menguji post-processing`);
     return;
   }
 
@@ -492,17 +503,19 @@ async function main() {
     process.exit(1);
   }
 
-  const willGenerate = args.visionOnly ? 0 : items.filter((it) => !it.expect_reject).length;
-  const estimate = willGenerate * COST_PER_IMAGE_USD + items.length * COST_PER_VISION_USD;
+  const willGenerate = args.visionOnly || args.reprocess ? 0 : items.filter((it) => !it.expect_reject).length;
+  const estimate = args.reprocess ? 0 : willGenerate * COST_PER_IMAGE_USD + items.length * COST_PER_VISION_USD;
 
   console.log(`set        : ${args.set ?? "single"} (${items.length} foto)`);
   console.log(`prompt     : ${args.promptVersion}`);
   console.log(`vision     : ${VISION_MODEL} (via Replicate)`);
   console.log(`image      : ${IMAGE_MODEL}`);
   console.log(
-    `perkiraan  : ${items.length} vision + ${willGenerate} generation, ~$${estimate.toFixed(3)}`
+    `perkiraan  : ${args.reprocess ? 0 : items.length} vision + ${willGenerate} generation, ` +
+      `~$${estimate.toFixed(3)}`
   );
   if (args.dryRun) console.log("mode       : DRY RUN, tidak ada API dipanggil");
+  else if (args.reprocess) console.log("mode       : REPROSES dari raw.png, tidak ada API dipanggil");
   else if (args.visionOnly) console.log("mode       : VISION ONLY, tanpa image generation");
   console.log("");
 
@@ -542,34 +555,47 @@ async function main() {
     rows.push(row);
 
     try {
-      const photo = await loadPhoto(item.path);
-      await writeFile(join(outDir, `${name}.photo.jpg`), Buffer.from(photo.base64, "base64"));
+      let photo = null;
+      let checked;
 
-      process.stdout.write(`${label} vision... `);
-      let seen;
-      try {
-        seen = await callVision(photo, systemPrompt, schema);
-      } catch (err) {
-        // Panggilan yang berhasil tapi JSON-nya rusak tetap ditagih, jadi tetap
-        // dihitung. Gagal sebelum request terkirim (token hilang, HTTP error)
-        // tidak menetapkan attempts dan memang tidak ditagih.
-        totals.visionCalls += err.attempts ?? 0;
-        totals.costUsd += (err.attempts ?? 0) * COST_PER_VISION_USD;
-        throw err;
-      }
-      totals.visionCalls += seen.attempts;
-      totals.costUsd += seen.attempts * COST_PER_VISION_USD;
-      if (seen.attempts > 1) {
-        totals.visionRepaired++;
-        // Bukan fatal, tapi harus terlihat: kalau sering terjadi, prompt kontrak
-        // output-nya yang perlu diperbaiki, bukan parser-nya.
-        row.issues = ["JSON percobaan pertama rusak, diulang pada temperature 0"];
-      }
+      if (args.reprocess) {
+        // Vision dan gambarnya sudah dibayar di run sebelumnya, jadi yang diuji
+        // ulang di sini hanya post-processing. vision.json dan prompt.txt asli
+        // sengaja tidak ditimpa: keduanya adalah catatan run yang menghasilkan
+        // raw.png ini, bukan catatan run hari ini.
+        checked = JSON.parse(await readFile(join(outDir, `${name}.vision.json`), "utf8"));
+        row.vision = checked.vision;
+        row.issues = checked.issues ?? [];
+      } else {
+        photo = await loadPhoto(item.path);
+        await writeFile(join(outDir, `${name}.photo.jpg`), Buffer.from(photo.base64, "base64"));
 
-      const checked = validateVision(seen.vision, knownSpecies);
-      row.vision = checked.vision;
-      row.issues = [...(row.issues ?? []), ...checked.issues];
-      await writeFile(join(outDir, `${name}.vision.json`), JSON.stringify(checked, null, 2));
+        process.stdout.write(`${label} vision... `);
+        let seen;
+        try {
+          seen = await callVision(photo, systemPrompt, schema);
+        } catch (err) {
+          // Panggilan yang berhasil tapi JSON-nya rusak tetap ditagih, jadi tetap
+          // dihitung. Gagal sebelum request terkirim (token hilang, HTTP error)
+          // tidak menetapkan attempts dan memang tidak ditagih.
+          totals.visionCalls += err.attempts ?? 0;
+          totals.costUsd += (err.attempts ?? 0) * COST_PER_VISION_USD;
+          throw err;
+        }
+        totals.visionCalls += seen.attempts;
+        totals.costUsd += seen.attempts * COST_PER_VISION_USD;
+        if (seen.attempts > 1) {
+          totals.visionRepaired++;
+          // Bukan fatal, tapi harus terlihat: kalau sering terjadi, prompt kontrak
+          // output-nya yang perlu diperbaiki, bukan parser-nya.
+          row.issues = ["JSON percobaan pertama rusak, diulang pada temperature 0"];
+        }
+
+        checked = validateVision(seen.vision, knownSpecies);
+        row.vision = checked.vision;
+        row.issues = [...(row.issues ?? []), ...checked.issues];
+        await writeFile(join(outDir, `${name}.vision.json`), JSON.stringify(checked, null, 2));
+      }
 
       if (item.expect_reject) {
         totals.gateExpected++;
@@ -601,15 +627,21 @@ async function main() {
         continue;
       }
 
-      const prompt = assemblePrompt(template, checked.vision);
-      await writeFile(join(outDir, `${name}.prompt.txt`), prompt);
+      let gen;
+      if (args.reprocess) {
+        process.stdout.write(`${label} reproses... `);
+        gen = { png: new Uint8Array(await readFile(join(outDir, `${name}.raw.png`))), seconds: 0 };
+      } else {
+        const prompt = assemblePrompt(template, checked.vision);
+        await writeFile(join(outDir, `${name}.prompt.txt`), prompt);
 
-      process.stdout.write(`${label} generate... `);
-      const gen = await callImageModel(prompt, photo);
+        process.stdout.write(`${label} generate... `);
+        gen = await callImageModel(prompt, photo);
+        totals.costUsd += COST_PER_IMAGE_USD;
+        await writeFile(join(outDir, `${name}.raw.png`), gen.png);
+      }
       totals.generated++;
-      totals.costUsd += COST_PER_IMAGE_USD;
       row.seconds = gen.seconds;
-      await writeFile(join(outDir, `${name}.raw.png`), gen.png);
 
       const { png, manifest } = await postprocessSheet(gen.png, {
         speciesKey: checked.vision.species_key,
@@ -626,7 +658,8 @@ async function main() {
       if (manifest.qa.cells_detected === POSES.length) totals.fullSheets++;
 
       console.log(
-        `${gen.seconds}s · sel ${manifest.qa.cells_detected}/4` +
+        (gen.seconds ? `${gen.seconds}s · ` : "") +
+          `sel ${manifest.qa.cells_detected}/4` +
           (manifest.qa.warnings.length ? ` · ${manifest.qa.warnings.join("; ")}` : "")
       );
     } catch (err) {

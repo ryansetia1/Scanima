@@ -13,14 +13,14 @@ Art style: 2D anime creature cel-shading — clean bold linework, flat colors, c
 
 Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`** sebagai default: hasil 1024×1024-nya lebih konsisten untuk anatomi anime dan biaya nyata sekitar $0.07 per sheet, sedangkan `high` sekitar empat kali token output dan 2,5 menit tanpa peningkatan yang sebanding. Prompt production v2 mengikuti [anime cel-shaded style guide](docs/monster_camera_anime_cel_shaded_style_guide.md); gate Gemini tetap tidak berubah.
 
-Konfigurasi v2 sudah lolos dry-run dan pemeriksaan kontrak, tetapi Smoke Set berbayar dengan **template v2 final** belum dijalankan. Hasil eksperimen medium yang memilih modelnya memakai pendahulu langsung template tersebut.
+**Smoke Set berbayar dengan template v2 final sudah dijalankan** (mouse, mug putih, sepatu): 3 dari 3 sheet lengkap 4/4 pose, gate menolak keduanya dengan benar, residu hijau 0,001–0,008% (target di bawah 0,1%), selisih skala Idle vs Attack 6–13%, dan latensi 61–74 detik per sheet. Biaya run: ~$0.225. Hasilnya ada di `eval/results/v2/smoke/index.html`.
 
-Dua masalah post-processing yang ditemukan pada output nyata juga sudah ditangani: halo hijau di tepi sprite (0,21% → 0,014%) dan anggota tubuh pose kanan yang melewati garis tengah sheet. Slicing sekarang menetapkan kepemilikan per komponen piksel, jadi tangan/kabel yang tersambung tidak dipotong dan bagian pose tetangga tidak ikut tercopy.
+Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: halo hijau di tepi sprite (0,21% → 0,014%), anggota tubuh pose kanan yang melewati garis tengah sheet, dan penjaga "keying gagal" yang salah membuang pose Attack karena speed line membuat bbox-nya seluas kuadran. Slicing sekarang menetapkan kepemilikan per komponen piksel, jadi tangan/kabel yang tersambung tidak dipotong dan bagian pose tetangga tidak ikut tercopy.
 
 | Phase | Isi | Status |
 | --- | --- | --- |
 | 0 | Arsitektur, prompt spec, desain sistem | Selesai |
-| 1 | MVP: buktikan pipeline art end-to-end | Terbukti — 2 sheet penuh, 4/4 pose, gate 2/2 |
+| 1 | MVP: buktikan pipeline art end-to-end | Terbukti — Smoke Set v2 3/3 sheet 4/4 pose, gate 2/2 |
 | 2 | Backend Supabase + core game loop | Belum mulai |
 | 3 | Battle, evolusi, UI/UX, audio, monetisasi | Belum mulai |
 | 4 | Soft launch itch.io lalu Play Store | Belum mulai |
@@ -29,7 +29,7 @@ Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 17 skenario pemeriksaan, tanpa API
+npm run selftest                 # 18 skenario pemeriksaan, tanpa API
 
 # Godot: 75 pemeriksaan slicing sprite, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
@@ -45,6 +45,12 @@ Kontrak antara kedua sisi juga diuji tanpa biaya. Node menghasilkan sheet, Godot
 node eval/selftest.mjs --emit /tmp/scanima_e2e
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_sprite_slicing.gd -- --manifest=/tmp/scanima_e2e/manifest.json
+```
+
+Post-processing bisa diuji ulang terhadap sheet yang sudah dibayar, juga gratis:
+
+```bash
+node eval/run.mjs --set smoke --reprocess   # susun ulang dari raw.png, 0 panggilan API
 ```
 
 Untuk mengulang run berbayarnya: taruh 5 foto di `eval/photos/` (lihat [panduannya](eval/photos/README.md)), jalankan `--vision-only` dulu (~$0.015), lalu `npm run smoke` (~$0.225). Hasil v2 ditulis ke `eval/results/v2/smoke/index.html`.

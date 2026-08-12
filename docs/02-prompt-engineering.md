@@ -400,6 +400,7 @@ Daftar ini disusun dari output nyata nano-banana-pro dan GPT Image 2. Semuanya d
 | Hanya 3 sel terisi | Instruksi layout terlalu implisit | Sebut "exactly four cells" dan definisikan tiap kuadran per nama posisi |
 | Tangan/kabel pose kanan melewati center seam | Pose dinamis melanggar margin kuadran | Segmentasi alpha 8-connected + ownership mask per piksel; jangan kembali ke bbox yang dibatasi kuadran |
 | Subjek tidak center di kuadran | Komposisi bebas model | Normalisasi bbox hasil segmentasi, bottom-center ke frame seragam |
+| Pose Attack dibuang sebagai "keying gagal" | Speed line dan percikan membuat bbox seluas kuadran padahal isinya cuma 42% opak | Penjaga harus menuntut dua syarat sekaligus: bbox seluas kuadran **dan** terisi padat |
 | Kreatur jadi naga/hewan generik | Model condong ke prior "monster" | Kalimat "the object IS the body" + larangan eksplisit + `signature_features` yang konkret |
 | Cast shadow di bawah kreatur | Kebiasaan render | Larangan eksplisit; keying akan menyisakan noda gelap kalau lolos |
 | `background: "transparent"` ditolak | Runtime GPT Image 2 belum mendukung alpha | Pakai `opaque` + chroma green; jangan percaya schema tanpa request nyata |
@@ -459,6 +460,8 @@ Dua foto uji gate **tidak perlu dipotong meski anggaran ketat**, dan ini poin ya
 
 Jadi "5 foto" sebenarnya berarti **3 generation**, dan itulah angka yang menentukan biaya.
 
+**Hasil terukur run v2 pertama, 12 Agustus 2026.** Ketiga foto generation lolos: `mouse_plastic_wired`, `mug_ceramic_handled`, `shoe_fabric_sneaker`, masing-masing 4/4 sel dengan residu hijau 0,008%, 0,001%, dan 0,008% — jauh di bawah ambang 0,1%. Selisih skala Idle vs Attack 9,1%, 12,7%, dan 6,1%; latensi 74, 69, dan 61 detik; total $0.225. Kedua foto uji gate ditolak dengan alasan yang benar (`human_face`, `no_object`). Satu bug post-processing ikut tertangkap di run ini, bukan bug prompt: penjaga kegagalan keying membuang pose Attack milik mouse karena speed line-nya membuat bbox mengisi 96% kuadran. Sheet-nya diperbaiki lewat `--reprocess` tanpa membayar generation kedua.
+
 ### Iterasi manual: cara paling murah menyetel kata-kata prompt
 
 Sebelum menyentuh API sama sekali, sebagian besar penyetelan prompt bisa dilakukan **manual di aplikasi Gemini atau AI Studio**: tempel foto, tempel prompt, lihat hasilnya, ubah satu kalimat, ulangi. Untuk pekerjaan menemukan kalimat yang membuat model berhenti menggambar naga generik, ini jauh lebih cepat dan hampir tanpa biaya marginal dibandingkan menjalankan script.
@@ -492,15 +495,16 @@ Dijalankan sekali sebagai gerbang penerimaan, bukan sebagai alat iterasi. Tiga f
 ```bash
 node eval/run.mjs --prompt-version v2 --set smoke   # 5 foto, ~$0.225
 node eval/run.mjs --prompt-version v2 --set full    # 20 foto, ~$1.32
+node eval/run.mjs --set smoke --reprocess           # gratis, susun ulang dari raw.png
 ```
 
-Keduanya memakai harness yang sama dan hanya berbeda daftar foto, jadi tidak ada kode terpisah yang bisa menyimpang. Hasil disimpan ke `eval/results/<version>/<set>/` sebagai contact sheet HTML (foto asli di kiri, sheet hasil di kanan, JSON Vision di bawahnya) plus metrik otomatis.
+Ketiganya memakai harness yang sama dan hanya berbeda daftar foto, jadi tidak ada kode terpisah yang bisa menyimpang. `--reprocess` ada karena perubahan post-processing tidak boleh menuntut generation baru: ia memakai `raw.png` yang sudah dibayar, menyusun ulang sheet, manifest, dan contact sheet tanpa satu pun panggilan API, dan sengaja tidak menimpa `vision.json` maupun `prompt.txt` karena keduanya catatan run yang menghasilkan gambar itu. Hasil disimpan ke `eval/results/<version>/<set>/` sebagai contact sheet HTML (foto asli di kiri, sheet hasil di kanan, JSON Vision di bawahnya) plus metrik otomatis.
 
 Simpan setiap hasil dan **jangan pernah hapus**. Perbandingan antar versi prompt harus bisa dilakukan tanpa re-run, karena re-run berarti membayar lagi.
 
 Metrik yang bisa dihitung mesin: rasio gate benar (harus sempurna, tanpa pengecualian), jumlah sel terdeteksi per sheet (harus 4), **varians tinggi bbox antara Idle dan Attack** (target < 15%), persentase piksel hijau tersisa setelah keying (target < 0,1%), dan stabilitas `species_key` saat foto objek serupa divariasikan.
 
-Angka terukur dari run smoke pertama, sebagai patokan: gate 2/2, sel 4/4 pada kedua sheet, varians Idle vs Attack 3,4%, residu hijau 0,014% dan 0,024%. Ketiga metrik pertama lolos sejak percobaan pertama; residu hijau **tidak** — ia mulai di 0,21% dan baru sampai ke angka itu setelah erosi tepi ditambahkan, ceritanya di [01](01-architecture-dataflow.md). Perlu diingat saat membaca metrik ini ke depan: karena erosi menghapus cincin 1px, angka residu sekarang mengukur halo yang lebih tebal dan hijau di interior, bukan lagi fringe setipis satu piksel.
+Angka terukur dari run smoke v2, sebagai patokan terbaru: gate 2/2, sel 4/4 pada ketiga sheet, varians Idle vs Attack 6,1–12,7%, residu hijau 0,001–0,008%. Angka dari run smoke v1 pertama, untuk pembanding: gate 2/2, sel 4/4 pada kedua sheet, varians Idle vs Attack 3,4%, residu hijau 0,014% dan 0,024%. Ketiga metrik pertama lolos sejak percobaan pertama; residu hijau **tidak** — ia mulai di 0,21% dan baru sampai ke angka itu setelah erosi tepi ditambahkan, ceritanya di [01](01-architecture-dataflow.md). Perlu diingat saat membaca metrik ini ke depan: karena erosi menghapus cincin 1px, angka residu sekarang mengukur halo yang lebih tebal dan hijau di interior, bukan lagi fringe setipis satu piksel.
 
 Yang dibandingkan sengaja hanya Idle dan Attack, bukan keempat pose. Kreatur yang meringkuk tidur memang jauh lebih pendek daripada yang berdiri, jadi varians keempat pose akan memberi alarm palsu pada sheet yang sempurna dan melatih kita mengabaikan peringatan. Yang benar-benar menandakan model mengubah skala adalah selisih antara dua pose yang sama-sama berdiri penuh.
 

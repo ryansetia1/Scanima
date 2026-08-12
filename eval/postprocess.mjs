@@ -44,7 +44,10 @@ export const DEFAULTS = {
   // Background hijau selalu jadi mayoritas sheet. Kalau yang ter-key jauh di
   // bawah ini, latarnya bukan hijau dan sheet harus ditolak, bukan diproses.
   minKeyedRatio: 0.15,
-  maxCellFillRatio: 0.95, // bbox seluas kuadran = keying gagal, bukan sprite
+  // Bbox yang TERISI padat = keying gagal, bukan sprite. Diukur terhadap isi
+  // bbox, bukan terhadap luas kuadran: pose Attack dengan speed line dan
+  // percikan sah-sah saja punya bbox seluas kuadran.
+  maxCellFillRatio: 0.95,
 };
 
 /**
@@ -439,16 +442,21 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       delete bboxes[pose];
       continue;
     }
-    const fill = (bb.w * bb.h) / quadrantArea;
-    if (fill < opts.minCellAreaRatio) {
+    const area = (bb.w * bb.h) / quadrantArea;
+    if (area < opts.minCellAreaRatio) {
       rejected[pose] = "area di bawah ambang";
       delete bboxes[pose];
       continue;
     }
-    // Prompt meminta margin lebar di tiap sel, jadi bbox yang mengisi hampir
-    // seluruh kuadran berarti keying gagal atau sel-selnya menyatu.
-    if (fill > opts.maxCellFillRatio) {
-      rejected[pose] = `mengisi ${Math.round(fill * 100)}% kuadran, keying gagal`;
+    // Keying yang gagal menyisakan kuadran yang SEKALIGUS seluas kuadran dan
+    // terisi penuh. Kedua syarat wajib ada, karena masing-masing sendirian
+    // menolak sprite yang sah: pose Attack dengan speed line dan percikan
+    // punya bbox 96% kuadran padahal cuma 42% opak, sementara sprite yang
+    // silhouette-nya memang kotak padat mengisi bbox-nya sampai ~100% tapi
+    // bbox itu jauh lebih kecil dari kuadran.
+    const density = segmented.ownership[pose].opaque_pixels / (bb.w * bb.h);
+    if (area > opts.maxCellFillRatio && density > opts.maxCellFillRatio) {
+      rejected[pose] = `kuadran terisi penuh dan padat ${Math.round(density * 100)}%, keying gagal`;
       delete bboxes[pose];
       continue;
     }

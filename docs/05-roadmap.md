@@ -25,7 +25,7 @@ Kesalahan yang paling mungkin dilakukan di proyek seperti ini adalah menghabiska
 
 Sengaja tanpa Supabase, tanpa autentikasi, tanpa database, tanpa sistem kuota. Panggilan API dilakukan dari script Node lokal dan build Godot khusus development yang membaca token dari file lokal yang di-gitignore.
 
-> **Status per 12 Agustus 2026.** Pipeline sudah terbukti dengan foto sungguhan pada nano-banana-pro dan GPT Image 2. Setelah A/B medium vs high, default dipindah ke GPT Image 2 medium dan prompt production v2 mengikuti anime cel-shaded style guide. Post-processing punya 17 skenario gratis, termasuk regresi tangan yang melewati center seam; sisi Godot punya 75 pemeriksaan headless termasuk kontrak sheet keluaran Node.
+> **Status per 12 Agustus 2026.** Pipeline sudah terbukti dengan foto sungguhan pada nano-banana-pro dan GPT Image 2. Setelah A/B medium vs high, default dipindah ke GPT Image 2 medium dan prompt production v2 mengikuti anime cel-shaded style guide. Smoke Set berbayar dengan template v2 final sudah dijalankan dan **gerbang pertama terlewati**: 3/3 sheet dengan 4/4 sel, gate 2/2, residu hijau 0,001–0,008%. Post-processing punya 18 skenario gratis, termasuk regresi tangan yang melewati center seam dan regresi pose berpercikan yang dulu salah ditolak sebagai kegagalan keying; sisi Godot punya 75 pemeriksaan headless termasuk kontrak sheet keluaran Node.
 
 ### Yang dikerjakan
 

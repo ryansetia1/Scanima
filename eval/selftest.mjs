@@ -222,6 +222,37 @@ console.log("4b. anggota tubuh yang melewati garis tengah tidak terpotong");
   assert.equal(blueInIdle, 0, "piksel pose tetangga tidak boleh ikut tercopy");
 }
 
+console.log("4c. pose lebar dengan efek TIDAK dianggap keying gagal, blok padat IYA");
+{
+  // Bug nyata dari Smoke Set v2: pose Attack punya speed line dan percikan yang
+  // terpisah dari tubuh, sehingga bbox gabungannya mengisi 96% kuadran padahal
+  // hanya 42% isinya opak. Penjaga yang mengukur luas bbox terhadap kuadran
+  // menolaknya sebagai "keying gagal" dan sheet kehilangan satu pose.
+  const img = await Image.decode(await buildSheet(blobs));
+  const AX = HALF; // kolom kanan, baris atas = kuadran Attack
+  drawBlob(img.bitmap, AX + 2, 6, 14, 14, FILLS.attack); // percikan dekat seam
+  drawBlob(img.bitmap, SIZE - 24, HALF - 30, 14, 14, FILLS.attack); // percikan sudut
+
+  const { manifest } = await postprocessSheet(await img.encode(), {});
+  const bb = { w: manifest.frame_size[0] - PAD * 2, h: manifest.frame_size[1] - PAD * 2 };
+  assert.ok(
+    (bb.w * bb.h) / (HALF * HALF) > DEFAULTS.maxCellFillRatio,
+    `test harus benar-benar melewati ambang lama: ${(bb.w * bb.h) / (HALF * HALF)}`
+  );
+  assert.equal(manifest.qa.cells_detected, 4, "pose berpercikan tetap harus dihitung");
+  assert.deepEqual(manifest.qa.cells_rejected, {}, "tidak ada yang boleh ditolak di sini");
+
+  // Sisi lain dari penjaga yang sama harus tetap hidup: satu kuadran yang
+  // seluruhnya opak berarti latarnya tidak ter-key, dan itu wajib ditolak.
+  const solid = await Image.decode(await buildSheet({ idle: blobs.idle, attack: blobs.attack, sleep: blobs.sleep }));
+  for (let y = HALF; y < SIZE; y++) {
+    for (let x = HALF; x < SIZE; x++) setPx(solid.bitmap, x, y, [40, 44, 52]);
+  }
+  const blocked = await postprocessSheet(await solid.encode(), {});
+  assert.equal(blocked.manifest.qa.cells_detected, 3, "blok padat tidak boleh dianggap sprite");
+  assert.match(blocked.manifest.qa.cells_rejected.defeated ?? "", /padat|keying gagal/);
+}
+
 console.log("5. sel hilang terdeteksi, bukan diam-diam lolos");
 {
   const partial = { ...blobs };
