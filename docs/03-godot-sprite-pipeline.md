@@ -22,17 +22,23 @@ Manifest adalah satu-satunya hal yang menghubungkan backend dan Godot soal geome
   },
   "qa": {
     "green_residue_ratio": 0.0004,
-    "bbox_height_variance": 0.11,
-    "cells_detected": 4
+    "standing_height_variance": 0.04,
+    "bbox_heights": { "idle": 448, "attack": 442, "sleep": 208, "defeated": 262 },
+    "cells_detected": 4,
+    "warnings": []
   }
 }
 ```
 
-Satu detail di sini menyelesaikan masalah yang mudah diremehkan: **`frame_size` sama untuk keempat pose.** Backend menghitung bbox rapat setiap pose, mengambil ukuran union terbesar, lalu memperluas keempat region ke ukuran identik dengan menjaga titik jangkar (bottom-center kuadran asal) tetap di posisi relatif yang sama.
+Satu detail di sini menyelesaikan masalah yang mudah diremehkan: **`frame_size` sama untuk keempat pose.** Backend menghitung bbox rapat setiap pose, mengambil ukuran terbesar, lalu menempelkan keempat pose ke sel berukuran identik dengan jangkar **bottom-center bbox** — yaitu titik tumpu kreatur di tanah.
 
-Kenapa itu penting: `AnimatedSprite2D` hanya punya satu properti `offset` untuk seluruh animasi, bukan per-frame. Kalau setiap pose punya ukuran region berbeda, sprite akan tersentak berpindah posisi setiap ganti frame, dan tidak ada cara memperbaikinya di client tanpa menambah node pembungkus per frame. Menormalisasi di backend menghapus masalahnya seluruhnya, dan biayanya cuma beberapa baris aritmetika di tempat yang sudah menyentuh piksel.
+Jangkarnya bbox, bukan kuadran, dan itu penting: keempat pose jadi berdiri di garis tanah yang sama, termasuk pose Sleep dan Defeated yang memang lebih rendah. Pose meringkuk duduk di lantai, bukan melayang di tengah frame.
 
-Blok `qa` tidak dipakai game, tapi ikut disimpan agar sheet yang buruk bisa ditemukan lewat query alih-alih laporan pemain: `green_residue_ratio` tinggi berarti keying gagal, `bbox_height_variance` tinggi berarti model mengubah skala antar pose.
+Kenapa ukuran seragam itu penting: `AnimatedSprite2D` hanya punya satu properti `offset` untuk seluruh animasi, bukan per-frame. Kalau setiap pose punya ukuran region berbeda, sprite akan tersentak berpindah posisi setiap ganti frame, dan tidak ada cara memperbaikinya di client tanpa menambah node pembungkus per frame. Menormalisasi di backend menghapus masalahnya seluruhnya. `AnimaLoader` menolak manifest yang region-nya tidak seukuran `frame_size`, jadi pelanggaran kontrak ini gagal keras di client, bukan muncul sebagai getaran halus yang sulit dilacak.
+
+Blok `qa` tidak dipakai game, tapi ikut disimpan agar sheet yang buruk bisa ditemukan lewat query alih-alih laporan pemain.
+
+Perhatikan metriknya: yang diukur `standing_height_variance`, **hanya antara Idle dan Attack**, bukan varians keempat pose. Membandingkan keempatnya adalah metrik yang salah, karena kreatur yang meringkuk tidur memang jauh lebih pendek daripada yang berdiri — ambang apa pun akan memberi alarm palsu pada sheet yang sempurna. Yang benar-benar menandakan model mengubah skala adalah selisih antara dua pose yang sama-sama berdiri penuh. Sebagai pelengkap, pose Sleep atau Defeated yang lebih *tinggi* dari Idle juga ditandai, karena arah itu hampir pasti berarti model membesarkan kreaturnya alih-alih menidurkannya.
 
 ## 2. Arsitektur node
 
@@ -251,44 +257,18 @@ Jalur normal: **tidak ada pekerjaan sama sekali di Godot.** Backend sudah mengir
 
 ### Shader chroma key
 
+Implementasinya ada di `game/shaders/chroma_key.gdshader`. Inti keputusannya satu baris: piksel **dipertahankan** kalau hue-nya jauh dari kunci, **atau** saturasinya rendah, **atau** gelap.
+
 ```glsl
-shader_type canvas_item;
-render_mode unshaded;
-
-uniform float key_hue     : hint_range(0.0, 1.0) = 0.3333;  // 120 derajat
-uniform float hue_tol     : hint_range(0.0, 0.5) = 0.061;   // +/- 22 derajat
-uniform float sat_min     : hint_range(0.0, 1.0) = 0.30;
-uniform float val_min     : hint_range(0.0, 1.0) = 0.30;
-uniform float edge_soften : hint_range(0.0, 0.2) = 0.02;
-
-vec3 rgb2hsv(vec3 c) {
-	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
-	vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
-	float d = q.x - min(q.w, q.y);
-	float e = 1.0e-10;
-	return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-}
-
-void fragment() {
-	vec4 src = texture(TEXTURE, UV);
-	vec3 hsv = rgb2hsv(src.rgb);
-
-	float hue_dist = abs(hsv.x - key_hue);
-	hue_dist = min(hue_dist, 1.0 - hue_dist);          // hue itu melingkar
-
-	float is_key = step(hue_dist, hue_tol)
-	             * step(sat_min, hsv.y)
-	             * step(val_min, hsv.z);
-
-	// Fade lembut di ambang supaya tepi tidak bergerigi
-	float soft = smoothstep(hue_tol, max(hue_tol - edge_soften, 0.0), hue_dist);
-	float alpha = src.a * (1.0 - is_key * soft);
-
-	// Nolkan warna di piksel transparan: mencegah halo hijau saat difilter
-	COLOR = vec4(src.rgb * step(0.01, alpha), alpha);
-}
+float keep = smoothstep(hue_tolerance, hue_tolerance + softness, hue_dist);
+keep = max(keep, 1.0 - smoothstep(sat_min - softness, sat_min, hsv.y));
+keep = max(keep, 1.0 - smoothstep(val_min - softness, val_min, hsv.z));
+COLOR = vec4(tex.rgb, tex.a * keep);
 ```
+
+Syarat "atau" itulah yang menyelamatkan Anima berelemen `plant`: hijau daun saturasinya jauh di bawah `sat_min`, jadi ia lolos lewat cabang kedua meski hue-nya persis hijau. Nilai uniform-nya harus tetap sama dengan `eval/postprocess.mjs` (hue ±22°, `sat_min` 0,85, `val_min` 0,5). Kalau berbeda, sprite yang sama akan tampil berbeda antara pemain biasa dan pemain BYOK.
+
+Yang **tidak** bisa dikerjakan shader ini, dan karena itu mode BYOK tetap terpaksa memakai region grid buta 2x2: mencari bounding box, menyeragamkan ukuran frame, dan menolak sheet yang cacat. Ketiganya butuh membaca seluruh piksel sekaligus, sesuatu yang fragment shader tidak bisa lakukan. Jadi mode BYOK secara struktural memberi kualitas sprite yang lebih rendah, bukan sekadar lebih lambat.
 
 Keying memakai HSV dan bukan jarak RGB karena hijau `#00FF00` punya hue yang sangat khas, sementara jarak RGB akan ikut memakan warna hijau yang sah pada tubuh Anima (misalnya Anima tanaman). Hue melingkar, jadi `min(d, 1-d)` bukan detail kosmetik — tanpa itu hijau di sekitar hue 0 akan lolos.
 

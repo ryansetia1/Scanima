@@ -1,0 +1,102 @@
+{
+  "type": "object",
+  "description": "Hasil analisis Anima Analyst. Ditulis dalam subset OpenAPI yang diterima Gemini responseSchema: pakai nullable, bukan tipe array seperti [string, null], dan tanpa keyword pattern. Batasan yang tidak bisa diungkapkan di sini (format species_key, jumlah stat 200-350) ditegakkan di kode, lihat validateVision() di eval/run.mjs.",
+  "propertyOrdering": [
+    "safe", "is_object", "reject_reason", "object_label", "species_key",
+    "color_bucket", "element", "rarity", "stats", "stat_reasoning",
+    "creature_brief", "signature_features", "suggested_name", "dominant_colors"
+  ],
+  "required": ["safe", "is_object", "reject_reason"],
+  "properties": {
+    "safe": {
+      "type": "boolean",
+      "description": "false kalau foto melanggar salah satu aturan GATE"
+    },
+    "is_object": {
+      "type": "boolean",
+      "description": "true kalau ada satu objek diskret yang jelas jadi subjek"
+    },
+    "reject_reason": {
+      "type": "string",
+      "nullable": true,
+      "enum": ["human_face", "live_animal", "unsafe_content", "personal_info", "too_unclear", "no_object"]
+    },
+    "object_label": {
+      "type": "string",
+      "nullable": true,
+      "description": "Nama objek sehari-hari dalam bahasa Inggris, untuk debugging"
+    },
+    "species_key": {
+      "type": "string",
+      "nullable": true,
+      "description": "snake_case, 2-4 segmen, tanpa warna, tanpa merek. Ini cache key."
+    },
+    "color_bucket": {
+      "type": "string",
+      "nullable": true,
+      "enum": ["warm_red", "warm_yellow", "cool_blue", "cool_green", "purple_pink", "neutral_light", "neutral_dark", "metallic", "multicolor"]
+    },
+    "element": {
+      "type": "string",
+      "nullable": true,
+      "enum": ["metal", "plant", "spark", "flow", "stone", "cloth"]
+    },
+    "rarity": {
+      "type": "integer",
+      "nullable": true,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "stats": {
+      "type": "object",
+      "nullable": true,
+      "required": ["hp", "atk", "def", "spd", "special"],
+      "propertyOrdering": ["hp", "atk", "def", "spd", "special"],
+      "properties": {
+        "hp": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "atk": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "def": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "spd": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "special": { "type": "integer", "minimum": 10, "maximum": 95 }
+      }
+    },
+    "stat_reasoning": {
+      "type": "object",
+      "nullable": true,
+      "description": "Fitur nyata yang mendasari tiap stat. Dipakai untuk tooltip di kartu stat dan untuk debugging prompt.",
+      "propertyOrdering": ["hp", "atk", "def", "spd", "special"],
+      "properties": {
+        "hp": { "type": "string" },
+        "atk": { "type": "string" },
+        "def": { "type": "string" },
+        "spd": { "type": "string" },
+        "special": { "type": "string" }
+      }
+    },
+    "creature_brief": {
+      "type": "string",
+      "nullable": true,
+      "description": "40-70 kata, deskripsi visual saja, disisipkan ke prompt gambar"
+    },
+    "signature_features": {
+      "type": "array",
+      "nullable": true,
+      "minItems": 2,
+      "maxItems": 4,
+      "items": { "type": "string" },
+      "description": "Detail nyata yang wajib bertahan ke artwork. Konkret dan bisa dihitung."
+    },
+    "suggested_name": {
+      "type": "string",
+      "nullable": true,
+      "description": "Nama kreatur rekaan, 2-4 suku kata, tanpa merek nyata"
+    },
+    "dominant_colors": {
+      "type": "array",
+      "nullable": true,
+      "maxItems": 3,
+      "items": { "type": "string" },
+      "description": "Hex seperti #a1b2c3"
+    }
+  }
+}

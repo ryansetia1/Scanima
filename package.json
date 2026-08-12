@@ -1,0 +1,18 @@
+{
+  "name": "scanima-eval",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Harness evaluasi prompt dan post-processing sprite sheet untuk Scanima",
+  "scripts": {
+    "selftest": "node eval/selftest.mjs",
+    "smoke": "node eval/run.mjs --set smoke",
+    "full": "node eval/run.mjs --set full"
+  },
+  "dependencies": {
+    "imagescript": "^1.3.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

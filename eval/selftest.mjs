@@ -1,0 +1,392 @@
+// Pemeriksaan post-processing tanpa memanggil API sama sekali.
+//
+// Sheet sintetis dibuat dengan blob yang sengaja TIDAK di tengah kuadran dan
+// berukuran berbeda-beda, karena justru itu kondisi yang membedakan slicing
+// content-aware dari pembagian grid buta. Pembagian 1024/2 akan memotong blob
+// yang menempel ke tepi kuadran, dan test ini akan menangkapnya.
+//
+// Jalankan: node eval/selftest.mjs
+
+import assert from "node:assert/strict";
+import { Image } from "imagescript";
+import {
+  POSES,
+  POSE_QUADRANT,
+  DEFAULTS,
+  isKeyColor,
+  findBBox,
+  heightMetrics,
+  postprocessSheet,
+} from "./postprocess.mjs";
+import { validateVision, assemblePrompt } from "./run.mjs";
+
+const SIZE = DEFAULTS.workSize; // 1024, jadi tidak ada resize yang mengaburkan assert
+const HALF = SIZE / 2;
+const PAD = DEFAULTS.framePadding;
+
+const GREEN = [0, 255, 0];
+const FILLS = {
+  idle: [220, 40, 40],
+  attack: [40, 80, 230],
+  sleep: [150, 60, 200],
+  defeated: [240, 150, 30],
+};
+
+function setPx(bitmap, x, y, [r, g, b], a = 255) {
+  const o = (y * SIZE + x) * 4;
+  bitmap[o] = r;
+  bitmap[o + 1] = g;
+  bitmap[o + 2] = b;
+  bitmap[o + 3] = a;
+}
+
+/** Blob = persegi berisi warna, dikelilingi outline putih 3px seperti di prompt. */
+function drawBlob(bitmap, x, y, w, h, fill) {
+  for (let yy = y - 3; yy < y + h + 3; yy++) {
+    for (let xx = x - 3; xx < x + w + 3; xx++) {
+      if (xx < 0 || yy < 0 || xx >= SIZE || yy >= SIZE) continue;
+      const inside = xx >= x && xx < x + w && yy >= y && yy < y + h;
+      setPx(bitmap, xx, yy, inside ? fill : [255, 255, 255]);
+    }
+  }
+}
+
+async function buildSheet(blobs) {
+  const img = new Image(SIZE, SIZE);
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const o = i * 4;
+    img.bitmap[o] = GREEN[0];
+    img.bitmap[o + 1] = GREEN[1];
+    img.bitmap[o + 2] = GREEN[2];
+    img.bitmap[o + 3] = 255;
+  }
+  for (const [pose, spec] of Object.entries(blobs)) {
+    const [col, row] = POSE_QUADRANT[pose];
+    drawBlob(img.bitmap, col * HALF + spec.x, row * HALF + spec.y, spec.w, spec.h, FILLS[pose]);
+  }
+  return await img.encode();
+}
+
+// Blob dengan outline: bbox nyata = ukuran blob + 3px outline di tiap sisi.
+const outer = (spec) => ({ w: spec.w + 6, h: spec.h + 6 });
+
+// ---------------------------------------------------------------------------
+
+console.log("1. isKeyColor memisahkan background dari warna sah");
+{
+  assert.ok(isKeyColor(0, 255, 0), "hijau murni #00FF00 harus jadi kunci");
+  assert.ok(isKeyColor(2, 253, 5), "hijau hasil kompresi model tetap kunci");
+  assert.ok(isKeyColor(0, 200, 0), "hijau murni agak gelap tetap kunci");
+  assert.ok(!isKeyColor(255, 255, 255), "putih bukan kunci, ini warna keyline");
+  assert.ok(!isKeyColor(0, 0, 0), "hitam bukan kunci, ini line art");
+  assert.ok(!isKeyColor(120, 140, 125), "abu kehijauan bukan kunci (sat rendah)");
+  assert.ok(!isKeyColor(0, 255, 255), "cyan bukan kunci");
+  assert.ok(!isKeyColor(255, 255, 0), "kuning bukan kunci");
+}
+
+console.log("2. REGRESI: tubuh Anima hijau tidak boleh ikut terhapus");
+{
+  // Ini kegagalan yang paling mungkin merusak game tanpa terlihat di sheet uji
+  // biasa: Anima berelemen plant (tanaman, buah, daun) berwarna hijau, dan
+  // resep chroma key standar dengan satMin 0,3 akan melubangi tubuhnya.
+  const greensYangHarusSelamat = [
+    [60, 160, 70, "hijau daun"],
+    [34, 139, 34, "forest green"],
+    [110, 190, 120, "hijau pupus"],
+    [30, 90, 40, "hijau gelap bayangan"],
+    [150, 200, 120, "hijau kekuningan"],
+    [90, 140, 95, "hijau redup"],
+  ];
+  for (const [r, g, b, nama] of greensYangHarusSelamat) {
+    assert.ok(!isKeyColor(r, g, b), `${nama} rgb(${r},${g},${b}) tidak boleh terhapus`);
+  }
+}
+
+console.log("3. findBBox menemukan kotak rapat");
+{
+  const w = 20;
+  const bm = new Uint8Array(w * 10 * 4);
+  const put = (x, y) => (bm[(y * w + x) * 4 + 3] = 255);
+  put(5, 3);
+  put(8, 6);
+  const bb = findBBox(bm, w, [0, 0, w, 10]);
+  assert.deepEqual(bb, { x: 5, y: 3, w: 4, h: 4 });
+  assert.equal(findBBox(bm, w, [12, 0, 8, 10]), null, "wilayah kosong harus null");
+}
+
+console.log("4. sheet lengkap 4 pose, blob off-center dan beda ukuran");
+const blobs = {
+  // Sengaja menempel dekat tepi kuadran: pembagian grid buta akan memotongnya.
+  idle: { x: 8, y: 40, w: 240, h: 380 },
+  attack: { x: 190, y: 52, w: 300, h: 368 },
+  sleep: { x: 40, y: 300, w: 340, h: 190 },
+  defeated: { x: 150, y: 260, w: 280, h: 230 },
+};
+{
+  const { png, manifest } = await postprocessSheet(await buildSheet(blobs), {
+    speciesKey: "selftest_synthetic_blob",
+    colorBucket: "multicolor",
+    promptVersion: "selftest",
+    sheetName: "selftest.png",
+  });
+
+  assert.equal(manifest.qa.cells_detected, 4, "keempat sel harus terdeteksi");
+  assert.deepEqual(manifest.qa.cells_rejected, {}, "tidak boleh ada sel ditolak");
+  assert.equal(manifest.qa.green_residue_ratio, 0, "tidak boleh ada hijau tersisa");
+  assert.deepEqual(manifest.qa.warnings, [], "sheet bersih tidak boleh memberi peringatan");
+
+  // frame_size = bbox terbesar + padding di dua sisi
+  const maxW = Math.max(...POSES.map((p) => outer(blobs[p]).w));
+  const maxH = Math.max(...POSES.map((p) => outer(blobs[p]).h));
+  assert.deepEqual(manifest.frame_size, [maxW + PAD * 2, maxH + PAD * 2]);
+  assert.deepEqual(manifest.sheet_size, [(maxW + PAD * 2) * 2, (maxH + PAD * 2) * 2]);
+
+  const [fw, fh] = manifest.frame_size;
+
+  // Inilah properti yang mencegah sprite tersentak: keempat region identik ukuran
+  for (const pose of POSES) {
+    const [, , w, h] = manifest.poses[pose].region;
+    assert.equal(w, fw, `lebar region ${pose} harus seragam`);
+    assert.equal(h, fh, `tinggi region ${pose} harus seragam`);
+  }
+
+  // Region menempati kuadran yang benar di sheet keluaran
+  for (const pose of POSES) {
+    const [col, row] = POSE_QUADRANT[pose];
+    assert.deepEqual(manifest.poses[pose].region, [col * fw, row * fh, fw, fh], `region ${pose} salah`);
+  }
+
+  // Isi tiap region: tidak terpotong, rata bawah, rata tengah horizontal
+  const out = await Image.decode(png);
+  for (const pose of POSES) {
+    const [rx, ry] = manifest.poses[pose].region;
+    const bb = findBBox(out.bitmap, out.width, [rx, ry, fw, fh]);
+    const want = outer(blobs[pose]);
+
+    assert.equal(bb.w, want.w, `${pose}: lebar isi berubah, kemungkinan terpotong`);
+    assert.equal(bb.h, want.h, `${pose}: tinggi isi berubah, kemungkinan terpotong`);
+
+    const bottomGap = ry + fh - (bb.y + bb.h);
+    assert.equal(bottomGap, PAD, `${pose}: tidak rata bawah, garis tanah bergeser`);
+
+    const leftGap = bb.x - rx;
+    assert.equal(leftGap, Math.floor((fw - want.w) / 2), `${pose}: tidak rata tengah horizontal`);
+  }
+
+  // Semua pose punya jangkar identik: bottom-center frame. Ini yang bikin
+  // AnimatedSprite2D dengan satu offset tetap sinkron di keempat pose.
+  const anchors = POSES.map((pose) => {
+    const [rx, ry] = manifest.poses[pose].region;
+    const bb = findBBox(out.bitmap, out.width, [rx, ry, fw, fh]);
+    return [Math.round(bb.x + bb.w / 2 - rx), bb.y + bb.h - ry];
+  });
+  for (const a of anchors) assert.deepEqual(a, anchors[0], "jangkar antar pose harus sama");
+}
+
+console.log("5. sel hilang terdeteksi, bukan diam-diam lolos");
+{
+  const partial = { ...blobs };
+  delete partial.defeated;
+  const { manifest } = await postprocessSheet(await buildSheet(partial), {});
+  assert.equal(manifest.qa.cells_detected, 3);
+  assert.equal(manifest.poses.defeated, undefined, "pose hilang tidak boleh dikarang");
+  assert.ok(
+    manifest.qa.warnings.some((w) => w.includes("3/4")),
+    "harus ada peringatan sel hilang"
+  );
+}
+
+console.log("6. label teks kecil tidak dianggap sprite");
+{
+  const withLabel = { ...blobs, defeated: { x: 180, y: 400, w: 90, h: 14 } };
+  const { manifest } = await postprocessSheet(await buildSheet(withLabel), {});
+  assert.equal(manifest.poses.defeated, undefined, "coretan tipis harus ditolak");
+  assert.match(manifest.qa.cells_rejected.defeated ?? "", /kecil|ambang/);
+}
+
+console.log("7. model membesarkan pose Attack -> peringatan skala");
+{
+  const inflated = { ...blobs, attack: { x: 60, y: 20, w: 380, h: 470 } };
+  const { manifest } = await postprocessSheet(await buildSheet(inflated), {});
+  assert.ok(
+    manifest.qa.warnings.some((w) => w.includes("Idle vs Attack")),
+    `harus memperingatkan skala, dapat: ${JSON.stringify(manifest.qa.warnings)}`
+  );
+}
+
+console.log("8. pose sleep pendek TIDAK dianggap masalah skala");
+{
+  // Ini regresi yang penting: pose meringkuk memang jauh lebih pendek daripada
+  // pose berdiri, jadi metrik varians antar keempat pose akan memberi alarm
+  // palsu terus-menerus. Yang diukur harus Idle vs Attack saja.
+  const crouched = { ...blobs, sleep: { x: 40, y: 380, w: 330, h: 110 } };
+  const { manifest } = await postprocessSheet(await buildSheet(crouched), {});
+  assert.deepEqual(manifest.qa.warnings, [], "sleep pendek itu normal, jangan diperingatkan");
+  assert.ok(manifest.qa.standing_height_variance <= 0.15);
+}
+
+console.log("9. sleep lebih tinggi dari idle -> curiga skala berubah");
+{
+  const wrong = { ...blobs, sleep: { x: 40, y: 30, w: 300, h: 460 } };
+  const { manifest } = await postprocessSheet(await buildSheet(wrong), {});
+  assert.ok(
+    manifest.qa.warnings.some((w) => w.includes("sleep")),
+    "sleep yang lebih tinggi dari idle harus dicurigai"
+  );
+}
+
+console.log("10. background bukan hijau -> gagal keras, bukan sheet rusak");
+{
+  const img = new Image(SIZE, SIZE);
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const o = i * 4;
+    img.bitmap[o] = 255;
+    img.bitmap[o + 1] = 255;
+    img.bitmap[o + 2] = 255;
+    img.bitmap[o + 3] = 255;
+  }
+  const whitePng = await img.encode();
+  await assert.rejects(
+    () => postprocessSheet(whitePng, {}),
+    /background bukan hijau/,
+    "harus menolak dengan pesan yang menyebut penyebabnya"
+  );
+}
+
+console.log("11. REGRESI end-to-end: Anima hijau tetap utuh di atas latar hijau");
+{
+  // Kasus nyata yang paling mudah lolos dari pengujian: foto tanaman jadi Anima
+  // berelemen plant yang tubuhnya hijau, di atas background hijau. Kalau ambang
+  // keying terlalu longgar, tubuhnya bolong dan bbox-nya mengecil.
+  const leafy = { idle: [60, 160, 70], attack: [34, 139, 34], sleep: [110, 190, 120], defeated: [90, 140, 95] };
+  const img = new Image(SIZE, SIZE);
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const o = i * 4;
+    img.bitmap[o] = GREEN[0];
+    img.bitmap[o + 1] = GREEN[1];
+    img.bitmap[o + 2] = GREEN[2];
+    img.bitmap[o + 3] = 255;
+  }
+  for (const [pose, spec] of Object.entries(blobs)) {
+    const [col, row] = POSE_QUADRANT[pose];
+    drawBlob(img.bitmap, col * HALF + spec.x, row * HALF + spec.y, spec.w, spec.h, leafy[pose]);
+  }
+
+  const { png, manifest } = await postprocessSheet(await img.encode(), {});
+  assert.equal(manifest.qa.cells_detected, 4, "Anima hijau harus tetap terdeteksi keempatnya");
+  assert.deepEqual(manifest.qa.warnings, [], "tubuh hijau bukan residu background");
+
+  const out = await Image.decode(png);
+  const [fw, fh] = manifest.frame_size;
+  for (const pose of POSES) {
+    const [rx, ry] = manifest.poses[pose].region;
+    const bb = findBBox(out.bitmap, out.width, [rx, ry, fw, fh]);
+    assert.equal(bb.w, outer(blobs[pose]).w, `${pose}: tubuh hijau terpotong`);
+    assert.equal(bb.h, outer(blobs[pose]).h, `${pose}: tubuh hijau terpotong`);
+  }
+}
+
+console.log("12. heightMetrics aman saat pose tidak lengkap");
+{
+  const m = heightMetrics({ idle: { h: 100 } });
+  assert.equal(m.standingVariance, 0, "tanpa attack, varians tidak bisa dihitung");
+  assert.deepEqual(m.tooTall, []);
+}
+
+console.log("13. validateVision menegakkan yang tidak bisa dijamin schema");
+{
+  const base = () => ({
+    safe: true,
+    is_object: true,
+    species_key: "mug_ceramic_handled",
+    color_bucket: "neutral_light",
+    element: "flow",
+    rarity: 1,
+    stats: { hp: 50, atk: 30, def: 60, spd: 40, special: 35 },
+    creature_brief: "x",
+    signature_features: ["gagang jadi lengan", "bibir keramik di kepala"],
+    suggested_name: "Mugmon",
+  });
+
+  // Gate tertutup: tidak ada gunanya memeriksa sisa isi
+  const rejected = validateVision({ safe: false, is_object: true, reject_reason: "human_face" });
+  assert.equal(rejected.gate, "rejected");
+  assert.equal(rejected.reason, "human_face");
+
+  const clean = validateVision(base(), []);
+  assert.equal(clean.gate, "passed");
+  assert.deepEqual(clean.issues, [], `sample bersih tidak boleh punya isu: ${clean.issues}`);
+
+  // Jumlah stat di luar 200-350 diskalakan, bukan ditolak
+  const weak = base();
+  weak.stats = { hp: 10, atk: 10, def: 10, spd: 10, special: 10 };
+  const scaled = validateVision(weak, []);
+  const sum = Object.values(scaled.vision.stats).reduce((a, b) => a + b, 0);
+  assert.ok(sum >= 195 && sum <= 210, `jumlah stat harus diskalakan ke ~200, dapat ${sum}`);
+  assert.ok(scaled.issues.some((i) => i.includes("diskalakan")));
+
+  // Typo species_key dinormalisasi ke kunci yang sudah ada. Tanpa ini, satu
+  // huruf beda berarti cache miss dan satu generation dibayar dua kali.
+  const typo = base();
+  typo.species_key = "mug_ceramic_handles";
+  const fixed = validateVision(typo, ["mug_ceramic_handled"]);
+  assert.equal(fixed.vision.species_key, "mug_ceramic_handled", "typo harus dinormalisasi");
+
+  // Tapi spesies yang benar-benar beda jangan digabung
+  const other = base();
+  other.species_key = "shoe_fabric_sneaker";
+  const kept = validateVision(other, ["mug_ceramic_handled"]);
+  assert.equal(kept.vision.species_key, "shoe_fabric_sneaker", "spesies beda jangan digabung");
+
+  const badKey = base();
+  badKey.species_key = "Mug Ceramic";
+  assert.ok(validateVision(badKey, []).issues.some((i) => i.includes("format")));
+
+  const vagueFeat = base();
+  vagueFeat.signature_features = ["interesting texture", "unique qualities"];
+  assert.equal(validateVision(vagueFeat, []).issues.filter((i) => i.includes("kabur")).length, 2);
+}
+
+console.log("14. assemblePrompt tidak pernah mengirim placeholder ke model");
+{
+  const filled = assemblePrompt("A {{creature_brief}} B\n{{signature_features_as_bullets}}", {
+    creature_brief: "tubuh kotak",
+    signature_features: ["tombol jadi mata", "kabel jadi ekor"],
+  });
+  assert.ok(filled.includes("A tubuh kotak B"));
+  assert.ok(filled.includes("- tombol jadi mata\n- kabel jadi ekor"));
+  assert.ok(!filled.includes("{{"));
+
+  // Placeholder yang lupa diisi harus gagal keras: mengirimnya ke model berarti
+  // membayar $0.134 untuk gambar yang isinya instruksi mentah.
+  assert.throws(
+    () => assemblePrompt("{{creature_brief}} {{stage_name}}", { creature_brief: "x", signature_features: [] }),
+    /stage_name/
+  );
+}
+
+// Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang
+// menutup kontrak antara Node dan Godot tanpa memanggil API berbayar:
+//
+//   node eval/selftest.mjs --emit /tmp/scanima_e2e
+//   godot --headless --path game --script res://tests/test_sprite_slicing.gd \
+//       -- --manifest=/tmp/scanima_e2e/manifest.json
+const emitIdx = process.argv.indexOf("--emit");
+if (emitIdx > -1 && process.argv[emitIdx + 1]) {
+  const { mkdir, writeFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const dir = process.argv[emitIdx + 1];
+  await mkdir(dir, { recursive: true });
+
+  const { png, manifest } = await postprocessSheet(await buildSheet(blobs), {
+    speciesKey: "selftest_synthetic_blob",
+    colorBucket: "multicolor",
+    promptVersion: "selftest",
+    sheetName: "sheet.png",
+  });
+  await writeFile(join(dir, "sheet.png"), png);
+  await writeFile(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
+  console.log(`\nsheet uji ditulis ke ${dir}`);
+}
+
+console.log("\nselftest: OK");

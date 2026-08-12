@@ -411,7 +411,7 @@ Berjalan di dalam `replicate_webhook`. Ini langkah wajib, bukan opsional: model 
 ```mermaid
 graph TD
     A["PNG 2K dari Replicate<br/>2048x2048, background hijau"] --> B["Downscale ke 1024x1024"]
-    B --> C["Chroma key HSV:<br/>hue 120 +/- 22, sat > 0.3, val > 0.3"]
+    B --> C["Chroma key HSV:<br/>hue 120 +/- 22, sat > 0.85, val > 0.5"]
     C --> D["Edge softening 1px,<br/>zero-out warna piksel transparan"]
     D --> E["Per kuadran: cari bbox alpha"]
     E --> F["Normalisasi skala + pivot antar pose"]
@@ -420,9 +420,13 @@ graph TD
 
 Downscale ke 1024x1024 dilakukan **sebelum** keying dan itu keputusan sadar: 2048² berarti 4,2 juta piksel yang harus disentuh satu per satu, sementara 1024² hanya 1 juta. Sprite final 512px per pose sudah lebih dari cukup untuk layar HP, jadi tidak ada yang hilang selain biaya CPU.
 
-Keying memakai HSV, bukan jarak RGB, karena hijau `#00FF00` punya hue yang sangat khas dan ambang berbasis hue jauh lebih tahan terhadap variasi shading di tepi sprite. Ambang yang dipakai: hue dalam ±22° dari 120°, saturation > 0,3, value > 0,3. Setelah keying, warna piksel yang alpha-nya nol di-nolkan supaya tidak muncul halo hijau saat tekstur di-filter bilinear.
+Keying memakai HSV, bukan jarak RGB, karena hijau `#00FF00` punya hue yang sangat khas dan ambang berbasis hue jauh lebih tahan terhadap variasi shading di tepi sprite. Ambang yang dipakai: hue dalam ±22° dari 120°, **saturation > 0,85, value > 0,5**. Setelah keying, warna piksel yang alpha-nya nol di-nolkan supaya tidak muncul halo hijau saat tekstur di-filter bilinear.
 
-Library: **ImageScript** (pure TypeScript, Deno-native). Bukan `sharp`, yang butuh native binary dan tidak jalan di edge runtime.
+Ambang saturasi 0,85 itu jauh lebih ketat daripada resep chroma key pada umumnya (0,3), dan alasannya spesifik untuk game ini. Anima berelemen `plant` — tanaman, buah, daun — tubuhnya hijau. Hijau daun seperti `rgb(60,160,70)` punya saturasi 0,63 dan hue 126°, jadi dengan ambang 0,3 ia lolos sebagai warna kunci dan tubuh Anima-nya **bolong**. Background `#00FF00` punya saturasi ~1,0, jadi ambang 0,85 memisahkan keduanya dengan bersih. Ambang value 0,5 melindungi bayangan hijau gelap di lekuk tubuh dengan cara yang sama. Ini bukan teori: ada test regresi khusus untuk enam nuansa hijau yang harus selamat, di `eval/selftest.mjs`.
+
+Satu pagar lagi yang wajib ada: kalau rasio piksel yang ter-key di bawah 15%, sheet **ditolak keras**. Background hijau selalu jadi mayoritas sheet, jadi angka di bawah itu berarti model mengembalikan latar putih, hitam, atau checkerboard. Tanpa pagar ini, sheet berlatar putih tidak menghasilkan error melainkan empat "sprite" palsu seukuran kuadran penuh — dan karena hasilnya masuk cache spesies, satu kegagalan sunyi akan dipakai oleh semua pemain yang men-scan spesies yang sama.
+
+Library: **ImageScript** (pure TypeScript, jalan di Deno maupun Node). Bukan `sharp`, yang butuh native binary dan tidak jalan di edge runtime. Karena jalan di dua runtime, harness eval di laptop (`eval/postprocess.mjs`) dan Edge Function nanti bisa memakai kode yang sama.
 
 ### Risiko CPU limit dan fallback bertingkat
 

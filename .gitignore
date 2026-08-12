@@ -1,0 +1,23 @@
+# Kredensial. Tidak pernah di-commit.
+.env
+.env.*
+!.env.example
+*.token
+
+node_modules/
+
+# Hasil eval: mahal untuk dibuat, tapi biner dan besar.
+# Simpan lokal, arsipkan manual kalau perlu dibandingkan antar versi prompt.
+eval/results/
+eval/photos/*
+!eval/photos/.gitkeep
+!eval/photos/README.md
+
+# Godot
+game/.godot/
+game/android/
+game/export_presets.cfg
+*.translation
+
+# macOS
+.DS_Store

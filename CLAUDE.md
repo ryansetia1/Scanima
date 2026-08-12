@@ -37,10 +37,14 @@ Prompt hidup di `backend/prompts/<version>/` sebagai file teks, bukan string lit
 ```
 backend/prompts/
 ├── v1/
-│   ├── vision_system.md      # system prompt untuk Vision LLM
-│   └── sprite_sheet.md       # template prompt untuk nano-banana-pro
+│   ├── vision_system.md          # system prompt untuk Vision LLM
+│   ├── vision_schema.json        # responseSchema Gemini (subset OpenAPI, bukan JSON Schema penuh)
+│   ├── sprite_sheet.md           # template prompt untuk nano-banana-pro
+│   └── sprite_sheet_evolve.md    # varian untuk evolusi, pakai sprite lama sebagai image_input
 └── v2/
 ```
+
+`vision_schema.json` memakai `"nullable": true`, bukan `["string", "null"]`, dan tidak memakai `pattern` — `responseSchema` Gemini hanya menerima subset OpenAPI. Batasan yang tidak bisa diungkapkan di skema ditegakkan di `validateVision()` pada `eval/run.mjs`, bukan diharapkan dari model.
 
 Setiap row di tabel `generations` menyimpan `prompt_version`. Ini yang memungkinkan A/B test dan rollback ketika kualitas art turun. Kalau mengubah prompt, buat versi baru — jangan edit versi yang sudah dipakai produksi.
 
@@ -51,27 +55,43 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **Model image tidak bisa menghasilkan alpha channel.** Minta "transparent background" ke nano-banana-pro akan menghasilkan piksel putih solid atau checkerboard yang dilukis. Transparansi didapat dari chroma key hijau `#00FF00` + post-processing. Jangan hapus langkah ini dengan asumsi model bisa diperbaiki lewat prompt.
 - **`gemini-1.5-flash` sudah mati** (404). Model Vision saat ini `gemini-3.1-flash-lite`. `gemini-2.5-flash` retirement 20 Oktober 2026, jangan jadikan target baru.
 - **Slicing sheet bukan pembagian grid buta.** Model tidak selalu menaruh subjek tepat di tengah kuadran; pakai bbox berbasis alpha. Region final datang dari `manifest.json`, dan Godot hanya membacanya.
+- **Ambang chroma key harus ketat: `sat > 0.85`, `val > 0.5`.** Resep chroma key umum memakai 0,3 dan itu akan **melubangi tubuh Anima berelemen `plant`**, karena hijau daun `rgb(60,160,70)` punya saturasi 0,63 dan hue 126°. Nilai ini muncul di tiga tempat dan harus selalu sama: `eval/postprocess.mjs`, `game/shaders/chroma_key.gdshader`, dan Edge Function nanti.
+- **Keempat region wajib berukuran sama.** `AnimatedSprite2D` cuma punya satu `offset` untuk seluruh animasi, jadi region yang ukurannya beda membuat sprite tersentak berpindah tiap ganti pose. `AnimaLoader` menolak manifest yang melanggar ini; jangan "perbaiki" dengan melonggarkan pemeriksaannya.
+- **Jangan mengukur konsistensi skala dari varians keempat pose.** Pose Sleep memang jauh lebih pendek daripada Idle, jadi metrik itu memberi alarm palsu terus-menerus. Bandingkan Idle vs Attack saja (`standing_height_variance`).
 - **Latensi generation 15-45 detik**, bukan 5-10. UI incubator harus tahan durasi itu dan tahan app masuk background.
 - Resolusi 1K dan 2K berharga sama di nano-banana-pro, jadi selalu minta `"2K"`.
 
 ## Perintah umum
 
+Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan tidak ada di PATH.
+
 ```bash
-# backend lokal
-cd backend && supabase start
-supabase functions serve create_anima --env-file .env.local
-supabase db reset                      # re-apply semua migrasi
+# gratis, jalankan ini dulu
+npm run selftest                       # 14 pemeriksaan post-processing
+godot --headless --path game --script res://tests/test_sprite_slicing.gd
+node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
+
+# kontrak Node <-> Godot, juga gratis
+node eval/selftest.mjs --emit /tmp/scanima_e2e
+godot --headless --path game --script res://tests/test_sprite_slicing.gd \
+    -- --manifest=/tmp/scanima_e2e/manifest.json
 
 # game
-godot --path game                      # buka editor
-godot --path game --headless --quit    # cek project error tanpa GUI
+godot --path game                      # demo, pakai sheet placeholder
+godot --path game -- --manifest=<abs>.json --pose=sleep --screenshot=/tmp/a.png
+godot --headless --path game --import  # rebuild cache class, cek parse error
 
-# eval prompt
-node eval/run.mjs --prompt-version v2 --set smoke  # 5 foto, ~$0.40, untuk iterasi
-node eval/run.mjs --prompt-version v2 --set full   # 20 foto, ~$2,41, gerbang penerimaan
+# eval prompt, BERBIAYA
+node eval/run.mjs --set smoke --vision-only  # gate + stat saja, ~$0.002
+node eval/run.mjs --set smoke                # 5 foto, ~$0.40, untuk iterasi
+node eval/run.mjs --set full                 # 20 foto, ~$2,41, gerbang penerimaan
+
+# backend lokal, Phase 2
+cd backend && supabase start
+supabase functions serve create_anima --env-file .env.local
 ```
 
-Default-nya `smoke`. Jangan jalankan `full` sebagai bagian dari iterasi biasa — ia enam kali lebih mahal dan tidak memberi informasi tambahan sampai Smoke Set sudah bersih. Dan sebelum keduanya, setel kata-kata prompt manual di aplikasi Gemini: itu gratis.
+Default-nya `smoke`. Jangan jalankan `full` sebagai bagian dari iterasi biasa — ia enam kali lebih mahal dan tidak memberi informasi tambahan sampai Smoke Set sudah bersih. Sebelum keduanya, setel kata-kata prompt manual di aplikasi Gemini: itu gratis. Dan sebelum menyentuh Replicate sama sekali, `--vision-only` sudah cukup untuk menguji gate keamanan dan pemetaan stat, dengan biaya seperseratus.
 
 ## Definition of done untuk perubahan non-trivial
 

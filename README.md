@@ -9,15 +9,39 @@ Art style: 90s anime digital monster concept art — thick clean line art, warna
 
 ## Status
 
-**Phase 0 — Dokumentasi.** Belum ada kode. Semua spec teknis sudah ditulis dan siap dieksekusi. Lihat [docs/05-roadmap.md](docs/05-roadmap.md) untuk urutan pengerjaan.
+**Phase 1 — pipeline art.** Kerangkanya sudah berjalan dan teruji tanpa memanggil API berbayar sekali pun. Yang belum: foto sungguhan dan verifikasi "True to Object" dengan mata manusia, karena itu butuh generation berbayar dan itu langkah berikutnya.
 
 | Phase | Isi | Status |
 | --- | --- | --- |
 | 0 | Arsitektur, prompt spec, desain sistem | Selesai |
-| 1 | MVP: buktikan pipeline art end-to-end | Belum mulai |
+| 1 | MVP: buktikan pipeline art end-to-end | Berjalan — kode siap, menunggu foto + run berbayar |
 | 2 | Backend Supabase + core game loop | Belum mulai |
 | 3 | Battle, evolusi, UI/UX, audio, monetisasi | Belum mulai |
 | 4 | Soft launch itch.io lalu Play Store | Belum mulai |
+
+Yang sudah bisa dijalankan sekarang, gratis:
+
+```bash
+npm install
+npm run selftest                 # 14 pemeriksaan post-processing, tanpa API
+
+# Godot: 75 pemeriksaan slicing sprite, tanpa jendela
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
+    --script res://tests/test_sprite_slicing.gd
+
+# Demo: Anima placeholder yang bisa berganti pose dan memantul
+/Applications/Godot.app/Contents/MacOS/Godot --path game
+```
+
+Kontrak antara kedua sisi juga diuji tanpa biaya. Node menghasilkan sheet, Godot memuatnya:
+
+```bash
+node eval/selftest.mjs --emit /tmp/scanima_e2e
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
+    --script res://tests/test_sprite_slicing.gd -- --manifest=/tmp/scanima_e2e/manifest.json
+```
+
+Langkah berikutnya yang berbiaya: taruh 5 foto di `eval/photos/` (lihat [panduannya](eval/photos/README.md)), lalu `npm run smoke` (~$0.40).
 
 ## Tech stack
 
@@ -54,39 +78,48 @@ Satu Anima = satu panggilan image generation = **~$0.134**. Angka ini adalah bat
 | [docs/05-roadmap.md](docs/05-roadmap.md) | Breakdown Phase 1-4 dengan exit criteria dan risiko |
 | [CLAUDE.md](CLAUDE.md) | Konteks dan konvensi untuk AI coding agent |
 
-## Struktur repo (rencana)
+## Struktur repo
 
 ```
 scanima/
-├── game/                    # Godot project
-│   ├── project.godot
-│   ├── scenes/              # .tscn
-│   ├── scripts/             # .gd
-│   ├── shaders/             # .gdshader
-│   └── assets/              # art statis, font, audio
+├── game/                         # Godot 4.6 project
+│   ├── scenes/anima_demo.tscn
+│   ├── scripts/
+│   │   ├── anima_loader.gd       # manifest + PNG -> SpriteFrames
+│   │   ├── anima_presenter.gd    # pose + gerak prosedural via Tween
+│   │   ├── placeholder_sheet.gd  # sheet buatan, untuk demo & test
+│   │   └── anima_demo.gd
+│   ├── shaders/chroma_key.gdshader   # cadangan, jalur BYOK saja
+│   └── tests/test_sprite_slicing.gd  # headless
 ├── backend/
-│   ├── supabase/
-│   │   ├── functions/       # Edge Functions (Deno)
-│   │   └── migrations/      # SQL
-│   └── prompts/             # prompt versioned, v1/, v2/, ...
-├── eval/                    # golden-set foto + hasil evaluasi prompt
+│   ├── prompts/v1/               # vision_system, vision_schema, sprite_sheet
+│   └── supabase/                 # Phase 2: Edge Functions + migrations
+├── eval/
+│   ├── run.mjs                   # foto -> Vision -> Replicate -> sheet + HTML
+│   ├── postprocess.mjs           # chroma key, slicing, manifest
+│   ├── selftest.mjs              # tanpa API
+│   ├── sets.json                 # smoke (5 foto) & full (20 foto)
+│   └── photos/                   # tidak di-commit
 └── docs/
 ```
 
-## Setup (nanti, saat Phase 1 mulai)
+## Setup
 
-Prasyarat: Godot 4.x, Supabase CLI, akun Replicate, akun Google AI Studio.
+Prasyarat: Godot 4.6+, Node 20+. Supabase CLI baru diperlukan di Phase 2.
 
 ```bash
-# backend
-cd backend && supabase start
-supabase secrets set REPLICATE_API_TOKEN=... GEMINI_API_KEY=...
-
-# game
-godot --path game
+npm install
+cp .env.example .env      # isi GEMINI_API_KEY dan REPLICATE_API_TOKEN
 ```
 
-API key **tidak pernah** masuk ke build Godot. Semua panggilan berbayar lewat Edge Function, kecuali mode BYOK di mana pemain memakai token miliknya sendiri.
+Kunci di `.env` **hanya** untuk harness eval di laptop. API key tidak pernah masuk ke build Godot: semua panggilan berbayar lewat Edge Function, kecuali mode BYOK di mana pemain memakai token miliknya sendiri.
+
+Sebelum membelanjakan apa pun, periksa dulu bahwa foto dan template sudah benar:
+
+```bash
+node eval/run.mjs --set smoke --dry-run   # gratis
+node eval/run.mjs --set smoke             # ~$0.40
+```
 
 ## Lisensi
 

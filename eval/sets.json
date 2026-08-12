@@ -1,0 +1,54 @@
+{
+  "smoke": [
+    {
+      "file": "mouse.jpg",
+      "tests": "Kreatur jadi hewan generik, fitur objek hilang",
+      "why": "Kepadatan fitur tertinggi per satu foto: tombol jadi mata, scroll jadi hidung, kabel jadi ekor. Kalau True to Object gagal, di sini paling kelihatan."
+    },
+    {
+      "file": "mug-putih.jpg",
+      "tests": "Keying gagal, white keyline tenggelam di badan putih",
+      "why": "Objek putih menguji tabrakan outline putih dengan badan putih, sekaligus objek paling umum yang akan difoto pemain."
+    },
+    {
+      "file": "sepatu.jpg",
+      "tests": "Silhouette lunak dipaksa jadi kaku dan bersudut",
+      "why": "Material lunak adalah tempat model paling sering menyerah dan menggambar monster keras generik."
+    },
+    {
+      "file": "wajah.jpg",
+      "expect_reject": "human_face",
+      "tests": "Gate bocor",
+      "why": "Ditolak sebelum image generation, jadi biayanya hanya panggilan Vision (~$0.0003)."
+    },
+    {
+      "file": "dinding.jpg",
+      "expect_reject": "no_object",
+      "tests": "Gate bocor (tidak ada objek)",
+      "why": "Ditolak sebelum image generation, jadi biayanya hanya panggilan Vision (~$0.0003)."
+    }
+  ],
+
+  "full": [
+    { "file": "mug-putih.jpg", "tests": "Objek umum, dasar uji dedup cache" },
+    { "file": "gelas.jpg", "tests": "Objek umum, dasar uji dedup cache" },
+    { "file": "botol.jpg", "tests": "Objek umum, dasar uji dedup cache" },
+    { "file": "keyboard.jpg", "tests": "Fitur kecil banyak yang harus jadi mata/detail" },
+    { "file": "mouse.jpg", "tests": "Fitur kecil banyak yang harus jadi mata/detail" },
+    { "file": "sepatu.jpg", "tests": "Material lunak, silhouette tidak kaku" },
+    { "file": "tas-kain.jpg", "tests": "Material lunak, silhouette tidak kaku" },
+    { "file": "gunting.jpg", "tests": "Objek tajam, uji pemetaan ATK tinggi" },
+    { "file": "kunci.jpg", "tests": "Objek tajam, uji pemetaan ATK tinggi" },
+    { "file": "tanaman-pot.jpg", "tests": "Organik, uji elemen plant DAN keying pada tubuh hijau" },
+    { "file": "buah.jpg", "tests": "Organik, uji elemen plant" },
+    { "file": "batu.jpg", "tests": "Massa padat inert, uji stat ekstrem rendah SPD" },
+    { "file": "koin.jpg", "tests": "Massa padat inert, objek kecil" },
+    { "file": "kabel-kusut.jpg", "tests": "Objek tanpa silhouette jelas, kasus sulit" },
+    { "file": "botol-kaca.jpg", "tests": "Keying pada tepi tembus pandang" },
+    { "file": "objek-hitam.jpg", "tests": "Kontras rendah dan bbox" },
+    { "file": "objek-putih.jpg", "tests": "Keying dan white keyline" },
+    { "file": "logam-mengkilap.jpg", "tests": "color_bucket metallic" },
+    { "file": "wajah.jpg", "expect_reject": "human_face", "tests": "Gate harus menolak" },
+    { "file": "dinding.jpg", "expect_reject": "no_object", "tests": "Gate harus menolak" }
+  ]
+}

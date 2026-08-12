@@ -194,6 +194,8 @@ Analyse the attached photograph now. Respond only with JSON.
 
 Dipasang lewat structured output (`responseSchema` di Gemini API), bukan sekadar diminta di prompt. Ini mengubah "biasanya JSON valid" menjadi "selalu JSON valid" dan menghapus seluruh kelas bug parsing.
 
+Satu catatan implementasi yang penting: `responseSchema` Gemini **bukan** JSON Schema penuh, melainkan subset OpenAPI. Skema di bawah ditulis dalam notasi JSON Schema untuk keterbacaan, tapi file yang sungguhan dipakai (`backend/prompts/v1/vision_schema.json`) harus memakai `"nullable": true` alih-alih tipe array seperti `["string", "null"]`, dan tidak boleh memakai `pattern`. Batasan yang tidak bisa diungkapkan di skema — format `species_key`, jumlah stat 200-350, larangan kata kabur di `signature_features` — ditegakkan di kode, di `validateVision()` pada `eval/run.mjs`.
+
 ```json
 {
   "type": "object",
@@ -528,6 +530,10 @@ Keduanya memakai harness yang sama dan hanya berbeda daftar foto, jadi tidak ada
 
 Simpan setiap hasil dan **jangan pernah hapus**. Perbandingan antar versi prompt harus bisa dilakukan tanpa re-run, karena re-run berarti membayar lagi.
 
-Metrik yang bisa dihitung mesin: rasio gate benar (harus sempurna, tanpa pengecualian), jumlah sel terdeteksi per sheet (harus 4), varians tinggi bbox antar pose (target < 15%), persentase piksel hijau tersisa setelah keying (target < 0,1%), dan stabilitas `species_key` saat foto objek serupa divariasikan.
+Metrik yang bisa dihitung mesin: rasio gate benar (harus sempurna, tanpa pengecualian), jumlah sel terdeteksi per sheet (harus 4), **varians tinggi bbox antara Idle dan Attack** (target < 15%), persentase piksel hijau tersisa setelah keying (target < 0,1%), dan stabilitas `species_key` saat foto objek serupa divariasikan.
+
+Yang dibandingkan sengaja hanya Idle dan Attack, bukan keempat pose. Kreatur yang meringkuk tidur memang jauh lebih pendek daripada yang berdiri, jadi varians keempat pose akan memberi alarm palsu pada sheet yang sempurna dan melatih kita mengabaikan peringatan. Yang benar-benar menandakan model mengubah skala adalah selisih antara dua pose yang sama-sama berdiri penuh.
+
+Untuk `species_key`, harness juga melaporkan jumlah species unik dari total foto. Angka ini adalah proksi paling awal untuk rasio cache hit, dan rasio cache hit-lah yang menentukan sehat atau tidaknya seluruh model biaya di [04](04-game-systems-economy.md). Kalau 20 foto menghasilkan 20 species unik, artinya prompt terlalu mudah menciptakan varian baru dan tidak ada Discovery Scan yang gratis. Typo satu huruf pun dinormalisasi lewat jarak Levenshtein ≤ 2 terhadap kunci yang sudah ada, karena satu huruf beda berarti satu generation dibayar dua kali.
 
 Metrik yang butuh mata manusia, diberi skor 1-5 per foto dan dicatat di file yang sama: **kemiripan ke objek asli** (apakah "True to Object" tercapai) dan **konsistensi gaya** antar keempat pose. Ini dua hal yang tidak ada proksi otomatisnya, dan keduanya adalah inti produk.

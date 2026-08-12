@@ -25,6 +25,8 @@ Kesalahan yang paling mungkin dilakukan di proyek seperti ini adalah menghabiska
 
 Sengaja tanpa Supabase, tanpa autentikasi, tanpa database, tanpa sistem kuota. Panggilan API dilakukan dari script Node lokal dan build Godot khusus development yang membaca token dari file lokal yang di-gitignore.
 
+> **Status per hari ini.** Seluruh perkakas fase ini sudah ada dan terverifikasi tanpa memanggil API berbayar sekali pun: harness `eval/run.mjs`, post-processing `eval/postprocess.mjs` dengan 14 pemeriksaan, dan sisi Godot dengan 75 pemeriksaan headless termasuk satu yang memuat sheet keluaran Node sungguhan. Yang belum dan tidak bisa disimulasikan: foto sungguhan, kualitas art dari model, dan penilaian "True to Object" oleh mata manusia. Tiga hal itulah isi Phase 1 yang sebenarnya — kode hanya memindahkan biayanya ke tempat yang bisa diulang.
+
 ### Yang dikerjakan
 
 **Setel kata-kata prompt secara manual lebih dulu.** Sebelum menulis satu baris script, tempel foto dan prompt langsung ke aplikasi Gemini atau AI Studio, lihat hasilnya, ubah satu kalimat, ulangi. Pekerjaan menemukan kalimat yang membuat model berhenti menggambar naga generik tidak butuh API, dan melakukannya lewat script berarti membayar $0.134 untuk setiap kali penasaran. Batasnya dijelaskan di [02](02-prompt-engineering.md): cara ini hanya sah untuk menyetel kata-kata, bukan untuk memvalidasi pipeline.
@@ -177,7 +179,7 @@ Biaya tetap di luar API: akun developer Play Store $25 sekali bayar, Supabase gr
 | Risiko | Dampak | Penanganan |
 | --- | --- | --- |
 | Art tidak pernah cukup "True to Object" | Fatal, premis gagal | Diuji di Phase 1 sebelum apa pun dibangun; kondisi pivot sudah ditulis |
-| Model tidak konsisten antar keempat pose | Tinggi | Style lock + kamera terkunci + skala eksplisit; deteksi varians bbox di post-processing |
+| Model tidak konsisten antar keempat pose | Tinggi | Style lock + kamera terkunci + skala eksplisit; deteksi varians tinggi bbox Idle vs Attack di post-processing |
 | Rasio cache hit tidak pernah naik (pemain memfoto benda yang terlalu beragam) | Tinggi, ekonomi tidak jalan | Ukur sejak Phase 2; kalau macet, longgarkan kunci cache (buang `color_bucket`) sebelum menaikkan harga |
 | Batas CPU Edge Function saat post-processing | Menengah | Tangga mitigasi tiga tingkat di [01](01-architecture-dataflow.md) |
 | Replicate mengubah harga atau menghentikan model | Tinggi | Nama model dan payload dikonfigurasi, bukan di-hardcode; `allow_fallback_model` bisa dinyalakan sebagai tindakan darurat |
