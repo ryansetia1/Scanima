@@ -38,6 +38,9 @@ export const DEFAULTS = {
   framePadding: 6, // margin transparan di sekeliling sprite di sheet keluaran
   minCellAreaRatio: 0.01, // bbox di bawah 1% area kuadran dianggap sel kosong
   minCellSide: 16,
+  // Komponen lebih kecil dari ini dianggap noise anti-alias. Nilainya sengaja
+  // kecil: Z tidur, motion line, dan debris tipis tetap harus ikut sprite.
+  minComponentPixels: 4,
   // Background hijau selalu jadi mayoritas sheet. Kalau yang ter-key jauh di
   // bawah ini, latarnya bukan hijau dan sheet harus ditolak, bukan diproses.
   minKeyedRatio: 0.15,
@@ -75,6 +78,34 @@ export function isKeyColor(r, g, b, o = DEFAULTS) {
   return dist <= o.hueTolerance;
 }
 
+// Sedikit lebih longgar dari keying, hanya untuk menangkap hijau nyaris murni
+// yang lolos. Celahnya sengaja tipis, bukan longgar: hijau pekat seperti forest
+// green rgb(34,139,34) adalah warna tubuh Anima yang sah, dan warna sendirian
+// tidak punya cara membedakannya dari sisa background.
+const RESIDUE_OPTS = { ...DEFAULTS, satMin: 0.8, valMin: 0.45, hueTolerance: 24 };
+
+/**
+ * Apakah piksel di cincin tepi ini terkontaminasi background hijau?
+ *
+ * Saturasi adalah ukuran yang SALAH untuk pertanyaan ini. Campuran keyline putih
+ * dengan background `#00FF00` selalu berbentuk `(t, 255, t)`: channel hijau
+ * tersangkut di 255 sementara merah dan biru turun bersama. Piksel seperti
+ * rgb(128,255,128) karena itu punya saturasi 0,5 — di bawah ambang keying mana
+ * pun yang masih aman bagi Anima plant — padahal ia jelas-jelas separuh
+ * background dan itulah halo yang terlihat di layar.
+ *
+ * Yang membedakannya dari warna tubuh yang sah adalah betapa tinggi channel
+ * hijaunya, bukan seberapa jenuh warnanya. Hijau daun rgb(60,160,70) punya
+ * g=160 dan tidak tersentuh. Syarat dominasi memisahkan putih (g=255 tapi
+ * r=b=255) supaya keyline-nya sendiri tidak ikut terkikis.
+ */
+const EDGE_GREEN_MIN = 220; // g di bawah ini bukan campuran #00FF00
+const EDGE_GREEN_DOMINANCE = 20; // di bawah ini warnanya putih/abu, bukan hijau
+
+export function isKeyContaminatedEdge(r, g, b) {
+  return g >= EDGE_GREEN_MIN && g - Math.max(r, b) >= EDGE_GREEN_DOMINANCE;
+}
+
 /** Nolkan alpha di piksel berwarna kunci. Mengubah bitmap di tempat. */
 export function chromaKeyInPlace(bitmap, opts = DEFAULTS) {
   let keyed = 0;
@@ -91,19 +122,34 @@ export function chromaKeyInPlace(bitmap, opts = DEFAULTS) {
 }
 
 /**
- * Haluskan tepi alpha supaya keying tidak meninggalkan gerigi.
+ * Haluskan tepi alpha supaya keying tidak meninggalkan gerigi, dan buang sisa
+ * hijau di cincin tepi itu.
  *
  * Hanya piksel yang SUDAH bagian sprite yang alpha-nya diturunkan. Piksel
  * transparan tidak pernah diberi alpha, karena itu berarti mengarang coverage
  * yang tidak digambar model: sprite jadi melebar 1px dan bbox ikut melebar,
  * yang berujung pada frame_size yang tidak bisa diprediksi.
  * Interior dibiarkan utuh supaya sprite tidak jadi buram.
+ *
+ * Erosi hijau di cincin tepi memperbaiki halo yang terukur di sheet sungguhan:
+ * pada run smoke pertama, 99,7% piksel kehijauan yang lolos keying berada tepat
+ * 1px dari piksel transparan. Ia bukan background yang gagal terhapus melainkan
+ * campuran keyline putih dengan background hijau, dari rgb(37,227,38) yang
+ * hampir hijau murni sampai rgb(219,255,220) yang hampir putih.
+ *
+ * Melonggarkan ambang saturasi adalah perbaikan yang SALAH untuk ini: ambang itu
+ * yang menjaga tubuh Anima berelemen plant tetap utuh, dan campuran di tengah
+ * seperti rgb(128,255,128) toh cuma bersaturasi 0,5 sehingga tetap lolos.
+ * Dua hal lain yang membedakan halo dari warna tubuh yang sah: kedekatannya ke
+ * piksel transparan, dan channel hijau yang tersangkut di dekat 255 milik
+ * background. Lihat isKeyContaminatedEdge.
  */
 export function softenAlphaEdges(bitmap, width, height, opts = DEFAULTS) {
   const original = new Uint8Array(bitmap.length / 4);
   for (let i = 0, p = 0; i < bitmap.length; i += 4, p++) original[p] = bitmap[i + 3];
 
   let softened = 0;
+  let eroded = 0;
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const p = y * width + x;
@@ -118,13 +164,19 @@ export function softenAlphaEdges(bitmap, width, height, opts = DEFAULTS) {
           if (a <= opts.alphaThreshold) hasClear = true;
         }
       }
-      if (hasClear) {
-        bitmap[p * 4 + 3] = Math.round(sum / 9);
+      if (!hasClear) continue;
+
+      const i = p * 4;
+      if (isKeyContaminatedEdge(bitmap[i], bitmap[i + 1], bitmap[i + 2])) {
+        bitmap[i + 3] = 0;
+        eroded++;
+      } else {
+        bitmap[i + 3] = Math.round(sum / 9);
         softened++;
       }
     }
   }
-  return softened;
+  return { softened, eroded };
 }
 
 /** Bounding box rapat dari piksel tak-transparan di dalam rect. */
@@ -150,21 +202,124 @@ export function findBBox(bitmap, width, rect, alphaThreshold = DEFAULTS.alphaThr
   return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
-// Sedikit lebih longgar dari keying, hanya untuk menangkap hijau nyaris murni
-// yang lolos. Celahnya sengaja tipis, bukan longgar: hijau pekat seperti forest
-// green rgb(34,139,34) adalah warna tubuh Anima yang sah, dan metrik berbasis
-// warna tidak punya cara membedakannya dari sisa background.
-const RESIDUE_OPTS = { ...DEFAULTS, satMin: 0.8, valMin: 0.45, hueTolerance: 24 };
+/**
+ * Segmentasikan sheet menjadi empat pose berdasarkan komponen piksel yang
+ * tersambung, bukan berdasarkan crop kuadran keras.
+ *
+ * Model kadang mengulurkan tangan, kabel, atau action pose beberapa puluh
+ * piksel melewati garis tengah 2x2. findBBox() yang dibatasi kuadran memotong
+ * bagian itu walaupun masih tersambung jelas ke tubuh pose di sebelah kanan.
+ *
+ * Setiap komponen alpha 8-connected diberikan ke kuadran yang memuat piksel
+ * terbanyak dari komponen tersebut. Karena kepemilikan disimpan per piksel,
+ * bbox satu pose boleh masuk ke kuadran tetangga tanpa ikut menyalin monster
+ * tetangganya yang kebetulan berada di dalam persegi bbox yang sama.
+ */
+export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS) {
+  const pixelCount = width * height;
+  const visited = new Uint8Array(pixelCount);
+  const owners = new Uint8Array(pixelCount);
+  owners.fill(255); // 0..3 = indeks POSES, 255 = background/noise
+
+  // Satu queue dialokasikan sekali dan dipakai ulang untuk semua komponen.
+  // Int32Array 1 juta piksel = 4 MB; lebih aman daripada Array<number> yang
+  // bisa membengkak puluhan MB di Edge Function.
+  const queue = new Int32Array(pixelCount);
+  const boxes = Array(POSES.length).fill(null);
+  const opaquePixels = new Uint32Array(POSES.length);
+  const crossBoundaryPixels = new Uint32Array(POSES.length);
+  const halfW = Math.floor(width / 2);
+  const halfH = Math.floor(height / 2);
+
+  for (let seed = 0; seed < pixelCount; seed++) {
+    if (visited[seed] || bitmap[seed * 4 + 3] <= opts.alphaThreshold) continue;
+
+    let start = 0;
+    let end = 1;
+    queue[0] = seed;
+    visited[seed] = 1;
+    const quadrantCounts = new Uint32Array(POSES.length);
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    while (start < end) {
+      const p = queue[start++];
+      const x = p % width;
+      const y = Math.floor(p / width);
+      quadrantCounts[(y >= halfH ? 2 : 0) + (x >= halfW ? 1 : 0)]++;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= height) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          if (nx < 0 || nx >= width) continue;
+          const np = ny * width + nx;
+          if (visited[np] || bitmap[np * 4 + 3] <= opts.alphaThreshold) continue;
+          visited[np] = 1;
+          queue[end++] = np;
+        }
+      }
+    }
+
+    if (end < opts.minComponentPixels) continue;
+
+    let owner = 0;
+    for (let q = 1; q < POSES.length; q++) {
+      if (quadrantCounts[q] > quadrantCounts[owner]) owner = q;
+    }
+
+    const ownQuadrantPixels = quadrantCounts[owner];
+    opaquePixels[owner] += end;
+    crossBoundaryPixels[owner] += end - ownQuadrantPixels;
+    for (let i = 0; i < end; i++) owners[queue[i]] = owner;
+
+    const component = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    const current = boxes[owner];
+    if (!current) {
+      boxes[owner] = component;
+    } else {
+      const x0 = Math.min(current.x, component.x);
+      const y0 = Math.min(current.y, component.y);
+      const x1 = Math.max(current.x + current.w, component.x + component.w);
+      const y1 = Math.max(current.y + current.h, component.y + component.h);
+      boxes[owner] = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    }
+  }
+
+  const bboxes = {};
+  const ownership = {};
+  for (let i = 0; i < POSES.length; i++) {
+    if (boxes[i]) bboxes[POSES[i]] = boxes[i];
+    ownership[POSES[i]] = {
+      opaque_pixels: opaquePixels[i],
+      cross_boundary_pixels: crossBoundaryPixels[i],
+    };
+  }
+  return { bboxes, owners, ownership };
+}
 
 /**
  * Rasio piksel hijau nyaris murni yang masih opak setelah keying.
  *
- * Batas yang harus dipahami: metrik ini menangkap background yang gagal ter-key,
- * TAPI TIDAK menangkap fringe hijau yang sudah membaur di tepi sprite, karena
- * piksel baur punya saturasi rendah dan tidak bisa dibedakan dari warna tubuh
- * lewat warna saja. Mendeteksi fringe butuh kedekatan ke piksel transparan, dan
- * itu ditunda bersama despill. Pelindung utama terhadap kegagalan besar bukan
- * metrik ini melainkan minKeyedRatio.
+ * Yang harus dipahami saat membaca angkanya: cincin 1px terluar sudah dierosi
+ * oleh softenAlphaEdges, jadi halo setipis satu piksel tidak akan muncul di sini.
+ * Yang masih dilaporkan justru dua kasus yang lebih layak dialarmkan: hijau
+ * nyaris murni di INTERIOR sprite, yang berarti model menggambar background di
+ * tengah tubuh, dan fringe yang lebih tebal dari 1px, yang berarti keyline putih
+ * gagal muncul sehingga hijau membaur jauh ke dalam.
+ *
+ * Predikatnya sengaja berbeda dari predikat erosi: yang ini berbasis saturasi
+ * supaya tetap konservatif di interior, tempat warna tubuh yang sah tinggal.
+ *
+ * Pelindung utama terhadap kegagalan besar tetap minKeyedRatio, bukan metrik ini.
  */
 export function greenResidueRatio(bitmap) {
   let opaque = 0;
@@ -214,11 +369,16 @@ export function planFrames(bboxes, opts = DEFAULTS) {
   return { frameW, frameH, sheetW: frameW * 2, sheetH: frameH * 2, placements };
 }
 
-function blit(srcBitmap, srcW, src, dstBitmap, dstW, destX, destY) {
+/** Salin hanya piksel yang memang dimiliki pose ini, bukan isi bbox tetangga. */
+function blitOwned(srcBitmap, srcW, src, owners, owner, dstBitmap, dstW, destX, destY) {
   for (let y = 0; y < src.h; y++) {
-    const srcStart = ((src.y + y) * srcW + src.x) * 4;
-    const dstStart = ((destY + y) * dstW + destX) * 4;
-    dstBitmap.set(srcBitmap.subarray(srcStart, srcStart + src.w * 4), dstStart);
+    for (let x = 0; x < src.w; x++) {
+      const srcPixel = (src.y + y) * srcW + src.x + x;
+      if (owners[srcPixel] !== owner) continue;
+      const srcOffset = srcPixel * 4;
+      const dstOffset = ((destY + y) * dstW + destX + x) * 4;
+      dstBitmap.set(srcBitmap.subarray(srcOffset, srcOffset + 4), dstOffset);
+    }
   }
 }
 
@@ -258,37 +418,40 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
 
   softenAlphaEdges(bitmap, width, height, opts);
 
-  // Cari bbox per kuadran, bukan membagi sheet jadi empat secara buta. Model
-  // tidak selalu menaruh subjek di tengah sel, dan pembagian buta memotongnya.
+  // Segmentasi komponen terhubung membiarkan anggota tubuh melewati garis tengah
+  // tanpa ikut mencopy monster tetangga. Kuadran hanya menentukan pose pemilik,
+  // bukan menjadi batas crop.
   const halfW = Math.floor(width / 2);
   const halfH = Math.floor(height / 2);
   const quadrantArea = halfW * halfH;
-  const bboxes = {};
+  const segmented = segmentPosePixels(bitmap, width, height, opts);
+  const bboxes = segmented.bboxes;
   const rejected = {};
 
   for (const pose of POSES) {
-    const [col, row] = POSE_QUADRANT[pose];
-    const bb = findBBox(bitmap, width, [col * halfW, row * halfH, halfW, halfH], opts.alphaThreshold);
+    const bb = bboxes[pose];
     if (!bb) {
       rejected[pose] = "kosong";
       continue;
     }
     if (bb.w < opts.minCellSide || bb.h < opts.minCellSide) {
       rejected[pose] = `terlalu kecil ${bb.w}x${bb.h}`;
+      delete bboxes[pose];
       continue;
     }
     const fill = (bb.w * bb.h) / quadrantArea;
     if (fill < opts.minCellAreaRatio) {
       rejected[pose] = "area di bawah ambang";
+      delete bboxes[pose];
       continue;
     }
     // Prompt meminta margin lebar di tiap sel, jadi bbox yang mengisi hampir
     // seluruh kuadran berarti keying gagal atau sel-selnya menyatu.
     if (fill > opts.maxCellFillRatio) {
       rejected[pose] = `mengisi ${Math.round(fill * 100)}% kuadran, keying gagal`;
+      delete bboxes[pose];
       continue;
     }
-    bboxes[pose] = bb;
   }
 
   const detected = Object.keys(bboxes);
@@ -305,7 +468,17 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
   out.bitmap.fill(0);
   for (const pose of detected) {
     const pl = plan.placements[pose];
-    blit(bitmap, width, pl.src, out.bitmap, plan.sheetW, pl.destX, pl.destY);
+    blitOwned(
+      bitmap,
+      width,
+      pl.src,
+      segmented.owners,
+      POSES.indexOf(pose),
+      out.bitmap,
+      plan.sheetW,
+      pl.destX,
+      pl.destY
+    );
   }
 
   const metrics = heightMetrics(bboxes);
@@ -329,11 +502,15 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       green_residue_ratio: Number(greenResidueRatio(out.bitmap).toFixed(5)),
       standing_height_variance: metrics.standingVariance,
       bbox_heights: metrics.heights,
+      pose_ownership: segmented.ownership,
       keyed_pixel_ratio: Number((keyedPixels / (bitmap.length / 4)).toFixed(4)),
       source_size: [decoded.width, decoded.height],
-      // ponytail: belum ada despill. Plafon: halo hijau tipis di tepi kalau
-      // white keyline dari prompt gagal muncul. Pantau green_residue_ratio;
-      // kalau tembus 0,01 tambahkan despill terbatas pada pita 2px di tepi.
+      // ponytail: erosi hijau hanya di cincin 1px terluar, bukan despill penuh.
+      // Plafon: fringe yang lebih tebal dari 1px tetap lolos, dan itu terjadi
+      // kalau white keyline dari prompt gagal muncul sehingga hijau membaur jauh
+      // ke dalam tubuh. Pantau green_residue_ratio; kalau tembus 0,005 naikkan
+      // erosinya jadi pita 2px, atau tambahkan despill (tarik channel hijau ke
+      // max(r,b)) yang mempertahankan silhouette dengan harga tepi keabuan.
       warnings: buildWarnings(detected, metrics, out.bitmap),
     },
   };

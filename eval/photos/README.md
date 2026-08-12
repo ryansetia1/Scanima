@@ -10,7 +10,7 @@ Cek dulu tanpa biaya apa pun bahwa semua foto sudah ada:
 node eval/run.mjs --set smoke --dry-run
 ```
 
-## Smoke set — 5 foto, ~$0.40
+## Smoke set — 5 foto, ~$0.225
 
 | Nama file | Isi |
 | --- | --- |
@@ -34,5 +34,5 @@ buruk menghasilkan Anima yang buruk, dan biaya generation-nya tetap terbayar.
   tanpa hasil.
 
 Dua foto terakhir sengaja dipilih karena harus DITOLAK. Keduanya menguji apakah
-gate keamanan bekerja, dan biayanya hanya satu panggilan Vision (~$0.0003)
+gate keamanan bekerja, dan biayanya hanya satu panggilan Vision (~$0.003)
 karena tidak ada gambar yang digenerate.

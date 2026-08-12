@@ -10,28 +10,28 @@ Dua angka, dan jarak di antara keduanya adalah keseluruhan desain ekonomi Scanim
 
 | Aksi | Biaya nyata ke kita |
 | --- | --- |
-| Menganalisis foto (Vision LLM) | **~$0.0003** |
-| Menciptakan spesies baru (image generation 2K) | **~$0.134** |
+| Menganalisis foto (Vision LLM) | **~$0.003** |
+| Menciptakan spesies baru (GPT Image 2 medium) | **~$0.070** |
 
-Selisihnya **450 kali**. Aksi yang satu praktis gratis, yang lain mahal. Menyatukan keduanya di balik satu tombol "Foto" berarti setiap tap membawa risiko $0.134, dan itu memaksa kita membatasi tap — padahal memfoto benda adalah hal paling menyenangkan di game ini dan seharusnya dilakukan sesering mungkin.
+Selisihnya masih sekitar **23 kali**. Aksi yang satu murah, yang lain mahal. Menyatukan keduanya di balik satu tombol "Foto" berarti setiap tap membawa risiko ~$0.07, dan itu tetap memaksa kita membatasi tap — padahal memfoto benda adalah hal paling menyenangkan di game ini dan seharusnya dilakukan sesering mungkin.
 
 Jadi jangan disatukan. Pisahkan menjadi dua aksi yang berbeda, dan biarkan struktur biaya menjadi mekanik game:
 
-**Discovery Scan** — foto objek yang spesiesnya sudah ada di pustaka. Biaya ke kita hanya panggilan Vision, jadi **praktis gratis, langsung jadi, tanpa menunggu**. Pemain langsung dapat Anima dengan nama dan stat unik miliknya sendiri.
+**Discovery Scan** — foto objek yang spesiesnya sudah ada di pustaka. Biaya ke kita hanya panggilan Vision, jadi **murah, langsung jadi, tanpa menunggu**. Pemain langsung dapat Anima dengan nama dan stat unik miliknya sendiri.
 
-**Genesis** — foto objek yang spesiesnya belum pernah ada. Ini yang memicu image generation, butuh 15-45 detik, dan menghabiskan satu **Genesis Core**.
+**Genesis** — foto objek yang spesiesnya belum pernah ada. Ini yang memicu image generation, terukur 57–63 detik, dan menghabiskan satu **Genesis Core**.
 
 Yang membuat pembagian ini bekerja bukan efisiensinya, tapi kenyataan bahwa ia jujur secara naratif. Memfoto mug yang ke-seribu memang *seharusnya* tidak terasa seperti penemuan besar. Memfoto sesuatu yang belum pernah dilihat siapa pun *seharusnya* terasa istimewa. Struktur biaya kita dan struktur rasa game-nya menunjuk ke arah yang sama.
 
 ```mermaid
 graph TD
-    Foto["Pemain memfoto objek"] --> V["Vision LLM, ~$0.0003"]
+    Foto["Pemain memfoto objek"] --> V["Vision LLM, ~$0.003"]
     V --> Gate{"Lolos gate?"}
     Gate -->|tidak| Tolak["Pesan ramah, tidak ada biaya"]
     Gate -->|ya| Cek{"species_key ada di pustaka?"}
     Cek -->|ya| Scan["DISCOVERY SCAN<br/>gratis, instan, art di-reuse<br/>stat di-roll ulang"]
     Cek -->|tidak| Core{"Punya Genesis Core?"}
-    Core -->|ya| Gen["GENESIS<br/>1 Core, 15-45 s<br/>kamu penemu pertama"]
+    Core -->|ya| Gen["GENESIS<br/>1 Core, ~1 menit<br/>kamu penemu pertama"]
     Core -->|tidak| Simpan["Simpan sebagai Temuan Tertunda<br/>bisa diklaim nanti"]
 ```
 
@@ -53,15 +53,28 @@ Tiga mata uang, dan yang menentukan pembagiannya adalah biaya nyata yang mereka 
 
 Ini angka yang harus dilihat sebelum menempatkan tombol "Tonton iklan untuk 1 Core":
 
-Dengan eCPM rewarded ad di pasar Indonesia sekitar $1-4, satu tayangan bernilai **$0.001 sampai $0.004** bersih. Satu Genesis Core berbiaya **$0.134**. Artinya satu Core butuh **34 sampai 134 tayangan iklan** untuk menutup biayanya.
+Dengan eCPM rewarded ad di pasar Indonesia sekitar $1-4, satu tayangan bernilai **$0.001 sampai $0.004** bersih. Satu Genesis Core berbiaya sekitar **$0.070**. Artinya satu Core masih butuh **18 sampai 70 tayangan iklan** untuk menutup biayanya.
 
-Tidak ada pembingkaian UX yang bisa menyelamatkan itu. Menawarkan Core dengan 1 iklan berarti kita rugi $0.13 setiap kali, dan pemain yang paling aktif menjadi pemain yang paling merugikan — kebalikan dari yang seharusnya.
+Tidak ada pembingkaian UX yang bisa menyelamatkan itu. Menawarkan Core dengan 1 iklan berarti kita rugi sekitar $0.066–0.069 setiap kali, dan pemain yang paling aktif menjadi pemain yang paling merugikan — kebalikan dari yang seharusnya.
 
-Tapi iklan bekerja sangat baik untuk hal yang murah. Satu tayangan ($0.002) membiayai **sekitar 6 Discovery Scan** ($0.0003 masing-masing) dengan margin sehat. Jadi pemetaannya jadi rapi dan tidak perlu dipaksa:
+Iklan tetap bekerja untuk hal yang murah, tapi marginnya jauh lebih tipis daripada yang tampak di rancangan awal. Satu tayangan bernilai $0.001-0.004 bersih, dan satu Discovery Scan berbiaya $0.003. Artinya **satu iklan kurang-lebih membiayai satu scan, bukan enam** — dan pada eCPM rendah ia bahkan tidak menutupinya. Pemetaannya masih benar, tapi alasannya harus dinyatakan ulang dengan jujur:
 
-- Iklan → Scan Charge dan Bits (biaya kita $0.0003 atau nol)
-- IAP dan langganan → Genesis Core (biaya kita $0.134)
-- BYOK → Genesis tanpa batas (biaya kita nol, pemain memakai token sendiri)
+- Iklan → **Bits** (biaya kita nol, di sini marginnya nyata dan besar)
+- Iklan → **Scan Charge**, dibatasi, 1 iklan = 1 charge (kira-kira pulang pokok, bukan sumber untung)
+- IAP dan langganan → Genesis Core (biaya kita ~$0.070)
+- BYOK → Genesis **dan** Vision tanpa batas (biaya kita nol; sejak Vision pindah ke Replicate, satu token pemain menutup keduanya)
+
+### Biaya per pemain aktif, angka yang harus diawasi
+
+Yang berubah bukan hanya rasio iklan. Delapan Scan Charge gratis per hari, kalau dipakai habis, berarti **$0.024 per pemain per hari** dalam biaya Vision saja. Pada 1.000 DAU itu ~$24/hari atau **~$720/bulan** sebelum satu Genesis pun terjadi. Dengan model Vision kelas lite yang lebih kecil angkanya sepersepuluh dari itu.
+
+Ini konsekuensi sadar dari memakai satu vendor untuk satu token (alasannya di [01](01-architecture-dataflow.md)), dan ada tiga tuas yang bisa ditarik sebelum menyentuh kuota gratis pemain, berurut dari yang paling murah:
+
+1. **Hapus `stat_reasoning` dari skema produksi.** Ia field untuk mata manusia saat eval. Output ditagih delapan kali lipat input di model ini, jadi memangkasnya memotong biaya Vision hampir separuh.
+2. **Turunkan foto ke 768px** sebelum dikirim. Gemini memotong gambar jadi petak 768px berharga 258 token; 1024px memakan empat petak, 768px cuma satu.
+3. **Ganti `VISION_MODEL`** ke model lite yang lebih kecil. Cukup env, tanpa ubah kode, tapi wajib jalan ulang Smoke Set karena stat dan `species_key` bisa bergeser.
+
+Yang tidak boleh jadi tuas pertama: mengurangi 8 Scan Charge harian. Itu satu-satunya angka di daftar ini yang pemain rasakan.
 
 ### Harga IAP dan marginnya
 
@@ -69,14 +82,14 @@ Asumsi potongan toko 30% dan kurs Rp 16.000/USD. Angka bersih adalah yang kita t
 
 | Paket | Harga | Bersih | Biaya kita | Margin |
 | --- | --- | --- | --- | --- |
-| 1 Genesis Core | Rp 9.000 (~$0.56) | $0.39 | $0.134 | $0.26 (66%) |
-| 5 Genesis Core | Rp 29.000 (~$1.81) | $1.27 | $0.67 | $0.60 (47%) |
-| 15 Genesis Core | Rp 75.000 (~$4.69) | $3.28 | $2.01 | $1.27 (39%) |
-| **Scanima Plus** / bulan | Rp 39.000 (~$2.44) | $1.71 | $1.07 + hosting | ~$0.55 (32%) |
+| 1 Genesis Core | Rp 9.000 (~$0.56) | $0.39 | ~$0.07 | ~$0.32 (82%) |
+| 5 Genesis Core | Rp 29.000 (~$1.81) | $1.27 | ~$0.35 | ~$0.92 (72%) |
+| 15 Genesis Core | Rp 75.000 (~$4.69) | $3.28 | ~$1.05 | ~$2.23 (68%) |
+| **Scanima Plus** / bulan | Rp 39.000 (~$2.44) | $1.71 | ~$0.56 + Vision + hosting | perlu divalidasi dari pemakaian |
 
 Scanima Plus berisi 8 Genesis Core per bulan, Scan Charge tanpa batas, tanpa iklan, dan slot koleksi lebih besar. Perhatikan marginnya paling tipis di antara semua paket — dan itu memang sengaja: langganan dinilai dari retensi, bukan dari margin per transaksi.
 
-Yang perlu dijaga: **jangan pernah menjual Core lebih murah dari $0.20 bersih.** Di bawah itu, satu pembelian besar dari pemain yang gemar memfoto benda-benda aneh bisa membuat satu akun merugi. Ini bukan kekhawatiran teoretis; pemain yang paling antusias justru yang paling mungkin men-generate spesies baru terus-menerus.
+Yang perlu dijaga: **jangan pernah menjual Core lebih murah dari $0.12 bersih.** Itu menyisakan ruang untuk variasi token input, pajak, dan kegagalan operasional di atas biaya generation rata-rata ~$0.07.
 
 ### Biaya rata-rata per pemain
 
@@ -84,10 +97,10 @@ Yang menentukan sehat atau tidaknya seluruh model adalah **rasio cache hit** —
 
 | Rasio cache hit | Biaya per Anima (blended) | Catatan |
 | --- | --- | --- |
-| 0% (hari pertama, pustaka kosong) | $0.134 | Fase paling mahal, DAU masih kecil |
-| 50% | $0.067 | Sekitar 500-1.000 spesies di pustaka |
-| 80% | $0.027 | Titik di mana model mulai nyaman |
-| 95% (matang) | $0.007 | Ribuan spesies, objek umum sudah tercakup |
+| 0% (hari pertama, pustaka kosong) | ~$0.073 | Fase paling mahal, DAU masih kecil |
+| 50% | ~$0.038 | Sekitar 500-1.000 spesies di pustaka |
+| 80% | ~$0.017 | Titik di mana model mulai nyaman |
+| 95% (matang) | ~$0.007 | Ribuan spesies, objek umum sudah tercakup |
 
 Kurvanya bergerak ke arah yang benar seiring waktu, dan itu adalah properti struktural yang paling berharga dari desain ini: **biaya per pemain turun saat basis pemain bertambah.** Pemain awal secara efektif membangun pustaka untuk pemain berikutnya. Karena itu soft launch dengan basis kecil adalah fase yang paling mahal per pemain, dan itu harus diantisipasi, bukan dikagetkan.
 
@@ -202,7 +215,7 @@ Cabang ditentukan oleh **bagaimana pemain bermain**, bukan oleh pilihan menu. An
 
 ### Evolusi hampir selalu gratis, dan itu bukan kebetulan
 
-Evolusi butuh art baru, artinya satu image generation, artinya $0.134. Kedengarannya seperti evolusi harus berbayar — dan itu akan buruk, karena evolusi adalah puncak dari seminggu perawatan dan meletakkan paywall di sana akan terasa seperti pengkhianatan.
+Evolusi butuh art baru, artinya satu image generation, artinya sekitar $0.07. Kedengarannya seperti evolusi harus berbayar — dan itu akan buruk, karena evolusi adalah puncak dari seminggu perawatan dan meletakkan paywall di sana akan terasa seperti pengkhianatan.
 
 Tapi arsitektur caching sudah menyelesaikannya. Art evolusi di-cache dengan kunci `(species_key, color_bucket, stage)` di `species_library`, persis seperti art stage 1. Jadi pemain **pertama** yang mengevolusikan Anima mug membayar biayanya (dan dicatat sebagai penemunya), dan semua pemilik Anima mug sesudahnya mendapat art itu **gratis dan instan**.
 

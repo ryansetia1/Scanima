@@ -8,8 +8,8 @@ Game mobile virtual pet. Pemain memfoto objek nyata, foto itu jadi monster (**An
 
 ## Aturan yang tidak bisa dinegosiasikan
 
-1. **API key tidak pernah masuk ke build Godot.** `REPLICATE_API_TOKEN` dan `GEMINI_API_KEY` hanya hidup di Supabase Edge Function secrets. Client Godot bicara ke Edge Function, bukan ke Replicate/Google. Satu-satunya pengecualian adalah mode BYOK di mana token milik pemain sendiri disimpan lokal di device.
-2. **Setiap panggilan image generation berbiaya ~$0.134.** Jangan pernah menulis kode yang bisa memanggil generation dalam loop, retry otomatis tanpa batas, atau tanpa idempotency key. Kalau ragu, jangan panggil.
+1. **API key tidak pernah masuk ke build Godot.** Hanya ada satu, `REPLICATE_API_TOKEN`, dan ia hanya hidup di Supabase Edge Function secrets. Client Godot bicara ke Edge Function, bukan ke Replicate. Satu-satunya pengecualian adalah mode BYOK di mana token milik pemain sendiri disimpan lokal di device.
+2. **Setiap panggilan image generation berbiaya ~\$0.07.** Default-nya GPT Image 2 medium; biaya berbasis token dan dua run nyata berada di sekitar angka ini. Jangan pernah menulis kode yang bisa memanggil generation dalam loop, retry otomatis tanpa batas, atau tanpa idempotency key. Kalau ragu, jangan panggil.
 3. **Semua mata uang bersifat server-authoritative.** Ada tiga: `scan_charges` (Discovery Scan), `genesis_cores` (spesies baru), `bits` (item perawatan). Client boleh menampilkan sisanya, tapi keputusan boleh-tidaknya generate hanya diambil di Postgres dalam transaksi yang sama dengan pencatatan debit. Jangan pernah menambah `genesis_cores` dari callback iklan.
 4. **Jangan commit foto pemain, output generation, atau `.env`.** Foto mentah dihapus dari Storage setelah post-processing selesai.
 
@@ -39,27 +39,37 @@ backend/prompts/
 ├── v1/
 │   ├── vision_system.md          # system prompt untuk Vision LLM
 │   ├── vision_schema.json        # responseSchema Gemini (subset OpenAPI, bukan JSON Schema penuh)
-│   ├── sprite_sheet.md           # template prompt untuk nano-banana-pro
+│   ├── sprite_sheet.md           # baseline nano-banana-pro
 │   └── sprite_sheet_evolve.md    # varian untuk evolusi, pakai sprite lama sebagai image_input
 └── v2/
+    ├── vision_system.md          # gate yang sama dengan v1
+    ├── vision_schema.json        # kontrak yang sama dengan v1
+    ├── sprite_sheet.md           # GPT Image 2 medium + anime cel-shaded style
+    └── sprite_sheet_evolve.md
 ```
 
-`vision_schema.json` memakai `"nullable": true`, bukan `["string", "null"]`, dan tidak memakai `pattern` — `responseSchema` Gemini hanya menerima subset OpenAPI. Batasan yang tidak bisa diungkapkan di skema ditegakkan di `validateVision()` pada `eval/run.mjs`, bukan diharapkan dari model.
+`vision_schema.json` **tidak** dikirim sebagai parameter API — ia disisipkan ke `system_instruction`, sebab wrapper Gemini di Replicate tidak punya `response_schema`. Notasinya tetap subset OpenAPI (`"nullable": true`, bukan `["string", "null"]`, tanpa `pattern`) supaya file yang sama bisa langsung dipakai kalau nanti pindah ke Gemini API langsung. Bentuk data ditegakkan `extractJson()` dan `validateVision()` di `eval/run.mjs`, bukan diharapkan dari model.
 
 Setiap row di tabel `generations` menyimpan `prompt_version`. Ini yang memungkinkan A/B test dan rollback ketika kualitas art turun. Kalau mengubah prompt, buat versi baru — jangan edit versi yang sudah dipakai produksi.
 
-Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-engineering.md). Jangan mengarang aturan style baru; style lock sudah didefinisikan di sana dan konsistensi visual antar Anima bergantung padanya.
+Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-engineering.md) dan sumber art direction v2 ada di [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md). Jangan mengarang aturan style baru; konsistensi visual antar Anima bergantung pada style lock itu.
 
 ## Fakta teknis yang mudah salah
 
-- **Model image tidak bisa menghasilkan alpha channel.** Minta "transparent background" ke nano-banana-pro akan menghasilkan piksel putih solid atau checkerboard yang dilukis. Transparansi didapat dari chroma key hijau `#00FF00` + post-processing. Jangan hapus langkah ini dengan asumsi model bisa diperbaiki lewat prompt.
-- **`gemini-1.5-flash` sudah mati** (404). Model Vision saat ini `gemini-3.1-flash-lite`. `gemini-2.5-flash` retirement 20 Oktober 2026, jangan jadikan target baru.
-- **Slicing sheet bukan pembagian grid buta.** Model tidak selalu menaruh subjek tepat di tengah kuadran; pakai bbox berbasis alpha. Region final datang dari `manifest.json`, dan Godot hanya membacanya.
+- **Jalur image production tidak punya alpha.** Runtime `openai/gpt-image-2` menolak `background: "transparent"` dengan `invalid_value` walaupun opsi itu tercantum di schema wrapper; nano-banana-pro juga tidak memberi alpha yang bisa diandalkan. Transparansi tetap berasal dari chroma key `#00FF00` + post-processing.
+- **Vision dan image generation dua-duanya lewat Replicate**, bukan API provider langsung. Default Vision `google/gemini-2.5-flash`; default gambar `openai/gpt-image-2` dengan `quality: "medium"`, `aspect_ratio: "1024x1024"`, dan `background: "opaque"`. Jangan tambahkan `GEMINI_API_KEY` atau `OPENAI_API_KEY`; satu token Replicate tetap cukup.
+- **Wrapper Gemini di Replicate tidak punya `response_schema`.** Parameter yang tersedia cuma `prompt`, `images`, `videos`, `system_instruction`, `temperature`, `top_p`, `max_output_tokens`, `thinking_budget`, `dynamic_thinking`. Jadi JSON valid tidak dijamin API: kontrak skema disisipkan ke `system_instruction`, dan `extractJson()` di `eval/run.mjs` menangani bungkus ```json serta kalimat pengantar. Jangan hapus parser itu dengan asumsi model selalu patuh.
+- **Set `thinking_budget: 0` untuk panggilan Vision.** Token thinking ditagih sebagai output, dan tugas ini ekstraksi terstruktur, bukan penalaran. Kalau `dynamic_thinking` true ia menimpa `thinking_budget`, jadi biarkan false.
+- **Output wrapper Vision itu array potongan string**, bukan satu string. Harus disambung sebelum di-parse. Model gambar sebaliknya mengembalikan satu URI.
+- **`gemini-2.5-flash` retirement 20 Oktober 2026.** Ini plafon yang sudah diketahui, bukan kejutan: `# ponytail: Vision di 2.5-flash karena satu vendor satu token. Plafon 20 Okt 2026; upgrade dengan mengganti env VISION_MODEL ke google/gemini-3-flash, tanpa ubah kode.` Jangan diam-diam mengganti modelnya tanpa menjalankan ulang Smoke Set, karena stat dan `species_key` bisa bergeser.
+- **Slicing sheet bukan pembagian grid atau bbox kuadran keras.** GPT Image 2 terbukti menggambar tangan Attack melewati center seam. `segmentPosePixels()` menetapkan komponen alpha 8-connected ke kuadran yang memuat mayoritas pikselnya, menyimpan ownership per piksel, lalu `blitOwned()` menyalin hanya piksel milik pose itu. Mengganti ini dengan crop 512×512 akan memotong tangan/kabel lagi.
+- **Halo hijau di tepi TIDAK diperbaiki dengan menurunkan ambang saturasi.** Campuran keyline putih dengan `#00FF00` berbentuk `(t,255,t)` dan bersaturasi bisa hanya 0,5 — untuk menghapusnya lewat ambang, ambangnya harus turun di bawah saturasi hijau daun (0,63) dan tubuh Anima `plant` jadi bolong. Yang dipakai: erosi hanya pada cincin 1px terluar (harus bertetangga piksel transparan) dengan syarat `g >= 220` dan hijau dominan. Terukur menurunkan residu dari 0,21% ke 0,014%. Lihat `isKeyContaminatedEdge()` di `eval/postprocess.mjs`.
 - **Ambang chroma key harus ketat: `sat > 0.85`, `val > 0.5`.** Resep chroma key umum memakai 0,3 dan itu akan **melubangi tubuh Anima berelemen `plant`**, karena hijau daun `rgb(60,160,70)` punya saturasi 0,63 dan hue 126°. Nilai ini muncul di tiga tempat dan harus selalu sama: `eval/postprocess.mjs`, `game/shaders/chroma_key.gdshader`, dan Edge Function nanti.
 - **Keempat region wajib berukuran sama.** `AnimatedSprite2D` cuma punya satu `offset` untuk seluruh animasi, jadi region yang ukurannya beda membuat sprite tersentak berpindah tiap ganti pose. `AnimaLoader` menolak manifest yang melanggar ini; jangan "perbaiki" dengan melonggarkan pemeriksaannya.
 - **Jangan mengukur konsistensi skala dari varians keempat pose.** Pose Sleep memang jauh lebih pendek daripada Idle, jadi metrik itu memberi alarm palsu terus-menerus. Bandingkan Idle vs Attack saja (`standing_height_variance`).
-- **Latensi generation 15-45 detik**, bukan 5-10. UI incubator harus tahan durasi itu dan tahan app masuk background.
-- Resolusi 1K dan 2K berharga sama di nano-banana-pro, jadi selalu minta `"2K"`.
+- **Latensi GPT Image 2 medium terukur 57–63 detik** untuk dua sheet 1024×1024; desain incubator tetap harus menganggap sekitar satu menit dan tahan app masuk background. Quality high terukur ~153 detik dan tidak dipakai.
+- **GPT Image 2 medium dipilih setelah perbandingan nyata.** Medium memakai 1.756 output token dan ~57–63 detik; high memakai 7.024 output token dan ~153 detik tanpa lompatan kualitas yang sebanding. Jangan naikkan quality diam-diam.
+- **nano-banana-pro tetap rollback/A-B saja** lewat `IMAGE_MODEL`; model itu pernah berulang kali memberi `ModelRateLimitError (E003)`. Kalau dipakai lagi, resolusi 1K dan 2K berharga sama sehingga minta `"2K"`.
 
 ## Perintah umum
 
@@ -67,7 +77,7 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 14 pemeriksaan post-processing
+npm run selftest                       # 17 skenario, termasuk lintas center seam
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
 
@@ -82,16 +92,16 @@ godot --path game -- --manifest=<abs>.json --pose=sleep --screenshot=/tmp/a.png
 godot --headless --path game --import  # rebuild cache class, cek parse error
 
 # eval prompt, BERBIAYA
-node eval/run.mjs --set smoke --vision-only  # gate + stat saja, ~$0.002
-node eval/run.mjs --set smoke                # 5 foto, ~$0.40, untuk iterasi
-node eval/run.mjs --set full                 # 20 foto, ~$2,41, gerbang penerimaan
+node eval/run.mjs --set smoke --vision-only  # gate + stat saja, ~$0.015
+node eval/run.mjs --set smoke                # 5 foto, ~$0.225, untuk iterasi
+node eval/run.mjs --set full                 # 20 foto, ~$1.32, gerbang penerimaan
 
 # backend lokal, Phase 2
 cd backend && supabase start
 supabase functions serve create_anima --env-file .env.local
 ```
 
-Default-nya `smoke`. Jangan jalankan `full` sebagai bagian dari iterasi biasa — ia enam kali lebih mahal dan tidak memberi informasi tambahan sampai Smoke Set sudah bersih. Sebelum keduanya, setel kata-kata prompt manual di aplikasi Gemini: itu gratis. Dan sebelum menyentuh Replicate sama sekali, `--vision-only` sudah cukup untuk menguji gate keamanan dan pemetaan stat, dengan biaya seperseratus.
+Default-nya `smoke`, prompt `v2`, dan GPT Image 2 `medium`. Jangan jalankan `full` sebagai bagian dari iterasi biasa — ia enam kali lebih mahal dan tidak memberi informasi tambahan sampai Smoke Set sudah bersih. Sebelum memicu satu pun generation gambar, `--vision-only` sudah cukup untuk menguji gate keamanan dan pemetaan stat dengan biaya ~$0.015.
 
 ## Definition of done untuk perubahan non-trivial
 

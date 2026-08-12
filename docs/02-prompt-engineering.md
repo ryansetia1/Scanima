@@ -6,16 +6,16 @@ Ada dua panggilan LLM per Anima, dengan pembagian kerja yang tegas:
 
 ```mermaid
 graph LR
-    Photo["Foto objek"] --> Vision["Vision LLM<br/>gemini-3.1-flash-lite"]
+    Photo["Foto objek"] --> Vision["Vision LLM<br/>gemini-2.5-flash"]
     Vision --> JSON["JSON terstruktur:<br/>gate, species_key, stats,<br/>element, creature_brief"]
     JSON --> Assembler["Template assembler<br/>(kode, bukan LLM)"]
     Assembler --> Prompt["Prompt sprite sheet final"]
-    Photo --> Rep["nano-banana-pro"]
+    Photo --> Rep["GPT Image 2 medium"]
     Prompt --> Rep
     Rep --> Sheet["Sheet 2x2, 4 pose"]
 ```
 
-Perhatikan bahwa **foto asli tetap dikirim ke model gambar** lewat `image_input`. Vision LLM bukan penerjemah untuk model yang buta — model gambar bisa melihat objeknya sendiri. Tugas Vision LLM adalah hal yang tidak bisa dilakukan model gambar: mengeluarkan angka stat, memilih elemen, memberi kunci taksonomi untuk caching, dan menulis deskripsi kreatur yang menjembatani bentuk objek ke bentuk monster.
+Perhatikan bahwa **foto asli tetap dikirim ke model gambar** lewat `input_images`. Vision LLM bukan penerjemah untuk model yang buta — model gambar bisa melihat objeknya sendiri. Tugas Vision LLM adalah hal yang tidak bisa dilakukan model gambar: mengeluarkan angka stat, memilih elemen, memberi kunci taksonomi untuk caching, dan menulis deskripsi kreatur yang menjembatani bentuk objek ke bentuk monster.
 
 Dan tugas menyusun prompt final dipegang **kode**, bukan LLM. Style lock ditulis sekali sebagai konstanta dan tidak pernah diserahkan ke LLM untuk diparafrase, karena satu-satunya cara mendapat konsistensi visual antar ribuan Anima adalah memastikan 90% dari prompt itu identik setiap kali.
 
@@ -192,9 +192,15 @@ Analyse the attached photograph now. Respond only with JSON.
 
 ## 2. JSON schema output Vision LLM
 
-Dipasang lewat structured output (`responseSchema` di Gemini API), bukan sekadar diminta di prompt. Ini mengubah "biasanya JSON valid" menjadi "selalu JSON valid" dan menghapus seluruh kelas bug parsing.
+**Skema ini kontrak yang ditegakkan kode, bukan jaminan dari API.** Perbedaannya penting dan datang dari keputusan memanggil Gemini lewat Replicate (alasannya di [01](01-architecture-dataflow.md)): wrapper Replicate tidak menyediakan parameter `response_schema`. Rancangan awal dokumen ini mengandalkan structured output Gemini langsung, yang mengubah "biasanya JSON valid" menjadi "selalu JSON valid". Jaminan itu **tidak tersedia** di jalur yang dipakai sekarang, jadi ia harus digantikan oleh tiga lapis di kode:
 
-Satu catatan implementasi yang penting: `responseSchema` Gemini **bukan** JSON Schema penuh, melainkan subset OpenAPI. Skema di bawah ditulis dalam notasi JSON Schema untuk keterbacaan, tapi file yang sungguhan dipakai (`backend/prompts/v1/vision_schema.json`) harus memakai `"nullable": true` alih-alih tipe array seperti `["string", "null"]`, dan tidak boleh memakai `pattern`. Batasan yang tidak bisa diungkapkan di skema — format `species_key`, jumlah stat 200-350, larangan kata kabur di `signature_features` — ditegakkan di kode, di `validateVision()` pada `eval/run.mjs`.
+1. Skema di bawah disisipkan **literal** ke `system_instruction`, bukan hanya dideskripsikan dalam prosa. Menunjukkan bentuk yang diinginkan jauh lebih efektif daripada menjelaskannya.
+2. `extractJson()` di `eval/run.mjs` menangani bentuk keluaran yang wajar tapi tidak diminta: bungkus ```json, kalimat pengantar sebelum objek, dan array potongan string yang harus disambung (skema output wrapper-nya iterator).
+3. Kalau tetap gagal, satu percobaan ulang pada `temperature: 0`. Ini tidak melanggar larangan retry otomatis di CLAUDE.md, karena larangan itu menyangkut generation gambar yang sekitar 23 kali lebih mahal. Retry yang terjadi dicatat di `summary.json`: kalau angkanya sering muncul, yang perlu diperbaiki adalah kontrak output di prompt, bukan parser-nya.
+
+Skema tetap ditulis dalam notasi subset OpenAPI (`"nullable": true` alih-alih `["string", "null"]`, tanpa keyword `pattern`) meski `response_schema` tidak dipakai, karena format itu tetap benar sebagai deskripsi untuk model dan membuat perpindahan kembali ke Gemini API langsung tinggal menyalurkan file yang sama tanpa penulisan ulang.
+
+Batasan yang memang tidak bisa diungkapkan di skema apa pun — format `species_key`, jumlah stat 200-350, larangan kata kabur di `signature_features` — ditegakkan di `validateVision()` pada `eval/run.mjs`. Fungsi itu sekarang menjadi satu-satunya penjaga bentuk data, bukan lapis kedua di belakang jaminan API.
 
 ```json
 {
@@ -267,116 +273,72 @@ Jumlah stat dinormalisasi ke rentang 200-350 kalau LLM meleset, dengan penskalaa
 
 ## 3. Style lock: konstanta, bukan variabel
 
-Ini bagian prompt gambar yang **identik untuk setiap Anima**. Ia tinggal di file, bukan di string literal, dan setiap perubahan berarti versi prompt baru.
+Style production aktif adalah **monster-style v2**, bersumber dari [Monster Camera — Anime Cel-Shaded Style Guide](monster_camera_anime_cel_shaded_style_guide.md) dan diwujudkan di `backend/prompts/v2/sprite_sheet.md`. V1 tetap utuh sebagai baseline nano-banana-pro; perubahan ini dibuat sebagai direktori baru agar aset lama tetap bisa direproduksi.
 
-File: `backend/prompts/v1/sprite_sheet.md`
+Style lock v2 yang identik untuk setiap Anima:
 
-Empat hal yang dikunci mati, masing-masing karena alasan teknis yang spesifik:
+- 2D Japanese anime creature, cute-but-fierce, techno-organic, terinspirasi energi desain Digimon tetapi wajib original
+- linework gelap yang clean dan moderately bold
+- flat base colors, crisp 2–3 level cel shading, hard-edged shadows, minimal gradients
+- bentuk sederhana, silhouette kuat, anatomi sedikit dilebihkan
+- bukan photorealism, CGI, 3D render, toy, painterly art, atau pixel art
 
-**Sudut pandang 3/4 isometric.** Kalau sudut pandang bebas, pose Idle dan pose Attack bisa datang dari kamera berbeda dan sprite akan terlihat "melompat" saat animasi berganti. Sudut terkunci membuat empat pose bisa saling menggantikan di titik piksel yang sama.
+Yang dinamis hanya konteks objek: nama, `creature_brief`, 2–4 `signature_features`, palet warna, dan personality. Personality diturunkan secara deterministik dari stat tertinggi, bukan meminta Vision melakukan klasifikasi kedua. Ini menjaga gate/schema v1 tetap tidak berubah sesuai kontrak style guide.
 
-**Chroma key green `#00FF00` + white keyline 2-3px.** Spesifikasi art awal menyebut "isolated white background", dan itu benar untuk *tampilan* concept art — tapi game butuh alpha channel, dan model Gemini image tidak bisa menghasilkannya sama sekali. Minta "transparent background" akan dibalas piksel putih solid atau pola checkerboard yang dilukis. Jadi kompromi yang dipakai: background hijau untuk keying, dan **outline putih tebal di sekeliling sprite** yang justru mempertahankan estetika sticker concept art 90-an sekaligus mencegah warna hijau merembes ke tepi sprite saat keying. Dua kebutuhan yang tampak bertentangan diselesaikan satu keputusan.
+Ada dua adaptasi teknis dari mockup guide:
 
-**Skala identik antar keempat frame.** Tanpa instruksi ini model akan memperbesar pose Attack karena dramatis, dan Anima akan terlihat mengembang-mengempis saat animasi.
+1. Background transport tetap `#00FF00`, bukan putih, karena runtime GPT Image 2 menolak alpha. Sesudah post-processing hasil final transparan, jadi hijau bukan bagian dari art direction.
+2. Label IDLE/BATTLE/SLEEP/DAMAGED dilarang. Teks model akan ikut bbox dan merusak sprite; posisi kuadran sudah menjadi label mesin.
 
-**Tanpa teks, label, nomor, atau garis pemisah.** Model gambar suka membubuhkan label "IDLE" / "ATTACK" di bawah setiap frame. Label itu akan ikut terpotong ke dalam sprite dan merusak deteksi bbox.
+Sudut pandang tetap 3/4 dari sedikit atas. White keyline dinaikkan menjadi 3–5px. Setiap appendage dan efek diminta berjarak minimal 6% dari center seam, tetapi post-processing juga wajib tahan jika model melanggar.
 
 ## 4. Template prompt sprite sheet
 
-Placeholder `{{...}}` diisi kode dari hasil Vision LLM.
+File production adalah `backend/prompts/v2/sprite_sheet.md`; file itu sumber kebenaran lengkap dan tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
 
-````markdown
-A 2x2 sprite sheet grid containing four poses of a single original creature,
-drawn in the style of 1990s Japanese digital monster trading card concept art.
+```text
+[GLOBAL STYLE LOCK]
+[OBJECT CONTEXT]
+[OBJECT-TO-CREATURE TRANSFORMATION]
+[COLOR + PERSONALITY]
+[CHARACTER CONSISTENCY]
+[FOUR STATES]
+[COMPOSITION + TECHNICAL BACKGROUND]
+[NEGATIVE STYLE]
+```
 
-THE CREATURE
-{{creature_brief}}
-
-The creature is derived from the real object in the reference image. Its body
-structure must clearly read as that object brought to life — same proportions,
-same silhouette logic, same defining parts. A viewer holding the real object
-must instantly recognise it in the creature.
-
-These specific details MUST be visible and preserved in every pose:
-{{signature_features_as_bullets}}
-
-Do not replace the object's shape with a generic animal, dragon, or humanoid
-body. The object IS the body.
-
-ART STYLE (identical across all four frames)
-Thick clean black line art of even weight, hand-inked look. Bold flat vibrant
-colours with simple two-tone cel shading, one clear light source from the upper
-left. Slightly chunky, friendly, toy-like proportions. Expressive cartoon eyes.
-Retro anime monster design of the late 1990s. No airbrush, no photorealism,
-no gradient meshes, no lens effects, no watercolour texture, no sketch lines.
-
-CAMERA — LOCKED, IDENTICAL IN ALL FOUR FRAMES
-Three-quarter isometric view from slightly above, creature facing forward-left.
-Do not change the camera angle, the distance, or the creature's scale between
-frames. Full body visible in every frame, nothing cropped.
-
-LAYOUT — EXACTLY FOUR CELLS IN A 2x2 GRID
-Top-left cell: IDLE. Standing upright at rest, neutral calm expression,
-  arms or limbs relaxed at the sides.
-Top-right cell: ATTACK. Mid-lunge forward, one limb thrust out striking,
-  mouth open, fierce determined expression, body leaning into the motion.
-Bottom-left cell: SLEEP. Curled down low with eyes closed, peaceful,
-  body settled and compact.
-Bottom-right cell: DEFEATED. Slumped and knocked back, eyes closed or
-  swirled, limbs limp, sitting or lying down, no blood and no injury.
-
-Each creature is fully centred inside its own cell with generous even margin
-on all four sides. Keep the creature at the SAME size in all four cells.
-Leave clear empty space between cells.
-
-BACKGROUND — CRITICAL
-The entire background of the whole image is solid flat chroma key green,
-exact hex #00FF00, RGB (0, 255, 0). Perfectly uniform. No gradient, no noise,
-no texture, no vignette, no shadow, no ground plane, no cast shadow, no glow,
-and no lighting variation anywhere in the background.
-No green anywhere on the creature itself.
-
-EDGES — CRITICAL
-Draw a clean solid white outline 2 to 3 pixels wide around the entire outer
-silhouette of the creature in every frame, sitting between the black line art
-and the green background, fully sealing the creature with no gaps.
-
-FORBIDDEN
-No text, no letters, no numbers, no labels, no captions, no frame titles,
-no watermark, no signature, no panel borders, no dividing lines, no grid lines,
-no arrows, no UI, no drop shadows, no background props, no other characters.
-````
-
-Bagian `FORBIDDEN` sengaja panjang dan berulang. Model gambar melanggar aturan negatif jauh lebih sering daripada aturan positif, dan tiga hal yang paling sering menyusup — label teks, garis pemisah panel, dan cast shadow — semuanya merusak slicing otomatis, bukan cuma jelek.
-
-Assembler mengubah `signature_features` jadi daftar berpoin sebelum disisipkan:
+Assembler mengisi semua placeholder dari hasil Vision yang sudah lolos gate:
 
 ```ts
-const bullets = vision.signature_features.map(f => `- ${f}`).join("\n");
-const prompt = template
-  .replaceAll("{{creature_brief}}", vision.creature_brief)
-  .replaceAll("{{signature_features_as_bullets}}", bullets);
+const prompt = assemblePrompt(template, vision);
+// {{object_name}}                    <- object_label / species_key
+// {{creature_brief}}                 <- Vision
+// {{signature_features_as_bullets}}  <- Vision array menjadi bullet list
+// {{color_palette}}                  <- dominant_colors / color_bucket
+// {{personality}}                    <- stat tertinggi
 ```
+
+Keempat keadaan visual adalah Idle, Battle, Sleep, dan Damaged. Untuk kompatibilitas manifest/Godot yang sudah ada, slot bawah-kanan masih memakai key internal `defeated`; art-nya mengikuti kontrak Damaged: kerusakan kecil yang spesifik ke objek, bukan tubuh dihancurkan atau didesain ulang.
 
 ## 5. Payload Replicate
 
-Model: `google/nano-banana-pro`. Endpoint: `POST https://api.replicate.com/v1/predictions`.
-
-Skema input model ini menerima `prompt` (string), `image_input` (array URL, maksimal 14), `aspect_ratio`, `resolution`, `output_format`, `safety_filter_level`, dan `allow_fallback_model`. Output-nya **satu string URI**, bukan array.
+Model production: `openai/gpt-image-2`, quality `medium`. Endpoint: `POST https://api.replicate.com/v1/models/openai/gpt-image-2/predictions`.
 
 ```jsonc
 {
-  "model": "google/nano-banana-pro",
+  "model": "openai/gpt-image-2",
   "input": {
     "prompt": "<hasil template di bagian 4, sudah terisi>",
-    "image_input": [
+    "input_images": [
       "https://<project>.supabase.co/storage/v1/object/sign/photos/<uid>/<uuid>.jpg?token=..."
     ],
-    "aspect_ratio": "1:1",
-    "resolution": "2K",
+    "aspect_ratio": "1024x1024",
+    "quality": "medium",
+    "number_of_images": 1,
+    "background": "opaque",
     "output_format": "png",
-    "safety_filter_level": "block_only_high",
-    "allow_fallback_model": false
+    "output_compression": 100,
+    "moderation": "auto"
   },
   "webhook": "https://<project>.supabase.co/functions/v1/replicate_webhook?t=<secret>",
   "webhook_events_filter": ["completed"]
@@ -385,27 +347,27 @@ Skema input model ini menerima `prompt` (string), `image_input` (array URL, maks
 
 Catatan per parameter, karena beberapa punya alasan yang tidak terlihat dari nilainya:
 
-`image_input` harus berupa URL yang bisa diakses Replicate, bukan base64. Karena itu foto wajib diunggah ke Storage dan diberi signed URL lebih dulu — inilah alasan `photo_upload_url` ada sebagai langkah terpisah di [01](01-architecture-dataflow.md).
+`input_images` memakai signed URL Supabase di produksi. Harness lokal boleh memakai data URI agar tidak membutuhkan Storage. Nama field ini berbeda dari nano-banana-pro (`image_input`); menyamakan keduanya akan membuat model mengabaikan foto.
 
-`resolution: "2K"` dipilih karena harganya **identik** dengan 1K ($0.134 keduanya, karena keduanya dihitung 1.120 output token). Menurunkan ke 1K tidak menghemat sepeser pun, sementara 2K memberi 1024px per pose setelah dibagi empat. 4K berharga $0.24 dan tidak dibutuhkan layar HP.
+`quality: "medium"` adalah keputusan berbasis run nyata, bukan asumsi. Dua sheet medium selesai dalam 57 dan 63 detik dengan 1.756 output token. Quality high memakai 7.024 output token dan ~153 detik; peningkatan art tidak sebanding dengan biaya dan latensinya.
 
 `output_format: "png"` wajib. JPEG akan menambahkan artefak kompresi di sekitar tepi sprite, dan artefak itu persis merusak chroma keying di piksel yang paling penting.
 
-`allow_fallback_model: false` sesuai spesifikasi. Konsekuensinya jujur: saat nano-banana-pro penuh, request mengantre lebih lama. Itu trade-off yang diambil sadar — model fallback (Seedream) punya karakter visual berbeda, dan satu Anima yang tampak "salah gaya" di koleksi lebih merusak daripada menunggu 20 detik ekstra.
+`background: "opaque"` bukan preferensi estetika. Runtime GPT Image 2 menolak `transparent` dengan `invalid_value` meskipun opsi itu terlihat di schema wrapper. Karena itu prompt tetap meminta chroma green.
 
 `webhook_events_filter: ["completed"]` mencegah kita dibanjiri event `start` dan `logs` yang tidak dipakai.
 
 ### Payload evolusi
 
-Bedanya hanya `image_input`, dan bedanya penting: yang dikirim adalah **sprite Idle Anima itu sendiri**, bukan foto asli. Model gambar unggul dalam editing, jadi memberinya sprite stage sebelumnya membuat identitas visual bertahan antar stage — mata yang sama, palet yang sama, fitur khas yang sama, hanya lebih besar dan lebih garang.
+Bedanya hanya isi `input_images`, dan bedanya penting: yang dikirim adalah **sprite Idle Anima itu sendiri**, bukan foto asli. Model gambar unggul dalam editing, jadi memberinya sprite stage sebelumnya membuat identitas visual bertahan antar stage — mata yang sama, palet yang sama, fitur khas yang sama, hanya lebih besar dan lebih garang.
 
 ```jsonc
 {
   "input": {
     "prompt": "<template evolusi, lihat di bawah>",
-    "image_input": ["https://.../sheets/<hash>_idle.png"],
-    "aspect_ratio": "1:1", "resolution": "2K", "output_format": "png",
-    "safety_filter_level": "block_only_high", "allow_fallback_model": false
+    "input_images": ["https://.../sheets/<hash>_idle.png"],
+    "aspect_ratio": "1024x1024", "quality": "medium",
+    "number_of_images": 1, "background": "opaque", "output_format": "png"
   }
 }
 ```
@@ -427,7 +389,7 @@ and say "that is the same creature, grown up".
 
 ## 6. Kegagalan yang sudah diketahui dan penanganannya
 
-Daftar ini disusun dari mode kegagalan yang terdokumentasi pada generasi sprite sheet dengan model Gemini image. Semuanya ditangani, bukan cuma dicatat.
+Daftar ini disusun dari output nyata nano-banana-pro dan GPT Image 2. Semuanya ditangani, bukan cuma dicatat.
 
 | Gejala | Sebab | Penanganan |
 | --- | --- | --- |
@@ -436,9 +398,11 @@ Daftar ini disusun dari mode kegagalan yang terdokumentasi pada generasi sprite 
 | Skala berbeda antar frame | Model mendramatisasi pose Attack | Instruksi skala eksplisit; deteksi di post-processing dengan membandingkan tinggi bbox, selisih > 25% ditandai untuk review |
 | Label teks "IDLE" muncul | Kebiasaan model pada sheet berlabel | Blok FORBIDDEN; bbox akan memasukkan teks kalau lolos, jadi cek rasio aspek bbox yang mencurigakan |
 | Hanya 3 sel terisi | Instruksi layout terlalu implisit | Sebut "exactly four cells" dan definisikan tiap kuadran per nama posisi |
-| Subjek tidak center di kuadran | Komposisi bebas model | Slicing content-aware berbasis bbox, bukan pembagian 2048/2 |
+| Tangan/kabel pose kanan melewati center seam | Pose dinamis melanggar margin kuadran | Segmentasi alpha 8-connected + ownership mask per piksel; jangan kembali ke bbox yang dibatasi kuadran |
+| Subjek tidak center di kuadran | Komposisi bebas model | Normalisasi bbox hasil segmentasi, bottom-center ke frame seragam |
 | Kreatur jadi naga/hewan generik | Model condong ke prior "monster" | Kalimat "the object IS the body" + larangan eksplisit + `signature_features` yang konkret |
 | Cast shadow di bawah kreatur | Kebiasaan render | Larangan eksplisit; keying akan menyisakan noda gelap kalau lolos |
+| `background: "transparent"` ditolak | Runtime GPT Image 2 belum mendukung alpha | Pakai `opaque` + chroma green; jangan percaya schema tanpa request nyata |
 
 Yang tidak bisa diperbaiki lewat prompt, dan harus diterima: model tidak akan pernah 100% konsisten. Karena itu ada `regenerate` dengan biaya 1 Genesis Core seperti Genesis biasa, dan `generations.status` mencatat kegagalan agar rasio retry bisa diukur.
 
@@ -454,6 +418,10 @@ backend/prompts/
 │   ├── sprite_sheet.md
 │   └── sprite_sheet_evolve.md
 └── v2/
+    ├── vision_system.md
+    ├── vision_schema.json
+    ├── sprite_sheet.md
+    └── sprite_sheet_evolve.md
 ```
 
 Tiga aturan operasionalnya:
@@ -466,14 +434,14 @@ Versi yang sudah dipakai produksi **tidak pernah diedit**. Perubahan sekecil apa
 
 ## 8. Evaluation harness: dua tingkat
 
-Menilai prompt dari satu-dua foto adalah cara tercepat menipu diri sendiri. Tapi menjalankan 20 foto setiap kali mengubah satu kalimat prompt juga salah, karena biayanya $2,41 per putaran dan iterasi prompt butuh puluhan putaran.
+Menilai prompt dari satu-dua foto adalah cara tercepat menipu diri sendiri. Tapi menjalankan 20 foto setiap kali mengubah satu kalimat prompt juga salah, karena biayanya sekitar $1.32 per putaran dan iterasi prompt butuh beberapa putaran.
 
 Jadi ada dua set dengan peran berbeda, dan pembagian ini mengikuti pola yang sama seperti test suite pada umumnya: satu yang cepat dan murah untuk dijalankan terus-menerus, satu yang lengkap dan lambat untuk gerbang penerimaan.
 
 | Set | Isi | Biaya per run | Kapan dijalankan |
 | --- | --- | --- | --- |
-| **Smoke Set** | 5 foto (3 generation + 2 uji gate) | **~$0.40** | Setiap kali prompt diubah |
-| **Full Set** | 20 foto (18 generation + 2 uji gate) | ~$2,41 | Sekali, saat prompt dianggap siap |
+| **Smoke Set** | 5 foto (3 generation + 2 uji gate) | **~$0.225** | Setiap kali prompt diubah |
+| **Full Set** | 20 foto (18 generation + 2 uji gate) | ~$1.32 | Sekali, saat prompt dianggap siap |
 
 ### Smoke Set — 5 foto
 
@@ -484,8 +452,8 @@ Tiga foto yang memicu generation dipilih bukan karena mewakili objek paling umum
 | 1 | **Mouse komputer** | Kreatur jadi hewan generik, fitur objek hilang | Kepadatan fitur tertinggi per satu foto: tombol jadi mata, scroll jadi hidung, kabel jadi ekor. Kalau prompt gagal "True to Object", di sini paling kelihatan |
 | 2 | **Mug putih keramik** | Keying gagal, white keyline tenggelam | Objek putih menguji tabrakan antara outline putih dan badan putih, sekaligus objek paling umum yang akan difoto pemain |
 | 3 | **Sepatu atau bantal** | Silhouette dipaksa jadi kaku dan bersudut | Material lunak adalah tempat model paling sering menyerah dan menggambar monster keras generik |
-| 4 | **Foto berisi wajah** | Gate bocor | Biaya ~$0.0003, tidak ada generation |
-| 5 | **Foto dinding kosong** | Gate bocor (`no_object`) | Biaya ~$0.0003, tidak ada generation |
+| 4 | **Foto berisi wajah** | Gate bocor | Biaya ~$0.003, tidak ada generation |
+| 5 | **Foto dinding kosong** | Gate bocor (`no_object`) | Biaya ~$0.003, tidak ada generation |
 
 Dua foto uji gate **tidak perlu dipotong meski anggaran ketat**, dan ini poin yang mudah terlewat: keduanya ditolak sebelum satu sen pun sampai ke Replicate, jadi biayanya hanya panggilan Vision. Memangkas keduanya menghemat $0.0006 sambil menghilangkan pemeriksaan yang risikonya paling besar — gate yang bocor adalah masalah kebijakan toko aplikasi, bukan sekadar art yang jelek.
 
@@ -495,9 +463,9 @@ Jadi "5 foto" sebenarnya berarti **3 generation**, dan itulah angka yang menentu
 
 Sebelum menyentuh API sama sekali, sebagian besar penyetelan prompt bisa dilakukan **manual di aplikasi Gemini atau AI Studio**: tempel foto, tempel prompt, lihat hasilnya, ubah satu kalimat, ulangi. Untuk pekerjaan menemukan kalimat yang membuat model berhenti menggambar naga generik, ini jauh lebih cepat dan hampir tanpa biaya marginal dibandingkan menjalankan script.
 
-Batasnya harus dipahami supaya tidak menyesatkan: aplikasi web memakai default sendiri untuk resolusi, aspect ratio, dan safety filter, dan **tidak memakai jalur `image_input` + payload yang sebenarnya akan dipakai produksi**. Jadi iterasi manual hanya sah untuk menyetel *kata-kata*. Begitu kata-katanya stabil, Smoke Set lewat API tetap wajib, sebab yang diuji di situ bukan lagi prompt-nya melainkan seluruh pipeline: payload, keying, slicing, manifest.
+Batasnya harus dipahami supaya tidak menyesatkan: aplikasi web memakai default sendiri untuk resolusi, quality, aspect ratio, dan moderation, dan **tidak memakai jalur `input_images` + payload production**. Jadi iterasi manual hanya sah untuk menyetel *kata-kata*. Begitu kata-katanya stabil, Smoke Set lewat API tetap wajib, sebab yang diuji di situ bukan lagi prompt-nya melainkan seluruh pipeline: payload, keying, slicing, manifest.
 
-Satu jalan pintas lain yang **tidak** disarankan: iterasi memakai model yang lebih murah (Nano Banana 2, $0.101 per 2K) lalu pindah ke Pro di akhir. Selisihnya hanya sekitar 25% sementara mode kegagalannya berbeda, jadi risikonya adalah menyetel prompt untuk model yang salah dan menemukannya setelah semua pekerjaan selesai. Penghematan beberapa dolar tidak sepadan.
+Jangan menyetel v2 memakai nano-banana-pro lalu menganggap hasilnya berlaku untuk GPT Image 2. Kedua model punya mode kegagalan komposisi dan style yang berbeda. Baseline v1 tetap tersedia untuk A/B, tetapi gerbang penerimaan v2 harus dijalankan pada model production yang sebenarnya.
 
 ### Full Set — 20 foto
 
@@ -522,8 +490,8 @@ Dijalankan sekali sebagai gerbang penerimaan, bukan sebagai alat iterasi. Tiga f
 ### Cara menjalankan
 
 ```bash
-node eval/run.mjs --prompt-version v2 --set smoke   # 5 foto, ~$0.40
-node eval/run.mjs --prompt-version v2 --set full    # 20 foto, ~$2,41
+node eval/run.mjs --prompt-version v2 --set smoke   # 5 foto, ~$0.225
+node eval/run.mjs --prompt-version v2 --set full    # 20 foto, ~$1.32
 ```
 
 Keduanya memakai harness yang sama dan hanya berbeda daftar foto, jadi tidak ada kode terpisah yang bisa menyimpang. Hasil disimpan ke `eval/results/<version>/<set>/` sebagai contact sheet HTML (foto asli di kiri, sheet hasil di kanan, JSON Vision di bawahnya) plus metrik otomatis.
@@ -531,6 +499,8 @@ Keduanya memakai harness yang sama dan hanya berbeda daftar foto, jadi tidak ada
 Simpan setiap hasil dan **jangan pernah hapus**. Perbandingan antar versi prompt harus bisa dilakukan tanpa re-run, karena re-run berarti membayar lagi.
 
 Metrik yang bisa dihitung mesin: rasio gate benar (harus sempurna, tanpa pengecualian), jumlah sel terdeteksi per sheet (harus 4), **varians tinggi bbox antara Idle dan Attack** (target < 15%), persentase piksel hijau tersisa setelah keying (target < 0,1%), dan stabilitas `species_key` saat foto objek serupa divariasikan.
+
+Angka terukur dari run smoke pertama, sebagai patokan: gate 2/2, sel 4/4 pada kedua sheet, varians Idle vs Attack 3,4%, residu hijau 0,014% dan 0,024%. Ketiga metrik pertama lolos sejak percobaan pertama; residu hijau **tidak** — ia mulai di 0,21% dan baru sampai ke angka itu setelah erosi tepi ditambahkan, ceritanya di [01](01-architecture-dataflow.md). Perlu diingat saat membaca metrik ini ke depan: karena erosi menghapus cincin 1px, angka residu sekarang mengukur halo yang lebih tebal dan hijau di interior, bukan lagi fringe setipis satu piksel.
 
 Yang dibandingkan sengaja hanya Idle dan Attack, bukan keempat pose. Kreatur yang meringkuk tidur memang jauh lebih pendek daripada yang berdiri, jadi varians keempat pose akan memberi alarm palsu pada sheet yang sempurna dan melatih kita mengabaikan peringatan. Yang benar-benar menandakan model mengubah skala adalah selisih antara dua pose yang sama-sama berdiri penuh.
 

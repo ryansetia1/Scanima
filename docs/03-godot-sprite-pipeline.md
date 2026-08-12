@@ -12,18 +12,22 @@ Manifest adalah satu-satunya hal yang menghubungkan backend dan Godot soal geome
 {
   "version": 1,
   "sheet": "mug_ceramic_handled_neutral_light_1.png",
-  "sheet_size": [1024, 1024],
+  "sheet_size": [840, 920],
   "frame_size": [420, 460],
   "poses": {
-    "idle":     { "region": [ 46,  22, 420, 460] },
-    "attack":   { "region": [558,  22, 420, 460] },
-    "sleep":    { "region": [ 46, 534, 420, 460] },
-    "defeated": { "region": [558, 534, 420, 460] }
+    "idle":     { "region": [  0,   0, 420, 460] },
+    "attack":   { "region": [420,   0, 420, 460] },
+    "sleep":    { "region": [  0, 460, 420, 460] },
+    "defeated": { "region": [420, 460, 420, 460] }
   },
   "qa": {
     "green_residue_ratio": 0.0004,
     "standing_height_variance": 0.04,
     "bbox_heights": { "idle": 448, "attack": 442, "sleep": 208, "defeated": 262 },
+    "pose_ownership": {
+      "idle": { "opaque_pixels": 58320, "cross_boundary_pixels": 0 },
+      "attack": { "opaque_pixels": 61210, "cross_boundary_pixels": 813 }
+    },
     "cells_detected": 4,
     "warnings": []
   }
@@ -34,9 +38,11 @@ Satu detail di sini menyelesaikan masalah yang mudah diremehkan: **`frame_size` 
 
 Jangkarnya bbox, bukan kuadran, dan itu penting: keempat pose jadi berdiri di garis tanah yang sama, termasuk pose Sleep dan Defeated yang memang lebih rendah. Pose meringkuk duduk di lantai, bukan melayang di tengah frame.
 
+Key manifest `defeated` dipertahankan untuk kompatibilitas Godot, tetapi prompt v2 dan UI memperlakukannya sebagai keadaan visual **Damaged**: karakter yang sama dengan kerusakan kecil spesifik objek, bukan tubuh yang dihancurkan.
+
 Kenapa ukuran seragam itu penting: `AnimatedSprite2D` hanya punya satu properti `offset` untuk seluruh animasi, bukan per-frame. Kalau setiap pose punya ukuran region berbeda, sprite akan tersentak berpindah posisi setiap ganti frame, dan tidak ada cara memperbaikinya di client tanpa menambah node pembungkus per frame. Menormalisasi di backend menghapus masalahnya seluruhnya. `AnimaLoader` menolak manifest yang region-nya tidak seukuran `frame_size`, jadi pelanggaran kontrak ini gagal keras di client, bukan muncul sebagai getaran halus yang sulit dilacak.
 
-Blok `qa` tidak dipakai game, tapi ikut disimpan agar sheet yang buruk bisa ditemukan lewat query alih-alih laporan pemain.
+Blok `qa` tidak dipakai game, tapi ikut disimpan agar sheet yang buruk bisa ditemukan lewat query alih-alih laporan pemain. `pose_ownership.cross_boundary_pixels` mengukur bagian pose yang melewati center seam pada PNG mentah tetapi berhasil dipertahankan oleh segmentasi; nilainya bukan error selama sel tetap terpisah.
 
 Perhatikan metriknya: yang diukur `standing_height_variance`, **hanya antara Idle dan Attack**, bukan varians keempat pose. Membandingkan keempatnya adalah metrik yang salah, karena kreatur yang meringkuk tidur memang jauh lebih pendek daripada yang berdiri — ambang apa pun akan memberi alarm palsu pada sheet yang sempurna. Yang benar-benar menandakan model mengubah skala adalah selisih antara dua pose yang sama-sama berdiri penuh. Sebagai pelengkap, pose Sleep atau Defeated yang lebih *tinggi* dari Idle juga ditandai, karena arah itu hampir pasti berarti model membesarkan kreaturnya alih-alih menidurkannya.
 
@@ -270,6 +276,8 @@ Syarat "atau" itulah yang menyelamatkan Anima berelemen `plant`: hijau daun satu
 
 Yang **tidak** bisa dikerjakan shader ini, dan karena itu mode BYOK tetap terpaksa memakai region grid buta 2x2: mencari bounding box, menyeragamkan ukuran frame, dan menolak sheet yang cacat. Ketiganya butuh membaca seluruh piksel sekaligus, sesuatu yang fragment shader tidak bisa lakukan. Jadi mode BYOK secara struktural memberi kualitas sprite yang lebih rendah, bukan sekadar lebih lambat.
 
+Satu kekurangan lagi yang sekarang sudah terukur: jalur Node melakukan **erosi halo hijau pada cincin 1px terluar**, dan shader ini tidak. Erosi itu bergantung pada tahu apakah piksel tetangga transparan, dan justru syarat tetangga itulah yang melindungi tubuh Anima hijau terang dari ikut terkikis. Fragment shader sebenarnya bisa mencuplik tetangga lewat `TEXTURE_PIXEL_SIZE`, jadi ini bukan kemustahilan seperti bounding box — tapi ia empat cuplikan tekstur tambahan per piksel untuk memperbaiki halo yang tebalnya satu piksel. Sampai ada bukti halonya mengganggu di perangkat sungguhan, pemain BYOK melihat halo hijau tipis dan pemain biasa tidak. Angka pembandingnya ada di [01](01-architecture-dataflow.md): 0,21% berbanding 0,014%.
+
 Keying memakai HSV dan bukan jarak RGB karena hijau `#00FF00` punya hue yang sangat khas, sementara jarak RGB akan ikut memakan warna hijau yang sah pada tubuh Anima (misalnya Anima tanaman). Hue melingkar, jadi `min(d, 1-d)` bukan detail kosmetik — tanpa itu hijau di sekitar hue 0 akan lolos.
 
 ### Bake sekali, jangan dipakai terus-menerus
@@ -299,7 +307,7 @@ func bake_chroma_key(source: Texture2D) -> Image:
 
 Setelah ini, `baked.save_png(CACHE_DIR + key + ".png")` dan seterusnya jalur pemuatannya identik dengan jalur normal.
 
-Yang hilang di jalur fallback ini, dan harus diakui: bbox trimming per pose. Tanpa backend yang mengukur, kita jatuh ke pembagian grid buta 2x2 — yang sudah dicatat di [02](02-prompt-engineering.md) sebagai penyebab sprite terpotong ketika model tidak menaruh subjek di tengah sel. Itulah sebabnya jalur ini fallback, bukan pilihan utama. Mitigasi minimalnya: setelah bake, hitung bbox alpha per kuadran di GDScript pada gambar yang sudah di-downscale ke 512x512 (262 ribu piksel, di bawah 100 ms di mid-range), lalu normalisasi seperti yang backend lakukan.
+Yang hilang di jalur fallback ini, dan harus diakui: segmentasi ownership + bbox trimming per pose. Tanpa backend yang mengukur, kita jatuh ke pembagian grid buta 2x2 — penyebab tangan Attack terpotong saat melewati center seam. Itulah sebabnya jalur ini fallback, bukan pilihan utama. **ponytail:** jangan port flood-fill + masked blit ke GDScript sampai pemain BYOK benar-benar memerlukannya; upgrade path-nya adalah memindahkan `segmentPosePixels()` ke implementasi client.
 
 ## 5. Menghidupkan empat gambar statis
 
@@ -387,7 +395,7 @@ Lompatan dipicu pada interval acak 4-9 detik, bukan periodik. Interval tetap aka
 
 **Yang tidak bisa dilakukan dengan empat pose: berkedip.** Berkedip butuh gambar mata tertutup, dan tidak ada trik transformasi yang bisa memalsukannya. Menutupinya dengan shader yang menggelapkan area mata terdengar pintar tapi butuh koordinat mata per spesies, yang tidak kita punya. Jadi berkedip tidak ada, dan itu keputusan sadar.
 
-Kalau nanti terasa perlu, upgrade-nya sudah jelas dan **gratis dari sisi biaya API**: satu gambar 2K bisa memuat grid 3x2 dan menghasilkan enam pose (menambah Blink dan Happy) dengan harga yang sama persis $0.134, karena harga dihitung per gambar, bukan per sel. Trade-off-nya: sel mengecil dari 512 ke sekitar 341x512 piksel, dan konsistensi model cenderung turun seiring bertambahnya sel yang harus dikomposisi. Karena itu 2x2 tetap default sampai ada bukti kualitas 3x2 masih bisa diterima.
+Kalau nanti terasa perlu, satu gambar 1024×1024 bisa memuat grid 3x2 dan menghasilkan enam pose (menambah Blink dan Happy) tanpa menambah jumlah image output. Trade-off-nya: sel mengecil dari 512 ke sekitar 341×512 piksel dan konsistensi model turun saat komposisi makin rumit. Karena itu 2x2 tetap default sampai ada bukti kualitas 3x2 masih bisa diterima; jangan mengasumsikan biaya token tetap identik sebelum menguji payload sebenarnya.
 
 ## 6. Pengaturan tekstur dan performa
 

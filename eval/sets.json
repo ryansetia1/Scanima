@@ -19,13 +19,13 @@
       "file": "wajah.jpg",
       "expect_reject": "human_face",
       "tests": "Gate bocor",
-      "why": "Ditolak sebelum image generation, jadi biayanya hanya panggilan Vision (~$0.0003)."
+      "why": "Ditolak sebelum image generation, jadi biayanya hanya panggilan Vision (~$0.003)."
     },
     {
       "file": "dinding.jpg",
       "expect_reject": "no_object",
       "tests": "Gate bocor (tidak ada objek)",
-      "why": "Ditolak sebelum image generation, jadi biayanya hanya panggilan Vision (~$0.0003)."
+      "why": "Ditolak sebelum image generation, jadi biayanya hanya panggilan Vision (~$0.003)."
     }
   ],
 

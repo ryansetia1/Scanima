@@ -1,6 +1,6 @@
 # 01 — Architecture & Data Flow Pipeline
 
-Dokumen ini mendefinisikan apa yang terjadi antara pemain menekan tombol kamera dan Anima muncul di layar: komponen apa yang terlibat, siapa yang memegang uang dan kunci, bagaimana biaya ditekan lewat caching, dan bagaimana jeda 15-45 detik dibungkus jadi pengalaman yang menyenangkan.
+Dokumen ini mendefinisikan apa yang terjadi antara pemain menekan tombol kamera dan Anima muncul di layar: komponen apa yang terlibat, siapa yang memegang uang dan kunci, bagaimana biaya ditekan lewat caching, dan bagaimana jeda sekitar satu menit dibungkus jadi pengalaman yang menyenangkan.
 
 ## 1. Prinsip arsitektur
 
@@ -18,12 +18,24 @@ Empat aturan yang menentukan bentuk seluruh sistem:
 
 | Peran | Model | Alasan |
 | --- | --- | --- |
-| Vision, stat, taksonomi | `gemini-3.1-flash-lite` | Stabil sejak Mei 2026, structured output, ~$0.0003 per panggilan |
-| Image generation | `google/nano-banana-pro` via Replicate | Kualitas tertinggi untuk gaya concept art, mendukung editing lewat `image_input` |
+| Vision, stat, taksonomi | `google/gemini-2.5-flash` via Replicate | Satu vendor dengan model gambar, ~$0.003 per panggilan |
+| Image generation | `openai/gpt-image-2` medium via Replicate | Anime cel-shaded paling konsisten pada uji nyata; mendukung editing lewat `input_images`; ~$0.07 |
 
-Spesifikasi awal menyebut `gemini-1.5-flash`, dan itu perlu dikoreksi: **model tersebut sudah dimatikan Google** dan request dengan ID itu mengembalikan 404. Penggantinya yang paling jelas, `gemini-2.5-flash`, juga bukan pilihan yang tepat untuk proyek yang baru mulai karena tanggal retirement-nya 20 Oktober 2026 — hanya beberapa bulan dari sekarang, dan itu berarti migrasi paksa di tengah pengembangan. `gemini-3.1-flash-lite` sudah stabil, harganya di kelas yang sama, dan punya runway paling panjang.
+Spesifikasi awal menyebut `gemini-1.5-flash`, dan itu perlu dikoreksi: **model tersebut sudah dimatikan Google** dan request dengan ID itu mengembalikan 404.
 
-GPT-4o-mini yang juga disebut di spesifikasi awal bisa bekerja untuk peran ini, tapi tidak dipilih karena satu alasan operasional: memakai keluarga model yang sama dengan generator gambar (nano-banana-pro adalah Gemini 3 Pro Image) berarti satu vendor, satu tagihan, dan satu tempat memeriksa kuota ketika ada yang salah.
+Keputusan yang lebih menentukan bukan soal versi model, melainkan **lewat mana ia dipanggil**. Replicate juga meng-host Gemini, jadi Vision bisa berjalan di sana alih-alih memanggil Gemini API langsung. Konsekuensinya: seluruh proyek hanya butuh satu kredensial, `REPLICATE_API_TOKEN`. Itu menyederhanakan setup, tapi yang jauh lebih penting adalah dampaknya ke **mode BYOK** — pemain cukup menempelkan satu token miliknya, bukan dua. Meminta pemain mendaftar di dua penyedia sekaligus adalah friksi yang sebelumnya membuat jalur BYOK hampir tidak layak ditawarkan.
+
+GPT-4o-mini yang juga disebut di spesifikasi awal bisa bekerja untuk peran ini, tapi tidak dipilih justru karena alasan yang sama: satu vendor, satu tagihan, satu tempat memeriksa kuota ketika ada yang salah.
+
+Dua harga yang harus dibayar untuk konsolidasi itu, keduanya nyata dan keduanya sudah ditangani:
+
+Pertama, **wrapper Replicate tidak punya parameter `response_schema`**. Parameter yang tersedia hanya `prompt`, `images`, `videos`, `system_instruction`, `temperature`, `top_p`, `max_output_tokens`, `thinking_budget`, dan `dynamic_thinking`. Jaminan "selalu JSON valid" dari structured output Gemini langsung karenanya hilang. Penggantinya: skema disisipkan literal ke `system_instruction`, keluaran diurai oleh parser yang tahan bungkus markdown dan kalimat pengantar, dan kalau tetap gagal ada satu percobaan ulang pada temperature 0. Retry itu tidak melanggar aturan "jangan retry otomatis", karena aturan tersebut menyangkut generation gambar yang sekitar 23 kali lebih mahal.
+
+Kedua, **`gemini-2.5-flash` punya tanggal retirement 20 Oktober 2026**. Ini plafon yang diketahui sejak awal, bukan kejutan yang akan menabrak nanti: penggantinya sudah tersedia di Replicate (`google/gemini-3-flash`, `google/gemini-3.5-flash`), dan berpindah hanya perlu mengganti env `VISION_MODEL`. Yang tidak boleh dilewatkan saat berpindah adalah menjalankan ulang Smoke Set, sebab stat dan `species_key` bisa bergeser antar model dan pergeseran `species_key` berarti cache miss massal.
+
+Biaya per panggilan Vision naik dari perkiraan awal ~$0.0003 menjadi ~$0.003 karena kelas modelnya lebih besar. Rinciannya: ~2,7k token teks (system prompt + skema) ditambah ~1k token untuk satu gambar 1024px, lalu ~700 token output. Dalam angka absolut ini sekitar seperduapuluh tiga harga satu gambar, tapi ia **tidak lagi bisa dianggap nol** saat menghitung ekonomi Discovery Scan, dan itu mengubah aritmetika iklan di [04](04-game-systems-economy.md) secara material.
+
+`thinking_budget` diset 0 justru untuk menahan angka ini: token thinking ditagih sebagai token output, dan output di model ini delapan kali lebih mahal daripada input ($2.50 vs $0.30 per 1M). Tugas Vision di sini ekstraksi terstruktur, bukan penalaran berantai, jadi tidak ada yang hilang. Konsekuensi lain dari asimetri harga itu: **field output yang panjang berbiaya nyata**. `stat_reasoning` ada untuk keperluan eval dan debugging manusia; di produksi ia bisa dihilangkan dari skema dan itu sendiri memotong biaya Vision hampir separuh. Itu tuas termurah yang tersedia kalau tagihan Vision pernah terasa menekan — lebih murah daripada memangkas kuota gratis pemain.
 
 Nama model **tidak boleh di-hardcode**. Keduanya disimpan di konfigurasi dan dicatat per baris di `generations.model`, sebab model gambar adalah komponen yang paling mungkin berubah harga atau dihentikan, dan ketika itu terjadi kita perlu bisa berpindah tanpa merilis ulang aplikasi.
 
@@ -75,14 +87,14 @@ sequenceDiagram
         EF->>R: POST /predictions (sheet 2x2, webhook terdaftar)
         R-->>EF: { id: prediction_id, status: "starting" }
         EF->>S: generations.status = running, simpan prediction_id
-        EF-->>G: 202 { anima_id, status: "incubating", eta_seconds: 30 }
+        EF-->>G: 202 { anima_id, status: "incubating", eta_seconds: 65 }
         G->>G: Mulai animasi Incubator
         loop Polling tiap 2s, backoff hingga 8s
             G->>S: SELECT status FROM animas WHERE id = ...
         end
         R->>EF: Webhook: prediction succeeded { output: url }
-        EF->>R: Download PNG 2K
-        EF->>EF: Chroma key HSV, slice content-aware, trim bbox
+        EF->>R: Download PNG 1024x1024
+        EF->>EF: Chroma key HSV, segmentasi komponen, normalisasi bbox
         EF->>S: Upload sheet RGBA + manifest.json, isi species_library
         EF->>S: animas.status = ready
         S-->>G: status ready terdeteksi saat polling
@@ -110,8 +122,8 @@ sequenceDiagram
 ```sql
 -- Profil pemain, 1:1 dengan auth.users
 -- Tiga mata uang, alasan pembagiannya ada di doc 04:
--- scan_charges  -> Discovery Scan, biaya kita ~$0.0003, boleh murah
--- genesis_cores -> Genesis (spesies baru), biaya kita $0.134, harus dijaga
+-- scan_charges  -> Discovery Scan, biaya kita ~$0.003, boleh murah
+-- genesis_cores -> Genesis (spesies baru), biaya kita ~$0.07, harus dijaga
 -- bits          -> item perawatan, biaya kita nol
 create table profiles (
   id             uuid primary key references auth.users on delete cascade,
@@ -169,7 +181,7 @@ create table generations (
   status         text not null default 'pending', -- pending|running|succeeded|failed|rejected|cache_hit
   prediction_id  text,                          -- id Replicate
   prompt_version text not null,
-  model          text not null,                 -- 'google/nano-banana-pro'
+  model          text not null,                 -- 'openai/gpt-image-2'
   cost_usd_estimate numeric(8,4) not null default 0,
   vision_result  jsonb,
   error          text,
@@ -273,7 +285,7 @@ Aksi perawatan (`animas.care`) sengaja dibiarkan client-writable. Menyontek nila
 
 ### Klaim Core yang atomik
 
-Debit Genesis Core dan pencatatan generation harus terjadi dalam satu transaksi, kalau tidak dua request paralel bisa lolos bersamaan dengan sisa Core 1 — dan itu berarti $0.134 keluar tanpa dibayar.
+Debit Genesis Core dan pencatatan generation harus terjadi dalam satu transaksi, kalau tidak dua request paralel bisa lolos bersamaan dengan sisa Core 1 — dan itu berarti sekitar $0.07 keluar tanpa dibayar.
 
 ```sql
 create or replace function claim_generation(
@@ -312,7 +324,7 @@ Fungsi kembarnya, `refund_generation(p_gen_id, p_reason)`, mengembalikan Core, m
 
 Perhatikan bahwa cache hit **tidak** butuh refund, karena Core tidak pernah didebit untuk Discovery Scan — pengecekan pustaka terjadi sebelum `claim_generation` dipanggil. Ini alasan urutan langkah di bawah tidak boleh ditukar: memeriksa lebih dulu lalu menagih menghasilkan lebih sedikit jalur refund, dan setiap jalur refund adalah tempat uang bisa hilang tanpa jejak.
 
-Scan Charge memakai fungsi terpisah `claim_scan_charge(p_owner)` dengan pola lock yang sama. Ia lebih longgar (nilainya hanya $0.0003) tapi tetap harus atomik, sebab tanpa pagar itu satu klien yang rusak bisa memanggil Vision beribu kali.
+Scan Charge memakai fungsi terpisah `claim_scan_charge(p_owner)` dengan pola lock yang sama. Ia lebih longgar (nilainya $0.003) tapi tetap harus atomik, sebab tanpa pagar itu satu klien yang rusak bisa memanggil Vision beribu kali — dan pada harga ini seribu panggilan liar sudah $3, bukan $0,30.
 
 ## 5. Kontrak Edge Function
 
@@ -369,14 +381,14 @@ Fungsi ini **harus** balik dalam beberapa detik. Ia tidak menunggu gambar selesa
 
 1. Verifikasi JWT, ambil `owner_id`.
 2. `claim_scan_charge(owner_id)` — pagar murah sebelum memanggil Vision. Kalau habis, balik 402 tanpa efek samping.
-3. Terbitkan signed **download** URL foto (TTL 10 menit) supaya Vision LLM dan Replicate bisa membacanya. Replicate menerima `image_input` berupa array URL, jadi foto wajib punya URL publik sementara.
+3. Terbitkan signed **download** URL foto (TTL 10 menit) supaya Vision LLM dan Replicate bisa membacanya. GPT Image 2 menerima `input_images` berupa array URL, jadi foto wajib punya URL publik sementara.
 4. Panggil Vision LLM dengan structured output. Kalau `safe == false` atau `is_object == false`, refund Scan Charge lalu balik 422.
 5. Normalisasi `species_key` terhadap entri yang sudah ada (Levenshtein ≤ 2) supaya typo tidak memecah cache.
 6. Cari `species_library` untuk `(species_key, color_bucket, stage=1)`. **Ada** → Discovery Scan: buat `animas` status `ready` dengan stat di-roll ulang, naikkan `times_reused`, balik 200. Tidak ada Core yang tersentuh.
 7. **Tidak ada** → Genesis. `claim_generation(...)`; kalau `NO_CORE`, simpan `pending_discoveries` (hasil Vision jangan dibuang, biayanya sudah keluar) dan balik 200 dengan `status: "pending_claim"`.
 8. `POST` ke Replicate dengan `webhook` + `webhook_events_filter: ["completed"]`, simpan `prediction_id`, balik 202.
 
-Urutan langkah 6 sebelum 7 adalah inti kontrol biaya seluruh sistem, dan bukan sekadar optimasi: ia yang memisahkan aksi $0.0003 dari aksi $0.134 sehingga keduanya bisa diberi harga berbeda kepada pemain. Alasan desain lengkapnya di [04](04-game-systems-economy.md).
+Urutan langkah 6 sebelum 7 adalah inti kontrol biaya seluruh sistem, dan bukan sekadar optimasi: ia yang memisahkan aksi $0.003 dari aksi ~$0.07 sehingga keduanya bisa diberi harga berbeda kepada pemain. Alasan desain lengkapnya di [04](04-game-systems-economy.md).
 
 ### `POST /replicate_webhook`
 
@@ -398,33 +410,56 @@ Webhook idempoten: kalau `generations.status` sudah `succeeded`, balik 200 tanpa
 { "anima_id": "b3d1...", "idempotency_key": "..." }
 ```
 
-Server memverifikasi syarat evolusi (umur, `care_score`, stage saat ini) — client tidak dipercaya soal ini. `image_input` diisi **sprite pose Idle milik Anima itu sendiri**, bukan foto asli, supaya identitas visual terjaga antar stage. Alur sisanya identik dengan `create_anima`.
+Server memverifikasi syarat evolusi (umur, `care_score`, stage saat ini) — client tidak dipercaya soal ini. `input_images` diisi **sprite pose Idle milik Anima itu sendiri**, bukan foto asli, supaya identitas visual terjaga antar stage. Alur sisanya identik dengan `create_anima`.
 
 ### `POST /grant_reward`
 
-Menerima callback verifikasi rewarded ad dari SDK, menambah `bits` atau `scan_charges`. **Tidak pernah** menambah `genesis_cores` — satu tayangan iklan bernilai ~$0.002 sementara satu Core berbiaya $0.134, jadi jalur itu akan merugi 60 kali lipat. Perhitungannya di [04](04-game-systems-economy.md).
+Menerima callback verifikasi rewarded ad dari SDK, menambah `bits` atau `scan_charges`. **Tidak pernah** menambah `genesis_cores` — satu tayangan iklan bernilai ~$0.002 sementara satu Core berbiaya ~$0.07, jadi satu Core tetap memerlukan sekitar 35 tayangan rata-rata. Perhitungannya di [04](04-game-systems-economy.md).
 
 ## 6. Post-processing gambar
 
-Berjalan di dalam `replicate_webhook`. Ini langkah wajib, bukan opsional: model Gemini image tidak pernah mengeluarkan alpha channel, apa pun yang diminta prompt.
+Berjalan di dalam `replicate_webhook`. Ini langkah wajib, bukan opsional: runtime GPT Image 2 menolak `background: "transparent"` dan hanya jalur chroma green yang terbukti bekerja.
 
 ```mermaid
 graph TD
-    A["PNG 2K dari Replicate<br/>2048x2048, background hijau"] --> B["Downscale ke 1024x1024"]
+    A["PNG GPT Image 2<br/>1024x1024, background hijau"] --> B["Normalisasi work size 1024"]
     B --> C["Chroma key HSV:<br/>hue 120 +/- 22, sat > 0.85, val > 0.5"]
     C --> D["Edge softening 1px,<br/>zero-out warna piksel transparan"]
-    D --> E["Per kuadran: cari bbox alpha"]
-    E --> F["Normalisasi skala + pivot antar pose"]
-    F --> G["Simpan sheet RGBA + manifest.json"]
+    D --> E["Segmentasi alpha 8-connected:<br/>tetapkan owner pose per piksel"]
+    E --> F["BBox per owner + masked blit<br/>ke frame seragam"]
+    F --> G["Normalisasi pivot bottom-center"]
+    G --> H["Simpan sheet RGBA + manifest.json"]
 ```
 
-Downscale ke 1024x1024 dilakukan **sebelum** keying dan itu keputusan sadar: 2048² berarti 4,2 juta piksel yang harus disentuh satu per satu, sementara 1024² hanya 1 juta. Sprite final 512px per pose sudah lebih dari cukup untuk layar HP, jadi tidak ada yang hilang selain biaya CPU.
+GPT Image 2 production sudah menghasilkan 1024×1024, jadi tidak ada downscale pada jalur normal. `workSize: 1024` tetap menjadi pagar: aset rollback 2K dinormalisasi sebelum keying agar Edge Function tidak menyentuh 4,2 juta piksel.
 
 Keying memakai HSV, bukan jarak RGB, karena hijau `#00FF00` punya hue yang sangat khas dan ambang berbasis hue jauh lebih tahan terhadap variasi shading di tepi sprite. Ambang yang dipakai: hue dalam ±22° dari 120°, **saturation > 0,85, value > 0,5**. Setelah keying, warna piksel yang alpha-nya nol di-nolkan supaya tidak muncul halo hijau saat tekstur di-filter bilinear.
 
 Ambang saturasi 0,85 itu jauh lebih ketat daripada resep chroma key pada umumnya (0,3), dan alasannya spesifik untuk game ini. Anima berelemen `plant` — tanaman, buah, daun — tubuhnya hijau. Hijau daun seperti `rgb(60,160,70)` punya saturasi 0,63 dan hue 126°, jadi dengan ambang 0,3 ia lolos sebagai warna kunci dan tubuh Anima-nya **bolong**. Background `#00FF00` punya saturasi ~1,0, jadi ambang 0,85 memisahkan keduanya dengan bersih. Ambang value 0,5 melindungi bayangan hijau gelap di lekuk tubuh dengan cara yang sama. Ini bukan teori: ada test regresi khusus untuk enam nuansa hijau yang harus selamat, di `eval/selftest.mjs`.
 
+### Halo hijau di tepi, dan kenapa ambang bukan jawabannya
+
+Ambang ketat itu menyelesaikan satu masalah dan meninggalkan satu lagi, yang baru terlihat setelah sheet sungguhan diukur. Pada run smoke pertama, 0,21% dan 0,30% piksel masih kehijauan setelah keying, dan di latar gelap game ia tampak sebagai halo yang mengelilingi keyline putih.
+
+Pengukurannya menunjukkan penyebabnya dengan tepat: **99,7% piksel kehijauan itu berada persis 1px dari piksel transparan.** Ia bukan background yang gagal terhapus, melainkan piksel anti-alias — campuran keyline putih dengan background hijau, membentang dari `rgb(37,227,38)` yang hampir hijau murni sampai `rgb(219,255,220)` yang hampir putih.
+
+Yang penting dipahami: **melonggarkan ambang saturasi tidak akan memperbaiki ini**, dan itu bukan sekadar karena berbahaya bagi Anima `plant`. Campuran di tengah seperti `rgb(128,255,128)` cuma bersaturasi 0,5 — untuk menghapusnya, ambang harus turun jauh di bawah saturasi hijau daun (0,63), yang berarti melubangi tubuh Anima. Saturasi tidak bisa memisahkan keduanya, titik.
+
+Dua ciri lain yang bisa. Pertama, **kedekatan ke piksel transparan**: halo selalu di cincin terluar, tempat warna tubuh yang sah tidak punya kepentingan. Kedua, **channel hijau yang tersangkut di dekat 255**: campuran putih dengan `#00FF00` selalu berbentuk `(t, 255, t)` karena kedua warna sumbernya punya g=255, sedangkan hijau daun g-nya cuma 160. Jadi erosi diterapkan hanya pada piksel di cincin 1px yang `g >= 220` dan hijaunya dominan atas merah dan biru.
+
+Hasil terukurnya: residu turun ke 0,014% dan 0,024%, sekitar 15 kali lebih bersih, dan halo hilang dari layar. Biayanya jujur dan sempit: Anima bertubuh hijau **sangat terang** (g ≥ 220) kehilangan 1px di tepinya. Hijau daun, forest green, hijau pupus, dan hijau kekuningan yang didokumentasikan semuanya di bawah g=200 dan tidak tersentuh — ada test yang memakukan keduanya sekaligus di `eval/selftest.mjs`.
+
+Satu efek sampingan yang harus diketahui pembaca metrik: karena cincin terluar sudah dierosi, `green_residue_ratio` tidak lagi melaporkan halo setipis 1px. Yang masih dilaporkannya justru dua kasus yang lebih layak dialarmkan — hijau di interior sprite, dan fringe yang lebih tebal dari 1px, yang berarti keyline putih gagal muncul.
+
 Satu pagar lagi yang wajib ada: kalau rasio piksel yang ter-key di bawah 15%, sheet **ditolak keras**. Background hijau selalu jadi mayoritas sheet, jadi angka di bawah itu berarti model mengembalikan latar putih, hitam, atau checkerboard. Tanpa pagar ini, sheet berlatar putih tidak menghasilkan error melainkan empat "sprite" palsu seukuran kuadran penuh — dan karena hasilnya masuk cache spesies, satu kegagalan sunyi akan dipakai oleh semua pemain yang men-scan spesies yang sama.
+
+### Anggota tubuh yang melewati center seam
+
+BBox content-aware saja belum cukup kalau pencariannya tetap dibatasi kuadran 512×512. Pada output GPT Image 2 medium yang nyata, pose Attack mouse mempunyai **813 piksel** yang tersambung ke tubuh tetapi berada di kuadran kiri; pose Damaged mempunyai 1.273. Crop kuadran lama memotong tangan itu.
+
+`segmentPosePixels()` sekarang mencari komponen alpha 8-connected di seluruh sheet. Setiap komponen dimiliki pose dari kuadran yang memuat mayoritas pikselnya. Bbox boleh melewati center seam, lalu `blitOwned()` hanya menyalin piksel dengan owner tersebut. Mask ownership itu penting: memperlebar bbox tanpa mask bisa ikut menyalin bagian monster tetangga.
+
+**ponytail:** komponen yang benar-benar terputus dari tubuh (misalnya satu spark kecil) dimiliki kuadran tempat ia berada. Kalau model menggambar dua tubuh sampai saling bersentuhan, keduanya menjadi satu komponen dan sheet harus direview; upgrade-nya adalah instance segmentation, tetapi tidak dibutuhkan sampai mode gagal itu benar-benar muncul.
 
 Library: **ImageScript** (pure TypeScript, jalan di Deno maupun Node). Bukan `sharp`, yang butuh native binary dan tidak jalan di edge runtime. Karena jalan di dua runtime, harness eval di laptop (`eval/postprocess.mjs`) dan Edge Function nanti bisa memakai kode yang sama.
 
@@ -447,7 +482,7 @@ graph LR
     DL --> Done
     L2 -->|tidak| L3{"species_library?"}
     L3 -->|hit| Reuse["Reuse art, roll stat baru"]
-    L3 -->|miss| Gen["Generation, ~$0.134, 15-45 s"]
+    L3 -->|miss| Gen["Generation, ~$0.07, 57-63 s terukur"]
 ```
 
 **Lapis 1 — device.** `user://animas/<species_key>_<color_bucket>_<stage>.png` plus `.json`. Kunci cache memakai species, bukan `anima_id`, supaya dua Anima dengan spesies sama hanya menyimpan satu file. Eviction: LRU sederhana dengan plafon 100 MB, dicek saat startup.
@@ -456,7 +491,7 @@ graph LR
 
 **Lapis 3 — pustaka species global.** Ini pengungkit biaya terbesar dan sekaligus keputusan desain paling berdampak pada rasa game, jadi perlu jujur soal trade-off-nya.
 
-Realitanya, foto pemain akan menumpuk di objek yang sama: mug, keyboard, sepatu, botol air, tanaman hias, gunting, remote TV. Kalau setiap foto mug memicu generation baru, kita membayar $0.134 berulang kali untuk art yang hampir identik. Dengan pustaka species, foto mug ke-2 sampai ke-1000 memakai art yang sudah ada dan biayanya nol.
+Realitanya, foto pemain akan menumpuk di objek yang sama: mug, keyboard, sepatu, botol air, tanaman hias, gunting, remote TV. Kalau setiap foto mug memicu generation baru, kita membayar sekitar $0.07 berulang kali untuk art yang hampir identik. Dengan pustaka species, foto mug ke-2 sampai ke-1000 memakai art yang sudah ada dan biayanya nol.
 
 Yang di-share hanya **art**. Yang tetap unik per pemain: nama, stat (di-roll dengan varians dari detail foto spesifik), rarity, dan seluruh riwayat perawatan. Jadi dua pemain bisa punya Anima mug yang terlihat sama tapi berbeda kekuatan dan kepribadian — persis seperti dua pemain Pokémon yang sama-sama punya Pikachu.
 
@@ -466,7 +501,11 @@ Kunci cache-nya sengaja tidak terlalu longgar. `species_key` saja akan membuat s
 
 ## 8. Penanganan latensi: Incubator
 
-Ekspektasi awal 5-10 detik tidak realistis. Generation 2K butuh **15-45 detik**, kadang lebih saat Replicate ramai. Dengan `allow_fallback_model: false` sesuai spesifikasi, request bisa mengantre saat model penuh, dan itu memang trade-off yang diambil demi konsistensi gaya art.
+Ekspektasi awal 5-10 detik tidak realistis. Dua run nyata GPT Image 2 medium pada 12 Agustus 2026 selesai dalam **57 dan 63 detik**. Jadi desain UI harus menganggap sekitar satu menit; itu durasi di mana pemain bisa meninggalkan aplikasi, bukan menunggu sambil menatap layar. Quality high terukur ~153 detik dan karena itu tidak dipakai.
+
+Dua konsekuensi yang mengikat: incubator **wajib** bertahan melewati app-background dan proses yang dimatikan OS, jadi state-nya harus di server dan client hanya melakukan polling ulang saat kembali; dan notifikasi push saat selesai bukan lagi fitur tambahan yang manis, melainkan bagian dari alur utama.
+
+Selain lambat, generation tetap bisa **ditolak** oleh kapasitas atau moderation vendor. nano-banana-pro pernah memberi `ModelRateLimitError (E003)` berulang; pindah model mengurangi risiko spesifik itu tetapi tidak menghapus kebutuhan job persistence. Prediksi yang gagal biasanya tidak ditagih, tapi pemain **sudah** membayar Genesis Core-nya, jadi job wajib disimpan dan dicoba ulang belakangan, bukan hilang bersama request HTTP.
 
 Jadi jeda ini tidak boleh diperlakukan sebagai loading screen yang harus disembunyikan. Ia adalah **momen ritual**: telur yang berdenyut, retak sedikit demi sedikit. Kalau dirancang benar, pemain justru menikmati penantiannya.
 
@@ -481,7 +520,7 @@ stateDiagram-v2
     Analyzing --> Incubating: 202 diterima
     Analyzing --> Hatching: 200 cache hit
     Incubating --> Hatching: status ready
-    Incubating --> Failed: gagal / timeout 120 s
+    Incubating --> Failed: gagal definitif / timeout 240 s
     Hatching --> Revealed: animasi selesai
     Rejected --> Capturing: coba foto lain
     Failed --> Capturing: Core sudah direfund
@@ -532,7 +571,7 @@ Beberapa keputusan yang perlu dicatat:
 
 Token disimpan **hanya di device**, tidak pernah dikirim ke backend kita. Itu menghilangkan seluruh kelas masalah penyimpanan kredensial pihak lain. Konsekuensinya jalur BYOK memakai post-processing lokal (fallback shader di [03](03-godot-sprite-pipeline.md)), karena Edge Function tidak dilibatkan.
 
-Vision LLM tetap lewat backend kita dengan kuota terpisah yang longgar, sebab biaya `gemini-3.1-flash-lite` di bawah $0.001 per panggilan dan meminta pemain menyiapkan dua API key sekaligus adalah friksi yang tidak sepadan.
+Karena Vision dan image generation kini berjalan di penyedia yang sama, satu token milik pemain menutup **keduanya**. Ini menghapus keberatan terbesar terhadap BYOK: sebelumnya jalur ini menuntut pemain mendaftar di dua penyedia, dan Vision harus tetap lewat backend kita dengan kuota terpisah karena meminta dua API key adalah friksi yang tidak sepadan. Sekarang tidak perlu lagi, dan itu juga berarti biaya Vision pemain BYOK tidak lagi kita tanggung.
 
 Pemain BYOK ditawari opt-in menyumbangkan sheet hasil generasinya ke pustaka species global. Ini bukan sekadar altruisme: setiap sumbangan mengurangi biaya generation untuk semua pemain gratis. Tawarkan dengan jelas, jangan diam-diam.
 
@@ -546,19 +585,21 @@ BYOK tidak menghapus Vision gate. Filter penolakan wajah dan konten tidak aman t
 
 **Rate limit berlapis.** Genesis Core membatasi image generation, Scan Charge membatasi panggilan Vision. Selain itu perlu batas kasar per IP pada `photo_upload_url` untuk mencegah orang membanjiri Storage tanpa pernah memanggil `create_anima`.
 
-**Privacy policy wajib sebelum Play Store.** Aplikasi mengakses kamera, mengunggah foto ke server, dan mengirimnya ke pihak ketiga (Google, Replicate). Ketiga fakta itu harus dinyatakan eksplisit, termasuk berapa lama foto disimpan.
+**Privacy policy wajib sebelum Play Store.** Aplikasi mengakses kamera, mengunggah foto ke server, dan mengirimnya ke pihak ketiga (Google untuk Vision, OpenAI untuk image generation, melalui Replicate). Fakta itu harus dinyatakan eksplisit, termasuk berapa lama foto disimpan.
 
 ## 11. Estimasi biaya per Anima
 
 | Komponen | Biaya |
 | --- | --- |
-| Vision (`gemini-3.1-flash-lite`, ~1 gambar + ~800 token output) | < $0.001 |
-| Image generation (nano-banana-pro, 2K) | $0.134 |
+| Vision (`gemini-2.5-flash`, ~3,8k token input + ~700 output, thinking off) | ~$0.003 |
+| Image generation (`gpt-image-2`, medium, 1024×1024) | ~$0.070 |
 | Storage + bandwidth (~200 KB sheet) | ~$0.0001 |
 | Edge Function invocation (3x) | ~$0.00001 |
-| **Total, cache miss** | **~$0.135** |
-| **Total, cache hit species** | **~$0.001** |
+| **Total, cache miss** | **~$0.073** |
+| **Total, cache hit species** | **~$0.003** |
 
-Rasio cache hit adalah metrik bisnis paling penting di game ini, bukan sekadar metrik teknis. Pada 60% hit rate, biaya rata-rata per Anima turun jadi ~$0.055; pada 85% jadi ~$0.021. Instrumentasi untuk mengukurnya harus ada sejak Phase 2, bukan ditambahkan setelah tagihan membengkak.
+Rasio cache hit adalah metrik bisnis paling penting di game ini, bukan sekadar metrik teknis. Pada 60% hit rate, biaya rata-rata per Anima turun jadi ~$0.031; pada 85% jadi ~$0.014. Instrumentasi untuk mengukurnya harus ada sejak Phase 2, bukan ditambahkan setelah tagihan membengkak.
+
+Satu pergeseran yang perlu diperhatikan sejak sekarang: dengan Vision di kelas `gemini-2.5-flash`, **cache hit tidak lagi mendekati nol** — ia bertiga kali lipat dari perkiraan sebelumnya. Discovery Scan yang gratis bagi pemain kini berbiaya ~$0.003 bagi kita, jadi seribu scan gratis per hari adalah $3/hari, bukan $1. Ini masih dibiayai iklan dengan nyaman (lihat [04](04-game-systems-economy.md)), tapi ia menegaskan kenapa Scan Charge tetap dibatasi meskipun scan tidak memanggil generator gambar. Kalau angka ini pernah terasa menekan, jalur termurahnya bukan mencabut kuota gratis melainkan mengecilkan model Vision.
 
 Turunan ekonominya — harga IAP, kuota gratis, kenapa iklan tidak boleh membiayai generation — dibahas di [04](04-game-systems-economy.md).

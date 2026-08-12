@@ -25,17 +25,17 @@ Kesalahan yang paling mungkin dilakukan di proyek seperti ini adalah menghabiska
 
 Sengaja tanpa Supabase, tanpa autentikasi, tanpa database, tanpa sistem kuota. Panggilan API dilakukan dari script Node lokal dan build Godot khusus development yang membaca token dari file lokal yang di-gitignore.
 
-> **Status per hari ini.** Seluruh perkakas fase ini sudah ada dan terverifikasi tanpa memanggil API berbayar sekali pun: harness `eval/run.mjs`, post-processing `eval/postprocess.mjs` dengan 14 pemeriksaan, dan sisi Godot dengan 75 pemeriksaan headless termasuk satu yang memuat sheet keluaran Node sungguhan. Yang belum dan tidak bisa disimulasikan: foto sungguhan, kualitas art dari model, dan penilaian "True to Object" oleh mata manusia. Tiga hal itulah isi Phase 1 yang sebenarnya — kode hanya memindahkan biayanya ke tempat yang bisa diulang.
+> **Status per 12 Agustus 2026.** Pipeline sudah terbukti dengan foto sungguhan pada nano-banana-pro dan GPT Image 2. Setelah A/B medium vs high, default dipindah ke GPT Image 2 medium dan prompt production v2 mengikuti anime cel-shaded style guide. Post-processing punya 17 skenario gratis, termasuk regresi tangan yang melewati center seam; sisi Godot punya 75 pemeriksaan headless termasuk kontrak sheet keluaran Node.
 
 ### Yang dikerjakan
 
-**Setel kata-kata prompt secara manual lebih dulu.** Sebelum menulis satu baris script, tempel foto dan prompt langsung ke aplikasi Gemini atau AI Studio, lihat hasilnya, ubah satu kalimat, ulangi. Pekerjaan menemukan kalimat yang membuat model berhenti menggambar naga generik tidak butuh API, dan melakukannya lewat script berarti membayar $0.134 untuk setiap kali penasaran. Batasnya dijelaskan di [02](02-prompt-engineering.md): cara ini hanya sah untuk menyetel kata-kata, bukan untuk memvalidasi pipeline.
+**Setel kata-kata prompt secara manual lebih dulu.** ChatGPT bisa dipakai untuk menyusun art direction dan checklist tanpa membayar generation API; file [style guide](monster_camera_anime_cel_shaded_style_guide.md) berasal dari langkah itu. Tetapi validasi visual tetap harus memakai model production yang sebenarnya karena setiap generation GPT Image 2 medium berbiaya sekitar $0.07 dan punya mode kegagalan komposisi sendiri.
 
 Baru setelah kata-katanya stabil, pindah ke script. `eval/run.mjs` yang mengambil satu foto, memanggil Vision LLM dengan system prompt dari [02](02-prompt-engineering.md), menyusun prompt sheet, memanggil Replicate, mengunduh hasilnya.
 
-Iterasi berikutnya memakai **Smoke Set 5 foto** (~$0.40 per run), bukan set penuh. Isinya 3 foto generation yang masing-masing menguji satu mode kegagalan berbeda, plus 2 foto uji gate yang tidak memicu generation sama sekali. Jalankan sesering perlu — dengan harga di bawah setengah dolar, iterasi tidak perlu dihemat.
+Iterasi berikutnya memakai **Smoke Set 5 foto** (~$0.225 per run), bukan set penuh. Isinya 3 foto generation yang masing-masing menguji satu mode kegagalan berbeda, plus 2 foto uji gate yang tidak memicu generation sama sekali.
 
-**Full Set 20 foto dijalankan sekali saja**, di akhir fase, sebagai gerbang penerimaan setelah Smoke Set sudah bersih. Di situ penilaiannya jujur: berapa dari 20 yang benar-benar terlihat berasal dari objeknya? Berapa yang keempat pose-nya konsisten? Angka itu yang menentukan lanjut atau pivot. Menjalankannya lebih awal hanya membakar $2,41 untuk mengetahui hal yang sudah diberitahu Smoke Set dengan harga seperenam.
+**Full Set 20 foto dijalankan sekali saja**, di akhir fase, sebagai gerbang penerimaan setelah Smoke Set sudah bersih. Di situ penilaiannya jujur: berapa dari 20 yang benar-benar terlihat berasal dari objeknya? Berapa yang keempat pose-nya konsisten? Angka itu yang menentukan lanjut atau pivot. Menjalankannya lebih awal membakar sekitar $1.32 untuk informasi yang sebagian besar sudah diberikan Smoke Set dengan harga seperenam.
 
 Lalu post-processing sebagai script Node berdiri sendiri: chroma key HSV, deteksi bbox per kuadran, normalisasi `frame_size`, tulis PNG RGBA + `manifest.json`. Ditulis sebagai script dulu, bukan langsung sebagai Edge Function, karena men-debug algoritma piksel di dalam runtime serverless adalah penderitaan yang tidak perlu. Memindahkannya ke Deno nanti hampir copy-paste.
 
@@ -73,8 +73,8 @@ Kalau Smoke Set bersih tapi Full Set berhenti di 12-15 dari 20, itu bukan kondis
 | Pos | Jumlah | Biaya |
 | --- | --- | --- |
 | Iterasi kata-kata prompt secara manual | puluhan putaran | ~$0 |
-| Smoke Set selama iterasi pipeline | 8-12 run x $0.40 | $3,20-4,80 |
-| Full Set sebagai gerbang penerimaan | 1-2 run x $2,41 | $2,41-4,82 |
+| Smoke Set selama iterasi pipeline | 8-12 run x $0.225 | $1.80-2.70 |
+| Full Set sebagai gerbang penerimaan | 1-2 run x $1.32 | $1.32-2.64 |
 | **Total** | | **~$6-10** |
 
 Angka ini menggantikan estimasi awal $12-20, yang berasumsi setiap iterasi memakai set penuh. Pemisahan Smoke Set dan iterasi manual memotongnya sekitar setengah tanpa mengurangi satu pun pemeriksaan yang menentukan kelanjutan proyek.

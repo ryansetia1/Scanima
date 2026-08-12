@@ -1,15 +1,21 @@
 #!/usr/bin/env node
-// Harness evaluasi prompt Scanima: foto -> Vision LLM -> nano-banana-pro ->
+// Harness evaluasi prompt Scanima: foto -> Vision LLM -> GPT Image 2 ->
 // post-processing -> contact sheet HTML.
 //
-//   node eval/run.mjs --set smoke              # 5 foto, ~$0.40
-//   node eval/run.mjs --set full               # 20 foto, ~$2,41
+//   node eval/run.mjs --set smoke              # 5 foto, ~$0.23
+//   node eval/run.mjs --set full               # 20 foto, ~$1.32
 //   node eval/run.mjs --photo eval/photos/mouse.jpg
 //   node eval/run.mjs --set smoke --dry-run    # gratis: cek foto & prompt saja
-//   node eval/run.mjs --set smoke --vision-only  # gratis-ish: gate + stat saja
+//   node eval/run.mjs --set smoke --vision-only  # murah: gate + stat saja
 //
-// SETIAP generation berbiaya nyata. Tidak ada retry otomatis di sini, dan itu
-// disengaja: retry yang tidak diminta adalah cara paling mudah membakar uang.
+// Kedua model berjalan lewat Replicate, jadi hanya butuh SATU kredensial:
+// REPLICATE_API_TOKEN. Ini bukan cuma soal kenyamanan setup — di mode BYOK,
+// pemain jadi cukup menempelkan satu token miliknya, bukan dua.
+//
+// SETIAP generation gambar berbiaya nyata. Tidak ada retry otomatis untuk
+// gambar, dan itu disengaja: retry yang tidak diminta adalah cara paling mudah
+// membakar uang. Panggilan Vision boleh diulang sekali karena harganya
+// sekitar seperduapuluh tiga dari satu gambar.
 
 import { readFile, writeFile, mkdir, access } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
@@ -18,17 +24,40 @@ import { Image } from "imagescript";
 import { postprocessSheet, POSES } from "./postprocess.mjs";
 
 const REPO = new URL("..", import.meta.url).pathname;
-const COST_PER_IMAGE_USD = 0.134; // nano-banana-pro 1K/2K, per gambar
-const VISION_MODEL = process.env.VISION_MODEL ?? "gemini-3.1-flash-lite";
-const IMAGE_MODEL = process.env.IMAGE_MODEL ?? "google/nano-banana-pro";
+// Harus dibaca sebelum konstanta model di bawah dievaluasi. Sebelumnya loadEnv()
+// baru dipanggil di main(), sehingga override VISION_MODEL/IMAGE_MODEL dari
+// .env.local diam-diam tidak pernah memengaruhi konstanta top-level.
+loadEnv();
+
+// Estimasi, bukan angka resmi: Replicate tidak mencantumkan harga per token
+// untuk wrapper ini, jadi ini hitungan dari harga Google gemini-2.5-flash
+// ($0.30/1M input, $2.50/1M output) dengan ~4,3k token input (system prompt +
+// skema + satu gambar 1024px) dan ~700 token output.
+const COST_PER_VISION_USD = 0.003;
+const VISION_MODEL = process.env.VISION_MODEL ?? "google/gemini-2.5-flash";
+const IMAGE_MODEL = process.env.IMAGE_MODEL ?? "openai/gpt-image-2";
+const IMAGE_QUALITY = process.env.IMAGE_QUALITY ?? "medium";
+// GPT Image 2 dihitung per token. Dua run medium nyata memberi $0.068 dan
+// $0.072 termasuk prompt + foto, jadi $0.07 adalah estimasi yang lebih jujur
+// daripada hanya mengutip biaya output $0.053. Nano tetap tersedia untuk
+// rollback/A-B lewat env dan punya harga tetap $0.134.
+const COST_PER_IMAGE_USD =
+  IMAGE_MODEL === "openai/gpt-image-2"
+    ? IMAGE_QUALITY === "high"
+      ? 0.23
+      : IMAGE_QUALITY === "low"
+        ? 0.02
+        : 0.07
+    : 0.134;
 const PHOTO_MAX_SIDE = 1024;
 const POLL_INTERVAL_MS = 2000;
+const VISION_POLL_MS = 700; // panggilan teks selesai dalam hitungan detik
 const POLL_TIMEOUT_MS = 180_000;
 
 // ---------------------------------------------------------------- argumen
 
 function parseArgs(argv) {
-  const args = { set: null, photo: null, promptVersion: "v1", dryRun: false, visionOnly: false };
+  const args = { set: null, photo: null, promptVersion: "v2", dryRun: false, visionOnly: false };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--set") args.set = argv[++i];
@@ -87,33 +116,118 @@ async function loadPhoto(path) {
   return { base64: Buffer.from(await sized.encodeJPEG(80)).toString("base64"), mime: "image/jpeg" };
 }
 
+// ---------------------------------------------------------------- Replicate
+
+/**
+ * Satu jalur untuk semua panggilan Replicate: buat prediksi, tunggu selesai.
+ * Vision dan image generation memakai fungsi yang sama supaya penanganan error,
+ * timeout, dan status hanya ada di satu tempat.
+ */
+async function runPrediction(model, input, pollMs = POLL_INTERVAL_MS) {
+  const token = process.env.REPLICATE_API_TOKEN;
+  if (!token) throw new Error("REPLICATE_API_TOKEN belum di-set (taruh di .env)");
+
+  const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
+  const create = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ input }),
+  });
+  if (!create.ok) throw new Error(`${model} create ${create.status}: ${(await create.text()).slice(0, 500)}`);
+
+  let pred = await create.json();
+  const started = Date.now();
+  while (pred.status !== "succeeded" && pred.status !== "failed" && pred.status !== "canceled") {
+    if (Date.now() - started > POLL_TIMEOUT_MS) {
+      throw new Error(`${model} timeout setelah ${POLL_TIMEOUT_MS / 1000}s`);
+    }
+    await sleep(pollMs);
+    const poll = await fetch(`https://api.replicate.com/v1/predictions/${pred.id}`, { headers });
+    if (!poll.ok) throw new Error(`${model} poll ${poll.status}`);
+    pred = await poll.json();
+  }
+
+  if (pred.status !== "succeeded") throw new Error(`${model} ${pred.status}: ${pred.error ?? "tanpa pesan"}`);
+  return { output: pred.output, seconds: Math.round((Date.now() - started) / 1000), id: pred.id };
+}
+
 // ---------------------------------------------------------------- Vision
 
+/**
+ * Mengambil JSON dari keluaran model teks.
+ *
+ * Wrapper Gemini di Replicate TIDAK punya parameter `response_schema`, jadi
+ * jaminan "selalu JSON valid" yang diberikan structured output Gemini langsung
+ * tidak tersedia di sini. Konsekuensinya harus ditangani di kode, bukan
+ * diharapkan dari model: keluaran bisa dibungkus ```json, bisa diawali kalimat
+ * pengantar, dan datang sebagai array potongan string yang harus disambung
+ * (skema output wrapper-nya iterator dengan display "concatenate").
+ */
+export function extractJson(raw) {
+  const text = Array.isArray(raw) ? raw.join("") : String(raw ?? "");
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced ? fenced[1] : text).trim();
+
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    // Model kadang menambah kalimat pengantar meski dilarang. Ambil dari kurung
+    // kurawal pertama sampai yang terakhir.
+    const start = candidate.indexOf("{");
+    const end = candidate.lastIndexOf("}");
+    if (start > -1 && end > start) {
+      try {
+        return JSON.parse(candidate.slice(start, end + 1));
+      } catch {
+        // jatuh ke error di bawah
+      }
+    }
+  }
+
+  throw new Error(`Vision tidak mengembalikan JSON yang bisa diparse: ${candidate.slice(0, 300) || "(kosong)"}`);
+}
+
 async function callVision(photo, systemPrompt, schema) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("GEMINI_API_KEY belum di-set (taruh di .env)");
+  // Skema tetap dipakai, tapi sebagai bagian dari instruksi, bukan sebagai
+  // parameter API. Menyertakan kontraknya secara literal jauh lebih efektif
+  // daripada hanya mendeskripsikannya dalam prosa.
+  const instruction =
+    `${systemPrompt}\n\n---\n\n## OUTPUT CONTRACT\n\n` +
+    "Respond with a single JSON object and nothing else. No markdown fences, " +
+    "no explanation before or after. It must conform to this schema:\n\n" +
+    `${JSON.stringify(schema, null, 2)}\n`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${VISION_MODEL}:generateContent`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": key },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: "user", parts: [{ inline_data: { mime_type: photo.mime, data: photo.base64 } }] }],
-      generationConfig: {
-        temperature: 0.4,
-        responseMimeType: "application/json",
-        responseSchema: schema,
-      },
-    }),
-  });
+  const input = {
+    prompt: "Analyse the attached photograph now. Respond with the JSON object only.",
+    images: [`data:${photo.mime};base64,${photo.base64}`],
+    system_instruction: instruction,
+    top_p: 0.95,
+    max_output_tokens: 4096,
+    // Tugas ini ekstraksi terstruktur, bukan penalaran berantai. Thinking
+    // ditagih sebagai token output, jadi mematikannya menekan biaya sekaligus
+    // latensi. dynamic_thinking disebut eksplisit karena kalau true ia
+    // menimpa thinking_budget.
+    thinking_budget: 0,
+    dynamic_thinking: false,
+  };
 
-  if (!res.ok) throw new Error(`Vision ${res.status}: ${(await res.text()).slice(0, 500)}`);
-
-  const body = await res.json();
-  const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error(`Vision tidak mengembalikan teks: ${JSON.stringify(body).slice(0, 400)}`);
-  return JSON.parse(text);
+  // Satu percobaan ulang pada temperature 0 kalau JSON-nya rusak. Ini pengganti
+  // yang jujur untuk response_schema yang tidak ada: biayanya ~$0.003, sekitar
+  // sekitar seperduapuluh tiga harga satu gambar, jadi mengulang di sini tidak
+  // melanggar aturan "jangan retry otomatis" yang berlaku untuk generation.
+  let lastError;
+  let attempts = 0;
+  for (const temperature of [0.4, 0]) {
+    const res = await runPrediction(VISION_MODEL, { ...input, temperature }, VISION_POLL_MS);
+    attempts++;
+    try {
+      return { vision: extractJson(res.output), seconds: res.seconds, attempts };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  lastError.attempts = attempts;
+  throw lastError;
 }
 
 /**
@@ -169,67 +283,73 @@ export function validateVision(v, knownSpecies = []) {
 
 export function assemblePrompt(template, vision) {
   const bullets = (vision.signature_features ?? []).map((f) => `- ${f}`).join("\n");
+  const stats = vision.stats ?? {};
+  const dominantStat = Object.entries(stats).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const personalities = {
+    hp: "sturdy, calm, dependable, and hard to intimidate",
+    atk: "bold, fierce, confrontational, and eager to prove its strength",
+    def: "stoic, protective, stubborn, and quietly confident",
+    spd: "agile, impatient, competitive, and playfully restless",
+    special: "clever, strange, mischievous, and charged with hidden technical energy",
+  };
+  const personality = personalities[dominantStat] ?? "curious, expressive, and slightly mischievous";
+  const colors = (vision.dominant_colors ?? []).join(", ") || vision.color_bucket || "object-derived palette";
   const out = template
     .replaceAll("{{creature_brief}}", vision.creature_brief ?? "")
-    .replaceAll("{{signature_features_as_bullets}}", bullets);
+    .replaceAll("{{signature_features_as_bullets}}", bullets)
+    .replaceAll("{{object_name}}", vision.object_label ?? vision.species_key ?? "unknown object")
+    .replaceAll("{{color_palette}}", colors)
+    .replaceAll("{{personality}}", personality);
 
   const leftover = out.match(/\{\{[a-z_]+\}\}/g);
   if (leftover) throw new Error(`placeholder belum terisi: ${leftover.join(", ")}`);
   return out;
 }
 
-// ---------------------------------------------------------------- Replicate
+// ---------------------------------------------------------------- gambar
 
-async function callReplicate(prompt, photo) {
-  const token = process.env.REPLICATE_API_TOKEN;
-  if (!token) throw new Error("REPLICATE_API_TOKEN belum di-set (taruh di .env)");
-
-  const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
-
+async function callImageModel(prompt, photo) {
   // Di eval lokal, foto dikirim sebagai data URI karena tidak ada Storage.
   // Produksi memakai signed URL dari Supabase (lihat doc 01): payload jadi
   // kecil dan foto tidak ikut tercatat di log request yang besar.
-  const create = await fetch(`https://api.replicate.com/v1/models/${IMAGE_MODEL}/predictions`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      input: {
-        prompt,
-        image_input: [`data:${photo.mime};base64,${photo.base64}`],
-        aspect_ratio: "1:1",
-        resolution: "2K",
-        output_format: "png",
-        safety_filter_level: "block_only_high",
-        allow_fallback_model: false,
-      },
-    }),
-  });
+  const dataUri = `data:${photo.mime};base64,${photo.base64}`;
+  const input =
+    IMAGE_MODEL === "openai/gpt-image-2"
+      ? {
+          prompt,
+          input_images: [dataUri],
+          aspect_ratio: "1024x1024",
+          quality: IMAGE_QUALITY,
+          number_of_images: 1,
+          // Schema wrapper mencantumkan transparent, tetapi runtime model
+          // menolaknya dengan invalid_value. Chroma green tetap wajib.
+          background: "opaque",
+          output_format: "png",
+          output_compression: 100,
+          moderation: "auto",
+        }
+      : {
+          prompt,
+          image_input: [dataUri],
+          aspect_ratio: "1:1",
+          resolution: "2K",
+          output_format: "png",
+          safety_filter_level: "block_only_high",
+          allow_fallback_model: false,
+        };
+  const res = await runPrediction(IMAGE_MODEL, input);
 
-  if (!create.ok) throw new Error(`Replicate create ${create.status}: ${(await create.text()).slice(0, 500)}`);
-  let pred = await create.json();
-
-  const started = Date.now();
-  while (pred.status !== "succeeded" && pred.status !== "failed" && pred.status !== "canceled") {
-    if (Date.now() - started > POLL_TIMEOUT_MS) throw new Error(`timeout setelah ${POLL_TIMEOUT_MS / 1000}s`);
-    await sleep(POLL_INTERVAL_MS);
-    const poll = await fetch(`https://api.replicate.com/v1/predictions/${pred.id}`, { headers });
-    if (!poll.ok) throw new Error(`Replicate poll ${poll.status}`);
-    pred = await poll.json();
-  }
-
-  if (pred.status !== "succeeded") throw new Error(`prediksi ${pred.status}: ${pred.error ?? "tanpa pesan"}`);
-
-  // Skema output model ini satu string URI, bukan array.
-  const url = Array.isArray(pred.output) ? pred.output[0] : pred.output;
-  if (typeof url !== "string") throw new Error(`output tidak terduga: ${JSON.stringify(pred.output)}`);
+  // Skema output model ini satu string URI, bukan array potongan seperti Vision.
+  const url = Array.isArray(res.output) ? res.output[0] : res.output;
+  if (typeof url !== "string") throw new Error(`output tidak terduga: ${JSON.stringify(res.output)}`);
 
   const png = await fetch(url);
   if (!png.ok) throw new Error(`gagal mengunduh hasil: ${png.status}`);
 
   return {
     png: new Uint8Array(await png.arrayBuffer()),
-    seconds: Math.round((Date.now() - started) / 1000),
-    predictionId: pred.id,
+    seconds: res.seconds,
+    predictionId: res.id,
   };
 }
 
@@ -317,7 +437,8 @@ function contactSheetHtml(setName, promptVersion, rows, totals) {
 </style>
 <h1>Scanima eval — set ${esc(setName)}, prompt ${esc(promptVersion)}</h1>
 <div class="totals">
-  ${totals.generated} generation · biaya ~$${totals.costUsd.toFixed(2)} ·
+  ${totals.visionCalls} vision · ${totals.generated} generation ·
+  biaya ~$${totals.costUsd.toFixed(3)} ·
   gate benar ${totals.gateCorrect}/${totals.gateExpected} ·
   sel lengkap ${totals.fullSheets}/${totals.generated} ·
   ${esc(new Date().toISOString())}
@@ -334,13 +455,11 @@ async function main() {
 
   --set smoke|full        set foto (default: smoke)
   --photo <path>          jalankan satu foto saja
-  --prompt-version v1     versi prompt di backend/prompts/
+  --prompt-version v2     versi prompt di backend/prompts/ (default: v2)
   --dry-run               tidak memanggil API sama sekali
   --vision-only           panggil Vision saja, tanpa image generation`);
     return;
   }
-
-  loadEnv();
 
   const pdir = join(REPO, "backend/prompts", args.promptVersion);
   const [systemPrompt, schemaRaw, template] = await Promise.all([
@@ -373,14 +492,16 @@ async function main() {
     process.exit(1);
   }
 
-  const willGenerate = items.filter((it) => !it.expect_reject).length;
-  const estimate = willGenerate * COST_PER_IMAGE_USD;
+  const willGenerate = args.visionOnly ? 0 : items.filter((it) => !it.expect_reject).length;
+  const estimate = willGenerate * COST_PER_IMAGE_USD + items.length * COST_PER_VISION_USD;
 
   console.log(`set        : ${args.set ?? "single"} (${items.length} foto)`);
   console.log(`prompt     : ${args.promptVersion}`);
-  console.log(`vision     : ${VISION_MODEL}`);
+  console.log(`vision     : ${VISION_MODEL} (via Replicate)`);
   console.log(`image      : ${IMAGE_MODEL}`);
-  console.log(`perkiraan  : ${willGenerate} generation, ~$${estimate.toFixed(2)}`);
+  console.log(
+    `perkiraan  : ${items.length} vision + ${willGenerate} generation, ~$${estimate.toFixed(3)}`
+  );
   if (args.dryRun) console.log("mode       : DRY RUN, tidak ada API dipanggil");
   else if (args.visionOnly) console.log("mode       : VISION ONLY, tanpa image generation");
   console.log("");
@@ -404,7 +525,15 @@ async function main() {
 
   const rows = [];
   const knownSpecies = [];
-  const totals = { generated: 0, costUsd: 0, gateCorrect: 0, gateExpected: 0, fullSheets: 0 };
+  const totals = {
+    generated: 0,
+    visionCalls: 0,
+    visionRepaired: 0,
+    costUsd: 0,
+    gateCorrect: 0,
+    gateExpected: 0,
+    fullSheets: 0,
+  };
 
   for (const [i, item] of items.entries()) {
     const name = slug(item.file);
@@ -417,10 +546,29 @@ async function main() {
       await writeFile(join(outDir, `${name}.photo.jpg`), Buffer.from(photo.base64, "base64"));
 
       process.stdout.write(`${label} vision... `);
-      const raw = await callVision(photo, systemPrompt, schema);
-      const checked = validateVision(raw, knownSpecies);
+      let seen;
+      try {
+        seen = await callVision(photo, systemPrompt, schema);
+      } catch (err) {
+        // Panggilan yang berhasil tapi JSON-nya rusak tetap ditagih, jadi tetap
+        // dihitung. Gagal sebelum request terkirim (token hilang, HTTP error)
+        // tidak menetapkan attempts dan memang tidak ditagih.
+        totals.visionCalls += err.attempts ?? 0;
+        totals.costUsd += (err.attempts ?? 0) * COST_PER_VISION_USD;
+        throw err;
+      }
+      totals.visionCalls += seen.attempts;
+      totals.costUsd += seen.attempts * COST_PER_VISION_USD;
+      if (seen.attempts > 1) {
+        totals.visionRepaired++;
+        // Bukan fatal, tapi harus terlihat: kalau sering terjadi, prompt kontrak
+        // output-nya yang perlu diperbaiki, bukan parser-nya.
+        row.issues = ["JSON percobaan pertama rusak, diulang pada temperature 0"];
+      }
+
+      const checked = validateVision(seen.vision, knownSpecies);
       row.vision = checked.vision;
-      row.issues = checked.issues;
+      row.issues = [...(row.issues ?? []), ...checked.issues];
       await writeFile(join(outDir, `${name}.vision.json`), JSON.stringify(checked, null, 2));
 
       if (item.expect_reject) {
@@ -457,7 +605,7 @@ async function main() {
       await writeFile(join(outDir, `${name}.prompt.txt`), prompt);
 
       process.stdout.write(`${label} generate... `);
-      const gen = await callReplicate(prompt, photo);
+      const gen = await callImageModel(prompt, photo);
       totals.generated++;
       totals.costUsd += COST_PER_IMAGE_USD;
       row.seconds = gen.seconds;
@@ -499,8 +647,9 @@ async function main() {
   await writeFile(join(outDir, "index.html"), contactSheetHtml(args.set ?? "single", args.promptVersion, rows, totals));
 
   console.log(`\n${"-".repeat(58)}`);
+  console.log(`vision          : ${totals.visionCalls} panggilan, ${totals.visionRepaired} perlu diulang`);
   console.log(`generation      : ${totals.generated}`);
-  console.log(`biaya           : ~$${totals.costUsd.toFixed(2)}`);
+  console.log(`biaya           : ~$${totals.costUsd.toFixed(3)}`);
   console.log(`gate benar      : ${totals.gateCorrect}/${totals.gateExpected}`);
   console.log(`sheet 4/4 sel   : ${totals.fullSheets}/${totals.generated}`);
   console.log(`species unik    : ${unique.size} dari ${keys.length} foto`);
