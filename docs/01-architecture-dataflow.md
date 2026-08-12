@@ -585,11 +585,11 @@ Kunci cache-nya sengaja tidak terlalu longgar. `species_key` saja akan membuat s
 
 Ekspektasi awal 5-10 detik tidak realistis. Dua run nyata GPT Image 2 medium pada 12 Agustus 2026 selesai dalam **57 dan 63 detik**. Jadi desain UI harus menganggap sekitar satu menit; itu durasi di mana pemain bisa meninggalkan aplikasi, bukan menunggu sambil menatap layar. Quality high terukur ~153 detik dan karena itu tidak dipakai.
 
-Dua konsekuensi yang mengikat: incubator **wajib** bertahan melewati app-background dan proses yang dimatikan OS, jadi state-nya harus di server dan client hanya melakukan polling ulang saat kembali; dan notifikasi push saat selesai bukan lagi fitur tambahan yang manis, melainkan bagian dari alur utama.
+Dua konsekuensi yang mengikat: state generation **wajib** bertahan melewati app-background dan proses yang dimatikan OS, jadi sumber kebenarannya tetap di server dan client menyalakan kembali visual Incubator saat melanjutkan polling; dan notifikasi push saat selesai bukan lagi fitur tambahan yang manis, melainkan bagian dari alur utama.
 
 Selain lambat, generation tetap bisa **ditolak** oleh kapasitas atau moderation vendor. nano-banana-pro pernah memberi `ModelRateLimitError (E003)` berulang; pindah model mengurangi risiko spesifik itu tetapi tidak menghapus kebutuhan job persistence. Prediksi yang gagal biasanya tidak ditagih, tapi pemain **sudah** membayar Genesis Core-nya, jadi job wajib disimpan dan dicoba ulang belakangan, bukan hilang bersama request HTTP.
 
-Jadi jeda ini tidak boleh diperlakukan sebagai loading screen yang harus disembunyikan. Ia adalah **momen ritual**: telur yang berdenyut, retak sedikit demi sedikit. Kalau dirancang benar, pemain justru menikmati penantiannya.
+Jadi jeda ini tidak boleh berupa layar kosong atau spinner generik. Implementasi saat ini memakai **momen ritual**: telur energi procedural dengan orbit cyan-violet, scan line, spark emas, dan core yang berdenyut. Anima lama/foto diganti selama generation; saat siap, ring meledak menjadi flash dan Anima masuk lewat squash-and-stretch reveal.
 
 ### State machine
 
@@ -600,9 +600,9 @@ stateDiagram-v2
     Uploading --> Analyzing: upload selesai
     Analyzing --> Rejected: Vision gate menolak
     Analyzing --> Incubating: 202 diterima
-    Analyzing --> Hatching: 200 cache hit
+    Analyzing --> Revealed: 200 cache hit
     Incubating --> Hatching: status ready
-    Incubating --> Failed: gagal definitif / timeout 240 s
+    Incubating --> Failed: gagal definitif / timeout 180 s
     Hatching --> Revealed: animasi selesai
     Rejected --> Capturing: coba foto lain
     Failed --> Capturing: Core sudah direfund
@@ -613,23 +613,23 @@ Setiap state punya pasangan visual dan teks, karena diam tanpa penjelasan selama
 
 | State | Visual | Teks |
 | --- | --- | --- |
-| Uploading | Telur muncul, kamera menutup | "Mengirim jejak objek..." |
-| Analyzing | Telur berpendar, garis scan | "Membaca bentuk dan materialnya..." |
-| Incubating | Telur berdenyut, retakan bertambah seiring waktu | "Sesuatu bergerak di dalam..." |
-| Hatching | Retakan pecah, flash putih | "Menetas!" |
+| Uploading | Preview foto tetap terlihat | "Mengunggah foto…" |
+| Analyzing | Preview foto tetap terlihat | "Menganalisis foto… (belasan detik)" |
+| Incubating | Telur energi berdenyut, orbit + scanner + spark bergerak | "Menyintesis Anima… energi sedang dibentuk" |
+| Hatching | Ring membesar, flash putih, Anima bounce + squash/stretch | "Menetas!" |
 | Revealed | Anima muncul, kartu stat masuk | nama + elemen + rarity |
 
 Beberapa detail yang membuat ini terasa benar dan bukan cuma spinner:
 
-Progres retakan diikat ke **waktu berlalu**, bukan ke progres server yang sebenarnya, karena Replicate tidak memberi persentase. Kalau server selesai lebih cepat dari animasi, jangan potong animasinya di tengah — biarkan ia mencapai titik pecah terdekat lalu menetas. Cache hit yang balik dalam 1 detik justru harus **diperlambat** menjadi minimal 4 detik, kalau tidak momen dramatisnya hilang dan pemain merasa dicurangi.
+Tidak ada persentase atau progres retakan palsu karena Replicate tidak memberi progress fraction yang bermakna. Incubator loop sampai row menjadi `ready`, lalu `burst()` mengembalikan kontrol tepat di puncak flash agar `AnimaPresenter.hatch_reveal()` overlap dengan sisa shockwave. Cache hit bukan generation dan sengaja langsung reveal—menahannya empat detik hanya menambah latensi palsu pada jalur yang seharusnya menjadi hadiah dari cache.
 
-Kalau lewat 45 detik, ganti teks jadi sesuatu yang mengakui keterlambatan tanpa panik ("Anima ini keras kepala, sebentar lagi..."). Timeout keras di 120 detik memicu state Failed dengan refund otomatis.
+Timeout client saat ini 180 detik. Ia tidak mengubah status server menjadi gagal: pending scan tetap tersimpan, Incubator berhenti, Anima lama kembali, dan polling dilanjutkan saat app dibuka lagi. Gagal definitif dari server sudah merefund Core.
 
 Aplikasi masuk background bukan kasus tepi, itu perilaku normal orang menunggu. Jadi: catat `anima_id` yang sedang inkubasi di penyimpanan lokal, dan saat aplikasi kembali, lanjutkan polling dari mana pun ia berada. Push notification lokal saat status jadi `ready` dijadwalkan di Phase 3.
 
 ### Polling, bukan Realtime
 
-Godot melakukan `SELECT status` ke row miliknya sendiri setiap 2 detik, dengan backoff naik ke 8 detik setelah 30 detik pertama. Supabase Realtime lewat WebSocket lebih elegan tapi menambah dependensi dan penanganan reconnect di client untuk keuntungan yang tidak dirasakan pemain pada skala ini.
+Godot melakukan `SELECT status` ke row miliknya sendiri setiap 2 detik. Ini sengaja sederhana; komentar `ponytail:` di client menetapkan plafon sekitar 500 hatch bersamaan, dan upgrade ke Realtime baru dilakukan bila trafik nyata mendekatinya.
 
 Batas atas pendekatan ini kira-kira beberapa ratus hatch bersamaan sebelum beban query jadi terasa. Kalau kena, upgrade-nya jelas: pindah ke Realtime subscription pada tabel `animas`. Tandai di kode dengan komentar `ponytail:` yang menyebut plafon itu.
 

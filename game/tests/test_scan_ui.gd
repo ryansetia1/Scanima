@@ -73,8 +73,36 @@ func _initialize() -> void:
 	var inset_pos: Vector2 = script.stage_position_for(Vector2(720, 1280), Vector4(0, 80, 0, 120))
 	_check(inset_pos.y > 80.0 and inset_pos.y < 1160.0, "Stage harus berada di safe area")
 
+	var incubator := scene.find_child("Incubator", true, false) as Node2D
+	_check(incubator != null, "Stage wajib punya Incubator")
+	if incubator != null:
+		_check(not incubator.visible, "Incubator harus tersembunyi sebelum generation")
+
 	scene.free()
+	await _test_incubator_effect()
 	_finish()
+
+
+func _test_incubator_effect() -> void:
+	var effect := Node2D.new()
+	effect.set_script(load("res://scripts/incubator_effect.gd"))
+	root.add_child(effect)
+	await process_frame
+
+	effect.start()
+	_check(effect.visible, "start() harus menampilkan Incubator")
+	_check(effect.is_active(), "start() harus mengaktifkan loop Incubator")
+	await process_frame
+	effect.stop()
+	_check(not effect.visible, "stop() harus menyembunyikan Incubator saat scan gagal")
+	_check(not effect.is_active(), "stop() harus menghentikan loop Incubator")
+
+	effect.start()
+	await effect.burst()
+	_check(effect.visible, "burst() kembali saat flash masih terlihat")
+	await create_timer(0.45).timeout
+	_check(not effect.visible and not effect.is_active(), "burst selesai harus membersihkan Incubator")
+	effect.free()
 
 
 func _check_full_rect(node: Control, label: String) -> void:

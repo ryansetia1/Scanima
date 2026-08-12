@@ -116,3 +116,46 @@ func hop() -> void:
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(self, "position", _base_position, 0.22) \
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_BOUNCE)
+
+
+## Reveal satu kali setelah Incubator mencapai flash puncak. Pose tween dihentikan
+## dulu supaya dua tween tidak berebut scale/position, lalu dinyalakan lagi saat
+## squash-and-stretch selesai.
+func hatch_reveal() -> void:
+	if sprite_frames == null:
+		return
+	if _motion != null and _motion.is_valid():
+		_motion.kill()
+
+	visible = true
+	position = _base_position - Vector2(0.0, 46.0)
+	scale = Vector2(0.18, 1.24)
+	rotation = -0.10
+	modulate = Color(0.68, 1.18, 1.42, 0.0)
+
+	var reveal := create_tween().set_parallel(true)
+	reveal.tween_property(self, "modulate", Color.WHITE, 0.22) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	reveal.tween_property(self, "position", _base_position, 0.48) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BOUNCE)
+	reveal.tween_property(self, "scale", Vector2(1.16, 0.90), 0.40) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	reveal.tween_property(self, "rotation", 0.035, 0.36) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	await reveal.finished
+
+	var settle := create_tween()
+	settle.set_parallel(true)
+	settle.tween_property(self, "scale", Vector2(0.96, 1.08), 0.12) \
+		.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	settle.tween_property(self, "rotation", -0.018, 0.12)
+	await settle.finished
+
+	var finish := create_tween().set_parallel(true)
+	finish.tween_property(self, "scale", Vector2.ONE, 0.18) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	finish.tween_property(self, "rotation", 0.0, 0.18)
+	await finish.finished
+
+	modulate = Color.WHITE
+	_start_motion(_current_pose)

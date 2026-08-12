@@ -20,7 +20,7 @@ func _initialize() -> void:
 	_test_load_from_disk()
 	_test_rejects_bad_manifest()
 	_test_partial_poses()
-	_test_presenter()
+	await _test_presenter()
 	_test_real_sheet_if_given()
 
 	print("")
@@ -248,6 +248,12 @@ func _test_presenter() -> void:
 	# apply() dengan data gagal tidak boleh merusak Anima yang sedang tampil.
 	_check(not presenter.apply({"ok": false, "error": "uji"}), "apply data gagal harus mengembalikan false")
 	_check(presenter.sprite_frames != null, "frames lama harus tetap terpasang")
+
+	presenter.visible = false
+	await presenter.hatch_reveal()
+	_check(presenter.visible, "hatch reveal harus menampilkan Anima")
+	_check(presenter.scale.is_equal_approx(Vector2.ONE), "hatch reveal harus kembali ke skala pose")
+	_check_eq(presenter.current_pose(), "idle", "hatch reveal tidak boleh mengganti pose")
 
 	presenter.free()
 

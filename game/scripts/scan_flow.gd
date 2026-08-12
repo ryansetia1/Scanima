@@ -40,6 +40,7 @@ const THUMBNAIL_SIZE := 128
 const BASE_MARGIN := 32.0
 
 @onready var _stage: Node2D = %Stage
+@onready var _incubator: IncubatorEffect = %Incubator
 @onready var _anima: AnimaPresenter = %Anima
 @onready var _header: Label = %Header
 @onready var _status: Label = %Status
@@ -108,6 +109,11 @@ func _ready() -> void:
 			_on_collection_pressed()
 		if arg == "--stats":
 			_on_stats_pressed()
+		if arg == "--incubator":
+			_start_incubation()
+			_say("Menyintesis Anima… energi sedang dibentuk.")
+		if arg == "--hatch-demo":
+			await _run_hatch_demo()
 		if arg.begins_with("--screenshot="):
 			await _capture_and_quit(arg.trim_prefix("--screenshot="))
 
@@ -438,11 +444,16 @@ func _handle_create_result(res: Dictionary) -> void:
 # ---------------------------------------------------------------- inkubasi
 
 func _wait_for_hatch(anima_id: String) -> void:
-	_say("Menetaskan Anima… (sekitar satu menit)")
-	var deadline := Time.get_unix_time_from_system() + POLL_TIMEOUT_SEC
+	_start_incubation()
+	_say("Menyintesis Anima… energi sedang dibentuk (sekitar satu menit)")
+	var remaining_poll_sec := POLL_TIMEOUT_SEC
 
-	while Time.get_unix_time_from_system() < deadline:
+	# Hitung waktu polling aktif, bukan wall clock. SceneTreeTimer berhenti saat app
+	# di-background; waktu yang pemain habiskan di kamera/app lain tidak boleh
+	# langsung menghabiskan timeout begitu Scanima aktif lagi.
+	while remaining_poll_sec > 0.0:
 		await get_tree().create_timer(POLL_INTERVAL_SEC).timeout
+		remaining_poll_sec -= POLL_INTERVAL_SEC
 		var res := await Backend.fetch_anima(anima_id)
 		if not res.ok or typeof(res.data) != TYPE_ARRAY:
 			continue
@@ -500,6 +511,7 @@ func _present(
 			_restore_previous_anima()
 		return
 
+	var hatching := _incubator.is_active()
 	if not GameState.has_sprite(species_key, color_bucket, stage):
 		_say("Mengunduh art…")
 		if manifest.is_empty() or sheet_path.is_empty():
@@ -558,6 +570,14 @@ func _present(
 	# Fotonya sudah selesai tugasnya begitu Anima-nya ada; membiarkannya di layar
 	# hanya menutupi hasil yang justru ingin dilihat pemain.
 	_preview.visible = false
+	if hatching:
+		_say("Menetas!")
+		await _incubator.burst()
+		await _anima.hatch_reveal()
+	else:
+		_incubator.stop()
+		_anima.visible = true
+	_pose_row.visible = true
 	_say("%s siap." % (nickname if not nickname.is_empty() else species_key))
 
 
@@ -589,7 +609,7 @@ func _load_and_apply(species_key: String, color_bucket: String, stage: int) -> b
 		_say("Art tidak bisa dimuat: %s" % loaded.get("error", "?"))
 		return false
 	_anima.apply(loaded)
-	_anima.visible = true
+	_anima.visible = not _incubator.is_active()
 	_build_pose_buttons(loaded["poses"])
 	return true
 
@@ -765,9 +785,18 @@ func _show_preview(bytes: PackedByteArray, is_png: bool) -> void:
 	print("foto: %d x %d, %.0f KB" % [image.get_width(), image.get_height(), bytes.size() / 1024.0])
 
 
+func _start_incubation() -> void:
+	_preview.visible = false
+	_anima.visible = false
+	_pose_row.visible = false
+	_incubator.start()
+
+
 func _restore_previous_anima() -> void:
+	_incubator.stop()
 	_preview.visible = false
 	_anima.visible = _anima.sprite_frames != null
+	_pose_row.visible = _anima.sprite_frames != null
 
 
 func _say(text: String) -> void:
@@ -806,7 +835,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_close_collection()
 			get_viewport().set_input_as_handled()
 			return
-	if event is InputEventMouseButton and event.pressed and _anima.sprite_frames != null:
+	if not _busy and event is InputEventMouseButton and event.pressed and _anima.sprite_frames != null:
 		_anima.hop()
 
 
@@ -826,3 +855,18 @@ func _capture_and_quit(path: String) -> void:
 
 	print("screenshot: %s" % path)
 	get_tree().quit(0)
+
+
+func _run_hatch_demo() -> void:
+	if _anima.sprite_frames == null:
+		_say("Demo hatch butuh satu Anima yang sudah cached.")
+		return
+	_set_busy(true)
+	_start_incubation()
+	_say("Demo: menyintesis Anima…")
+	await get_tree().create_timer(1.8).timeout
+	await _incubator.burst()
+	await _anima.hatch_reveal()
+	_pose_row.visible = true
+	_set_busy(false)
+	_say("Demo hatch selesai.")

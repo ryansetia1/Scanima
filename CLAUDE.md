@@ -129,6 +129,8 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **Jangan mengukur konsistensi skala dari varians keempat pose.** Pose Sleep memang jauh lebih pendek daripada Idle, jadi metrik itu memberi alarm palsu terus-menerus. Bandingkan Idle vs Attack saja (`standing_height_variance`).
 - **Yang ditunggu pemain bukan cuma latensi model.** Terukur di produksi: `create_anima` balik **15 detik** di jalur Genesis (Vision ikut ditunggu di dalamnya, sebab hasilnya yang menentukan apakah kita berhak mendebit Core) dan **11 detik** di jalur cache hit. Jadi UI butuh dua status, bukan satu: belasan detik pertama tanpa apa pun di layar sudah terasa seperti macet, padahal Anima-nya belum tentu menetas sampai ~satu menit kemudian.
 - **Latensi GPT Image 2 medium terukur 57–63 detik** untuk dua sheet 1024×1024; desain incubator tetap harus menganggap sekitar satu menit dan tahan app masuk background. Quality high terukur ~153 detik dan tidak dipakai.
+- **Jeda Replicate memakai `IncubatorEffect`, bukan progress bar palsu.** Setelah `create_anima` mengonfirmasi Genesis, foto/Anima lama diganti telur energi procedural (ring cyan-violet, scan line, spark emas) selama polling. Cache hit mem-bypass inkubator dan langsung reveal. Resume pending scan menyalakannya lagi; gagal/timeout mematikannya dan mengembalikan Anima lama. Karena Replicate tidak memberi persentase yang bermakna, animasinya loop tanpa angka progres.
+- **Tween hatch dibagi menurut pemilik transform.** `IncubatorEffect.burst()` mengurus flash/ring, sedangkan `AnimaPresenter.hatch_reveal()` menghentikan tween pose, melakukan squash-and-stretch reveal, lalu menyalakan tween pose lagi. Jangan menganimasikan `Anima.scale/position` dari `scan_flow.gd`; dua tween yang menulis properti sama akan saling berebut dan membuat reveal acak.
 - **GPT Image 2 medium dipilih setelah perbandingan nyata.** Medium memakai 1.756 output token dan ~57–63 detik; high memakai 7.024 output token dan ~153 detik tanpa lompatan kualitas yang sebanding. Jangan naikkan quality diam-diam.
 - **nano-banana-pro tetap rollback/A-B saja** lewat `IMAGE_MODEL`; model itu pernah berulang kali memberi `ModelRateLimitError (E003)`. Kalau dipakai lagi, resolusi 1K dan 2K berharga sama sehingga minta `"2K"`.
 
@@ -141,7 +143,7 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 npm run selftest                       # 20 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 godot --headless --path game --script res://tests/test_client_state.gd  # sesi, kunci scan, cache art
-godot --headless --path game --script res://tests/test_scan_ui.gd       # 42 check layout mobile
+godot --headless --path game --script res://tests/test_scan_ui.gd       # 50 check layout + incubator
 node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
 
 # setelah mengubah prompt: regenerasi bundel yang dipakai Edge Function
@@ -165,6 +167,10 @@ godot --headless --path game --import  # rebuild cache class, cek parse error
 # dengan biaya nol. Tanpa ini satu-satunya cara melihatnya adalah membayar scan.
 godot --path game -- --preview=$PWD/eval/photos/sepatu.jpg \
     --screenshot=/tmp/scan.png
+
+# preview gratis loading Genesis; tidak memanggil API
+godot --path game -- --incubator --screenshot=/tmp/incubator.png
+godot --path game -- --hatch-demo  # mainkan loading + reveal sekali, gratis
 
 # alat periksa art, sekarang harus ditunjuk eksplisit karena main scene bukan demo
 godot --path game res://scenes/anima_demo.tscn        # sheet placeholder

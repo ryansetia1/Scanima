@@ -37,7 +37,9 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 **Sisi client sudah menyusul, dan sudah dijalankan sungguhan terhadap produksi.** Godot kini punya dua autoload — `GameState` (pemilik satu-satunya `user://state.json`) dan `Backend` (transport ke auth, REST, Storage, dan Edge Function) — plus scene `scan_flow` yang menjadi entry point: sign-in anonim, pilih foto, unggah ke bucket sendiri, `create_anima`, Incubator, lalu Anima hidup di layar. Uji headless `live_scan.gd` menjalankan rantai itu terhadap produksi dengan biaya ~$0.003: `create_anima` balik **11–16 detik**, sheet ~1 MB terunduh dari CDN, `AnimaLoader` menerimanya dengan keempat pose, dan saldo berkurang tepat satu Scan Charge tanpa menyentuh Genesis Core. Screenshot layarnya menunjukkan saldo dari server, Anima dari cache lokal, dan tombol pose yang dibangun dari manifest.
 
-**Koleksi dan Stats sekarang ada di vertical slice.** Setelah sesi siap, client membaca semua Anima `ready` milik pemain dari Postgres melalui RLS dan menampilkannya dalam modal `ItemList` dua kolom; roster tidak disalin ke disk. Kartu memakai thumbnail idle 128px bila sheet sudah lokal dan placeholder bila belum, sehingga membuka Koleksi tidak mengunduh puluhan sheet 1 MB. Stats menampilkan HP, ATK, DEF, SPD, SPECIAL, element, rarity, dan stage dari row server yang sama. Theme mobile memakai body/button 32px dan target sentuh minimum 96px pada canvas 720×1280 (ekuivalen sekitar 48dp); Stage mengikuti viewport dan margin menghormati safe area fisik Android/iOS setelah dikonversi ke koordinat viewport. `test_scan_ui.gd` menjaga 42 kontrak layout tanpa jaringan.
+**Jeda generation sekarang punya inkubator yang benar-benar hidup.** Setelah Genesis dimulai, foto atau Anima lama diganti telur energi procedural dengan orbit cyan-violet, scanner, spark emas, dan core yang berdenyut—tanpa asset tambahan. Ia tetap berjalan selama polling Replicate, termasuk saat pending scan dilanjutkan setelah restart. Saat webhook selesai, ring meledak menjadi flash lalu Anima muncul dengan bounce, squash-and-stretch, dan settle; kegagalan/timeout mengembalikan Anima lama. Cache hit tetap instan dan tidak memalsukan proses hatch.
+
+**Koleksi dan Stats sekarang ada di vertical slice.** Setelah sesi siap, client membaca semua Anima `ready` milik pemain dari Postgres melalui RLS dan menampilkannya dalam modal `ItemList` dua kolom; roster tidak disalin ke disk. Kartu memakai thumbnail idle 128px bila sheet sudah lokal dan placeholder bila belum, sehingga membuka Koleksi tidak mengunduh puluhan sheet 1 MB. Stats menampilkan HP, ATK, DEF, SPD, SPECIAL, element, rarity, dan stage dari row server yang sama. Theme mobile memakai body/button 32px dan target sentuh minimum 96px pada canvas 720×1280 (ekuivalen sekitar 48dp); Stage mengikuti viewport dan margin menghormati safe area fisik Android/iOS setelah dikonversi ke koordinat viewport. `test_scan_ui.gd` menjaga 50 kontrak layout dan inkubator tanpa jaringan.
 
 Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan terlihat seperti pemulihan sementara seluruh Anima pemain tertinggal di akun yang tidak bisa dijangkau lagi, dan pemain anonim tidak punya email untuk kembali. Kedua, **kunci idempotency dibuat sekali per scan dan bertahan di disk**, sehingga app yang mati di tengah scan melanjutkan scan yang sama alih-alih membayar Core kedua. Keduanya dijaga oleh 34 check di `test_client_state.gd`, yang juga membuktikan cache art setengah terunduh dibaca sebagai tidak ada, bukan dimuat dan gagal di tengah.
 
@@ -141,6 +143,7 @@ scanima/
 │   │   ├── game_state.gd         # autoload: sesi, scan tertunda, cache art
 │   │   ├── backend.gd            # autoload: auth, REST, Storage, functions
 │   │   ├── scan_flow.gd          # alur scan dan dua status penantian
+│   │   ├── incubator_effect.gd   # telur energi procedural + burst
 │   │   ├── anima_loader.gd       # manifest + PNG -> SpriteFrames
 │   │   ├── anima_presenter.gd    # pose + gerak prosedural via Tween
 │   │   ├── placeholder_sheet.gd  # sheet buatan, untuk demo & test
@@ -150,7 +153,7 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 42 kontrak anchor + target sentuh
+│       ├── test_scan_ui.gd           # 50 kontrak layout + inkubator
 │       └── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 ├── backend/
 │   ├── prompts/v1/               # baseline nano-banana-pro, tidak diubah
