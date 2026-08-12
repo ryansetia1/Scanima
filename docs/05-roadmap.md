@@ -103,13 +103,17 @@ Uji live itu menemukan satu hal yang tidak akan pernah ditemukan oleh test berba
 
 Dua invarian client yang dijaga oleh `tests/test_client_state.gd` (34 check, tanpa jaringan): kunci idempotency bertahan di disk sehingga app yang mati di tengah scan melanjutkan scan yang sama alih-alih membayar Core kedua, dan refresh token yang ditolak tidak pernah dijawab dengan sign-in anonim baru, sebab itu akan meninggalkan seluruh koleksi pemain di akun yang tidak bisa dijangkau lagi.
 
-Dengan itu, enam dari exit criteria fase ini sudah terbukti. Yang belum: loop perawatan, dan kamera — Godot 4 tidak punya API kamera untuk Android, jadi `scan_flow` sementara memakai `FileDialog`. Itu tidak menghambat jalur mana pun, sebab `create_anima` tidak peduli foto datang dari mana.
+**Kamera sudah masuk, dan catatan lama yang bilang ia terhalang itu keliru.** `CameraServer` sudah mendukung Android sejak setelah 4.4, tapi yang dipakai plugin `GodotGetImage` (fork PhotoPicker) — sebab `CameraFeed` memberi feed hidup, sementara yang dibutuhkan satu jepretan dari aplikasi kamera sistem, lengkap dengan fokus dan kualitas OEM. Fork-nya dipilih karena manifest upstream menyuntikkan `READ_MEDIA_IMAGES` ke APK walau galeri tidak pernah dipanggil, dan Play menolak izin itu untuk pilih-satu-foto. Galeri sendiri sengaja tidak dipakai: fiksinya memfoto benda di depanmu, dan galeri membuka pintu untuk memindai gambar unduhan yang justru harus ditahan gate.
+
+Resize di device ikut sekarang, dan angkanya tidak dipilih bebas — 1280 px sama dengan foto terbesar di `eval/photos/`, sehingga produksi memberi Vision gambar yang persis di dalam amplop yang sudah divalidasi Smoke Set. Skenario 18 di `npm run selftest` menegakkan batas itu gratis, sebab `species_key` yang bergeser memecah dedup cache dan mengubah scan gratis menjadi $0.07. Jalur desktop lewat `FileDialog` tetap tinggal: ia yang membuat seluruh alur bisa diperiksa di laptop tanpa perangkat Android.
+
+Dengan itu, tujuh dari exit criteria fase ini sudah terbukti. Yang belum: loop perawatan, dan satu pemeriksaan yang tidak bisa dijalankan headless — kamera harus dicoba di perangkat sungguhan, dengan foto benda yang spesiesnya sudah ada di `species_library` supaya jalurnya cache hit (~$0.003, bukan $0.07).
 
 Lalu Edge Functions: `create_anima` dan `replicate_webhook`, dengan post-processing dari Phase 1 dipakai apa adanya di Deno lewat satu modul bersama. Unggah foto tidak dapat endpoint sendiri — policy Storage per-folder sudah menjadi pagarnya, jadi menulis penerbit signed URL berarti menulis ulang sesuatu yang sudah ada.
 
 Autentikasi memakai anonymous sign-in Supabase. Tidak ada layar login di awal permainan; pemain baru langsung memfoto sesuatu. Upgrade ke akun ber-email ditawarkan nanti saat mereka punya sesuatu yang layak diselamatkan, dan pembingkaiannya soal tidak kehilangan koleksi, bukan soal mendaftar.
 
-Sisi Godot: `AnimaLoader` lengkap dengan cache dan LRU, state machine Incubator dari [01](01-architecture-dataflow.md) beserta polling dan penanganan aplikasi masuk background, integrasi kamera lewat plugin Android, dan resize foto di device sebelum upload.
+Sisi Godot: `AnimaLoader` lengkap dengan cache dan LRU, serta state machine Incubator dari [01](01-architecture-dataflow.md) beserta polling dan penanganan aplikasi masuk background. Integrasi kamera dan resize foto di device sudah selesai lebih awal, di Phase 2.
 
 Lalu loop perawatan: empat kebutuhan, `apply_decay` yang dihitung saat dibuka, aksi beri makan / bersihkan / tidurkan / main, `care_score`, state Dormant. Dan pembagian **Discovery Scan versus Genesis** dari [04](04-game-systems-economy.md), yang merupakan inti kontrol biaya dan harus ada sejak fase ini, bukan ditambahkan belakangan.
 

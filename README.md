@@ -37,6 +37,8 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan terlihat seperti pemulihan sementara seluruh Anima pemain tertinggal di akun yang tidak bisa dijangkau lagi, dan pemain anonim tidak punya email untuk kembali. Kedua, **kunci idempotency dibuat sekali per scan dan bertahan di disk**, sehingga app yang mati di tengah scan melanjutkan scan yang sama alih-alih membayar Core kedua. Keduanya dijaga oleh 34 check di `test_client_state.gd`, yang juga membuktikan cache art setengah terunduh dibaca sebagai tidak ada, bukan dimuat dan gagal di tengah.
 
+**Kamera sudah terpasang lewat plugin, bukan lewat `CameraServer`.** `CameraServer` memang mendukung Android sejak setelah 4.4, tapi ia memberi feed hidup sementara yang dibutuhkan satu jepretan — jadi memakainya berarti membangun sendiri fokus, eksposur, dan tombol jepret yang sudah gratis dari aplikasi kamera OEM. Yang dipakai [`GodotGetImage` fork PhotoPicker](https://github.com/cenullum/GodotGetImagePlugin-Android-PhotoPicker), prebuilt untuk 4.6.2, dan fork-nya dipilih karena manifest upstream menyuntikkan `READ_MEDIA_IMAGES` ke APK walau galeri tidak pernah dipanggil — izin yang ditolak Play untuk keperluan pilih-satu-foto. Galeri sengaja tidak dipakai: fiksinya memfoto benda di depanmu, dan galeri membuka pintu memindai gambar unduhan yang justru harus ditahan gate. Foto dikecilkan ke 1280 px di device sebelum diunggah, dan angka itu sama dengan foto terbesar di `eval/photos/` supaya input produksi tidak keluar dari amplop yang sudah divalidasi Smoke Set — dijaga gratis oleh skenario 18. Jalur `FileDialog` di desktop tetap ada, karena itu yang membuat seluruh alur bisa diperiksa tanpa perangkat Android.
+
 | Phase | Isi | Status |
 | --- | --- | --- |
 | 0 | Arsitektur, prompt spec, desain sistem | Selesai |
@@ -49,7 +51,7 @@ Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 19 skenario + 12 uji tanda tangan webhook, tanpa API
+npm run selftest                 # 20 skenario + 12 uji tanda tangan webhook, tanpa API
 
 # Godot: 72 pemeriksaan slicing sprite, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
@@ -125,6 +127,7 @@ Satu Anima = satu panggilan image generation = **~$0.07** pada GPT Image 2 mediu
 ```
 scanima/
 ├── game/                         # Godot 4.6 project
+│   ├── addons/GodotGetImage/     # kamera Android, prebuilt 4.6.2, .aar ikut commit
 │   ├── scenes/
 │   │   ├── scan_flow.tscn        # entry point: scan -> Incubator -> Anima
 │   │   └── anima_demo.tscn       # alat periksa art, dipanggil eksplisit

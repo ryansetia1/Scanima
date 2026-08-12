@@ -40,6 +40,17 @@ layout_mode = 2
 text = "Scanima"
 horizontal_alignment = 1
 
+; Foto yang akan dipindai, ditampilkan sebelum Scan Charge terpakai. Bukan hanya
+; kenyamanan: auto_rotate_image di plugin mengaku "tidak 100%", dan foto miring
+; menurunkan kualitas Vision tanpa jejak di log mana pun.
+[node name="PhotoPreview" type="TextureRect" parent="UI/Margin/Column"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
 [node name="Spacer" type="Control" parent="UI/Margin/Column"]
 layout_mode = 2
 size_flags_vertical = 3

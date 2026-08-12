@@ -88,7 +88,13 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **Refresh token yang ditolak tidak boleh dijawab dengan sign-in anonim baru.** Ini terlihat seperti pemulihan yang sopan — app kembali jalan, pemain bisa main lagi — padahal seluruh Anima-nya tertinggal di akun yang tidak bisa dijangkau lagi, dan tidak ada email atau password untuk kembali ke sana. `Backend.refresh_session()` mengembalikan galat dan berhenti; scene menampilkannya sebagai kegagalan jaringan. Gagal yang kelihatan jauh lebih murah daripada kehilangan data yang tidak kelihatan.
 - **Node autoload SUDAH ada dalam mode `--script`, tetapi nama globalnya belum.** Menulis `GameState` di skrip yang dijalankan `--script` gagal saat kompilasi dengan `Identifier not found`, sebab skrip itu dikompilasi sebelum autoload terdaftar sebagai global — sementara node-nya sendiri terpasang di bawah root dan bisa diambil dengan `get_root().get_node("GameState")`. Itu yang dipakai `tests/test_client_state.gd` dan `tests/live_scan.gd`. Konstanta dan fungsi statis diambil dari `get_script()`, bukan dari instance-nya.
 - **Skrip `--script` jalan lebih awal daripada saat node autoload benar-benar masuk tree.** `HTTPRequest` yang ditambahkan di titik itu menolak dengan `ERR_UNCONFIGURED` (`Condition "!is_inside_tree()" is true`). Satu `await process_frame` di awal harness menyelesaikannya; scene sungguhan tidak pernah kena karena `_ready()` jalan setelah tree berdiri.
-- **Godot 4 tidak punya API kamera untuk Android.** `CameraServer` tidak menutup platform itu, jadi ambil-foto-dari-kamera butuh plugin. `scan_flow` sementara memakai `FileDialog`, dan itu tidak menghambat apa pun: `create_anima` tidak peduli foto datang dari mana, jadi seluruh jalur sesudahnya sudah final. Upgrade cukup mengganti `_on_pick_pressed`.
+- **`CameraServer` SUDAH mendukung Android sejak setelah 4.4, dan tetap bukan yang dipakai.** Catatan lama di file ini salah; dokumentasi stable kini menyebut `CameraFeed` terimplementasi di Linux, Android, macOS, dan iOS. Alasan tidak memakainya bukan ketiadaan API: ia memberi feed hidup, sementara yang dibutuhkan satu jepretan, jadi memakainya berarti membangun sendiri UI fokus, eksposur, dan tombol jepret yang sudah gratis dari aplikasi kamera OEM — dengan frame preview yang resolusinya di bawah kamera still-nya. Ia juga masih berdarah: PR #110720 baru memperbaiki stride `YUV_420_888` yang mengacaukan gambar di perangkat dengan padding, dan issue #114468 mencatat pergantian feed rusak sejak fitur ini lahir.
+- **Kamera lewat `addons/GodotGetImage` ([fork PhotoPicker](https://github.com/cenullum/GodotGetImagePlugin-Android-PhotoPicker)), dan `.aar`-nya ikut di-commit.** Fork, bukan upstream, karena manifest upstream menyuntikkan `READ_MEDIA_IMAGES` ke APK **walau `getGalleryImage()` tidak pernah dipanggil** — Godot menggabungkan manifest plugin saat export — dan Play menolak izin itu untuk keperluan pilih-satu-foto. Manifest fork sudah diperiksa: hanya `CAMERA`, `minSdkVersion` 21, kamera ditandai opsional. Arsipnya 27 KB dan prebuilt untuk 4.6.2 persis, jadi tidak ada langkah Gradle; ia di-commit supaya build tetap reproducible kalau repo pihak ketiganya hilang. Plafonnya: `.aar` terikat versi Godot, jadi naik versi engine berarti menunggu atau membangun ulang arsip yang cocok.
+- **`resendPermission()` ada di README plugin tapi `private` di `.aar` yang dirilis.** Memanggilnya dari GDScript gagal saat runtime. Terverifikasi lewat `javap` pada `classes.jar`: yang publik hanya `setOptions`, `getGalleryImage`, `getGalleryImages`, `hasCamera`, `getCameraImage`. Pemulihan setelah izin ditolak adalah memanggil `getCameraImage()` lagi — permintaan izinnya menempel di sana — jadi UI harus menyuruh pemain menekan tombolnya sekali lagi, bukan memanggil metode yang tidak ada.
+- **Ketiga signal plugin membawa argumen, termasuk yang izin.** Dari bytecode `getPluginSignals()`: `image_request_completed(Dictionary)`, `error(String)`, dan `permission_not_granted_by_user(String)` — yang terakhir tidak terbaca demikian dari README. Arity yang salah membuat `connect` gagal dan handler-nya tidak pernah terpanggil, tanpa galat yang jelas.
+- **Tombol foto TIDAK dikunci saat kamera terbuka.** Kamera itu Activity terpisah dan pembatalan tidak memancarkan signal apa pun, jadi kunci yang dipasang saat permintaan dikirim akan mati selamanya bagi pemain yang berubah pikiran. Kuncinya dipasang di `_scan_bytes`, saat byte-nya sudah ada.
+- **`FOTO_MAX_PX` di `scan_flow.gd` bukan angka bebas: ia sengaja sama dengan foto terbesar di `eval/photos/` (1280 px).** Menaikkannya berarti produksi memberi Vision gambar yang lebih besar daripada apa pun yang pernah diuji Smoke Set, dan yang bergeser bukan cuma stat — `species_key` yang berubah memecah dedup cache, jadi scan yang seharusnya gratis membayar $0.07. Skenario 18 di `npm run selftest` menegakkan batas itu secara gratis. Naikkan hanya bersamaan dengan eval ulang.
+- **Plugin men-decode lalu meng-encode ulang fotonya**, jadi EXIF ikut hilang — termasuk koordinat GPS. Rotasi dibakar ke piksel lewat `rotateImageIfRequired`, bukan ditinggalkan sebagai tag. Konsekuensi baiknya: server tidak pernah menerima lokasi pemain. Konsekuensi lainnya: `auto_rotate_image` mengaku sendiri "tidak 100%", jadi `scan_flow` menampilkan preview foto plus mencetak dimensinya — potret yang keluar sebagai lanskap adalah satu-satunya gejala yang terlihat sebelum ia menjelma jadi stat yang aneh.
 - **Balasan biner tidak boleh dikonversi ke String untuk dicoba jadi JSON.** Sheet 1 MB dari CDN yang dipaksa lewat `get_string_from_utf8()` memberi `Unicode parsing error` plus galat parser JSON di log setiap unduhan, dan menyalin satu megabyte tanpa guna, padahal pemanggilnya memakai `bytes`. `Backend._maybe_json()` memeriksa byte pertama dulu.
 - **Terukur dari client sungguhan (headless, jalur cache hit):** `create_anima` balik 11–16 detik, dan seluruh rantai sampai `AnimaLoader` menerima art 14–19 detik termasuk unduh sheet ~1 MB dari CDN. Konsisten dengan 15 detik yang terukur di sisi server, jadi jaringan client bukan biaya tambahan yang berarti — yang panjang tetap Vision di dalam `create_anima`.
 
@@ -118,7 +124,7 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 19 skenario + 12 uji tanda tangan webhook
+npm run selftest                       # 20 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 godot --headless --path game --script res://tests/test_client_state.gd  # sesi, kunci scan, cache art
 node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
@@ -140,6 +146,11 @@ godot --path game                      # scan_flow: sesi, saldo, Anima dari cach
 godot --path game -- --screenshot=/tmp/scan.png       # periksa layar tanpa editor
 godot --headless --path game --import  # rebuild cache class, cek parse error
 
+# band preview foto tanpa memindai apa pun, jadi tata letaknya bisa diperiksa
+# dengan biaya nol. Tanpa ini satu-satunya cara melihatnya adalah membayar scan.
+godot --path game -- --preview=$PWD/eval/photos/sepatu.jpg \
+    --screenshot=/tmp/scan.png
+
 # alat periksa art, sekarang harus ditunjuk eksplisit karena main scene bukan demo
 godot --path game res://scenes/anima_demo.tscn        # sheet placeholder
 godot --path game res://scenes/anima_demo.tscn \
@@ -151,6 +162,21 @@ godot --path game res://scenes/anima_demo.tscn \
 # sengaja dipertahankan supaya jalan berikutnya memakai pemain uji yang sama.
 godot --headless --path game --script res://tests/live_scan.gd \
     -- --photo=$PWD/eval/photos/mug-putih.jpg
+
+# Android. Dua langkah pertama HARUS lewat editor, tidak ada padanan CLI-nya:
+#   Project > Install Android Build Template
+#   Project > Export > Add Android, lalu isi debug keystore
+# Jangan menambahkan izin storage apa pun di preset — CAMERA sudah datang dari
+# manifest plugin, dan izin galeri adalah yang membuat Play menolak. Preset dan
+# game/android/ di-gitignore karena keduanya memuat jalur keystore.
+godot --headless --path game --export-debug Android /tmp/scanima.apk
+
+# Uji kamera di perangkat sungguhan. Tidak ada versi headless-nya: satu-satunya
+# hal di client yang tidak dijaga npm run selftest. Foto benda yang spesiesnya
+# SUDAH ada di species_library supaya jalurnya cache hit (~$0.003, bukan $0.07).
+# Yang dibuktikan: izin diminta sekali dan pemulihannya jalan, dimensi di log
+# menunjukkan <=1280 px dengan orientasi benar, dan Anima-nya tampil.
+adb install -r /tmp/scanima.apk && adb logcat -s godot:V
 
 # eval prompt, BERBIAYA
 node eval/run.mjs --set smoke --vision-only  # gate + stat saja, ~$0.015

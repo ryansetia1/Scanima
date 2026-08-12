@@ -20,6 +20,15 @@ config/features=PackedStringArray("4.6", "Mobile")
 GameState="*res://scripts/game_state.gd"
 Backend="*res://scripts/backend.gd"
 
+[editor_plugins]
+
+; Kamera Android. Plugin, bukan CameraServer: CameraServer memberi feed hidup,
+; sementara yang dibutuhkan di sini satu jepretan dari aplikasi kamera sistem
+; supaya fokus dan kualitasnya datang dari OEM. Fork PhotoPicker dipakai karena
+; manifest upstream menyuntikkan READ_MEDIA_IMAGES ke APK walau galeri tidak
+; pernah dipanggil, dan Play menolak izin itu untuk pilih-satu-foto.
+enabled=PackedStringArray("res://addons/GodotGetImage/plugin.cfg")
+
 [display]
 
 window/size/viewport_width=720

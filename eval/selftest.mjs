@@ -588,6 +588,36 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
   assert.ok(bundel.v3?.vision_schema?.properties?.species_key, "v3 vision_schema terparse");
 }
 
+console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
+{
+  // scan_flow.gd mengecilkan foto kamera sebelum diunggah. Kalau angkanya naik
+  // di atas foto terbesar di eval/photos/, produksi memberi Vision gambar yang
+  // belum pernah diuji — dan yang bisa bergeser bukan cuma stat: species_key
+  // yang berubah memecah dedup cache, sehingga scan yang seharusnya gratis
+  // membayar $0.07. Konstanta di GDScript dan foto uji di Node tidak punya
+  // tempat lain untuk bertemu selain di sini.
+  const { readFile, readdir } = await import("node:fs/promises");
+  const gd = await readFile(new URL("../game/scripts/scan_flow.gd", import.meta.url), "utf8");
+  const cocok = gd.match(/const FOTO_MAX_PX\s*:?=\s*(\d+)/);
+  assert.ok(cocok, "FOTO_MAX_PX tidak ditemukan di scan_flow.gd");
+  const maxPx = Number(cocok[1]);
+
+  const dir = new URL("./photos/", import.meta.url);
+  const fotos = (await readdir(dir)).filter((f) => /\.(jpe?g|png)$/i.test(f));
+  assert.ok(fotos.length > 0, "eval/photos/ kosong, tidak ada yang bisa dibandingkan");
+
+  let terbesar = 0;
+  for (const f of fotos) {
+    const img = await Image.decode(await readFile(new URL(f, dir)));
+    terbesar = Math.max(terbesar, img.width, img.height);
+  }
+  assert.ok(
+    maxPx <= terbesar,
+    `FOTO_MAX_PX=${maxPx} melampaui foto eval terbesar (${terbesar} px). Turunkan ` +
+      "konstantanya, atau jalankan ulang Smoke Set dengan foto seukuran itu dulu."
+  );
+}
+
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang
 // menutup kontrak antara Node dan Godot tanpa memanggil API berbayar:
 //

@@ -9,11 +9,17 @@ extends Node2D
 ## gambarnya sendiri baru selesai sekitar satu menit kemudian lewat webhook.
 ## Kalau spesiesnya sudah ada di pustaka, fase kedua tidak ada sama sekali.
 ##
-## ponytail: foto diambil lewat FileDialog, bukan kamera. Godot 4 tidak punya API
-## kamera untuk Android, jadi kamera butuh plugin. Plafonnya jelas — ini tidak
-## bisa dipakai pemain sungguhan di HP — tapi create_anima tidak peduli foto
-## datang dari mana, jadi seluruh jalur di bawah ini tetap yang final. Upgrade:
-## ganti _on_pick_pressed dengan plugin image picker, sisanya tidak berubah.
+## Foto datang dari kamera lewat plugin GodotGetImage di Android, dan dari
+## FileDialog di desktop. Dua jalur, satu tujuan: keduanya berakhir di
+## _scan_bytes(), sebab create_anima tidak peduli fotonya dari mana. Jalur
+## desktop bukan sisa yang belum dibersihkan — ia yang membuat alur ini bisa
+## diperiksa di laptop tanpa perangkat Android.
+##
+## ponytail: hanya kamera, galeri tidak dipakai walau plugin mendukungnya.
+## Fiksinya memfoto benda di depanmu, dan galeri membuka pintu untuk memindai
+## gambar unduhan — karakter berhak cipta, foto orang, logo merek — yang persis
+## kategori yang harus ditahan gate. Plafonnya: pemain tidak bisa memakai foto
+## kemarin. Upgrade satu baris, panggil getGalleryImage() yang sudah ada.
 
 ## ponytail: polling 2 detik, bukan Realtime. Plafon ~500 hatch bersamaan;
 ## upgrade ke Supabase Realtime kalau kena.
@@ -21,19 +27,33 @@ const POLL_INTERVAL_SEC := 2.0
 const POLL_TIMEOUT_SEC := 180.0
 const MAX_FOTO_BYTE := 6 * 1024 * 1024
 
+## 1280 px bukan angka pilihan bebas: seluruh foto di eval/photos/ berada di atau
+## di bawah ukuran itu, jadi Smoke Set sudah membuktikan gate dan pemetaan stat
+## pada resolusi ini. Menaikkannya berarti produksi memberi Vision gambar yang
+## lebih besar daripada apa pun yang pernah diuji, dan yang bisa bergeser bukan
+## cuma stat — kalau species_key berubah, dedup cache pecah dan scan yang
+## seharusnya gratis membayar $0.07. Naikkan hanya bersama eval ulang.
+const FOTO_MAX_PX := 1280
+const FOTO_QUALITY := 85
+
 @onready var _anima: AnimaPresenter = %Anima
 @onready var _header: Label = %Header
 @onready var _status: Label = %Status
 @onready var _scan_button: Button = %ScanButton
 @onready var _pose_row: HBoxContainer = %PoseRow
 @onready var _dialog: FileDialog = %PhotoDialog
+@onready var _preview: TextureRect = %PhotoPreview
 
 var _busy := false
+
+## Singleton plugin Android, null di desktop dan di test headless.
+var _picker: Object = null
 
 
 func _ready() -> void:
 	_scan_button.pressed.connect(_on_pick_pressed)
-	_dialog.file_selected.connect(_scan)
+	_dialog.file_selected.connect(_scan_file)
+	_setup_picker()
 	_show_cached_anima()
 	await _boot()
 
@@ -41,7 +61,15 @@ func _ready() -> void:
 	#   godot --path game -- --screenshot=/tmp/scan.png
 	# Test bisa membuktikan region sprite benar, tapi tidak bisa membuktikan
 	# tombolnya masih di dalam layar.
+	#
+	# --preview= memasang foto ke band preview tanpa memindainya. Tanpa ini,
+	# satu-satunya cara melihat band itu adalah membelanjakan Scan Charge, jadi
+	# perubahan tata letak berikutnya akan diperiksa dengan mata atau tidak
+	# diperiksa sama sekali. Di build Android argumen ini tidak pernah ada.
 	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--preview="):
+			var jalur := arg.trim_prefix("--preview=")
+			_show_preview(FileAccess.get_file_as_bytes(jalur), jalur.get_extension().to_lower() == "png")
 		if arg.begins_with("--screenshot="):
 			await _capture_and_quit(arg.trim_prefix("--screenshot="))
 
@@ -100,24 +128,95 @@ func _resume_without_anima() -> void:
 	_set_busy(false)
 
 
-# ---------------------------------------------------------------- scan
+# ---------------------------------------------------------------- ambil foto
+
+func _setup_picker() -> void:
+	if not Engine.has_singleton("GodotGetImage"):
+		return
+	_picker = Engine.get_singleton("GodotGetImage")
+
+	# Dipasang sebelum permintaan pertama, bukan sesudahnya: plugin men-decode
+	# bitmap berukuran tak diketahui, dan opsi inilah yang menahannya dari
+	# kehabisan memori pada foto 12 MP. Resize juga memotong unggahan dari
+	# megabyte ke ratusan kilobyte — itu kuota data pemain, bukan cuma waktu.
+	_picker.setOptions({
+		"image_width": FOTO_MAX_PX,
+		"image_height": FOTO_MAX_PX,
+		"keep_aspect": true,
+		"image_quality": FOTO_QUALITY,
+		"image_format": "jpg",
+		"auto_rotate_image": true,
+	})
+
+	# Bentuk string, bukan _picker.image_request_completed: signal-nya didaftarkan
+	# saat runtime oleh plugin, jadi tidak ada properti untuk di-resolve saat
+	# kompilasi. Ketiganya membawa argumen, termasuk yang izin — arity yang salah
+	# membuat connect gagal dan handler-nya tidak pernah dipanggil.
+	_picker.connect("image_request_completed", _on_photo_taken)
+	_picker.connect("permission_not_granted_by_user", _on_camera_denied)
+	_picker.connect("error", _on_picker_error)
+	_scan_button.text = "Foto Benda"
+
 
 func _on_pick_pressed() -> void:
 	if _busy:
 		return
-	_dialog.popup_centered_ratio(0.9)
+	if _picker == null:
+		_dialog.popup_centered_ratio(0.9)
+		return
+
+	# Sengaja tidak mengunci tombol di sini. Kamera itu Activity terpisah dan
+	# pembatalan tidak memancarkan signal apa pun, jadi tombol yang dikunci
+	# sekarang akan mati selamanya bagi pemain yang berubah pikiran. Kuncinya
+	# dipasang di _scan_bytes, saat byte-nya benar-benar sudah ada.
+	if _picker.hasCamera():
+		_picker.getCameraImage()
+	else:
+		# Perangkat tanpa kamera tetap bisa memasang app, sebab manifest plugin
+		# menandai fitur kameranya opsional. Jangan tinggalkan tombol mati di sana.
+		_picker.getGalleryImage()
 
 
-func _scan(path: String) -> void:
+## Dictionary karena metode yang sama melayani pilih-banyak gambar. Isinya bisa
+## null kalau format yang dipilih tidak didukung, jadi jangan percaya bentuknya.
+func _on_photo_taken(images: Dictionary) -> void:
+	for buffer in images.values():
+		if buffer is PackedByteArray and not (buffer as PackedByteArray).is_empty():
+			_scan_bytes(buffer, "jpg")
+			return
+	_say("Foto tidak terbaca. Coba lagi.")
+
+
+func _on_camera_denied(_permission: String) -> void:
+	# resendPermission() tercantum di dokumentasi plugin tapi private di .aar yang
+	# dirilis, jadi ia tidak bisa dipanggil dari sini. Permintaan izin berikutnya
+	# menempel pada getCameraImage() berikutnya — jadi menekan tombolnya lagi
+	# memang jalan pemulihannya, dan pemain harus diberi tahu itu. Tanpa kalimat
+	# ini, satu penolakan terlihat seperti tombol yang rusak permanen.
+	_say("Scanima butuh izin kamera untuk memfoto benda.\nTekan tombolnya lagi untuk memberi izin.")
+
+
+func _on_picker_error(message: String) -> void:
+	_say("Kamera gagal: %s" % message)
+
+
+## Jalur desktop. Tidak ada resize di sini, dan itu disengaja: FileDialog memberi
+## file apa adanya, yang justru dibutuhkan saat menguji foto eval ukuran asli.
+func _scan_file(path: String) -> void:
+	var bytes := FileAccess.get_file_as_bytes(path)
+	if bytes.is_empty():
+		_say("Foto tidak bisa dibaca:\n%s" % path)
+		return
+	_scan_bytes(bytes, path.get_extension().to_lower())
+
+
+# ---------------------------------------------------------------- scan
+
+func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 	if _busy:
 		return
 	_set_busy(true)
 
-	var bytes := FileAccess.get_file_as_bytes(path)
-	if bytes.is_empty():
-		_say("Foto tidak bisa dibaca:\n%s" % path)
-		_set_busy(false)
-		return
 	if bytes.size() > MAX_FOTO_BYTE:
 		# Ditolak di sini juga, bukan hanya oleh bucket: 6 MB yang ditolak setelah
 		# terkirim adalah kuota data pemain yang terbuang tanpa alasan.
@@ -125,7 +224,8 @@ func _scan(path: String) -> void:
 		_set_busy(false)
 		return
 
-	var is_png := path.get_extension().to_lower() == "png"
+	var is_png := extension == "png"
+	_show_preview(bytes, is_png)
 	var scan := GameState.begin_scan("png" if is_png else "jpg")
 
 	_say("Mengunggah foto…")
@@ -292,6 +392,9 @@ func _present(
 		"stage": stage,
 	})
 	GameState.finish_scan()
+	# Fotonya sudah selesai tugasnya begitu Anima-nya ada; membiarkannya di layar
+	# hanya menutupi hasil yang justru ingin dilihat pemain.
+	_preview.visible = false
 	_say("%s siap." % (nickname if not nickname.is_empty() else species_key))
 
 
@@ -331,6 +434,21 @@ func _build_pose_buttons(poses: PackedStringArray) -> void:
 
 
 # ---------------------------------------------------------------- UI kecil
+
+## Menampilkan foto yang akan dipindai, sekaligus mencetak ukurannya. Dimensi di
+## log itu pemeriksaan termurah untuk resize dan rotasi: potret yang keluar
+## sebagai lanskap berarti auto_rotate_image gagal di perangkat itu, dan tanpa ini
+## kegagalannya cuma muncul sebagai stat yang aneh berbulan-bulan kemudian.
+func _show_preview(bytes: PackedByteArray, is_png: bool) -> void:
+	var image := Image.new()
+	var err := image.load_png_from_buffer(bytes) if is_png else image.load_jpg_from_buffer(bytes)
+	if err != OK:
+		_preview.visible = false
+		return
+	_preview.texture = ImageTexture.create_from_image(image)
+	_preview.visible = true
+	print("foto: %d x %d, %.0f KB" % [image.get_width(), image.get_height(), bytes.size() / 1024.0])
+
 
 func _say(text: String) -> void:
 	_status.text = text
