@@ -56,7 +56,7 @@ export function extractJson(raw) {
  * Schema menjamin bentuk, bukan kewajaran isi. Pemeriksaan di sini menegakkan
  * hal-hal yang tidak bisa diungkapkan di responseSchema Gemini.
  */
-export function validateVision(v, knownSpecies = []) {
+export function validateVision(v, knownSpecies = [], requireMaterial = false) {
   const issues = [];
 
   if (!v.safe || !v.is_object) {
@@ -98,19 +98,57 @@ export function validateVision(v, knownSpecies = []) {
     if (vague.test(f.trim())) issues.push(`signature_feature kabur: "${f}"`);
   }
 
+  // Field material baru mulai v4. v1-v3 sengaja tidak punya keduanya, jadi
+  // jangan membuat output prompt lama tampak rusak hanya karena helper-nya
+  // dipakai bersama. Begitu salah satu hadir, kontrak v4 harus lengkap.
+  if (requireMaterial) {
+    if (!v.surface_finish?.trim()) issues.push("surface_finish kosong");
+    if ((v.damage_hints ?? []).length < 2) issues.push("damage_hints kurang dari 2");
+  }
+
   return { gate: "passed", reason: null, issues, vision: v };
 }
 
 export function assemblePrompt(template, vision) {
-  const bullets = (vision.signature_features ?? []).map((f) => `- ${f}`).join("\n");
+  const features = vision.signature_features ?? [];
+  const bullets = features.map((f) => `- ${f}`).join("\n");
+  const technicalTokens = new Set([
+    "cable", "cord", "wire", "circuit", "gear", "key", "screen", "plug",
+    "component", "joint", "skeleton", "machine", "machinery",
+  ]);
+  const aliases = {
+    cables: "cable", cords: "cord", wires: "wire", circuits: "circuit",
+    gears: "gear", keys: "key", screens: "screen", plugs: "plug",
+    components: "component", joints: "joint", skeletons: "skeleton",
+    machines: "machine", machinery: "machine", mechanical: "machine",
+  };
+  const canonical = (token) => aliases[token] ?? token;
+  const featureTokens = new Set(
+    (features.join(" ").toLowerCase().match(/[a-z]+/g) ?? []).map(canonical)
+  );
+  const damageHints = (vision.damage_hints ?? []).filter((hint) => {
+    const tokens = (hint.toLowerCase().match(/[a-z]+/g) ?? []).map(canonical);
+    return !tokens.some((token) => technicalTokens.has(token) && !featureTokens.has(token));
+  });
+  const surface = vision.surface_finish?.trim() || "the object's visibly photographed material";
+  if (damageHints.length < 2) {
+    damageHints.push(`one small localized sign of damage that physically fits ${surface}`);
+  }
+  if (damageHints.length < 2) {
+    damageHints.push("one second distinct low-severity material change, with no invented internal machinery");
+  }
+  const damageBullets = damageHints.map((hint) => `- ${hint}`).join("\n");
   const stats = vision.stats ?? {};
   const dominantStat = Object.entries(stats).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const materialAware = template.includes("{{surface_finish}}");
   const personalities = {
     hp: "sturdy, calm, dependable, and hard to intimidate",
     atk: "bold, fierce, confrontational, and eager to prove its strength",
     def: "stoic, protective, stubborn, and quietly confident",
     spd: "agile, impatient, competitive, and playfully restless",
-    special: "clever, strange, mischievous, and charged with hidden technical energy",
+    special: materialAware
+      ? "clever, strange, mischievous, and charged with hidden functional energy"
+      : "clever, strange, mischievous, and charged with hidden technical energy",
   };
   const personality = personalities[dominantStat] ?? "curious, expressive, and slightly mischievous";
   const colors = (vision.dominant_colors ?? []).join(", ") || vision.color_bucket || "object-derived palette";
@@ -119,7 +157,9 @@ export function assemblePrompt(template, vision) {
     .replaceAll("{{signature_features_as_bullets}}", bullets)
     .replaceAll("{{object_name}}", vision.object_label ?? vision.species_key ?? "unknown object")
     .replaceAll("{{color_palette}}", colors)
-    .replaceAll("{{personality}}", personality);
+    .replaceAll("{{personality}}", personality)
+    .replaceAll("{{surface_finish}}", surface)
+    .replaceAll("{{damage_hints_as_bullets}}", damageBullets);
 
   const leftover = out.match(/\{\{[a-z_]+\}\}/g);
   if (leftover) throw new Error(`placeholder belum terisi: ${leftover.join(", ")}`);

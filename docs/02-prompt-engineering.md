@@ -273,17 +273,17 @@ Jumlah stat dinormalisasi ke rentang 200-350 kalau LLM meleset, dengan penskalaa
 
 ## 3. Style lock: konstanta, bukan variabel
 
-Style production aktif adalah **monster-style v2**, bersumber dari [Monster Camera — Anime Cel-Shaded Style Guide](monster_camera_anime_cel_shaded_style_guide.md) dan diwujudkan di `backend/prompts/v2/sprite_sheet.md`. Versi default sekarang **v3**, yaitu v2 ditambah satu blok penanganan logo merek yang dijelaskan di bawah; style lock-nya sendiri tidak berubah. V1 tetap utuh sebagai baseline nano-banana-pro; setiap perubahan dibuat sebagai direktori baru agar aset lama tetap bisa direproduksi.
+Style production yang sudah diterima tetap **v3**. Candidate berikutnya adalah **v4**: ia mempertahankan linework/cel-shading v2, tetapi menghapus bias techno-organic universal, menghapus emblem pengganti logo, dan membawa material nyata dari Vision ke pose Damaged. V4 belum menjadi default karena kontrak gratis hanya membuktikan teks dan data flow; kualitas visual tetap harus dibuktikan lewat model production berbayar. V1–v3 tetap utuh agar aset lama bisa direproduksi.
 
 Style lock v2 yang identik untuk setiap Anima:
 
-- 2D Japanese anime creature, cute-but-fierce, techno-organic, terinspirasi energi desain Digimon tetapi wajib original
+- 2D Japanese anime creature, cute-but-fierce, dengan readability monster game 1990-an tetapi wajib original
 - linework gelap yang clean dan moderately bold
 - flat base colors, crisp 2–3 level cel shading, hard-edged shadows, minimal gradients
 - bentuk sederhana, silhouette kuat, anatomi sedikit dilebihkan
 - bukan photorealism, CGI, 3D render, toy, painterly art, atau pixel art
 
-Yang dinamis hanya konteks objek: nama, `creature_brief`, 2–4 `signature_features`, palet warna, dan personality. Personality diturunkan secara deterministik dari stat tertinggi, bukan meminta Vision melakukan klasifikasi kedua. Ini menjaga gate/schema v1 tetap tidak berubah sesuai kontrak style guide.
+Detail techno-organic, kabel, armor mekanis, atau cybernetic hanya sah untuk benda elektronik/mekanis. Yang dinamis: nama, `creature_brief`, 2–4 `signature_features`, palet, personality, `surface_finish`, dan `damage_hints`. Personality tetap diturunkan deterministik dari stat tertinggi, tetapi prompt v4 menegaskan bahwa personality hanya memengaruhi ekspresi/perilaku—bukan menambah komponen teknis.
 
 Ada dua adaptasi teknis dari mockup guide:
 
@@ -292,22 +292,28 @@ Ada dua adaptasi teknis dari mockup guide:
 
 Sudut pandang tetap 3/4 dari sedikit atas. White keyline dinaikkan menjadi 3–5px. Setiap appendage dan efek diminta berjarak minimal 6% dari center seam, tetapi post-processing juga wajib tahan jika model melanggar.
 
-### Logo merek: harus diganti, bukan cuma dilarang
+### Logo merek: v3 menyelesaikan reproduksi, lalu menciptakan logo semu
 
 Foto pemain akan sering berisi logo, dan logo itu masuk ke gambar lewat `input_images`, bukan lewat teks prompt. Ini terbukti: v2 sudah memuat "no logos, brand names" di blok FORBIDDEN, Vision tidak pernah menyebut merek apa pun di `signature_features`, dan GPT Image 2 tetap menggambar swoosh Nike di keempat pose sheet sepatu. Larangan negatif tidak menang melawan bukti visual yang ada di gambar referensi.
 
-Yang dipakai di v3 adalah instruksi pengganti, ditaruh dekat konteks objek supaya terbaca saat model memutuskan cara memperlakukan permukaan objek: anggap semua mark merek tidak ada, lalu di tempatnya gambar permukaan polos atau satu marking geometris ciptaan sendiri yang tidak terkait perusahaan mana pun. Model gambar jauh lebih patuh pada perintah "gambar X sebagai ganti" dibandingkan "jangan gambar Y". Hasil uji satu foto: swoosh hilang, diganti chevron ciptaan model, 4/4 sel, residu hijau 0,014%, dan `species_key` tetap `shoe_fabric_sneaker` sehingga dedup cache tidak pecah.
+V3 memakai instruksi pengganti: anggap mark merek tidak ada, lalu gambar permukaan polos atau marking geometris ciptaan sendiri. Hasil uji satu foto: swoosh hilang, diganti chevron ciptaan model, 4/4 sel, residu hijau 0,014%, dan `species_key` tetap stabil. Temuan berikutnya menunjukkan chevron/sigil buatan itu sendiri terbaca seperti logo, bahkan pada objek yang semula polos.
 
-Ini bukan pengganti tinjauan hukum, tetapi ia memindahkan risiko dari "pasti mereproduksi merek dagang" ke "tidak mereproduksinya kecuali model gagal patuh", dan kegagalan itu bisa dilihat di contact sheet sebelum aset masuk `species_library`.
+V4 menghapus cabang marking sepenuhnya. Logo, teks, model number, badge, stripe merek, dan simbol dianggap tidak ada; tempatnya selalu diisi material polos yang setia pada objek. Surface interest hanya boleh datang dari weave, grain, glaze, seams, natural speckles, leaf veins, wear, atau geometri fungsi—tidak pernah emblem/sigil/rune/chevron/swoosh rekaan.
+
+### Damaged harus mengikuti material, bukan template robot
+
+V3 menyebut `loose cable`, `exposed wire`, dan `broken key` dalam daftar contoh universal, sementara global style lock menyebut techno-organic. Image model mengikuti contoh konkret itu lebih kuat daripada frasa abstrak “object-appropriate”, sehingga mug, tanaman, dan kain ikut tampak seperti cyborg.
+
+V4 menambah dua field Vision nullable tanpa mengubah `species_key`: `surface_finish` (misalnya `smooth glazed ceramic`, `woven canvas fabric`, `living waxy leaves`) dan 2–3 `damage_hints`. Assembler menyisipkannya langsung ke pose Damaged. Ia juga menyaring token teknis: cable/cord/wire/circuit/gear/key/screen/plug hanya boleh lolos bila token yang sama ada pada `signature_features`. Hasilnya: kaca retak/chip, keramik retak glasir, tanaman sobek/layu, kain berjumbai, kayu berserpih, logam penyok, dan plastik mengalami stress mark; kabel tetap boleh rusak pada mouse berkabel.
 
 ## 4. Template prompt sprite sheet
 
-File production adalah `backend/prompts/v2/sprite_sheet.md`; file itu sumber kebenaran lengkap dan tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
+File default production adalah `backend/prompts/v3/sprite_sheet.md`; candidate ada di v4. File sumber itu tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
 
 ```text
 [GLOBAL STYLE LOCK]
 [OBJECT CONTEXT]
-[BRAND MARKS]                       (v3 dan setelahnya)
+[SURFACE MARKS]                     (v4: omit, never replace)
 [OBJECT-TO-CREATURE TRANSFORMATION]
 [COLOR + PERSONALITY]
 [CHARACTER CONSISTENCY]
@@ -325,6 +331,8 @@ const prompt = assemblePrompt(template, vision);
 // {{signature_features_as_bullets}}  <- Vision array menjadi bullet list
 // {{color_palette}}                  <- dominant_colors / color_bucket
 // {{personality}}                    <- stat tertinggi
+// {{surface_finish}}                 <- material/finish yang terlihat
+// {{damage_hints_as_bullets}}        <- damage material; hint teknis disaring
 ```
 
 Keempat keadaan visual adalah Idle, Battle, Sleep, dan Damaged. Untuk kompatibilitas manifest/Godot yang sudah ada, slot bawah-kanan masih memakai key internal `defeated`; art-nya mengikuti kontrak Damaged: kerusakan kecil yang spesifik ke objek, bukan tubuh dihancurkan atau didesain ulang.
@@ -432,7 +440,12 @@ backend/prompts/
 │   ├── vision_schema.json
 │   ├── sprite_sheet.md
 │   └── sprite_sheet_evolve.md
-└── v3/                    <- default
+├── v3/                    <- default production
+│   ├── vision_system.md
+│   ├── vision_schema.json
+│   ├── sprite_sheet.md
+│   └── sprite_sheet_evolve.md
+└── v4/                    <- candidate, belum Smoke Set berbayar
     ├── vision_system.md
     ├── vision_schema.json
     ├── sprite_sheet.md
@@ -513,6 +526,7 @@ Dijalankan sekali sebagai gerbang penerimaan, bukan sebagai alat iterasi. Tiga f
 ```bash
 node eval/run.mjs --set smoke                       # v3, 5 foto, ~$0.225
 node eval/run.mjs --set full                        # v3, 20 foto, ~$1.32
+node eval/run.mjs --set smoke --prompt-version v4 --dry-run    # gratis
 node eval/run.mjs --set smoke --prompt-version v2 --reprocess   # gratis, dari raw.png
 ```
 

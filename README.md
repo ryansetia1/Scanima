@@ -17,6 +17,8 @@ Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`**
 
 Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu mereproduksi logo merek dari fotonya di keempat pose. Larangan tekstual sudah ada di v2 dan tidak cukup, karena logonya datang dari foto referensi. **Prompt v3 kini jadi default**: ia memerintahkan model mengganti mark merek dengan permukaan polos atau marking geometris ciptaan sendiri. Uji satu foto sepatu (~$0.073) memberi 4/4 sel, residu 0,014%, logo hilang, dan `species_key` tidak bergeser. Mouse dan mug belum diulang di v3.
 
+**Prompt v4 sekarang tersedia sebagai candidate, bukan default.** Temuan berikutnya menunjukkan opsi "marking geometris ciptaan sendiri" milik v3 membuat model menambahkan emblem mirip logo pada benda yang sebenarnya polos, dan daftar contoh DAMAGED yang universal (`loose cable`, `exposed wire`, `broken key`) membuat hampir semua Anima tampak cyborg. v4 selalu mengganti logo/teks dengan material polos, melarang emblem rekaan, dan membawa `surface_finish` + `damage_hints` dari Vision ke image prompt. Hint kabel disaring kecuali kabel benar-benar tercatat sebagai fitur objek. Kontrak mug/tanaman/mouse, bundel Edge Function, dan dry-run lima foto sudah lulus tanpa API; production tetap v3 sampai v4 melewati Smoke Set visual berbayar.
+
 Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: halo hijau di tepi sprite (0,21% → 0,014%), anggota tubuh pose kanan yang melewati garis tengah sheet, dan penjaga "keying gagal" yang salah membuang pose Attack karena speed line membuat bbox-nya seluas kuadran. Slicing sekarang menetapkan kepemilikan per komponen piksel, jadi tangan/kabel yang tersambung tidak dipotong dan bagian pose tetangga tidak ikut tercopy.
 
 **Phase 2 sudah dimulai dari sisi yang menjaga uang.** Skema tujuh tabel, RLS beserta hak kolom, dan fungsi kuota sudah ter-apply di proyek Supabase dan dibuktikan oleh [`backend/tests/quota_rules.sql`](backend/tests/quota_rules.sql): retry dengan `idempotency_key` sama hanya mendebit satu Genesis Core dan tidak membuat Anima kedua, webhook yang terkirim dua kali hanya mengkredit satu, cap biaya harian menolak tanpa mendebit, cache hit tidak pernah menghasilkan Core gratis, dan peran `authenticated` tidak bisa menaikkan saldonya sendiri, menulis `care_score`, memanggil fungsi kuota, maupun membaca sakelar biaya. Fungsi kuota dibangun lebih dulu daripada endpoint yang membelanjakan uang, supaya tidak pernah ada periode dengan endpoint tanpa pagar.
@@ -34,6 +36,8 @@ Pemain **kedua** lalu memfoto mug yang sama: `cache_hit` dalam **11 detik**, Gen
 Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya, dan `test_sprite_slicing.gd` lulus **75 dari 75** check terhadapnya. Bukan sheet buatan uji — art produksi yang keluar dari Edge Function.
 
 **Sisi client sudah menyusul, dan sudah dijalankan sungguhan terhadap produksi.** Godot kini punya dua autoload — `GameState` (pemilik satu-satunya `user://state.json`) dan `Backend` (transport ke auth, REST, Storage, dan Edge Function) — plus scene `scan_flow` yang menjadi entry point: sign-in anonim, pilih foto, unggah ke bucket sendiri, `create_anima`, Incubator, lalu Anima hidup di layar. Uji headless `live_scan.gd` menjalankan rantai itu terhadap produksi dengan biaya ~$0.003: `create_anima` balik **11–16 detik**, sheet ~1 MB terunduh dari CDN, `AnimaLoader` menerimanya dengan keempat pose, dan saldo berkurang tepat satu Scan Charge tanpa menyentuh Genesis Core. Screenshot layarnya menunjukkan saldo dari server, Anima dari cache lokal, dan tombol pose yang dibangun dari manifest.
+
+**Koleksi dan Stats sekarang ada di vertical slice.** Setelah sesi siap, client membaca semua Anima `ready` milik pemain dari Postgres melalui RLS dan menampilkannya dalam modal `ItemList` dua kolom; roster tidak disalin ke disk. Kartu memakai thumbnail idle 128px bila sheet sudah lokal dan placeholder bila belum, sehingga membuka Koleksi tidak mengunduh puluhan sheet 1 MB. Stats menampilkan HP, ATK, DEF, SPD, SPECIAL, element, rarity, dan stage dari row server yang sama. Theme mobile memakai body/button 32px dan target sentuh minimum 96px pada canvas 720×1280 (ekuivalen sekitar 48dp); Stage mengikuti viewport dan margin menghormati safe area fisik Android/iOS setelah dikonversi ke koordinat viewport. `test_scan_ui.gd` menjaga 42 kontrak layout tanpa jaringan.
 
 Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan terlihat seperti pemulihan sementara seluruh Anima pemain tertinggal di akun yang tidak bisa dijangkau lagi, dan pemain anonim tidak punya email untuk kembali. Kedua, **kunci idempotency dibuat sekali per scan dan bertahan di disk**, sehingga app yang mati di tengah scan melanjutkan scan yang sama alih-alih membayar Core kedua. Keduanya dijaga oleh 34 check di `test_client_state.gd`, yang juga membuktikan cache art setengah terunduh dibaca sebagai tidak ada, bukan dimuat dan gagal di tengah.
 
@@ -53,7 +57,7 @@ Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 19 skenario + 12 uji tanda tangan webhook, tanpa API
+npm run selftest                 # 20 skenario + 12 uji tanda tangan webhook, tanpa API
 
 # Godot: 72 pemeriksaan slicing sprite, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
@@ -141,15 +145,18 @@ scanima/
 │   │   ├── anima_presenter.gd    # pose + gerak prosedural via Tween
 │   │   ├── placeholder_sheet.gd  # sheet buatan, untuk demo & test
 │   │   └── anima_demo.gd
+│   ├── themes/mobile_theme.tres  # tipografi mobile bersama, basis 720×1280
 │   ├── shaders/chroma_key.gdshader   # cadangan, jalur BYOK saja
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
+│       ├── test_scan_ui.gd           # 42 kontrak anchor + target sentuh
 │       └── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 ├── backend/
 │   ├── prompts/v1/               # baseline nano-banana-pro, tidak diubah
 │   ├── prompts/v2/               # GPT Image 2 medium + anime cel-shaded style
 │   ├── prompts/v3/               # default: v2 + blok BRAND MARKS
+│   ├── prompts/v4/               # candidate: tanpa emblem + damage material
 │   ├── tools/bundle_prompts.mjs  # prompts/ -> modul yang bisa diimpor Deno
 │   ├── supabase/migrations/      # skema, RLS + hak kolom, fungsi kuota
 │   ├── supabase/functions/

@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/scan_flow.gd" id="1_flow"]
 [ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
+[ext_resource type="Theme" path="res://themes/mobile_theme.tres" id="3_theme"]
 
 [node name="ScanFlow" type="Node2D"]
 script = ExtResource("1_flow")
@@ -11,6 +12,7 @@ script = ExtResource("1_flow")
 ; menempel ke viewport.
 
 [node name="Stage" type="Node2D" parent="."]
+unique_name_in_owner = true
 position = Vector2(360, 760)
 
 [node name="Anima" type="AnimatedSprite2D" parent="Stage"]
@@ -20,23 +22,26 @@ script = ExtResource("2_presenter")
 [node name="UI" type="CanvasLayer" parent="."]
 
 [node name="Margin" type="MarginContainer" parent="UI"]
+unique_name_in_owner = true
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 24
+theme = ExtResource("3_theme")
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 32
 
 [node name="Column" type="VBoxContainer" parent="UI/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 
 [node name="Header" type="Label" parent="UI/Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_font_sizes/font_size = 48
 text = "Scanima"
 horizontal_alignment = 1
 
@@ -58,6 +63,7 @@ size_flags_vertical = 3
 [node name="Status" type="Label" parent="UI/Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_font_sizes/font_size = 30
 text = "memuat..."
 autowrap_mode = 2
 horizontal_alignment = 1
@@ -65,13 +71,32 @@ horizontal_alignment = 1
 [node name="ScanButton" type="Button" parent="UI/Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 64)
+custom_minimum_size = Vector2(0, 104)
 text = "Pilih Foto"
+
+[node name="ActionsRow" type="HBoxContainer" parent="UI/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="CollectionButton" type="Button" parent="UI/Margin/Column/ActionsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Koleksi"
+
+[node name="StatsButton" type="Button" parent="UI/Margin/Column/ActionsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+text = "Stats"
 
 [node name="PoseRow" type="HBoxContainer" parent="UI/Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 16
 
 [node name="PhotoDialog" type="FileDialog" parent="UI"]
 unique_name_in_owner = true
@@ -82,3 +107,204 @@ ok_button_text = "Pakai foto ini"
 file_mode = 0
 access = 2
 filters = PackedStringArray("*.jpg,*.jpeg,*.png ; Foto")
+
+[node name="CollectionOverlay" type="Control" parent="UI"]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dim" type="ColorRect" parent="UI/CollectionOverlay"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CollectionMargin" type="MarginContainer" parent="UI/CollectionOverlay"]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("3_theme")
+theme_override_constants/margin_left = 48
+theme_override_constants/margin_top = 48
+theme_override_constants/margin_right = 48
+theme_override_constants/margin_bottom = 48
+
+[node name="Panel" type="PanelContainer" parent="UI/CollectionOverlay/CollectionMargin"]
+layout_mode = 2
+
+[node name="Column" type="VBoxContainer" parent="UI/CollectionOverlay/CollectionMargin/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="CollectionTitle" type="Label" parent="UI/CollectionOverlay/CollectionMargin/Panel/Column"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+text = "Koleksi Anima"
+horizontal_alignment = 1
+
+[node name="CollectionStatus" type="Label" parent="UI/CollectionOverlay/CollectionMargin/Panel/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Belum ada Anima."
+autowrap_mode = 2
+horizontal_alignment = 1
+
+[node name="AnimaList" type="ItemList" parent="UI/CollectionOverlay/CollectionMargin/Panel/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 640)
+layout_mode = 2
+size_flags_vertical = 3
+fixed_icon_size = Vector2i(128, 128)
+fixed_column_width = 280
+icon_mode = 0
+max_columns = 2
+same_column_width = true
+theme_override_font_sizes/font_size = 28
+
+[node name="CloseCollectionButton" type="Button" parent="UI/CollectionOverlay/CollectionMargin/Panel/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "Tutup"
+
+[node name="StatsOverlay" type="Control" parent="UI"]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Dim" type="ColorRect" parent="UI/StatsOverlay"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="StatsMargin" type="MarginContainer" parent="UI/StatsOverlay"]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("3_theme")
+theme_override_constants/margin_left = 64
+theme_override_constants/margin_top = 128
+theme_override_constants/margin_right = 64
+theme_override_constants/margin_bottom = 128
+
+[node name="Panel" type="PanelContainer" parent="UI/StatsOverlay/StatsMargin"]
+layout_mode = 2
+
+[node name="Column" type="VBoxContainer" parent="UI/StatsOverlay/StatsMargin/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="StatsTitle" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+text = "Stats Anima"
+horizontal_alignment = 1
+
+[node name="StatsGrid" type="GridContainer" parent="UI/StatsOverlay/StatsMargin/Panel/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/h_separation = 32
+theme_override_constants/v_separation = 16
+columns = 2
+
+[node name="HpName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+layout_mode = 2
+text = "HP"
+
+[node name="StatHp" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "—"
+
+[node name="AtkName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+layout_mode = 2
+text = "ATK"
+
+[node name="StatAtk" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "—"
+
+[node name="DefName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+layout_mode = 2
+text = "DEF"
+
+[node name="StatDef" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "—"
+
+[node name="SpdName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+layout_mode = 2
+text = "SPD"
+
+[node name="StatSpd" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "—"
+
+[node name="SpecialName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+layout_mode = 2
+text = "SPECIAL"
+
+[node name="StatSpecial" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "—"
+
+[node name="ElementName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+layout_mode = 2
+text = "Element"
+
+[node name="StatElement" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "—"
+
+[node name="RarityName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+layout_mode = 2
+text = "Rarity"
+
+[node name="StatRarity" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "—"
+
+[node name="StageName" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+layout_mode = 2
+text = "Stage"
+
+[node name="StatStage" type="Label" parent="UI/StatsOverlay/StatsMargin/Panel/Column/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "—"
+
+[node name="CloseStatsButton" type="Button" parent="UI/StatsOverlay/StatsMargin/Panel/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "Tutup"

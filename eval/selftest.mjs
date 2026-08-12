@@ -459,6 +459,8 @@ console.log("14. validateVision menegakkan yang tidak bisa dijamin schema");
     stats: { hp: 50, atk: 30, def: 60, spd: 40, special: 35 },
     creature_brief: "x",
     signature_features: ["gagang jadi lengan", "bibir keramik di kepala"],
+    surface_finish: "smooth glazed ceramic",
+    damage_hints: ["retak glasir pendek", "satu sisi bibir terkelupas"],
     suggested_name: "Mugmon",
   });
 
@@ -467,14 +469,19 @@ console.log("14. validateVision menegakkan yang tidak bisa dijamin schema");
   assert.equal(rejected.gate, "rejected");
   assert.equal(rejected.reason, "human_face");
 
-  const clean = validateVision(base(), []);
+  const clean = validateVision(base(), [], true);
   assert.equal(clean.gate, "passed");
   assert.deepEqual(clean.issues, [], `sample bersih tidak boleh punya isu: ${clean.issues}`);
+
+  const legacy = base();
+  delete legacy.surface_finish;
+  delete legacy.damage_hints;
+  assert.deepEqual(validateVision(legacy, []).issues, [], "payload v1-v3 tetap sah tanpa field v4");
 
   // Jumlah stat di luar 200-350 diskalakan, bukan ditolak
   const weak = base();
   weak.stats = { hp: 10, atk: 10, def: 10, spd: 10, special: 10 };
-  const scaled = validateVision(weak, []);
+  const scaled = validateVision(weak, [], true);
   const sum = Object.values(scaled.vision.stats).reduce((a, b) => a + b, 0);
   assert.ok(sum >= 195 && sum <= 210, `jumlah stat harus diskalakan ke ~200, dapat ${sum}`);
   assert.ok(scaled.issues.some((i) => i.includes("diskalakan")));
@@ -483,22 +490,22 @@ console.log("14. validateVision menegakkan yang tidak bisa dijamin schema");
   // huruf beda berarti cache miss dan satu generation dibayar dua kali.
   const typo = base();
   typo.species_key = "mug_ceramic_handles";
-  const fixed = validateVision(typo, ["mug_ceramic_handled"]);
+  const fixed = validateVision(typo, ["mug_ceramic_handled"], true);
   assert.equal(fixed.vision.species_key, "mug_ceramic_handled", "typo harus dinormalisasi");
 
   // Tapi spesies yang benar-benar beda jangan digabung
   const other = base();
   other.species_key = "shoe_fabric_sneaker";
-  const kept = validateVision(other, ["mug_ceramic_handled"]);
+  const kept = validateVision(other, ["mug_ceramic_handled"], true);
   assert.equal(kept.vision.species_key, "shoe_fabric_sneaker", "spesies beda jangan digabung");
 
   const badKey = base();
   badKey.species_key = "Mug Ceramic";
-  assert.ok(validateVision(badKey, []).issues.some((i) => i.includes("format")));
+  assert.ok(validateVision(badKey, [], true).issues.some((i) => i.includes("format")));
 
   const vagueFeat = base();
   vagueFeat.signature_features = ["interesting texture", "unique qualities"];
-  assert.equal(validateVision(vagueFeat, []).issues.filter((i) => i.includes("kabur")).length, 2);
+  assert.equal(validateVision(vagueFeat, [], true).issues.filter((i) => i.includes("kabur")).length, 2);
 }
 
 console.log("15. assemblePrompt tidak pernah mengirim placeholder ke model");
@@ -586,6 +593,8 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
   const bundel = await buildBundle();
   assert.ok(bundel.v3?.sprite_sheet.includes("{{creature_brief}}"), "v3 sprite_sheet ikut terbundel");
   assert.ok(bundel.v3?.vision_schema?.properties?.species_key, "v3 vision_schema terparse");
+  assert.ok(bundel.v4?.vision_schema?.properties?.surface_finish, "v4 surface_finish ikut terbundel");
+  assert.ok(bundel.v4?.vision_schema?.properties?.damage_hints, "v4 damage_hints ikut terbundel");
 }
 
 console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
@@ -663,6 +672,92 @@ console.log("19. tidak ada kredensial mahal di sumber client Godot");
       );
     }
   }
+}
+
+console.log("20. prompt v4 tidak mengarang logo atau damage cyborg");
+{
+  const { readFile } = await import("node:fs/promises");
+  const template = await readFile(new URL("../backend/prompts/v4/sprite_sheet.md", import.meta.url), "utf8");
+  const stats = { hp: 50, atk: 40, def: 60, spd: 45, special: 55 };
+
+  assert.ok(template.includes("Never invent a replacement mark"), "v4 wajib memilih permukaan polos");
+  assert.ok(
+    !template.includes("invented simple geometric marking of your own"),
+    "instruksi v3 yang melahirkan logo semu tidak boleh kembali"
+  );
+
+  const mug = assemblePrompt(template, {
+    object_label: "ceramic mug",
+    creature_brief: "rounded mug creature with handle arm",
+    signature_features: ["curved handle becomes one arm", "open rim crowns the head"],
+    surface_finish: "smooth glazed ceramic",
+    damage_hints: ["two short glaze cracks", "one chipped rim", "exposed wire bundle"],
+    dominant_colors: ["#eeeeee"],
+    stats,
+  });
+  assert.ok(mug.includes("- two short glaze cracks\n- one chipped rim"));
+  assert.ok(!mug.includes("- exposed wire bundle"), "mug tanpa wire anchor tidak boleh mendapat damage kabel");
+
+  const filteredMug = assemblePrompt(template, {
+    object_label: "ceramic mug",
+    creature_brief: "rounded mug creature with handle arm",
+    signature_features: ["curved handle becomes one arm", "open rim crowns the head"],
+    surface_finish: "smooth glazed ceramic",
+    damage_hints: ["one short glaze crack", "exposed electronic component"],
+    dominant_colors: ["#eeeeee"],
+    stats,
+  });
+  assert.ok(!filteredMug.includes("- exposed electronic component"));
+  assert.equal(
+    filteredMug.match(/^- /gm)?.length,
+    4,
+    "dua signature feature + dua damage bullet harus tetap ada sesudah filter"
+  );
+
+  const plant = assemblePrompt(template, {
+    object_label: "potted plant",
+    creature_brief: "leafy creature growing from a round pot body",
+    signature_features: ["five broad leaves form the crown", "clay pot becomes the torso"],
+    surface_finish: "living waxy leaves and terracotta",
+    damage_hints: ["one torn leaf edge", "one bruised leaf tip", "exposed circuit"],
+    dominant_colors: ["#3f7f42", "#a35d35"],
+    stats,
+  });
+  assert.ok(plant.includes("- one torn leaf edge\n- one bruised leaf tip"));
+  assert.ok(!plant.includes("- exposed circuit"), "tanaman tidak boleh mendapat damage elektronik");
+
+  const mouse = assemblePrompt(template, {
+    object_label: "wired computer mouse",
+    creature_brief: "low domed mouse-shell creature",
+    signature_features: ["two click buttons become eyes", "USB cable becomes a segmented tail"],
+    surface_finish: "smooth molded plastic and rubber",
+    damage_hints: ["scuffed plastic shell", "slightly frayed cable sheath"],
+    dominant_colors: ["#222222"],
+    stats,
+  });
+  assert.ok(mouse.includes("- slightly frayed cable sheath"), "kabel nyata tetap boleh rusak seperti kabel");
+  const keyboard = assemblePrompt(template, {
+    object_label: "mechanical keyboard",
+    creature_brief: "wide keyboard creature with keycap scales",
+    signature_features: ["black keys become armored scales", "mechanical dial becomes one eye"],
+    surface_finish: "matte molded plastic keycaps",
+    damage_hints: ["one broken key at the corner", "scuffed plastic frame"],
+    dominant_colors: ["#222222"],
+    stats,
+  });
+  assert.ok(keyboard.includes("- one broken key at the corner"), "plural keys harus mengizinkan damage key");
+  const specialMouse = assemblePrompt(template, {
+    object_label: "wired computer mouse",
+    creature_brief: "low domed mouse-shell creature",
+    signature_features: ["two click buttons become eyes", "USB cable becomes a segmented tail"],
+    surface_finish: "smooth molded plastic and rubber",
+    damage_hints: ["scuffed plastic shell", "slightly frayed cable sheath"],
+    dominant_colors: ["#222222"],
+    stats: { hp: 30, atk: 30, def: 40, spd: 50, special: 90 },
+  });
+  assert.ok(specialMouse.includes("hidden functional energy"));
+  assert.ok(!specialMouse.includes("hidden technical energy"));
+  assert.ok(!mug.includes("{{") && !plant.includes("{{") && !mouse.includes("{{"));
 }
 
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang

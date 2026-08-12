@@ -455,7 +455,7 @@ async function main() {
           row.issues = ["JSON percobaan pertama rusak, diulang pada temperature 0"];
         }
 
-        checked = validateVision(seen.vision, knownSpecies);
+        checked = validateVision(seen.vision, knownSpecies, promptVersion === "v4");
         row.vision = checked.vision;
         row.issues = [...(row.issues ?? []), ...checked.issues];
         await writeFile(join(outDir, `${name}.vision.json`), JSON.stringify(checked, null, 2));

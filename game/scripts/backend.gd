@@ -121,8 +121,18 @@ func fetch_profile() -> Dictionary:
 
 func fetch_anima(anima_id: String) -> Dictionary:
 	return await get_rest(
-		"animas?id=eq.%s&select=id,status,nickname,species_key,color_bucket,stage"
+		"animas?id=eq.%s&select=id,status,nickname,species_key,color_bucket,stage,element,rarity,base_stats"
 		% anima_id.uri_encode()
+	)
+
+
+func fetch_animas() -> Dictionary:
+	# owner_id sengaja tidak ikut query. RLS-lah yang membatasi koleksi ke pemain
+	# aktif; menduplikasi uid di URL hanya menciptakan pagar kedua yang bisa drift.
+	return await get_rest(
+		"animas?status=eq.ready"
+		+ "&select=id,nickname,species_key,color_bucket,stage,element,rarity,base_stats"
+		+ "&order=born_at.desc"
 	)
 
 

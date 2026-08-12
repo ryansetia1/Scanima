@@ -175,7 +175,7 @@ For example, a computer mouse might become:
 -   scroll wheel → horn / crest / spine detail
 -   cable → tail
 -   USB connector → tail tip / weapon / stinger
--   side texture → scales / markings
+-   side texture → material texture / scales that follow the real surface
 -   buttons → armor plates
 -   ergonomic curves → body silhouette
 
@@ -185,7 +185,7 @@ A cup might become:
 -   lid → head armor
 -   straw → horn / antenna / tail
 -   liquid → internal energy
--   printed graphics → body markings
+-   printed graphics, logos, and text → omit; continue the plain cup material
 -   handle → arm / tail / wing
 
 A keyboard might become:
@@ -193,16 +193,17 @@ A keyboard might become:
 -   keyboard body → armored torso
 -   keys → teeth / scales / armor plates
 -   cable → tail
--   key legends → markings
+-   key legends → omit; preserve the physical key shapes instead
 -   function keys → decorative armor
 
 The object must remain recognizable.
 
 ### Core rule
 
-> Preserve the object's most distinctive physical features, but
-> reinterpret them as creature anatomy, armor, markings, limbs, tails,
-> weapons, or accessories.
+> Preserve the object's most distinctive structural and material
+> features, but reinterpret them as creature anatomy, armor, limbs,
+> tails, weapons, or accessories. Never use a logo, text, badge, or
+> invented emblem as a recognition feature.
 
 ------------------------------------------------------------------------
 
@@ -230,8 +231,9 @@ recognition.
 
 ### Priority 4 --- Surface details
 
-Use smaller visual details as creature markings, armor, scales,
-patterns, etc.
+Use smaller physical details as seams, material texture, armor, scales,
+or anatomy-following patterns. Do not invent isolated symbols, sigils,
+chevrons, badges, or logo-like body markings.
 
 Do not preserve every tiny detail.
 
@@ -388,38 +390,51 @@ Characteristics:
 -   same proportions
 -   same colors
 -   same face design
--   visible cracks / scratches / dents
+-   damage that follows the photographed material
 -   small bandages where appropriate
 -   tired or pained expression
--   subtle debris or loose parts
+-   subtle debris only when that material could produce it
 
-Possible damage should relate to the object.
+Possible damage must relate to the object's visible material, not to a
+generic robot interior.
 
 Examples:
 
-Mouse:
+Glass / ceramic:
 
--   cracked shell
--   damaged cable
--   exposed wires
--   loose USB connector
+-   hairline cracks
+-   chipped rim or edge
+-   a tiny missing shard or ceramic fragment
 
-Cup:
+Plant / leaves:
 
--   cracked ceramic
--   spilled liquid
--   chipped lid
+-   torn leaf edge
+-   cut or bent stem
+-   wilted or bruised tip
 
-Keyboard:
+Fabric / leather:
 
--   broken keys
--   cracked chassis
--   exposed wiring
+-   frayed fibers
+-   torn seam or loose thread
+-   scuffed or split surface
+
+Wood / metal / plastic:
+
+-   grain-following splinter or crack
+-   dent, scrape, or bent thin edge
+-   stress whitening, scuff, or shallow crack
+
+Electronic objects may use a damaged cable, exposed wire, broken key, or
+loose connector only when that exact component is visibly present in the
+photo and preserved as a signature feature. Never add wires, circuits,
+gears, robot joints, or a metal skeleton beneath plants, glass, ceramic,
+fabric, leather, wood, paper, or food.
 
 Prompt:
 
-> damaged but recognizable version of the same character, visible cracks
-> and scratches, small object-specific damage, exhausted expression
+> damaged but recognizable version of the same character; apply only
+> material-specific damage supplied for this object, never generic
+> cybernetic damage; exhausted expression
 
 Do not completely destroy the character.
 
@@ -671,7 +686,7 @@ GLOBAL STYLE:
 OBJECT TRANSFORMATION:
 Transform the object into a creature rather than simply placing a face and limbs onto the object.
 
-Preserve the object's most recognizable physical characteristics and reinterpret them as creature anatomy, armor, markings, limbs, tails, horns, weapons, or accessories.
+Preserve the object's most recognizable structural and material characteristics and reinterpret them as creature anatomy, armor, limbs, tails, horns, weapons, or accessories. Omit logos, text, badges, and printed graphics; never invent replacement emblems or sigils.
 
 OBJECT:
 {{object_name}}
@@ -707,7 +722,7 @@ BOTTOM LEFT — SLEEP:
 Cute peaceful sleeping pose, relaxed body, closed eyes, subtle floating Z symbols.
 
 BOTTOM RIGHT — DAMAGED:
-The same character after taking damage. Add object-appropriate cracks, scratches, dents, loose parts, small bandages, or exposed components. Tired or pained expression. Keep the character clearly recognizable.
+The same character after taking damage. Apply only damage that fits the object's visible material. Wires, circuits, gears, keys, and exposed components are allowed only when that exact component is present in the source object's signature features. Tired or pained expression. Keep the character clearly recognizable.
 
 COMPOSITION:
 Clean white background, equal spacing, consistent scale, full body visible, no cropping, no environment, minimal grounding shadow, clean character presentation sheet.

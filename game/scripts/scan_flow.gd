@@ -35,7 +35,11 @@ const MAX_FOTO_BYTE := 6 * 1024 * 1024
 ## seharusnya gratis membayar $0.07. Naikkan hanya bersama eval ulang.
 const FOTO_MAX_PX := 1280
 const FOTO_QUALITY := 85
+const TOUCH_MIN := 96.0
+const THUMBNAIL_SIZE := 128
+const BASE_MARGIN := 32.0
 
+@onready var _stage: Node2D = %Stage
 @onready var _anima: AnimaPresenter = %Anima
 @onready var _header: Label = %Header
 @onready var _status: Label = %Status
@@ -43,8 +47,31 @@ const FOTO_QUALITY := 85
 @onready var _pose_row: HBoxContainer = %PoseRow
 @onready var _dialog: FileDialog = %PhotoDialog
 @onready var _preview: TextureRect = %PhotoPreview
+@onready var _main_margin: MarginContainer = %Margin
+@onready var _collection_margin: MarginContainer = %CollectionMargin
+@onready var _stats_margin: MarginContainer = %StatsMargin
+@onready var _collection_button: Button = %CollectionButton
+@onready var _stats_button: Button = %StatsButton
+@onready var _collection_overlay: Control = %CollectionOverlay
+@onready var _stats_overlay: Control = %StatsOverlay
+@onready var _anima_list: ItemList = %AnimaList
+@onready var _collection_status: Label = %CollectionStatus
+@onready var _stats_title: Label = %StatsTitle
+@onready var _stat_hp: Label = %StatHp
+@onready var _stat_atk: Label = %StatAtk
+@onready var _stat_def: Label = %StatDef
+@onready var _stat_spd: Label = %StatSpd
+@onready var _stat_special: Label = %StatSpecial
+@onready var _stat_element: Label = %StatElement
+@onready var _stat_rarity: Label = %StatRarity
+@onready var _stat_stage: Label = %StatStage
 
 var _busy := false
+var _roster: Array[Dictionary] = []
+var _current_anima: Dictionary = {}
+var _roster_error := ""
+var _placeholder_icon: Texture2D = null
+var _thumbnail_cache: Dictionary = {}
 
 ## Singleton plugin Android, null di desktop dan di test headless.
 var _picker: Object = null
@@ -52,7 +79,14 @@ var _picker: Object = null
 
 func _ready() -> void:
 	_scan_button.pressed.connect(_on_pick_pressed)
+	_collection_button.pressed.connect(_on_collection_pressed)
+	_stats_button.pressed.connect(_on_stats_pressed)
+	%CloseCollectionButton.pressed.connect(_close_collection)
+	%CloseStatsButton.pressed.connect(_close_stats)
+	_anima_list.item_selected.connect(_on_anima_selected)
 	_dialog.file_selected.connect(_scan_file)
+	get_viewport().size_changed.connect(_layout_for_viewport)
+	_layout_for_viewport()
 	_setup_picker()
 	_show_cached_anima()
 	await _boot()
@@ -70,6 +104,10 @@ func _ready() -> void:
 		if arg.begins_with("--preview="):
 			var jalur := arg.trim_prefix("--preview=")
 			_show_preview(FileAccess.get_file_as_bytes(jalur), jalur.get_extension().to_lower() == "png")
+		if arg == "--collection":
+			_on_collection_pressed()
+		if arg == "--stats":
+			_on_stats_pressed()
 		if arg.begins_with("--screenshot="):
 			await _capture_and_quit(arg.trim_prefix("--screenshot="))
 
@@ -90,6 +128,7 @@ func _boot() -> void:
 
 	await Backend.fetch_profile()
 	_refresh_header()
+	await _reload_roster()
 	_set_busy(false)
 
 	# Scan yang tertinggal dari sesi sebelumnya dilanjutkan, bukan dibuang. Core-nya
@@ -104,15 +143,104 @@ func _boot() -> void:
 			_set_busy(true)
 			await _wait_for_hatch(anima_id)
 			_set_busy(false)
-	elif GameState.last_anima.is_empty():
-		_say("Foto satu benda di sekitarmu untuk memulai.")
-	else:
+	elif not _roster.is_empty():
+		var active := _active_row()
+		if active.is_empty():
+			active = _roster[0]
+		# Selalu present row aktif, bahkan kalau art-nya sudah cached. Boot sempat
+		# menampilkan last_anima sebelum jaringan selesai; kalau row itu sudah tidak
+		# ada di roster, melewati present di sini membuat sprite A memakai stats B.
+		_set_busy(true)
+		await _present_row(active)
+		_set_busy(false)
+	elif not GameState.last_anima.is_empty():
 		# Tanpa ini status berhenti di pesan boot, dan layar yang menampilkan
 		# Anima sambil berkata "Menyiapkan akun..." terbaca seperti macet.
 		var nama := str(GameState.last_anima.get("nickname", ""))
 		if nama.is_empty():
 			nama = str(GameState.last_anima.get("species_key", "Anima"))
-		_say("%s menunggu. Foto benda lain untuk menambah koleksi." % nama)
+		var suffix := "\nKoleksi belum termuat; tekan Koleksi untuk mencoba lagi." if not _roster_error.is_empty() else ""
+		_say("%s menunggu. Foto benda lain untuk menambah koleksi.%s" % [nama, suffix])
+	else:
+		_say("Foto satu benda di sekitarmu untuk memulai.")
+
+
+func _reload_roster() -> void:
+	var res := await Backend.fetch_animas()
+	if not res.ok or typeof(res.data) != TYPE_ARRAY:
+		_roster_error = res.error if not res.error.is_empty() else "balasan koleksi tidak sah"
+		_collection_status.text = "Koleksi gagal dimuat.\nTekan Koleksi lagi untuk mencoba."
+		return
+
+	var rows: Array = res.data
+	var ready: Array[Dictionary] = []
+	for value in rows:
+		var row := GameState.as_dict(value)
+		if not str(row.get("id", "")).is_empty():
+			ready.append(row)
+	_roster = ready
+	_roster_error = ""
+	_collection_status.text = "Belum ada Anima siap." if _roster.is_empty() else "%d Anima siap" % _roster.size()
+	_populate_collection()
+
+
+func _active_row() -> Dictionary:
+	var wanted := str(GameState.last_anima.get("id", ""))
+	if wanted.is_empty():
+		return {}
+	for row in _roster:
+		if str(row.get("id", "")) == wanted:
+			return row
+	return {}
+
+
+func _on_collection_pressed() -> void:
+	_collection_overlay.visible = true
+	if not _roster_error.is_empty():
+		_collection_button.disabled = true
+		await _reload_roster()
+		_collection_button.disabled = false
+
+
+func _close_collection() -> void:
+	_collection_overlay.visible = false
+
+
+func _on_stats_pressed() -> void:
+	if _current_anima.is_empty() or GameState.as_dict(_current_anima.get("base_stats")).is_empty():
+		return
+	_refresh_stats()
+	_stats_overlay.visible = true
+
+
+func _close_stats() -> void:
+	_stats_overlay.visible = false
+
+
+func _on_anima_selected(index: int) -> void:
+	if index < 0 or index >= _anima_list.item_count or _busy:
+		return
+	var row := GameState.as_dict(_anima_list.get_item_metadata(index))
+	if row.is_empty():
+		return
+	_collection_overlay.visible = false
+	_set_busy(true)
+	await _present_row(row)
+	_set_busy(false)
+
+
+func _present_row(row: Dictionary) -> void:
+	await _present(
+		str(row.get("id", "")),
+		str(row.get("species_key", "")),
+		str(row.get("color_bucket", "")),
+		int(row.get("stage", 1)),
+		"",
+		{},
+		str(row.get("nickname", "")),
+		row,
+		false
+	)
 
 
 ## Scan yang mati sebelum create_anima menjawab. Memanggilnya lagi dengan kunci
@@ -235,6 +363,7 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 	if not up.ok:
 		GameState.finish_scan()
 		_say("Unggah gagal: %s" % up.error)
+		_restore_previous_anima()
 		_set_busy(false)
 		return
 
@@ -264,6 +393,7 @@ func _handle_create_result(res: Dictionary) -> void:
 			_:
 				_say("Gagal: %s" % res.error)
 		GameState.finish_scan()
+		_restore_previous_anima()
 		return
 
 	var data := GameState.as_dict(res.data)
@@ -271,6 +401,7 @@ func _handle_create_result(res: Dictionary) -> void:
 	if str(data.get("gate", "")) == "rejected":
 		_say("Foto ini tidak bisa dipakai (%s).\nCoba benda, bukan orang." % str(data.get("reason", "?")))
 		GameState.finish_scan()
+		_restore_previous_anima()
 		return
 
 	var anima_id := str(data.get("anima_id", ""))
@@ -291,12 +422,14 @@ func _handle_create_result(res: Dictionary) -> void:
 			manifest,
 			# Nama yang sama dengan yang dipakai server: ia memilih
 			# suggested_name dari Vision kalau client tidak mengirim nickname.
-			str(vision.get("suggested_name", ""))
+			str(vision.get("suggested_name", "")),
+			vision
 		)
 		return
 
 	if anima_id.is_empty():
 		_say("Server tidak memberi anima_id. Coba lagi nanti.")
+		_restore_previous_anima()
 		return
 
 	await _wait_for_hatch(anima_id)
@@ -327,7 +460,8 @@ func _wait_for_hatch(anima_id: String) -> void:
 					int(row.get("stage", 1)),
 					"",
 					{},
-					str(row.get("nickname", ""))
+					str(row.get("nickname", "")),
+					row
 				)
 				return
 			"failed":
@@ -336,10 +470,12 @@ func _wait_for_hatch(anima_id: String) -> void:
 				await Backend.fetch_profile()
 				_refresh_header()
 				GameState.finish_scan()
+				_restore_previous_anima()
 				return
 
 	# Bukan kegagalan: webhook mungkin masih jalan. Scan-nya tetap tersimpan.
 	_say("Belum selesai. Buka lagi nanti — progresnya tersimpan.")
+	_restore_previous_anima()
 
 
 # ---------------------------------------------------------------- tampilkan
@@ -354,10 +490,14 @@ func _present(
 	stage: int,
 	sheet_path: String,
 	manifest: Dictionary,
-	nickname := ""
+	nickname: String = "",
+	anima_data: Dictionary = {},
+	complete_scan: bool = true
 ) -> void:
 	if species_key.is_empty() or color_bucket.is_empty():
 		_say("Data spesies tidak lengkap dari server.")
+		if complete_scan:
+			_restore_previous_anima()
 		return
 
 	if not GameState.has_sprite(species_key, color_bucket, stage):
@@ -366,6 +506,8 @@ func _present(
 			var art := await Backend.fetch_species_art(species_key, color_bucket, stage)
 			if not art.ok or typeof(art.data) != TYPE_ARRAY or (art.data as Array).is_empty():
 				_say("Art belum ada di pustaka: %s" % art.error)
+				if complete_scan:
+					_restore_previous_anima()
 				return
 			var row := GameState.as_dict((art.data as Array)[0])
 			sheet_path = str(row.get("sheet_path", ""))
@@ -374,16 +516,33 @@ func _present(
 		var unduh := await Backend.download_sheet(sheet_path)
 		if not unduh.ok:
 			_say("Unduh art gagal: %s" % unduh.error)
+			if complete_scan:
+				_restore_previous_anima()
 			return
 
 		var simpan := GameState.store_sprite(species_key, color_bucket, stage, manifest, unduh.bytes)
 		if not simpan.ok:
 			_say("Gagal menyimpan art: %s" % simpan.error)
+			if complete_scan:
+				_restore_previous_anima()
 			return
 
 	if not _load_and_apply(species_key, color_bucket, stage):
+		if complete_scan:
+			_restore_previous_anima()
 		return
 
+	# create_anima mengembalikan bentuk Vision (`stats`), sedangkan row Postgres
+	# memakai `base_stats`. Normalisasi sekali sebelum Stats dan roster lokal
+	# membaca data yang sama.
+	_current_anima = normalize_anima_data(anima_data)
+	_current_anima.merge({
+		"id": anima_id,
+		"nickname": nickname,
+		"species_key": species_key,
+		"color_bucket": color_bucket,
+		"stage": stage,
+	}, true)
 	GameState.remember_anima({
 		"id": anima_id,
 		"nickname": nickname,
@@ -391,17 +550,30 @@ func _present(
 		"color_bucket": color_bucket,
 		"stage": stage,
 	})
-	GameState.finish_scan()
+	_upsert_roster(_current_anima)
+	_refresh_stats()
+	_populate_collection()
+	if complete_scan:
+		GameState.finish_scan()
 	# Fotonya sudah selesai tugasnya begitu Anima-nya ada; membiarkannya di layar
 	# hanya menutupi hasil yang justru ingin dilihat pemain.
 	_preview.visible = false
 	_say("%s siap." % (nickname if not nickname.is_empty() else species_key))
 
 
+static func normalize_anima_data(anima_data: Dictionary) -> Dictionary:
+	var normalized := anima_data.duplicate(true)
+	if not normalized.has("base_stats") and typeof(normalized.get("stats")) == TYPE_DICTIONARY:
+		normalized["base_stats"] = normalized["stats"]
+	return normalized
+
+
 func _show_cached_anima() -> void:
 	var anima := GameState.last_anima
 	if anima.is_empty():
 		return
+	_current_anima = anima.duplicate(true)
+	_refresh_stats()
 	var species := str(anima.get("species_key", ""))
 	var color := str(anima.get("color_bucket", ""))
 	var stage := int(anima.get("stage", 1))
@@ -417,6 +589,7 @@ func _load_and_apply(species_key: String, color_bucket: String, stage: int) -> b
 		_say("Art tidak bisa dimuat: %s" % loaded.get("error", "?"))
 		return false
 	_anima.apply(loaded)
+	_anima.visible = true
 	_build_pose_buttons(loaded["poses"])
 	return true
 
@@ -427,10 +600,148 @@ func _build_pose_buttons(poses: PackedStringArray) -> void:
 	for pose in poses:
 		var button := Button.new()
 		button.text = pose.capitalize()
-		button.custom_minimum_size = Vector2(0, 52)
+		button.custom_minimum_size = Vector2(0, TOUCH_MIN)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(_anima.set_pose.bind(pose))
 		_pose_row.add_child(button)
+
+
+func _upsert_roster(row: Dictionary) -> void:
+	var id := str(row.get("id", ""))
+	if id.is_empty():
+		return
+	for i in _roster.size():
+		if str(_roster[i].get("id", "")) == id:
+			_roster[i] = row
+			return
+	_roster.push_front(row)
+
+
+func _populate_collection() -> void:
+	if not is_instance_valid(_anima_list):
+		return
+	# ponytail: pass pertama membuat thumbnail cached secara sinkron. Plafon
+	# sekitar 100 Anima lokal; kalau roster nyata melewatinya, simpan thumbnail
+	# 128px terpisah saat sheet diunduh dan virtualisasikan daftar.
+	_anima_list.clear()
+	var active_id := str(_current_anima.get("id", GameState.last_anima.get("id", "")))
+	var selected := -1
+	for row in _roster:
+		var id := str(row.get("id", ""))
+		var active := id == active_id
+		var nama := str(row.get("nickname", row.get("species_key", "Anima")))
+		var label := "%s%s · %s S%d" % [
+			"● " if active else "",
+			nama,
+			str(row.get("element", "?")).capitalize(),
+			int(row.get("stage", 1)),
+		]
+		_anima_list.add_item(label, _thumbnail_for(row), true)
+		var index := _anima_list.item_count - 1
+		_anima_list.set_item_metadata(index, row)
+		_anima_list.set_item_tooltip(index, "%s · rarity %d/5" % [nama, int(row.get("rarity", 1))])
+		if active:
+			selected = index
+	if selected >= 0:
+		_anima_list.select(selected)
+	_collection_status.text = "Belum ada Anima siap." if _roster.is_empty() else "%d Anima siap" % _roster.size()
+
+
+func _thumbnail_for(row: Dictionary) -> Texture2D:
+	var species := str(row.get("species_key", ""))
+	var color := str(row.get("color_bucket", ""))
+	var stage := int(row.get("stage", 1))
+	var cache_key := "%s|%s|%d" % [species, color, stage]
+	if _thumbnail_cache.has(cache_key):
+		return _thumbnail_cache[cache_key] as Texture2D
+	if GameState.has_sprite(species, color, stage):
+		var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path(species, color, stage))
+		if bool(loaded.get("ok", false)):
+			var frames: SpriteFrames = loaded.get("frames")
+			if frames != null and frames.has_animation("idle") and frames.get_frame_count("idle") > 0:
+				var frame := frames.get_frame_texture("idle", 0)
+				if frame != null:
+					var image := frame.get_image()
+					if image != null and not image.is_empty():
+						image.resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.INTERPOLATE_LANCZOS)
+						var texture := ImageTexture.create_from_image(image)
+						_thumbnail_cache[cache_key] = texture
+						return texture
+
+	if _placeholder_icon == null:
+		var placeholder := Image.create_empty(
+			THUMBNAIL_SIZE, THUMBNAIL_SIZE, false, Image.FORMAT_RGBA8
+		)
+		placeholder.fill(Color(0.16, 0.18, 0.22, 1.0))
+		_placeholder_icon = ImageTexture.create_from_image(placeholder)
+	return _placeholder_icon
+
+
+func _refresh_stats() -> void:
+	var stats := GameState.as_dict(_current_anima.get("base_stats"))
+	var nama := str(_current_anima.get("nickname", _current_anima.get("species_key", "Anima")))
+	_stats_title.text = "Stats · %s" % nama
+	_stat_hp.text = _stat_value(stats, "hp")
+	_stat_atk.text = _stat_value(stats, "atk")
+	_stat_def.text = _stat_value(stats, "def")
+	_stat_spd.text = _stat_value(stats, "spd")
+	_stat_special.text = _stat_value(stats, "special")
+	_stat_element.text = str(_current_anima.get("element", "—")).capitalize()
+	_stat_rarity.text = "%d / 5" % int(_current_anima["rarity"]) if _current_anima.has("rarity") else "—"
+	_stat_stage.text = _stage_name(int(_current_anima.get("stage", 1)))
+	_stats_button.disabled = _busy or _current_anima.is_empty() or stats.is_empty()
+
+
+func _stat_value(stats: Dictionary, key: String) -> String:
+	return str(int(stats[key])) if stats.has(key) else "—"
+
+
+func _stage_name(stage: int) -> String:
+	match stage:
+		1:
+			return "Baby"
+		2:
+			return "Adult"
+		3:
+			return "Perfect"
+		_:
+			return str(stage)
+
+
+func _layout_for_viewport() -> void:
+	if not is_instance_valid(_stage):
+		return
+	var viewport_size := get_viewport_rect().size
+	var insets := Vector4.ZERO
+	if OS.has_feature("android") or OS.has_feature("ios"):
+		var screen_size := Vector2(DisplayServer.screen_get_size())
+		if screen_size.x > 0.0 and screen_size.y > 0.0:
+			var safe := DisplayServer.get_display_safe_area()
+			var scale := Vector2(viewport_size.x / screen_size.x, viewport_size.y / screen_size.y)
+			insets = Vector4(
+				safe.position.x * scale.x,
+				safe.position.y * scale.y,
+				(screen_size.x - safe.end.x) * scale.x,
+				(screen_size.y - safe.end.y) * scale.y
+			)
+
+	_apply_margins(_main_margin, insets, BASE_MARGIN, BASE_MARGIN)
+	_apply_margins(_collection_margin, insets, 48.0, 48.0)
+	_apply_margins(_stats_margin, insets, 64.0, 96.0)
+	_stage.position = stage_position_for(viewport_size, insets)
+
+
+static func stage_position_for(viewport_size: Vector2, insets: Vector4) -> Vector2:
+	var safe_top := insets.y
+	var safe_bottom := viewport_size.y - insets.w
+	return Vector2(viewport_size.x * 0.5, lerpf(safe_top, safe_bottom, 0.54))
+
+
+func _apply_margins(node: MarginContainer, insets: Vector4, side: float, vertical: float) -> void:
+	node.add_theme_constant_override("margin_left", int(side + insets.x))
+	node.add_theme_constant_override("margin_top", int(vertical + insets.y))
+	node.add_theme_constant_override("margin_right", int(side + insets.z))
+	node.add_theme_constant_override("margin_bottom", int(vertical + insets.w))
 
 
 # ---------------------------------------------------------------- UI kecil
@@ -447,7 +758,16 @@ func _show_preview(bytes: PackedByteArray, is_png: bool) -> void:
 		return
 	_preview.texture = ImageTexture.create_from_image(image)
 	_preview.visible = true
+	# Foto dan Anima lama sama-sama hidup di area tengah. Menyembunyikan Anima
+	# selama preview membuat orientasi foto terbaca jelas dan mencegah dua subjek
+	# saling menutupi; Anima muncul lagi hanya setelah art berhasil dipresentasikan.
+	_anima.visible = false
 	print("foto: %d x %d, %.0f KB" % [image.get_width(), image.get_height(), bytes.size() / 1024.0])
+
+
+func _restore_previous_anima() -> void:
+	_preview.visible = false
+	_anima.visible = _anima.sprite_frames != null
 
 
 func _say(text: String) -> void:
@@ -468,9 +788,24 @@ func _refresh_header() -> void:
 func _set_busy(busy: bool) -> void:
 	_busy = busy
 	_scan_button.disabled = busy
+	_collection_button.disabled = busy
+	_stats_button.disabled = (
+		busy
+		or _current_anima.is_empty()
+		or GameState.as_dict(_current_anima.get("base_stats")).is_empty()
+	)
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		if _stats_overlay.visible:
+			_close_stats()
+			get_viewport().set_input_as_handled()
+			return
+		if _collection_overlay.visible:
+			_close_collection()
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventMouseButton and event.pressed and _anima.sprite_frames != null:
 		_anima.hop()
 

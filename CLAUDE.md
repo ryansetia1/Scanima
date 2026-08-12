@@ -57,10 +57,15 @@ backend/prompts/
 │   ├── vision_schema.json        # kontrak yang sama dengan v1
 │   ├── sprite_sheet.md           # GPT Image 2 medium + anime cel-shaded style
 │   └── sprite_sheet_evolve.md
-└── v3/                           # DEFAULT: v2 + blok BRAND MARKS
-    ├── vision_system.md          # identik v2
-    ├── vision_schema.json        # identik v2
-    ├── sprite_sheet.md           # logo merek diganti marking ciptaan, bukan cuma dilarang
+├── v3/                           # DEFAULT production: v2 + blok BRAND MARKS
+│   ├── vision_system.md          # identik v2
+│   ├── vision_schema.json        # identik v2
+│   ├── sprite_sheet.md           # logo merek diganti marking ciptaan
+│   └── sprite_sheet_evolve.md
+└── v4/                           # CANDIDATE, belum diuji berbayar
+    ├── vision_system.md          # + surface_finish dan damage_hints
+    ├── vision_schema.json        # material/damage nullable, cache key tetap
+    ├── sprite_sheet.md           # permukaan polos; damage wajib sesuai material
     └── sprite_sheet_evolve.md
 ```
 
@@ -72,7 +77,9 @@ Setiap row di tabel `generations` menyimpan `prompt_version`. Ini yang memungkin
 
 Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-engineering.md) dan sumber art direction v2 ada di [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md). Jangan mengarang aturan style baru; konsistensi visual antar Anima bergantung pada style lock itu.
 
-**Larangan negatif saja tidak menghapus logo merek.** v2 sudah memuat "no logos, brand names" di blok FORBIDDEN dan GPT Image 2 tetap menggambar swoosh Nike di keempat pose sheet sepatu, karena logonya datang dari foto di `input_images`, bukan dari teks prompt — Vision malah tidak pernah menyebutnya. Yang berhasil di v3 adalah instruksi PENGGANTI di dekat konteks objek: perlakukan mark sebagai tidak ada, lalu gambar permukaan polos atau marking geometris ciptaan sendiri. Terbukti sekali jalan, `species_key` tetap `shoe_fabric_sneaker` sehingga dedup cache tidak pecah.
+**Larangan negatif saja tidak menghapus logo merek, tapi instruksi pengganti v3 juga punya efek samping.** v2 sudah memuat "no logos, brand names" dan GPT Image 2 tetap menggambar swoosh Nike karena logonya datang dari `input_images`. v3 menghilangkannya dengan meminta permukaan polos atau marking geometris ciptaan sendiri; itu lolos satu uji sepatu dan menjaga `species_key`, tetapi model lalu mengarang emblem mirip logo bahkan pada objek tanpa logo. v4 menghapus pilihan marking itu seluruhnya: logo/teks/sigil dianggap tidak ada dan tempatnya selalu material polos yang setia pada objek.
+
+**Damage v3 bias robot bukan kebetulan model.** Template universalnya sendiri menyebut `loose cable`, `exposed wire`, dan `broken key`, sementara style lock memberi semua objek bahasa `techno-organic`; material Vision tidak pernah sampai ke prompt gambar. v4 menambah `surface_finish` + `damage_hints` ke Vision dan menyaring hint teknis di `assemblePrompt()`: kata cable/wire/circuit/key hanya lolos jika fitur yang sama benar-benar ada di `signature_features`. Keramik retak/terkelupas, kain berjumbai/robek, tanaman sobek/layu, logam penyok/tergores. v4 **belum default dan belum boleh dipromosikan sebelum Smoke Set visual berbayar disetujui**.
 
 ## Fakta teknis yang mudah salah
 
@@ -97,6 +104,9 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **Terverifikasi pada APK sungguhan: tepat dua izin, `INTERNET` dan `CAMERA`.** Nol `READ_MEDIA_IMAGES`, nol `READ_EXTERNAL_STORAGE` — jadi pilihan fork PhotoPicker terbukti di artefak akhir, bukan cuma di manifest sumbernya. Kelas `GodotGetImage` juga terkonfirmasi ada di `classes.dex`. Periksa keduanya setiap kali plugin atau versi engine berubah; manifest yang ter-merge tidak membuktikan kodenya ikut.
 - **Template Android 4.6.2 mematok Gradle 8.11.1, jadi JDK-nya tidak boleh lebih baru dari 23.** Mesin ini punya JDK 26 dan build-nya berhenti di `Unsupported class file major version 70` sebelum menyentuh kode kita. Yang dipakai: `brew install openjdk@17` — **formula, bukan cask `temurin@17`**, sebab cask memasang ke `/Library/Java/...` dan menuntut sudo sementara formula tidak. JDK 26 **tidak** perlu dihapus walau banyak jawaban forum menyuruhnya: Godot punya setelan `Java SDK Path` sendiri, jadi keduanya hidup berdampingan. Alternatif menaikkan `distributionUrl` di `gradle-wrapper.properties` menukar satu masalah pasti dengan pasangan Gradle/AGP yang tidak diuji siapa pun.
 - **Godot membaca `ANDROID_HOME` tapi TIDAK membaca `JAVA_HOME`.** SDK-nya terdeteksi sendiri; jalur JDK harus ada di `export/android/java_sdk_path` pada `editor_settings-4.6.tres` (nama file-nya per-minor, bukan `editor_settings-4.tres`). Menulisnya lewat file **hanya aman saat editor tertutup** — editor menyimpan setelannya sendiri ketika keluar dan akan menimpa suntingan dari luar. `export/android/debug_keystore` juga sudah diisi sendiri oleh editor ke keystore yang belum ada; ia dibuat lambat memakai `keytool` dari JDK, jadi preset di sini menunjuk `~/.android/debug.keystore` yang nyata ada supaya hasilnya deterministik.
+- **Basis UI 720×1280 berarti angka Godot kira-kira 2× target dp Android.** Target Material minimum 48dp menjadi `custom_minimum_size.y = 96`, body/button 16sp menjadi sekitar 32 px, spacing 8dp menjadi 16 px. Default font Godot 16 px yang lama setara kira-kira 8sp dan memang terlalu kecil, bukan sekadar selera. Angka bersama hidup di `themes/mobile_theme.tres`; jangan mengecilkan satu tombol secara lokal.
+- **Target SDK 35 memaksakan edge-to-edge di Android 15.** `DisplayServer.get_display_safe_area()` mengembalikan piksel fisik, bukan koordinat viewport. `scan_flow.gd` mengubahnya dengan rasio viewport/screen sebelum memasang margin. Memakai nilainya langsung akan menggandakan inset pada device ber-DPI tinggi; mengabaikannya menaruh Koleksi/Stats di bawah status bar atau gesture bar.
+- **Daftar Anima tidak dipersist lokal.** `Backend.fetch_animas()` membaca ulang hanya row `ready` dari Postgres di bawah RLS; `GameState.last_anima` tetap hanya pilihan terakhir dan bukan salinan roster. Modal memakai `ItemList` dua kolom. Thumbnail 128px dibuat hanya dari sheet yang sudah ada di cache; jangan mengunduh semua sheet ~1 MB saat modal dibuka hanya demi thumbnail.
 - **`FOTO_MAX_PX` di `scan_flow.gd` bukan angka bebas: ia sengaja sama dengan foto terbesar di `eval/photos/` (1280 px).** Menaikkannya berarti produksi memberi Vision gambar yang lebih besar daripada apa pun yang pernah diuji Smoke Set, dan yang bergeser bukan cuma stat — `species_key` yang berubah memecah dedup cache, jadi scan yang seharusnya gratis membayar $0.07. Skenario 18 di `npm run selftest` menegakkan batas itu secara gratis. Naikkan hanya bersamaan dengan eval ulang.
 - **Plugin men-decode lalu meng-encode ulang fotonya**, jadi EXIF ikut hilang — termasuk koordinat GPS. Rotasi dibakar ke piksel lewat `rotateImageIfRequired`, bukan ditinggalkan sebagai tag. Konsekuensi baiknya: server tidak pernah menerima lokasi pemain. Konsekuensi lainnya: `auto_rotate_image` mengaku sendiri "tidak 100%", jadi `scan_flow` menampilkan preview foto plus mencetak dimensinya — potret yang keluar sebagai lanskap adalah satu-satunya gejala yang terlihat sebelum ia menjelma jadi stat yang aneh.
 - **Balasan biner tidak boleh dikonversi ke String untuk dicoba jadi JSON.** Sheet 1 MB dari CDN yang dipaksa lewat `get_string_from_utf8()` memberi `Unicode parsing error` plus galat parser JSON di log setiap unduhan, dan menyalin satu megabyte tanpa guna, padahal pemanggilnya memakai `bytes`. `Backend._maybe_json()` memeriksa byte pertama dulu.
@@ -128,9 +138,10 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 19 skenario + 12 uji tanda tangan webhook
+npm run selftest                       # 20 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 godot --headless --path game --script res://tests/test_client_state.gd  # sesi, kunci scan, cache art
+godot --headless --path game --script res://tests/test_scan_ui.gd       # 42 check layout mobile
 node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
 
 # setelah mengubah prompt: regenerasi bundel yang dipakai Edge Function
