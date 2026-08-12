@@ -249,6 +249,15 @@ func _test_presenter() -> void:
 	_check(not presenter.apply({"ok": false, "error": "uji"}), "apply data gagal harus mengembalikan false")
 	_check(presenter.sprite_frames != null, "frames lama harus tetap terpasang")
 
+	presenter.apply_care_state(true, false)
+	_check_eq(presenter.current_pose(), "sleep", "state tidur harus memakai pose Sleep")
+	presenter.apply_care_state(false, true)
+	_check_eq(presenter.current_pose(), "defeated", "Dormant harus memakai pose Defeated")
+	_check(presenter.modulate != Color.WHITE, "Dormant harus terlihat pucat")
+	presenter.apply_care_state(false, false)
+	_check_eq(presenter.current_pose(), "idle", "pulih dari Dormant harus kembali Idle")
+	_check_eq(presenter.modulate, Color.WHITE, "pulih dari Dormant harus menghapus tint")
+
 	presenter.visible = false
 	await presenter.hatch_reveal()
 	_check(presenter.visible, "hatch reveal harus menampilkan Anima")

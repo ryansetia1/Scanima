@@ -66,6 +66,16 @@ const BASE_MARGIN := 32.0
 @onready var _stat_element: Label = %StatElement
 @onready var _stat_rarity: Label = %StatRarity
 @onready var _stat_stage: Label = %StatStage
+@onready var _care_panel: PanelContainer = %CarePanel
+@onready var _care_summary: Label = %CareSummary
+@onready var _need_hunger: ProgressBar = %NeedHunger
+@onready var _need_energy: ProgressBar = %NeedEnergy
+@onready var _need_hygiene: ProgressBar = %NeedHygiene
+@onready var _need_bond: ProgressBar = %NeedBond
+@onready var _feed_button: Button = %FeedButton
+@onready var _clean_button: Button = %CleanButton
+@onready var _sleep_button: Button = %SleepButton
+@onready var _play_button: Button = %PlayButton
 
 var _busy := false
 var _roster: Array[Dictionary] = []
@@ -84,6 +94,10 @@ func _ready() -> void:
 	_stats_button.pressed.connect(_on_stats_pressed)
 	%CloseCollectionButton.pressed.connect(_close_collection)
 	%CloseStatsButton.pressed.connect(_close_stats)
+	_feed_button.pressed.connect(_perform_care.bind("feed"))
+	_clean_button.pressed.connect(_perform_care.bind("clean"))
+	_sleep_button.pressed.connect(_toggle_sleep)
+	_play_button.pressed.connect(_perform_care.bind("play"))
 	_anima_list.item_selected.connect(_on_anima_selected)
 	_dialog.file_selected.connect(_scan_file)
 	get_viewport().size_changed.connect(_layout_for_viewport)
@@ -135,6 +149,9 @@ func _boot() -> void:
 	await Backend.fetch_profile()
 	_refresh_header()
 	await _reload_roster()
+	if not GameState.pending_care.is_empty():
+		_say("Menyelesaikan perawatan yang tertunda…")
+		await _resume_pending_care()
 	_set_busy(false)
 
 	# Scan yang tertinggal dari sesi sebelumnya dilanjutkan, bukan dibuang. Core-nya
@@ -247,6 +264,125 @@ func _present_row(row: Dictionary) -> void:
 		row,
 		false
 	)
+	if str(_current_anima.get("id", "")) == str(row.get("id", "")):
+		await _sync_active_care(false)
+
+
+func _toggle_sleep() -> void:
+	var action := "wake" if _is_sleeping(_current_anima) else "sleep"
+	await _perform_care(action)
+
+
+func _perform_care(action: String) -> void:
+	if _busy or _current_anima.is_empty():
+		return
+	if not GameState.pending_care.is_empty():
+		_say("Perawatan sebelumnya masih menunggu konfirmasi.")
+		return
+
+	var anima_id := str(_current_anima.get("id", ""))
+	if anima_id.is_empty():
+		return
+
+	_set_busy(true)
+	var pending := GameState.begin_care(anima_id, action)
+	await _send_pending_care(pending, true)
+	_set_busy(false)
+
+
+func _resume_pending_care() -> void:
+	var pending := GameState.pending_care.duplicate(true)
+	if pending.is_empty():
+		return
+	await _send_pending_care(pending, false)
+
+
+func _send_pending_care(pending: Dictionary, show_feedback: bool) -> void:
+	var action := str(pending.get("action", ""))
+	var res := await Backend.care_anima(
+		str(pending.get("anima_id", "")),
+		action,
+		str(pending.get("idempotency_key", ""))
+	)
+	if res.ok:
+		GameState.finish_care()
+		if _apply_care_response(GameState.as_dict(res.data), action, show_feedback):
+			_say(_care_success_message(action))
+		return
+
+	# Galat 4xx adalah keputusan server, bukan gangguan sementara. Menyimpan key
+	# selamanya akan mengunci semua tombol care walau saldo/kondisinya berubah.
+	if res.code >= 400 and res.code < 500:
+		GameState.finish_care()
+	_say(_care_error_message(res.error))
+
+
+func _sync_active_care(show_error: bool) -> void:
+	var anima_id := str(_current_anima.get("id", ""))
+	if anima_id.is_empty():
+		return
+	var res := await Backend.care_anima(anima_id, "sync")
+	if res.ok:
+		_apply_care_response(GameState.as_dict(res.data), "sync", false)
+	elif show_error:
+		_say("Kondisi Anima belum tersinkron: %s" % res.error)
+
+
+func _apply_care_response(data: Dictionary, action: String, show_feedback: bool) -> bool:
+	var row := normalize_anima_data(GameState.as_dict(data.get("anima")))
+	var anima_id := str(row.get("id", ""))
+	if anima_id.is_empty():
+		return false
+
+	if data.has("bits"):
+		GameState.profile["bits"] = int(data.get("bits", 0))
+		_refresh_header()
+	_upsert_roster(row)
+
+	if str(_current_anima.get("id", "")) == anima_id:
+		_current_anima = row
+		_refresh_stats()
+		_refresh_care()
+		if show_feedback:
+			_anima.care_feedback(action)
+	_populate_collection()
+	return true
+
+
+func _care_success_message(action: String) -> String:
+	match action:
+		"feed":
+			return "Anima sudah makan. −5 Bits"
+		"clean":
+			return "Anima kembali bersih. −5 Bits"
+		"play":
+			return "Bond bertambah. −5 Energy"
+		"sleep":
+			return "Anima mulai tidur. Penuh dalam 6 jam."
+		"wake":
+			return "Anima bangun dengan Energy yang sudah dipulihkan."
+		_:
+			return "Kondisi Anima tersinkron."
+
+
+func _care_error_message(error: String) -> String:
+	match error:
+		"NO_BITS":
+			return "Bits tidak cukup. Makan dan Bersih membutuhkan 5 Bits."
+		"NO_ENERGY":
+			return "Energy kurang untuk bermain."
+		"NEED_FULL":
+			return "Kebutuhan itu sudah penuh."
+		"ALREADY_SLEEPING":
+			return "Anima sedang tidur."
+		"NOT_SLEEPING":
+			return "Anima sudah bangun."
+		"ANIMA_NOT_READY":
+			return "Anima belum siap dirawat."
+		"ANIMA_NOT_FOUND":
+			return "Anima tidak ditemukan di akun ini."
+		_:
+			return "Perawatan gagal: %s" % error
 
 
 ## Scan yang mati sebelum create_anima menjawab. Memanggilnya lagi dengan kunci
@@ -564,6 +700,7 @@ func _present(
 	})
 	_upsert_roster(_current_anima)
 	_refresh_stats()
+	_refresh_care()
 	_populate_collection()
 	if complete_scan:
 		GameState.finish_scan()
@@ -578,6 +715,8 @@ func _present(
 		_incubator.stop()
 		_anima.visible = true
 	_pose_row.visible = true
+	if complete_scan:
+		await _sync_active_care(false)
 	_say("%s siap." % (nickname if not nickname.is_empty() else species_key))
 
 
@@ -585,6 +724,8 @@ static func normalize_anima_data(anima_data: Dictionary) -> Dictionary:
 	var normalized := anima_data.duplicate(true)
 	if not normalized.has("base_stats") and typeof(normalized.get("stats")) == TYPE_DICTIONARY:
 		normalized["base_stats"] = normalized["stats"]
+	if normalized.has("care") or normalized.has("care_synced_at"):
+		normalized["care"] = CareRules.normalized_care(normalized.get("care"))
 	return normalized
 
 
@@ -594,6 +735,7 @@ func _show_cached_anima() -> void:
 		return
 	_current_anima = anima.duplicate(true)
 	_refresh_stats()
+	_refresh_care()
 	var species := str(anima.get("species_key", ""))
 	var color := str(anima.get("color_bucket", ""))
 	var stage := int(anima.get("stage", 1))
@@ -712,6 +854,47 @@ func _refresh_stats() -> void:
 	_stats_button.disabled = _busy or _current_anima.is_empty() or stats.is_empty()
 
 
+func _refresh_care() -> void:
+	var has_care := typeof(_current_anima.get("care")) == TYPE_DICTIONARY
+	_care_panel.visible = has_care
+	if not has_care:
+		_set_care_buttons_disabled(true)
+		return
+
+	var care := CareRules.normalized_care(_current_anima.get("care"))
+	_need_hunger.value = care["hunger"]
+	_need_energy.value = care["energy"]
+	_need_hygiene.value = care["hygiene"]
+	_need_bond.value = care["bond"]
+
+	var sleeping := _is_sleeping(_current_anima)
+	var dormant := _has_timestamp(_current_anima.get("dormant_since"))
+	var state := "Dormant" if dormant else ("Tidur" if sleeping else "Aktif")
+	_care_summary.text = "Care Score %d  ·  %s" % [
+		int(_current_anima.get("care_score", 0)),
+		state,
+	]
+	_sleep_button.text = "Bangun" if sleeping else "Tidur"
+	_set_care_buttons_disabled(_busy)
+	if _anima.sprite_frames != null:
+		_anima.apply_care_state(sleeping, dormant)
+
+
+func _set_care_buttons_disabled(disabled: bool) -> void:
+	_feed_button.disabled = disabled
+	_clean_button.disabled = disabled
+	_sleep_button.disabled = disabled
+	_play_button.disabled = disabled
+
+
+func _is_sleeping(row: Dictionary) -> bool:
+	return _has_timestamp(row.get("sleep_started_at"))
+
+
+static func _has_timestamp(value: Variant) -> bool:
+	return value != null and not str(value).is_empty()
+
+
 func _stat_value(stats: Dictionary, key: String) -> String:
 	return str(int(stats[key])) if stats.has(key) else "—"
 
@@ -822,6 +1005,9 @@ func _set_busy(busy: bool) -> void:
 		busy
 		or _current_anima.is_empty()
 		or GameState.as_dict(_current_anima.get("base_stats")).is_empty()
+	)
+	_set_care_buttons_disabled(
+		busy or typeof(_current_anima.get("care")) != TYPE_DICTIONARY
 	)
 
 

@@ -2,10 +2,10 @@ extends Node
 
 ## Satu-satunya pemilik state yang bertahan antar sesi aplikasi.
 ##
-## Yang disimpan cuma dua hal, dan keduanya tidak bisa diambil ulang dari mana
-## pun: sesi pemain, dan scan yang sedang berjalan. Saldo dan daftar Anima
-## sengaja TIDAK disimpan, karena server yang berwenang atas keduanya dan
-## salinan lokal hanya menambah satu sumber kebenaran yang bisa salah.
+## Yang disimpan hanya hal yang tidak aman direkonstruksi: sesi pemain, scan
+## berbayar yang berjalan, dan satu aksi care yang belum terkonfirmasi. Saldo,
+## kebutuhan, dan daftar Anima sengaja TIDAK disimpan, karena server yang
+## berwenang dan salinan lokal hanya menambah satu sumber kebenaran yang salah.
 ##
 ## Sesi adalah satu-satunya bukti kepemilikan akun. Pemain anonim tidak punya
 ## email maupun password, jadi file ini hilang atau rusak sama dengan kehilangan
@@ -21,6 +21,10 @@ var session: Dictionary = {}
 
 ## {idempotency_key, photo_path, generation_id, anima_id}. Lihat begin_scan().
 var pending_scan: Dictionary = {}
+
+## {idempotency_key, anima_id, action}. Dipertahankan sampai server mengonfirmasi
+## supaya retry Feed/Clean tidak mendebit Bits dua kali.
+var pending_care: Dictionary = {}
 
 ## Anima terakhir yang berhasil dimuat, supaya app bisa langsung menampilkannya
 ## saat dibuka lagi tanpa menunggu jaringan sama sekali.
@@ -53,6 +57,7 @@ func load_state() -> void:
 	var data: Dictionary = parsed
 	session = as_dict(data.get("session"))
 	pending_scan = as_dict(data.get("pending_scan"))
+	pending_care = as_dict(data.get("pending_care"))
 	last_anima = as_dict(data.get("last_anima"))
 
 
@@ -60,6 +65,7 @@ func save() -> void:
 	var payload := {
 		"session": session,
 		"pending_scan": pending_scan,
+		"pending_care": pending_care,
 		"last_anima": last_anima,
 	}
 	var tmp := path_state + ".tmp"
@@ -116,6 +122,24 @@ func note_scan_started(generation_id: String, anima_id: String) -> void:
 
 func finish_scan() -> void:
 	pending_scan = {}
+	save()
+
+
+func begin_care(anima_id: String, action: String) -> Dictionary:
+	if not pending_care.is_empty():
+		return pending_care
+	var key := "%d-%08x%08x" % [int(Time.get_unix_time_from_system()), randi(), randi()]
+	pending_care = {
+		"idempotency_key": key,
+		"anima_id": anima_id,
+		"action": action,
+	}
+	save()
+	return pending_care
+
+
+func finish_care() -> void:
+	pending_care = {}
 	save()
 
 

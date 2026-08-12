@@ -16,6 +16,7 @@ const BREATH_SLEEP_SEC := 2.8
 const HOP_HEIGHT_PX := 10.0
 
 var _motion: Tween
+var _feedback: Tween
 var _base_position: Vector2 = Vector2.ZERO
 var _current_pose: String = ""
 
@@ -118,6 +119,32 @@ func hop() -> void:
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_BOUNCE)
 
 
+func care_feedback(action: String) -> void:
+	if action == "clean":
+		if _feedback != null and _feedback.is_valid():
+			_feedback.kill()
+		_feedback = create_tween()
+		_feedback.tween_property(self, "modulate", Color(0.55, 1.2, 1.35, 1.0), 0.12)
+		_feedback.tween_property(self, "modulate", Color.WHITE, 0.34) \
+			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	elif action == "feed" or action == "play":
+		hop()
+
+
+func apply_care_state(sleeping: bool, dormant: bool) -> void:
+	if dormant:
+		modulate = Color(0.68, 0.72, 0.82, 1.0)
+		if not set_pose("defeated"):
+			set_pose("sleep")
+		return
+
+	modulate = Color.WHITE
+	if sleeping:
+		set_pose("sleep")
+	elif _current_pose == "sleep" or _current_pose == "defeated":
+		set_pose("idle")
+
+
 ## Reveal satu kali setelah Incubator mencapai flash puncak. Pose tween dihentikan
 ## dulu supaya dua tween tidak berebut scale/position, lalu dinyalakan lagi saat
 ## squash-and-stretch selesai.
@@ -126,6 +153,8 @@ func hatch_reveal() -> void:
 		return
 	if _motion != null and _motion.is_valid():
 		_motion.kill()
+	if _feedback != null and _feedback.is_valid():
+		_feedback.kill()
 
 	visible = true
 	position = _base_position - Vector2(0.0, 46.0)

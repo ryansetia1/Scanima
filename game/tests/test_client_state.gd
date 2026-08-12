@@ -11,6 +11,7 @@ extends SceneTree
 ##     pemain anonim tidak punya email untuk memulihkannya
 ##   - kunci idempotency yang berubah di tengah scan berarti Genesis Core kedua
 ##     terdebit untuk satu Anima yang sama
+##   - kunci care yang hilang setelah timeout berarti Bits bisa terdebit dua kali
 ##   - cache art setengah terunduh yang terbaca lengkap berarti Anima tampil rusak
 ##
 ## State pemain tidak disentuh: GameState diarahkan ke file dan folder sementara.
@@ -41,6 +42,7 @@ func _initialize() -> void:
 	_test_kedaluwarsa()
 	_test_kunci_scan()
 	_test_scan_selesai()
+	_test_kunci_care()
 	_test_state_rusak()
 	_test_cache_art()
 	_test_cache_setengah()
@@ -78,6 +80,7 @@ func _check_eq(actual: Variant, expected: Variant, message: String) -> void:
 func _muat_ulang() -> void:
 	GameState.session = {}
 	GameState.pending_scan = {}
+	GameState.pending_care = {}
 	GameState.last_anima = {}
 	GameState.load_state()
 
@@ -185,8 +188,31 @@ func _test_scan_selesai() -> void:
 	_check_eq(GameState.uid(), "uid-abc", "sesi tidak boleh ikut terhapus saat scan selesai")
 
 
+func _test_kunci_care() -> void:
+	print("5. aksi care bertahan sampai server mengonfirmasi")
+	var care: Dictionary = GameState.begin_care("anima-1", "feed")
+	var key := str(care.get("idempotency_key", ""))
+	_check(not key.is_empty(), "care harus punya idempotency key")
+	_check(key.length() <= 128, "key care harus muat batas server")
+
+	# Hanya satu aksi boleh menggantung. Tap kedua sebelum jawaban harus memakai
+	# intent lama, bukan menimpa key dan berpotensi mendebit dua kali.
+	var kedua: Dictionary = GameState.begin_care("anima-1", "clean")
+	_check_eq(kedua.get("idempotency_key"), key, "aksi kedua tidak boleh menimpa pending care")
+	_check_eq(kedua.get("action"), "feed", "action pending harus tetap Feed")
+
+	_muat_ulang()
+	_check_eq(GameState.pending_care.get("idempotency_key"), key, "key care harus selamat dari restart")
+	_check_eq(GameState.pending_care.get("anima_id"), "anima-1", "anima care harus selamat dari restart")
+
+	GameState.finish_care()
+	_muat_ulang()
+	_check(GameState.pending_care.is_empty(), "care terkonfirmasi harus dihapus dari disk")
+	_check_eq(GameState.uid(), "uid-abc", "menyelesaikan care tidak boleh menghapus sesi")
+
+
 func _test_state_rusak() -> void:
-	print("5. state.json rusak tidak menghapus apa pun (satu ERROR di bawah disengaja)")
+	print("6. state.json rusak tidak menghapus apa pun (satu ERROR di bawah disengaja)")
 	var file := FileAccess.open(PATH_UJI, FileAccess.WRITE)
 	file.store_string("{\"session\": {\"access_token\": \"akses")
 	file.close()
@@ -203,7 +229,7 @@ func _test_state_rusak() -> void:
 
 
 func _test_cache_art() -> void:
-	print("6. art tersimpan dan bisa dimuat AnimaLoader")
+	print("7. art tersimpan dan bisa dimuat AnimaLoader")
 	var built := PlaceholderSheet.build()
 	var image: Image = built["image"]
 	var manifest: Dictionary = built["manifest"]
@@ -233,7 +259,7 @@ func _test_cache_art() -> void:
 
 
 func _test_cache_setengah() -> void:
-	print("7. cache setengah terunduh dianggap tidak ada")
+	print("8. cache setengah terunduh dianggap tidak ada")
 	var dir: String = GameState.sprite_dir("uji_kotak", "cool_blue", 1)
 	var manifest_dict: Dictionary = PlaceholderSheet.build()["manifest"]
 	var sheet_name := str(manifest_dict["sheet"])

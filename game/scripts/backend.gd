@@ -23,6 +23,11 @@ const TIMEOUT_FUNGSI_SEC := 90.0
 ## ada request yang gagal, supaya tidak ada panggilan mati di tengah jalan hanya
 ## karena umur token.
 const MARGIN_REFRESH_SEC := 120
+const ANIMA_FIELDS := (
+	"id,status,nickname,species_key,color_bucket,stage,element,rarity,base_stats,"
+	+ "care,care_score,care_synced_at,sleep_started_at,sleep_energy_at_start,"
+	+ "well_cared_on,play_score_on,play_score_today,dormant_since"
+)
 
 
 # ------------------------------------------------------------------ sesi
@@ -121,8 +126,7 @@ func fetch_profile() -> Dictionary:
 
 func fetch_anima(anima_id: String) -> Dictionary:
 	return await get_rest(
-		"animas?id=eq.%s&select=id,status,nickname,species_key,color_bucket,stage,element,rarity,base_stats"
-		% anima_id.uri_encode()
+		"animas?id=eq.%s&select=%s" % [anima_id.uri_encode(), ANIMA_FIELDS]
 	)
 
 
@@ -131,7 +135,7 @@ func fetch_animas() -> Dictionary:
 	# aktif; menduplikasi uid di URL hanya menciptakan pagar kedua yang bisa drift.
 	return await get_rest(
 		"animas?status=eq.ready"
-		+ "&select=id,nickname,species_key,color_bucket,stage,element,rarity,base_stats"
+		+ "&select=" + ANIMA_FIELDS
 		+ "&order=born_at.desc"
 	)
 
@@ -188,6 +192,19 @@ func create_anima(photo_path: String, idempotency_key: String, nickname := "") -
 		_headers(true, ["content-type: application/json"]),
 		JSON.stringify(body).to_utf8_buffer(),
 		TIMEOUT_FUNGSI_SEC
+	)
+
+
+func care_anima(anima_id: String, action: String, idempotency_key := "") -> Dictionary:
+	var body := {"anima_id": anima_id, "action": action}
+	if not idempotency_key.is_empty():
+		body["idempotency_key"] = idempotency_key
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/functions/v1/care_anima",
+		_headers(true, ["content-type: application/json"]),
+		JSON.stringify(body).to_utf8_buffer(),
+		TIMEOUT_SEC
 	)
 
 

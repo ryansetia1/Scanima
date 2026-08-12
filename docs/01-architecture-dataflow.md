@@ -109,6 +109,7 @@ sequenceDiagram
 | Godot client | Ambil foto, resize, upload, polling, cache lokal, render | Simpan API key, tentukan kuota, proses piksel |
 | `create_anima` | Vision, cek pustaka, lalu klaim Core hanya bila spesies baru | Menunggu gambar selesai (harus balik cepat) |
 | `replicate_webhook` | Post-processing gambar, isi cache, tandai ready | Dipercaya tanpa verifikasi signature |
+| `care_anima` | Verifikasi JWT, teruskan aksi care idempoten ke transaksi Postgres | Menerima `owner_id` dari client atau memanggil model |
 | `evolve_anima` | Generation stage berikutnya pakai sprite lama sebagai input | Dipanggil tanpa cek syarat evolusi di server |
 | Postgres | Sumber kebenaran untuk kuota, stat, kepemilikan | Menyimpan foto mentah |
 | Storage | Foto sementara, sheet RGBA, manifest | Menyimpan foto lebih dari 24 jam |
@@ -127,7 +128,7 @@ create table profiles (
   scan_charges   int  not null default 8,
   scan_charge_max int not null default 8,
   genesis_cores  int  not null default 3,        -- 3 gratis saat onboarding
-  bits           int  not null default 0,
+  bits           int  not null default 30,       -- starter care pack
   next_refill_at timestamptz,
   byok_enabled   bool not null default false,
   created_at     timestamptz not null default now(),
@@ -170,6 +171,12 @@ create table animas (
   care_score     int  not null default 0,             -- akumulasi, gerbang evolusi
   born_at        timestamptz not null default now(),
   care_synced_at timestamptz not null default now(),  -- basis perhitungan decay
+  sleep_started_at timestamptz,
+  sleep_energy_at_start double precision,
+  well_cared_on  date,                                -- bonus +8 per UTC day
+  play_score_on  date,
+  play_score_today smallint not null default 0,       -- cap +5 per UTC day
+  dormant_since  timestamptz,                         -- bukan generation status
   created_at     timestamptz not null default now()
 );
 create index on animas (owner_id, status);
@@ -202,6 +209,19 @@ create table quota_ledger (
   reason     text not null,                     -- scan|genesis|refund|daily_refill|iap|ad|battle
   ref_id     uuid,                              -- generations.id bila relevan
   created_at timestamptz not null default now()
+);
+
+-- Intent care idempoten + audit. RLS aktif tanpa policy; hanya service_role.
+create table care_events (
+  id               uuid primary key default gen_random_uuid(),
+  owner_id         uuid not null references profiles on delete cascade,
+  anima_id         uuid not null references animas on delete cascade,
+  idempotency_key  text not null,
+  action           text not null,       -- feed|clean|sleep|wake|play
+  bits_spent       int not null default 0,
+  care_score_delta int not null default 0,
+  created_at       timestamptz not null default now(),
+  unique (owner_id, idempotency_key)
 );
 
 -- Temuan Tertunda: spesies baru ditemukan tapi pemain belum punya Core.
@@ -292,9 +312,9 @@ create trigger guard_profiles before update on profiles
 
 Dua detail di trigger itu berbeda dari rancangan awal dan keduanya penting. Ia memeriksa `current_role`, bukan `request.jwt.claim.role`, karena klaim JWT adalah data request yang bisa hilang atau dipalsukan konteksnya sementara peran koneksi tidak. Dan ia berupa whitelist: daftar kolom mata uang yang harus diingat manusia adalah daftar yang cepat atau lambat ketinggalan satu kolom.
 
-Aksi perawatan (`animas.care`) sengaja dibiarkan client-writable. Menyontek nilai kenyang tidak merugikan siapa pun secara ekonomi dan menghemat satu round-trip per tap; kalau nanti ada leaderboard atau PvP kompetitif, pindahkan ke RPC server-side.
+Aksi perawatan **tidak lagi client-writable**. Begitu Feed/Clean memakai Bits dan semua aksi bisa menaikkan `care_score`, kebutuhan ikut menjadi bagian transaksi ekonomi. Hak UPDATE client pada `animas` sekarang hanya `nickname`; `care`, `care_synced_at`, sleep, counter harian, Dormant, dan `care_score` hanya berubah lewat `apply_care()` service-role.
 
-**`care_score` tidak ikut**, walaupun ia hidup di tabel yang sama. Ia gerbang evolusi, dan evolusi memicu satu generation ~$0.07 tanpa mendebit Genesis Core (alasannya di [04](04-game-systems-economy.md)). Kalau client bisa menaikkan `care_score`, ia bisa memaksa kita membayar gambar kapan saja, dan verifikasi server di [§ Evolusi](#evolusi) hanya akan membaca angka yang sudah dipalsukan. Jadi hak update-nya server-only, dan akumulasinya nanti lewat RPC saat loop perawatan dibangun.
+RPC itu mengunci row Anima + profil, menghitung decay lebih dulu, mendebit Bits dan menulis `quota_ledger`, lalu menulis satu `care_events` untuk idempotency—semuanya satu transaksi. Edge Function `care_anima` memverifikasi JWT dan selalu menurunkan `owner_id` dari user terverifikasi, bukan body client. Timeout/app kill aman karena `GameState.pending_care` me-replay key yang sama.
 
 ### Klaim Core yang atomik
 
@@ -475,6 +495,16 @@ Langkah:
 5. Hapus foto mentah dari Storage.
 
 Webhook idempoten: kalau `generations.status` sudah `succeeded`, balik 200 tanpa memproses ulang.
+
+### `POST /care_anima`
+
+Endpoint JWT-protected, tanpa model call dan tanpa background job:
+
+```jsonc
+{ "anima_id": "b3d1...", "action": "feed", "idempotency_key": "..." }
+```
+
+`sync` tidak membutuhkan key; `feed`, `clean`, `sleep`, `wake`, dan `play` wajib memilikinya. RPC `apply_care()` menghitung grace/cap decay, Sleep, bonus harian, serta Dormant sebelum memproses aksi. Feed/Clean masing-masing mendebit 5 Bits, Play memakai 5 Energy, dan response selalu membawa snapshot Anima terbaru beserta saldo Bits. Fungsi SQL hanya bisa dieksekusi `service_role`; peran `authenticated` tidak dapat melewati Edge Function lewat `/rest/v1/rpc`.
 
 ### `POST /evolve_anima`
 

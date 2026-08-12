@@ -47,7 +47,7 @@ Tiga mata uang, dan yang menentukan pembagiannya adalah biaya nyata yang mereka 
 | --- | --- | --- |
 | **Scan Charge** | Discovery Scan, 8 per hari | Refill harian, rewarded ad, langganan |
 | **Genesis Core** | Menciptakan spesies baru | 3 saat onboarding, 1 per minggu gratis, IAP, langganan |
-| **Bits** | Makanan, sabun, revive, kosmetik | Rewarded ad, hadiah battle, quest harian |
+| **Bits** | Makanan, sabun, revive, kosmetik | 30 saat onboarding, rewarded ad, hadiah battle, quest harian |
 
 ### Kenapa rewarded ad tidak boleh membiayai Genesis Core
 
@@ -174,7 +174,7 @@ Tiga keputusan di fungsi itu perlu dijelaskan karena semuanya menolak desain Tam
 
 **Tidak ada permadeath.** Ini yang paling penting dan paling menyimpang dari genre. Di Tamagotchi, monster mati adalah inti tegangannya. Di Scanima, monster dibuat dari **uang nyata** — Genesis Core, entah dibeli atau didapat mingguan. Membunuh sesuatu yang pemain bayar untuk menciptakannya adalah cara memberi tahu mereka bahwa membayar itu tidak aman.
 
-Jadi pengganti kematian: pada kebutuhan nol berkepanjangan, Anima masuk state **Dormant** — meringkuk, pucat, tidak bisa bertarung, dan kelihatan sedih. Pulih penuh dalam beberapa siklus perawatan. Yang hilang permanen hanyalah `care_score` yang sudah terakumulasi, yang berarti kemajuan menuju evolusi tertunda. Konsekuensinya nyata dan terasa, tapi tidak ada yang tidak bisa dikembalikan.
+Jadi pengganti kematian: setelah cap **48 jam decay efektif** tercapai dengan Hunger dan Hygiene nol, Anima masuk state **Dormant** — meringkuk, pucat, tidak bisa bertarung, dan kelihatan sedih. `dormant_since` terpisah dari generation `status`, sehingga ia tetap ada di roster `ready`. Ia pulih ketika Hunger dan Hygiene sama-sama mencapai 50. Yang hilang permanen hanyalah `care_score` yang direset saat masuk Dormant.
 
 ### Care score dan aksi perawatan
 
@@ -192,6 +192,15 @@ Masuk state Dormant              : care_score direset ke 0
 ```
 
 Bonus "terawat" +8 adalah pendorong terbesar dan itu memang tujuannya: yang ingin kita hargai adalah pemain yang membuka game dan menemukan Anima-nya dalam keadaan baik, bukan pemain yang menekan tombol makan dua puluh kali.
+
+Nilai aksi yang live di Phase 2:
+
+- **Feed:** 5 Bits, Hunger +35, Bond +3; score +3 hanya jika Hunger sebelum aksi <40.
+- **Clean:** 5 Bits, Hygiene +35, Bond +3; score +3 hanya jika Hygiene sebelum aksi <50.
+- **Play:** gratis, Energy -5, Bond +8; score +1 maksimal lima kali per UTC day.
+- **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 score. Wake lebih awal mempertahankan pemulihan parsial tanpa score.
+
+Saldo, kebutuhan, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten, sedangkan `quota_ledger` mencatat debit Feed/Clean. Client menyimpan satu intent `pending_care`, bukan salinan saldo atau kebutuhan.
 
 ## 4. Evo-tree
 
@@ -326,9 +335,9 @@ Lawan di Phase 3 adalah bot yang disusun dari `species_library` — tim yang dib
 ```mermaid
 graph TD
     Buka["Buka aplikasi"] --> Cek["Cek kondisi Anima, decay sudah dihitung"]
-    Cek --> Rawat["Beri makan, bersihkan, main"]
-    Rawat --> Bonus["Bonus terawat +8 care_score"]
-    Bonus --> Scan["Discovery Scan objek di sekitar, 8 gratis"]
+    Cek --> Bonus["Jika semua >70: bonus harian +8"]
+    Bonus --> Rawat["Beri makan, bersihkan, main"]
+    Rawat --> Scan["Discovery Scan objek di sekitar, 8 gratis"]
     Scan --> Battle["2-3 battle untuk Bits"]
     Battle --> Evo{"Syarat evolusi terpenuhi?"}
     Evo -->|ya| Ritual["Ritual evolusi, momen puncak"]

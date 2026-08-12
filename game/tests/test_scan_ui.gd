@@ -36,6 +36,7 @@ func _initialize() -> void:
 	for name in [
 		"ScanButton", "CollectionButton", "StatsButton",
 		"CloseCollectionButton", "CloseStatsButton",
+		"FeedButton", "CleanButton", "SleepButton", "PlayButton",
 	]:
 		var button := scene.find_child(name, true, false) as Button
 		_check(button != null, "%s wajib ada" % name)
@@ -55,6 +56,17 @@ func _initialize() -> void:
 	_check(margin != null and margin.theme != null, "theme mobile harus terpasang")
 	if margin != null and margin.theme != null:
 		_check(margin.theme.default_font_size >= 32, "font default minimal 32 px")
+
+	var care_panel := scene.find_child("CarePanel", true, false) as PanelContainer
+	_check(care_panel != null, "CarePanel wajib ada")
+	if care_panel != null:
+		_check(not care_panel.visible, "CarePanel tersembunyi sebelum Anima termuat")
+	_check(scene.find_child("CareSummary", true, false) is Label, "Care Score wajib punya label")
+	for name in ["NeedHunger", "NeedEnergy", "NeedHygiene", "NeedBond"]:
+		var meter := scene.find_child(name, true, false) as ProgressBar
+		_check(meter != null, "%s wajib ada" % name)
+		if meter != null:
+			_check_eq(meter.max_value, 100.0, "%s memakai rentang 0–100" % name)
 
 	var script := scene.get_script() as GDScript
 	var normalized: Dictionary = script.normalize_anima_data({

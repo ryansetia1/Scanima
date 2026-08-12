@@ -23,6 +23,7 @@ declare
   v_id      uuid;
   v_refund  uuid;
   v_sukses  uuid;
+  v_care_anima uuid;
   v         int;
   n         int;
   ok        bool;
@@ -38,6 +39,12 @@ begin
   -- lain yang akan menunjukkan letaknya.
   assert (select count(*) from public.profiles where id in (u1, u2)) = 2,
          'bootstrap profil saat sign-in anonim tidak jalan';
+  assert (select count(*) from public.profiles where id in (u1, u2) and bits = 30) = 2,
+         'profil baru harus menerima 30 starter Bits';
+  assert (select count(*) from public.quota_ledger
+           where owner_id in (u1, u2) and currency = 'bits'
+             and delta = 30 and reason = 'care_starter') = 2,
+         'starter Bits harus tercatat di ledger';
   update public.profiles set display_name = 'uji' where id in (u1, u2);
 
   insert into public.animas (owner_id, nickname, species_key, color_bucket,
@@ -239,10 +246,24 @@ begin
   end;
   assert ok, 'care_score adalah gerbang evolusi, client tidak boleh menulisnya';
 
-  update public.animas set care = '{"hunger":100}'::jsonb where owner_id = u1;
-  assert (select care->>'hunger' from public.animas
-           where owner_id = u1 and nickname = 'uji anima') = '100',
-         'aksi perawatan harus tetap bisa ditulis client tanpa round-trip server';
+  begin
+    update public.animas set care = '{"hunger":100}'::jsonb where owner_id = u1;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'care harus server-authoritative setelah Bits aktif';
+
+  begin
+    perform public.apply_care(
+      u1,
+      (select id from public.animas where owner_id = u1 and nickname = 'uji anima'),
+      'play',
+      'care-client-curang'
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'fungsi care yang menyentuh Bits tidak boleh dipanggil client';
 
   begin
     perform public.claim_genesis(u1, 'key-client', 'Curang', 'mouse_plastic', 'gray',
@@ -323,6 +344,190 @@ begin
   revoke update on public.profiles from authenticated;
   grant update (display_name, last_seen_at) on public.profiles to authenticated;
   assert ok, 'trigger guard harus menolak perubahan mata uang oleh non-service role';
+
+  ----------------------------------------------------------------------------
+  -- 10. Care loop: decay, idempotency, debit Bits, cap harian, tidur, Dormant
+  ----------------------------------------------------------------------------
+  select id into v_care_anima
+    from public.animas
+   where owner_id = u1 and nickname = 'uji anima';
+
+  update public.profiles set bits = 30 where id = u1;
+  update public.animas
+     set status = 'ready',
+         care = '{"hunger":0,"energy":100,"hygiene":0,"bond":0}'::jsonb,
+         care_score = 0,
+         care_synced_at = now(),
+         sleep_started_at = null,
+         sleep_energy_at_start = null,
+         well_cared_on = null,
+         play_score_on = null,
+         play_score_today = 0,
+         dormant_since = null
+   where id = v_care_anima;
+
+  v_j := public.apply_care(u1, v_care_anima, 'feed', 'care-feed-1');
+  assert (v_j->>'bits')::int = 25, 'Feed harus mendebit tepat 5 Bits';
+  assert (v_j #>> '{anima,care,hunger}')::numeric = 35,
+         'Feed harus memulihkan 35 Hunger';
+  assert (v_j #>> '{anima,care,bond}')::numeric = 3,
+         'Feed harus menambah 3 Bond';
+  assert (v_j #>> '{anima,care_score}')::int = 3,
+         'Feed saat Hunger <40 harus memberi 3 care_score';
+  assert (select count(*) from public.quota_ledger
+           where owner_id = u1 and currency = 'bits' and delta = -5
+             and reason = 'feed') = 1,
+         'debit Feed harus punya tepat satu baris ledger';
+
+  v_j2 := public.apply_care(u1, v_care_anima, 'feed', 'care-feed-1');
+  assert (v_j2->>'replayed')::bool, 'key care yang sama harus masuk jalur replay';
+  assert (v_j2->>'bits')::int = 25, 'replay Feed tidak boleh mendebit lagi';
+  assert (v_j2 #>> '{anima,care,hunger}')::numeric = 35,
+         'replay Feed tidak boleh memulihkan dua kali';
+  assert (select count(*) from public.care_events
+           where owner_id = u1 and idempotency_key = 'care-feed-1') = 1,
+         'retry care harus tetap satu event';
+
+  begin
+    perform public.apply_care(u1, v_care_anima, 'clean', 'care-feed-1');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'IDEMPOTENCY_CONFLICT');
+  end;
+  assert ok, 'key yang dipakai ulang untuk aksi berbeda harus ditolak';
+
+  v_j := public.apply_care(u1, v_care_anima, 'clean', 'care-clean-1');
+  assert (v_j->>'bits')::int = 20, 'Clean harus mendebit tepat 5 Bits';
+  assert (v_j #>> '{anima,care,hygiene}')::numeric = 35,
+         'Clean harus memulihkan 35 Hygiene';
+  assert (v_j #>> '{anima,care_score}')::int = 6,
+         'Clean saat Hygiene <50 harus memberi 3 care_score';
+
+  -- Play tetap memberi Bond setelah cap score harian tercapai, tetapi tidak
+  -- boleh menjadi mesin care_score tanpa batas.
+  update public.animas
+     set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
+         care_score = 0,
+         care_synced_at = now(),
+         play_score_on = null,
+         play_score_today = 0
+   where id = v_care_anima;
+  for i in 1..6 loop
+    perform public.apply_care(u1, v_care_anima, 'play', 'care-play-' || i);
+  end loop;
+  assert (select care_score from public.animas where id = v_care_anima) = 5,
+         'enam Play sehari hanya boleh memberi 5 care_score';
+  assert (select play_score_today from public.animas where id = v_care_anima) = 5,
+         'counter Play harian harus berhenti di 5';
+  assert (select (care->>'energy')::numeric from public.animas where id = v_care_anima) = 70,
+         'enam Play harus memakai 30 Energy';
+  assert (select (care->>'bond')::numeric from public.animas where id = v_care_anima) = 48,
+         'enam Play tetap harus memberi 48 Bond';
+
+  update public.profiles set bits = 0 where id = u1;
+  update public.animas
+     set care = '{"hunger":0,"energy":100,"hygiene":100,"bond":0}'::jsonb,
+         care_synced_at = now()
+   where id = v_care_anima;
+  begin
+    perform public.apply_care(u1, v_care_anima, 'feed', 'care-no-bits');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'NO_BITS');
+  end;
+  assert ok, 'Feed tanpa saldo harus ditolak dengan NO_BITS';
+  assert not exists (
+    select 1 from public.care_events
+     where owner_id = u1 and idempotency_key = 'care-no-bits'
+  ), 'aksi gagal tidak boleh menyisakan event yang memblokir retry';
+
+  -- Tidur memakai nilai Energy saat mulai, jadi sync berkali-kali tidak
+  -- menggandakan pemulihan. Tiga jam = setengah jalan; enam jam = penuh +5.
+  update public.animas
+     set care = '{"hunger":100,"energy":0,"hygiene":100,"bond":0}'::jsonb,
+         care_score = 0,
+         care_synced_at = now(),
+         sleep_started_at = null,
+         sleep_energy_at_start = null
+   where id = v_care_anima;
+  perform public.apply_care(u1, v_care_anima, 'sleep', 'care-sleep-1');
+  update public.animas
+     set sleep_started_at = now() - interval '3 hours',
+         sleep_energy_at_start = 0,
+         care_synced_at = now()
+   where id = v_care_anima;
+  v_j := public.apply_care(u1, v_care_anima, 'sync', null);
+  assert (v_j #>> '{anima,care,energy}')::numeric between 49.9 and 50.1,
+         'tidur tiga jam harus memulihkan setengah Energy';
+  assert (v_j #>> '{anima,sleep_started_at}') is not null,
+         'tidur tiga jam belum boleh selesai otomatis';
+
+  update public.animas
+     set sleep_started_at = now() - interval '6 hours',
+         sleep_energy_at_start = 0,
+         care_synced_at = now()
+   where id = v_care_anima;
+  v_j := public.apply_care(u1, v_care_anima, 'sync', null);
+  assert (v_j #>> '{anima,care,energy}')::numeric = 100,
+         'tidur enam jam harus mengisi Energy penuh';
+  assert (v_j #>> '{anima,sleep_started_at}') is null,
+         'tidur penuh harus selesai otomatis';
+  assert (v_j #>> '{anima,care_score}')::int = 5,
+         'tidur penuh harus memberi 5 care_score';
+
+  -- Bonus terawat tepat sekali per UTC day.
+  update public.animas
+     set care = '{"hunger":80,"energy":80,"hygiene":80,"bond":80}'::jsonb,
+         care_score = 0,
+         care_synced_at = now(),
+         well_cared_on = null
+   where id = v_care_anima;
+  perform public.apply_care(u1, v_care_anima, 'sync', null);
+  perform public.apply_care(u1, v_care_anima, 'sync', null);
+  assert (select care_score from public.animas where id = v_care_anima) = 8,
+         'bonus terawat +8 hanya boleh sekali per hari';
+
+  -- Tepat delapan jam masih grace; 18 jam berarti 10 jam efektif dan Hunger nol.
+  update public.animas
+     set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
+         care_score = 0,
+         care_synced_at = now() - interval '8 hours',
+         well_cared_on = (now() at time zone 'UTC')::date
+   where id = v_care_anima;
+  perform public.apply_care(u1, v_care_anima, 'sync', null);
+  assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 100,
+         'delapan jam pertama harus bebas decay';
+
+  update public.animas
+     set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
+         care_synced_at = now() - interval '18 hours'
+   where id = v_care_anima;
+  perform public.apply_care(u1, v_care_anima, 'sync', null);
+  assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 0,
+         '18 jam harus menghasilkan 10 jam decay efektif';
+
+  -- Cap 48 jam memasukkan Dormant dan reset score. Dua Feed + dua Clean dari nol
+  -- melewati ambang recovery 50 tanpa mengubah generation status=ready.
+  update public.profiles set bits = 30 where id = u1;
+  update public.animas
+     set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":40}'::jsonb,
+         care_score = 99,
+         care_synced_at = now() - interval '56 hours',
+         dormant_since = null,
+         well_cared_on = (now() at time zone 'UTC')::date
+   where id = v_care_anima;
+  perform public.apply_care(u1, v_care_anima, 'sync', null);
+  assert (select dormant_since is not null from public.animas where id = v_care_anima),
+         '48 jam decay efektif harus memasukkan Dormant';
+  assert (select care_score from public.animas where id = v_care_anima) = 0,
+         'masuk Dormant harus mereset care_score';
+  assert (select status from public.animas where id = v_care_anima) = 'ready',
+         'Dormant tidak boleh mencampur arti generation status';
+
+  perform public.apply_care(u1, v_care_anima, 'feed', 'care-recover-feed-1');
+  perform public.apply_care(u1, v_care_anima, 'feed', 'care-recover-feed-2');
+  perform public.apply_care(u1, v_care_anima, 'clean', 'care-recover-clean-1');
+  perform public.apply_care(u1, v_care_anima, 'clean', 'care-recover-clean-2');
+  assert (select dormant_since is null from public.animas where id = v_care_anima),
+         'Hunger dan Hygiene >=50 harus memulihkan Dormant';
 
   ----------------------------------------------------------------------------
   delete from auth.users where id in (u1, u2);

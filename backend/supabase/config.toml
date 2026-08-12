@@ -4,8 +4,8 @@
 # working directory name when running `supabase init`.
 project_id = "scanima"
 
-# Kedua fungsi dideklarasikan di sini supaya `supabase functions deploy` tanpa
-# argumen memperlakukan keduanya sama seperti deploy manual.
+# Ketiga fungsi dideklarasikan di sini supaya `supabase functions deploy` tanpa
+# argumen memperlakukan semuanya sama seperti deploy manual.
 #
 # verify_jwt pada replicate_webhook WAJIB false: Replicate tidak mengirim JWT
 # Supabase, jadi platform akan menolak setiap kiriman dengan 401 sebelum kode kita
@@ -14,6 +14,10 @@ project_id = "scanima"
 # melainkan pindah: tanda tangan HMAC-SHA256 diverifikasi sebagai langkah pertama
 # di dalam fungsi, dengan toleransi timestamp 5 menit.
 [functions.create_anima]
+verify_jwt = true
+import_map = "./functions/import_map.json"
+
+[functions.care_anima]
 verify_jwt = true
 import_map = "./functions/import_map.json"
 

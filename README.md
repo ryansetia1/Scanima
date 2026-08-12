@@ -21,11 +21,11 @@ Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu merep
 
 Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: halo hijau di tepi sprite (0,21% → 0,014%), anggota tubuh pose kanan yang melewati garis tengah sheet, dan penjaga "keying gagal" yang salah membuang pose Attack karena speed line membuat bbox-nya seluas kuadran. Slicing sekarang menetapkan kepemilikan per komponen piksel, jadi tangan/kabel yang tersambung tidak dipotong dan bagian pose tetangga tidak ikut tercopy.
 
-**Phase 2 sudah dimulai dari sisi yang menjaga uang.** Skema tujuh tabel, RLS beserta hak kolom, dan fungsi kuota sudah ter-apply di proyek Supabase dan dibuktikan oleh [`backend/tests/quota_rules.sql`](backend/tests/quota_rules.sql): retry dengan `idempotency_key` sama hanya mendebit satu Genesis Core dan tidak membuat Anima kedua, webhook yang terkirim dua kali hanya mengkredit satu, cap biaya harian menolak tanpa mendebit, cache hit tidak pernah menghasilkan Core gratis, dan peran `authenticated` tidak bisa menaikkan saldonya sendiri, menulis `care_score`, memanggil fungsi kuota, maupun membaca sakelar biaya. Fungsi kuota dibangun lebih dulu daripada endpoint yang membelanjakan uang, supaya tidak pernah ada periode dengan endpoint tanpa pagar.
+**Phase 2 sudah dimulai dari sisi yang menjaga uang.** Skema delapan tabel, RLS beserta hak kolom, dan fungsi kuota/care sudah ter-apply di proyek Supabase dan dibuktikan oleh [`backend/tests/quota_rules.sql`](backend/tests/quota_rules.sql): retry dengan `idempotency_key` sama hanya mendebit satu Genesis Core atau satu transaksi Bits, webhook yang terkirim dua kali hanya mengkredit satu, cap biaya harian menolak tanpa mendebit, cache hit tidak pernah menghasilkan Core gratis, dan peran `authenticated` tidak bisa menaikkan saldo, menulis kebutuhan/`care_score`, atau memanggil fungsi uang langsung.
 
 **Post-processing sudah dibuktikan jalan di Edge Function, dengan sheet sungguhan.** Sheet v3 sepatu (1024×1024) diproses di runtime Deno dalam **173 ms** — batas CPU 2 detik tidak pernah dekat — dan hasilnya identik piksel per piksel dengan hasil Node (3.544.272 byte channel, nol selisih). Satu modul `postprocess.mjs` dipakai kedua runtime, jadi paritas itu bukan kebetulan yang harus dijaga manual. Yang berbeda hanya kompresi PNG-nya (886 KB di Node, 964 KB di edge), sehingga hash berbasis byte tidak bisa dibandingkan lintas runtime.
 
-**Kedua Edge Function sudah hidup di produksi.** `create_anima` dan `replicate_webhook` ter-deploy dengan `REPLICATE_API_TOKEN` terpasang, dan sepuluh pemeriksaan berbiaya nol dijalankan terhadap endpoint yang sudah live: request tanpa token ditolak, anon key tanpa user ditolak, `photo_path` milik pemain lain ditolak 403, `idempotency_key` yang hilang ditolak 400, foto yang tidak ada berhenti di 404 **sebelum** Vision dipanggil (dibuktikan oleh nol baris `generations` dan saldo scan yang utuh), dan webhook bertanda tangan palsu ditolak 401 — yang terakhir sekaligus membuktikan token Replicate hidup, sebab rahasia penanda tangan diambil dari Replicate sebelum tanda tangannya diperiksa. Foto sendiri tidak lewat endpoint: client menulis langsung ke bucket `photos`, dan uji live memastikan folder pemain lain ditolak RLS serta mime non-gambar ditolak bucket.
+**Tiga Edge Function sudah hidup di produksi.** `create_anima`, `replicate_webhook`, dan `care_anima` ter-deploy; yang terakhir JWT-protected dan tidak punya model call. Smoke produksi berbiaya nol membuktikan 401 tanpa user, validasi 400, `sync`, serta dua Play dengan key sama menghasilkan Energy 95 dan `care_score` 1 sekali saja.
 
 Satu jebakan ditemukan hanya karena jalur itu dicoba sungguhan: **sign-in anonim mati secara default di project Supabase**, dan Scanima tidak punya layar login. Setiap pemain baru akan gagal di detik pertama, di jalur yang tidak berbiaya sehingga tidak ada uji berbayar yang akan menangkapnya. Sekarang menyala di remote dan dideklarasikan di `config.toml`.
 
@@ -39,9 +39,9 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 **Jeda generation sekarang punya inkubator yang benar-benar hidup.** Setelah Genesis dimulai, foto atau Anima lama diganti telur energi procedural dengan orbit cyan-violet, scanner, spark emas, dan core yang berdenyut—tanpa asset tambahan. Ia tetap berjalan selama polling Replicate, termasuk saat pending scan dilanjutkan setelah restart. Saat webhook selesai, ring meledak menjadi flash lalu Anima muncul dengan bounce, squash-and-stretch, dan settle; kegagalan/timeout mengembalikan Anima lama. Cache hit tetap instan dan tidak memalsukan proses hatch.
 
-**Koleksi dan Stats sekarang ada di vertical slice.** Setelah sesi siap, client membaca semua Anima `ready` milik pemain dari Postgres melalui RLS dan menampilkannya dalam modal `ItemList` dua kolom; roster tidak disalin ke disk. Kartu memakai thumbnail idle 128px bila sheet sudah lokal dan placeholder bila belum, sehingga membuka Koleksi tidak mengunduh puluhan sheet 1 MB. Stats menampilkan HP, ATK, DEF, SPD, SPECIAL, element, rarity, dan stage dari row server yang sama. Theme mobile memakai body/button 32px dan target sentuh minimum 96px pada canvas 720×1280 (ekuivalen sekitar 48dp); Stage mengikuti viewport dan margin menghormati safe area fisik Android/iOS setelah dikonversi ke koordinat viewport. `test_scan_ui.gd` menjaga 50 kontrak layout dan inkubator tanpa jaringan.
+**Koleksi, Stats, dan Care loop sekarang ada di vertical slice.** Empat meter berlabel dan tombol Makan/Bersih/Tidur/Main memakai target sentuh 96px. Feed/Clean menghabiskan 5 Bits secara atomik, Play memakai Energy, Sleep pulih linear enam jam, decay dihitung server saat dibuka dengan grace 8 jam/cap 48 jam, dan Dormant tetap berada di roster. Satu `pending_care` bertahan di disk agar timeout/app kill me-replay key yang sama. `test_scan_ui.gd` menjaga 69 kontrak layout, care, dan inkubator; `test_game_rules.gd` menjaga 27 aturan decay/sleep/score/Dormant.
 
-Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan terlihat seperti pemulihan sementara seluruh Anima pemain tertinggal di akun yang tidak bisa dijangkau lagi, dan pemain anonim tidak punya email untuk kembali. Kedua, **kunci idempotency dibuat sekali per scan dan bertahan di disk**, sehingga app yang mati di tengah scan melanjutkan scan yang sama alih-alih membayar Core kedua. Keduanya dijaga oleh 34 check di `test_client_state.gd`, yang juga membuktikan cache art setengah terunduh dibaca sebagai tidak ada, bukan dimuat dan gagal di tengah.
+Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan meninggalkan koleksi di akun yang tidak bisa dijangkau lagi. Kedua, **kunci idempotency scan dan care bertahan di disk**, sehingga app yang mati tidak membayar Core/Bits kedua. Keduanya dijaga oleh 42 check di `test_client_state.gd`.
 
 **Kamera sudah terpasang lewat plugin, bukan lewat `CameraServer`.** `CameraServer` memang mendukung Android sejak setelah 4.4, tapi ia memberi feed hidup sementara yang dibutuhkan satu jepretan — jadi memakainya berarti membangun sendiri fokus, eksposur, dan tombol jepret yang sudah gratis dari aplikasi kamera OEM. Yang dipakai [`GodotGetImage` fork PhotoPicker](https://github.com/cenullum/GodotGetImagePlugin-Android-PhotoPicker), prebuilt untuk 4.6.2, dan fork-nya dipilih karena manifest upstream menyuntikkan `READ_MEDIA_IMAGES` ke APK walau galeri tidak pernah dipanggil — izin yang ditolak Play untuk keperluan pilih-satu-foto. Galeri sengaja tidak dipakai: fiksinya memfoto benda di depanmu, dan galeri membuka pintu memindai gambar unduhan yang justru harus ditahan gate. Foto dikecilkan ke 1280 px di device sebelum diunggah, dan angka itu sama dengan foto terbesar di `eval/photos/` supaya input produksi tidak keluar dari amplop yang sudah divalidasi Smoke Set — dijaga gratis oleh skenario 18. Jalur `FileDialog` di desktop tetap ada, karena itu yang membuat seluruh alur bisa diperiksa tanpa perangkat Android.
 
@@ -61,13 +61,17 @@ Yang sudah bisa dijalankan sekarang, gratis:
 npm install
 npm run selftest                 # 20 skenario + 12 uji tanda tangan webhook, tanpa API
 
-# Godot: 72 pemeriksaan slicing sprite, tanpa jendela
+# Godot: 80 pemeriksaan slicing/presenter, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_sprite_slicing.gd
 
-# Godot: 34 pemeriksaan sesi, kunci idempotency, dan cache art — tanpa jaringan
+# Godot: 42 pemeriksaan sesi, pending scan/care, dan cache art — tanpa jaringan
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
+
+# Godot: 27 pemeriksaan decay, sleep, score harian, dan Dormant
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
+    --script res://tests/test_game_rules.gd
 
 # Game: scan_flow, layar sungguhan. Butuh jaringan untuk sign-in.
 /Applications/Godot.app/Contents/MacOS/Godot --path game
@@ -140,9 +144,10 @@ scanima/
 │   │   ├── scan_flow.tscn        # entry point: scan -> Incubator -> Anima
 │   │   └── anima_demo.tscn       # alat periksa art, dipanggil eksplisit
 │   ├── scripts/
-│   │   ├── game_state.gd         # autoload: sesi, scan tertunda, cache art
+│   │   ├── game_state.gd         # autoload: sesi, pending scan/care, cache art
 │   │   ├── backend.gd            # autoload: auth, REST, Storage, functions
-│   │   ├── scan_flow.gd          # alur scan dan dua status penantian
+│   │   ├── scan_flow.gd          # alur scan, koleksi, dan care
+│   │   ├── care_rules.gd         # mirror murni decay/sleep untuk preview + test
 │   │   ├── incubator_effect.gd   # telur energi procedural + burst
 │   │   ├── anima_loader.gd       # manifest + PNG -> SpriteFrames
 │   │   ├── anima_presenter.gd    # pose + gerak prosedural via Tween
@@ -153,7 +158,8 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 50 kontrak layout + inkubator
+│       ├── test_scan_ui.gd           # 69 kontrak layout + care + inkubator
+│       ├── test_game_rules.gd        # 27 kontrak care tanpa jaringan
 │       └── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 ├── backend/
 │   ├── prompts/v1/               # baseline nano-banana-pro, tidak diubah
