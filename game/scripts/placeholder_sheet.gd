@@ -11,7 +11,7 @@ extends RefCounted
 const FRAME := Vector2i(256, 256)
 const PAD := 6
 
-# Harus cocok dengan POSE_QUADRANT di eval/postprocess.mjs.
+# Harus cocok dengan POSE_QUADRANT di backend/supabase/functions/_shared/postprocess.mjs.
 const QUADRANT := {
 	"idle": Vector2i(0, 0),
 	"attack": Vector2i(1, 0),

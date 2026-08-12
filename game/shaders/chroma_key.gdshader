@@ -12,7 +12,7 @@ shader_type canvas_item;
 // ukuran frame, dan menolak sheet yang cacat. Ketiganya butuh membaca seluruh
 // piksel sekaligus, sesuatu yang fragment shader tidak bisa lakukan.
 //
-// Ambangnya harus tetap sama dengan eval/postprocess.mjs. Kalau berbeda, sprite
+// Ambangnya harus tetap sama dengan backend/supabase/functions/_shared/postprocess.mjs. Kalau berbeda, sprite
 // yang sama akan tampil beda antara pemain biasa dan pemain BYOK.
 
 uniform vec3 key_color : source_color = vec3(0.0, 1.0, 0.0);

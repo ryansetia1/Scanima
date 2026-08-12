@@ -19,11 +19,25 @@ Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu merep
 
 Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: halo hijau di tepi sprite (0,21% → 0,014%), anggota tubuh pose kanan yang melewati garis tengah sheet, dan penjaga "keying gagal" yang salah membuang pose Attack karena speed line membuat bbox-nya seluas kuadran. Slicing sekarang menetapkan kepemilikan per komponen piksel, jadi tangan/kabel yang tersambung tidak dipotong dan bagian pose tetangga tidak ikut tercopy.
 
+**Phase 2 sudah dimulai dari sisi yang menjaga uang.** Skema tujuh tabel, RLS beserta hak kolom, dan fungsi kuota sudah ter-apply di proyek Supabase dan dibuktikan oleh [`backend/tests/quota_rules.sql`](backend/tests/quota_rules.sql): retry dengan `idempotency_key` sama hanya mendebit satu Genesis Core dan tidak membuat Anima kedua, webhook yang terkirim dua kali hanya mengkredit satu, cap biaya harian menolak tanpa mendebit, cache hit tidak pernah menghasilkan Core gratis, dan peran `authenticated` tidak bisa menaikkan saldonya sendiri, menulis `care_score`, memanggil fungsi kuota, maupun membaca sakelar biaya. Fungsi kuota dibangun lebih dulu daripada endpoint yang membelanjakan uang, supaya tidak pernah ada periode dengan endpoint tanpa pagar.
+
+**Post-processing sudah dibuktikan jalan di Edge Function, dengan sheet sungguhan.** Sheet v3 sepatu (1024×1024) diproses di runtime Deno dalam **173 ms** — batas CPU 2 detik tidak pernah dekat — dan hasilnya identik piksel per piksel dengan hasil Node (3.544.272 byte channel, nol selisih). Satu modul `postprocess.mjs` dipakai kedua runtime, jadi paritas itu bukan kebetulan yang harus dijaga manual. Yang berbeda hanya kompresi PNG-nya (886 KB di Node, 964 KB di edge), sehingga hash berbasis byte tidak bisa dibandingkan lintas runtime.
+
+**Kedua Edge Function sudah hidup di produksi.** `create_anima` dan `replicate_webhook` ter-deploy dengan `REPLICATE_API_TOKEN` terpasang, dan sepuluh pemeriksaan berbiaya nol dijalankan terhadap endpoint yang sudah live: request tanpa token ditolak, anon key tanpa user ditolak, `photo_path` milik pemain lain ditolak 403, `idempotency_key` yang hilang ditolak 400, foto yang tidak ada berhenti di 404 **sebelum** Vision dipanggil (dibuktikan oleh nol baris `generations` dan saldo scan yang utuh), dan webhook bertanda tangan palsu ditolak 401 — yang terakhir sekaligus membuktikan token Replicate hidup, sebab rahasia penanda tangan diambil dari Replicate sebelum tanda tangannya diperiksa. Foto sendiri tidak lewat endpoint: client menulis langsung ke bucket `photos`, dan uji live memastikan folder pemain lain ditolak RLS serta mime non-gambar ditolak bucket.
+
+Satu jebakan ditemukan hanya karena jalur itu dicoba sungguhan: **sign-in anonim mati secara default di project Supabase**, dan Scanima tidak punya layar login. Setiap pemain baru akan gagal di detik pertama, di jalur yang tidak berbiaya sehingga tidak ada uji berbayar yang akan menangkapnya. Sekarang menyala di remote dan dideklarasikan di `config.toml`.
+
+**Jalur uang sudah dijalankan utuh di produksi, sekali, dengan foto sungguhan (~$0.076).** Satu foto mug putih diunggah langsung ke Storage oleh pemain anonim, lalu `create_anima` balik dalam **15 detik** dengan Vision selesai dan generation berjalan; webhook Replicate menyelesaikan sisanya. Hasilnya "Muglet" (`mug_ceramic_handled` / `neutral_light`, element flow, def 75 dari badan keramiknya), **4 dari 4 pose terdeteksi**, residu hijau **0,005%**, varians tinggi Idle vs Attack 4,9%, dan `cross_boundary_pixels` **nol** di keempat pose. Mug putih adalah kasus keying tersulit yang sebelumnya belum pernah terbukti: 59% sheet-nya latar hijau, putih di atas hijau, dan tetap bersih. Foto mentahnya terhapus otomatis begitu sheet jadi.
+
+Pemain **kedua** lalu memfoto mug yang sama: `cache_hit` dalam **11 detik**, Genesis Core-nya **tidak tersentuh** (3 tetap 3), generation tercatat berbiaya $0.0000, dan `times_reused` naik ke 1. Itu Discovery Scan yang bekerja persis seperti desain ekonominya — dan seluruh invarian uangnya terverifikasi di ledger, bukan diasumsikan.
+
+Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya, dan `test_sprite_slicing.gd` lulus **75 dari 75** check terhadapnya. Bukan sheet buatan uji — art produksi yang keluar dari Edge Function.
+
 | Phase | Isi | Status |
 | --- | --- | --- |
 | 0 | Arsitektur, prompt spec, desain sistem | Selesai |
 | 1 | MVP: buktikan pipeline art end-to-end | Terbukti — Smoke Set v2 3/3 sheet 4/4 pose, gate 2/2 |
-| 2 | Backend Supabase + core game loop | Belum mulai |
+| 2 | Backend Supabase + core game loop | Berjalan — skema, RLS, kuota, dan kedua Edge Function live dan lulus uji pagar |
 | 3 | Battle, evolusi, UI/UX, audio, monetisasi | Belum mulai |
 | 4 | Soft launch itch.io lalu Play Store | Belum mulai |
 
@@ -31,7 +45,7 @@ Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 18 skenario pemeriksaan, tanpa API
+npm run selftest                 # 19 skenario + 12 uji tanda tangan webhook, tanpa API
 
 # Godot: 75 pemeriksaan slicing sprite, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
@@ -112,10 +126,20 @@ scanima/
 │   ├── prompts/v1/               # baseline nano-banana-pro, tidak diubah
 │   ├── prompts/v2/               # GPT Image 2 medium + anime cel-shaded style
 │   ├── prompts/v3/               # default: v2 + blok BRAND MARKS
-│   └── supabase/                 # Phase 2: Edge Functions + migrations
+│   ├── tools/bundle_prompts.mjs  # prompts/ -> modul yang bisa diimpor Deno
+│   ├── supabase/migrations/      # skema, RLS + hak kolom, fungsi kuota
+│   ├── supabase/functions/
+│   │   ├── _shared/              # dipakai Edge Function DAN eval
+│   │   │   ├── postprocess.mjs   # chroma key, slicing, manifest
+│   │   │   ├── vision.mjs        # parsing, gate, perakitan prompt
+│   │   │   ├── pricing.mjs       # harga per panggilan, dasar spend cap
+│   │   │   ├── finalize_sheet.ts # sheet -> Storage + species_library
+│   │   │   └── replicate.ts      # satu jalur panggilan Replicate
+│   │   ├── create_anima/         # satu-satunya endpoint yang membelanjakan uang
+│   │   └── replicate_webhook/    # menyelesaikan generation, refund kalau gagal
+│   └── tests/quota_rules.sql     # uji invarian uang, aman di remote
 ├── eval/
 │   ├── run.mjs                   # foto -> Vision -> Replicate -> sheet + HTML
-│   ├── postprocess.mjs           # chroma key, slicing, manifest
 │   ├── selftest.mjs              # tanpa API
 │   ├── sets.json                 # smoke (5 foto) & full (20 foto)
 │   └── photos/                   # tidak di-commit

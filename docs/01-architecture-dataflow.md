@@ -53,10 +53,7 @@ sequenceDiagram
     P->>G: Tekan tombol Foto
     G->>G: Cek cache Scan Charge lokal (UX cepat, bukan otoritas)
     G->>G: Resize foto ke 1024px sisi terpanjang, JPEG q80
-    G->>EF: POST /photo_upload_url (auth JWT)
-    EF->>S: Buat signed upload URL, TTL 5 menit
-    EF-->>G: { upload_url, photo_path }
-    G->>S: PUT foto ke signed URL
+    G->>S: Upload langsung ke bucket photos/<uid>/... (anon key + policy Storage)
     G->>EF: POST /create_anima { photo_path, idempotency_key }
 
     EF->>S: Debit 1 Scan Charge (pagar murah sebelum Vision)
@@ -76,10 +73,10 @@ sequenceDiagram
     EF->>S: Cari species_library by species_key + color_bucket
     alt Cache hit — DISCOVERY SCAN (gratis, instan)
         S-->>EF: sheet_path + manifest
-        EF->>S: Insert anima status ready, roll stat baru
+        EF->>S: record_cache_hit: row animas ready + row generations + times_reused++
         EF-->>G: 200 { anima_id, status: "ready" }
     else Cache miss — GENESIS (butuh Genesis Core)
-        EF->>S: claim_generation: debit 1 Core + tulis row generations
+        EF->>S: claim_genesis: debit 1 Core + row generations + row animas (satu transaksi)
         alt Tidak punya Core
             EF->>S: Simpan Temuan Tertunda (hasil Vision disimpan, TTL 7 hari)
             EF-->>G: 200 { status: "pending_claim", pending_id }
@@ -110,7 +107,6 @@ sequenceDiagram
 | Komponen | Tanggung jawab | Yang **tidak** boleh dilakukan |
 | --- | --- | --- |
 | Godot client | Ambil foto, resize, upload, polling, cache lokal, render | Simpan API key, tentukan kuota, proses piksel |
-| `photo_upload_url` | Terbitkan signed upload URL bertenggat | Menerima file (biar Storage yang terima) |
 | `create_anima` | Vision, cek pustaka, lalu klaim Core hanya bila spesies baru | Menunggu gambar selesai (harus balik cepat) |
 | `replicate_webhook` | Post-processing gambar, isi cache, tandai ready | Dipercaya tanpa verifikasi signature |
 | `evolve_anima` | Generation stage berikutnya pakai sprite lama sebagai input | Dipanggil tanpa cek syarat evolusi di server |
@@ -139,8 +135,15 @@ create table profiles (
 );
 
 -- Pustaka art global. Inti dari penghematan biaya.
+--
+-- Primary key-nya TRIPLE, bukan species_key sendirian. Versi pertama dokumen ini
+-- memakai species_key sebagai PK dan itu membatalkan seluruh gagasan dedup:
+-- `color_bucket` ada justru supaya mug merah dan mug biru mendapat art berbeda,
+-- dan evolusi menambah baris stage 2 dan 3 untuk species_key yang sama. Baris
+-- kedua mana pun akan ditolak, dan penolakannya terjadi di tempat terburuk —
+-- setelah sheet-nya dibayar dan diunggah. Lihat migrasi species_library_key_fix.
 create table species_library (
-  species_key    text primary key,              -- 'mug_ceramic_handled'
+  species_key    text not null,                 -- 'mug_ceramic_handled'
   color_bucket   text not null,                 -- 'warm_red', 'neutral_dark', ...
   sheet_path     text not null,                 -- Storage: sheets/<hash>.png (RGBA)
   manifest       jsonb not null,                -- region 4 pose, lihat doc 03
@@ -148,7 +151,7 @@ create table species_library (
   prompt_version text not null,
   times_reused   int  not null default 0,
   created_at     timestamptz not null default now(),
-  unique (species_key, color_bucket, stage)
+  primary key (species_key, color_bucket, stage)
 );
 
 -- Anima milik pemain
@@ -221,6 +224,13 @@ create table pending_discoveries (
 
 RLS aktif di semua tabel. Pemain hanya bisa membaca miliknya sendiri dan **tidak bisa menulis apa pun yang berhubungan dengan kuota** — itu hak Edge Function lewat service role.
 
+Bentuk yang benar-benar ter-apply ada di [`backend/supabase/migrations/20260812172744_rls_and_guards.sql`](../backend/supabase/migrations/20260812172744_rls_and_guards.sql). Blok di bawah adalah rancangannya, dan empat hal berubah saat implementasi karena rancangan ini kurang ketat:
+
+1. Semua policy memakai `(select auth.uid())` dan `to authenticated`. Sub-select membuat Postgres mengevaluasinya sekali per query, bukan sekali per baris.
+2. **Hak kolom Postgres, bukan trigger, yang menjadi lapis utama.** `revoke update on profiles` lalu `grant update (display_name, last_seen_at)` membuat client secara struktural tidak punya privilege menulis kolom mata uang, dan kolom baru apa pun di masa depan otomatis tertutup. Trigger tetap ada sebagai lapis kedua.
+3. `app_config` ikut RLS **tanpa policy sama sekali**, plus `revoke all`, karena sakelar biaya bukan urusan client. Advisor Supabase melaporkan ini sebagai INFO `rls_enabled_no_policy`; itu memang yang kita inginkan.
+4. Keempat fungsi kuota SECURITY DEFINER dicabut EXECUTE-nya dari `anon` dan `authenticated`. Tanpa itu, Postgres memberi EXECUTE ke PUBLIC dan `refund_generation` menjadi endpoint publik di `/rest/v1/rpc/` — pemain bisa mengembalikan Core-nya sendiri sementara gambarnya tetap kita bayar.
+
 ```sql
 alter table profiles            enable row level security;
 alter table animas              enable row level security;
@@ -228,6 +238,7 @@ alter table generations         enable row level security;
 alter table quota_ledger        enable row level security;
 alter table species_library     enable row level security;
 alter table pending_discoveries enable row level security;
+alter table app_config          enable row level security;
 
 -- Pemain baca profil sendiri; kolom mata uang tidak pernah bisa diubah client
 create policy "read own profile" on profiles
@@ -262,17 +273,15 @@ Trigger yang mengunci kolom sensitif dari update client:
 
 ```sql
 create or replace function guard_profile_columns() returns trigger
-language plpgsql security definer as $$
+language plpgsql set search_path = '' as $$
 begin
-  -- service_role melewati guard; client tidak
-  if current_setting('request.jwt.claim.role', true) <> 'service_role' then
-    if new.scan_charges <> old.scan_charges
-       or new.scan_charge_max <> old.scan_charge_max
-       or new.genesis_cores <> old.genesis_cores
-       or new.bits <> old.bits
-       or new.next_refill_at is distinct from old.next_refill_at then
-      raise exception 'kolom mata uang hanya bisa diubah server';
-    end if;
+  -- Whitelist, bukan blacklist: yang diperiksa adalah "apakah ada kolom LAIN
+  -- yang berubah", jadi menambah kolom mata uang baru tidak perlu mengingat
+  -- untuk memperbarui trigger ini.
+  if current_role not in ('service_role', 'postgres', 'supabase_admin')
+     and (to_jsonb(new) - 'display_name' - 'last_seen_at')
+         is distinct from (to_jsonb(old) - 'display_name' - 'last_seen_at') then
+    raise exception 'hanya display_name dan last_seen_at yang boleh diubah client';
   end if;
   return new;
 end $$;
@@ -281,125 +290,188 @@ create trigger guard_profiles before update on profiles
   for each row execute function guard_profile_columns();
 ```
 
+Dua detail di trigger itu berbeda dari rancangan awal dan keduanya penting. Ia memeriksa `current_role`, bukan `request.jwt.claim.role`, karena klaim JWT adalah data request yang bisa hilang atau dipalsukan konteksnya sementara peran koneksi tidak. Dan ia berupa whitelist: daftar kolom mata uang yang harus diingat manusia adalah daftar yang cepat atau lambat ketinggalan satu kolom.
+
 Aksi perawatan (`animas.care`) sengaja dibiarkan client-writable. Menyontek nilai kenyang tidak merugikan siapa pun secara ekonomi dan menghemat satu round-trip per tap; kalau nanti ada leaderboard atau PvP kompetitif, pindahkan ke RPC server-side.
+
+**`care_score` tidak ikut**, walaupun ia hidup di tabel yang sama. Ia gerbang evolusi, dan evolusi memicu satu generation ~$0.07 tanpa mendebit Genesis Core (alasannya di [04](04-game-systems-economy.md)). Kalau client bisa menaikkan `care_score`, ia bisa memaksa kita membayar gambar kapan saja, dan verifikasi server di [§ Evolusi](#evolusi) hanya akan membaca angka yang sudah dipalsukan. Jadi hak update-nya server-only, dan akumulasinya nanti lewat RPC saat loop perawatan dibangun.
 
 ### Klaim Core yang atomik
 
 Debit Genesis Core dan pencatatan generation harus terjadi dalam satu transaksi, kalau tidak dua request paralel bisa lolos bersamaan dengan sisa Core 1 — dan itu berarti sekitar $0.07 keluar tanpa dibayar.
 
 ```sql
-create or replace function claim_generation(
-  p_owner uuid, p_key text, p_kind text, p_prompt_version text, p_model text
-) returns generations
-language plpgsql security definer as $$
+create or replace function public.claim_genesis(
+  p_owner uuid, p_key text, p_nickname text, p_species text, p_color text,
+  p_stage smallint, p_element text, p_rarity int, p_stats jsonb, p_care jsonb,
+  p_vision jsonb, p_prompt_version text, p_model text, p_cost numeric,
+  p_photo_path text
+) returns jsonb
+language plpgsql security definer set search_path = '' as $$
 declare
-  v_gen   generations;
+  v_gen   public.generations;
+  v_anima public.animas;
   v_cores int;
 begin
-  -- Idempotency: request yang sama dua kali balikkan row yang sama.
+  -- Idempotency: request yang sama dua kali balikkan baris yang sama.
   -- Inilah yang membuat retry jaringan tidak pernah berarti double charge.
-  select * into v_gen from generations
+  select * into v_gen from public.generations
    where owner_id = p_owner and idempotency_key = p_key;
-  if found then return v_gen; end if;
-
-  -- Lock baris profil, cegah race antar request paralel
-  select genesis_cores into v_cores from profiles where id = p_owner for update;
-  if v_cores <= 0 then
-    raise exception 'NO_CORE';
+  if found then
+    return jsonb_build_object('generation_id', v_gen.id, 'anima_id', v_gen.anima_id);
   end if;
 
-  update profiles set genesis_cores = genesis_cores - 1 where id = p_owner;
-  insert into quota_ledger (owner_id, currency, delta, reason)
-  values (p_owner, 'genesis_cores', -1, 'genesis');
+  -- Lock baris profil, cegah race antar request paralel
+  select genesis_cores into v_cores from public.profiles where id = p_owner for update;
+  if v_cores <= 0 then raise exception 'NO_CORE'; end if;
 
-  insert into generations (owner_id, idempotency_key, kind, prompt_version, model, status)
-  values (p_owner, p_key, p_kind, p_prompt_version, p_model, 'pending')
+  -- Cap biaya harian diperiksa di sini, bukan di Edge Function: lock-nya sudah
+  -- dipegang, jadi pemeriksaan dan debitnya satu transaksi.
+  -- (... baca app_config.daily_spend_cap_usd, raise SPEND_CAP kalau tembus ...)
+
+  update public.profiles set genesis_cores = genesis_cores - 1 where id = p_owner;
+
+  insert into public.animas (owner_id, nickname, species_key, color_bucket, stage,
+                             status, element, rarity, base_stats, care)
+  values (p_owner, p_nickname, p_species, p_color, p_stage, 'incubating',
+          p_element, least(5, greatest(1, p_rarity)), p_stats, p_care)
+  returning * into v_anima;
+
+  insert into public.generations
+    (owner_id, anima_id, idempotency_key, kind, status, prompt_version, model,
+     cost_usd_estimate, vision_result, photo_path)
+  values (p_owner, v_anima.id, p_key, 'create', 'pending', p_prompt_version,
+          p_model, p_cost, p_vision, p_photo_path)
   returning * into v_gen;
 
-  return v_gen;
+  insert into public.quota_ledger (owner_id, currency, delta, reason, ref_id)
+  values (p_owner, 'genesis_cores', -1, 'genesis', v_gen.id);
+
+  return jsonb_build_object('generation_id', v_gen.id, 'anima_id', v_anima.id);
 end $$;
 ```
 
+Baris `animas` ikut dibuat di dalam fungsi ini, bukan menyusul lewat panggilan
+kedua dari Edge Function. Alasannya sama dengan alasan debit dan pencatatan
+disatukan: kalau fungsi mati di antara dua panggilan, pemain kehilangan satu Core
+tanpa mendapat apa pun, dan tidak ada pemeriksaan yang bisa membedakan keadaan itu
+dari generation sah yang sedang menunggu. Kembarannya untuk jalur gratis,
+`record_cache_hit(...)`, menyatukan hal yang setara: baris `animas` berstatus
+`ready`, baris `generations` berbiaya nol, dan kenaikan `times_reused`.
+
 Fungsi kembarnya, `refund_generation(p_gen_id, p_reason)`, mengembalikan Core, menulis ledger, dan menandai status. Dipanggil pada dua kondisi: kegagalan atau pembatalan dari Replicate, dan timeout keras.
 
-Perhatikan bahwa cache hit **tidak** butuh refund, karena Core tidak pernah didebit untuk Discovery Scan — pengecekan pustaka terjadi sebelum `claim_generation` dipanggil. Ini alasan urutan langkah di bawah tidak boleh ditukar: memeriksa lebih dulu lalu menagih menghasilkan lebih sedikit jalur refund, dan setiap jalur refund adalah tempat uang bisa hilang tanpa jejak.
+Perhatikan bahwa cache hit **tidak** butuh refund, karena Core tidak pernah didebit untuk Discovery Scan — pengecekan pustaka terjadi sebelum `claim_genesis` dipanggil. Ini alasan urutan langkah di bawah tidak boleh ditukar: memeriksa lebih dulu lalu menagih menghasilkan lebih sedikit jalur refund, dan setiap jalur refund adalah tempat uang bisa hilang tanpa jejak.
 
 Scan Charge memakai fungsi terpisah `claim_scan_charge(p_owner)` dengan pola lock yang sama. Ia lebih longgar (nilainya $0.003) tapi tetap harus atomik, sebab tanpa pagar itu satu klien yang rusak bisa memanggil Vision beribu kali — dan pada harga ini seribu panggilan liar sudah $3, bukan $0,30.
 
 ## 5. Kontrak Edge Function
 
-### `POST /photo_upload_url`
+### Unggah foto: tidak ada endpoint
 
-Client tidak mengunggah lewat Edge Function karena itu membakar CPU/bandwidth function untuk sesuatu yang Storage lakukan lebih baik.
+Foto tidak lewat Edge Function, dan juga tidak lewat endpoint penerbit signed URL.
+Client menulis langsung ke `photos/<uid>/<uuid>.jpg` dengan anon key-nya, dan yang
+membatasinya sudah disediakan platform:
 
-```jsonc
-// Request: header Authorization: Bearer <supabase jwt>, body kosong
-// Response 200
-{
-  "upload_url": "https://<proj>.supabase.co/storage/v1/object/upload/sign/photos/...",
-  "photo_path": "photos/<user_id>/<uuid>.jpg",
-  "expires_in": 300
-}
+```sql
+create policy "unggah foto ke folder sendiri" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'photos'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
 ```
 
+Batas ukuran dan tipe ditegakkan bucket (`file_size_limit` 6 MB,
+`allowed_mime_types` jpeg/png/webp), bukan kode kita. Menulis endpoint penerbit
+signed URL berarti menulis dan menguji ulang pagar per-path yang sudah ada, demi
+satu round-trip tambahan sebelum tiap foto. `create_anima` hanya menerima
+`photo_path` dan memeriksa prefiksnya cocok dengan uid dari token — itu batas
+kepercayaannya, dan itu tetap wajib. Terverifikasi terhadap bucket produksi:
+folder sendiri diterima, folder pemain lain dijawab RLS dengan 403, `text/plain`
+dijawab bucket dengan 415.
+
+INSERT adalah **satu-satunya** policy di bucket ini, dan itu bukan kelalaian.
+Client tidak pernah perlu membaca, melihat daftar, atau menghapus fotonya: yang
+membacanya adalah Edge Function lewat signed URL service role, dan yang
+menghapusnya adalah server begitu post-processing selesai. Menambahkan SELECT
+berarti memberi jalan membaca foto yang seharusnya sudah lenyap.
+
+Identitas yang dipakai policy ini datang dari **sign-in anonim**, dan itu mati
+secara default di project Supabase baru — `POST /auth/v1/signup` menjawab
+`anonymous_provider_disabled`. Karena Scanima tidak punya layar login, setelan itu
+adalah prasyarat, bukan opsi: tanpa ia menyala, app gagal di detik pertama, di
+jalur yang tidak memanggil API sama sekali. Ia dideklarasikan di
+`backend/supabase/config.toml` supaya tidak hanya hidup sebagai sakelar dashboard.
+
 ### `POST /create_anima`
+
+Blok di bawah ini adalah kontrak yang **sudah ter-deploy**, bukan usulan. Ia
+berbeda dari rancangan awal di dua hal yang akan langsung menggigit penulis client:
+`photo_path` relatif terhadap bucket (**tanpa** awalan `photos/`, sebab prefiksnya
+dibandingkan dengan uid), dan field-nya bernama `nickname`, bukan
+`nickname_hint`. Saldo tidak dikembalikan di response mana pun — client membaca
+`profiles`-nya sendiri lewat RLS, jadi tidak ada dua sumber kebenaran untuk saldo.
 
 ```jsonc
 // Request
 {
-  "photo_path": "photos/<user_id>/<uuid>.jpg",
-  "idempotency_key": "c1f8...-generated-by-client",
-  "nickname_hint": null          // opsional, kalau null nama diusulkan Vision LLM
+  "photo_path": "<user_id>/<uuid>.jpg",   // relatif bucket photos, prefiks wajib uid
+  "idempotency_key": "c1f8...",            // wajib, maks 128 char
+  "nickname": null                         // opsional; null = pakai usulan Vision
 }
 
-// Response 200 — DISCOVERY SCAN: spesies sudah ada, gratis dan instan
-{ "anima_id": "b3d1...", "status": "ready", "mode": "discovery",
-  "species_key": "mug_ceramic_handled", "first_discovered_by": "Rangga",
-  "scan_charges_left": 7, "genesis_cores_left": 3 }
+// 200 — DISCOVERY SCAN: spesies sudah ada di pustaka, gratis dan instan
+{ "cache_hit": true, "generation_id": "...", "anima_id": "...",
+  "status": "ready", "sheet_path": "...", "manifest": { }, "vision": { } }
 
-// Response 202 — GENESIS: spesies baru, masuk inkubasi
-{ "anima_id": "b3d1...", "status": "incubating", "mode": "genesis",
-  "eta_seconds": 30, "is_world_first": true,
-  "scan_charges_left": 7, "genesis_cores_left": 2 }
+// 202 — GENESIS: spesies baru, generation berjalan, webhook yang menyelesaikan
+{ "generation_id": "...", "anima_id": "...", "status": "running",
+  "eta_seconds": 65, "vision": { } }
 
-// Response 200 — spesies baru tapi Core habis: disimpan sebagai Temuan Tertunda
-{ "status": "pending_claim", "pending_id": "9a2c...",
-  "species_key": "camera_metal_vintage_dialed",
-  "expires_at": "2026-08-19T11:00:00Z",
-  "offers": ["iap", "byok"] }
+// 200 — request yang sama dikirim ulang; tidak ada yang didebit dua kali
+{ "idempoten": true, "generation_id": "...", "anima_id": "...", "status": "running" }
 
-// Response 402 — Scan Charge habis, Vision belum dipanggil
-{ "error": "no_scan_charge", "refill_at": "2026-08-13T00:00:00Z",
-  "offers": ["ad", "subscription"] }
+// 200 — gate menolak foto. Scan Charge sudah direfund dan fotonya sudah dihapus
+{ "gate": "rejected", "reason": "human_face" }
 
-// Response 422 — foto ditolak, Scan Charge sudah direfund
-{ "error": "photo_rejected", "reason": "human_face",
-  "hint": "Coba foto benda, bukan orang. Botol, sepatu, atau tanaman cocok banget." }
+// 402 — Scan Charge habis, Vision belum dipanggil
+{ "error": "NO_SCAN_CHARGE" }
+
+// 402 — spesies baru tapi Core habis. Hasil Vision sudah dibayar, jadi disimpan
+{ "error": "NO_CORE", "pending": true, "vision": { } }
+
+// 403 photo_path di luar folder sendiri · 400 idempotency_key hilang
+// 404 foto tidak ada · 502 Vision gagal atau tak bisa diparse (charge direfund)
+// 503 SPEND_CAP harian tercapai
+{ "error": "..." }
 ```
 
 Fungsi ini **harus** balik dalam beberapa detik. Ia tidak menunggu gambar selesai; itu tugas webhook. Urutan internalnya:
 
-1. Verifikasi JWT, ambil `owner_id`.
-2. `claim_scan_charge(owner_id)` — pagar murah sebelum memanggil Vision. Kalau habis, balik 402 tanpa efek samping.
-3. Terbitkan signed **download** URL foto (TTL 10 menit) supaya Vision LLM dan Replicate bisa membacanya. GPT Image 2 menerima `input_images` berupa array URL, jadi foto wajib punya URL publik sementara.
-4. Panggil Vision LLM dengan structured output. Kalau `safe == false` atau `is_object == false`, refund Scan Charge lalu balik 422.
+1. Verifikasi JWT, ambil `owner_id`. Periksa `photo_path` berada di dalam `<owner_id>/` — tanpa ini, pemain bisa menunjuk foto pemain lain dan signed URL yang kita terbitkan dengan service role akan menurutinya.
+2. Terbitkan signed **download** URL foto (TTL 15 menit) supaya Vision LLM dan Replicate bisa membacanya. GPT Image 2 menerima `input_images` berupa array URL, jadi foto wajib punya URL publik sementara. TTL-nya harus melebihi ~60 detik generation plus antrean Replicate, bukan cuma umur request kita. Langkah ini sengaja mendahului klaim charge: foto yang tidak ada menghasilkan 404 sebelum ada apa pun yang perlu direfund.
+3. `claim_scan_charge(owner_id)` — pagar murah sebelum memanggil Vision. Kalau habis, balik 402 tanpa efek samping.
+4. Panggil Vision LLM. Kalau gate-nya menolak (wajah, tidak aman, bukan objek), refund Scan Charge, hapus fotonya, balik 200 dengan `gate: "rejected"` — penolakan yang wajar bukan galat, dan client menampilkannya sebagai saran, bukan error.
 5. Normalisasi `species_key` terhadap entri yang sudah ada (Levenshtein ≤ 2) supaya typo tidak memecah cache.
-6. Cari `species_library` untuk `(species_key, color_bucket, stage=1)`. **Ada** → Discovery Scan: buat `animas` status `ready` dengan stat di-roll ulang, naikkan `times_reused`, balik 200. Tidak ada Core yang tersentuh.
-7. **Tidak ada** → Genesis. `claim_generation(...)`; kalau `NO_CORE`, simpan `pending_discoveries` (hasil Vision jangan dibuang, biayanya sudah keluar) dan balik 200 dengan `status: "pending_claim"`.
+6. Cari `species_library` untuk `(species_key, color_bucket, stage=1)`. **Ada** → Discovery Scan: `record_cache_hit(...)` membuat `animas` status `ready`, mencatat generation berbiaya nol, dan menaikkan `times_reused` dalam satu transaksi. Balik 200. Tidak ada Core yang tersentuh.
+7. **Tidak ada** → Genesis. `claim_genesis(...)`; kalau `NO_CORE`, simpan `pending_discoveries` (hasil Vision jangan dibuang, biayanya sudah keluar) dan balik 402 dengan `pending: true`. Kalau `SPEND_CAP`, balik 503.
 8. `POST` ke Replicate dengan `webhook` + `webhook_events_filter: ["completed"]`, simpan `prediction_id`, balik 202.
 
 Urutan langkah 6 sebelum 7 adalah inti kontrol biaya seluruh sistem, dan bukan sekadar optimasi: ia yang memisahkan aksi $0.003 dari aksi ~$0.07 sehingga keduanya bisa diberi harga berbeda kepada pemain. Alasan desain lengkapnya di [04](04-game-systems-economy.md).
 
 ### `POST /replicate_webhook`
 
-Endpoint publik, jadi harus diverifikasi. Replicate mengirim header signature; verifikasi sebelum menyentuh database. Selain itu pakai secret path token di query string sebagai lapisan kedua.
+Endpoint publik, jadi harus diverifikasi. Replicate menandatangani setiap kiriman dengan HMAC-SHA256 (`webhook-id`, `webhook-timestamp`, `webhook-signature`); verifikasi sebelum menyentuh database, dan tolak timestamp yang lebih tua dari 5 menit supaya kiriman lama tidak bisa diputar ulang.
+
+Rahasia penanda tangannya **tidak** dipasang sebagai secret terpisah: fungsi mengambilnya dari `GET /v1/webhooks/default/secret` memakai `REPLICATE_API_TOKEN` yang sudah ada, lalu men-cache-nya selama instance hidup. Satu kredensial lebih sedikit berarti satu langkah setup yang tidak bisa terlupakan — dan webhook tanpa verifikasi berarti siapa pun bisa menulis ke `species_library` yang di-share semua pemain.
 
 Langkah:
 
 1. Verifikasi signature. Gagal, balik 401 dan jangan log body mentah.
 2. Cocokkan `prediction_id` ke row `generations`. Tidak ada, balik 200 (jangan bikin Replicate retry selamanya).
 3. `status == "failed"` atau `canceled`: refund Genesis Core, `animas.status = failed`, selesai.
-4. `succeeded`: unduh PNG dari `output` (string URI tunggal), jalankan post-processing (bagian 6), upload hasil, isi `species_library`, set `animas.status = ready`, `generations.status = succeeded`.
+4. `succeeded`: unduh PNG dari `output` (string URI tunggal, dan host-nya wajib diperiksa masih `replicate.delivery`), jalankan post-processing (bagian 6), upload hasil, isi `species_library`, set `animas.status = ready`, `generations.status = succeeded`.
 5. Hapus foto mentah dari Storage.
 
 Webhook idempoten: kalau `generations.status` sudah `succeeded`, balik 200 tanpa memproses ulang.
@@ -461,11 +533,17 @@ BBox content-aware saja belum cukup kalau pencariannya tetap dibatasi kuadran 51
 
 **ponytail:** komponen yang benar-benar terputus dari tubuh (misalnya satu spark kecil) dimiliki kuadran tempat ia berada. Kalau model menggambar dua tubuh sampai saling bersentuhan, keduanya menjadi satu komponen dan sheet harus direview; upgrade-nya adalah instance segmentation, tetapi tidak dibutuhkan sampai mode gagal itu benar-benar muncul.
 
-Library: **ImageScript** (pure TypeScript, jalan di Deno maupun Node). Bukan `sharp`, yang butuh native binary dan tidak jalan di edge runtime. Karena jalan di dua runtime, harness eval di laptop (`eval/postprocess.mjs`) dan Edge Function nanti bisa memakai kode yang sama.
+Library: **ImageScript** (pure TypeScript, jalan di Deno maupun Node). Bukan `sharp`, yang butuh native binary dan tidak jalan di edge runtime. Karena jalan di dua runtime, harness eval di laptop dan Edge Function memakai file yang sama: `backend/supabase/functions/_shared/postprocess.mjs`, satu salinan, bukan dua yang harus dijaga sinkron.
+
+Satu jebakan yang tidak terlihat dari sifat "pure TypeScript" itu: **`npm:imagescript` gagal di edge runtime** dengan galat arch/platform tidak didukung. Yang jalan adalah `https://deno.land/x/imagescript@1.2.15/mod.ts` lewat `functions/import_map.json`, dan Node di-pin ke versi yang sama supaya paritasnya bukan harapan.
 
 ### Risiko CPU limit dan fallback bertingkat
 
-Edge Function punya batas CPU time. Memproses 1 juta piksel di TypeScript ada di zona aman tapi bukan tanpa risiko, terutama kalau nanti resolusi dinaikkan. Tangga mitigasinya, dipakai berurutan:
+**Sudah diukur, dan risikonya jauh lebih kecil dari dugaan: 173 ms.** Sheet v3 sepatu 1024×1024 (1,46 MB) diproses di runtime edge dalam 173 ms, versus 162 ms di Node pada laptop — batas CPU 2 detik tidak pernah dekat, dan seluruh request termasuk unduh keluaran, unggah sheet, dan tulis database selesai dalam 1.448 ms. Angka ini yang menutup pertanyaan arsitektur di sini; tangga di bawah tetap dicatat untuk kalau resolusi dinaikkan, bukan sebagai sesuatu yang perlu dikerjakan sekarang.
+
+Pengukuran yang sama membuktikan hasilnya identik lintas runtime: 3.544.272 byte channel sama persis, nol selisih, manifest sama. Yang berbeda hanya kompresi PNG-nya (886 KB di Node, 964 KB di edge), sehingga `sheet_path` yang berbasis SHA-256 byte terenkode tidak stabil lintas runtime. Produksi selalu mengenkode di edge sehingga dedup-nya utuh — tapi jangan pernah menyimpulkan ada regresi dari hash yang berbeda; bandingkan pikselnya.
+
+Tangga mitigasinya, kalau suatu saat memang kena:
 
 1. Downscale dulu (sudah jadi default di atas).
 2. Kalau masih kena limit, potong menjadi dua invocation: satu untuk keying, satu untuk slicing, dihubungkan lewat Storage.
@@ -583,7 +661,7 @@ BYOK tidak menghapus Vision gate. Filter penolakan wajah dan konten tidak aman t
 
 **Foto mentah berumur pendek.** Dihapus dari Storage segera setelah post-processing, dengan cron harian menyapu sisa yang lebih tua dari 24 jam. Yang kita simpan permanen adalah sprite hasil, bukan foto rumah pemain.
 
-**Rate limit berlapis.** Genesis Core membatasi image generation, Scan Charge membatasi panggilan Vision. Selain itu perlu batas kasar per IP pada `photo_upload_url` untuk mencegah orang membanjiri Storage tanpa pernah memanggil `create_anima`.
+**Rate limit berlapis.** Genesis Core membatasi image generation, Scan Charge membatasi panggilan Vision. Selain itu perlu batas kasar untuk mencegah orang membanjiri bucket `photos` tanpa pernah memanggil `create_anima`; karena unggahannya langsung ke Storage, pagarnya ada di kuota bucket dan sapuan cron, bukan di kode endpoint.
 
 **Privacy policy wajib sebelum Play Store.** Aplikasi mengakses kamera, mengunggah foto ke server, dan mengirimnya ke pihak ketiga (Google untuk Vision, OpenAI untuk image generation, melalui Replicate). Fakta itu harus dinyatakan eksplisit, termasuk berapa lama foto disimpan.
 

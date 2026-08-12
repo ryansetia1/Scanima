@@ -17,8 +17,12 @@ import {
   findBBox,
   heightMetrics,
   postprocessSheet,
-} from "./postprocess.mjs";
-import { validateVision, assemblePrompt, extractJson } from "./run.mjs";
+} from "../backend/supabase/functions/_shared/postprocess.mjs";
+import {
+  validateVision,
+  assemblePrompt,
+  extractJson,
+} from "../backend/supabase/functions/_shared/vision.mjs";
 
 const SIZE = DEFAULTS.workSize; // 1024, jadi tidak ada resize yang mengaburkan assert
 const HALF = SIZE / 2;
@@ -558,6 +562,30 @@ console.log("16. extractJson menggantikan jaminan response_schema yang tidak ada
   for (const bad of ["", "   ", "maaf, saya tidak bisa membantu", "{ ini bukan json }", null]) {
     assert.throws(() => extractJson(bad), /tidak mengembalikan JSON/, `harus menolak: ${JSON.stringify(bad)}`);
   }
+}
+
+console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
+{
+  // Edge Function memakai prompts.generated.ts, eval memakai backend/prompts/
+  // langsung. Kalau keduanya menyimpang, art produksi berbeda dari art yang
+  // sudah kita setujui di Smoke Set dan tidak ada yang memberi tahu. Ini
+  // pemeriksaan gratis yang menggantikan disiplin mengingat.
+  const { buildBundle, renderModule } = await import("../backend/tools/bundle_prompts.mjs");
+  const { readFile } = await import("node:fs/promises");
+  const jalur = new URL("../backend/supabase/functions/_shared/prompts.generated.ts", import.meta.url);
+
+  const seharusnya = renderModule(await buildBundle());
+  const sekarang = await readFile(jalur, "utf8");
+  assert.equal(
+    sekarang,
+    seharusnya,
+    "prompts.generated.ts basi, jalankan: node backend/tools/bundle_prompts.mjs"
+  );
+
+  // Bundel yang mutakhir tapi kosong tetap lolos perbandingan di atas.
+  const bundel = await buildBundle();
+  assert.ok(bundel.v3?.sprite_sheet.includes("{{creature_brief}}"), "v3 sprite_sheet ikut terbundel");
+  assert.ok(bundel.v3?.vision_schema?.properties?.species_key, "v3 vision_schema terparse");
 }
 
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang

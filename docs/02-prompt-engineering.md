@@ -195,12 +195,12 @@ Analyse the attached photograph now. Respond only with JSON.
 **Skema ini kontrak yang ditegakkan kode, bukan jaminan dari API.** Perbedaannya penting dan datang dari keputusan memanggil Gemini lewat Replicate (alasannya di [01](01-architecture-dataflow.md)): wrapper Replicate tidak menyediakan parameter `response_schema`. Rancangan awal dokumen ini mengandalkan structured output Gemini langsung, yang mengubah "biasanya JSON valid" menjadi "selalu JSON valid". Jaminan itu **tidak tersedia** di jalur yang dipakai sekarang, jadi ia harus digantikan oleh tiga lapis di kode:
 
 1. Skema di bawah disisipkan **literal** ke `system_instruction`, bukan hanya dideskripsikan dalam prosa. Menunjukkan bentuk yang diinginkan jauh lebih efektif daripada menjelaskannya.
-2. `extractJson()` di `eval/run.mjs` menangani bentuk keluaran yang wajar tapi tidak diminta: bungkus ```json, kalimat pengantar sebelum objek, dan array potongan string yang harus disambung (skema output wrapper-nya iterator).
+2. `extractJson()` di `backend/supabase/functions/_shared/vision.mjs` menangani bentuk keluaran yang wajar tapi tidak diminta: bungkus ```json, kalimat pengantar sebelum objek, dan array potongan string yang harus disambung (skema output wrapper-nya iterator).
 3. Kalau tetap gagal, satu percobaan ulang pada `temperature: 0`. Ini tidak melanggar larangan retry otomatis di CLAUDE.md, karena larangan itu menyangkut generation gambar yang sekitar 23 kali lebih mahal. Retry yang terjadi dicatat di `summary.json`: kalau angkanya sering muncul, yang perlu diperbaiki adalah kontrak output di prompt, bukan parser-nya.
 
 Skema tetap ditulis dalam notasi subset OpenAPI (`"nullable": true` alih-alih `["string", "null"]`, tanpa keyword `pattern`) meski `response_schema` tidak dipakai, karena format itu tetap benar sebagai deskripsi untuk model dan membuat perpindahan kembali ke Gemini API langsung tinggal menyalurkan file yang sama tanpa penulisan ulang.
 
-Batasan yang memang tidak bisa diungkapkan di skema apa pun — format `species_key`, jumlah stat 200-350, larangan kata kabur di `signature_features` — ditegakkan di `validateVision()` pada `eval/run.mjs`. Fungsi itu sekarang menjadi satu-satunya penjaga bentuk data, bukan lapis kedua di belakang jaminan API.
+Batasan yang memang tidak bisa diungkapkan di skema apa pun — format `species_key`, jumlah stat 200-350, larangan kata kabur di `signature_features` — ditegakkan di `validateVision()` pada `backend/supabase/functions/_shared/vision.mjs` — satu file yang dipakai harness eval maupun Edge Function, sebab gate yang berbeda antara keduanya berarti eval meloloskan foto yang produksi tolak, atau sebaliknya. Fungsi itu sekarang menjadi satu-satunya penjaga bentuk data, bukan lapis kedua di belakang jaminan API.
 
 ```json
 {
@@ -438,6 +438,10 @@ backend/prompts/
     ├── sprite_sheet.md
     └── sprite_sheet_evolve.md
 ```
+
+Versi yang aktif dibaca dari tabel `app_config`, bukan dari env Edge Function, supaya rollback kualitas art tidak menunggu deploy.
+
+**Edge Function tidak bisa membaca file-file itu langsung.** `Deno.readTextFile()` gagal untuk file pendamping yang dideploy lewat MCP, jadi `backend/tools/bundle_prompts.mjs` membundel semua versi menjadi `functions/_shared/prompts.generated.ts` yang diimpor sebagai modul biasa. Sumber kebenarannya tetap file `.md` di git; yang di-generate adalah turunan, dan skenario 17 di `npm run selftest` gagal kalau turunannya basi. Menyalin isi prompt ke dalam kode adalah jawaban yang lebih buruk: salinan itu akan menyimpang, dan divergensinya baru terlihat saat art produksi berbeda dari art yang sudah disetujui di Smoke Set.
 
 Tiga aturan operasionalnya:
 

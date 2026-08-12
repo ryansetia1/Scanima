@@ -2,7 +2,7 @@ class_name AnimaLoader
 extends RefCounted
 
 ## Membangun SpriteFrames dari sheet PNG RGBA + manifest.json yang dihasilkan
-## post-processing di backend (lihat eval/postprocess.mjs).
+## post-processing di backend (lihat backend/supabase/functions/_shared/postprocess.mjs).
 ##
 ## Tidak ada slicing 2x2 secara buta di sini. Godot mempercayai region dari
 ## manifest, karena yang tahu di mana kreaturnya sebenarnya berada adalah tahap

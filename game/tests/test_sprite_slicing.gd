@@ -254,7 +254,7 @@ func _test_presenter() -> void:
 
 ## Memeriksa sheet sungguhan yang dihasilkan pipeline Node, kalau path-nya
 ## diberikan. Ini satu-satunya test yang membuktikan kontrak antara
-## eval/postprocess.mjs dan AnimaLoader benar-benar cocok, bukan hanya cocok
+## backend/supabase/functions/_shared/postprocess.mjs dan AnimaLoader benar-benar cocok, bukan hanya cocok
 ## dengan sheet yang dibuat Godot sendiri.
 ##
 ##   node eval/selftest.mjs --emit /tmp/scanima_e2e

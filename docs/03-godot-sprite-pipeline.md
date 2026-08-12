@@ -272,7 +272,7 @@ keep = max(keep, 1.0 - smoothstep(val_min - softness, val_min, hsv.z));
 COLOR = vec4(tex.rgb, tex.a * keep);
 ```
 
-Syarat "atau" itulah yang menyelamatkan Anima berelemen `plant`: hijau daun saturasinya jauh di bawah `sat_min`, jadi ia lolos lewat cabang kedua meski hue-nya persis hijau. Nilai uniform-nya harus tetap sama dengan `eval/postprocess.mjs` (hue ±22°, `sat_min` 0,85, `val_min` 0,5). Kalau berbeda, sprite yang sama akan tampil berbeda antara pemain biasa dan pemain BYOK.
+Syarat "atau" itulah yang menyelamatkan Anima berelemen `plant`: hijau daun saturasinya jauh di bawah `sat_min`, jadi ia lolos lewat cabang kedua meski hue-nya persis hijau. Nilai uniform-nya harus tetap sama dengan `backend/supabase/functions/_shared/postprocess.mjs` (hue ±22°, `sat_min` 0,85, `val_min` 0,5). Kalau berbeda, sprite yang sama akan tampil berbeda antara pemain biasa dan pemain BYOK.
 
 Yang **tidak** bisa dikerjakan shader ini, dan karena itu mode BYOK tetap terpaksa memakai region grid buta 2x2: mencari bounding box, menyeragamkan ukuran frame, dan menolak sheet yang cacat. Ketiganya butuh membaca seluruh piksel sekaligus, sesuatu yang fragment shader tidak bisa lakukan. Jadi mode BYOK secara struktural memberi kualitas sprite yang lebih rendah, bukan sekadar lebih lambat.
 

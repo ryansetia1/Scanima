@@ -87,9 +87,21 @@ Baru di sini Supabase masuk, dan alasannya karena sekarang kita tahu apa yang pe
 
 ### Yang dikerjakan
 
-Fondasi backend lebih dulu: migrasi Postgres berisi lima tabel dari [01](01-architecture-dataflow.md), RLS di semuanya, trigger `guard_profile_columns`, dan fungsi `claim_generation` / `refund_generation`. Sistem kuota dibangun **sebelum** endpoint yang membelanjakan uang, bukan sesudahnya — urutan sebaliknya berarti ada periode di mana ada endpoint tanpa pagar.
+Fondasi backend lebih dulu: migrasi Postgres berisi tabel dari [01](01-architecture-dataflow.md), RLS di semuanya, trigger `guard_profile_columns`, dan fungsi `claim_genesis` / `record_cache_hit` / `refund_generation`. Sistem kuota dibangun **sebelum** endpoint yang membelanjakan uang, bukan sesudahnya — urutan sebaliknya berarti ada periode di mana ada endpoint tanpa pagar.
 
-Lalu Edge Functions: `photo_upload_url`, `create_anima`, `replicate_webhook`, dengan post-processing dari Phase 1 diport ke Deno memakai ImageScript. Di sini muncul titik keputusan nyata soal batas CPU — ukur dulu dengan sheet asli, lalu naiki tangga mitigasi di [01](01-architecture-dataflow.md) hanya kalau memang kena.
+**Status: fondasi itu sudah berdiri.** Tujuh tabel, RLS plus hak kolom, fungsi kuota (`claim_scan_charge`, `refund_scan_charge`, `claim_genesis`, `record_cache_hit`, `refund_generation`), bootstrap profil saat sign-in anonim, bucket Storage beserta policy per-folder, dan `backend/tests/quota_rules.sql` yang lulus di proyek remote. Tiga dari exit criteria fase ini sudah terbukti di lapisan database: kuota tidak bisa dicurangi dengan anon key, satu `idempotency_key` hanya menghabiskan satu Core dan hanya menghasilkan satu Anima, dan webhook kembar tidak bisa mengkredit Core dua kali.
+
+**Titik keputusan CPU sudah dijawab dengan pengukuran, bukan dugaan: 173 ms** untuk sheet v3 sungguhan di runtime edge (batas 2 detik), dengan hasil identik piksel per piksel dengan Node. Tangga mitigasi di [01](01-architecture-dataflow.md) tidak perlu dinaiki.
+
+**`create_anima` dan `replicate_webhook` sudah live** dengan `REPLICATE_API_TOKEN` terpasang, dan pagarnya diuji terhadap endpoint produksi tanpa biaya: token hilang, user kosong, `photo_path` milik orang lain, `idempotency_key` hilang, foto tidak ada, tanda tangan webhook palsu, unggahan ke folder pemain lain, dan mime non-gambar — semuanya ditolak di lapisan yang seharusnya. Nol baris `generations` sesudahnya membuktikan tidak ada satu pun dari uji itu yang menyentuh Vision.
+
+Uji live itu menemukan satu hal yang tidak akan pernah ditemukan oleh test berbayar: **sign-in anonim mati secara default di project Supabase**, dan game ini tidak punya layar login. Kegagalannya terjadi di detik pertama app, di jalur yang tidak memanggil API sama sekali. Sekarang menyala dan dideklarasikan di `config.toml`.
+
+**Jalur uangnya sudah dijalankan utuh sekali di produksi (~$0.076).** Foto mug putih dari pemain anonim: `create_anima` balik 15 detik dengan Vision selesai, webhook menyelesaikan hatch-nya, hasilnya 4/4 pose, residu hijau 0,005%, nol piksel lintas kuadran, dan foto mentah terhapus sendiri. Pemain kedua yang memfoto mug yang sama mendapat `cache_hit` dalam 11 detik tanpa satu Core pun tersentuh, dengan `times_reused` naik ke 1. Sheet itu lalu diunduh dari CDN dan `test_sprite_slicing.gd` lulus 75/75 terhadapnya — art produksi, bukan fixture.
+
+Dengan itu, lima dari exit criteria fase ini sudah terbukti; sisanya butuh client. Yang belum sama sekali: sisi Godot dan loop perawatan.
+
+Lalu Edge Functions: `create_anima` dan `replicate_webhook`, dengan post-processing dari Phase 1 dipakai apa adanya di Deno lewat satu modul bersama. Unggah foto tidak dapat endpoint sendiri — policy Storage per-folder sudah menjadi pagarnya, jadi menulis penerbit signed URL berarti menulis ulang sesuatu yang sudah ada.
 
 Autentikasi memakai anonymous sign-in Supabase. Tidak ada layar login di awal permainan; pemain baru langsung memfoto sesuatu. Upgrade ke akun ber-email ditawarkan nanti saat mereka punya sesuatu yang layak diselamatkan, dan pembingkaiannya soal tidak kehilangan koleksi, bukan soal mendaftar.
 
