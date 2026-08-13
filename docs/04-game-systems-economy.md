@@ -8,12 +8,18 @@ Urutannya sengaja: ekonomi dibahas lebih dulu daripada yang terlihat wajar, kare
 
 Dua angka, dan jarak di antara keduanya adalah keseluruhan desain ekonomi Scanima:
 
-| Aksi | Biaya nyata ke kita |
+| Aksi | Anggaran biaya ke kita |
 | --- | --- |
 | Menganalisis foto (Vision LLM) | **~$0.003** |
 | Menciptakan spesies baru (GPT Image 2 medium) | **~$0.070** |
 
-Selisihnya masih sekitar **23 kali**. Aksi yang satu murah, yang lain mahal. Menyatukan keduanya di balik satu tombol "Foto" berarti setiap tap membawa risiko ~$0.07, dan itu tetap memaksa kita membatasi tap — padahal memfoto benda adalah hal paling menyenangkan di game ini dan seharusnya dilakukan sesering mungkin.
+Generation medium terbaru pada 13 Agustus 2026 terukur sekitar **$0.05 per
+sheet**, dekat dengan harga tercantum Replicate $0.047. Dokumen ekonomi tetap
+memakai $0.070 sebagai reserve konservatif, bukan mengubah harga produk dari satu
+sampel. Snapshot lengkap dan aturan pembanding model ada di
+[02](02-prompt-engineering.md#baseline-harga-untuk-pembanding-model).
+
+Selisih anggarannya masih sekitar **23 kali**. Aksi yang satu murah, yang lain mahal. Menyatukan keduanya di balik satu tombol "Foto" berarti setiap tap membawa risiko ~$0.07, dan itu tetap memaksa kita membatasi tap — padahal memfoto benda adalah hal paling menyenangkan di game ini dan seharusnya dilakukan sesering mungkin.
 
 Jadi jangan disatukan. Pisahkan menjadi dua aksi yang berbeda, dan biarkan struktur biaya menjadi mekanik game:
 

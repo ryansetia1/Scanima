@@ -11,7 +11,7 @@ Art style: 2D anime creature cel-shading — clean bold linework, flat colors, c
 
 **Phase 1 — pipeline art. Terbukti end-to-end pada 12 Agustus 2026.** Foto sungguhan sudah masuk lewat seluruh rantai — Vision, prompt, generation, chroma key, slicing, manifest — dan Godot merender Anima hasilnya. "True to Object" terverifikasi dengan mata: foto mouse komputer menghasilkan kreatur yang dua tombol kliknya jadi mata, scroll wheel jadi hidung, dan kabelnya jadi ekor bersegmen.
 
-Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`** sebagai default: hasil 1024×1024-nya lebih konsisten untuk anatomi anime dan biaya nyata sekitar $0.07 per sheet, sedangkan `high` sekitar empat kali token output dan 2,5 menit tanpa peningkatan yang sebanding. Prompt production v2 mengikuti [anime cel-shaded style guide](docs/monster_camera_anime_cel_shaded_style_guide.md); gate Gemini tetap tidak berubah.
+Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`** sebagai default: hasil 1024×1024-nya lebih konsisten untuk anatomi anime. Replicate mencantumkan $0.047 per output image pada 13 Agustus 2026 dan generation terbaru tercatat sekitar $0.05 per sheet; dua run lama sebesar $0.068 dan $0.072 tetap menjadi data historis. Quality `high` memakai sekitar empat kali token output dan 2,5 menit tanpa peningkatan yang sebanding. Prompt production v2 mengikuti [anime cel-shaded style guide](docs/monster_camera_anime_cel_shaded_style_guide.md); gate Gemini tetap tidak berubah.
 
 **Smoke Set berbayar dengan template v2 final sudah dijalankan** (mouse, mug putih, sepatu): 3 dari 3 sheet lengkap 4/4 pose, gate menolak keduanya dengan benar, residu hijau 0,001–0,008% (target di bawah 0,1%), selisih skala Idle vs Attack 6–13%, dan latensi 61–74 detik per sheet. Biaya run: ~$0.225. Hasilnya ada di `eval/results/v2/smoke/index.html`.
 
@@ -132,7 +132,7 @@ graph LR
     Godot --> Pet["Anima hidup:<br/>rawat, evolusi, bertarung"]
 ```
 
-Satu Anima = satu panggilan image generation = **~$0.07** pada GPT Image 2 medium. Nilai persisnya mengikuti token input, tetapi dua run nyata berada di sekitar angka ini. Hampir semua keputusan ekonomi dan caching mengalir dari biaya tersebut. Lihat [docs/04-game-systems-economy.md](docs/04-game-systems-economy.md).
+Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur **~$0.05 per sheet**, sementara ekonomi dan spend cap masih menganggarkan **$0.07** secara konservatif. Hampir semua keputusan ekonomi dan caching mengalir dari biaya tersebut. Baseline pembanding model ada di [docs/02-prompt-engineering.md](docs/02-prompt-engineering.md#baseline-harga-untuk-pembanding-model), dan desain ekonominya di [docs/04-game-systems-economy.md](docs/04-game-systems-economy.md).
 
 ## Dokumentasi
 

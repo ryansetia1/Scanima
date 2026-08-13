@@ -402,6 +402,31 @@ Catatan per parameter, karena beberapa punya alasan yang tidak terlihat dari nil
 
 `quality: "medium"` adalah keputusan berbasis run nyata, bukan asumsi. Dua sheet medium selesai dalam 57 dan 63 detik dengan 1.756 output token. Quality high memakai 7.024 output token dan ~153 detik; peningkatan art tidak sebanding dengan biaya dan latensinya.
 
+### Baseline harga untuk pembanding model
+
+Snapshot pricing Replicate pada **13 Agustus 2026** untuk `openai/gpt-image-2`:
+
+| Quality | Harga tercantum per output image |
+| --- | ---: |
+| `auto` | $0.128 |
+| `low` | $0.012 |
+| `medium` | $0.047 |
+| `high` | $0.128 |
+
+Satu output image Scanima adalah satu PNG 1024×1024 yang memuat satu sheet Anima
+2×2 berisi empat pose. Generation production `medium` terbaru tercatat sekitar
+**$0.05 per sheet**, dekat dengan harga tercantum $0.047. Dua run medium lama
+sebesar $0.068 dan $0.072 tetap dicatat sebagai data historis, bukan ditimpa;
+harga provider dan komponen billing dapat berubah. Biaya Vision sekitar $0.003
+terpisah dari angka image generation.
+
+Untuk membandingkan model baru, selalu catat tanggal, model/version, quality,
+jumlah dan resolusi input/output, biaya **per sheet yang lolos QA**, latensi,
+kelengkapan 4/4 pose, kesetiaan True to Object, dan hasil keying. Harga katalog
+saja tidak cukup jika model murah lebih sering menghasilkan sheet yang harus
+diulang. Estimasi operasional di `pricing.mjs` tetap $0.07 sebagai pagar spend
+cap konservatif sampai sampel production berulang membenarkan perubahan.
+
 `output_format: "png"` wajib. JPEG akan menambahkan artefak kompresi di sekitar tepi sprite, dan artefak itu persis merusak chroma keying di piksel yang paling penting.
 
 `background: "opaque"` bukan preferensi estetika. Runtime GPT Image 2 menolak `transparent` dengan `invalid_value` meskipun opsi itu terlihat di schema wrapper. Karena itu prompt tetap meminta chroma green.
