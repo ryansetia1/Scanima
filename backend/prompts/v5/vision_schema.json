@@ -1,0 +1,121 @@
+{
+  "type": "object",
+  "description": "Hasil analisis Anima Analyst. Skema ini disisipkan ke system_instruction, BUKAN dikirim sebagai response_schema: wrapper Gemini di Replicate tidak punya parameter itu, jadi JSON valid tidak dijamin API dan ditegakkan oleh extractJson() + validateVision(). Notasinya tetap subset OpenAPI (nullable, bukan tipe array seperti [string, null], tanpa keyword pattern) supaya file ini bisa dipakai apa adanya kalau nanti pindah ke Gemini API langsung.",
+  "propertyOrdering": [
+    "safe", "is_object", "reject_reason", "object_label", "species_key",
+    "color_bucket", "element", "rarity", "stats", "stat_reasoning",
+    "surface_finish", "damage_hints", "character_direction", "creature_brief",
+    "signature_features", "suggested_name", "dominant_colors"
+  ],
+  "required": ["safe", "is_object", "reject_reason"],
+  "properties": {
+    "safe": {
+      "type": "boolean",
+      "description": "false kalau foto melanggar salah satu aturan GATE"
+    },
+    "is_object": {
+      "type": "boolean",
+      "description": "true kalau ada satu objek diskret yang jelas jadi subjek"
+    },
+    "reject_reason": {
+      "type": "string",
+      "nullable": true,
+      "enum": ["human_face", "live_animal", "unsafe_content", "personal_info", "too_unclear", "no_object"]
+    },
+    "object_label": {
+      "type": "string",
+      "nullable": true,
+      "description": "Nama objek sehari-hari dalam bahasa Inggris, untuk debugging"
+    },
+    "species_key": {
+      "type": "string",
+      "nullable": true,
+      "description": "snake_case, 2-4 segmen, tanpa warna, tanpa merek. Ini cache key."
+    },
+    "color_bucket": {
+      "type": "string",
+      "nullable": true,
+      "enum": ["warm_red", "warm_yellow", "cool_blue", "cool_green", "purple_pink", "neutral_light", "neutral_dark", "metallic", "multicolor"]
+    },
+    "element": {
+      "type": "string",
+      "nullable": true,
+      "enum": ["metal", "plant", "spark", "flow", "stone", "cloth"]
+    },
+    "rarity": {
+      "type": "integer",
+      "nullable": true,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "stats": {
+      "type": "object",
+      "nullable": true,
+      "required": ["hp", "atk", "def", "spd", "special"],
+      "propertyOrdering": ["hp", "atk", "def", "spd", "special"],
+      "properties": {
+        "hp": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "atk": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "def": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "spd": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "special": { "type": "integer", "minimum": 10, "maximum": 95 }
+      }
+    },
+    "stat_reasoning": {
+      "type": "object",
+      "nullable": true,
+      "description": "Fitur nyata yang mendasari tiap stat. Dipakai untuk tooltip di kartu stat dan untuk debugging prompt.",
+      "propertyOrdering": ["hp", "atk", "def", "spd", "special"],
+      "properties": {
+        "hp": { "type": "string" },
+        "atk": { "type": "string" },
+        "def": { "type": "string" },
+        "spd": { "type": "string" },
+        "special": { "type": "string" }
+      }
+    },
+    "surface_finish": {
+      "type": "string",
+      "nullable": true,
+      "description": "Material dan finishing dominan yang benar-benar terlihat, misalnya glazed ceramic, woven fabric, clear glass, painted metal, atau living leaves. Tanpa merek."
+    },
+    "damage_hints": {
+      "type": "array",
+      "nullable": true,
+      "minItems": 2,
+      "maxItems": 3,
+      "items": { "type": "string" },
+      "description": "Kerusakan kecil khusus material untuk pose DAMAGED. Kabel/wire hanya jika benda aslinya memang memiliki kabel/wire yang terlihat."
+    },
+    "character_direction": {
+      "type": "string",
+      "nullable": true,
+      "description": "Arahan visual singkat berdasarkan cue bentuk, proporsi, warna, material, dan detail objek. Boleh cute, feminin, maskulin, netral/androgynous, elegan, kokoh, atau aneh; wajib netral bila cue ambigu."
+    },
+    "creature_brief": {
+      "type": "string",
+      "nullable": true,
+      "description": "40-80 kata, deskripsi visual termasuk body plan dan keputusan ada/tidaknya anggota tubuh, disisipkan ke prompt gambar"
+    },
+    "signature_features": {
+      "type": "array",
+      "nullable": true,
+      "minItems": 2,
+      "maxItems": 4,
+      "items": { "type": "string" },
+      "description": "Detail struktural nyata yang wajib bertahan ke artwork. Bukan logo, tulisan, simbol, atau grafis cetak."
+    },
+    "suggested_name": {
+      "type": "string",
+      "nullable": true,
+      "description": "Nama kreatur rekaan, 2-4 suku kata, tanpa merek nyata"
+    },
+    "dominant_colors": {
+      "type": "array",
+      "nullable": true,
+      "maxItems": 3,
+      "items": { "type": "string" },
+      "description": "Hex seperti #a1b2c3"
+    }
+  }
+}

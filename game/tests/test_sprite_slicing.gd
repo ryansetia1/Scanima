@@ -245,6 +245,35 @@ func _test_presenter() -> void:
 	_check(not presenter.set_pose("tidak_ada"), "pose tak dikenal harus ditolak")
 	_check_eq(presenter.current_pose(), "idle", "pose gagal tidak boleh mengubah state")
 
+	presenter.set_pose("defeated")
+	var damaged_motion := presenter.get("_motion") as Tween
+	_check(
+		damaged_motion != null and damaged_motion.get_loops_left() == -1,
+		"pose Damaged harus heavy breathing sampai state berubah"
+	)
+	presenter.set_pose("idle")
+	_check(
+		not damaged_motion.is_valid() or not damaged_motion.is_running(),
+		"keluar dari Damaged harus menghentikan heavy breathing lama"
+	)
+
+	presenter.care_feedback("play")
+	var play_feedback := presenter.get("_feedback") as Tween
+	_check(
+		play_feedback != null and play_feedback.get_loops_left() == 6,
+		"Play harus memulai beberapa bounce, bukan satu hop"
+	)
+	UiMotion.set_reduced_motion(true)
+	presenter.modulate = Color(0.68, 0.72, 0.82, 1.0)
+	presenter.care_feedback("play")
+	_check(presenter.get("_feedback") == null, "Reduced Motion tidak boleh memulai bounce Play")
+	_check_eq(presenter.position, Vector2.ZERO, "Reduced Motion harus mengembalikan posisi dasar")
+	_check(
+		presenter.modulate != Color.WHITE,
+		"Reduced Motion tidak boleh menghapus tint state authoritative"
+	)
+	UiMotion.set_reduced_motion(false)
+
 	# apply() dengan data gagal tidak boleh merusak Anima yang sedang tampil.
 	_check(not presenter.apply({"ok": false, "error": "uji"}), "apply data gagal harus mengembalikan false")
 	_check(presenter.sprite_frames != null, "frames lama harus tetap terpasang")

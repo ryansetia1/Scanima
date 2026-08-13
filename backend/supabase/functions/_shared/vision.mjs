@@ -56,7 +56,12 @@ export function extractJson(raw) {
  * Schema menjamin bentuk, bukan kewajaran isi. Pemeriksaan di sini menegakkan
  * hal-hal yang tidak bisa diungkapkan di responseSchema Gemini.
  */
-export function validateVision(v, knownSpecies = [], requireMaterial = false) {
+export function validateVision(
+  v,
+  knownSpecies = [],
+  requireMaterial = false,
+  requireCharacter = false
+) {
   const issues = [];
 
   if (!v.safe || !v.is_object) {
@@ -105,6 +110,9 @@ export function validateVision(v, knownSpecies = [], requireMaterial = false) {
     if (!v.surface_finish?.trim()) issues.push("surface_finish kosong");
     if ((v.damage_hints ?? []).length < 2) issues.push("damage_hints kurang dari 2");
   }
+  if (requireCharacter && !v.character_direction?.trim()) {
+    issues.push("character_direction kosong");
+  }
 
   return { gate: "passed", reason: null, issues, vision: v };
 }
@@ -141,9 +149,12 @@ export function assemblePrompt(template, vision) {
   const stats = vision.stats ?? {};
   const dominantStat = Object.entries(stats).sort((a, b) => b[1] - a[1])[0]?.[0];
   const materialAware = template.includes("{{surface_finish}}");
+  const characterAware = template.includes("{{character_direction}}");
   const personalities = {
     hp: "sturdy, calm, dependable, and hard to intimidate",
-    atk: "bold, fierce, confrontational, and eager to prove its strength",
+    atk: characterAware
+      ? "bold, spirited, direct, and eager to prove its strength without looking angry at rest"
+      : "bold, fierce, confrontational, and eager to prove its strength",
     def: "stoic, protective, stubborn, and quietly confident",
     spd: "agile, impatient, competitive, and playfully restless",
     special: materialAware
@@ -151,6 +162,8 @@ export function assemblePrompt(template, vision) {
       : "clever, strange, mischievous, and charged with hidden technical energy",
   };
   const personality = personalities[dominantStat] ?? "curious, expressive, and slightly mischievous";
+  const characterDirection = vision.character_direction?.trim()
+    || "visually neutral and object-led, without forced gender coding";
   const colors = (vision.dominant_colors ?? []).join(", ") || vision.color_bucket || "object-derived palette";
   const out = template
     .replaceAll("{{creature_brief}}", vision.creature_brief ?? "")
@@ -159,6 +172,7 @@ export function assemblePrompt(template, vision) {
     .replaceAll("{{color_palette}}", colors)
     .replaceAll("{{personality}}", personality)
     .replaceAll("{{surface_finish}}", surface)
+    .replaceAll("{{character_direction}}", characterDirection)
     .replaceAll("{{damage_hints_as_bullets}}", damageBullets);
 
   const leftover = out.match(/\{\{[a-z_]+\}\}/g);

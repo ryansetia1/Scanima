@@ -327,85 +327,34 @@ Yang hilang di jalur fallback ini, dan harus diakui: segmentasi ownership + bbox
 
 Empat pose statis tidak menghasilkan makhluk yang terasa hidup. Tapi menghasilkan animasi frame-by-frame dari model gambar itu mahal dan tidak konsisten — dan tidak perlu, karena hampir seluruh kesan "hidup" pada sprite datang dari transformasi, bukan dari perubahan piksel.
 
-Jadi kehidupan datang dari `Tween` di atas satu frame:
+Jadi kehidupan datang dari `Tween` di atas satu frame. Implementasi produksi
+dipusatkan di `AnimaPresenter` dan selalu membunuh tween pose lama sebelum pose
+baru menulis transform yang sama:
 
 ```gdscript
-extends Node2D
-class_name AnimaPresenter
-
-@onready var body: Node2D = %Body
-@onready var sprite: AnimatedSprite2D = %AnimaSprite
-@onready var shadow: Sprite2D = %Shadow
-
-var _idle_tween: Tween
-
-
-func show_pose(pose: String) -> void:
-	sprite.play(pose)
-	if _idle_tween:
-		_idle_tween.kill()
-	match pose:
-		"idle":     _breathe()
-		"sleep":    _breathe_slow()
-		"attack":   _lunge()
-		"defeated": _slump()
-
-
-func _breathe() -> void:
-	# Squash-stretch halus dengan volume terjaga: melebar saat memendek.
-	_idle_tween = create_tween().set_loops()
-	_idle_tween.tween_property(body, "scale", Vector2(1.02, 0.98), 1.1) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_idle_tween.parallel().tween_property(body, "position:y", 2.0, 1.1) \
-		.set_trans(Tween.TRANS_SINE)
-	_idle_tween.tween_property(body, "scale", Vector2(0.99, 1.01), 1.3) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_idle_tween.parallel().tween_property(body, "position:y", -2.0, 1.3) \
-		.set_trans(Tween.TRANS_SINE)
-
-
-func _lunge() -> void:
-	# Antisipasi ke belakang, serang cepat, kembali. Timing asimetris:
-	# tarikan lambat, hentakan cepat.
-	var t := create_tween()
-	t.tween_property(body, "position:x", -14.0, 0.14).set_ease(Tween.EASE_OUT)
-	t.tween_property(body, "position:x", 46.0, 0.07).set_ease(Tween.EASE_IN)
-	t.parallel().tween_property(body, "scale", Vector2(1.08, 0.94), 0.07)
-	t.tween_interval(0.06)
-	t.tween_property(body, "position:x", 0.0, 0.22).set_trans(Tween.TRANS_BACK)
-	t.parallel().tween_property(body, "scale", Vector2.ONE, 0.22)
-	t.finished.connect(func(): show_pose("idle"))
-
-
-func _slump() -> void:
-	var t := create_tween()
-	t.tween_property(body, "rotation_degrees", -8.0, 0.3).set_trans(Tween.TRANS_BOUNCE)
-	t.parallel().tween_property(body, "position:y", 10.0, 0.3)
-	t.parallel().tween_property(shadow, "scale", Vector2(1.15, 0.8), 0.3)
-
-
-func hop() -> void:
-	# Dipanggil acak tiap 4-9 detik saat idle, dan setelah diberi makan.
-	var t := create_tween()
-	t.tween_property(body, "scale", Vector2(0.92, 1.12), 0.10)     # tekuk kaki
-	t.tween_property(body, "position:y", -34.0, 0.20).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	t.parallel().tween_property(body, "scale", Vector2(1.06, 0.94), 0.20)
-	t.parallel().tween_property(shadow, "scale", Vector2(0.7, 0.7), 0.20)
-	t.tween_property(body, "position:y", 0.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	t.parallel().tween_property(shadow, "scale", Vector2.ONE, 0.16)
-	t.tween_property(body, "scale", Vector2(1.10, 0.90), 0.06)     # mendarat, mengempis
-	t.tween_property(body, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_ELASTIC)
+match pose:
+	"idle":     _motion = _breathe(1.6, 0.045)
+	"sleep":    _motion = _breathe(2.8, 0.07)
+	"attack":   _motion = _lunge()
+	"defeated": _motion = _heavy_breathe()
 ```
 
-Beberapa hal yang membuat ini terasa organik dan bukan sekadar objek bergoyang:
+Idle memakai squash-stretch halus. Sleep lebih lambat dan dalam. Key internal
+`defeated` berarti visual Damaged saat Anima Dormant, jadi ia bukan jasad yang
+diam: heavy breathing memakai siklus 1,1 detik yang pendek dan tidak simetris,
+loop sampai state server menyatakan pulih. Pergantian ke Idle membunuh loop itu
+dan mereset scale, rotation, serta position sebelum memulai napas biasa.
 
-Napas memakai durasi tidak simetris (1,1 detik masuk, 1,3 detik keluar). Napas yang periodenya rata terlihat mekanis; ketimpangan kecil membuat mata membacanya sebagai makhluk hidup.
+Feedback Care memakai tween kedua agar intent terlihat pada frame tap tanpa
+menunggu commit server. Feed mendapat satu hop; Play mendapat enam bounce
+setinggi 14 px dengan total sekitar 2,5 detik. Napas menulis `scale` sementara
+bounce menulis `position`, jadi keduanya tidak berebut. Hatch adalah pengecualian
+yang memang menulis keduanya: ia membunuh tween pose dan feedback dulu, lalu
+menyalakan pose kembali setelah reveal selesai.
 
-Squash-stretch selalu menjaga volume — melebar ketika memendek. Ini konvensi animasi klasik dan satu-satunya alasan skala non-uniform tidak terlihat seperti bug.
-
-Bayangan ikut bereaksi. Saat Anima melompat, bayangan mengecil; saat tersungkur, bayangan melebar dan menipis. Ini yang menjual keberadaan makhluk di suatu ruang, dan biayanya satu tween paralel.
-
-Lompatan dipicu pada interval acak 4-9 detik, bukan periodik. Interval tetap akan langsung terbaca sebagai loop.
+Semua jalur memeriksa `UiMotion.reduced_motion`. Saat flag itu aktif, pose tetap
+benar tetapi transform tidak dianimasikan. Ini satu kontrak aksesibilitas yang
+sama dengan chrome UI dan inkubator, bukan sakelar baru khusus Anima.
 
 **Yang tidak bisa dilakukan dengan empat pose: berkedip.** Berkedip butuh gambar mata tertutup, dan tidak ada trik transformasi yang bisa memalsukannya. Menutupinya dengan shader yang menggelapkan area mata terdengar pintar tapi butuh koordinat mata per spesies, yang tidak kita punya. Jadi berkedip tidak ada, dan itu keputusan sadar.
 

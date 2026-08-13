@@ -13,7 +13,10 @@ signal pose_changed(pose: String)
 
 const BREATH_IDLE_SEC := 1.6
 const BREATH_SLEEP_SEC := 2.8
+const BREATH_DAMAGED_SEC := 1.1
 const HOP_HEIGHT_PX := 10.0
+const PLAY_BOUNCE_HEIGHT_PX := 14.0
+const PLAY_BOUNCE_COUNT := 6
 
 var _motion: Tween
 var _feedback: Tween
@@ -78,11 +81,9 @@ func _start_motion(pose: String) -> void:
 		"attack":
 			_motion = _lunge()
 		"defeated":
-			# Satu kali menghela, lalu benar-benar diam. Kreatur yang tumbang
-			# tapi tetap bernapas ritmis terbaca seperti bug, bukan kekalahan.
-			_motion = create_tween()
-			_motion.tween_property(self, "scale", Vector2(1.03, 0.95), 0.35) \
-				.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+			# Pose ini adalah Damaged/Dormant, bukan jasad yang kalah. Napas
+			# pendek yang tidak simetris membuatnya terasa kelelahan sampai pulih.
+			_motion = _heavy_breathe()
 		_:
 			_motion = _breathe(BREATH_IDLE_SEC, 0.045)
 
@@ -95,6 +96,18 @@ func _breathe(duration: float, amount: float) -> Tween:
 		.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(self, "scale", Vector2.ONE, duration * 0.5) \
 		.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	return tween
+
+
+func _heavy_breathe() -> Tween:
+	var tween := create_tween().set_loops()
+	tween.tween_property(self, "scale", Vector2(0.96, 1.075), BREATH_DAMAGED_SEC * 0.24) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(self, "scale", Vector2(1.025, 0.965), BREATH_DAMAGED_SEC * 0.44) \
+		.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(self, "scale", Vector2.ONE, BREATH_DAMAGED_SEC * 0.22) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tween.tween_interval(BREATH_DAMAGED_SEC * 0.10)
 	return tween
 
 
@@ -111,27 +124,49 @@ func _lunge() -> Tween:
 	return tween
 
 
-## Pantulan sekali, untuk dipakai saat pemain menyentuh Anima atau saat diberi
-## makan. Tidak mengganggu tween pose karena berjalan di tween terpisah.
+## Pantulan sekali untuk Feed. Tidak mengganggu napas pose karena bounce menulis
+## position sementara napas menulis scale.
 func hop() -> void:
 	if UiMotion.reduced_motion:
 		return
-	var tween := create_tween()
-	tween.tween_property(self, "position", _base_position - Vector2(0.0, HOP_HEIGHT_PX), 0.16) \
+	if _feedback != null and _feedback.is_valid():
+		_feedback.kill()
+	_feedback = _bounce(1, HOP_HEIGHT_PX)
+
+
+func play_bounce() -> void:
+	if UiMotion.reduced_motion:
+		return
+	if _feedback != null and _feedback.is_valid():
+		_feedback.kill()
+	_feedback = _bounce(PLAY_BOUNCE_COUNT, PLAY_BOUNCE_HEIGHT_PX)
+
+
+func _bounce(loops: int, height: float) -> Tween:
+	var tween := create_tween().set_loops(loops)
+	tween.tween_property(self, "position", _base_position - Vector2(0.0, height), 0.16) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(self, "position", _base_position, 0.22) \
+	tween.tween_property(self, "position", _base_position, 0.18) \
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_BOUNCE)
+	tween.tween_interval(0.08)
+	return tween
 
 
 func care_feedback(action: String) -> void:
+	if _feedback != null and _feedback.is_valid():
+		_feedback.kill()
+	_feedback = null
+	position = _base_position
 	if UiMotion.reduced_motion:
-		modulate = Color.WHITE
 		return
 
 	var tint := Color.WHITE
 	match action:
-		"feed", "play":
+		"feed":
 			hop()
+			return
+		"play":
+			play_bounce()
 			return
 		"clean":
 			tint = Color(0.55, 1.2, 1.35, 1.0)
@@ -142,8 +177,6 @@ func care_feedback(action: String) -> void:
 		_:
 			return
 
-	if _feedback != null and _feedback.is_valid():
-		_feedback.kill()
 	_feedback = create_tween()
 	_feedback.tween_property(self, "modulate", tint, 0.12)
 	_feedback.tween_property(self, "modulate", Color.WHITE, 0.34) \

@@ -461,6 +461,7 @@ console.log("14. validateVision menegakkan yang tidak bisa dijamin schema");
     signature_features: ["gagang jadi lengan", "bibir keramik di kepala"],
     surface_finish: "smooth glazed ceramic",
     damage_hints: ["retak glasir pendek", "satu sisi bibir terkelupas"],
+    character_direction: "soft, friendly, and visually neutral",
     suggested_name: "Mugmon",
   });
 
@@ -595,6 +596,7 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
   assert.ok(bundel.v3?.vision_schema?.properties?.species_key, "v3 vision_schema terparse");
   assert.ok(bundel.v4?.vision_schema?.properties?.surface_finish, "v4 surface_finish ikut terbundel");
   assert.ok(bundel.v4?.vision_schema?.properties?.damage_hints, "v4 damage_hints ikut terbundel");
+  assert.ok(bundel.v5?.vision_schema?.properties?.character_direction, "v5 character_direction ikut terbundel");
 }
 
 console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
@@ -771,6 +773,66 @@ console.log("20. prompt v4 tidak mengarang logo atau damage cyborg");
   assert.ok(specialMouse.includes("hidden functional energy"));
   assert.ok(!specialMouse.includes("hidden technical energy"));
   assert.ok(!mug.includes("{{") && !plant.includes("{{") && !mouse.includes("{{"));
+}
+
+console.log("21. prompt v5 mengikuti karakter dan body plan objek");
+{
+  const { readFile } = await import("node:fs/promises");
+  const template = await readFile(new URL("../backend/prompts/v5/sprite_sheet.md", import.meta.url), "utf8");
+  const evolve = await readFile(new URL("../backend/prompts/v5/sprite_sheet_evolve.md", import.meta.url), "utf8");
+  const vision = await readFile(new URL("../backend/prompts/v5/vision_system.md", import.meta.url), "utf8");
+
+  assert.ok(
+    /Zero arms,\s+zero\s+legs,\s+or neither is fully valid/.test(template),
+    "v5 tidak boleh memaksakan tangan atau kaki"
+  );
+  assert.ok(
+    /whether arms and legs exist,\s+and how many of each/.test(vision),
+    "Vision harus membuat keputusan limb plan eksplisit"
+  );
+  assert.ok(
+    /A limbless earlier form\s+stays\s+limbless/.test(evolve),
+    "evolusi tidak boleh menumbuhkan anggota tubuh generik"
+  );
+
+  const idle = template.split("TOP LEFT — IDLE")[1]?.split("TOP RIGHT — BATTLE")[0] ?? "";
+  assert.ok(idle.includes("calm, open, non-angry"), "Idle v5 harus tenang dan tidak marah");
+  assert.ok(idle.includes("Never use a fierce glare"), "Idle v5 harus melarang fierce glare secara eksplisit");
+
+  const sample = {
+    object_label: "rounded perfume bottle",
+    creature_brief: "a floating bottle creature with no arms or legs",
+    character_direction: "elegant, softly feminine, and composed",
+    signature_features: ["rounded glass body remains the torso", "cap becomes a small crown"],
+    surface_finish: "smooth translucent glass",
+    damage_hints: ["one hairline crack", "one tiny chipped edge"],
+    dominant_colors: ["#d9b7d8"],
+    stats: { hp: 30, atk: 80, def: 35, spd: 50, special: 65 },
+  };
+  const filled = assemblePrompt(template, sample);
+  assert.ok(filled.includes(sample.character_direction), "character_direction harus sampai ke prompt gambar");
+  assert.ok(
+    filled.includes("without looking angry at rest"),
+    "personality ATK v5 tidak boleh membuat Idle marah"
+  );
+  assert.ok(
+    !filled.includes("bold, fierce, confrontational"),
+    "personality lama yang fierce tidak boleh bocor ke v5"
+  );
+  assert.ok(!filled.includes("{{"), "semua placeholder v5 harus terisi");
+
+  const missingCharacter = { ...sample, safe: true, is_object: true, species_key: "bottle_glass_rounded" };
+  delete missingCharacter.character_direction;
+  assert.ok(
+    validateVision(missingCharacter, [], true, true).issues.includes("character_direction kosong"),
+    "validator v5 harus menandai character_direction yang hilang"
+  );
+
+  const neutralFallback = assemblePrompt(template, missingCharacter);
+  assert.ok(
+    neutralFallback.includes("visually neutral and object-led"),
+    "fallback aman harus netral, bukan menebak gender"
+  );
 }
 
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang

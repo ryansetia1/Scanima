@@ -62,11 +62,16 @@ backend/prompts/
 │   ├── vision_schema.json        # identik v2
 │   ├── sprite_sheet.md           # logo merek diganti marking ciptaan
 │   └── sprite_sheet_evolve.md
-└── v4/                           # CANDIDATE, belum diuji berbayar
-    ├── vision_system.md          # + surface_finish dan damage_hints
-    ├── vision_schema.json        # material/damage nullable, cache key tetap
-    ├── sprite_sheet.md           # permukaan polos; damage wajib sesuai material
-    └── sprite_sheet_evolve.md
+├── v4/                           # predecessor: material + damage
+│   ├── vision_system.md          # + surface_finish dan damage_hints
+│   ├── vision_schema.json        # material/damage nullable, cache key tetap
+│   ├── sprite_sheet.md           # permukaan polos; damage wajib sesuai material
+│   └── sprite_sheet_evolve.md
+└── v5/                           # CANDIDATE terbaru, belum diuji berbayar
+    ├── vision_system.md          # + character_direction + limb plan opsional
+    ├── vision_schema.json        # presentation nullable, cache key tetap
+    ├── sprite_sheet.md           # Idle non-angry; tubuh mengikuti objek
+    └── sprite_sheet_evolve.md    # presentation + zero-limb tetap dipertahankan
 ```
 
 **Prompt tidak bisa dibaca sebagai file di Edge Function.** `Deno.readTextFile()` gagal untuk file pendamping yang dideploy lewat MCP, jadi `backend/tools/bundle_prompts.mjs` membundel semua versi menjadi `functions/_shared/prompts.generated.ts` yang diimpor sebagai modul. Sumbernya tetap file `.md` di git; artefaknya turunan. Setelah mengubah prompt: `node backend/tools/bundle_prompts.mjs`. Skenario 17 di `npm run selftest` gagal kalau bundelnya basi, jadi kelupaan ketangkap gratis, bukan saat art produksi ternyata berbeda dari art yang sudah disetujui.
@@ -79,7 +84,9 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 
 **Larangan negatif saja tidak menghapus logo merek, tapi instruksi pengganti v3 juga punya efek samping.** v2 sudah memuat "no logos, brand names" dan GPT Image 2 tetap menggambar swoosh Nike karena logonya datang dari `input_images`. v3 menghilangkannya dengan meminta permukaan polos atau marking geometris ciptaan sendiri; itu lolos satu uji sepatu dan menjaga `species_key`, tetapi model lalu mengarang emblem mirip logo bahkan pada objek tanpa logo. v4 menghapus pilihan marking itu seluruhnya: logo/teks/sigil dianggap tidak ada dan tempatnya selalu material polos yang setia pada objek.
 
-**Damage v3 bias robot bukan kebetulan model.** Template universalnya sendiri menyebut `loose cable`, `exposed wire`, dan `broken key`, sementara style lock memberi semua objek bahasa `techno-organic`; material Vision tidak pernah sampai ke prompt gambar. v4 menambah `surface_finish` + `damage_hints` ke Vision dan menyaring hint teknis di `assemblePrompt()`: kata cable/wire/circuit/key hanya lolos jika fitur yang sama benar-benar ada di `signature_features`. Keramik retak/terkelupas, kain berjumbai/robek, tanaman sobek/layu, logam penyok/tergores. v4 **belum default dan belum boleh dipromosikan sebelum Smoke Set visual berbayar disetujui**.
+**Damage v3 bias robot bukan kebetulan model.** Template universalnya sendiri menyebut `loose cable`, `exposed wire`, dan `broken key`, sementara style lock memberi semua objek bahasa `techno-organic`; material Vision tidak pernah sampai ke prompt gambar. v4 menambah `surface_finish` + `damage_hints` ke Vision dan menyaring hint teknis di `assemblePrompt()`: kata cable/wire/circuit/key hanya lolos jika fitur yang sama benar-benar ada di `signature_features`. Keramik retak/terkelupas, kain berjumbai/robek, tanaman sobek/layu, logam penyok/tergores.
+
+**V5 adalah candidate terbaru; v3 tetap default.** V5 membawa seluruh pagar v4 lalu menambah `character_direction` yang diturunkan dari cue visual objek. Idle wajib tenang dan non-angry; fierce hanya milik Battle. Vision harus memilih limb plan secara eksplisit, dan nol tangan, nol kaki, atau keduanya adalah hasil sah. Cue ambigu wajib netral, bukan menebak gender atau mengarang aksesori stereotip. V5 **belum boleh dipromosikan sebelum Smoke Set visual berbayar menyetujui variasi karakter, body plan, dan kualitas empat pose**.
 
 ## Fakta teknis yang mudah salah
 
@@ -87,7 +94,7 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **`species_library` hanya bisa dibaca peran `authenticated`, dan anon key mentah menjawab `[]`, bukan galat.** Client harus sign-in anonim **sebelum** membaca pustaka. Gejala salahnya berbahaya karena tidak terlihat seperti masalah autentikasi: array kosong terbaca sebagai "pustaka masih kosong", jadi setiap scan tampak sebagai spesies baru dan setiap scan membayar $0.07. Terukur saat mengambil manifest untuk uji Godot — anon key memberi nol baris untuk baris yang jelas ada.
 - **Bucket `photos` hanya punya policy INSERT, dan itu lengkap.** Client boleh menaruh foto di foldernya sendiri, tapi tidak boleh membaca, melihat daftar, maupun menghapus — DELETE dari client dijawab RLS dengan 403. Terlihat seperti policy yang lupa ditulis; sebenarnya client tidak pernah membutuhkannya. Yang membaca foto adalah Edge Function lewat signed URL service role, dan yang menghapusnya adalah `create_anima`/`finalize_sheet` setelah post-processing selesai. Menambahkan SELECT berarti memberi jalan membaca foto yang seharusnya sudah lenyap.
 - **Care sepenuhnya server-authoritative.** `care`, `care_synced_at`, `care_score`, sleep, counter harian, Dormant, dan debit Bits berubah hanya lewat `apply_care()` di balik Edge Function JWT `care_anima`. Feed/Clean masing-masing 5 Bits; event + ledger + kebutuhan diubah dalam satu transaksi dan satu idempotency key. Client hanya boleh PATCH `nickname`. Ini wajib karena `care_score` adalah gerbang evolusi berbiaya ~$0.07.
-- **Respons care dipisah menjadi intent instan dan commit server.** `scan_flow` memanggil `AnimaPresenter.care_feedback()` sebelum `await care_anima` dan hanya mengunci Care Dock; meter, Bits, sleep, serta `care_score` tetap berubah sesudah row authoritative kembali. Edge Function mempertahankan `verify_jwt = true` dan memakai `getClaims()` pada satu admin client per isolate supaya JWT ES256 diverifikasi lewat cache JWKS, bukan round-trip `getUser()` pada setiap tap. Jangan menggantinya dengan decode JWT tanpa verifikasi.
+- **Respons care dipisah menjadi intent instan dan commit server.** `scan_flow` memanggil `AnimaPresenter.care_feedback()` sebelum `await care_anima` dan hanya mengunci Care Dock; meter, Bits, sleep, serta `care_score` tetap berubah sesudah row authoritative kembali. Feed memberi satu hop, Play memberi enam bounce selama ~2,5 detik, dan pose visual Damaged (`defeated`) melakukan heavy breathing loop selama Dormant. Semua berhenti/diam saat `UiMotion.reduced_motion` aktif. Edge Function mempertahankan `verify_jwt = true` dan memakai `getClaims()` pada satu admin client per isolate supaya JWT ES256 diverifikasi lewat cache JWKS, bukan round-trip `getUser()` pada setiap tap. Jangan menggantinya dengan decode JWT tanpa verifikasi.
 - **Bond 100 menutup Play di dua lapis.** Home menonaktifkan tombolnya, dan `apply_care()` menolak `BOND_FULL` sebelum Energy maupun `care_score` berubah. Saat tidur Feed/Clean/Play disembunyikan dan Wake memakai lebar penuh. Jangan melonggarkan server hanya karena tombol client terlihat aman.
 - **Decay tidak butuh cron.** `apply_care()` menghitung selisih dari `care_synced_at`: grace 8 jam, cap 48 jam efektif, Hunger 10/jam, Energy 7,1/jam saat bangun, Hygiene 4,2/jam, Bond -2/jam hanya jika Hunger dan Hygiene nol. Sleep memulihkan linear sampai penuh dalam 6 jam. Client memasang satu `Timer` dari selisih dua timestamp server (`care_synced_at - sleep_started_at`) lalu sync tepat di batasnya; resume Android/iOS juga memicu sync, jadi jam device tidak dipercaya dan background tidak membuat Anima tertahan tidur. `dormant_since` terpisah dari generation `status`, reset `care_score`, dan hilang setelah Hunger serta Hygiene sama-sama >=50.
 - **Art cache tidak boleh menebak pose saat cold start.** `GameState.last_anima` hanya pilihan terakhir dan sengaja tidak menyimpan care. Menampilkan sheet itu sebelum roster server datang selalu memulai Idle, sehingga Anima tidur terlihat bangun sekelebat. Sprite tetap tersembunyi sampai `_present()` memiliki row authoritative dan menerapkan Sleep/Dormant pada frame yang sama.
@@ -148,7 +155,7 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 20 skenario + 12 uji tanda tangan webhook
+npm run selftest                       # 21 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 godot --headless --path game --script res://tests/test_client_state.gd  # 42 check sesi, pending scan/care, cache
 godot --headless --path game --script res://tests/test_scan_ui.gd       # 123 check shell + touch + care + reduced motion

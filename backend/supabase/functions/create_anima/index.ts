@@ -42,6 +42,7 @@ type Vision = {
   signature_features?: string[];
   surface_finish?: string;
   damage_hints?: string[];
+  character_direction?: string;
   object_label?: string;
   dominant_colors?: string[];
 };
@@ -162,7 +163,12 @@ Deno.serve(async (req) => {
 
     let hasil: ReturnType<typeof validateVision>;
     try {
-      hasil = validateVision(extractJson(mentah), dikenal, versiPrompt === "v4");
+      hasil = validateVision(
+        extractJson(mentah),
+        dikenal,
+        ["v4", "v5"].includes(versiPrompt),
+        versiPrompt === "v5",
+      );
     } catch (e) {
       await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "vision_unparseable" });
       return json(502, { error: e instanceof Error ? e.message : String(e) });

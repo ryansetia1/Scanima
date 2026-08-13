@@ -17,7 +17,7 @@ Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`**
 
 Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu mereproduksi logo merek dari fotonya di keempat pose. Larangan tekstual sudah ada di v2 dan tidak cukup, karena logonya datang dari foto referensi. **Prompt v3 kini jadi default**: ia memerintahkan model mengganti mark merek dengan permukaan polos atau marking geometris ciptaan sendiri. Uji satu foto sepatu (~$0.073) memberi 4/4 sel, residu 0,014%, logo hilang, dan `species_key` tidak bergeser. Mouse dan mug belum diulang di v3.
 
-**Prompt v4 sekarang tersedia sebagai candidate, bukan default.** Temuan berikutnya menunjukkan opsi "marking geometris ciptaan sendiri" milik v3 membuat model menambahkan emblem mirip logo pada benda yang sebenarnya polos, dan daftar contoh DAMAGED yang universal (`loose cable`, `exposed wire`, `broken key`) membuat hampir semua Anima tampak cyborg. v4 selalu mengganti logo/teks dengan material polos, melarang emblem rekaan, dan membawa `surface_finish` + `damage_hints` dari Vision ke image prompt. Hint kabel disaring kecuali kabel benar-benar tercatat sebagai fitur objek. Kontrak mug/tanaman/mouse, bundel Edge Function, dan dry-run lima foto sudah lulus tanpa API; production tetap v3 sampai v4 melewati Smoke Set visual berbayar.
+**Prompt v5 sekarang menjadi candidate terbaru, bukan default.** V4 lebih dulu menghapus emblem semu dan damage cyborg lewat `surface_finish` + `damage_hints`; v5 mempertahankan pagar itu lalu menambah `character_direction` dari cue visual objek. Hasil boleh cute, feminin, maskulin, netral/androgynous, elegan, kokoh, atau aneh; cue ambigu wajib netral. Idle dilarang fierce/marah, sedangkan tangan dan kaki benar-benar opsional—termasuk body plan tanpa keduanya. Kontrak gratis dan dry-run menjaga data flow, tetapi production tetap v3 sampai v5 melewati Smoke Set visual berbayar.
 
 Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: halo hijau di tepi sprite (0,21% → 0,014%), anggota tubuh pose kanan yang melewati garis tengah sheet, dan penjaga "keying gagal" yang salah membuang pose Attack karena speed line membuat bbox-nya seluas kuadran. Slicing sekarang menetapkan kepemilikan per komponen piksel, jadi tangan/kabel yang tersambung tidak dipotong dan bagian pose tetangga tidak ikut tercopy.
 
@@ -41,7 +41,7 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 **UI sekarang berupa shell game mobile empat destination: Home, Scan, Collection, dan Anima Profile.** Home menjadikan Anima hero visual, kebutuhan diringkas dalam care dock, feedback mengambang tanpa mendorong layout, dan Scan tetap CTA cyan utama di bottom navigation. Keempat destination adalah child scene modular di dalam satu `scan_flow.tscn`, jadi pindah tab tidak me-reset request, pending scan, Stage, atau inkubator. Chip Core membuka penjelasan Genesis tanpa memenuhi HUD; Bond penuh menutup Play, dan saat tidur hanya Wake yang tersisa selebar dock. Timer berbasis timestamp server serta sync saat resume membangunkan Anima otomatis setelah enam jam tanpa mempercayai jam device. Seluruh copy production memakai katalog English Godot-native; `LocaleManager` menjadi pintu locale dan formatting untuk bahasa berikutnya. Theme cyan-violet-gold kini memakai font OFL Nunito Sans/Oxanium, ikon SVG berlisensi, touch target 96px, serta reduced-motion gate bersama. Pose debug hanya tinggal di `anima_demo`. `test_scan_ui.gd` menjaga 123 kontrak shell/touch/motion dan `test_i18n.gd` menjaga 828 kontrak katalog/formatter/layout.
 
-**Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
+**Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; Feed memberi satu hop, Play memberi enam bounce selama sekitar 2,5 detik, dan pose Damaged melakukan heavy breathing loop selama Dormant. Meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
 
 Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan meninggalkan koleksi di akun yang tidak bisa dijangkau lagi. Kedua, **kunci idempotency scan dan care bertahan di disk**, sehingga app yang mati tidak membayar Core/Bits kedua. Keduanya dijaga oleh 42 check di `test_client_state.gd`.
 
@@ -61,9 +61,9 @@ Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 20 skenario + 12 uji tanda tangan webhook, tanpa API
+npm run selftest                 # 21 skenario + 12 uji tanda tangan webhook, tanpa API
 
-# Godot: 80 pemeriksaan slicing/presenter, tanpa jendela
+# Godot: 86 pemeriksaan slicing/presenter, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_sprite_slicing.gd
 
@@ -185,7 +185,8 @@ scanima/
 │   ├── prompts/v1/               # baseline nano-banana-pro, tidak diubah
 │   ├── prompts/v2/               # GPT Image 2 medium + anime cel-shaded style
 │   ├── prompts/v3/               # default: v2 + blok BRAND MARKS
-│   ├── prompts/v4/               # candidate: tanpa emblem + damage material
+│   ├── prompts/v4/               # predecessor: tanpa emblem + damage material
+│   ├── prompts/v5/               # candidate: karakter + limb plan mengikuti objek
 │   ├── tools/bundle_prompts.mjs  # prompts/ -> modul yang bisa diimpor Deno
 │   ├── supabase/migrations/      # skema, RLS + hak kolom, fungsi kuota
 │   ├── supabase/functions/

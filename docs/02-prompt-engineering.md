@@ -273,7 +273,7 @@ Jumlah stat dinormalisasi ke rentang 200-350 kalau LLM meleset, dengan penskalaa
 
 ## 3. Style lock: konstanta, bukan variabel
 
-Style production yang sudah diterima tetap **v3**. Candidate berikutnya adalah **v4**: ia mempertahankan linework/cel-shading v2, tetapi menghapus bias techno-organic universal, menghapus emblem pengganti logo, dan membawa material nyata dari Vision ke pose Damaged. V4 belum menjadi default karena kontrak gratis hanya membuktikan teks dan data flow; kualitas visual tetap harus dibuktikan lewat model production berbayar. V1–v3 tetap utuh agar aset lama bisa direproduksi.
+Style production yang sudah diterima tetap **v3**. **V5 adalah candidate terbaru**: ia membawa perbaikan material/logo milik v4 lalu menambah variasi karakter dan body plan. V4 tetap tersimpan sebagai predecessor yang belum dipromosikan. V5 belum menjadi default karena kontrak gratis hanya membuktikan teks dan data flow; kualitas visual tetap harus dibuktikan lewat model production berbayar. V1–v4 tetap utuh agar aset lama dan setiap iterasi prompt bisa direproduksi.
 
 Style lock v2 yang identik untuk setiap Anima:
 
@@ -283,7 +283,7 @@ Style lock v2 yang identik untuk setiap Anima:
 - bentuk sederhana, silhouette kuat, anatomi sedikit dilebihkan
 - bukan photorealism, CGI, 3D render, toy, painterly art, atau pixel art
 
-Detail techno-organic, kabel, armor mekanis, atau cybernetic hanya sah untuk benda elektronik/mekanis. Yang dinamis: nama, `creature_brief`, 2–4 `signature_features`, palet, personality, `surface_finish`, dan `damage_hints`. Personality tetap diturunkan deterministik dari stat tertinggi, tetapi prompt v4 menegaskan bahwa personality hanya memengaruhi ekspresi/perilaku—bukan menambah komponen teknis.
+Detail techno-organic, kabel, armor mekanis, atau cybernetic hanya sah untuk benda elektronik/mekanis. Yang dinamis: nama, `creature_brief`, 2–4 `signature_features`, palet, personality, `surface_finish`, `damage_hints`, dan mulai v5 `character_direction`. Personality tetap diturunkan deterministik dari stat tertinggi, sedangkan `character_direction` dibaca Vision dari cue visual objek; keduanya hanya memengaruhi ekspresi, proporsi, dan perilaku—bukan menambah komponen atau aksesori yang tidak ada.
 
 Ada dua adaptasi teknis dari mockup guide:
 
@@ -306,14 +306,40 @@ V3 menyebut `loose cable`, `exposed wire`, dan `broken key` dalam daftar contoh 
 
 V4 menambah dua field Vision nullable tanpa mengubah `species_key`: `surface_finish` (misalnya `smooth glazed ceramic`, `woven canvas fabric`, `living waxy leaves`) dan 2–3 `damage_hints`. Assembler menyisipkannya langsung ke pose Damaged. Ia juga menyaring token teknis: cable/cord/wire/circuit/gear/key/screen/plug hanya boleh lolos bila token yang sama ada pada `signature_features`. Hasilnya: kaca retak/chip, keramik retak glasir, tanaman sobek/layu, kain berjumbai, kayu berserpih, logam penyok, dan plastik mengalami stress mark; kabel tetap boleh rusak pada mouse berkabel.
 
+### V5: karakter dan anggota tubuh mengikuti objek
+
+V5 dibuat dari v4 untuk menghapus dua default lain yang membuat hasil terasa
+seragam: ekspresi fierce pada Idle dan anggota tubuh yang selalu dipaksakan.
+Vision mendapat field `character_direction`, yaitu arahan visual singkat yang
+diturunkan hanya dari bentuk, proporsi, warna, material, dan detail objek.
+Arahnya boleh cute, feminin, maskulin, netral/androgynous, elegan, kokoh, atau
+aneh; bila cue-nya ambigu, hasilnya wajib netral dan tidak boleh menebak gender.
+
+Body plan menjadi keputusan eksplisit. Nol, satu, dua, atau banyak tangan/kaki
+semuanya sah. Kalau bentuk objek lebih kuat sebagai makhluk melayang, melata,
+menggelinding, bersayap, bercangkang, atau amorf, `creature_brief` menjelaskan
+cara bergerak atau bertumpunya tanpa menambahkan tangan dan kaki generik.
+
+Template gambar memakai `character_direction` untuk silhouette, proporsi,
+wajah, dan bahasa pose yang konsisten di empat sel. Idle wajib rileks,
+terbuka, dan tidak marah; sifat fierce hanya boleh muncul di Battle. Evolusi
+mempertahankan presentation dan limb plan bentuk sebelumnya, bukan otomatis
+membuatnya lebih garang atau menumbuhkan anggota tubuh baru.
+
+Di client, Play dirancang sebagai bounce berulang sekitar 2,5 detik. Pose
+Damaged—key internal-nya tetap `defeated`—memakai heavy breathing loop selama
+Anima berada dalam Dormant. Keduanya tetap Tween procedural, berhenti saat
+state berubah, dan tunduk pada satu sakelar Reduced Motion.
+
 ## 4. Template prompt sprite sheet
 
-File default production adalah `backend/prompts/v3/sprite_sheet.md`; candidate ada di v4. File sumber itu tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
+File default production adalah `backend/prompts/v3/sprite_sheet.md`; candidate terbaru ada di v5. File sumber itu tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
 
 ```text
 [GLOBAL STYLE LOCK]
 [OBJECT CONTEXT]
-[SURFACE MARKS]                     (v4: omit, never replace)
+[CHARACTER RANGE]                   (v5: object-led presentation)
+[SURFACE MARKS]                     (v4+: omit, never replace)
 [OBJECT-TO-CREATURE TRANSFORMATION]
 [COLOR + PERSONALITY]
 [CHARACTER CONSISTENCY]
@@ -333,6 +359,7 @@ const prompt = assemblePrompt(template, vision);
 // {{personality}}                    <- stat tertinggi
 // {{surface_finish}}                 <- material/finish yang terlihat
 // {{damage_hints_as_bullets}}        <- damage material; hint teknis disaring
+// {{character_direction}}            <- cue visual objek; netral bila ambigu
 ```
 
 Keempat keadaan visual adalah Idle, Battle, Sleep, dan Damaged. Untuk kompatibilitas manifest/Godot yang sudah ada, slot bawah-kanan masih memakai key internal `defeated`; art-nya mengikuti kontrak Damaged: kerusakan kecil yang spesifik ke objek, bukan tubuh dihancurkan atau didesain ulang.
@@ -445,10 +472,15 @@ backend/prompts/
 │   ├── vision_schema.json
 │   ├── sprite_sheet.md
 │   └── sprite_sheet_evolve.md
-└── v4/                    <- candidate, belum Smoke Set berbayar
-    ├── vision_system.md
+├── v4/                    <- predecessor: material + damage
+│   ├── vision_system.md
+│   ├── vision_schema.json
+│   ├── sprite_sheet.md
+│   └── sprite_sheet_evolve.md
+└── v5/                    <- candidate terbaru, belum Smoke Set berbayar
+    ├── vision_system.md   # + character_direction + limb plan opsional
     ├── vision_schema.json
-    ├── sprite_sheet.md
+    ├── sprite_sheet.md    # Idle non-angry + character range
     └── sprite_sheet_evolve.md
 ```
 
@@ -526,7 +558,7 @@ Dijalankan sekali sebagai gerbang penerimaan, bukan sebagai alat iterasi. Tiga f
 ```bash
 node eval/run.mjs --set smoke                       # v3, 5 foto, ~$0.225
 node eval/run.mjs --set full                        # v3, 20 foto, ~$1.32
-node eval/run.mjs --set smoke --prompt-version v4 --dry-run    # gratis
+node eval/run.mjs --set smoke --prompt-version v5 --dry-run    # gratis
 node eval/run.mjs --set smoke --prompt-version v2 --reprocess   # gratis, dari raw.png
 ```
 
