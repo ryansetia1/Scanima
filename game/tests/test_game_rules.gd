@@ -145,14 +145,36 @@ func _initialize() -> void:
 		"companion aktif yang bangun memakai pose Idle di Collection"
 	)
 	_check_eq(
-		CareRules.collection_pose({"id": "b"}, "a"),
+		CareRules.collection_pose(
+			{"id": "b", "care": {"hunger": 80.0, "energy": 40.0, "hygiene": 80.0}},
+			"a"
+		),
 		"sleep",
-		"Anima yang tidak di-Summon memakai pose Sleep di Collection"
+		"Anima yang tidak di-Summon memakai pose Sleep di Collection selama Energy pulih"
 	)
 	_check_eq(
-		CareRules.collection_pose({"id": "a", "sleep_started_at": "2026-08-14T00:00:00Z"}, "a"),
+		CareRules.collection_pose(
+			{
+				"id": "b",
+				"sleep_started_at": "2026-08-14T00:00:00Z",
+				"care": {"hunger": 80.0, "energy": 100.0, "hygiene": 80.0},
+			},
+			"a"
+		),
+		"idle",
+		"Energy penuh di Collection memakai pose Idle, siap Summon"
+	)
+	_check_eq(
+		CareRules.collection_pose(
+			{
+				"id": "a",
+				"sleep_started_at": "2026-08-14T00:00:00Z",
+				"care": {"hunger": 80.0, "energy": 40.0, "hygiene": 80.0},
+			},
+			"a"
+		),
 		"sleep",
-		"companion aktif yang tidur tetap Sleep di Collection"
+		"companion aktif yang tidur tetap Sleep di Collection selama Energy belum penuh"
 	)
 	_check_eq(
 		CareRules.collection_pose({"id": "b", "dormant_since": "2026-08-14T00:00:00Z"}, "a"),

@@ -113,7 +113,7 @@ sehingga tidak diperlukan flag first-launch.
 
 - Istilah utama: `Summon`, agar perpindahan companion terasa tematik.
 - Semantik: companion aktif server-authoritative (`profiles.active_anima_id`); yang lain tidur.
-- Thumbnail dan portrait Collection: Sleep jika tidak di-Summon atau sedang nap, Idle jika companion aktif bangun, Damaged jika Dormant.
+- Thumbnail dan portrait Collection: Sleep selama Energy belum penuh (companion tidur atau Anima di bangku), Idle jika Energy penuh — termasuk yang masih ditandai tidur di server — Damaged jika Dormant. Energy penuh di bangku tidak auto-bangun di Postgres, supaya tidak luruh dan tidak kena +5 EXP.
 - Surface pilihan: bottom sheet dengan stats sekilas.
 - Stats: base stats dan care stats authoritative.
 - Care freshness: sync satu kali saat Anima dipilih.

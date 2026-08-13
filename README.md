@@ -218,7 +218,7 @@ scanima/
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
 │       ├── test_scan_ui.gd           # 422 kontrak shell + Battle + touch
 │       ├── test_i18n.gd              # 1461 kontrak katalog + key + wrapping
-│       ├── test_game_rules.gd        # 65 kontrak care + EXP/Level + event Battle
+│       ├── test_game_rules.gd        # 66 kontrak care + EXP/Level + event Battle
 │       ├── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 │       └── live_battle.gd            # Battle produksi, nol model call
 ├── backend/

@@ -112,6 +112,11 @@ static func has_timestamp(value: Variant) -> bool:
 static func collection_pose(row: Dictionary, active_id: String) -> String:
 	if has_timestamp(row.get("dormant_since")):
 		return "defeated"
+	# Energy penuh = Idle, termasuk yang masih ditandai tidur di bangku. Server
+	# menahan sleep supaya Energy tidak luruh dan tidak ada +5 EXP; pose bangun
+	# adalah sinyal siap Summon.
+	if need_is_full(row.get("care"), "energy"):
+		return "idle"
 	if str(row.get("id", "")) != active_id or has_timestamp(row.get("sleep_started_at")):
 		return "sleep"
 	return "idle"
