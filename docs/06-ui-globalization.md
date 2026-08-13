@@ -112,9 +112,9 @@ sementara destination aktif punya state pressed yang terpisah. Enam elemen
 Battle memakai ikon berbentuk berbeda supaya informasi tidak bergantung pada
 warna.
 
-Chip Core tetap ringkas di HUD. Penjelasan Genesis Core dibuka sebagai modal
-lokal saat chip disentuh, supaya istilah ekonomi tidak memenuhi layar utama.
-Chip Animas membuka Collection; Bits tetap display-only.
+Chip Core dan Bits tetap ringkas di HUD. Penjelasan Genesis Core atau Bits
+dibuka sebagai modal lokal saat chip disentuh, supaya istilah ekonomi tidak
+memenuhi layar utama. Chip Animas membuka Collection.
 
 ## Komponen chrome bersama
 

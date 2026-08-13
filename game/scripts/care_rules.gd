@@ -19,6 +19,7 @@ const DECAY_PER_HOUR := {
 const MAX_DECAY_HOURS := 48.0
 const CARE_RESTORE := 35.0
 const PLAY_ENERGY_COST := 5.0
+const PLAY_SCORE_DAILY_CAP := 5
 const BATTLE_ENERGY_COST := 20.0
 const SLEEP_FULL_HOURS := 6.0
 const DORMANT_RECOVERY_NEED := 50.0
@@ -74,7 +75,7 @@ static func score_for_action(action: String, care_before: Variant, play_score_to
 		"clean":
 			return 3 if care["hygiene"] < 50.0 else 0
 		"play":
-			return 1 if play_score_today < 5 else 0
+			return 1 if play_score_today < PLAY_SCORE_DAILY_CAP else 0
 		_:
 			return 0
 
@@ -130,3 +131,27 @@ static func growth_multiplier(level: int) -> float:
 
 static func grown_stat(base_value: Variant, exp: int) -> int:
 	return int(float(base_value) * growth_multiplier(level_from_exp(exp)))
+
+
+static func play_exp_used(row: Dictionary) -> int:
+	var used_on := _utc_date(row.get("play_score_on"))
+	var synced_on := _utc_date(row.get("care_synced_at"))
+	if used_on.is_empty() or synced_on.is_empty() or used_on != synced_on:
+		return 0
+	return clampi(int(row.get("play_score_today", 0)), 0, PLAY_SCORE_DAILY_CAP)
+
+
+static func play_exp_remaining(row: Dictionary) -> int:
+	return PLAY_SCORE_DAILY_CAP - play_exp_used(row)
+
+
+static func _utc_date(value: Variant) -> String:
+	if value == null:
+		return ""
+	var text := str(value)
+	return text.substr(0, 10) if text.length() >= 10 and text[0] >= "0" and text[0] <= "9" else ""
+
+
+static func leveled_up(before: int, after: int) -> int:
+	var new_level := level_from_exp(after)
+	return new_level if new_level > level_from_exp(before) else 0

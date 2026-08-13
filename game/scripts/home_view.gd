@@ -110,12 +110,24 @@ func update_care(row: Dictionary, busy: bool) -> void:
 		LocaleManager.care_state(sleeping, dormant),
 	]
 	_sleep_button.text = tr("CARE_WAKE") if sleeping else tr("CARE_SLEEP")
+	_play_button.text = tr("CARE_PLAY_COUNT") % [
+		LocaleManager.format_integer(CARE_RULES.play_exp_remaining(_row)),
+		LocaleManager.format_integer(CARE_RULES.PLAY_SCORE_DAILY_CAP),
+	]
 	_update_action_state(busy)
 
 
 func set_busy(busy: bool) -> void:
 	_primary_action.disabled = busy
 	_update_action_state(busy or typeof(_row.get("care")) != TYPE_DICTIONARY)
+
+
+func pulse_progress() -> void:
+	if _identity.visible:
+		UiJuice.pop(_anima_meta, 1.05)
+	if _care_dock.visible:
+		UiJuice.pop(_care_summary, 1.08)
+		UiJuice.pop(_need_exp, 1.06)
 
 
 func _request_sleep_toggle() -> void:

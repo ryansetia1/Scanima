@@ -56,6 +56,10 @@ func _initialize() -> void:
 	_check(is_equal_approx(CareRules.growth_multiplier(16), 1.45), "Lv 16 lompat +0.15")
 	_check(is_equal_approx(CareRules.growth_multiplier(36), 2.05), "Lv 36 lompat kedua")
 	_check_eq(CareRules.grown_stat(50, 75), 72, "stat tumbuh terpotong ke bawah")
+	_check_eq(CareRules.leveled_up(4, 5), 2, "5 EXP menyeberang ke Lv 2")
+	_check_eq(CareRules.leveled_up(4, 4), 0, "EXP sama bukan naik level")
+	_check_eq(CareRules.leveled_up(74, 75), 16, "75 EXP menyeberang ke Adult")
+	_check_eq(CareRules.leveled_up(195, 200), 0, "EXP di atas cap bukan naik level")
 
 	print("4. tidur pulih linear dari nilai awal")
 	var tired := {"hunger": 100.0, "energy": 0.0, "hygiene": 100.0, "bond": 0.0}
@@ -72,6 +76,24 @@ func _initialize() -> void:
 	_check_eq(CareRules.score_for_action("clean", {"hygiene": 50}), 0, "Clean Hygiene 50 tidak memberi score")
 	_check_eq(CareRules.score_for_action("play", {}, 4), 1, "Play kelima memberi score")
 	_check_eq(CareRules.score_for_action("play", {}, 5), 0, "Play keenam tidak memberi score")
+	_check_eq(
+		CareRules.play_exp_remaining({
+			"play_score_on": "2026-08-14",
+			"play_score_today": 2,
+			"care_synced_at": "2026-08-14T12:00:00Z",
+		}),
+		3,
+		"sisa Play EXP memakai tanggal UTC server"
+	)
+	_check_eq(
+		CareRules.play_exp_remaining({
+			"play_score_on": "2026-08-13",
+			"play_score_today": 5,
+			"care_synced_at": "2026-08-14T00:10:00Z",
+		}),
+		5,
+		"jatah Play EXP pulih di hari UTC baru"
+	)
 	_check(
 		CareRules.enters_dormant({"hunger": 0, "hygiene": 0}, 48.0),
 		"dua kebutuhan nol pada cap masuk Dormant"

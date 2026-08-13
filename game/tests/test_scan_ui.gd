@@ -116,7 +116,8 @@ func _initialize() -> void:
 	_check(bits_chip != null and bits_chip.get_script() != null, "HUD uses the shared Bits chip")
 	_check(
 		animas_chip.custom_minimum_size.y >= TOUCH_MIN
-		and cores_chip.custom_minimum_size.y >= TOUCH_MIN,
+		and cores_chip.custom_minimum_size.y >= TOUCH_MIN
+		and bits_chip.custom_minimum_size.y >= TOUCH_MIN,
 		"interactive resource chips expose 96px press targets"
 	)
 	for chip in [animas_chip, cores_chip, bits_chip]:
@@ -196,6 +197,15 @@ func _initialize() -> void:
 	if care_dock != null:
 		_check(not care_dock.visible, "care stays hidden before an Anima loads")
 	_check(scene.find_child("CareSummary", true, false) is Label, "EXP summary has a label")
+	var level_up := scene.find_child("LevelUpBanner", true, false) as Control
+	_check(level_up != null, "level-up banner exists")
+	if level_up != null:
+		_check(not level_up.visible, "level-up banner starts hidden")
+		_check_eq(
+			level_up.mouse_filter,
+			Control.MOUSE_FILTER_IGNORE,
+			"level-up banner does not steal taps"
+		)
 	for name in ["NeedHunger", "NeedEnergy", "NeedHygiene", "NeedExp"]:
 		var meter := scene.find_child(name, true, false) as ProgressBar
 		_check(meter != null, "%s must exist" % name)
@@ -1192,6 +1202,21 @@ func _test_home_care_actions() -> void:
 	row["care"]["bond"] = 100.0
 	home.update_care(row, false)
 	_check(not play.disabled, "Play stays available even if leftover Bond is 100")
+	_check_eq(
+		play.text,
+		tr("CARE_PLAY_COUNT") % ["5", "5"],
+		"Play shows a full daily EXP budget before any Play today"
+	)
+	row["care_synced_at"] = "2026-08-14T12:00:00Z"
+	row["play_score_on"] = "2026-08-14"
+	row["play_score_today"] = 5
+	home.update_care(row, false)
+	_check(not play.disabled, "Play stays available after the daily EXP cap")
+	_check_eq(
+		play.text,
+		tr("CARE_PLAY_COUNT") % ["0", "5"],
+		"Play shows an empty daily EXP budget at the cap"
+	)
 
 	row["sleep_started_at"] = "2026-08-13T00:00:00Z"
 	home.update_care(row, false)

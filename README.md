@@ -50,8 +50,8 @@ target 96px tetap muat; Scan tetap CTA cyan dan Battle punya state aktif
 tersendiri. Child scene persisten membuat pindah tab tidak me-reset request,
 pending scan/care/battle, Stage, atau inkubator. Seluruh copy production memakai
 katalog English Godot-native, theme cyan-violet-gold, ikon SVG berlisensi, dan
-Reduced Motion bersama. `test_scan_ui.gd` menjaga 373 kontrak
-shell/touch/Battle/motion dan `test_i18n.gd` menjaga 1414 kontrak katalog.
+Reduced Motion bersama. `test_scan_ui.gd` menjaga 379 kontrak
+shell/touch/Battle/motion dan `test_i18n.gd` menjaga 1461 kontrak katalog.
 
 **Collection sekarang memisahkan inspect dari Summon.** Tap kartu membuka bottom sheet dengan portrait, lima base stat yang tumbuh menurut Level, tiga kebutuhan, dan bar EXP yang disinkronkan server. `View Profile` membuka stats/delete tanpa mengganti companion aktif; `Summon` baru memindahkan pilihan ke Home melalui dissolve, portal cyan-violet, dan reveal, tanpa biaya atau model call. Roster yang benar-benar kosong menampilkan scanner procedural serta CTA first scan di Home dan Collection; loading atau error jaringan tidak lagi menyamar sebagai pemain baru. Setiap hatch tetap menawarkan rename opsional. Delete owner-only sudah live di production dan tetap tanpa refund.
 
@@ -216,9 +216,9 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 373 kontrak shell + Battle + touch
-│       ├── test_i18n.gd              # 1414 kontrak katalog + key + wrapping
-│       ├── test_game_rules.gd        # 44 kontrak care + EXP/Level + event Battle
+│       ├── test_scan_ui.gd           # 379 kontrak shell + Battle + touch
+│       ├── test_i18n.gd              # 1461 kontrak katalog + key + wrapping
+│       ├── test_game_rules.gd        # 50 kontrak care + EXP/Level + event Battle
 │       ├── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 │       └── live_battle.gd            # Battle produksi, nol model call
 ├── backend/

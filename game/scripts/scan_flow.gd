@@ -60,6 +60,9 @@ const SLEEP_SYNC_EPSILON_SEC := 1.0
 @onready var _collection_view: CollectionView = %CollectionView
 @onready var _details_view: AnimaDetailsView = %AnimaDetailsView
 @onready var _bottom_nav: BottomNav = %BottomNav
+@onready var _level_up_banner: Control = %LevelUpBanner
+@onready var _level_up_title: Label = %LevelUpTitle
+@onready var _level_up_label: Label = %LevelUpLabel
 
 var _busy := false
 var _roster: Array[Dictionary] = []
@@ -70,6 +73,9 @@ var _placeholder_icon: Texture2D = null
 var _thumbnail_cache: Dictionary = {}
 var _destination: StringName = BottomNav.HOME
 var _toast_revision := 0
+var _level_up_revision := 0
+var _level_up_tween: Tween
+var _last_care_delta := 0
 var _battle_reward_revision := 0
 var _sleep_completion_timer: Timer = null
 var _sleep_sync_in_flight := false
@@ -112,6 +118,7 @@ func _ready() -> void:
 	_shell_modal.canceled.connect(_modal_canceled)
 	_animas_chip.pressed.connect(_open_collection)
 	_cores_chip.pressed.connect(_show_core_info)
+	_bits_chip.pressed.connect(_show_bits_info)
 	LocaleManager.locale_changed.connect(_refresh_localized_ui)
 	_configure_resource_chips()
 	_dialog.file_selected.connect(_scan_file)
@@ -148,6 +155,8 @@ func _ready() -> void:
 			_switch_destination(BottomNav.ANIMA)
 		if arg == "--core-info":
 			_show_core_info()
+		if arg == "--bits-info":
+			_show_bits_info()
 		if arg == "--rename-demo" and not _current_anima.is_empty():
 			_show_rename(str(_current_anima.get("id", "")))
 		if arg == "--delete-demo" and not _current_anima.is_empty():
@@ -172,6 +181,8 @@ func _ready() -> void:
 			_run_profile_help_demo()
 		if arg == "--home-tap-demo" and _anima.sprite_frames != null:
 			await _run_home_tap_demo()
+		if arg == "--level-up-demo":
+			_celebrate_level_up(4, 3)
 		if arg == "--empty-demo":
 			_run_empty_demo()
 		if arg == "--summon-demo":
@@ -526,6 +537,8 @@ func _modal_confirmed(text: String) -> void:
 			_rename_confirmed(text)
 		&"core_info":
 			_cores_chip.grab_action_focus()
+		&"bits_info":
+			_bits_chip.grab_action_focus()
 
 
 func _modal_canceled() -> void:
@@ -538,6 +551,8 @@ func _modal_canceled() -> void:
 		_pending_rename_text = ""
 	elif context == &"core_info":
 		_cores_chip.grab_action_focus()
+	elif context == &"bits_info":
+		_bits_chip.grab_action_focus()
 
 
 func _show_details_help(title: String, body: String) -> void:
@@ -596,7 +611,8 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> void:
 	if res.ok:
 		GameState.finish_care()
 		if _apply_care_response(GameState.as_dict(res.data)):
-			_say(_care_success_message(action), show_feedback)
+			if show_feedback and not _level_up_banner.visible:
+				_say(_care_success_message(action), show_feedback)
 		return
 
 	# Galat 4xx adalah keputusan server, bukan gangguan sementara. Menyimpan key
@@ -624,6 +640,11 @@ func _apply_care_response(data: Dictionary) -> bool:
 	if anima_id.is_empty():
 		return false
 
+	var previous_score := -1
+	_last_care_delta = 0
+	if str(_current_anima.get("id", "")) == anima_id:
+		previous_score = int(_current_anima.get("care_score", -1))
+
 	if data.has("bits"):
 		GameState.profile["bits"] = int(data.get("bits", 0))
 		_refresh_header()
@@ -633,6 +654,10 @@ func _apply_care_response(data: Dictionary) -> bool:
 		_current_anima = row
 		_refresh_stats()
 		_refresh_care()
+		var new_score := int(row.get("care_score", 0))
+		if previous_score >= 0:
+			_last_care_delta = new_score - previous_score
+		_maybe_celebrate_level(previous_score, new_score)
 	_populate_collection()
 	return true
 
@@ -644,7 +669,7 @@ func _care_success_message(action: String) -> String:
 		"clean":
 			return tr("FEEDBACK_CLEAN")
 		"play":
-			return tr("FEEDBACK_PLAY")
+			return tr("FEEDBACK_PLAY") if _last_care_delta > 0 else tr("FEEDBACK_PLAY_CAPPED")
 		"sleep":
 			return tr("FEEDBACK_SLEEP")
 		"wake":
@@ -904,9 +929,14 @@ func _apply_battle_reward(reward: Dictionary, session: Dictionary) -> void:
 
 
 func _refresh_battle_authority(session: Dictionary) -> void:
+	var anima_id := str(session.get("player_anima_id", ""))
+	var previous_score := (
+		int(_current_anima.get("care_score", -1))
+		if str(_current_anima.get("id", "")) == anima_id
+		else -1
+	)
 	await Backend.fetch_profile()
 	await _reload_roster()
-	var anima_id := str(session.get("player_anima_id", ""))
 	for row in _roster:
 		if str(row.get("id", "")) != anima_id:
 			continue
@@ -917,6 +947,7 @@ func _refresh_battle_authority(session: Dictionary) -> void:
 	_refresh_stats()
 	_refresh_care()
 	_populate_collection()
+	_maybe_celebrate_level(previous_score, int(_current_anima.get("care_score", 0)))
 
 
 ## Scan yang mati sebelum create_anima menjawab. Memanggilnya lagi dengan kunci
@@ -1599,6 +1630,15 @@ func _show_core_info() -> void:
 	)
 
 
+func _show_bits_info() -> void:
+	_modal_context = &"bits_info"
+	_shell_modal.open_info(
+		tr("BITS_INFO_TITLE"),
+		tr("BITS_INFO_BODY"),
+		tr("CORE_INFO_CLOSE")
+	)
+
+
 func _open_collection() -> void:
 	_switch_destination(BottomNav.COLLECTION)
 
@@ -1609,7 +1649,7 @@ func _configure_resource_chips() -> void:
 	_cores_chip.set_name_text(tr("RESOURCE_CORES"))
 	_cores_chip.set_interactive(true, tr("CORE_INFO_TITLE"))
 	_bits_chip.set_name_text(tr("RESOURCE_BITS"))
-	_bits_chip.set_interactive(false)
+	_bits_chip.set_interactive(true, tr("BITS_INFO_TITLE"))
 
 
 # ---------------------------------------------------------------- UI kecil
@@ -1650,6 +1690,72 @@ func _restore_previous_anima() -> void:
 	_anima.visible = _destination == BottomNav.HOME and _anima.sprite_frames != null
 	if _current_anima.is_empty():
 		_set_home_shell_state(&"empty")
+
+
+func _maybe_celebrate_level(previous_score: int, new_score: int) -> void:
+	if previous_score < 0:
+		return
+	var new_level: int = CARE_RULES.leveled_up(previous_score, new_score)
+	if new_level > 0:
+		_celebrate_level_up(new_level, CARE_RULES.level_from_exp(previous_score))
+
+
+# ponytail: one shell banner, not a per-screen fanfare. Plafon: no particles;
+# reuse Super Effective typography. Upgrade to Incubator-style burst if form
+# jumps (16/36) later get evolve art.
+func _celebrate_level_up(level: int, previous_level: int) -> void:
+	if not is_instance_valid(_level_up_banner):
+		return
+	_status_panel.visible = false
+	_level_up_title.text = tr("LEVEL_UP")
+	if CARE_RULES.form_key(level) != CARE_RULES.form_key(previous_level):
+		_level_up_label.text = tr("LEVEL_UP_FORM") % [
+			LocaleManager.level_label(level),
+			LocaleManager.form_name(level),
+		]
+	else:
+		_level_up_label.text = tr("LEVEL_UP_TO") % LocaleManager.format_integer(level)
+	_level_up_banner.visible = true
+	_level_up_banner.pivot_offset = _level_up_banner.size * 0.5
+	_home_view.pulse_progress()
+	if is_instance_valid(_anima) and _anima.visible:
+		_anima.celebrate_level_up()
+	Input.vibrate_handheld(70)
+	if is_instance_valid(_level_up_tween):
+		_level_up_tween.kill()
+	if UiMotion.reduced_motion:
+		_level_up_banner.modulate = Color.WHITE
+		_level_up_banner.scale = Vector2.ONE
+	else:
+		_level_up_banner.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		_level_up_banner.scale = Vector2(0.72, 0.72)
+		_level_up_tween = create_tween()
+		_level_up_tween.tween_property(_level_up_banner, "modulate:a", 1.0, 0.10)
+		_level_up_tween.parallel().tween_property(
+			_level_up_banner, "scale", Vector2(1.06, 1.06), 0.18
+		).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_level_up_tween.chain().tween_property(_level_up_banner, "scale", Vector2.ONE, 0.12)
+	_level_up_revision += 1
+	var revision := _level_up_revision
+	_hide_level_up_later(revision)
+
+
+func _hide_level_up_later(revision: int) -> void:
+	await get_tree().create_timer(1.8).timeout
+	if revision != _level_up_revision or not is_instance_valid(_level_up_banner):
+		return
+	if UiMotion.reduced_motion:
+		_level_up_banner.visible = false
+		return
+	if is_instance_valid(_level_up_tween):
+		_level_up_tween.kill()
+	_level_up_tween = create_tween()
+	_level_up_tween.tween_property(_level_up_banner, "modulate:a", 0.0, 0.22)
+	await _level_up_tween.finished
+	if revision == _level_up_revision and is_instance_valid(_level_up_banner):
+		_level_up_banner.visible = false
+		_level_up_banner.modulate = Color.WHITE
+		_level_up_banner.scale = Vector2.ONE
 
 
 func _say(text: String, transient: bool = false) -> void:

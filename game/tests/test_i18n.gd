@@ -10,12 +10,16 @@ const REQUIRED_KEYS := [
 	"CORE_INFO_TITLE",
 	"CORE_INFO_BODY",
 	"CORE_INFO_CLOSE",
+	"BITS_INFO_TITLE",
+	"BITS_INFO_BODY",
 	"SCAN_PRIMARY_ACTION",
 	"CARE_FEED",
 	"CARE_CLEAN",
 	"CARE_SLEEP",
 	"CARE_PLAY",
+	"CARE_PLAY_COUNT",
 	"HOME_LEVEL_EXP",
+	"LEVEL_UP",
 	"LEVEL_SHORT",
 	"FORM_HATCHLING",
 	"FORM_ADULT",
@@ -131,6 +135,7 @@ func _check_scene_copy(keys: Dictionary) -> void:
 		"Subtitle", "AnimaMeta", "ScanStatus", "ScanPhaseHint",
 		"CollectionStatus", "DetailsEmpty", "DetailsMeta",
 		"BattleSubtitle", "BattleLobbyMeta", "BattleFeedback", "BattleResultBody",
+		"LevelUpTitle", "LevelUpLabel",
 	]:
 		var label := scene.find_child(name, true, false) as Label
 		if label != null:

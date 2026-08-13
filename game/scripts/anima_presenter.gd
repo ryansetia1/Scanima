@@ -240,6 +240,34 @@ func hop() -> void:
 	_feedback = _bounce(1, HOP_HEIGHT_PX)
 
 
+func celebrate_level_up() -> void:
+	if sprite_frames == null or not visible:
+		return
+	if _motion != null and _motion.is_valid():
+		_motion.kill()
+	if _feedback != null and _feedback.is_valid():
+		_feedback.kill()
+	position = _base_position
+	rotation = 0.0
+	if UiMotion.reduced_motion:
+		modulate = Color.WHITE
+		scale = Vector2.ONE
+		_start_motion(_current_pose)
+		return
+
+	modulate = Color(1.38, 1.18, 0.58, 1.0)
+	scale = Vector2(0.88, 1.14)
+	_feedback = create_tween()
+	_feedback.tween_property(self, "position", _base_position - Vector2(0.0, 28.0), 0.16) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	_feedback.parallel().tween_property(self, "scale", Vector2(1.14, 0.90), 0.16)
+	_feedback.chain().tween_property(self, "position", _base_position, 0.30) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BOUNCE)
+	_feedback.parallel().tween_property(self, "scale", Vector2.ONE, 0.30)
+	_feedback.parallel().tween_property(self, "modulate", Color.WHITE, 0.34)
+	_feedback.finished.connect(_resume_pose_motion, CONNECT_ONE_SHOT)
+
+
 func play_bounce() -> void:
 	if UiMotion.reduced_motion:
 		return

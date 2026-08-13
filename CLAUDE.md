@@ -131,7 +131,7 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **APK sideload memakai native-library compression.** `export_presets.cfg` wajib memuat `gradle_build/compress_native_libraries=true`: pada debug APK, 71,47 MB dari total 76 MB adalah `libgodot_android.so`, dan opsi ini diperkirakan menurunkan berkas transfer ke sekitar 30 MB. Trade-off-nya startup sedikit lebih lambat dan ukuran terpasang tidak banyak berubah; untuk AAB Play Store, evaluasi ulang dan umumnya biarkan library tidak terkompresi.
 - **Basis UI 720×1280 berarti angka Godot kira-kira 2× target dp Android.** Target Material minimum 48dp menjadi `custom_minimum_size.y = 96`, body/button 16sp menjadi sekitar 32 px, spacing 8dp menjadi 16 px. Default font Godot 16 px yang lama setara kira-kira 8sp dan memang terlalu kecil, bukan sekadar selera. Angka bersama hidup di `themes/mobile_theme.tres`; jangan mengecilkan satu tombol secara lokal.
 - **`mobile_theme.tres` adalah satu-satunya sumber visual UI.** Palette-nya deep navy + cyan/violet + gold, body memakai Nunito Sans, display memakai Oxanium, dan variasi semantiknya (`PrimaryButton`, `CareDock`, `BottomNavPanel`, empat Care button, `ToastPanel`) dipakai seluruh shell. Ikon Lucide SVG + lisensinya hidup di `game/assets/icons/`; jangan kembali ke Unicode pseudo-icon atau override StyleBox per-node untuk chrome umum. Override lokal tetap hanya empat warna meter yang membawa makna gameplay. `PrimaryButton` wajib menentukan `font_focus_color` serta focus style sendiri—fallback putih di atas cyan membuat label focused tidak terbaca.
-- **Chrome interaktif bersama hidup sebagai komponen scene.** `UiModal` menangani info/confirm/input dengan backdrop, Cancel, focus, dan aksi 96px; Core info, Delete, Rename, dan bantuan Profile memakai satu instance shell. `ResourceChip` dipakai Animas/Cores/Bits; Animas membuka Collection, Cores membuka info, Bits display-only. `ResourceChip` menengahkan isinya di dalam target 96px, bukan menempel ke atas. `UiBottomSheet` memiliki chrome slide/dismiss, `UiSkeleton` loading bounded tanpa `_process`, dan `InfoValueRow` menyusun label, value rata kanan pada kolom lebar tetap, lalu tombol bantuan redup paling akhir supaya kolomnya tetap sejajar walau panjang value berbeda. FileDialog native, toast, Battle panel, dan efek procedural tidak dipaksakan masuk komponen ini.
+- **Chrome interaktif bersama hidup sebagai komponen scene.** `UiModal` menangani info/confirm/input dengan backdrop, Cancel, focus, dan aksi 96px; Core info, Bits info, Delete, Rename, dan bantuan Profile memakai satu instance shell. `ResourceChip` dipakai Animas/Cores/Bits; Animas membuka Collection, Cores dan Bits membuka info. `ResourceChip` menengahkan isinya di dalam target 96px, bukan menempel ke atas. `UiBottomSheet` memiliki chrome slide/dismiss, `UiSkeleton` loading bounded tanpa `_process`, dan `InfoValueRow` menyusun label, value rata kanan pada kolom lebar tetap, lalu tombol bantuan redup paling akhir supaya kolomnya tetap sejajar walau panjang value berbeda. FileDialog native, toast, Battle panel, dan efek procedural tidak dipaksakan masuk komponen ini.
 - **Semua micro-interaction Control dimiliki `UiJuice`.** Ia memasang press squash, release bounce, hover/focus, reveal, bottom-sheet slide, dan tween meter sekali secara rekursif; tween lama dibunuh sebelum writer baru. `UiMotion.reduced_motion` adalah satu sakelar bersama untuk chrome, latar, inkubator, dan presenter; settings accessibility masa depan cukup menulis flag itu, bukan mengubah tiap scene.
 - **Tap tepat pada Anima Home hanya memberi feedback lokal.** `AnimaPresenter.hit_test()` memakai frame aktif dengan padding touch dan `make_canvas_position_local()`, bukan `to_local()`, supaya Stage yang bergeser tidak menggeser area tapnya; awake hop/pop, Sleep sleepy bob, dan Dormant weak accent. Tidak ada care mutation atau request. Input mouse/touch di-dedupe, dan Reduced Motion tidak memindahkan sprite.
 - **`Container` memakai `MOUSE_FILTER_STOP` secara default, jadi seluruh rantai di atas Stage wajib `mouse_filter = 2`.** Ini kegagalan senyap: `SafeMargin`, `Shell`, `ViewStack`, `HomeView`, dan `HomeView/Column` menutupi layar penuh, jadi GUI menelan tap sebelum `_unhandled_input()` dan interaksi Anima mati tanpa satu pun galat. Terukur dengan `--home-tap-demo`: satu node saja dikembalikan ke default membuat `reaction=(0, 0)`, sementara rantai tembus klik memberi `reaction=(0, -8.9)`. Tombol Care/nav tetap `STOP` dan tidak boleh diikutkan.
@@ -181,9 +181,9 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 npm run selftest                       # 23 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 godot --headless --path game --script res://tests/test_client_state.gd  # 60 check sesi, refresh, pending scan/care/Battle, cache
-godot --headless --path game --script res://tests/test_scan_ui.gd       # 373 check shell + Battle + komponen + tap + touch + reduced motion
-godot --headless --path game --script res://tests/test_i18n.gd          # 1414 check katalog + key + formatter + wrapping
-godot --headless --path game --script res://tests/test_game_rules.gd    # 44 check care + EXP/Level + kontrak event Battle
+godot --headless --path game --script res://tests/test_scan_ui.gd       # 379 check shell + Battle + komponen + tap + touch + reduced motion
+godot --headless --path game --script res://tests/test_i18n.gd          # 1461 check katalog + key + formatter + wrapping
+godot --headless --path game --script res://tests/test_game_rules.gd    # 50 check care + EXP/Level + kontrak event Battle
 node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
 
 # setelah mengubah prompt: regenerasi bundel yang dipakai Edge Function
@@ -203,6 +203,7 @@ godot --path game                      # scan_flow: sesi, saldo, Anima dari cach
 godot --path game -- --screenshot=/tmp/scan.png       # periksa layar tanpa editor
 godot --headless --path game --import  # rebuild cache class, cek parse error
 godot --path game -- --core-info --screenshot=/tmp/core.png
+godot --path game -- --bits-info --screenshot=/tmp/bits.png
 godot --path game -- --sleep-demo --screenshot=/tmp/sleep.png
 godot --path game -- --rename-demo --screenshot=/tmp/rename.png
 godot --path game -- --delete-demo --screenshot=/tmp/delete.png
@@ -213,6 +214,7 @@ godot --path game -- --profile-help-demo --screenshot=/tmp/profile-help.png
 # tap demo mendorong event lewat push_input, jadi log "reaction=(0, -8.9)" adalah
 # bukti routing GUI, sementara "(0, 0)" berarti ada Control yang menelan tapnya
 godot --path game -- --home-tap-demo
+godot --path game -- --level-up-demo --screenshot=/tmp/level-up.png
 godot --path game -- --empty-demo --screenshot=/tmp/empty.png
 godot --path game -- --summon-demo
 godot --path game -- --battle-demo --screenshot=/tmp/battle.png
