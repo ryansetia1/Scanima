@@ -32,7 +32,6 @@ script = ExtResource("11_first")
 [node name="Incubator" type="Node2D" parent="Stage"]
 unique_name_in_owner = true
 visible = false
-position = Vector2(0, -180)
 script = ExtResource("4_incubator")
 
 [node name="Anima" type="AnimatedSprite2D" parent="Stage"]
@@ -80,26 +79,26 @@ vertical_alignment = 1
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Scans" type="PanelContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources"]
+[node name="Animas" type="PanelContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources"]
 custom_minimum_size = Vector2(108, 0)
 layout_mode = 2
 theme_type_variation = &"ResourceChip"
 
-[node name="Column" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Scans"]
+[node name="Column" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Animas"]
 layout_mode = 2
 theme_override_constants/separation = -4
 
-[node name="ScanCount" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Scans/Column"]
+[node name="AnimaCount" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Animas/Column"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ResourceValueLabel"
 text = "VALUE_UNAVAILABLE"
 horizontal_alignment = 1
 
-[node name="Name" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Scans/Column"]
+[node name="Name" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Animas/Column"]
 layout_mode = 2
 theme_type_variation = &"ResourceNameLabel"
-text = "RESOURCE_SCANS"
+text = "RESOURCE_ANIMAS"
 horizontal_alignment = 1
 
 [node name="Cores" type="PanelContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources"]

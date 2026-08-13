@@ -50,7 +50,7 @@ const SLEEP_SYNC_EPSILON_SEC := 1.0
 @onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _safe_margin: MarginContainer = %SafeMargin
 @onready var _top_hud: PanelContainer = %TopHud
-@onready var _scan_count: Label = %ScanCount
+@onready var _anima_count: Label = %AnimaCount
 @onready var _core_count: Label = %CoreCount
 @onready var _bits_count: Label = %BitsCount
 @onready var _core_info_button: Button = %CoreInfoButton
@@ -145,6 +145,7 @@ func _ready() -> void:
 			var jalur := arg.trim_prefix("--preview=")
 			_switch_destination(BottomNav.SCAN)
 			_show_preview(FileAccess.get_file_as_bytes(jalur), jalur.get_extension().to_lower() == "png")
+			_scan_view.set_phase(&"analyzing")
 		if arg == "--collection":
 			_switch_destination(BottomNav.COLLECTION)
 		if arg == "--stats":
@@ -499,8 +500,6 @@ func _present_row(row: Dictionary) -> void:
 		row,
 		false
 	)
-	if str(_current_anima.get("id", "")) == str(row.get("id", "")):
-		await _sync_active_care(false)
 
 
 func _perform_care(action: String) -> void:
@@ -935,9 +934,11 @@ func _present(
 	else:
 		_incubator.stop()
 		_anima.visible = true
-	if complete_scan:
-		await _sync_active_care(false)
-	_say(tr("STATUS_ANIMA_READY") % LocaleManager.display_name(_current_anima), true)
+	await _sync_active_care(false)
+	if _is_sleeping(_current_anima):
+		_say(tr("STATUS_ANIMA_SLEEPING") % LocaleManager.display_name(_current_anima), true)
+	else:
+		_say(tr("STATUS_ANIMA_READY") % LocaleManager.display_name(_current_anima), true)
 	if complete_scan:
 		call_deferred("_show_hatch_rename", anima_id)
 
@@ -1023,6 +1024,7 @@ func _upsert_roster(row: Dictionary) -> void:
 
 
 func _populate_collection() -> void:
+	_refresh_anima_count()
 	if not is_instance_valid(_collection_view):
 		return
 	# ponytail: pass pertama membuat thumbnail cached secara sinkron. Plafon
@@ -1343,14 +1345,18 @@ func _hide_toast_later(revision: int) -> void:
 func _refresh_header() -> void:
 	var p := GameState.profile
 	if p.is_empty():
-		_scan_count.text = tr("VALUE_UNAVAILABLE")
+		_anima_count.text = tr("VALUE_UNAVAILABLE")
 		_core_count.text = tr("VALUE_UNAVAILABLE")
 		_bits_count.text = tr("VALUE_UNAVAILABLE")
 		return
-	_scan_count.text = LocaleManager.format_integer(int(p.get("scan_charges", 0)))
 	_core_count.text = LocaleManager.format_integer(int(p.get("genesis_cores", 0)))
 	_bits_count.text = LocaleManager.format_integer(int(p.get("bits", 0)))
 	UiJuice.pop(_top_hud, 1.012)
+
+
+func _refresh_anima_count() -> void:
+	if is_instance_valid(_anima_count):
+		_anima_count.text = LocaleManager.format_integer(_roster.size())
 
 
 func _set_busy(busy: bool) -> void:

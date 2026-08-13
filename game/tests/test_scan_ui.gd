@@ -100,6 +100,8 @@ func _initialize() -> void:
 	var background := scene.find_child("Background", true, false) as Node2D
 	_check(background != null and background.get_script() != null, "procedural background remains attached")
 	_check(scene.find_child("TopHud", true, false) is PanelContainer, "compact resource HUD must exist")
+	_check(scene.find_child("AnimaCount", true, false) is Label, "HUD exposes the owned Anima count")
+	_check(scene.find_child("ScanCount", true, false) == null, "HUD no longer labels scan charges as a count")
 	_check(scene.find_child("BottomNav", true, false) is PanelContainer, "bottom navigation must exist")
 	_check(scene.find_child("StatusPanel", true, false) is PanelContainer, "floating feedback must exist")
 	_check(scene.find_child("PoseRow", true, false) == null, "debug pose controls must not ship in production")
@@ -201,6 +203,7 @@ func _initialize() -> void:
 	_check(incubator != null, "Stage keeps its Incubator")
 	if incubator != null:
 		_check(not incubator.visible, "Incubator starts hidden")
+		_check_eq(incubator.position, Vector2.ZERO, "Incubator shares the Stage ground anchor")
 	var anima := scene.find_child("Anima", true, false) as AnimatedSprite2D
 	_check(anima != null and not anima.visible, "cached art stays hidden until server care is known")
 	var first_effect := scene.find_child("FirstAnimaEffect", true, false) as Node2D
@@ -208,8 +211,11 @@ func _initialize() -> void:
 	_test_care_feedback_is_immediate()
 	_test_collection_routes_are_explicit()
 	_test_hatch_offers_rename()
+	_test_header_uses_ready_roster()
+	_test_present_toast_respects_sleep()
 
 	scene.free()
+	await _test_scan_phase_visuals()
 	await _test_collection_bottom_sheet()
 	await _test_anima_delete_action()
 	await _test_home_care_actions()
@@ -230,6 +236,45 @@ func _test_care_feedback_is_immediate() -> void:
 		body.find("_home_view.set_busy(true)") >= 0 and body.find("_set_busy(true)") < 0,
 		"care locks only its action dock, not the whole shell"
 	)
+
+
+func _test_scan_phase_visuals() -> void:
+	UiMotion.set_reduced_motion(false)
+	var packed := load("res://scenes/ui/scan_view.tscn") as PackedScene
+	var view := packed.instantiate()
+	root.add_child(view)
+	await process_frame
+	var idle_graphic := view.find_child("IdleGraphic", true, false) as TextureRect
+	var preview := view.find_child("PreviewPanel", true, false) as PanelContainer
+	var overlay := view.find_child("ScanOverlay", true, false) as Control
+	_check(idle_graphic != null and idle_graphic.visible, "idle Scan shows the camera graphic")
+	_check(overlay != null and not overlay.visible, "scan overlay starts hidden")
+
+	var image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	image.fill(Color.WHITE)
+	view.show_preview(ImageTexture.create_from_image(image))
+	view.set_phase(&"analyzing")
+	await process_frame
+	_check(preview.visible, "analysis keeps the captured photo visible")
+	_check(not idle_graphic.visible, "analysis hides the idle camera graphic")
+	_check(overlay.visible and overlay.is_processing(), "analysis animates a scanner over the photo")
+
+	UiMotion.set_reduced_motion(true)
+	view.set_phase(&"idle")
+	view.set_phase(&"analyzing")
+	_check(overlay.visible and not overlay.is_processing(), "Reduced Motion keeps a static scan overlay")
+
+	view.clear_preview()
+	view.set_phase(&"synthesizing")
+	_check(not preview.visible, "synthesis clears the captured photo")
+	_check(not idle_graphic.visible, "synthesis keeps the camera graphic hidden")
+	_check(not overlay.visible, "synthesis leaves only the Incubator visual")
+	view.set_phase(&"idle")
+	_check(idle_graphic.visible, "returning idle restores the camera graphic")
+
+	view.queue_free()
+	await process_frame
+	UiMotion.set_reduced_motion(false)
 
 
 func _test_collection_routes_are_explicit() -> void:
@@ -333,6 +378,72 @@ func _test_hatch_offers_rename() -> void:
 	_check(
 		body.find("call_deferred(\"_show_hatch_rename\", anima_id)") >= 0,
 		"every completed scan offers optional rename after reveal"
+	)
+
+
+func _test_header_uses_ready_roster() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var count_start := source.find("func _refresh_anima_count")
+	var count_end := source.find("\n\nfunc _set_busy", count_start)
+	var count_body := source.substr(
+		count_start, count_end - count_start
+	) if count_start >= 0 and count_end > count_start else ""
+	var populate_start := source.find("func _populate_collection")
+	var populate_end := source.find("\n\nfunc _thumbnail_for", populate_start)
+	var populate_body := source.substr(
+		populate_start, populate_end - populate_start
+	) if populate_start >= 0 and populate_end > populate_start else ""
+	var header_start := source.find("func _refresh_header")
+	var header_end := source.find("\n\nfunc _refresh_anima_count", header_start)
+	var header_body := source.substr(
+		header_start, header_end - header_start
+	) if header_start >= 0 and header_end > header_start else ""
+	_check(
+		count_body.find("LocaleManager.format_integer(_roster.size())") >= 0,
+		"HUD count is derived from the authenticated ready roster"
+	)
+	_check(
+		populate_body.find("_refresh_anima_count()") >= 0,
+		"every roster UI refresh also updates the HUD count"
+	)
+	_check(
+		header_body.find("scan_charges") < 0,
+		"scan charges remain an economy rule, not the displayed collection count"
+	)
+
+
+func _test_present_toast_respects_sleep() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var present_start := source.find("func _present(")
+	var present_end := source.find("\n\nfunc _prepare_anima_art", present_start)
+	var present_body := source.substr(
+		present_start, present_end - present_start
+	) if present_start >= 0 and present_end > present_start else ""
+	var sync_at := present_body.find("await _sync_active_care(false)")
+	var sleep_at := present_body.find("if _is_sleeping(_current_anima)")
+	var sleeping_status_at := present_body.find("STATUS_ANIMA_SLEEPING")
+	var ready_status_at := present_body.find("STATUS_ANIMA_READY")
+	_check(
+		sync_at >= 0 and sleep_at > sync_at,
+		"authoritative care sync finishes before choosing the startup toast"
+	)
+	_check(
+		sleeping_status_at > sleep_at and ready_status_at > sleep_at,
+		"startup distinguishes sleeping and ready Anima copy"
+	)
+	_check(
+		present_body.find("if complete_scan:\n\t\tawait _sync_active_care(false)") < 0,
+		"restored Anima sync care just like a completed scan"
+	)
+
+	var row_start := source.find("func _present_row")
+	var row_end := source.find("\n\nfunc _perform_care", row_start)
+	var row_body := source.substr(
+		row_start, row_end - row_start
+	) if row_start >= 0 and row_end > row_start else ""
+	_check(
+		row_body.find("_sync_active_care") < 0,
+		"present_row does not repeat the care sync"
 	)
 
 
