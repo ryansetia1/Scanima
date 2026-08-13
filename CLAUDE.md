@@ -87,7 +87,9 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **`species_library` hanya bisa dibaca peran `authenticated`, dan anon key mentah menjawab `[]`, bukan galat.** Client harus sign-in anonim **sebelum** membaca pustaka. Gejala salahnya berbahaya karena tidak terlihat seperti masalah autentikasi: array kosong terbaca sebagai "pustaka masih kosong", jadi setiap scan tampak sebagai spesies baru dan setiap scan membayar $0.07. Terukur saat mengambil manifest untuk uji Godot — anon key memberi nol baris untuk baris yang jelas ada.
 - **Bucket `photos` hanya punya policy INSERT, dan itu lengkap.** Client boleh menaruh foto di foldernya sendiri, tapi tidak boleh membaca, melihat daftar, maupun menghapus — DELETE dari client dijawab RLS dengan 403. Terlihat seperti policy yang lupa ditulis; sebenarnya client tidak pernah membutuhkannya. Yang membaca foto adalah Edge Function lewat signed URL service role, dan yang menghapusnya adalah `create_anima`/`finalize_sheet` setelah post-processing selesai. Menambahkan SELECT berarti memberi jalan membaca foto yang seharusnya sudah lenyap.
 - **Care sepenuhnya server-authoritative.** `care`, `care_synced_at`, `care_score`, sleep, counter harian, Dormant, dan debit Bits berubah hanya lewat `apply_care()` di balik Edge Function JWT `care_anima`. Feed/Clean masing-masing 5 Bits; event + ledger + kebutuhan diubah dalam satu transaksi dan satu idempotency key. Client hanya boleh PATCH `nickname`. Ini wajib karena `care_score` adalah gerbang evolusi berbiaya ~$0.07.
+- **Bond 100 menutup Play di dua lapis.** Home menonaktifkan tombolnya, dan `apply_care()` menolak `BOND_FULL` sebelum Energy maupun `care_score` berubah. Saat tidur Feed/Clean/Play disembunyikan dan Wake memakai lebar penuh. Jangan melonggarkan server hanya karena tombol client terlihat aman.
 - **Decay tidak butuh cron.** `apply_care()` menghitung selisih dari `care_synced_at`: grace 8 jam, cap 48 jam efektif, Hunger 10/jam, Energy 7,1/jam saat bangun, Hygiene 4,2/jam, Bond -2/jam hanya jika Hunger dan Hygiene nol. Sleep memulihkan linear sampai penuh dalam 6 jam. `dormant_since` terpisah dari generation `status`, reset `care_score`, dan hilang setelah Hunger serta Hygiene sama-sama >=50.
+- **Art cache tidak boleh menebak pose saat cold start.** `GameState.last_anima` hanya pilihan terakhir dan sengaja tidak menyimpan care. Menampilkan sheet itu sebelum roster server datang selalu memulai Idle, sehingga Anima tidur terlihat bangun sekelebat. Sprite tetap tersembunyi sampai `_present()` memiliki row authoritative dan menerapkan Sleep/Dormant pada frame yang sama.
 - **`rls_auto_enable()` bukan buatan kita.** Ia event trigger bawaan bootstrap Supabase yang menyalakan RLS otomatis pada setiap tabel baru di `public`. Terukur: peran `authenticated` bisa memanggilnya sebagai fungsi biasa dan ia selesai tanpa error maupun efek (`pg_event_trigger_ddl_commands()` kosong di luar konteks trigger). EXECUTE-nya sudah dicabut di migrasi `harden_platform_rls_helper`, dan event trigger-nya diverifikasi tetap menyala sesudahnya — hak eksekusi event trigger diperiksa saat `create event trigger`, bukan saat ia menyala.
 - **Advisor `rls_enabled_no_policy` pada `app_config` dan `care_events` itu disengaja.** RLS aktif tanpa policy sama sekali adalah cara menutup tabel dari client; jangan "perbaiki" dengan menambahkan policy baca. `care_events` hanya diakses transaction function service-role.
 - **Enam WARN `auth_allow_anonymous_sign_ins` juga disengaja, dan "memperbaikinya" akan mematikan game.** Advisor memberi peringatan untuk `profiles`, `animas`, `generations`, `quota_ledger`, `pending_discoveries`, dan `species_library` karena policy-nya `to authenticated`, dan user anonim memakai peran itu. Di Scanima user anonim **adalah** pemainnya — bukan tamu yang menyusup. Yang membatasi tetap `auth.uid() = owner_id`, jadi pemain anonim A tidak bisa membaca data pemain anonim B; `species_library` memang dibaca semua orang karena ia pustaka art bersama. Menambahkan `and not (auth.jwt() ->> 'is_anonymous')::boolean` akan menutup satu-satunya jenis akun yang dimiliki game ini.
@@ -148,8 +150,8 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 npm run selftest                       # 20 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 godot --headless --path game --script res://tests/test_client_state.gd  # 42 check sesi, pending scan/care, cache
-godot --headless --path game --script res://tests/test_scan_ui.gd       # 107 check shell + touch + care + reduced motion
-godot --headless --path game --script res://tests/test_i18n.gd          # 800 check katalog + key + formatter + wrapping
+godot --headless --path game --script res://tests/test_scan_ui.gd       # 119 check shell + touch + care + reduced motion
+godot --headless --path game --script res://tests/test_i18n.gd          # 828 check katalog + key + formatter + wrapping
 godot --headless --path game --script res://tests/test_game_rules.gd    # 27 check decay, sleep, score, Dormant
 node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
 
@@ -169,6 +171,8 @@ godot --headless --path game --script res://tests/test_sprite_slicing.gd \
 godot --path game                      # scan_flow: sesi, saldo, Anima dari cache
 godot --path game -- --screenshot=/tmp/scan.png       # periksa layar tanpa editor
 godot --headless --path game --import  # rebuild cache class, cek parse error
+godot --path game -- --core-info --screenshot=/tmp/core.png
+godot --path game -- --sleep-demo --screenshot=/tmp/sleep.png
 
 # band preview foto tanpa memindai apa pun, jadi tata letaknya bisa diperiksa
 # dengan biaya nol. Tanpa ini satu-satunya cara melihatnya adalah membayar scan.

@@ -39,7 +39,7 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 **Jeda generation sekarang punya inkubator yang benar-benar hidup.** Setelah Genesis dimulai, foto atau Anima lama diganti telur energi procedural dengan orbit cyan-violet, scanner, spark emas, dan core yang berdenyut—tanpa asset tambahan. Ia tetap berjalan selama polling Replicate, termasuk saat pending scan dilanjutkan setelah restart. Saat webhook selesai, ring meledak menjadi flash lalu Anima muncul dengan bounce, squash-and-stretch, dan settle; kegagalan/timeout mengembalikan Anima lama. Cache hit tetap instan dan tidak memalsukan proses hatch.
 
-**UI sekarang berupa shell game mobile empat destination: Home, Scan, Collection, dan Anima Profile.** Home menjadikan Anima hero visual, kebutuhan diringkas dalam care dock, feedback mengambang tanpa mendorong layout, dan Scan tetap CTA cyan utama di bottom navigation. Keempat destination adalah child scene modular di dalam satu `scan_flow.tscn`, jadi pindah tab tidak me-reset request, pending scan, Stage, atau inkubator. Seluruh copy production memakai katalog English Godot-native; `LocaleManager` menjadi pintu locale dan formatting untuk bahasa berikutnya. Theme cyan-violet-gold kini memakai font OFL Nunito Sans/Oxanium, ikon SVG berlisensi, touch target 96px, serta reduced-motion gate bersama. Pose debug hanya tinggal di `anima_demo`. `test_scan_ui.gd` menjaga 107 kontrak shell/touch/motion dan `test_i18n.gd` menjaga 800 kontrak katalog/formatter/layout.
+**UI sekarang berupa shell game mobile empat destination: Home, Scan, Collection, dan Anima Profile.** Home menjadikan Anima hero visual, kebutuhan diringkas dalam care dock, feedback mengambang tanpa mendorong layout, dan Scan tetap CTA cyan utama di bottom navigation. Keempat destination adalah child scene modular di dalam satu `scan_flow.tscn`, jadi pindah tab tidak me-reset request, pending scan, Stage, atau inkubator. Chip Core membuka penjelasan Genesis tanpa memenuhi HUD; Bond penuh menutup Play, dan saat tidur hanya Wake yang tersisa selebar dock. Seluruh copy production memakai katalog English Godot-native; `LocaleManager` menjadi pintu locale dan formatting untuk bahasa berikutnya. Theme cyan-violet-gold kini memakai font OFL Nunito Sans/Oxanium, ikon SVG berlisensi, touch target 96px, serta reduced-motion gate bersama. Pose debug hanya tinggal di `anima_demo`. `test_scan_ui.gd` menjaga 119 kontrak shell/touch/motion dan `test_i18n.gd` menjaga 828 kontrak katalog/formatter/layout.
 
 Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan meninggalkan koleksi di akun yang tidak bisa dijangkau lagi. Kedua, **kunci idempotency scan dan care bertahan di disk**, sehingga app yang mati tidak membayar Core/Bits kedua. Keduanya dijaga oleh 42 check di `test_client_state.gd`.
 
@@ -69,11 +69,11 @@ npm run selftest                 # 20 skenario + 12 uji tanda tangan webhook, ta
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 107 pemeriksaan shell, theme, touch, care, inkubator, reduced motion
+# Godot: 119 pemeriksaan shell, theme, touch, care, inkubator, reduced motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
 
-# Godot: 800 pemeriksaan katalog English, referensi key, formatter, dan layout
+# Godot: 828 pemeriksaan katalog English, referensi key, formatter, dan layout
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_i18n.gd
 
@@ -175,8 +175,8 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 107 kontrak shell + touch + motion
-│       ├── test_i18n.gd              # 800 kontrak katalog + key + wrapping
+│       ├── test_scan_ui.gd           # 119 kontrak shell + touch + motion
+│       ├── test_i18n.gd              # 828 kontrak katalog + key + wrapping
 │       ├── test_game_rules.gd        # 27 kontrak care tanpa jaringan
 │       └── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 ├── backend/

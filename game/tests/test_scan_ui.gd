@@ -73,6 +73,20 @@ func _initialize() -> void:
 	_check(scene.find_child("BottomNav", true, false) is PanelContainer, "bottom navigation must exist")
 	_check(scene.find_child("StatusPanel", true, false) is PanelContainer, "floating feedback must exist")
 	_check(scene.find_child("PoseRow", true, false) == null, "debug pose controls must not ship in production")
+	var core_info_button := scene.find_child("CoreInfoButton", true, false) as Button
+	var core_info_overlay := scene.find_child("CoreInfoOverlay", true, false) as Control
+	var core_info_panel := scene.find_child("CoreInfoPanel", true, false) as PanelContainer
+	var core_info_close := scene.find_child("CoreInfoCloseButton", true, false) as Button
+	_check(core_info_button != null, "Core resource must be tappable")
+	_check(core_info_overlay != null and not core_info_overlay.visible, "Core info modal starts hidden")
+	_check(
+		core_info_panel != null and core_info_panel.theme_type_variation == &"ModalPanel",
+		"Core info modal uses shared modal chrome"
+	)
+	_check(
+		core_info_close != null and core_info_close.custom_minimum_size.y >= TOUCH_MIN,
+		"Core info close action meets the touch target"
+	)
 
 	var scan_button := scene.find_child("ScanButton", true, false) as Button
 	if scan_button != null:
@@ -127,11 +141,50 @@ func _initialize() -> void:
 	_check(incubator != null, "Stage keeps its Incubator")
 	if incubator != null:
 		_check(not incubator.visible, "Incubator starts hidden")
+	var anima := scene.find_child("Anima", true, false) as AnimatedSprite2D
+	_check(anima != null and not anima.visible, "cached art stays hidden until server care is known")
 
 	scene.free()
+	await _test_home_care_actions()
 	await _test_bottom_nav_busy()
 	await _test_incubator_effect()
 	_finish()
+
+
+func _test_home_care_actions() -> void:
+	var packed := load("res://scenes/ui/home_view.tscn") as PackedScene
+	var home := packed.instantiate()
+	root.add_child(home)
+	await process_frame
+	var feed := home.find_child("FeedButton", true, false) as Button
+	var clean := home.find_child("CleanButton", true, false) as Button
+	var sleep := home.find_child("SleepButton", true, false) as Button
+	var play := home.find_child("PlayButton", true, false) as Button
+	var actions := home.find_child("CareActions", true, false) as GridContainer
+	var row := {
+		"care": {"hunger": 80.0, "energy": 80.0, "hygiene": 80.0, "bond": 99.0},
+		"care_score": 8,
+	}
+	home.update_care(row, false)
+	_check(not play.disabled, "Play remains available below full Bond")
+	row["care"]["bond"] = 100.0
+	home.update_care(row, false)
+	_check(play.disabled, "Play is disabled at full Bond")
+
+	row["sleep_started_at"] = "2026-08-13T00:00:00Z"
+	home.update_care(row, false)
+	await process_frame
+	_check(not feed.visible and not clean.visible and not play.visible, "sleep hides other care actions")
+	_check(sleep.visible and not sleep.disabled, "sleep leaves Wake available")
+	_check_eq(actions.columns, 1, "Wake occupies one full-width action column")
+
+	row.erase("sleep_started_at")
+	home.update_care(row, false)
+	await process_frame
+	_check(feed.visible and clean.visible and play.visible, "waking restores all care actions")
+	_check(actions.columns == 2 or actions.columns == 4, "awake care restores responsive columns")
+	home.queue_free()
+	await process_frame
 
 
 func _test_bottom_nav_busy() -> void:

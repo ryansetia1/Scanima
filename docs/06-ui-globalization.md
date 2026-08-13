@@ -32,6 +32,7 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
 ## Tanggung jawab destination
 
 - **Home:** identity, Anima stage, kebutuhan, Bond, Care Score, Feed/Clean/Sleep/Play.
+  Bond penuh menonaktifkan Play; saat tidur hanya Wake yang tampil selebar dock.
 - **Scan:** penjelasan discovery, preview foto, dua fase status, CTA kamera.
 - **Collection:** roster dua kolom dan pilihan Anima aktif; thumbnail hanya dari cache.
 - **Anima Profile:** portrait, element, rarity, stage, care score, dan base stats.
@@ -76,6 +77,9 @@ Target minimum touch adalah 96 unit pada basis 720×1280. Layout memakai
 Container/anchor dan safe-area conversion milik `scan_flow.gd`; jangan mengunci
 lebar berdasarkan panjang copy English. Care actions otomatis berubah dari
 empat menjadi dua kolom jika label locale tidak lagi muat.
+
+Chip Core tetap ringkas di HUD. Penjelasan Genesis Core dibuka sebagai modal
+lokal saat chip disentuh, supaya istilah ekonomi tidak memenuhi layar utama.
 
 ## Motion dan accessibility
 

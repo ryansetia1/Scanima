@@ -198,6 +198,8 @@ Nilai aksi yang live di Phase 2:
 - **Feed:** 5 Bits, Hunger +35, Bond +3; score +3 hanya jika Hunger sebelum aksi <40.
 - **Clean:** 5 Bits, Hygiene +35, Bond +3; score +3 hanya jika Hygiene sebelum aksi <50.
 - **Play:** gratis, Energy -5, Bond +8; score +1 maksimal lima kali per UTC day.
+  Saat Bond sudah 100, Play ditolak tanpa mengurangi Energy atau memberi score:
+  aksinya memang membangun hubungan, bukan tombol farming score yang tersembunyi.
 - **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 score. Wake lebih awal mempertahankan pemulihan parsial tanpa score.
 
 Saldo, kebutuhan, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten, sedangkan `quota_ledger` mencatat debit Feed/Clean. Client menyimpan satu intent `pending_care`, bukan salinan saldo atau kebutuhan.

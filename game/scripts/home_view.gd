@@ -75,11 +75,11 @@ func update_care(row: Dictionary, busy: bool) -> void:
 		LocaleManager.care_state(sleeping, dormant),
 	]
 	_sleep_button.text = tr("CARE_WAKE") if sleeping else tr("CARE_SLEEP")
-	_set_buttons_disabled(busy)
+	_update_action_state(busy)
 
 
 func set_busy(busy: bool) -> void:
-	_set_buttons_disabled(busy or typeof(_row.get("care")) != TYPE_DICTIONARY)
+	_update_action_state(busy or typeof(_row.get("care")) != TYPE_DICTIONARY)
 
 
 func _request_sleep_toggle() -> void:
@@ -87,14 +87,31 @@ func _request_sleep_toggle() -> void:
 
 
 func _set_buttons_disabled(disabled: bool) -> void:
+	_update_action_state(disabled)
+
+
+func _update_action_state(disabled: bool) -> void:
+	var has_care := typeof(_row.get("care")) == TYPE_DICTIONARY
+	var care: Dictionary = CARE_RULES.normalized_care(_row.get("care"))
+	var sleeping := has_care and _has_timestamp(_row.get("sleep_started_at"))
+	_feed_button.visible = not sleeping
+	_clean_button.visible = not sleeping
+	_play_button.visible = not sleeping
+	_sleep_button.visible = true
 	_feed_button.disabled = disabled
 	_clean_button.disabled = disabled
 	_sleep_button.disabled = disabled
-	_play_button.disabled = disabled
+	_play_button.disabled = disabled or float(care["bond"]) >= 100.0
+	_update_action_columns()
 
 
 func _update_action_columns(_locale: String = "") -> void:
-	if not is_instance_valid(_care_actions) or _care_actions.size.x <= 0.0:
+	if not is_instance_valid(_care_actions):
+		return
+	if _has_timestamp(_row.get("sleep_started_at")):
+		_care_actions.columns = 1
+		return
+	if _care_actions.size.x <= 0.0:
 		return
 	var widest := 0.0
 	for button in [_feed_button, _clean_button, _sleep_button, _play_button]:

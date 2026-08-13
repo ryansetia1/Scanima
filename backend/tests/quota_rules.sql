@@ -423,6 +423,26 @@ begin
   assert (select (care->>'bond')::numeric from public.animas where id = v_care_anima) = 48,
          'enam Play tetap harus memberi 48 Bond';
 
+  update public.animas
+     set care = '{"hunger":100,"energy":70,"hygiene":100,"bond":100}'::jsonb,
+         care_score = 5,
+         care_synced_at = now()
+   where id = v_care_anima;
+  begin
+    perform public.apply_care(u1, v_care_anima, 'play', 'care-bond-full');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'BOND_FULL');
+  end;
+  assert ok, 'Play saat Bond penuh harus ditolak dengan BOND_FULL';
+  assert (select (care->>'energy')::numeric from public.animas where id = v_care_anima) = 70,
+         'Play yang ditolak tidak boleh memakai Energy';
+  assert (select care_score from public.animas where id = v_care_anima) = 5,
+         'Play yang ditolak tidak boleh memberi care_score';
+  assert not exists (
+    select 1 from public.care_events
+     where owner_id = u1 and idempotency_key = 'care-bond-full'
+  ), 'Play yang ditolak tidak boleh menyisakan care event';
+
   update public.profiles set bits = 0 where id = u1;
   update public.animas
      set care = '{"hunger":0,"energy":100,"hygiene":100,"bond":0}'::jsonb,

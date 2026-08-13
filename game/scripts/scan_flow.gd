@@ -50,6 +50,11 @@ const BASE_MARGIN := 32.0
 @onready var _scan_count: Label = %ScanCount
 @onready var _core_count: Label = %CoreCount
 @onready var _bits_count: Label = %BitsCount
+@onready var _core_info_button: Button = %CoreInfoButton
+@onready var _core_info_overlay: Control = %CoreInfoOverlay
+@onready var _core_info_panel: PanelContainer = %CoreInfoPanel
+@onready var _core_info_dismiss: Button = %CoreInfoDismissButton
+@onready var _core_info_close: Button = %CoreInfoCloseButton
 @onready var _home_view: HomeView = %HomeView
 @onready var _scan_view: ScanView = %ScanView
 @onready var _collection_view: CollectionView = %CollectionView
@@ -75,6 +80,9 @@ func _ready() -> void:
 	_collection_view.anima_selected.connect(_on_anima_selected)
 	_bottom_nav.destination_selected.connect(_switch_destination)
 	LocaleManager.locale_changed.connect(_refresh_localized_ui)
+	_core_info_button.pressed.connect(_show_core_info)
+	_core_info_dismiss.pressed.connect(_hide_core_info)
+	_core_info_close.pressed.connect(_hide_core_info)
 	_dialog.file_selected.connect(_scan_file)
 	get_viewport().size_changed.connect(_layout_for_viewport)
 	_layout_for_viewport()
@@ -106,6 +114,11 @@ func _ready() -> void:
 			_switch_destination(BottomNav.COLLECTION)
 		if arg == "--stats":
 			_switch_destination(BottomNav.ANIMA)
+		if arg == "--core-info":
+			_show_core_info()
+		if arg == "--sleep-demo" and not _current_anima.is_empty():
+			_current_anima["sleep_started_at"] = "preview"
+			_refresh_care()
 		if arg == "--incubator":
 			_switch_destination(BottomNav.SCAN)
 			_set_busy(true)
@@ -329,6 +342,8 @@ func _care_error_message(error: String) -> String:
 			return tr("ERROR_NO_BITS")
 		"NO_ENERGY":
 			return tr("ERROR_NO_ENERGY")
+		"BOND_FULL":
+			return tr("ERROR_BOND_FULL")
 		"NEED_FULL":
 			return tr("ERROR_NEED_FULL")
 		"ALREADY_SLEEPING":
@@ -708,14 +723,14 @@ func _show_cached_anima() -> void:
 	var anima := GameState.last_anima
 	if anima.is_empty():
 		return
+	_anima.visible = false
 	_current_anima = anima.duplicate(true)
 	_refresh_stats()
 	_refresh_care()
-	var species := str(anima.get("species_key", ""))
-	var color := str(anima.get("color_bucket", ""))
-	var stage := int(anima.get("stage", 1))
-	if GameState.has_sprite(species, color, stage):
-		_load_and_apply(species, color, stage)
+	# last_anima hanya menyimpan pilihan terakhir, bukan care server-authoritative.
+	# Menampilkan art cache di sini selalu memulai pose Idle dan membuat Anima yang
+	# sedang tidur berkedip bangun sampai roster selesai dimuat. Art baru boleh
+	# terlihat setelah _present() memiliki row server dan menerapkan pose care.
 
 
 func _load_and_apply(species_key: String, color_bucket: String, stage: int) -> bool:
@@ -907,6 +922,17 @@ func _refresh_localized_ui(_locale: String = "") -> void:
 	_populate_collection()
 
 
+func _show_core_info() -> void:
+	UiJuice.show_overlay(_core_info_overlay, _core_info_panel)
+	_core_info_close.grab_focus()
+
+
+func _hide_core_info() -> void:
+	await UiJuice.hide_overlay(_core_info_overlay, _core_info_panel)
+	if is_instance_valid(_core_info_button):
+		_core_info_button.grab_focus()
+
+
 # ---------------------------------------------------------------- UI kecil
 
 ## Menampilkan foto yang akan dipindai, sekaligus mencetak ukurannya. Dimensi di
@@ -988,6 +1014,10 @@ func _set_busy(busy: bool) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		if _core_info_overlay.visible:
+			_hide_core_info()
+			get_viewport().set_input_as_handled()
+			return
 		if _destination != BottomNav.HOME:
 			_switch_destination(BottomNav.HOME)
 			get_viewport().set_input_as_handled()
