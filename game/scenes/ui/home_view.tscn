@@ -70,7 +70,7 @@ theme_override_constants/separation = 0
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"AnimaNameLabel"
-text = "HOME_EMPTY_NAME"
+text = "HOME_LOADING_NAME"
 horizontal_alignment = 1
 text_overrun_behavior = 3
 
@@ -78,7 +78,7 @@ text_overrun_behavior = 3
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
-text = "HOME_EMPTY_META"
+text = "HOME_LOADING_META"
 horizontal_alignment = 1
 autowrap_mode = 2
 
@@ -91,6 +91,14 @@ mouse_filter = 2
 custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
 mouse_filter = 2
+
+[node name="HomePrimaryAction" type="Button" parent="Column"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "HOME_EMPTY_CTA"
 
 [node name="CareDock" type="PanelContainer" parent="Column"]
 unique_name_in_owner = true

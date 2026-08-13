@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/scan_flow.gd" id="1_flow"]
 [ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/collection_view.tscn" id="8_collection"]
 [ext_resource type="PackedScene" path="res://scenes/ui/anima_details_view.tscn" id="9_details"]
 [ext_resource type="PackedScene" path="res://scenes/ui/bottom_nav.tscn" id="10_nav"]
+[ext_resource type="Script" path="res://scripts/first_anima_effect.gd" id="11_first"]
 
 [node name="ScanFlow" type="Node2D"]
 script = ExtResource("1_flow")
@@ -21,6 +22,12 @@ script = ExtResource("5_background")
 [node name="Stage" type="Node2D" parent="."]
 unique_name_in_owner = true
 position = Vector2(360, 730)
+
+[node name="FirstAnimaEffect" type="Node2D" parent="Stage"]
+unique_name_in_owner = true
+visible = false
+z_index = -1
+script = ExtResource("11_first")
 
 [node name="Incubator" type="Node2D" parent="Stage"]
 unique_name_in_owner = true

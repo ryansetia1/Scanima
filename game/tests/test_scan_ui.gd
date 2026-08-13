@@ -8,6 +8,12 @@ const TOUCH_MIN := 96.0
 var _checks := 0
 var _failures: PackedStringArray = []
 var _requested_delete_id := ""
+var _requested_profile_id := ""
+var _requested_summon_id := ""
+var _requested_summon_synced := false
+var _requested_summon_hunger := 0.0
+var _home_action := ""
+var _preview_requests := 0
 
 
 func _initialize() -> void:
@@ -52,6 +58,8 @@ func _initialize() -> void:
 	for name in [
 		"ScanButton", "HomeNavButton", "ScanNavButton", "CollectionNavButton", "AnimaNavButton",
 		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "DeleteAnimaButton",
+		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
+		"CollectionSummonButton",
 	]:
 		var button := scene.find_child(name, true, false) as Button
 		_check(button != null, "%s must exist" % name)
@@ -66,6 +74,15 @@ func _initialize() -> void:
 	if list != null:
 		_check_eq(list.max_columns, 2, "collection uses two columns")
 		_check_eq(list.fixed_icon_size, Vector2i(128, 128), "collection thumbnails are 128 px")
+	var collection_sheet := scene.find_child("CollectionSheetOverlay", true, false) as Control
+	var collection_panel := scene.find_child("CollectionSheetPanel", true, false) as PanelContainer
+	_check(collection_sheet != null and not collection_sheet.visible, "Collection sheet starts hidden")
+	_check(
+		collection_panel != null
+		and collection_panel.anchor_top == 1.0
+		and collection_panel.anchor_bottom == 1.0,
+		"Collection sheet stays bottom anchored"
+	)
 
 	var margin := scene.find_child("SafeMargin", true, false) as MarginContainer
 	_check(margin != null and margin.theme != null, "mobile theme must be attached")
@@ -186,11 +203,14 @@ func _initialize() -> void:
 		_check(not incubator.visible, "Incubator starts hidden")
 	var anima := scene.find_child("Anima", true, false) as AnimatedSprite2D
 	_check(anima != null and not anima.visible, "cached art stays hidden until server care is known")
+	var first_effect := scene.find_child("FirstAnimaEffect", true, false) as Node2D
+	_check(first_effect != null and not first_effect.visible, "first-Anima scanner starts hidden")
 	_test_care_feedback_is_immediate()
-	_test_collection_selection_goes_home()
+	_test_collection_routes_are_explicit()
 	_test_hatch_offers_rename()
 
 	scene.free()
+	await _test_collection_bottom_sheet()
 	await _test_anima_delete_action()
 	await _test_home_care_actions()
 	await _test_bottom_nav_busy()
@@ -212,19 +232,97 @@ func _test_care_feedback_is_immediate() -> void:
 	)
 
 
-func _test_collection_selection_goes_home() -> void:
+func _test_collection_routes_are_explicit() -> void:
 	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
-	var start := source.find("func _on_anima_selected")
-	var end := source.find("\n\nfunc _show_delete_confirmation", start)
-	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
+	var profile_start := source.find("func _show_collection_profile")
+	var summon_start := source.find("func _summon_collection_anima")
+	var summon_end := source.find("\n\nfunc _open_scan", summon_start)
+	var profile_body := source.substr(
+		profile_start, summon_start - profile_start
+	) if profile_start >= 0 and summon_start > profile_start else ""
+	var summon_body := source.substr(
+		summon_start, summon_end - summon_start
+	) if summon_start >= 0 and summon_end > summon_start else ""
 	_check(
-		body.find("_switch_destination(BottomNav.HOME)") >= 0,
-		"collection selection routes directly to Home"
+		profile_body.find("_switch_destination(BottomNav.ANIMA, row)") >= 0,
+		"View Profile opens the selected Anima without summoning it"
 	)
 	_check(
-		body.find("_switch_destination(BottomNav.ANIMA)") < 0,
-		"collection selection no longer opens the intermediate profile"
+		summon_body.find("_switch_destination(BottomNav.HOME)") >= 0,
+		"Summon routes the selected companion to Home"
 	)
+	_check(
+		summon_body.find("await _prepare_anima_art") < summon_body.find("GameState.remember_anima"),
+		"Summon prepares art before replacing the active companion"
+	)
+
+
+func _test_collection_bottom_sheet() -> void:
+	UiMotion.set_reduced_motion(true)
+	var packed := load("res://scenes/ui/collection_view.tscn") as PackedScene
+	var collection := packed.instantiate()
+	root.add_child(collection)
+	await process_frame
+	var row := {
+		"id": "sheet-test",
+		"nickname": "Velumi",
+		"element": "spark",
+		"stage": 1,
+		"rarity": 4,
+		"base_stats": {"hp": 74, "atk": 62, "def": 58, "spd": 81, "special": 77},
+		"care": {"hunger": 68, "energy": 84, "hygiene": 57, "bond": 72},
+	}
+	var rows: Array[Dictionary] = [row]
+	collection.set_rows(rows, "", func(_row: Dictionary) -> Texture2D: return null)
+	_preview_requests = 0
+	collection.preview_requested.connect(_capture_preview_request)
+	collection.show_preview(row)
+	await process_frame
+	var synced_row: Dictionary = row.duplicate(true)
+	synced_row["care"]["hunger"] = 42.0
+	_check(
+		collection.apply_care_sync(synced_row, collection.selected_revision()),
+		"matching care response updates the open sheet"
+	)
+
+	var overlay := collection.find_child("CollectionSheetOverlay", true, false) as Control
+	var summon := collection.find_child("CollectionSummonButton", true, false) as Button
+	var profile := collection.find_child("CollectionProfileButton", true, false) as Button
+	var hp := collection.find_child("SheetStatHp", true, false) as Label
+	var hunger := collection.find_child("SheetCareHunger", true, false) as ProgressBar
+	_check(overlay != null and overlay.visible, "selecting an Anima opens the bottom sheet")
+	_check_eq(hp.text, "74", "bottom sheet exposes base stats at a glance")
+	_check_eq(hunger.value, 42.0, "bottom sheet exposes authoritative care at a glance")
+	_check(summon != null and not summon.disabled, "non-active Anima can be summoned")
+	_check_eq(_preview_requests, 1, "first preview requests one authoritative care sync")
+
+	_requested_profile_id = ""
+	_requested_summon_id = ""
+	collection.profile_requested.connect(_capture_profile_request)
+	collection.summon_requested.connect(_capture_summon_request)
+	profile.pressed.emit()
+	_check_eq(_requested_profile_id, "sheet-test", "View Profile emits the selected row")
+	collection.show_preview(row)
+	await process_frame
+	_check_eq(_preview_requests, 1, "care sync is cached for the current Collection visit")
+	summon.pressed.emit()
+	_check_eq(_requested_summon_id, "sheet-test", "Summon emits the selected row")
+	_check(_requested_summon_synced, "fixture care is marked authoritative")
+	_check_eq(_requested_summon_hunger, 42.0, "Summon uses the cached authoritative row")
+
+	collection.set_rows(rows, "sheet-test", func(_row: Dictionary) -> Texture2D: return null)
+	collection.show_preview(row, false)
+	await process_frame
+	_check(summon.disabled, "active companion cannot be summoned twice")
+	var old_revision: int = collection.selected_revision()
+	collection.close_sheet()
+	_check(
+		not collection.apply_care_sync(row, old_revision),
+		"care response is ignored after its sheet revision closes"
+	)
+	collection.queue_free()
+	await process_frame
+	UiMotion.set_reduced_motion(false)
 
 
 func _test_hatch_offers_rename() -> void:
@@ -272,6 +370,21 @@ func _capture_delete_request(anima_id: String) -> void:
 	_requested_delete_id = anima_id
 
 
+func _capture_profile_request(row: Dictionary) -> void:
+	_requested_profile_id = str(row.get("id", ""))
+
+
+func _capture_summon_request(row: Dictionary, care_synced: bool) -> void:
+	_requested_summon_id = str(row.get("id", ""))
+	_requested_summon_synced = care_synced
+	var care: Dictionary = row.get("care") if typeof(row.get("care")) == TYPE_DICTIONARY else {}
+	_requested_summon_hunger = float(care.get("hunger", 0.0))
+
+
+func _capture_preview_request(_row: Dictionary, _revision: int) -> void:
+	_preview_requests += 1
+
+
 func _test_home_care_actions() -> void:
 	var packed := load("res://scenes/ui/home_view.tscn") as PackedScene
 	var home := packed.instantiate()
@@ -282,11 +395,29 @@ func _test_home_care_actions() -> void:
 	var sleep := home.find_child("SleepButton", true, false) as Button
 	var play := home.find_child("PlayButton", true, false) as Button
 	var actions := home.find_child("CareActions", true, false) as GridContainer
+	var primary := home.find_child("HomePrimaryAction", true, false) as Button
+	_home_action = ""
+	home.first_scan_requested.connect(func() -> void: _home_action = "scan")
+	home.retry_requested.connect(func() -> void: _home_action = "retry")
+	_check_eq(home.shell_state(), &"loading", "Home begins in Loading, not a false empty state")
+	home.set_shell_state(&"empty")
+	_check(primary.visible and not primary.disabled, "empty Home exposes its first-scan CTA")
+	primary.pressed.emit()
+	_check_eq(_home_action, "scan", "empty Home routes its CTA to Scan")
+	home.set_shell_state(&"error")
+	primary.pressed.emit()
+	_check_eq(_home_action, "retry", "roster error exposes Retry instead of onboarding")
 	var row := {
+		"id": "home-care-test",
+		"nickname": "Velumi",
+		"element": "spark",
+		"stage": 1,
 		"care": {"hunger": 80.0, "energy": 80.0, "hygiene": 80.0, "bond": 99.0},
 		"care_score": 8,
 	}
-	home.update_care(row, false)
+	home.set_anima(row, false)
+	_check_eq(home.shell_state(), &"ready", "loaded companion replaces the empty state")
+	_check(not primary.visible, "ready Home hides its onboarding CTA")
 	_check(not play.disabled, "Play remains available below full Bond")
 	row["care"]["bond"] = 100.0
 	home.update_care(row, false)
@@ -345,6 +476,19 @@ func _test_incubator_effect() -> void:
 	_check(effect.visible, "burst() returns while the flash is visible")
 	await create_timer(0.45).timeout
 	_check(not effect.visible and not effect.is_active(), "burst cleanup completes")
+
+	await effect.start_portal()
+	_check(effect.visible and effect.is_active(), "Summon opens the portal without incubation")
+	await effect.burst()
+	await create_timer(0.45).timeout
+	_check(not effect.visible and not effect.is_active(), "Summon portal cleans itself up")
+	UiMotion.set_reduced_motion(true)
+	await effect.start_portal()
+	_check(
+		not effect.visible and not effect.is_active(),
+		"Reduced Motion skips the Summon portal entirely"
+	)
+	UiMotion.set_reduced_motion(false)
 	effect.free()
 
 

@@ -33,8 +33,10 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
 
 - **Home:** identity, Anima stage, kebutuhan, Bond, Care Score, Feed/Clean/Sleep/Play.
   Bond penuh menonaktifkan Play; saat tidur hanya Wake yang tampil selebar dock.
+  Tanpa roster, Home membedakan Loading/Error/Empty dan memberi CTA first scan.
 - **Scan:** penjelasan discovery, preview foto, dua fase status, CTA kamera.
-- **Collection:** roster dua kolom dan pilihan Anima aktif; thumbnail hanya dari cache.
+- **Collection:** roster dua kolom; tap membuka bottom sheet base stats + care
+  authoritative dengan aksi `View Profile` dan `Summon`. Thumbnail hanya dari cache.
 - **Anima Profile:** portrait, element, rarity, stage, care score, dan base stats.
 
 Pose Idle/Attack/Sleep/Defeated bukan navigation production. Alat itu tetap ada
@@ -83,9 +85,10 @@ lokal saat chip disentuh, supaya istilah ekonomi tidak memenuhi layar utama.
 
 ## Motion dan accessibility
 
-`UiJuice` memiliki semua motion Control. `AnimaPresenter` memiliki transform
-Anima; `IncubatorEffect` memiliki transform inkubator. Jangan membuat tween baru
-yang menulis properti milik komponen lain.
+`UiJuice` memiliki semua motion Control termasuk bottom sheet.
+`AnimaPresenter` memiliki transform Anima; `IncubatorEffect` memiliki telur dan
+portal; `FirstAnimaEffect` memiliki scanner empty state. Jangan membuat tween
+baru yang menulis properti milik komponen lain.
 
 `UiMotion.reduced_motion` mematikan ambient motion, squash/reveal, meter tween,
 dan hatch movement tanpa mematikan feedback atau kontrol. Settings
@@ -104,6 +107,9 @@ accessibility masa depan cukup mengatur flag ini.
 # Visual states tanpa panggilan model
 godot --path game -- --screenshot=/tmp/home.png
 godot --path game -- --collection --screenshot=/tmp/collection.png
+godot --path game -- --collection-sheet-demo --screenshot=/tmp/collection-sheet.png
+godot --path game -- --empty-demo --screenshot=/tmp/empty.png
+godot --path game -- --summon-demo
 godot --path game -- --stats --screenshot=/tmp/profile.png
 godot --path game -- --preview=$PWD/eval/photos/mug-putih.jpg \
   --screenshot=/tmp/scan.png

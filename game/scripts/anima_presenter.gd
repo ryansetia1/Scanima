@@ -247,3 +247,33 @@ func hatch_reveal() -> void:
 
 	modulate = Color.WHITE
 	_start_motion(_current_pose)
+
+
+func summon_dissolve() -> void:
+	if sprite_frames == null or not visible:
+		return
+	if _motion != null and _motion.is_valid():
+		_motion.kill()
+	if _feedback != null and _feedback.is_valid():
+		_feedback.kill()
+	if UiMotion.reduced_motion:
+		visible = false
+		return
+
+	var dissolve := create_tween().set_parallel(true)
+	dissolve.tween_property(self, "modulate", Color(0.45, 0.92, 1.25, 0.0), 0.28) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	dissolve.tween_property(self, "scale", Vector2(0.66, 1.12), 0.28) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_BACK)
+	dissolve.tween_property(self, "position", _base_position - Vector2(0.0, 28.0), 0.28)
+	dissolve.tween_property(self, "rotation", 0.08, 0.28)
+	await dissolve.finished
+	visible = false
+	position = _base_position
+	scale = Vector2.ONE
+	rotation = 0.0
+	modulate = Color.WHITE
+
+
+func summon_reveal() -> void:
+	await hatch_reveal()

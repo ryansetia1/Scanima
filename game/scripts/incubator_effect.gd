@@ -20,6 +20,7 @@ var _charge := 0.0
 var _burst := 0.0
 var _redraw_accumulator := 0.0
 var _active := false
+var _portal_only := false
 var _fx_tween: Tween = null
 
 
@@ -36,6 +37,7 @@ func start() -> void:
 	_burst = 0.0
 	_redraw_accumulator = 0.0
 	_active = true
+	_portal_only = false
 	visible = true
 	scale = Vector2(0.94, 0.94)
 	modulate = Color(1.0, 1.0, 1.0, 0.0)
@@ -51,6 +53,36 @@ func start() -> void:
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	_fx_tween.tween_property(self, "modulate:a", 1.0, 0.24) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+
+
+func start_portal() -> void:
+	if _fx_tween != null and _fx_tween.is_valid():
+		_fx_tween.kill()
+	_phase = 0.0
+	_charge = 1.0
+	_burst = 0.0
+	_redraw_accumulator = 0.0
+	_active = true
+	_portal_only = true
+	visible = true
+	scale = Vector2(0.72, 0.72)
+	modulate = Color(1.0, 1.0, 1.0, 0.0)
+	set_process(true)
+	queue_redraw()
+	if UiMotion.reduced_motion:
+		_active = false
+		_portal_only = false
+		visible = false
+		set_process(false)
+		await get_tree().process_frame
+		return
+
+	_fx_tween = create_tween().set_parallel(true)
+	_fx_tween.tween_property(self, "scale", BASE_SCALE, 0.32) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	_fx_tween.tween_property(self, "modulate:a", 1.0, 0.18) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	await get_tree().create_timer(0.18).timeout
 
 
 ## Mengembang dan memutihkan ring, lalu mengembalikan kontrol tepat saat flash
@@ -82,6 +114,7 @@ func stop() -> void:
 		_fx_tween.kill()
 	_fx_tween = null
 	_active = false
+	_portal_only = false
 	visible = false
 	set_process(false)
 	scale = Vector2.ONE
@@ -96,6 +129,7 @@ func is_active() -> bool:
 func _finish_burst() -> void:
 	_fx_tween = null
 	_active = false
+	_portal_only = false
 	visible = false
 	set_process(false)
 	scale = Vector2.ONE
@@ -166,53 +200,69 @@ func _draw() -> void:
 			true
 		)
 
-	# Telur energi: bagian atas lebih ramping, bagian bawah lebih penuh.
-	var egg := _egg_points(center, 76.0 * pulse, 108.0 * pulse, 72)
-	draw_colored_polygon(egg, _alpha(CORE_DARK, 0.96))
-	draw_polyline(_closed(egg), _alpha(BLUE, 0.62 * energy), 9.0, true)
-	draw_polyline(_closed(egg), _alpha(CYAN, 0.92 * energy), 3.0, true)
+	if _portal_only:
+		var portal_radius := 76.0 + sin(_phase * 5.0) * 5.0
+		draw_circle(center, portal_radius, _alpha(CORE_DARK, 0.88))
+		draw_arc(center, portal_radius, 0.0, TAU, 64, _alpha(CYAN, 0.92), 7.0, true)
+		draw_arc(
+			center,
+			portal_radius - 17.0,
+			_phase * 1.8,
+			_phase * 1.8 + TAU * 0.72,
+			42,
+			_alpha(VIOLET, 0.88),
+			5.0,
+			true
+		)
+		draw_circle(center, 18.0 + sin(_phase * 6.0) * 3.0, _alpha(GOLD, 0.72))
+	else:
+		# Telur energi: bagian atas lebih ramping, bagian bawah lebih penuh.
+		var egg := _egg_points(center, 76.0 * pulse, 108.0 * pulse, 72)
+		draw_colored_polygon(egg, _alpha(CORE_DARK, 0.96))
+		draw_polyline(_closed(egg), _alpha(BLUE, 0.62 * energy), 9.0, true)
+		draw_polyline(_closed(egg), _alpha(CYAN, 0.92 * energy), 3.0, true)
 
-	# Garis material holografik dan scanner hidup di dalam silhouette telur.
-	for row in 5:
-		var y := center.y - 68.0 + row * 34.0
-		var half_width := _egg_half_width(y - center.y, 70.0, 102.0)
+		# Garis material holografik dan scanner hidup di dalam silhouette telur.
+		for row in 5:
+			var y := center.y - 68.0 + row * 34.0
+			var half_width := _egg_half_width(y - center.y, 70.0, 102.0)
+			draw_line(
+				Vector2(-half_width, y),
+				Vector2(half_width, y),
+				_alpha(BLUE if row % 2 == 0 else VIOLET, 0.20),
+				1.5,
+				true
+			)
+
+		var scan_t := fposmod(_phase * 0.36, 1.0)
+		var scan_y := center.y - 82.0 + scan_t * 164.0
+		var scan_half := _egg_half_width(scan_y - center.y, 70.0, 102.0)
 		draw_line(
-			Vector2(-half_width, y),
-			Vector2(half_width, y),
-			_alpha(BLUE if row % 2 == 0 else VIOLET, 0.20),
-			1.5,
+			Vector2(-scan_half, scan_y),
+			Vector2(scan_half, scan_y),
+			_alpha(CYAN, 0.88),
+			4.0,
+			true
+		)
+		draw_line(
+			Vector2(-scan_half * 0.7, scan_y + 7.0),
+			Vector2(scan_half * 0.7, scan_y + 7.0),
+			_alpha(CYAN, 0.18),
+			10.0,
 			true
 		)
 
-	var scan_t := fposmod(_phase * 0.36, 1.0)
-	var scan_y := center.y - 82.0 + scan_t * 164.0
-	var scan_half := _egg_half_width(scan_y - center.y, 70.0, 102.0)
-	draw_line(
-		Vector2(-scan_half, scan_y),
-		Vector2(scan_half, scan_y),
-		_alpha(CYAN, 0.88),
-		4.0,
-		true
-	)
-	draw_line(
-		Vector2(-scan_half * 0.7, scan_y + 7.0),
-		Vector2(scan_half * 0.7, scan_y + 7.0),
-		_alpha(CYAN, 0.18),
-		10.0,
-		true
-	)
-
-	# Core berlian berdenyut sebagai focal point.
-	var core_scale := 1.0 + sin(_phase * 5.4) * 0.08
-	var diamond := PackedVector2Array([
-		center + Vector2(0.0, -27.0) * core_scale,
-		center + Vector2(21.0, 0.0) * core_scale,
-		center + Vector2(0.0, 27.0) * core_scale,
-		center + Vector2(-21.0, 0.0) * core_scale,
-	])
-	draw_colored_polygon(diamond, _alpha(VIOLET, 0.42))
-	draw_polyline(_closed(diamond), _alpha(CYAN, 0.95), 3.0, true)
-	draw_circle(center, 8.0 + sin(_phase * 6.0) * 2.0, _alpha(GOLD, 0.95))
+		# Core berlian berdenyut sebagai focal point.
+		var core_scale := 1.0 + sin(_phase * 5.4) * 0.08
+		var diamond := PackedVector2Array([
+			center + Vector2(0.0, -27.0) * core_scale,
+			center + Vector2(21.0, 0.0) * core_scale,
+			center + Vector2(0.0, 27.0) * core_scale,
+			center + Vector2(-21.0, 0.0) * core_scale,
+		])
+		draw_colored_polygon(diamond, _alpha(VIOLET, 0.42))
+		draw_polyline(_closed(diamond), _alpha(CYAN, 0.95), 3.0, true)
+		draw_circle(center, 8.0 + sin(_phase * 6.0) * 2.0, _alpha(GOLD, 0.95))
 
 	# Orbit spark: cyan/violet menjaga bahasa futuristik, gold memberi aksen
 	# premium. Ukurannya berubah, tetapi jumlah draw call tetap konstan.

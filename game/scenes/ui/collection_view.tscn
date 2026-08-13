@@ -1,6 +1,43 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/collection_view.gd" id="1_collection"]
+[ext_resource type="Texture2D" path="res://assets/icons/paw-print.svg" id="2_profile"]
+[ext_resource type="Texture2D" path="res://assets/icons/sparkles.svg" id="3_summon"]
+
+[sub_resource type="StyleBoxFlat" id="NeedBackground"]
+bg_color = Color(0.025, 0.04, 0.09, 0.96)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
+
+[sub_resource type="StyleBoxFlat" id="HungerFill"]
+bg_color = Color(0.95, 0.42, 0.28, 1)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
+
+[sub_resource type="StyleBoxFlat" id="EnergyFill"]
+bg_color = Color(0.3, 0.84, 1, 1)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
+
+[sub_resource type="StyleBoxFlat" id="HygieneFill"]
+bg_color = Color(0.42, 0.9, 0.72, 1)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
+
+[sub_resource type="StyleBoxFlat" id="BondFill"]
+bg_color = Color(0.83, 0.48, 1, 1)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
 
 [node name="CollectionView" type="Control"]
 unique_name_in_owner = true
@@ -40,6 +77,13 @@ theme_type_variation = &"MutedLabel"
 text = "COLLECTION_EMPTY"
 autowrap_mode = 2
 
+[node name="CollectionEmptyAction" type="Button" parent="Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "COLLECTION_START_SCAN"
+
 [node name="AnimaList" type="ItemList" parent="Column"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -53,3 +97,362 @@ allow_reselect = true
 theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 12
 theme_override_font_sizes/font_size = 25
+
+[node name="CollectionSheetOverlay" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Backdrop" type="ColorRect" parent="CollectionSheetOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.004, 0.008, 0.025, 0.78)
+
+[node name="CollectionSheetDismiss" type="Button" parent="CollectionSheetOverlay"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+flat = true
+
+[node name="Bottom" type="Control" parent="CollectionSheetOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Spacer" type="Control" parent="CollectionSheetOverlay/Bottom"]
+visible = false
+layout_mode = 0
+mouse_filter = 2
+
+[node name="CollectionSheetPanel" type="PanelContainer" parent="CollectionSheetOverlay/Bottom"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -640.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 0
+theme_type_variation = &"ModalPanel"
+
+[node name="Column" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="HandleCenter" type="CenterContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
+layout_mode = 2
+
+[node name="Handle" type="ColorRect" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/HandleCenter"]
+custom_minimum_size = Vector2(84, 7)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.4, 0.5, 0.68, 0.72)
+
+[node name="Header" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="CollectionSheetPortrait" type="TextureRect" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 132)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Identity" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="CollectionSheetName" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AnimaNameLabel"
+theme_override_font_sizes/font_size = 38
+text = "ANIMA_FALLBACK_NAME"
+text_overrun_behavior = 3
+
+[node name="CollectionSheetMeta" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+theme_override_font_sizes/font_size = 23
+text = "COLLECTION_SHEET_META"
+autowrap_mode = 2
+
+[node name="CollectionActiveBadge" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "COLLECTION_ACTIVE"
+
+[node name="BaseTitle" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "COLLECTION_BASE_STATS"
+
+[node name="BaseStats" type="GridContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+columns = 5
+
+[node name="Hp" type="PanelContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Hp"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Hp/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+theme_override_font_sizes/font_size = 19
+text = "STAT_HP"
+horizontal_alignment = 1
+
+[node name="SheetStatHp" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Hp/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+theme_override_font_sizes/font_size = 25
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+
+[node name="Attack" type="PanelContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Attack"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Attack/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+theme_override_font_sizes/font_size = 19
+text = "STAT_ATK"
+horizontal_alignment = 1
+
+[node name="SheetStatAttack" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Attack/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+theme_override_font_sizes/font_size = 25
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+
+[node name="Defense" type="PanelContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Defense"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Defense/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+theme_override_font_sizes/font_size = 19
+text = "STAT_DEF"
+horizontal_alignment = 1
+
+[node name="SheetStatDefense" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Defense/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+theme_override_font_sizes/font_size = 25
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+
+[node name="Speed" type="PanelContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Speed"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Speed/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+theme_override_font_sizes/font_size = 19
+text = "STAT_SPD"
+horizontal_alignment = 1
+
+[node name="SheetStatSpeed" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Speed/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+theme_override_font_sizes/font_size = 25
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+
+[node name="Special" type="PanelContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Special"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Special/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+theme_override_font_sizes/font_size = 19
+text = "STAT_SPECIAL"
+horizontal_alignment = 1
+
+[node name="SheetStatSpecial" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/BaseStats/Special/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+theme_override_font_sizes/font_size = 25
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+
+[node name="ConditionHeader" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionLabel"
+text = "COLLECTION_CONDITION"
+
+[node name="CollectionConditionStatus" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 19
+text = "COLLECTION_CONDITION_LOADING"
+horizontal_alignment = 2
+
+[node name="CareRows" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Hunger" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Hunger"]
+custom_minimum_size = Vector2(118, 0)
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 20
+text = "CARE_HUNGER"
+
+[node name="SheetCareHunger" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Hunger"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("NeedBackground")
+theme_override_styles/fill = SubResource("HungerFill")
+value = 100.0
+show_percentage = false
+
+[node name="Energy" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Energy"]
+custom_minimum_size = Vector2(118, 0)
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 20
+text = "CARE_ENERGY"
+
+[node name="SheetCareEnergy" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Energy"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("NeedBackground")
+theme_override_styles/fill = SubResource("EnergyFill")
+value = 100.0
+show_percentage = false
+
+[node name="Hygiene" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Hygiene"]
+custom_minimum_size = Vector2(118, 0)
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 20
+text = "CARE_HYGIENE"
+
+[node name="SheetCareHygiene" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Hygiene"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("NeedBackground")
+theme_override_styles/fill = SubResource("HygieneFill")
+value = 100.0
+show_percentage = false
+
+[node name="Bond" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Bond"]
+custom_minimum_size = Vector2(118, 0)
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 20
+text = "CARE_BOND"
+
+[node name="SheetCareBond" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Bond"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("NeedBackground")
+theme_override_styles/fill = SubResource("BondFill")
+show_percentage = false
+
+[node name="Actions" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CollectionProfileButton" type="Button" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+icon = ExtResource("2_profile")
+text = "COLLECTION_VIEW_PROFILE"
+
+[node name="CollectionSummonButton" type="Button" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+icon = ExtResource("3_summon")
+text = "COLLECTION_SUMMON"

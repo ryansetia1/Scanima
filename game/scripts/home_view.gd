@@ -2,6 +2,8 @@ class_name HomeView
 extends Control
 
 signal care_requested(action: String)
+signal first_scan_requested
+signal retry_requested
 
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
@@ -9,6 +11,7 @@ const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 @onready var _anima_name: Label = %AnimaName
 @onready var _anima_meta: Label = %AnimaMeta
 @onready var _care_dock: PanelContainer = %CareDock
+@onready var _primary_action: Button = %HomePrimaryAction
 @onready var _care_summary: Label = %CareSummary
 @onready var _need_hunger: ProgressBar = %NeedHunger
 @onready var _need_energy: ProgressBar = %NeedEnergy
@@ -21,6 +24,7 @@ const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 @onready var _play_button: Button = %PlayButton
 
 var _row: Dictionary = {}
+var _shell_state := &"loading"
 
 
 func _ready() -> void:
@@ -28,6 +32,7 @@ func _ready() -> void:
 	_clean_button.pressed.connect(care_requested.emit.bind("clean"))
 	_sleep_button.pressed.connect(_request_sleep_toggle)
 	_play_button.pressed.connect(care_requested.emit.bind("play"))
+	_primary_action.pressed.connect(_request_primary_action)
 	resized.connect(_update_action_columns)
 	LocaleManager.locale_changed.connect(_update_action_columns)
 	_update_action_columns.call_deferred()
@@ -36,19 +41,44 @@ func _ready() -> void:
 func set_anima(row: Dictionary, busy: bool) -> void:
 	_row = row.duplicate(true)
 	if _row.is_empty():
-		_anima_name.text = tr("HOME_EMPTY_NAME")
-		_anima_meta.text = tr("HOME_EMPTY_META")
-		_care_dock.visible = false
-		_set_buttons_disabled(true)
+		if _shell_state != &"loading" and _shell_state != &"error":
+			set_shell_state(&"empty")
 		return
 
+	_shell_state = &"ready"
 	_anima_name.text = LocaleManager.display_name(_row)
 	_anima_meta.text = tr("HOME_IDENTITY_META") % [
 		LocaleManager.element_name(str(_row.get("element", ""))),
 		LocaleManager.stage_name(int(_row.get("stage", 1))),
 	]
 	_identity.visible = true
+	_primary_action.visible = false
 	update_care(_row, busy)
+
+
+func set_shell_state(state: StringName) -> void:
+	_shell_state = state
+	_row = {}
+	_care_dock.visible = false
+	_set_buttons_disabled(true)
+	_identity.visible = true
+	_primary_action.visible = state == &"empty" or state == &"error"
+	match state:
+		&"error":
+			_anima_name.text = tr("HOME_ERROR_NAME")
+			_anima_meta.text = tr("HOME_ERROR_META")
+			_primary_action.text = tr("ACTION_RETRY")
+		&"empty":
+			_anima_name.text = tr("HOME_EMPTY_NAME")
+			_anima_meta.text = tr("HOME_EMPTY_META")
+			_primary_action.text = tr("HOME_EMPTY_CTA")
+		_:
+			_anima_name.text = tr("HOME_LOADING_NAME")
+			_anima_meta.text = tr("HOME_LOADING_META")
+
+
+func shell_state() -> StringName:
+	return _shell_state
 
 
 func update_care(row: Dictionary, busy: bool) -> void:
@@ -79,11 +109,19 @@ func update_care(row: Dictionary, busy: bool) -> void:
 
 
 func set_busy(busy: bool) -> void:
+	_primary_action.disabled = busy
 	_update_action_state(busy or typeof(_row.get("care")) != TYPE_DICTIONARY)
 
 
 func _request_sleep_toggle() -> void:
 	care_requested.emit("wake" if _has_timestamp(_row.get("sleep_started_at")) else "sleep")
+
+
+func _request_primary_action() -> void:
+	if _shell_state == &"error":
+		retry_requested.emit()
+	elif _shell_state == &"empty":
+		first_scan_requested.emit()
 
 
 func _set_buttons_disabled(disabled: bool) -> void:

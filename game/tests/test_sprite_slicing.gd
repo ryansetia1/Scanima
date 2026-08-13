@@ -292,6 +292,14 @@ func _test_presenter() -> void:
 	_check(presenter.visible, "hatch reveal harus menampilkan Anima")
 	_check(presenter.scale.is_equal_approx(Vector2.ONE), "hatch reveal harus kembali ke skala pose")
 	_check_eq(presenter.current_pose(), "idle", "hatch reveal tidak boleh mengganti pose")
+	await presenter.summon_dissolve()
+	_check(not presenter.visible, "summon dissolve harus menyembunyikan companion lama")
+	await presenter.summon_reveal()
+	_check(presenter.visible, "summon reveal harus menampilkan companion pilihan")
+	_check(
+		presenter.scale.is_equal_approx(Vector2.ONE),
+		"summon transition harus mengembalikan transform pose"
+	)
 
 	presenter.free()
 

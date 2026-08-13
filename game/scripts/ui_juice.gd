@@ -8,6 +8,7 @@ extends RefCounted
 const META_INSTALLED := &"_scanima_juice_installed"
 const META_TWEEN := &"_scanima_juice_tween"
 const META_METER_TWEEN := &"_scanima_meter_tween"
+const META_SHEET_POSITION := &"_scanima_sheet_position"
 
 
 static func install_buttons(root: Node) -> void:
@@ -116,6 +117,56 @@ static func hide_overlay(overlay: Control, panel: Control) -> void:
 		overlay.modulate = Color.WHITE
 	if is_instance_valid(panel):
 		panel.scale = Vector2.ONE
+		panel.modulate = Color.WHITE
+
+
+static func show_bottom_sheet(overlay: Control, panel: Control) -> void:
+	_kill_tween(overlay)
+	overlay.visible = true
+	var target := panel.position
+	panel.set_meta(META_SHEET_POSITION, target)
+	if UiMotion.reduced_motion:
+		overlay.modulate = Color.WHITE
+		panel.position = target
+		panel.modulate = Color.WHITE
+		return
+
+	overlay.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	panel.position = target + Vector2(0.0, panel.size.y + 24.0)
+	panel.modulate = Color(0.84, 0.94, 1.08, 1.0)
+	var tween := overlay.create_tween().set_parallel(true)
+	tween.tween_property(overlay, "modulate", Color.WHITE, 0.20) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(panel, "position", target, 0.38) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(panel, "modulate", Color.WHITE, 0.26)
+	overlay.set_meta(META_TWEEN, tween)
+
+
+static func hide_bottom_sheet(overlay: Control, panel: Control) -> void:
+	if not overlay.visible:
+		return
+	_kill_tween(overlay)
+	var target: Vector2 = panel.get_meta(META_SHEET_POSITION, panel.position)
+	if UiMotion.reduced_motion:
+		overlay.visible = false
+		overlay.modulate = Color.WHITE
+		panel.position = target
+		panel.modulate = Color.WHITE
+		return
+
+	var tween := overlay.create_tween().set_parallel(true)
+	tween.tween_property(overlay, "modulate:a", 0.0, 0.18) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(panel, "position", target + Vector2(0.0, panel.size.y + 24.0), 0.24) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	overlay.set_meta(META_TWEEN, tween)
+	await tween.finished
+	if is_instance_valid(overlay):
+		overlay.visible = false
+		overlay.modulate = Color.WHITE
+	if is_instance_valid(panel):
+		panel.position = target
 		panel.modulate = Color.WHITE
 
 

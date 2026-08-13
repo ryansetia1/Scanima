@@ -1,17 +1,62 @@
 class_name CollectionView
 extends Control
 
-signal anima_selected(row: Dictionary)
+signal preview_requested(row: Dictionary, revision: int)
+signal profile_requested(row: Dictionary)
+signal summon_requested(row: Dictionary, care_synced: bool)
+signal first_scan_requested
+signal retry_requested
 
 @onready var _status: Label = %CollectionStatus
 @onready var _list: ItemList = %AnimaList
+@onready var _empty_action: Button = %CollectionEmptyAction
+@onready var _sheet_overlay: Control = %CollectionSheetOverlay
+@onready var _sheet_panel: PanelContainer = %CollectionSheetPanel
+@onready var _sheet_dismiss: Button = %CollectionSheetDismiss
+@onready var _sheet_portrait: TextureRect = %CollectionSheetPortrait
+@onready var _sheet_name: Label = %CollectionSheetName
+@onready var _sheet_meta: Label = %CollectionSheetMeta
+@onready var _active_badge: Label = %CollectionActiveBadge
+@onready var _condition_status: Label = %CollectionConditionStatus
+@onready var _profile_button: Button = %CollectionProfileButton
+@onready var _summon_button: Button = %CollectionSummonButton
+
+@onready var _base_values := {
+	"hp": %SheetStatHp,
+	"atk": %SheetStatAttack,
+	"def": %SheetStatDefense,
+	"spd": %SheetStatSpeed,
+	"special": %SheetStatSpecial,
+}
+@onready var _care_meters := {
+	"hunger": %SheetCareHunger,
+	"energy": %SheetCareEnergy,
+	"hygiene": %SheetCareHygiene,
+	"bond": %SheetCareBond,
+}
+
+var _active_id := ""
+var _selected_row: Dictionary = {}
+var _thumbnail_provider: Callable
+var _care_cache: Dictionary = {}
+var _revision := 0
+var _busy := false
+var _condition_loading := false
+var _condition_synced := false
+var _empty_mode := &"scan"
 
 
 func _ready() -> void:
 	_list.item_selected.connect(_on_item_selected)
+	_empty_action.pressed.connect(_on_empty_action)
+	_sheet_dismiss.pressed.connect(close_sheet)
+	_profile_button.pressed.connect(_view_profile)
+	_summon_button.pressed.connect(_summon)
 
 
 func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Callable) -> void:
+	_active_id = active_id
+	_thumbnail_provider = thumbnail_provider
 	_list.clear()
 	var selected := -1
 	for row in rows:
@@ -36,19 +81,105 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 			selected = index
 	if selected >= 0:
 		_list.select(selected)
+	_list.visible = not rows.is_empty()
 	_status.text = (
 		tr("COLLECTION_EMPTY")
 		if rows.is_empty()
 		else tr("COLLECTION_COUNT") % LocaleManager.format_integer(rows.size())
 	)
+	_empty_mode = &"scan"
+	_empty_action.text = tr("COLLECTION_START_SCAN")
+	_empty_action.visible = rows.is_empty()
+	if not _selected_row.is_empty():
+		var selected_id := str(_selected_row.get("id", ""))
+		var replacement := _row_with_id(rows, selected_id)
+		if replacement.is_empty():
+			close_sheet()
+		else:
+			_selected_row = replacement
+			_update_active_state()
 
 
 func set_error() -> void:
 	_status.text = tr("STATUS_ROSTER_ERROR")
+	_list.visible = false
+	_empty_mode = &"retry"
+	_empty_action.text = tr("ACTION_RETRY")
+	_empty_action.visible = true
+	close_sheet()
 
 
 func set_busy(busy: bool) -> void:
+	_busy = busy
 	_list.mouse_filter = Control.MOUSE_FILTER_IGNORE if busy else Control.MOUSE_FILTER_STOP
+	_empty_action.disabled = busy
+	_update_action_state()
+
+
+func begin_visit() -> void:
+	_care_cache.clear()
+	close_sheet()
+
+
+func is_sheet_open() -> bool:
+	return _sheet_overlay.visible
+
+
+func selected_revision() -> int:
+	return _revision
+
+
+func show_preview(row: Dictionary, request_sync: bool = true) -> void:
+	if row.is_empty():
+		return
+	_selected_row = row.duplicate(true)
+	_revision += 1
+	_fill_identity()
+	_fill_base_stats()
+	_update_active_state()
+
+	var anima_id := str(_selected_row.get("id", ""))
+	if _care_cache.has(anima_id):
+		_selected_row = GameState.as_dict(_care_cache[anima_id])
+		_fill_identity()
+		_fill_base_stats()
+		_apply_condition(_selected_row, true)
+	elif not request_sync:
+		_apply_condition(_selected_row, true)
+	else:
+		_set_condition_loading()
+		preview_requested.emit(_selected_row.duplicate(true), _revision)
+	call_deferred("_reveal_sheet", _revision)
+
+
+func apply_care_sync(row: Dictionary, revision: int) -> bool:
+	if not _selection_matches(row, revision):
+		return false
+	var normalized := row.duplicate(true)
+	_care_cache[str(normalized.get("id", ""))] = normalized
+	_selected_row = normalized
+	_apply_condition(normalized, true)
+	return true
+
+
+func set_care_sync_error(revision: int) -> void:
+	if revision != _revision or _selected_row.is_empty() or not _sheet_overlay.visible:
+		return
+	_apply_condition(_selected_row, false)
+	_condition_status.text = tr("COLLECTION_CONDITION_ERROR")
+	_condition_status.visible = true
+
+
+func close_sheet() -> void:
+	if not _sheet_overlay.visible:
+		return
+	_revision += 1
+	UiJuice.hide_bottom_sheet(_sheet_overlay, _sheet_panel)
+
+
+func set_sheet_busy(busy: bool) -> void:
+	_busy = busy
+	_update_action_state()
 
 
 func _on_item_selected(index: int) -> void:
@@ -56,4 +187,102 @@ func _on_item_selected(index: int) -> void:
 		return
 	var row := GameState.as_dict(_list.get_item_metadata(index))
 	if not row.is_empty():
-		anima_selected.emit(row)
+		show_preview(row)
+
+
+func _fill_identity() -> void:
+	_sheet_name.text = LocaleManager.display_name(_selected_row)
+	_sheet_meta.text = tr("COLLECTION_SHEET_META") % [
+		LocaleManager.element_name(str(_selected_row.get("element", ""))),
+		LocaleManager.stage_name(int(_selected_row.get("stage", 1))),
+		LocaleManager.format_integer(int(_selected_row.get("rarity", 1))),
+	]
+	_sheet_portrait.texture = (
+		_thumbnail_provider.call(_selected_row)
+		if _thumbnail_provider.is_valid()
+		else null
+	)
+
+
+func _fill_base_stats() -> void:
+	var stats := GameState.as_dict(_selected_row.get("base_stats"))
+	for key in _base_values:
+		var value := _base_values[key] as Label
+		value.text = LocaleManager.format_integer(int(stats.get(key, 0)))
+
+
+func _set_condition_loading() -> void:
+	_condition_loading = true
+	_condition_synced = false
+	_condition_status.text = tr("COLLECTION_CONDITION_LOADING")
+	_condition_status.visible = true
+	for meter in _care_meters.values():
+		(meter as ProgressBar).modulate = Color(0.58, 0.64, 0.76, 0.42)
+	_update_action_state()
+
+
+func _apply_condition(row: Dictionary, synced: bool) -> void:
+	var care := CareRules.normalized_care(row.get("care"))
+	for key in _care_meters:
+		var meter := _care_meters[key] as ProgressBar
+		meter.modulate = Color.WHITE
+		UiJuice.tween_meter(meter, float(care[key]))
+	_condition_loading = false
+	_condition_synced = synced
+	_condition_status.visible = not synced
+	_update_action_state()
+
+
+func _update_active_state() -> void:
+	var active := str(_selected_row.get("id", "")) == _active_id
+	_active_badge.visible = active
+	_summon_button.text = tr("COLLECTION_SUMMONED") if active else tr("COLLECTION_SUMMON")
+	_update_action_state()
+
+
+func _update_action_state() -> void:
+	var has_selection := not _selected_row.is_empty()
+	var active := has_selection and str(_selected_row.get("id", "")) == _active_id
+	_profile_button.disabled = _busy or not has_selection
+	_summon_button.disabled = _busy or _condition_loading or not has_selection or active
+
+
+func _view_profile() -> void:
+	if _profile_button.disabled:
+		return
+	var row := _selected_row.duplicate(true)
+	close_sheet()
+	profile_requested.emit(row)
+
+
+func _summon() -> void:
+	if _summon_button.disabled:
+		return
+	summon_requested.emit(_selected_row.duplicate(true), _condition_synced)
+
+
+func _on_empty_action() -> void:
+	if _empty_mode == &"retry":
+		retry_requested.emit()
+	else:
+		first_scan_requested.emit()
+
+
+func _selection_matches(row: Dictionary, revision: int) -> bool:
+	return (
+		revision == _revision
+		and _sheet_overlay.visible
+		and str(row.get("id", "")) == str(_selected_row.get("id", ""))
+	)
+
+
+func _reveal_sheet(revision: int) -> void:
+	if revision == _revision:
+		UiJuice.show_bottom_sheet(_sheet_overlay, _sheet_panel)
+
+
+static func _row_with_id(rows: Array[Dictionary], anima_id: String) -> Dictionary:
+	for row in rows:
+		if str(row.get("id", "")) == anima_id:
+			return row
+	return {}

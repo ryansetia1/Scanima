@@ -39,9 +39,9 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 **Jeda generation sekarang punya inkubator yang benar-benar hidup.** Setelah Genesis dimulai, foto atau Anima lama diganti telur energi procedural dengan orbit cyan-violet, scanner, spark emas, dan core yang berdenyut—tanpa asset tambahan. Ia tetap berjalan selama polling Replicate, termasuk saat pending scan dilanjutkan setelah restart. Saat webhook selesai, ring meledak menjadi flash lalu Anima muncul dengan bounce, squash-and-stretch, dan settle; kegagalan/timeout mengembalikan Anima lama. Cache hit tetap instan dan tidak memalsukan proses hatch.
 
-**UI sekarang berupa shell game mobile empat destination: Home, Scan, Collection, dan Anima Profile.** Home menjadikan Anima hero visual, kebutuhan diringkas dalam care dock, feedback mengambang tanpa mendorong layout, dan Scan tetap CTA cyan utama di bottom navigation. Keempat destination adalah child scene modular di dalam satu `scan_flow.tscn`, jadi pindah tab tidak me-reset request, pending scan, Stage, atau inkubator. Chip Core membuka penjelasan Genesis tanpa memenuhi HUD; Bond penuh menutup Play, dan saat tidur hanya Wake yang tersisa selebar dock. Timer berbasis timestamp server serta sync saat resume membangunkan Anima otomatis setelah enam jam tanpa mempercayai jam device. Seluruh copy production memakai katalog English Godot-native; `LocaleManager` menjadi pintu locale dan formatting untuk bahasa berikutnya. Theme cyan-violet-gold kini memakai font OFL Nunito Sans/Oxanium, ikon SVG berlisensi, touch target 96px, serta reduced-motion gate bersama. Pose debug hanya tinggal di `anima_demo`. `test_scan_ui.gd` menjaga 137 kontrak shell/touch/motion dan `test_i18n.gd` menjaga 913 kontrak katalog/formatter/layout.
+**UI sekarang berupa shell game mobile empat destination: Home, Scan, Collection, dan Anima Profile.** Home menjadikan Anima hero visual, kebutuhan diringkas dalam care dock, feedback mengambang tanpa mendorong layout, dan Scan tetap CTA cyan utama di bottom navigation. Keempat destination adalah child scene modular di dalam satu `scan_flow.tscn`, jadi pindah tab tidak me-reset request, pending scan, Stage, atau inkubator. Chip Core membuka penjelasan Genesis tanpa memenuhi HUD; Bond penuh menutup Play, dan saat tidur hanya Wake yang tersisa selebar dock. Timer berbasis timestamp server serta sync saat resume membangunkan Anima otomatis setelah enam jam tanpa mempercayai jam device. Seluruh copy production memakai katalog English Godot-native; `LocaleManager` menjadi pintu locale dan formatting untuk bahasa berikutnya. Theme cyan-violet-gold kini memakai font OFL Nunito Sans/Oxanium, ikon SVG berlisensi, touch target 96px, serta reduced-motion gate bersama. Pose debug hanya tinggal di `anima_demo`. `test_scan_ui.gd` menjaga 171 kontrak shell/touch/motion dan `test_i18n.gd` menjaga 1050 kontrak katalog/formatter/layout.
 
-**Pemilihan dan pengelolaan roster sekarang lebih langsung.** Tap Anima di Collection memuat pilihan itu lalu membuka Home, bukan memaksa pemain melewati Profile. Setiap hatch menawarkan rename opsional dengan nama generated sebagai nilai awal. Anima aktif dapat dihapus permanen dari Profile setelah konfirmasi; tidak ada refund mata uang, generation audit dan shared species art tetap disimpan, lalu Home memilih Anima berikutnya atau kembali kosong. Policy DELETE owner-only sudah diterapkan ke project production dan lolos uji ownership, audit, cascade, serta no-refund.
+**Collection sekarang memisahkan inspect dari Summon.** Tap kartu membuka bottom sheet dengan portrait, lima base stat, dan empat care meter yang disinkronkan server. `View Profile` membuka stats/delete tanpa mengganti companion aktif; `Summon` baru memindahkan pilihan ke Home melalui dissolve, portal cyan-violet, dan reveal, tanpa biaya atau model call. Roster yang benar-benar kosong menampilkan scanner procedural serta CTA first scan di Home dan Collection; loading atau error jaringan tidak lagi menyamar sebagai pemain baru. Setiap hatch tetap menawarkan rename opsional. Delete owner-only sudah live di production dan tetap tanpa refund.
 
 **Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; Feed memberi satu hop, Play memberi enam bounce selama sekitar 2,5 detik, dan pose Damaged melakukan heavy breathing loop selama Dormant. Meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
 
@@ -65,7 +65,7 @@ Yang sudah bisa dijalankan sekarang, gratis:
 npm install
 npm run selftest                 # 21 skenario + 12 uji tanda tangan webhook, tanpa API
 
-# Godot: 86 pemeriksaan slicing/presenter, tanpa jendela
+# Godot: 89 pemeriksaan slicing/presenter, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_sprite_slicing.gd
 
@@ -73,11 +73,11 @@ npm run selftest                 # 21 skenario + 12 uji tanda tangan webhook, ta
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 137 pemeriksaan shell, theme, touch, care, roster, reduced motion
+# Godot: 171 pemeriksaan shell, theme, touch, care, roster, reduced motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
 
-# Godot: 913 pemeriksaan katalog English, referensi key, formatter, dan layout
+# Godot: 1050 pemeriksaan katalog English, referensi key, formatter, dan layout
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_i18n.gd
 
@@ -144,6 +144,7 @@ Satu Anima = satu panggilan image generation = **~$0.07** pada GPT Image 2 mediu
 | [docs/04-game-systems-economy.md](docs/04-game-systems-economy.md) | Survival mechanics, evo-tree, kuota, ekonomi dengan angka nyata, algoritma battle |
 | [docs/05-roadmap.md](docs/05-roadmap.md) | Breakdown Phase 1-4 dengan exit criteria dan risiko |
 | [docs/06-ui-globalization.md](docs/06-ui-globalization.md) | Shell mobile empat destination, design tokens, i18n, accessibility, dan aturan penambahan locale |
+| [docs/07-collection-summon-and-empty-state.md](docs/07-collection-summon-and-empty-state.md) | Desain bottom sheet Collection, transisi Summon, dan empty state pemain tanpa Anima |
 | [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md) | Sumber art direction v2: linework, cel shading, transformasi objek, pose, dan negative style |
 | [CLAUDE.md](CLAUDE.md) | Konteks dan konvensi untuk AI coding agent |
 
@@ -179,8 +180,8 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 137 kontrak shell + touch + roster
-│       ├── test_i18n.gd              # 913 kontrak katalog + key + wrapping
+│       ├── test_scan_ui.gd           # 171 kontrak shell + touch + roster
+│       ├── test_i18n.gd              # 1050 kontrak katalog + key + wrapping
 │       ├── test_game_rules.gd        # 27 kontrak care tanpa jaringan
 │       └── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 ├── backend/

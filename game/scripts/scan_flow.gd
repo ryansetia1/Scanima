@@ -42,6 +42,7 @@ const SLEEP_SYNC_RETRY_SEC := 30.0
 const SLEEP_SYNC_EPSILON_SEC := 1.0
 
 @onready var _stage: Node2D = %Stage
+@onready var _first_anima_effect: FirstAnimaEffect = %FirstAnimaEffect
 @onready var _incubator: IncubatorEffect = %Incubator
 @onready var _anima: AnimaPresenter = %Anima
 @onready var _status: Label = %Status
@@ -69,6 +70,7 @@ const SLEEP_SYNC_EPSILON_SEC := 1.0
 var _busy := false
 var _roster: Array[Dictionary] = []
 var _current_anima: Dictionary = {}
+var _profile_anima: Dictionary = {}
 var _roster_error := ""
 var _placeholder_icon: Texture2D = null
 var _thumbnail_cache: Dictionary = {}
@@ -91,7 +93,13 @@ func _ready() -> void:
 	_sleep_completion_timer.timeout.connect(_sync_sleep_completion)
 	_scan_view.scan_requested.connect(_on_pick_pressed)
 	_home_view.care_requested.connect(_perform_care)
-	_collection_view.anima_selected.connect(_on_anima_selected)
+	_home_view.first_scan_requested.connect(_open_scan)
+	_home_view.retry_requested.connect(_retry_roster)
+	_collection_view.preview_requested.connect(_sync_collection_preview)
+	_collection_view.profile_requested.connect(_show_collection_profile)
+	_collection_view.summon_requested.connect(_summon_collection_anima)
+	_collection_view.first_scan_requested.connect(_open_scan)
+	_collection_view.retry_requested.connect(_retry_roster)
 	_details_view.delete_requested.connect(_show_delete_confirmation)
 	_bottom_nav.destination_selected.connect(_switch_destination)
 	_delete_anima_dialog.confirmed.connect(_delete_confirmed)
@@ -157,6 +165,12 @@ func _ready() -> void:
 			_say(tr("STATUS_INCUBATOR_DEMO"))
 		if arg == "--hatch-demo":
 			await _run_hatch_demo()
+		if arg == "--collection-sheet-demo":
+			_run_collection_sheet_demo()
+		if arg == "--empty-demo":
+			_run_empty_demo()
+		if arg == "--summon-demo":
+			await _run_summon_demo()
 		if arg.begins_with("--screenshot="):
 			await _capture_and_quit(arg.trim_prefix("--screenshot="))
 
@@ -176,6 +190,7 @@ func _notification(what: int) -> void:
 
 func _boot() -> void:
 	_set_busy(true)
+	_set_home_shell_state(&"loading")
 	_say(tr("STATUS_INITIALIZING"))
 
 	var sesi := await Backend.ensure_session()
@@ -183,13 +198,14 @@ func _boot() -> void:
 		# Kegagalan di sini tidak boleh terlihat seperti app rusak biasa: kalau
 		# refresh token ditolak, akun pemain berisiko tidak bisa dijangkau lagi.
 		print("session error: %s" % sesi.error)
+		_set_home_shell_state(&"error")
 		_say(tr("STATUS_ACCOUNT_ERROR"))
 		_set_busy(false)
 		return
 
 	await Backend.fetch_profile()
 	_refresh_header()
-	await _reload_roster()
+	var roster_loaded := await _reload_roster()
 	if not GameState.pending_care.is_empty():
 		_say(tr("STATUS_RESUMING_CARE"))
 		await _resume_pending_care()
@@ -209,6 +225,9 @@ func _boot() -> void:
 			_set_busy(true)
 			await _wait_for_hatch(anima_id)
 			_set_busy(false)
+	elif not roster_loaded:
+		_set_home_shell_state(&"error")
+		_say(tr("STATUS_ROSTER_ERROR"))
 	elif not _roster.is_empty():
 		var active := _active_row()
 		if active.is_empty():
@@ -219,25 +238,20 @@ func _boot() -> void:
 		_set_busy(true)
 		await _present_row(active)
 		_set_busy(false)
-	elif not GameState.last_anima.is_empty():
-		# Tanpa ini status berhenti di pesan boot, dan layar yang menampilkan
-		# Anima sambil berkata "Menyiapkan akun..." terbaca seperti macet.
-		var name := LocaleManager.display_name(GameState.last_anima)
-		_say(
-			tr("STATUS_ROSTER_ERROR")
-			if not _roster_error.is_empty()
-			else tr("STATUS_ROSTER_WAITING") % name
-		)
 	else:
+		_current_anima = {}
+		GameState.remember_anima({})
+		_anima.sprite_frames = null
+		_set_home_shell_state(&"empty")
 		_say(tr("STATUS_FIRST_SCAN"))
 
 
-func _reload_roster() -> void:
+func _reload_roster() -> bool:
 	var res := await Backend.fetch_animas()
 	if not res.ok or typeof(res.data) != TYPE_ARRAY:
 		_roster_error = res.error if not res.error.is_empty() else "balasan koleksi tidak sah"
 		_collection_view.set_error()
-		return
+		return false
 
 	var rows: Array = res.data
 	var ready: Array[Dictionary] = []
@@ -248,6 +262,7 @@ func _reload_roster() -> void:
 	_roster = ready
 	_roster_error = ""
 	_populate_collection()
+	return true
 
 
 func _active_row() -> Dictionary:
@@ -260,26 +275,108 @@ func _active_row() -> Dictionary:
 	return {}
 
 
-func _on_anima_selected(row: Dictionary) -> void:
+func _sync_collection_preview(row: Dictionary, revision: int) -> void:
+	var anima_id := str(row.get("id", ""))
+	if anima_id.is_empty():
+		return
+	var res := await Backend.care_anima(anima_id, "sync")
+	if not res.ok:
+		print("collection care sync error: %s" % res.error)
+		_collection_view.set_care_sync_error(revision)
+		return
+
+	var data := GameState.as_dict(res.data)
+	var synced := normalize_anima_data(GameState.as_dict(data.get("anima")))
+	if synced.is_empty():
+		_collection_view.set_care_sync_error(revision)
+		return
+	_apply_care_response(data)
+	_collection_view.apply_care_sync(synced, revision)
+
+
+func _show_collection_profile(row: Dictionary) -> void:
 	if row.is_empty() or _busy:
 		return
-	_switch_destination(BottomNav.HOME)
-	_anima.visible = false
+	_switch_destination(BottomNav.ANIMA, row)
+
+
+func _summon_collection_anima(row: Dictionary, care_synced: bool) -> void:
+	if row.is_empty() or _busy:
+		return
 	_set_busy(true)
-	await _present_row(row)
+	_collection_view.set_sheet_busy(true)
+	var loaded := await _prepare_anima_art(
+		str(row.get("species_key", "")),
+		str(row.get("color_bucket", "")),
+		int(row.get("stage", 1))
+	)
+	if not bool(loaded.get("ok", false)):
+		_collection_view.set_sheet_busy(false)
+		_set_busy(false)
+		return
+
+	_switch_destination(BottomNav.HOME)
+	await _anima.summon_dissolve()
+	await _incubator.start_portal()
+	_anima.apply(loaded)
+	_anima.visible = false
+
+	_current_anima = normalize_anima_data(row)
+	_profile_anima = {}
+	GameState.remember_anima({
+		"id": str(_current_anima.get("id", "")),
+		"nickname": str(_current_anima.get("nickname", "")),
+		"species_key": str(_current_anima.get("species_key", "")),
+		"color_bucket": str(_current_anima.get("color_bucket", "")),
+		"stage": int(_current_anima.get("stage", 1)),
+	})
+	_upsert_roster(_current_anima)
+	_refresh_stats()
+	_populate_collection()
+	await _incubator.burst()
+	await _anima.summon_reveal()
+	_refresh_care()
+	if not care_synced:
+		await _sync_active_care(false)
+	_set_busy(false)
+	_say(tr("COLLECTION_SUMMON_SUCCESS") % LocaleManager.display_name(_current_anima), true)
+
+
+func _open_scan() -> void:
+	_collection_view.close_sheet()
+	_switch_destination(BottomNav.SCAN)
+
+
+func _retry_roster() -> void:
+	if _busy:
+		return
+	_set_busy(true)
+	_set_home_shell_state(&"loading")
+	_say(tr("STATUS_LOADING_COLLECTION"))
+	var loaded := await _reload_roster()
+	if loaded and not _roster.is_empty():
+		var active := _active_row()
+		await _present_row(active if not active.is_empty() else _roster[0])
+	elif loaded:
+		_set_home_shell_state(&"empty")
+		_say(tr("STATUS_FIRST_SCAN"))
+	else:
+		_set_home_shell_state(&"error")
+		_say(tr("STATUS_ROSTER_ERROR"))
 	_set_busy(false)
 
 
 func _show_delete_confirmation(anima_id: String) -> void:
+	var details_row := _profile_anima if not _profile_anima.is_empty() else _current_anima
 	if (
 		_busy
 		or anima_id.is_empty()
-		or anima_id != str(_current_anima.get("id", ""))
+		or anima_id != str(details_row.get("id", ""))
 	):
 		return
 	_pending_delete_id = anima_id
 	_delete_anima_dialog.dialog_text = tr("ANIMA_DELETE_CONFIRM") % LocaleManager.display_name(
-		_current_anima
+		details_row
 	)
 	_delete_anima_dialog.popup_centered()
 	_delete_anima_dialog.get_cancel_button().grab_focus()
@@ -287,9 +384,11 @@ func _show_delete_confirmation(anima_id: String) -> void:
 
 func _delete_confirmed() -> void:
 	var anima_id := _pending_delete_id
-	if _busy or anima_id.is_empty() or anima_id != str(_current_anima.get("id", "")):
+	var details_row := _profile_anima if not _profile_anima.is_empty() else _current_anima
+	if _busy or anima_id.is_empty() or anima_id != str(details_row.get("id", "")):
 		return
-	var deleted_name := LocaleManager.display_name(_current_anima)
+	var deleted_name := LocaleManager.display_name(details_row)
+	var deleted_active := anima_id == str(_current_anima.get("id", ""))
 	_pending_delete_id = ""
 	_set_busy(true)
 	var res := await Backend.delete_anima(anima_id)
@@ -303,18 +402,24 @@ func _delete_confirmed() -> void:
 		if str(row.get("id", "")) != anima_id:
 			kept.append(row)
 	_roster = kept
-	_current_anima = {}
-	GameState.remember_anima({})
-	_anima.sprite_frames = null
-	_anima.visible = false
+	_profile_anima = {}
+	if deleted_active:
+		_current_anima = {}
+		GameState.remember_anima({})
+		_anima.sprite_frames = null
+		_anima.visible = false
 	await _reload_roster()
-	if not _roster.is_empty():
+	if deleted_active and not _roster.is_empty():
 		await _present_row(_roster[0])
-	else:
+	elif deleted_active:
 		_refresh_stats()
 		_refresh_care()
 		_populate_collection()
-	_switch_destination(BottomNav.HOME)
+		_switch_destination(BottomNav.HOME)
+	else:
+		_refresh_stats()
+		_populate_collection()
+		_switch_destination(BottomNav.COLLECTION)
 	_set_busy(false)
 	_say(tr("ANIMA_DELETE_SUCCESS") % deleted_name, true)
 
@@ -784,47 +889,16 @@ func _present(
 	anima_data: Dictionary = {},
 	complete_scan: bool = true
 ) -> void:
-	if species_key.is_empty() or color_bucket.is_empty():
-		_say(tr("STATUS_SPECIES_DATA_ERROR"))
-		if complete_scan:
-			_restore_previous_anima()
-		return
-
 	var hatching := _incubator.is_active()
-	if not GameState.has_sprite(species_key, color_bucket, stage):
-		_say(tr("STATUS_DOWNLOADING_ART"))
-		if manifest.is_empty() or sheet_path.is_empty():
-			var art := await Backend.fetch_species_art(species_key, color_bucket, stage)
-			if not art.ok or typeof(art.data) != TYPE_ARRAY or (art.data as Array).is_empty():
-				print("art library error: %s" % art.error)
-				_say(tr("STATUS_ART_LIBRARY_ERROR"))
-				if complete_scan:
-					_restore_previous_anima()
-				return
-			var row := GameState.as_dict((art.data as Array)[0])
-			sheet_path = str(row.get("sheet_path", ""))
-			manifest = GameState.as_dict(row.get("manifest"))
-
-		var unduh := await Backend.download_sheet(sheet_path)
-		if not unduh.ok:
-			print("art download error: %s" % unduh.error)
-			_say(tr("STATUS_ART_DOWNLOAD_ERROR"))
-			if complete_scan:
-				_restore_previous_anima()
-			return
-
-		var simpan := GameState.store_sprite(species_key, color_bucket, stage, manifest, unduh.bytes)
-		if not simpan.ok:
-			print("art save error: %s" % simpan.error)
-			_say(tr("STATUS_ART_SAVE_ERROR"))
-			if complete_scan:
-				_restore_previous_anima()
-			return
-
-	if not _load_and_apply(species_key, color_bucket, stage):
+	var loaded := await _prepare_anima_art(
+		species_key, color_bucket, stage, sheet_path, manifest
+	)
+	if not bool(loaded.get("ok", false)):
 		if complete_scan:
 			_restore_previous_anima()
 		return
+	_anima.apply(loaded)
+	_anima.visible = not hatching
 
 	# create_anima mengembalikan bentuk Vision (`stats`), sedangkan row Postgres
 	# memakai `base_stats`. Normalisasi sekali sebelum Stats dan roster lokal
@@ -868,6 +942,52 @@ func _present(
 		call_deferred("_show_hatch_rename", anima_id)
 
 
+func _prepare_anima_art(
+	species_key: String,
+	color_bucket: String,
+	stage: int,
+	sheet_path: String = "",
+	manifest: Dictionary = {}
+) -> Dictionary:
+	if species_key.is_empty() or color_bucket.is_empty():
+		_say(tr("STATUS_SPECIES_DATA_ERROR"))
+		return {"ok": false}
+
+	if not GameState.has_sprite(species_key, color_bucket, stage):
+		_say(tr("STATUS_DOWNLOADING_ART"))
+		if manifest.is_empty() or sheet_path.is_empty():
+			var art := await Backend.fetch_species_art(species_key, color_bucket, stage)
+			if not art.ok or typeof(art.data) != TYPE_ARRAY or (art.data as Array).is_empty():
+				print("art library error: %s" % art.error)
+				_say(tr("STATUS_ART_LIBRARY_ERROR"))
+				return {"ok": false}
+			var row := GameState.as_dict((art.data as Array)[0])
+			sheet_path = str(row.get("sheet_path", ""))
+			manifest = GameState.as_dict(row.get("manifest"))
+
+		var download := await Backend.download_sheet(sheet_path)
+		if not download.ok:
+			print("art download error: %s" % download.error)
+			_say(tr("STATUS_ART_DOWNLOAD_ERROR"))
+			return {"ok": false}
+
+		var stored := GameState.store_sprite(
+			species_key, color_bucket, stage, manifest, download.bytes
+		)
+		if not stored.ok:
+			print("art save error: %s" % stored.error)
+			_say(tr("STATUS_ART_SAVE_ERROR"))
+			return {"ok": false}
+
+	var loaded := AnimaLoader.load_from_manifest(
+		GameState.manifest_path(species_key, color_bucket, stage)
+	)
+	if not loaded.get("ok", false):
+		print("art load error: %s" % loaded.get("error", "?"))
+		_say(tr("STATUS_ART_LOAD_ERROR"))
+	return loaded
+
+
 static func normalize_anima_data(anima_data: Dictionary) -> Dictionary:
 	var normalized := anima_data.duplicate(true)
 	if not normalized.has("base_stats") and typeof(normalized.get("stats")) == TYPE_DICTIONARY:
@@ -889,19 +1009,6 @@ func _show_cached_anima() -> void:
 	# Menampilkan art cache di sini selalu memulai pose Idle dan membuat Anima yang
 	# sedang tidur berkedip bangun sampai roster selesai dimuat. Art baru boleh
 	# terlihat setelah _present() memiliki row server dan menerapkan pose care.
-
-
-func _load_and_apply(species_key: String, color_bucket: String, stage: int) -> bool:
-	var loaded := AnimaLoader.load_from_manifest(
-		GameState.manifest_path(species_key, color_bucket, stage)
-	)
-	if not loaded.get("ok", false):
-		print("art load error: %s" % loaded.get("error", "?"))
-		_say(tr("STATUS_ART_LOAD_ERROR"))
-		return false
-	_anima.apply(loaded)
-	_anima.visible = not _incubator.is_active()
-	return true
 
 
 func _upsert_roster(row: Dictionary) -> void:
@@ -956,12 +1063,21 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 
 
 func _refresh_stats() -> void:
+	var details_row := _profile_anima if not _profile_anima.is_empty() else _current_anima
 	_details_view.set_anima(
-		_current_anima,
-		_thumbnail_for(_current_anima) if not _current_anima.is_empty() else null
+		details_row,
+		_thumbnail_for(details_row) if not details_row.is_empty() else null
 	)
 	_home_view.set_anima(_current_anima, _busy)
+	_first_anima_effect.set_active(_home_view.shell_state() == &"empty")
 	_bottom_nav.set_busy(_busy, _details_available())
+
+
+func _set_home_shell_state(state: StringName) -> void:
+	_home_view.set_shell_state(state)
+	_first_anima_effect.set_active(state == &"empty")
+	if state != &"ready":
+		_anima.visible = false
 
 
 func _refresh_care() -> void:
@@ -974,7 +1090,8 @@ func _refresh_care() -> void:
 	var sleeping := _is_sleeping(_current_anima)
 	var dormant := _has_timestamp(_current_anima.get("dormant_since"))
 	_home_view.update_care(_current_anima, _busy)
-	_details_view.set_anima(_current_anima, _thumbnail_for(_current_anima))
+	if _profile_anima.is_empty():
+		_details_view.set_anima(_current_anima, _thumbnail_for(_current_anima))
 	if _anima.sprite_frames != null:
 		_anima.apply_care_state(sleeping, dormant)
 
@@ -1072,9 +1189,19 @@ func _apply_margins(node: MarginContainer, insets: Vector4, side: float, vertica
 	node.add_theme_constant_override("margin_bottom", int(vertical + insets.w))
 
 
-func _switch_destination(destination: StringName) -> void:
+func _switch_destination(destination: StringName, profile_row: Dictionary = {}) -> void:
+	if destination == BottomNav.ANIMA and not profile_row.is_empty():
+		_profile_anima = profile_row.duplicate(true)
 	if destination == BottomNav.ANIMA and not _details_available():
 		destination = BottomNav.HOME
+	var previous := _destination
+	if previous == BottomNav.COLLECTION and destination != BottomNav.COLLECTION:
+		_collection_view.close_sheet()
+	if destination == BottomNav.COLLECTION and previous != BottomNav.COLLECTION:
+		_collection_view.begin_visit()
+	if destination == BottomNav.ANIMA:
+		if profile_row.is_empty():
+			_profile_anima = _current_anima.duplicate(true)
 	_destination = destination
 	_home_view.visible = destination == BottomNav.HOME
 	_scan_view.visible = destination == BottomNav.SCAN
@@ -1118,9 +1245,10 @@ func _active_view() -> Control:
 
 
 func _details_available() -> bool:
+	var row := _profile_anima if not _profile_anima.is_empty() else _current_anima
 	return (
-		not _current_anima.is_empty()
-		and not GameState.as_dict(_current_anima.get("base_stats")).is_empty()
+		not row.is_empty()
+		and not GameState.as_dict(row.get("base_stats")).is_empty()
 	)
 
 
@@ -1175,6 +1303,7 @@ func _show_preview(bytes: PackedByteArray, is_png: bool) -> void:
 func _start_incubation() -> void:
 	_scan_view.clear_preview()
 	_scan_view.set_phase(&"synthesizing")
+	_first_anima_effect.set_active(false)
 	_anima.visible = false
 	_stage.visible = _destination == BottomNav.SCAN
 	_incubator.start()
@@ -1186,6 +1315,8 @@ func _restore_previous_anima() -> void:
 	_scan_view.set_phase(&"idle")
 	_stage.visible = _destination == BottomNav.HOME
 	_anima.visible = _destination == BottomNav.HOME and _anima.sprite_frames != null
+	if _current_anima.is_empty():
+		_set_home_shell_state(&"empty")
 
 
 func _say(text: String, transient: bool = false) -> void:
@@ -1237,6 +1368,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_hide_core_info()
 			get_viewport().set_input_as_handled()
 			return
+		if _collection_view.is_sheet_open():
+			_collection_view.close_sheet()
+			get_viewport().set_input_as_handled()
+			return
 		if _destination != BottomNav.HOME:
 			_switch_destination(BottomNav.HOME)
 			get_viewport().set_input_as_handled()
@@ -1286,3 +1421,47 @@ func _run_hatch_demo() -> void:
 	await _anima.hatch_reveal()
 	_set_busy(false)
 	_say(tr("STATUS_HATCH_DEMO_DONE"), true)
+
+
+func _run_collection_sheet_demo() -> void:
+	var demo := _current_anima.duplicate(true)
+	if demo.is_empty():
+		demo = {
+			"species_key": "demo_companion",
+			"color_bucket": "cool_blue",
+			"stage": 1,
+			"element": "spark",
+			"rarity": 4,
+		}
+	demo.merge({
+		"id": "collection-sheet-demo",
+		"nickname": "Velumi",
+		"base_stats": {"hp": 74, "atk": 62, "def": 58, "spd": 81, "special": 77},
+		"care": {"hunger": 68, "energy": 84, "hygiene": 57, "bond": 72},
+	}, true)
+	var rows: Array[Dictionary] = [demo]
+	_collection_view.set_rows(rows, str(_current_anima.get("id", "")), _thumbnail_for)
+	_switch_destination(BottomNav.COLLECTION)
+	_collection_view.show_preview(demo, false)
+
+
+func _run_empty_demo() -> void:
+	_current_anima = {}
+	_profile_anima = {}
+	_collection_view.set_rows([], "", _thumbnail_for)
+	_switch_destination(BottomNav.HOME)
+	_set_home_shell_state(&"empty")
+
+
+func _run_summon_demo() -> void:
+	if _anima.sprite_frames == null:
+		_say(tr("STATUS_HATCH_DEMO_MISSING"))
+		return
+	_switch_destination(BottomNav.HOME)
+	_set_busy(true)
+	await _anima.summon_dissolve()
+	await _incubator.start_portal()
+	await _incubator.burst()
+	await _anima.summon_reveal()
+	_refresh_care()
+	_set_busy(false)
