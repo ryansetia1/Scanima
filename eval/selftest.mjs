@@ -38,6 +38,9 @@ import {
   normalizeBaseStats,
   resolveTurn,
   toBattleStats,
+  levelFromExp,
+  growthMultiplier,
+  formFromLevel,
 } from "../backend/supabase/functions/_shared/battle.mjs";
 import { imageInputForModel } from "./run.mjs";
 
@@ -939,6 +942,32 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
     spd: 50,
     special: 50,
   });
+  assert.equal(levelFromExp(0), 1);
+  assert.equal(levelFromExp(4), 1);
+  assert.equal(levelFromExp(5), 2);
+  assert.equal(levelFromExp(75), 16);
+  assert.equal(levelFromExp(175), 36);
+  assert.equal(levelFromExp(999), 40);
+  assert.equal(formFromLevel(1), "hatchling");
+  assert.equal(formFromLevel(16), "adult");
+  assert.equal(formFromLevel(36), "evolved");
+  assert.equal(growthMultiplier(1), 1);
+  assert.equal(Number(growthMultiplier(16).toFixed(2)), 1.45);
+  assert.ok(Math.abs(growthMultiplier(36) - 2.05) < 1e-9);
+  assert.deepEqual(toBattleStats(base, 1, "", 16), {
+    max_hp: 310,
+    atk: 72,
+    def: 72,
+    spd: 72,
+    special: 72,
+  });
+  assert.deepEqual(toBattleStats(base, 1, "", 36), {
+    max_hp: 430,
+    atk: 102,
+    def: 102,
+    spd: 102,
+    special: 102,
+  });
   for (let index = 0; index < ELEMENT_CYCLE.length; index++) {
     const attacker = ELEMENT_CYCLE[index];
     const strongAgainst = ELEMENT_CYCLE[(index + 1) % ELEMENT_CYCLE.length];
@@ -994,6 +1023,19 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
     base_stats: { hp: 10, atk: 95, def: 10, spd: 10, special: 95 },
   };
   const initial = createBattleState({ player, bot, seed: "battle-selftest" });
+  assert.equal(initial.player.level, 1);
+  assert.equal(initial.player.max_hp, 220);
+
+  const grown = createBattleState({
+    player: { ...player, base_stats: base, level: 16 },
+    bot: { ...bot, base_stats: base, level: 1 },
+    seed: "level-growth",
+  });
+  assert.equal(grown.player.level, 16);
+  assert.equal(grown.player.max_hp, 310);
+  assert.equal(grown.player.atk, 72);
+  assert.equal(grown.bot.max_hp, 220);
+
   const first = resolveTurn(initial, "strike", "turn-key");
   const retry = resolveTurn(initial, "strike", "turn-key");
   assert.deepEqual(retry, first, "retry key sama harus memberi event log identik");
@@ -1048,6 +1090,11 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   assert.ok(
     battleEdge.includes('"message" in error'),
     "error RPC PostgREST berbentuk object tetap harus terbaca oleh mapper"
+  );
+  assert.match(
+    battleEdge,
+    /level:\s*levelFromExp\(row\.care_score\)/,
+    "snapshot Battle harus membawa level dari care_score"
   );
 }
 

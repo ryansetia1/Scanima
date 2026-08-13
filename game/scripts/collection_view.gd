@@ -28,11 +28,11 @@ signal retry_requested
 	"spd": %SheetStatSpeed,
 	"special": %SheetStatSpecial,
 }
-@onready var _care_meters := {
+@onready var 	_care_meters := {
 	"hunger": %SheetCareHunger,
 	"energy": %SheetCareEnergy,
 	"hygiene": %SheetCareHygiene,
-	"bond": %SheetCareBond,
+	"exp": %SheetCareExp,
 }
 
 var _active_id := ""
@@ -203,7 +203,7 @@ func _fill_identity() -> void:
 	_sheet_name.text = LocaleManager.display_name(_selected_row)
 	_sheet_meta.text = tr("COLLECTION_SHEET_META") % [
 		LocaleManager.element_name(str(_selected_row.get("element", ""))),
-		LocaleManager.stage_name(int(_selected_row.get("stage", 1))),
+		LocaleManager.level_label(CareRules.level_from_exp(int(_selected_row.get("care_score", 0)))),
 		LocaleManager.format_integer(int(_selected_row.get("rarity", 1))),
 	]
 	_sheet_portrait.texture = (
@@ -215,9 +215,10 @@ func _fill_identity() -> void:
 
 func _fill_base_stats() -> void:
 	var stats := GameState.as_dict(_selected_row.get("base_stats"))
+	var exp := int(_selected_row.get("care_score", 0))
 	for key in _base_values:
 		var value := _base_values[key] as Label
-		value.text = LocaleManager.format_integer(int(stats.get(key, 0)))
+		value.text = LocaleManager.format_integer(CareRules.grown_stat(stats.get(key, 0), exp))
 
 
 func _set_condition_loading() -> void:
@@ -241,7 +242,10 @@ func _apply_condition(row: Dictionary, synced: bool) -> void:
 	for key in _care_meters:
 		var meter := _care_meters[key] as ProgressBar
 		meter.modulate = Color.WHITE
-		UiJuice.tween_meter(meter, float(care[key]))
+		if key == "exp":
+			UiJuice.tween_meter(meter, CareRules.exp_progress(int(row.get("care_score", 0))))
+		else:
+			UiJuice.tween_meter(meter, float(care[key]))
 	_condition_loading = false
 	_condition_synced = synced
 	_condition_status.visible = not synced

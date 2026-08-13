@@ -8,6 +8,7 @@ import {
   BATTLE_ACTIONS,
   baseStatTotal,
   createBattleState,
+  levelFromExp,
   normalizeBaseStats,
   normalizeElement,
   resolveTurn,
@@ -61,6 +62,7 @@ type AnimaRow = {
   stage: number;
   element: string;
   base_stats: Record<string, number>;
+  care_score?: number;
 };
 
 type ArtRow = {
@@ -135,13 +137,13 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
     await Promise.all([
       db
         .from("animas")
-        .select("id, owner_id, nickname, species_key, color_bucket, stage, element, base_stats")
+        .select("id, owner_id, nickname, species_key, color_bucket, stage, element, base_stats, care_score")
         .eq("id", animaId)
         .eq("owner_id", ownerId)
         .maybeSingle(),
       db
         .from("animas")
-        .select("id, owner_id, nickname, species_key, color_bucket, stage, element, base_stats")
+        .select("id, owner_id, nickname, species_key, color_bucket, stage, element, base_stats, care_score")
         .neq("owner_id", ownerId)
         .eq("status", "ready")
         .limit(200),
@@ -272,6 +274,7 @@ function snapshot(row: AnimaRow, art: ArtRow | null, includeName: boolean): Reco
     species_key: row.species_key,
     color_bucket: row.color_bucket,
     stage: row.stage,
+    level: levelFromExp(row.care_score),
     element: normalizeElement(row.element),
     base_stats: normalizeBaseStats(row.base_stats),
     sheet_path: art?.sheet_path ?? "",

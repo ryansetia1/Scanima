@@ -145,7 +145,11 @@ func _apply_lobby() -> void:
 	var unavailable_key := _lobby_unavailable_key()
 	var training := _is_training(_lobby_daily_reward)
 	if not unavailable_key.is_empty():
-		_lobby_name.text = tr("BATTLE_LOBBY_TITLE")
+		_lobby_name.text = tr(
+			"BATTLE_LOBBY_TITLE_LOW_ENERGY"
+			if unavailable_key == "BATTLE_ANIMA_LOW_ENERGY"
+			else "BATTLE_LOBBY_TITLE"
+		)
 		_lobby_meta.text = tr(unavailable_key)
 	elif training:
 		_lobby_name.text = LocaleManager.display_name(_lobby_row)
@@ -157,7 +161,7 @@ func _apply_lobby() -> void:
 		_lobby_name.text = LocaleManager.display_name(_lobby_row)
 		_lobby_meta.text = tr("BATTLE_LOBBY_READY") % [
 			LocaleManager.element_name(str(_lobby_row.get("element", ""))),
-			LocaleManager.stage_name(int(_lobby_row.get("stage", 1))),
+			LocaleManager.level_label(CareRules.level_from_exp(int(_lobby_row.get("care_score", 0)))),
 		]
 	_start_button.text = tr("BATTLE_TRAIN") if training else tr("BATTLE_START")
 	_start_button.disabled = _busy or not unavailable_key.is_empty()

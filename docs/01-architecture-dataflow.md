@@ -167,8 +167,8 @@ create table animas (
   element        text not null,                       -- lihat doc 04
   rarity         smallint not null,                   -- 1..5
   base_stats     jsonb not null,                      -- { hp, atk, def, spd, special }
-  care           jsonb not null,                      -- { hunger, energy, hygiene, bond }
-  care_score     int  not null default 0,             -- akumulasi, gerbang evolusi
+  care           jsonb not null,                      -- { hunger, energy, hygiene, bond:0 }
+  care_score     int  not null default 0,             -- EXP pemain; level = 1+floor(exp/5)
   born_at        timestamptz not null default now(),
   care_synced_at timestamptz not null default now(),  -- basis perhitungan decay
   sleep_started_at timestamptz,
@@ -587,7 +587,7 @@ atau replay key yang sama.
 { "anima_id": "b3d1...", "idempotency_key": "..." }
 ```
 
-Server memverifikasi syarat evolusi (umur, `care_score`, stage saat ini) — client tidak dipercaya soal ini. `input_images` diisi **sprite pose Idle milik Anima itu sendiri**, bukan foto asli, supaya identitas visual terjaga antar stage. Alur sisanya identik dengan `create_anima`.
+Server memverifikasi syarat evolusi (level/form, bukan umur dinding) — client tidak dipercaya soal ini. `evolve_anima` belum live; slice sekarang hanya lompatan stat + copy di Lv 16/36 dengan sprite stage 1. Nanti `input_images` diisi **sprite pose Idle milik Anima itu sendiri**, bukan foto asli, supaya identitas visual terjaga antar stage. Alur sisanya identik dengan `create_anima`.
 
 ### `POST /grant_reward`
 

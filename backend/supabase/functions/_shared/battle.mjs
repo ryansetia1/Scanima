@@ -4,6 +4,10 @@ export const MOMENTUM_MAX = 3;
 export const MOMENTUM_START = 3;
 export const SURGE_COST = 1;
 export const BATTLE_MAX_TURNS = 30;
+export const LEVEL_CAP = 40;
+export const EXP_PER_LEVEL = 5;
+export const ADULT_LEVEL = 16;
+export const EVOLVED_LEVEL = 36;
 
 const STAT_KEYS = Object.freeze(["hp", "atk", "def", "spd", "special"]);
 const ELEMENT_ALIASES = Object.freeze({
@@ -15,6 +19,25 @@ const ELEMENT_ALIASES = Object.freeze({
   fire: "spark",
   air: "cloth",
 });
+
+export function levelFromExp(exp) {
+  return clampInt(1 + Math.floor(Math.max(0, Number(exp) || 0) / EXP_PER_LEVEL), 1, LEVEL_CAP);
+}
+
+export function formFromLevel(level) {
+  const lv = clampInt(level, 1, LEVEL_CAP);
+  if (lv >= EVOLVED_LEVEL) return "evolved";
+  if (lv >= ADULT_LEVEL) return "adult";
+  return "hatchling";
+}
+
+export function growthMultiplier(level) {
+  const lv = clampInt(level, 1, LEVEL_CAP);
+  let mult = 1 + 0.02 * (lv - 1);
+  if (lv >= ADULT_LEVEL) mult += 0.15;
+  if (lv >= EVOLVED_LEVEL) mult += 0.20;
+  return mult;
+}
 
 export function stageMultipliers(stage, branch = "") {
   if (Number(stage) === 2) {
@@ -29,15 +52,16 @@ export function stageMultipliers(stage, branch = "") {
   return { hp: 1.0, atk: 1.0, def: 1.0, spd: 1.0, special: 1.0 };
 }
 
-export function toBattleStats(baseStats, stage = 1, branch = "") {
+export function toBattleStats(baseStats, stage = 1, branch = "", level = 1) {
   const base = normalizeBaseStats(baseStats);
-  const mult = stageMultipliers(stage, branch);
+  // ponytail: stage multipliers idle until evolve art ships; level is the live growth path.
+  const g = growthMultiplier(level);
   return {
-    max_hp: Math.trunc(base.hp * 4 * mult.hp) + 20,
-    atk: Math.trunc(base.atk * mult.atk),
-    def: Math.trunc(base.def * mult.def),
-    spd: Math.trunc(base.spd * mult.spd),
-    special: Math.trunc(base.special * mult.special),
+    max_hp: Math.trunc(base.hp * 4 * g) + 20,
+    atk: Math.trunc(base.atk * g),
+    def: Math.trunc(base.def * g),
+    spd: Math.trunc(base.spd * g),
+    special: Math.trunc(base.special * g),
   };
 }
 
@@ -198,7 +222,12 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "") {
 }
 
 function createFighter(input) {
-  const stats = toBattleStats(input?.base_stats, input?.stage, input?.evolution_branch);
+  const stats = toBattleStats(
+    input?.base_stats,
+    input?.stage,
+    input?.evolution_branch,
+    input?.level,
+  );
   return {
     ...stats,
     hp: stats.max_hp,
@@ -208,6 +237,7 @@ function createFighter(input) {
     species_key: String(input?.species_key ?? ""),
     color_bucket: String(input?.color_bucket ?? ""),
     stage: clampInt(input?.stage, 1, 3, 1),
+    level: clampInt(input?.level, 1, LEVEL_CAP, 1),
     evolution_branch: String(input?.evolution_branch ?? ""),
   };
 }

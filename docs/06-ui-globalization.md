@@ -32,8 +32,8 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
 
 ## Tanggung jawab destination
 
-- **Home:** identity, Anima stage, kebutuhan, Bond, Care Score, Feed/Clean/Sleep/Play.
-  Bond penuh menonaktifkan Play; saat tidur hanya Wake yang tampil selebar dock.
+- **Home:** identity, Level, kebutuhan, bar EXP, Feed/Clean/Sleep/Play.
+  Play tidak terkunci Bond; saat tidur hanya Wake yang tampil selebar dock.
   Tanpa roster, Home membedakan Loading/Error/Empty dan memberi CTA first scan.
   Tap tepat pada sprite memberi reaksi lokal sesuai awake/Sleep/Dormant tanpa
   mengubah care atau mengirim request.

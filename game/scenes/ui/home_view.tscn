@@ -216,9 +216,9 @@ theme_override_constants/separation = 12
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_type_variation = &"SectionLabel"
-text = "CARE_BOND"
+text = "CARE_EXP"
 
-[node name="NeedBond" type="ProgressBar" parent="Column/CareDock/CareColumn/BondChip/BondRow"]
+[node name="NeedExp" type="ProgressBar" parent="Column/CareDock/CareColumn/BondChip/BondRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 26)
 layout_mode = 2

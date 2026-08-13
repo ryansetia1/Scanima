@@ -434,8 +434,8 @@ begin
   assert (v_j->>'bits')::int = 25, 'Feed harus mendebit tepat 5 Bits';
   assert (v_j #>> '{anima,care,hunger}')::numeric = 35,
          'Feed harus memulihkan 35 Hunger';
-  assert (v_j #>> '{anima,care,bond}')::numeric = 3,
-         'Feed harus menambah 3 Bond';
+  assert (v_j #>> '{anima,care,bond}')::numeric = 0,
+         'Bond tidak lagi meter progres';
   assert (v_j #>> '{anima,care_score}')::int = 3,
          'Feed saat Hunger <40 harus memberi 3 care_score';
   assert (select count(*) from public.quota_ledger
@@ -484,28 +484,25 @@ begin
          'counter Play harian harus berhenti di 5';
   assert (select (care->>'energy')::numeric from public.animas where id = v_care_anima) = 70,
          'enam Play harus memakai 30 Energy';
-  assert (select (care->>'bond')::numeric from public.animas where id = v_care_anima) = 48,
-         'enam Play tetap harus memberi 48 Bond';
+  assert (select (care->>'bond')::numeric from public.animas where id = v_care_anima) = 0,
+         'Play tidak boleh menulis Bond';
 
   update public.animas
      set care = '{"hunger":100,"energy":70,"hygiene":100,"bond":100}'::jsonb,
          care_score = 5,
          care_synced_at = now()
    where id = v_care_anima;
-  begin
-    perform public.apply_care(u1, v_care_anima, 'play', 'care-bond-full');
-    ok := false;
-  exception when others then ok := (sqlerrm = 'BOND_FULL');
-  end;
-  assert ok, 'Play saat Bond penuh harus ditolak dengan BOND_FULL';
-  assert (select (care->>'energy')::numeric from public.animas where id = v_care_anima) = 70,
-         'Play yang ditolak tidak boleh memakai Energy';
+  v_j := public.apply_care(u1, v_care_anima, 'play', 'care-bond-ignored');
+  assert (v_j #>> '{anima,care,energy}')::numeric = 65,
+         'Play tidak boleh ditolak karena Bond penuh';
+  assert (v_j #>> '{anima,care,bond}')::numeric = 0,
+         'Play menuliskan ulang Bond jadi 0';
   assert (select care_score from public.animas where id = v_care_anima) = 5,
-         'Play yang ditolak tidak boleh memberi care_score';
-  assert not exists (
+         'Play setelah cap harian tidak boleh menambah EXP';
+  assert exists (
     select 1 from public.care_events
-     where owner_id = u1 and idempotency_key = 'care-bond-full'
-  ), 'Play yang ditolak tidak boleh menyisakan care event';
+     where owner_id = u1 and idempotency_key = 'care-bond-ignored'
+  ), 'Play tanpa Bond tetap harus tercatat';
 
   update public.profiles set bits = 0 where id = u1;
   update public.animas
@@ -557,9 +554,9 @@ begin
   assert (v_j #>> '{anima,care_score}')::int = 5,
          'tidur penuh harus memberi 5 care_score';
 
-  -- Bonus terawat tepat sekali per UTC day.
+  -- Bonus terawat tepat sekali per UTC day, tanpa Bond.
   update public.animas
-     set care = '{"hunger":80,"energy":80,"hygiene":80,"bond":80}'::jsonb,
+     set care = '{"hunger":80,"energy":80,"hygiene":80,"bond":0}'::jsonb,
          care_score = 0,
          care_synced_at = now(),
          well_cared_on = null
@@ -597,7 +594,7 @@ begin
   assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 0,
          'Hunger habis dalam 10 jam';
 
-  -- Cap 48 jam memasukkan Dormant dan reset score. Dua Feed + dua Clean dari nol
+  -- Cap 48 jam memasukkan Dormant. EXP tetap. Dua Feed + dua Clean dari nol
   -- melewati ambang recovery 50 tanpa mengubah generation status=ready.
   update public.profiles set bits = 30 where id = u1;
   update public.animas
@@ -610,8 +607,8 @@ begin
   perform public.apply_care(u1, v_care_anima, 'sync', null);
   assert (select dormant_since is not null from public.animas where id = v_care_anima),
          '48 jam decay efektif harus memasukkan Dormant';
-  assert (select care_score from public.animas where id = v_care_anima) = 0,
-         'masuk Dormant harus mereset care_score';
+  assert (select care_score from public.animas where id = v_care_anima) = 99,
+         'masuk Dormant tidak boleh mereset EXP';
   assert (select status from public.animas where id = v_care_anima) = 'ready',
          'Dormant tidak boleh mencampur arti generation status';
 

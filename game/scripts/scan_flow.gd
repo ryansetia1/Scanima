@@ -659,8 +659,6 @@ func _care_error_message(error: String) -> String:
 			return tr("ERROR_NO_BITS")
 		"NO_ENERGY":
 			return tr("ERROR_NO_ENERGY")
-		"BOND_FULL":
-			return tr("ERROR_BOND_FULL")
 		"NEED_FULL":
 			return tr("ERROR_NEED_FULL")
 		"ALREADY_SLEEPING":

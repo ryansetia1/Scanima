@@ -4,6 +4,7 @@ signal locale_changed(locale: String)
 
 const DEFAULT_LOCALE := "en"
 const SUPPORTED_LOCALES := ["en"]
+const CARE_RULES := preload("res://scripts/care_rules.gd")
 
 var current_locale: String = DEFAULT_LOCALE
 
@@ -64,10 +65,14 @@ func element_name(code: String) -> String:
 	return translated if translated != key else tr("ELEMENT_UNKNOWN")
 
 
-func stage_name(stage: int) -> String:
-	var key := "STAGE_%d" % stage
+func level_label(level: int) -> String:
+	return "%s %s" % [tr("LEVEL_SHORT"), format_integer(level)]
+
+
+func form_name(level: int) -> String:
+	var key := "FORM_%s" % CARE_RULES.form_key(level).to_upper()
 	var translated := tr(key)
-	return translated if translated != key else format_integer(stage)
+	return translated if translated != key else level_label(level)
 
 
 func gate_reason(code: String) -> String:

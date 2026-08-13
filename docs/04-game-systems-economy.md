@@ -149,14 +149,13 @@ memilih Anima terbaru berikutnya; kalau tidak ada, Home kembali ke empty state.
 
 ## 3. Survival / Tamagotchi mechanics
 
-Empat kebutuhan, masing-masing 0-100:
+Tiga kebutuhan, masing-masing 0-100. Bond bukan meter pemain: progres memakai **EXP** (`care_score` di wire) dan **Level**.
 
 | Kebutuhan | Turun penuh dalam | Dipulihkan oleh | Efek saat 0 |
 | --- | --- | --- | --- |
 | **Hunger** | 10 jam | Makanan (Bits) | ATK -30%, tidak mau bertarung |
 | **Energy** | 14 jam bangun | Tidur (waktu nyata) | SPD -40%, sering gagal aksi |
-| **Hygiene** | 24 jam | Sabun (Bits) | Kehilangan bond lebih cepat, DEF -20% |
-| **Bond** | naik dari perawatan | Perawatan konsisten | Menolak evolusi |
+| **Hygiene** | 24 jam | Sabun (Bits) | DEF -20% |
 
 ### Decay dihitung saat dibuka, bukan lewat proses latar
 
@@ -167,20 +166,10 @@ const DECAY_PER_HOUR := { "hunger": 10.0, "energy": 7.1, "hygiene": 4.2 }
 const MAX_DECAY_HOURS := 48.0
 
 static func apply_decay(care: Dictionary, synced_at: float, now: float) -> Dictionary:
-	var hours := (now - synced_at) / 3600.0
-
-	# Plafon decay: pergi dua hari atau dua minggu hasilnya sama.
-	hours = minf(maxf(0.0, hours), MAX_DECAY_HOURS)
-
+	var hours := minf(maxf(0.0, (now - synced_at) / 3600.0), MAX_DECAY_HOURS)
 	var out := care.duplicate()
 	for need in DECAY_PER_HOUR:
 		out[need] = clampf(care[need] - DECAY_PER_HOUR[need] * hours, 0.0, 100.0)
-
-	# Bond hanya luntur kalau kebutuhan lain benar-benar terabaikan.
-	var neglected := out["hunger"] <= 0.0 and out["hygiene"] <= 0.0
-	if neglected:
-		out["bond"] = clampf(care["bond"] - 2.0 * hours, 0.0, 100.0)
-
 	return out
 ```
 
@@ -192,67 +181,53 @@ Tiga keputusan di fungsi itu perlu dijelaskan karena semuanya menolak desain Tam
 
 **Tidak ada permadeath.** Ini yang paling penting dan paling menyimpang dari genre. Di Tamagotchi, monster mati adalah inti tegangannya. Di Scanima, monster dibuat dari **uang nyata** — Genesis Core, entah dibeli atau didapat mingguan. Membunuh sesuatu yang pemain bayar untuk menciptakannya adalah cara memberi tahu mereka bahwa membayar itu tidak aman.
 
-Jadi pengganti kematian: setelah cap **48 jam decay efektif** tercapai dengan Hunger dan Hygiene nol, Anima masuk state **Dormant** — meringkuk, pucat, tidak bisa bertarung, dan kelihatan sedih. `dormant_since` terpisah dari generation `status`, sehingga ia tetap ada di roster `ready`. Ia pulih ketika Hunger dan Hygiene sama-sama mencapai 50. Yang hilang permanen hanyalah `care_score` yang direset saat masuk Dormant.
+Jadi pengganti kematian: setelah cap **48 jam decay efektif** tercapai dengan Hunger dan Hygiene nol, Anima masuk state **Dormant** — meringkuk, pucat, tidak bisa bertarung, dan kelihatan sedih. `dormant_since` terpisah dari generation `status`, sehingga ia tetap ada di roster `ready`. Ia pulih ketika Hunger dan Hygiene sama-sama mencapai 50. EXP (`care_score`) **tidak** direset: Dormant bukan un-level.
 
-### Care score dan aksi perawatan
+### EXP, Level, dan aksi perawatan
 
-`care_score` adalah akumulasi yang menjadi gerbang evolusi, dan aturannya dirancang untuk menghargai konsistensi, bukan penumpukan.
+Kolom Postgres tetap `care_score`; pemain melihatnya sebagai **EXP**. `level = 1 + floor(exp / 5)`, cap 40. Form copy (sprite tetap stage 1 sampai `evolve_anima` ada): Hatchling 1–15, Adult 16–35, Evolved 36–40.
 
 ```
-Beri makan saat hunger < 40      : +3
+Beri makan saat hunger < 40      : +3 EXP
 Beri makan saat hunger > 80      : +0   (tidak ada gunanya menimbun)
-Bersihkan saat hygiene < 50      : +3
-Tidur penuh (siklus 6 jam nyata) : +5
-Bermain / interaksi tap          : +1   (maksimal +5 per hari)
-Menang battle                    : +4
-Semua kebutuhan > 70 saat dibuka : +8   (bonus harian "terawat")
-Masuk state Dormant              : care_score direset ke 0
+Bersihkan saat hygiene < 50      : +3 EXP
+Tidur penuh (siklus 6 jam nyata) : +5 EXP
+Bermain                          : +1 EXP (maksimal +5 per hari)
+Menang battle                    : +4 EXP
+Hunger, Energy, Hygiene > 70     : +8 EXP (bonus harian "terawat")
+Masuk state Dormant              : EXP tidak direset
 ```
 
 Bonus "terawat" +8 adalah pendorong terbesar dan itu memang tujuannya: yang ingin kita hargai adalah pemain yang membuka game dan menemukan Anima-nya dalam keadaan baik, bukan pemain yang menekan tombol makan dua puluh kali.
 
 Nilai aksi yang live di Phase 2:
 
-- **Feed:** 5 Bits, Hunger +35, Bond +3; score +3 hanya jika Hunger sebelum aksi <40.
-- **Clean:** 5 Bits, Hygiene +35, Bond +3; score +3 hanya jika Hygiene sebelum aksi <50.
-- **Play:** gratis, Energy -5, Bond +8; score +1 maksimal lima kali per UTC day.
-  Saat Bond sudah 100, Play ditolak tanpa mengurangi Energy atau memberi score:
-  aksinya memang membangun hubungan, bukan tombol farming score yang tersembunyi.
-- **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 score. Wake lebih awal mempertahankan pemulihan parsial tanpa score. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap.
+- **Feed:** 5 Bits, Hunger +35; EXP +3 hanya jika Hunger sebelum aksi <40.
+- **Clean:** 5 Bits, Hygiene +35; EXP +3 hanya jika Hygiene sebelum aksi <50.
+- **Play:** gratis, Energy -5; EXP +1 maksimal lima kali per UTC day. Tidak ada cap Bond; anti-farm-nya Energy dan counter harian.
+- **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 EXP. Wake lebih awal mempertahankan pemulihan parsial tanpa EXP. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap.
 
 Saldo, kebutuhan, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten, sedangkan `quota_ledger` mencatat debit Feed/Clean. Client menyimpan satu intent `pending_care`, bukan salinan saldo atau kebutuhan.
 
 ## 4. Evo-tree
 
-Tiga stage, dengan percabangan hanya di stage terakhir. Menahan diri di sini bukan kemalasan — setiap cabang adalah art baru yang harus di-generate, dan pohon yang terlalu lebar berarti pustaka species yang jarang kena cache.
+Tiga form copy, sprite masih stage 1. Art baru (`evolve_anima`, ~$0.07, cache `(species_key, color_bucket, stage)`) menyusul. Percabangan Guardian/Ravager juga menunggu art.
 
 ```mermaid
 graph LR
-    S1["Stage 1 — Baby<br/>saat diciptakan"] --> S2["Stage 2 — Adult<br/>umur 2 hari, care 60"]
-    S2 --> P1["Stage 3 — Guardian<br/>jalur perawatan"]
-    S2 --> P2["Stage 3 — Ravager<br/>jalur pertarungan"]
+    S1["Hatchling<br/>Lv 1-15"] --> S2["Adult<br/>Lv 16"]
+    S2 --> S3["Evolved<br/>Lv 36"]
 ```
 
-| Stage | Syarat | Efek stat |
+| Form | Syarat | Efek stat |
 | --- | --- | --- |
-| 1 Baby | — | base |
-| 2 Adult | umur ≥ 2 hari nyata, `care_score` ≥ 60, tidak Dormant | semua stat x1.4 |
-| 3 Guardian | umur ≥ 7 hari, `care_score` ≥ 200, rasio perawatan lebih besar dari rasio battle | HP dan DEF x1.9, ATK x1.5 |
-| 3 Ravager | umur ≥ 7 hari, `care_score` ≥ 200, ≥ 15 kemenangan battle | ATK dan SPD x1.9, DEF x1.4 |
+| Hatchling | — | `1 + 0.02 * (level - 1)` |
+| Adult | Level ≥ 16 (75 EXP) | multiplier +0.15 |
+| Evolved | Level ≥ 36 (175 EXP) | multiplier +0.20 lagi |
 
-Cabang ditentukan oleh **bagaimana pemain bermain**, bukan oleh pilihan menu. Anima yang lebih sering dirawat daripada diadu menjadi Guardian; yang sebaliknya menjadi Ravager. Pemain tidak diberi tahu rumusnya secara eksplisit, hanya diberi petunjuk lewat dialog ("Anima-mu tumbuh jadi pelindung..."), karena percabangan yang terasa seperti konsekuensi jauh lebih berkesan daripada percabangan yang terasa seperti dropdown.
+`animas.stage` tetap 1 supaya loader art tidak mencari sheet stage 2 yang belum ada. Age-gate 2/7 hari dan `care_score` 60/200 diganti gerbang level. Stats Battle memakai `growthMultiplier(level)`, bukan `stageMultipliers`, sampai art evolusi live.
 
-### Evolusi hampir selalu gratis, dan itu bukan kebetulan
-
-Evolusi butuh art baru, artinya satu image generation, artinya sekitar $0.07. Kedengarannya seperti evolusi harus berbayar — dan itu akan buruk, karena evolusi adalah puncak dari seminggu perawatan dan meletakkan paywall di sana akan terasa seperti pengkhianatan.
-
-Tapi arsitektur caching sudah menyelesaikannya. Art evolusi di-cache dengan kunci `(species_key, color_bucket, stage)` di `species_library`, persis seperti art stage 1. Jadi pemain **pertama** yang mengevolusikan Anima mug membayar biayanya (dan dicatat sebagai penemunya), dan semua pemilik Anima mug sesudahnya mendapat art itu **gratis dan instan**.
-
-Karena evolusi butuh 7 hari perawatan, sementara Discovery Scan bisa dilakukan sejak hari pertama, pustaka evolusi terisi jauh lebih lambat daripada pustaka stage 1. Konsekuensi praktisnya: di minggu-minggu awal soft launch, sebagian besar evolusi adalah cache miss dan harus dibiayai.
-
-Cara menanganinya bukan dengan menagih pemain dan bukan dengan menambah mata uang keempat. `evolve_anima` **tidak mendebit Genesis Core sama sekali**; server memverifikasi syarat evolusi lalu mengizinkan generation-nya, dan mencatat barisnya di `generations` dengan `kind: "evolve"` agar biayanya tetap terlihat di dasbor. Jadi evolusi selalu gratis dari sisi pemain, dan biayanya kita serap sebagai biaya membangun pustaka.
-
-Yang mencegah ini dieksploitasi bukan mata uang, tapi syaratnya sendiri: satu Anima hanya bisa berevolusi dua kali sepanjang hidupnya, dan tiap tahap butuh berhari-hari perawatan nyata. Batas atasnya sudah ketat tanpa perlu penjaga tambahan.
+Cabang Guardian/Ravager tetap rencana Phase 3: ditentukan oleh **bagaimana pemain bermain**, bukan dropdown. Art evolusi (`evolve_anima`) tidak mendebit Genesis Core; pemain pertama per `(species_key, color_bucket, stage)` memicu generation ~$0.07, yang lain cache hit. Slice ini hanya lompatan stat + copy Adult/Evolved.
 
 ## 5. Basic battle mechanics
 
@@ -266,16 +241,17 @@ menjelaskan rumusnya, bukan implementasi kedua. Client hanya mengirim
 
 ### Stat turunan
 
-`base_stats` dari Vision LLM (masing-masing 10-95) diubah jadi stat battle:
+`base_stats` dari Vision LLM (masing-masing 10-95) dikali pertumbuhan level:
 
 ```gdscript
-static func to_battle_stats(base: Dictionary, stage_mult: Dictionary) -> Dictionary:
+static func to_battle_stats(base: Dictionary, level: int) -> Dictionary:
+	var g := growth_multiplier(level) # 1 + 0.02*(lv-1), +0.15 di 16, +0.20 di 36
 	return {
-		"max_hp":  int(base["hp"] * 4.0 * stage_mult["hp"]) + 20,
-		"atk":     int(base["atk"] * stage_mult["atk"]),
-		"def":     int(base["def"] * stage_mult["def"]),
-		"spd":     int(base["spd"] * stage_mult["spd"]),
-		"special": int(base["special"] * stage_mult["special"]),
+		"max_hp":  int(base["hp"] * 4.0 * g) + 20,
+		"atk":     int(base["atk"] * g),
+		"def":     int(base["def"] * g),
+		"spd":     int(base["spd"] * g),
+		"special": int(base["special"] * g),
 	}
 ```
 

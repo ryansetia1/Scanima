@@ -435,9 +435,9 @@ custom_minimum_size = Vector2(118, 0)
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
-text = "CARE_BOND"
+text = "CARE_EXP"
 
-[node name="SheetCareBond" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Bond"]
+[node name="SheetCareExp" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Bond"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2

@@ -51,20 +51,24 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 	_portrait.texture = portrait
 	_name.text = LocaleManager.display_name(row)
 	_meta.text = tr("HOME_IDENTITY_META") % [
+		LocaleManager.level_label(CareRules.level_from_exp(int(row.get("care_score", 0)))),
 		LocaleManager.element_name(str(row.get("element", ""))),
-		LocaleManager.stage_name(int(row.get("stage", 1))),
 	]
 	_element_row.set_value_text(LocaleManager.element_name(str(row.get("element", ""))))
 	_rarity_row.set_value_text(LocaleManager.format_ratio(int(row.get("rarity", 1)), 5))
-	_stage_row.set_value_text(LocaleManager.stage_name(int(row.get("stage", 1))))
+	var level := CareRules.level_from_exp(int(row.get("care_score", 0)))
+	_stage_row.set_value_text(
+		"%s · %s" % [LocaleManager.level_label(level), LocaleManager.form_name(level)]
+	)
 	_care_score_row.set_value_text(LocaleManager.format_integer(int(row.get("care_score", 0))))
 
 	var stats := GameState.as_dict(row.get("base_stats"))
-	_hp_row.set_value_text(_stat(stats, "hp"))
-	_atk_row.set_value_text(_stat(stats, "atk"))
-	_def_row.set_value_text(_stat(stats, "def"))
-	_spd_row.set_value_text(_stat(stats, "spd"))
-	_special_row.set_value_text(_stat(stats, "special"))
+	var exp := int(row.get("care_score", 0))
+	_hp_row.set_value_text(_stat(stats, "hp", exp))
+	_atk_row.set_value_text(_stat(stats, "atk", exp))
+	_def_row.set_value_text(_stat(stats, "def", exp))
+	_spd_row.set_value_text(_stat(stats, "spd", exp))
+	_special_row.set_value_text(_stat(stats, "special", exp))
 
 
 func set_busy(busy: bool) -> void:
@@ -117,9 +121,9 @@ func _forward_help(title: String, body: String) -> void:
 	help_requested.emit(title, body)
 
 
-func _stat(stats: Dictionary, key: String) -> String:
+func _stat(stats: Dictionary, key: String, exp: int) -> String:
 	return (
-		LocaleManager.format_integer(int(stats[key]))
+		LocaleManager.format_integer(CareRules.grown_stat(stats[key], exp))
 		if stats.has(key)
 		else tr("VALUE_UNAVAILABLE")
 	)

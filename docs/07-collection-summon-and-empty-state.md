@@ -30,8 +30,9 @@ Status: diimplementasikan dan diverifikasi 13 Agustus 2026.
 ### Bottom sheet, bukan action dock atau tombol per kartu
 
 Tap kartu membuka backdrop dan bottom sheet. Sheet memuat portrait, nama,
-Element, Stage, rarity, badge `Active`, lima base stat (HP, ATK, DEF, SPD,
-Special), serta empat care meter (Hunger, Energy, Hygiene, Bond).
+Element, Level + form, rarity, badge `Active`, lima base stat yang sudah
+tumbuh menurut level (HP, ATK, DEF, SPD, Special), serta tiga kebutuhan
+(Hunger, Energy, Hygiene) plus bar EXP.
 
 Base stats tampil langsung. Pada cache miss, care meter lama di-reset dan
 disembunyikan lalu `UiSkeleton` menggantikannya sampai satu sync server selesai.

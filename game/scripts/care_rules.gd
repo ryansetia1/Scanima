@@ -17,14 +17,15 @@ const DECAY_PER_HOUR := {
 	"hygiene": 4.2,
 }
 const MAX_DECAY_HOURS := 48.0
-const BOND_DECAY_PER_HOUR := 2.0
 const CARE_RESTORE := 35.0
-const CARE_BOND_GAIN := 3.0
-const PLAY_BOND_GAIN := 8.0
 const PLAY_ENERGY_COST := 5.0
 const BATTLE_ENERGY_COST := 20.0
 const SLEEP_FULL_HOURS := 6.0
 const DORMANT_RECOVERY_NEED := 50.0
+const LEVEL_CAP := 40
+const EXP_PER_LEVEL := 5
+const ADULT_LEVEL := 16
+const EVOLVED_LEVEL := 36
 
 
 static func normalized_care(value: Variant) -> Dictionary:
@@ -61,8 +62,7 @@ static func apply_decay(
 	else:
 		care["energy"] = clampf(care["energy"] - DECAY_PER_HOUR.energy * hours, 0.0, 100.0)
 
-	if care["hunger"] <= 0.0 and care["hygiene"] <= 0.0:
-		care["bond"] = clampf(care["bond"] - BOND_DECAY_PER_HOUR * hours, 0.0, 100.0)
+	care["bond"] = 0.0
 	return care
 
 
@@ -91,3 +91,42 @@ static func enters_dormant(care_value: Variant, effective_hours: float) -> bool:
 static func can_recover_from_dormant(care_value: Variant) -> bool:
 	var care := normalized_care(care_value)
 	return care["hunger"] >= DORMANT_RECOVERY_NEED and care["hygiene"] >= DORMANT_RECOVERY_NEED
+
+
+static func level_from_exp(exp: int) -> int:
+	return clampi(1 + int(maxi(0, exp) / EXP_PER_LEVEL), 1, LEVEL_CAP)
+
+
+static func exp_into_level(exp: int) -> int:
+	if level_from_exp(exp) >= LEVEL_CAP:
+		return EXP_PER_LEVEL
+	return maxi(0, exp) % EXP_PER_LEVEL
+
+
+static func exp_progress(exp: int) -> float:
+	if level_from_exp(exp) >= LEVEL_CAP:
+		return 100.0
+	return float(exp_into_level(exp)) / float(EXP_PER_LEVEL) * 100.0
+
+
+static func form_key(level: int) -> String:
+	var lv := clampi(level, 1, LEVEL_CAP)
+	if lv >= EVOLVED_LEVEL:
+		return "evolved"
+	if lv >= ADULT_LEVEL:
+		return "adult"
+	return "hatchling"
+
+
+static func growth_multiplier(level: int) -> float:
+	var lv := clampi(level, 1, LEVEL_CAP)
+	var mult := 1.0 + 0.02 * float(lv - 1)
+	if lv >= ADULT_LEVEL:
+		mult += 0.15
+	if lv >= EVOLVED_LEVEL:
+		mult += 0.20
+	return mult
+
+
+static func grown_stat(base_value: Variant, exp: int) -> int:
+	return int(float(base_value) * growth_multiplier(level_from_exp(exp)))

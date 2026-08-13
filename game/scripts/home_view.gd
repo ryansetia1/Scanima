@@ -16,7 +16,7 @@ const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 @onready var _need_hunger: ProgressBar = %NeedHunger
 @onready var _need_energy: ProgressBar = %NeedEnergy
 @onready var _need_hygiene: ProgressBar = %NeedHygiene
-@onready var _need_bond: ProgressBar = %NeedBond
+@onready var _need_exp: ProgressBar = %NeedExp
 @onready var _care_actions: GridContainer = %CareActions
 @onready var _feed_button: Button = %FeedButton
 @onready var _clean_button: Button = %CleanButton
@@ -48,8 +48,8 @@ func set_anima(row: Dictionary, busy: bool) -> void:
 	_shell_state = &"ready"
 	_anima_name.text = LocaleManager.display_name(_row)
 	_anima_meta.text = tr("HOME_IDENTITY_META") % [
+		LocaleManager.level_label(CARE_RULES.level_from_exp(int(_row.get("care_score", 0)))),
 		LocaleManager.element_name(str(_row.get("element", ""))),
-		LocaleManager.stage_name(int(_row.get("stage", 1))),
 	]
 	_identity.visible = true
 	_primary_action.visible = false
@@ -96,12 +96,17 @@ func update_care(row: Dictionary, busy: bool) -> void:
 	UiJuice.tween_meter(_need_hunger, care["hunger"])
 	UiJuice.tween_meter(_need_energy, care["energy"])
 	UiJuice.tween_meter(_need_hygiene, care["hygiene"])
-	UiJuice.tween_meter(_need_bond, care["bond"])
+	var exp := int(_row.get("care_score", 0))
+	UiJuice.tween_meter(_need_exp, CARE_RULES.exp_progress(exp))
 
 	var sleeping := _has_timestamp(_row.get("sleep_started_at"))
 	var dormant := _has_timestamp(_row.get("dormant_since"))
 	_care_summary.text = tr("HOME_CARE_SUMMARY") % [
-		tr("HOME_CARE_SCORE") % LocaleManager.format_integer(int(_row.get("care_score", 0))),
+		tr("HOME_LEVEL_EXP") % [
+			LocaleManager.format_integer(CARE_RULES.level_from_exp(exp)),
+			LocaleManager.format_integer(CARE_RULES.exp_into_level(exp)),
+			LocaleManager.format_integer(CARE_RULES.EXP_PER_LEVEL),
+		],
 		LocaleManager.care_state(sleeping, dormant),
 	]
 	_sleep_button.text = tr("CARE_WAKE") if sleeping else tr("CARE_SLEEP")
@@ -130,7 +135,6 @@ func _set_buttons_disabled(disabled: bool) -> void:
 
 func _update_action_state(disabled: bool) -> void:
 	var has_care := typeof(_row.get("care")) == TYPE_DICTIONARY
-	var care: Dictionary = CARE_RULES.normalized_care(_row.get("care"))
 	var sleeping := has_care and _has_timestamp(_row.get("sleep_started_at"))
 	_feed_button.visible = not sleeping
 	_clean_button.visible = not sleeping
@@ -139,7 +143,7 @@ func _update_action_state(disabled: bool) -> void:
 	_feed_button.disabled = disabled
 	_clean_button.disabled = disabled
 	_sleep_button.disabled = disabled
-	_play_button.disabled = disabled or float(care["bond"]) >= 100.0
+	_play_button.disabled = disabled
 	_update_action_columns()
 
 

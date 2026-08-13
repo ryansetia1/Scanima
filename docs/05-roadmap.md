@@ -123,7 +123,7 @@ Autentikasi memakai anonymous sign-in Supabase. Tidak ada layar login di awal pe
 
 Sisi Godot: `AnimaLoader` lengkap dengan cache dan LRU, serta state machine Incubator dari [01](01-architecture-dataflow.md) beserta polling dan penanganan aplikasi masuk background. Integrasi kamera dan resize foto di device sudah selesai lebih awal, di Phase 2.
 
-Loop perawatan kini mencakup empat kebutuhan, decay saat dibuka, beri makan / bersihkan / tidurkan / main, `care_score`, serta Dormant. Pembagian **Discovery Scan versus Genesis** dari [04](04-game-systems-economy.md) tetap menjadi inti kontrol biaya.
+Loop perawatan kini mencakup tiga kebutuhan, EXP/Level, decay saat dibuka, beri makan / bersihkan / tidurkan / main, serta Dormant. Pembagian **Discovery Scan versus Genesis** dari [04](04-game-systems-economy.md) tetap menjadi inti kontrol biaya.
 
 Instrumentasi ikut sekarang: query rasio cache hit dan pengeluaran harian, plus `daily_spend_cap_usd` sebagai sakelar darurat. Menerbangkan ini tanpa dasbor biaya sama dengan menerbangkan tanpa indikator bahan bakar.
 

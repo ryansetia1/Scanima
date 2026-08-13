@@ -35,20 +35,27 @@ func _initialize() -> void:
 	for need in CareRules.DEFAULT_CARE:
 		_check(after_week[need] >= 0.0 and after_week[need] <= 100.0, "%s tetap 0–100" % need)
 
-	print("3. Bond hanya turun saat Hunger dan Hygiene sama-sama nol")
+	print("3. EXP menentukan Level, Bond tidak luntur")
 	var hunger_only := CareRules.apply_decay(
 		{"hunger": 0.0, "energy": 100.0, "hygiene": 100.0, "bond": 50.0},
 		0.0,
 		18.0 * 3600.0
 	)
-	_check_eq(hunger_only["bond"], 50.0, "Hunger nol sendiri tidak mengurangi Bond")
-	var neglected := CareRules.apply_decay(
-		{"hunger": 0.0, "energy": 100.0, "hygiene": 0.0, "bond": 50.0},
-		0.0,
-		18.0 * 3600.0
-	)
-	_check_eq(neglected["bond"], 14.0, "dua kebutuhan nol mengurangi Bond 2/jam")
+	_check_eq(hunger_only["bond"], 0.0, "Bond tidak dipakai dan selalu 0")
 	_check_eq(CareRules.BATTLE_ENERGY_COST, 20.0, "Battle memotong 20 Energy")
+	_check_eq(CareRules.level_from_exp(0), 1, "0 EXP adalah Lv 1")
+	_check_eq(CareRules.level_from_exp(4), 1, "4 EXP masih Lv 1")
+	_check_eq(CareRules.level_from_exp(5), 2, "5 EXP adalah Lv 2")
+	_check_eq(CareRules.level_from_exp(75), 16, "75 EXP adalah Lv 16")
+	_check_eq(CareRules.level_from_exp(175), 36, "175 EXP adalah Lv 36")
+	_check_eq(CareRules.level_from_exp(999), 40, "Level di-cap 40")
+	_check_eq(CareRules.form_key(1), "hatchling", "Lv 1 Hatchling")
+	_check_eq(CareRules.form_key(16), "adult", "Lv 16 Adult")
+	_check_eq(CareRules.form_key(36), "evolved", "Lv 36 Evolved")
+	_check_eq(CareRules.growth_multiplier(1), 1.0, "Lv 1 tidak mengubah stat")
+	_check(is_equal_approx(CareRules.growth_multiplier(16), 1.45), "Lv 16 lompat +0.15")
+	_check(is_equal_approx(CareRules.growth_multiplier(36), 2.05), "Lv 36 lompat kedua")
+	_check_eq(CareRules.grown_stat(50, 75), 72, "stat tumbuh terpotong ke bawah")
 
 	print("4. tidur pulih linear dari nilai awal")
 	var tired := {"hunger": 100.0, "energy": 0.0, "hygiene": 100.0, "bond": 0.0}
@@ -58,7 +65,7 @@ func _initialize() -> void:
 	var full_sleep := CareRules.apply_decay(tired, 0.0, 6.0 * 3600.0, 1.0, 0.0)
 	_check(absf(full_sleep["energy"] - 100.0) < 0.1, "tidur enam jam mengisi penuh")
 
-	print("5. care_score dan Dormant")
+	print("5. EXP, Dormant, dan gerbang aksi")
 	_check_eq(CareRules.score_for_action("feed", {"hunger": 39}), 3, "Feed lapar memberi score")
 	_check_eq(CareRules.score_for_action("feed", {"hunger": 40}), 0, "Feed Hunger 40 tidak memberi score")
 	_check_eq(CareRules.score_for_action("clean", {"hygiene": 49}), 3, "Clean kotor memberi score")

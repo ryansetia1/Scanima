@@ -195,8 +195,8 @@ func _initialize() -> void:
 	_check(care_dock != null, "CareDock must exist")
 	if care_dock != null:
 		_check(not care_dock.visible, "care stays hidden before an Anima loads")
-	_check(scene.find_child("CareSummary", true, false) is Label, "Care Score has a label")
-	for name in ["NeedHunger", "NeedEnergy", "NeedHygiene", "NeedBond"]:
+	_check(scene.find_child("CareSummary", true, false) is Label, "EXP summary has a label")
+	for name in ["NeedHunger", "NeedEnergy", "NeedHygiene", "NeedExp"]:
 		var meter := scene.find_child(name, true, false) as ProgressBar
 		_check(meter != null, "%s must exist" % name)
 		if meter != null:
@@ -473,6 +473,7 @@ func _test_battle_view() -> void:
 	var content := view.find_child("BattleContent", true, false) as Control
 	var result := view.find_child("BattleResultPanel", true, false) as Control
 	var start := view.find_child("BattleStartButton", true, false) as Button
+	var lobby_name := view.find_child("BattleLobbyName", true, false) as Label
 	var lobby_meta := view.find_child("BattleLobbyMeta", true, false) as Label
 	var strike := view.find_child("BattleStrikeButton", true, false) as Button
 	var surge := view.find_child("BattleSurgeButton", true, false) as Button
@@ -554,8 +555,9 @@ func _test_battle_view() -> void:
 	view.set_lobby(anima)
 	_check(
 		start.disabled and start.text == tr("BATTLE_TRAIN")
+		and lobby_name.text == tr("BATTLE_LOBBY_TITLE_LOW_ENERGY")
 		and lobby_meta.text == tr("BATTLE_ANIMA_LOW_ENERGY"),
-		"Energy below 20 blocks Battle and unlimited Training with a recovery hint"
+		"Energy below 20 replaces Prepare for Battle with a rest title"
 	)
 	anima["care"]["energy"] = 20.0
 	view.set_daily_reward(normal_daily_reward)
@@ -1186,10 +1188,10 @@ func _test_home_care_actions() -> void:
 	home.set_anima(row, false)
 	_check_eq(home.shell_state(), &"ready", "loaded companion replaces the empty state")
 	_check(not primary.visible, "ready Home hides its onboarding CTA")
-	_check(not play.disabled, "Play remains available below full Bond")
+	_check(not play.disabled, "Play remains available without a Bond cap")
 	row["care"]["bond"] = 100.0
 	home.update_care(row, false)
-	_check(play.disabled, "Play is disabled at full Bond")
+	_check(not play.disabled, "Play stays available even if leftover Bond is 100")
 
 	row["sleep_started_at"] = "2026-08-13T00:00:00Z"
 	home.update_care(row, false)
