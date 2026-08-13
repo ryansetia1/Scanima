@@ -140,13 +140,15 @@ Tutup dengan `test_game_rules.gd`.
 
 **Target: 5-7 minggu. Tujuan: dari "bisa dimainkan" menjadi "layak dirilis".**
 
+**Pekerjaan berikutnya:** buat vertical slice Battle paling kecil yang lengkap—satu lawan bot dari `species_library`, tiga aksi per turn, rumus damage/elemen/Momentum, dan presentasi hit yang cukup untuk dinilai. Jangan mulai dari roster PvP, matchmaking, atau hadiah kompleks sebelum satu pertarungan lokal terasa menyenangkan.
+
 ### Yang dikerjakan
 
 Battle dari [04](04-game-systems-economy.md): stat turunan, roda elemen, rumus damage, tiga aksi per turn, Momentum, lawan bot yang disusun dari `species_library` sehingga terasa seperti melawan temuan pemain lain. Yang membutuhkan waktu di sini bukan logikanya (logikanya sudah ditulis) melainkan presentasinya: setiap pukulan butuh hentakan, kilatan, angka damage yang melompat, dan getaran haptic — tanpa itu pertarungan berbasis stat terasa seperti spreadsheet.
 
 Evolusi: gerbang syarat di server, ritual evolusi sebagai momen puncak, percabangan Guardian dan Ravager, dan `evolve_anima` dengan `image_input` berisi sprite Idle Anima itu sendiri. Evolusi tidak mendebit Genesis Core — alasannya di [04](04-game-systems-economy.md).
 
-Monetisasi, dengan pemetaan yang sudah dikunci di [04](04-game-systems-economy.md) dan tidak boleh digeser: rewarded ad hanya untuk Scan Charge dan Bits, IAP dan langganan untuk Genesis Core. Plus jalur BYOK: layar tempel token, validasi ke Replicate, penyimpanan lokal di device, generation langsung dari Godot, post-processing lewat shader bake, dan tawaran opt-in menyumbang sheet ke pustaka global.
+Monetisasi, dengan pemetaan yang sudah dikunci di [04](04-game-systems-economy.md) dan tidak boleh digeser: rewarded ad hanya untuk Scan Charge dan Bits, IAP dan langganan untuk Genesis Core. **Keputusan 13 Agustus 2026: pemain juga mendapat 1 Genesis Core gratis per minggu**, server-authoritative dan ledger-backed; detail auto-credit/claim serta akumulasi minggu terlewat belum diputuskan. Implementasinya harus datang bersama jalur memakai Core itu untuk menuntaskan `pending_discoveries`, karena build sekarang sudah menyimpan temuannya tetapi belum punya endpoint/UI claim. Plus jalur BYOK: layar tempel token, validasi ke Replicate, penyimpanan lokal di device, generation langsung dari Godot, post-processing lewat shader bake, dan tawaran opt-in menyumbang sheet ke pustaka global.
 
 UI Phase 3 berfokus pada permukaan fitur baru, bukan mengulang visual shell. Onboarding tiga layar berakhir dengan pemain memfoto sesuatu di dekatnya dalam 60 detik pertama — bukan tutorial berisi teks, tapi satu instruksi dan satu tombol kamera. Battle/evolution harus memakai theme dan `UiJuice` yang sudah ada. Koleksi dasar dan Stats numerik selesai di Phase 2; fase ini hanya mengganti placeholder kartu yang belum tercache dengan thumbnail server khusus bila jumlah roster nyata membuktikan kebutuhan itu, serta menambahkan `stat_reasoning` dari Vision LLM ("ATK tinggi karena ujungnya tajam"). Jangan mengunduh sheet 1 MB massal hanya untuk menghilangkan placeholder.
 

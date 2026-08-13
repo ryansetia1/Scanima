@@ -55,6 +55,8 @@ Tiga mata uang, dan yang menentukan pembagiannya adalah biaya nyata yang mereka 
 | **Genesis Core** | Menciptakan spesies baru | 3 saat onboarding, 1 per minggu gratis, IAP, langganan |
 | **Bits** | Makanan, sabun, revive, kosmetik | 30 saat onboarding, rewarded ad, hadiah battle, quest harian |
 
+> **Keputusan produk, dikonfirmasi 13 Agustus 2026:** jalur gratis Genesis Core adalah **1 Core per minggu**. Fitur ini belum diimplementasikan; build sekarang hanya memberi 3 Core saat onboarding dan refund ketika generation gagal. Grant mingguan nanti wajib server-authoritative dan tercatat di ledger. Detail auto-credit versus tombol claim, batas penumpukan minggu terlewat, serta anti-abuse akun anonim belum diputuskan—jangan menganggap salah satunya sudah final.
+
 ### Kenapa rewarded ad tidak boleh membiayai Genesis Core
 
 Ini angka yang harus dilihat sebelum menempatkan tombol "Tonton iklan untuk 1 Core":
