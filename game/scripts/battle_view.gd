@@ -234,7 +234,10 @@ func begin_action(action: String) -> void:
 		"surge": "BATTLE_ACTION_PENDING_SURGE",
 		"guard": "BATTLE_ACTION_PENDING_GUARD",
 	}.get(action, "BATTLE_CHOOSE_ACTION"))
-	_feedback.text = tr(feedback_key)
+	if action == "guard":
+		_feedback.text = tr(feedback_key)
+	else:
+		_feedback.text = tr(feedback_key) % _move_label(action, _as_dict(_session.get("player_snapshot")))
 	_show_action_commit(action)
 	_update_action_state()
 
@@ -366,9 +369,15 @@ func _play_attack(event: Dictionary) -> void:
 	var target := _sprite_for(target_name)
 	if is_instance_valid(attacker):
 		attacker.set_pose("attack")
-	var action_label := tr("BATTLE_ACTION_STRIKE")
-	if str(event.get("action", "")) == "surge":
-		action_label = tr("BATTLE_ACTION_SURGE")
+		var fx_pose := "fx_surge" if str(event.get("action", "")) == "surge" else "fx_strike"
+		if is_instance_valid(target):
+			attacker.play_fx(fx_pose, target.to_global(target.offset))
+		else:
+			attacker.play_fx(fx_pose)
+	var actor_snapshot := _as_dict(
+		_session.get("player_snapshot" if actor_name == "player" else "bot_snapshot")
+	)
+	var action_label := _move_label(str(event.get("action", "")), actor_snapshot)
 	var element_multiplier := float(event.get("element_multiplier", 1.0))
 	var effect_key := effectiveness_key(element_multiplier)
 	_show_effectiveness(element_multiplier)
@@ -378,7 +387,7 @@ func _play_attack(event: Dictionary) -> void:
 		_feedback.text = tr("BATTLE_EVENT_ATTACK_EFFECTIVE") % [
 			_actor_name(actor_name), action_label, tr(effect_key),
 		]
-	await _event_pause(0.20)
+	await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)
 	_damage.text = tr("BATTLE_DAMAGE") % LocaleManager.format_integer(int(event.get("damage", 0)))
 	_damage.visible = true
 	if target_name == "player":
@@ -572,6 +581,8 @@ func _show_result(status: String) -> void:
 			_result_body.text = tr(
 				"BATTLE_TRAINING_WIN_BODY" if training else "BATTLE_WIN_BODY"
 			)
+			if is_instance_valid(_player_sprite):
+				_player_sprite.set_pose("happy")
 		"lost":
 			_result_title.text = tr("BATTLE_LOSS_TITLE")
 			_result_body.text = tr("BATTLE_LOSS_BODY")
@@ -606,7 +617,10 @@ func _update_action_state() -> void:
 			else Control.FOCUS_NONE
 		)
 	# Counter menempel di tombol yang membelanjakannya, bukan hanya di header.
+	var player_snapshot := _as_dict(_session.get("player_snapshot"))
+	_strike_button.text = _move_label("strike", player_snapshot)
 	_surge_button.text = tr("BATTLE_ACTION_SURGE_COST") % [
+		_move_label("surge", player_snapshot),
 		LocaleManager.format_integer(momentum),
 		LocaleManager.format_integer(MOMENTUM_MAX),
 	]
@@ -635,6 +649,10 @@ func _sprite_for(actor: String) -> AnimaPresenter:
 
 func _actor_name(actor: String) -> String:
 	return _player_name.text if actor == "player" else _bot_name.text
+
+
+func _move_label(action: String, snapshot: Dictionary) -> String:
+	return LocaleManager.move_name(snapshot, action)
 
 
 func _event_pause(seconds: float) -> void:

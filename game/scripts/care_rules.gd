@@ -23,6 +23,9 @@ const PLAY_SCORE_DAILY_CAP := 5
 const BATTLE_ENERGY_COST := 20.0
 const SLEEP_FULL_HOURS := 6.0
 const DORMANT_RECOVERY_NEED := 50.0
+const HUNGRY_POSE_NEED := 40.0
+const DIRTY_POSE_NEED := 50.0
+const NEED_FULL_AT := 99.5
 const LEVEL_CAP := 40
 const EXP_PER_LEVEL := 5
 const ADULT_LEVEL := 16
@@ -80,6 +83,11 @@ static func score_for_action(action: String, care_before: Variant, play_score_to
 			return 0
 
 
+static func need_is_full(care_value: Variant, need: String) -> bool:
+	var care := normalized_care(care_value)
+	return float(care.get(need, 0.0)) >= NEED_FULL_AT
+
+
 static func enters_dormant(care_value: Variant, effective_hours: float) -> bool:
 	var care := normalized_care(care_value)
 	return (
@@ -92,6 +100,19 @@ static func enters_dormant(care_value: Variant, effective_hours: float) -> bool:
 static func can_recover_from_dormant(care_value: Variant) -> bool:
 	var care := normalized_care(care_value)
 	return care["hunger"] >= DORMANT_RECOVERY_NEED and care["hygiene"] >= DORMANT_RECOVERY_NEED
+
+
+static func visual_pose(sleeping: bool, dormant: bool, care_value: Variant = {}) -> String:
+	if dormant:
+		return "defeated"
+	if sleeping:
+		return "sleep"
+	var care := normalized_care(care_value)
+	if care["hunger"] < HUNGRY_POSE_NEED:
+		return "hungry"
+	if care["hygiene"] < DIRTY_POSE_NEED:
+		return "dirty"
+	return "idle"
 
 
 static func level_from_exp(exp: int) -> int:

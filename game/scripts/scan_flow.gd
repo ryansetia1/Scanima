@@ -103,6 +103,7 @@ func _ready() -> void:
 	_battle_view.forfeit_requested.connect(_forfeit_battle)
 	_battle_view.reward_status_refresh_requested.connect(_refresh_battle_reward_status)
 	_home_view.care_requested.connect(_perform_care)
+	_home_view.care_blocked.connect(_on_care_blocked)
 	_home_view.first_scan_requested.connect(_open_scan)
 	_home_view.retry_requested.connect(_retry_roster)
 	_collection_view.preview_requested.connect(_sync_collection_preview)
@@ -572,6 +573,10 @@ func _present_row(row: Dictionary) -> void:
 		row,
 		false
 	)
+
+
+func _on_care_blocked(message: String) -> void:
+	_say(message, true)
 
 
 func _perform_care(action: String) -> void:
@@ -1437,7 +1442,7 @@ func _refresh_care() -> void:
 	if _profile_anima.is_empty():
 		_details_view.set_anima(_current_anima, _thumbnail_for(_current_anima))
 	if _anima.sprite_frames != null:
-		_anima.apply_care_state(sleeping, dormant)
+		_anima.apply_care_state(sleeping, dormant, _current_anima.get("care"))
 
 
 func _schedule_sleep_completion() -> void:

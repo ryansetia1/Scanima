@@ -52,6 +52,11 @@ export function extractJson(raw) {
   throw new Error(`Vision tidak mengembalikan JSON yang bisa diparse: ${candidate.slice(0, 300) || "(kosong)"}`);
 }
 
+export function promptMajor(version) {
+  const n = Number(String(version ?? "").replace(/^v/i, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function normalizeSuggestedName(name, fallback = "Anima") {
   const candidate = String(name ?? "").trim().slice(0, 24);
   if (!candidate) return fallback;
@@ -59,6 +64,23 @@ export function normalizeSuggestedName(name, fallback = "Anima") {
 
   const stem = candidate.slice(0, -3).trim();
   return stem.length >= 2 ? `${stem}ra`.slice(0, 24) : fallback;
+}
+
+export function normalizeMoveName(name, fallback = "") {
+  const words = String(name ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1));
+  const candidate = words.join(" ").slice(0, 24);
+  if (!candidate) return fallback;
+  if (/mon$/i.test(candidate.replace(/\s/g, ""))) {
+    const stem = candidate.replace(/\s*mon$/i, "").trim();
+    return stem.length >= 2 ? stem.slice(0, 24) : fallback;
+  }
+  return candidate;
 }
 
 /**
@@ -69,7 +91,8 @@ export function validateVision(
   v,
   knownSpecies = [],
   requireMaterial = false,
-  requireCharacter = false
+  requireCharacter = false,
+  requireMoves = false
 ) {
   const issues = [];
 
@@ -131,6 +154,23 @@ export function validateVision(
   if (requireCharacter && !v.character_direction?.trim()) {
     issues.push("character_direction kosong");
   }
+  if (requireMoves) {
+    const strike = normalizeMoveName(v.strike_name);
+    const surge = normalizeMoveName(v.surge_name);
+    if (!strike) issues.push("strike_name kosong");
+    else if (strike !== String(v.strike_name ?? "").trim()) {
+      issues.push(`strike_name '${v.strike_name}' dinormalisasi ke '${strike}'`);
+    }
+    if (!surge) issues.push("surge_name kosong");
+    else if (surge !== String(v.surge_name ?? "").trim()) {
+      issues.push(`surge_name '${v.surge_name}' dinormalisasi ke '${surge}'`);
+    }
+    if (strike && surge && strike.toLowerCase() === surge.toLowerCase()) {
+      issues.push("strike_name dan surge_name tidak boleh sama");
+    }
+    v.strike_name = strike;
+    v.surge_name = surge;
+  }
 
   return { gate: "passed", reason: null, issues, vision: v };
 }
@@ -191,7 +231,9 @@ export function assemblePrompt(template, vision) {
     .replaceAll("{{personality}}", personality)
     .replaceAll("{{surface_finish}}", surface)
     .replaceAll("{{character_direction}}", characterDirection)
-    .replaceAll("{{damage_hints_as_bullets}}", damageBullets);
+    .replaceAll("{{damage_hints_as_bullets}}", damageBullets)
+    .replaceAll("{{strike_name}}", vision.strike_name?.trim() || "a close-range strike")
+    .replaceAll("{{surge_name}}", vision.surge_name?.trim() || "a charged special burst");
 
   const leftover = out.match(/\{\{[a-z_]+\}\}/g);
   if (leftover) throw new Error(`placeholder belum terisi: ${leftover.join(", ")}`);

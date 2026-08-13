@@ -25,7 +25,7 @@ Kesalahan yang paling mungkin dilakukan di proyek seperti ini adalah menghabiska
 
 Sengaja tanpa Supabase, tanpa autentikasi, tanpa database, tanpa sistem kuota. Panggilan API dilakukan dari script Node lokal dan build Godot khusus development yang membaca token dari file lokal yang di-gitignore.
 
-> **Status per 13 Agustus 2026.** Pipeline sudah terbukti dengan foto sungguhan pada nano-banana-pro dan GPT Image 2. Setelah A/B medium vs high, default dipindah ke GPT Image 2 medium dan prompt production v2 mengikuti anime cel-shaded style guide. Smoke Set berbayar dengan template v2 final sudah menjalankan 3/3 sheet 4/4 sel dan gate 2/2. V3 menghilangkan logo Nike lewat marking pengganti dan tetap menjadi default production. Candidate terbaru **v5** membawa pagar logo/damage material milik v4 lalu menambah `character_direction`, Idle non-angry, limb plan opsional, dan larangan nama `-mon`; 23 skenario gratis serta dry-run lima foto lulus, tetapi v5 belum dipromosikan sebelum Smoke Set visual berbayar disetujui. Sisi Godot kini punya **413 pemeriksaan headless inti**: client state 55, slicing/presenter 89, UI 239, dan aturan care/event 30, ditambah 1299 pemeriksaan katalog i18n.
+> **Status per 14 Agustus 2026.** Pipeline sudah terbukti dengan foto sungguhan pada nano-banana-pro dan GPT Image 2. Default gambar tetap GPT Image 2 medium. **Prompt v7 adalah default production**: sheet 3×3 (9 sel, termasuk VFX Attack/Special) plus nama move unik, tanpa mengubah `species_key`. v3–v6 tetap di git untuk rollback; cache 2×2 lama tetap dimuat. Eval visual Retroid Pocket Classic lulus 9/9 sel sebelum promosi.
 
 ### Yang dikerjakan
 

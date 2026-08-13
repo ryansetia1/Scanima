@@ -12,7 +12,7 @@ graph LR
     Assembler --> Prompt["Prompt sprite sheet final"]
     Photo --> Rep["GPT Image 2 medium"]
     Prompt --> Rep
-    Rep --> Sheet["Sheet 2x2, 4 pose"]
+    Rep --> Sheet["Sheet 3x3 (v7); cache 2x2 lama tetap sah"]
 ```
 
 Perhatikan bahwa **foto asli tetap dikirim ke model gambar** lewat `input_images`. Vision LLM bukan penerjemah untuk model yang buta — model gambar bisa melihat objeknya sendiri. Tugas Vision LLM adalah hal yang tidak bisa dilakukan model gambar: mengeluarkan angka stat, memilih elemen, memberi kunci taksonomi untuk caching, dan menulis deskripsi kreatur yang menjembatani bentuk objek ke bentuk monster.
@@ -273,12 +273,14 @@ Jumlah stat dinormalisasi ke rentang 200-350 kalau LLM meleset, dengan penskalaa
 
 ## 3. Style lock: konstanta, bukan variabel
 
-Style production yang sudah diterima tetap **v3**. **V6 adalah candidate terbaru**:
-ia membawa seluruh perbaikan material, karakter, dan body plan v5 lalu mengunci
-arah hadap ke canvas-left pada keempat pose. V6 belum menjadi default karena
-kontrak gratis hanya membuktikan teks dan data flow; kepatuhan visual tetap harus
-dibuktikan lewat model production berbayar. Semua versi lama tetap utuh agar
-aset dan setiap iterasi prompt bisa direproduksi.
+Style production yang sudah diterima adalah **v7**. Sheet 3×3 berisi tujuh pose
+karakter (Idle, Battle, Sleep, Happy, Hungry, Dirty, Damaged) plus dua sel efek
+battle tanpa tubuh, dan Vision menulis `strike_name` serta `surge_name` per
+Anima tanpa mengubah `species_key`. Nama move tepat dua kata Inggris pendek
+supaya muat di tombol Battle; `normalizeMoveName()` memotong kelebihan kata
+kalau model mengabaikan instruksi itu. V3–v6 tetap di git sebagai predecessor /
+rollback. Cache 2×2 lama tetap dimuat; pose ekstra dan overlay FX diabaikan
+kalau tidak ada.
 
 Style lock v2 yang identik untuk setiap Anima:
 
@@ -366,15 +368,12 @@ client tidak memiliki detector arah yang andal dan flip parsial akan menukar
 landmark anatomi antar pose.
 
 **Decision log:** dibuat versi baru, bukan mengedit v5, agar hasil A/B lama tetap
-dapat direproduksi. V3 tetap default dan tidak ada panggilan API pada tahap ini.
-Promosi v6 menunggu Smoke Set yang memeriksa arah Idle/Battle/Sleep/Damaged,
-selain gerbang kualitas v5 yang sudah ada.
+dapat direproduksi. V7 adalah default production; v3–v6 tetap di git.
 
 ## 4. Template prompt sprite sheet
 
-File default production adalah `backend/prompts/v3/sprite_sheet.md`; candidate
-terbaru ada di v6. File sumber itu tidak disalin ulang di dokumen ini.
-Arsitekturnya mengikuti blok stabil:
+File default production adalah `backend/prompts/v7/sprite_sheet.md`. File sumber
+itu tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
 
 ```text
 [GLOBAL STYLE LOCK]
@@ -385,7 +384,7 @@ Arsitekturnya mengikuti blok stabil:
 [COLOR + PERSONALITY]
 [CHARACTER CONSISTENCY]
 [HORIZONTAL FACING LOCK]            (v6: semua pose canvas-left)
-[FOUR STATES]
+[NINE CELLS]                        (v7: 7 pose + 2 VFX)
 [COMPOSITION + TECHNICAL BACKGROUND]
 [NEGATIVE STYLE]
 ```
@@ -402,9 +401,10 @@ const prompt = assemblePrompt(template, vision);
 // {{surface_finish}}                 <- material/finish yang terlihat
 // {{damage_hints_as_bullets}}        <- damage material; hint teknis disaring
 // {{character_direction}}            <- cue visual objek; netral bila ambigu
+// {{strike_name}} / {{surge_name}}   <- nama move unik (v7)
 ```
 
-Keempat keadaan visual adalah Idle, Battle, Sleep, dan Damaged. Untuk kompatibilitas manifest/Godot yang sudah ada, slot bawah-kanan masih memakai key internal `defeated`; art-nya mengikuti kontrak Damaged: kerusakan kecil yang spesifik ke objek, bukan tubuh dihancurkan atau didesain ulang.
+Keempat keadaan visual v3 adalah Idle, Battle, Sleep, dan Damaged. Production v7 menambah Happy, Hungry, Dirty, plus dua sel efek battle (`fx_strike`, `fx_surge`) yang tidak berisi tubuh kreatur. Client menampilkan sel efek itu sebagai overlay VFX tambahan saat Attack/Special, bukan mengganti pose tubuh. Untuk kompatibilitas manifest/Godot yang sudah ada, slot Damaged masih memakai key internal `defeated`. Assembler v7 juga mengisi `{{strike_name}}` dan `{{surge_name}}`.
 
 ## 5. Payload Replicate
 
@@ -587,7 +587,7 @@ backend/prompts/
 │   ├── vision_schema.json
 │   ├── sprite_sheet.md
 │   └── sprite_sheet_evolve.md
-├── v3/                    <- default production
+├── v3/                    <- predecessor: brand marks
 │   ├── vision_system.md
 │   ├── vision_schema.json
 │   ├── sprite_sheet.md
@@ -602,10 +602,15 @@ backend/prompts/
 │   ├── vision_schema.json
 │   ├── sprite_sheet.md    # Idle non-angry + character range
 │   └── sprite_sheet_evolve.md
-└── v6/                    <- candidate terbaru, belum Smoke Set berbayar
-    ├── vision_system.md   # identik v5
-    ├── vision_schema.json # identik v5; species cache key tetap
-    ├── sprite_sheet.md    # v5 + facing lock ke canvas-left
+├── v6/                    <- predecessor: facing lock kiri
+│   ├── vision_system.md   # identik v5
+│   ├── vision_schema.json # identik v5; species cache key tetap
+│   ├── sprite_sheet.md    # v5 + facing lock ke canvas-left
+│   └── sprite_sheet_evolve.md
+└── v7/                    <- default production: 3x3 + nama move + VFX
+    ├── vision_system.md   # v6 + strike_name / surge_name dua kata
+    ├── vision_schema.json
+    ├── sprite_sheet.md    # sembilan sel
     └── sprite_sheet_evolve.md
 ```
 

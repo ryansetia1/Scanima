@@ -25,10 +25,11 @@ import { Image } from "imagescript";
 // Modul post-processing hidup di direktori Edge Function, bukan di sini, karena
 // produksi yang memilikinya dan eval yang meminjam. Satu file untuk dua runtime;
 // paritas keying dan slicing bukan sesuatu yang boleh bergantung pada dua salinan.
-import { postprocessSheet, POSES } from "../backend/supabase/functions/_shared/postprocess.mjs";
+import { postprocessSheet, layoutForPrompt } from "../backend/supabase/functions/_shared/postprocess.mjs";
 import {
   assemblePrompt,
   extractJson,
+  promptMajor,
   validateVision,
   visionInstruction,
 } from "../backend/supabase/functions/_shared/vision.mjs";
@@ -58,7 +59,7 @@ function parseArgs(argv) {
   const args = {
     set: null,
     photo: null,
-    promptVersion: "v3",
+    promptVersion: "v7",
     dryRun: false,
     visionOnly: false,
     reprocess: false,
@@ -253,7 +254,7 @@ function contactSheetHtml(setName, promptVersion, rows, totals) {
             : `<span class="err">GAGAL</span>`;
 
       const poses = r.manifest
-        ? POSES.map((p) => {
+        ? layoutForPrompt(promptVersion).poses.map((p) => {
             const region = r.manifest.poses?.[p]?.region;
             if (!region) return `<div class="pose missing">${p}<br><small>hilang</small></div>`;
             const [x, y, w, h] = region;
@@ -272,12 +273,13 @@ function contactSheetHtml(setName, promptVersion, rows, totals) {
           <div class="meta">
             ${r.vision ? `<div><b>${esc(r.vision.suggested_name)}</b> — ${esc(r.vision.species_key)}
               / ${esc(r.vision.color_bucket)} / ${esc(r.vision.element)} / rarity ${esc(r.vision.rarity)}</div>` : ""}
+            ${r.vision?.strike_name || r.vision?.surge_name ? `<div>moves: ${esc(r.vision.strike_name)} / ${esc(r.vision.surge_name)}</div>` : ""}
             ${r.vision?.stats ? `<div class="stats">${Object.entries(r.vision.stats)
               .map(([k, val]) => `<span>${k} <b>${val}</b></span>`).join("")}</div>` : ""}
             ${r.vision?.creature_brief ? `<p>${esc(r.vision.creature_brief)}</p>` : ""}
             ${r.issues?.length ? `<ul class="issues">${r.issues.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : ""}
             ${r.manifest ? `<div class="qa">frame ${r.manifest.frame_size.join("x")}
-              · sel ${r.manifest.qa.cells_detected}/4
+              · sel ${r.manifest.qa.cells_detected}/${layoutForPrompt(promptVersion).poses.length}
               · residu hijau ${(r.manifest.qa.green_residue_ratio * 100).toFixed(3)}%
               · skala Idle/Attack ${(r.manifest.qa.standing_height_variance * 100).toFixed(1)}%
               ${r.seconds ? `· ${r.seconds}s` : ""}</div>` : ""}
@@ -340,7 +342,7 @@ async function main() {
 
   --set smoke|full        set foto (default: smoke)
   --photo <path>          jalankan satu foto saja
-  --prompt-version v3     versi prompt di backend/prompts/ (default: v3)
+  --prompt-version v7     versi prompt di backend/prompts/ (default: v7)
   --dry-run               tidak memanggil API sama sekali
   --vision-only           panggil Vision saja, tanpa image generation
   --reprocess             susun ulang sheet dari raw.png hasil run sebelumnya,
@@ -401,6 +403,8 @@ async function main() {
     const fake = {
       creature_brief: "Sebuah tubuh uji berbentuk kotak dengan dua mata di depan.",
       signature_features: ["tombol jadi mata", "kabel jadi ekor"],
+      strike_name: "Click Snap",
+      surge_name: "Cable Lash",
     };
     assemblePrompt(template, fake);
     console.log(`template ${args.promptVersion} terisi tanpa placeholder sisa`);
@@ -470,8 +474,9 @@ async function main() {
         checked = validateVision(
           seen.vision,
           knownSpecies,
-          ["v4", "v5", "v6"].includes(args.promptVersion),
-          ["v5", "v6"].includes(args.promptVersion)
+          promptMajor(args.promptVersion) >= 4,
+          promptMajor(args.promptVersion) >= 5,
+          promptMajor(args.promptVersion) >= 7
         );
         row.vision = checked.vision;
         row.issues = [...(row.issues ?? []), ...checked.issues];
@@ -536,11 +541,13 @@ async function main() {
       row.status = "ok";
       row.manifest = manifest;
       row.sheetFile = `${name}.png`;
-      if (manifest.qa.cells_detected === POSES.length) totals.fullSheets++;
+      if (manifest.qa.cells_detected === layoutForPrompt(args.promptVersion).poses.length) {
+        totals.fullSheets++;
+      }
 
       console.log(
         (gen.seconds ? `${gen.seconds}s · ` : "") +
-          `sel ${manifest.qa.cells_detected}/4` +
+          `sel ${manifest.qa.cells_detected}/${layoutForPrompt(args.promptVersion).poses.length}` +
           (manifest.qa.warnings.length ? ` · ${manifest.qa.warnings.join("; ")}` : "")
       );
     } catch (err) {
@@ -565,7 +572,7 @@ async function main() {
   console.log(`generation      : ${totals.generated}`);
   console.log(`biaya           : ~$${totals.costUsd.toFixed(3)}`);
   console.log(`gate benar      : ${totals.gateCorrect}/${totals.gateExpected}`);
-  console.log(`sheet 4/4 sel   : ${totals.fullSheets}/${totals.generated}`);
+  console.log(`sheet lengkap  : ${totals.fullSheets}/${totals.generated}`);
   console.log(`species unik    : ${unique.size} dari ${keys.length} foto`);
   const failed = rows.filter((r) => r.status === "error");
   if (failed.length) console.log(`gagal           : ${failed.map((r) => r.file).join(", ")}`);

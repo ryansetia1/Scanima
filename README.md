@@ -17,7 +17,7 @@ Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`**
 
 Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu mereproduksi logo merek dari fotonya di keempat pose. Larangan tekstual sudah ada di v2 dan tidak cukup, karena logonya datang dari foto referensi. **Prompt v3 kini jadi default**: ia memerintahkan model mengganti mark merek dengan permukaan polos atau marking geometris ciptaan sendiri. Uji satu foto sepatu (~$0.073) memberi 4/4 sel, residu 0,014%, logo hilang, dan `species_key` tidak bergeser. Mouse dan mug belum diulang di v3.
 
-**Prompt v6 sekarang menjadi candidate terbaru, bukan default.** V4 lebih dulu menghapus emblem semu dan damage cyborg; v5 menambah `character_direction`, body plan opsional, Idle non-angry, serta larangan suffix `-mon`. V6 mempertahankan seluruh pagar itu dan mengunci keempat pose ke arah canvas-left: sel tidak boleh di-mirror sendiri, landmark asimetris tidak boleh bertukar sisi, dan pose Battle wajib menyerang ke kiri. Client membalik seluruh sheet hanya untuk petarung di sisi kiri arena. Vision dan `species_key` tetap identik dengan v5, sehingga eksperimen arah tidak memecah cache. Production tetap v3 sampai v6 melewati Smoke Set visual berbayar.
+**Prompt v7 kini default production.** V7 membawa seluruh pagar v6 (facing lock kiri, karakter, body plan, damage material, tanpa emblem), lalu mengubah sheet menjadi 3×3: tujuh pose karakter plus dua sel VFX battle (`fx_strike` / `fx_surge`) tanpa tubuh, dan Vision menulis nama Attack/Special unik per Anima. `species_key` tidak berubah, jadi cache 2×2 lama tetap kena. Eval visual Retroid Pocket Classic lulus 9/9 sel. v3–v6 tetap di git untuk rollback.
 
 **`google/nano-banana-2-lite` sudah mendapat satu A/B berbayar dengan mouse + prompt v5 dan ditolak.** Billing run tampil $0.03 dan generation selesai dalam 7 detik dengan 4/4 pose, tetapi model ikut menggambar label kuadran serta garis pembagi. Akibatnya bbox Sleep memenuhi tinggi sheet, cross-boundary mencapai 21.361 piksel, dan residu hijau 2,04% versus target <0,1%. Kecepatan dan harga tidak menutup kegagalan kepatuhan layout, jadi GPT Image 2 medium tetap dipakai.
 
@@ -50,7 +50,7 @@ target 96px tetap muat; Scan tetap CTA cyan dan Battle punya state aktif
 tersendiri. Child scene persisten membuat pindah tab tidak me-reset request,
 pending scan/care/battle, Stage, atau inkubator. Seluruh copy production memakai
 katalog English Godot-native, theme cyan-violet-gold, ikon SVG berlisensi, dan
-Reduced Motion bersama. `test_scan_ui.gd` menjaga 379 kontrak
+Reduced Motion bersama. `test_scan_ui.gd` menjaga 419 kontrak
 shell/touch/Battle/motion dan `test_i18n.gd` menjaga 1461 kontrak katalog.
 
 **Collection sekarang memisahkan inspect dari Summon.** Tap kartu membuka bottom sheet dengan portrait, lima base stat yang tumbuh menurut Level, tiga kebutuhan, dan bar EXP yang disinkronkan server. `View Profile` membuka stats/delete tanpa mengganti companion aktif; `Summon` baru memindahkan pilihan ke Home melalui dissolve, portal cyan-violet, dan reveal, tanpa biaya atau model call. Roster yang benar-benar kosong menampilkan scanner procedural serta CTA first scan di Home dan Collection; loading atau error jaringan tidak lagi menyamar sebagai pemain baru. Setiap hatch tetap menawarkan rename opsional. Delete owner-only sudah live di production dan tetap tanpa refund.
@@ -95,7 +95,7 @@ Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 23 skenario + 12 uji tanda tangan webhook, tanpa API
+npm run selftest                 # 25 skenario + 12 uji tanda tangan webhook, tanpa API
 
 # Godot: 89 pemeriksaan slicing/presenter, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
@@ -149,7 +149,7 @@ Untuk mengulang run berbayarnya: taruh 5 foto di `eval/photos/` (lihat [panduann
 | Layer | Pilihan | Catatan |
 | --- | --- | --- |
 | Engine | Godot 4.x (Mobile renderer, 2D) | Export Android + Web |
-| Image generation | `openai/gpt-image-2` medium via Replicate | 1 panggilan menghasilkan sheet 1024×1024 berisi 4 pose |
+| Image generation | `openai/gpt-image-2` medium via Replicate | 1 panggilan menghasilkan sheet 1024×1024 3×3 (9 sel); cache 2×2 lama tetap dimuat |
 | Vision + stat | `google/gemini-2.5-flash` via Replicate | Analisis objek, penentuan stat/elemen, penyusunan visual prompt |
 | Backend | Supabase (Postgres + Auth + Storage + Edge Functions) | Proxy API key, kuota, caching, post-processing gambar |
 
@@ -162,9 +162,9 @@ Dua konsekuensi dari memakai wrapper Replicate alih-alih Gemini API langsung, ke
 ```mermaid
 graph LR
     Photo["Foto objek"] --> Vision["Vision LLM:<br/>stat + elemen + prompt"]
-    Vision --> Gen["GPT Image 2 medium:<br/>sheet 2x2, 4 pose"]
+    Vision --> Gen["GPT Image 2 medium:<br/>sheet 3x3, 9 sel"]
     Gen --> Post["Edge Function:<br/>chroma key + slice"]
-    Post --> Godot["Godot:<br/>4 AtlasTexture"]
+    Post --> Godot["Godot:<br/>9 AtlasTexture"]
     Godot --> Pet["Anima hidup:<br/>rawat, evolusi, bertarung"]
 ```
 
@@ -216,18 +216,19 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 379 kontrak shell + Battle + touch
+│       ├── test_scan_ui.gd           # 419 kontrak shell + Battle + touch
 │       ├── test_i18n.gd              # 1461 kontrak katalog + key + wrapping
-│       ├── test_game_rules.gd        # 50 kontrak care + EXP/Level + event Battle
+│       ├── test_game_rules.gd        # 61 kontrak care + EXP/Level + event Battle
 │       ├── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 │       └── live_battle.gd            # Battle produksi, nol model call
 ├── backend/
 │   ├── prompts/v1/               # baseline nano-banana-pro, tidak diubah
 │   ├── prompts/v2/               # GPT Image 2 medium + anime cel-shaded style
-│   ├── prompts/v3/               # default: v2 + blok BRAND MARKS
+│   ├── prompts/v3/               # predecessor: v2 + blok BRAND MARKS
 │   ├── prompts/v4/               # predecessor: tanpa emblem + damage material
 │   ├── prompts/v5/               # predecessor: karakter + limb plan mengikuti objek
-│   ├── prompts/v6/               # candidate: v5 + facing lock empat pose
+│   ├── prompts/v6/               # predecessor: v5 + facing lock empat pose
+│   ├── prompts/v7/               # default: sheet 3x3 + nama move + VFX battle
 │   ├── tools/bundle_prompts.mjs  # prompts/ -> modul yang bisa diimpor Deno
 │   ├── supabase/migrations/      # skema, RLS + hak kolom, fungsi kuota
 │   ├── supabase/functions/

@@ -25,6 +25,7 @@ const TIMEOUT_FUNGSI_SEC := 90.0
 const MARGIN_REFRESH_SEC := 120
 const ANIMA_FIELDS := (
 	"id,status,nickname,species_key,color_bucket,stage,element,rarity,base_stats,"
+	+ "strike_name,surge_name,"
 	+ "care,care_score,care_synced_at,sleep_started_at,sleep_energy_at_start,"
 	+ "well_cared_on,play_score_on,play_score_today,dormant_since,battle_wins"
 )

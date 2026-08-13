@@ -11,16 +11,46 @@
 // juta. Eval yang tidak memakai urutan produksi tidak memprediksi produksi.
 
 import { Image } from "imagescript";
+import { promptMajor } from "./vision.mjs";
 
-export const POSES = ["idle", "attack", "sleep", "defeated"];
-
-// Kuadran asal tiap pose, harus cocok dengan blok LAYOUT di sprite_sheet.md.
-export const POSE_QUADRANT = {
-  idle: [0, 0],
-  attack: [1, 0],
-  sleep: [0, 1],
-  defeated: [1, 1],
+export const LAYOUT_2X2 = {
+  grid: 2,
+  poses: ["idle", "attack", "sleep", "defeated"],
+  quadrant: {
+    idle: [0, 0],
+    attack: [1, 0],
+    sleep: [0, 1],
+    defeated: [1, 1],
+  },
 };
+
+export const LAYOUT_3X3 = {
+  grid: 3,
+  poses: [
+    "idle", "attack", "sleep",
+    "happy", "hungry", "dirty",
+    "defeated", "fx_strike", "fx_surge",
+  ],
+  quadrant: {
+    idle: [0, 0],
+    attack: [1, 0],
+    sleep: [2, 0],
+    happy: [0, 1],
+    hungry: [1, 1],
+    dirty: [2, 1],
+    defeated: [0, 2],
+    fx_strike: [1, 2],
+    fx_surge: [2, 2],
+  },
+};
+
+export function layoutForPrompt(version) {
+  return promptMajor(version) >= 7 ? LAYOUT_3X3 : LAYOUT_2X2;
+}
+
+// Alias 2x2 untuk selftest lama dan import yang sudah ada.
+export const POSES = LAYOUT_2X2.poses;
+export const POSE_QUADRANT = LAYOUT_2X2.quadrant;
 
 export const DEFAULTS = {
   workSize: 1024, // sisi sheet setelah downscale
@@ -218,21 +248,23 @@ export function findBBox(bitmap, width, rect, alphaThreshold = DEFAULTS.alphaThr
  * bbox satu pose boleh masuk ke kuadran tetangga tanpa ikut menyalin monster
  * tetangganya yang kebetulan berada di dalam persegi bbox yang sama.
  */
-export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS) {
+export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS, layout = LAYOUT_2X2) {
   const pixelCount = width * height;
   const visited = new Uint8Array(pixelCount);
   const owners = new Uint8Array(pixelCount);
-  owners.fill(255); // 0..3 = indeks POSES, 255 = background/noise
+  owners.fill(255); // 0..n = indeks pose, 255 = background/noise
 
   // Satu queue dialokasikan sekali dan dipakai ulang untuk semua komponen.
   // Int32Array 1 juta piksel = 4 MB; lebih aman daripada Array<number> yang
   // bisa membengkak puluhan MB di Edge Function.
   const queue = new Int32Array(pixelCount);
-  const boxes = Array(POSES.length).fill(null);
-  const opaquePixels = new Uint32Array(POSES.length);
-  const crossBoundaryPixels = new Uint32Array(POSES.length);
-  const halfW = Math.floor(width / 2);
-  const halfH = Math.floor(height / 2);
+  const poseCount = layout.poses.length;
+  const grid = layout.grid;
+  const cellW = Math.floor(width / grid);
+  const cellH = Math.floor(height / grid);
+  const boxes = Array(poseCount).fill(null);
+  const opaquePixels = new Uint32Array(poseCount);
+  const crossBoundaryPixels = new Uint32Array(poseCount);
 
   for (let seed = 0; seed < pixelCount; seed++) {
     if (visited[seed] || bitmap[seed * 4 + 3] <= opts.alphaThreshold) continue;
@@ -241,7 +273,7 @@ export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS) {
     let end = 1;
     queue[0] = seed;
     visited[seed] = 1;
-    const quadrantCounts = new Uint32Array(POSES.length);
+    const quadrantCounts = new Uint32Array(poseCount);
     let minX = width;
     let minY = height;
     let maxX = -1;
@@ -251,7 +283,9 @@ export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS) {
       const p = queue[start++];
       const x = p % width;
       const y = Math.floor(p / width);
-      quadrantCounts[(y >= halfH ? 2 : 0) + (x >= halfW ? 1 : 0)]++;
+      const col = Math.min(grid - 1, Math.floor(x / cellW));
+      const row = Math.min(grid - 1, Math.floor(y / cellH));
+      quadrantCounts[row * grid + col]++;
       if (x < minX) minX = x;
       if (x > maxX) maxX = x;
       if (y < minY) minY = y;
@@ -275,7 +309,7 @@ export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS) {
     if (end < opts.minComponentPixels) continue;
 
     let owner = 0;
-    for (let q = 1; q < POSES.length; q++) {
+    for (let q = 1; q < poseCount; q++) {
       if (quadrantCounts[q] > quadrantCounts[owner]) owner = q;
     }
 
@@ -299,9 +333,10 @@ export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS) {
 
   const bboxes = {};
   const ownership = {};
-  for (let i = 0; i < POSES.length; i++) {
-    if (boxes[i]) bboxes[POSES[i]] = boxes[i];
-    ownership[POSES[i]] = {
+  for (let i = 0; i < poseCount; i++) {
+    const pose = layout.poses[i];
+    if (boxes[i]) bboxes[pose] = boxes[i];
+    ownership[pose] = {
       opaque_pixels: opaquePixels[i],
       cross_boundary_pixels: crossBoundaryPixels[i],
     };
@@ -348,8 +383,8 @@ export function greenResidueRatio(bitmap) {
  * berdiri di garis tanah yang sama, termasuk pose sleep dan defeated yang
  * memang lebih rendah.
  */
-export function planFrames(bboxes, opts = DEFAULTS) {
-  const present = POSES.filter((p) => bboxes[p]);
+export function planFrames(bboxes, opts = DEFAULTS, layout = LAYOUT_2X2) {
+  const present = layout.poses.filter((p) => bboxes[p]);
   if (present.length === 0) throw new Error("tidak ada satu pun bbox terdeteksi");
 
   const maxW = Math.max(...present.map((p) => bboxes[p].w));
@@ -359,7 +394,7 @@ export function planFrames(bboxes, opts = DEFAULTS) {
 
   const placements = {};
   for (const pose of present) {
-    const [col, row] = POSE_QUADRANT[pose];
+    const [col, row] = layout.quadrant[pose];
     const bb = bboxes[pose];
     placements[pose] = {
       src: bb,
@@ -369,7 +404,13 @@ export function planFrames(bboxes, opts = DEFAULTS) {
     };
   }
 
-  return { frameW, frameH, sheetW: frameW * 2, sheetH: frameH * 2, placements };
+  return {
+    frameW,
+    frameH,
+    sheetW: frameW * layout.grid,
+    sheetH: frameH * layout.grid,
+    placements,
+  };
 }
 
 /** Salin hanya piksel yang memang dimiliki pose ini, bukan isi bbox tetangga. */
@@ -421,17 +462,18 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
 
   softenAlphaEdges(bitmap, width, height, opts);
 
-  // Segmentasi komponen terhubung membiarkan anggota tubuh melewati garis tengah
-  // tanpa ikut mencopy monster tetangga. Kuadran hanya menentukan pose pemilik,
+  // Segmentasi komponen terhubung membiarkan anggota tubuh melewati garis sel
+  // tanpa ikut mencopy monster tetangga. Sel grid hanya menentukan pose pemilik,
   // bukan menjadi batas crop.
-  const halfW = Math.floor(width / 2);
-  const halfH = Math.floor(height / 2);
-  const quadrantArea = halfW * halfH;
-  const segmented = segmentPosePixels(bitmap, width, height, opts);
+  const layout = layoutForPrompt(meta.promptVersion);
+  const cellW = Math.floor(width / layout.grid);
+  const cellH = Math.floor(height / layout.grid);
+  const quadrantArea = cellW * cellH;
+  const segmented = segmentPosePixels(bitmap, width, height, opts, layout);
   const bboxes = segmented.bboxes;
   const rejected = {};
 
-  for (const pose of POSES) {
+  for (const pose of layout.poses) {
     const bb = bboxes[pose];
     if (!bb) {
       rejected[pose] = "kosong";
@@ -470,7 +512,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
     );
   }
 
-  const plan = planFrames(bboxes, opts);
+  const plan = planFrames(bboxes, opts, layout);
 
   const out = new Image(plan.sheetW, plan.sheetH);
   out.bitmap.fill(0);
@@ -481,7 +523,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       width,
       pl.src,
       segmented.owners,
-      POSES.indexOf(pose),
+      layout.poses.indexOf(pose),
       out.bitmap,
       plan.sheetW,
       pl.destX,
@@ -489,7 +531,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
     );
   }
 
-  const metrics = heightMetrics(bboxes);
+  const metrics = heightMetrics(bboxes, layout);
 
   const poses = {};
   for (const pose of detected) poses[pose] = { region: plan.placements[pose].region };
@@ -519,7 +561,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       // ke dalam tubuh. Pantau green_residue_ratio; kalau tembus 0,005 naikkan
       // erosinya jadi pita 2px, atau tambahkan despill (tarik channel hijau ke
       // max(r,b)) yang mempertahankan silhouette dengan harga tepi keabuan.
-      warnings: buildWarnings(detected, metrics, out.bitmap),
+      warnings: buildWarnings(detected, metrics, out.bitmap, layout),
     },
   };
 
@@ -535,9 +577,9 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
  * menandakan model mengubah skala adalah selisih antara Idle dan Attack, karena
  * keduanya berdiri penuh.
  */
-export function heightMetrics(bboxes) {
+export function heightMetrics(bboxes, layout = LAYOUT_2X2) {
   const heights = {};
-  for (const pose of POSES) if (bboxes[pose]) heights[pose] = bboxes[pose].h;
+  for (const pose of layout.poses) if (bboxes[pose]) heights[pose] = bboxes[pose].h;
 
   let standingVariance = 0;
   if (bboxes.idle && bboxes.attack) {
@@ -558,9 +600,11 @@ export function heightMetrics(bboxes) {
   return { heights, standingVariance, tooTall };
 }
 
-function buildWarnings(detected, metrics, bitmap) {
+function buildWarnings(detected, metrics, bitmap, layout = LAYOUT_2X2) {
   const warnings = [];
-  if (detected.length < POSES.length) warnings.push(`hanya ${detected.length}/4 sel terdeteksi`);
+  if (detected.length < layout.poses.length) {
+    warnings.push(`hanya ${detected.length}/${layout.poses.length} sel terdeteksi`);
+  }
   if (metrics.standingVariance > 0.15) {
     warnings.push(`skala Idle vs Attack beda ${Math.round(metrics.standingVariance * 100)}%`);
   }

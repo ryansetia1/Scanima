@@ -10,8 +10,12 @@ extends RefCounted
 ## region-nya masuk akal, lalu menolak kalau tidak.
 
 const MANIFEST_VERSION := 1
-const KNOWN_POSES: PackedStringArray = ["idle", "attack", "sleep", "defeated"]
+const KNOWN_POSES: PackedStringArray = [
+	"idle", "attack", "sleep", "defeated",
+	"happy", "hungry", "dirty", "fx_strike", "fx_surge",
+]
 const DEFAULT_POSE := "idle"
+const FX_POSES: PackedStringArray = ["fx_strike", "fx_surge"]
 
 
 ## Memuat dari path manifest.json. Sheet dicari dari field "sheet" di manifest,

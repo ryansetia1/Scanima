@@ -12,6 +12,7 @@ import { Image } from "imagescript";
 import {
   POSES,
   POSE_QUADRANT,
+  LAYOUT_3X3,
   DEFAULTS,
   isKeyColor,
   findBBox,
@@ -23,6 +24,8 @@ import {
   assemblePrompt,
   extractJson,
   normalizeSuggestedName,
+  normalizeMoveName,
+  promptMajor,
 } from "../backend/supabase/functions/_shared/vision.mjs";
 import { biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
 import {
@@ -54,6 +57,11 @@ const FILLS = {
   attack: [40, 80, 230],
   sleep: [150, 60, 200],
   defeated: [240, 150, 30],
+  happy: [230, 180, 40],
+  hungry: [180, 90, 40],
+  dirty: [90, 140, 70],
+  fx_strike: [255, 220, 80],
+  fx_surge: [80, 200, 255],
 };
 
 function setPx(bitmap, x, y, [r, g, b], a = 255) {
@@ -75,7 +83,7 @@ function drawBlob(bitmap, x, y, w, h, fill) {
   }
 }
 
-async function buildSheet(blobs) {
+async function buildSheet(blobs, layout = { grid: 2, quadrant: POSE_QUADRANT }) {
   const img = new Image(SIZE, SIZE);
   for (let i = 0; i < SIZE * SIZE; i++) {
     const o = i * 4;
@@ -84,9 +92,10 @@ async function buildSheet(blobs) {
     img.bitmap[o + 2] = GREEN[2];
     img.bitmap[o + 3] = 255;
   }
+  const cell = Math.floor(SIZE / layout.grid);
   for (const [pose, spec] of Object.entries(blobs)) {
-    const [col, row] = POSE_QUADRANT[pose];
-    drawBlob(img.bitmap, col * HALF + spec.x, row * HALF + spec.y, spec.w, spec.h, FILLS[pose]);
+    const [col, row] = layout.quadrant[pose];
+    drawBlob(img.bitmap, col * cell + spec.x, row * cell + spec.y, spec.w, spec.h, FILLS[pose]);
   }
   return await img.encode();
 }
@@ -624,6 +633,8 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
   assert.ok(bundel.v4?.vision_schema?.properties?.surface_finish, "v4 surface_finish ikut terbundel");
   assert.ok(bundel.v4?.vision_schema?.properties?.damage_hints, "v4 damage_hints ikut terbundel");
   assert.ok(bundel.v5?.vision_schema?.properties?.character_direction, "v5 character_direction ikut terbundel");
+  assert.ok(bundel.v7?.vision_schema?.properties?.strike_name, "v7 strike_name ikut terbundel");
+  assert.ok(bundel.v7?.sprite_sheet.includes("3x3"), "v7 sprite_sheet 3x3 ikut terbundel");
 }
 
 console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
@@ -907,11 +918,11 @@ console.log("21b. prompt v6 mengunci arah hadap ke kiri di semua pose");
     );
   }
   assert.ok(
-    createAnima.includes('["v5", "v6"].includes(versiPrompt)'),
+    createAnima.includes("promptMajor(versiPrompt) >= 5"),
     "runtime production harus memvalidasi field presentation v6 seperti v5"
   );
   assert.ok(
-    evalRunner.includes('["v5", "v6"].includes(args.promptVersion)'),
+    evalRunner.includes("promptMajor(args.promptVersion) >= 5"),
     "eval harus memvalidasi v6 dengan kontrak yang sama"
   );
 }
@@ -1096,6 +1107,140 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
     /level:\s*levelFromExp\(row\.care_score\)/,
     "snapshot Battle harus membawa level dari care_score"
   );
+	assert.ok(
+		battleEdge.includes("strike_name: row.strike_name"),
+		"snapshot Battle harus membawa nama move unik"
+	);
+	assert.match(
+		battleEdge,
+		/ANIMA_BATTLE_FIELDS[\s\S]*strike_name, surge_name/,
+		"start Battle harus membaca kolom nama move, bukan hanya menulisnya ke snapshot kosong"
+	);
+}
+
+console.log("24. sheet v7 3x3 sembilan sel");
+{
+  const blobs3 = {
+    idle: { x: 8, y: 30, w: 150, h: 240 },
+    attack: { x: 16, y: 28, w: 170, h: 232 },
+    sleep: { x: 12, y: 170, w: 190, h: 110 },
+    happy: { x: 10, y: 32, w: 148, h: 236 },
+    hungry: { x: 14, y: 40, w: 144, h: 220 },
+    dirty: { x: 12, y: 36, w: 146, h: 228 },
+    defeated: { x: 18, y: 130, w: 160, h: 150 },
+    fx_strike: { x: 90, y: 180, w: 80, h: 60 },
+    fx_surge: { x: 80, y: 160, w: 100, h: 80 },
+  };
+  const { png, manifest } = await postprocessSheet(await buildSheet(blobs3, LAYOUT_3X3), {
+    speciesKey: "selftest_grid3",
+    promptVersion: "v7",
+    sheetName: "grid3.png",
+  });
+  assert.equal(manifest.qa.cells_detected, 9, "sembilan sel harus terdeteksi");
+  assert.deepEqual(manifest.qa.cells_rejected, {}, "tidak boleh ada sel 3x3 ditolak");
+  const [fw, fh] = manifest.frame_size;
+  assert.deepEqual(manifest.sheet_size, [fw * 3, fh * 3], "sheet keluaran harus 3x3 frame");
+  for (const pose of LAYOUT_3X3.poses) {
+    const [col, row] = LAYOUT_3X3.quadrant[pose];
+    assert.deepEqual(
+      manifest.poses[pose].region,
+      [col * fw, row * fh, fw, fh],
+      `region ${pose} salah di grid 3x3`
+    );
+  }
+  const out = await Image.decode(png);
+  for (const pose of LAYOUT_3X3.poses) {
+    const [rx, ry] = manifest.poses[pose].region;
+    const bb = findBBox(out.bitmap, out.width, [rx, ry, fw, fh]);
+    const want = outer(blobs3[pose]);
+    assert.equal(bb.w, want.w, `${pose}: lebar 3x3 berubah`);
+    assert.equal(bb.h, want.h, `${pose}: tinggi 3x3 berubah`);
+    assert.equal(ry + fh - (bb.y + bb.h), PAD, `${pose}: 3x3 tidak rata bawah`);
+  }
+}
+
+console.log("25. prompt v7 3x3 plus nama move, species_key tidak berubah");
+{
+  const { readFile } = await import("node:fs/promises");
+  const template = await readFile(new URL("../backend/prompts/v7/sprite_sheet.md", import.meta.url), "utf8");
+  const evolve = await readFile(
+    new URL("../backend/prompts/v7/sprite_sheet_evolve.md", import.meta.url),
+    "utf8"
+  );
+  const vision = await readFile(new URL("../backend/prompts/v7/vision_system.md", import.meta.url), "utf8");
+  const schema = JSON.parse(
+    await readFile(new URL("../backend/prompts/v7/vision_schema.json", import.meta.url), "utf8")
+  );
+  const createAnima = await readFile(
+    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
+    "utf8"
+  );
+  const evalRunner = await readFile(new URL("./run.mjs", import.meta.url), "utf8");
+  const postprocess = await readFile(
+    new URL("../backend/supabase/functions/_shared/postprocess.mjs", import.meta.url),
+    "utf8"
+  );
+
+  assert.ok(template.includes("EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT"));
+  assert.ok(evolve.includes("EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT"));
+  assert.ok(template.includes("BOTTOM CENTER — STRIKE EFFECT"));
+  assert.ok(template.includes("{{strike_name}}") && template.includes("{{surge_name}}"));
+  assert.ok(vision.includes("`strike_name`:") && vision.includes("`surge_name`:"));
+  assert.ok(schema.properties.strike_name && schema.properties.surge_name);
+  assert.equal(promptMajor("v7"), 7);
+  assert.equal(promptMajor("v3"), 3);
+  assert.equal(normalizeMoveName("Rim Toss"), "Rim Toss");
+  assert.equal(normalizeMoveName("Thunder Rim Toss Combo"), "Thunder Rim");
+  assert.equal(normalizeMoveName("d-pad jab extra"), "D-pad Jab");
+  assert.equal(normalizeMoveName("Shellmon"), "Shell");
+  assert.ok(vision.includes("Exactly two short"), "v7 meminta nama move dua kata");
+  assert.ok(
+    createAnima.includes("promptMajor(versiPrompt) >= 7"),
+    "production harus meminta nama move mulai v7"
+  );
+  assert.ok(
+    createAnima.includes('?? "v7"'),
+    "fallback create_anima harus v7 kalau app_config kosong"
+  );
+  assert.ok(
+    evalRunner.includes('promptVersion: "v7"'),
+    "eval default harus mengikuti production v7"
+  );
+  assert.ok(
+    evalRunner.includes("promptMajor(args.promptVersion) >= 7"),
+    "eval harus meminta nama move mulai v7"
+  );
+  assert.ok(postprocess.includes("LAYOUT_3X3"), "slicer v7 harus 3x3 tanpa merusak 2x2");
+
+  const filled = assemblePrompt(template, {
+    object_label: "handheld console",
+    creature_brief: "a pocket console creature",
+    character_direction: "compact, playful, and object-led",
+    signature_features: ["d-pad becomes a face plate", "shoulder buttons become ears"],
+    surface_finish: "painted plastic shell",
+    damage_hints: ["scuffed shoulder button", "hairline crack on the shell"],
+    strike_name: "D-Pad Jab",
+    surge_name: "Pocket Beam",
+    dominant_colors: ["#c45a4a"],
+    stats: { hp: 40, atk: 55, def: 50, spd: 60, special: 70 },
+  });
+  assert.ok(filled.includes("D-Pad Jab") && filled.includes("Pocket Beam"));
+  assert.ok(!filled.includes("{{"));
+
+  const missingMoves = {
+    safe: true,
+    is_object: true,
+    species_key: "console_plastic_handheld",
+    stats: { hp: 40, atk: 55, def: 50, spd: 60, special: 70 },
+    signature_features: ["d-pad becomes a face plate", "shoulder buttons become ears"],
+    surface_finish: "painted plastic",
+    damage_hints: ["scuff", "crack"],
+    character_direction: "compact",
+    creature_brief: "a pocket console creature",
+  };
+  const checked = validateVision(missingMoves, [], true, true, true);
+  assert.ok(checked.issues.includes("strike_name kosong"));
+  assert.ok(checked.issues.includes("surge_name kosong"));
 }
 
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang

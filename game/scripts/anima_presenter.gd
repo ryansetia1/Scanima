@@ -1,9 +1,9 @@
 class_name AnimaPresenter
 extends AnimatedSprite2D
 
-## Menghidupkan Anima dari empat gambar statis.
+## Menghidupkan Anima dari gambar statis di sheet.
 ##
-## Model hanya memberi 4 pose, bukan 4 animasi. Gerakannya datang dari Tween di
+## Model hanya memberi pose diam, bukan animasi. Gerakannya datang dari Tween di
 ## sisi Godot: napas, pantulan kecil, tersentak saat menyerang. Ini bukan
 ## penghematan sementara, melainkan alasan biaya art bisa satu panggilan per
 ## Anima: menganimasikan 8 frame per pose lewat model berarti 8x biaya dan
@@ -11,6 +11,7 @@ extends AnimatedSprite2D
 
 signal pose_changed(pose: String)
 
+const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 const BREATH_IDLE_SEC := 1.6
 const BREATH_SLEEP_SEC := 2.8
 const BREATH_DAMAGED_SEC := 1.1
@@ -18,9 +19,13 @@ const HOP_HEIGHT_PX := 10.0
 const PLAY_BOUNCE_HEIGHT_PX := 14.0
 const PLAY_BOUNCE_COUNT := 6
 const TAP_HIT_PADDING_PX := 28.0
+const FX_TRAVEL_SEC := 0.36
 
 var _motion: Tween
 var _feedback: Tween
+var _fx_tween: Tween
+var _fx: Sprite2D
+var _queued_care: Dictionary = {}
 var _base_position: Vector2 = Vector2.ZERO
 var _current_pose: String = ""
 var _facing_direction := -1.0
@@ -110,7 +115,7 @@ func _start_motion(pose: String) -> void:
 		return
 
 	match pose:
-		"idle":
+		"idle", "happy", "hungry", "dirty":
 			_motion = _breathe(BREATH_IDLE_SEC, 0.045)
 		"sleep":
 			# Napas tidur lebih lambat dan lebih dalam, plus badan turun sedikit
@@ -227,6 +232,13 @@ func _dormant_tap() -> Tween:
 
 func _resume_pose_motion() -> void:
 	_feedback = null
+	if not _queued_care.is_empty():
+		var sleeping := bool(_queued_care.get("sleeping", false))
+		var dormant := bool(_queued_care.get("dormant", false))
+		var care: Variant = _queued_care.get("care", {})
+		_queued_care.clear()
+		apply_care_state(sleeping, dormant, care)
+		return
 	_start_motion(_current_pose)
 
 
@@ -247,6 +259,7 @@ func celebrate_level_up() -> void:
 		_motion.kill()
 	if _feedback != null and _feedback.is_valid():
 		_feedback.kill()
+	set_pose("happy")
 	position = _base_position
 	rotation = 0.0
 	if UiMotion.reduced_motion:
@@ -274,6 +287,7 @@ func play_bounce() -> void:
 	if _feedback != null and _feedback.is_valid():
 		_feedback.kill()
 	_feedback = _bounce(PLAY_BOUNCE_COUNT, PLAY_BOUNCE_HEIGHT_PX)
+	_feedback.finished.connect(_resume_pose_motion, CONNECT_ONE_SHOT)
 
 
 func _bounce(loops: int, height: float) -> Tween:
@@ -291,6 +305,15 @@ func care_feedback(action: String) -> void:
 		_feedback.kill()
 	_feedback = null
 	position = _base_position
+	if action == "play":
+		set_pose("happy")
+		if UiMotion.reduced_motion:
+			_feedback = create_tween()
+			_feedback.tween_interval(0.40)
+			_feedback.finished.connect(_resume_pose_motion, CONNECT_ONE_SHOT)
+			return
+		play_bounce()
+		return
 	if UiMotion.reduced_motion:
 		return
 
@@ -298,9 +321,6 @@ func care_feedback(action: String) -> void:
 	match action:
 		"feed":
 			hop()
-			return
-		"play":
-			play_bounce()
 			return
 		"clean":
 			tint = Color(0.55, 1.2, 1.35, 1.0)
@@ -317,18 +337,102 @@ func care_feedback(action: String) -> void:
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 
 
-func apply_care_state(sleeping: bool, dormant: bool) -> void:
+func apply_care_state(sleeping: bool, dormant: bool, care: Variant = {}) -> void:
 	if dormant:
 		modulate = Color(0.68, 0.72, 0.82, 1.0)
-		if not set_pose("defeated"):
-			set_pose("sleep")
+	else:
+		modulate = Color.WHITE
+	if (
+		not dormant
+		and not sleeping
+		and _current_pose == "happy"
+		and _feedback != null
+		and _feedback.is_valid()
+	):
+		_queued_care = {"sleeping": sleeping, "dormant": dormant, "care": care}
 		return
-
-	modulate = Color.WHITE
-	if sleeping:
+	_queued_care.clear()
+	var pose: String = String(CARE_RULES.visual_pose(sleeping, dormant, care))
+	if set_pose(pose):
+		return
+	if pose == "defeated":
 		set_pose("sleep")
-	elif _current_pose == "sleep" or _current_pose == "defeated":
-		set_pose("idle")
+	else:
+		set_pose(AnimaLoader.DEFAULT_POSE)
+
+
+## Overlay sel fx_strike / fx_surge sebagai VFX tambahan, bukan ganti pose.
+## Sibling di bawah parent yang sama supaya lunge Attack tidak menelan efeknya.
+## Kalau impact_global diisi, overlay meluncur ke tubuh lawan lalu fade.
+## Sheet 2×2 tanpa sel itu melewati pemanggilan ini diam-diam.
+func play_fx(pose: String, impact_global: Vector2 = Vector2.INF) -> void:
+	if sprite_frames == null or not sprite_frames.has_animation(pose):
+		return
+	var host := get_parent() if get_parent() != null else self
+	if _fx == null or not is_instance_valid(_fx):
+		_fx = Sprite2D.new()
+		_fx.centered = true
+		_fx.z_index = 8
+		host.add_child(_fx)
+	elif _fx.get_parent() != host:
+		_fx.reparent(host)
+	if _fx_tween != null and _fx_tween.is_valid():
+		_fx_tween.kill()
+	_fx.texture = sprite_frames.get_frame_texture(pose, 0)
+	_fx.offset = offset
+	_fx.flip_h = flip_h
+	_fx.visible = true
+	_fx.modulate = Color.WHITE
+	var toward := Vector2(36.0 * _facing_direction, -10.0)
+	var start := position + toward if host != self else toward
+	var impact := start
+	if impact_global.is_finite():
+		if host is CanvasItem:
+			impact = (host as CanvasItem).to_local(impact_global)
+		else:
+			impact = impact_global
+	_fx.position = start
+	if UiMotion.reduced_motion:
+		_fx.position = impact
+		_fx.scale = Vector2.ONE
+		_fx_tween = create_tween()
+		_fx_tween.tween_interval(0.28)
+		_fx_tween.tween_callback(_hide_fx)
+		return
+	if impact_global.is_finite():
+		_fx.scale = Vector2.ONE
+		_fx_tween = create_tween()
+		_fx_tween.tween_property(_fx, "position", impact, FX_TRAVEL_SEC) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		_fx_tween.tween_interval(0.10)
+		_fx_tween.tween_property(_fx, "modulate:a", 0.0, 0.18)
+		_fx_tween.tween_callback(_hide_fx)
+		return
+	_fx.scale = Vector2(0.88, 0.88)
+	_fx_tween = create_tween()
+	_fx_tween.tween_property(_fx, "scale", Vector2(1.18, 1.18), 0.12) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_fx_tween.tween_interval(0.18)
+	_fx_tween.tween_property(_fx, "modulate:a", 0.0, 0.22)
+	_fx_tween.tween_callback(_hide_fx)
+
+
+func _hide_fx() -> void:
+	if is_instance_valid(_fx):
+		_fx.visible = false
+		_fx.scale = Vector2.ONE
+		_fx.modulate = Color.WHITE
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and not is_visible_in_tree():
+		_hide_fx()
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(_fx) and _fx.get_parent() != self:
+		_fx.queue_free()
+	_fx = null
 
 
 ## Reveal satu kali setelah Incubator mencapai flash puncak. Pose tween dihentikan

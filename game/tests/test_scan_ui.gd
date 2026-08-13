@@ -14,6 +14,8 @@ var _requested_summon_id := ""
 var _requested_summon_synced := false
 var _requested_summon_hunger := 0.0
 var _home_action := ""
+var _home_care_action := ""
+var _home_care_blocked := ""
 var _preview_requests := 0
 var _help_title := ""
 var _help_body := ""
@@ -587,6 +589,7 @@ func _test_battle_view() -> void:
 		"version": 0,
 		"player_snapshot": {
 			"id": "battle-player", "name": "Velumi", "element": "spark", "stage": 1,
+			"strike_name": "D-Pad Jab", "surge_name": "Pocket Beam",
 		},
 		"bot_snapshot": {
 			"name": "Unknown Anima", "element": "flow", "stage": 1,
@@ -603,6 +606,32 @@ func _test_battle_view() -> void:
 	}
 	view.set_session(session, loaded, loaded)
 	await process_frame
+	_check(
+		player_sprite.sprite_frames.has_animation("fx_strike")
+		and player_sprite.sprite_frames.has_animation("fx_surge"),
+		"sheet Battle harus membawa sel VFX strike dan surge"
+	)
+	player_sprite.set_pose("attack")
+	player_sprite.play_fx("fx_strike")
+	var strike_fx := player_sprite.get("_fx") as Sprite2D
+	_check(
+		player_sprite.current_pose() == "attack"
+		and strike_fx != null
+		and strike_fx.visible
+		and strike_fx.texture != null
+		and strike_fx.get_parent() == player_anchor,
+		"Attack menampilkan pose Battle plus overlay fx_strike"
+	)
+	var strike_tex := strike_fx.texture
+	player_sprite.play_fx("fx_surge")
+	_check(
+		player_sprite.current_pose() == "attack"
+		and strike_fx.visible
+		and strike_fx.texture != strike_tex
+		and strike_fx.get_parent() == player_anchor,
+		"Special menampilkan pose Battle plus overlay fx_surge yang berbeda"
+	)
+	player_sprite.set_pose(AnimaLoader.DEFAULT_POSE)
 	var active_arena_height := arena.size.y
 	var active_ground_y := player_anchor.position.y
 	_check(content.visible and not lobby.visible and not result.visible, "active turn replaces the lobby")
@@ -660,9 +689,10 @@ func _test_battle_view() -> void:
 	)
 	view.call("_show_effectiveness", 1.0)
 	_check(not effectiveness.visible, "neutral attacks do not show a misleading indicator")
+	_check_eq(strike.text, "D-Pad Jab", "Attack button uses the generated move name")
 	_check(
-		surge.text == tr("BATTLE_ACTION_SURGE_COST") % ["3", "3"],
-		"Special button is the only place PP is shown"
+		surge.text == tr("BATTLE_ACTION_SURGE_COST") % ["Pocket Beam", "3", "3"],
+		"Special button shows the generated name plus PP"
 	)
 	_check(
 		daily_reward.visible
@@ -677,9 +707,25 @@ func _test_battle_view() -> void:
 	UiMotion.set_reduced_motion(false)
 	player_sprite.set_pose("attack")
 	bot_sprite.set_pose("attack")
+	var bot_impact := bot_sprite.to_global(bot_sprite.offset)
+	player_sprite.play_fx("fx_strike", bot_impact)
+	var travel_fx := player_sprite.get("_fx") as Sprite2D
+	var strike_impact := player_anchor.to_local(bot_impact)
+	_check(
+		travel_fx != null
+		and travel_fx.position.distance_to(player_sprite.position)
+			< travel_fx.position.distance_to(strike_impact),
+		"VFX starts at the attacker before traveling into the opponent"
+	)
 	await create_timer(0.24).timeout
 	_check(player_sprite.position.x > 0.0, "player attack lunges toward the right-side rival")
 	_check(bot_sprite.position.x < 0.0, "rival attack lunges toward the left-side player")
+	await create_timer(AnimaPresenter.FX_TRAVEL_SEC - 0.20).timeout
+	_check(
+		is_instance_valid(travel_fx)
+		and travel_fx.position.distance_to(strike_impact) < 24.0,
+		"VFX Attack/Special masuk ke tubuh lawan"
+	)
 	player_sprite.set_pose("idle")
 	bot_sprite.set_pose("idle")
 	UiMotion.set_reduced_motion(true)
@@ -700,7 +746,7 @@ func _test_battle_view() -> void:
 	view.set_session(session, loaded, loaded)
 	_check(not surge.disabled, "one PP is still enough for one Special")
 	_check(
-		surge.text == tr("BATTLE_ACTION_SURGE_COST") % ["1", "3"],
+		surge.text == tr("BATTLE_ACTION_SURGE_COST") % ["Pocket Beam", "1", "3"],
 		"Special button counter follows the authoritative PP"
 	)
 	session["state"]["player"]["momentum"] = 0
@@ -728,7 +774,7 @@ func _test_battle_view() -> void:
 	)
 	_check(
 		strike_commit.visible and not surge_commit.visible and not guard_commit.visible
-		and feedback.text == tr("BATTLE_ACTION_PENDING_STRIKE")
+		and feedback.text == tr("BATTLE_ACTION_PENDING_STRIKE") % ["D-Pad Jab"]
 		and surge.self_modulate.a < strike.self_modulate.a,
 		"selected Battle action reacts immediately with committed feedback"
 	)
@@ -749,6 +795,10 @@ func _test_battle_view() -> void:
 	], won)
 	await process_frame
 	_check(result.visible and content.visible, "win event log reveals the result panel")
+	_check(
+		player_sprite.current_pose() == "happy",
+		"menang Battle memakai pose Happy"
+	)
 	_check(result.size.y >= 236.0, "Battle result grows upward and stays clear of bottom navigation")
 	_check(
 		bot_hp_value.text == "0 / 205",
@@ -918,13 +968,28 @@ func _test_profile_info_rows() -> void:
 		"stage": 2,
 		"rarity": 4,
 		"care_score": 28,
+		"strike_name": "D-Pad Jab",
+		"surge_name": "Pocket Beam",
 		"base_stats": {"hp": 74, "atk": 62, "def": 58, "spd": 81, "special": 77},
 	}, null)
 	await process_frame
 
 	_check(details.find_child("DetailsScroll", true, false) is ScrollContainer, "long Profile rows scroll")
+	_check_eq(
+		(details.find_child("DetailStrikeRow", true, false).find_child("RowValue", true, false) as Label).text,
+		"D-Pad Jab",
+		"Profile Attack shows the generated move name"
+	)
+	_check_eq(
+		(details.find_child("DetailSurgeRow", true, false).find_child("RowValue", true, false) as Label).text,
+		"Pocket Beam",
+		"Profile Special shows the generated move name"
+	)
 	var row_groups := {
-		"traits": ["DetailElementRow", "DetailRarityRow", "DetailStageRow", "DetailCareScoreRow"],
+		"traits": [
+			"DetailElementRow", "DetailRarityRow", "DetailStageRow", "DetailCareScoreRow",
+			"DetailStrikeRow", "DetailSurgeRow",
+		],
 		"stats": ["StatHpRow", "StatAtkRow", "StatDefRow", "StatSpdRow", "StatSpecialRow"],
 	}
 	for group in row_groups:
@@ -1177,8 +1242,12 @@ func _test_home_care_actions() -> void:
 	var actions := home.find_child("CareActions", true, false) as GridContainer
 	var primary := home.find_child("HomePrimaryAction", true, false) as Button
 	_home_action = ""
+	_home_care_action = ""
+	_home_care_blocked = ""
 	home.first_scan_requested.connect(func() -> void: _home_action = "scan")
 	home.retry_requested.connect(func() -> void: _home_action = "retry")
+	home.care_blocked.connect(func(message: String) -> void: _home_care_blocked = message)
+	home.care_requested.connect(func(action: String) -> void: _home_care_action = action)
 	_check_eq(home.shell_state(), &"loading", "Home begins in Loading, not a false empty state")
 	home.set_shell_state(&"empty")
 	_check(primary.visible and not primary.disabled, "empty Home exposes its first-scan CTA")
@@ -1202,21 +1271,51 @@ func _test_home_care_actions() -> void:
 	row["care"]["bond"] = 100.0
 	home.update_care(row, false)
 	_check(not play.disabled, "Play stays available even if leftover Bond is 100")
-	_check_eq(
-		play.text,
-		tr("CARE_PLAY_COUNT") % ["5", "5"],
-		"Play shows a full daily EXP budget before any Play today"
-	)
+	_check_eq(play.text, tr("CARE_PLAY"), "Play matches the other care action labels")
+	_check_eq(actions.columns, 4, "awake care keeps four actions in one row")
+	play.pressed.emit()
+	_check_eq(_home_care_action, "play", "Play under the daily cap still requests care")
+	_home_care_action = ""
 	row["care_synced_at"] = "2026-08-14T12:00:00Z"
 	row["play_score_on"] = "2026-08-14"
 	row["play_score_today"] = 5
 	home.update_care(row, false)
-	_check(not play.disabled, "Play stays available after the daily EXP cap")
-	_check_eq(
-		play.text,
-		tr("CARE_PLAY_COUNT") % ["0", "5"],
-		"Play shows an empty daily EXP budget at the cap"
-	)
+	_check(not play.disabled, "Play stays clickable after the daily EXP cap")
+	_check(play.self_modulate.a < 1.0, "Play looks disabled at the daily EXP cap")
+	_check_eq(play.text, tr("CARE_PLAY"), "Play never shows a daily x/y counter")
+	play.pressed.emit()
+	_check_eq(_home_care_blocked, tr("ERROR_PLAY_CAPPED"), "capped Play explains the limit with a toast")
+	_check_eq(_home_care_action, "", "capped Play does not send a care request")
+
+	_home_care_blocked = ""
+	_home_care_action = ""
+	row["care"]["hunger"] = 80.0
+	row["care"]["hygiene"] = 100.0
+	home.update_care(row, false)
+	_check(not feed.disabled, "Feed stays clickable when Hunger is not full")
+	_check(is_equal_approx(feed.self_modulate.a, 1.0), "Feed stays bright when Hunger is not full")
+	_check(not clean.disabled, "Clean stays clickable when Hygiene looks full")
+	_check(clean.self_modulate.a < 1.0, "Clean looks disabled when Hygiene looks full")
+	feed.pressed.emit()
+	_check_eq(_home_care_action, "feed", "Feed still requests care when only Hygiene is full")
+	_home_care_action = ""
+	clean.pressed.emit()
+	_check_eq(_home_care_blocked, tr("ERROR_NEED_FULL"), "full Clean explains the limit with a toast")
+	_check_eq(_home_care_action, "", "full Clean does not send a care request")
+
+	_home_care_blocked = ""
+	row["care"]["hunger"] = 100.0
+	home.update_care(row, false)
+	_check(feed.self_modulate.a < 1.0, "Feed looks disabled when Hunger looks full")
+	feed.pressed.emit()
+	_check_eq(_home_care_blocked, tr("ERROR_NEED_FULL"), "full Feed explains the limit with a toast")
+	_check_eq(_home_care_action, "", "full Feed does not send a care request")
+
+	row["care"]["hunger"] = 80.0
+	row["care"]["hygiene"] = 80.0
+	home.update_care(row, false)
+	_check(is_equal_approx(feed.self_modulate.a, 1.0), "Feed brightens once Hunger drops")
+	_check(is_equal_approx(clean.self_modulate.a, 1.0), "Clean brightens once Hygiene drops")
 
 	row["sleep_started_at"] = "2026-08-13T00:00:00Z"
 	home.update_care(row, false)
@@ -1229,7 +1328,7 @@ func _test_home_care_actions() -> void:
 	home.update_care(row, false)
 	await process_frame
 	_check(feed.visible and clean.visible and play.visible, "waking restores all care actions")
-	_check(actions.columns == 2 or actions.columns == 4, "awake care restores responsive columns")
+	_check_eq(actions.columns, 4, "awake care restores four actions in one row")
 	home.queue_free()
 	await process_frame
 

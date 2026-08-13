@@ -95,3 +95,10 @@ func display_name(row: Dictionary) -> String:
 		return nickname
 	var species := str(row.get("species_key", "")).replace("_", " ").strip_edges()
 	return species.capitalize() if not species.is_empty() else tr("ANIMA_FALLBACK_NAME")
+
+
+func move_name(row: Dictionary, action: String) -> String:
+	var named := str(row.get("surge_name" if action == "surge" else "strike_name", "")).strip_edges()
+	if not named.is_empty():
+		return named
+	return tr("BATTLE_ACTION_SURGE" if action == "surge" else "BATTLE_ACTION_STRIKE")

@@ -2,6 +2,7 @@ class_name HomeView
 extends Control
 
 signal care_requested(action: String)
+signal care_blocked(message: String)
 signal first_scan_requested
 signal retry_requested
 
@@ -28,14 +29,11 @@ var _shell_state := &"loading"
 
 
 func _ready() -> void:
-	_feed_button.pressed.connect(care_requested.emit.bind("feed"))
-	_clean_button.pressed.connect(care_requested.emit.bind("clean"))
+	_feed_button.pressed.connect(_request_feed)
+	_clean_button.pressed.connect(_request_clean)
 	_sleep_button.pressed.connect(_request_sleep_toggle)
-	_play_button.pressed.connect(care_requested.emit.bind("play"))
+	_play_button.pressed.connect(_request_play)
 	_primary_action.pressed.connect(_request_primary_action)
-	resized.connect(_update_action_columns)
-	LocaleManager.locale_changed.connect(_update_action_columns)
-	_update_action_columns.call_deferred()
 
 
 func set_anima(row: Dictionary, busy: bool) -> void:
@@ -110,10 +108,7 @@ func update_care(row: Dictionary, busy: bool) -> void:
 		LocaleManager.care_state(sleeping, dormant),
 	]
 	_sleep_button.text = tr("CARE_WAKE") if sleeping else tr("CARE_SLEEP")
-	_play_button.text = tr("CARE_PLAY_COUNT") % [
-		LocaleManager.format_integer(CARE_RULES.play_exp_remaining(_row)),
-		LocaleManager.format_integer(CARE_RULES.PLAY_SCORE_DAILY_CAP),
-	]
+	_play_button.text = tr("CARE_PLAY")
 	_update_action_state(busy)
 
 
@@ -128,6 +123,27 @@ func pulse_progress() -> void:
 	if _care_dock.visible:
 		UiJuice.pop(_care_summary, 1.08)
 		UiJuice.pop(_need_exp, 1.06)
+
+
+func _request_feed() -> void:
+	if CARE_RULES.need_is_full(_row.get("care"), "hunger"):
+		care_blocked.emit(tr("ERROR_NEED_FULL"))
+		return
+	care_requested.emit("feed")
+
+
+func _request_clean() -> void:
+	if CARE_RULES.need_is_full(_row.get("care"), "hygiene"):
+		care_blocked.emit(tr("ERROR_NEED_FULL"))
+		return
+	care_requested.emit("clean")
+
+
+func _request_play() -> void:
+	if _play_capped():
+		care_blocked.emit(tr("ERROR_PLAY_CAPPED"))
+		return
+	care_requested.emit("play")
 
 
 func _request_sleep_toggle() -> void:
@@ -155,23 +171,24 @@ func _update_action_state(disabled: bool) -> void:
 	_feed_button.disabled = disabled
 	_clean_button.disabled = disabled
 	_sleep_button.disabled = disabled
+	# Godot ignores pressed on disabled buttons, so full needs and the daily cap
+	# only dim the action. Tap still reaches the handler and toasts.
 	_play_button.disabled = disabled
-	_update_action_columns()
+	_feed_button.self_modulate = (
+		Color(1, 1, 1, 0.42) if not disabled and CARE_RULES.need_is_full(_row.get("care"), "hunger") else Color.WHITE
+	)
+	_clean_button.self_modulate = (
+		Color(1, 1, 1, 0.42) if not disabled and CARE_RULES.need_is_full(_row.get("care"), "hygiene") else Color.WHITE
+	)
+	_play_button.self_modulate = (
+		Color(1, 1, 1, 0.42) if not disabled and _play_capped() else Color.WHITE
+	)
+	if is_instance_valid(_care_actions):
+		_care_actions.columns = 1 if sleeping else 4
 
 
-func _update_action_columns(_locale: String = "") -> void:
-	if not is_instance_valid(_care_actions):
-		return
-	if _has_timestamp(_row.get("sleep_started_at")):
-		_care_actions.columns = 1
-		return
-	if _care_actions.size.x <= 0.0:
-		return
-	var widest := 0.0
-	for button in [_feed_button, _clean_button, _sleep_button, _play_button]:
-		widest = maxf(widest, button.get_combined_minimum_size().x)
-	var four_column_width := widest * 4.0 + _care_actions.get_theme_constant("h_separation") * 3.0
-	_care_actions.columns = 2 if four_column_width > _care_actions.size.x else 4
+func _play_capped() -> bool:
+	return CARE_RULES.play_exp_remaining(_row) <= 0
 
 
 static func _has_timestamp(value: Variant) -> bool:

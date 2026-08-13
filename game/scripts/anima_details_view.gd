@@ -14,6 +14,8 @@ signal help_requested(title: String, body: String)
 @onready var _rarity_row = %DetailRarityRow
 @onready var _stage_row = %DetailStageRow
 @onready var _care_score_row = %DetailCareScoreRow
+@onready var _strike_row = %DetailStrikeRow
+@onready var _surge_row = %DetailSurgeRow
 @onready var _hp_row = %StatHpRow
 @onready var _atk_row = %StatAtkRow
 @onready var _def_row = %StatDefRow
@@ -61,6 +63,8 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		"%s · %s" % [LocaleManager.level_label(level), LocaleManager.form_name(level)]
 	)
 	_care_score_row.set_value_text(LocaleManager.format_integer(int(row.get("care_score", 0))))
+	_strike_row.set_value_text(LocaleManager.move_name(row, "strike"))
+	_surge_row.set_value_text(LocaleManager.move_name(row, "surge"))
 
 	var stats := GameState.as_dict(row.get("base_stats"))
 	var exp := int(row.get("care_score", 0))
@@ -96,6 +100,8 @@ func refresh_localized_ui() -> void:
 		tr("DETAILS_CARE_SCORE"),
 		tr("DETAILS_CARE_SCORE_HELP")
 	)
+	_strike_row.configure(tr("DETAILS_STRIKE"), tr("DETAILS_STRIKE"), tr("DETAILS_STRIKE_HELP"))
+	_surge_row.configure(tr("DETAILS_SURGE"), tr("DETAILS_SURGE"), tr("DETAILS_SURGE_HELP"))
 	_hp_row.configure(tr("STAT_HP"), tr("STAT_HP"), tr("STAT_HP_HELP"))
 	_atk_row.configure(tr("STAT_ATK"), tr("STAT_ATK"), tr("STAT_ATK_HELP"))
 	_def_row.configure(tr("STAT_DEF"), tr("STAT_DEF"), tr("STAT_DEF_HELP"))
@@ -109,6 +115,8 @@ func _info_rows() -> Array:
 		_rarity_row,
 		_stage_row,
 		_care_score_row,
+		_strike_row,
+		_surge_row,
 		_hp_row,
 		_atk_row,
 		_def_row,

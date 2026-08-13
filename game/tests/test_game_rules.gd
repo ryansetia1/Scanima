@@ -76,6 +76,11 @@ func _initialize() -> void:
 	_check_eq(CareRules.score_for_action("clean", {"hygiene": 50}), 0, "Clean Hygiene 50 tidak memberi score")
 	_check_eq(CareRules.score_for_action("play", {}, 4), 1, "Play kelima memberi score")
 	_check_eq(CareRules.score_for_action("play", {}, 5), 0, "Play keenam tidak memberi score")
+	_check(CareRules.need_is_full({"hunger": 100.0}, "hunger"), "Hunger 100 penuh")
+	_check(CareRules.need_is_full({"hunger": 99.5}, "hunger"), "Hunger 99.5 tampil penuh")
+	_check(not CareRules.need_is_full({"hunger": 99.4}, "hunger"), "Hunger 99.4 masih bisa Feed")
+	_check(CareRules.need_is_full({"hygiene": 99.99}, "hygiene"), "Hygiene 99.99 tampil penuh")
+	_check(not CareRules.need_is_full({"hygiene": 80.0}, "hygiene"), "Hygiene 80 masih bisa Clean")
 	_check_eq(
 		CareRules.play_exp_remaining({
 			"play_score_on": "2026-08-14",
@@ -130,6 +135,30 @@ func _initialize() -> void:
 	_check(
 		BATTLE_EVENT.normalized({"type": "reward", "bits": 999}).is_empty(),
 		"client tidak menerima event reward buatan sebagai combat event"
+	)
+
+	print("5. pose visual mengikuti Sleep, Dormant, lalu kebutuhan")
+	_check_eq(CareRules.visual_pose(true, false), "sleep", "tidur mengalahkan kebutuhan")
+	_check_eq(CareRules.visual_pose(false, true), "defeated", "Dormant mengalahkan kebutuhan")
+	_check_eq(
+		CareRules.visual_pose(false, false, {"hunger": 20.0, "energy": 80.0, "hygiene": 80.0}),
+		"hungry",
+		"Hunger rendah memakai Hungry"
+	)
+	_check_eq(
+		CareRules.visual_pose(false, false, {"hunger": 80.0, "energy": 80.0, "hygiene": 20.0}),
+		"dirty",
+		"Hygiene rendah memakai Dirty"
+	)
+	_check_eq(
+		CareRules.visual_pose(false, false, {"hunger": 80.0, "energy": 80.0, "hygiene": 80.0}),
+		"idle",
+		"kebutuhan tinggi memakai Idle; Happy hanya event Play/level-up/menang"
+	)
+	_check_eq(
+		CareRules.visual_pose(false, false, {"hunger": 55.0, "energy": 55.0, "hygiene": 55.0}),
+		"idle",
+		"kebutuhan sedang memakai Idle"
 	)
 
 	_finish()

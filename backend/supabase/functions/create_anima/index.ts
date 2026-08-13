@@ -24,6 +24,7 @@ import {
   assemblePrompt,
   extractJson,
   normalizeSuggestedName,
+  promptMajor,
   validateVision,
   visionInstruction,
 } from "../_shared/vision.mjs";
@@ -44,6 +45,8 @@ type Vision = {
   rarity: number;
   stats: Record<string, number>;
   suggested_name?: string;
+  strike_name?: string;
+  surge_name?: string;
   creature_brief?: string;
   signature_features?: string[];
   surface_finish?: string;
@@ -90,7 +93,7 @@ Deno.serve(async (req) => {
     .in("key", ["image_model", "prompt_version"]);
   const konfig = Object.fromEntries((konfigRows ?? []).map((r) => [r.key, r.value]));
   const modelGambar = (konfig.image_model as string) ?? "openai/gpt-image-2";
-  const versiPrompt = (konfig.prompt_version as string) ?? "v3";
+  const versiPrompt = (konfig.prompt_version as string) ?? "v7";
   const prompts = (PROMPTS as Record<string, { sprite_sheet: string; vision_system: string; vision_schema: unknown }>)[
     versiPrompt
   ];
@@ -172,8 +175,9 @@ Deno.serve(async (req) => {
       hasil = validateVision(
         extractJson(mentah),
         dikenal,
-        ["v4", "v5", "v6"].includes(versiPrompt),
-        ["v5", "v6"].includes(versiPrompt),
+        promptMajor(versiPrompt) >= 4,
+        promptMajor(versiPrompt) >= 5,
+        promptMajor(versiPrompt) >= 7,
       );
     } catch (e) {
       await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "vision_unparseable" });

@@ -466,6 +466,34 @@ begin
   assert (v_j #>> '{anima,care_score}')::int = 6,
          'Clean saat Hygiene <50 harus memberi 3 care_score';
 
+  -- Meter yang tampil penuh (100 atau 99.99) tidak boleh mendebit Bits.
+  update public.profiles set bits = 20 where id = u1;
+  update public.animas
+     set care = '{"hunger":99.99,"energy":100,"hygiene":99.99,"bond":0}'::jsonb,
+         care_synced_at = now()
+   where id = v_care_anima;
+  begin
+    perform public.apply_care(u1, v_care_anima, 'feed', 'care-feed-full');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'NEED_FULL');
+  end;
+  assert ok, 'Feed pada Hunger yang tampil penuh harus ditolak';
+  assert (select bits from public.profiles where id = u1) = 20,
+         'NEED_FULL Feed tidak boleh mendebit Bits';
+  assert not exists (
+    select 1 from public.care_events
+     where owner_id = u1 and idempotency_key = 'care-feed-full'
+  ), 'NEED_FULL tidak boleh menyisakan event yang memblokir retry';
+
+  begin
+    perform public.apply_care(u1, v_care_anima, 'clean', 'care-clean-full');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'NEED_FULL');
+  end;
+  assert ok, 'Clean pada Hygiene yang tampil penuh harus ditolak';
+  assert (select bits from public.profiles where id = u1) = 20,
+         'NEED_FULL Clean tidak boleh mendebit Bits';
+
   -- Play tetap memberi Bond setelah cap score harian tercapai, tetapi tidak
   -- boleh menjadi mesin care_score tanpa batas.
   update public.animas

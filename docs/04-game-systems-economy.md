@@ -202,9 +202,9 @@ Bonus "terawat" +8 adalah pendorong terbesar dan itu memang tujuannya: yang ingi
 
 Nilai aksi yang live di Phase 2:
 
-- **Feed:** 5 Bits, Hunger +35; EXP +3 hanya jika Hunger sebelum aksi <40.
-- **Clean:** 5 Bits, Hygiene +35; EXP +3 hanya jika Hygiene sebelum aksi <50.
-- **Play:** gratis, Energy -5; EXP +1 maksimal lima kali per UTC day. Tidak ada cap Bond; anti-farm-nya Energy dan counter harian.
+- **Feed:** 5 Bits, Hunger +35; EXP +3 hanya jika Hunger sebelum aksi <40. Ditolak `NEED_FULL` kalau Hunger setelah decay >= 99.5 (meter yang tampil penuh, termasuk 99.99). Client meredupkan tombol dan toast tanpa request — Godot menelan `pressed` kalau `disabled`.
+- **Clean:** 5 Bits, Hygiene +35; EXP +3 hanya jika Hygiene sebelum aksi <50. Gerbang penuh yang sama.
+- **Play:** gratis, Energy -5; EXP +1 maksimal lima kali per UTC day. Tidak ada cap Bond; anti-farm-nya Energy dan counter harian. Client menahan tap sesudah cap (toast, tanpa request).
 - **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 EXP. Wake lebih awal mempertahankan pemulihan parsial tanpa EXP. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap.
 
 Saldo, kebutuhan, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten, sedangkan `quota_ledger` mencatat debit Feed/Clean. Client menyimpan satu intent `pending_care`, bukan salinan saldo atau kebutuhan.

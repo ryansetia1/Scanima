@@ -66,7 +66,7 @@ func _test_build_from_memory() -> void:
 		return
 
 	var frames: SpriteFrames = loaded["frames"]
-	_check_eq(frames.get_animation_names().size(), 4, "harus ada 4 animasi")
+	_check_eq(frames.get_animation_names().size(), 9, "harus ada 9 animasi")
 	for pose in AnimaLoader.KNOWN_POSES:
 		_check(frames.has_animation(pose), "animasi '%s' harus ada" % pose)
 		_check_eq(frames.get_frame_count(pose), 1, "pose '%s' harus 1 frame" % pose)
@@ -147,7 +147,7 @@ func _test_load_from_disk() -> void:
 	_check(loaded.get("ok", false), "muat dari disk harus berhasil: %s" % loaded.get("error", ""))
 	if loaded.get("ok", false):
 		var frames: SpriteFrames = loaded["frames"]
-		_check_eq(frames.get_animation_names().size(), 4, "4 pose harus terbaca dari disk")
+		_check_eq(frames.get_animation_names().size(), 9, "9 pose harus terbaca dari disk")
 		_check_eq(loaded["frame_size"], PlaceholderSheet.FRAME, "frame_size dari disk")
 
 	# Manifest hilang harus ditolak dengan pesan, bukan crash.
@@ -181,7 +181,7 @@ func _test_rejects_bad_manifest() -> void:
 	)
 
 	var out_of_bounds: Dictionary = (src["manifest"] as Dictionary).duplicate(true)
-	out_of_bounds["poses"]["sleep"]["region"] = [400, 400, 256, 256]
+	out_of_bounds["poses"]["sleep"]["region"] = [800, 800, 256, 256]
 	_check(
 		not AnimaLoader.build(texture, out_of_bounds).get("ok", true),
 		"region di luar sheet harus ditolak"
@@ -208,8 +208,8 @@ func _test_partial_poses() -> void:
 	# Backend bisa menolak satu kuadran yang gagal keying. Kehilangan pose
 	# Defeated tidak boleh membuat Anima tidak bisa ditampilkan sama sekali.
 	var partial: Dictionary = (src["manifest"] as Dictionary).duplicate(true)
-	partial["poses"].erase("defeated")
-	partial["poses"].erase("sleep")
+	for pose in ["defeated", "sleep", "happy", "hungry", "dirty", "fx_strike", "fx_surge"]:
+		partial["poses"].erase(pose)
 
 	var loaded: Dictionary = AnimaLoader.build(src["texture"], partial)
 	_check(loaded.get("ok", false), "sheet sebagian harus tetap dimuat: %s" % loaded.get("error", ""))
@@ -237,7 +237,7 @@ func _test_presenter() -> void:
 	_check_eq(presenter.current_pose(), AnimaLoader.DEFAULT_POSE, "pose awal harus idle")
 	_check(presenter.centered, "sprite harus centered supaya offset bermakna")
 
-	for pose in ["attack", "sleep", "defeated", "idle"]:
+	for pose in ["attack", "sleep", "defeated", "happy", "hungry", "dirty", "idle"]:
 		_check(presenter.set_pose(pose), "set_pose('%s') harus berhasil" % pose)
 		_check_eq(presenter.animation, pose, "animation harus ikut berganti")
 		_check_eq(presenter.current_pose(), pose, "current_pose harus ikut berganti")
@@ -258,6 +258,7 @@ func _test_presenter() -> void:
 	)
 
 	presenter.care_feedback("play")
+	_check_eq(presenter.current_pose(), "happy", "Play memakai pose Happy")
 	var play_feedback := presenter.get("_feedback") as Tween
 	_check(
 		play_feedback != null and play_feedback.get_loops_left() == 6,
@@ -266,7 +267,11 @@ func _test_presenter() -> void:
 	UiMotion.set_reduced_motion(true)
 	presenter.modulate = Color(0.68, 0.72, 0.82, 1.0)
 	presenter.care_feedback("play")
-	_check(presenter.get("_feedback") == null, "Reduced Motion tidak boleh memulai bounce Play")
+	_check_eq(presenter.current_pose(), "happy", "Reduced Motion tetap menampilkan pose Happy")
+	_check(
+		(presenter.get("_feedback") as Tween).get_loops_left() != 6,
+		"Reduced Motion tidak boleh memulai bounce Play"
+	)
 	_check_eq(presenter.position, Vector2.ZERO, "Reduced Motion harus mengembalikan posisi dasar")
 	_check(
 		presenter.modulate != Color.WHITE,
@@ -284,14 +289,53 @@ func _test_presenter() -> void:
 	_check_eq(presenter.current_pose(), "defeated", "Dormant harus memakai pose Defeated")
 	_check(presenter.modulate != Color.WHITE, "Dormant harus terlihat pucat")
 	presenter.apply_care_state(false, false)
-	_check_eq(presenter.current_pose(), "idle", "pulih dari Dormant harus kembali Idle")
+	_check_eq(presenter.current_pose(), "idle", "kebutuhan penuh harus Idle; Happy hanya event")
 	_check_eq(presenter.modulate, Color.WHITE, "pulih dari Dormant harus menghapus tint")
+	presenter.apply_care_state(false, false, {"hunger": 20.0, "energy": 80.0, "hygiene": 80.0})
+	_check_eq(presenter.current_pose(), "hungry", "Hunger rendah harus memakai pose Hungry")
+	presenter.apply_care_state(false, false, {"hunger": 80.0, "energy": 80.0, "hygiene": 20.0})
+	_check_eq(presenter.current_pose(), "dirty", "Hygiene rendah harus memakai pose Dirty")
+	presenter.celebrate_level_up()
+	_check_eq(presenter.current_pose(), "happy", "naik level memakai pose Happy")
+	presenter.set_pose("dirty")
+	presenter.play_fx("fx_strike")
+	var fx := presenter.get("_fx") as Sprite2D
+	_check(fx != null and fx.visible, "fx_strike harus menampilkan overlay efek")
+	_check(
+		fx.get_parent() == root and fx.get_parent() != presenter,
+		"overlay FX harus sibling supaya lunge Attack tidak menelan VFX"
+	)
+	_check(
+		fx.texture != presenter.sprite_frames.get_frame_texture("attack", 0),
+		"VFX harus memakai sel fx_strike, bukan pose Attack"
+	)
+	var strike_tex := fx.texture
+	presenter.play_fx("fx_surge")
+	_check(
+		fx.visible and fx.texture != strike_tex,
+		"fx_surge harus overlay sel efek yang berbeda dari strike"
+	)
+	var impact := presenter.global_position + Vector2(90.0, -20.0)
+	var start_pos := fx.position
+	presenter.play_fx("fx_strike", impact)
+	_check(
+		fx.position.distance_to(start_pos) < 48.0,
+		"FX travel mulai di dekat penyerang, bukan langsung di tubuh lawan"
+	)
+	await create_timer(AnimaPresenter.FX_TRAVEL_SEC + 0.04).timeout
+	var local_impact := impact
+	if fx.get_parent() is CanvasItem:
+		local_impact = (fx.get_parent() as CanvasItem).to_local(impact)
+	_check(
+		fx.position.distance_to(local_impact) < 16.0,
+		"FX strike/surge harus masuk ke tubuh lawan"
+	)
 
 	presenter.visible = false
 	await presenter.hatch_reveal()
 	_check(presenter.visible, "hatch reveal harus menampilkan Anima")
 	_check(presenter.scale.is_equal_approx(Vector2.ONE), "hatch reveal harus kembali ke skala pose")
-	_check_eq(presenter.current_pose(), "idle", "hatch reveal tidak boleh mengganti pose")
+	_check_eq(presenter.current_pose(), "dirty", "hatch reveal tidak boleh mengganti pose")
 	await presenter.summon_dissolve()
 	_check(not presenter.visible, "summon dissolve harus menyembunyikan companion lama")
 	await presenter.summon_reveal()

@@ -131,6 +131,14 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 
+[node name="DetailStrikeRow" parent="Column/DetailsScroll/DetailsContent/TraitsRows" instance=ExtResource("3_info_row")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="DetailSurgeRow" parent="Column/DetailsScroll/DetailsContent/TraitsRows" instance=ExtResource("3_info_row")]
+unique_name_in_owner = true
+layout_mode = 2
+
 [node name="AttributesPanel" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent"]
 layout_mode = 2
 theme_type_variation = &"CareDock"

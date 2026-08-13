@@ -2,7 +2,7 @@ class_name PlaceholderSheet
 extends RefCounted
 
 ## Sheet bohongan yang dibuat di memori, bentuknya persis seperti keluaran
-## backend: RGBA, empat region berukuran seragam, isi rata bawah.
+## backend: RGBA, region berukuran seragam, isi rata bawah.
 ##
 ## Ada dua alasan file ini ada. Pertama, demo bisa dijalankan sebelum satu sen
 ## pun dibelanjakan ke Replicate. Kedua, test slicing tidak perlu menyimpan PNG
@@ -10,13 +10,19 @@ extends RefCounted
 
 const FRAME := Vector2i(256, 256)
 const PAD := 6
+const GRID := 3
 
-# Harus cocok dengan POSE_QUADRANT di backend/supabase/functions/_shared/postprocess.mjs.
+# Harus cocok dengan LAYOUT_3X3 di backend/supabase/functions/_shared/postprocess.mjs.
 const QUADRANT := {
 	"idle": Vector2i(0, 0),
 	"attack": Vector2i(1, 0),
-	"sleep": Vector2i(0, 1),
-	"defeated": Vector2i(1, 1),
+	"sleep": Vector2i(2, 0),
+	"happy": Vector2i(0, 1),
+	"hungry": Vector2i(1, 1),
+	"dirty": Vector2i(2, 1),
+	"defeated": Vector2i(0, 2),
+	"fx_strike": Vector2i(1, 2),
+	"fx_surge": Vector2i(2, 2),
 }
 
 # Tinggi berbeda-beda dengan sengaja: pose meringkuk memang lebih pendek, dan
@@ -25,17 +31,24 @@ const BODY := {
 	"idle": Vector2i(120, 200),
 	"attack": Vector2i(150, 196),
 	"sleep": Vector2i(170, 96),
+	"happy": Vector2i(124, 198),
+	"hungry": Vector2i(118, 188),
+	"dirty": Vector2i(122, 192),
 	"defeated": Vector2i(140, 120),
+	"fx_strike": Vector2i(88, 64),
+	"fx_surge": Vector2i(110, 90),
 }
 
 const BODY_COLOR := Color("6fa8dc")
 const SHADE_COLOR := Color("4a7fb5")
 const EYE_COLOR := Color("f5f7fa")
 const PUPIL_COLOR := Color("1b2430")
+const FX_STRIKE_COLOR := Color("ffc14a")
+const FX_SURGE_COLOR := Color("5ce1ff")
 
 
 static func build() -> Dictionary:
-	var sheet_size := FRAME * 2
+	var sheet_size := FRAME * GRID
 	var image := Image.create_empty(sheet_size.x, sheet_size.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0, 0, 0, 0))
 
@@ -44,23 +57,30 @@ static func build() -> Dictionary:
 		var cell: Vector2i = QUADRANT[pose] * FRAME
 		var body: Vector2i = BODY[pose]
 		var origin := cell + Vector2i((FRAME.x - body.x) / 2, FRAME.y - PAD - body.y)
+		var fill := BODY_COLOR
+		if pose.begins_with("fx_"):
+			# Blob di tengah sel, bukan siluet kaki, supaya overlay terbaca
+			# sebagai VFX di depan tubuh bukan tempelan warna yang sama.
+			fill = FX_SURGE_COLOR if pose == "fx_surge" else FX_STRIKE_COLOR
+			origin.y = cell.y + (FRAME.y - body.y) / 2
 
-		image.fill_rect(Rect2i(origin, body), BODY_COLOR)
+		image.fill_rect(Rect2i(origin, body), fill)
 		# Sisi bawah lebih gelap supaya arah cahaya terbaca dan mata manusia
 		# bisa melihat kalau sprite dipasang terbalik.
 		image.fill_rect(Rect2i(origin + Vector2i(0, body.y - 18), Vector2i(body.x, 18)), SHADE_COLOR)
 
 		var eye := Vector2i(maxi(10, body.x / 7), maxi(10, body.x / 7))
 		var eye_y := origin.y + maxi(12, body.y / 6)
-		for side: int in [-1, 1]:
-			var eye_x: int = origin.x + body.x / 2 + side * body.x / 4 - eye.x / 2
-			image.fill_rect(Rect2i(Vector2i(eye_x, eye_y), eye), EYE_COLOR)
-			# Pose tidur dan tumbang: mata tertutup, digambar sebagai garis.
-			var pupil_h := 3 if pose in ["sleep", "defeated"] else eye.y / 2
-			image.fill_rect(
-				Rect2i(Vector2i(eye_x + 2, eye_y + eye.y / 2 - 1), Vector2i(eye.x - 4, pupil_h)),
-				PUPIL_COLOR
-			)
+		if not pose.begins_with("fx_"):
+			for side: int in [-1, 1]:
+				var eye_x: int = origin.x + body.x / 2 + side * body.x / 4 - eye.x / 2
+				image.fill_rect(Rect2i(Vector2i(eye_x, eye_y), eye), EYE_COLOR)
+				# Pose tidur dan tumbang: mata tertutup, digambar sebagai garis.
+				var pupil_h := 3 if pose in ["sleep", "defeated"] else eye.y / 2
+				image.fill_rect(
+					Rect2i(Vector2i(eye_x + 2, eye_y + eye.y / 2 - 1), Vector2i(eye.x - 4, pupil_h)),
+					PUPIL_COLOR
+				)
 
 		poses[pose] = {"region": [cell.x, cell.y, FRAME.x, FRAME.y]}
 

@@ -166,8 +166,8 @@ func _run(photo: String) -> bool:
 
 	var poses: PackedStringArray = loaded.get("poses", PackedStringArray())
 	print("  frame %s, pose %s" % [str(loaded["frame_size"]), ", ".join(poses)])
-	if poses.size() != 4:
-		printerr("  art produksi harus punya empat pose, dapat %d" % poses.size())
+	if poses.size() < 4:
+		printerr("  art produksi harus punya minimal empat pose, dapat %d" % poses.size())
 		return false
 
 	GameState.remember_anima({

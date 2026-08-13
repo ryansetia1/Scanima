@@ -17,7 +17,7 @@ const REQUIRED_KEYS := [
 	"CARE_CLEAN",
 	"CARE_SLEEP",
 	"CARE_PLAY",
-	"CARE_PLAY_COUNT",
+	"ERROR_PLAY_CAPPED",
 	"HOME_LEVEL_EXP",
 	"LEVEL_UP",
 	"LEVEL_SHORT",
@@ -36,6 +36,8 @@ const REQUIRED_KEYS := [
 	"DETAILS_RARITY_HELP",
 	"DETAILS_STAGE_HELP",
 	"DETAILS_CARE_SCORE_HELP",
+	"DETAILS_STRIKE_HELP",
+	"DETAILS_SURGE_HELP",
 	"STAT_HP_HELP",
 	"STAT_ATK_HELP",
 	"STAT_DEF_HELP",
@@ -101,6 +103,14 @@ func _initialize() -> void:
 		_check(TranslationServer.translate("CARE_PLAY") == "Play", "English translation must resolve")
 		_check(locale_manager.call("format_integer", 12345) == "12,345", "numbers use one formatter")
 		_check(locale_manager.call("format_ratio", 3, 5) == "3 / 5", "ratios use one formatter")
+		_check(
+			locale_manager.call("move_name", {"strike_name": "Button Bash"}, "strike") == "Button Bash",
+			"named Attack uses the generated move"
+		)
+		_check(
+			locale_manager.call("move_name", {}, "surge") == TranslationServer.translate("BATTLE_ACTION_SURGE"),
+			"unnamed Special falls back to the catalog"
+		)
 		_check(
 			locale_manager.call("gate_reason", "human_face") != "human_face",
 			"server gate codes must map to player copy"

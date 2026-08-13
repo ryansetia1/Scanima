@@ -315,7 +315,7 @@ func _test_cache_art() -> void:
 	# tersimpan harus bisa dimuat oleh AnimaLoader yang sama dengan hasil eval.
 	var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path("uji_kotak", "cool_blue", 1))
 	_check(loaded.get("ok", false), "AnimaLoader harus memuat art dari cache: %s" % loaded.get("error", ""))
-	_check_eq((loaded.get("poses", PackedStringArray()) as PackedStringArray).size(), 4, "keempat pose harus ada")
+	_check_eq((loaded.get("poses", PackedStringArray()) as PackedStringArray).size(), 9, "sembilan pose harus ada")
 
 	# Varian lain tidak boleh ikut terbaca ada hanya karena species_key-nya sama.
 	_check(

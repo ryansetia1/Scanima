@@ -63,6 +63,8 @@ type AnimaRow = {
   element: string;
   base_stats: Record<string, number>;
   care_score?: number;
+  strike_name?: string;
+  surge_name?: string;
 };
 
 type ArtRow = {
@@ -72,6 +74,9 @@ type ArtRow = {
   sheet_path: string;
   manifest: unknown;
 };
+
+const ANIMA_BATTLE_FIELDS =
+  "id, owner_id, nickname, species_key, color_bucket, stage, element, base_stats, care_score, strike_name, surge_name";
 
 const db = adminClient();
 
@@ -137,13 +142,13 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
     await Promise.all([
       db
         .from("animas")
-        .select("id, owner_id, nickname, species_key, color_bucket, stage, element, base_stats, care_score")
+        .select(ANIMA_BATTLE_FIELDS)
         .eq("id", animaId)
         .eq("owner_id", ownerId)
         .maybeSingle(),
       db
         .from("animas")
-        .select("id, owner_id, nickname, species_key, color_bucket, stage, element, base_stats, care_score")
+        .select(ANIMA_BATTLE_FIELDS)
         .neq("owner_id", ownerId)
         .eq("status", "ready")
         .limit(200),
@@ -279,6 +284,8 @@ function snapshot(row: AnimaRow, art: ArtRow | null, includeName: boolean): Reco
     base_stats: normalizeBaseStats(row.base_stats),
     sheet_path: art?.sheet_path ?? "",
     manifest: art?.manifest ?? {},
+    strike_name: row.strike_name ?? "",
+    surge_name: row.surge_name ?? "",
   };
   if (includeName) result.name = row.nickname;
   return result;

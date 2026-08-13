@@ -1,8 +1,8 @@
 # 03 — Godot Engine Integration & Sprite Handling
 
-Dokumen ini menjelaskan apa yang terjadi di dalam Godot: bagaimana sprite sheet diunduh, dipecah jadi empat pose, dipasang ke `AnimatedSprite2D`, di-cache, dan dibuat terasa hidup meski hanya berisi empat gambar statis.
+Dokumen ini menjelaskan apa yang terjadi di dalam Godot: bagaimana sprite sheet diunduh, dipecah jadi pose, dipasang ke `AnimatedSprite2D`, di-cache, dan dibuat terasa hidup meski hanya berisi gambar statis.
 
-Prinsip yang mengatur seluruh bab ini: **Godot tidak memproses piksel.** Semua keying, slicing, dan trimming sudah selesai di backend. Godot menerima satu PNG RGBA plus satu manifest JSON, lalu memasang empat `AtlasTexture` yang menunjuk region berbeda pada satu tekstur yang sama. Nol copy piksel, nol dekode ulang, nol beban CPU di device low-end.
+Prinsip yang mengatur seluruh bab ini: **Godot tidak memproses piksel.** Semua keying, slicing, dan trimming sudah selesai di backend. Godot menerima satu PNG RGBA plus satu manifest JSON, lalu memasang `AtlasTexture` yang menunjuk region berbeda pada satu tekstur yang sama. Nol copy piksel, nol dekode ulang, nol beban CPU di device low-end. Sheet production v7 adalah 9 pose (Idle/Battle/Sleep/Happy/Hungry/Dirty/Damaged plus overlay `fx_strike`/`fx_surge`). Loader hanya mewajibkan Idle, jadi cache 2×2 lama tetap tampil.
 
 ## 1. Kontrak manifest
 
@@ -338,6 +338,10 @@ match pose:
 	"attack":   _motion = _lunge()
 	"defeated": _motion = _heavy_breathe()
 ```
+
+Sel `fx_strike` / `fx_surge` tidak mengganti pose tubuh. `play_fx()` menaruhnya
+sebagai overlay sibling, lalu — saat Battle mengirim posisi lawan — meluncur
+cepat ke tubuh musuh, sempat terlihat, lalu fade. Sheet 2×2 tanpa sel itu melewati overlay diam-diam.
 
 Idle memakai squash-stretch halus. Sleep lebih lambat dan dalam. Key internal
 `defeated` berarti visual Damaged saat Anima Dormant, jadi ia bukan jasad yang
