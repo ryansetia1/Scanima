@@ -569,16 +569,25 @@ begin
   assert (select care_score from public.animas where id = v_care_anima) = 8,
          'bonus terawat +8 hanya boleh sekali per hari';
 
-  -- Tepat delapan jam masih grace; 18 jam berarti 10 jam efektif dan Hunger nol.
+  -- Decay sejak sync terakhir, tanpa grace. Dua jam sudah memotong Hunger;
+  -- 10 jam menghabiskannya. Cap 48 jam tetap memasukkan Dormant.
   update public.animas
      set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
          care_score = 0,
-         care_synced_at = now() - interval '8 hours',
+         care_synced_at = now() - interval '2 hours',
          well_cared_on = (now() at time zone 'UTC')::date
    where id = v_care_anima;
   perform public.apply_care(u1, v_care_anima, 'sync', null);
-  assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 100,
-         'delapan jam pertama harus bebas decay';
+  assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 80,
+         'dua jam harus memotong Hunger 20 supaya Feed terasa';
+
+  update public.animas
+     set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
+         care_synced_at = now() - interval '8 hours'
+   where id = v_care_anima;
+  perform public.apply_care(u1, v_care_anima, 'sync', null);
+  assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 20,
+         'delapan jam harus memotong Hunger 80';
 
   update public.animas
      set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
@@ -586,7 +595,7 @@ begin
    where id = v_care_anima;
   perform public.apply_care(u1, v_care_anima, 'sync', null);
   assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 0,
-         '18 jam harus menghasilkan 10 jam decay efektif';
+         'Hunger habis dalam 10 jam';
 
   -- Cap 48 jam memasukkan Dormant dan reset score. Dua Feed + dua Clean dari nol
   -- melewati ambang recovery 50 tanpa mengubah generation status=ready.
@@ -696,6 +705,24 @@ begin
   assert ok, 'Anima Dormant tidak boleh masuk Battle';
   update public.animas set dormant_since = null where id = v_battle_player;
 
+  update public.animas
+     set care = '{"hunger":100,"energy":19,"hygiene":100,"bond":0}'::jsonb,
+         care_synced_at = now()
+   where id = v_battle_player;
+  begin
+    perform public.start_battle(
+      u1, v_battle_player, v_battle_bot,
+      v_battle_player_snapshot, v_battle_bot_snapshot, v_battle_state, 'low-energy'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ANIMA_LOW_ENERGY');
+  end;
+  assert ok, 'Energy di bawah 20 harus menolak Battle dan Training';
+  update public.animas
+     set care = jsonb_set(care, '{energy}', '20'::jsonb),
+         care_synced_at = now()
+   where id = v_battle_player;
+
   -- Dua reward sebelumnya membuat kemenangan berikutnya menjadi reward ketiga
   -- hari ini. Nominal kedua sengaja berbeda: reason battle_win adalah counter,
   -- sehingga balancing Bits tidak boleh diam-diam membuka cap.
@@ -717,6 +744,8 @@ begin
   );
   v_battle_session := (v_j->>'id')::uuid;
   assert v_battle_session is not null, 'start Battle harus membuat session';
+  assert (select (care->>'energy')::numeric from public.animas where id = v_battle_player) = 0,
+         'start Battle harus memotong 20 Energy';
   assert (v_j #>> '{daily_reward,earned}')::int = 2
          and (v_j #>> '{daily_reward,limit}')::int = 3
          and (v_j #>> '{daily_reward,remaining}')::int = 1,
@@ -730,6 +759,8 @@ begin
   );
   assert (v_j2->>'id')::uuid = v_battle_session,
          'dua start paralel harus bertemu di satu session aktif';
+  assert (select (care->>'energy')::numeric from public.animas where id = v_battle_player) = 0,
+         'resume start tidak boleh memotong Energy kedua kali';
   assert (public.resume_battle(u1, v_battle_session)->>'id')::uuid = v_battle_session,
          'session aktif harus bisa dilanjutkan setelah restart';
 
@@ -793,6 +824,10 @@ begin
 
   -- Kemenangan keempat tetap menyelesaikan Battle, tetapi seluruh progression
   -- reward nol. Membatasi Bits saja akan memindahkan exploit ke evolusi.
+  update public.animas
+     set care = jsonb_set(care, '{energy}', '100'::jsonb),
+         care_synced_at = now()
+   where id = v_battle_player;
   v_j := public.start_battle(
     u1, v_battle_player, v_battle_bot,
     v_battle_player_snapshot, v_battle_bot_snapshot,
@@ -848,6 +883,10 @@ begin
          'retry Training tidak boleh membuat reward baru';
 
   -- Kalah dan forfeit tidak pernah menyentuh Bits, score, wins, atau Core.
+  update public.animas
+     set care = jsonb_set(care, '{energy}', '100'::jsonb),
+         care_synced_at = now()
+   where id = v_battle_player;
   v_j := public.start_battle(
     u1, v_battle_player, v_battle_bot,
     v_battle_player_snapshot, v_battle_bot_snapshot,
@@ -879,6 +918,10 @@ begin
            = v_wins_before_battle,
          'kalah tidak boleh memberi score atau win';
 
+  update public.animas
+     set care = jsonb_set(care, '{energy}', '100'::jsonb),
+         care_synced_at = now()
+   where id = v_battle_player;
   v_j := public.start_battle(
     u1, v_battle_player, v_battle_bot,
     v_battle_player_snapshot, v_battle_bot_snapshot,

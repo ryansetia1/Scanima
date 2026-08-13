@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/battle_view.gd" id="1_battle"]
 [ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" path="res://assets/icons/element-spark.svg" id="6_spark"]
 [ext_resource type="Texture2D" path="res://assets/icons/element-cloth.svg" id="7_cloth"]
 [ext_resource type="Texture2D" path="res://assets/icons/element-stone.svg" id="8_stone"]
+[ext_resource type="FontFile" path="res://assets/fonts/Oxanium-Variable.ttf" id="9_display"]
 
 [sub_resource type="StyleBoxFlat" id="HpBackground"]
 bg_color = Color(0.025, 0.04, 0.09, 0.96)
@@ -22,6 +23,12 @@ corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
+
+[sub_resource type="FontVariation" id="EffectivenessBold"]
+base_font = ExtResource("9_display")
+variation_opentype = {
+"wght": 800
+}
 
 [node name="BattleView" type="Control"]
 unique_name_in_owner = true
@@ -344,6 +351,58 @@ text = "BATTLE_DAMAGE"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="BattleEffectiveness" type="Control" parent="Column/BattleContent/ArenaPanel/BattleArena"]
+unique_name_in_owner = true
+visible = false
+z_index = 4
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -230.0
+offset_top = -150.0
+offset_right = 230.0
+offset_bottom = -68.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(230, 41)
+mouse_filter = 2
+
+[node name="BattleEffectivenessBadge" type="CenterContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleEffectiveness"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -185.0
+offset_top = -34.0
+offset_right = 185.0
+offset_bottom = 34.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(185, 34)
+mouse_filter = 2
+
+[node name="BattleEffectivenessLabel" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleEffectiveness/BattleEffectivenessBadge"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_fonts/font = SubResource("EffectivenessBold")
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_colors/font_shadow_color = Color(1, 0.82, 0.4, 0.48)
+theme_override_constants/outline_size = 8
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 12
+theme_override_font_sizes/font_size = 36
+text = "BATTLE_EFFECTIVE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="BattleFooter" type="Control" parent="Column/BattleContent"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 148)
@@ -382,6 +441,20 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "BATTLE_ACTION_STRIKE"
 
+[node name="BattleStrikeCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleStrikeButton"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -7.0
+grow_horizontal = 2
+grow_vertical = 0
+pivot_offset = Vector2(84, 3.5)
+mouse_filter = 2
+color = Color(0.28, 0.9, 1, 1)
+
 [node name="BattleSurgeButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
@@ -390,12 +463,40 @@ size_flags_horizontal = 3
 theme_type_variation = &"PrimaryButton"
 text = "BATTLE_ACTION_SURGE"
 
+[node name="BattleSurgeCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleSurgeButton"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -7.0
+grow_horizontal = 2
+grow_vertical = 0
+pivot_offset = Vector2(84, 3.5)
+mouse_filter = 2
+color = Color(1, 0.82, 0.4, 1)
+
 [node name="BattleGuardButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BATTLE_ACTION_GUARD"
+
+[node name="BattleGuardCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleGuardButton"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -7.0
+grow_horizontal = 2
+grow_vertical = 0
+pivot_offset = Vector2(84, 3.5)
+mouse_filter = 2
+color = Color(0.66, 0.48, 1, 1)
 
 [node name="BattleResultPanel" type="PanelContainer" parent="Column/BattleContent/BattleFooter"]
 unique_name_in_owner = true

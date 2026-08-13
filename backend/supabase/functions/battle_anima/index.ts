@@ -33,6 +33,7 @@ const ERROR_STATUS: Record<string, number> = {
   ANIMA_NOT_READY: 409,
   ANIMA_SLEEPING: 409,
   ANIMA_DORMANT: 409,
+  ANIMA_LOW_ENERGY: 409,
   NO_MOMENTUM: 409,
   NO_BATTLE_OPPONENT: 409,
   ANIMA_NOT_FOUND: 404,
@@ -96,7 +97,11 @@ Deno.serve(async (req) => {
     if (operation === "forfeit") return await forfeitBattle(ownerId, body);
     return json(400, { error: "operation tidak dikenal" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+      ? String(error.message)
+      : String(error);
     const marker = Object.keys(ERROR_STATUS).find((candidate) => message.includes(candidate));
     if (marker) return json(ERROR_STATUS[marker], { error: marker });
     console.error("battle_anima gagal", error);

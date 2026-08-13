@@ -1038,6 +1038,17 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   assert.throws(() => resolveTurn(budget, "surge", "no-momentum"), /NO_MOMENTUM/);
   const refilled = resolveTurn(budget, "guard", "guard-refill");
   assert.equal(refilled.state.player.momentum, 1, "Guard adalah satu-satunya pemulih PP");
+
+  const { readFile } = await import("node:fs/promises");
+  const battleEdge = await readFile(
+    new URL("../backend/supabase/functions/battle_anima/index.ts", import.meta.url),
+    "utf8"
+  );
+  assert.match(battleEdge, /ANIMA_LOW_ENERGY:\s*409/, "Energy rendah harus menjadi conflict");
+  assert.ok(
+    battleEdge.includes('"message" in error'),
+    "error RPC PostgREST berbentuk object tetap harus terbaca oleh mapper"
+  );
 }
 
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang

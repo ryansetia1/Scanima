@@ -178,6 +178,11 @@ func _ready() -> void:
 			await _run_summon_demo()
 		if arg == "--battle-demo":
 			_run_battle_demo()
+		if arg == "--battle-pending-demo":
+			_run_battle_demo()
+			_battle_view.begin_action("surge")
+		if arg == "--battle-effective-demo":
+			_run_battle_demo("active", false, 1.5)
 		if arg == "--battle-result-demo":
 			_run_battle_demo("forfeited")
 		if arg == "--battle-win-demo":
@@ -728,6 +733,7 @@ func _start_battle() -> void:
 		int(session.get("version", 1))
 	)
 	await _show_battle_session(session)
+	await _sync_active_care(false)
 	_set_busy(false)
 
 
@@ -801,6 +807,7 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 	if pending.is_empty():
 		return
 	_battle_reward_revision += 1
+	_battle_view.begin_action(str(pending.get("action", "")))
 	_set_busy(true)
 	var res := await Backend.battle_anima("turn", {
 		"session_id": str(pending.get("session_id", "")),
@@ -1852,7 +1859,9 @@ func _run_summon_demo() -> void:
 	_set_busy(false)
 
 
-func _run_battle_demo(status: String = "active", training: bool = false) -> void:
+func _run_battle_demo(
+	status: String = "active", training: bool = false, effectiveness: float = 0.0
+) -> void:
 	var placeholder := PlaceholderSheet.build()
 	var texture := ImageTexture.create_from_image(placeholder["image"])
 	var loaded := AnimaLoader.build(texture, placeholder["manifest"])
@@ -1886,6 +1895,8 @@ func _run_battle_demo(status: String = "active", training: bool = false) -> void
 	}
 	_switch_destination(BottomNav.BATTLE, {}, false)
 	_battle_view.set_session(session, loaded, loaded)
+	if not is_zero_approx(effectiveness):
+		_battle_view.call("_show_effectiveness", effectiveness)
 
 
 func _run_battle_training_demo() -> void:

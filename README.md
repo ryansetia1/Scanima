@@ -58,7 +58,7 @@ shell/touch/Battle/motion dan `test_i18n.gd` menjaga 1313 kontrak katalog.
 **Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; Feed memberi satu hop, Play memberi enam bounce selama sekitar 2,5 detik, dan pose Damaged melakukan heavy breathing loop selama Dormant. Meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
 
 **Battle vertical slice Phase 3 sudah live.** Anima aktif yang `ready`, bangun,
-dan tidak Dormant melawan snapshot anonim Anima pemain lain. Attack, Special, dan
+tidak Dormant, dan memiliki minimal 20 Energy (tiap duel baru memotong 20 Energy) melawan snapshot anonim Anima pemain lain. Attack, Special, dan
 Guard dihitung server dari satu modul formula; Postgres mengunci turn/version,
 menyimpan replay idempoten, dan memberi reward menang 5 Bits,
 `care_score +4`, `battle_wins +1` dalam transaksi yang sama. Session berumur 30
@@ -218,7 +218,7 @@ scanima/
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
 │       ├── test_scan_ui.gd           # 249 kontrak shell + Battle + touch
 │       ├── test_i18n.gd              # 1313 kontrak katalog + key + wrapping
-│       ├── test_game_rules.gd        # 30 kontrak care + event Battle
+│       ├── test_game_rules.gd        # 32 kontrak care + event Battle
 │       ├── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 │       └── live_battle.gd            # Battle produksi, nol model call
 ├── backend/

@@ -164,17 +164,13 @@ Tidak ada cron, tidak ada background service, tidak ada timer yang harus tetap h
 
 ```gdscript
 const DECAY_PER_HOUR := { "hunger": 10.0, "energy": 7.1, "hygiene": 4.2 }
-const OFFLINE_GRACE_HOURS := 8.0
 const MAX_DECAY_HOURS := 48.0
 
 static func apply_decay(care: Dictionary, synced_at: float, now: float) -> Dictionary:
 	var hours := (now - synced_at) / 3600.0
 
-	# Jam pertama offline gratis: pemain tidak dihukum karena tidur.
-	hours = maxf(0.0, hours - OFFLINE_GRACE_HOURS)
-
 	# Plafon decay: pergi dua hari atau dua minggu hasilnya sama.
-	hours = minf(hours, MAX_DECAY_HOURS)
+	hours = minf(maxf(0.0, hours), MAX_DECAY_HOURS)
 
 	var out := care.duplicate()
 	for need in DECAY_PER_HOUR:
@@ -190,7 +186,7 @@ static func apply_decay(care: Dictionary, synced_at: float, now: float) -> Dicti
 
 Tiga keputusan di fungsi itu perlu dijelaskan karena semuanya menolak desain Tamagotchi klasik dengan sengaja.
 
-**Grace period 8 jam** ada karena manusia tidur. Menghukum pemain karena tidak membuka aplikasi jam 3 pagi adalah cara paling cepat membuat orang berhenti bermain, dan tidak ada satu pun pemain yang merasa hukuman itu adil.
+**Decay dihitung sejak sync terakhir, tanpa grace.** Versi awal memotong 8 jam dari setiap interval, lalu menuliskan ulang `care_synced_at`. Pemain yang membuka app lebih sering dari itu tidak pernah kehilangan Hunger atau Hygiene, jadi Feed/Clean jadi kosmetik. Sekarang dua jam offline memotong Hunger 20 dan Hygiene 8,4 — satu Feed (+35) menutupi kira-kira 3,5 jam, satu Clean (+35) kira-kira 8 jam. Tidur Anima tetap memulihkan Energy; Hunger dan Hygiene terus turun, jadi pagi hari tetap perlu makan.
 
 **Plafon decay 48 jam** membuat pergi seminggu tidak lebih buruk daripada pergi dua hari. Tanpa plafon, pemain yang kembali setelah liburan menemukan koleksinya hancur total, dan reaksi paling umum untuk itu bukan bertobat, tapi menghapus aplikasi.
 
@@ -338,6 +334,8 @@ static func compute_damage(atk: int, def: int, power: float, elem_mult: float,
 
 DEF dipakai sebagai peredam multiplikatif `100/(100+DEF)`, bukan pengurang `ATK - DEF`. Alasannya praktis: dengan pengurang, Anima berbahan batu dengan DEF 90 akan kebal total terhadap Anima kertas dengan ATK 20, dan pertarungannya jadi macet tanpa jalan keluar. Dengan peredam, kertas tetap menggigit sedikit — dan roda elemen memberinya jalan menang yang sah (kain mengalahkan batu).
 
+Setiap event serangan membawa `element_multiplier` authoritative dari formula server. Client menampilkan `Super effective!` untuk `1.5`, `Not very effective.` untuk `0.67`, dan tidak menampilkan callout pada matchup netral; warna serta punch angka damage mengikuti hasil yang sama. Callout memakai Oxanium ExtraBold besar dengan outline gelap dan glow warna—tanpa box, border, atau garis samping—di ruang kosong tepat di bawah fighter HUD agar tidak menutupi badan Anima. Tilt dan pop dimatikan oleh Reduced Motion. Dengan begitu feedback elemen terasa sebagai impact saat hit tanpa menyalin roda elemen ke client.
+
 Peluang critical diambil dari SPD: `crit_chance = clampf(spd / 400.0, 0.02, 0.25)`. Ini membuat SPD bernilai ganda (urutan turn dan crit) sehingga objek ringan dan lincah punya identitas yang jelas di pertarungan, bukan cuma bergerak lebih dulu.
 
 ### Struktur turn
@@ -349,6 +347,10 @@ Auto-battle akan lebih mudah dibuat, tapi tiga pilihan per turn adalah harga yan
 | `strike` | **Attack** | 50, berbasis ATK | 0 | Aksi dasar, selalu tersedia |
 | `surge` | **Special** | 75, berbasis SPECIAL | 1 | Menembus 50% DEF lawan |
 | `guard` | **Guard** | — | 0, memulihkan 1 | Damage masuk x0.5 turn ini |
+
+Turn tetap menunggu event authoritative server, tetapi tap tidak boleh terlihat seperti tombol mati selama round-trip jaringan. Client langsung menandai aksi pilihan dengan underline pulse, meredupkan dua pilihan lain, menampilkan `Attack locked in`/`Special charged`/`Guard up`, lalu mengabaikan input ulang tanpa menerapkan style disabled. Ini hanya mengakui command pemain—damage, initiative, PP, dan animasi hasil tetap menunggu response server sehingga snappiness tidak dibayar dengan state optimistis yang bisa salah.
+
+Battle dan Training memakai entry gate yang sama: Anima harus memiliki **minimal 20 Energy**, dan **start session baru memotong 20 Energy**. `start_battle()` menjalankan `apply_care(..., 'sync')` sebelum memeriksa nilai authoritative itu, sehingga client tidak bisa memakai snapshot Energy lama untuk masuk. Client juga menonaktifkan CTA lebih awal ketika row roster sudah menunjukkan Energy di bawah 20, tetapi keputusan akhir tetap di transaksi server. Resume session aktif tidak memotong Energy kedua kali, dan duel yang sudah berjalan tidak dibatalkan di tengah.
 
 **PP** adalah budget per-battle: mulai penuh 3, satu Special memakan 1, dan ia **tidak pulih sendiri setiap turn** — satu-satunya pemulihan adalah Guard. Ia sengaja dinamai berbeda dari mata uang di bagian 2 karena ia bukan mata uang: ia lahir dan mati di dalam satu pertarungan, tidak pernah disimpan, dan tidak bisa dibeli. Perannya menciptakan ritme bertahan-lalu-menyerang tanpa perlu sistem cooldown per skill: tiga Special adalah anggaran yang pemain sendiri putuskan kapan dibelanjakan, dan Guard adalah harga untuk menambahnya.
 

@@ -19,14 +19,16 @@ func _initialize() -> void:
 	_check_eq(normalized["hygiene"], 50.0, "Hygiene dipertahankan")
 	_check_eq(normalized["bond"], 0.0, "Bond yang hilang memakai default")
 
-	print("2. grace dan cap offline decay")
+	print("2. decay berjalan sejak sync terakhir, cap 48 jam")
 	var full := {"hunger": 100.0, "energy": 100.0, "hygiene": 100.0, "bond": 50.0}
+	var after_2h := CareRules.apply_decay(full, 0.0, 2.0 * 3600.0)
+	_check_eq(after_2h["hunger"], 80.0, "dua jam harus memotong Hunger 20")
 	var after_8h := CareRules.apply_decay(full, 0.0, 8.0 * 3600.0)
-	_check_eq(after_8h["hunger"], 100.0, "grace delapan jam harus utuh")
+	_check_eq(after_8h["hunger"], 20.0, "delapan jam harus memotong Hunger 80")
 	var after_18h := CareRules.apply_decay(full, 0.0, 18.0 * 3600.0)
-	_check_eq(after_18h["hunger"], 0.0, "18 jam berarti 10 jam decay efektif")
-	_check(is_equal_approx(after_18h["energy"], 29.0), "Energy turun 71 setelah 10 jam")
-	_check(is_equal_approx(after_18h["hygiene"], 58.0), "Hygiene turun 42 setelah 10 jam")
+	_check_eq(after_18h["hunger"], 0.0, "Hunger habis dalam 10 jam")
+	_check_eq(after_18h["energy"], 0.0, "Energy habis sebelum 18 jam bangun")
+	_check(is_equal_approx(after_18h["hygiene"], 24.4), "Hygiene turun 4.2 per jam")
 	var after_56h := CareRules.apply_decay(full, 0.0, 56.0 * 3600.0)
 	var after_week := CareRules.apply_decay(full, 0.0, 168.0 * 3600.0)
 	_check_eq(after_56h, after_week, "48 jam efektif harus menjadi cap")
@@ -45,7 +47,8 @@ func _initialize() -> void:
 		0.0,
 		18.0 * 3600.0
 	)
-	_check_eq(neglected["bond"], 30.0, "dua kebutuhan nol mengurangi Bond 2/jam efektif")
+	_check_eq(neglected["bond"], 14.0, "dua kebutuhan nol mengurangi Bond 2/jam")
+	_check_eq(CareRules.BATTLE_ENERGY_COST, 20.0, "Battle memotong 20 Energy")
 
 	print("4. tidur pulih linear dari nilai awal")
 	var tired := {"hunger": 100.0, "energy": 0.0, "hygiene": 100.0, "bond": 0.0}

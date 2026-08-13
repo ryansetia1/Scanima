@@ -477,6 +477,9 @@ func _test_battle_view() -> void:
 	var strike := view.find_child("BattleStrikeButton", true, false) as Button
 	var surge := view.find_child("BattleSurgeButton", true, false) as Button
 	var guard := view.find_child("BattleGuardButton", true, false) as Button
+	var strike_commit := view.find_child("BattleStrikeCommit", true, false) as ColorRect
+	var surge_commit := view.find_child("BattleSurgeCommit", true, false) as ColorRect
+	var guard_commit := view.find_child("BattleGuardCommit", true, false) as ColorRect
 	var forfeit := view.find_child("BattleForfeitButton", true, false) as Button
 	var player_hp := view.find_child("BattlePlayerHp", true, false) as ProgressBar
 	var bot_hp := view.find_child("BattleBotHp", true, false) as ProgressBar
@@ -484,6 +487,14 @@ func _test_battle_view() -> void:
 	var bot_hp_value := view.find_child("BattleBotHpValue", true, false) as Label
 	var daily_reward := view.find_child("BattleDailyReward", true, false) as Label
 	var feedback := view.find_child("BattleFeedback", true, false) as Label
+	var damage := view.find_child("BattleDamage", true, false) as Label
+	var effectiveness := view.find_child("BattleEffectiveness", true, false) as Control
+	var effectiveness_badge := view.find_child(
+		"BattleEffectivenessBadge", true, false
+	) as Control
+	var effectiveness_label := view.find_child(
+		"BattleEffectivenessLabel", true, false
+	) as Label
 	var result_title := view.find_child("BattleResultTitle", true, false) as Label
 	var result_body := view.find_child("BattleResultBody", true, false) as Label
 	var retry := view.find_child("BattleRetryButton", true, false) as Button
@@ -499,6 +510,7 @@ func _test_battle_view() -> void:
 		"status": "ready",
 		"element": "spark",
 		"stage": 1,
+		"care": {"hunger": 100.0, "energy": 100.0, "hygiene": 100.0, "bond": 50.0},
 		"base_stats": {"hp": 60, "atk": 55, "def": 50, "spd": 65, "special": 58},
 	}
 	view.set_lobby(anima)
@@ -536,6 +548,19 @@ func _test_battle_view() -> void:
 	anima["dormant_since"] = "2026-08-13T00:00:00Z"
 	view.set_lobby(anima)
 	_check(start.disabled, "Dormant Anima cannot start Battle")
+	anima.erase("dormant_since")
+	anima["care"]["energy"] = 19.0
+	view.set_daily_reward(training_daily_reward)
+	view.set_lobby(anima)
+	_check(
+		start.disabled and start.text == tr("BATTLE_TRAIN")
+		and lobby_meta.text == tr("BATTLE_ANIMA_LOW_ENERGY"),
+		"Energy below 20 blocks Battle and unlimited Training with a recovery hint"
+	)
+	anima["care"]["energy"] = 20.0
+	view.set_daily_reward(normal_daily_reward)
+	view.set_lobby(anima)
+	_check(not start.disabled, "exactly 20 Energy remains eligible for Battle")
 
 	view.set_loading("BATTLE_RESUMING")
 	_check(lobby.visible and start.disabled, "Battle resume exposes a locked loading state")
@@ -602,6 +627,27 @@ func _test_battle_view() -> void:
 		and bot_hp.fill_mode == ProgressBar.FILL_BEGIN_TO_END,
 		"both HP meters drain from the outer screen edge inward like a fighting game"
 	)
+	view.call("_show_effectiveness", 1.5)
+	_check(
+		effectiveness.visible and effectiveness_label.text == tr("BATTLE_EFFECTIVE"),
+		"advantaged attacks show a Super effective indicator"
+	)
+	_check(
+		effectiveness.position.y + effectiveness.size.y < damage.position.y
+		and effectiveness_badge is CenterContainer
+		and view.find_child("BattleEffectivenessLeftStreak", true, false) == null
+		and view.find_child("BattleEffectivenessRightStreak", true, false) == null
+		and effectiveness_label.get_theme_font("font") is FontVariation
+		and effectiveness_label.get_theme_font_size("font_size") >= 36,
+		"effectiveness impact uses bold type above fighters without a box or side lines"
+	)
+	view.call("_show_effectiveness", 0.67)
+	_check(
+		effectiveness.visible and effectiveness_label.text == tr("BATTLE_NOT_EFFECTIVE"),
+		"resisted attacks show a Not very effective indicator"
+	)
+	view.call("_show_effectiveness", 1.0)
+	_check(not effectiveness.visible, "neutral attacks do not show a misleading indicator")
 	_check(
 		surge.text == tr("BATTLE_ACTION_SURGE_COST") % ["3", "3"],
 		"Special button is the only place PP is shown"
@@ -660,8 +706,20 @@ func _test_battle_view() -> void:
 		feedback.text == tr("BATTLE_TRAINING_HINT") and not daily_reward.visible,
 		"Training explains disabled rewards without presenting a fake Training limit"
 	)
-	view.set_busy(true)
-	_check(strike.disabled and surge.disabled and guard.disabled, "pending turn locks all actions")
+	view.begin_action("strike")
+	_check(
+		not strike.disabled and not surge.disabled and not guard.disabled
+		and strike.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and surge.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and guard.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+		"pending turn blocks repeat input without making every action look disabled"
+	)
+	_check(
+		strike_commit.visible and not surge_commit.visible and not guard_commit.visible
+		and feedback.text == tr("BATTLE_ACTION_PENDING_STRIKE")
+		and surge.self_modulate.a < strike.self_modulate.a,
+		"selected Battle action reacts immediately with committed feedback"
+	)
 
 	var won: Dictionary = session.duplicate(true)
 	won["status"] = "won"

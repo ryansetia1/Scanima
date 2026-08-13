@@ -16,13 +16,13 @@ const DECAY_PER_HOUR := {
 	"energy": 7.1,
 	"hygiene": 4.2,
 }
-const OFFLINE_GRACE_HOURS := 8.0
 const MAX_DECAY_HOURS := 48.0
 const BOND_DECAY_PER_HOUR := 2.0
 const CARE_RESTORE := 35.0
 const CARE_BOND_GAIN := 3.0
 const PLAY_BOND_GAIN := 8.0
 const PLAY_ENERGY_COST := 5.0
+const BATTLE_ENERGY_COST := 20.0
 const SLEEP_FULL_HOURS := 6.0
 const DORMANT_RECOVERY_NEED := 50.0
 
@@ -37,7 +37,7 @@ static func normalized_care(value: Variant) -> Dictionary:
 
 static func effective_decay_hours(synced_at: float, now: float) -> float:
 	var elapsed := maxf(0.0, (now - synced_at) / 3600.0)
-	return minf(MAX_DECAY_HOURS, maxf(0.0, elapsed - OFFLINE_GRACE_HOURS))
+	return minf(MAX_DECAY_HOURS, elapsed)
 
 
 static func apply_decay(
