@@ -17,7 +17,7 @@ Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`**
 
 Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu mereproduksi logo merek dari fotonya di keempat pose. Larangan tekstual sudah ada di v2 dan tidak cukup, karena logonya datang dari foto referensi. **Prompt v3 kini jadi default**: ia memerintahkan model mengganti mark merek dengan permukaan polos atau marking geometris ciptaan sendiri. Uji satu foto sepatu (~$0.073) memberi 4/4 sel, residu 0,014%, logo hilang, dan `species_key` tidak bergeser. Mouse dan mug belum diulang di v3.
 
-**Prompt v5 sekarang menjadi candidate terbaru, bukan default.** V4 lebih dulu menghapus emblem semu dan damage cyborg lewat `surface_finish` + `damage_hints`; v5 mempertahankan pagar itu lalu menambah `character_direction` dari cue visual objek. Hasil boleh cute, feminin, maskulin, netral/androgynous, elegan, kokoh, atau aneh; cue ambigu wajib netral. Idle dilarang fierce/marah, tangan dan kaki benar-benar opsional, dan nama generated tidak boleh memakai suffix `-mon`. Safety net runtime menegakkan aturan nama itu untuk semua versi prompt tanpa mengubah nickname manual. Kontrak gratis dan dry-run menjaga data flow, tetapi production tetap v3 sampai v5 melewati Smoke Set visual berbayar.
+**Prompt v6 sekarang menjadi candidate terbaru, bukan default.** V4 lebih dulu menghapus emblem semu dan damage cyborg; v5 menambah `character_direction`, body plan opsional, Idle non-angry, serta larangan suffix `-mon`. V6 mempertahankan seluruh pagar itu dan mengunci keempat pose ke arah canvas-left: sel tidak boleh di-mirror sendiri, landmark asimetris tidak boleh bertukar sisi, dan pose Battle wajib menyerang ke kiri. Client membalik seluruh sheet hanya untuk petarung di sisi kiri arena. Vision dan `species_key` tetap identik dengan v5, sehingga eksperimen arah tidak memecah cache. Production tetap v3 sampai v6 melewati Smoke Set visual berbayar.
 
 **`google/nano-banana-2-lite` sudah mendapat satu A/B berbayar dengan mouse + prompt v5 dan ditolak.** Billing run tampil $0.03 dan generation selesai dalam 7 detik dengan 4/4 pose, tetapi model ikut menggambar label kuadran serta garis pembagi. Akibatnya bbox Sleep memenuhi tinggi sheet, cross-boundary mencapai 21.361 piksel, dan residu hijau 2,04% versus target <0,1%. Kecepatan dan harga tidak menutup kegagalan kepatuhan layout, jadi GPT Image 2 medium tetap dipakai.
 
@@ -222,7 +222,8 @@ scanima/
 │   ├── prompts/v2/               # GPT Image 2 medium + anime cel-shaded style
 │   ├── prompts/v3/               # default: v2 + blok BRAND MARKS
 │   ├── prompts/v4/               # predecessor: tanpa emblem + damage material
-│   ├── prompts/v5/               # candidate: karakter + limb plan mengikuti objek
+│   ├── prompts/v5/               # predecessor: karakter + limb plan mengikuti objek
+│   ├── prompts/v6/               # candidate: v5 + facing lock empat pose
 │   ├── tools/bundle_prompts.mjs  # prompts/ -> modul yang bisa diimpor Deno
 │   ├── supabase/migrations/      # skema, RLS + hak kolom, fungsi kuota
 │   ├── supabase/functions/

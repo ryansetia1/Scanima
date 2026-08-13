@@ -470,8 +470,8 @@ async function main() {
         checked = validateVision(
           seen.vision,
           knownSpecies,
-          ["v4", "v5"].includes(args.promptVersion),
-          args.promptVersion === "v5"
+          ["v4", "v5", "v6"].includes(args.promptVersion),
+          ["v5", "v6"].includes(args.promptVersion)
         );
         row.vision = checked.vision;
         row.issues = [...(row.issues ?? []), ...checked.issues];

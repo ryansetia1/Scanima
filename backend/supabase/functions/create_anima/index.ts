@@ -172,8 +172,8 @@ Deno.serve(async (req) => {
       hasil = validateVision(
         extractJson(mentah),
         dikenal,
-        ["v4", "v5"].includes(versiPrompt),
-        versiPrompt === "v5",
+        ["v4", "v5", "v6"].includes(versiPrompt),
+        ["v5", "v6"].includes(versiPrompt),
       );
     } catch (e) {
       await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "vision_unparseable" });

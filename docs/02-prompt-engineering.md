@@ -273,7 +273,12 @@ Jumlah stat dinormalisasi ke rentang 200-350 kalau LLM meleset, dengan penskalaa
 
 ## 3. Style lock: konstanta, bukan variabel
 
-Style production yang sudah diterima tetap **v3**. **V5 adalah candidate terbaru**: ia membawa perbaikan material/logo milik v4 lalu menambah variasi karakter dan body plan. V4 tetap tersimpan sebagai predecessor yang belum dipromosikan. V5 belum menjadi default karena kontrak gratis hanya membuktikan teks dan data flow; kualitas visual tetap harus dibuktikan lewat model production berbayar. V1–v4 tetap utuh agar aset lama dan setiap iterasi prompt bisa direproduksi.
+Style production yang sudah diterima tetap **v3**. **V6 adalah candidate terbaru**:
+ia membawa seluruh perbaikan material, karakter, dan body plan v5 lalu mengunci
+arah hadap ke canvas-left pada keempat pose. V6 belum menjadi default karena
+kontrak gratis hanya membuktikan teks dan data flow; kepatuhan visual tetap harus
+dibuktikan lewat model production berbayar. Semua versi lama tetap utuh agar
+aset dan setiap iterasi prompt bisa direproduksi.
 
 Style lock v2 yang identik untuk setiap Anima:
 
@@ -338,9 +343,38 @@ production v3 tidak dapat membocorkan contoh historis `Mugmon` ke nickname baru.
 Pagar ini hanya menyentuh nama generated; nama lama tidak dimigrasi dan popup
 setelah hatch memberi pemain pilihan mempertahankan hasil model atau menggantinya.
 
+### V6: satu source direction untuk Battle
+
+V5 sudah meminta `forward-left`, tetapi kalimat komposisi itu belum cukup kuat:
+model masih dapat menganggap arah sebagai bagian dari pose dan me-mirror satu
+sel sendiri. V6 tidak mengubah Vision, schema, `species_key`, style, atau body
+plan. Perbedaannya hanya satu blok `HORIZONTAL FACING LOCK` pada prompt create
+dan evolve.
+
+Keempat sel wajib menghadap canvas-left—kiri milik penonton, bukan istilah
+anatomi yang ambigu. Kepala atau leading plane, torso, support point, serta
+landmark struktural asimetris harus mempertahankan sisi yang sama. Sleep dan
+Damaged tidak boleh berbalik; Battle wajib mengarahkan gaze, thrust, anggota
+tubuh/tool, dan motion accent ke kiri. Untuk makhluk tanpa wajah, leading edge,
+opening, controls, sambungan ekor, atau recognition anchor terkuat menjadi
+penanda arah.
+
+Kontrak client-nya sengaja sederhana: sheet sumber selalu kiri; petarung kanan
+ditampilkan apa adanya, sedangkan petarung kiri memakai `flip_h` untuk membalik
+seluruh sheet. Alternatif mengoreksi arah per-pose di client ditolak karena
+client tidak memiliki detector arah yang andal dan flip parsial akan menukar
+landmark anatomi antar pose.
+
+**Decision log:** dibuat versi baru, bukan mengedit v5, agar hasil A/B lama tetap
+dapat direproduksi. V3 tetap default dan tidak ada panggilan API pada tahap ini.
+Promosi v6 menunggu Smoke Set yang memeriksa arah Idle/Battle/Sleep/Damaged,
+selain gerbang kualitas v5 yang sudah ada.
+
 ## 4. Template prompt sprite sheet
 
-File default production adalah `backend/prompts/v3/sprite_sheet.md`; candidate terbaru ada di v5. File sumber itu tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
+File default production adalah `backend/prompts/v3/sprite_sheet.md`; candidate
+terbaru ada di v6. File sumber itu tidak disalin ulang di dokumen ini.
+Arsitekturnya mengikuti blok stabil:
 
 ```text
 [GLOBAL STYLE LOCK]
@@ -350,6 +384,7 @@ File default production adalah `backend/prompts/v3/sprite_sheet.md`; candidate t
 [OBJECT-TO-CREATURE TRANSFORMATION]
 [COLOR + PERSONALITY]
 [CHARACTER CONSISTENCY]
+[HORIZONTAL FACING LOCK]            (v6: semua pose canvas-left)
 [FOUR STATES]
 [COMPOSITION + TECHNICAL BACKGROUND]
 [NEGATIVE STYLE]
@@ -529,6 +564,7 @@ Daftar ini disusun dari output nyata nano-banana-pro dan GPT Image 2. Semuanya d
 | Tangan/kabel pose kanan melewati center seam | Pose dinamis melanggar margin kuadran | Segmentasi alpha 8-connected + ownership mask per piksel; jangan kembali ke bbox yang dibatasi kuadran |
 | Subjek tidak center di kuadran | Komposisi bebas model | Normalisasi bbox hasil segmentasi, bottom-center ke frame seragam |
 | Pose Attack dibuang sebagai "keying gagal" | Speed line dan percikan membuat bbox seluas kuadran padahal isinya cuma 42% opak | Penjaga harus menuntut dua syarat sekaligus: bbox seluas kuadran **dan** terisi padat |
+| Satu pose menghadap arah sebaliknya | Model menganggap arah hadap sebagai bagian bebas dari pose | V6 mengunci semua sel ke canvas-left, melarang mirror per-cell, dan mengunci vektor Battle ke kiri |
 | Kreatur jadi naga/hewan generik | Model condong ke prior "monster" | Kalimat "the object IS the body" + larangan eksplisit + `signature_features` yang konkret |
 | Cast shadow di bawah kreatur | Kebiasaan render | Larangan eksplisit; keying akan menyisakan noda gelap kalau lolos |
 | `background: "transparent"` ditolak | Runtime GPT Image 2 belum mendukung alpha | Pakai `opaque` + chroma green; jangan percaya schema tanpa request nyata |
@@ -561,10 +597,15 @@ backend/prompts/
 │   ├── vision_schema.json
 │   ├── sprite_sheet.md
 │   └── sprite_sheet_evolve.md
-└── v5/                    <- candidate terbaru, belum Smoke Set berbayar
-    ├── vision_system.md   # + character_direction + limb plan opsional
-    ├── vision_schema.json
-    ├── sprite_sheet.md    # Idle non-angry + character range
+├── v5/                    <- predecessor: karakter + body plan
+│   ├── vision_system.md   # + character_direction + limb plan opsional
+│   ├── vision_schema.json
+│   ├── sprite_sheet.md    # Idle non-angry + character range
+│   └── sprite_sheet_evolve.md
+└── v6/                    <- candidate terbaru, belum Smoke Set berbayar
+    ├── vision_system.md   # identik v5
+    ├── vision_schema.json # identik v5; species cache key tetap
+    ├── sprite_sheet.md    # v5 + facing lock ke canvas-left
     └── sprite_sheet_evolve.md
 ```
 
@@ -642,7 +683,7 @@ Dijalankan sekali sebagai gerbang penerimaan, bukan sebagai alat iterasi. Tiga f
 ```bash
 node eval/run.mjs --set smoke                       # v3, 5 foto, ~$0.225
 node eval/run.mjs --set full                        # v3, 20 foto, ~$1.32
-node eval/run.mjs --set smoke --prompt-version v5 --dry-run    # gratis
+node eval/run.mjs --set smoke --prompt-version v6 --dry-run    # gratis
 node eval/run.mjs --set smoke --prompt-version v2 --reprocess   # gratis, dari raw.png
 ```
 

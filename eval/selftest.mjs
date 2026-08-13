@@ -869,6 +869,47 @@ console.log("21. prompt v5 mengikuti karakter dan body plan objek");
   );
 }
 
+console.log("21b. prompt v6 mengunci arah hadap ke kiri di semua pose");
+{
+  const { readFile } = await import("node:fs/promises");
+  const template = await readFile(new URL("../backend/prompts/v6/sprite_sheet.md", import.meta.url), "utf8");
+  const evolve = await readFile(
+    new URL("../backend/prompts/v6/sprite_sheet_evolve.md", import.meta.url),
+    "utf8"
+  );
+  const visionV5 = await readFile(new URL("../backend/prompts/v5/vision_system.md", import.meta.url), "utf8");
+  const visionV6 = await readFile(new URL("../backend/prompts/v6/vision_system.md", import.meta.url), "utf8");
+  const schemaV5 = await readFile(new URL("../backend/prompts/v5/vision_schema.json", import.meta.url), "utf8");
+  const schemaV6 = await readFile(new URL("../backend/prompts/v6/vision_schema.json", import.meta.url), "utf8");
+  const createAnima = await readFile(
+    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
+    "utf8"
+  );
+  const evalRunner = await readFile(new URL("./run.mjs", import.meta.url), "utf8");
+
+  assert.equal(visionV6, visionV5, "v6 tidak boleh mengubah Vision atau species cache key");
+  assert.equal(schemaV6, schemaV5, "v6 tidak boleh mengubah kontrak output Vision");
+  for (const prompt of [template, evolve]) {
+    assert.ok(prompt.includes("HORIZONTAL FACING LOCK — BATTLE CONTRACT"));
+    assert.ok(prompt.includes("In EVERY cell"), "facing lock wajib berlaku ke empat pose");
+    assert.ok(prompt.includes("canvas-left (the viewer's left)"), "arah wajib tidak ambigu");
+    assert.ok(prompt.includes("Never mirror, flip, turn around"), "mirror per-cell wajib dilarang");
+    assert.ok(prompt.includes("must attack toward canvas-left"), "vektor Attack wajib ke kiri");
+    assert.ok(
+      prompt.includes("client mirrors the complete sheet"),
+      "prompt harus menjelaskan kontrak flip client"
+    );
+  }
+  assert.ok(
+    createAnima.includes('["v5", "v6"].includes(versiPrompt)'),
+    "runtime production harus memvalidasi field presentation v6 seperti v5"
+  );
+  assert.ok(
+    evalRunner.includes('["v5", "v6"].includes(args.promptVersion)'),
+    "eval harus memvalidasi v6 dengan kontrak yang sama"
+  );
+}
+
 console.log("22. adapter nano-banana-2-lite mengikuti schema dan harga Replicate");
 {
   const input = imageInputForModel(

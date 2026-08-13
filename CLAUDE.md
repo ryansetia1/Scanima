@@ -68,11 +68,16 @@ backend/prompts/
 │   ├── vision_schema.json        # material/damage nullable, cache key tetap
 │   ├── sprite_sheet.md           # permukaan polos; damage wajib sesuai material
 │   └── sprite_sheet_evolve.md
-└── v5/                           # CANDIDATE terbaru, belum diuji berbayar
-    ├── vision_system.md          # + karakter, limb plan, larangan suffix -mon
-    ├── vision_schema.json        # presentation nullable, cache key tetap
-    ├── sprite_sheet.md           # Idle non-angry; tubuh mengikuti objek
-    └── sprite_sheet_evolve.md    # presentation + zero-limb tetap dipertahankan
+├── v5/                           # predecessor candidate: karakter + body plan
+│   ├── vision_system.md          # + karakter, limb plan, larangan suffix -mon
+│   ├── vision_schema.json        # presentation nullable, cache key tetap
+│   ├── sprite_sheet.md           # Idle non-angry; tubuh mengikuti objek
+│   └── sprite_sheet_evolve.md    # presentation + zero-limb tetap dipertahankan
+└── v6/                           # CANDIDATE terbaru, belum diuji berbayar
+    ├── vision_system.md          # identik v5; species cache key tidak berubah
+    ├── vision_schema.json        # identik v5
+    ├── sprite_sheet.md           # v5 + facing lock empat pose ke canvas-left
+    └── sprite_sheet_evolve.md    # facing lock dipertahankan lintas evolusi
 ```
 
 **Prompt tidak bisa dibaca sebagai file di Edge Function.** `Deno.readTextFile()` gagal untuk file pendamping yang dideploy lewat MCP, jadi `backend/tools/bundle_prompts.mjs` membundel semua versi menjadi `functions/_shared/prompts.generated.ts` yang diimpor sebagai modul. Sumbernya tetap file `.md` di git; artefaknya turunan. Setelah mengubah prompt: `node backend/tools/bundle_prompts.mjs`. Skenario 17 di `npm run selftest` gagal kalau bundelnya basi, jadi kelupaan ketangkap gratis, bukan saat art produksi ternyata berbeda dari art yang sudah disetujui.
@@ -87,7 +92,7 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 
 **Damage v3 bias robot bukan kebetulan model.** Template universalnya sendiri menyebut `loose cable`, `exposed wire`, dan `broken key`, sementara style lock memberi semua objek bahasa `techno-organic`; material Vision tidak pernah sampai ke prompt gambar. v4 menambah `surface_finish` + `damage_hints` ke Vision dan menyaring hint teknis di `assemblePrompt()`: kata cable/wire/circuit/key hanya lolos jika fitur yang sama benar-benar ada di `signature_features`. Keramik retak/terkelupas, kain berjumbai/robek, tanaman sobek/layu, logam penyok/tergores.
 
-**V5 adalah candidate terbaru; v3 tetap default.** V5 membawa seluruh pagar v4 lalu menambah `character_direction` yang diturunkan dari cue visual objek. Idle wajib tenang dan non-angry; fierce hanya milik Battle. Vision harus memilih limb plan secara eksplisit, dan nol tangan, nol kaki, atau keduanya adalah hasil sah. Cue ambigu wajib netral, bukan menebak gender atau mengarang aksesori stereotip. Nama generated tidak boleh berakhiran `mon`; `normalizeSuggestedName()` menegakkannya untuk semua versi dan generation lama yang dilanjutkan, sementara nickname pemain tidak disentuh. V5 **belum boleh dipromosikan sebelum Smoke Set visual berbayar menyetujui variasi karakter, body plan, nama, dan kualitas empat pose**.
+**V6 adalah candidate terbaru; v3 tetap default.** V6 membawa seluruh pagar v5—`character_direction`, body plan opsional, Idle non-angry, dan larangan nama `-mon`—tanpa mengubah Vision maupun `species_key`. Perbedaannya hanya pada prompt gambar: keempat pose wajib menghadap canvas-left, landmark asimetris tidak boleh bertukar sisi, dan vektor Battle juga wajib ke kiri. Client kemudian membalik seluruh sheet untuk petarung di sisi kiri arena. V6 **belum boleh dipromosikan sebelum Smoke Set visual berbayar menyetujui variasi karakter, body plan, nama, kualitas empat pose, serta konsistensi arah Idle/Battle/Sleep/Damaged**.
 
 ## Fakta teknis yang mudah salah
 
