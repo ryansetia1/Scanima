@@ -1,0 +1,228 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/anima_details_view.gd" id="1_details"]
+
+[node name="AnimaDetailsView" type="Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_details")
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Column"]
+layout_mode = 2
+theme_type_variation = &"PageTitleLabel"
+text = "DETAILS_TITLE"
+
+[node name="Subtitle" type="Label" parent="Column"]
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "DETAILS_SUBTITLE"
+autowrap_mode = 2
+
+[node name="DetailsEmpty" type="Label" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"MutedLabel"
+text = "DETAILS_NO_ANIMA"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="DetailsContent" type="VBoxContainer" parent="Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Hero" type="PanelContainer" parent="Column/DetailsContent"]
+layout_mode = 2
+theme_type_variation = &"HudSurface"
+
+[node name="HeroRow" type="HBoxContainer" parent="Column/DetailsContent/Hero"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="DetailsPortrait" type="TextureRect" parent="Column/DetailsContent/Hero/HeroRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(210, 210)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Identity" type="VBoxContainer" parent="Column/DetailsContent/Hero/HeroRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="DetailsName" type="Label" parent="Column/DetailsContent/Hero/HeroRow/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AnimaNameLabel"
+text = "ANIMA_FALLBACK_NAME"
+autowrap_mode = 2
+
+[node name="DetailsMeta" type="Label" parent="Column/DetailsContent/Hero/HeroRow/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "VALUE_UNAVAILABLE"
+autowrap_mode = 2
+
+[node name="TraitsTitle" type="Label" parent="Column/DetailsContent"]
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "DETAILS_TRAITS"
+
+[node name="Traits" type="GridContainer" parent="Column/DetailsContent"]
+layout_mode = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="ElementLabel" type="Label" parent="Column/DetailsContent/Traits"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatNameLabel"
+text = "DETAILS_ELEMENT"
+
+[node name="DetailElement" type="Label" parent="Column/DetailsContent/Traits"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 2
+
+[node name="RarityLabel" type="Label" parent="Column/DetailsContent/Traits"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "DETAILS_RARITY"
+
+[node name="DetailRarity" type="Label" parent="Column/DetailsContent/Traits"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 2
+
+[node name="StageLabel" type="Label" parent="Column/DetailsContent/Traits"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "DETAILS_STAGE"
+
+[node name="DetailStage" type="Label" parent="Column/DetailsContent/Traits"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 2
+
+[node name="CareScoreLabel" type="Label" parent="Column/DetailsContent/Traits"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "DETAILS_CARE_SCORE"
+
+[node name="DetailCareScore" type="Label" parent="Column/DetailsContent/Traits"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 2
+
+[node name="AttributesPanel" type="PanelContainer" parent="Column/DetailsContent"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"CareDock"
+
+[node name="AttributesColumn" type="VBoxContainer" parent="Column/DetailsContent/AttributesPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AttributesTitle" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn"]
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "DETAILS_ATTRIBUTES"
+
+[node name="StatsGrid" type="GridContainer" parent="Column/DetailsContent/AttributesPanel/AttributesColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 10
+columns = 2
+
+[node name="HpName" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn/StatsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatNameLabel"
+text = "STAT_HP"
+
+[node name="StatHp" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 2
+
+[node name="AtkName" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn/StatsGrid"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "STAT_ATK"
+
+[node name="StatAtk" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 2
+
+[node name="DefName" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn/StatsGrid"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "STAT_DEF"
+
+[node name="StatDef" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 2
+
+[node name="SpdName" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn/StatsGrid"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "STAT_SPD"
+
+[node name="StatSpd" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 2
+
+[node name="SpecialName" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn/StatsGrid"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "STAT_SPECIAL"
+
+[node name="StatSpecial" type="Label" parent="Column/DetailsContent/AttributesPanel/AttributesColumn/StatsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 2

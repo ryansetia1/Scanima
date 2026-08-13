@@ -39,7 +39,7 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 **Jeda generation sekarang punya inkubator yang benar-benar hidup.** Setelah Genesis dimulai, foto atau Anima lama diganti telur energi procedural dengan orbit cyan-violet, scanner, spark emas, dan core yang berdenyut—tanpa asset tambahan. Ia tetap berjalan selama polling Replicate, termasuk saat pending scan dilanjutkan setelah restart. Saat webhook selesai, ring meledak menjadi flash lalu Anima muncul dengan bounce, squash-and-stretch, dan settle; kegagalan/timeout mengembalikan Anima lama. Cache hit tetap instan dan tidak memalsukan proses hatch.
 
-**Koleksi, Stats, Care loop, dan visual shell sekarang ada di vertical slice.** Empat meter berlabel dan tombol Feed/Clean/Sleep/Play memakai target sentuh 96px. Feed/Clean menghabiskan 5 Bits secara atomik, Play memakai Energy, Sleep pulih linear enam jam, decay dihitung server saat dibuka dengan grace 8 jam/cap 48 jam, dan Dormant tetap berada di roster. Seluruh permukaan memakai satu theme cyan-violet-gold, latar chamber procedural, modal glass panel, CTA semantik, meter yang bergerak halus, serta bounce/press/focus yang dipasang oleh `UiJuice`; tidak ada texture UI tambahan atau dependency baru. Satu `pending_care` bertahan di disk agar timeout/app kill me-replay key yang sama. `test_scan_ui.gd` menjaga 79 kontrak layout, theme, motion hook, care, dan inkubator; `test_game_rules.gd` menjaga 27 aturan decay/sleep/score/Dormant.
+**UI sekarang berupa shell game mobile empat destination: Home, Scan, Collection, dan Anima Profile.** Home menjadikan Anima hero visual, kebutuhan diringkas dalam care dock, feedback mengambang tanpa mendorong layout, dan Scan tetap CTA cyan utama di bottom navigation. Keempat destination adalah child scene modular di dalam satu `scan_flow.tscn`, jadi pindah tab tidak me-reset request, pending scan, Stage, atau inkubator. Seluruh copy production memakai katalog English Godot-native; `LocaleManager` menjadi pintu locale dan formatting untuk bahasa berikutnya. Theme cyan-violet-gold kini memakai font OFL Nunito Sans/Oxanium, ikon SVG berlisensi, touch target 96px, serta reduced-motion gate bersama. Pose debug hanya tinggal di `anima_demo`. `test_scan_ui.gd` menjaga 107 kontrak shell/touch/motion dan `test_i18n.gd` menjaga 800 kontrak katalog/formatter/layout.
 
 Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan meninggalkan koleksi di akun yang tidak bisa dijangkau lagi. Kedua, **kunci idempotency scan dan care bertahan di disk**, sehingga app yang mati tidak membayar Core/Bits kedua. Keduanya dijaga oleh 42 check di `test_client_state.gd`.
 
@@ -69,9 +69,13 @@ npm run selftest                 # 20 skenario + 12 uji tanda tangan webhook, ta
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 79 pemeriksaan layout, theme, motion hook, care, dan inkubator
+# Godot: 107 pemeriksaan shell, theme, touch, care, inkubator, reduced motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
+
+# Godot: 800 pemeriksaan katalog English, referensi key, formatter, dan layout
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
+    --script res://tests/test_i18n.gd
 
 # Godot: 27 pemeriksaan decay, sleep, score harian, dan Dormant
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
@@ -135,6 +139,7 @@ Satu Anima = satu panggilan image generation = **~$0.07** pada GPT Image 2 mediu
 | [docs/03-godot-sprite-pipeline.md](docs/03-godot-sprite-pipeline.md) | Arsitektur node Godot, download + slicing sprite, background removal, animasi prosedural |
 | [docs/04-game-systems-economy.md](docs/04-game-systems-economy.md) | Survival mechanics, evo-tree, kuota, ekonomi dengan angka nyata, algoritma battle |
 | [docs/05-roadmap.md](docs/05-roadmap.md) | Breakdown Phase 1-4 dengan exit criteria dan risiko |
+| [docs/06-ui-globalization.md](docs/06-ui-globalization.md) | Shell mobile empat destination, design tokens, i18n, accessibility, dan aturan penambahan locale |
 | [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md) | Sumber art direction v2: linework, cel shading, transformasi objek, pose, dan negative style |
 | [CLAUDE.md](CLAUDE.md) | Konteks dan konvensi untuk AI coding agent |
 
@@ -145,16 +150,22 @@ scanima/
 ├── game/                         # Godot 4.6 project
 │   ├── addons/GodotGetImage/     # kamera Android, prebuilt 4.6.2, .aar ikut commit
 │   ├── scenes/
-│   │   ├── scan_flow.tscn        # entry point: scan -> Incubator -> Anima
+│   │   ├── scan_flow.tscn        # shell persisten: HUD + Stage + navigation
+│   │   ├── ui/                    # Home, Scan, Collection, Profile, bottom nav
 │   │   └── anima_demo.tscn       # alat periksa art, dipanggil eksplisit
+│   ├── assets/                    # font OFL + ikon SVG beserta lisensinya
+│   ├── locales/ui.csv             # katalog player-facing, English source
 │   ├── scripts/
 │   │   ├── game_state.gd         # autoload: sesi, pending scan/care, cache art
 │   │   ├── backend.gd            # autoload: auth, REST, Storage, functions
-│   │   ├── scan_flow.gd          # alur scan, koleksi, dan care
+│   │   ├── locale_manager.gd     # autoload: locale, formatter, enum mapping
+│   │   ├── scan_flow.gd          # orkestrasi scan/care + shell navigation
+│   │   ├── *_view.gd             # presentation per destination
 │   │   ├── care_rules.gd         # mirror murni decay/sleep untuk preview + test
 │   │   ├── incubator_effect.gd   # telur energi procedural + burst
 │   │   ├── scanima_background.gd # chamber holografik procedural, tanpa texture
-│   │   ├── ui_juice.gd           # motion bersama untuk button, meter, dan modal
+│   │   ├── ui_juice.gd           # motion bersama untuk button, meter, dan reveal
+│   │   ├── ui_motion.gd          # reduced-motion switch bersama
 │   │   ├── anima_loader.gd       # manifest + PNG -> SpriteFrames
 │   │   ├── anima_presenter.gd    # pose + gerak prosedural via Tween
 │   │   ├── placeholder_sheet.gd  # sheet buatan, untuk demo & test
@@ -164,7 +175,8 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 79 kontrak layout + theme + care + inkubator
+│       ├── test_scan_ui.gd           # 107 kontrak shell + touch + motion
+│       ├── test_i18n.gd              # 800 kontrak katalog + key + wrapping
 │       ├── test_game_rules.gd        # 27 kontrak care tanpa jaringan
 │       └── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 ├── backend/
@@ -215,4 +227,9 @@ Urutan itu bukan formalitas. `--vision-only` menguji seluruh jalur Vision — ga
 
 ## Lisensi
 
-Belum ditentukan.
+Lisensi kode Scanima belum ditentukan. Asset UI pihak ketiga yang dibundel
+memiliki lisensinya sendiri:
+
+- Nunito Sans — SIL Open Font License 1.1 (`game/assets/fonts/OFL-NunitoSans.txt`)
+- Oxanium — SIL Open Font License 1.1 (`game/assets/fonts/OFL-Oxanium.txt`)
+- Lucide icons — ISC License (`game/assets/icons/LICENSE-LUCIDE.txt`)

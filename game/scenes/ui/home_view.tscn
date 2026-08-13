@@ -1,0 +1,262 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/home_view.gd" id="1_home"]
+[ext_resource type="Texture2D" path="res://assets/icons/utensils.svg" id="2_feed"]
+[ext_resource type="Texture2D" path="res://assets/icons/sparkles.svg" id="3_clean"]
+[ext_resource type="Texture2D" path="res://assets/icons/moon.svg" id="4_sleep"]
+[ext_resource type="Texture2D" path="res://assets/icons/gamepad-2.svg" id="5_play"]
+
+[sub_resource type="StyleBoxFlat" id="NeedBackground"]
+bg_color = Color(0.025, 0.04, 0.09, 0.96)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="HungerFill"]
+bg_color = Color(0.95, 0.42, 0.28, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="EnergyFill"]
+bg_color = Color(0.3, 0.84, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="HygieneFill"]
+bg_color = Color(0.42, 0.9, 0.72, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="BondFill"]
+bg_color = Color(0.83, 0.48, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="HomeView" type="Control"]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_home")
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="Identity" type="VBoxContainer" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="AnimaName" type="Label" parent="Column/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AnimaNameLabel"
+text = "HOME_EMPTY_NAME"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="AnimaMeta" type="Label" parent="Column/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "HOME_EMPTY_META"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="StageSpace" type="Control" parent="Column"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="StageFooterSpace" type="Control" parent="Column"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="CareDock" type="PanelContainer" parent="Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"CareDock"
+
+[node name="CareColumn" type="VBoxContainer" parent="Column/CareDock"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CareHeader" type="HBoxContainer" parent="Column/CareDock/CareColumn"]
+layout_mode = 2
+
+[node name="NeedsTitle" type="Label" parent="Column/CareDock/CareColumn/CareHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionLabel"
+text = "HOME_NEEDS_TITLE"
+
+[node name="CareSummary" type="Label" parent="Column/CareDock/CareColumn/CareHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "HOME_CARE_SCORE"
+horizontal_alignment = 2
+
+[node name="NeedsRow" type="HBoxContainer" parent="Column/CareDock/CareColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HungerChip" type="PanelContainer" parent="Column/CareDock/CareColumn/NeedsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"NeedChip"
+
+[node name="Box" type="VBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Label" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip/Box"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 20
+text = "CARE_HUNGER"
+
+[node name="NeedHunger" type="ProgressBar" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip/Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_styles/background = SubResource("NeedBackground")
+theme_override_styles/fill = SubResource("HungerFill")
+value = 100.0
+show_percentage = false
+
+[node name="EnergyChip" type="PanelContainer" parent="Column/CareDock/CareColumn/NeedsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"NeedChip"
+
+[node name="Box" type="VBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Label" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip/Box"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 20
+text = "CARE_ENERGY"
+
+[node name="NeedEnergy" type="ProgressBar" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip/Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_styles/background = SubResource("NeedBackground")
+theme_override_styles/fill = SubResource("EnergyFill")
+value = 100.0
+show_percentage = false
+
+[node name="HygieneChip" type="PanelContainer" parent="Column/CareDock/CareColumn/NeedsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"NeedChip"
+
+[node name="Box" type="VBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Label" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip/Box"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 20
+text = "CARE_HYGIENE"
+
+[node name="NeedHygiene" type="ProgressBar" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip/Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_styles/background = SubResource("NeedBackground")
+theme_override_styles/fill = SubResource("HygieneFill")
+value = 100.0
+show_percentage = false
+
+[node name="BondChip" type="PanelContainer" parent="Column/CareDock/CareColumn"]
+layout_mode = 2
+theme_type_variation = &"BondChip"
+
+[node name="BondRow" type="HBoxContainer" parent="Column/CareDock/CareColumn/BondChip"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Label" type="Label" parent="Column/CareDock/CareColumn/BondChip/BondRow"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "CARE_BOND"
+
+[node name="NeedBond" type="ProgressBar" parent="Column/CareDock/CareColumn/BondChip/BondRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/background = SubResource("NeedBackground")
+theme_override_styles/fill = SubResource("BondFill")
+value = 100.0
+show_percentage = false
+
+[node name="CareActions" type="GridContainer" parent="Column/CareDock/CareColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 4
+
+[node name="FeedButton" type="Button" parent="Column/CareDock/CareColumn/CareActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"CareFeedButton"
+icon = ExtResource("2_feed")
+text = "CARE_FEED"
+
+[node name="CleanButton" type="Button" parent="Column/CareDock/CareColumn/CareActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"CareCleanButton"
+icon = ExtResource("3_clean")
+text = "CARE_CLEAN"
+
+[node name="SleepButton" type="Button" parent="Column/CareDock/CareColumn/CareActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"CareSleepButton"
+icon = ExtResource("4_sleep")
+text = "CARE_SLEEP"
+
+[node name="PlayButton" type="Button" parent="Column/CareDock/CareColumn/CareActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"CarePlayButton"
+icon = ExtResource("5_play")
+text = "CARE_PLAY"

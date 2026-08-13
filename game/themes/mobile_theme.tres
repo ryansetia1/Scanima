@@ -1,4 +1,7 @@
-[gd_resource type="Theme" load_steps=30 format=3]
+[gd_resource type="Theme" load_steps=41 format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/NunitoSans-Variable.ttf" id="1_body"]
+[ext_resource type="FontFile" path="res://assets/fonts/Oxanium-Variable.ttf" id="2_display"]
 
 [sub_resource type="StyleBoxFlat" id="ButtonNormal"]
 content_margin_left = 20.0
@@ -423,7 +426,145 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
+[sub_resource type="StyleBoxFlat" id="HudSurface"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.025, 0.042, 0.092, 0.76)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[sub_resource type="StyleBoxFlat" id="CareDock"]
+content_margin_left = 18.0
+content_margin_top = 16.0
+content_margin_right = 18.0
+content_margin_bottom = 18.0
+bg_color = Color(0.025, 0.042, 0.095, 0.96)
+border_width_top = 2
+border_color = Color(0.278, 0.902, 1, 0.18)
+corner_radius_top_left = 30
+corner_radius_top_right = 30
+corner_radius_bottom_right = 30
+corner_radius_bottom_left = 30
+shadow_color = Color(0, 0, 0, 0.38)
+shadow_size = 18
+shadow_offset = Vector2(0, 8)
+
+[sub_resource type="StyleBoxFlat" id="BottomNav"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.018, 0.03, 0.072, 0.985)
+border_width_top = 2
+border_color = Color(0.278, 0.902, 1, 0.14)
+corner_radius_top_left = 28
+corner_radius_top_right = 28
+corner_radius_bottom_right = 28
+corner_radius_bottom_left = 28
+shadow_color = Color(0, 0, 0, 0.46)
+shadow_size = 18
+shadow_offset = Vector2(0, -5)
+
+[sub_resource type="StyleBoxFlat" id="NavTabNormal"]
+content_margin_left = 8.0
+content_margin_top = 10.0
+content_margin_right = 8.0
+content_margin_bottom = 10.0
+bg_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="NavTabHover"]
+content_margin_left = 8.0
+content_margin_top = 10.0
+content_margin_right = 8.0
+content_margin_bottom = 10.0
+bg_color = Color(0.278, 0.902, 1, 0.09)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="NavTabPressed"]
+content_margin_left = 8.0
+content_margin_top = 12.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.278, 0.902, 1, 0.16)
+border_width_bottom = 3
+border_color = Color(0.278, 0.902, 1, 0.88)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="ScanTabNormal"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.278, 0.902, 1, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.74, 0.98, 1, 0.9)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0.12, 0.72, 1, 0.28)
+shadow_size = 12
+shadow_offset = Vector2(0, 5)
+
+[sub_resource type="StyleBoxFlat" id="NeedChip"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.052, 0.075, 0.145, 0.92)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="BondChip"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.15, 0.075, 0.24, 0.9)
+border_width_left = 2
+border_color = Color(0.83, 0.48, 1, 0.48)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="Toast"]
+content_margin_left = 20.0
+content_margin_top = 14.0
+content_margin_right = 20.0
+content_margin_bottom = 14.0
+bg_color = Color(0.025, 0.045, 0.105, 0.98)
+border_width_left = 4
+border_color = Color(1, 0.82, 0.4, 0.92)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.48)
+shadow_size = 14
+shadow_offset = Vector2(0, 6)
+
 [resource]
+default_font = ExtResource("1_body")
 default_font_size = 32
 Button/colors/font_color = Color(0.94, 0.965, 1, 1)
 Button/colors/font_hover_color = Color(1, 1, 1, 1)
@@ -431,7 +572,12 @@ Button/colors/font_pressed_color = Color(1, 0.91, 0.65, 1)
 Button/colors/font_focus_color = Color(1, 1, 1, 1)
 Button/colors/font_disabled_color = Color(0.55, 0.6, 0.72, 0.58)
 Button/colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.92)
+Button/colors/icon_normal_color = Color(0.88, 0.93, 1, 1)
+Button/colors/icon_hover_color = Color(1, 1, 1, 1)
+Button/colors/icon_pressed_color = Color(1, 0.86, 0.48, 1)
+Button/colors/icon_disabled_color = Color(0.5, 0.56, 0.68, 0.5)
 Button/constants/outline_size = 2
+Button/constants/icon_max_width = 38
 Button/font_sizes/font_size = 28
 Button/styles/normal = SubResource("ButtonNormal")
 Button/styles/hover = SubResource("ButtonHover")
@@ -529,3 +675,62 @@ StatNameLabel/font_sizes/font_size = 24
 StatValueLabel/base_type = &"Label"
 StatValueLabel/colors/font_color = Color(1, 0.84, 0.45, 1)
 StatValueLabel/font_sizes/font_size = 30
+BrandLabel/base_type = &"Label"
+BrandLabel/colors/font_color = Color(0.82, 0.97, 1, 1)
+BrandLabel/fonts/font = ExtResource("2_display")
+BrandLabel/font_sizes/font_size = 42
+PageTitleLabel/base_type = &"Label"
+PageTitleLabel/colors/font_color = Color(0.97, 0.985, 1, 1)
+PageTitleLabel/fonts/font = ExtResource("2_display")
+PageTitleLabel/font_sizes/font_size = 42
+AnimaNameLabel/base_type = &"Label"
+AnimaNameLabel/colors/font_color = Color(1, 0.97, 0.88, 1)
+AnimaNameLabel/fonts/font = ExtResource("2_display")
+AnimaNameLabel/font_sizes/font_size = 46
+SectionLabel/base_type = &"Label"
+SectionLabel/colors/font_color = Color(0.72, 0.79, 0.92, 1)
+SectionLabel/fonts/font = ExtResource("2_display")
+SectionLabel/font_sizes/font_size = 23
+BodyLabel/base_type = &"Label"
+BodyLabel/colors/font_color = Color(0.76, 0.82, 0.92, 1)
+BodyLabel/font_sizes/font_size = 26
+ResourceValueLabel/base_type = &"Label"
+ResourceValueLabel/colors/font_color = Color(1, 0.9, 0.58, 1)
+ResourceValueLabel/fonts/font = ExtResource("2_display")
+ResourceValueLabel/font_sizes/font_size = 25
+ResourceNameLabel/base_type = &"Label"
+ResourceNameLabel/colors/font_color = Color(0.58, 0.66, 0.8, 1)
+ResourceNameLabel/font_sizes/font_size = 18
+HudSurface/base_type = &"PanelContainer"
+HudSurface/styles/panel = SubResource("HudSurface")
+CareDock/base_type = &"PanelContainer"
+CareDock/styles/panel = SubResource("CareDock")
+BottomNavPanel/base_type = &"PanelContainer"
+BottomNavPanel/styles/panel = SubResource("BottomNav")
+NeedChip/base_type = &"PanelContainer"
+NeedChip/styles/panel = SubResource("NeedChip")
+BondChip/base_type = &"PanelContainer"
+BondChip/styles/panel = SubResource("BondChip")
+ToastPanel/base_type = &"PanelContainer"
+ToastPanel/styles/panel = SubResource("Toast")
+NavTabButton/base_type = &"Button"
+NavTabButton/colors/font_color = Color(0.6, 0.68, 0.82, 1)
+NavTabButton/colors/font_hover_color = Color(0.9, 0.96, 1, 1)
+NavTabButton/colors/font_pressed_color = Color(0.82, 0.97, 1, 1)
+NavTabButton/font_sizes/font_size = 21
+NavTabButton/styles/normal = SubResource("NavTabNormal")
+NavTabButton/styles/hover = SubResource("NavTabHover")
+NavTabButton/styles/pressed = SubResource("NavTabPressed")
+NavTabButton/styles/disabled = SubResource("ButtonDisabled")
+ScanTabButton/base_type = &"Button"
+ScanTabButton/colors/font_color = Color(0.015, 0.055, 0.105, 1)
+ScanTabButton/colors/font_hover_color = Color(0.015, 0.055, 0.105, 1)
+ScanTabButton/colors/font_pressed_color = Color(0.03, 0.08, 0.13, 1)
+ScanTabButton/colors/icon_normal_color = Color(0.015, 0.055, 0.105, 1)
+ScanTabButton/colors/icon_hover_color = Color(0.015, 0.055, 0.105, 1)
+ScanTabButton/colors/icon_pressed_color = Color(0.03, 0.08, 0.13, 1)
+ScanTabButton/font_sizes/font_size = 22
+ScanTabButton/styles/normal = SubResource("ScanTabNormal")
+ScanTabButton/styles/hover = SubResource("PrimaryHover")
+ScanTabButton/styles/pressed = SubResource("PrimaryPressed")
+ScanTabButton/styles/disabled = SubResource("ButtonDisabled")

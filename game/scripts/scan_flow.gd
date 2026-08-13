@@ -36,54 +36,25 @@ const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 ## seharusnya gratis membayar $0.07. Naikkan hanya bersama eval ulang.
 const FOTO_MAX_PX := 1280
 const FOTO_QUALITY := 85
-const TOUCH_MIN := 96.0
 const THUMBNAIL_SIZE := 128
 const BASE_MARGIN := 32.0
-
-var _ui_juice: GDScript = load("res://scripts/ui_juice.gd") as GDScript
 
 @onready var _stage: Node2D = %Stage
 @onready var _incubator: IncubatorEffect = %Incubator
 @onready var _anima: AnimaPresenter = %Anima
-@onready var _header: Label = %Header
 @onready var _status: Label = %Status
-@onready var _scan_button: Button = %ScanButton
-@onready var _pose_row: HBoxContainer = %PoseRow
 @onready var _dialog: FileDialog = %PhotoDialog
-@onready var _preview: TextureRect = %PhotoPreview
-@onready var _main_margin: MarginContainer = %Margin
-@onready var _collection_margin: MarginContainer = %CollectionMargin
-@onready var _stats_margin: MarginContainer = %StatsMargin
-@onready var _header_card: PanelContainer = %HeaderCard
-@onready var _stage_badge: PanelContainer = %StageBadge
 @onready var _status_panel: PanelContainer = %StatusPanel
-@onready var _collection_button: Button = %CollectionButton
-@onready var _stats_button: Button = %StatsButton
-@onready var _collection_overlay: Control = %CollectionOverlay
-@onready var _stats_overlay: Control = %StatsOverlay
-@onready var _anima_list: ItemList = %AnimaList
-@onready var _collection_status: Label = %CollectionStatus
-@onready var _stats_title: Label = %StatsTitle
-@onready var _stat_hp: Label = %StatHp
-@onready var _stat_atk: Label = %StatAtk
-@onready var _stat_def: Label = %StatDef
-@onready var _stat_spd: Label = %StatSpd
-@onready var _stat_special: Label = %StatSpecial
-@onready var _stat_element: Label = %StatElement
-@onready var _stat_rarity: Label = %StatRarity
-@onready var _stat_stage: Label = %StatStage
-@onready var _care_panel: PanelContainer = %CarePanel
-@onready var _care_summary: Label = %CareSummary
-@onready var _need_hunger: ProgressBar = %NeedHunger
-@onready var _need_energy: ProgressBar = %NeedEnergy
-@onready var _need_hygiene: ProgressBar = %NeedHygiene
-@onready var _need_bond: ProgressBar = %NeedBond
-@onready var _feed_button: Button = %FeedButton
-@onready var _clean_button: Button = %CleanButton
-@onready var _sleep_button: Button = %SleepButton
-@onready var _play_button: Button = %PlayButton
-@onready var _collection_panel: PanelContainer = $UI/CollectionOverlay/CollectionMargin/Panel
-@onready var _stats_panel: PanelContainer = $UI/StatsOverlay/StatsMargin/Panel
+@onready var _safe_margin: MarginContainer = %SafeMargin
+@onready var _top_hud: PanelContainer = %TopHud
+@onready var _scan_count: Label = %ScanCount
+@onready var _core_count: Label = %CoreCount
+@onready var _bits_count: Label = %BitsCount
+@onready var _home_view: HomeView = %HomeView
+@onready var _scan_view: ScanView = %ScanView
+@onready var _collection_view: CollectionView = %CollectionView
+@onready var _details_view: AnimaDetailsView = %AnimaDetailsView
+@onready var _bottom_nav: BottomNav = %BottomNav
 
 var _busy := false
 var _roster: Array[Dictionary] = []
@@ -91,32 +62,28 @@ var _current_anima: Dictionary = {}
 var _roster_error := ""
 var _placeholder_icon: Texture2D = null
 var _thumbnail_cache: Dictionary = {}
+var _destination: StringName = BottomNav.HOME
+var _toast_revision := 0
 
 ## Singleton plugin Android, null di desktop dan di test headless.
 var _picker: Object = null
 
 
 func _ready() -> void:
-	_scan_button.pressed.connect(_on_pick_pressed)
-	_collection_button.pressed.connect(_on_collection_pressed)
-	_stats_button.pressed.connect(_on_stats_pressed)
-	%CloseCollectionButton.pressed.connect(_close_collection)
-	%CloseStatsButton.pressed.connect(_close_stats)
-	_feed_button.pressed.connect(_perform_care.bind("feed"))
-	_clean_button.pressed.connect(_perform_care.bind("clean"))
-	_sleep_button.pressed.connect(_toggle_sleep)
-	_play_button.pressed.connect(_perform_care.bind("play"))
-	_anima_list.item_selected.connect(_on_anima_selected)
+	_scan_view.scan_requested.connect(_on_pick_pressed)
+	_home_view.care_requested.connect(_perform_care)
+	_collection_view.anima_selected.connect(_on_anima_selected)
+	_bottom_nav.destination_selected.connect(_switch_destination)
+	LocaleManager.locale_changed.connect(_refresh_localized_ui)
 	_dialog.file_selected.connect(_scan_file)
 	get_viewport().size_changed.connect(_layout_for_viewport)
 	_layout_for_viewport()
 	await get_tree().process_frame
-	_ui_juice.install_buttons(self)
-	_ui_juice.reveal(_header_card, 0.02)
-	_ui_juice.reveal(_stage_badge, 0.08)
-	_ui_juice.reveal(_status_panel, 0.14)
-	_ui_juice.reveal(_scan_button, 0.20)
-	_ui_juice.reveal($UI/Margin/Column/ActionsRow, 0.26)
+	UiJuice.install_buttons(self)
+	UiJuice.reveal(_top_hud, 0.02)
+	UiJuice.reveal(_home_view, 0.08)
+	UiJuice.reveal(_bottom_nav, 0.14)
+	_switch_destination(BottomNav.HOME)
 	_setup_picker()
 	_show_cached_anima()
 	await _boot()
@@ -133,14 +100,17 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--preview="):
 			var jalur := arg.trim_prefix("--preview=")
+			_switch_destination(BottomNav.SCAN)
 			_show_preview(FileAccess.get_file_as_bytes(jalur), jalur.get_extension().to_lower() == "png")
 		if arg == "--collection":
-			await _on_collection_pressed()
+			_switch_destination(BottomNav.COLLECTION)
 		if arg == "--stats":
-			await _on_stats_pressed()
+			_switch_destination(BottomNav.ANIMA)
 		if arg == "--incubator":
+			_switch_destination(BottomNav.SCAN)
+			_set_busy(true)
 			_start_incubation()
-			_say("Menyintesis Anima… energi sedang dibentuk.")
+			_say(tr("STATUS_INCUBATOR_DEMO"))
 		if arg == "--hatch-demo":
 			await _run_hatch_demo()
 		if arg.begins_with("--screenshot="):
@@ -151,13 +121,14 @@ func _ready() -> void:
 
 func _boot() -> void:
 	_set_busy(true)
-	_say("Menyiapkan akun…")
+	_say(tr("STATUS_INITIALIZING"))
 
 	var sesi := await Backend.ensure_session()
 	if not sesi.ok:
 		# Kegagalan di sini tidak boleh terlihat seperti app rusak biasa: kalau
 		# refresh token ditolak, akun pemain berisiko tidak bisa dijangkau lagi.
-		_say("Tidak bisa masuk: %s\nCoba lagi dengan jaringan yang stabil." % sesi.error)
+		print("session error: %s" % sesi.error)
+		_say(tr("STATUS_ACCOUNT_ERROR"))
 		_set_busy(false)
 		return
 
@@ -165,7 +136,7 @@ func _boot() -> void:
 	_refresh_header()
 	await _reload_roster()
 	if not GameState.pending_care.is_empty():
-		_say("Menyelesaikan perawatan yang tertunda…")
+		_say(tr("STATUS_RESUMING_CARE"))
 		await _resume_pending_care()
 	_set_busy(false)
 
@@ -175,9 +146,11 @@ func _boot() -> void:
 	if not pending.is_empty():
 		var anima_id := str(pending.get("anima_id", ""))
 		if anima_id.is_empty():
-			_say("Ada scan yang belum selesai. Menyambung…")
+			_switch_destination(BottomNav.SCAN)
+			_say(tr("STATUS_RESUMING_SCAN"))
 			await _resume_without_anima()
 		else:
+			_switch_destination(BottomNav.SCAN)
 			_set_busy(true)
 			await _wait_for_hatch(anima_id)
 			_set_busy(false)
@@ -194,20 +167,21 @@ func _boot() -> void:
 	elif not GameState.last_anima.is_empty():
 		# Tanpa ini status berhenti di pesan boot, dan layar yang menampilkan
 		# Anima sambil berkata "Menyiapkan akun..." terbaca seperti macet.
-		var nama := str(GameState.last_anima.get("nickname", ""))
-		if nama.is_empty():
-			nama = str(GameState.last_anima.get("species_key", "Anima"))
-		var suffix := "\nKoleksi belum termuat; tekan Koleksi untuk mencoba lagi." if not _roster_error.is_empty() else ""
-		_say("%s menunggu. Foto benda lain untuk menambah koleksi.%s" % [nama, suffix])
+		var name := LocaleManager.display_name(GameState.last_anima)
+		_say(
+			tr("STATUS_ROSTER_ERROR")
+			if not _roster_error.is_empty()
+			else tr("STATUS_ROSTER_WAITING") % name
+		)
 	else:
-		_say("Foto satu benda di sekitarmu untuk memulai.")
+		_say(tr("STATUS_FIRST_SCAN"))
 
 
 func _reload_roster() -> void:
 	var res := await Backend.fetch_animas()
 	if not res.ok or typeof(res.data) != TYPE_ARRAY:
 		_roster_error = res.error if not res.error.is_empty() else "balasan koleksi tidak sah"
-		_collection_status.text = "Koleksi gagal dimuat.\nTekan Koleksi lagi untuk mencoba."
+		_collection_view.set_error()
 		return
 
 	var rows: Array = res.data
@@ -218,7 +192,6 @@ func _reload_roster() -> void:
 			ready.append(row)
 	_roster = ready
 	_roster_error = ""
-	_collection_status.text = "Belum ada Anima siap." if _roster.is_empty() else "%d Anima siap" % _roster.size()
 	_populate_collection()
 
 
@@ -232,39 +205,13 @@ func _active_row() -> Dictionary:
 	return {}
 
 
-func _on_collection_pressed() -> void:
-	await _ui_juice.show_overlay(_collection_overlay, _collection_panel)
-	if not _roster_error.is_empty():
-		_collection_button.disabled = true
-		await _reload_roster()
-		_collection_button.disabled = false
-
-
-func _close_collection() -> void:
-	await _ui_juice.hide_overlay(_collection_overlay, _collection_panel)
-
-
-func _on_stats_pressed() -> void:
-	if _current_anima.is_empty() or GameState.as_dict(_current_anima.get("base_stats")).is_empty():
+func _on_anima_selected(row: Dictionary) -> void:
+	if row.is_empty() or _busy:
 		return
-	_refresh_stats()
-	await _ui_juice.show_overlay(_stats_overlay, _stats_panel)
-
-
-func _close_stats() -> void:
-	await _ui_juice.hide_overlay(_stats_overlay, _stats_panel)
-
-
-func _on_anima_selected(index: int) -> void:
-	if index < 0 or index >= _anima_list.item_count or _busy:
-		return
-	var row := GameState.as_dict(_anima_list.get_item_metadata(index))
-	if row.is_empty():
-		return
-	await _ui_juice.hide_overlay(_collection_overlay, _collection_panel)
 	_set_busy(true)
 	await _present_row(row)
 	_set_busy(false)
+	_switch_destination(BottomNav.ANIMA)
 
 
 func _present_row(row: Dictionary) -> void:
@@ -283,16 +230,11 @@ func _present_row(row: Dictionary) -> void:
 		await _sync_active_care(false)
 
 
-func _toggle_sleep() -> void:
-	var action := "wake" if _is_sleeping(_current_anima) else "sleep"
-	await _perform_care(action)
-
-
 func _perform_care(action: String) -> void:
 	if _busy or _current_anima.is_empty():
 		return
 	if not GameState.pending_care.is_empty():
-		_say("Perawatan sebelumnya masih menunggu konfirmasi.")
+		_say(tr("ERROR_CARE_PENDING"), true)
 		return
 
 	var anima_id := str(_current_anima.get("id", ""))
@@ -322,7 +264,7 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> void:
 	if res.ok:
 		GameState.finish_care()
 		if _apply_care_response(GameState.as_dict(res.data), action, show_feedback):
-			_say(_care_success_message(action))
+			_say(_care_success_message(action), show_feedback)
 		return
 
 	# Galat 4xx adalah keputusan server, bukan gangguan sementara. Menyimpan key
@@ -340,7 +282,8 @@ func _sync_active_care(show_error: bool) -> void:
 	if res.ok:
 		_apply_care_response(GameState.as_dict(res.data), "sync", false)
 	elif show_error:
-		_say("Kondisi Anima belum tersinkron: %s" % res.error)
+		print("care sync error: %s" % res.error)
+		_say(tr("ERROR_CARE_SYNC"), true)
 
 
 func _apply_care_response(data: Dictionary, action: String, show_feedback: bool) -> bool:
@@ -367,37 +310,38 @@ func _apply_care_response(data: Dictionary, action: String, show_feedback: bool)
 func _care_success_message(action: String) -> String:
 	match action:
 		"feed":
-			return "Anima sudah makan. −5 Bits"
+			return tr("FEEDBACK_FEED")
 		"clean":
-			return "Anima kembali bersih. −5 Bits"
+			return tr("FEEDBACK_CLEAN")
 		"play":
-			return "Bond bertambah. −5 Energy"
+			return tr("FEEDBACK_PLAY")
 		"sleep":
-			return "Anima mulai tidur. Penuh dalam 6 jam."
+			return tr("FEEDBACK_SLEEP")
 		"wake":
-			return "Anima bangun dengan Energy yang sudah dipulihkan."
+			return tr("FEEDBACK_WAKE")
 		_:
-			return "Kondisi Anima tersinkron."
+			return tr("FEEDBACK_SYNCED")
 
 
 func _care_error_message(error: String) -> String:
 	match error:
 		"NO_BITS":
-			return "Bits tidak cukup. Makan dan Bersih membutuhkan 5 Bits."
+			return tr("ERROR_NO_BITS")
 		"NO_ENERGY":
-			return "Energy kurang untuk bermain."
+			return tr("ERROR_NO_ENERGY")
 		"NEED_FULL":
-			return "Kebutuhan itu sudah penuh."
+			return tr("ERROR_NEED_FULL")
 		"ALREADY_SLEEPING":
-			return "Anima sedang tidur."
+			return tr("ERROR_ALREADY_SLEEPING")
 		"NOT_SLEEPING":
-			return "Anima sudah bangun."
+			return tr("ERROR_NOT_SLEEPING")
 		"ANIMA_NOT_READY":
-			return "Anima belum siap dirawat."
+			return tr("ERROR_ANIMA_NOT_READY")
 		"ANIMA_NOT_FOUND":
-			return "Anima tidak ditemukan di akun ini."
+			return tr("ERROR_ANIMA_NOT_FOUND")
 		_:
-			return "Perawatan gagal: %s" % error
+			print("care error: %s" % error)
+			return tr("ERROR_CARE_GENERIC")
 
 
 ## Scan yang mati sebelum create_anima menjawab. Memanggilnya lagi dengan kunci
@@ -416,6 +360,11 @@ func _resume_without_anima() -> void:
 # ---------------------------------------------------------------- ambil foto
 
 func _setup_picker() -> void:
+	_dialog.title = tr("FILE_DIALOG_TITLE")
+	_dialog.ok_button_text = tr("FILE_DIALOG_ACCEPT")
+	_dialog.filters = PackedStringArray(["*.jpg,*.jpeg,*.png ; %s" % tr("FILE_DIALOG_FILTER")])
+	if _picker != null:
+		return
 	if not Engine.has_singleton("GodotGetImage"):
 		return
 	_picker = Engine.get_singleton("GodotGetImage")
@@ -440,12 +389,12 @@ func _setup_picker() -> void:
 	_picker.connect("image_request_completed", _on_photo_taken)
 	_picker.connect("permission_not_granted_by_user", _on_camera_denied)
 	_picker.connect("error", _on_picker_error)
-	_scan_button.text = "SCAN REAL OBJECT"
 
 
 func _on_pick_pressed() -> void:
 	if _busy:
 		return
+	_switch_destination(BottomNav.SCAN)
 	if _picker == null:
 		_dialog.popup_centered_ratio(0.9)
 		return
@@ -469,7 +418,7 @@ func _on_photo_taken(images: Dictionary) -> void:
 		if buffer is PackedByteArray and not (buffer as PackedByteArray).is_empty():
 			_scan_bytes(buffer, "jpg")
 			return
-	_say("Foto tidak terbaca. Coba lagi.")
+	_say(tr("STATUS_CAMERA_READ_ERROR"))
 
 
 func _on_camera_denied(_permission: String) -> void:
@@ -478,11 +427,12 @@ func _on_camera_denied(_permission: String) -> void:
 	# menempel pada getCameraImage() berikutnya — jadi menekan tombolnya lagi
 	# memang jalan pemulihannya, dan pemain harus diberi tahu itu. Tanpa kalimat
 	# ini, satu penolakan terlihat seperti tombol yang rusak permanen.
-	_say("Scanima butuh izin kamera untuk memfoto benda.\nTekan tombolnya lagi untuk memberi izin.")
+	_say(tr("STATUS_CAMERA_PERMISSION"))
 
 
 func _on_picker_error(message: String) -> void:
-	_say("Kamera gagal: %s" % message)
+	print("camera error: %s" % message)
+	_say(tr("STATUS_CAMERA_ERROR"))
 
 
 ## Jalur desktop. Tidak ada resize di sini, dan itu disengaja: FileDialog memberi
@@ -490,7 +440,8 @@ func _on_picker_error(message: String) -> void:
 func _scan_file(path: String) -> void:
 	var bytes := FileAccess.get_file_as_bytes(path)
 	if bytes.is_empty():
-		_say("Foto tidak bisa dibaca:\n%s" % path)
+		print("photo read error: %s" % path)
+		_say(tr("STATUS_PHOTO_READ_ERROR"))
 		return
 	_scan_bytes(bytes, path.get_extension().to_lower())
 
@@ -500,12 +451,13 @@ func _scan_file(path: String) -> void:
 func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 	if _busy:
 		return
+	_switch_destination(BottomNav.SCAN)
 	_set_busy(true)
 
 	if bytes.size() > MAX_FOTO_BYTE:
 		# Ditolak di sini juga, bukan hanya oleh bucket: 6 MB yang ditolak setelah
 		# terkirim adalah kuota data pemain yang terbuang tanpa alasan.
-		_say("Foto terlalu besar (%.1f MB). Batasnya 6 MB." % (bytes.size() / 1048576.0))
+		_say(tr("STATUS_PHOTO_TOO_LARGE") % LocaleManager.format_megabytes(bytes.size()))
 		_set_busy(false)
 		return
 
@@ -513,20 +465,22 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 	_show_preview(bytes, is_png)
 	var scan := GameState.begin_scan("png" if is_png else "jpg")
 
-	_say("Mengunggah foto…")
+	_scan_view.set_phase(&"analyzing")
+	_say(tr("STATUS_UPLOADING"))
 	var up := await Backend.upload_photo(
 		str(scan["photo_path"]), bytes, "image/png" if is_png else "image/jpeg"
 	)
 	if not up.ok:
 		GameState.finish_scan()
-		_say("Unggah gagal: %s" % up.error)
+		print("upload error: %s" % up.error)
+		_say(tr("STATUS_UPLOAD_ERROR"))
 		_restore_previous_anima()
 		_set_busy(false)
 		return
 
 	# Fase satu. Belasan detik tanpa apa pun di layar sudah terasa seperti macet,
 	# padahal ini bagian yang paling cepat.
-	_say("Menganalisis foto… (belasan detik)")
+	_say(tr("STATUS_ANALYZING"))
 	var res := await Backend.create_anima(str(scan["photo_path"]), str(scan["idempotency_key"]))
 	await _handle_create_result(res)
 	_set_busy(false)
@@ -539,16 +493,17 @@ func _handle_create_result(res: Dictionary) -> void:
 	if not res.ok:
 		match res.error:
 			"NO_SCAN_CHARGE":
-				_say("Scan Charge habis. Isi lagi besok, atau tonton iklan.")
+				_say(tr("STATUS_NO_SCAN_CHARGE"))
 			"NO_CORE":
 				# Hasil Vision sudah dibayar dan disimpan server sebagai Temuan
 				# Tertunda, jadi ini bukan kerugian — pemain tidak perlu memfoto
 				# ulang benda yang mungkin sudah tidak ada di dekatnya.
-				_say("Spesies baru ditemukan, tapi Genesis Core habis.\nTemuan ini disimpan dan bisa diklaim nanti.")
+				_say(tr("STATUS_NO_CORE"))
 			"SPEND_CAP":
-				_say("Batas biaya harian tercapai. Coba lagi besok.")
+				_say(tr("STATUS_SPEND_CAP"))
 			_:
-				_say("Gagal: %s" % res.error)
+				print("create_anima error: %s" % res.error)
+				_say(tr("STATUS_SCAN_ERROR"))
 		GameState.finish_scan()
 		_restore_previous_anima()
 		return
@@ -556,7 +511,9 @@ func _handle_create_result(res: Dictionary) -> void:
 	var data := GameState.as_dict(res.data)
 
 	if str(data.get("gate", "")) == "rejected":
-		_say("Foto ini tidak bisa dipakai (%s).\nCoba benda, bukan orang." % str(data.get("reason", "?")))
+		_say(
+			tr("STATUS_GATE_REJECTED") % LocaleManager.gate_reason(str(data.get("reason", "")))
+		)
 		GameState.finish_scan()
 		_restore_previous_anima()
 		return
@@ -585,7 +542,7 @@ func _handle_create_result(res: Dictionary) -> void:
 		return
 
 	if anima_id.is_empty():
-		_say("Server tidak memberi anima_id. Coba lagi nanti.")
+		_say(tr("STATUS_MISSING_ANIMA_ID"))
 		_restore_previous_anima()
 		return
 
@@ -596,7 +553,7 @@ func _handle_create_result(res: Dictionary) -> void:
 
 func _wait_for_hatch(anima_id: String) -> void:
 	_start_incubation()
-	_say("Menyintesis Anima… energi sedang dibentuk (sekitar satu menit)")
+	_say(tr("STATUS_SYNTHESIZING"))
 	var remaining_poll_sec := POLL_TIMEOUT_SEC
 
 	# Hitung waktu polling aktif, bukan wall clock. SceneTreeTimer berhenti saat app
@@ -628,7 +585,7 @@ func _wait_for_hatch(anima_id: String) -> void:
 				return
 			"failed":
 				# Server sudah mengembalikan Core-nya sendiri lewat refund_generation.
-				_say("Gambar gagal dibuat. Genesis Core sudah dikembalikan.")
+				_say(tr("STATUS_GENERATION_FAILED"))
 				await Backend.fetch_profile()
 				_refresh_header()
 				GameState.finish_scan()
@@ -636,7 +593,7 @@ func _wait_for_hatch(anima_id: String) -> void:
 				return
 
 	# Bukan kegagalan: webhook mungkin masih jalan. Scan-nya tetap tersimpan.
-	_say("Belum selesai. Buka lagi nanti — progresnya tersimpan.")
+	_say(tr("STATUS_GENERATION_PENDING"))
 	_restore_previous_anima()
 
 
@@ -657,18 +614,19 @@ func _present(
 	complete_scan: bool = true
 ) -> void:
 	if species_key.is_empty() or color_bucket.is_empty():
-		_say("Data spesies tidak lengkap dari server.")
+		_say(tr("STATUS_SPECIES_DATA_ERROR"))
 		if complete_scan:
 			_restore_previous_anima()
 		return
 
 	var hatching := _incubator.is_active()
 	if not GameState.has_sprite(species_key, color_bucket, stage):
-		_say("Mengunduh art…")
+		_say(tr("STATUS_DOWNLOADING_ART"))
 		if manifest.is_empty() or sheet_path.is_empty():
 			var art := await Backend.fetch_species_art(species_key, color_bucket, stage)
 			if not art.ok or typeof(art.data) != TYPE_ARRAY or (art.data as Array).is_empty():
-				_say("Art belum ada di pustaka: %s" % art.error)
+				print("art library error: %s" % art.error)
+				_say(tr("STATUS_ART_LIBRARY_ERROR"))
 				if complete_scan:
 					_restore_previous_anima()
 				return
@@ -678,14 +636,16 @@ func _present(
 
 		var unduh := await Backend.download_sheet(sheet_path)
 		if not unduh.ok:
-			_say("Unduh art gagal: %s" % unduh.error)
+			print("art download error: %s" % unduh.error)
+			_say(tr("STATUS_ART_DOWNLOAD_ERROR"))
 			if complete_scan:
 				_restore_previous_anima()
 			return
 
 		var simpan := GameState.store_sprite(species_key, color_bucket, stage, manifest, unduh.bytes)
 		if not simpan.ok:
-			_say("Gagal menyimpan art: %s" % simpan.error)
+			print("art save error: %s" % simpan.error)
+			_say(tr("STATUS_ART_SAVE_ERROR"))
 			if complete_scan:
 				_restore_previous_anima()
 			return
@@ -721,18 +681,18 @@ func _present(
 		GameState.finish_scan()
 	# Fotonya sudah selesai tugasnya begitu Anima-nya ada; membiarkannya di layar
 	# hanya menutupi hasil yang justru ingin dilihat pemain.
-	_preview.visible = false
+	_scan_view.clear_preview()
+	_switch_destination(BottomNav.HOME)
 	if hatching:
-		_say("Menetas!")
+		_say(tr("STATUS_HATCHED"))
 		await _incubator.burst()
 		await _anima.hatch_reveal()
 	else:
 		_incubator.stop()
 		_anima.visible = true
-	_pose_row.visible = true
 	if complete_scan:
 		await _sync_active_care(false)
-	_say("%s siap." % (nickname if not nickname.is_empty() else species_key))
+	_say(tr("STATUS_ANIMA_READY") % LocaleManager.display_name(_current_anima), true)
 
 
 static func normalize_anima_data(anima_data: Dictionary) -> Dictionary:
@@ -763,26 +723,12 @@ func _load_and_apply(species_key: String, color_bucket: String, stage: int) -> b
 		GameState.manifest_path(species_key, color_bucket, stage)
 	)
 	if not loaded.get("ok", false):
-		_say("Art tidak bisa dimuat: %s" % loaded.get("error", "?"))
+		print("art load error: %s" % loaded.get("error", "?"))
+		_say(tr("STATUS_ART_LOAD_ERROR"))
 		return false
 	_anima.apply(loaded)
 	_anima.visible = not _incubator.is_active()
-	_build_pose_buttons(loaded["poses"])
 	return true
-
-
-func _build_pose_buttons(poses: PackedStringArray) -> void:
-	for child in _pose_row.get_children():
-		child.queue_free()
-	for pose in poses:
-		var button := Button.new()
-		button.text = pose.capitalize()
-		button.custom_minimum_size = Vector2(0, TOUCH_MIN)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.theme_type_variation = &"PoseButton"
-		button.pressed.connect(_anima.set_pose.bind(pose))
-		_pose_row.add_child(button)
-		_ui_juice.install_button(button)
 
 
 func _upsert_roster(row: Dictionary) -> void:
@@ -797,33 +743,13 @@ func _upsert_roster(row: Dictionary) -> void:
 
 
 func _populate_collection() -> void:
-	if not is_instance_valid(_anima_list):
+	if not is_instance_valid(_collection_view):
 		return
 	# ponytail: pass pertama membuat thumbnail cached secara sinkron. Plafon
 	# sekitar 100 Anima lokal; kalau roster nyata melewatinya, simpan thumbnail
 	# 128px terpisah saat sheet diunduh dan virtualisasikan daftar.
-	_anima_list.clear()
 	var active_id := str(_current_anima.get("id", GameState.last_anima.get("id", "")))
-	var selected := -1
-	for row in _roster:
-		var id := str(row.get("id", ""))
-		var active := id == active_id
-		var nama := str(row.get("nickname", row.get("species_key", "Anima")))
-		var label := "%s%s · %s S%d" % [
-			"● " if active else "",
-			nama,
-			str(row.get("element", "?")).capitalize(),
-			int(row.get("stage", 1)),
-		]
-		_anima_list.add_item(label, _thumbnail_for(row), true)
-		var index := _anima_list.item_count - 1
-		_anima_list.set_item_metadata(index, row)
-		_anima_list.set_item_tooltip(index, "%s · rarity %d/5" % [nama, int(row.get("rarity", 1))])
-		if active:
-			selected = index
-	if selected >= 0:
-		_anima_list.select(selected)
-	_collection_status.text = "Belum ada Anima siap." if _roster.is_empty() else "%d Anima siap" % _roster.size()
+	_collection_view.set_rows(_roster, active_id, _thumbnail_for)
 
 
 func _thumbnail_for(row: Dictionary) -> Texture2D:
@@ -857,54 +783,26 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 
 
 func _refresh_stats() -> void:
-	var stats := GameState.as_dict(_current_anima.get("base_stats"))
-	var nama := str(_current_anima.get("nickname", _current_anima.get("species_key", "Anima")))
-	_stats_title.text = "%s // BIOMETRICS" % nama.to_upper()
-	_stat_hp.text = _stat_value(stats, "hp")
-	_stat_atk.text = _stat_value(stats, "atk")
-	_stat_def.text = _stat_value(stats, "def")
-	_stat_spd.text = _stat_value(stats, "spd")
-	_stat_special.text = _stat_value(stats, "special")
-	_stat_element.text = str(_current_anima.get("element", "—")).capitalize()
-	_stat_rarity.text = "%d / 5" % int(_current_anima["rarity"]) if _current_anima.has("rarity") else "—"
-	_stat_stage.text = _stage_name(int(_current_anima.get("stage", 1)))
-	_stats_button.disabled = _busy or _current_anima.is_empty() or stats.is_empty()
+	_details_view.set_anima(
+		_current_anima,
+		_thumbnail_for(_current_anima) if not _current_anima.is_empty() else null
+	)
+	_home_view.set_anima(_current_anima, _busy)
+	_bottom_nav.set_busy(_busy, _details_available())
 
 
 func _refresh_care() -> void:
 	var has_care := typeof(_current_anima.get("care")) == TYPE_DICTIONARY
-	var should_reveal := has_care and not _care_panel.visible
-	_care_panel.visible = has_care
 	if not has_care:
-		_set_care_buttons_disabled(true)
+		_home_view.set_anima(_current_anima, _busy)
 		return
-	if should_reveal:
-		_ui_juice.reveal(_care_panel)
-
-	var care: Dictionary = CARE_RULES.normalized_care(_current_anima.get("care"))
-	_ui_juice.tween_meter(_need_hunger, care["hunger"])
-	_ui_juice.tween_meter(_need_energy, care["energy"])
-	_ui_juice.tween_meter(_need_hygiene, care["hygiene"])
-	_ui_juice.tween_meter(_need_bond, care["bond"])
 
 	var sleeping := _is_sleeping(_current_anima)
 	var dormant := _has_timestamp(_current_anima.get("dormant_since"))
-	var state := "DORMANT" if dormant else ("SLEEPING" if sleeping else "ACTIVE")
-	_care_summary.text = "CARE SCORE %03d  //  %s" % [
-		int(_current_anima.get("care_score", 0)),
-		state,
-	]
-	_sleep_button.text = "WAKE" if sleeping else "SLEEP"
-	_set_care_buttons_disabled(_busy)
+	_home_view.update_care(_current_anima, _busy)
+	_details_view.set_anima(_current_anima, _thumbnail_for(_current_anima))
 	if _anima.sprite_frames != null:
 		_anima.apply_care_state(sleeping, dormant)
-
-
-func _set_care_buttons_disabled(disabled: bool) -> void:
-	_feed_button.disabled = disabled
-	_clean_button.disabled = disabled
-	_sleep_button.disabled = disabled
-	_play_button.disabled = disabled
 
 
 func _is_sleeping(row: Dictionary) -> bool:
@@ -913,22 +811,6 @@ func _is_sleeping(row: Dictionary) -> bool:
 
 static func _has_timestamp(value: Variant) -> bool:
 	return value != null and not str(value).is_empty()
-
-
-func _stat_value(stats: Dictionary, key: String) -> String:
-	return str(int(stats[key])) if stats.has(key) else "—"
-
-
-func _stage_name(stage: int) -> String:
-	match stage:
-		1:
-			return "Baby"
-		2:
-			return "Adult"
-		3:
-			return "Perfect"
-		_:
-			return str(stage)
 
 
 func _layout_for_viewport() -> void:
@@ -948,16 +830,14 @@ func _layout_for_viewport() -> void:
 				(screen_size.y - safe.end.y) * scale.y
 			)
 
-	_apply_margins(_main_margin, insets, BASE_MARGIN, BASE_MARGIN)
-	_apply_margins(_collection_margin, insets, 48.0, 48.0)
-	_apply_margins(_stats_margin, insets, 64.0, 96.0)
+	_apply_margins(_safe_margin, insets, BASE_MARGIN, 24.0)
 	_stage.position = stage_position_for(viewport_size, insets)
 
 
 static func stage_position_for(viewport_size: Vector2, insets: Vector4) -> Vector2:
 	var safe_top := insets.y
 	var safe_bottom := viewport_size.y - insets.w
-	return Vector2(viewport_size.x * 0.5, lerpf(safe_top, safe_bottom, 0.57))
+	return Vector2(viewport_size.x * 0.5, lerpf(safe_top, safe_bottom, 0.60))
 
 
 func _apply_margins(node: MarginContainer, insets: Vector4, side: float, vertical: float) -> void:
@@ -965,6 +845,66 @@ func _apply_margins(node: MarginContainer, insets: Vector4, side: float, vertica
 	node.add_theme_constant_override("margin_top", int(vertical + insets.y))
 	node.add_theme_constant_override("margin_right", int(side + insets.z))
 	node.add_theme_constant_override("margin_bottom", int(vertical + insets.w))
+
+
+func _switch_destination(destination: StringName) -> void:
+	if destination == BottomNav.ANIMA and not _details_available():
+		destination = BottomNav.HOME
+	_destination = destination
+	_home_view.visible = destination == BottomNav.HOME
+	_scan_view.visible = destination == BottomNav.SCAN
+	_collection_view.visible = destination == BottomNav.COLLECTION
+	_details_view.visible = destination == BottomNav.ANIMA
+	_bottom_nav.set_active(destination)
+	if destination != BottomNav.HOME:
+		_toast_revision += 1
+		_status_panel.visible = false
+	if destination == BottomNav.SCAN:
+		if not _busy and not _incubator.is_active() and not _scan_view.has_preview():
+			_scan_view.set_phase(&"idle")
+			_scan_view.set_status(tr("STATUS_SCAN_READY"))
+
+	var stage_destination := destination == BottomNav.HOME or (
+		destination == BottomNav.SCAN and _incubator.is_active()
+	)
+	_stage.visible = stage_destination
+	if destination == BottomNav.HOME:
+		_anima.visible = _anima.sprite_frames != null and not _incubator.is_active()
+	elif destination != BottomNav.SCAN:
+		_anima.visible = false
+
+	if destination == BottomNav.COLLECTION and not _roster_error.is_empty() and not _busy:
+		_reload_roster()
+	if destination == BottomNav.ANIMA:
+		_refresh_stats()
+	UiJuice.reveal(_active_view())
+
+
+func _active_view() -> Control:
+	match _destination:
+		BottomNav.SCAN:
+			return _scan_view
+		BottomNav.COLLECTION:
+			return _collection_view
+		BottomNav.ANIMA:
+			return _details_view
+		_:
+			return _home_view
+
+
+func _details_available() -> bool:
+	return (
+		not _current_anima.is_empty()
+		and not GameState.as_dict(_current_anima.get("base_stats")).is_empty()
+	)
+
+
+func _refresh_localized_ui(_locale: String = "") -> void:
+	_setup_picker()
+	_refresh_header()
+	_refresh_stats()
+	_refresh_care()
+	_populate_collection()
 
 
 # ---------------------------------------------------------------- UI kecil
@@ -977,78 +917,96 @@ func _show_preview(bytes: PackedByteArray, is_png: bool) -> void:
 	var image := Image.new()
 	var err := image.load_png_from_buffer(bytes) if is_png else image.load_jpg_from_buffer(bytes)
 	if err != OK:
-		_preview.visible = false
+		_scan_view.clear_preview()
 		return
-	_preview.texture = ImageTexture.create_from_image(image)
-	_preview.visible = true
+	_scan_view.show_preview(ImageTexture.create_from_image(image))
 	# Foto dan Anima lama sama-sama hidup di area tengah. Menyembunyikan Anima
 	# selama preview membuat orientasi foto terbaca jelas dan mencegah dua subjek
 	# saling menutupi; Anima muncul lagi hanya setelah art berhasil dipresentasikan.
 	_anima.visible = false
+	_stage.visible = false
 	print("foto: %d x %d, %.0f KB" % [image.get_width(), image.get_height(), bytes.size() / 1024.0])
 
 
 func _start_incubation() -> void:
-	_preview.visible = false
+	_scan_view.clear_preview()
+	_scan_view.set_phase(&"synthesizing")
 	_anima.visible = false
-	_pose_row.visible = false
+	_stage.visible = _destination == BottomNav.SCAN
 	_incubator.start()
 
 
 func _restore_previous_anima() -> void:
 	_incubator.stop()
-	_preview.visible = false
-	_anima.visible = _anima.sprite_frames != null
-	_pose_row.visible = _anima.sprite_frames != null
+	_scan_view.clear_preview()
+	_scan_view.set_phase(&"idle")
+	_stage.visible = _destination == BottomNav.HOME
+	_anima.visible = _destination == BottomNav.HOME and _anima.sprite_frames != null
 
 
-func _say(text: String) -> void:
+func _say(text: String, transient: bool = false) -> void:
+	_toast_revision += 1
+	var revision := _toast_revision
 	_status.text = text
-	_ui_juice.pop(_status_panel, 1.025)
+	_scan_view.set_status(text)
+	if _destination == BottomNav.SCAN:
+		_status_panel.visible = false
+	else:
+		_status_panel.visible = true
+		UiJuice.pop(_status_panel, 1.025)
 	print(text)
+	if transient and _status_panel.visible:
+		_hide_toast_later(revision)
+
+
+func _hide_toast_later(revision: int) -> void:
+	await get_tree().create_timer(2.8).timeout
+	if revision == _toast_revision and is_instance_valid(_status_panel):
+		_status_panel.visible = false
 
 
 func _refresh_header() -> void:
 	var p := GameState.profile
 	if p.is_empty():
-		_header.text = "— SCANS    ◈ — CORES    ◆ — BITS"
+		_scan_count.text = tr("VALUE_UNAVAILABLE")
+		_core_count.text = tr("VALUE_UNAVAILABLE")
+		_bits_count.text = tr("VALUE_UNAVAILABLE")
 		return
-	_header.text = "%02d SCANS    ◈ %02d CORES    ◆ %03d BITS" % [
-		int(p.get("scan_charges", 0)), int(p.get("genesis_cores", 0)), int(p.get("bits", 0))
-	]
-	_ui_juice.pop(_header_card, 1.018)
+	_scan_count.text = LocaleManager.format_integer(int(p.get("scan_charges", 0)))
+	_core_count.text = LocaleManager.format_integer(int(p.get("genesis_cores", 0)))
+	_bits_count.text = LocaleManager.format_integer(int(p.get("bits", 0)))
+	UiJuice.pop(_top_hud, 1.012)
 
 
 func _set_busy(busy: bool) -> void:
 	_busy = busy
-	_scan_button.disabled = busy
-	_collection_button.disabled = busy
-	_stats_button.disabled = (
-		busy
-		or _current_anima.is_empty()
-		or GameState.as_dict(_current_anima.get("base_stats")).is_empty()
-	)
-	_set_care_buttons_disabled(
-		busy or typeof(_current_anima.get("care")) != TYPE_DICTIONARY
-	)
+	_scan_view.set_busy(busy)
+	_home_view.set_busy(busy)
+	_collection_view.set_busy(busy)
+	_bottom_nav.set_busy(busy, _details_available())
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		if _stats_overlay.visible:
-			_close_stats()
+		if _destination != BottomNav.HOME:
+			_switch_destination(BottomNav.HOME)
 			get_viewport().set_input_as_handled()
 			return
-		if _collection_overlay.visible:
-			_close_collection()
-			get_viewport().set_input_as_handled()
-			return
-	if not _busy and event is InputEventMouseButton and event.pressed and _anima.sprite_frames != null:
+	if (
+		_destination == BottomNav.HOME
+		and not _busy
+		and event is InputEventMouseButton
+		and event.pressed
+		and _anima.sprite_frames != null
+	):
 		_anima.hop()
 
 
 func _capture_and_quit(path: String) -> void:
-	for _i in 24:
+	# Let transient feedback clear so visual snapshots show the layout underneath,
+	# not whichever boot message happened to be last.
+	await get_tree().create_timer(3.0).timeout
+	for _i in 2:
 		await get_tree().process_frame
 
 	var image := get_viewport().get_texture().get_image()
@@ -1067,14 +1025,15 @@ func _capture_and_quit(path: String) -> void:
 
 func _run_hatch_demo() -> void:
 	if _anima.sprite_frames == null:
-		_say("Demo hatch butuh satu Anima yang sudah cached.")
+		_say(tr("STATUS_HATCH_DEMO_MISSING"))
 		return
+	_switch_destination(BottomNav.SCAN)
 	_set_busy(true)
 	_start_incubation()
-	_say("Demo: menyintesis Anima…")
+	_say(tr("STATUS_INCUBATOR_DEMO"))
 	await get_tree().create_timer(1.8).timeout
+	_switch_destination(BottomNav.HOME)
 	await _incubator.burst()
 	await _anima.hatch_reveal()
-	_pose_row.visible = true
 	_set_busy(false)
-	_say("Demo hatch selesai.")
+	_say(tr("STATUS_HATCH_DEMO_DONE"), true)

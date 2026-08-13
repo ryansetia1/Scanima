@@ -16,18 +16,9 @@ config/features=PackedStringArray("4.6", "Mobile")
 
 [autoload]
 
-; GameState lebih dulu: Backend memakainya untuk menyimpan sesi, bukan sebaliknya.
 GameState="*res://scripts/game_state.gd"
 Backend="*res://scripts/backend.gd"
-
-[editor_plugins]
-
-; Kamera Android. Plugin, bukan CameraServer: CameraServer memberi feed hidup,
-; sementara yang dibutuhkan di sini satu jepretan dari aplikasi kamera sistem
-; supaya fokus dan kualitasnya datang dari OEM. Fork PhotoPicker dipakai karena
-; manifest upstream menyuntikkan READ_MEDIA_IMAGES ke APK walau galeri tidak
-; pernah dipanggil, dan Play menolak izin itu untuk pilih-satu-foto.
-enabled=PackedStringArray("res://addons/GodotGetImage/plugin.cfg")
+LocaleManager="*res://scripts/locale_manager.gd"
 
 [display]
 
@@ -36,6 +27,14 @@ window/size/viewport_height=1280
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=1
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/GodotGetImage/plugin.cfg")
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://locales/ui.en.translation")
 
 [rendering]
 

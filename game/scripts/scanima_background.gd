@@ -24,6 +24,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if UiMotion.reduced_motion:
+		return
 	_phase += delta
 	_redraw_accumulator += delta
 	if _redraw_accumulator >= REDRAW_INTERVAL_SEC:

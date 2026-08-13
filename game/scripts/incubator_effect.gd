@@ -41,6 +41,10 @@ func start() -> void:
 	modulate = Color(1.0, 1.0, 1.0, 0.0)
 	set_process(true)
 	queue_redraw()
+	if UiMotion.reduced_motion:
+		scale = BASE_SCALE
+		modulate = Color.WHITE
+		return
 
 	_fx_tween = create_tween().set_parallel(true)
 	_fx_tween.tween_property(self, "scale", BASE_SCALE, 0.42) \
@@ -57,6 +61,10 @@ func burst() -> void:
 		return
 	if _fx_tween != null and _fx_tween.is_valid():
 		_fx_tween.kill()
+	if UiMotion.reduced_motion:
+		_finish_burst()
+		await get_tree().process_frame
+		return
 
 	_fx_tween = create_tween().set_parallel(true)
 	_fx_tween.tween_method(_set_burst, 0.0, 1.0, 0.56) \
@@ -101,6 +109,8 @@ func _set_burst(value: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if UiMotion.reduced_motion:
+		return
 	_phase += delta
 	_charge = move_toward(_charge, 1.0, delta * 0.7)
 	_redraw_accumulator += delta

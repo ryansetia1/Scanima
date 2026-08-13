@@ -1,0 +1,57 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/bottom_nav.gd" id="1_nav"]
+[ext_resource type="Texture2D" path="res://assets/icons/house.svg" id="2_home"]
+[ext_resource type="Texture2D" path="res://assets/icons/scan-line.svg" id="3_scan"]
+[ext_resource type="Texture2D" path="res://assets/icons/library.svg" id="4_collection"]
+[ext_resource type="Texture2D" path="res://assets/icons/paw-print.svg" id="5_anima"]
+
+[node name="BottomNav" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 116)
+theme_type_variation = &"BottomNavPanel"
+script = ExtResource("1_nav")
+
+[node name="Buttons" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="HomeNavButton" type="Button" parent="Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+theme_type_variation = &"NavTabButton"
+icon = ExtResource("2_home")
+text = "NAV_HOME"
+
+[node name="ScanNavButton" type="Button" parent="Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+theme_type_variation = &"ScanTabButton"
+icon = ExtResource("3_scan")
+text = "NAV_SCAN"
+
+[node name="CollectionNavButton" type="Button" parent="Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+theme_type_variation = &"NavTabButton"
+icon = ExtResource("4_collection")
+text = "NAV_COLLECTION"
+
+[node name="AnimaNavButton" type="Button" parent="Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+toggle_mode = true
+theme_type_variation = &"NavTabButton"
+icon = ExtResource("5_anima")
+text = "NAV_ANIMA"

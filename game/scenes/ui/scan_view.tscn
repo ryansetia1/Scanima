@@ -1,0 +1,129 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/scan_view.gd" id="1_scan"]
+[ext_resource type="Texture2D" path="res://assets/icons/camera.svg" id="2_camera"]
+[ext_resource type="Texture2D" path="res://assets/icons/scan-line.svg" id="3_scan_icon"]
+
+[node name="ScanView" type="Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_scan")
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Column"]
+layout_mode = 2
+theme_type_variation = &"PageTitleLabel"
+text = "SCAN_TITLE"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Subtitle" type="Label" parent="Column"]
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "SCAN_SUBTITLE"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="DiscoverySpace" type="Control" parent="Column"]
+custom_minimum_size = Vector2(0, 360)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="IdleGraphic" type="TextureRect" parent="Column/DiscoverySpace"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -86.0
+offset_top = -86.0
+offset_right = 86.0
+offset_bottom = 86.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+modulate = Color(0.278, 0.902, 1, 0.34)
+texture = ExtResource("2_camera")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PreviewPanel" type="PanelContainer" parent="Column/DiscoverySpace"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"HudSurface"
+
+[node name="PhotoPreview" type="TextureRect" parent="Column/DiscoverySpace/PreviewPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StatusPanel" type="PanelContainer" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"HudSurface"
+
+[node name="StatusColumn" type="VBoxContainer" parent="Column/StatusPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ScanPhase" type="Label" parent="Column/StatusPanel/StatusColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "SCAN_NEW_DISCOVERY"
+horizontal_alignment = 1
+
+[node name="ScanStatus" type="Label" parent="Column/StatusPanel/StatusColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "STATUS_SCAN_READY"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ScanPhaseHint" type="Label" parent="Column/StatusPanel/StatusColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "SCAN_CAMERA_HINT"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ScanButton" type="Button" parent="Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 104)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+icon = ExtResource("3_scan_icon")
+text = "SCAN_PRIMARY_ACTION"
+
+[node name="PrivacyHint" type="Label" parent="Column"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 20
+text = "SCAN_PRIVACY_HINT"
+horizontal_alignment = 1
+autowrap_mode = 2

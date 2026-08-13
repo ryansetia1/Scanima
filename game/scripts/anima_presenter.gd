@@ -64,6 +64,8 @@ func _start_motion(pose: String) -> void:
 	scale = Vector2.ONE
 	rotation = 0.0
 	position = _base_position
+	if UiMotion.reduced_motion:
+		return
 
 	match pose:
 		"idle":
@@ -112,6 +114,8 @@ func _lunge() -> Tween:
 ## Pantulan sekali, untuk dipakai saat pemain menyentuh Anima atau saat diberi
 ## makan. Tidak mengganggu tween pose karena berjalan di tween terpisah.
 func hop() -> void:
+	if UiMotion.reduced_motion:
+		return
 	var tween := create_tween()
 	tween.tween_property(self, "position", _base_position - Vector2(0.0, HOP_HEIGHT_PX), 0.16) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
@@ -120,6 +124,9 @@ func hop() -> void:
 
 
 func care_feedback(action: String) -> void:
+	if UiMotion.reduced_motion:
+		modulate = Color.WHITE
+		return
 	if action == "clean":
 		if _feedback != null and _feedback.is_valid():
 			_feedback.kill()
@@ -155,6 +162,13 @@ func hatch_reveal() -> void:
 		_motion.kill()
 	if _feedback != null and _feedback.is_valid():
 		_feedback.kill()
+	if UiMotion.reduced_motion:
+		visible = true
+		position = _base_position
+		scale = Vector2.ONE
+		rotation = 0.0
+		modulate = Color.WHITE
+		return
 
 	visible = true
 	position = _base_position - Vector2(0.0, 46.0)
