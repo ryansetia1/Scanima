@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/anima_details_view.gd" id="1_details"]
+[ext_resource type="Texture2D" path="res://assets/icons/pencil.svg" id="2_edit"]
 
 [node name="AnimaDetailsView" type="Control"]
 unique_name_in_owner = true
@@ -71,12 +72,26 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_constants/separation = 6
 
-[node name="DetailsName" type="Label" parent="Column/DetailsContent/Hero/HeroRow/Identity"]
+[node name="NameRow" type="HBoxContainer" parent="Column/DetailsContent/Hero/HeroRow/Identity"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DetailsName" type="Label" parent="Column/DetailsContent/Hero/HeroRow/Identity/NameRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"AnimaNameLabel"
 text = "ANIMA_FALLBACK_NAME"
 autowrap_mode = 2
+
+[node name="EditAnimaNameButton" type="Button" parent="Column/DetailsContent/Hero/HeroRow/Identity/NameRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+tooltip_text = "ANIMA_RENAME_ACTION"
+icon = ExtResource("2_edit")
+flat = true
 
 [node name="DetailsMeta" type="Label" parent="Column/DetailsContent/Hero/HeroRow/Identity"]
 unique_name_in_owner = true

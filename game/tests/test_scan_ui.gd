@@ -8,6 +8,7 @@ const TOUCH_MIN := 96.0
 var _checks := 0
 var _failures: PackedStringArray = []
 var _requested_delete_id := ""
+var _requested_rename_id := ""
 var _requested_profile_id := ""
 var _requested_summon_id := ""
 var _requested_summon_synced := false
@@ -57,7 +58,8 @@ func _initialize() -> void:
 
 	for name in [
 		"ScanButton", "HomeNavButton", "ScanNavButton", "CollectionNavButton", "AnimaNavButton",
-		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "DeleteAnimaButton",
+		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "EditAnimaNameButton",
+		"DeleteAnimaButton",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
 		"CollectionSummonButton",
 	]:
@@ -376,8 +378,26 @@ func _test_hatch_offers_rename() -> void:
 	var end := source.find("\n\nstatic func normalize_anima_data", start)
 	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
 	_check(
-		body.find("call_deferred(\"_show_hatch_rename\", anima_id)") >= 0,
+		body.find("call_deferred(\"_show_rename\", anima_id)") >= 0,
 		"every completed scan offers optional rename after reveal"
+	)
+	var rename_start := source.find("func _show_rename")
+	var rename_end := source.find("\n\nfunc _popup_rename", rename_start)
+	var rename_body := source.substr(
+		rename_start, rename_end - rename_start
+	) if rename_start >= 0 and rename_end > rename_start else ""
+	_check(
+		rename_body.find("_profile_anima") >= 0,
+		"rename accepts the Anima currently shown in Profile"
+	)
+	var confirm_start := source.find("func _rename_confirmed")
+	var confirm_end := source.find("\n\nfunc _rename_submitted", confirm_start)
+	var confirm_body := source.substr(
+		confirm_start, confirm_end - confirm_start
+	) if confirm_start >= 0 and confirm_end > confirm_start else ""
+	_check(
+		confirm_body.find("_profile_anima[\"nickname\"] = nickname") >= 0,
+		"successful rename refreshes a non-active Profile row"
 	)
 
 
@@ -452,8 +472,11 @@ func _test_anima_delete_action() -> void:
 	var details := packed.instantiate()
 	root.add_child(details)
 	await process_frame
+	var rename := details.find_child("EditAnimaNameButton", true, false) as Button
 	var button := details.find_child("DeleteAnimaButton", true, false) as Button
 	_requested_delete_id = ""
+	_requested_rename_id = ""
+	details.rename_requested.connect(_capture_rename_request)
 	details.delete_requested.connect(_capture_delete_request)
 	details.set_anima(
 		{
@@ -467,11 +490,16 @@ func _test_anima_delete_action() -> void:
 		},
 		null
 	)
+	_check(rename != null and not rename.disabled, "loaded profile enables rename")
+	if rename != null:
+		rename.pressed.emit()
+	_check_eq(_requested_rename_id, "anima-delete-test", "Edit name emits the shown Anima id")
 	_check(button != null and not button.disabled, "loaded profile enables Delete")
 	if button != null:
 		button.pressed.emit()
 	_check_eq(_requested_delete_id, "anima-delete-test", "Delete emits only the active Anima id")
 	details.set_busy(true)
+	_check(rename != null and rename.disabled, "network work disables rename")
 	_check(button != null and button.disabled, "network work disables destructive action")
 	details.queue_free()
 	await process_frame
@@ -479,6 +507,10 @@ func _test_anima_delete_action() -> void:
 
 func _capture_delete_request(anima_id: String) -> void:
 	_requested_delete_id = anima_id
+
+
+func _capture_rename_request(anima_id: String) -> void:
+	_requested_rename_id = anima_id
 
 
 func _capture_profile_request(row: Dictionary) -> void:

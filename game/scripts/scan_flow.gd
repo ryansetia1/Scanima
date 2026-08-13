@@ -100,6 +100,7 @@ func _ready() -> void:
 	_collection_view.summon_requested.connect(_summon_collection_anima)
 	_collection_view.first_scan_requested.connect(_open_scan)
 	_collection_view.retry_requested.connect(_retry_roster)
+	_details_view.rename_requested.connect(_show_rename)
 	_details_view.delete_requested.connect(_show_delete_confirmation)
 	_bottom_nav.destination_selected.connect(_switch_destination)
 	_delete_anima_dialog.confirmed.connect(_delete_confirmed)
@@ -153,7 +154,7 @@ func _ready() -> void:
 		if arg == "--core-info":
 			_show_core_info()
 		if arg == "--rename-demo" and not _current_anima.is_empty():
-			_show_hatch_rename(str(_current_anima.get("id", "")))
+			_show_rename(str(_current_anima.get("id", "")))
 		if arg == "--delete-demo" and not _current_anima.is_empty():
 			_show_delete_confirmation(str(_current_anima.get("id", "")))
 		if arg == "--sleep-demo" and not _current_anima.is_empty():
@@ -429,11 +430,14 @@ func _delete_canceled() -> void:
 	_pending_delete_id = ""
 
 
-func _show_hatch_rename(anima_id: String) -> void:
-	if _busy or anima_id.is_empty() or anima_id != str(_current_anima.get("id", "")):
+func _show_rename(anima_id: String) -> void:
+	var target := _current_anima
+	if anima_id == str(_profile_anima.get("id", "")):
+		target = _profile_anima
+	if _busy or anima_id.is_empty() or anima_id != str(target.get("id", "")):
 		return
 	_pending_rename_id = anima_id
-	_rename_anima_input.text = str(_current_anima.get("nickname", "")).strip_edges()
+	_rename_anima_input.text = str(target.get("nickname", "")).strip_edges()
 	_popup_rename()
 
 
@@ -448,7 +452,10 @@ func _popup_rename() -> void:
 func _rename_confirmed() -> void:
 	var anima_id := _pending_rename_id
 	var nickname := _rename_anima_input.text.strip_edges()
-	if anima_id.is_empty() or anima_id != str(_current_anima.get("id", "")):
+	var target := _current_anima
+	if anima_id == str(_profile_anima.get("id", "")):
+		target = _profile_anima
+	if anima_id.is_empty() or anima_id != str(target.get("id", "")):
 		return
 	if nickname.is_empty():
 		_say(tr("ANIMA_RENAME_EMPTY"), true)
@@ -467,8 +474,12 @@ func _rename_confirmed() -> void:
 		return
 
 	_pending_rename_id = ""
-	_current_anima["nickname"] = nickname
-	_upsert_roster(_current_anima)
+	target["nickname"] = nickname
+	if anima_id == str(_current_anima.get("id", "")):
+		_current_anima["nickname"] = nickname
+	if anima_id == str(_profile_anima.get("id", "")):
+		_profile_anima["nickname"] = nickname
+	_upsert_roster(target)
 	var remembered := GameState.last_anima.duplicate(true)
 	if str(remembered.get("id", "")) == anima_id:
 		remembered["nickname"] = nickname
@@ -940,7 +951,7 @@ func _present(
 	else:
 		_say(tr("STATUS_ANIMA_READY") % LocaleManager.display_name(_current_anima), true)
 	if complete_scan:
-		call_deferred("_show_hatch_rename", anima_id)
+		call_deferred("_show_rename", anima_id)
 
 
 func _prepare_anima_art(

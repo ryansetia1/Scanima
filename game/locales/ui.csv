@@ -98,6 +98,7 @@ ANIMA_DELETE_CONFIRM,"Delete %s permanently? This cannot be undone, and no Genes
 ANIMA_DELETE_CONFIRM_ACTION,"Delete Permanently"
 ANIMA_DELETE_SUCCESS,"%s was deleted."
 ANIMA_DELETE_ERROR,"This Anima could not be deleted. Please try again."
+ANIMA_RENAME_ACTION,"Edit name"
 ANIMA_RENAME_TITLE,"Name Your Anima"
 ANIMA_RENAME_PROMPT,"Keep this generated name or choose your own."
 ANIMA_RENAME_PLACEHOLDER,"Enter an Anima name"
