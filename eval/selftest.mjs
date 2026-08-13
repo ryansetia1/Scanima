@@ -635,6 +635,10 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
   assert.ok(bundel.v5?.vision_schema?.properties?.character_direction, "v5 character_direction ikut terbundel");
   assert.ok(bundel.v7?.vision_schema?.properties?.strike_name, "v7 strike_name ikut terbundel");
   assert.ok(bundel.v7?.sprite_sheet.includes("3x3"), "v7 sprite_sheet 3x3 ikut terbundel");
+  assert.ok(
+    bundel.v8?.sprite_sheet.includes("Left-column cells (Idle, Happy, Damaged)"),
+    "v8 facing lock kolom kiri ikut terbundel"
+  );
 }
 
 console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
@@ -1242,6 +1246,61 @@ console.log("25. prompt v7 3x3 plus nama move, species_key tidak berubah");
   const checked = validateVision(missingMoves, [], true, true, true);
   assert.ok(checked.issues.includes("strike_name kosong"));
   assert.ok(checked.issues.includes("surge_name kosong"));
+}
+
+console.log("26. prompt v8 mengunci kolom kiri agar tidak menoleh ke tengah sheet");
+{
+  const { readFile } = await import("node:fs/promises");
+  const template = await readFile(new URL("../backend/prompts/v8/sprite_sheet.md", import.meta.url), "utf8");
+  const evolve = await readFile(
+    new URL("../backend/prompts/v8/sprite_sheet_evolve.md", import.meta.url),
+    "utf8"
+  );
+  const visionV7 = await readFile(new URL("../backend/prompts/v7/vision_system.md", import.meta.url), "utf8");
+  const visionV8 = await readFile(new URL("../backend/prompts/v8/vision_system.md", import.meta.url), "utf8");
+  const schemaV7 = await readFile(new URL("../backend/prompts/v7/vision_schema.json", import.meta.url), "utf8");
+  const schemaV8 = await readFile(new URL("../backend/prompts/v8/vision_schema.json", import.meta.url), "utf8");
+  const createAnima = await readFile(
+    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
+    "utf8"
+  );
+  const evalRunner = await readFile(new URL("./run.mjs", import.meta.url), "utf8");
+
+  assert.equal(visionV8, visionV7, "v8 tidak boleh mengubah Vision atau species cache key");
+  assert.equal(schemaV8, schemaV7, "v8 tidak boleh mengubah kontrak output Vision");
+  assert.equal(promptMajor("v8"), 8);
+  for (const prompt of [template, evolve]) {
+    assert.ok(prompt.includes("HORIZONTAL FACING LOCK — BATTLE CONTRACT"));
+    assert.ok(
+      prompt.includes("independent animation frame of ONE character"),
+      "v8 wajib menolak komposisi grup yang membuat sel menoleh ke dalam"
+    );
+    assert.ok(
+      prompt.includes("Left-column cells (Idle, Happy, Damaged)"),
+      "v8 wajib menyebut kolom kiri sebagai risiko tertinggi"
+    );
+    assert.ok(
+      prompt.includes("Whichever flank is nearer the camera"),
+      "v8 wajib mengunci sisi yang dekat ke kamera"
+    );
+    assert.ok(!prompt.includes("delighted tilt"), "tilt Happy tidak boleh dibaca sebagai yaw");
+    assert.ok(
+      /TOP LEFT — IDLE[\s\S]{0,400}still facing canvas-left/.test(prompt),
+      "Idle wajib mengulang canvas-left di instruksi sel"
+    );
+    assert.ok(
+      /MIDDLE LEFT — HAPPY[\s\S]{0,500}still facing canvas-left/.test(prompt),
+      "Happy wajib mengulang canvas-left di instruksi sel"
+    );
+  }
+  assert.ok(
+    createAnima.includes('?? "v7"'),
+    "fallback production tetap v7 sampai v8 dipromosikan"
+  );
+  assert.ok(
+    evalRunner.includes('promptVersion: "v7"'),
+    "eval default tetap v7 sampai v8 dipromosikan"
+  );
 }
 
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang

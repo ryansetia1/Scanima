@@ -370,6 +370,21 @@ landmark anatomi antar pose.
 **Decision log:** dibuat versi baru, bukan mengedit v5, agar hasil A/B lama tetap
 dapat direproduksi. V7 adalah default production; v3–v6 tetap di git.
 
+### V8: kolom kiri tidak menoleh ke tengah sheet
+
+V6/v7 sudah mengunci canvas-left secara global, tetapi GPT Image 2 masih
+memperlakukan sheet 3×3 sebagai komposisi grup. Sel di kolom kiri (Idle, Happy)
+bisa yaw ke canvas-right supaya "menghadap" ke tengah sheet. Terukur pada
+Playtron (foto Retroid Pocket Classic): Battle/Sleep/Hungry/Damaged benar ke
+kiri, Idle dan Happy terbalik. Flip per-pose di client tetap ditolak: landmark
+asimetris (D-pad vs tombol) akan tertukar.
+
+V8 tidak mengubah Vision, schema, `species_key`, style, atau layout 3×3.
+Perbedaannya: facing lock menyebut jebakan komposisi inward, mengunci flank
+yang dekat ke kamera, mengulang canvas-left di instruksi sel Idle/Happy/Damaged,
+dan mengganti "delighted tilt" yang dibaca sebagai putar badan. Default
+production tetap v7 sampai eval visual lulus.
+
 ## 4. Template prompt sprite sheet
 
 File default production adalah `backend/prompts/v7/sprite_sheet.md`. File sumber
@@ -383,7 +398,7 @@ itu tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
 [OBJECT-TO-CREATURE TRANSFORMATION]
 [COLOR + PERSONALITY]
 [CHARACTER CONSISTENCY]
-[HORIZONTAL FACING LOCK]            (v6: semua pose canvas-left)
+[HORIZONTAL FACING LOCK]            (v6: semua pose canvas-left; v8: kolom kiri)
 [NINE CELLS]                        (v7: 7 pose + 2 VFX)
 [COMPOSITION + TECHNICAL BACKGROUND]
 [NEGATIVE STYLE]
@@ -565,6 +580,7 @@ Daftar ini disusun dari output nyata nano-banana-pro dan GPT Image 2. Semuanya d
 | Subjek tidak center di kuadran | Komposisi bebas model | Normalisasi bbox hasil segmentasi, bottom-center ke frame seragam |
 | Pose Attack dibuang sebagai "keying gagal" | Speed line dan percikan membuat bbox seluas kuadran padahal isinya cuma 42% opak | Penjaga harus menuntut dua syarat sekaligus: bbox seluas kuadran **dan** terisi padat |
 | Satu pose menghadap arah sebaliknya | Model menganggap arah hadap sebagai bagian bebas dari pose | V6 mengunci semua sel ke canvas-left, melarang mirror per-cell, dan mengunci vektor Battle ke kiri |
+| Idle/Happy kolom kiri menghadap ke dalam | Model menyusun sheet 3×3 sebagai grup, sel kiri menoleh ke tengah | V8 mengulang canvas-left di sel kolom kiri, melarang komposisi inward, dan mengunci flank yang dekat ke kamera |
 | Kreatur jadi naga/hewan generik | Model condong ke prior "monster" | Kalimat "the object IS the body" + larangan eksplisit + `signature_features` yang konkret |
 | Cast shadow di bawah kreatur | Kebiasaan render | Larangan eksplisit; keying akan menyisakan noda gelap kalau lolos |
 | `background: "transparent"` ditolak | Runtime GPT Image 2 belum mendukung alpha | Pakai `opaque` + chroma green; jangan percaya schema tanpa request nyata |
@@ -607,10 +623,15 @@ backend/prompts/
 │   ├── vision_schema.json # identik v5; species cache key tetap
 │   ├── sprite_sheet.md    # v5 + facing lock ke canvas-left
 │   └── sprite_sheet_evolve.md
-└── v7/                    <- default production: 3x3 + nama move + VFX
-    ├── vision_system.md   # v6 + strike_name / surge_name dua kata
-    ├── vision_schema.json
-    ├── sprite_sheet.md    # sembilan sel
+├── v7/                    <- default production: 3x3 + nama move + VFX
+│   ├── vision_system.md   # v6 + strike_name / surge_name dua kata
+│   ├── vision_schema.json
+│   ├── sprite_sheet.md    # sembilan sel
+│   └── sprite_sheet_evolve.md
+└── v8/                    <- predecessor candidate: facing lock kolom kiri
+    ├── vision_system.md   # identik v7; species cache key tetap
+    ├── vision_schema.json # identik v7
+    ├── sprite_sheet.md    # v7 + anti-inward Idle/Happy/Damaged
     └── sprite_sheet_evolve.md
 ```
 

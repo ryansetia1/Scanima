@@ -78,11 +78,16 @@ backend/prompts/
 │   ├── vision_schema.json        # identik v5
 │   ├── sprite_sheet.md           # v5 + facing lock empat pose ke canvas-left
 │   └── sprite_sheet_evolve.md    # facing lock dipertahankan lintas evolusi
-└── v7/                           # DEFAULT production: sheet 3x3 + nama move
-    ├── vision_system.md          # v6 + strike_name / surge_name dua kata; species_key tetap
-    ├── vision_schema.json        # dua field move, cache key tidak berubah
-    ├── sprite_sheet.md           # sembilan sel: 7 pose karakter + 2 efek battle
-    └── sprite_sheet_evolve.md    # grid 3x3 dipertahankan lintas evolusi
+├── v7/                           # DEFAULT production: sheet 3x3 + nama move
+│   ├── vision_system.md          # v6 + strike_name / surge_name dua kata; species_key tetap
+│   ├── vision_schema.json        # dua field move, cache key tidak berubah
+│   ├── sprite_sheet.md           # sembilan sel: 7 pose karakter + 2 efek battle
+│   └── sprite_sheet_evolve.md    # grid 3x3 dipertahankan lintas evolusi
+└── v8/                           # predecessor candidate: facing lock kolom kiri
+    ├── vision_system.md          # identik v7; species cache key tidak berubah
+    ├── vision_schema.json        # identik v7
+    ├── sprite_sheet.md           # v7 + anti-inward facing pada Idle/Happy/Damaged
+    └── sprite_sheet_evolve.md    # facing lock kolom kiri dipertahankan lintas evolusi
 ```
 
 **Prompt tidak bisa dibaca sebagai file di Edge Function.** `Deno.readTextFile()` gagal untuk file pendamping yang dideploy lewat MCP, jadi `backend/tools/bundle_prompts.mjs` membundel semua versi menjadi `functions/_shared/prompts.generated.ts` yang diimpor sebagai modul. Sumbernya tetap file `.md` di git; artefaknya turunan. Setelah mengubah prompt: `node backend/tools/bundle_prompts.mjs`. Skenario 17 di `npm run selftest` gagal kalau bundelnya basi, jadi kelupaan ketangkap gratis, bukan saat art produksi ternyata berbeda dari art yang sudah disetujui.
@@ -97,7 +102,7 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 
 **Damage v3 bias robot bukan kebetulan model.** Template universalnya sendiri menyebut `loose cable`, `exposed wire`, dan `broken key`, sementara style lock memberi semua objek bahasa `techno-organic`; material Vision tidak pernah sampai ke prompt gambar. v4 menambah `surface_finish` + `damage_hints` ke Vision dan menyaring hint teknis di `assemblePrompt()`: kata cable/wire/circuit/key hanya lolos jika fitur yang sama benar-benar ada di `signature_features`. Keramik retak/terkelupas, kain berjumbai/robek, tanaman sobek/layu, logam penyok/tergores.
 
-**V7 adalah default production.** V7 membawa seluruh pagar v6, lalu mengubah layout sheet dari 2×2 (4 pose) menjadi 3×3 (9 sel): Idle, Battle, Sleep, Happy, Hungry, Dirty, Damaged, plus efek `fx_strike` / `fx_surge` tanpa tubuh kreatur. Vision menambah `strike_name` dan `surge_name` per Anima (tepat dua kata Inggris pendek, dipotong di `normalizeMoveName()` kalau model mengabaikan); keduanya **bukan** bagian `species_key`, jadi cache art lama tetap kena. Post-process memilih grid dari `prompt_version` (>= v7 = 3×3, selain itu 2×2) supaya pustaka production tidak pecah. Canvas tetap 1024×1024 (~341 px per sel, turun dari 512). Sheet cache 2×2 tetap dimuat; pose ekstra dan overlay FX diabaikan kalau tidak ada. v3–v6 tetap di git untuk rollback.
+**V7 adalah default production.** V7 membawa seluruh pagar v6, lalu mengubah layout sheet dari 2×2 (4 pose) menjadi 3×3 (9 sel): Idle, Battle, Sleep, Happy, Hungry, Dirty, Damaged, plus efek `fx_strike` / `fx_surge` tanpa tubuh kreatur. Vision menambah `strike_name` dan `surge_name` per Anima (tepat dua kata Inggris pendek, dipotong di `normalizeMoveName()` kalau model mengabaikan); keduanya **bukan** bagian `species_key`, jadi cache art lama tetap kena. Post-process memilih grid dari `prompt_version` (>= v7 = 3×3, selain itu 2×2) supaya pustaka production tidak pecah. Canvas tetap 1024×1024 (~341 px per sel, turun dari 512). Sheet cache 2×2 tetap dimuat; pose ekstra dan overlay FX diabaikan kalau tidak ada. v3–v6 tetap di git untuk rollback. **v8 adalah predecessor candidate**: Vision identik v7; yang berubah hanya facing lock di kolom kiri (Idle/Happy/Damaged) supaya sel tidak menoleh ke tengah sheet. Jangan promote ke `app_config` sebelum eval visual lulus.
 
 ## Fakta teknis yang mudah salah
 
@@ -184,7 +189,7 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 25 skenario + 12 uji tanda tangan webhook
+npm run selftest                       # 26 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 godot --headless --path game --script res://tests/test_client_state.gd  # 60 check sesi, refresh, pending scan/care/Battle, cache
 godot --headless --path game --script res://tests/test_scan_ui.gd       # 422 check shell + Battle + komponen + tap + touch + reduced motion

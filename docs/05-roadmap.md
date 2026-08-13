@@ -25,7 +25,7 @@ Kesalahan yang paling mungkin dilakukan di proyek seperti ini adalah menghabiska
 
 Sengaja tanpa Supabase, tanpa autentikasi, tanpa database, tanpa sistem kuota. Panggilan API dilakukan dari script Node lokal dan build Godot khusus development yang membaca token dari file lokal yang di-gitignore.
 
-> **Status per 14 Agustus 2026.** Pipeline sudah terbukti dengan foto sungguhan pada nano-banana-pro dan GPT Image 2. Default gambar tetap GPT Image 2 medium. **Prompt v7 adalah default production**: sheet 3×3 (9 sel, termasuk VFX Attack/Special) plus nama move unik, tanpa mengubah `species_key`. v3–v6 tetap di git untuk rollback; cache 2×2 lama tetap dimuat. Eval visual Retroid Pocket Classic lulus 9/9 sel sebelum promosi.
+> **Status per 14 Agustus 2026.** Pipeline sudah terbukti dengan foto sungguhan pada nano-banana-pro dan GPT Image 2. Default gambar tetap GPT Image 2 medium. **Prompt v7 adalah default production**: sheet 3×3 (9 sel, termasuk VFX Attack/Special) plus nama move unik, tanpa mengubah `species_key`. v8 adalah candidate facing lock kolom kiri (Idle/Happy/Damaged) dan belum dipromosikan. v3–v6 tetap di git untuk rollback; cache 2×2 lama tetap dimuat. Eval visual Retroid Pocket Classic lulus 9/9 sel sebelum promosi v7.
 
 ### Yang dikerjakan
 

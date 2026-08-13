@@ -17,7 +17,7 @@ Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`**
 
 Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu mereproduksi logo merek dari fotonya di keempat pose. Larangan tekstual sudah ada di v2 dan tidak cukup, karena logonya datang dari foto referensi. **Prompt v3 kini jadi default**: ia memerintahkan model mengganti mark merek dengan permukaan polos atau marking geometris ciptaan sendiri. Uji satu foto sepatu (~$0.073) memberi 4/4 sel, residu 0,014%, logo hilang, dan `species_key` tidak bergeser. Mouse dan mug belum diulang di v3.
 
-**Prompt v7 kini default production.** V7 membawa seluruh pagar v6 (facing lock kiri, karakter, body plan, damage material, tanpa emblem), lalu mengubah sheet menjadi 3×3: tujuh pose karakter plus dua sel VFX battle (`fx_strike` / `fx_surge`) tanpa tubuh, dan Vision menulis nama Attack/Special unik per Anima. `species_key` tidak berubah, jadi cache 2×2 lama tetap kena. Eval visual Retroid Pocket Classic lulus 9/9 sel. v3–v6 tetap di git untuk rollback.
+**Prompt v7 kini default production.** V7 membawa seluruh pagar v6 (facing lock kiri, karakter, body plan, damage material, tanpa emblem), lalu mengubah sheet menjadi 3×3: tujuh pose karakter plus dua sel VFX battle (`fx_strike` / `fx_surge`) tanpa tubuh, dan Vision menulis nama Attack/Special unik per Anima. `species_key` tidak berubah, jadi cache 2×2 lama tetap kena. Eval visual Retroid Pocket Classic lulus 9/9 sel. v3–v6 tetap di git untuk rollback. **v8 adalah candidate**: Vision tidak berubah; facing lock ditambah anti-inward pada Idle/Happy/Damaged setelah sheet Playtron v7 memutar dua sel kolom kiri ke kanan.
 
 **`google/nano-banana-2-lite` sudah mendapat satu A/B berbayar dengan mouse + prompt v5 dan ditolak.** Billing run tampil $0.03 dan generation selesai dalam 7 detik dengan 4/4 pose, tetapi model ikut menggambar label kuadran serta garis pembagi. Akibatnya bbox Sleep memenuhi tinggi sheet, cross-boundary mencapai 21.361 piksel, dan residu hijau 2,04% versus target <0,1%. Kecepatan dan harga tidak menutup kegagalan kepatuhan layout, jadi GPT Image 2 medium tetap dipakai.
 
@@ -229,6 +229,7 @@ scanima/
 │   ├── prompts/v5/               # predecessor: karakter + limb plan mengikuti objek
 │   ├── prompts/v6/               # predecessor: v5 + facing lock empat pose
 │   ├── prompts/v7/               # default: sheet 3x3 + nama move + VFX battle
+│   ├── prompts/v8/               # candidate: v7 + facing lock kolom kiri
 │   ├── tools/bundle_prompts.mjs  # prompts/ -> modul yang bisa diimpor Deno
 │   ├── supabase/migrations/      # skema, RLS + hak kolom, fungsi kuota
 │   ├── supabase/functions/
