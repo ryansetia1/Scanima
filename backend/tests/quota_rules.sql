@@ -663,31 +663,31 @@ begin
   values (
     u1, 'uji bench', 'mouse_plastic', 'gray', 'tech', 1, v_stats,
     '{"hunger":100,"energy":10,"hygiene":100,"bond":0}'::jsonb,
-    'ready', now() - interval '3 hours'
+    'ready', now() - interval '90 minutes'
   )
   returning id into v_bench_anima;
   v_j := public.apply_care(u1, v_bench_anima, 'sync', null);
   assert (v_j #>> '{anima,sleep_started_at}') is not null,
          'Anima yang tidak di-Summon harus tidur';
   assert (v_j #>> '{anima,care,energy}')::numeric between 54.9 and 55.1,
-         'tidur tiga jam di Collection harus memulihkan Energy';
+         'tidur 1.5 jam di Collection harus memulihkan setengah Energy';
   assert (v_j #>> '{anima,care_score}')::int = 0,
          'tidur di Collection tidak boleh memberi EXP tidur penuh';
 
   update public.animas
-     set sleep_started_at = now() - interval '6 hours',
+     set sleep_started_at = now() - interval '3 hours',
          sleep_energy_at_start = 10,
          care = '{"hunger":70,"energy":10,"hygiene":70,"bond":0}'::jsonb,
-         care_synced_at = now() - interval '6 hours',
+         care_synced_at = now() - interval '3 hours',
          care_score = 0
    where id = v_bench_anima;
   v_j := public.apply_care(u1, v_bench_anima, 'sync', null);
   assert (v_j #>> '{anima,sleep_started_at}') is not null,
-         'tidur Collection tidak auto-bangun setelah enam jam';
+         'tidur Collection tidak auto-bangun setelah Energy penuh';
   assert (v_j #>> '{anima,care,energy}')::numeric = 100,
-         'Energy Collection penuh dalam enam jam';
+         'Energy Collection penuh dalam tiga jam';
   assert (v_j #>> '{anima,care_score}')::int = 0,
-         'enam jam di Collection tidak boleh +5 EXP';
+         'tiga jam di Collection tidak boleh +5 EXP';
 
   v_j := public.apply_care(u1, v_bench_anima, 'summon', 'care-summon-bench');
   assert (v_j #>> '{anima,sleep_started_at}') is null,

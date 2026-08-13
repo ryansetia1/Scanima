@@ -68,6 +68,14 @@ func _initialize() -> void:
 	_check(absf(half_sleep["energy"] - 50.0) < 0.1, "tidur tiga jam memulihkan setengah")
 	var full_sleep := CareRules.apply_decay(tired, 0.0, 6.0 * 3600.0, 1.0, 0.0)
 	_check(absf(full_sleep["energy"] - 100.0) < 0.1, "tidur enam jam mengisi penuh")
+	var bench_half := CareRules.apply_decay(
+		tired, 0.0, 1.5 * 3600.0, 1.0, 0.0, CareRules.BENCH_SLEEP_FULL_HOURS
+	)
+	_check(absf(bench_half["energy"] - 50.0) < 0.1, "tidur Collection 1.5 jam memulihkan setengah")
+	var bench_full := CareRules.apply_decay(
+		tired, 0.0, 3.0 * 3600.0, 1.0, 0.0, CareRules.BENCH_SLEEP_FULL_HOURS
+	)
+	_check(absf(bench_full["energy"] - 100.0) < 0.1, "tidur Collection tiga jam mengisi penuh")
 
 	print("5. EXP, Dormant, dan gerbang aksi")
 	_check_eq(CareRules.score_for_action("feed", {"hunger": 39}), 3, "Feed lapar memberi score")

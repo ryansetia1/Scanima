@@ -22,6 +22,7 @@ const PLAY_ENERGY_COST := 5.0
 const PLAY_SCORE_DAILY_CAP := 5
 const BATTLE_ENERGY_COST := 20.0
 const SLEEP_FULL_HOURS := 6.0
+const BENCH_SLEEP_FULL_HOURS := 3.0
 const DORMANT_RECOVERY_NEED := 50.0
 const HUNGRY_POSE_NEED := 40.0
 const DIRTY_POSE_NEED := 50.0
@@ -50,7 +51,8 @@ static func apply_decay(
 	synced_at: float,
 	now: float,
 	sleep_started_at: float = 0.0,
-	sleep_energy_at_start: float = -1.0
+	sleep_energy_at_start: float = -1.0,
+	sleep_full_hours: float = -1.0
 ) -> Dictionary:
 	var care := normalized_care(care_value)
 	var hours := effective_decay_hours(synced_at, now)
@@ -61,7 +63,8 @@ static func apply_decay(
 		var start_energy: float = (
 			float(care["energy"]) if sleep_energy_at_start < 0.0 else sleep_energy_at_start
 		)
-		var sleep_fraction := clampf((now - sleep_started_at) / 3600.0 / SLEEP_FULL_HOURS, 0.0, 1.0)
+		var hours_to_full := SLEEP_FULL_HOURS if sleep_full_hours <= 0.0 else sleep_full_hours
+		var sleep_fraction := clampf((now - sleep_started_at) / 3600.0 / hours_to_full, 0.0, 1.0)
 		care["energy"] = lerpf(start_energy, 100.0, sleep_fraction)
 	else:
 		care["energy"] = clampf(care["energy"] - DECAY_PER_HOUR.energy * hours, 0.0, 100.0)

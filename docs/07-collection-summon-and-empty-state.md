@@ -6,7 +6,7 @@ Status: diimplementasikan dan diverifikasi 13 Agustus 2026.
 
 - Tap kartu Anima di Collection tidak langsung berpindah layar.
 - Bottom sheet memberi dua aksi: `View Profile` dan `Summon`.
-- `Summon` mengganti companion aktif di Home dan di server (`profiles.active_anima_id`). Anima lain tidur: Energy pulih sampai penuh dalam 6 jam, Hunger/Hygiene tetap turun, tanpa +5 EXP. Tidak ada biaya, cooldown, atau model call.
+- `Summon` mengganti companion aktif di Home dan di server (`profiles.active_anima_id`). Anima lain tidur: Energy pulih sampai penuh dalam 3 jam, Hunger/Hygiene tetap turun, tanpa +5 EXP. Tidak ada biaya, cooldown, atau model call.
 - Bottom sheet menampilkan base stats dan care stats authoritative.
 - Pemain tanpa Anima mendapat Home empty state dengan CTA scan yang jelas.
 - Loading, roster error, dan roster kosong harus menjadi tiga state berbeda.
