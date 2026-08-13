@@ -427,6 +427,58 @@ saja tidak cukup jika model murah lebih sering menghasilkan sheet yang harus
 diulang. Estimasi operasional di `pricing.mjs` tetap $0.07 sebagai pagar spend
 cap konservatif sampai sampel production berulang membenarkan perubahan.
 
+### Eksperimen `google/nano-banana-2-lite`
+
+Snapshot Replicate **13 Agustus 2026** mencantumkan harga **$0.034 per output
+image**; billing run pertama tampil sebagai **$0.03**. Model ini hanya A/B yang
+ditolak di eval harness; model production dan payload Edge Function tidak
+berubah. Schema candidate tidak menerima
+`resolution`, `safety_filter_level`, maupun `allow_fallback_model`, jadi payload
+uji harus tepat:
+
+```jsonc
+{
+  "prompt": "<prompt v5 yang sudah dirakit>",
+  "image_input": ["data:image/jpeg;base64,..."],
+  "aspect_ratio": "1:1",
+  "output_format": "png"
+}
+```
+
+Kontrol pertama memakai `mouse.jpg` dan prompt v5 agar hanya model gambarnya
+yang berubah. Estimasi satu run adalah $0.034 generation + ~$0.003 Vision =
+**~$0.037**. Penerimaan tetap berdasarkan biaya per sheet yang lolos QA, 4/4
+pose, True to Object, keying, slicing, dan latensi; harga katalog 28% di bawah
+katalog GPT Image 2 medium tidak berguna jika retry atau kegagalan sheet lebih
+tinggi.
+
+```bash
+IMAGE_MODEL=google/nano-banana-2-lite node eval/run.mjs \
+  --photo eval/photos/mouse.jpg --prompt-version v5
+```
+
+**Hasil run pertama:** generation selesai dalam **7 detik** dan detector menemukan
+4/4 pose, jauh lebih cepat daripada GPT Image 2 medium yang terukur 57–63 detik.
+Body mouse, empat kaki, cable-tail, serta damage berupa goresan dan kabel
+berjumbai cukup setia pada input. Namun sheet **ditolak untuk production**:
+model menggambar label kuadran dan garis pemisah putih meski prompt melarang
+teks. Komponen itu membuat bbox Sleep setinggi 1024 px, menghasilkan 21.361
+cross-boundary pixels, dan meninggalkan residu hijau 2,04%—jauh di atas target
+0,1%. Empat sel yang terdeteksi bukan berarti sheet siap pakai.
+
+Verdict: **ditolak; tetap gunakan GPT Image 2 medium.** Harga $0.03 dan latensi
+7 detik tidak menutup kegagalan layout serta keying. Adapter eval dipertahankan
+hanya agar hasil A/B ini bisa direproduksi, bukan sebagai jalur promosi aktif.
+Satu percobaan preflight sebelumnya berhenti sesudah Vision karena typo
+`promptVersion` di harness; tidak ada generation pada percobaan itu, dan
+referensinya sudah diperbaiki.
+
+**Decision log:** adapter dibuat eksplisit hanya di `eval/run.mjs`, bukan registry
+bersama production. Alternatif registry ditolak untuk eksperimen pertama karena
+memperluas blast radius sebelum kualitas model terbukti; script one-off ditolak
+karena menduplikasi Vision, prompt assembly, post-processing, dan laporan yang
+sudah dimiliki harness.
+
 `output_format: "png"` wajib. JPEG akan menambahkan artefak kompresi di sekitar tepi sprite, dan artefak itu persis merusak chroma keying di piksel yang paling penting.
 
 `background: "opaque"` bukan preferensi estetika. Runtime GPT Image 2 menolak `transparent` dengan `invalid_value` meskipun opsi itu terlihat di schema wrapper. Karena itu prompt tetap meminta chroma green.

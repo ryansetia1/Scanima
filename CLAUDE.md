@@ -153,6 +153,7 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
 - **Tween hatch/Summon dibagi menurut pemilik transform.** `IncubatorEffect` mengurus telur/portal/flash, sedangkan `AnimaPresenter` mengurus dissolve serta squash-and-stretch reveal lalu menyalakan tween pose lagi. Jangan menganimasikan `Anima.scale/position` dari `scan_flow.gd`; dua tween yang menulis properti sama akan saling berebut dan membuat reveal acak.
 - **GPT Image 2 medium dipilih setelah perbandingan nyata.** Medium memakai 1.756 output token dan ~57–63 detik; high memakai 7.024 output token dan ~153 detik tanpa lompatan kualitas yang sebanding. Jangan naikkan quality diam-diam.
 - **nano-banana-pro tetap rollback/A-B saja** lewat `IMAGE_MODEL`; model itu pernah berulang kali memberi `ModelRateLimitError (E003)`. Kalau dipakai lagi, resolusi 1K dan 2K berharga sama sehingga minta `"2K"`.
+- **`google/nano-banana-2-lite` sudah diuji dan ditolak; GPT Image 2 medium tetap dipakai.** Harga tercantum $0.034 dan billing run tampil $0.03. Schema-nya hanya menerima `prompt`, `image_input`, `aspect_ratio`, dan `output_format`; adapter eval tetap ada untuk reproduksi A/B. Run mouse + v5 selesai 7 detik dan punya 4/4 pose, tetapi menyalin label kuadran serta garis pembagi: bbox Sleep menjadi 1024 px, 21.361 cross-boundary pixels, dan residu hijau 2,04% versus target <0,1%. Harga/latensi tidak menutup kegagalan layout; 4/4 detector saja bukan bukti sheet siap pakai.
 
 ## Perintah umum
 
@@ -160,7 +161,7 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 21 skenario + 12 uji tanda tangan webhook
+npm run selftest                       # 22 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd
 godot --headless --path game --script res://tests/test_client_state.gd  # 42 check sesi, pending scan/care, cache
 godot --headless --path game --script res://tests/test_scan_ui.gd       # 171 check shell + touch + roster + reduced motion

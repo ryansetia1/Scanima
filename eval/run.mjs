@@ -181,35 +181,47 @@ async function callVision(photo, systemPrompt, schema) {
 
 // ---------------------------------------------------------------- gambar
 
+export function imageInputForModel(model, prompt, dataUri, quality = "medium") {
+  if (model === "openai/gpt-image-2") {
+    return {
+      prompt,
+      input_images: [dataUri],
+      aspect_ratio: "1024x1024",
+      quality,
+      number_of_images: 1,
+      // Schema wrapper mencantumkan transparent, tetapi runtime model
+      // menolaknya dengan invalid_value. Chroma green tetap wajib.
+      background: "opaque",
+      output_format: "png",
+      output_compression: 100,
+      moderation: "auto",
+    };
+  }
+  if (model === "google/nano-banana-2-lite") {
+    return {
+      prompt,
+      image_input: [dataUri],
+      aspect_ratio: "1:1",
+      output_format: "png",
+    };
+  }
+  return {
+    prompt,
+    image_input: [dataUri],
+    aspect_ratio: "1:1",
+    resolution: "2K",
+    output_format: "png",
+    safety_filter_level: "block_only_high",
+    allow_fallback_model: false,
+  };
+}
+
 async function callImageModel(prompt, photo) {
   // Di eval lokal, foto dikirim sebagai data URI karena tidak ada Storage.
   // Produksi memakai signed URL dari Supabase (lihat doc 01): payload jadi
   // kecil dan foto tidak ikut tercatat di log request yang besar.
   const dataUri = `data:${photo.mime};base64,${photo.base64}`;
-  const input =
-    IMAGE_MODEL === "openai/gpt-image-2"
-      ? {
-          prompt,
-          input_images: [dataUri],
-          aspect_ratio: "1024x1024",
-          quality: IMAGE_QUALITY,
-          number_of_images: 1,
-          // Schema wrapper mencantumkan transparent, tetapi runtime model
-          // menolaknya dengan invalid_value. Chroma green tetap wajib.
-          background: "opaque",
-          output_format: "png",
-          output_compression: 100,
-          moderation: "auto",
-        }
-      : {
-          prompt,
-          image_input: [dataUri],
-          aspect_ratio: "1:1",
-          resolution: "2K",
-          output_format: "png",
-          safety_filter_level: "block_only_high",
-          allow_fallback_model: false,
-        };
+  const input = imageInputForModel(IMAGE_MODEL, prompt, dataUri, IMAGE_QUALITY);
   const res = await runPrediction(IMAGE_MODEL, input);
 
   // Skema output model ini satu string URI, bukan array potongan seperti Vision.
@@ -458,8 +470,8 @@ async function main() {
         checked = validateVision(
           seen.vision,
           knownSpecies,
-          ["v4", "v5"].includes(promptVersion),
-          promptVersion === "v5"
+          ["v4", "v5"].includes(args.promptVersion),
+          args.promptVersion === "v5"
         );
         row.vision = checked.vision;
         row.issues = [...(row.issues ?? []), ...checked.issues];

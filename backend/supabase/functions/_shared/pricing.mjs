@@ -13,9 +13,11 @@ export const BIAYA_VISION_USD = 0.003;
  * GPT Image 2 ditagih per token, jadi tidak ada harga tetap. Dua run medium
  * nyata memberi $0.068 dan $0.072 termasuk prompt + foto, jadi $0.07 lebih jujur
  * daripada mengutip biaya output $0.053 saja. nano-banana-pro punya harga tetap
- * dan hanya untuk rollback/A-B.
+ * dan hanya untuk rollback/A-B. nano-banana-2-lite tercantum $0.034 per output
+ * image pada snapshot Replicate 13 Agustus 2026.
  */
 export function biayaGambarUsd(model, quality = "medium") {
+  if (model === "google/nano-banana-2-lite") return 0.034;
   if (model !== "openai/gpt-image-2") return 0.134;
   if (quality === "high") return 0.23;
   if (quality === "low") return 0.02;

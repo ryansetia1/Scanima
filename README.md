@@ -19,6 +19,8 @@ Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu merep
 
 **Prompt v5 sekarang menjadi candidate terbaru, bukan default.** V4 lebih dulu menghapus emblem semu dan damage cyborg lewat `surface_finish` + `damage_hints`; v5 mempertahankan pagar itu lalu menambah `character_direction` dari cue visual objek. Hasil boleh cute, feminin, maskulin, netral/androgynous, elegan, kokoh, atau aneh; cue ambigu wajib netral. Idle dilarang fierce/marah, tangan dan kaki benar-benar opsional, dan nama generated tidak boleh memakai suffix `-mon`. Safety net runtime menegakkan aturan nama itu untuk semua versi prompt tanpa mengubah nickname manual. Kontrak gratis dan dry-run menjaga data flow, tetapi production tetap v3 sampai v5 melewati Smoke Set visual berbayar.
 
+**`google/nano-banana-2-lite` sudah mendapat satu A/B berbayar dengan mouse + prompt v5 dan ditolak.** Billing run tampil $0.03 dan generation selesai dalam 7 detik dengan 4/4 pose, tetapi model ikut menggambar label kuadran serta garis pembagi. Akibatnya bbox Sleep memenuhi tinggi sheet, cross-boundary mencapai 21.361 piksel, dan residu hijau 2,04% versus target <0,1%. Kecepatan dan harga tidak menutup kegagalan kepatuhan layout, jadi GPT Image 2 medium tetap dipakai.
+
 Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: halo hijau di tepi sprite (0,21% → 0,014%), anggota tubuh pose kanan yang melewati garis tengah sheet, dan penjaga "keying gagal" yang salah membuang pose Attack karena speed line membuat bbox-nya seluas kuadran. Slicing sekarang menetapkan kepemilikan per komponen piksel, jadi tangan/kabel yang tersambung tidak dipotong dan bagian pose tetangga tidak ikut tercopy.
 
 **Phase 2 sudah dimulai dari sisi yang menjaga uang.** Skema delapan tabel, RLS beserta hak kolom, dan fungsi kuota/care sudah ter-apply di proyek Supabase dan dibuktikan oleh [`backend/tests/quota_rules.sql`](backend/tests/quota_rules.sql): retry dengan `idempotency_key` sama hanya mendebit satu Genesis Core atau satu transaksi Bits, webhook yang terkirim dua kali hanya mengkredit satu, cap biaya harian menolak tanpa mendebit, cache hit tidak pernah menghasilkan Core gratis, dan peran `authenticated` tidak bisa menaikkan saldo, menulis kebutuhan/`care_score`, atau memanggil fungsi uang langsung.
@@ -63,7 +65,7 @@ Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 21 skenario + 12 uji tanda tangan webhook, tanpa API
+npm run selftest                 # 22 skenario + 12 uji tanda tangan webhook, tanpa API
 
 # Godot: 89 pemeriksaan slicing/presenter, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \

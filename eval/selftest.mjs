@@ -24,6 +24,8 @@ import {
   extractJson,
   normalizeSuggestedName,
 } from "../backend/supabase/functions/_shared/vision.mjs";
+import { biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
+import { imageInputForModel } from "./run.mjs";
 
 const SIZE = DEFAULTS.workSize; // 1024, jadi tidak ada resize yang mengaburkan assert
 const HALF = SIZE / 2;
@@ -854,6 +856,22 @@ console.log("21. prompt v5 mengikuti karakter dan body plan objek");
     neutralFallback.includes("visually neutral and object-led"),
     "fallback aman harus netral, bukan menebak gender"
   );
+}
+
+console.log("22. adapter nano-banana-2-lite mengikuti schema dan harga Replicate");
+{
+  const input = imageInputForModel(
+    "google/nano-banana-2-lite",
+    "draw one sheet",
+    "data:image/jpeg;base64,dGVzdA=="
+  );
+  assert.deepEqual(input, {
+    prompt: "draw one sheet",
+    image_input: ["data:image/jpeg;base64,dGVzdA=="],
+    aspect_ratio: "1:1",
+    output_format: "png",
+  });
+  assert.equal(biayaGambarUsd("google/nano-banana-2-lite"), 0.034);
 }
 
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang
