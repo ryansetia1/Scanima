@@ -14,6 +14,7 @@ signal start_requested
 signal action_requested(action: String)
 signal resume_requested
 signal forfeit_requested
+signal reward_status_refresh_requested
 
 @export var metal_icon: Texture2D
 @export var plant_icon: Texture2D
@@ -22,12 +23,14 @@ signal forfeit_requested
 @export var cloth_icon: Texture2D
 @export var stone_icon: Texture2D
 
+@onready var _header: VBoxContainer = %Header
 @onready var _lobby_panel: PanelContainer = %BattleLobbyPanel
 @onready var _lobby_name: Label = %BattleLobbyName
 @onready var _lobby_meta: Label = %BattleLobbyMeta
 @onready var _start_button: Button = %BattleStartButton
 @onready var _battle_content: VBoxContainer = %BattleContent
 @onready var _turn_label: Label = %BattleTurn
+@onready var _daily_reward_label: Label = %BattleDailyReward
 @onready var _player_name: Label = %BattlePlayerName
 @onready var _bot_name: Label = %BattleBotName
 @onready var _player_element_icon: TextureRect = %BattlePlayerElementIcon
@@ -36,6 +39,8 @@ signal forfeit_requested
 @onready var _bot_element: Label = %BattleBotElement
 @onready var _player_hp: ProgressBar = %BattlePlayerHp
 @onready var _bot_hp: ProgressBar = %BattleBotHp
+@onready var _player_hp_value: Label = %BattlePlayerHpValue
+@onready var _bot_hp_value: Label = %BattleBotHpValue
 @onready var _arena: Control = %BattleArena
 @onready var _player_anchor: Node2D = %BattlePlayerAnchor
 @onready var _bot_anchor: Node2D = %BattleBotAnchor
@@ -52,8 +57,10 @@ signal forfeit_requested
 @onready var _result_title: Label = %BattleResultTitle
 @onready var _result_body: Label = %BattleResultBody
 @onready var _retry_button: Button = %BattleRetryButton
+@onready var _reward_reset_timer: Timer = %BattleRewardResetTimer
 
 var _lobby_row: Dictionary = {}
+var _lobby_daily_reward: Dictionary = {}
 var _session: Dictionary = {}
 var _busy := false
 var _element_icons: Dictionary = {}
@@ -75,6 +82,7 @@ func _ready() -> void:
 	_forfeit_button.pressed.connect(forfeit_requested.emit)
 	_retry_button.pressed.connect(resume_requested.emit)
 	_arena.resized.connect(_position_fighters)
+	_reward_reset_timer.timeout.connect(reward_status_refresh_requested.emit)
 	_position_fighters.call_deferred()
 	_player_sprite.set_facing(1.0)
 	_bot_sprite.set_facing(-1.0)
@@ -84,32 +92,76 @@ func _ready() -> void:
 func set_lobby(row: Dictionary) -> void:
 	_lobby_row = row.duplicate(true)
 	_session = {}
+	_header.visible = true
 	_lobby_panel.visible = true
 	_battle_content.visible = false
 	_result_panel.visible = false
 	_start_button.visible = true
+	_apply_lobby()
+
+
+func set_daily_reward(daily_reward: Dictionary) -> void:
+	if daily_reward.is_empty():
+		return
+	_remember_lobby_daily_reward(daily_reward)
+	if _session.is_empty():
+		_apply_lobby()
+	else:
+		_session["daily_reward"] = daily_reward.duplicate(true)
+		_apply_state()
+
+
+func set_daily_reward_error() -> void:
+	if not _session.is_empty():
+		return
+	_lobby_daily_reward = {}
+	_apply_lobby()
+	if _lobby_unavailable_key().is_empty():
+		_lobby_meta.text = tr("BATTLE_REWARD_STATUS_ERROR")
+
+
+func _remember_lobby_daily_reward(daily_reward: Dictionary) -> void:
+	if daily_reward.is_empty():
+		return
+	_lobby_daily_reward = daily_reward.duplicate(true)
+	_lobby_daily_reward["rewarded"] = false
+
+
+func _apply_lobby() -> void:
 	var unavailable_key := _lobby_unavailable_key()
-	if unavailable_key.is_empty():
+	var training := _is_training(_lobby_daily_reward)
+	if not unavailable_key.is_empty():
+		_lobby_name.text = tr("BATTLE_LOBBY_TITLE")
+		_lobby_meta.text = tr(unavailable_key)
+	elif training:
+		_lobby_name.text = LocaleManager.display_name(_lobby_row)
+		_lobby_meta.text = tr("BATTLE_LOBBY_TRAINING") % [
+			LocaleManager.format_integer(_display_daily_earned(_lobby_daily_reward)),
+			LocaleManager.format_integer(int(_lobby_daily_reward.get("limit", 0))),
+		]
+	else:
 		_lobby_name.text = LocaleManager.display_name(_lobby_row)
 		_lobby_meta.text = tr("BATTLE_LOBBY_READY") % [
 			LocaleManager.element_name(str(_lobby_row.get("element", ""))),
 			LocaleManager.stage_name(int(_lobby_row.get("stage", 1))),
 		]
-	else:
-		_lobby_name.text = tr("BATTLE_LOBBY_TITLE")
-		_lobby_meta.text = tr(unavailable_key)
+	_start_button.text = tr("BATTLE_TRAIN") if training else tr("BATTLE_START")
 	_start_button.disabled = _busy or not unavailable_key.is_empty()
+	_schedule_daily_reward_reset(_lobby_daily_reward)
 
 
 func set_loading(message_key: String = "BATTLE_CONNECTING") -> void:
+	_reward_reset_timer.stop()
 	_result_panel.visible = false
 	if not _session.is_empty():
+		_header.visible = false
 		_lobby_panel.visible = false
 		_battle_content.visible = true
 		_feedback.text = tr(message_key)
 		_actions.visible = false
 		_forfeit_button.visible = false
 		return
+	_header.visible = true
 	_lobby_panel.visible = true
 	_battle_content.visible = false
 	_lobby_name.text = tr("BATTLE_LOBBY_TITLE")
@@ -123,6 +175,8 @@ func set_session(
 	bot_loaded: Dictionary = {}
 ) -> void:
 	_session = battle_session.duplicate(true)
+	_remember_lobby_daily_reward(_as_dict(_session.get("daily_reward")))
+	_header.visible = false
 	_lobby_panel.visible = false
 	_battle_content.visible = true
 	if bool(player_loaded.get("ok", false)):
@@ -156,6 +210,7 @@ func set_busy(busy: bool) -> void:
 
 
 func set_error(error_code: String) -> void:
+	_header.visible = _session.is_empty()
 	if _session.is_empty():
 		_lobby_panel.visible = true
 		_battle_content.visible = false
@@ -281,9 +336,25 @@ func _apply_state() -> void:
 	_bot_hp.max_value = maxf(1.0, float(bot.get("max_hp", 1)))
 	_player_hp.value = float(player.get("hp", 0))
 	_bot_hp.value = float(bot.get("hp", 0))
+	_player_hp_value.text = LocaleManager.format_ratio(
+		int(player.get("hp", 0)), int(player.get("max_hp", 1))
+	)
+	_bot_hp_value.text = LocaleManager.format_ratio(
+		int(bot.get("hp", 0)), int(bot.get("max_hp", 1))
+	)
 	_turn_label.text = tr("BATTLE_TURN") % LocaleManager.format_integer(
 		int(_session.get("turn_number", state.get("turn", 1)))
 	)
+	var daily_reward := _as_dict(_session.get("daily_reward"))
+	var training := _is_training(daily_reward)
+	# 3/3 adalah batas reward Battle, bukan batas Training. Lobby sudah menjelaskan
+	# alasan mode berubah; mengulang counter di duel membuat Training tampak terbatas.
+	_daily_reward_label.visible = not daily_reward.is_empty() and not training
+	if _daily_reward_label.visible:
+		_daily_reward_label.text = tr("BATTLE_DAILY_REWARDS") % [
+			LocaleManager.format_integer(_display_daily_earned(daily_reward)),
+			LocaleManager.format_integer(int(daily_reward.get("limit", 0))),
+		]
 	var status := str(_session.get("status", state.get("status", "active")))
 	_result_panel.visible = status != "active"
 	_actions.visible = status == "active"
@@ -293,27 +364,35 @@ func _apply_state() -> void:
 		# menyebutkan jalan keluarnya; tanpa ini pemain kehabisan PP tanpa tahu sebabnya.
 		if int(player.get("momentum", 0)) < SURGE_COST:
 			_feedback.text = tr("BATTLE_NO_MOMENTUM")
+		elif training:
+			_feedback.text = tr("BATTLE_TRAINING_HINT")
 		else:
 			_feedback.text = tr("BATTLE_CHOOSE_ACTION")
 	else:
 		_show_result(status)
 	_update_action_state()
+	_schedule_daily_reward_reset(daily_reward)
 
 
 func _show_result(status: String) -> void:
 	_result_panel.visible = true
 	_retry_button.visible = true
+	var training := _is_training(_as_dict(_session.get("daily_reward")))
 	match status:
 		"won":
-			_result_title.text = tr("BATTLE_WIN_TITLE")
-			_result_body.text = tr("BATTLE_WIN_BODY")
+			_result_title.text = tr(
+				"BATTLE_TRAINING_TITLE" if training else "BATTLE_WIN_TITLE"
+			)
+			_result_body.text = tr(
+				"BATTLE_TRAINING_WIN_BODY" if training else "BATTLE_WIN_BODY"
+			)
 		"lost":
 			_result_title.text = tr("BATTLE_LOSS_TITLE")
 			_result_body.text = tr("BATTLE_LOSS_BODY")
 		_:
 			_result_title.text = tr("BATTLE_FORFEIT_TITLE")
 			_result_body.text = tr("BATTLE_FORFEIT_BODY")
-	_retry_button.text = tr("BATTLE_AGAIN")
+	_retry_button.text = tr("BATTLE_TRAIN_AGAIN" if training else "BATTLE_AGAIN")
 
 
 func _update_action_state() -> void:
@@ -389,6 +468,43 @@ func _lobby_unavailable_key() -> String:
 
 func _lobby_is_eligible() -> bool:
 	return _lobby_unavailable_key().is_empty()
+
+
+func _schedule_daily_reward_reset(daily_reward: Dictionary) -> void:
+	_reward_reset_timer.stop()
+	var delay := reward_reset_delay(daily_reward)
+	if delay > 0.0:
+		_reward_reset_timer.start(delay + 0.1)
+
+
+static func reward_reset_delay(daily_reward: Dictionary) -> float:
+	var server_now := _timestamp_seconds(daily_reward.get("server_now"))
+	var reset_at := _timestamp_seconds(daily_reward.get("reset_at"))
+	if server_now <= 0.0 or reset_at <= server_now:
+		return -1.0
+	return reset_at - server_now
+
+
+static func _is_training(daily_reward: Dictionary) -> bool:
+	return (
+		not daily_reward.is_empty()
+		and int(daily_reward.get("remaining", 0)) <= 0
+		and not bool(daily_reward.get("rewarded", false))
+	)
+
+
+static func _display_daily_earned(daily_reward: Dictionary) -> int:
+	return mini(
+		maxi(0, int(daily_reward.get("earned", 0))),
+		maxi(0, int(daily_reward.get("limit", 0)))
+	)
+
+
+static func _timestamp_seconds(value: Variant) -> float:
+	var timestamp := str(value)
+	if timestamp.is_empty():
+		return -1.0
+	return float(Time.get_unix_time_from_datetime_string(timestamp))
 
 
 static func _has_timestamp(value: Variant) -> bool:

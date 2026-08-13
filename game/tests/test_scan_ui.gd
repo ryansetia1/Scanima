@@ -469,15 +469,24 @@ func _test_battle_view() -> void:
 	await process_frame
 
 	var lobby := view.find_child("BattleLobbyPanel", true, false) as Control
+	var header := view.find_child("Header", true, false) as Control
 	var content := view.find_child("BattleContent", true, false) as Control
 	var result := view.find_child("BattleResultPanel", true, false) as Control
 	var start := view.find_child("BattleStartButton", true, false) as Button
+	var lobby_meta := view.find_child("BattleLobbyMeta", true, false) as Label
 	var strike := view.find_child("BattleStrikeButton", true, false) as Button
 	var surge := view.find_child("BattleSurgeButton", true, false) as Button
 	var guard := view.find_child("BattleGuardButton", true, false) as Button
+	var forfeit := view.find_child("BattleForfeitButton", true, false) as Button
 	var player_hp := view.find_child("BattlePlayerHp", true, false) as ProgressBar
 	var bot_hp := view.find_child("BattleBotHp", true, false) as ProgressBar
+	var player_hp_value := view.find_child("BattlePlayerHpValue", true, false) as Label
+	var bot_hp_value := view.find_child("BattleBotHpValue", true, false) as Label
+	var daily_reward := view.find_child("BattleDailyReward", true, false) as Label
 	var feedback := view.find_child("BattleFeedback", true, false) as Label
+	var result_title := view.find_child("BattleResultTitle", true, false) as Label
+	var result_body := view.find_child("BattleResultBody", true, false) as Label
+	var retry := view.find_child("BattleRetryButton", true, false) as Button
 	var arena := view.find_child("BattleArena", true, false) as Control
 	var footer := view.find_child("BattleFooter", true, false) as Control
 	var player_anchor := view.find_child("BattlePlayerAnchor", true, false) as Node2D
@@ -494,7 +503,32 @@ func _test_battle_view() -> void:
 	}
 	view.set_lobby(anima)
 	_check(lobby.visible and not content.visible and not result.visible, "Battle opens in its lobby")
+	_check(header.visible, "Battle lobby keeps its page title and explanation")
 	_check(not start.disabled, "ready awake active Anima can start Battle")
+	var normal_daily_reward := {
+		"earned": 2,
+		"limit": 3,
+		"remaining": 1,
+		"rewarded": false,
+		"server_now": "2026-08-13T23:59:00.000000+00:00",
+		"reset_at": "2026-08-14T00:00:00+00:00",
+	}
+	view.set_daily_reward(normal_daily_reward)
+	_check(start.text == tr("BATTLE_START"), "rewarded lobby offers one Battle action")
+	var training_daily_reward: Dictionary = normal_daily_reward.duplicate(true)
+	training_daily_reward["earned"] = 7
+	training_daily_reward["remaining"] = 0
+	view.set_daily_reward(training_daily_reward)
+	_check(
+		start.text == tr("BATTLE_TRAIN")
+		and lobby_meta.text == tr("BATTLE_LOBBY_TRAINING") % ["3", "3"],
+		"daily cap clamps overflow and changes the single lobby action to Train"
+	)
+	_check(
+		is_equal_approx(float(view.reward_reset_delay(training_daily_reward)), 60.0),
+		"Training status schedules reset from server timestamps"
+	)
+	view.set_daily_reward(normal_daily_reward)
 	anima["sleep_started_at"] = "2026-08-13T00:00:00Z"
 	view.set_lobby(anima)
 	_check(start.disabled, "sleeping Anima cannot start Battle")
@@ -520,6 +554,11 @@ func _test_battle_view() -> void:
 		"bot_snapshot": {
 			"name": "Unknown Anima", "element": "flow", "stage": 1,
 		},
+		"daily_reward": {
+			"earned": 2, "limit": 3, "remaining": 1, "rewarded": false,
+			"server_now": "2026-08-13T23:59:00.000000+00:00",
+			"reset_at": "2026-08-14T00:00:00+00:00",
+		},
 		"state": {
 			"player": {"hp": 220, "max_hp": 220, "momentum": 3, "spd": 20},
 			"bot": {"hp": 205, "max_hp": 205, "momentum": 3, "spd": 45},
@@ -530,6 +569,17 @@ func _test_battle_view() -> void:
 	var active_arena_height := arena.size.y
 	var active_ground_y := player_anchor.position.y
 	_check(content.visible and not lobby.visible and not result.visible, "active turn replaces the lobby")
+	_check(
+		not header.visible
+		and arena.is_ancestor_of(forfeit)
+		and forfeit.flat
+		and forfeit.custom_minimum_size.y >= TOUCH_MIN,
+		"active Battle uses a quiet Forfeit action with a full touch target inside its HUD"
+	)
+	_check(
+		is_equal_approx(footer.custom_minimum_size.y, 148.0),
+		"Battle command footer keeps only feedback and the three primary actions"
+	)
 	_check(player_sprite.flip_h and not bot_sprite.flip_h, "Battle fighters face each other")
 	_check(
 		is_equal_approx(active_ground_y, active_arena_height * 0.88),
@@ -538,6 +588,16 @@ func _test_battle_view() -> void:
 	_check(result.get_parent() == footer, "Battle result overlays the fixed footer")
 	_check_eq(player_hp.value, 220.0, "Battle HUD displays authoritative HP")
 	_check(
+		player_hp_value.text == "220 / 220"
+		and bot_hp_value.text == "205 / 205",
+		"unified fighter HUD overlays exact current and maximum HP"
+	)
+	_check(
+		view.find_child("PlayerCard", true, false) == null
+		and view.find_child("BotCard", true, false) == null,
+		"fighter HUD is one versus strip without separate bordered cards"
+	)
+	_check(
 		player_hp.fill_mode == ProgressBar.FILL_END_TO_BEGIN
 		and bot_hp.fill_mode == ProgressBar.FILL_BEGIN_TO_END,
 		"both HP meters drain from the outer screen edge inward like a fighting game"
@@ -545,6 +605,11 @@ func _test_battle_view() -> void:
 	_check(
 		surge.text == tr("BATTLE_ACTION_SURGE_COST") % ["3", "3"],
 		"Special button is the only place PP is shown"
+	)
+	_check(
+		daily_reward.visible
+		and daily_reward.text == tr("BATTLE_DAILY_REWARDS") % ["2", "3"],
+		"Battle HUD shows authoritative daily rewarded wins"
 	)
 	_check(
 		view.find_child("BattleMomentum", true, false) == null,
@@ -587,12 +652,23 @@ func _test_battle_view() -> void:
 		feedback.text == tr("BATTLE_NO_MOMENTUM"),
 		"empty PP names Guard as the way back instead of leaving a dead button"
 	)
+	var training_active: Dictionary = session.duplicate(true)
+	training_active["state"]["player"]["momentum"] = 1
+	training_active["daily_reward"] = training_daily_reward.duplicate(true)
+	view.set_session(training_active, loaded, loaded)
+	_check(
+		feedback.text == tr("BATTLE_TRAINING_HINT") and not daily_reward.visible,
+		"Training explains disabled rewards without presenting a fake Training limit"
+	)
 	view.set_busy(true)
 	_check(strike.disabled and surge.disabled and guard.disabled, "pending turn locks all actions")
 
 	var won: Dictionary = session.duplicate(true)
 	won["status"] = "won"
 	won["state"]["bot"]["hp"] = 0
+	won["daily_reward"] = {
+		"earned": 3, "limit": 3, "remaining": 0, "rewarded": true,
+	}
 	await view.play_events([
 		{
 			"type": "attack", "actor": "player", "target": "bot", "action": "strike",
@@ -603,11 +679,41 @@ func _test_battle_view() -> void:
 	], won)
 	await process_frame
 	_check(result.visible and content.visible, "win event log reveals the result panel")
+	_check(result.size.y >= 236.0, "Battle result grows upward and stays clear of bottom navigation")
+	_check(
+		bot_hp_value.text == "0 / 205",
+		"terminal Battle HUD keeps the exact defeated HP visible"
+	)
+	_check(
+		daily_reward.text == tr("BATTLE_DAILY_REWARDS") % ["3", "3"]
+		and result_title.text == tr("BATTLE_WIN_TITLE")
+		and result_body.text == tr("BATTLE_WIN_BODY"),
+		"third rewarded win remains Battle even though it closes the daily cap"
+	)
+	var ready_again: Dictionary = anima.duplicate(true)
+	ready_again.erase("dormant_since")
+	view.set_lobby(ready_again)
+	_check(
+		start.text == tr("BATTLE_TRAIN"),
+		"returning after the third reward immediately offers Training"
+	)
+	view.set_session(won, loaded, loaded)
 	_check_eq(arena.size.y, active_arena_height, "result overlay must not resize the arena")
 	_check_eq(
 		player_anchor.position.y,
 		active_ground_y,
 		"result overlay must not move the fighters"
+	)
+
+	var training_win: Dictionary = won.duplicate(true)
+	training_win["daily_reward"] = training_daily_reward.duplicate(true)
+	view.set_session(training_win, loaded, loaded)
+	_check(
+		not daily_reward.visible
+		and result_title.text == tr("BATTLE_TRAINING_TITLE")
+		and result_body.text == tr("BATTLE_TRAINING_WIN_BODY")
+		and retry.text == tr("BATTLE_TRAIN_AGAIN"),
+		"wins after the cap are consistently presented as Training"
 	)
 
 	var lost: Dictionary = session.duplicate(true)

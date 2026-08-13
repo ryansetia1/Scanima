@@ -71,12 +71,23 @@ func _run() -> bool:
 		return _fail("akun live_scan tidak punya Anima awake yang eligible")
 	print("  %s" % str(player.get("nickname", "Anima")))
 
-	print("2. payload invalid ditolak")
+	print("2. status reward harian")
+	var status: Dictionary = await Backend.battle_anima("status")
+	var daily_reward: Dictionary = GameState.as_dict(status.data)
+	if (
+		not status.ok
+		or int(daily_reward.get("limit", 0)) < 1
+		or str(daily_reward.get("server_now", "")).is_empty()
+		or str(daily_reward.get("reset_at", "")).is_empty()
+	):
+		return _fail("status reward harian tidak sah: %s" % str(status))
+
+	print("3. payload invalid ditolak")
 	var invalid: Dictionary = await Backend.battle_anima("turn", {"action": "strike"})
 	if invalid.ok or invalid.code != 400 or invalid.error != "INVALID_SESSION_ID":
 		return _fail("payload invalid tidak ditolak tepat: %s" % str(invalid))
 
-	print("3. start dan resume")
+	print("4. start dan resume")
 	var start: Dictionary = await Backend.battle_anima("start", {"anima_id": str(player.get("id", ""))})
 	if not start.ok:
 		return _fail("start gagal: %s" % start.error)
@@ -94,7 +105,7 @@ func _run() -> bool:
 	if not resumed.ok or str(GameState.as_dict(resumed.data).get("id", "")) != session_id:
 		return _fail("resume tidak mengembalikan session yang sama")
 
-	print("4. Strike, Guard, Surge dan replay")
+	print("5. Strike, Guard, Surge dan replay")
 	var replay_checked := false
 	for action in ["strike", "guard", "surge"]:
 		if str(session.get("status", "")) != "active":
@@ -145,7 +156,7 @@ func _run() -> bool:
 		session = next_session
 		print("  %s -> turn %d" % [action, int(session.get("turn_number", 0))])
 
-	print("5. forfeit dan cross-owner")
+	print("6. forfeit dan cross-owner")
 	if str(session.get("status", "")) == "active":
 		var forfeited: Dictionary = await Backend.battle_anima(
 			"forfeit",

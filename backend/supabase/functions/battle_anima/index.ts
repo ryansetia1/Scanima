@@ -1,6 +1,6 @@
 // POST /battle_anima
 //
-// Body: { operation: start|resume|turn|forfeit, ... }
+// Body: { operation: status|start|resume|turn|forfeit, ... }
 // Combat runs in battle.mjs. Postgres alone commits turn order and rewards.
 
 import { adminClient, json } from "../_shared/supa.ts";
@@ -89,6 +89,7 @@ Deno.serve(async (req) => {
 
   const operation = typeof body.operation === "string" ? body.operation : "";
   try {
+    if (operation === "status") return await battleStatus(ownerId, body);
     if (operation === "start") return await startBattle(ownerId, body);
     if (operation === "resume") return await resumeBattle(ownerId, body);
     if (operation === "turn") return await playTurn(ownerId, body);
@@ -102,6 +103,18 @@ Deno.serve(async (req) => {
     return json(500, { error: "battle gagal diproses" });
   }
 });
+
+async function battleStatus(ownerId: string, body: BattleBody): Promise<Response> {
+  const sessionId = body.session_id === undefined || body.session_id === null
+    ? null
+    : asUuid(body.session_id, "session_id");
+  const { data, error } = await db.rpc("battle_daily_reward_status", {
+    p_owner: ownerId,
+    p_session_id: sessionId,
+  });
+  if (error) throw error;
+  return json(200, data);
+}
 
 async function startBattle(ownerId: string, body: BattleBody): Promise<Response> {
   const animaId = asUuid(body.anima_id, "anima_id");

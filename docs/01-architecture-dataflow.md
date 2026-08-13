@@ -567,7 +567,16 @@ Session aktif berumur 30 menit dan hanya satu per pemain. Satu
 `idempotency_key` disimpan di `battle_turns`, sehingga retry mengembalikan
 response yang sama tanpa damage atau reward kedua. Menang mengubah Bits +5,
 `care_score +4`, `battle_wins +1`, dan ledger dalam transaksi yang sama;
-kalah/forfeit nol reward dan Battle tidak pernah menyentuh Genesis Core.
+kalah/forfeit nol reward dan Battle tidak pernah menyentuh Genesis Core. Reward
+itu dibatasi tiga kemenangan per akun per hari UTC. `commit_battle_turn()`
+mengunci row profile lalu menghitung ledger `reason = 'battle_win'`; kemenangan
+setelah cap tetap terminal `won`, tetapi payload menandainya sebagai Training
+dan tidak mengubah Bits, `care_score`, `battle_wins`, atau ledger. Session
+payload membawa status `daily_reward`, jadi client tidak menghitung cap dari jam
+device maupun cache lokal. Operasi `battle_anima/status` memberi status yang
+sama sebelum session dibuat. Payload menyertakan `server_now` dan `reset_at`;
+client menjadwalkan refresh dari selisih keduanya dan meminta ulang saat app
+resume, sehingga CTA `Battle`/`Train` tidak bergantung pada jam device.
 `GameState.pending_battle` menyimpan session, expected turn/version, action, dan
 key sampai response authoritative diterima, sehingga restart melakukan resume
 atau replay key yang sama.

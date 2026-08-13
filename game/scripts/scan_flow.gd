@@ -70,6 +70,7 @@ var _placeholder_icon: Texture2D = null
 var _thumbnail_cache: Dictionary = {}
 var _destination: StringName = BottomNav.HOME
 var _toast_revision := 0
+var _battle_reward_revision := 0
 var _sleep_completion_timer: Timer = null
 var _sleep_sync_in_flight := false
 var _pending_delete_id := ""
@@ -94,6 +95,7 @@ func _ready() -> void:
 	_battle_view.action_requested.connect(_battle_action_requested)
 	_battle_view.resume_requested.connect(_retry_battle)
 	_battle_view.forfeit_requested.connect(_forfeit_battle)
+	_battle_view.reward_status_refresh_requested.connect(_refresh_battle_reward_status)
 	_home_view.care_requested.connect(_perform_care)
 	_home_view.first_scan_requested.connect(_open_scan)
 	_home_view.retry_requested.connect(_retry_roster)
@@ -178,19 +180,24 @@ func _ready() -> void:
 			_run_battle_demo()
 		if arg == "--battle-result-demo":
 			_run_battle_demo("forfeited")
+		if arg == "--battle-win-demo":
+			_run_battle_demo("won")
+		if arg == "--battle-training-active-demo":
+			_run_battle_demo("active", true)
+		if arg == "--battle-training-demo":
+			_run_battle_training_demo()
 		if arg.begins_with("--screenshot="):
 			await _capture_and_quit(arg.trim_prefix("--screenshot="))
 
 
 func _notification(what: int) -> void:
-	if (
-		what == NOTIFICATION_APPLICATION_RESUMED
-		and is_node_ready()
-		and is_instance_valid(_sleep_completion_timer)
-		and _is_sleeping(_current_anima)
-	):
+	if what != NOTIFICATION_APPLICATION_RESUMED or not is_node_ready():
+		return
+	if is_instance_valid(_sleep_completion_timer) and _is_sleeping(_current_anima):
 		_sleep_completion_timer.stop()
 		call_deferred("_sync_sleep_completion")
+	if _destination == BottomNav.BATTLE:
+		call_deferred("_refresh_battle_reward_status")
 
 
 # ---------------------------------------------------------------- boot
@@ -666,9 +673,40 @@ func _care_error_message(error: String) -> String:
 
 # ---------------------------------------------------------------- battle
 
+func _refresh_battle_reward_status() -> void:
+	if _destination != BottomNav.BATTLE:
+		return
+	_battle_reward_revision += 1
+	var revision := _battle_reward_revision
+	var session_before: Dictionary = _battle_view.session_data()
+	var session_id := str(session_before.get("id", ""))
+	var session_version := int(session_before.get("version", 0))
+	var payload := {}
+	if not session_id.is_empty():
+		payload["session_id"] = session_id
+	var res := await Backend.battle_anima("status", payload)
+	if revision != _battle_reward_revision or _destination != BottomNav.BATTLE:
+		return
+	var session_after: Dictionary = _battle_view.session_data()
+	if (
+		str(session_after.get("id", "")) != session_id
+		or int(session_after.get("version", 0)) != session_version
+	):
+		return
+	if not res.ok:
+		_battle_view.set_daily_reward_error()
+		return
+	var daily_reward := GameState.as_dict(res.data)
+	if daily_reward.is_empty():
+		_battle_view.set_daily_reward_error()
+		return
+	_battle_view.set_daily_reward(daily_reward)
+
+
 func _start_battle() -> void:
 	if _busy or _current_anima.is_empty():
 		return
+	_battle_reward_revision += 1
 	_set_busy(true)
 	_battle_view.set_loading()
 	var res := await Backend.battle_anima("start", {
@@ -696,6 +734,7 @@ func _start_battle() -> void:
 func _resume_battle() -> void:
 	if _busy:
 		return
+	_battle_reward_revision += 1
 	var pending := GameState.pending_battle.duplicate(true)
 	var session_id := str(pending.get("session_id", ""))
 	if session_id.is_empty():
@@ -761,6 +800,7 @@ func _battle_action_requested(action: String) -> void:
 func _submit_pending_battle(pending: Dictionary) -> void:
 	if pending.is_empty():
 		return
+	_battle_reward_revision += 1
 	_set_busy(true)
 	var res := await Backend.battle_anima("turn", {
 		"session_id": str(pending.get("session_id", "")),
@@ -802,6 +842,7 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 func _forfeit_battle() -> void:
 	if _busy:
 		return
+	_battle_reward_revision += 1
 	var session: Dictionary = _battle_view.session_data()
 	var session_id := str(session.get("id", GameState.pending_battle.get("session_id", "")))
 	if session_id.is_empty():
@@ -1456,7 +1497,12 @@ func _apply_margins(node: MarginContainer, insets: Vector4, side: float, vertica
 	node.add_theme_constant_override("margin_bottom", int(vertical + insets.w))
 
 
-func _switch_destination(destination: StringName, profile_row: Dictionary = {}) -> void:
+func _switch_destination(
+	destination: StringName,
+	profile_row: Dictionary = {},
+	refresh_battle_reward: bool = true
+) -> void:
+	_battle_reward_revision += 1
 	if destination == BottomNav.ANIMA and not profile_row.is_empty():
 		_profile_anima = profile_row.duplicate(true)
 	if destination == BottomNav.ANIMA and not _details_available():
@@ -1483,8 +1529,13 @@ func _switch_destination(destination: StringName, profile_row: Dictionary = {}) 
 		if not _busy and not _incubator.is_active() and not _scan_view.has_preview():
 			_scan_view.set_phase(&"idle")
 			_scan_view.set_status(tr("STATUS_SCAN_READY"))
-	if destination == BottomNav.BATTLE and GameState.pending_battle.is_empty():
+	if (
+		destination == BottomNav.BATTLE
+		and GameState.pending_battle.is_empty()
+		and refresh_battle_reward
+	):
 		_battle_view.set_lobby(_current_anima)
+		_refresh_battle_reward_status()
 
 	var stage_destination := destination == BottomNav.HOME or (
 		destination == BottomNav.SCAN and _incubator.is_active()
@@ -1801,7 +1852,7 @@ func _run_summon_demo() -> void:
 	_set_busy(false)
 
 
-func _run_battle_demo(status: String = "active") -> void:
+func _run_battle_demo(status: String = "active", training: bool = false) -> void:
 	var placeholder := PlaceholderSheet.build()
 	var texture := ImageTexture.create_from_image(placeholder["image"])
 	var loaded := AnimaLoader.build(texture, placeholder["manifest"])
@@ -1821,11 +1872,30 @@ func _run_battle_demo(status: String = "active") -> void:
 			"element": "flow",
 			"stage": 1,
 		},
+		"daily_reward": {
+			"earned": 7 if training else (3 if status == "won" else 2),
+			"limit": 3,
+			"remaining": 0 if training or status == "won" else 1,
+			"rewarded": status == "won" and not training,
+		},
 		"state": {
 			"status": status,
 			"player": {"hp": 162, "max_hp": 240, "momentum": 2},
 			"bot": {"hp": 118, "max_hp": 228, "momentum": 1},
 		},
 	}
-	_switch_destination(BottomNav.BATTLE)
+	_switch_destination(BottomNav.BATTLE, {}, false)
 	_battle_view.set_session(session, loaded, loaded)
+
+
+func _run_battle_training_demo() -> void:
+	_switch_destination(BottomNav.BATTLE, {}, false)
+	_battle_view.set_lobby(_current_anima)
+	_battle_view.set_daily_reward({
+		"earned": 3,
+		"limit": 3,
+		"remaining": 0,
+		"rewarded": false,
+		"server_now": "2026-08-13T12:00:00Z",
+		"reset_at": "2026-08-14T00:00:00Z",
+	})

@@ -696,12 +696,31 @@ begin
   assert ok, 'Anima Dormant tidak boleh masuk Battle';
   update public.animas set dormant_since = null where id = v_battle_player;
 
+  -- Dua reward sebelumnya membuat kemenangan berikutnya menjadi reward ketiga
+  -- hari ini. Nominal kedua sengaja berbeda: reason battle_win adalah counter,
+  -- sehingga balancing Bits tidak boleh diam-diam membuka cap.
+  update public.profiles set bits = bits + 11 where id = u1;
+  update public.animas
+     set care_score = care_score + 8,
+         battle_wins = battle_wins + 2
+   where id = v_battle_player;
+  insert into public.quota_ledger
+    (owner_id, currency, delta, reason, ref_id, created_at)
+  values
+    (u1, 'bits', 5, 'battle_win', gen_random_uuid(), now()),
+    (u1, 'bits', 6, 'battle_win', gen_random_uuid(), now()),
+    (u1, 'bits', 5, 'battle_win', gen_random_uuid(), now() - interval '25 hours');
+
   v_j := public.start_battle(
     u1, v_battle_player, v_battle_bot,
     v_battle_player_snapshot, v_battle_bot_snapshot, v_battle_state, 'battle-win'
   );
   v_battle_session := (v_j->>'id')::uuid;
   assert v_battle_session is not null, 'start Battle harus membuat session';
+  assert (v_j #>> '{daily_reward,earned}')::int = 2
+         and (v_j #>> '{daily_reward,limit}')::int = 3
+         and (v_j #>> '{daily_reward,remaining}')::int = 1,
+         'counter harus memakai reason lintas nominal dan mengabaikan hari sebelumnya';
   assert not (v_j->'bot_snapshot' ? 'owner_id')
          and not (v_j->'bot_snapshot' ? 'nickname'),
          'snapshot bot yang kembali ke client wajib anonim';
@@ -744,6 +763,10 @@ begin
            where ref_id = v_battle_session and currency = 'bits'
              and delta = 5 and reason = 'battle_win') = 1,
          'reward Battle harus punya tepat satu baris ledger';
+  assert (v_j #>> '{session,daily_reward,earned}')::int = 3
+         and (v_j #>> '{session,daily_reward,remaining}')::int = 0
+         and (v_j #>> '{session,daily_reward,rewarded}')::bool,
+         'reward ketiga tetap dibayar lalu menutup kuota hari ini';
 
   v_j2 := public.commit_battle_turn(
     u1, v_battle_session, 1, 1, 'battle-turn-win', 'surge',
@@ -767,6 +790,62 @@ begin
   exception when others then ok := (sqlerrm = 'BATTLE_FINISHED');
   end;
   assert ok, 'request turn kedua yang kalah race tidak boleh commit';
+
+  -- Kemenangan keempat tetap menyelesaikan Battle, tetapi seluruh progression
+  -- reward nol. Membatasi Bits saja akan memindahkan exploit ke evolusi.
+  v_j := public.start_battle(
+    u1, v_battle_player, v_battle_bot,
+    v_battle_player_snapshot, v_battle_bot_snapshot,
+    jsonb_set(jsonb_set(v_battle_state, '{status}', '"active"'), '{turn}', '1'),
+    'battle-training'
+  );
+  v_battle_session := (v_j->>'id')::uuid;
+  select bits into v_bits_before_battle from public.profiles where id = u1;
+  select care_score, battle_wins
+    into v_score_before_battle, v_wins_before_battle
+    from public.animas where id = v_battle_player;
+  v_j := public.commit_battle_turn(
+    u1, v_battle_session, 1, 1, 'battle-turn-training', 'surge',
+    jsonb_build_object(
+      'status', 'won', 'turn', 2, 'seed', 'battle-training',
+      'player', jsonb_build_object('hp', 120, 'max_hp', 220, 'momentum', 2),
+      'bot', jsonb_build_object('hp', 0, 'max_hp', 220, 'momentum', 3)
+    ),
+    '[{"type":"attack","actor":"player","damage":220},{"type":"finished","result":"won"}]'::jsonb,
+    'strike'
+  );
+  assert (v_j #>> '{reward,bits}')::int = 0
+         and (v_j #>> '{reward,care_score}')::int = 0
+         and (v_j #>> '{reward,battle_wins}')::int = 0
+         and (v_j #>> '{reward,capped}')::bool,
+         'win setelah cap harus menjadi Training tanpa progression reward';
+  assert (v_j #>> '{session,daily_reward,rewarded}')::bool = false
+         and (v_j #>> '{session,daily_reward,earned}')::int = 3,
+         'payload Training harus menjelaskan bahwa session ini tidak dibayar';
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle
+         and (select care_score from public.animas where id = v_battle_player)
+           = v_score_before_battle
+         and (select battle_wins from public.animas where id = v_battle_player)
+           = v_wins_before_battle,
+         'Training tidak boleh mengubah Bits, care_score, atau battle_wins';
+  assert (select count(*) from public.quota_ledger
+           where ref_id = v_battle_session and reason = 'battle_win') = 0,
+         'Training tidak boleh meninggalkan ledger reward palsu';
+  v_j2 := public.commit_battle_turn(
+    u1, v_battle_session, 1, 1, 'battle-turn-training', 'surge',
+    jsonb_build_object(
+      'status', 'won', 'turn', 2, 'seed', 'battle-training',
+      'player', jsonb_build_object('hp', 120, 'max_hp', 220, 'momentum', 2),
+      'bot', jsonb_build_object('hp', 0, 'max_hp', 220, 'momentum', 3)
+    ),
+    '[{"type":"attack","actor":"player","damage":220},{"type":"finished","result":"won"}]'::jsonb,
+    'strike'
+  );
+  assert (v_j2->>'replayed')::bool
+         and (v_j2 #>> '{reward,capped}')::bool,
+         'retry Training harus replay response capped yang sama';
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle,
+         'retry Training tidak boleh membuat reward baru';
 
   -- Kalah dan forfeit tidak pernah menyentuh Bits, score, wins, atau Core.
   v_j := public.start_battle(

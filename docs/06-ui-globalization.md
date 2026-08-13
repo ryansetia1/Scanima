@@ -41,9 +41,24 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
 - **Battle:** lobby Anima aktif, dua fighter, HP/PP, Attack/Special/Guard,
   ordered event feedback, result/retry, dan forfeit. Counter PP hidup **hanya** di
   tombol Special, di tempat pemain membelanjakannya; label header yang dulu
-  mengulanginya sudah dihapus.   Kedua meter HP terkuras dari tepi luar layar ke
+  mengulanginya sudah dihapus. Saat duel aktif, judul halaman hanya milik lobby;
+  status turn/reward, Forfeit, dan satu fighter HUD versus menjadi combat visor
+  yang mengambang di dalam arena. HUD tidak memakai panel terpisah per monster:
+  identity dan bar HP dicerminkan ke tengah, dengan angka `current / max` di atas
+  tiap bar. Footer tinggal satu baris feedback dan tiga aksi,
+  sedangkan result membesar ke atas tanpa menggeser arena. Ini memberi sprite
+  ruang utama tanpa mengecilkan target sentuh 96px. Kedua meter HP terkuras dari tepi luar layar ke
   dalam seperti Street Fighter — bar pemain `FILL_END_TO_BEGIN`, bar bot
-  `FILL_BEGIN_TO_END` — sehingga sisa HP selalu memeluk tengah arena.
+  `FILL_BEGIN_TO_END` — sehingga sisa HP selalu memeluk tengah arena. Status row
+  menampilkan reward harian authoritative (`Rewards 2/3`) hanya selama Battle
+  berhadiah. Training menyembunyikan counter itu karena Training tidak terbatas;
+  feedback singkat tetap menjelaskan bahwa daily reward sudah selesai. Lobby memakai satu CTA kontekstual: `Battle` saat
+  reward tersedia, `Train` setelah 3/3; copy di bawahnya menjelaskan bahwa Bits,
+  Care Score, dan Battle Wins tidak diberikan serta reset terjadi 00:00 UTC.
+  Kemenangan ketiga tetap `Rewards 3/3`, sedangkan hasil Training memakai title,
+  body, dan `Train Again` khusus agar pemain tidak dijanjikan reward yang tidak
+  di-credit server. Client refresh dari `server_now`/`reset_at` saat timer atau
+  app resume, bukan dari jam device.
 - **Collection:** roster dua kolom; tap langsung membuka bottom sheet identity +
   base stats. Condition memakai skeleton sampai care authoritative tersedia,
   dengan aksi `View Profile` dan `Summon`. Thumbnail hanya dari cache.

@@ -366,10 +366,37 @@ Itu tujuan seluruh sistem ini.
 
 ### Hadiah dan tempat battle dalam loop
 
-Menang memberi tepat **5 Bits**, `care_score +4`, dan `battle_wins +1` untuk
-gerbang Ravager. Kalah dan forfeit tidak memberi reward. Item drop sengaja
-ditunda; Battle **tidak pernah** memberi Genesis Core, karena itu akan membuka
-jalur farming yang biayanya kita tanggung tanpa batas.
+Tiga kemenangan pertama per akun per hari UTC masing-masing memberi tepat
+**5 Bits**, `care_score +4`, dan `battle_wins +1` untuk gerbang Ravager. Setelah
+itu Battle tetap tersedia sebagai **Training**, tetapi ketiga progression reward
+tersebut nol. Cap harus account-wide—bukan per Anima—supaya mengganti companion
+tidak membuka farming lagi. Kalah dan forfeit tidak memberi reward. Item drop
+sengaja ditunda; Battle **tidak pernah** memberi Genesis Core, karena itu akan
+membuka jalur farming yang biayanya kita tanggung tanpa batas.
+
+Counter harian tidak punya kolom mutable sendiri. `quota_ledger` sudah mencatat
+setiap `reason = 'battle_win'`, jadi `commit_battle_turn()` menghitung tiga baris
+hari UTC ini sambil memegang profile row lock, lalu membuat keputusan dan ledger
+dalam transaksi yang sama. Counter sengaja tidak memeriksa nominal 5 Bits:
+balancing reward kelak tidak boleh diam-diam membuka cap.
+`app_config.battle_rewarded_wins_per_day` menyimpan angka 3 agar balancing bisa
+diubah tanpa deploy. Payload session dan operasi `battle_anima/status` membawa
+`daily_reward` (`earned`, `limit`, `remaining`, `server_now`, `reset_at`,
+`rewarded`); client menampilkan `Rewards 2/3` selama Battle masih berhadiah.
+Training menyembunyikan counter karena mode latihannya sendiri tidak terbatas,
+sementara feedback dan hasil tetap menyatakan bahwa progression reward sudah
+habis. Selisih dua timestamp server menjadwalkan
+refresh tepat di reset UTC tanpa mempercayai jam device. Membatasi Bits saja
+tidak cukup: `care_score` dan `battle_wins` juga gerbang evolusi, jadi exploit
+hanya akan berpindah.
+
+**Keputusan UI 14 Agustus 2026:** Battle dan Training tidak menjadi dua tombol.
+Keduanya memakai duel yang sama, jadi dua pilihan hanya memberi keputusan palsu.
+Tab tetap bernama Battle; satu CTA berbunyi `Battle` selama reward tersedia dan
+berubah menjadi `Train` setelah 3/3, dengan penjelasan bahwa Bits, Care Score,
+dan Battle Wins tidak diberikan serta reward reset pukul 00:00 UTC. Kemenangan
+ketiga tetap result Battle berhadiah (`Rewards 3/3`); mode Training baru berlaku
+untuk session berikutnya.
 
 Lawan vertical slice adalah snapshot anonim Anima `ready` milik pemain lain,
 dengan art yang sudah ada di `species_library`. Prioritasnya stage sama dan

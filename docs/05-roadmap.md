@@ -161,7 +161,9 @@ elemen, Attack/Special/Guard, PP, bot anonim, flash, angka damage, dan haptic
 ringan. Session Postgres berumur 30 menit; client menyimpan action/key tertunda,
 sedangkan server sendiri yang memutuskan turn dan reward. Menang memberi 5 Bits,
 `care_score +4`, dan `battle_wins +1`; loss/forfeit nol reward dan tidak ada
-Genesis Core.
+Genesis Core. Hanya tiga win pertama per akun per hari UTC yang memberi ketiga
+reward itu; sesudahnya satu CTA lobby berubah dari Battle menjadi Train dan duel
+tetap tersedia sebagai Training tanpa progression.
 
 Evolusi: gerbang syarat di server, ritual evolusi sebagai momen puncak, percabangan Guardian dan Ravager, dan `evolve_anima` dengan `image_input` berisi sprite Idle Anima itu sendiri. Evolusi tidak mendebit Genesis Core — alasannya di [04](04-game-systems-economy.md).
 
