@@ -7,6 +7,7 @@ const TOUCH_MIN := 96.0
 
 var _checks := 0
 var _failures: PackedStringArray = []
+var _requested_delete_id := ""
 
 
 func _initialize() -> void:
@@ -50,7 +51,7 @@ func _initialize() -> void:
 
 	for name in [
 		"ScanButton", "HomeNavButton", "ScanNavButton", "CollectionNavButton", "AnimaNavButton",
-		"FeedButton", "CleanButton", "SleepButton", "PlayButton",
+		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "DeleteAnimaButton",
 	]:
 		var button := scene.find_child(name, true, false) as Button
 		_check(button != null, "%s must exist" % name)
@@ -71,7 +72,9 @@ func _initialize() -> void:
 	if margin != null and margin.theme != null:
 		_check(margin.theme.default_font_size >= 32, "default font is readable at the 2x baseline")
 		_check(margin.theme.default_font != null, "commercial UI font must be bundled")
-		for variation in ["PrimaryButton", "CareDock", "BottomNavPanel", "NavTabButton", "ToastPanel"]:
+		for variation in [
+			"PrimaryButton", "DangerButton", "CareDock", "BottomNavPanel", "NavTabButton", "ToastPanel",
+		]:
 			_check(
 				margin.theme.get_type_variation_base(StringName(variation)) != StringName(),
 				"theme must provide %s" % variation
@@ -96,6 +99,36 @@ func _initialize() -> void:
 	_check(
 		core_info_close != null and core_info_close.custom_minimum_size.y >= TOUCH_MIN,
 		"Core info close action meets the touch target"
+	)
+	var delete_dialog := scene.find_child("DeleteAnimaDialog", true, false) as ConfirmationDialog
+	var rename_dialog := scene.find_child("RenameAnimaDialog", true, false) as ConfirmationDialog
+	var rename_input := scene.find_child("RenameAnimaInput", true, false) as LineEdit
+	_check(
+		delete_dialog != null
+		and delete_dialog.dialog_autowrap
+		and delete_dialog.get_theme_constant("buttons_min_height", "AcceptDialog") >= TOUCH_MIN,
+		"delete dialog wraps copy and keeps touch-safe actions"
+	)
+	_check(
+		delete_dialog != null
+		and delete_dialog.get_theme_constant("title_height", "Window") >= 72,
+		"dialog title keeps breathing room above its copy"
+	)
+	_check(
+		rename_dialog != null and rename_dialog.dialog_autowrap,
+		"hatch rename dialog must exist and wrap localized copy"
+	)
+	var shell_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		shell_source.find("_delete_anima_dialog.add_theme_icon_override(\"close\"") >= 0
+		and shell_source.find("_rename_anima_dialog.add_theme_icon_override(\"close\"") >= 0,
+		"small native close icons stay hidden in favor of touch-safe cancel actions"
+	)
+	_check(
+		rename_input != null
+		and rename_input.max_length == 32
+		and rename_input.custom_minimum_size.y >= TOUCH_MIN,
+		"rename input enforces the server length and touch target"
 	)
 
 	var scan_button := scene.find_child("ScanButton", true, false) as Button
@@ -154,8 +187,11 @@ func _initialize() -> void:
 	var anima := scene.find_child("Anima", true, false) as AnimatedSprite2D
 	_check(anima != null and not anima.visible, "cached art stays hidden until server care is known")
 	_test_care_feedback_is_immediate()
+	_test_collection_selection_goes_home()
+	_test_hatch_offers_rename()
 
 	scene.free()
+	await _test_anima_delete_action()
 	await _test_home_care_actions()
 	await _test_bottom_nav_busy()
 	await _test_incubator_effect()
@@ -174,6 +210,66 @@ func _test_care_feedback_is_immediate() -> void:
 		body.find("_home_view.set_busy(true)") >= 0 and body.find("_set_busy(true)") < 0,
 		"care locks only its action dock, not the whole shell"
 	)
+
+
+func _test_collection_selection_goes_home() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var start := source.find("func _on_anima_selected")
+	var end := source.find("\n\nfunc _show_delete_confirmation", start)
+	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
+	_check(
+		body.find("_switch_destination(BottomNav.HOME)") >= 0,
+		"collection selection routes directly to Home"
+	)
+	_check(
+		body.find("_switch_destination(BottomNav.ANIMA)") < 0,
+		"collection selection no longer opens the intermediate profile"
+	)
+
+
+func _test_hatch_offers_rename() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var start := source.find("func _present(")
+	var end := source.find("\n\nstatic func normalize_anima_data", start)
+	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
+	_check(
+		body.find("call_deferred(\"_show_hatch_rename\", anima_id)") >= 0,
+		"every completed scan offers optional rename after reveal"
+	)
+
+
+func _test_anima_delete_action() -> void:
+	var packed := load("res://scenes/ui/anima_details_view.tscn") as PackedScene
+	var details := packed.instantiate()
+	root.add_child(details)
+	await process_frame
+	var button := details.find_child("DeleteAnimaButton", true, false) as Button
+	_requested_delete_id = ""
+	details.delete_requested.connect(_capture_delete_request)
+	details.set_anima(
+		{
+			"id": "anima-delete-test",
+			"nickname": "Velumi",
+			"element": "flow",
+			"rarity": 1,
+			"stage": 1,
+			"care_score": 0,
+			"base_stats": {"hp": 1, "atk": 1, "def": 1, "spd": 1, "special": 1},
+		},
+		null
+	)
+	_check(button != null and not button.disabled, "loaded profile enables Delete")
+	if button != null:
+		button.pressed.emit()
+	_check_eq(_requested_delete_id, "anima-delete-test", "Delete emits only the active Anima id")
+	details.set_busy(true)
+	_check(button != null and button.disabled, "network work disables destructive action")
+	details.queue_free()
+	await process_frame
+
+
+func _capture_delete_request(anima_id: String) -> void:
+	_requested_delete_id = anima_id
 
 
 func _test_home_care_actions() -> void:

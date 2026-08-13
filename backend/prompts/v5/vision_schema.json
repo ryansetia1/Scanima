@@ -108,7 +108,7 @@
     "suggested_name": {
       "type": "string",
       "nullable": true,
-      "description": "Nama kreatur rekaan, 2-4 suku kata, tanpa merek nyata"
+      "description": "Nama kreatur rekaan, 2-4 suku kata, tanpa merek nyata dan tidak pernah berakhiran -mon"
     },
     "dominant_colors": {
       "type": "array",

@@ -226,3 +226,10 @@ layout_mode = 2
 theme_type_variation = &"StatValueLabel"
 text = "VALUE_UNAVAILABLE"
 horizontal_alignment = 2
+
+[node name="DeleteAnimaButton" type="Button" parent="Column/DetailsContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"DangerButton"
+text = "ANIMA_DELETE_ACTION"

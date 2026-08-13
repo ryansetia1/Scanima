@@ -22,6 +22,7 @@ import {
   validateVision,
   assemblePrompt,
   extractJson,
+  normalizeSuggestedName,
 } from "../backend/supabase/functions/_shared/vision.mjs";
 
 const SIZE = DEFAULTS.workSize; // 1024, jadi tidak ada resize yang mengaburkan assert
@@ -462,7 +463,7 @@ console.log("14. validateVision menegakkan yang tidak bisa dijamin schema");
     surface_finish: "smooth glazed ceramic",
     damage_hints: ["retak glasir pendek", "satu sisi bibir terkelupas"],
     character_direction: "soft, friendly, and visually neutral",
-    suggested_name: "Mugmon",
+    suggested_name: "Mugra",
   });
 
   // Gate tertutup: tidak ada gunanya memeriksa sisa isi
@@ -507,6 +508,13 @@ console.log("14. validateVision menegakkan yang tidak bisa dijamin schema");
   const vagueFeat = base();
   vagueFeat.signature_features = ["interesting texture", "unique qualities"];
   assert.equal(validateVision(vagueFeat, [], true).issues.filter((i) => i.includes("kabur")).length, 2);
+
+  const franchiseSuffix = base();
+  franchiseSuffix.suggested_name = "Mugmon";
+  const renamed = validateVision(franchiseSuffix, [], true);
+  assert.equal(renamed.vision.suggested_name, "Mugra", "nama generated tidak boleh berakhiran -mon");
+  assert.ok(renamed.issues.some((i) => i.includes("dinormalisasi")));
+  assert.equal(normalizeSuggestedName("Sporelet"), "Sporelet", "nama yang sudah aman tidak boleh berubah");
 }
 
 console.log("15. assemblePrompt tidak pernah mengirim placeholder ke model");
@@ -781,6 +789,10 @@ console.log("21. prompt v5 mengikuti karakter dan body plan objek");
   const template = await readFile(new URL("../backend/prompts/v5/sprite_sheet.md", import.meta.url), "utf8");
   const evolve = await readFile(new URL("../backend/prompts/v5/sprite_sheet_evolve.md", import.meta.url), "utf8");
   const vision = await readFile(new URL("../backend/prompts/v5/vision_system.md", import.meta.url), "utf8");
+  const createAnima = await readFile(
+    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
+    "utf8"
+  );
 
   assert.ok(
     /Zero arms,\s+zero\s+legs,\s+or neither is fully valid/.test(template),
@@ -793,6 +805,15 @@ console.log("21. prompt v5 mengikuti karakter dan body plan objek");
   assert.ok(
     /A limbless earlier form\s+stays\s+limbless/.test(evolve),
     "evolusi tidak boleh menumbuhkan anggota tubuh generik"
+  );
+  assert.ok(
+    vision.includes("Never end the name") && vision.includes("with `mon`"),
+    "Vision v5 harus melarang suffix -mon secara eksplisit"
+  );
+  assert.ok(!vision.includes("Mugmon"), "contoh nama v5 tidak boleh mengajari pola Digimon");
+  assert.ok(
+    createAnima.includes("normalizeSuggestedName(vision.suggested_name"),
+    "resume generation lama juga harus menormalkan suggested_name sebelum disimpan"
   );
 
   const idle = template.split("TOP LEFT — IDLE")[1]?.split("TOP RIGHT — BATTLE")[0] ?? "";

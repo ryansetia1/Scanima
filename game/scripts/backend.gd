@@ -140,6 +140,26 @@ func fetch_animas() -> Dictionary:
 	)
 
 
+func rename_anima(anima_id: String, nickname: String) -> Dictionary:
+	return await _send(
+		HTTPClient.METHOD_PATCH,
+		"%s/rest/v1/animas?id=eq.%s&select=id,nickname" % [URL_BASE, anima_id.uri_encode()],
+		_headers(true, ["content-type: application/json", "Prefer: return=representation"]),
+		JSON.stringify({"nickname": nickname}).to_utf8_buffer(),
+		TIMEOUT_SEC
+	)
+
+
+func delete_anima(anima_id: String) -> Dictionary:
+	return await _send(
+		HTTPClient.METHOD_DELETE,
+		"%s/rest/v1/animas?id=eq.%s&select=id" % [URL_BASE, anima_id.uri_encode()],
+		_headers(true, ["Prefer: return=representation"]),
+		PackedByteArray(),
+		TIMEOUT_SEC
+	)
+
+
 func fetch_species_art(species_key: String, color_bucket: String, stage: int) -> Dictionary:
 	return await get_rest(
 		"species_library?species_key=eq.%s&color_bucket=eq.%s&stage=eq.%d&select=sheet_path,manifest"

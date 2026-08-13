@@ -52,6 +52,15 @@ export function extractJson(raw) {
   throw new Error(`Vision tidak mengembalikan JSON yang bisa diparse: ${candidate.slice(0, 300) || "(kosong)"}`);
 }
 
+export function normalizeSuggestedName(name, fallback = "Anima") {
+  const candidate = String(name ?? "").trim().slice(0, 24);
+  if (!candidate) return fallback;
+  if (!/mon$/i.test(candidate)) return candidate;
+
+  const stem = candidate.slice(0, -3).trim();
+  return stem.length >= 2 ? `${stem}ra`.slice(0, 24) : fallback;
+}
+
 /**
  * Schema menjamin bentuk, bukan kewajaran isi. Pemeriksaan di sini menegakkan
  * hal-hal yang tidak bisa diungkapkan di responseSchema Gemini.
@@ -101,6 +110,15 @@ export function validateVision(
   if (feats.length < 2) issues.push("signature_features kurang dari 2");
   for (const f of feats) {
     if (vague.test(f.trim())) issues.push(`signature_feature kabur: "${f}"`);
+  }
+
+  if (v.suggested_name?.trim()) {
+    const fallbackName = String(v.species_key ?? "Anima").split("_")[0] || "Anima";
+    const normalizedName = normalizeSuggestedName(v.suggested_name, fallbackName);
+    if (normalizedName !== v.suggested_name.trim()) {
+      issues.push(`suggested_name '${v.suggested_name}' dinormalisasi ke '${normalizedName}'`);
+      v.suggested_name = normalizedName;
+    }
   }
 
   // Field material baru mulai v4. v1-v3 sengaja tidak punya keduanya, jadi

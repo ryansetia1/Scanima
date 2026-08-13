@@ -285,3 +285,36 @@ ok_button_text = "FILE_DIALOG_ACCEPT"
 file_mode = 0
 access = 2
 filters = PackedStringArray()
+
+[node name="DeleteAnimaDialog" type="ConfirmationDialog" parent="UI"]
+unique_name_in_owner = true
+title = "ANIMA_DELETE_TITLE"
+initial_position = 2
+size = Vector2i(640, 360)
+theme = ExtResource("3_theme")
+dialog_text = "ANIMA_DELETE_CONFIRM"
+dialog_autowrap = true
+ok_button_text = "ANIMA_DELETE_CONFIRM_ACTION"
+cancel_button_text = "ACTION_CANCEL"
+
+[node name="RenameAnimaDialog" type="ConfirmationDialog" parent="UI"]
+unique_name_in_owner = true
+title = "ANIMA_RENAME_TITLE"
+initial_position = 2
+size = Vector2i(640, 420)
+theme = ExtResource("3_theme")
+dialog_text = "ANIMA_RENAME_PROMPT"
+dialog_autowrap = true
+ok_button_text = "ANIMA_RENAME_SAVE"
+cancel_button_text = "ANIMA_RENAME_SKIP"
+
+[node name="InputCenter" type="CenterContainer" parent="UI/RenameAnimaDialog"]
+layout_mode = 2
+
+[node name="RenameAnimaInput" type="LineEdit" parent="UI/RenameAnimaDialog/InputCenter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(520, 96)
+layout_mode = 2
+max_length = 32
+placeholder_text = "ANIMA_RENAME_PLACEHOLDER"
+select_all_on_focus = true

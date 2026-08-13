@@ -20,7 +20,13 @@
 // disediakan platform.
 
 import { adminClient, json } from "../_shared/supa.ts";
-import { assemblePrompt, extractJson, validateVision, visionInstruction } from "../_shared/vision.mjs";
+import {
+  assemblePrompt,
+  extractJson,
+  normalizeSuggestedName,
+  validateVision,
+  visionInstruction,
+} from "../_shared/vision.mjs";
 import { biayaGambarUsd } from "../_shared/pricing.mjs";
 import { jalankanPrediksi, mulaiGeneration } from "../_shared/replicate.ts";
 import PROMPTS from "../_shared/prompts.generated.ts";
@@ -184,7 +190,8 @@ Deno.serve(async (req) => {
     vision = hasil.vision as Vision;
   }
 
-  const nickname = (body.nickname ?? vision.suggested_name ?? vision.species_key).slice(0, 32);
+  const generatedName = normalizeSuggestedName(vision.suggested_name, vision.species_key);
+  const nickname = (body.nickname?.trim() || generatedName).slice(0, 32);
 
   // ------------------------------------------------------------ pustaka
   if (!lanjutkan) {

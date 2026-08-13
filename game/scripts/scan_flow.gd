@@ -62,6 +62,9 @@ const SLEEP_SYNC_EPSILON_SEC := 1.0
 @onready var _collection_view: CollectionView = %CollectionView
 @onready var _details_view: AnimaDetailsView = %AnimaDetailsView
 @onready var _bottom_nav: BottomNav = %BottomNav
+@onready var _delete_anima_dialog: ConfirmationDialog = %DeleteAnimaDialog
+@onready var _rename_anima_dialog: ConfirmationDialog = %RenameAnimaDialog
+@onready var _rename_anima_input: LineEdit = %RenameAnimaInput
 
 var _busy := false
 var _roster: Array[Dictionary] = []
@@ -73,6 +76,8 @@ var _destination: StringName = BottomNav.HOME
 var _toast_revision := 0
 var _sleep_completion_timer: Timer = null
 var _sleep_sync_in_flight := false
+var _pending_delete_id := ""
+var _pending_rename_id := ""
 
 ## Singleton plugin Android, null di desktop dan di test headless.
 var _picker: Object = null
@@ -87,7 +92,20 @@ func _ready() -> void:
 	_scan_view.scan_requested.connect(_on_pick_pressed)
 	_home_view.care_requested.connect(_perform_care)
 	_collection_view.anima_selected.connect(_on_anima_selected)
+	_details_view.delete_requested.connect(_show_delete_confirmation)
 	_bottom_nav.destination_selected.connect(_switch_destination)
+	_delete_anima_dialog.confirmed.connect(_delete_confirmed)
+	_delete_anima_dialog.canceled.connect(_delete_canceled)
+	_rename_anima_dialog.confirmed.connect(_rename_confirmed)
+	_rename_anima_dialog.canceled.connect(_rename_canceled)
+	_rename_anima_input.text_submitted.connect(_rename_submitted)
+	_delete_anima_dialog.get_ok_button().theme_type_variation = &"DangerButton"
+	_rename_anima_dialog.get_ok_button().theme_type_variation = &"PrimaryButton"
+	# Tombol X native terlalu kecil untuk touch dan posisinya berubah mengikuti
+	# lebar title. Kedua dialog sudah punya aksi Cancel/Keep 96px yang eksplisit.
+	var empty_close_icon := ImageTexture.new()
+	_delete_anima_dialog.add_theme_icon_override("close", empty_close_icon)
+	_rename_anima_dialog.add_theme_icon_override("close", empty_close_icon)
 	LocaleManager.locale_changed.connect(_refresh_localized_ui)
 	_core_info_button.pressed.connect(_show_core_info)
 	_core_info_dismiss.pressed.connect(_hide_core_info)
@@ -125,6 +143,10 @@ func _ready() -> void:
 			_switch_destination(BottomNav.ANIMA)
 		if arg == "--core-info":
 			_show_core_info()
+		if arg == "--rename-demo" and not _current_anima.is_empty():
+			_show_hatch_rename(str(_current_anima.get("id", "")))
+		if arg == "--delete-demo" and not _current_anima.is_empty():
+			_show_delete_confirmation(str(_current_anima.get("id", "")))
 		if arg == "--sleep-demo" and not _current_anima.is_empty():
 			_current_anima["sleep_started_at"] = Time.get_datetime_string_from_system(true)
 			_refresh_care()
@@ -241,10 +263,123 @@ func _active_row() -> Dictionary:
 func _on_anima_selected(row: Dictionary) -> void:
 	if row.is_empty() or _busy:
 		return
+	_switch_destination(BottomNav.HOME)
+	_anima.visible = false
 	_set_busy(true)
 	await _present_row(row)
 	_set_busy(false)
-	_switch_destination(BottomNav.ANIMA)
+
+
+func _show_delete_confirmation(anima_id: String) -> void:
+	if (
+		_busy
+		or anima_id.is_empty()
+		or anima_id != str(_current_anima.get("id", ""))
+	):
+		return
+	_pending_delete_id = anima_id
+	_delete_anima_dialog.dialog_text = tr("ANIMA_DELETE_CONFIRM") % LocaleManager.display_name(
+		_current_anima
+	)
+	_delete_anima_dialog.popup_centered()
+	_delete_anima_dialog.get_cancel_button().grab_focus()
+
+
+func _delete_confirmed() -> void:
+	var anima_id := _pending_delete_id
+	if _busy or anima_id.is_empty() or anima_id != str(_current_anima.get("id", "")):
+		return
+	var deleted_name := LocaleManager.display_name(_current_anima)
+	_pending_delete_id = ""
+	_set_busy(true)
+	var res := await Backend.delete_anima(anima_id)
+	if not res.ok or typeof(res.data) != TYPE_ARRAY or (res.data as Array).is_empty():
+		_set_busy(false)
+		_say(tr("ANIMA_DELETE_ERROR"), true)
+		return
+
+	var kept: Array[Dictionary] = []
+	for row in _roster:
+		if str(row.get("id", "")) != anima_id:
+			kept.append(row)
+	_roster = kept
+	_current_anima = {}
+	GameState.remember_anima({})
+	_anima.sprite_frames = null
+	_anima.visible = false
+	await _reload_roster()
+	if not _roster.is_empty():
+		await _present_row(_roster[0])
+	else:
+		_refresh_stats()
+		_refresh_care()
+		_populate_collection()
+	_switch_destination(BottomNav.HOME)
+	_set_busy(false)
+	_say(tr("ANIMA_DELETE_SUCCESS") % deleted_name, true)
+
+
+func _delete_canceled() -> void:
+	_pending_delete_id = ""
+
+
+func _show_hatch_rename(anima_id: String) -> void:
+	if _busy or anima_id.is_empty() or anima_id != str(_current_anima.get("id", "")):
+		return
+	_pending_rename_id = anima_id
+	_rename_anima_input.text = str(_current_anima.get("nickname", "")).strip_edges()
+	_popup_rename()
+
+
+func _popup_rename() -> void:
+	if _pending_rename_id.is_empty():
+		return
+	_rename_anima_dialog.popup_centered()
+	_rename_anima_input.grab_focus()
+	_rename_anima_input.select_all()
+
+
+func _rename_confirmed() -> void:
+	var anima_id := _pending_rename_id
+	var nickname := _rename_anima_input.text.strip_edges()
+	if anima_id.is_empty() or anima_id != str(_current_anima.get("id", "")):
+		return
+	if nickname.is_empty():
+		_say(tr("ANIMA_RENAME_EMPTY"), true)
+		call_deferred("_popup_rename")
+		return
+	if _busy:
+		call_deferred("_popup_rename")
+		return
+
+	_set_busy(true)
+	var res := await Backend.rename_anima(anima_id, nickname)
+	if not res.ok or typeof(res.data) != TYPE_ARRAY or (res.data as Array).is_empty():
+		_set_busy(false)
+		_say(tr("ANIMA_RENAME_ERROR"), true)
+		call_deferred("_popup_rename")
+		return
+
+	_pending_rename_id = ""
+	_current_anima["nickname"] = nickname
+	_upsert_roster(_current_anima)
+	var remembered := GameState.last_anima.duplicate(true)
+	if str(remembered.get("id", "")) == anima_id:
+		remembered["nickname"] = nickname
+		GameState.remember_anima(remembered)
+	_refresh_stats()
+	_populate_collection()
+	_set_busy(false)
+	_say(tr("ANIMA_RENAME_SUCCESS") % nickname, true)
+
+
+func _rename_submitted(_text: String) -> void:
+	_rename_anima_dialog.hide()
+	_rename_confirmed()
+
+
+func _rename_canceled() -> void:
+	_pending_rename_id = ""
 
 
 func _present_row(row: Dictionary) -> void:
@@ -729,6 +864,8 @@ func _present(
 	if complete_scan:
 		await _sync_active_care(false)
 	_say(tr("STATUS_ANIMA_READY") % LocaleManager.display_name(_current_anima), true)
+	if complete_scan:
+		call_deferred("_show_hatch_rename", anima_id)
 
 
 static func normalize_anima_data(anima_data: Dictionary) -> Dictionary:
@@ -989,6 +1126,14 @@ func _details_available() -> bool:
 
 func _refresh_localized_ui(_locale: String = "") -> void:
 	_setup_picker()
+	_delete_anima_dialog.title = tr("ANIMA_DELETE_TITLE")
+	_delete_anima_dialog.ok_button_text = tr("ANIMA_DELETE_CONFIRM_ACTION")
+	_delete_anima_dialog.cancel_button_text = tr("ACTION_CANCEL")
+	_rename_anima_dialog.title = tr("ANIMA_RENAME_TITLE")
+	_rename_anima_dialog.dialog_text = tr("ANIMA_RENAME_PROMPT")
+	_rename_anima_dialog.ok_button_text = tr("ANIMA_RENAME_SAVE")
+	_rename_anima_dialog.cancel_button_text = tr("ANIMA_RENAME_SKIP")
+	_rename_anima_input.placeholder_text = tr("ANIMA_RENAME_PLACEHOLDER")
 	_refresh_header()
 	_refresh_stats()
 	_refresh_care()
@@ -1082,6 +1227,7 @@ func _set_busy(busy: bool) -> void:
 	_scan_view.set_busy(busy)
 	_home_view.set_busy(busy)
 	_collection_view.set_busy(busy)
+	_details_view.set_busy(busy)
 	_bottom_nav.set_busy(busy, _details_available())
 
 

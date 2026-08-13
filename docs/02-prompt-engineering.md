@@ -269,7 +269,7 @@ Konfigurasi panggilan: `temperature: 0.4` (cukup rendah agar `species_key` stabi
 
 Schema menjamin bentuk, bukan kewajaran isi. Empat pemeriksaan tambahan di kode sebelum lanjut ke Replicate:
 
-Jumlah stat dinormalisasi ke rentang 200-350 kalau LLM meleset, dengan penskalaan proporsional agar karakter relatif objeknya tetap terjaga. `species_key` dicocokkan ke daftar yang sudah ada di `species_library` dengan Levenshtein distance ≤ 2; kalau mirip, pakai yang lama — ini yang mencegah `mug_ceramic_handled` dan `mug_ceramic_handle` jadi dua entri cache berbeda. `signature_features` yang kosong atau berisi frasa kabur seperti "unique texture" memicu satu kali retry, karena fitur kabur adalah penyebab utama art yang tidak "True to Object". Dan `suggested_name` disaring terhadap blocklist kata kasar sebelum ditampilkan.
+Jumlah stat dinormalisasi ke rentang 200-350 kalau LLM meleset, dengan penskalaan proporsional agar karakter relatif objeknya tetap terjaga. `species_key` dicocokkan ke daftar yang sudah ada di `species_library` dengan Levenshtein distance ≤ 2; kalau mirip, pakai yang lama — ini yang mencegah `mug_ceramic_handled` dan `mug_ceramic_handle` jadi dua entri cache berbeda. `signature_features` yang kosong atau berisi frasa kabur seperti "unique texture" memicu satu kali retry, karena fitur kabur adalah penyebab utama art yang tidak "True to Object". `suggested_name` generated yang masih berakhiran `mon` dinormalisasi sebelum ditulis ke Anima; nickname yang diketik pemain tidak ikut diubah.
 
 ## 3. Style lock: konstanta, bukan variabel
 
@@ -330,6 +330,13 @@ Di client, Play dirancang sebagai bounce berulang sekitar 2,5 detik. Pose
 Damaged—key internal-nya tetap `defeated`—memakai heavy breathing loop selama
 Anima berada dalam Dormant. Keduanya tetap Tween procedural, berhenti saat
 state berubah, dan tunduk pada satu sakelar Reduced Motion.
+
+V5 juga menghentikan pola nama `-mon`: Vision dilarang memakai suffix itu maupun
+meniru pola nama franchise monster yang sudah ada. Pagar runtime tetap berlaku
+untuk semua versi prompt dan generation lama yang dilanjutkan, sehingga default
+production v3 tidak dapat membocorkan contoh historis `Mugmon` ke nickname baru.
+Pagar ini hanya menyentuh nama generated; nama lama tidak dimigrasi dan popup
+setelah hatch memberi pemain pilihan mempertahankan hasil model atau menggantinya.
 
 ## 4. Template prompt sprite sheet
 

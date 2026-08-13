@@ -24,6 +24,10 @@ declare
   v_refund  uuid;
   v_sukses  uuid;
   v_care_anima uuid;
+  v_delete_own uuid;
+  v_delete_other uuid;
+  v_delete_generation uuid;
+  v_cores_before_delete int;
   v         int;
   n         int;
   ok        bool;
@@ -221,6 +225,29 @@ begin
   end;
   assert ok, 'refund atas generation succeeded harus gagal keras';
 
+  -- Fixture delete dipasang sebelum role berganti. Generation sengaja menunjuk
+  -- row itu untuk memastikan audit tetap ada, sedangkan care_event harus cascade.
+  insert into public.animas (owner_id, nickname, species_key, color_bucket,
+                             element, rarity, base_stats, care, status)
+  values (u1, 'hapus sendiri', 'delete_owned', 'gray',
+          'tech', 1, v_stats, v_care, 'ready')
+  returning id into v_delete_own;
+  insert into public.animas (owner_id, nickname, species_key, color_bucket,
+                             element, rarity, base_stats, care, status)
+  values (u2, 'jangan hapus', 'delete_foreign', 'gray',
+          'tech', 1, v_stats, v_care, 'ready')
+  returning id into v_delete_other;
+  insert into public.generations
+    (owner_id, anima_id, idempotency_key, kind, status, prompt_version, model)
+  values
+    (u1, v_delete_own, 'delete-audit', 'create', 'succeeded', 'v3', 'uji')
+  returning id into v_delete_generation;
+  insert into public.care_events
+    (owner_id, anima_id, idempotency_key, action)
+  values
+    (u1, v_delete_own, 'delete-care', 'play');
+  select genesis_cores into v_cores_before_delete from public.profiles where id = u1;
+
   ----------------------------------------------------------------------------
   -- 8. Jalur client (anon key). Inilah kriteria keluar Phase 2: kuota tidak bisa
   --    dicurangi lewat panggilan langsung ke Postgres.
@@ -316,6 +343,26 @@ begin
   assert (select display_name from public.profiles where id = u1) = 'nama baru',
          'kolom kosmetik harus tetap bisa diubah client';
 
+  update public.animas set nickname = 'nama pilihan' where id = v_delete_own;
+  assert (select nickname from public.animas where id = v_delete_own) = 'nama pilihan',
+         'pemain harus bisa mengganti nickname Anima sendiri';
+  begin
+    update public.animas set nickname = '   ' where id = v_delete_own;
+    ok := false;
+  exception when check_violation then ok := true;
+  end;
+  assert ok, 'nickname kosong harus ditolak di trust boundary database';
+
+  delete from public.animas where id = v_delete_other;
+  get diagnostics n = row_count;
+  assert n = 0, 'RLS tidak boleh menghapus Anima pemain lain';
+
+  delete from public.animas where id = v_delete_own;
+  get diagnostics n = row_count;
+  assert n = 1, 'pemain harus bisa menghapus Anima sendiri';
+  assert (select genesis_cores from public.profiles where id = u1) = v_cores_before_delete,
+         'menghapus Anima tidak boleh merefund Genesis Core';
+
   -- Fungsi bawaan platform yang tadinya terekspos di /rest/v1/rpc. Ia inert kalau
   -- dipanggil, tapi EXECUTE-nya sudah dicabut di migrasi
   -- harden_platform_rls_helper; uji ini yang memberi tahu kita kalau bootstrap
@@ -332,6 +379,14 @@ begin
   --    UPDATE penuh diberikan (misalnya oleh migrasi masa depan yang longgar).
   ----------------------------------------------------------------------------
   perform set_config('role', 'none', true);
+  assert exists (select 1 from public.animas where id = v_delete_other),
+         'percobaan delete lintas pemain ternyata menghapus row';
+  assert not exists (select 1 from public.animas where id = v_delete_own),
+         'row milik sendiri masih ada setelah delete berhasil';
+  assert (select anima_id is null from public.generations where id = v_delete_generation),
+         'generation audit harus dipertahankan dengan anima_id null';
+  assert not exists (select 1 from public.care_events where anima_id = v_delete_own),
+         'care_events milik Anima terhapus harus ikut cascade';
   grant update on public.profiles to authenticated;
   perform set_config('role', 'authenticated', true);
   begin

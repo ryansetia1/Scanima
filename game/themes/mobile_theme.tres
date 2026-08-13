@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=41 format=3]
+[gd_resource type="Theme" load_steps=47 format=3]
 
 [ext_resource type="FontFile" path="res://assets/fonts/NunitoSans-Variable.ttf" id="1_body"]
 [ext_resource type="FontFile" path="res://assets/fonts/Oxanium-Variable.ttf" id="2_display"]
@@ -143,6 +143,86 @@ corner_radius_top_right = 22
 corner_radius_bottom_right = 22
 corner_radius_bottom_left = 22
 
+[sub_resource type="StyleBoxFlat" id="DangerNormal"]
+content_margin_left = 24.0
+content_margin_top = 16.0
+content_margin_right = 24.0
+content_margin_bottom = 16.0
+bg_color = Color(0.28, 0.055, 0.095, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.3, 0.42, 0.9)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[sub_resource type="StyleBoxFlat" id="DangerHover"]
+content_margin_left = 24.0
+content_margin_top = 16.0
+content_margin_right = 24.0
+content_margin_bottom = 16.0
+bg_color = Color(0.42, 0.075, 0.13, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.52, 0.6, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[sub_resource type="StyleBoxFlat" id="DangerPressed"]
+content_margin_left = 24.0
+content_margin_top = 18.0
+content_margin_right = 24.0
+content_margin_bottom = 14.0
+bg_color = Color(0.18, 0.035, 0.07, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.82, 0.4, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[sub_resource type="StyleBoxFlat" id="LineEditNormal"]
+content_margin_left = 18.0
+content_margin_top = 14.0
+content_margin_right = 18.0
+content_margin_bottom = 14.0
+bg_color = Color(0.035, 0.055, 0.115, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.278, 0.902, 1, 0.38)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="LineEditFocus"]
+content_margin_left = 18.0
+content_margin_top = 14.0
+content_margin_right = 18.0
+content_margin_bottom = 14.0
+bg_color = Color(0.045, 0.075, 0.15, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.82, 0.4, 0.92)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
 [sub_resource type="StyleBoxFlat" id="FeedNormal"]
 content_margin_left = 10.0
 content_margin_top = 12.0
@@ -237,6 +317,26 @@ border_width_top = 3
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.39, 0.82, 1, 0.58)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
+corner_radius_bottom_right = 32
+corner_radius_bottom_left = 32
+shadow_color = Color(0, 0, 0, 0.62)
+shadow_size = 26
+shadow_offset = Vector2(0, 12)
+
+[sub_resource type="StyleBoxFlat" id="DialogPanel"]
+content_margin_left = 28.0
+content_margin_top = 26.0
+content_margin_right = 28.0
+content_margin_bottom = 28.0
+expand_margin_top = 72.0
+bg_color = Color(0.035, 0.055, 0.125, 0.995)
+border_width_left = 2
+border_width_top = 3
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.39, 0.82, 1, 0.72)
 corner_radius_top_left = 32
 corner_radius_top_right = 32
 corner_radius_bottom_right = 32
@@ -584,6 +684,15 @@ Button/styles/hover = SubResource("ButtonHover")
 Button/styles/pressed = SubResource("ButtonPressed")
 Button/styles/disabled = SubResource("ButtonDisabled")
 Button/styles/focus = SubResource("ButtonFocus")
+Window/colors/title_color = Color(0.94, 0.965, 1, 1)
+Window/font_sizes/title_font_size = 28
+Window/constants/title_height = 72
+Window/styles/panel = SubResource("DialogPanel")
+Window/styles/embedded_border = SubResource("DialogPanel")
+Window/styles/embedded_unfocused_border = SubResource("DialogPanel")
+AcceptDialog/constants/buttons_min_height = 96
+AcceptDialog/constants/buttons_min_width = 180
+AcceptDialog/constants/buttons_separation = 16
 Label/colors/font_color = Color(0.94, 0.965, 1, 1)
 Label/colors/font_shadow_color = Color(0, 0, 0, 0.72)
 Label/constants/shadow_offset_x = 0
@@ -606,6 +715,12 @@ ItemList/styles/cursor = SubResource("ItemHover")
 ItemList/styles/cursor_unfocused = SubResource("ItemHover")
 ItemList/styles/selected = SubResource("ItemSelected")
 ItemList/styles/selected_focus = SubResource("ItemSelected")
+LineEdit/colors/font_color = Color(0.94, 0.965, 1, 1)
+LineEdit/colors/font_placeholder_color = Color(0.61, 0.67, 0.8, 0.82)
+LineEdit/colors/caret_color = Color(1, 0.82, 0.4, 1)
+LineEdit/font_sizes/font_size = 28
+LineEdit/styles/normal = SubResource("LineEditNormal")
+LineEdit/styles/focus = SubResource("LineEditFocus")
 HSeparator/styles/separator = SubResource("Separator")
 VScrollBar/styles/scroll = SubResource("Empty")
 VScrollBar/styles/scroll_focus = SubResource("Empty")
@@ -622,6 +737,16 @@ PrimaryButton/styles/normal = SubResource("PrimaryNormal")
 PrimaryButton/styles/hover = SubResource("PrimaryHover")
 PrimaryButton/styles/pressed = SubResource("PrimaryPressed")
 PrimaryButton/styles/disabled = SubResource("ButtonDisabled")
+DangerButton/base_type = &"Button"
+DangerButton/colors/font_color = Color(1, 0.9, 0.92, 1)
+DangerButton/colors/font_hover_color = Color(1, 1, 1, 1)
+DangerButton/colors/font_pressed_color = Color(1, 0.95, 0.78, 1)
+DangerButton/colors/font_disabled_color = Color(0.55, 0.6, 0.72, 0.58)
+DangerButton/font_sizes/font_size = 30
+DangerButton/styles/normal = SubResource("DangerNormal")
+DangerButton/styles/hover = SubResource("DangerHover")
+DangerButton/styles/pressed = SubResource("DangerPressed")
+DangerButton/styles/disabled = SubResource("ButtonDisabled")
 NavButton/base_type = &"Button"
 NavButton/font_sizes/font_size = 27
 NavButton/styles/normal = SubResource("NavNormal")

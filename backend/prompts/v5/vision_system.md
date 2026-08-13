@@ -184,8 +184,9 @@ exact physical feature is visibly present and also named in
 `signature_features`. Never add machinery underneath a non-mechanical object.
 
 `suggested_name`: an invented creature name, 2 to 4 syllables, that hints at the
-object without naming it outright. Use no real-world brand. Style it like a
-90s monster name: Mugmon, Klikra, Sneakoid, Sporelet.
+object without naming it outright. Use no real-world brand. Never end the name
+with `mon` and do not imitate naming patterns strongly associated with an
+existing monster franchise. Good examples: Klikra, Sneakoid, Sporelet, Velumi.
 
 ### Worked example — photo of a white ceramic mug with a handle
 

@@ -125,6 +125,20 @@ group by owner_id order by usd desc limit 20;
 
 Kalau tagihan harian melewati ambang yang ditetapkan, sistem harus bisa menahan diri sendiri tanpa menunggu developer bangun. Satu baris konfigurasi di tabel `app_config` yang dibaca `create_anima`: `daily_spend_cap_usd`. Saat tercapai, Genesis masuk antrean dan diberi tahu jujur ("Inkubator sedang penuh, Anima-mu diproses beberapa jam lagi"), sementara Discovery Scan tetap jalan normal karena biayanya tidak signifikan. Menahan Genesis merusak satu momen; tagihan tak terkendali merusak proyeknya.
 
+### Menghapus Anima tidak membalik transaksi
+
+Pemain boleh menghapus Anima miliknya secara permanen setelah satu dialog
+konfirmasi, tetapi **tidak menerima refund Genesis Core, Scan Charge, atau Bits**.
+Biaya Vision/generation sudah benar-benar keluar dan art spesies sudah menjadi
+bagian dari pustaka bersama; delete bukan mekanik ekonomi untuk mengulang roll.
+
+Operasinya memakai DELETE PostgREST langsung dengan policy RLS
+`auth.uid() = owner_id`, bukan Edge Function service-role baru. Row `animas`
+hilang, `care_events` ikut cascade, sedangkan `generations` dipertahankan untuk
+audit dengan `anima_id = null`. `species_library` dan cache art di device juga
+tetap ada karena satu varian dapat dipakai Anima lain. Client reload roster lalu
+memilih Anima terbaru berikutnya; kalau tidak ada, Home kembali ke empty state.
+
 ## 3. Survival / Tamagotchi mechanics
 
 Empat kebutuhan, masing-masing 0-100:

@@ -17,7 +17,7 @@ Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`**
 
 Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu mereproduksi logo merek dari fotonya di keempat pose. Larangan tekstual sudah ada di v2 dan tidak cukup, karena logonya datang dari foto referensi. **Prompt v3 kini jadi default**: ia memerintahkan model mengganti mark merek dengan permukaan polos atau marking geometris ciptaan sendiri. Uji satu foto sepatu (~$0.073) memberi 4/4 sel, residu 0,014%, logo hilang, dan `species_key` tidak bergeser. Mouse dan mug belum diulang di v3.
 
-**Prompt v5 sekarang menjadi candidate terbaru, bukan default.** V4 lebih dulu menghapus emblem semu dan damage cyborg lewat `surface_finish` + `damage_hints`; v5 mempertahankan pagar itu lalu menambah `character_direction` dari cue visual objek. Hasil boleh cute, feminin, maskulin, netral/androgynous, elegan, kokoh, atau aneh; cue ambigu wajib netral. Idle dilarang fierce/marah, sedangkan tangan dan kaki benar-benar opsional—termasuk body plan tanpa keduanya. Kontrak gratis dan dry-run menjaga data flow, tetapi production tetap v3 sampai v5 melewati Smoke Set visual berbayar.
+**Prompt v5 sekarang menjadi candidate terbaru, bukan default.** V4 lebih dulu menghapus emblem semu dan damage cyborg lewat `surface_finish` + `damage_hints`; v5 mempertahankan pagar itu lalu menambah `character_direction` dari cue visual objek. Hasil boleh cute, feminin, maskulin, netral/androgynous, elegan, kokoh, atau aneh; cue ambigu wajib netral. Idle dilarang fierce/marah, tangan dan kaki benar-benar opsional, dan nama generated tidak boleh memakai suffix `-mon`. Safety net runtime menegakkan aturan nama itu untuk semua versi prompt tanpa mengubah nickname manual. Kontrak gratis dan dry-run menjaga data flow, tetapi production tetap v3 sampai v5 melewati Smoke Set visual berbayar.
 
 Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: halo hijau di tepi sprite (0,21% → 0,014%), anggota tubuh pose kanan yang melewati garis tengah sheet, dan penjaga "keying gagal" yang salah membuang pose Attack karena speed line membuat bbox-nya seluas kuadran. Slicing sekarang menetapkan kepemilikan per komponen piksel, jadi tangan/kabel yang tersambung tidak dipotong dan bagian pose tetangga tidak ikut tercopy.
 
@@ -39,7 +39,9 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 **Jeda generation sekarang punya inkubator yang benar-benar hidup.** Setelah Genesis dimulai, foto atau Anima lama diganti telur energi procedural dengan orbit cyan-violet, scanner, spark emas, dan core yang berdenyut—tanpa asset tambahan. Ia tetap berjalan selama polling Replicate, termasuk saat pending scan dilanjutkan setelah restart. Saat webhook selesai, ring meledak menjadi flash lalu Anima muncul dengan bounce, squash-and-stretch, dan settle; kegagalan/timeout mengembalikan Anima lama. Cache hit tetap instan dan tidak memalsukan proses hatch.
 
-**UI sekarang berupa shell game mobile empat destination: Home, Scan, Collection, dan Anima Profile.** Home menjadikan Anima hero visual, kebutuhan diringkas dalam care dock, feedback mengambang tanpa mendorong layout, dan Scan tetap CTA cyan utama di bottom navigation. Keempat destination adalah child scene modular di dalam satu `scan_flow.tscn`, jadi pindah tab tidak me-reset request, pending scan, Stage, atau inkubator. Chip Core membuka penjelasan Genesis tanpa memenuhi HUD; Bond penuh menutup Play, dan saat tidur hanya Wake yang tersisa selebar dock. Timer berbasis timestamp server serta sync saat resume membangunkan Anima otomatis setelah enam jam tanpa mempercayai jam device. Seluruh copy production memakai katalog English Godot-native; `LocaleManager` menjadi pintu locale dan formatting untuk bahasa berikutnya. Theme cyan-violet-gold kini memakai font OFL Nunito Sans/Oxanium, ikon SVG berlisensi, touch target 96px, serta reduced-motion gate bersama. Pose debug hanya tinggal di `anima_demo`. `test_scan_ui.gd` menjaga 123 kontrak shell/touch/motion dan `test_i18n.gd` menjaga 828 kontrak katalog/formatter/layout.
+**UI sekarang berupa shell game mobile empat destination: Home, Scan, Collection, dan Anima Profile.** Home menjadikan Anima hero visual, kebutuhan diringkas dalam care dock, feedback mengambang tanpa mendorong layout, dan Scan tetap CTA cyan utama di bottom navigation. Keempat destination adalah child scene modular di dalam satu `scan_flow.tscn`, jadi pindah tab tidak me-reset request, pending scan, Stage, atau inkubator. Chip Core membuka penjelasan Genesis tanpa memenuhi HUD; Bond penuh menutup Play, dan saat tidur hanya Wake yang tersisa selebar dock. Timer berbasis timestamp server serta sync saat resume membangunkan Anima otomatis setelah enam jam tanpa mempercayai jam device. Seluruh copy production memakai katalog English Godot-native; `LocaleManager` menjadi pintu locale dan formatting untuk bahasa berikutnya. Theme cyan-violet-gold kini memakai font OFL Nunito Sans/Oxanium, ikon SVG berlisensi, touch target 96px, serta reduced-motion gate bersama. Pose debug hanya tinggal di `anima_demo`. `test_scan_ui.gd` menjaga 137 kontrak shell/touch/motion dan `test_i18n.gd` menjaga 913 kontrak katalog/formatter/layout.
+
+**Pemilihan dan pengelolaan roster sekarang lebih langsung.** Tap Anima di Collection memuat pilihan itu lalu membuka Home, bukan memaksa pemain melewati Profile. Setiap hatch menawarkan rename opsional dengan nama generated sebagai nilai awal. Anima aktif dapat dihapus permanen dari Profile setelah konfirmasi; tidak ada refund mata uang, generation audit dan shared species art tetap disimpan, lalu Home memilih Anima berikutnya atau kembali kosong. Policy DELETE owner-only sudah diterapkan ke project production dan lolos uji ownership, audit, cascade, serta no-refund.
 
 **Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; Feed memberi satu hop, Play memberi enam bounce selama sekitar 2,5 detik, dan pose Damaged melakukan heavy breathing loop selama Dormant. Meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
 
@@ -71,11 +73,11 @@ npm run selftest                 # 21 skenario + 12 uji tanda tangan webhook, ta
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 123 pemeriksaan shell, theme, touch, care, inkubator, reduced motion
+# Godot: 137 pemeriksaan shell, theme, touch, care, roster, reduced motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
 
-# Godot: 828 pemeriksaan katalog English, referensi key, formatter, dan layout
+# Godot: 913 pemeriksaan katalog English, referensi key, formatter, dan layout
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_i18n.gd
 
@@ -177,8 +179,8 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 123 kontrak shell + touch + motion
-│       ├── test_i18n.gd              # 828 kontrak katalog + key + wrapping
+│       ├── test_scan_ui.gd           # 137 kontrak shell + touch + roster
+│       ├── test_i18n.gd              # 913 kontrak katalog + key + wrapping
 │       ├── test_game_rules.gd        # 27 kontrak care tanpa jaringan
 │       └── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 ├── backend/
