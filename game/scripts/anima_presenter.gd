@@ -127,15 +127,27 @@ func care_feedback(action: String) -> void:
 	if UiMotion.reduced_motion:
 		modulate = Color.WHITE
 		return
-	if action == "clean":
-		if _feedback != null and _feedback.is_valid():
-			_feedback.kill()
-		_feedback = create_tween()
-		_feedback.tween_property(self, "modulate", Color(0.55, 1.2, 1.35, 1.0), 0.12)
-		_feedback.tween_property(self, "modulate", Color.WHITE, 0.34) \
-			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
-	elif action == "feed" or action == "play":
-		hop()
+
+	var tint := Color.WHITE
+	match action:
+		"feed", "play":
+			hop()
+			return
+		"clean":
+			tint = Color(0.55, 1.2, 1.35, 1.0)
+		"sleep":
+			tint = Color(0.72, 0.78, 1.08, 1.0)
+		"wake":
+			tint = Color(1.14, 1.08, 0.72, 1.0)
+		_:
+			return
+
+	if _feedback != null and _feedback.is_valid():
+		_feedback.kill()
+	_feedback = create_tween()
+	_feedback.tween_property(self, "modulate", tint, 0.12)
+	_feedback.tween_property(self, "modulate", Color.WHITE, 0.34) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 
 
 func apply_care_state(sleeping: bool, dormant: bool) -> void:

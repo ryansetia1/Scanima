@@ -274,10 +274,13 @@ func _perform_care(action: String) -> void:
 	if anima_id.is_empty():
 		return
 
-	_set_busy(true)
+	# Reaksi ini menyatakan intent pemain, bukan hasil transaksi. Meter, Bits,
+	# sleep, dan care_score tetap menunggu row authoritative dari server.
+	_home_view.set_busy(true)
 	var pending := GameState.begin_care(anima_id, action)
+	_anima.care_feedback(action)
 	await _send_pending_care(pending, true)
-	_set_busy(false)
+	_home_view.set_busy(_busy)
 
 
 func _resume_pending_care() -> void:
@@ -296,7 +299,7 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> void:
 	)
 	if res.ok:
 		GameState.finish_care()
-		if _apply_care_response(GameState.as_dict(res.data), action, show_feedback):
+		if _apply_care_response(GameState.as_dict(res.data)):
 			_say(_care_success_message(action), show_feedback)
 		return
 
@@ -313,13 +316,13 @@ func _sync_active_care(show_error: bool) -> void:
 		return
 	var res := await Backend.care_anima(anima_id, "sync")
 	if res.ok:
-		_apply_care_response(GameState.as_dict(res.data), "sync", false)
+		_apply_care_response(GameState.as_dict(res.data))
 	elif show_error:
 		print("care sync error: %s" % res.error)
 		_say(tr("ERROR_CARE_SYNC"), true)
 
 
-func _apply_care_response(data: Dictionary, action: String, show_feedback: bool) -> bool:
+func _apply_care_response(data: Dictionary) -> bool:
 	var row := normalize_anima_data(GameState.as_dict(data.get("anima")))
 	var anima_id := str(row.get("id", ""))
 	if anima_id.is_empty():
@@ -334,8 +337,6 @@ func _apply_care_response(data: Dictionary, action: String, show_feedback: bool)
 		_current_anima = row
 		_refresh_stats()
 		_refresh_care()
-		if show_feedback:
-			_anima.care_feedback(action)
 	_populate_collection()
 	return true
 

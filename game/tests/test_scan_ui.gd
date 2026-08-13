@@ -153,12 +153,27 @@ func _initialize() -> void:
 		_check(not incubator.visible, "Incubator starts hidden")
 	var anima := scene.find_child("Anima", true, false) as AnimatedSprite2D
 	_check(anima != null and not anima.visible, "cached art stays hidden until server care is known")
+	_test_care_feedback_is_immediate()
 
 	scene.free()
 	await _test_home_care_actions()
 	await _test_bottom_nav_busy()
 	await _test_incubator_effect()
 	_finish()
+
+
+func _test_care_feedback_is_immediate() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var start := source.find("func _perform_care")
+	var end := source.find("\n\nfunc _resume_pending_care", start)
+	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
+	var feedback := body.find("_anima.care_feedback(action)")
+	var request := body.find("await _send_pending_care")
+	_check(feedback >= 0 and request > feedback, "care reacts before its network response")
+	_check(
+		body.find("_home_view.set_busy(true)") >= 0 and body.find("_set_busy(true)") < 0,
+		"care locks only its action dock, not the whole shell"
+	)
 
 
 func _test_home_care_actions() -> void:

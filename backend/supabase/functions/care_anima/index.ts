@@ -31,13 +31,16 @@ type CareBody = {
   idempotency_key?: unknown;
 };
 
+// Satu client per isolate mempertahankan cache JWKS getClaims() pada request hangat.
+const db = adminClient();
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
 
-  const db = adminClient();
-  const authz = req.headers.get("authorization") ?? "";
-  const { data: auth, error: authError } = await db.auth.getUser(authz.replace(/^Bearer\s+/i, ""));
-  if (authError || !auth?.user) return json(401, { error: "token tidak sah" });
+  const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const { data: auth, error: authError } = await db.auth.getClaims(token);
+  const ownerId = auth?.claims?.sub;
+  if (authError || typeof ownerId !== "string") return json(401, { error: "token tidak sah" });
 
   let body: CareBody;
   try {
@@ -57,7 +60,7 @@ Deno.serve(async (req) => {
   }
 
   const { data, error } = await db.rpc("apply_care", {
-    p_owner: auth.user.id,
+    p_owner: ownerId,
     p_anima_id: animaId,
     p_action: action,
     p_key: key,
