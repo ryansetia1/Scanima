@@ -1,0 +1,374 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/battle_view.gd" id="1_battle"]
+[ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
+[ext_resource type="Texture2D" path="res://assets/icons/element-metal.svg" id="3_metal"]
+[ext_resource type="Texture2D" path="res://assets/icons/element-plant.svg" id="4_plant"]
+[ext_resource type="Texture2D" path="res://assets/icons/element-flow.svg" id="5_flow"]
+[ext_resource type="Texture2D" path="res://assets/icons/element-spark.svg" id="6_spark"]
+[ext_resource type="Texture2D" path="res://assets/icons/element-cloth.svg" id="7_cloth"]
+[ext_resource type="Texture2D" path="res://assets/icons/element-stone.svg" id="8_stone"]
+
+[sub_resource type="StyleBoxFlat" id="HpBackground"]
+bg_color = Color(0.025, 0.04, 0.09, 0.96)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="HpFill"]
+bg_color = Color(0.32, 0.9, 0.82, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="BattleView" type="Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_battle")
+metal_icon = ExtResource("3_metal")
+plant_icon = ExtResource("4_plant")
+flow_icon = ExtResource("5_flow")
+spark_icon = ExtResource("6_spark")
+cloth_icon = ExtResource("7_cloth")
+stone_icon = ExtResource("8_stone")
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="VBoxContainer" parent="Column"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="Column/Header"]
+layout_mode = 2
+theme_type_variation = &"PageTitleLabel"
+text = "BATTLE_TITLE"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Column/Header"]
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "BATTLE_SUBTITLE"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="BattleLobbyPanel" type="PanelContainer" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ModalPanel"
+
+[node name="LobbyColumn" type="VBoxContainer" parent="Column/BattleLobbyPanel"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="BattleLobbyEyebrow" type="Label" parent="Column/BattleLobbyPanel/LobbyColumn"]
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "BATTLE_LOBBY_EYEBROW"
+horizontal_alignment = 1
+
+[node name="BattleLobbyName" type="Label" parent="Column/BattleLobbyPanel/LobbyColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AnimaNameLabel"
+text = "BATTLE_LOBBY_TITLE"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="BattleLobbyMeta" type="Label" parent="Column/BattleLobbyPanel/LobbyColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "BATTLE_NO_ANIMA"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="BattleStartButton" type="Button" parent="Column/BattleLobbyPanel/LobbyColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "BATTLE_START"
+
+[node name="BattleContent" type="VBoxContainer" parent="Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="StatusRow" type="HBoxContainer" parent="Column/BattleContent"]
+layout_mode = 2
+
+[node name="BattleTurn" type="Label" parent="Column/BattleContent/StatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionLabel"
+text = "BATTLE_TURN"
+
+[node name="BattleMomentum" type="Label" parent="Column/BattleContent/StatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "BATTLE_MOMENTUM"
+horizontal_alignment = 2
+
+[node name="FighterHud" type="HBoxContainer" parent="Column/BattleContent"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PlayerCard" type="PanelContainer" parent="Column/BattleContent/FighterHud"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatusPanel"
+
+[node name="PlayerColumn" type="VBoxContainer" parent="Column/BattleContent/FighterHud/PlayerCard"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BattlePlayerName" type="Label" parent="Column/BattleContent/FighterHud/PlayerCard/PlayerColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "ANIMA_FALLBACK_NAME"
+text_overrun_behavior = 3
+
+[node name="ElementRow" type="HBoxContainer" parent="Column/BattleContent/FighterHud/PlayerCard/PlayerColumn"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BattlePlayerElementIcon" type="TextureRect" parent="Column/BattleContent/FighterHud/PlayerCard/PlayerColumn/ElementRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BattlePlayerElement" type="Label" parent="Column/BattleContent/FighterHud/PlayerCard/PlayerColumn/ElementRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "ELEMENT_UNKNOWN"
+
+[node name="BattlePlayerHp" type="ProgressBar" parent="Column/BattleContent/FighterHud/PlayerCard/PlayerColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+theme_override_styles/background = SubResource("HpBackground")
+theme_override_styles/fill = SubResource("HpFill")
+value = 100.0
+show_percentage = false
+
+[node name="Versus" type="Label" parent="Column/BattleContent/FighterHud"]
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "BATTLE_VS"
+vertical_alignment = 1
+
+[node name="BotCard" type="PanelContainer" parent="Column/BattleContent/FighterHud"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatusPanel"
+
+[node name="BotColumn" type="VBoxContainer" parent="Column/BattleContent/FighterHud/BotCard"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BattleBotName" type="Label" parent="Column/BattleContent/FighterHud/BotCard/BotColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "BATTLE_BOT_NAME"
+horizontal_alignment = 2
+
+[node name="ElementRow" type="HBoxContainer" parent="Column/BattleContent/FighterHud/BotCard/BotColumn"]
+layout_mode = 2
+alignment = 2
+theme_override_constants/separation = 6
+
+[node name="BattleBotElement" type="Label" parent="Column/BattleContent/FighterHud/BotCard/BotColumn/ElementRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "ELEMENT_UNKNOWN"
+
+[node name="BattleBotElementIcon" type="TextureRect" parent="Column/BattleContent/FighterHud/BotCard/BotColumn/ElementRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BattleBotHp" type="ProgressBar" parent="Column/BattleContent/FighterHud/BotCard/BotColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+theme_override_styles/background = SubResource("HpBackground")
+theme_override_styles/fill = SubResource("HpFill")
+value = 100.0
+show_percentage = false
+
+[node name="ArenaPanel" type="PanelContainer" parent="Column/BattleContent"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ModalPanel"
+
+[node name="BattleArena" type="Control" parent="Column/BattleContent/ArenaPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 270)
+layout_mode = 2
+clip_contents = true
+mouse_filter = 2
+
+[node name="BattlePlayerAnchor" type="Node2D" parent="Column/BattleContent/ArenaPanel/BattleArena"]
+unique_name_in_owner = true
+scale = Vector2(0.58, 0.58)
+
+[node name="BattlePlayerSprite" type="AnimatedSprite2D" parent="Column/BattleContent/ArenaPanel/BattleArena/BattlePlayerAnchor"]
+unique_name_in_owner = true
+visible = false
+script = ExtResource("2_presenter")
+
+[node name="BattleBotAnchor" type="Node2D" parent="Column/BattleContent/ArenaPanel/BattleArena"]
+unique_name_in_owner = true
+scale = Vector2(0.58, 0.58)
+
+[node name="BattleBotSprite" type="AnimatedSprite2D" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleBotAnchor"]
+unique_name_in_owner = true
+visible = false
+flip_h = true
+script = ExtResource("2_presenter")
+
+[node name="BattleDamage" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -40.0
+offset_right = 100.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"AnimaNameLabel"
+theme_override_colors/font_color = Color(1, 0.35, 0.48, 1)
+text = "BATTLE_DAMAGE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BattleFooter" type="Control" parent="Column/BattleContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 252)
+layout_mode = 2
+
+[node name="ActionFooter" type="VBoxContainer" parent="Column/BattleContent/BattleFooter"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="BattleFeedback" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "BATTLE_CHOOSE_ACTION"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BattleStrikeButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "BATTLE_ACTION_STRIKE"
+
+[node name="BattleSurgeButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "BATTLE_ACTION_SURGE"
+
+[node name="BattleGuardButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "BATTLE_ACTION_GUARD"
+
+[node name="BattleForfeitButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"DangerButton"
+text = "BATTLE_FORFEIT"
+
+[node name="BattleResultPanel" type="PanelContainer" parent="Column/BattleContent/BattleFooter"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"ModalPanel"
+
+[node name="ResultColumn" type="VBoxContainer" parent="Column/BattleContent/BattleFooter/BattleResultPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BattleResultTitle" type="Label" parent="Column/BattleContent/BattleFooter/BattleResultPanel/ResultColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AnimaNameLabel"
+text = "BATTLE_WIN_TITLE"
+horizontal_alignment = 1
+
+[node name="BattleResultBody" type="Label" parent="Column/BattleContent/BattleFooter/BattleResultPanel/ResultColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "BATTLE_WIN_BODY"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="BattleRetryButton" type="Button" parent="Column/BattleContent/BattleFooter/BattleResultPanel/ResultColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "BATTLE_AGAIN"

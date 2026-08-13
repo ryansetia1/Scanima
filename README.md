@@ -27,7 +27,10 @@ Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: h
 
 **Post-processing sudah dibuktikan jalan di Edge Function, dengan sheet sungguhan.** Sheet v3 sepatu (1024×1024) diproses di runtime Deno dalam **173 ms** — batas CPU 2 detik tidak pernah dekat — dan hasilnya identik piksel per piksel dengan hasil Node (3.544.272 byte channel, nol selisih). Satu modul `postprocess.mjs` dipakai kedua runtime, jadi paritas itu bukan kebetulan yang harus dijaga manual. Yang berbeda hanya kompresi PNG-nya (886 KB di Node, 964 KB di edge), sehingga hash berbasis byte tidak bisa dibandingkan lintas runtime.
 
-**Tiga Edge Function sudah hidup di produksi.** `create_anima`, `replicate_webhook`, dan `care_anima` ter-deploy; yang terakhir JWT-protected dan tidak punya model call. Smoke produksi berbiaya nol membuktikan 401 tanpa user, validasi 400, `sync`, serta dua Play dengan key sama menghasilkan Energy 95 dan `care_score` 1 sekali saja.
+**Empat Edge Function sudah hidup di produksi.** `create_anima`,
+`replicate_webhook`, `care_anima`, dan `battle_anima` ter-deploy. Battle dan
+care JWT-protected dan tidak punya model call. Smoke produksi menjaga 401 tanpa
+user, validasi payload, care idempoten, serta start/resume/turn/forfeit Battle.
 
 Satu jebakan ditemukan hanya karena jalur itu dicoba sungguhan: **sign-in anonim mati secara default di project Supabase**, dan Scanima tidak punya layar login. Setiap pemain baru akan gagal di detik pertama, di jalur yang tidak berbiaya sehingga tidak ada uji berbayar yang akan menangkapnya. Sekarang menyala di remote dan dideklarasikan di `config.toml`.
 
@@ -41,13 +44,36 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 **Jeda generation sekarang punya inkubator yang benar-benar hidup.** Setelah Genesis dimulai, foto atau Anima lama diganti telur energi procedural dengan orbit cyan-violet, scanner, spark emas, dan core yang berdenyut—tanpa asset tambahan. Ia tetap berjalan selama polling Replicate, termasuk saat pending scan dilanjutkan setelah restart. Saat webhook selesai, ring meledak menjadi flash lalu Anima muncul dengan bounce, squash-and-stretch, dan settle; kegagalan/timeout mengembalikan Anima lama. Cache hit tetap instan dan tidak memalsukan proses hatch.
 
-**UI sekarang berupa shell game mobile empat destination: Home, Scan, Collection, dan Anima Profile.** Home menjadikan Anima hero visual, kebutuhan diringkas dalam care dock, feedback mengambang tanpa mendorong layout, dan Scan tetap CTA cyan utama di bottom navigation. Keempat destination adalah child scene modular di dalam satu `scan_flow.tscn`, jadi pindah tab tidak me-reset request, pending scan, Stage, atau inkubator. Chip Core membuka penjelasan Genesis tanpa memenuhi HUD; Bond penuh menutup Play, dan saat tidur hanya Wake yang tersisa selebar dock. Timer berbasis timestamp server serta sync saat resume membangunkan Anima otomatis setelah enam jam tanpa mempercayai jam device. Seluruh copy production memakai katalog English Godot-native; `LocaleManager` menjadi pintu locale dan formatting untuk bahasa berikutnya. Theme cyan-violet-gold kini memakai font OFL Nunito Sans/Oxanium, ikon SVG berlisensi, touch target 96px, serta reduced-motion gate bersama. Pose debug hanya tinggal di `anima_demo`. `test_scan_ui.gd` menjaga 171 kontrak shell/touch/motion dan `test_i18n.gd` menjaga 1050 kontrak katalog/formatter/layout.
+**UI sekarang berupa shell game mobile lima destination: Home, Scan, Battle,
+Collection, dan Anima Profile.** Semua tab memakai ikon di atas label agar lima
+target 96px tetap muat; Scan tetap CTA cyan dan Battle punya state aktif
+tersendiri. Child scene persisten membuat pindah tab tidak me-reset request,
+pending scan/care/battle, Stage, atau inkubator. Seluruh copy production memakai
+katalog English Godot-native, theme cyan-violet-gold, ikon SVG berlisensi, dan
+Reduced Motion bersama. `test_scan_ui.gd` menjaga 249 kontrak
+shell/touch/Battle/motion dan `test_i18n.gd` menjaga 1313 kontrak katalog.
 
 **Collection sekarang memisahkan inspect dari Summon.** Tap kartu membuka bottom sheet dengan portrait, lima base stat, dan empat care meter yang disinkronkan server. `View Profile` membuka stats/delete tanpa mengganti companion aktif; `Summon` baru memindahkan pilihan ke Home melalui dissolve, portal cyan-violet, dan reveal, tanpa biaya atau model call. Roster yang benar-benar kosong menampilkan scanner procedural serta CTA first scan di Home dan Collection; loading atau error jaringan tidak lagi menyamar sebagai pemain baru. Setiap hatch tetap menawarkan rename opsional. Delete owner-only sudah live di production dan tetap tanpa refund.
 
 **Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; Feed memberi satu hop, Play memberi enam bounce selama sekitar 2,5 detik, dan pose Damaged melakukan heavy breathing loop selama Dormant. Meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
 
-Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan. Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**: itu akan meninggalkan koleksi di akun yang tidak bisa dijangkau lagi. Kedua, **kunci idempotency scan dan care bertahan di disk**, sehingga app yang mati tidak membayar Core/Bits kedua. Keduanya dijaga oleh 42 check di `test_client_state.gd`.
+**Battle vertical slice Phase 3 sudah live.** Anima aktif yang `ready`, bangun,
+dan tidak Dormant melawan snapshot anonim Anima pemain lain. Strike, Surge, dan
+Guard dihitung server dari satu modul formula; Postgres mengunci turn/version,
+menyimpan replay idempoten, dan memberi reward menang 5 Bits,
+`care_score +4`, `battle_wins +1` dalam transaksi yang sama. Session berumur 30
+menit dan bisa dilanjutkan setelah restart. Kalah/forfeit nol reward; Battle
+tidak pernah memberi Genesis Core. PvP, tim, ranked, dan item drop belum masuk
+scope. Initiative mengikuti SPD dan diumumkan sebelum animasi; kedua petarung
+menghadap serta menerjang ke arah lawan.
+
+Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan.
+Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**:
+itu akan meninggalkan koleksi di akun yang tidak bisa dijangkau lagi. Kedua,
+**kunci idempotency scan, care, dan Battle bertahan di disk**, sehingga app yang
+mati tidak membayar atau commit dua kali. Transport juga memperbarui access
+token sebelum setiap request terautentikasi. Ini dijaga oleh 60 check di
+`test_client_state.gd`.
 
 **Kamera sudah terpasang lewat plugin, bukan lewat `CameraServer`.** `CameraServer` memang mendukung Android sejak setelah 4.4, tapi ia memberi feed hidup sementara yang dibutuhkan satu jepretan — jadi memakainya berarti membangun sendiri fokus, eksposur, dan tombol jepret yang sudah gratis dari aplikasi kamera OEM. Yang dipakai [`GodotGetImage` fork PhotoPicker](https://github.com/cenullum/GodotGetImagePlugin-Android-PhotoPicker), prebuilt untuk 4.6.2, dan fork-nya dipilih karena manifest upstream menyuntikkan `READ_MEDIA_IMAGES` ke APK walau galeri tidak pernah dipanggil — izin yang ditolak Play untuk keperluan pilih-satu-foto. Galeri sengaja tidak dipakai: fiksinya memfoto benda di depanmu, dan galeri membuka pintu memindai gambar unduhan yang justru harus ditahan gate. Foto dikecilkan ke 1280 px di device sebelum diunggah, dan angka itu sama dengan foto terbesar di `eval/photos/` supaya input produksi tidak keluar dari amplop yang sudah divalidasi Smoke Set — dijaga gratis oleh skenario 18. Jalur `FileDialog` di desktop tetap ada, karena itu yang membuat seluruh alur bisa diperiksa tanpa perangkat Android.
 
@@ -58,32 +84,32 @@ Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan
 | 0 | Arsitektur, prompt spec, desain sistem | Selesai |
 | 1 | MVP: buktikan pipeline art end-to-end | Terbukti — Smoke Set v2 3/3 sheet 4/4 pose, gate 2/2 |
 | 2 | Backend Supabase + core game loop | Selesai — scan, hatch, Koleksi, Stats, Care, dan visual shell sudah hidup |
-| 3 | Battle, evolusi, onboarding, audio, monetisasi | Belum mulai |
+| 3 | Battle, evolusi, onboarding, audio, monetisasi | Berjalan — Battle vertical slice live |
 | 4 | Soft launch itch.io lalu Play Store | Belum mulai |
 
 Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 22 skenario + 12 uji tanda tangan webhook, tanpa API
+npm run selftest                 # 23 skenario + 12 uji tanda tangan webhook, tanpa API
 
 # Godot: 89 pemeriksaan slicing/presenter, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_sprite_slicing.gd
 
-# Godot: 42 pemeriksaan sesi, pending scan/care, dan cache art — tanpa jaringan
+# Godot: 55 pemeriksaan sesi, pending scan/care/Battle, dan cache art
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 171 pemeriksaan shell, theme, touch, care, roster, reduced motion
+# Godot: 239 pemeriksaan shell, touch, Battle, roster, reduced motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
 
-# Godot: 1050 pemeriksaan katalog English, referensi key, formatter, dan layout
+# Godot: 1299 pemeriksaan katalog English, referensi key, formatter, dan layout
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_i18n.gd
 
-# Godot: 27 pemeriksaan decay, sleep, score harian, dan Dormant
+# Godot: 30 pemeriksaan care serta kontrak event Battle
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_game_rules.gd
 
@@ -92,6 +118,10 @@ npm run selftest                 # 22 skenario + 12 uji tanda tangan webhook, ta
 
 # Demo art: Anima placeholder yang bisa berganti pose dan memantul
 /Applications/Godot.app/Contents/MacOS/Godot --path game res://scenes/anima_demo.tscn
+
+# Preview Battle 720×1280 tanpa model call
+/Applications/Godot.app/Contents/MacOS/Godot --path game -- \
+    --battle-demo --screenshot=/tmp/battle.png
 ```
 
 Kontrak antara kedua sisi juga diuji tanpa biaya. Node menghasilkan sheet, Godot memuatnya:
@@ -145,7 +175,7 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 | [docs/03-godot-sprite-pipeline.md](docs/03-godot-sprite-pipeline.md) | Arsitektur node Godot, download + slicing sprite, background removal, animasi prosedural |
 | [docs/04-game-systems-economy.md](docs/04-game-systems-economy.md) | Survival mechanics, evo-tree, kuota, ekonomi dengan angka nyata, algoritma battle |
 | [docs/05-roadmap.md](docs/05-roadmap.md) | Breakdown Phase 1-4 dengan exit criteria dan risiko |
-| [docs/06-ui-globalization.md](docs/06-ui-globalization.md) | Shell mobile empat destination, design tokens, i18n, accessibility, dan aturan penambahan locale |
+| [docs/06-ui-globalization.md](docs/06-ui-globalization.md) | Shell mobile lima destination, design tokens, i18n, accessibility, dan aturan penambahan locale |
 | [docs/07-collection-summon-and-empty-state.md](docs/07-collection-summon-and-empty-state.md) | Desain bottom sheet Collection, transisi Summon, dan empty state pemain tanpa Anima |
 | [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md) | Sumber art direction v2: linework, cel shading, transformasi objek, pose, dan negative style |
 | [CLAUDE.md](CLAUDE.md) | Konteks dan konvensi untuk AI coding agent |
@@ -163,10 +193,10 @@ scanima/
 │   ├── assets/                    # font OFL + ikon SVG beserta lisensinya
 │   ├── locales/ui.csv             # katalog player-facing, English source
 │   ├── scripts/
-│   │   ├── game_state.gd         # autoload: sesi, pending scan/care, cache art
+│   │   ├── game_state.gd         # autoload: sesi, pending scan/care/Battle
 │   │   ├── backend.gd            # autoload: auth, REST, Storage, functions
 │   │   ├── locale_manager.gd     # autoload: locale, formatter, enum mapping
-│   │   ├── scan_flow.gd          # orkestrasi scan/care + shell navigation
+│   │   ├── scan_flow.gd          # orkestrasi scan/care/Battle + navigation
 │   │   ├── *_view.gd             # presentation per destination
 │   │   ├── care_rules.gd         # mirror murni decay/sleep untuk preview + test
 │   │   ├── incubator_effect.gd   # telur energi procedural + burst
@@ -182,10 +212,11 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 171 kontrak shell + touch + roster
-│       ├── test_i18n.gd              # 1050 kontrak katalog + key + wrapping
-│       ├── test_game_rules.gd        # 27 kontrak care tanpa jaringan
-│       └── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
+│       ├── test_scan_ui.gd           # 249 kontrak shell + Battle + touch
+│       ├── test_i18n.gd              # 1313 kontrak katalog + key + wrapping
+│       ├── test_game_rules.gd        # 30 kontrak care + event Battle
+│       ├── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
+│       └── live_battle.gd            # Battle produksi, nol model call
 ├── backend/
 │   ├── prompts/v1/               # baseline nano-banana-pro, tidak diubah
 │   ├── prompts/v2/               # GPT Image 2 medium + anime cel-shaded style

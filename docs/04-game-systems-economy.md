@@ -262,6 +262,12 @@ Yang mencegah ini dieksploitasi bukan mata uang, tapi syaratnya sendiri: satu An
 
 Battle harus memenuhi satu syarat yang tidak biasa: ia harus membuat stat yang berasal dari foto **terasa** berasal dari foto. Kalau gunting dan bantal bertarung dengan cara yang sama, seluruh premis "stat diturunkan dari objek nyata" jadi hiasan kosong.
 
+**Vertical slice ini sudah live sejak 13 Agustus 2026.** Satu-satunya sumber
+formula production adalah
+`backend/supabase/functions/_shared/battle.mjs`; potongan GDScript di bawah
+menjelaskan rumusnya, bukan implementasi kedua. Client hanya mengirim
+Strike/Surge/Guard dan menganimasikan ordered event log dari server.
+
 ### Stat turunan
 
 `base_stats` dari Vision LLM (masing-masing 10-95) diubah jadi stat battle:
@@ -346,13 +352,27 @@ Auto-battle akan lebih mudah dibuat, tapi tiga pilihan per turn adalah harga yan
 
 **Momentum** adalah sumber daya per-battle, maksimal 5, mulai dari 3, pulih 1 per turn. Ia sengaja dinamai berbeda dari mata uang di bagian 2 karena ia bukan mata uang: ia lahir dan mati di dalam satu pertarungan, tidak pernah disimpan, dan tidak bisa dibeli. Perannya menciptakan ritme bertahan-lalu-menyerang tanpa perlu sistem cooldown per skill: pemain menahan diri untuk mengumpulkan Surge, dan itu keputusan yang cukup menarik untuk dibuat berulang kali.
 
-Urutan turn dari SPD, dengan tiebreak acak. `Surge` memakai SPECIAL, yang di [02](02-prompt-engineering.md) diturunkan dari kompleksitas fungsional objek — sehingga keyboard mekanis dengan banyak tombol benar-benar bertarung berbeda dari batu, dan bedanya bisa dijelaskan dengan menunjuk objek aslinya. Itu tujuan seluruh sistem ini.
+Urutan turn dari SPD, dengan tiebreak acak. Karena itu bot sah menyerang lebih
+dulu setelah pemain memilih aksi; client mengumumkan nama aktor serta kedua
+angka SPD sebelum animasi agar initiative terbaca jelas. `Surge` memakai SPECIAL,
+yang di [02](02-prompt-engineering.md) diturunkan dari kompleksitas fungsional
+objek — sehingga keyboard mekanis dengan banyak tombol benar-benar bertarung
+berbeda dari batu, dan bedanya bisa dijelaskan dengan menunjuk objek aslinya.
+Itu tujuan seluruh sistem ini.
 
 ### Hadiah dan tempat battle dalam loop
 
-Battle memberi Bits, item perawatan, `care_score` +4, dan hitungan kemenangan untuk gerbang Ravager. Battle **tidak pernah** memberi Genesis Core, karena itu akan membuka jalur farming yang biayanya kita tanggung tanpa batas.
+Menang memberi tepat **5 Bits**, `care_score +4`, dan `battle_wins +1` untuk
+gerbang Ravager. Kalah dan forfeit tidak memberi reward. Item drop sengaja
+ditunda; Battle **tidak pernah** memberi Genesis Core, karena itu akan membuka
+jalur farming yang biayanya kita tanggung tanpa batas.
 
-Lawan di Phase 3 adalah bot yang disusun dari `species_library` — tim yang dibangun dari spesies yang benar-benar ditemukan pemain lain, dengan stat yang di-roll pada level yang sepadan. Ini memberi rasa dunia yang hidup tanpa perlu satu pun baris kode netcode, dan memakai aset yang sudah ada. PvP asinkron (menghadapi salinan tim pemain lain, bukan real-time) adalah kandidat Phase 5, bukan lebih awal.
+Lawan vertical slice adalah snapshot anonim Anima `ready` milik pemain lain,
+dengan art yang sudah ada di `species_library`. Prioritasnya stage sama dan
+total base stat dalam ±15%; fallback dinormalisasi ke power pemain. `owner_id`
+dan nickname tidak pernah dikirim ke lawan. Ini memberi rasa dunia yang hidup
+tanpa netcode. PvP/asynchronous matchmaking, tim multi-Anima, ranked ladder,
+dan item drop ditunda setelah vertical slice terbukti.
 
 ## 6. Loop harian yang diharapkan
 
@@ -373,58 +393,19 @@ Targetnya 5-8 menit per sesi, dua sesi per hari. Yang menarik pemain kembali bes
 
 ## 7. Pemeriksaan yang wajib ada
 
-Tiga bagian di dokumen ini punya logika yang kalau rusak akan merusak keseimbangan game secara halus dan sulit dilacak: decay, roda elemen, dan rumus damage. Satu file assert, dijalankan lewat `godot --headless --script res://tests/test_game_rules.gd`.
+Care dan combat sengaja diuji di runtime yang memiliki sumber kebenarannya:
 
-```gdscript
-extends SceneTree
+- `game/tests/test_game_rules.gd` menguji decay, Sleep, Dormant, score, dan
+  validasi kontrak event yang diterima client.
+- `eval/selftest.mjs` mengimpor **file combat production yang sama** dengan Edge
+  Function. Ia menjaga enam relasi elemen, minimum damage, DEF pierce, crit cap,
+  Guard, Momentum, SPD order, KO, batas turn, dan deterministic retry.
+- `backend/tests/quota_rules.sql` menguji eligibility, satu active session,
+  stale/concurrent turn, replay idempoten, reward atomik, nol reward
+  loss/forfeit, Core tidak berubah, dan RPC/tabel tertutup dari client.
+- `game/tests/live_battle.gd` melewati transport production untuk
+  start/resume/Strike/Guard/Surge/replay/forfeit tanpa model call.
 
-func _init() -> void:
-	var full := { "hunger": 100.0, "energy": 100.0, "hygiene": 100.0, "bond": 50.0 }
-
-	# Grace period: 8 jam pertama tidak menghukum
-	var after_8h := CareRules.apply_decay(full, 0.0, 8.0 * 3600.0)
-	assert(after_8h["hunger"] == 100.0, "grace 8 jam harus utuh")
-
-	# Decay berjalan setelah grace: 18 jam = 10 jam efektif = hunger habis
-	var after_18h := CareRules.apply_decay(full, 0.0, 18.0 * 3600.0)
-	assert(after_18h["hunger"] == 0.0, "hunger harus habis di 10 jam efektif")
-
-	# Plafon 48 jam: seminggu tidak lebih buruk daripada dua hari
-	var after_2d := CareRules.apply_decay(full, 0.0, 56.0 * 3600.0)
-	var after_7d := CareRules.apply_decay(full, 0.0, 168.0 * 3600.0)
-	assert(after_2d["hygiene"] == after_7d["hygiene"], "decay harus berplafon")
-
-	# Tidak ada nilai negatif, apa pun yang terjadi
-	for need in ["hunger", "energy", "hygiene", "bond"]:
-		assert(after_7d[need] >= 0.0, "kebutuhan tidak boleh negatif: " + need)
-
-	# Roda elemen: siklus tertutup, tidak ada elemen yang kuat vs dirinya
-	var cycle := BattleRules.ELEMENT_CYCLE
-	for i in cycle.size():
-		var me: String = cycle[i]
-		var next: String = cycle[(i + 1) % cycle.size()]
-		assert(is_equal_approx(BattleRules.element_multiplier(me, next), 1.5),
-			me + " harus kuat vs " + next)
-		assert(is_equal_approx(BattleRules.element_multiplier(next, me), 0.67),
-			next + " harus lemah vs " + me)
-		assert(is_equal_approx(BattleRules.element_multiplier(me, me), 1.0),
-			me + " harus netral vs dirinya sendiri")
-
-	# Damage: DEF tinggi meredam tapi tidak pernah membuat kebal
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 42
-	var vs_tank := BattleRules.compute_damage(20, 95, 50.0, 1.0, false, rng)
-	assert(vs_tank >= 1, "damage minimum harus 1, bukan 0")
-	var vs_paper := BattleRules.compute_damage(20, 10, 50.0, 1.0, false, rng)
-	assert(vs_paper > vs_tank, "DEF rendah harus menerima damage lebih besar")
-
-	# Keunggulan elemen benar-benar terasa
-	var neutral := BattleRules.compute_damage(60, 50, 50.0, 1.0, false, rng)
-	var strong := BattleRules.compute_damage(60, 50, 50.0, 1.5, false, rng)
-	assert(strong > neutral, "x1.5 harus menghasilkan damage lebih besar")
-
-	print("test_game_rules: OK")
-	quit()
-```
-
-Assert `vs_tank >= 1` adalah yang paling penting di antara semuanya. Ia menjaga keputusan desain yang mudah tergerus saat balancing: kalau seseorang nanti mengganti peredam DEF dengan pengurang sederhana, test ini gagal dan alasannya langsung terlihat, alih-alih muncul berbulan-bulan kemudian sebagai laporan "battle-nya nyangkut".
+Minimum damage tetap pagar balancing paling penting: kalau peredam DEF
+`100/(100+DEF)` diganti pengurang sederhana, selftest gagal sebelum pertarungan
+macet muncul sebagai laporan pemain.

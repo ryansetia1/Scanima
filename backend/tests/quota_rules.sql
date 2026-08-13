@@ -28,6 +28,15 @@ declare
   v_delete_other uuid;
   v_delete_generation uuid;
   v_cores_before_delete int;
+  v_battle_player uuid;
+  v_battle_bot uuid;
+  v_battle_session uuid;
+  v_battle_player_snapshot jsonb;
+  v_battle_bot_snapshot jsonb;
+  v_battle_state jsonb;
+  v_bits_before_battle int;
+  v_score_before_battle int;
+  v_wins_before_battle int;
   v         int;
   n         int;
   ok        bool;
@@ -603,6 +612,228 @@ begin
   perform public.apply_care(u1, v_care_anima, 'clean', 'care-recover-clean-2');
   assert (select dormant_since is null from public.animas where id = v_care_anima),
          'Hunger dan Hygiene >=50 harus memulihkan Dormant';
+
+  ----------------------------------------------------------------------------
+  -- 11. Battle: eligibility, satu session, turn idempoten, dan reward atomik
+  ----------------------------------------------------------------------------
+  v_battle_player := v_care_anima;
+  select id into v_battle_bot
+    from public.animas
+   where owner_id = u2 and status = 'ready'
+   order by created_at
+   limit 1;
+  assert v_battle_bot is not null, 'fixture Battle membutuhkan bot ready pemain lain';
+
+  v_battle_player_snapshot := jsonb_build_object(
+    'anima_id', v_battle_player,
+    'name', 'Uji Anima',
+    'species_key', 'mouse_plastic',
+    'color_bucket', 'gray',
+    'stage', 1,
+    'element', 'metal',
+    'base_stats', '{"hp":50,"atk":50,"def":50,"spd":50,"special":50}'::jsonb
+  );
+  v_battle_bot_snapshot := jsonb_build_object(
+    'anima_id', v_battle_bot,
+    'nickname', 'NAMA RAHASIA',
+    'owner_id', u2,
+    'species_key', v_spesies,
+    'color_bucket', 'gray',
+    'stage', 1,
+    'element', 'plant',
+    'base_stats', '{"hp":50,"atk":50,"def":50,"spd":50,"special":50}'::jsonb
+  );
+  v_battle_state := jsonb_build_object(
+    'status', 'active',
+    'turn', 1,
+    'seed', 'quota-battle',
+    'player', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3),
+    'bot', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3)
+  );
+
+  -- Batas kepemilikan diverifikasi lagi di transaksi, bukan dipercaya dari JWT
+  -- yang sudah diterjemahkan Edge Function menjadi p_owner.
+  begin
+    perform public.start_battle(
+      u1, v_battle_bot, v_battle_player,
+      v_battle_bot_snapshot, v_battle_player_snapshot, v_battle_state, 'cross-owner'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ANIMA_NOT_FOUND');
+  end;
+  assert ok, 'pemain tidak boleh memulai Battle memakai Anima pemain lain';
+
+  update public.animas
+     set sleep_started_at = now(),
+         sleep_energy_at_start = 50,
+         care_synced_at = now()
+   where id = v_battle_player;
+  begin
+    perform public.start_battle(
+      u1, v_battle_player, v_battle_bot,
+      v_battle_player_snapshot, v_battle_bot_snapshot, v_battle_state, 'sleeping'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ANIMA_SLEEPING');
+  end;
+  assert ok, 'Anima tidur tidak boleh masuk Battle';
+
+  update public.animas
+     set sleep_started_at = null,
+         sleep_energy_at_start = null,
+         dormant_since = now(),
+         care = '{"hunger":0,"energy":100,"hygiene":0,"bond":0}'::jsonb,
+         care_synced_at = now()
+   where id = v_battle_player;
+  begin
+    perform public.start_battle(
+      u1, v_battle_player, v_battle_bot,
+      v_battle_player_snapshot, v_battle_bot_snapshot, v_battle_state, 'dormant'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ANIMA_DORMANT');
+  end;
+  assert ok, 'Anima Dormant tidak boleh masuk Battle';
+  update public.animas set dormant_since = null where id = v_battle_player;
+
+  v_j := public.start_battle(
+    u1, v_battle_player, v_battle_bot,
+    v_battle_player_snapshot, v_battle_bot_snapshot, v_battle_state, 'battle-win'
+  );
+  v_battle_session := (v_j->>'id')::uuid;
+  assert v_battle_session is not null, 'start Battle harus membuat session';
+  assert not (v_j->'bot_snapshot' ? 'owner_id')
+         and not (v_j->'bot_snapshot' ? 'nickname'),
+         'snapshot bot yang kembali ke client wajib anonim';
+  v_j2 := public.start_battle(
+    u1, v_battle_player, v_battle_bot,
+    v_battle_player_snapshot, v_battle_bot_snapshot, v_battle_state, 'battle-start-race'
+  );
+  assert (v_j2->>'id')::uuid = v_battle_session,
+         'dua start paralel harus bertemu di satu session aktif';
+  assert (public.resume_battle(u1, v_battle_session)->>'id')::uuid = v_battle_session,
+         'session aktif harus bisa dilanjutkan setelah restart';
+
+  select bits into v_bits_before_battle from public.profiles where id = u1;
+  select care_score, battle_wins
+    into v_score_before_battle, v_wins_before_battle
+    from public.animas where id = v_battle_player;
+  v_battle_state := jsonb_build_object(
+    'status', 'won',
+    'turn', 2,
+    'seed', 'battle-win',
+    'player', jsonb_build_object('hp', 120, 'max_hp', 220, 'momentum', 2),
+    'bot', jsonb_build_object('hp', 0, 'max_hp', 220, 'momentum', 3)
+  );
+  v_j := public.commit_battle_turn(
+    u1, v_battle_session, 1, 1, 'battle-turn-win', 'surge',
+    v_battle_state,
+    '[{"type":"attack","actor":"player","damage":220},{"type":"finished","result":"won"}]'::jsonb,
+    'strike'
+  );
+  assert (v_j #>> '{reward,bits}')::int = 5, 'menang harus memberi 5 Bits';
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 5,
+         'saldo Bits dan response reward harus commit bersama';
+  assert (select care_score from public.animas where id = v_battle_player)
+           = v_score_before_battle + 4,
+         'menang harus memberi care_score +4';
+  assert (select battle_wins from public.animas where id = v_battle_player)
+           = v_wins_before_battle + 1,
+         'menang harus menaikkan battle_wins satu';
+  assert (select count(*) from public.quota_ledger
+           where ref_id = v_battle_session and currency = 'bits'
+             and delta = 5 and reason = 'battle_win') = 1,
+         'reward Battle harus punya tepat satu baris ledger';
+
+  v_j2 := public.commit_battle_turn(
+    u1, v_battle_session, 1, 1, 'battle-turn-win', 'surge',
+    v_battle_state,
+    '[{"type":"attack","actor":"player","damage":220},{"type":"finished","result":"won"}]'::jsonb,
+    'strike'
+  );
+  assert (v_j2->>'replayed')::bool, 'retry turn harus mengembalikan response tersimpan';
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 5,
+         'retry tidak boleh membayar reward kedua';
+  assert (select count(*) from public.battle_turns
+           where session_id = v_battle_session) = 1,
+         'retry harus tetap satu battle_turn';
+
+  begin
+    perform public.commit_battle_turn(
+      u1, v_battle_session, 1, 1, 'battle-race-loser', 'strike',
+      v_battle_state, '[]'::jsonb, 'strike'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'BATTLE_FINISHED');
+  end;
+  assert ok, 'request turn kedua yang kalah race tidak boleh commit';
+
+  -- Kalah dan forfeit tidak pernah menyentuh Bits, score, wins, atau Core.
+  v_j := public.start_battle(
+    u1, v_battle_player, v_battle_bot,
+    v_battle_player_snapshot, v_battle_bot_snapshot,
+    jsonb_set(jsonb_set(v_battle_state, '{status}', '"active"'), '{turn}', '1'),
+    'battle-loss'
+  );
+  v_battle_session := (v_j->>'id')::uuid;
+  select bits, genesis_cores into v_bits_before_battle, v from public.profiles where id = u1;
+  select care_score, battle_wins
+    into v_score_before_battle, v_wins_before_battle
+    from public.animas where id = v_battle_player;
+  perform public.commit_battle_turn(
+    u1, v_battle_session, 1, 1, 'battle-turn-loss', 'strike',
+    jsonb_build_object(
+      'status', 'lost', 'turn', 2, 'seed', 'battle-loss',
+      'player', jsonb_build_object('hp', 0, 'max_hp', 220, 'momentum', 3),
+      'bot', jsonb_build_object('hp', 100, 'max_hp', 220, 'momentum', 2)
+    ),
+    '[{"type":"finished","result":"lost"}]'::jsonb,
+    'surge'
+  );
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle,
+         'kalah tidak boleh memberi Bits';
+  assert (select genesis_cores from public.profiles where id = u1) = v,
+         'Battle tidak pernah mengubah Genesis Core';
+  assert (select care_score from public.animas where id = v_battle_player)
+           = v_score_before_battle
+         and (select battle_wins from public.animas where id = v_battle_player)
+           = v_wins_before_battle,
+         'kalah tidak boleh memberi score atau win';
+
+  v_j := public.start_battle(
+    u1, v_battle_player, v_battle_bot,
+    v_battle_player_snapshot, v_battle_bot_snapshot,
+    jsonb_build_object(
+      'status', 'active', 'turn', 1, 'seed', 'battle-forfeit',
+      'player', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3),
+      'bot', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3)
+    ),
+    'battle-forfeit'
+  );
+  v_battle_session := (v_j->>'id')::uuid;
+  select bits into v_bits_before_battle from public.profiles where id = u1;
+  perform public.forfeit_battle(u1, v_battle_session);
+  assert (select status from public.battle_sessions where id = v_battle_session) = 'forfeited',
+         'forfeit harus menutup session';
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle,
+         'forfeit tidak boleh memberi reward';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform public.resume_battle(u1, v_battle_session);
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh memanggil RPC Battle service-role';
+  begin
+    perform 1 from public.battle_sessions;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'state internal Battle tidak boleh terbaca lewat Data API';
+  perform set_config('role', 'none', true);
 
   ----------------------------------------------------------------------------
   delete from auth.users where id in (u1, u2);

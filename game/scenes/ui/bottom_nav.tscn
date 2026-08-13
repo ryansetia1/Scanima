@@ -1,13 +1,14 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/bottom_nav.gd" id="1_nav"]
 [ext_resource type="Texture2D" path="res://assets/icons/house.svg" id="2_home"]
 [ext_resource type="Texture2D" path="res://assets/icons/scan-line.svg" id="3_scan"]
 [ext_resource type="Texture2D" path="res://assets/icons/library.svg" id="4_collection"]
 [ext_resource type="Texture2D" path="res://assets/icons/paw-print.svg" id="5_anima"]
+[ext_resource type="Texture2D" path="res://assets/icons/swords.svg" id="6_battle"]
 
 [node name="BottomNav" type="PanelContainer"]
-custom_minimum_size = Vector2(0, 116)
+custom_minimum_size = Vector2(0, 124)
 theme_type_variation = &"BottomNavPanel"
 script = ExtResource("1_nav")
 
@@ -22,8 +23,38 @@ layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
 theme_type_variation = &"NavTabButton"
-icon = ExtResource("2_home")
+
+[node name="Content" type="VBoxContainer" parent="Buttons/HomeNavButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Buttons/HomeNavButton/Content"]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+texture = ExtResource("2_home")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Buttons/HomeNavButton/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.72, 0.79, 0.92, 1)
+theme_override_font_sizes/font_size = 18
 text = "NAV_HOME"
+horizontal_alignment = 1
 
 [node name="ScanNavButton" type="Button" parent="Buttons"]
 unique_name_in_owner = true
@@ -32,8 +63,79 @@ layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
 theme_type_variation = &"ScanTabButton"
-icon = ExtResource("3_scan")
+
+[node name="Content" type="VBoxContainer" parent="Buttons/ScanNavButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Buttons/ScanNavButton/Content"]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+texture = ExtResource("3_scan")
+modulate = Color(0.015, 0.055, 0.105, 1)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Buttons/ScanNavButton/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.015, 0.055, 0.105, 1)
+theme_override_font_sizes/font_size = 18
 text = "NAV_SCAN"
+horizontal_alignment = 1
+
+[node name="BattleNavButton" type="Button" parent="Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+theme_type_variation = &"NavTabButton"
+
+[node name="Content" type="VBoxContainer" parent="Buttons/BattleNavButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Buttons/BattleNavButton/Content"]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+texture = ExtResource("6_battle")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Buttons/BattleNavButton/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.72, 0.79, 0.92, 1)
+theme_override_font_sizes/font_size = 18
+text = "NAV_BATTLE"
+horizontal_alignment = 1
 
 [node name="CollectionNavButton" type="Button" parent="Buttons"]
 unique_name_in_owner = true
@@ -42,8 +144,38 @@ layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
 theme_type_variation = &"NavTabButton"
-icon = ExtResource("4_collection")
+
+[node name="Content" type="VBoxContainer" parent="Buttons/CollectionNavButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Buttons/CollectionNavButton/Content"]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+texture = ExtResource("4_collection")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Buttons/CollectionNavButton/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.72, 0.79, 0.92, 1)
+theme_override_font_sizes/font_size = 18
 text = "NAV_COLLECTION"
+horizontal_alignment = 1
 
 [node name="AnimaNavButton" type="Button" parent="Buttons"]
 unique_name_in_owner = true
@@ -53,5 +185,35 @@ size_flags_horizontal = 3
 disabled = true
 toggle_mode = true
 theme_type_variation = &"NavTabButton"
-icon = ExtResource("5_anima")
+
+[node name="Content" type="VBoxContainer" parent="Buttons/AnimaNavButton"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Buttons/AnimaNavButton/Content"]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+texture = ExtResource("5_anima")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Buttons/AnimaNavButton/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.72, 0.79, 0.92, 1)
+theme_override_font_sizes/font_size = 18
 text = "NAV_ANIMA"
+horizontal_alignment = 1

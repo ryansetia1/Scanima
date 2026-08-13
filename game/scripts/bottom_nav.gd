@@ -5,12 +5,14 @@ signal destination_selected(destination: StringName)
 
 const HOME := &"home"
 const SCAN := &"scan"
+const BATTLE := &"battle"
 const COLLECTION := &"collection"
 const ANIMA := &"anima"
 
 @onready var _buttons: Dictionary = {
 	HOME: %HomeNavButton,
 	SCAN: %ScanNavButton,
+	BATTLE: %BattleNavButton,
 	COLLECTION: %CollectionNavButton,
 	ANIMA: %AnimaNavButton,
 }

@@ -25,7 +25,7 @@ Kesalahan yang paling mungkin dilakukan di proyek seperti ini adalah menghabiska
 
 Sengaja tanpa Supabase, tanpa autentikasi, tanpa database, tanpa sistem kuota. Panggilan API dilakukan dari script Node lokal dan build Godot khusus development yang membaca token dari file lokal yang di-gitignore.
 
-> **Status per 13 Agustus 2026.** Pipeline sudah terbukti dengan foto sungguhan pada nano-banana-pro dan GPT Image 2. Setelah A/B medium vs high, default dipindah ke GPT Image 2 medium dan prompt production v2 mengikuti anime cel-shaded style guide. Smoke Set berbayar dengan template v2 final sudah menjalankan 3/3 sheet 4/4 sel dan gate 2/2. V3 menghilangkan logo Nike lewat marking pengganti dan tetap menjadi default production. Candidate terbaru **v5** membawa pagar logo/damage material milik v4 lalu menambah `character_direction`, Idle non-angry, limb plan opsional, dan larangan nama `-mon`; 22 skenario gratis serta dry-run lima foto lulus, tetapi v5 belum dipromosikan sebelum Smoke Set visual berbayar disetujui. Sisi Godot kini punya **329 pemeriksaan headless inti**: client state 42, slicing/presenter 89, UI 171, dan aturan care 27, ditambah 1050 pemeriksaan katalog i18n.
+> **Status per 13 Agustus 2026.** Pipeline sudah terbukti dengan foto sungguhan pada nano-banana-pro dan GPT Image 2. Setelah A/B medium vs high, default dipindah ke GPT Image 2 medium dan prompt production v2 mengikuti anime cel-shaded style guide. Smoke Set berbayar dengan template v2 final sudah menjalankan 3/3 sheet 4/4 sel dan gate 2/2. V3 menghilangkan logo Nike lewat marking pengganti dan tetap menjadi default production. Candidate terbaru **v5** membawa pagar logo/damage material milik v4 lalu menambah `character_direction`, Idle non-angry, limb plan opsional, dan larangan nama `-mon`; 23 skenario gratis serta dry-run lima foto lulus, tetapi v5 belum dipromosikan sebelum Smoke Set visual berbayar disetujui. Sisi Godot kini punya **413 pemeriksaan headless inti**: client state 55, slicing/presenter 89, UI 239, dan aturan care/event 30, ditambah 1299 pemeriksaan katalog i18n.
 
 ### Yang dikerjakan
 
@@ -101,9 +101,13 @@ Uji live itu menemukan satu hal yang tidak akan pernah ditemukan oleh test berba
 
 **Sisi client sudah menyusul sampai Anima tampil di layar.** Dua autoload (`GameState` untuk sesi dan scan tertunda, `Backend` untuk transport) plus scene `scan_flow` sebagai entry point, dan rantainya sudah dijalankan sungguhan terhadap produksi lewat `tests/live_scan.gd` (~$0.003 per jalan): sign-in anonim, unggah ke folder sendiri, `create_anima` balik 11–16 detik, sheet ~1 MB dari CDN, `AnimaLoader` menerima keempat pose, saldo turun tepat satu Scan Charge tanpa menyentuh Core. Dua fase penantian dibedakan di UI karena panjangnya beda jauh: belasan detik untuk `create_anima`, lalu sekitar satu menit untuk gambarnya — satu spinner untuk keduanya akan terasa macet.
 
-Dua invarian client yang dijaga oleh `tests/test_client_state.gd` (42 check, tanpa jaringan): kunci idempotency scan/care bertahan di disk sehingga app yang mati tidak membayar Core/Bits kedua, dan refresh token yang ditolak tidak pernah dijawab dengan sign-in anonim baru.
+Tiga invarian client dijaga oleh `tests/test_client_state.gd` (60 check, tanpa
+jaringan): kunci idempotency scan/care/Battle bertahan di disk sehingga app
+yang mati tidak membayar atau commit kedua, access token diperbarui sebelum
+request terautentikasi, dan refresh token yang ditolak tidak pernah dijawab
+dengan sign-in anonim baru.
 
-**Koleksi, Stats, sizing mobile, inkubator, care loop, dan visual shell sekarang selesai di Phase 2.** Tap Collection membuka bottom sheet base stats + care authoritative; `View Profile` menginspeksi tanpa mengganti active companion, sedangkan `Summon` memakai dissolve + portal sebelum membuka Home. Home membedakan Loading/Error/Empty/Ready dan memberi CTA first scan tanpa tutorial terpisah. Setiap hatch menawarkan rename opsional, dan Profile menyediakan hard delete owner-only tanpa refund lewat migration RLS yang sudah live di production. Empat meter berlabel serta Feed/Clean/Sleep/Play memakai target 96px. Theme cyan-violet-gold dipakai bersama production dan art inspector; chamber background, cards, CTA, modal, meter tween, serta press/reveal motion semuanya procedural tanpa texture UI tambahan. `care_anima` sudah live dan smoke produksi membuktikan sync serta Play idempoten tanpa model call. Decay 8h grace/48h cap, Sleep enam jam, score harian, debit Bits, dan Dormant dijaga oleh transaction function + 27 check `test_game_rules.gd`; `test_scan_ui.gd` menjaga 171 kontrak mobile, theme, dan roster.
+**Koleksi, Stats, sizing mobile, inkubator, care loop, dan visual shell sekarang selesai di Phase 2.** Tap Collection membuka bottom sheet base stats + care authoritative; `View Profile` menginspeksi tanpa mengganti active companion, sedangkan `Summon` memakai dissolve + portal sebelum membuka Home. Home membedakan Loading/Error/Empty/Ready dan memberi CTA first scan tanpa tutorial terpisah. Setiap hatch menawarkan rename opsional, dan Profile menyediakan hard delete owner-only tanpa refund lewat migration RLS yang sudah live di production. Empat meter berlabel serta Feed/Clean/Sleep/Play memakai target 96px. Theme cyan-violet-gold dipakai bersama production dan art inspector; chamber background, cards, CTA, modal, meter tween, serta press/reveal motion semuanya procedural tanpa texture UI tambahan. `care_anima` sudah live dan smoke produksi membuktikan sync serta Play idempoten tanpa model call. Decay 8h grace/48h cap, Sleep enam jam, score harian, debit Bits, dan Dormant dijaga oleh transaction function + 30 check `test_game_rules.gd`; `test_scan_ui.gd` menjaga 249 kontrak mobile, Battle, theme, dan roster.
 
 **Kamera sudah masuk, dan catatan lama yang bilang ia terhalang itu keliru.** `CameraServer` sudah mendukung Android sejak setelah 4.4, tapi yang dipakai plugin `GodotGetImage` (fork PhotoPicker) — sebab `CameraFeed` memberi feed hidup, sementara yang dibutuhkan satu jepretan dari aplikasi kamera sistem, lengkap dengan fokus dan kualitas OEM. Fork-nya dipilih karena manifest upstream menyuntikkan `READ_MEDIA_IMAGES` ke APK walau galeri tidak pernah dipanggil, dan Play menolak izin itu untuk pilih-satu-foto. Galeri sendiri sengaja tidak dipakai: fiksinya memfoto benda di depanmu, dan galeri membuka pintu untuk memindai gambar unduhan yang justru harus ditahan gate.
 
@@ -140,11 +144,24 @@ Tutup dengan `test_game_rules.gd`.
 
 **Target: 5-7 minggu. Tujuan: dari "bisa dimainkan" menjadi "layak dirilis".**
 
-**Pekerjaan berikutnya:** buat vertical slice Battle paling kecil yang lengkap—satu lawan bot dari `species_library`, tiga aksi per turn, rumus damage/elemen/Momentum, dan presentasi hit yang cukup untuk dinilai. Jangan mulai dari roster PvP, matchmaking, atau hadiah kompleks sebelum satu pertarungan lokal terasa menyenangkan.
+**Milestone pertama selesai 13 Agustus 2026:** vertical slice Battle 1v1 sudah
+live—Anima aktif melawan snapshot anonim Anima pemain lain, tiga aksi per turn,
+damage/elemen/Momentum server-authoritative, resume setelah restart, reward
+atomik, dan presentasi hit di Godot.
+
+Yang berikutnya di Phase 3 adalah evolusi vertical slice, onboarding, audio, dan
+weekly Core/pending-discovery claim. PvP/matchmaking, tim multi-Anima, ranked
+ladder, battle pass, dan item drop tetap ditunda; semuanya memperlebar sistem
+sebelum loop 1v1 punya data pemain nyata.
 
 ### Yang dikerjakan
 
-Battle dari [04](04-game-systems-economy.md): stat turunan, roda elemen, rumus damage, tiga aksi per turn, Momentum, lawan bot yang disusun dari `species_library` sehingga terasa seperti melawan temuan pemain lain. Yang membutuhkan waktu di sini bukan logikanya (logikanya sudah ditulis) melainkan presentasinya: setiap pukulan butuh hentakan, kilatan, angka damage yang melompat, dan getaran haptic — tanpa itu pertarungan berbasis stat terasa seperti spreadsheet.
+Battle dari [04](04-game-systems-economy.md) sekarang punya stat turunan, roda
+elemen, Strike/Surge/Guard, Momentum, bot anonim, flash, angka damage, dan haptic
+ringan. Session Postgres berumur 30 menit; client menyimpan action/key tertunda,
+sedangkan server sendiri yang memutuskan turn dan reward. Menang memberi 5 Bits,
+`care_score +4`, dan `battle_wins +1`; loss/forfeit nol reward dan tidak ada
+Genesis Core.
 
 Evolusi: gerbang syarat di server, ritual evolusi sebagai momen puncak, percabangan Guardian dan Ravager, dan `evolve_anima` dengan `image_input` berisi sprite Idle Anima itu sendiri. Evolusi tidak mendebit Genesis Core — alasannya di [04](04-game-systems-economy.md).
 

@@ -60,6 +60,7 @@ const SLEEP_SYNC_EPSILON_SEC := 1.0
 @onready var _core_info_close: Button = %CoreInfoCloseButton
 @onready var _home_view: HomeView = %HomeView
 @onready var _scan_view: ScanView = %ScanView
+@onready var _battle_view = %BattleView
 @onready var _collection_view: CollectionView = %CollectionView
 @onready var _details_view: AnimaDetailsView = %AnimaDetailsView
 @onready var _bottom_nav: BottomNav = %BottomNav
@@ -92,6 +93,10 @@ func _ready() -> void:
 	add_child(_sleep_completion_timer)
 	_sleep_completion_timer.timeout.connect(_sync_sleep_completion)
 	_scan_view.scan_requested.connect(_on_pick_pressed)
+	_battle_view.start_requested.connect(_start_battle)
+	_battle_view.action_requested.connect(_battle_action_requested)
+	_battle_view.resume_requested.connect(_retry_battle)
+	_battle_view.forfeit_requested.connect(_forfeit_battle)
 	_home_view.care_requested.connect(_perform_care)
 	_home_view.first_scan_requested.connect(_open_scan)
 	_home_view.retry_requested.connect(_retry_roster)
@@ -173,6 +178,10 @@ func _ready() -> void:
 			_run_empty_demo()
 		if arg == "--summon-demo":
 			await _run_summon_demo()
+		if arg == "--battle-demo":
+			_run_battle_demo()
+		if arg == "--battle-result-demo":
+			_run_battle_demo("forfeited")
 		if arg.begins_with("--screenshot="):
 			await _capture_and_quit(arg.trim_prefix("--screenshot="))
 
@@ -246,6 +255,9 @@ func _boot() -> void:
 		_anima.sprite_frames = null
 		_set_home_shell_state(&"empty")
 		_say(tr("STATUS_FIRST_SCAN"))
+	if not GameState.pending_battle.is_empty() and GameState.pending_scan.is_empty():
+		_switch_destination(BottomNav.BATTLE)
+		await _resume_battle()
 
 
 func _reload_roster() -> bool:
@@ -630,6 +642,215 @@ func _care_error_message(error: String) -> String:
 			return tr("ERROR_CARE_GENERIC")
 
 
+# ---------------------------------------------------------------- battle
+
+func _start_battle() -> void:
+	if _busy or _current_anima.is_empty():
+		return
+	_set_busy(true)
+	_battle_view.set_loading()
+	var res := await Backend.battle_anima("start", {
+		"anima_id": str(_current_anima.get("id", "")),
+	})
+	if not res.ok:
+		_battle_view.set_error(res.error)
+		_set_busy(false)
+		return
+
+	var session := GameState.as_dict(res.data)
+	if session.is_empty():
+		_battle_view.set_error("BATTLE_NOT_FOUND")
+		_set_busy(false)
+		return
+	GameState.remember_battle(
+		str(session.get("id", "")),
+		int(session.get("turn_number", 1)),
+		int(session.get("version", 1))
+	)
+	await _show_battle_session(session)
+	_set_busy(false)
+
+
+func _resume_battle() -> void:
+	if _busy:
+		return
+	var pending := GameState.pending_battle.duplicate(true)
+	var session_id := str(pending.get("session_id", ""))
+	if session_id.is_empty():
+		_battle_view.set_lobby(_current_anima)
+		return
+
+	_set_busy(true)
+	_battle_view.set_loading("BATTLE_RESUMING")
+	var res := await Backend.battle_anima("resume", {"session_id": session_id})
+	if not res.ok and res.error == "BATTLE_NOT_FOUND":
+		GameState.finish_battle()
+		_battle_view.set_lobby(_current_anima)
+		_set_busy(false)
+		return
+	if not res.ok:
+		_battle_view.set_error(res.error)
+		_set_busy(false)
+		return
+
+	var session := GameState.as_dict(res.data)
+	if not await _show_battle_session(session):
+		_set_busy(false)
+		return
+	var replay_action := str(pending.get("action", ""))
+	var should_replay := (
+		not replay_action.is_empty()
+		and str(session.get("status", "")) == "active"
+		and int(session.get("turn_number", 0)) == int(pending.get("expected_turn", -1))
+		and int(session.get("version", 0)) == int(pending.get("expected_version", -1))
+	)
+	if should_replay:
+		_set_busy(false)
+		await _submit_pending_battle(pending)
+	else:
+		GameState.confirm_battle_response(session)
+		if str(session.get("status", "")) != "active":
+			await _refresh_battle_authority(session)
+		_set_busy(false)
+
+
+func _retry_battle() -> void:
+	if GameState.pending_battle.is_empty():
+		await _start_battle()
+	else:
+		await _resume_battle()
+
+
+func _battle_action_requested(action: String) -> void:
+	if _busy:
+		return
+	var session: Dictionary = _battle_view.session_data()
+	if session.is_empty() or str(session.get("status", "")) != "active":
+		return
+	var pending := GameState.begin_battle_action(
+		str(session.get("id", "")),
+		int(session.get("turn_number", 1)),
+		int(session.get("version", 1)),
+		action
+	)
+	await _submit_pending_battle(pending)
+
+
+func _submit_pending_battle(pending: Dictionary) -> void:
+	if pending.is_empty():
+		return
+	_set_busy(true)
+	var res := await Backend.battle_anima("turn", {
+		"session_id": str(pending.get("session_id", "")),
+		"expected_turn": int(pending.get("expected_turn", 1)),
+		"expected_version": int(pending.get("expected_version", 1)),
+		"action": str(pending.get("action", "")),
+		"idempotency_key": str(pending.get("idempotency_key", "")),
+	})
+	if not res.ok:
+		if res.error == "STALE_BATTLE" or res.error == "BATTLE_FINISHED":
+			_set_busy(false)
+			await _resume_battle()
+			return
+		if res.code >= 400:
+			var session: Dictionary = _battle_view.session_data()
+			if not session.is_empty():
+				GameState.remember_battle(
+					str(session.get("id", "")),
+					int(session.get("turn_number", 1)),
+					int(session.get("version", 1))
+				)
+		_battle_view.set_error(res.error)
+		_set_busy(false)
+		return
+
+	var data := GameState.as_dict(res.data)
+	var next_session := GameState.as_dict(data.get("session"))
+	var events: Array = data.get("events", []) if typeof(data.get("events")) == TYPE_ARRAY else []
+	if next_session.is_empty():
+		_battle_view.set_error("BATTLE_NOT_FOUND")
+		_set_busy(false)
+		return
+	await _battle_view.play_events(events, next_session)
+	GameState.confirm_battle_response(next_session)
+	await _apply_battle_reward(GameState.as_dict(data.get("reward")), next_session)
+	_set_busy(false)
+
+
+func _forfeit_battle() -> void:
+	if _busy:
+		return
+	var session: Dictionary = _battle_view.session_data()
+	var session_id := str(session.get("id", GameState.pending_battle.get("session_id", "")))
+	if session_id.is_empty():
+		return
+	_set_busy(true)
+	var res := await Backend.battle_anima("forfeit", {"session_id": session_id})
+	if res.ok:
+		var closed := GameState.as_dict(res.data)
+		GameState.finish_battle()
+		_battle_view.set_session(closed)
+	else:
+		_battle_view.set_error(res.error)
+	_set_busy(false)
+
+
+func _show_battle_session(session: Dictionary) -> bool:
+	if session.is_empty():
+		_battle_view.set_error("BATTLE_NOT_FOUND")
+		return false
+	var player_snapshot := GameState.as_dict(session.get("player_snapshot"))
+	var bot_snapshot := GameState.as_dict(session.get("bot_snapshot"))
+	var player_loaded := await _prepare_battle_art(player_snapshot)
+	if not bool(player_loaded.get("ok", false)):
+		_battle_view.set_error("BATTLE_ERROR_GENERIC")
+		return false
+	var bot_loaded := await _prepare_battle_art(bot_snapshot)
+	if not bool(bot_loaded.get("ok", false)):
+		_battle_view.set_error("BATTLE_ERROR_GENERIC")
+		return false
+	_battle_view.set_session(session, player_loaded, bot_loaded)
+	return true
+
+
+func _prepare_battle_art(snapshot: Dictionary) -> Dictionary:
+	return await _prepare_anima_art(
+		str(snapshot.get("species_key", "")),
+		str(snapshot.get("color_bucket", "")),
+		int(snapshot.get("stage", 1)),
+		str(snapshot.get("sheet_path", "")),
+		GameState.as_dict(snapshot.get("manifest")),
+		false
+	)
+
+
+func _apply_battle_reward(reward: Dictionary, session: Dictionary) -> void:
+	var bits_delta := int(reward.get("bits", 0))
+	var care_delta := int(reward.get("care_score", 0))
+	var wins_delta := int(reward.get("battle_wins", 0))
+	if bits_delta == 0 and care_delta == 0 and wins_delta == 0:
+		return
+	# Replay sesudah restart bisa membawa delta reward yang sama sementara profil
+	# sudah memuat saldo baru. Baca row authoritative agar UI tidak menambah dua kali.
+	await _refresh_battle_authority(session)
+
+
+func _refresh_battle_authority(session: Dictionary) -> void:
+	await Backend.fetch_profile()
+	await _reload_roster()
+	var anima_id := str(session.get("player_anima_id", ""))
+	for row in _roster:
+		if str(row.get("id", "")) != anima_id:
+			continue
+		if str(_current_anima.get("id", "")) == anima_id:
+			_current_anima = row.duplicate(true)
+		break
+	_refresh_header()
+	_refresh_stats()
+	_refresh_care()
+	_populate_collection()
+
+
 ## Scan yang mati sebelum create_anima menjawab. Memanggilnya lagi dengan kunci
 ## idempotency yang sama aman: server mengembalikan hasil yang sama, dan hanya
 ## itu satu-satunya cara pemain tidak kehilangan Core karena jaringan yang putus.
@@ -959,19 +1180,23 @@ func _prepare_anima_art(
 	color_bucket: String,
 	stage: int,
 	sheet_path: String = "",
-	manifest: Dictionary = {}
+	manifest: Dictionary = {},
+	report_status: bool = true
 ) -> Dictionary:
 	if species_key.is_empty() or color_bucket.is_empty():
-		_say(tr("STATUS_SPECIES_DATA_ERROR"))
+		if report_status:
+			_say(tr("STATUS_SPECIES_DATA_ERROR"))
 		return {"ok": false}
 
 	if not GameState.has_sprite(species_key, color_bucket, stage):
-		_say(tr("STATUS_DOWNLOADING_ART"))
+		if report_status:
+			_say(tr("STATUS_DOWNLOADING_ART"))
 		if manifest.is_empty() or sheet_path.is_empty():
 			var art := await Backend.fetch_species_art(species_key, color_bucket, stage)
 			if not art.ok or typeof(art.data) != TYPE_ARRAY or (art.data as Array).is_empty():
 				print("art library error: %s" % art.error)
-				_say(tr("STATUS_ART_LIBRARY_ERROR"))
+				if report_status:
+					_say(tr("STATUS_ART_LIBRARY_ERROR"))
 				return {"ok": false}
 			var row := GameState.as_dict((art.data as Array)[0])
 			sheet_path = str(row.get("sheet_path", ""))
@@ -980,7 +1205,8 @@ func _prepare_anima_art(
 		var download := await Backend.download_sheet(sheet_path)
 		if not download.ok:
 			print("art download error: %s" % download.error)
-			_say(tr("STATUS_ART_DOWNLOAD_ERROR"))
+			if report_status:
+				_say(tr("STATUS_ART_DOWNLOAD_ERROR"))
 			return {"ok": false}
 
 		var stored := GameState.store_sprite(
@@ -988,7 +1214,8 @@ func _prepare_anima_art(
 		)
 		if not stored.ok:
 			print("art save error: %s" % stored.error)
-			_say(tr("STATUS_ART_SAVE_ERROR"))
+			if report_status:
+				_say(tr("STATUS_ART_SAVE_ERROR"))
 			return {"ok": false}
 
 	var loaded := AnimaLoader.load_from_manifest(
@@ -996,7 +1223,8 @@ func _prepare_anima_art(
 	)
 	if not loaded.get("ok", false):
 		print("art load error: %s" % loaded.get("error", "?"))
-		_say(tr("STATUS_ART_LOAD_ERROR"))
+		if report_status:
+			_say(tr("STATUS_ART_LOAD_ERROR"))
 	return loaded
 
 
@@ -1082,6 +1310,8 @@ func _refresh_stats() -> void:
 		_thumbnail_for(details_row) if not details_row.is_empty() else null
 	)
 	_home_view.set_anima(_current_anima, _busy)
+	if _battle_view.session_data().is_empty() and GameState.pending_battle.is_empty():
+		_battle_view.set_lobby(_current_anima)
 	_first_anima_effect.set_active(_home_view.shell_state() == &"empty")
 	_bottom_nav.set_busy(_busy, _details_available())
 
@@ -1103,6 +1333,8 @@ func _refresh_care() -> void:
 	var sleeping := _is_sleeping(_current_anima)
 	var dormant := _has_timestamp(_current_anima.get("dormant_since"))
 	_home_view.update_care(_current_anima, _busy)
+	if _battle_view.session_data().is_empty() and GameState.pending_battle.is_empty():
+		_battle_view.set_lobby(_current_anima)
 	if _profile_anima.is_empty():
 		_details_view.set_anima(_current_anima, _thumbnail_for(_current_anima))
 	if _anima.sprite_frames != null:
@@ -1218,6 +1450,7 @@ func _switch_destination(destination: StringName, profile_row: Dictionary = {}) 
 	_destination = destination
 	_home_view.visible = destination == BottomNav.HOME
 	_scan_view.visible = destination == BottomNav.SCAN
+	_battle_view.visible = destination == BottomNav.BATTLE
 	_collection_view.visible = destination == BottomNav.COLLECTION
 	_details_view.visible = destination == BottomNav.ANIMA
 	_bottom_nav.set_active(destination)
@@ -1228,6 +1461,8 @@ func _switch_destination(destination: StringName, profile_row: Dictionary = {}) 
 		if not _busy and not _incubator.is_active() and not _scan_view.has_preview():
 			_scan_view.set_phase(&"idle")
 			_scan_view.set_status(tr("STATUS_SCAN_READY"))
+	if destination == BottomNav.BATTLE and GameState.pending_battle.is_empty():
+		_battle_view.set_lobby(_current_anima)
 
 	var stage_destination := destination == BottomNav.HOME or (
 		destination == BottomNav.SCAN and _incubator.is_active()
@@ -1249,6 +1484,8 @@ func _active_view() -> Control:
 	match _destination:
 		BottomNav.SCAN:
 			return _scan_view
+		BottomNav.BATTLE:
+			return _battle_view
 		BottomNav.COLLECTION:
 			return _collection_view
 		BottomNav.ANIMA:
@@ -1373,6 +1610,7 @@ func _refresh_anima_count() -> void:
 func _set_busy(busy: bool) -> void:
 	_busy = busy
 	_scan_view.set_busy(busy)
+	_battle_view.set_busy(busy)
 	_home_view.set_busy(busy)
 	_collection_view.set_busy(busy)
 	_details_view.set_busy(busy)
@@ -1482,3 +1720,33 @@ func _run_summon_demo() -> void:
 	await _anima.summon_reveal()
 	_refresh_care()
 	_set_busy(false)
+
+
+func _run_battle_demo(status: String = "active") -> void:
+	var placeholder := PlaceholderSheet.build()
+	var texture := ImageTexture.create_from_image(placeholder["image"])
+	var loaded := AnimaLoader.build(texture, placeholder["manifest"])
+	var session := {
+		"id": "battle-demo",
+		"status": status,
+		"turn_number": 3,
+		"version": 2,
+		"player_snapshot": {
+			"anima_id": "battle-demo-player",
+			"name": str(_current_anima.get("nickname", tr("ANIMA_FALLBACK_NAME"))),
+			"element": "spark",
+			"stage": 1,
+		},
+		"bot_snapshot": {
+			"anima_id": "battle-demo-bot",
+			"element": "flow",
+			"stage": 1,
+		},
+		"state": {
+			"status": status,
+			"player": {"hp": 162, "max_hp": 240, "momentum": 4},
+			"bot": {"hp": 118, "max_hp": 228, "momentum": 2},
+		},
+	}
+	_switch_destination(BottomNav.BATTLE)
+	_battle_view.set_session(session, loaded, loaded)

@@ -22,6 +22,7 @@ var _motion: Tween
 var _feedback: Tween
 var _base_position: Vector2 = Vector2.ZERO
 var _current_pose: String = ""
+var _facing_direction := -1.0
 
 
 func _ready() -> void:
@@ -57,6 +58,13 @@ func set_pose(pose: String) -> bool:
 
 func current_pose() -> String:
 	return _current_pose
+
+
+## Sprite sheet selalu dibuat menghadap kiri. Arena membalik petarung di sisi
+## kiri agar pose dan gerak serang keduanya menuju lawan.
+func set_facing(direction: float) -> void:
+	_facing_direction = -1.0 if direction < 0.0 else 1.0
+	flip_h = _facing_direction > 0.0
 
 
 func _start_motion(pose: String) -> void:
@@ -112,15 +120,24 @@ func _heavy_breathe() -> Tween:
 
 
 func _lunge() -> Tween:
-	var tween := create_tween().set_loops()
+	var tween := create_tween()
 	tween.set_parallel(false)
-	tween.tween_property(self, "position", _base_position + Vector2(-16.0, 4.0), 0.14) \
+	tween.tween_property(
+		self,
+		"position",
+		_base_position + Vector2(-14.0 * _facing_direction, 4.0),
+		0.10
+	) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
-	tween.tween_property(self, "position", _base_position + Vector2(22.0, -6.0), 0.10) \
+	tween.tween_property(
+		self,
+		"position",
+		_base_position + Vector2(26.0 * _facing_direction, -6.0),
+		0.12
+	) \
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
-	tween.tween_property(self, "position", _base_position, 0.28) \
+	tween.tween_property(self, "position", _base_position, 0.22) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
-	tween.tween_interval(0.5)
 	return tween
 
 

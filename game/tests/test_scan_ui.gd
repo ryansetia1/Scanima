@@ -41,7 +41,7 @@ func _initialize() -> void:
 	)
 
 	_check_full_rect(scene.find_child("SafeMargin", true, false) as Control, "safe margin")
-	for name in ["HomeView", "ScanView", "CollectionView", "AnimaDetailsView"]:
+	for name in ["HomeView", "ScanView", "BattleView", "CollectionView", "AnimaDetailsView"]:
 		var view := scene.find_child(name, true, false) as Control
 		_check(view != null, "%s must exist" % name)
 		if view != null:
@@ -49,19 +49,23 @@ func _initialize() -> void:
 
 	var home := scene.find_child("HomeView", true, false) as Control
 	var scan := scene.find_child("ScanView", true, false) as Control
+	var battle := scene.find_child("BattleView", true, false) as Control
 	var collection := scene.find_child("CollectionView", true, false) as Control
 	var details := scene.find_child("AnimaDetailsView", true, false) as Control
 	_check(home != null and home.visible, "Home is the default destination")
 	_check(scan != null and not scan.visible, "Scan starts hidden")
+	_check(battle != null and not battle.visible, "Battle starts hidden")
 	_check(collection != null and not collection.visible, "Collection starts hidden")
 	_check(details != null and not details.visible, "Details starts hidden")
 
 	for name in [
-		"ScanButton", "HomeNavButton", "ScanNavButton", "CollectionNavButton", "AnimaNavButton",
+		"ScanButton", "HomeNavButton", "ScanNavButton", "BattleNavButton",
+		"CollectionNavButton", "AnimaNavButton",
 		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "EditAnimaNameButton",
 		"DeleteAnimaButton",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
-		"CollectionSummonButton",
+		"CollectionSummonButton", "BattleStartButton", "BattleStrikeButton",
+		"BattleSurgeButton", "BattleGuardButton", "BattleForfeitButton", "BattleRetryButton",
 	]:
 		var button := scene.find_child(name, true, false) as Button
 		_check(button != null, "%s must exist" % name)
@@ -215,9 +219,12 @@ func _initialize() -> void:
 	_test_hatch_offers_rename()
 	_test_header_uses_ready_roster()
 	_test_present_toast_respects_sleep()
+	_test_battle_reward_is_authoritative()
+	_test_battle_art_has_no_global_toast()
 
 	scene.free()
 	await _test_scan_phase_visuals()
+	await _test_battle_view()
 	await _test_collection_bottom_sheet()
 	await _test_anima_delete_action()
 	await _test_home_care_actions()
@@ -273,6 +280,148 @@ func _test_scan_phase_visuals() -> void:
 	_check(not overlay.visible, "synthesis leaves only the Incubator visual")
 	view.set_phase(&"idle")
 	_check(idle_graphic.visible, "returning idle restores the camera graphic")
+
+	view.queue_free()
+	await process_frame
+	UiMotion.set_reduced_motion(false)
+
+
+func _test_battle_view() -> void:
+	UiMotion.set_reduced_motion(true)
+	var packed := load("res://scenes/ui/battle_view.tscn") as PackedScene
+	var view := packed.instantiate()
+	root.add_child(view)
+	await process_frame
+
+	var lobby := view.find_child("BattleLobbyPanel", true, false) as Control
+	var content := view.find_child("BattleContent", true, false) as Control
+	var result := view.find_child("BattleResultPanel", true, false) as Control
+	var start := view.find_child("BattleStartButton", true, false) as Button
+	var strike := view.find_child("BattleStrikeButton", true, false) as Button
+	var surge := view.find_child("BattleSurgeButton", true, false) as Button
+	var guard := view.find_child("BattleGuardButton", true, false) as Button
+	var player_hp := view.find_child("BattlePlayerHp", true, false) as ProgressBar
+	var momentum := view.find_child("BattleMomentum", true, false) as Label
+	var feedback := view.find_child("BattleFeedback", true, false) as Label
+	var arena := view.find_child("BattleArena", true, false) as Control
+	var footer := view.find_child("BattleFooter", true, false) as Control
+	var player_anchor := view.find_child("BattlePlayerAnchor", true, false) as Node2D
+	var player_sprite := view.find_child("BattlePlayerSprite", true, false) as AnimaPresenter
+	var bot_sprite := view.find_child("BattleBotSprite", true, false) as AnimaPresenter
+
+	var anima := {
+		"id": "battle-player",
+		"nickname": "Velumi",
+		"status": "ready",
+		"element": "spark",
+		"stage": 1,
+		"base_stats": {"hp": 60, "atk": 55, "def": 50, "spd": 65, "special": 58},
+	}
+	view.set_lobby(anima)
+	_check(lobby.visible and not content.visible and not result.visible, "Battle opens in its lobby")
+	_check(not start.disabled, "ready awake active Anima can start Battle")
+	anima["sleep_started_at"] = "2026-08-13T00:00:00Z"
+	view.set_lobby(anima)
+	_check(start.disabled, "sleeping Anima cannot start Battle")
+	anima.erase("sleep_started_at")
+	anima["dormant_since"] = "2026-08-13T00:00:00Z"
+	view.set_lobby(anima)
+	_check(start.disabled, "Dormant Anima cannot start Battle")
+
+	view.set_loading("BATTLE_RESUMING")
+	_check(lobby.visible and start.disabled, "Battle resume exposes a locked loading state")
+
+	var placeholder := PlaceholderSheet.build()
+	var texture := ImageTexture.create_from_image(placeholder["image"])
+	var loaded := AnimaLoader.build(texture, placeholder["manifest"])
+	var session := {
+		"id": "battle-session",
+		"status": "active",
+		"turn_number": 1,
+		"version": 0,
+		"player_snapshot": {
+			"id": "battle-player", "name": "Velumi", "element": "spark", "stage": 1,
+		},
+		"bot_snapshot": {
+			"name": "Unknown Anima", "element": "flow", "stage": 1,
+		},
+		"state": {
+			"player": {"hp": 220, "max_hp": 220, "momentum": 3, "spd": 20},
+			"bot": {"hp": 205, "max_hp": 205, "momentum": 3, "spd": 45},
+		},
+	}
+	view.set_session(session, loaded, loaded)
+	await process_frame
+	var active_arena_height := arena.size.y
+	var active_ground_y := player_anchor.position.y
+	_check(content.visible and not lobby.visible and not result.visible, "active turn replaces the lobby")
+	_check(player_sprite.flip_h and not bot_sprite.flip_h, "Battle fighters face each other")
+	_check(
+		is_equal_approx(active_ground_y, active_arena_height * 0.88),
+		"Battle fighters stand near the arena floor"
+	)
+	_check(result.get_parent() == footer, "Battle result overlays the fixed footer")
+	_check_eq(player_hp.value, 220.0, "Battle HUD displays authoritative HP")
+	_check(momentum.text.find("3") >= 0, "Battle HUD displays authoritative Momentum")
+	_check(not strike.disabled and not surge.disabled and not guard.disabled, "active turn unlocks three actions")
+	UiMotion.set_reduced_motion(false)
+	player_sprite.set_pose("attack")
+	bot_sprite.set_pose("attack")
+	await create_timer(0.24).timeout
+	_check(player_sprite.position.x > 0.0, "player attack lunges toward the right-side rival")
+	_check(bot_sprite.position.x < 0.0, "rival attack lunges toward the left-side player")
+	player_sprite.set_pose("idle")
+	bot_sprite.set_pose("idle")
+	UiMotion.set_reduced_motion(true)
+
+	view.set_loading("BATTLE_RESUMING")
+	_check(
+		not lobby.visible and content.visible and feedback.text == tr("BATTLE_RESUMING"),
+		"active Battle retry keeps one arena state instead of overlapping the lobby"
+	)
+	view.set_error("AUTH_EXPIRED")
+	_check(
+		not lobby.visible and content.visible and result.visible,
+		"expired auth shows one recoverable Battle overlay"
+	)
+	view.set_session(session, loaded, loaded)
+
+	session["state"]["player"]["momentum"] = 1
+	view.set_session(session, loaded, loaded)
+	_check(surge.disabled, "Surge is disabled below its Momentum cost")
+	view.set_busy(true)
+	_check(strike.disabled and surge.disabled and guard.disabled, "pending turn locks all actions")
+
+	var won: Dictionary = session.duplicate(true)
+	won["status"] = "won"
+	won["state"]["bot"]["hp"] = 0
+	await view.play_events([
+		{
+			"type": "attack", "actor": "player", "target": "bot", "action": "strike",
+			"damage": 205, "target_hp": 0, "critical": false, "element": 1.0,
+		},
+		{"type": "knockout", "actor": "bot"},
+		{"type": "finished", "result": "won"},
+	], won)
+	await process_frame
+	_check(result.visible and content.visible, "win event log reveals the result panel")
+	_check_eq(arena.size.y, active_arena_height, "result overlay must not resize the arena")
+	_check_eq(
+		player_anchor.position.y,
+		active_ground_y,
+		"result overlay must not move the fighters"
+	)
+
+	var lost: Dictionary = session.duplicate(true)
+	lost["status"] = "lost"
+	lost["state"]["player"]["hp"] = 0
+	view.set_session(lost, loaded, loaded)
+	_check(result.visible, "loss session restores its terminal result")
+	view.set_error("BATTLE_EXPIRED")
+	_check(
+		result.visible and content.visible and not lobby.visible,
+		"resume failure keeps one recoverable result overlay"
+	)
 
 	view.queue_free()
 	await process_frame
@@ -467,6 +616,33 @@ func _test_present_toast_respects_sleep() -> void:
 	)
 
 
+func _test_battle_reward_is_authoritative() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var start := source.find("func _apply_battle_reward")
+	var end := source.find("\n\n## Scan yang mati", start)
+	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
+	_check(
+		body.find("await Backend.fetch_profile()") >= 0
+		and body.find("await _reload_roster()") >= 0,
+		"Battle reward refreshes authoritative profile and roster"
+	)
+	_check(
+		body.find("GameState.profile[\"bits\"] =") < 0,
+		"Battle replay cannot add the same reward delta to local balance twice"
+	)
+
+
+func _test_battle_art_has_no_global_toast() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var start := source.find("func _prepare_battle_art")
+	var end := source.find("\n\nfunc _apply_battle_reward", start)
+	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
+	_check(
+		body.find("GameState.as_dict(snapshot.get(\"manifest\")),\n\t\tfalse") >= 0,
+		"Battle art loading must not reuse the shell's persistent download toast"
+	)
+
+
 func _test_anima_delete_action() -> void:
 	var packed := load("res://scenes/ui/anima_details_view.tscn") as PackedScene
 	var details := packed.instantiate()
@@ -587,12 +763,22 @@ func _test_bottom_nav_busy() -> void:
 	var nav := packed.instantiate()
 	root.add_child(nav)
 	await process_frame
+	var buttons := nav.find_child("Buttons", true, false) as HBoxContainer
 	var home_button := nav.find_child("HomeNavButton", true, false) as Button
 	var scan_button := nav.find_child("ScanNavButton", true, false) as Button
+	var battle_button := nav.find_child("BattleNavButton", true, false) as Button
 	var details_button := nav.find_child("AnimaNavButton", true, false) as Button
+	_check(buttons != null and buttons.get_child_count() == 5, "bottom navigation contains five tabs")
+	_check(
+		battle_button != null and battle_button.find_child("Content", true, false) is VBoxContainer,
+		"Battle tab keeps the vertical icon-over-label layout"
+	)
+	nav.set_active(BottomNav.BATTLE)
+	_check(battle_button.button_pressed, "Battle destination has an explicit active state")
 	nav.set_busy(true, true)
 	_check(not home_button.disabled, "busy requests keep Home navigation available")
 	_check(not scan_button.disabled, "busy requests keep Scan navigation available")
+	_check(not battle_button.disabled, "busy requests keep Battle navigation available")
 	_check(not details_button.disabled, "available Anima remains inspectable while busy")
 	nav.set_busy(false, false)
 	_check(details_button.disabled, "profile stays disabled without an Anima")

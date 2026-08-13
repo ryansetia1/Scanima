@@ -177,6 +177,7 @@ create table animas (
   play_score_on  date,
   play_score_today smallint not null default 0,       -- cap +5 per UTC day
   dormant_since  timestamptz,                         -- bukan generation status
+  battle_wins    int not null default 0,
   created_at     timestamptz not null default now()
 );
 create index on animas (owner_id, status);
@@ -224,6 +225,38 @@ create table care_events (
   unique (owner_id, idempotency_key)
 );
 
+-- Battle 1v1 server-authoritative. Keduanya RLS tanpa policy client.
+create table battle_sessions (
+  id                uuid primary key default gen_random_uuid(),
+  owner_id          uuid not null references profiles on delete cascade,
+  player_anima_id   uuid not null references animas on delete restrict,
+  bot_anima_id      uuid references animas on delete set null,
+  player_snapshot   jsonb not null,
+  bot_snapshot      jsonb not null,       -- tanpa owner_id/nickname
+  state             jsonb not null,
+  turn_number       int not null default 1,
+  rng_seed          text not null,
+  status            text not null default 'active',
+  version           int not null default 1,
+  rewarded_at       timestamptz,
+  expires_at        timestamptz not null default now() + interval '30 minutes',
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+  finished_at       timestamptz
+);
+
+create table battle_turns (
+  id               uuid primary key default gen_random_uuid(),
+  session_id       uuid not null references battle_sessions on delete cascade,
+  turn_number      int not null,
+  idempotency_key  text not null,
+  action           text not null,         -- strike|surge|guard
+  response         jsonb not null,        -- event log authoritative untuk replay
+  created_at       timestamptz not null default now(),
+  unique (session_id, turn_number),
+  unique (session_id, idempotency_key)
+);
+
 -- Temuan Tertunda: spesies baru ditemukan tapi pemain belum punya Core.
 -- Hasil Vision sudah dibayar, jadi jangan dibuang — biarkan diklaim nanti
 -- tanpa harus memfoto ulang objek yang mungkin sudah tidak ada di dekatnya.
@@ -242,7 +275,7 @@ create table pending_discoveries (
 
 ### Row Level Security
 
-RLS aktif di semua tabel. Pemain hanya bisa membaca miliknya sendiri dan **tidak bisa menulis apa pun yang berhubungan dengan kuota** — itu hak Edge Function lewat service role.
+RLS aktif di semua tabel. Pemain hanya bisa membaca miliknya sendiri dan **tidak bisa menulis apa pun yang berhubungan dengan kuota** — itu hak Edge Function lewat service role. `battle_sessions` dan `battle_turns` sengaja tidak punya policy sama sekali: client bahkan tidak membaca state internal lewat PostgREST; semua akses melewati `battle_anima`.
 
 Bentuk yang benar-benar ter-apply ada di [`backend/supabase/migrations/20260812172744_rls_and_guards.sql`](../backend/supabase/migrations/20260812172744_rls_and_guards.sql). Blok di bawah adalah rancangannya, dan empat hal berubah saat implementasi karena rancangan ini kurang ketat:
 
@@ -505,6 +538,39 @@ Endpoint JWT-protected, tanpa model call dan tanpa background job:
 ```
 
 `sync` tidak membutuhkan key; `feed`, `clean`, `sleep`, `wake`, dan `play` wajib memilikinya. RPC `apply_care()` menghitung grace/cap decay, Sleep, bonus harian, serta Dormant sebelum memproses aksi. Feed/Clean masing-masing mendebit 5 Bits, Play memakai 5 Energy, dan response selalu membawa snapshot Anima terbaru beserta saldo Bits. Fungsi SQL hanya bisa dieksekusi `service_role`; peran `authenticated` tidak dapat melewati Edge Function lewat `/rest/v1/rpc`.
+
+### `POST /battle_anima`
+
+Endpoint JWT-protected dengan empat operasi:
+
+```jsonc
+{ "operation": "start", "anima_id": "..." }
+{ "operation": "resume", "session_id": "..." }
+{ "operation": "turn", "session_id": "...", "expected_turn": 1,
+  "expected_version": 1, "action": "strike", "idempotency_key": "..." }
+{ "operation": "forfeit", "session_id": "..." }
+```
+
+`start` menyinkronkan care lalu menolak Anima yang bukan milik pemain, belum
+`ready`, tidur, atau Dormant. Bot dipilih service role dari Anima `ready` milik
+pemain lain yang art-nya ada di `species_library`; snapshot yang dikirim ke
+client tidak memuat `owner_id` atau nickname.
+
+Formula hanya hidup di
+`backend/supabase/functions/_shared/battle.mjs`. Edge Function menghitung satu
+turn, tetapi RPC `commit_battle_turn()` yang mengunci session, memeriksa
+turn/version, menyimpan event log, dan memberi reward. Jadi client hanya
+mengirim intent dan menganimasikan event server; ia tidak pernah mengirim HP
+baru atau klaim kemenangan.
+
+Session aktif berumur 30 menit dan hanya satu per pemain. Satu
+`idempotency_key` disimpan di `battle_turns`, sehingga retry mengembalikan
+response yang sama tanpa damage atau reward kedua. Menang mengubah Bits +5,
+`care_score +4`, `battle_wins +1`, dan ledger dalam transaksi yang sama;
+kalah/forfeit nol reward dan Battle tidak pernah menyentuh Genesis Core.
+`GameState.pending_battle` menyimpan session, expected turn/version, action, dan
+key sampai response authoritative diterima, sehingga restart melakukan resume
+atau replay key yang sama.
 
 ### `POST /evolve_anima`
 

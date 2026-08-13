@@ -26,7 +26,7 @@ const MARGIN_REFRESH_SEC := 120
 const ANIMA_FIELDS := (
 	"id,status,nickname,species_key,color_bucket,stage,element,rarity,base_stats,"
 	+ "care,care_score,care_synced_at,sleep_started_at,sleep_energy_at_start,"
-	+ "well_cared_on,play_score_on,play_score_today,dormant_since"
+	+ "well_cared_on,play_score_on,play_score_today,dormant_since,battle_wins"
 )
 
 
@@ -228,6 +228,18 @@ func care_anima(anima_id: String, action: String, idempotency_key := "") -> Dict
 	)
 
 
+func battle_anima(operation: String, payload: Dictionary = {}) -> Dictionary:
+	var body := payload.duplicate(true)
+	body["operation"] = operation
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/functions/v1/battle_anima",
+		_headers(true, ["content-type: application/json"]),
+		JSON.stringify(body).to_utf8_buffer(),
+		TIMEOUT_SEC
+	)
+
+
 # ------------------------------------------------------------------ transport
 
 func _headers(authed: bool, extra: PackedStringArray = PackedStringArray()) -> PackedStringArray:
@@ -242,6 +254,42 @@ func _headers(authed: bool, extra: PackedStringArray = PackedStringArray()) -> P
 ## satu request sekaligus, dan node sekali pakai lebih murah daripada antrean
 ## sendiri plus bug re-entrancy yang datang bersamanya.
 func _send(
+	method: int,
+	url: String,
+	headers: PackedStringArray,
+	body: PackedByteArray,
+	timeout: float
+) -> Dictionary:
+	var authenticated := _has_authorization(headers)
+	var outgoing_headers := headers
+	if authenticated:
+		var session_result := await ensure_session()
+		if not bool(session_result.get("ok", false)):
+			return session_result
+		outgoing_headers = _with_access_token(
+			headers,
+			str(GameState.session.get("access_token", ""))
+		)
+
+	var response := await _send_once(method, url, outgoing_headers, body, timeout)
+	if not authenticated or int(response.get("code", 0)) != 401:
+		return response
+
+	# Token bisa dicabut server walau expires_at lokal belum dekat. Satu refresh
+	# dan satu retry cukup; request berbiaya punya idempotency key sendiri.
+	var refresh_result := await refresh_session()
+	if not bool(refresh_result.get("ok", false)):
+		return response
+	return await _send_once(
+		method,
+		url,
+		_with_access_token(headers, str(GameState.session.get("access_token", ""))),
+		body,
+		timeout
+	)
+
+
+func _send_once(
 	method: int,
 	url: String,
 	headers: PackedStringArray,
@@ -286,9 +334,27 @@ func _send(
 		if typeof(data) == TYPE_DICTIONARY:
 			var dict: Dictionary = data
 			message = str(dict.get("error", dict.get("msg", dict.get("message", text))))
+		if code == 401:
+			message = "AUTH_EXPIRED"
 		return {"ok": false, "code": code, "data": data, "bytes": raw, "error": message}
 
 	return {"ok": true, "code": code, "data": data, "bytes": raw, "error": ""}
+
+
+static func _has_authorization(headers: PackedStringArray) -> bool:
+	for header in headers:
+		if header.strip_edges().to_lower().begins_with("authorization:"):
+			return true
+	return false
+
+
+static func _with_access_token(headers: PackedStringArray, access_token: String) -> PackedStringArray:
+	var refreshed := PackedStringArray()
+	for header in headers:
+		if not header.strip_edges().to_lower().begins_with("authorization:"):
+			refreshed.append(header)
+	refreshed.append("Authorization: Bearer " + access_token)
+	return refreshed
 
 
 ## Sheet PNG dari CDN tidak pernah dicoba jadi JSON. Memaksa 1 MB biner menjadi

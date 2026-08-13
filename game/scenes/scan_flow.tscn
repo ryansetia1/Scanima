@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/scan_flow.gd" id="1_flow"]
 [ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/anima_details_view.tscn" id="9_details"]
 [ext_resource type="PackedScene" path="res://scenes/ui/bottom_nav.tscn" id="10_nav"]
 [ext_resource type="Script" path="res://scripts/first_anima_effect.gd" id="11_first"]
+[ext_resource type="PackedScene" path="res://scenes/ui/battle_view.tscn" id="12_battle"]
 
 [node name="ScanFlow" type="Node2D"]
 script = ExtResource("1_flow")
@@ -162,6 +163,10 @@ unique_name_in_owner = true
 layout_mode = 1
 
 [node name="ScanView" parent="UI/SafeMargin/Shell/ViewStack" instance=ExtResource("7_scan")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="BattleView" parent="UI/SafeMargin/Shell/ViewStack" instance=ExtResource("12_battle")]
 unique_name_in_owner = true
 layout_mode = 1
 

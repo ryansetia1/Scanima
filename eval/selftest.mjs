@@ -25,6 +25,17 @@ import {
   normalizeSuggestedName,
 } from "../backend/supabase/functions/_shared/vision.mjs";
 import { biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
+import {
+  ELEMENT_CYCLE,
+  baseStatTotal,
+  computeDamage,
+  createBattleState,
+  critChance,
+  elementMultiplier,
+  normalizeBaseStats,
+  resolveTurn,
+  toBattleStats,
+} from "../backend/supabase/functions/_shared/battle.mjs";
 import { imageInputForModel } from "./run.mjs";
 
 const SIZE = DEFAULTS.workSize; // 1024, jadi tidak ada resize yang mengaburkan assert
@@ -872,6 +883,99 @@ console.log("22. adapter nano-banana-2-lite mengikuti schema dan harga Replicate
     output_format: "png",
   });
   assert.equal(biayaGambarUsd("google/nano-banana-2-lite"), 0.034);
+}
+
+console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi");
+{
+  const base = { hp: 50, atk: 50, def: 50, spd: 50, special: 50 };
+  assert.deepEqual(toBattleStats(base), {
+    max_hp: 220,
+    atk: 50,
+    def: 50,
+    spd: 50,
+    special: 50,
+  });
+  for (let index = 0; index < ELEMENT_CYCLE.length; index++) {
+    const attacker = ELEMENT_CYCLE[index];
+    const strongAgainst = ELEMENT_CYCLE[(index + 1) % ELEMENT_CYCLE.length];
+    const weakAgainst = ELEMENT_CYCLE[(index - 1 + ELEMENT_CYCLE.length) % ELEMENT_CYCLE.length];
+    assert.equal(elementMultiplier(attacker, strongAgainst), 1.5);
+    assert.equal(elementMultiplier(attacker, weakAgainst), 0.67);
+  }
+  assert.equal(elementMultiplier("unknown", "metal"), 1.0);
+  assert.equal(critChance(1), 0.02);
+  assert.equal(critChance(200), 0.25);
+
+  const normalDamage = computeDamage({
+    attack: 50,
+    defense: 50,
+    power: 50,
+    variance: 1,
+  });
+  const surgeDamage = computeDamage({
+    attack: 50,
+    defense: 25,
+    power: 75,
+    variance: 1,
+  });
+  assert.equal(normalDamage, 33);
+  assert.ok(surgeDamage > normalDamage, "Surge dengan DEF pierce harus lebih keras");
+  assert.equal(
+    computeDamage({ attack: 1, defense: 9999, power: 1, variance: 0.92 }),
+    1,
+    "DEF tinggi tidak boleh membuat damage nol"
+  );
+  assert.equal(
+    computeDamage({ attack: 50, defense: 50, power: 50, variance: 1, guarding: true }),
+    16,
+    "Guard membelah damage masuk"
+  );
+  assert.ok(Math.ceil(220 / normalDamage) >= 6 && Math.ceil(220 / normalDamage) <= 10);
+
+  const scaled = normalizeBaseStats({ hp: 30, atk: 40, def: 50, spd: 60, special: 70 }, 300);
+  assert.ok(Math.abs(baseStatTotal(scaled) - 300) <= 3, "bot dinormalisasi dekat power pemain");
+
+  const player = {
+    species_key: "player",
+    color_bucket: "blue",
+    stage: 1,
+    element: "metal",
+    base_stats: { hp: 50, atk: 95, def: 50, spd: 95, special: 50 },
+  };
+  const bot = {
+    species_key: "bot",
+    color_bucket: "green",
+    stage: 1,
+    element: "plant",
+    base_stats: { hp: 10, atk: 95, def: 10, spd: 10, special: 95 },
+  };
+  const initial = createBattleState({ player, bot, seed: "battle-selftest" });
+  const first = resolveTurn(initial, "strike", "turn-key");
+  const retry = resolveTurn(initial, "strike", "turn-key");
+  assert.deepEqual(retry, first, "retry key sama harus memberi event log identik");
+  assert.equal(first.state.status, "won");
+  assert.ok(
+    !first.events.some((event) => event.type === "attack" && event.actor === "bot"),
+    "aktor yang KO sebelum giliran tidak boleh menyerang"
+  );
+
+  const slowerPlayer = createBattleState({
+    player: { ...player, base_stats: { ...base, spd: 20 } },
+    bot: { ...bot, base_stats: { ...base, spd: 45 } },
+    seed: "speed-order",
+  });
+  const speedOrdered = resolveTurn(slowerPlayer, "strike", "speed-key");
+  assert.equal(
+    speedOrdered.events.find((event) => event.type === "attack")?.actor,
+    "bot",
+    "fighter dengan SPD lebih tinggi harus bergerak dulu"
+  );
+
+  const guardState = createBattleState({ player: { ...player, base_stats: base }, bot, seed: "guard" });
+  const guarded = resolveTurn(guardState, "guard", "guard-key");
+  assert.equal(guarded.state.player.momentum, 5, "Guard + regen tetap tunduk cap Momentum");
+  guardState.player.momentum = 1;
+  assert.throws(() => resolveTurn(guardState, "surge", "no-momentum"), /NO_MOMENTUM/);
 }
 
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang

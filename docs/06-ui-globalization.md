@@ -10,8 +10,8 @@ tetapi dekorasi sci-fi tidak boleh mengalahkan karakter atau keterbacaan.
 ## Arsitektur scene
 
 `scenes/scan_flow.tscn` adalah satu-satunya scene production yang berjalan. Ia
-menjaga Stage, request, pending scan/care, inkubator, top HUD, dan bottom nav
-tetap hidup. Empat destination adalah child scene yang di-instance sekali:
+menjaga Stage, request, pending scan/care/battle, inkubator, top HUD, dan bottom
+nav tetap hidup. Lima destination adalah child scene yang di-instance sekali:
 
 ```mermaid
 flowchart TD
@@ -20,6 +20,7 @@ flowchart TD
     ScanFlow --> ViewStack
     ViewStack --> HomeView
     ViewStack --> ScanView
+    ViewStack --> BattleView
     ViewStack --> CollectionView
     ViewStack --> AnimaDetailsView
     ScanFlow --> BottomNav
@@ -35,6 +36,8 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
   Bond penuh menonaktifkan Play; saat tidur hanya Wake yang tampil selebar dock.
   Tanpa roster, Home membedakan Loading/Error/Empty dan memberi CTA first scan.
 - **Scan:** penjelasan discovery, preview foto, dua fase status, CTA kamera.
+- **Battle:** lobby Anima aktif, dua fighter, HP/Momentum, Strike/Surge/Guard,
+  ordered event feedback, result/retry, dan forfeit.
 - **Collection:** roster dua kolom; tap membuka bottom sheet base stats + care
   authoritative dengan aksi `View Profile` dan `Summon`. Thumbnail hanya dari cache.
 - **Anima Profile:** portrait, element, rarity, stage, care score, dan base stats.
@@ -79,6 +82,12 @@ Target minimum touch adalah 96 unit pada basis 720×1280. Layout memakai
 Container/anchor dan safe-area conversion milik `scan_flow.gd`; jangan mengunci
 lebar berdasarkan panjang copy English. Care actions otomatis berubah dari
 empat menjadi dua kolom jika label locale tidak lagi muat.
+
+Bottom nav berurutan Home, Scan, Battle, Collection, Anima. Kelima tombol
+memakai ikon di atas label agar target 96px tetap muat; Scan tetap CTA cyan,
+sementara destination aktif punya state pressed yang terpisah. Enam elemen
+Battle memakai ikon berbentuk berbeda supaya informasi tidak bergantung pada
+warna.
 
 Chip Core tetap ringkas di HUD. Penjelasan Genesis Core dibuka sebagai modal
 lokal saat chip disentuh, supaya istilah ekonomi tidak memenuhi layar utama.

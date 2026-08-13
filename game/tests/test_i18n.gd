@@ -4,6 +4,7 @@ const CATALOG_PATH := "res://locales/ui.csv"
 const REQUIRED_KEYS := [
 	"NAV_HOME",
 	"NAV_SCAN",
+	"NAV_BATTLE",
 	"NAV_COLLECTION",
 	"NAV_ANIMA",
 	"CORE_INFO_TITLE",
@@ -15,6 +16,10 @@ const REQUIRED_KEYS := [
 	"CARE_SLEEP",
 	"CARE_PLAY",
 	"ERROR_BOND_FULL",
+	"BATTLE_ACTION_STRIKE",
+	"BATTLE_ACTION_SURGE",
+	"BATTLE_ACTION_GUARD",
+	"BATTLE_ERROR_GENERIC",
 	"STATUS_GATE_REJECTED",
 	"GATE_HUMAN_FACE",
 	"ELEMENT_FLOW",
@@ -28,11 +33,13 @@ const PLAYER_UI_FILES := [
 	"res://scripts/home_view.gd",
 	"res://scripts/scan_view.gd",
 	"res://scripts/collection_view.gd",
+	"res://scripts/battle_view.gd",
 	"res://scripts/anima_details_view.gd",
 	"res://scenes/scan_flow.tscn",
 	"res://scenes/ui/home_view.tscn",
 	"res://scenes/ui/scan_view.tscn",
 	"res://scenes/ui/collection_view.tscn",
+	"res://scenes/ui/battle_view.tscn",
 	"res://scenes/ui/anima_details_view.tscn",
 	"res://scenes/ui/bottom_nav.tscn",
 ]
@@ -110,6 +117,7 @@ func _check_scene_copy(keys: Dictionary) -> void:
 	for name in [
 		"Subtitle", "AnimaMeta", "ScanStatus", "ScanPhaseHint",
 		"CollectionStatus", "DetailsEmpty", "DetailsMeta",
+		"BattleSubtitle", "BattleLobbyMeta", "BattleFeedback", "BattleResultBody",
 	]:
 		var label := scene.find_child(name, true, false) as Label
 		if label != null:

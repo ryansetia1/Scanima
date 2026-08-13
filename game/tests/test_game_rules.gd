@@ -5,6 +5,8 @@ extends SceneTree
 ##   /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
 ##     --script res://tests/test_game_rules.gd
 
+const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
+
 var _checks := 0
 var _failures: PackedStringArray = []
 
@@ -75,6 +77,27 @@ func _initialize() -> void:
 	_check(
 		CareRules.can_recover_from_dormant({"hunger": 70, "hygiene": 70}),
 		"dua kebutuhan di atas 50 memulihkan Dormant"
+	)
+
+	print("6. kontrak event Battle client")
+	var attack: Dictionary = BATTLE_EVENT.normalized({
+		"type": "attack",
+		"actor": "player",
+		"target": "bot",
+		"action": "strike",
+		"damage": 24,
+		"target_hp": 81,
+	})
+	_check_eq(attack.get("damage"), 24, "event attack server yang sah diterima")
+	_check(
+		BATTLE_EVENT.normalized({
+			"type": "attack", "actor": "player", "target": "owner_id", "damage": 2,
+		}).is_empty(),
+		"target event yang tidak dikenal ditolak"
+	)
+	_check(
+		BATTLE_EVENT.normalized({"type": "reward", "bits": 999}).is_empty(),
+		"client tidak menerima event reward buatan sebagai combat event"
 	)
 
 	_finish()

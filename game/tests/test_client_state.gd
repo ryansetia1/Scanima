@@ -12,6 +12,8 @@ extends SceneTree
 ##   - kunci idempotency yang berubah di tengah scan berarti Genesis Core kedua
 ##     terdebit untuk satu Anima yang sama
 ##   - kunci care yang hilang setelah timeout berarti Bits bisa terdebit dua kali
+##   - kunci turn Battle yang berubah setelah timeout berarti damage/reward bisa
+##     diproses dua kali
 ##   - cache art setengah terunduh yang terbaca lengkap berarti Anima tampil rusak
 ##
 ## State pemain tidak disentuh: GameState diarahkan ke file dan folder sementara.
@@ -43,6 +45,7 @@ func _initialize() -> void:
 	_test_kunci_scan()
 	_test_scan_selesai()
 	_test_kunci_care()
+	_test_kunci_battle()
 	_test_state_rusak()
 	_test_cache_art()
 	_test_cache_setengah()
@@ -81,6 +84,7 @@ func _muat_ulang() -> void:
 	GameState.session = {}
 	GameState.pending_scan = {}
 	GameState.pending_care = {}
+	GameState.pending_battle = {}
 	GameState.last_anima = {}
 	GameState.load_state()
 
@@ -145,6 +149,31 @@ func _test_kedaluwarsa() -> void:
 	_check(
 		Backend.needs_refresh({"access_token": "a", "expires_at": now - 1}, now),
 		"token yang sudah mati harus direfresh"
+	)
+	var headers: PackedStringArray = Backend._with_access_token(
+		PackedStringArray(["apikey: public", "Authorization: Bearer lama"]),
+		"baru"
+	)
+	var auth_count := 0
+	for header in headers:
+		if header.to_lower().begins_with("authorization:"):
+			auth_count += 1
+	_check_eq(auth_count, 1, "refresh header tidak boleh menggandakan Authorization")
+	_check(headers.has("Authorization: Bearer baru"), "request harus memakai access token terbaru")
+	_check(headers.has("apikey: public"), "refresh header harus mempertahankan header lain")
+
+	var source := FileAccess.get_file_as_string("res://scripts/backend.gd")
+	var send_start := source.find("func _send(")
+	var send_end := source.find("\n\nfunc _send_once(", send_start)
+	var send_body := source.substr(send_start, send_end - send_start)
+	_check(
+		send_body.find("await ensure_session()") < send_body.find("await _send_once("),
+		"request authenticated harus memeriksa umur token sebelum dikirim"
+	)
+	_check(
+		send_body.find("response.get(\"code\", 0)") != -1
+		and send_body.find("await refresh_session()") != -1,
+		"401 harus mencoba tepat satu refresh sebelum turn ditawarkan untuk retry"
 	)
 
 
@@ -211,8 +240,49 @@ func _test_kunci_care() -> void:
 	_check_eq(GameState.uid(), "uid-abc", "menyelesaikan care tidak boleh menghapus sesi")
 
 
+func _test_kunci_battle() -> void:
+	print("6. session dan turn Battle bertahan sampai server mengonfirmasi")
+	GameState.remember_battle("battle-1", 3, 7)
+	_muat_ulang()
+	_check_eq(GameState.pending_battle.get("session_id"), "battle-1", "session Battle harus bertahan")
+	_check_eq(int(GameState.pending_battle.get("expected_turn")), 3, "turn server harus bertahan")
+
+	var turn: Dictionary = GameState.begin_battle_action("battle-1", 3, 7, "strike")
+	var key := str(turn.get("idempotency_key", ""))
+	_check(not key.is_empty(), "turn Battle harus punya idempotency key")
+	_check(key.length() <= 128, "key Battle harus muat batas server")
+
+	var kedua: Dictionary = GameState.begin_battle_action("battle-1", 3, 7, "guard")
+	_check_eq(kedua.get("idempotency_key"), key, "tap kedua tidak boleh mengganti key turn")
+	_check_eq(kedua.get("action"), "strike", "tap kedua tidak boleh mengganti action tertunda")
+	_muat_ulang()
+	_check_eq(
+		GameState.pending_battle.get("idempotency_key"),
+		key,
+		"timeout/restart harus me-replay key turn yang sama"
+	)
+
+	GameState.confirm_battle_response({
+		"id": "battle-1", "status": "active", "turn_number": 4, "version": 8,
+	})
+	_muat_ulang()
+	_check_eq(int(GameState.pending_battle.get("expected_turn")), 4, "response memajukan turn")
+	_check_eq(int(GameState.pending_battle.get("expected_version")), 8, "response memajukan version")
+	_check(str(GameState.pending_battle.get("action", "")).is_empty(), "action terkonfirmasi harus kosong")
+
+	var berikutnya: Dictionary = GameState.begin_battle_action("battle-1", 4, 8, "guard")
+	_check(
+		str(berikutnya.get("idempotency_key", "")) != key,
+		"turn berikutnya harus mendapat key baru"
+	)
+	GameState.confirm_battle_response({"id": "battle-1", "status": "won"})
+	_muat_ulang()
+	_check(GameState.pending_battle.is_empty(), "Battle terminal tidak boleh di-resume lagi")
+	_check_eq(GameState.uid(), "uid-abc", "menyelesaikan Battle tidak boleh menghapus sesi")
+
+
 func _test_state_rusak() -> void:
-	print("6. state.json rusak tidak menghapus apa pun (satu ERROR di bawah disengaja)")
+	print("7. state.json rusak tidak menghapus apa pun (satu ERROR di bawah disengaja)")
 	var file := FileAccess.open(PATH_UJI, FileAccess.WRITE)
 	file.store_string("{\"session\": {\"access_token\": \"akses")
 	file.close()
@@ -229,7 +299,7 @@ func _test_state_rusak() -> void:
 
 
 func _test_cache_art() -> void:
-	print("7. art tersimpan dan bisa dimuat AnimaLoader")
+	print("8. art tersimpan dan bisa dimuat AnimaLoader")
 	var built := PlaceholderSheet.build()
 	var image: Image = built["image"]
 	var manifest: Dictionary = built["manifest"]
@@ -259,7 +329,7 @@ func _test_cache_art() -> void:
 
 
 func _test_cache_setengah() -> void:
-	print("8. cache setengah terunduh dianggap tidak ada")
+	print("9. cache setengah terunduh dianggap tidak ada")
 	var dir: String = GameState.sprite_dir("uji_kotak", "cool_blue", 1)
 	var manifest_dict: Dictionary = PlaceholderSheet.build()["manifest"]
 	var sheet_name := str(manifest_dict["sheet"])

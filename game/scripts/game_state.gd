@@ -3,9 +3,10 @@ extends Node
 ## Satu-satunya pemilik state yang bertahan antar sesi aplikasi.
 ##
 ## Yang disimpan hanya hal yang tidak aman direkonstruksi: sesi pemain, scan
-## berbayar yang berjalan, dan satu aksi care yang belum terkonfirmasi. Saldo,
-## kebutuhan, dan daftar Anima sengaja TIDAK disimpan, karena server yang
-## berwenang dan salinan lokal hanya menambah satu sumber kebenaran yang salah.
+## berbayar yang berjalan, satu aksi care, dan satu turn Battle yang belum
+## terkonfirmasi. Saldo, kebutuhan, dan daftar Anima sengaja TIDAK disimpan,
+## karena server yang berwenang dan salinan lokal hanya menambah satu sumber
+## kebenaran yang salah.
 ##
 ## Sesi adalah satu-satunya bukti kepemilikan akun. Pemain anonim tidak punya
 ## email maupun password, jadi file ini hilang atau rusak sama dengan kehilangan
@@ -25,6 +26,11 @@ var pending_scan: Dictionary = {}
 ## {idempotency_key, anima_id, action}. Dipertahankan sampai server mengonfirmasi
 ## supaya retry Feed/Clean tidak mendebit Bits dua kali.
 var pending_care: Dictionary = {}
+
+## {session_id, expected_turn, expected_version, action, idempotency_key}.
+## Session tetap disimpan saat tidak ada action supaya app bisa resume; key action
+## dipertahankan saat timeout supaya turn dan reward tidak pernah commit dua kali.
+var pending_battle: Dictionary = {}
 
 ## Anima terakhir yang berhasil dimuat, supaya app bisa langsung menampilkannya
 ## saat dibuka lagi tanpa menunggu jaringan sama sekali.
@@ -58,6 +64,7 @@ func load_state() -> void:
 	session = as_dict(data.get("session"))
 	pending_scan = as_dict(data.get("pending_scan"))
 	pending_care = as_dict(data.get("pending_care"))
+	pending_battle = as_dict(data.get("pending_battle"))
 	last_anima = as_dict(data.get("last_anima"))
 
 
@@ -66,6 +73,7 @@ func save() -> void:
 		"session": session,
 		"pending_scan": pending_scan,
 		"pending_care": pending_care,
+		"pending_battle": pending_battle,
 		"last_anima": last_anima,
 	}
 	var tmp := path_state + ".tmp"
@@ -140,6 +148,53 @@ func begin_care(anima_id: String, action: String) -> Dictionary:
 
 func finish_care() -> void:
 	pending_care = {}
+	save()
+
+
+func remember_battle(session_id: String, expected_turn: int, expected_version: int) -> void:
+	pending_battle = {
+		"session_id": session_id,
+		"expected_turn": expected_turn,
+		"expected_version": expected_version,
+		"action": "",
+		"idempotency_key": "",
+	}
+	save()
+
+
+func begin_battle_action(
+	session_id: String,
+	expected_turn: int,
+	expected_version: int,
+	action: String
+) -> Dictionary:
+	if not str(pending_battle.get("action", "")).is_empty():
+		return pending_battle
+	var key := "%d-%08x%08x" % [int(Time.get_unix_time_from_system()), randi(), randi()]
+	pending_battle = {
+		"session_id": session_id,
+		"expected_turn": expected_turn,
+		"expected_version": expected_version,
+		"action": action,
+		"idempotency_key": key,
+	}
+	save()
+	return pending_battle
+
+
+func confirm_battle_response(session_data: Dictionary) -> void:
+	if str(session_data.get("status", "")) == "active":
+		remember_battle(
+			str(session_data.get("id", "")),
+			int(session_data.get("turn_number", 1)),
+			int(session_data.get("version", 1))
+		)
+	else:
+		finish_battle()
+
+
+func finish_battle() -> void:
+	pending_battle = {}
 	save()
 
 
