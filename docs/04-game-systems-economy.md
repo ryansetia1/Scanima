@@ -200,7 +200,7 @@ Nilai aksi yang live di Phase 2:
 - **Play:** gratis, Energy -5, Bond +8; score +1 maksimal lima kali per UTC day.
   Saat Bond sudah 100, Play ditolak tanpa mengurangi Energy atau memberi score:
   aksinya memang membangun hubungan, bukan tombol farming score yang tersembunyi.
-- **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 score. Wake lebih awal mempertahankan pemulihan parsial tanpa score.
+- **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 score. Wake lebih awal mempertahankan pemulihan parsial tanpa score. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap.
 
 Saldo, kebutuhan, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten, sedangkan `quota_ledger` mencatat debit Feed/Clean. Client menyimpan satu intent `pending_care`, bukan salinan saldo atau kebutuhan.
 

@@ -22,6 +22,16 @@ func _initialize() -> void:
 		_finish()
 		return
 
+	var sleep_delay: float = float(scene.call("sleep_completion_delay", {
+		"sleep_started_at": "2026-08-13T00:00:00+00:00",
+		"care_synced_at": "2026-08-13T05:59:00+00:00",
+	}))
+	_check(absf(sleep_delay - 61.0) < 0.1, "sleep timer targets the six-hour server deadline")
+	_check(
+		float(scene.call("sleep_completion_delay", {})) < 0.0,
+		"awake Anima does not schedule a sleep completion sync"
+	)
+
 	_check_full_rect(scene.find_child("SafeMargin", true, false) as Control, "safe margin")
 	for name in ["HomeView", "ScanView", "CollectionView", "AnimaDetailsView"]:
 		var view := scene.find_child(name, true, false) as Control

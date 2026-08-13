@@ -38,6 +38,8 @@ const FOTO_MAX_PX := 1280
 const FOTO_QUALITY := 85
 const THUMBNAIL_SIZE := 128
 const BASE_MARGIN := 32.0
+const SLEEP_SYNC_RETRY_SEC := 30.0
+const SLEEP_SYNC_EPSILON_SEC := 1.0
 
 @onready var _stage: Node2D = %Stage
 @onready var _incubator: IncubatorEffect = %Incubator
@@ -69,12 +71,19 @@ var _placeholder_icon: Texture2D = null
 var _thumbnail_cache: Dictionary = {}
 var _destination: StringName = BottomNav.HOME
 var _toast_revision := 0
+var _sleep_completion_timer: Timer = null
+var _sleep_sync_in_flight := false
 
 ## Singleton plugin Android, null di desktop dan di test headless.
 var _picker: Object = null
 
 
 func _ready() -> void:
+	_sleep_completion_timer = Timer.new()
+	_sleep_completion_timer.name = "SleepCompletionTimer"
+	_sleep_completion_timer.one_shot = true
+	add_child(_sleep_completion_timer)
+	_sleep_completion_timer.timeout.connect(_sync_sleep_completion)
 	_scan_view.scan_requested.connect(_on_pick_pressed)
 	_home_view.care_requested.connect(_perform_care)
 	_collection_view.anima_selected.connect(_on_anima_selected)
@@ -117,7 +126,7 @@ func _ready() -> void:
 		if arg == "--core-info":
 			_show_core_info()
 		if arg == "--sleep-demo" and not _current_anima.is_empty():
-			_current_anima["sleep_started_at"] = "preview"
+			_current_anima["sleep_started_at"] = Time.get_datetime_string_from_system(true)
 			_refresh_care()
 		if arg == "--incubator":
 			_switch_destination(BottomNav.SCAN)
@@ -128,6 +137,17 @@ func _ready() -> void:
 			await _run_hatch_demo()
 		if arg.begins_with("--screenshot="):
 			await _capture_and_quit(arg.trim_prefix("--screenshot="))
+
+
+func _notification(what: int) -> void:
+	if (
+		what == NOTIFICATION_APPLICATION_RESUMED
+		and is_node_ready()
+		and is_instance_valid(_sleep_completion_timer)
+		and _is_sleeping(_current_anima)
+	):
+		_sleep_completion_timer.stop()
+		call_deferred("_sync_sleep_completion")
 
 
 # ---------------------------------------------------------------- boot
@@ -807,6 +827,7 @@ func _refresh_stats() -> void:
 
 
 func _refresh_care() -> void:
+	_schedule_sleep_completion()
 	var has_care := typeof(_current_anima.get("care")) == TYPE_DICTIONARY
 	if not has_care:
 		_home_view.set_anima(_current_anima, _busy)
@@ -818,6 +839,57 @@ func _refresh_care() -> void:
 	_details_view.set_anima(_current_anima, _thumbnail_for(_current_anima))
 	if _anima.sprite_frames != null:
 		_anima.apply_care_state(sleeping, dormant)
+
+
+func _schedule_sleep_completion() -> void:
+	if not is_instance_valid(_sleep_completion_timer):
+		return
+	_sleep_completion_timer.stop()
+	var delay := sleep_completion_delay(_current_anima)
+	if delay > 0.0:
+		_sleep_completion_timer.start(delay)
+
+
+func _sync_sleep_completion() -> void:
+	if _sleep_sync_in_flight or not _is_sleeping(_current_anima):
+		return
+	if _busy or not GameState.pending_care.is_empty():
+		_sleep_completion_timer.start(1.0)
+		return
+
+	var anima_id := str(_current_anima.get("id", ""))
+	_sleep_sync_in_flight = true
+	_home_view.set_busy(true)
+	await _sync_active_care(false)
+	_sleep_sync_in_flight = false
+	if is_instance_valid(_home_view):
+		_home_view.set_busy(_busy)
+	if str(_current_anima.get("id", "")) != anima_id:
+		_schedule_sleep_completion()
+	elif _is_sleeping(_current_anima):
+		# Jaringan bisa gagal atau jam server belum melewati batas persis.
+		_sleep_completion_timer.start(SLEEP_SYNC_RETRY_SEC)
+
+
+static func sleep_completion_delay(row: Dictionary) -> float:
+	if not _has_timestamp(row.get("sleep_started_at")):
+		return -1.0
+	var started := _timestamp_seconds(row.get("sleep_started_at"))
+	var synced := _timestamp_seconds(row.get("care_synced_at"))
+	if started <= 0.0 or synced <= 0.0:
+		return -1.0
+	var elapsed := maxf(0.0, synced - started)
+	return maxf(
+		0.05,
+		CARE_RULES.SLEEP_FULL_HOURS * 3600.0 - elapsed + SLEEP_SYNC_EPSILON_SEC
+	)
+
+
+static func _timestamp_seconds(value: Variant) -> float:
+	var timestamp := str(value)
+	if timestamp.is_empty():
+		return -1.0
+	return float(Time.get_unix_time_from_datetime_string(timestamp))
 
 
 func _is_sleeping(row: Dictionary) -> bool:
