@@ -266,7 +266,7 @@ Battle harus memenuhi satu syarat yang tidak biasa: ia harus membuat stat yang b
 formula production adalah
 `backend/supabase/functions/_shared/battle.mjs`; potongan GDScript di bawah
 menjelaskan rumusnya, bukan implementasi kedua. Client hanya mengirim
-Strike/Surge/Guard dan menganimasikan ordered event log dari server.
+`strike`/`surge`/`guard` dan menganimasikan ordered event log dari server.
 
 ### Stat turunan
 
@@ -344,17 +344,21 @@ Peluang critical diambil dari SPD: `crit_chance = clampf(spd / 400.0, 0.02, 0.25
 
 Auto-battle akan lebih mudah dibuat, tapi tiga pilihan per turn adalah harga yang murah untuk sesuatu yang membuat pemain merasa bertanggung jawab atas kemenangannya:
 
-| Aksi | Power | Biaya Momentum | Catatan |
-| --- | --- | --- | --- |
-| **Strike** | 50, berbasis ATK | 0 | Aksi dasar, selalu tersedia |
-| **Surge** | 75, berbasis SPECIAL | 2 | Menembus 50% DEF lawan |
-| **Guard** | — | 0, memulihkan 1 | Damage masuk x0.5 turn ini |
+| Aksi (wire) | Copy pemain | Power | Biaya PP | Catatan |
+| --- | --- | --- | --- | --- |
+| `strike` | **Attack** | 50, berbasis ATK | 0 | Aksi dasar, selalu tersedia |
+| `surge` | **Special** | 75, berbasis SPECIAL | 1 | Menembus 50% DEF lawan |
+| `guard` | **Guard** | — | 0, memulihkan 1 | Damage masuk x0.5 turn ini |
 
-**Momentum** adalah sumber daya per-battle, maksimal 5, mulai dari 3, pulih 1 per turn. Ia sengaja dinamai berbeda dari mata uang di bagian 2 karena ia bukan mata uang: ia lahir dan mati di dalam satu pertarungan, tidak pernah disimpan, dan tidak bisa dibeli. Perannya menciptakan ritme bertahan-lalu-menyerang tanpa perlu sistem cooldown per skill: pemain menahan diri untuk mengumpulkan Surge, dan itu keputusan yang cukup menarik untuk dibuat berulang kali.
+**PP** adalah budget per-battle: mulai penuh 3, satu Special memakan 1, dan ia **tidak pulih sendiri setiap turn** — satu-satunya pemulihan adalah Guard. Ia sengaja dinamai berbeda dari mata uang di bagian 2 karena ia bukan mata uang: ia lahir dan mati di dalam satu pertarungan, tidak pernah disimpan, dan tidak bisa dibeli. Perannya menciptakan ritme bertahan-lalu-menyerang tanpa perlu sistem cooldown per skill: tiga Special adalah anggaran yang pemain sendiri putuskan kapan dibelanjakan, dan Guard adalah harga untuk menambahnya.
+
+**Regen per-turn dihapus karena panjang battle mengukurnya menjadi tidak relevan.** Diukur dengan modul formula ini sendiri pada stat 260 HP (Special ~70 damage, Attack ~37, elemen netral), satu battle selesai sekitar **empat turn**. Dengan regen +1 per turn, biaya 1 berarti PP pemain membeku di angka awalnya sepanjang pertarungan — counter di tombol tidak pernah bergerak dan Attack tidak pernah punya alasan ditekan, sebab Special selalu tersedia, selalu lebih kuat, dan selalu menembus DEF. Versi lama memakai biaya 2 dengan regen 1, yang memang mengekang tepat satu turn dari empat, tapi mengekangnya di turn yang terasa arbitrer bagi pemain karena harganya tidak pernah ditampilkan. Budget tanpa regen memindahkan keputusannya ke pemain dan membuat tombolnya menjelaskan dirinya sendiri.
+
+**PP tidak persist antar battle, dan itu keputusan sadar — bukan versi setengah jalan dari PP Pokémon.** Membuatnya persist (diisi lewat Feed/Sleep) pernah dipertimbangkan dan ditolak karena empat hal yang bisa ditunjuk di kode ini. Bot adalah snapshot anonim Anima pemain lain, jadi PP-nya harus sintetis dan rasionalisasinya cuma mengenai manusianya. Menang memberi tepat 5 Bits sementara Feed memakan tepat 5 Bits, jadi battle jadi break-even dan pemain baru dengan 30 Bits awal yang paling cepat menabrak dinding — sedangkan `apply_care()` menolak Feed pada Hunger 100 dengan `NEED_FULL`, sehingga Anima kenyang tapi PP kosong tidak bisa diisi sama sekali. Regen di dalam fight adalah satu-satunya sumber keputusan "Special sekarang atau Guard dulu"; tanpa itu jawabannya sepele, yaitu Special sampai habis lalu Attack terus. Dan tanpa tutorial, "tidak bisa Special sampai besok" adalah hukuman yang lebih keras daripada Dormant. Yang membuat resource ini terbaca oleh pemain baru bukan persistensinya, melainkan counter-nya menempel di tombol (`Special 3/5`), bukan cuma di header.
 
 Urutan turn dari SPD, dengan tiebreak acak. Karena itu bot sah menyerang lebih
 dulu setelah pemain memilih aksi; client mengumumkan nama aktor serta kedua
-angka SPD sebelum animasi agar initiative terbaca jelas. `Surge` memakai SPECIAL,
+angka SPD sebelum animasi agar initiative terbaca jelas. Special memakai SPECIAL,
 yang di [02](02-prompt-engineering.md) diturunkan dari kompleksitas fungsional
 objek — sehingga keyboard mekanis dengan banyak tombol benar-benar bertarung
 berbeda dari batu, dan bedanya bisa dijelaskan dengan menunjuk objek aslinya.
@@ -399,12 +403,12 @@ Care dan combat sengaja diuji di runtime yang memiliki sumber kebenarannya:
   validasi kontrak event yang diterima client.
 - `eval/selftest.mjs` mengimpor **file combat production yang sama** dengan Edge
   Function. Ia menjaga enam relasi elemen, minimum damage, DEF pierce, crit cap,
-  Guard, Momentum, SPD order, KO, batas turn, dan deterministic retry.
+  Guard, PP, SPD order, KO, batas turn, dan deterministic retry.
 - `backend/tests/quota_rules.sql` menguji eligibility, satu active session,
   stale/concurrent turn, replay idempoten, reward atomik, nol reward
   loss/forfeit, Core tidak berubah, dan RPC/tabel tertutup dari client.
 - `game/tests/live_battle.gd` melewati transport production untuk
-  start/resume/Strike/Guard/Surge/replay/forfeit tanpa model call.
+  start/resume/`strike`/`guard`/`surge`/replay/forfeit tanpa model call.
 
 Minimum damage tetap pagar balancing paling penting: kalau peredam DEF
 `100/(100+DEF)` diganti pengurang sederhana, selftest gagal sebelum pertarungan

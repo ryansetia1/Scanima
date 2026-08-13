@@ -3,6 +3,13 @@ extends Control
 
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 
+# Nama identifier mengikuti _shared/battle.mjs; kata player-facing "PP"/"Special"
+# hidup di locales/ui.csv supaya wire value dan copy bisa berubah terpisah.
+# Kedua angka wajib sama dengan modul itu: client yang lebih longgar akan
+# menyalakan Special yang lalu ditolak server sebagai NO_MOMENTUM.
+const MOMENTUM_MAX := 3
+const SURGE_COST := 1
+
 signal start_requested
 signal action_requested(action: String)
 signal resume_requested
@@ -21,7 +28,6 @@ signal forfeit_requested
 @onready var _start_button: Button = %BattleStartButton
 @onready var _battle_content: VBoxContainer = %BattleContent
 @onready var _turn_label: Label = %BattleTurn
-@onready var _momentum_label: Label = %BattleMomentum
 @onready var _player_name: Label = %BattlePlayerName
 @onready var _bot_name: Label = %BattleBotName
 @onready var _player_element_icon: TextureRect = %BattlePlayerElementIcon
@@ -278,16 +284,17 @@ func _apply_state() -> void:
 	_turn_label.text = tr("BATTLE_TURN") % LocaleManager.format_integer(
 		int(_session.get("turn_number", state.get("turn", 1)))
 	)
-	_momentum_label.text = tr("BATTLE_MOMENTUM") % [
-		LocaleManager.format_integer(int(player.get("momentum", 0))),
-		LocaleManager.format_integer(5),
-	]
 	var status := str(_session.get("status", state.get("status", "active")))
 	_result_panel.visible = status != "active"
 	_actions.visible = status == "active"
 	_forfeit_button.visible = status == "active"
 	if status == "active":
-		_feedback.text = tr("BATTLE_CHOOSE_ACTION")
+		# PP hanya pulih lewat Guard, jadi tombol yang mati butuh satu kalimat yang
+		# menyebutkan jalan keluarnya; tanpa ini pemain kehabisan PP tanpa tahu sebabnya.
+		if int(player.get("momentum", 0)) < SURGE_COST:
+			_feedback.text = tr("BATTLE_NO_MOMENTUM")
+		else:
+			_feedback.text = tr("BATTLE_CHOOSE_ACTION")
 	else:
 		_show_result(status)
 	_update_action_state()
@@ -313,9 +320,15 @@ func _update_action_state() -> void:
 	var state := _as_dict(_session.get("state"))
 	var player := _as_dict(state.get("player"))
 	var active := str(_session.get("status", state.get("status", ""))) == "active"
+	var momentum := int(player.get("momentum", 0))
 	_strike_button.disabled = _busy or not active
 	_guard_button.disabled = _busy or not active
-	_surge_button.disabled = _busy or not active or int(player.get("momentum", 0)) < 2
+	_surge_button.disabled = _busy or not active or momentum < SURGE_COST
+	# Counter menempel di tombol yang membelanjakannya, bukan hanya di header.
+	_surge_button.text = tr("BATTLE_ACTION_SURGE_COST") % [
+		LocaleManager.format_integer(momentum),
+		LocaleManager.format_integer(MOMENTUM_MAX),
+	]
 	_forfeit_button.disabled = _busy or not active
 
 

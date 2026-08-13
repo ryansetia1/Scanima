@@ -146,7 +146,7 @@ Tutup dengan `test_game_rules.gd`.
 
 **Milestone pertama selesai 13 Agustus 2026:** vertical slice Battle 1v1 sudah
 live—Anima aktif melawan snapshot anonim Anima pemain lain, tiga aksi per turn,
-damage/elemen/Momentum server-authoritative, resume setelah restart, reward
+damage/elemen/PP server-authoritative, resume setelah restart, reward
 atomik, dan presentasi hit di Godot.
 
 Yang berikutnya di Phase 3 adalah evolusi vertical slice, onboarding, audio, dan
@@ -157,7 +157,7 @@ sebelum loop 1v1 punya data pemain nyata.
 ### Yang dikerjakan
 
 Battle dari [04](04-game-systems-economy.md) sekarang punya stat turunan, roda
-elemen, Strike/Surge/Guard, Momentum, bot anonim, flash, angka damage, dan haptic
+elemen, Attack/Special/Guard, PP, bot anonim, flash, angka damage, dan haptic
 ringan. Session Postgres berumur 30 menit; client menyimpan action/key tertunda,
 sedangkan server sendiri yang memutuskan turn dan reward. Menang memberi 5 Bits,
 `care_score +4`, dan `battle_wins +1`; loss/forfeit nol reward dan tidak ada

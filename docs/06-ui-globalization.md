@@ -38,8 +38,12 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
   Tap tepat pada sprite memberi reaksi lokal sesuai awake/Sleep/Dormant tanpa
   mengubah care atau mengirim request.
 - **Scan:** penjelasan discovery, preview foto, dua fase status, CTA kamera.
-- **Battle:** lobby Anima aktif, dua fighter, HP/Momentum, Strike/Surge/Guard,
-  ordered event feedback, result/retry, dan forfeit.
+- **Battle:** lobby Anima aktif, dua fighter, HP/PP, Attack/Special/Guard,
+  ordered event feedback, result/retry, dan forfeit. Counter PP hidup **hanya** di
+  tombol Special, di tempat pemain membelanjakannya; label header yang dulu
+  mengulanginya sudah dihapus.   Kedua meter HP terkuras dari tepi luar layar ke
+  dalam seperti Street Fighter — bar pemain `FILL_END_TO_BEGIN`, bar bot
+  `FILL_BEGIN_TO_END` — sehingga sisa HP selalu memeluk tengah arena.
 - **Collection:** roster dua kolom; tap langsung membuka bottom sheet identity +
   base stats. Condition memakai skeleton sampai care authoritative tersedia,
   dengan aksi `View Profile` dan `Summon`. Thumbnail hanya dari cache.

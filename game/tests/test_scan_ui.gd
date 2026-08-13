@@ -476,7 +476,7 @@ func _test_battle_view() -> void:
 	var surge := view.find_child("BattleSurgeButton", true, false) as Button
 	var guard := view.find_child("BattleGuardButton", true, false) as Button
 	var player_hp := view.find_child("BattlePlayerHp", true, false) as ProgressBar
-	var momentum := view.find_child("BattleMomentum", true, false) as Label
+	var bot_hp := view.find_child("BattleBotHp", true, false) as ProgressBar
 	var feedback := view.find_child("BattleFeedback", true, false) as Label
 	var arena := view.find_child("BattleArena", true, false) as Control
 	var footer := view.find_child("BattleFooter", true, false) as Control
@@ -537,7 +537,19 @@ func _test_battle_view() -> void:
 	)
 	_check(result.get_parent() == footer, "Battle result overlays the fixed footer")
 	_check_eq(player_hp.value, 220.0, "Battle HUD displays authoritative HP")
-	_check(momentum.text.find("3") >= 0, "Battle HUD displays authoritative Momentum")
+	_check(
+		player_hp.fill_mode == ProgressBar.FILL_END_TO_BEGIN
+		and bot_hp.fill_mode == ProgressBar.FILL_BEGIN_TO_END,
+		"both HP meters drain from the outer screen edge inward like a fighting game"
+	)
+	_check(
+		surge.text == tr("BATTLE_ACTION_SURGE_COST") % ["3", "3"],
+		"Special button is the only place PP is shown"
+	)
+	_check(
+		view.find_child("BattleMomentum", true, false) == null,
+		"no redundant PP label survives outside the Special button"
+	)
 	_check(not strike.disabled and not surge.disabled and not guard.disabled, "active turn unlocks three actions")
 	UiMotion.set_reduced_motion(false)
 	player_sprite.set_pose("attack")
@@ -563,7 +575,18 @@ func _test_battle_view() -> void:
 
 	session["state"]["player"]["momentum"] = 1
 	view.set_session(session, loaded, loaded)
-	_check(surge.disabled, "Surge is disabled below its Momentum cost")
+	_check(not surge.disabled, "one PP is still enough for one Special")
+	_check(
+		surge.text == tr("BATTLE_ACTION_SURGE_COST") % ["1", "3"],
+		"Special button counter follows the authoritative PP"
+	)
+	session["state"]["player"]["momentum"] = 0
+	view.set_session(session, loaded, loaded)
+	_check(surge.disabled, "Special is disabled once PP runs out")
+	_check(
+		feedback.text == tr("BATTLE_NO_MOMENTUM"),
+		"empty PP names Guard as the way back instead of leaving a dead button"
+	)
 	view.set_busy(true)
 	_check(strike.disabled and surge.disabled and guard.disabled, "pending turn locks all actions")
 

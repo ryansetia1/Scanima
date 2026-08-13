@@ -123,13 +123,6 @@ size_flags_horizontal = 3
 theme_type_variation = &"SectionLabel"
 text = "BATTLE_TURN"
 
-[node name="BattleMomentum" type="Label" parent="Column/BattleContent/StatusRow"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"EyebrowLabel"
-text = "BATTLE_MOMENTUM"
-horizontal_alignment = 2
-
 [node name="FighterHud" type="HBoxContainer" parent="Column/BattleContent"]
 layout_mode = 2
 theme_override_constants/separation = 10
@@ -173,6 +166,7 @@ custom_minimum_size = Vector2(0, 26)
 layout_mode = 2
 theme_override_styles/background = SubResource("HpBackground")
 theme_override_styles/fill = SubResource("HpFill")
+fill_mode = 1
 value = 100.0
 show_percentage = false
 

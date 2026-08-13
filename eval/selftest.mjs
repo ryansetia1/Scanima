@@ -27,6 +27,9 @@ import {
 import { biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
 import {
   ELEMENT_CYCLE,
+  MOMENTUM_MAX,
+  MOMENTUM_START,
+  SURGE_COST,
   baseStatTotal,
   computeDamage,
   createBattleState,
@@ -1014,9 +1017,27 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
 
   const guardState = createBattleState({ player: { ...player, base_stats: base }, bot, seed: "guard" });
   const guarded = resolveTurn(guardState, "guard", "guard-key");
-  assert.equal(guarded.state.player.momentum, 5, "Guard + regen tetap tunduk cap Momentum");
-  guardState.player.momentum = 1;
-  assert.throws(() => resolveTurn(guardState, "surge", "no-momentum"), /NO_MOMENTUM/);
+  assert.equal(guarded.state.player.momentum, MOMENTUM_MAX, "Guard tunduk cap PP");
+
+  // PP adalah budget per battle, bukan meter yang mengisi sendiri: satu Special
+  // memakan tepat SURGE_COST dan turn berikutnya tidak mengembalikannya. Kalau
+  // regen per-turn kembali, battle empat turn membuat PP tidak pernah mengekang.
+  const budget = createBattleState({ player: { ...player, base_stats: base }, bot, seed: "budget" });
+  const spent = resolveTurn(budget, "surge", "budget-key");
+  assert.equal(
+    spent.state.player.momentum,
+    MOMENTUM_START - SURGE_COST,
+    "Special memakan PP tanpa regen per turn"
+  );
+  budget.player.momentum = SURGE_COST;
+  assert.doesNotThrow(
+    () => resolveTurn(budget, "surge", "last-pp"),
+    "PP tepat sebesar biayanya masih boleh Special"
+  );
+  budget.player.momentum = 0;
+  assert.throws(() => resolveTurn(budget, "surge", "no-momentum"), /NO_MOMENTUM/);
+  const refilled = resolveTurn(budget, "guard", "guard-refill");
+  assert.equal(refilled.state.player.momentum, 1, "Guard adalah satu-satunya pemulih PP");
 }
 
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang

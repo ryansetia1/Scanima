@@ -1823,8 +1823,8 @@ func _run_battle_demo(status: String = "active") -> void:
 		},
 		"state": {
 			"status": status,
-			"player": {"hp": 162, "max_hp": 240, "momentum": 4},
-			"bot": {"hp": 118, "max_hp": 228, "momentum": 2},
+			"player": {"hp": 162, "max_hp": 240, "momentum": 2},
+			"bot": {"hp": 118, "max_hp": 228, "momentum": 1},
 		},
 	}
 	_switch_destination(BottomNav.BATTLE)

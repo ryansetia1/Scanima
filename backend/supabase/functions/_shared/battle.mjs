@@ -1,8 +1,8 @@
 export const ELEMENT_CYCLE = Object.freeze(["metal", "plant", "flow", "spark", "cloth", "stone"]);
 export const BATTLE_ACTIONS = Object.freeze(["strike", "surge", "guard"]);
-export const MOMENTUM_MAX = 5;
+export const MOMENTUM_MAX = 3;
 export const MOMENTUM_START = 3;
-export const SURGE_COST = 2;
+export const SURGE_COST = 1;
 export const BATTLE_MAX_TURNS = 30;
 
 const STAT_KEYS = Object.freeze(["hp", "atk", "def", "spd", "special"]);
@@ -179,10 +179,9 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "") {
   if (state.bot.hp === 0) state.status = "won";
   else if (state.player.hp === 0) state.status = "lost";
 
-  if (state.status === "active") {
-    state.player.momentum = Math.min(MOMENTUM_MAX, state.player.momentum + 1);
-    state.bot.momentum = Math.min(MOMENTUM_MAX, state.bot.momentum + 1);
-  }
+  // PP sengaja tidak pulih per turn. Battle terukur selesai sekitar empat turn,
+  // jadi regen +1/turn membuat PP membeku di angka awalnya dan Special selalu
+  // tersedia. Satu-satunya pemulihan adalah Guard, di applyIntent().
   state.turn += 1;
 
   if (state.status === "active" && state.turn > BATTLE_MAX_TURNS) {
