@@ -1,0 +1,68 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui_skeleton.gd" id="1_skeleton"]
+
+[node name="UiSkeleton" type="VBoxContainer"]
+visible = false
+theme_override_constants/separation = 9
+script = ExtResource("1_skeleton")
+
+[node name="Row1" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Label" type="ColorRect" parent="Row1"]
+custom_minimum_size = Vector2(108, 20)
+layout_mode = 2
+color = Color(0.42, 0.5, 0.68, 0.72)
+
+[node name="Bar" type="ColorRect" parent="Row1"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+color = Color(0.18, 0.5, 0.7, 0.72)
+
+[node name="Row2" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Label" type="ColorRect" parent="Row2"]
+custom_minimum_size = Vector2(92, 20)
+layout_mode = 2
+color = Color(0.42, 0.5, 0.68, 0.72)
+
+[node name="Bar" type="ColorRect" parent="Row2"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+color = Color(0.22, 0.62, 0.78, 0.72)
+
+[node name="Row3" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Label" type="ColorRect" parent="Row3"]
+custom_minimum_size = Vector2(118, 20)
+layout_mode = 2
+color = Color(0.42, 0.5, 0.68, 0.72)
+
+[node name="Bar" type="ColorRect" parent="Row3"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+color = Color(0.3, 0.66, 0.72, 0.72)
+
+[node name="Row4" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Label" type="ColorRect" parent="Row4"]
+custom_minimum_size = Vector2(82, 20)
+layout_mode = 2
+color = Color(0.42, 0.5, 0.68, 0.72)
+
+[node name="Bar" type="ColorRect" parent="Row4"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+color = Color(0.48, 0.42, 0.72, 0.72)

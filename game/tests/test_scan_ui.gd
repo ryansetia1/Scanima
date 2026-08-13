@@ -15,6 +15,8 @@ var _requested_summon_synced := false
 var _requested_summon_hunger := 0.0
 var _home_action := ""
 var _preview_requests := 0
+var _help_title := ""
+var _help_body := ""
 
 
 func _initialize() -> void:
@@ -106,55 +108,67 @@ func _initialize() -> void:
 	var background := scene.find_child("Background", true, false) as Node2D
 	_check(background != null and background.get_script() != null, "procedural background remains attached")
 	_check(scene.find_child("TopHud", true, false) is PanelContainer, "compact resource HUD must exist")
-	_check(scene.find_child("AnimaCount", true, false) is Label, "HUD exposes the owned Anima count")
+	var animas_chip := scene.find_child("AnimasChip", true, false) as PanelContainer
+	var cores_chip := scene.find_child("CoresChip", true, false) as PanelContainer
+	var bits_chip := scene.find_child("BitsChip", true, false) as PanelContainer
+	_check(animas_chip != null and animas_chip.get_script() != null, "HUD uses the shared Animas chip")
+	_check(cores_chip != null and cores_chip.get_script() != null, "HUD uses the shared Cores chip")
+	_check(bits_chip != null and bits_chip.get_script() != null, "HUD uses the shared Bits chip")
+	_check(
+		animas_chip.custom_minimum_size.y >= TOUCH_MIN
+		and cores_chip.custom_minimum_size.y >= TOUCH_MIN,
+		"interactive resource chips expose 96px press targets"
+	)
+	for chip in [animas_chip, cores_chip, bits_chip]:
+		var column := chip.get_node_or_null("Column") as BoxContainer
+		_check(
+			column != null and column.alignment == BoxContainer.ALIGNMENT_CENTER,
+			"%s centers its content inside the press target" % chip.name
+		)
 	_check(scene.find_child("ScanCount", true, false) == null, "HUD no longer labels scan charges as a count")
 	_check(scene.find_child("BottomNav", true, false) is PanelContainer, "bottom navigation must exist")
 	_check(scene.find_child("StatusPanel", true, false) is PanelContainer, "floating feedback must exist")
 	_check(scene.find_child("PoseRow", true, false) == null, "debug pose controls must not ship in production")
-	var core_info_button := scene.find_child("CoreInfoButton", true, false) as Button
-	var core_info_overlay := scene.find_child("CoreInfoOverlay", true, false) as Control
-	var core_info_panel := scene.find_child("CoreInfoPanel", true, false) as PanelContainer
-	var core_info_close := scene.find_child("CoreInfoCloseButton", true, false) as Button
-	_check(core_info_button != null, "Core resource must be tappable")
-	_check(core_info_overlay != null and not core_info_overlay.visible, "Core info modal starts hidden")
+	var shell_modal := scene.find_child("ShellModal", true, false) as Control
+	var modal_panel := scene.find_child("ModalPanel", true, false) as PanelContainer
+	var modal_input := scene.find_child("ModalInput", true, false) as LineEdit
+	var modal_cancel := scene.find_child("CancelButton", true, false) as Button
+	var modal_primary := scene.find_child("PrimaryButton", true, false) as Button
+	_check(shell_modal != null and not shell_modal.visible, "shared shell modal starts hidden")
 	_check(
-		core_info_panel != null and core_info_panel.theme_type_variation == &"ModalPanel",
-		"Core info modal uses shared modal chrome"
+		modal_panel != null and modal_panel.theme_type_variation == &"ModalPanel",
+		"all blocking dialogs share one modal chrome"
 	)
 	_check(
-		core_info_close != null and core_info_close.custom_minimum_size.y >= TOUCH_MIN,
-		"Core info close action meets the touch target"
-	)
-	var delete_dialog := scene.find_child("DeleteAnimaDialog", true, false) as ConfirmationDialog
-	var rename_dialog := scene.find_child("RenameAnimaDialog", true, false) as ConfirmationDialog
-	var rename_input := scene.find_child("RenameAnimaInput", true, false) as LineEdit
-	_check(
-		delete_dialog != null
-		and delete_dialog.dialog_autowrap
-		and delete_dialog.get_theme_constant("buttons_min_height", "AcceptDialog") >= TOUCH_MIN,
-		"delete dialog wraps copy and keeps touch-safe actions"
+		modal_primary != null
+		and modal_primary.custom_minimum_size.y >= TOUCH_MIN
+		and modal_cancel != null
+		and modal_cancel.custom_minimum_size.y >= TOUCH_MIN,
+		"shared modal actions meet the touch target"
 	)
 	_check(
-		delete_dialog != null
-		and delete_dialog.get_theme_constant("title_height", "Window") >= 72,
-		"dialog title keeps breathing room above its copy"
-	)
-	_check(
-		rename_dialog != null and rename_dialog.dialog_autowrap,
-		"hatch rename dialog must exist and wrap localized copy"
+		modal_input != null
+		and modal_input.max_length == 32
+		and modal_input.custom_minimum_size.y >= TOUCH_MIN,
+		"shared input mode enforces the server name length and touch target"
 	)
 	var shell_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
-		shell_source.find("_delete_anima_dialog.add_theme_icon_override(\"close\"") >= 0
-		and shell_source.find("_rename_anima_dialog.add_theme_icon_override(\"close\"") >= 0,
-		"small native close icons stay hidden in favor of touch-safe cancel actions"
+		shell_source.find("_animas_chip.pressed.connect(_open_collection)") >= 0,
+		"Animas chip navigates to Collection"
 	)
 	_check(
-		rename_input != null
-		and rename_input.max_length == 32
-		and rename_input.custom_minimum_size.y >= TOUCH_MIN,
-		"rename input enforces the server length and touch target"
+		shell_source.find("_shell_modal.open_input(") >= 0
+		and shell_source.find("tr(\"ACTION_CANCEL\")") >= 0
+		and shell_source.find("tr(\"ANIMA_RENAME_SKIP\")") < 0,
+		"rename uses the shared input modal with Cancel"
 	)
+	if margin != null and margin.theme != null:
+		_check_eq(
+			margin.theme.get_color("font_focus_color", "PrimaryButton"),
+			margin.theme.get_color("font_color", "PrimaryButton"),
+			"focused primary labels retain readable dark contrast"
+		)
 
 	var scan_button := scene.find_child("ScanButton", true, false) as Button
 	if scan_button != null:
@@ -221,16 +235,81 @@ func _initialize() -> void:
 	_test_present_toast_respects_sleep()
 	_test_battle_reward_is_authoritative()
 	_test_battle_art_has_no_global_toast()
+	_test_home_tap_interaction(scene)
 
 	scene.free()
+	await _test_anima_tap_reactions()
+	await _test_shared_components()
 	await _test_scan_phase_visuals()
 	await _test_battle_view()
 	await _test_collection_bottom_sheet()
+	await _test_profile_info_rows()
 	await _test_anima_delete_action()
 	await _test_home_care_actions()
 	await _test_bottom_nav_busy()
 	await _test_incubator_effect()
 	_finish()
+
+
+func _test_shared_components() -> void:
+	UiMotion.set_reduced_motion(true)
+	var modal = (load("res://scenes/ui/ui_modal.tscn") as PackedScene).instantiate()
+	root.add_child(modal)
+	await process_frame
+	var modal_input := modal.find_child("ModalInput", true, false) as LineEdit
+	var modal_cancel := modal.find_child("CancelButton", true, false) as Button
+	var modal_primary := modal.find_child("PrimaryButton", true, false) as Button
+	modal.open_info("Info", "Short body", "Got It")
+	_check(modal.visible and not modal_input.visible and not modal_cancel.visible, "UiModal info mode is compact")
+	modal.open_confirm("Delete", "Danger body", "Delete", "Cancel", true)
+	_check(
+		modal_cancel.visible and modal_primary.theme_type_variation == &"DangerButton",
+		"UiModal danger-confirm mode exposes safe cancel and danger action"
+	)
+	modal.open_input("Rename", "Prompt", "Velumi", "Save", "Cancel", "Name")
+	_check(
+		modal_input.visible and modal_input.text == "Velumi" and modal_cancel.visible,
+		"UiModal input mode exposes the current value and Cancel"
+	)
+	modal.close()
+	_check(not modal.visible, "UiModal closes immediately under Reduced Motion")
+
+	var chip = (load("res://scenes/ui/resource_chip.tscn") as PackedScene).instantiate()
+	root.add_child(chip)
+	await process_frame
+	chip.set_value_text("7")
+	chip.set_name_text("Animas")
+	chip.set_interactive(true, "Open Collection")
+	var chip_action := chip.find_child("ActionButton", true, false) as Button
+	_check(
+		chip_action.visible and chip.custom_minimum_size.y >= TOUCH_MIN,
+		"ResourceChip can expose a touch-safe action overlay"
+	)
+
+	var sheet = (load("res://scenes/ui/ui_bottom_sheet.tscn") as PackedScene).instantiate()
+	root.add_child(sheet)
+	await process_frame
+	sheet.open()
+	_check(sheet.visible, "UiBottomSheet opens through shared chrome")
+	sheet.close()
+	_check(not sheet.visible, "UiBottomSheet closes immediately under Reduced Motion")
+
+	var skeleton = (load("res://scenes/ui/ui_skeleton.tscn") as PackedScene).instantiate()
+	root.add_child(skeleton)
+	skeleton.set_loading(true)
+	_check(
+		skeleton.visible and is_equal_approx(skeleton.modulate.a, 0.58),
+		"UiSkeleton uses a static Reduced Motion state"
+	)
+	skeleton.set_loading(false)
+	_check(not skeleton.visible, "UiSkeleton clears when authoritative data arrives")
+
+	modal.queue_free()
+	chip.queue_free()
+	sheet.queue_free()
+	skeleton.queue_free()
+	await process_frame
+	UiMotion.set_reduced_motion(false)
 
 
 func _test_care_feedback_is_immediate() -> void:
@@ -245,6 +324,102 @@ func _test_care_feedback_is_immediate() -> void:
 		body.find("_home_view.set_busy(true)") >= 0 and body.find("_set_busy(true)") < 0,
 		"care locks only its action dock, not the whole shell"
 	)
+
+
+func _test_home_tap_interaction(scene: Node) -> void:
+	var shell_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		shell_source.find("event is InputEventScreenTouch") >= 0
+		and shell_source.find("event is InputEventMouseButton") >= 0,
+		"Home interaction accepts native touch and mouse input"
+	)
+	_check(
+		shell_source.find("_anima.hit_test(press_position)") >= 0,
+		"Home interaction reacts only when the Anima sprite is hit"
+	)
+	# Container memakai MOUSE_FILTER_STOP secara default, jadi tap di atas Stage
+	# ditelan GUI sebelum _unhandled_input. Seluruh rantai di atas Anima wajib
+	# tembus klik, kalau tidak interaksinya mati tanpa galat apa pun.
+	for path in [
+		"UI/SafeMargin",
+		"UI/SafeMargin/Shell",
+		"UI/SafeMargin/Shell/ViewStack",
+		"UI/SafeMargin/Shell/ViewStack/HomeView",
+		"UI/SafeMargin/Shell/ViewStack/HomeView/Column",
+		"UI/SafeMargin/Shell/ViewStack/HomeView/Column/StageSpace",
+	]:
+		var control := scene.get_node_or_null(path) as Control
+		_check(
+			control != null and control.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+			"%s stays click-through so stage taps reach the Anima" % String(path).get_file()
+		)
+	var care_dock := scene.get_node_or_null(
+		"UI/SafeMargin/Shell/ViewStack/HomeView/Column/CareDock"
+	) as Control
+	_check(
+		care_dock != null and care_dock.mouse_filter != Control.MOUSE_FILTER_IGNORE,
+		"care controls still capture their own taps"
+	)
+
+
+func _test_anima_tap_reactions() -> void:
+	UiMotion.set_reduced_motion(false)
+	var presenter = load("res://scripts/anima_presenter.gd").new()
+	root.add_child(presenter)
+	await process_frame
+
+	var image := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	image.fill(Color.WHITE)
+	var texture := ImageTexture.create_from_image(image)
+	var frames := SpriteFrames.new()
+	for pose in ["idle", "sleep", "defeated"]:
+		frames.add_animation(StringName(pose))
+		frames.add_frame(StringName(pose), texture)
+	presenter.sprite_frames = frames
+	presenter.offset = Vector2(0.0, -32.0)
+	presenter.set_pose("idle")
+
+	var center: Vector2 = presenter.get_global_transform_with_canvas() * Vector2(0.0, -32.0)
+	_check(presenter.hit_test(center), "Anima hit test accepts a tap on the sprite")
+	_check(
+		not presenter.hit_test(center + Vector2(400.0, 0.0)),
+		"Anima hit test ignores taps beside the sprite"
+	)
+
+	presenter.react_to_tap()
+	var hop: float = await _lowest_sample(0.4, func() -> float: return presenter.position.y)
+	_check(hop < -4.0, "tapping an awake Anima hops it")
+
+	presenter.set_pose("sleep")
+	presenter.react_to_tap()
+	var bob: float = await _lowest_sample(0.4, func() -> float: return presenter.rotation)
+	_check(bob < -0.01, "tapping a sleeping Anima gives a sleepy bob")
+
+	presenter.set_pose("defeated")
+	presenter.react_to_tap()
+	var accent: float = await _lowest_sample(0.4, func() -> float: return -presenter.scale.y)
+	_check(accent < -1.02, "tapping a Dormant Anima gives a weak accent")
+
+	UiMotion.set_reduced_motion(true)
+	presenter.set_pose("idle")
+	presenter.react_to_tap()
+	await process_frame
+	_check_eq(presenter.position, Vector2.ZERO, "Reduced Motion keeps a tapped Anima still")
+	UiMotion.set_reduced_motion(false)
+
+	presenter.queue_free()
+	await process_frame
+
+
+## Frame delta headless tidak stabil, jadi puncak animasi diukur lewat sampling,
+## bukan dengan menebak satu titik waktu.
+func _lowest_sample(seconds: float, sampler: Callable) -> float:
+	var lowest: float = sampler.call()
+	var deadline := Time.get_ticks_msec() + int(seconds * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		await process_frame
+		lowest = minf(lowest, sampler.call())
+	return lowest
 
 
 func _test_scan_phase_visuals() -> void:
@@ -474,6 +649,21 @@ func _test_collection_bottom_sheet() -> void:
 	collection.preview_requested.connect(_capture_preview_request)
 	collection.show_preview(row)
 	await process_frame
+	var overlay := collection.find_child("CollectionSheetOverlay", true, false) as Control
+	var summon := collection.find_child("CollectionSummonButton", true, false) as Button
+	var profile := collection.find_child("CollectionProfileButton", true, false) as Button
+	var hp := collection.find_child("SheetStatHp", true, false) as Label
+	var hunger := collection.find_child("SheetCareHunger", true, false) as ProgressBar
+	var skeleton := collection.find_child("ConditionSkeleton", true, false) as Control
+	var care_rows := collection.find_child("CareRows", true, false) as Control
+	_check(overlay != null and overlay.visible, "selecting an Anima opens the bottom sheet immediately")
+	_check(
+		skeleton != null and skeleton.visible and care_rows != null and not care_rows.visible,
+		"uncached care sync replaces stale meters with a visible skeleton"
+	)
+	_check_eq(hunger.value, 0.0, "loading state clears the previous Anima meter value")
+	_check(summon.disabled, "Summon waits for authoritative care while the skeleton is visible")
+
 	var synced_row: Dictionary = row.duplicate(true)
 	synced_row["care"]["hunger"] = 42.0
 	_check(
@@ -481,12 +671,7 @@ func _test_collection_bottom_sheet() -> void:
 		"matching care response updates the open sheet"
 	)
 
-	var overlay := collection.find_child("CollectionSheetOverlay", true, false) as Control
-	var summon := collection.find_child("CollectionSummonButton", true, false) as Button
-	var profile := collection.find_child("CollectionProfileButton", true, false) as Button
-	var hp := collection.find_child("SheetStatHp", true, false) as Label
-	var hunger := collection.find_child("SheetCareHunger", true, false) as ProgressBar
-	_check(overlay != null and overlay.visible, "selecting an Anima opens the bottom sheet")
+	_check(skeleton != null and not skeleton.visible and care_rows.visible, "care sync reveals real meters")
 	_check_eq(hp.text, "74", "bottom sheet exposes base stats at a glance")
 	_check_eq(hunger.value, 42.0, "bottom sheet exposes authoritative care at a glance")
 	_check(summon != null and not summon.disabled, "non-active Anima can be summoned")
@@ -521,6 +706,78 @@ func _test_collection_bottom_sheet() -> void:
 	UiMotion.set_reduced_motion(false)
 
 
+func _test_profile_info_rows() -> void:
+	var packed := load("res://scenes/ui/anima_details_view.tscn") as PackedScene
+	var details := packed.instantiate()
+	root.add_child(details)
+	details.visible = true
+	await process_frame
+	details.set_anima({
+		"id": "details-test",
+		"nickname": "Velumi",
+		"element": "spark",
+		"stage": 2,
+		"rarity": 4,
+		"care_score": 28,
+		"base_stats": {"hp": 74, "atk": 62, "def": 58, "spd": 81, "special": 77},
+	}, null)
+	await process_frame
+
+	_check(details.find_child("DetailsScroll", true, false) is ScrollContainer, "long Profile rows scroll")
+	var row_groups := {
+		"traits": ["DetailElementRow", "DetailRarityRow", "DetailStageRow", "DetailCareScoreRow"],
+		"stats": ["StatHpRow", "StatAtkRow", "StatDefRow", "StatSpdRow", "StatSpecialRow"],
+	}
+	for group in row_groups:
+		var value_edges: Array[float] = []
+		var help_edges: Array[float] = []
+		for row_name in row_groups[group]:
+			var info_row := details.find_child(row_name, true, false) as Control
+			_check(info_row != null, "%s uses the shared info-value row" % row_name)
+			if info_row == null:
+				continue
+			var help := info_row.find_child("HelpButton", true, false) as Button
+			var value := info_row.find_child("RowValue", true, false) as Label
+			_check(
+				help != null and help.custom_minimum_size.y >= TOUCH_MIN,
+				"%s help action meets the touch target" % row_name
+			)
+			if help == null or value == null:
+				continue
+			_check(
+				info_row.get_child(info_row.get_child_count() - 1) == help,
+				"%s keeps help after the value" % row_name
+			)
+			_check(
+				value.horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT,
+				"%s right-aligns its value into a fixed column" % row_name
+			)
+			_check(
+				help.get_theme_color("icon_normal_color").a < 0.7,
+				"%s dims its help icon below the value" % row_name
+			)
+			value_edges.append(value.global_position.x + value.size.x)
+			help_edges.append(help.global_position.x)
+		for edge in value_edges:
+			_check(
+				absf(edge - value_edges[0]) < 1.0,
+				"%s values share one right edge regardless of length" % group
+			)
+		for edge in help_edges:
+			_check(absf(edge - help_edges[0]) < 1.0, "%s help buttons share one column" % group)
+
+	_help_title = ""
+	_help_body = ""
+	details.help_requested.connect(_capture_help_request)
+	var element_row := details.find_child("DetailElementRow", true, false) as Control
+	var element_help := element_row.find_child("HelpButton", true, false) as Button
+	element_help.pressed.emit()
+	_check(not _help_title.is_empty() and not _help_body.is_empty(), "Profile help emits concise modal copy")
+
+	details.queue_free()
+	await process_frame
+
+
 func _test_hatch_offers_rename() -> void:
 	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	var start := source.find("func _present(")
@@ -540,7 +797,7 @@ func _test_hatch_offers_rename() -> void:
 		"rename accepts the Anima currently shown in Profile"
 	)
 	var confirm_start := source.find("func _rename_confirmed")
-	var confirm_end := source.find("\n\nfunc _rename_submitted", confirm_start)
+	var confirm_end := source.find("\n\nfunc _modal_confirmed", confirm_start)
 	var confirm_body := source.substr(
 		confirm_start, confirm_end - confirm_start
 	) if confirm_start >= 0 and confirm_end > confirm_start else ""
@@ -702,6 +959,11 @@ func _capture_summon_request(row: Dictionary, care_synced: bool) -> void:
 
 func _capture_preview_request(_row: Dictionary, _revision: int) -> void:
 	_preview_requests += 1
+
+
+func _capture_help_request(title: String, body: String) -> void:
+	_help_title = title
+	_help_body = body
 
 
 func _test_home_care_actions() -> void:

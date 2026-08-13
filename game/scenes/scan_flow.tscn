@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/scan_flow.gd" id="1_flow"]
 [ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
@@ -12,6 +12,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/bottom_nav.tscn" id="10_nav"]
 [ext_resource type="Script" path="res://scripts/first_anima_effect.gd" id="11_first"]
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_view.tscn" id="12_battle"]
+[ext_resource type="PackedScene" path="res://scenes/ui/resource_chip.tscn" id="13_chip"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ui_modal.tscn" id="14_modal"]
 
 [node name="ScanFlow" type="Node2D"]
 script = ExtResource("1_flow")
@@ -49,6 +51,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 theme = ExtResource("3_theme")
 theme_override_constants/margin_left = 32
 theme_override_constants/margin_top = 24
@@ -57,6 +60,7 @@ theme_override_constants/margin_bottom = 24
 
 [node name="Shell" type="VBoxContainer" parent="UI/SafeMargin"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 12
 
 [node name="TopHud" type="PanelContainer" parent="UI/SafeMargin/Shell"]
@@ -80,83 +84,22 @@ vertical_alignment = 1
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Animas" type="PanelContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources"]
-custom_minimum_size = Vector2(108, 0)
-layout_mode = 2
-theme_type_variation = &"ResourceChip"
-
-[node name="Column" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Animas"]
-layout_mode = 2
-theme_override_constants/separation = -4
-
-[node name="AnimaCount" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Animas/Column"]
+[node name="AnimasChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" instance=ExtResource("13_chip")]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"ResourceValueLabel"
-text = "VALUE_UNAVAILABLE"
-horizontal_alignment = 1
 
-[node name="Name" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Animas/Column"]
-layout_mode = 2
-theme_type_variation = &"ResourceNameLabel"
-text = "RESOURCE_ANIMAS"
-horizontal_alignment = 1
-
-[node name="Cores" type="PanelContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(108, 0)
-layout_mode = 2
-theme_type_variation = &"ResourceChip"
-
-[node name="Column" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Cores"]
-layout_mode = 2
-theme_override_constants/separation = -4
-
-[node name="CoreCount" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Cores/Column"]
+[node name="CoresChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" instance=ExtResource("13_chip")]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"ResourceValueLabel"
-text = "VALUE_UNAVAILABLE"
-horizontal_alignment = 1
 
-[node name="Name" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Cores/Column"]
-layout_mode = 2
-theme_type_variation = &"ResourceNameLabel"
-text = "RESOURCE_CORES"
-horizontal_alignment = 1
-
-[node name="CoreInfoButton" type="Button" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Cores"]
+[node name="BitsChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" instance=ExtResource("13_chip")]
 unique_name_in_owner = true
 layout_mode = 2
-mouse_default_cursor_shape = 2
-tooltip_text = "CORE_INFO_TITLE"
-flat = true
-
-[node name="Bits" type="PanelContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources"]
-custom_minimum_size = Vector2(108, 0)
-layout_mode = 2
-theme_type_variation = &"ResourceChip"
-
-[node name="Column" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Bits"]
-layout_mode = 2
-theme_override_constants/separation = -4
-
-[node name="BitsCount" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Bits/Column"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"ResourceValueLabel"
-text = "VALUE_UNAVAILABLE"
-horizontal_alignment = 1
-
-[node name="Name" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row/Resources/Bits/Column"]
-layout_mode = 2
-theme_type_variation = &"ResourceNameLabel"
-text = "RESOURCE_BITS"
-horizontal_alignment = 1
 
 [node name="ViewStack" type="Control" parent="UI/SafeMargin/Shell"]
 layout_mode = 2
 size_flags_vertical = 3
+mouse_filter = 2
 
 [node name="HomeView" parent="UI/SafeMargin/Shell/ViewStack" instance=ExtResource("6_home")]
 unique_name_in_owner = true
@@ -214,77 +157,8 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="CoreInfoOverlay" type="Control" parent="UI"]
+[node name="ShellModal" parent="UI" instance=ExtResource("14_modal")]
 unique_name_in_owner = true
-visible = false
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 0
-
-[node name="Backdrop" type="ColorRect" parent="UI/CoreInfoOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0.004, 0.008, 0.025, 0.82)
-
-[node name="CoreInfoDismissButton" type="Button" parent="UI/CoreInfoOverlay"]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-flat = true
-
-[node name="Center" type="CenterContainer" parent="UI/CoreInfoOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="CoreInfoPanel" type="PanelContainer" parent="UI/CoreInfoOverlay/Center"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(600, 0)
-layout_mode = 2
-mouse_filter = 0
-theme = ExtResource("3_theme")
-theme_type_variation = &"ModalPanel"
-
-[node name="Column" type="VBoxContainer" parent="UI/CoreInfoOverlay/Center/CoreInfoPanel"]
-layout_mode = 2
-theme_override_constants/separation = 22
-
-[node name="Title" type="Label" parent="UI/CoreInfoOverlay/Center/CoreInfoPanel/Column"]
-layout_mode = 2
-theme_type_variation = &"ModalTitle"
-text = "CORE_INFO_TITLE"
-horizontal_alignment = 1
-autowrap_mode = 2
-
-[node name="Body" type="Label" parent="UI/CoreInfoOverlay/Center/CoreInfoPanel/Column"]
-layout_mode = 2
-theme_type_variation = &"BodyLabel"
-text = "CORE_INFO_BODY"
-horizontal_alignment = 1
-autowrap_mode = 2
-
-[node name="CoreInfoCloseButton" type="Button" parent="UI/CoreInfoOverlay/Center/CoreInfoPanel/Column"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-theme_type_variation = &"PrimaryButton"
-text = "CORE_INFO_CLOSE"
 
 [node name="PhotoDialog" type="FileDialog" parent="UI"]
 unique_name_in_owner = true
@@ -296,36 +170,3 @@ ok_button_text = "FILE_DIALOG_ACCEPT"
 file_mode = 0
 access = 2
 filters = PackedStringArray()
-
-[node name="DeleteAnimaDialog" type="ConfirmationDialog" parent="UI"]
-unique_name_in_owner = true
-title = "ANIMA_DELETE_TITLE"
-initial_position = 2
-size = Vector2i(640, 360)
-theme = ExtResource("3_theme")
-dialog_text = "ANIMA_DELETE_CONFIRM"
-dialog_autowrap = true
-ok_button_text = "ANIMA_DELETE_CONFIRM_ACTION"
-cancel_button_text = "ACTION_CANCEL"
-
-[node name="RenameAnimaDialog" type="ConfirmationDialog" parent="UI"]
-unique_name_in_owner = true
-title = "ANIMA_RENAME_TITLE"
-initial_position = 2
-size = Vector2i(640, 420)
-theme = ExtResource("3_theme")
-dialog_text = "ANIMA_RENAME_PROMPT"
-dialog_autowrap = true
-ok_button_text = "ANIMA_RENAME_SAVE"
-cancel_button_text = "ANIMA_RENAME_SKIP"
-
-[node name="InputCenter" type="CenterContainer" parent="UI/RenameAnimaDialog"]
-layout_mode = 2
-
-[node name="RenameAnimaInput" type="LineEdit" parent="UI/RenameAnimaDialog/InputCenter"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(520, 96)
-layout_mode = 2
-max_length = 32
-placeholder_text = "ANIMA_RENAME_PLACEHOLDER"
-select_all_on_focus = true

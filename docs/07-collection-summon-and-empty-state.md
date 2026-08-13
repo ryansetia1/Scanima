@@ -33,10 +33,16 @@ Tap kartu membuka backdrop dan bottom sheet. Sheet memuat portrait, nama,
 Element, Stage, rarity, badge `Active`, lima base stat (HP, ATK, DEF, SPD,
 Special), serta empat care meter (Hunger, Energy, Hygiene, Bond).
 
-Base stats tampil langsung. Care section memakai skeleton sampai satu sync
-server selesai, lalu hasilnya di-cache selama Collection tetap terbuka. Respons
-async membawa revision pilihan; respons lama diabaikan jika sheet sudah ditutup
-atau pemain memilih Anima lain.
+Base stats tampil langsung. Pada cache miss, care meter lama di-reset dan
+disembunyikan lalu `UiSkeleton` menggantikannya sampai satu sync server selesai.
+Cache hit menampilkan meter seketika; error menghentikan skeleton dan memakai
+fallback/error copy yang sudah ada. Hasil authoritative di-cache selama
+Collection tetap terbuka. Respons async membawa revision pilihan; respons lama
+diabaikan jika sheet sudah ditutup atau pemain memilih Anima lain.
+
+Chrome backdrop/handle/panel/dismiss dimiliki `UiBottomSheet`; `CollectionView`
+tetap memiliki identity, cache, sync, revision, dan intent Summon/Profile. Batas
+ini sengaja menjaga komponen reusable bebas dari aturan domain.
 
 Footer memakai `View Profile` sebagai aksi sekunder dan `Summon` sebagai CTA.
 Pada companion aktif, CTA berubah menjadi `Summoned` dan disabled. Sheet ditutup

@@ -50,23 +50,16 @@ const SLEEP_SYNC_EPSILON_SEC := 1.0
 @onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _safe_margin: MarginContainer = %SafeMargin
 @onready var _top_hud: PanelContainer = %TopHud
-@onready var _anima_count: Label = %AnimaCount
-@onready var _core_count: Label = %CoreCount
-@onready var _bits_count: Label = %BitsCount
-@onready var _core_info_button: Button = %CoreInfoButton
-@onready var _core_info_overlay: Control = %CoreInfoOverlay
-@onready var _core_info_panel: PanelContainer = %CoreInfoPanel
-@onready var _core_info_dismiss: Button = %CoreInfoDismissButton
-@onready var _core_info_close: Button = %CoreInfoCloseButton
+@onready var _animas_chip = %AnimasChip
+@onready var _cores_chip = %CoresChip
+@onready var _bits_chip = %BitsChip
+@onready var _shell_modal = %ShellModal
 @onready var _home_view: HomeView = %HomeView
 @onready var _scan_view: ScanView = %ScanView
 @onready var _battle_view = %BattleView
 @onready var _collection_view: CollectionView = %CollectionView
 @onready var _details_view: AnimaDetailsView = %AnimaDetailsView
 @onready var _bottom_nav: BottomNav = %BottomNav
-@onready var _delete_anima_dialog: ConfirmationDialog = %DeleteAnimaDialog
-@onready var _rename_anima_dialog: ConfirmationDialog = %RenameAnimaDialog
-@onready var _rename_anima_input: LineEdit = %RenameAnimaInput
 
 var _busy := false
 var _roster: Array[Dictionary] = []
@@ -81,6 +74,10 @@ var _sleep_completion_timer: Timer = null
 var _sleep_sync_in_flight := false
 var _pending_delete_id := ""
 var _pending_rename_id := ""
+var _pending_rename_text := ""
+var _modal_context := &""
+var _last_anima_press_ms := -1000
+var _last_anima_press_position := Vector2(-1000.0, -1000.0)
 
 ## Singleton plugin Android, null di desktop dan di test headless.
 var _picker: Object = null
@@ -107,23 +104,14 @@ func _ready() -> void:
 	_collection_view.retry_requested.connect(_retry_roster)
 	_details_view.rename_requested.connect(_show_rename)
 	_details_view.delete_requested.connect(_show_delete_confirmation)
+	_details_view.help_requested.connect(_show_details_help)
 	_bottom_nav.destination_selected.connect(_switch_destination)
-	_delete_anima_dialog.confirmed.connect(_delete_confirmed)
-	_delete_anima_dialog.canceled.connect(_delete_canceled)
-	_rename_anima_dialog.confirmed.connect(_rename_confirmed)
-	_rename_anima_dialog.canceled.connect(_rename_canceled)
-	_rename_anima_input.text_submitted.connect(_rename_submitted)
-	_delete_anima_dialog.get_ok_button().theme_type_variation = &"DangerButton"
-	_rename_anima_dialog.get_ok_button().theme_type_variation = &"PrimaryButton"
-	# Tombol X native terlalu kecil untuk touch dan posisinya berubah mengikuti
-	# lebar title. Kedua dialog sudah punya aksi Cancel/Keep 96px yang eksplisit.
-	var empty_close_icon := ImageTexture.new()
-	_delete_anima_dialog.add_theme_icon_override("close", empty_close_icon)
-	_rename_anima_dialog.add_theme_icon_override("close", empty_close_icon)
+	_shell_modal.confirmed.connect(_modal_confirmed)
+	_shell_modal.canceled.connect(_modal_canceled)
+	_animas_chip.pressed.connect(_open_collection)
+	_cores_chip.pressed.connect(_show_core_info)
 	LocaleManager.locale_changed.connect(_refresh_localized_ui)
-	_core_info_button.pressed.connect(_show_core_info)
-	_core_info_dismiss.pressed.connect(_hide_core_info)
-	_core_info_close.pressed.connect(_hide_core_info)
+	_configure_resource_chips()
 	_dialog.file_selected.connect(_scan_file)
 	get_viewport().size_changed.connect(_layout_for_viewport)
 	_layout_for_viewport()
@@ -174,6 +162,14 @@ func _ready() -> void:
 			await _run_hatch_demo()
 		if arg == "--collection-sheet-demo":
 			_run_collection_sheet_demo()
+		if arg == "--collection-sheet-loading-demo":
+			_run_collection_sheet_demo(true)
+		if arg == "--profile-demo":
+			_run_profile_help_demo(false)
+		if arg == "--profile-help-demo":
+			_run_profile_help_demo()
+		if arg == "--home-tap-demo" and _anima.sprite_frames != null:
+			await _run_home_tap_demo()
 		if arg == "--empty-demo":
 			_run_empty_demo()
 		if arg == "--summon-demo":
@@ -389,11 +385,14 @@ func _show_delete_confirmation(anima_id: String) -> void:
 	):
 		return
 	_pending_delete_id = anima_id
-	_delete_anima_dialog.dialog_text = tr("ANIMA_DELETE_CONFIRM") % LocaleManager.display_name(
-		details_row
+	_modal_context = &"delete"
+	_shell_modal.open_confirm(
+		tr("ANIMA_DELETE_TITLE"),
+		tr("ANIMA_DELETE_CONFIRM") % LocaleManager.display_name(details_row),
+		tr("ANIMA_DELETE_CONFIRM_ACTION"),
+		tr("ACTION_CANCEL"),
+		true
 	)
-	_delete_anima_dialog.popup_centered()
-	_delete_anima_dialog.get_cancel_button().grab_focus()
 
 
 func _delete_confirmed() -> void:
@@ -438,10 +437,6 @@ func _delete_confirmed() -> void:
 	_say(tr("ANIMA_DELETE_SUCCESS") % deleted_name, true)
 
 
-func _delete_canceled() -> void:
-	_pending_delete_id = ""
-
-
 func _show_rename(anima_id: String) -> void:
 	var target := _current_anima
 	if anima_id == str(_profile_anima.get("id", "")):
@@ -449,21 +444,28 @@ func _show_rename(anima_id: String) -> void:
 	if _busy or anima_id.is_empty() or anima_id != str(target.get("id", "")):
 		return
 	_pending_rename_id = anima_id
-	_rename_anima_input.text = str(target.get("nickname", "")).strip_edges()
+	_pending_rename_text = str(target.get("nickname", "")).strip_edges()
 	_popup_rename()
 
 
 func _popup_rename() -> void:
 	if _pending_rename_id.is_empty():
 		return
-	_rename_anima_dialog.popup_centered()
-	_rename_anima_input.grab_focus()
-	_rename_anima_input.select_all()
+	_modal_context = &"rename"
+	_shell_modal.open_input(
+		tr("ANIMA_RENAME_TITLE"),
+		tr("ANIMA_RENAME_PROMPT"),
+		_pending_rename_text,
+		tr("ANIMA_RENAME_SAVE"),
+		tr("ACTION_CANCEL"),
+		tr("ANIMA_RENAME_PLACEHOLDER")
+	)
 
 
-func _rename_confirmed() -> void:
+func _rename_confirmed(submitted_text: String) -> void:
 	var anima_id := _pending_rename_id
-	var nickname := _rename_anima_input.text.strip_edges()
+	var nickname := submitted_text.strip_edges()
+	_pending_rename_text = submitted_text
 	var target := _current_anima
 	if anima_id == str(_profile_anima.get("id", "")):
 		target = _profile_anima
@@ -502,13 +504,33 @@ func _rename_confirmed() -> void:
 	_say(tr("ANIMA_RENAME_SUCCESS") % nickname, true)
 
 
-func _rename_submitted(_text: String) -> void:
-	_rename_anima_dialog.hide()
-	_rename_confirmed()
+func _modal_confirmed(text: String) -> void:
+	var context := _modal_context
+	_modal_context = &""
+	match context:
+		&"delete":
+			_delete_confirmed()
+		&"rename":
+			_rename_confirmed(text)
+		&"core_info":
+			_cores_chip.grab_action_focus()
 
 
-func _rename_canceled() -> void:
-	_pending_rename_id = ""
+func _modal_canceled() -> void:
+	var context := _modal_context
+	_modal_context = &""
+	if context == &"delete":
+		_pending_delete_id = ""
+	elif context == &"rename":
+		_pending_rename_id = ""
+		_pending_rename_text = ""
+	elif context == &"core_info":
+		_cores_chip.grab_action_focus()
+
+
+func _show_details_help(title: String, body: String) -> void:
+	_modal_context = &"details_help"
+	_shell_modal.open_info(title, body, tr("CORE_INFO_CLOSE"))
 
 
 func _present_row(row: Dictionary) -> void:
@@ -1504,14 +1526,8 @@ func _details_available() -> bool:
 
 func _refresh_localized_ui(_locale: String = "") -> void:
 	_setup_picker()
-	_delete_anima_dialog.title = tr("ANIMA_DELETE_TITLE")
-	_delete_anima_dialog.ok_button_text = tr("ANIMA_DELETE_CONFIRM_ACTION")
-	_delete_anima_dialog.cancel_button_text = tr("ACTION_CANCEL")
-	_rename_anima_dialog.title = tr("ANIMA_RENAME_TITLE")
-	_rename_anima_dialog.dialog_text = tr("ANIMA_RENAME_PROMPT")
-	_rename_anima_dialog.ok_button_text = tr("ANIMA_RENAME_SAVE")
-	_rename_anima_dialog.cancel_button_text = tr("ANIMA_RENAME_SKIP")
-	_rename_anima_input.placeholder_text = tr("ANIMA_RENAME_PLACEHOLDER")
+	_configure_resource_chips()
+	_details_view.refresh_localized_ui()
 	_refresh_header()
 	_refresh_stats()
 	_refresh_care()
@@ -1519,14 +1535,25 @@ func _refresh_localized_ui(_locale: String = "") -> void:
 
 
 func _show_core_info() -> void:
-	UiJuice.show_overlay(_core_info_overlay, _core_info_panel)
-	_core_info_close.grab_focus()
+	_modal_context = &"core_info"
+	_shell_modal.open_info(
+		tr("CORE_INFO_TITLE"),
+		tr("CORE_INFO_BODY"),
+		tr("CORE_INFO_CLOSE")
+	)
 
 
-func _hide_core_info() -> void:
-	await UiJuice.hide_overlay(_core_info_overlay, _core_info_panel)
-	if is_instance_valid(_core_info_button):
-		_core_info_button.grab_focus()
+func _open_collection() -> void:
+	_switch_destination(BottomNav.COLLECTION)
+
+
+func _configure_resource_chips() -> void:
+	_animas_chip.set_name_text(tr("RESOURCE_ANIMAS"))
+	_animas_chip.set_interactive(true, tr("COLLECTION_TITLE"))
+	_cores_chip.set_name_text(tr("RESOURCE_CORES"))
+	_cores_chip.set_interactive(true, tr("CORE_INFO_TITLE"))
+	_bits_chip.set_name_text(tr("RESOURCE_BITS"))
+	_bits_chip.set_interactive(false)
 
 
 # ---------------------------------------------------------------- UI kecil
@@ -1593,18 +1620,18 @@ func _hide_toast_later(revision: int) -> void:
 func _refresh_header() -> void:
 	var p := GameState.profile
 	if p.is_empty():
-		_anima_count.text = tr("VALUE_UNAVAILABLE")
-		_core_count.text = tr("VALUE_UNAVAILABLE")
-		_bits_count.text = tr("VALUE_UNAVAILABLE")
+		_animas_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
+		_cores_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
+		_bits_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		return
-	_core_count.text = LocaleManager.format_integer(int(p.get("genesis_cores", 0)))
-	_bits_count.text = LocaleManager.format_integer(int(p.get("bits", 0)))
+	_cores_chip.set_value_text(LocaleManager.format_integer(int(p.get("genesis_cores", 0))))
+	_bits_chip.set_value_text(LocaleManager.format_integer(int(p.get("bits", 0))))
 	UiJuice.pop(_top_hud, 1.012)
 
 
 func _refresh_anima_count() -> void:
-	if is_instance_valid(_anima_count):
-		_anima_count.text = LocaleManager.format_integer(_roster.size())
+	if is_instance_valid(_animas_chip):
+		_animas_chip.set_value_text(LocaleManager.format_integer(_roster.size()))
 
 
 func _set_busy(busy: bool) -> void:
@@ -1619,10 +1646,6 @@ func _set_busy(busy: bool) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		if _core_info_overlay.visible:
-			_hide_core_info()
-			get_viewport().set_input_as_handled()
-			return
 		if _collection_view.is_sheet_open():
 			_collection_view.close_sheet()
 			get_viewport().set_input_as_handled()
@@ -1631,14 +1654,35 @@ func _unhandled_input(event: InputEvent) -> void:
 			_switch_destination(BottomNav.HOME)
 			get_viewport().set_input_as_handled()
 			return
-	if (
-		_destination == BottomNav.HOME
-		and not _busy
-		and event is InputEventMouseButton
+	_try_home_anima_tap(event)
+
+
+func _try_home_anima_tap(event: InputEvent) -> void:
+	if _destination != BottomNav.HOME or _busy or _anima.sprite_frames == null:
+		return
+	var press_position := Vector2(-1.0, -1.0)
+	if event is InputEventScreenTouch and event.pressed:
+		press_position = event.position
+	elif (
+		event is InputEventMouseButton
+		and event.button_index == MOUSE_BUTTON_LEFT
 		and event.pressed
-		and _anima.sprite_frames != null
 	):
-		_anima.hop()
+		press_position = event.position
+	else:
+		return
+
+	var now := Time.get_ticks_msec()
+	if (
+		now - _last_anima_press_ms < 180
+		and press_position.distance_to(_last_anima_press_position) < 24.0
+	):
+		return
+	_last_anima_press_ms = now
+	_last_anima_press_position = press_position
+	if _anima.hit_test(press_position):
+		_anima.react_to_tap()
+		get_viewport().set_input_as_handled()
 
 
 func _capture_and_quit(path: String) -> void:
@@ -1678,7 +1722,7 @@ func _run_hatch_demo() -> void:
 	_say(tr("STATUS_HATCH_DEMO_DONE"), true)
 
 
-func _run_collection_sheet_demo() -> void:
+func _run_collection_sheet_demo(show_loading: bool = false) -> void:
 	var demo := _current_anima.duplicate(true)
 	if demo.is_empty():
 		demo = {
@@ -1697,7 +1741,42 @@ func _run_collection_sheet_demo() -> void:
 	var rows: Array[Dictionary] = [demo]
 	_collection_view.set_rows(rows, str(_current_anima.get("id", "")), _thumbnail_for)
 	_switch_destination(BottomNav.COLLECTION)
-	_collection_view.show_preview(demo, false)
+	if show_loading:
+		_collection_view.show_preview_loading(demo)
+	else:
+		_collection_view.show_preview(demo, false)
+
+
+## Tap demo lewat push_input, bukan react_to_tap() langsung: yang dulu rusak adalah
+## routing GUI, dan hanya event sungguhan yang membuktikan tap sampai ke sprite.
+func _run_home_tap_demo() -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+	event.position = _anima.get_global_transform_with_canvas() * _anima.offset
+	get_viewport().push_input(event)
+	await get_tree().create_timer(0.09).timeout
+	print("home tap demo: tap=%s reaction=%s" % [event.position, _anima.position])
+
+
+func _run_profile_help_demo(show_help: bool = true) -> void:
+	var demo := _current_anima.duplicate(true)
+	if demo.is_empty():
+		demo = {
+			"id": "profile-help-demo",
+			"nickname": "Velumi",
+			"species_key": "demo_companion",
+			"color_bucket": "cool_blue",
+			"stage": 1,
+			"element": "spark",
+			"rarity": 4,
+			"care_score": 28,
+			"base_stats": {"hp": 74, "atk": 62, "def": 58, "spd": 81, "special": 77},
+		}
+	_switch_destination(BottomNav.ANIMA, demo)
+	_refresh_stats()
+	if show_help:
+		_show_details_help(tr("STAT_SPD"), tr("STAT_SPD_HELP"))
 
 
 func _run_empty_demo() -> void:

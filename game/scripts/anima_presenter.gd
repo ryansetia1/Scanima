@@ -17,6 +17,7 @@ const BREATH_DAMAGED_SEC := 1.1
 const HOP_HEIGHT_PX := 10.0
 const PLAY_BOUNCE_HEIGHT_PX := 14.0
 const PLAY_BOUNCE_COUNT := 6
+const TAP_HIT_PADDING_PX := 28.0
 
 var _motion: Tween
 var _feedback: Tween
@@ -65,6 +66,36 @@ func current_pose() -> String:
 func set_facing(direction: float) -> void:
 	_facing_direction = -1.0 if direction < 0.0 else 1.0
 	flip_h = _facing_direction > 0.0
+
+
+func hit_test(global_point: Vector2) -> bool:
+	if not visible or sprite_frames == null:
+		return false
+	var texture := sprite_frames.get_frame_texture(animation, frame)
+	if texture == null:
+		return false
+	var texture_size := texture.get_size()
+	var top_left := offset - texture_size * 0.5 if centered else offset
+	# Titik datang dari viewport, jadi transform kanvas harus ikut dihitung; to_local()
+	# saja akan salah begitu Stage bergeser atau ada Camera2D.
+	var local := make_canvas_position_local(global_point)
+	if flip_h:
+		local.x = -local.x
+	return Rect2(top_left, texture_size).grow(TAP_HIT_PADDING_PX).has_point(local)
+
+
+func react_to_tap() -> void:
+	if UiMotion.reduced_motion or sprite_frames == null:
+		return
+	_stop_tap_motion()
+	match _current_pose:
+		"sleep":
+			_feedback = _sleepy_tap()
+		"defeated":
+			_feedback = _dormant_tap()
+		_:
+			_feedback = _awake_tap()
+	_feedback.finished.connect(_resume_pose_motion)
 
 
 func _start_motion(pose: String) -> void:
@@ -139,6 +170,64 @@ func _lunge() -> Tween:
 	tween.tween_property(self, "position", _base_position, 0.22) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 	return tween
+
+
+func _stop_tap_motion() -> void:
+	if _motion != null and _motion.is_valid():
+		_motion.kill()
+	if _feedback != null and _feedback.is_valid():
+		_feedback.kill()
+	_motion = null
+	_feedback = null
+	position = _base_position
+	scale = Vector2.ONE
+	rotation = 0.0
+
+
+func _awake_tap() -> Tween:
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "position", _base_position - Vector2(0.0, HOP_HEIGHT_PX), 0.12) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(self, "scale", Vector2(1.08, 0.92), 0.12) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	# chain() lalu set_parallel(true) akan menyatukan langkahnya lagi, sehingga
+	# hop dan kembalinya jalan bersamaan dan Anima tampak tidak bergerak.
+	tween.chain().tween_property(self, "position", _base_position, 0.20) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_BOUNCE)
+	tween.parallel().tween_property(self, "scale", Vector2.ONE, 0.20) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	return tween
+
+
+func _sleepy_tap() -> Tween:
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "position", _base_position + Vector2(0.0, 6.0), 0.18) \
+		.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(self, "rotation", -0.025, 0.18)
+	tween.tween_property(self, "modulate", Color(0.86, 0.9, 1.08, 1.0), 0.18)
+	tween.chain().tween_property(self, "position", _base_position, 0.26) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tween.parallel().tween_property(self, "rotation", 0.0, 0.26)
+	tween.parallel().tween_property(self, "modulate", Color.WHITE, 0.26)
+	return tween
+
+
+func _dormant_tap() -> Tween:
+	var tween := create_tween()
+	tween.tween_property(self, "scale", Vector2(0.975, 1.035), 0.16) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tween.parallel().tween_property(self, "modulate", Color(0.76, 0.8, 0.94, 1.0), 0.16)
+	tween.tween_property(self, "scale", Vector2.ONE, 0.28) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tween.parallel().tween_property(self, "modulate", Color(0.68, 0.72, 0.82, 1.0), 0.28)
+	return tween
+
+
+func _resume_pose_motion() -> void:
+	_feedback = null
+	_start_motion(_current_pose)
 
 
 ## Pantulan sekali untuk Feed. Tidak mengganggu napas pose karena bounce menulis

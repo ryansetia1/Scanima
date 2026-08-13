@@ -35,12 +35,16 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
 - **Home:** identity, Anima stage, kebutuhan, Bond, Care Score, Feed/Clean/Sleep/Play.
   Bond penuh menonaktifkan Play; saat tidur hanya Wake yang tampil selebar dock.
   Tanpa roster, Home membedakan Loading/Error/Empty dan memberi CTA first scan.
+  Tap tepat pada sprite memberi reaksi lokal sesuai awake/Sleep/Dormant tanpa
+  mengubah care atau mengirim request.
 - **Scan:** penjelasan discovery, preview foto, dua fase status, CTA kamera.
 - **Battle:** lobby Anima aktif, dua fighter, HP/Momentum, Strike/Surge/Guard,
   ordered event feedback, result/retry, dan forfeit.
-- **Collection:** roster dua kolom; tap membuka bottom sheet base stats + care
-  authoritative dengan aksi `View Profile` dan `Summon`. Thumbnail hanya dari cache.
-- **Anima Profile:** portrait, element, rarity, stage, care score, dan base stats.
+- **Collection:** roster dua kolom; tap langsung membuka bottom sheet identity +
+  base stats. Condition memakai skeleton sampai care authoritative tersedia,
+  dengan aksi `View Profile` dan `Summon`. Thumbnail hanya dari cache.
+- **Anima Profile:** portrait dan sembilan row label/help/value untuk traits serta
+  base stats. Konten scroll, dan setiap help membuka penjelasan singkat in-app.
 
 Pose Idle/Attack/Sleep/Defeated bukan navigation production. Alat itu tetap ada
 di `anima_demo.tscn`.
@@ -91,6 +95,31 @@ warna.
 
 Chip Core tetap ringkas di HUD. Penjelasan Genesis Core dibuka sebagai modal
 lokal saat chip disentuh, supaya istilah ekonomi tidak memenuhi layar utama.
+Chip Animas membuka Collection; Bits tetap display-only.
+
+## Komponen chrome bersama
+
+Komponen reusable tinggal di `scenes/ui/` dengan logic di `scripts/`:
+
+- `UiModal`: mode info, confirm, danger-confirm, dan input. Host memberi string
+  yang sudah di-resolve dan merutekan hasil memakai context; komponen menangani
+  backdrop, focus aman, busy, Cancel, dan Reduced Motion.
+- `ResourceChip`: value/name plus action overlay opsional 96px, isinya ditengahkan
+  di dalam target itu. Tidak menyimpan domain saldo atau navigation.
+- `UiBottomSheet`: backdrop, handle, panel, dismiss, dan slide. Domain Collection
+  tetap memegang selection revision, cache, dan care sync.
+- `UiSkeleton`: pulse bounded tanpa `_process`; Reduced Motion memakai state statis.
+- `InfoValueRow`: label, value rata kanan pada kolom lebar tetap, lalu help redup
+  96px paling akhir. Urutan itu yang membuat baris tetap sejajar walau value
+  sependek `5` atau sepanjang `Baby`; help sengaja lebih redup daripada value
+  supaya ia terbaca sebagai bantuan, bukan aksi utama.
+
+FileDialog native, toast, Battle UI, Care Dock, dan efek Scan/Incubator tetap
+domain-specific. Jangan memperluas komponen generik dengan aturan game.
+
+Rename dan Delete memakai satu `UiModal` shell. Rename selalu menawarkan
+`Save Name` + `Cancel`; Cancel tidak mengirim request, termasuk sesudah hatch.
+Warna focus `PrimaryButton` harus tetap memakai teks navy di atas cyan.
 
 ## Motion dan accessibility
 
@@ -102,6 +131,15 @@ baru yang menulis properti milik komponen lain.
 `UiMotion.reduced_motion` mematikan ambient motion, squash/reveal, meter tween,
 dan hatch movement tanpa mematikan feedback atau kontrol. Settings
 accessibility masa depan cukup mengatur flag ini.
+
+Tap pada Anima Home bergantung pada dua hal yang mudah dilanggar. Pertama, semua
+`Container` di atas Stage (`SafeMargin`, `Shell`, `ViewStack`, `HomeView`, dan
+`Column`-nya) harus `mouse_filter = IGNORE`, sebab default `STOP` membuat GUI
+menelan tap sebelum `_unhandled_input()` tanpa galat apa pun. Kedua, tween
+reaksinya tidak boleh memakai `chain().set_parallel(true)`; kombinasi itu
+menyatukan step sehingga hop dan kembalinya saling menghapus. `--home-tap-demo`
+mendorong event lewat `push_input` dan mencetak perpindahan sprite, jadi kedua
+kesalahan itu terlihat sebagai `reaction=(0, 0)`.
 
 ## Verifikasi gratis
 
@@ -117,9 +155,13 @@ accessibility masa depan cukup mengatur flag ini.
 godot --path game -- --screenshot=/tmp/home.png
 godot --path game -- --collection --screenshot=/tmp/collection.png
 godot --path game -- --collection-sheet-demo --screenshot=/tmp/collection-sheet.png
+godot --path game -- --collection-sheet-loading-demo --screenshot=/tmp/collection-loading.png
 godot --path game -- --empty-demo --screenshot=/tmp/empty.png
 godot --path game -- --summon-demo
 godot --path game -- --stats --screenshot=/tmp/profile.png
+godot --path game -- --profile-demo --screenshot=/tmp/profile-rows.png
+godot --path game -- --profile-help-demo --screenshot=/tmp/profile-help.png
+godot --path game -- --home-tap-demo
 godot --path game -- --preview=$PWD/eval/photos/mug-putih.jpg \
   --screenshot=/tmp/scan.png
 ```

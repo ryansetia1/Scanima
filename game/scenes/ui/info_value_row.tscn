@@ -1,0 +1,38 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/info_value_row.gd" id="1_row"]
+[ext_resource type="Texture2D" path="res://assets/icons/help-circle.svg" id="2_help"]
+[ext_resource type="Theme" path="res://themes/mobile_theme.tres" id="3_theme"]
+
+[node name="InfoValueRow" type="HBoxContainer"]
+custom_minimum_size = Vector2(0, 96)
+theme = ExtResource("3_theme")
+theme_override_constants/separation = 8
+script = ExtResource("1_row")
+
+[node name="RowLabel" type="Label" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(174, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatNameLabel"
+vertical_alignment = 1
+
+[node name="RowValue" type="Label" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="HelpButton" type="Button" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+theme_override_colors/icon_normal_color = Color(0.61, 0.67, 0.8, 0.5)
+theme_override_colors/icon_hover_color = Color(0.85, 0.93, 1, 0.85)
+theme_override_colors/icon_pressed_color = Color(1, 0.86, 0.48, 0.9)
+mouse_default_cursor_shape = 2
+icon = ExtResource("2_help")
+flat = true

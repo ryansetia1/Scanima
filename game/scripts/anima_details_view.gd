@@ -3,21 +3,22 @@ extends Control
 
 signal delete_requested(anima_id: String)
 signal rename_requested(anima_id: String)
+signal help_requested(title: String, body: String)
 
 @onready var _empty_state: Label = %DetailsEmpty
 @onready var _content: Control = %DetailsContent
 @onready var _portrait: TextureRect = %DetailsPortrait
 @onready var _name: Label = %DetailsName
 @onready var _meta: Label = %DetailsMeta
-@onready var _element: Label = %DetailElement
-@onready var _rarity: Label = %DetailRarity
-@onready var _stage: Label = %DetailStage
-@onready var _care_score: Label = %DetailCareScore
-@onready var _hp: Label = %StatHp
-@onready var _atk: Label = %StatAtk
-@onready var _def: Label = %StatDef
-@onready var _spd: Label = %StatSpd
-@onready var _special: Label = %StatSpecial
+@onready var _element_row = %DetailElementRow
+@onready var _rarity_row = %DetailRarityRow
+@onready var _stage_row = %DetailStageRow
+@onready var _care_score_row = %DetailCareScoreRow
+@onready var _hp_row = %StatHpRow
+@onready var _atk_row = %StatAtkRow
+@onready var _def_row = %StatDefRow
+@onready var _spd_row = %StatSpdRow
+@onready var _special_row = %StatSpecialRow
 @onready var _rename_button: Button = %EditAnimaNameButton
 @onready var _delete_button: Button = %DeleteAnimaButton
 
@@ -28,6 +29,9 @@ var _busy := false
 func _ready() -> void:
 	_rename_button.pressed.connect(_request_rename)
 	_delete_button.pressed.connect(_request_delete)
+	for row in _info_rows():
+		row.help_requested.connect(_forward_help)
+	refresh_localized_ui()
 
 
 func set_anima(row: Dictionary, portrait: Texture2D) -> void:
@@ -50,17 +54,17 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		LocaleManager.element_name(str(row.get("element", ""))),
 		LocaleManager.stage_name(int(row.get("stage", 1))),
 	]
-	_element.text = LocaleManager.element_name(str(row.get("element", "")))
-	_rarity.text = LocaleManager.format_ratio(int(row.get("rarity", 1)), 5)
-	_stage.text = LocaleManager.stage_name(int(row.get("stage", 1)))
-	_care_score.text = LocaleManager.format_integer(int(row.get("care_score", 0)))
+	_element_row.set_value_text(LocaleManager.element_name(str(row.get("element", ""))))
+	_rarity_row.set_value_text(LocaleManager.format_ratio(int(row.get("rarity", 1)), 5))
+	_stage_row.set_value_text(LocaleManager.stage_name(int(row.get("stage", 1))))
+	_care_score_row.set_value_text(LocaleManager.format_integer(int(row.get("care_score", 0))))
 
 	var stats := GameState.as_dict(row.get("base_stats"))
-	_hp.text = _stat(stats, "hp")
-	_atk.text = _stat(stats, "atk")
-	_def.text = _stat(stats, "def")
-	_spd.text = _stat(stats, "spd")
-	_special.text = _stat(stats, "special")
+	_hp_row.set_value_text(_stat(stats, "hp"))
+	_atk_row.set_value_text(_stat(stats, "atk"))
+	_def_row.set_value_text(_stat(stats, "def"))
+	_spd_row.set_value_text(_stat(stats, "spd"))
+	_special_row.set_value_text(_stat(stats, "special"))
 
 
 func set_busy(busy: bool) -> void:
@@ -77,6 +81,40 @@ func _request_rename() -> void:
 func _request_delete() -> void:
 	if not _anima_id.is_empty():
 		delete_requested.emit(_anima_id)
+
+
+func refresh_localized_ui() -> void:
+	_element_row.configure(tr("DETAILS_ELEMENT"), tr("DETAILS_ELEMENT"), tr("DETAILS_ELEMENT_HELP"))
+	_rarity_row.configure(tr("DETAILS_RARITY"), tr("DETAILS_RARITY"), tr("DETAILS_RARITY_HELP"))
+	_stage_row.configure(tr("DETAILS_STAGE"), tr("DETAILS_STAGE"), tr("DETAILS_STAGE_HELP"))
+	_care_score_row.configure(
+		tr("DETAILS_CARE_SCORE"),
+		tr("DETAILS_CARE_SCORE"),
+		tr("DETAILS_CARE_SCORE_HELP")
+	)
+	_hp_row.configure(tr("STAT_HP"), tr("STAT_HP"), tr("STAT_HP_HELP"))
+	_atk_row.configure(tr("STAT_ATK"), tr("STAT_ATK"), tr("STAT_ATK_HELP"))
+	_def_row.configure(tr("STAT_DEF"), tr("STAT_DEF"), tr("STAT_DEF_HELP"))
+	_spd_row.configure(tr("STAT_SPD"), tr("STAT_SPD"), tr("STAT_SPD_HELP"))
+	_special_row.configure(tr("STAT_SPECIAL"), tr("STAT_SPECIAL"), tr("STAT_SPECIAL_HELP"))
+
+
+func _info_rows() -> Array:
+	return [
+		_element_row,
+		_rarity_row,
+		_stage_row,
+		_care_score_row,
+		_hp_row,
+		_atk_row,
+		_def_row,
+		_spd_row,
+		_special_row,
+	]
+
+
+func _forward_help(title: String, body: String) -> void:
+	help_requested.emit(title, body)
 
 
 func _stat(stats: Dictionary, key: String) -> String:

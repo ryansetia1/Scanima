@@ -10,14 +10,14 @@ signal retry_requested
 @onready var _status: Label = %CollectionStatus
 @onready var _list: ItemList = %AnimaList
 @onready var _empty_action: Button = %CollectionEmptyAction
-@onready var _sheet_overlay: Control = %CollectionSheetOverlay
-@onready var _sheet_panel: PanelContainer = %CollectionSheetPanel
-@onready var _sheet_dismiss: Button = %CollectionSheetDismiss
+@onready var _sheet = %CollectionSheetOverlay
 @onready var _sheet_portrait: TextureRect = %CollectionSheetPortrait
 @onready var _sheet_name: Label = %CollectionSheetName
 @onready var _sheet_meta: Label = %CollectionSheetMeta
 @onready var _active_badge: Label = %CollectionActiveBadge
 @onready var _condition_status: Label = %CollectionConditionStatus
+@onready var _condition_skeleton = %ConditionSkeleton
+@onready var _care_rows: VBoxContainer = %CareRows
 @onready var _profile_button: Button = %CollectionProfileButton
 @onready var _summon_button: Button = %CollectionSummonButton
 
@@ -49,7 +49,7 @@ var _empty_mode := &"scan"
 func _ready() -> void:
 	_list.item_selected.connect(_on_item_selected)
 	_empty_action.pressed.connect(_on_empty_action)
-	_sheet_dismiss.pressed.connect(close_sheet)
+	_sheet.dismissed.connect(_on_sheet_dismissed)
 	_profile_button.pressed.connect(_view_profile)
 	_summon_button.pressed.connect(_summon)
 
@@ -122,7 +122,7 @@ func begin_visit() -> void:
 
 
 func is_sheet_open() -> bool:
-	return _sheet_overlay.visible
+	return _sheet.visible
 
 
 func selected_revision() -> int:
@@ -152,6 +152,11 @@ func show_preview(row: Dictionary, request_sync: bool = true) -> void:
 	call_deferred("_reveal_sheet", _revision)
 
 
+func show_preview_loading(row: Dictionary) -> void:
+	show_preview(row, false)
+	_set_condition_loading()
+
+
 func apply_care_sync(row: Dictionary, revision: int) -> bool:
 	if not _selection_matches(row, revision):
 		return false
@@ -163,7 +168,7 @@ func apply_care_sync(row: Dictionary, revision: int) -> bool:
 
 
 func set_care_sync_error(revision: int) -> void:
-	if revision != _revision or _selected_row.is_empty() or not _sheet_overlay.visible:
+	if revision != _revision or _selected_row.is_empty() or not _sheet.visible:
 		return
 	_apply_condition(_selected_row, false)
 	_condition_status.text = tr("COLLECTION_CONDITION_ERROR")
@@ -171,10 +176,14 @@ func set_care_sync_error(revision: int) -> void:
 
 
 func close_sheet() -> void:
-	if not _sheet_overlay.visible:
+	if not _sheet.visible:
 		return
+	_sheet.close()
+
+
+func _on_sheet_dismissed() -> void:
 	_revision += 1
-	UiJuice.hide_bottom_sheet(_sheet_overlay, _sheet_panel)
+	_condition_skeleton.set_loading(false)
 
 
 func set_sheet_busy(busy: bool) -> void:
@@ -216,13 +225,19 @@ func _set_condition_loading() -> void:
 	_condition_synced = false
 	_condition_status.text = tr("COLLECTION_CONDITION_LOADING")
 	_condition_status.visible = true
+	_care_rows.visible = false
+	_condition_skeleton.set_loading(true)
 	for meter in _care_meters.values():
-		(meter as ProgressBar).modulate = Color(0.58, 0.64, 0.76, 0.42)
+		var care_meter := meter as ProgressBar
+		care_meter.value = 0.0
+		care_meter.modulate = Color.WHITE
 	_update_action_state()
 
 
 func _apply_condition(row: Dictionary, synced: bool) -> void:
 	var care := CareRules.normalized_care(row.get("care"))
+	_condition_skeleton.set_loading(false)
+	_care_rows.visible = true
 	for key in _care_meters:
 		var meter := _care_meters[key] as ProgressBar
 		meter.modulate = Color.WHITE
@@ -271,14 +286,14 @@ func _on_empty_action() -> void:
 func _selection_matches(row: Dictionary, revision: int) -> bool:
 	return (
 		revision == _revision
-		and _sheet_overlay.visible
+		and _sheet.visible
 		and str(row.get("id", "")) == str(_selected_row.get("id", ""))
 	)
 
 
 func _reveal_sheet(revision: int) -> void:
 	if revision == _revision:
-		UiJuice.show_bottom_sheet(_sheet_overlay, _sheet_panel)
+		_sheet.open()
 
 
 static func _row_with_id(rows: Array[Dictionary], anima_id: String) -> Dictionary:
