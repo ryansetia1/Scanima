@@ -102,6 +102,21 @@ static func can_recover_from_dormant(care_value: Variant) -> bool:
 	return care["hunger"] >= DORMANT_RECOVERY_NEED and care["hygiene"] >= DORMANT_RECOVERY_NEED
 
 
+static func has_timestamp(value: Variant) -> bool:
+	if value == null:
+		return false
+	var text := str(value).strip_edges()
+	return not text.is_empty() and text != "<null>"
+
+
+static func collection_pose(row: Dictionary, active_id: String) -> String:
+	if has_timestamp(row.get("dormant_since")):
+		return "defeated"
+	if str(row.get("id", "")) != active_id or has_timestamp(row.get("sleep_started_at")):
+		return "sleep"
+	return "idle"
+
+
 static func visual_pose(sleeping: bool, dormant: bool, care_value: Variant = {}) -> String:
 	if dormant:
 		return "defeated"

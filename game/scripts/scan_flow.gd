@@ -299,8 +299,20 @@ func _reload_roster() -> bool:
 	return true
 
 
+func _summoned_id() -> String:
+	var id := str(_current_anima.get("id", ""))
+	if not id.is_empty():
+		return id
+	id = str(GameState.profile.get("active_anima_id", ""))
+	if not id.is_empty():
+		return id
+	return str(GameState.last_anima.get("id", ""))
+
+
 func _active_row() -> Dictionary:
-	var wanted := str(GameState.last_anima.get("id", ""))
+	var wanted := str(GameState.profile.get("active_anima_id", ""))
+	if wanted.is_empty():
+		wanted = str(GameState.last_anima.get("id", ""))
 	if wanted.is_empty():
 		return {}
 	for row in _roster:
@@ -337,8 +349,12 @@ func _show_collection_profile(row: Dictionary) -> void:
 func _summon_collection_anima(row: Dictionary, care_synced: bool) -> void:
 	if row.is_empty() or _busy:
 		return
+	if not GameState.pending_care.is_empty():
+		_say(tr("ERROR_CARE_PENDING"), true)
+		return
 	_set_busy(true)
 	_collection_view.set_sheet_busy(true)
+	var anima_id := str(row.get("id", ""))
 	var loaded := await _prepare_anima_art(
 		str(row.get("species_key", "")),
 		str(row.get("color_bucket", "")),
@@ -348,6 +364,15 @@ func _summon_collection_anima(row: Dictionary, care_synced: bool) -> void:
 		_collection_view.set_sheet_busy(false)
 		_set_busy(false)
 		return
+	var pending := GameState.begin_care(anima_id, "summon")
+	var summoned := await _send_pending_care(pending, false)
+	if not summoned:
+		_collection_view.set_sheet_busy(false)
+		_set_busy(false)
+		return
+	var synced := _roster_row(anima_id)
+	if not synced.is_empty():
+		row = synced
 
 	_switch_destination(BottomNav.HOME)
 	await _anima.summon_dissolve()
@@ -606,7 +631,7 @@ func _resume_pending_care() -> void:
 	await _send_pending_care(pending, false)
 
 
-func _send_pending_care(pending: Dictionary, show_feedback: bool) -> void:
+func _send_pending_care(pending: Dictionary, show_feedback: bool) -> bool:
 	var action := str(pending.get("action", ""))
 	var res := await Backend.care_anima(
 		str(pending.get("anima_id", "")),
@@ -618,13 +643,15 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> void:
 		if _apply_care_response(GameState.as_dict(res.data)):
 			if show_feedback and not _level_up_banner.visible:
 				_say(_care_success_message(action), show_feedback)
-		return
+			return true
+		return false
 
 	# Galat 4xx adalah keputusan server, bukan gangguan sementara. Menyimpan key
 	# selamanya akan mengunci semua tombol care walau saldo/kondisinya berubah.
 	if res.code >= 400 and res.code < 500:
 		GameState.finish_care()
 	_say(_care_error_message(res.error))
+	return false
 
 
 func _sync_active_care(show_error: bool) -> void:
@@ -637,6 +664,16 @@ func _sync_active_care(show_error: bool) -> void:
 	elif show_error:
 		print("care sync error: %s" % res.error)
 		_say(tr("ERROR_CARE_SYNC"), true)
+
+
+func _summon_current_anima() -> void:
+	var anima_id := str(_current_anima.get("id", ""))
+	if anima_id.is_empty() or not GameState.pending_care.is_empty():
+		await _sync_active_care(false)
+		return
+	var pending := GameState.begin_care(anima_id, "summon")
+	if not await _send_pending_care(pending, false):
+		await _sync_active_care(false)
 
 
 func _apply_care_response(data: Dictionary) -> bool:
@@ -653,6 +690,8 @@ func _apply_care_response(data: Dictionary) -> bool:
 	if data.has("bits"):
 		GameState.profile["bits"] = int(data.get("bits", 0))
 		_refresh_header()
+	if data.has("active_anima_id"):
+		GameState.profile["active_anima_id"] = str(data.get("active_anima_id", ""))
 	_upsert_roster(row)
 
 	if str(_current_anima.get("id", "")) == anima_id:
@@ -679,6 +718,8 @@ func _care_success_message(action: String) -> String:
 			return tr("FEEDBACK_SLEEP")
 		"wake":
 			return tr("FEEDBACK_WAKE")
+		"summon":
+			return tr("COLLECTION_SUMMON_SUCCESS") % LocaleManager.display_name(_current_anima)
 		_:
 			return tr("FEEDBACK_SYNCED")
 
@@ -1270,7 +1311,10 @@ func _present(
 	else:
 		_incubator.stop()
 		_anima.visible = true
-	await _sync_active_care(false)
+	if complete_scan:
+		await _summon_current_anima()
+	else:
+		await _sync_active_care(false)
 	if _is_sleeping(_current_anima):
 		_say(tr("STATUS_ANIMA_SLEEPING") % LocaleManager.display_name(_current_anima), true)
 	else:
@@ -1366,6 +1410,13 @@ func _upsert_roster(row: Dictionary) -> void:
 	_roster.push_front(row)
 
 
+func _roster_row(anima_id: String) -> Dictionary:
+	for row in _roster:
+		if str(row.get("id", "")) == anima_id:
+			return row
+	return {}
+
+
 func _populate_collection() -> void:
 	_refresh_anima_count()
 	if not is_instance_valid(_collection_view):
@@ -1373,30 +1424,33 @@ func _populate_collection() -> void:
 	# ponytail: pass pertama membuat thumbnail cached secara sinkron. Plafon
 	# sekitar 100 Anima lokal; kalau roster nyata melewatinya, simpan thumbnail
 	# 128px terpisah saat sheet diunduh dan virtualisasikan daftar.
-	var active_id := str(_current_anima.get("id", GameState.last_anima.get("id", "")))
-	_collection_view.set_rows(_roster, active_id, _thumbnail_for)
+	_collection_view.set_rows(_roster, _summoned_id(), _thumbnail_for)
 
 
 func _thumbnail_for(row: Dictionary) -> Texture2D:
 	var species := str(row.get("species_key", ""))
 	var color := str(row.get("color_bucket", ""))
 	var stage := int(row.get("stage", 1))
-	var cache_key := "%s|%s|%d" % [species, color, stage]
+	var pose := CareRules.collection_pose(row, _summoned_id())
+	var cache_key := "%s|%s|%d|%s" % [species, color, stage, pose]
 	if _thumbnail_cache.has(cache_key):
 		return _thumbnail_cache[cache_key] as Texture2D
 	if GameState.has_sprite(species, color, stage):
 		var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path(species, color, stage))
 		if bool(loaded.get("ok", false)):
 			var frames: SpriteFrames = loaded.get("frames")
-			if frames != null and frames.has_animation("idle") and frames.get_frame_count("idle") > 0:
-				var frame := frames.get_frame_texture("idle", 0)
-				if frame != null:
-					var image := frame.get_image()
-					if image != null and not image.is_empty():
-						image.resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.INTERPOLATE_LANCZOS)
-						var texture := ImageTexture.create_from_image(image)
-						_thumbnail_cache[cache_key] = texture
-						return texture
+			if frames != null:
+				if not frames.has_animation(pose) or frames.get_frame_count(pose) <= 0:
+					pose = "idle"
+				if frames.has_animation(pose) and frames.get_frame_count(pose) > 0:
+					var frame := frames.get_frame_texture(pose, 0)
+					if frame != null:
+						var image := frame.get_image()
+						if image != null and not image.is_empty():
+							image.resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.INTERPOLATE_LANCZOS)
+							var texture := ImageTexture.create_from_image(image)
+							_thumbnail_cache[cache_key] = texture
+							return texture
 
 	if _placeholder_icon == null:
 		var placeholder := Image.create_empty(

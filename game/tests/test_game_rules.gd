@@ -139,6 +139,26 @@ func _initialize() -> void:
 
 	print("5. pose visual mengikuti Sleep, Dormant, lalu kebutuhan")
 	_check_eq(CareRules.visual_pose(true, false), "sleep", "tidur mengalahkan kebutuhan")
+	_check_eq(
+		CareRules.collection_pose({"id": "a", "sleep_started_at": null}, "a"),
+		"idle",
+		"companion aktif yang bangun memakai pose Idle di Collection"
+	)
+	_check_eq(
+		CareRules.collection_pose({"id": "b"}, "a"),
+		"sleep",
+		"Anima yang tidak di-Summon memakai pose Sleep di Collection"
+	)
+	_check_eq(
+		CareRules.collection_pose({"id": "a", "sleep_started_at": "2026-08-14T00:00:00Z"}, "a"),
+		"sleep",
+		"companion aktif yang tidur tetap Sleep di Collection"
+	)
+	_check_eq(
+		CareRules.collection_pose({"id": "b", "dormant_since": "2026-08-14T00:00:00Z"}, "a"),
+		"defeated",
+		"Dormant mengalahkan pose Sleep di Collection"
+	)
 	_check_eq(CareRules.visual_pose(false, true), "defeated", "Dormant mengalahkan kebutuhan")
 	_check_eq(
 		CareRules.visual_pose(false, false, {"hunger": 20.0, "energy": 80.0, "hygiene": 80.0}),

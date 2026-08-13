@@ -84,6 +84,22 @@ func _initialize() -> void:
 	if list != null:
 		_check_eq(list.max_columns, 2, "collection uses two columns")
 		_check_eq(list.fixed_icon_size, Vector2i(128, 128), "collection thumbnails are 128 px")
+	var scan_flow := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		scan_flow.find("CareRules.collection_pose") >= 0,
+		"Collection thumbnails pick Sleep or Idle from the summoned companion"
+	)
+	var active_start := scan_flow.find("func _active_row")
+	var active_end := scan_flow.find("func _sync_collection_preview", active_start)
+	var active_body := (
+		scan_flow.substr(active_start, active_end - active_start)
+		if active_start >= 0 and active_end > active_start
+		else ""
+	)
+	_check(
+		active_body.find("active_anima_id") >= 0,
+		"boot prefers the server-summoned companion over last_anima"
+	)
 	var collection_sheet := scene.find_child("CollectionSheetOverlay", true, false) as Control
 	var collection_panel := scene.find_child("CollectionSheetPanel", true, false) as PanelContainer
 	_check(collection_sheet != null and not collection_sheet.visible, "Collection sheet starts hidden")
@@ -872,6 +888,11 @@ func _test_collection_routes_are_explicit() -> void:
 		"Summon routes the selected companion to Home"
 	)
 	_check(
+		summon_body.find("begin_care(anima_id, \"summon\")") >= 0
+		and summon_body.find("begin_care") < summon_body.find("GameState.remember_anima"),
+		"Summon claims the companion on the server before replacing Home"
+	)
+	_check(
 		summon_body.find("await _prepare_anima_art") < summon_body.find("GameState.remember_anima"),
 		"Summon prepares art before replacing the active companion"
 	)
@@ -1110,12 +1131,13 @@ func _test_present_toast_respects_sleep() -> void:
 		present_start, present_end - present_start
 	) if present_start >= 0 and present_end > present_start else ""
 	var sync_at := present_body.find("await _sync_active_care(false)")
+	var summon_at := present_body.find("await _summon_current_anima()")
 	var sleep_at := present_body.find("if _is_sleeping(_current_anima)")
 	var sleeping_status_at := present_body.find("STATUS_ANIMA_SLEEPING")
 	var ready_status_at := present_body.find("STATUS_ANIMA_READY")
 	_check(
-		sync_at >= 0 and sleep_at > sync_at,
-		"authoritative care sync finishes before choosing the startup toast"
+		sync_at >= 0 and summon_at >= 0 and sleep_at > sync_at and sleep_at > summon_at,
+		"authoritative care sync or summon finishes before choosing the startup toast"
 	)
 	_check(
 		sleeping_status_at > sleep_at and ready_status_at > sleep_at,

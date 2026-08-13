@@ -97,6 +97,7 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 			close_sheet()
 		else:
 			_selected_row = replacement
+			_fill_identity()
 			_update_active_state()
 
 
@@ -163,6 +164,7 @@ func apply_care_sync(row: Dictionary, revision: int) -> bool:
 	var normalized := row.duplicate(true)
 	_care_cache[str(normalized.get("id", ""))] = normalized
 	_selected_row = normalized
+	_fill_identity()
 	_apply_condition(normalized, true)
 	return true
 

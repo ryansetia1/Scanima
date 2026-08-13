@@ -119,7 +119,7 @@ func get_rest(path_and_query: String) -> Dictionary:
 
 
 func fetch_profile() -> Dictionary:
-	var res := await get_rest("profiles?select=scan_charges,genesis_cores,bits")
+	var res := await get_rest("profiles?select=scan_charges,genesis_cores,bits,active_anima_id")
 	if res.ok and typeof(res.data) == TYPE_ARRAY and (res.data as Array).size() > 0:
 		GameState.profile = GameState.as_dict((res.data as Array)[0])
 	return res

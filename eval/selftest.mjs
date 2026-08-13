@@ -722,7 +722,8 @@ console.log("19. tidak ada kredensial mahal di sumber client Godot");
   );
   const config = await readFile(new URL("../backend/supabase/config.toml", import.meta.url), "utf8");
   const careConfig = config.split("[functions.care_anima]")[1]?.split("\n[")[0] ?? "";
-  assert.ok(care.includes(".auth.getClaims("), "care_anima harus memverifikasi JWT lewat getClaims");
+  assert.ok(care.includes('ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon"])'),
+    "care_anima harus menerima summon supaya Collection bisa menidurkan companion lama");
   assert.ok(!care.includes(".auth.getUser("), "care_anima tidak boleh mengembalikan round-trip getUser");
   assert.match(careConfig, /verify_jwt\s*=\s*true/, "gateway JWT care_anima harus tetap aktif");
 }

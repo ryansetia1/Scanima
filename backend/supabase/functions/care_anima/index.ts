@@ -6,8 +6,8 @@
 
 import { adminClient, json } from "../_shared/supa.ts";
 
-const ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play"]);
-const MUTATING = new Set(["feed", "clean", "sleep", "wake", "play"]);
+const ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon"]);
+const MUTATING = new Set(["feed", "clean", "sleep", "wake", "play", "summon"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const ERROR_STATUS: Record<string, number> = {

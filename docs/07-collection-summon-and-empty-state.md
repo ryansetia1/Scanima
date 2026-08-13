@@ -6,8 +6,7 @@ Status: diimplementasikan dan diverifikasi 13 Agustus 2026.
 
 - Tap kartu Anima di Collection tidak langsung berpindah layar.
 - Bottom sheet memberi dua aksi: `View Profile` dan `Summon`.
-- `Summon` hanya mengganti companion aktif di Home; tidak memakai biaya,
-  cooldown, model call, atau state aktif baru di database.
+- `Summon` mengganti companion aktif di Home dan di server (`profiles.active_anima_id`). Anima lain tidur: Energy pulih sampai penuh dalam 6 jam, Hunger/Hygiene tetap turun, tanpa +5 EXP. Tidak ada biaya, cooldown, atau model call.
 - Bottom sheet menampilkan base stats dan care stats authoritative.
 - Pemain tanpa Anima mendapat Home empty state dengan CTA scan yang jelas.
 - Loading, roster error, dan roster kosong harus menjadi tiga state berbeda.
@@ -20,8 +19,9 @@ Status: diimplementasikan dan diverifikasi 13 Agustus 2026.
   seluruh sheet hanya untuk thumbnail.
 - Satu care sync gratis per Anima per kunjungan Collection cukup. Tidak ada loop
   atau retry otomatis.
-- Endpoint care tetap owner-only dan server-authoritative. Perubahan ini tidak
-  menambah data pribadi, mata uang, migration, atau endpoint.
+- Endpoint care tetap owner-only dan server-authoritative. `Summon` menulis
+  `profiles.active_anima_id` lewat `apply_care('summon')`; client tidak bisa
+  PATCH kolom itu.
 - View hanya mempresentasikan state dan memancarkan intent. `scan_flow` tetap
   mengorkestrasi async/navigation; `Backend` tetap satu-satunya transport.
 
@@ -49,11 +49,12 @@ Footer memakai `View Profile` sebagai aksi sekunder dan `Summon` sebagai CTA.
 Pada companion aktif, CTA berubah menjadi `Summoned` dan disabled. Sheet ditutup
 lewat backdrop atau Back/Escape, tanpa X kecil. Semua aksi minimal 96px.
 
-### Summon adalah transisi tematik tanpa mekanik ekonomi
+### Summon menidurkan companion yang tidak dipakai
 
-Saat `Summon` ditekan, CTA masuk loading sementara art pilihan dipastikan ada.
-Companion lama dan `GameState.last_anima` belum berubah pada tahap ini. Jika
-download atau sync gagal, sheet tetap terbuka dan companion lama dipertahankan.
+Saat `Summon` ditekan, CTA masuk loading sementara server mengklaim companion
+baru dan art pilihan dipastikan ada. Companion lama tidur di Postgres; Energy-nya
+pulih pada sync berikutnya. `GameState.last_anima` belum berubah sampai art siap.
+Jika download atau summon gagal, sheet tetap terbuka dan companion lama dipertahankan.
 
 Setelah siap:
 
@@ -111,7 +112,8 @@ sehingga tidak diperlukan flag first-launch.
 ## Decision log
 
 - Istilah utama: `Summon`, agar perpindahan companion terasa tematik.
-- Semantik: companion aktif lokal, bukan summon berbiaya atau bertimer.
+- Semantik: companion aktif server-authoritative (`profiles.active_anima_id`); yang lain tidur.
+- Thumbnail dan portrait Collection: Sleep jika tidak di-Summon atau sedang nap, Idle jika companion aktif bangun, Damaged jika Dormant.
 - Surface pilihan: bottom sheet dengan stats sekilas.
 - Stats: base stats dan care stats authoritative.
 - Care freshness: sync satu kali saat Anima dipilih.

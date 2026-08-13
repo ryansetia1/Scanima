@@ -24,6 +24,7 @@ declare
   v_refund  uuid;
   v_sukses  uuid;
   v_care_anima uuid;
+  v_bench_anima uuid;
   v_delete_own uuid;
   v_delete_other uuid;
   v_delete_generation uuid;
@@ -352,6 +353,13 @@ begin
   assert (select display_name from public.profiles where id = u1) = 'nama baru',
          'kolom kosmetik harus tetap bisa diubah client';
 
+  begin
+    update public.profiles set active_anima_id = v_delete_own where id = u1;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh menulis companion aktif';
+
   update public.animas set nickname = 'nama pilihan' where id = v_delete_own;
   assert (select nickname from public.animas where id = v_delete_own) = 'nama pilihan',
          'pemain harus bisa mengganti nickname Anima sendiri';
@@ -646,6 +654,49 @@ begin
   perform public.apply_care(u1, v_care_anima, 'clean', 'care-recover-clean-2');
   assert (select dormant_since is null from public.animas where id = v_care_anima),
          'Hunger dan Hygiene >=50 harus memulihkan Dormant';
+
+  -- Anima yang tidak di-Summon tidur: Energy pulih, tanpa +5 EXP.
+  insert into public.animas (
+    owner_id, nickname, species_key, color_bucket, element, rarity,
+    base_stats, care, status, care_synced_at
+  )
+  values (
+    u1, 'uji bench', 'mouse_plastic', 'gray', 'tech', 1, v_stats,
+    '{"hunger":100,"energy":10,"hygiene":100,"bond":0}'::jsonb,
+    'ready', now() - interval '3 hours'
+  )
+  returning id into v_bench_anima;
+  v_j := public.apply_care(u1, v_bench_anima, 'sync', null);
+  assert (v_j #>> '{anima,sleep_started_at}') is not null,
+         'Anima yang tidak di-Summon harus tidur';
+  assert (v_j #>> '{anima,care,energy}')::numeric between 54.9 and 55.1,
+         'tidur tiga jam di Collection harus memulihkan Energy';
+  assert (v_j #>> '{anima,care_score}')::int = 0,
+         'tidur di Collection tidak boleh memberi EXP tidur penuh';
+
+  update public.animas
+     set sleep_started_at = now() - interval '6 hours',
+         sleep_energy_at_start = 10,
+         care = '{"hunger":70,"energy":10,"hygiene":70,"bond":0}'::jsonb,
+         care_synced_at = now() - interval '6 hours',
+         care_score = 0
+   where id = v_bench_anima;
+  v_j := public.apply_care(u1, v_bench_anima, 'sync', null);
+  assert (v_j #>> '{anima,sleep_started_at}') is not null,
+         'tidur Collection tidak auto-bangun setelah enam jam';
+  assert (v_j #>> '{anima,care,energy}')::numeric = 100,
+         'Energy Collection penuh dalam enam jam';
+  assert (v_j #>> '{anima,care_score}')::int = 0,
+         'enam jam di Collection tidak boleh +5 EXP';
+
+  v_j := public.apply_care(u1, v_bench_anima, 'summon', 'care-summon-bench');
+  assert (v_j #>> '{anima,sleep_started_at}') is null,
+         'Summon harus membangunkan companion baru';
+  assert (select sleep_started_at is not null from public.animas where id = v_care_anima),
+         'companion lama harus tidur saat yang lain di-Summon';
+  assert (select active_anima_id from public.profiles where id = u1) = v_bench_anima,
+         'Summon menulis companion aktif di server';
+  perform public.apply_care(u1, v_care_anima, 'summon', 'care-summon-back');
 
   ----------------------------------------------------------------------------
   -- 11. Battle: eligibility, satu session, turn idempoten, dan reward atomik
