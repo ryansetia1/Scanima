@@ -174,6 +174,7 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 
 | Dokumen | Isi |
 | --- | --- |
+| [docs/wiki/README.md](docs/wiki/README.md) | Panduan pemain: perawatan, Cores/Bits, traits, EXP, Battle |
 | [docs/01-architecture-dataflow.md](docs/01-architecture-dataflow.md) | Pipeline data lengkap, skema Postgres + RLS, kontrak Edge Function, caching 3 lapis, penanganan latensi, jalur BYOK |
 | [docs/02-prompt-engineering.md](docs/02-prompt-engineering.md) | System prompt Vision LLM, JSON schema output, pemetaan fitur objek ke stat, style lock, payload Replicate, harness evaluasi |
 | [docs/03-godot-sprite-pipeline.md](docs/03-godot-sprite-pipeline.md) | Arsitektur node Godot, download + slicing sprite, background removal, animasi prosedural |

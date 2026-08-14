@@ -4,7 +4,7 @@ Baca file ini sebelum menyentuh kode Scanima. Update file ini setiap ada perubah
 
 ## Apa itu Scanima
 
-Game mobile virtual pet. Pemain memfoto objek nyata, foto itu jadi monster (**Anima**) lewat Vision LLM + image generation. Lalu dirawat gaya Tamagotchi, dievolusikan, dan dipakai bertarung. Detail lengkap di [README.md](README.md) dan [docs/](docs/).
+Game mobile virtual pet. Pemain memfoto objek nyata, foto itu jadi monster (**Anima**) lewat Vision LLM + image generation. Lalu dirawat gaya Tamagotchi, dievolusikan, dan dipakai bertarung. Panduan pemain (bukan spek) di [docs/wiki/](docs/wiki/README.md). Spek dan rumus di [README.md](README.md) dan [docs/](docs/).
 
 ## Aturan yang tidak bisa dinegosiasikan
 
