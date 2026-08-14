@@ -28,7 +28,7 @@ Layar lobby menulis tier lawan (Favorable / Even / Tough / Formidable) dan Bits 
 
 Sesudah 3/3, tombol yang sama jadi **Train**. Duelnya sama; EXP dan kemenangan tercatat berhenti, tetapi **Bits masih dibayar** sampai cap **100 Bits per hari**. Sesudah 100/100, Training nol hadiah. Core tidak pernah didapat dari sini.
 
-Kalah atau **Forfeit** juga nol hadiah. **Forfeit** ada di pojok kanan atas arena. Shop disembunyikan selama duel supaya tidak menimpa tombol itu.
+Kalah atau **Forfeit** juga nol hadiah. **Forfeit** ada di pojok kanan atas arena. Shop dan Bag disembunyikan selama duel supaya tidak menimpa tombol itu.
 
 ## Empat perintah
 
@@ -39,7 +39,7 @@ Kalah atau **Forfeit** juga nol hadiah. **Forfeit** ada di pojok kanan atas aren
 | **Guard** | Bertahan (damage masuk dikurangi). Mengembalikan 1 PP. |
 | **Item** | Satu item dari tas, mengganti aksi turn itu. Hanya sekali per duel. |
 
-Item Battle dibeli di Shop. Picker hanya menampilkan tujuh item tempur (bukan makanan atau Energy). Saat dipakai, label besar di arena menulis efeknya (misalnya **Attack +35%!**), dan Anima berkilat. Sesudah terpakai, tombol **Item** meredup sampai duel selesai.
+Item Battle dibeli di Shop. Picker hanya menampilkan tujuh item tempur (bukan makanan atau Energy). Di **Bag** item itu kelihatan tapi tanpa tombol Use. Saat dipakai, label besar di arena menulis efeknya (misalnya **Attack +35%!**), dan Anima berkilat. Sesudah terpakai, tombol **Item** meredup sampai duel selesai.
 
 | Item | Efek singkat |
 | --- | --- |

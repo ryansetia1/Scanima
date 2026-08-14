@@ -5,7 +5,7 @@ signal buy_requested(item: Dictionary)
 signal use_requested(item: Dictionary)
 signal shop_cta_requested
 
-enum Mode { SHOP, FEED, ENERGY, BATTLE }
+enum Mode { SHOP, BAG, BATTLE }
 
 @onready var _title: Label = %ShopTitle
 @onready var _tabs: HBoxContainer = %ShopTabs
@@ -44,36 +44,40 @@ func open_shop(tab: String = "food") -> void:
 	_mode = Mode.SHOP
 	_tab = tab if tab == "item" else "food"
 	_rebuild()
-	open()
+	_reveal()
 
 
-func open_feed() -> void:
-	_mode = Mode.FEED
-	_tab = "food"
+func open_bag(tab: String = "food") -> void:
+	_mode = Mode.BAG
+	_tab = tab if tab == "item" else "food"
 	_rebuild()
-	open()
-
-
-func open_energy() -> void:
-	_mode = Mode.ENERGY
-	_tab = "item"
-	_rebuild()
-	open()
+	_reveal()
 
 
 func open_battle() -> void:
 	_mode = Mode.BATTLE
 	_tab = "item"
 	_rebuild()
-	open()
+	_reveal()
 
 
 func is_shop_open() -> bool:
 	return visible and _mode == Mode.SHOP
 
 
+func is_bag_open() -> bool:
+	return visible and _mode == Mode.BAG
+
+
 func prefers_item_tab() -> bool:
-	return _mode == Mode.ENERGY or _mode == Mode.BATTLE or _tab == "item"
+	return _mode == Mode.BATTLE or _tab == "item"
+
+
+func _reveal() -> void:
+	if visible:
+		fit_to_content()
+		return
+	open()
 
 
 func _show_tab(tab: String) -> void:
@@ -84,7 +88,7 @@ func _show_tab(tab: String) -> void:
 
 func _rebuild() -> void:
 	_title.text = tr(_title_key())
-	_tabs.visible = _mode == Mode.SHOP
+	_tabs.visible = _mode == Mode.SHOP or _mode == Mode.BAG
 	_food_tab.disabled = _busy
 	_item_tab.disabled = _busy
 	_food_tab.self_modulate = Color.WHITE if _tab == "food" else Color(1, 1, 1, 0.55)
@@ -102,20 +106,20 @@ func _rebuild() -> void:
 
 
 func _visible_rows() -> Array[Dictionary]:
-	if _mode == Mode.FEED:
-		return Catalog.owned_rows(_catalog, _inventory, "food")
-	if _mode == Mode.ENERGY:
-		return Catalog.owned_rows(_catalog, _inventory, "energy")
 	if _mode == Mode.BATTLE:
 		return Catalog.owned_rows(_catalog, _inventory, "battle")
 	var wanted := "food" if _tab == "food" else "item"
+	var owned_only := _mode == Mode.BAG
 	var rows: Array[Dictionary] = []
 	for value in _catalog:
 		var item: Dictionary = value if typeof(value) == TYPE_DICTIONARY else {}
 		if str(item.get("kind", "")) != wanted:
 			continue
+		var qty := Catalog.quantity_of(_inventory, str(item.get("id", "")))
+		if owned_only and qty <= 0:
+			continue
 		var copy := item.duplicate(true)
-		copy["quantity"] = Catalog.quantity_of(_inventory, str(item.get("id", "")))
+		copy["quantity"] = qty
 		rows.append(copy)
 	return rows
 
@@ -152,30 +156,28 @@ func _make_row(item: Dictionary) -> Control:
 		buy.text = tr("SHOP_BUY") % LocaleManager.format_integer(int(item.get("price", 0)))
 		buy.pressed.connect(func() -> void: buy_requested.emit(item))
 		actions.add_child(buy)
-		if Catalog.is_energy(item) and int(item.get("quantity", 0)) > 0:
-			var use := Button.new()
-			use.custom_minimum_size = Vector2(148, 96)
-			use.disabled = _busy
-			use.text = tr("SHOP_USE")
-			use.pressed.connect(func() -> void: use_requested.emit(item))
-			actions.add_child(use)
-	else:
+	elif _can_use(item):
 		var use := Button.new()
 		use.custom_minimum_size = Vector2(148, 96)
 		use.disabled = _busy
-		use.text = tr("SHOP_USE")
+		use.text = tr("CARE_FEED") if Catalog.is_food(item) else tr("SHOP_USE")
 		use.pressed.connect(func() -> void: use_requested.emit(item))
 		actions.add_child(use)
-	row.add_child(actions)
+	if actions.get_child_count() > 0:
+		row.add_child(actions)
 	return row
+
+
+func _can_use(item: Dictionary) -> bool:
+	if _mode == Mode.BATTLE:
+		return true
+	return Catalog.is_food(item) or Catalog.is_energy(item)
 
 
 func _title_key() -> String:
 	match _mode:
-		Mode.FEED:
-			return "SHOP_FEED_TITLE"
-		Mode.ENERGY:
-			return "SHOP_ENERGY_TITLE"
+		Mode.BAG:
+			return "BAG_TITLE"
 		Mode.BATTLE:
 			return "SHOP_BATTLE_TITLE"
 		_:
@@ -184,10 +186,8 @@ func _title_key() -> String:
 
 func _empty_key() -> String:
 	match _mode:
-		Mode.FEED:
-			return "SHOP_FEED_EMPTY"
-		Mode.ENERGY:
-			return "SHOP_ENERGY_EMPTY"
+		Mode.BAG:
+			return "SHOP_FEED_EMPTY" if _tab == "food" else "BAG_ITEMS_EMPTY"
 		Mode.BATTLE:
 			return "SHOP_BATTLE_EMPTY"
 		_:

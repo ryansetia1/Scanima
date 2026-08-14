@@ -53,6 +53,7 @@ const STAT_LABEL_KEYS := {
 	"special": "STAT_SPECIAL",
 }
 const SHOP_ICON := preload("res://assets/icons/shopping-bag.svg")
+const BAG_ICON := preload("res://assets/icons/backpack.svg")
 
 @onready var _stage: Node2D = %Stage
 @onready var _first_anima_effect: FirstAnimaEffect = %FirstAnimaEffect
@@ -66,6 +67,7 @@ const SHOP_ICON := preload("res://assets/icons/shopping-bag.svg")
 @onready var _animas_chip = %AnimasChip
 @onready var _cores_chip = %CoresChip
 @onready var _bits_chip: ResourceChip = %BitsChip
+@onready var _bag_button: ResourceChip = %BagButton
 @onready var _shop_button: ResourceChip = %ShopButton
 @onready var _shell_modal = %ShellModal
 @onready var _shop_sheet = %ShopSheet
@@ -145,6 +147,7 @@ func _ready() -> void:
 	_animas_chip.pressed.connect(_open_collection)
 	_cores_chip.pressed.connect(_show_core_info)
 	_bits_chip.pressed.connect(_show_bits_info)
+	_bag_button.pressed.connect(_on_bag_pressed)
 	_shop_button.pressed.connect(_open_shop)
 	LocaleManager.locale_changed.connect(_refresh_localized_ui)
 	_configure_resource_chips()
@@ -1823,13 +1826,25 @@ func _open_shop(tab: String = "food") -> void:
 	_shop_sheet.open_shop(tab)
 
 
+func _on_bag_pressed() -> void:
+	if _shop_sheet.is_bag_open():
+		return
+	_open_bag()
+
+
+func _open_bag(tab: String = "food") -> void:
+	if _battle_owns_arena():
+		return
+	_shop_sheet.set_catalog(_catalog, _inventory)
+	_shop_sheet.open_bag(tab)
+
+
 func _open_shop_from_empty() -> void:
 	_open_shop("item" if _shop_sheet.prefers_item_tab() else "food")
 
 
 func _open_feed_picker() -> void:
-	_shop_sheet.set_catalog(_catalog, _inventory)
-	_shop_sheet.open_feed()
+	_open_bag("food")
 
 
 func _open_battle_item_picker() -> void:
@@ -1939,6 +1954,10 @@ func _configure_resource_chips() -> void:
 	_cores_chip.set_interactive(true, tr("CORE_INFO_TITLE"))
 	_bits_chip.set_name_text(tr("RESOURCE_BITS"))
 	_bits_chip.set_interactive(true, tr("BITS_INFO_TITLE"))
+	_bag_button.set_icon(BAG_ICON)
+	_bag_button.set_value_text(tr("BAG_OPEN"))
+	_bag_button.set_name_text("")
+	_bag_button.set_interactive(true, tr("BAG_OPEN"))
 	_shop_button.set_icon(SHOP_ICON)
 	_shop_button.set_value_text(tr("SHOP_OPEN"))
 	_shop_button.set_name_text("")
@@ -2134,6 +2153,7 @@ func _set_busy(busy: bool) -> void:
 	_collection_view.set_busy(busy)
 	_details_view.set_busy(busy)
 	_bottom_nav.set_busy(busy, _details_available())
+	_bag_button.set_interactive(not busy, tr("BAG_OPEN"))
 	_shop_button.set_interactive(not busy, tr("SHOP_OPEN"))
 	if is_instance_valid(_shop_sheet):
 		_shop_sheet.set_busy(busy)
@@ -2187,8 +2207,10 @@ func _sync_shop_chrome() -> void:
 	if not is_instance_valid(_shop_button):
 		return
 	var hide := _battle_owns_arena()
+	if is_instance_valid(_bag_button):
+		_bag_button.visible = not hide
 	_shop_button.visible = not hide
-	if hide and is_instance_valid(_shop_sheet) and _shop_sheet.is_shop_open():
+	if hide and is_instance_valid(_shop_sheet) and _shop_sheet.visible:
 		_shop_sheet.close()
 	if not hide:
 		_place_shop()
@@ -2210,6 +2232,11 @@ func _place_shop() -> void:
 	var origin: Vector2 = to_local * Vector2(bits.position.x, hud.position.y + hud.size.y)
 	_shop_button.position = origin + Vector2(0.0, SHOP_GAP)
 	_shop_button.size = bits.size
+	if not is_instance_valid(_bag_button) or not _bag_button.visible:
+		return
+	var bag_origin: Vector2 = to_local * Vector2(hud.position.x, hud.position.y + hud.size.y)
+	_bag_button.position = bag_origin + Vector2(0.0, SHOP_GAP)
+	_bag_button.size = bits.size
 
 
 func _place_toast(insets: Vector4) -> void:

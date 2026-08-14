@@ -15,6 +15,7 @@ const DISMISS_PX := 80.0
 var _dragging := false
 var _drag_start_y := 0.0
 var _panel_rest_y := 0.0
+var _open_token := 0
 
 
 func _ready() -> void:
@@ -31,12 +32,22 @@ func _ready() -> void:
 
 
 func open() -> void:
+	_open_token += 1
+	var token := _open_token
+	visible = true
+	modulate.a = 0.0
 	fit_to_content()
+	if is_inside_tree() and size.y < 1.0:
+		await get_tree().process_frame
+		if token != _open_token or not is_instance_valid(self) or not visible:
+			return
+		fit_to_content()
 	UiJuice.show_bottom_sheet(self, _panel)
 	opened.emit()
 
 
 func close() -> void:
+	_open_token += 1
 	if not visible:
 		return
 	_dragging = false
@@ -50,7 +61,16 @@ func fit_to_content() -> void:
 	var height := _panel.get_combined_minimum_size().y
 	_panel.offset_top = -height
 	_panel.offset_bottom = 0.0
-	_panel.set_meta(UiJuice.META_SHEET_POSITION, _panel.position)
+	var host := _panel.get_parent() as Control
+	var host_h := host.size.y if host != null else size.y
+	if host_h < 1.0:
+		return
+	var rest := Vector2(_panel.position.x, host_h - height)
+	_panel.set_meta(UiJuice.META_SHEET_POSITION, rest)
+	var tween: Variant = get_meta(UiJuice.META_TWEEN) if has_meta(UiJuice.META_TWEEN) else null
+	if tween is Tween and is_instance_valid(tween) and (tween as Tween).is_running():
+		return
+	_panel.position = rest
 
 
 func panel() -> Control:

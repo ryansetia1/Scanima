@@ -16,7 +16,7 @@ Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). A
 
 | Halaman | Isi |
 | --- | --- |
-| [Perawatan](caring.md) | Hunger, Energy, Hygiene, Shop, Feed, Clean, Play, Sleep, Dormant |
+| [Perawatan](caring.md) | Hunger, Energy, Hygiene, Shop, Bag, Feed, Clean, Play, Sleep, Dormant |
 | [Ekonomi](economy.md) | Genesis Cores, Bits, Shop, Scan, menunggu telur |
 | [Anima](anima.md) | Traits, attributes, EXP, Level, Collection, Summon |
 | [Battle](battle.md) | Syarat masuk, Attack / Special / Guard / Item, PP, hadiah |

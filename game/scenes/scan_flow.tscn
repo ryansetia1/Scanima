@@ -148,6 +148,11 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
+[node name="BagButton" parent="UI/ToastLayer" instance=ExtResource("13_chip")]
+unique_name_in_owner = true
+offset_right = 108.0
+offset_bottom = 96.0
+
 [node name="ShopButton" parent="UI/ToastLayer" instance=ExtResource("13_chip")]
 unique_name_in_owner = true
 offset_right = 108.0

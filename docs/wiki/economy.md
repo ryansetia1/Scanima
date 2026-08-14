@@ -19,8 +19,8 @@ Kalau spesies dari fotomu sudah pernah ditemukan orang lain, art-nya bisa dipaka
 Dipakai di **Shop**.
 
 - Pemain baru mulai dengan **50 Bits**. Akun lama tidak diisi ulang.
-- Buka **Shop** tepat di bawah chip Bits: tab Food dan Items. Harga tertulis di tiap kartu. Selama duel, chip Shop disembunyikan.
-- **Feed** memakai makanan dari tas, bukan Bits langsung. Beli dulu di Shop.
+- Buka **Shop** tepat di bawah chip Bits: tab Food dan Items. Harga tertulis di tiap kartu. **Bag** di pojok kiri atas, sejajar dengan Shop: isi tas, **Feed**, dan **Use** item Energy. Item Battle tidak punya Use di Bag. Selama duel, Shop dan Bag disembunyikan.
+- **Feed** memakai makanan dari **Bag**, bukan Bits langsung. Beli dulu di Shop.
 - **Clean** gratis.
 - Menang Battle memberi Bits menurut seberapa berat lawannya (kira-kira 5–16), paling banyak **100 Bits per hari** (reset tengah malam waktu setempat). Lapar atau kotor tidak mengunci duel, tapi Anima bertarung lebih lemah.
 - Tiga kemenangan pertama juga memberi EXP dan kemenangan tercatat. Sesudah itu duel jadi **Train**: masih bisa dapat Bits sampai cap harian, tanpa EXP.
@@ -45,7 +45,7 @@ Benda yang sama bisa menghasilkan Anima yang terasa mirip, tapi milikmu tetap mi
 Telur dan analisis foto **boleh ditinggal**. Pindah tab atau tutup app tidak membatalkan Scan, dan Core tidak terpotong dua kali.
 
 - Tab lain tetap bisa dibuka. Telurnya kelihatan di **Scan** (dan di Home kalau kamu balik). Collection / Battle / Anima tidak menampilkan telurnya, tapi prosesnya tetap jalan.
-- Selama menunggu, Scan baru, Shop, Feed / Clean / Play, Battle, Summon, dan Delete dikunci.
+- Selama menunggu, Scan baru, Shop, Bag, Feed / Clean / Play, Battle, Summon, dan Delete dikunci.
 - Tutup app atau biarkan di background tidak apa-apa. Buka lagi: game menyambung Scan yang belum selesai (*Reconnecting to your unfinished scan…*), telur nyala lagi.
 - Kalau nunggu di app terasa lama, bisa muncul *Still awakening. You can return later—your progress is saved.* Itu **bukan gagal**. Anima lama kembali ke Home, Scan tetap tersimpan, buka app lagi = lanjut. Core tidak dikembalikan, karena gambarnya mungkin masih dibuat.
 - Gagal sungguhan hanya kalau server bilang gagal. Baru itu Core dikembalikan.

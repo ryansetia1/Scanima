@@ -5,22 +5,26 @@ Anima punya tiga kebutuhan, masing-masing 0–100. Semuanya pelan-pelan turun se
 | Kebutuhan | Artinya | Turun kira-kira | Dipulihkan oleh |
 | --- | --- | --- | --- |
 | **Hunger** | Lapar | Habis dalam ~10 jam | **Feed** |
-| **Energy** | Stamina | Habis dalam ~14 jam kalau bangun | **Sleep**, atau item Energy di Shop |
+| **Energy** | Stamina | Habis dalam ~14 jam kalau bangun | **Sleep**, atau item Energy di Bag |
 | **Hygiene** | Kebersihan | Habis dalam ~24 jam | **Clean** |
 
-**Clean** gratis. **Feed** memakai makanan dari tas. Play dan Sleep juga gratis. Item Energy dibeli di Shop, dipakai dari tab Items.
+**Clean** gratis. **Feed** memakai makanan dari **Bag**. Play dan Sleep juga gratis. Item Energy dibeli di Shop, dipakai dari **Bag**.
 
-## Shop
+## Shop dan Bag
 
-Tombol **Shop** seukuran chip **Bits** dan duduk tepat di bawah baris HUD, selaras dengan Bits. Animas / Cores / Bits tetap satu baris. Tetap kelihatan saat Anima tidur, dari tab mana pun — kecuali selama duel, supaya tidak menimpa Forfeit.
+Tombol **Shop** seukuran chip **Bits** dan duduk tepat di bawah baris HUD, selaras dengan Bits di kanan. **Bag** sama ukurannya, rata kiri di pojok kiri atas, sejajar dengan Shop. Animas / Cores / Bits tetap satu baris. Keduanya tetap kelihatan saat Anima tidur, dari tab mana pun — kecuali selama duel, supaya tidak menimpa Forfeit.
 
-- Tab **Food**: sembilan makanan, dari Byte Berry (10 Hunger / 2 Bits) sampai Nova Feast (penuh / 20 Bits).
-- Tab **Items**: Pulse Cell dan Reactor Pack mengisi Energy; tujuh item lain hanya untuk Battle.
+Shop hanya untuk beli. Isi tas dibuka dari **Bag**.
+
+- Shop tab **Food**: sembilan makanan, dari Byte Berry (10 Hunger / 2 Bits) sampai Nova Feast (penuh / 20 Bits).
+- Shop tab **Items**: Pulse Cell dan Reactor Pack mengisi Energy; tujuh item lain hanya untuk Battle.
+- **Bag** tab **Food**: makanan yang kamu punya. Tap **Feed** untuk memberi makan.
+- **Bag** tab **Items**: Pulse Cell / Reactor Pack punya tombol **Use**. Item Battle tidak — itu dipakai dari tombol **Item** di arena.
 - Tas menumpuk sampai 999. Bits kurang atau tas penuh: pembelian ditolak, tidak terpotong dua kali kalau sinyal putus.
 
 ## Feed
 
-Tap **Feed**, pilih makanan yang kamu punya. Hunger yang diisi tergantung makanannya, bukan angka tetap +35.
+Tap **Feed** di Care Dock, atau buka **Bag** lalu tab Food, lalu pilih makanan yang kamu punya. Hunger yang diisi tergantung makanannya, bukan angka tetap +35.
 
 Tidak bisa dipakai kalau meter Hunger sudah kelihatan penuh — tombol redup, makanan tidak terpakai. Tas kosong mengarah ke tab Food di Shop.
 
@@ -51,7 +55,7 @@ Hunger dan Hygiene **tetap turun** selama tidur. Bangun pagi tetap perlu makan.
 
 Kalau kamu bangunin sebelum penuh, Energy yang sudah pulih tetap ada, tapi bonus +5 EXP tidak didapat.
 
-**Pulse Cell** (+20) dan **Reactor Pack** (+50) mengisi Energy dari Shop tanpa menunggu tidur. Meter yang sudah penuh menolaknya, dan keduanya **tidak** memberi EXP.
+**Pulse Cell** (+20) dan **Reactor Pack** (+50) mengisi Energy dari **Bag** (tab Items) tanpa menunggu tidur. Beli dulu di Shop. Meter yang sudah penuh menolaknya, dan keduanya **tidak** memberi EXP.
 
 Di Collection, kartu memakai pose-nya: Sleep selama Energy pulih, Hungry atau Dirty kalau lapar/kotor, Idle kalau siap Summon — tanpa perlu tap dulu.
 

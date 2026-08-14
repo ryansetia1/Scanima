@@ -120,10 +120,33 @@ static func hide_overlay(overlay: Control, panel: Control) -> void:
 		panel.modulate = Color.WHITE
 
 
+# ponytail: first open happens while a hidden overlay still has size 0, so
+# panel.position sits above the viewport and the slide tweens the sheet into
+# the air. Rest Y is host height − sheet height, viewport as fallback.
+# Plafon: a nested sheet that is not full-rect still needs its host laid out.
+static func sheet_rest_position(overlay: Control, panel: Control) -> Vector2:
+	var height := maxf(panel.get_combined_minimum_size().y, 1.0)
+	var host := panel.get_parent() as Control
+	var host_h := host.size.y if host != null else overlay.size.y
+	if host_h < 1.0:
+		host_h = overlay.size.y
+	if host_h < 1.0 and overlay.is_inside_tree():
+		host_h = overlay.get_viewport_rect().size.y
+	return Vector2(panel.position.x, host_h - height)
+
+
 static func show_bottom_sheet(overlay: Control, panel: Control) -> void:
 	_kill_tween(overlay)
 	overlay.visible = true
-	var target := panel.position
+	var height := maxf(panel.get_combined_minimum_size().y, 1.0)
+	panel.offset_top = -height
+	panel.offset_bottom = 0.0
+	var host_h := overlay.size.y
+	if host_h < 1.0:
+		overlay.modulate = Color.WHITE
+		panel.modulate = Color.WHITE
+		return
+	var target := sheet_rest_position(overlay, panel)
 	panel.set_meta(META_SHEET_POSITION, target)
 	if UiMotion.reduced_motion:
 		overlay.modulate = Color.WHITE
@@ -132,7 +155,7 @@ static func show_bottom_sheet(overlay: Control, panel: Control) -> void:
 		return
 
 	overlay.modulate = Color(1.0, 1.0, 1.0, 0.0)
-	panel.position = target + Vector2(0.0, panel.size.y + 24.0)
+	panel.position = target + Vector2(0.0, height + 24.0)
 	panel.modulate = Color(0.84, 0.94, 1.08, 1.0)
 	var tween := overlay.create_tween().set_parallel(true)
 	tween.tween_property(overlay, "modulate", Color.WHITE, 0.20) \
@@ -147,7 +170,8 @@ static func hide_bottom_sheet(overlay: Control, panel: Control) -> void:
 	if not overlay.visible:
 		return
 	_kill_tween(overlay)
-	var target: Vector2 = panel.get_meta(META_SHEET_POSITION, panel.position)
+	var height := maxf(panel.get_combined_minimum_size().y, 1.0)
+	var target: Vector2 = panel.get_meta(META_SHEET_POSITION, sheet_rest_position(overlay, panel))
 	if UiMotion.reduced_motion:
 		overlay.visible = false
 		overlay.modulate = Color.WHITE
@@ -158,7 +182,7 @@ static func hide_bottom_sheet(overlay: Control, panel: Control) -> void:
 	var tween := overlay.create_tween().set_parallel(true)
 	tween.tween_property(overlay, "modulate:a", 0.0, 0.18) \
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
-	tween.tween_property(panel, "position", target + Vector2(0.0, panel.size.y + 24.0), 0.24) \
+	tween.tween_property(panel, "position", target + Vector2(0.0, height + 24.0), 0.24) \
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
 	overlay.set_meta(META_TWEEN, tween)
 	await tween.finished

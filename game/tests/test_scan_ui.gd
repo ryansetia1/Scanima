@@ -138,7 +138,9 @@ func _initialize() -> void:
 	_check(cores_chip != null and cores_chip.get_script() != null, "HUD uses the shared Cores chip")
 	_check(bits_chip != null and bits_chip.get_script() != null, "HUD uses the shared Bits chip")
 	var shop := scene.find_child("ShopButton", true, false) as PanelContainer
+	var bag := scene.find_child("BagButton", true, false) as PanelContainer
 	_check(shop != null and shop.get_script() != null, "Shop uses the same chip as Bits")
+	_check(bag != null and bag.get_script() != null, "Bag uses the same chip as Shop")
 	_check(
 		shop.get_parent() != bits_chip.get_parent()
 		and shop.get_parent() != null
@@ -146,8 +148,16 @@ func _initialize() -> void:
 		"Shop overlays below Bits instead of splitting the HUD resource row"
 	)
 	_check(
+		bag.get_parent() == shop.get_parent(),
+		"Bag sits on the same overlay row as Shop"
+	)
+	_check(
 		shop.custom_minimum_size == bits_chip.custom_minimum_size,
 		"Shop matches the Bits chip press target"
+	)
+	_check(
+		bag.custom_minimum_size == shop.custom_minimum_size,
+		"Bag matches the Shop chip press target"
 	)
 	_check(
 		animas_chip.custom_minimum_size.y >= TOUCH_MIN
@@ -155,7 +165,7 @@ func _initialize() -> void:
 		and bits_chip.custom_minimum_size.y >= TOUCH_MIN,
 		"interactive resource chips expose 96px press targets"
 	)
-	for chip in [animas_chip, cores_chip, bits_chip, shop]:
+	for chip in [animas_chip, cores_chip, bits_chip, shop, bag]:
 		var column := chip.get_node_or_null("Column") as BoxContainer
 		_check(
 			column != null and column.alignment == BoxContainer.ALIGNMENT_CENTER,
@@ -164,6 +174,14 @@ func _initialize() -> void:
 	_check(
 		shop.find_child("Icon", true, false) is TextureRect,
 		"Shop chip has an icon slot"
+	)
+	_check(
+		bag.find_child("Icon", true, false) is TextureRect,
+		"Bag chip has an icon slot"
+	)
+	_check(
+		scene.find_child("BagGutter", true, false) != null,
+		"left-aligned page titles keep a gutter so they miss Bag"
 	)
 	_check(
 		scene.find_child("BattlePickSheet", true, false) != null,
@@ -213,7 +231,8 @@ func _initialize() -> void:
 	_check(
 		shell_source.find("func _battle_owns_arena") >= 0
 		and shell_source.find("if _battle_owns_arena():") >= 0
-		and shell_source.find("_shop_button.visible = not hide") >= 0,
+		and shell_source.find("_shop_button.visible = not hide") >= 0
+		and shell_source.find("_bag_button.visible = not hide") >= 0,
 		"Shop only locks while the Battle arena is on screen"
 	)
 	var submit_start := shell_source.find("func _submit_pending_battle")
@@ -414,6 +433,99 @@ func _test_shared_components() -> void:
 	sheet.close()
 	_check(not sheet.visible, "UiBottomSheet closes immediately under Reduced Motion")
 
+	var fresh = (load("res://scenes/ui/ui_bottom_sheet.tscn") as PackedScene).instantiate()
+	root.add_child(fresh)
+	fresh.open()
+	await process_frame
+	await process_frame
+	var fresh_panel := fresh.panel() as Control
+	_check(
+		fresh.visible
+		and fresh_panel != null
+		and is_equal_approx(fresh_panel.offset_bottom, 0.0)
+		and fresh_panel.offset_top < 0.0,
+		"first bottom-sheet open sits on the bottom edge even before layout"
+	)
+	fresh.close()
+	fresh.queue_free()
+
+	var shop_sheet = (load("res://scenes/ui/shop_sheet.tscn") as PackedScene).instantiate()
+	root.add_child(shop_sheet)
+	await process_frame
+	var catalog := [
+		{
+			"id": "byte_berry",
+			"kind": "food",
+			"use_type": "food",
+			"name_key": "CATALOG_BYTE_BERRY",
+			"price": 2,
+			"effect": "hunger",
+			"effect_value": 10,
+			"sprite_sheet": "food",
+			"sprite_index": 0,
+		},
+		{
+			"id": "pulse_cell",
+			"kind": "item",
+			"use_type": "energy",
+			"name_key": "CATALOG_PULSE_CELL",
+			"price": 8,
+			"effect": "energy",
+			"effect_value": 20,
+			"sprite_sheet": "item",
+			"sprite_index": 0,
+		},
+		{
+			"id": "vital_patch",
+			"kind": "item",
+			"use_type": "battle",
+			"name_key": "CATALOG_VITAL_PATCH",
+			"price": 12,
+			"effect": "heal_hp_pct",
+			"effect_value": 35,
+			"sprite_sheet": "item",
+			"sprite_index": 1,
+		},
+	]
+	var inventory := [
+		{"item_id": "byte_berry", "quantity": 2},
+		{"item_id": "pulse_cell", "quantity": 1},
+		{"item_id": "vital_patch", "quantity": 1},
+	]
+	shop_sheet.set_catalog(catalog, inventory)
+	shop_sheet.open_shop("item")
+	await process_frame
+	_check(
+		_sheet_button_labels(shop_sheet).find(tr("SHOP_USE")) < 0,
+		"Shop sells items without a Use action"
+	)
+	shop_sheet.open_bag("food")
+	await process_frame
+	_check(
+		_sheet_button_labels(shop_sheet).find(tr("CARE_FEED")) >= 0,
+		"Bag food rows expose Feed"
+	)
+	shop_sheet.open_bag("item")
+	await process_frame
+	var bag_item_labels := _sheet_button_labels(shop_sheet)
+	_check(bag_item_labels.find(tr("SHOP_USE")) >= 0, "Bag energy rows expose Use")
+	_check(
+		_live_row_count(shop_sheet.find_child("ShopList", true, false)) == 2,
+		"Bag items tab lists owned energy and battle items"
+	)
+	var battle_row: Control = null
+	for child in shop_sheet.find_child("ShopList", true, false).get_children():
+		var row := child as Control
+		if row == null or row.is_queued_for_deletion():
+			continue
+		if _control_labels(row).find(tr("CATALOG_VITAL_PATCH")) >= 0:
+			battle_row = row
+			break
+	_check(
+		battle_row != null and _sheet_button_labels(battle_row).find(tr("SHOP_USE")) < 0,
+		"Bag battle items have no Use button"
+	)
+
 	var skeleton = (load("res://scenes/ui/ui_skeleton.tscn") as PackedScene).instantiate()
 	root.add_child(skeleton)
 	skeleton.set_loading(true)
@@ -427,6 +539,7 @@ func _test_shared_components() -> void:
 	modal.queue_free()
 	chip.queue_free()
 	sheet.queue_free()
+	shop_sheet.queue_free()
 	skeleton.queue_free()
 	await process_frame
 	UiMotion.set_reduced_motion(false)
@@ -629,6 +742,7 @@ func _test_battle_view() -> void:
 	var lobby := view.find_child("BattleLobbyPanel", true, false) as Control
 	var header := view.find_child("Header", true, false) as Control
 	var shop_gutter := view.find_child("ShopGutter", true, false) as Control
+	var bag_gutter := view.find_child("BagGutter", true, false) as Control
 	var page_title := view.find_child("Title", true, false) as Label
 	var page_subtitle := view.find_child("Subtitle", true, false) as Label
 	var content := view.find_child("BattleContent", true, false) as Control
@@ -684,6 +798,10 @@ func _test_battle_view() -> void:
 	_check(
 		shop_gutter != null and shop_gutter.custom_minimum_size.x >= 108.0,
 		"Battle header reserves a gutter so the subtitle misses Shop"
+	)
+	_check(
+		bag_gutter != null and bag_gutter.custom_minimum_size.x >= 108.0,
+		"Battle header reserves a left gutter so the title misses Bag"
 	)
 	_check(
 		page_title != null and page_title.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT
@@ -1732,6 +1850,42 @@ func _test_incubator_effect() -> void:
 	)
 	UiMotion.set_reduced_motion(false)
 	effect.free()
+
+
+func _sheet_button_labels(root: Node) -> PackedStringArray:
+	var labels := PackedStringArray()
+	if root == null:
+		return labels
+	for node in root.find_children("*", "Button", true, false):
+		var button := node as Button
+		if button == null or button.is_queued_for_deletion() or not button.visible:
+			continue
+		if button.name == "ShopEmptyCta" or button.name == "DismissButton":
+			continue
+		labels.append(button.text)
+	return labels
+
+
+func _control_labels(root: Node) -> PackedStringArray:
+	var labels := PackedStringArray()
+	if root == null:
+		return labels
+	for node in root.find_children("*", "Label", true, false):
+		var label := node as Label
+		if label == null or label.is_queued_for_deletion():
+			continue
+		labels.append(label.text)
+	return labels
+
+
+func _live_row_count(list: Node) -> int:
+	if list == null:
+		return 0
+	var count := 0
+	for child in list.get_children():
+		if not child.is_queued_for_deletion():
+			count += 1
+	return count
 
 
 func _check_full_rect(node: Control, label: String) -> void:
