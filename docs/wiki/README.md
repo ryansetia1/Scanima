@@ -6,7 +6,7 @@ Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). A
 
 ## Mulai dari mana
 
-1. **Scan** — foto benda. Tunggu inkubator kalau spesiesnya baru.
+1. **Scan** — foto benda. Tunggu inkubator kalau spesiesnya baru; boleh pindah tab atau tutup app.
 2. **Home** — rawat companion yang sedang di-Summon.
 3. **Collection** — lihat semua Anima. Tap kartu, lalu **Summon** untuk membawanya ke Home.
 4. **Battle** — duel kalau Anima kenyang dan berenergi.
@@ -17,7 +17,7 @@ Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). A
 | Halaman | Isi |
 | --- | --- |
 | [Perawatan](caring.md) | Hunger, Energy, Hygiene, Feed, Clean, Play, Sleep, Dormant |
-| [Ekonomi](economy.md) | Genesis Cores, Bits, Scan |
+| [Ekonomi](economy.md) | Genesis Cores, Bits, Scan, menunggu telur |
 | [Anima](anima.md) | Traits, attributes, EXP, Level, Collection, Summon |
 | [Battle](battle.md) | Syarat masuk, Attack / Special / Guard, PP, hadiah |
 

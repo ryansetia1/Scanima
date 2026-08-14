@@ -33,6 +33,16 @@ Tab **Scan** memfoto benda di depanmu, bukan dari galeri.
 2. Foto benda nyata. Tunggu sebentar.
 3. Kalau spesiesnya baru, muncul telur inkubator (bisa sekitar satu menit).
 4. Kalau art-nya sudah ada di pustaka, Anima langsung jadi.
-5. Sesudah menetas, kamu bisa ganti namanya atau biarkan nama dari scan.
+5. Sesudah menetas, kamu pindah ke Home. Bisa ganti namanya atau biarkan nama dari scan.
 
 Benda yang sama bisa menghasilkan Anima yang terasa mirip, tapi milikmu tetap milikmu.
+
+## Menunggu telur
+
+Telur dan analisis foto **boleh ditinggal**. Pindah tab atau tutup app tidak membatalkan Scan, dan Core tidak terpotong dua kali.
+
+- Tab lain tetap bisa dibuka. Telurnya kelihatan di **Scan** (dan di Home kalau kamu balik). Collection / Battle / Anima tidak menampilkan telurnya, tapi prosesnya tetap jalan.
+- Selama menunggu, Scan baru, Feed / Clean / Play, Battle, Summon, dan Delete dikunci.
+- Tutup app atau biarkan di background tidak apa-apa. Buka lagi: game menyambung Scan yang belum selesai (*Reconnecting to your unfinished scan…*), telur nyala lagi.
+- Kalau nunggu di app terasa lama, bisa muncul *Still awakening. You can return later—your progress is saved.* Itu **bukan gagal**. Anima lama kembali ke Home, Scan tetap tersimpan, buka app lagi = lanjut. Core tidak dikembalikan, karena gambarnya mungkin masih dibuat.
+- Gagal sungguhan hanya kalau server bilang gagal. Baru itu Core dikembalikan.
