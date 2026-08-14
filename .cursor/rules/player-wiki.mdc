@@ -1,0 +1,29 @@
+---
+description: Keep the player wiki in sync whenever Scanima mechanics change
+alwaysApply: true
+---
+
+# Player wiki stays current
+
+Panduan pemain hidup di `docs/wiki/`. Bahasa guide, bukan spek. Nama tombol sama seperti di UI (Feed, Bits, Special).
+
+Setiap perubahan **mekanisme yang pemain rasakan** wajib meng-update wiki di langkah yang sama dengan kode — jangan ditunda, jangan “nanti.” Termasuk:
+
+- Perawatan: Hunger / Energy / Hygiene, Feed, Clean, Play, Sleep, Dormant
+- Ekonomi: Cores, Bits, kunci Scan, hadiah
+- Battle: syarat masuk, Attack / Special / Guard, PP, elemen, reward / Training
+- Anima: traits, attributes, EXP, Level, Summon, Delete
+
+Peta halaman:
+
+- `docs/wiki/caring.md` — perawatan
+- `docs/wiki/economy.md` — Cores, Bits, Scan
+- `docs/wiki/battle.md` — Battle
+- `docs/wiki/anima.md` — traits, stats, EXP, Collection
+- `docs/wiki/README.md` — indeks; perbarui kalau halaman atau ringkasan berubah
+
+Tulis yang **live di build**, bukan rencana. Kalau fitur belum ada (IAP, Core mingguan, art evolusi), katakan belum ada.
+
+Jangan pindahkan rumus server, nama kolom, atau error code ke wiki. Itu tetap di `docs/04-game-systems-economy.md` dan `CLAUDE.md`.
+
+Selesai mengubah mekanisme = kode + wiki (+ spek `docs/04` kalau rumusnya berubah). Wiki yang ketinggalan dihitung unfinished.
