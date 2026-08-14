@@ -19,7 +19,7 @@ Kalau spesies dari fotomu sudah pernah ditemukan orang lain, art-nya bisa dipaka
 Dipakai di **Shop**.
 
 - Pemain baru mulai dengan **50 Bits**. Akun lama tidak diisi ulang.
-- Buka **Shop** tepat di bawah chip Bits: tab Food dan Items. Harga tertulis di tiap kartu. **Bag** di pojok kiri atas, sejajar dengan Shop: isi tas, **Feed**, dan **Use** item Energy. Item Battle tidak punya Use di Bag. Selama duel, Shop dan Bag disembunyikan.
+- Di **Home**, buka **Shop** tepat di bawah chip Bits: tab Food dan Items. Harga tertulis di tiap kartu. **Bag** di kiri, sejajar dengan Shop: isi tas, **Feed**, dan **Use** item Energy. Item Battle tidak punya Use di Bag. Keduanya tidak tampil di tab lain.
 - **Feed** memakai makanan dari **Bag**, bukan Bits langsung. Beli dulu di Shop.
 - **Clean** gratis.
 - Menang Battle memberi Bits menurut seberapa berat lawannya (kira-kira 5–16), paling banyak **100 Bits per hari** (reset tengah malam waktu setempat). Lapar atau kotor tidak mengunci duel, tapi Anima bertarung lebih lemah.

@@ -8,9 +8,11 @@ signal retry_requested
 
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
-@onready var _identity: Control = %Identity
+@onready var _identity: VBoxContainer = %Identity
 @onready var _anima_name: Label = %AnimaName
 @onready var _anima_meta: Label = %AnimaMeta
+@onready var _stage_space: Control = %StageSpace
+@onready var _stage_footer_space: Control = %StageFooterSpace
 @onready var _care_dock: PanelContainer = %CareDock
 @onready var _primary_action: Button = %HomePrimaryAction
 @onready var _care_summary: Label = %CareSummary
@@ -37,6 +39,7 @@ func _ready() -> void:
 	_sleep_button.pressed.connect(_request_sleep_toggle)
 	_play_button.pressed.connect(_request_play)
 	_primary_action.pressed.connect(_request_primary_action)
+	_set_loading_layout(true)
 
 
 func set_anima(row: Dictionary, busy: bool) -> void:
@@ -52,6 +55,7 @@ func set_anima(row: Dictionary, busy: bool) -> void:
 		LocaleManager.level_label(CARE_RULES.level_from_exp(int(_row.get("care_score", 0)))),
 		LocaleManager.element_name(str(_row.get("element", ""))),
 	]
+	_set_loading_layout(false)
 	_identity.visible = true
 	_primary_action.visible = false
 	update_care(_row, busy)
@@ -64,6 +68,7 @@ func set_shell_state(state: StringName) -> void:
 	_set_buttons_disabled(true)
 	_identity.visible = true
 	_primary_action.visible = state == &"empty" or state == &"error"
+	_set_loading_layout(state == &"loading")
 	match state:
 		&"error":
 			_anima_name.text = tr("HOME_ERROR_NAME")
@@ -80,6 +85,17 @@ func set_shell_state(state: StringName) -> void:
 
 func shell_state() -> StringName:
 	return _shell_state
+
+
+func _set_loading_layout(centered: bool) -> void:
+	_identity.size_flags_vertical = (
+		Control.SIZE_EXPAND_FILL if centered else Control.SIZE_SHRINK_BEGIN
+	)
+	_identity.alignment = (
+		BoxContainer.ALIGNMENT_CENTER if centered else BoxContainer.ALIGNMENT_BEGIN
+	)
+	_stage_space.visible = not centered
+	_stage_footer_space.visible = not centered
 
 
 func update_care(row: Dictionary, busy: bool) -> void:

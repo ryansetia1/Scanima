@@ -263,7 +263,6 @@ func _notification(what: int) -> void:
 func _boot() -> void:
 	_set_busy(true)
 	_set_home_shell_state(&"loading")
-	_say(tr("STATUS_INITIALIZING"))
 
 	var sesi := await Backend.ensure_session()
 	if not sesi.ok:
@@ -1818,7 +1817,7 @@ func _show_core_info() -> void:
 
 
 func _open_shop(tab: String = "food") -> void:
-	if _battle_owns_arena():
+	if _destination != BottomNav.HOME:
 		return
 	if _shop_sheet.is_shop_open() and tab == "food":
 		return
@@ -1833,7 +1832,7 @@ func _on_bag_pressed() -> void:
 
 
 func _open_bag(tab: String = "food") -> void:
-	if _battle_owns_arena():
+	if _destination != BottomNav.HOME:
 		return
 	_shop_sheet.set_catalog(_catalog, _inventory)
 	_shop_sheet.open_bag(tab)
@@ -2195,24 +2194,16 @@ func _cores_remaining() -> int:
 	return int(GameState.profile.get("genesis_cores", 0))
 
 
-func _battle_owns_arena() -> bool:
-	return (
-		is_instance_valid(_battle_view)
-		and _battle_view.visible
-		and not _battle_view.session_data().is_empty()
-	)
-
-
 func _sync_shop_chrome() -> void:
 	if not is_instance_valid(_shop_button):
 		return
-	var hide := _battle_owns_arena()
+	var show_chrome := _destination == BottomNav.HOME
 	if is_instance_valid(_bag_button):
-		_bag_button.visible = not hide
-	_shop_button.visible = not hide
-	if hide and is_instance_valid(_shop_sheet) and _shop_sheet.visible:
+		_bag_button.visible = show_chrome
+	_shop_button.visible = show_chrome
+	if not show_chrome and is_instance_valid(_shop_sheet) and _shop_sheet.visible:
 		_shop_sheet.close()
-	if not hide:
+	if show_chrome:
 		_place_shop()
 
 

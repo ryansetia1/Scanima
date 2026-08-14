@@ -180,8 +180,9 @@ func _initialize() -> void:
 		"Bag chip has an icon slot"
 	)
 	_check(
-		scene.find_child("BagGutter", true, false) != null,
-		"left-aligned page titles keep a gutter so they miss Bag"
+		scene.find_child("BagGutter", true, false) == null
+		and scene.find_child("ShopGutter", true, false) == null,
+		"non-Home headers do not reserve space for hidden Bag and Shop buttons"
 	)
 	_check(
 		scene.find_child("BattlePickSheet", true, false) != null,
@@ -229,11 +230,21 @@ func _initialize() -> void:
 	)
 	var shell_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
-		shell_source.find("func _battle_owns_arena") >= 0
-		and shell_source.find("if _battle_owns_arena():") >= 0
-		and shell_source.find("_shop_button.visible = not hide") >= 0
-		and shell_source.find("_bag_button.visible = not hide") >= 0,
-		"Shop only locks while the Battle arena is on screen"
+		shell_source.find("var show_chrome := _destination == BottomNav.HOME") >= 0
+		and shell_source.find("_shop_button.visible = show_chrome") >= 0
+		and shell_source.find("_bag_button.visible = show_chrome") >= 0,
+		"Bag and Shop only appear on Home"
+	)
+	var boot_start := shell_source.find("func _boot()")
+	var boot_end := shell_source.find("\n\nfunc _reload_roster", boot_start)
+	var boot_body := (
+		shell_source.substr(boot_start, boot_end - boot_start)
+		if boot_start >= 0 and boot_end > boot_start
+		else ""
+	)
+	_check(
+		boot_body.find("STATUS_INITIALIZING") < 0,
+		"Home loading copy replaces the redundant initialization toast"
 	)
 	var submit_start := shell_source.find("func _submit_pending_battle")
 	var submit_end := shell_source.find("func _forfeit_battle", submit_start)
@@ -771,8 +782,6 @@ func _test_battle_view() -> void:
 
 	var lobby := view.find_child("BattleLobbyPanel", true, false) as Control
 	var header := view.find_child("Header", true, false) as Control
-	var shop_gutter := view.find_child("ShopGutter", true, false) as Control
-	var bag_gutter := view.find_child("BagGutter", true, false) as Control
 	var page_title := view.find_child("Title", true, false) as Label
 	var page_subtitle := view.find_child("Subtitle", true, false) as Label
 	var content := view.find_child("BattleContent", true, false) as Control
@@ -825,14 +834,6 @@ func _test_battle_view() -> void:
 	view.set_lobby(anima)
 	_check(lobby.visible and not content.visible and not result.visible, "Battle opens in its lobby")
 	_check(header.visible, "Battle lobby keeps its page title and explanation")
-	_check(
-		shop_gutter != null and shop_gutter.custom_minimum_size.x >= 108.0,
-		"Battle header reserves a gutter so the subtitle misses Shop"
-	)
-	_check(
-		bag_gutter != null and bag_gutter.custom_minimum_size.x >= 108.0,
-		"Battle header reserves a left gutter so the title misses Bag"
-	)
 	_check(
 		page_title != null and page_title.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT
 		and page_subtitle != null and page_subtitle.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT,
@@ -1709,6 +1710,9 @@ func _test_home_care_actions() -> void:
 	var play := home.find_child("PlayButton", true, false) as Button
 	var actions := home.find_child("CareActions", true, false) as GridContainer
 	var primary := home.find_child("HomePrimaryAction", true, false) as Button
+	var identity := home.find_child("Identity", true, false) as VBoxContainer
+	var stage_space := home.find_child("StageSpace", true, false) as Control
+	var stage_footer_space := home.find_child("StageFooterSpace", true, false) as Control
 	_home_action = ""
 	_home_care_action = ""
 	_home_care_blocked = ""
@@ -1717,7 +1721,20 @@ func _test_home_care_actions() -> void:
 	home.care_blocked.connect(func(message: String) -> void: _home_care_blocked = message)
 	home.care_requested.connect(func(action: String) -> void: _home_care_action = action)
 	_check_eq(home.shell_state(), &"loading", "Home begins in Loading, not a false empty state")
+	_check(
+		identity.size_flags_vertical == Control.SIZE_EXPAND_FILL
+		and identity.alignment == BoxContainer.ALIGNMENT_CENTER
+		and not stage_space.visible
+		and not stage_footer_space.visible,
+		"Home centers loading copy away from Bag and Shop"
+	)
 	home.set_shell_state(&"empty")
+	_check(
+		identity.size_flags_vertical == Control.SIZE_SHRINK_BEGIN
+		and stage_space.visible
+		and stage_footer_space.visible,
+		"non-loading Home restores its normal stage layout"
+	)
 	_check(primary.visible and not primary.disabled, "empty Home exposes its first-scan CTA")
 	primary.pressed.emit()
 	_check_eq(_home_action, "scan", "empty Home routes its CTA to Scan")

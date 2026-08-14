@@ -28,7 +28,7 @@ Layar lobby menulis tier lawan (Favorable / Even / Tough / Formidable) dan Bits 
 
 Sesudah 3/3, tombol yang sama jadi **Train**. Duelnya sama; EXP dan kemenangan tercatat berhenti, tetapi **Bits masih dibayar** sampai cap **100 Bits per hari**. Sesudah 100/100, Training nol hadiah. Core tidak pernah didapat dari sini.
 
-Kalah atau **Forfeit** juga nol hadiah. **Forfeit** ada di pojok kanan atas arena. Shop dan Bag disembunyikan selama duel supaya tidak menimpa tombol itu.
+Kalah atau **Forfeit** juga nol hadiah. **Forfeit** ada di pojok kanan atas arena. Shop dan Bag hanya ada di Home, jadi arena tetap bersih.
 
 ## Empat perintah
 

@@ -12,7 +12,7 @@ Anima punya tiga kebutuhan, masing-masing 0–100. Semuanya pelan-pelan turun se
 
 ## Shop dan Bag
 
-Tombol **Shop** seukuran chip **Bits** dan duduk tepat di bawah baris HUD, selaras dengan Bits di kanan. **Bag** sama ukurannya, rata kiri di pojok kiri atas, sejajar dengan Shop. Animas / Cores / Bits tetap satu baris. Keduanya tetap kelihatan saat Anima tidur, dari tab mana pun — kecuali selama duel, supaya tidak menimpa Forfeit.
+Tombol **Shop** seukuran chip **Bits** dan duduk tepat di bawah baris HUD, selaras dengan Bits di kanan. **Bag** sama ukurannya, rata kiri di pojok kiri atas, sejajar dengan Shop. Keduanya hanya tampil di **Home**, termasuk saat Anima tidur; tab lain tetap bersih. Animas / Cores / Bits tetap satu baris.
 
 Shop hanya untuk beli. Isi tas dibuka dari **Bag**.
 
