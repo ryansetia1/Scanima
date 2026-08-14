@@ -382,8 +382,8 @@ asimetris (D-pad vs tombol) akan tertukar.
 V8 tidak mengubah Vision, schema, `species_key`, style, atau layout 3×3.
 Perbedaannya: facing lock menyebut jebakan komposisi inward, mengunci flank
 yang dekat ke kamera, mengulang canvas-left di instruksi sel Idle/Happy/Damaged,
-dan mengganti "delighted tilt" yang dibaca sebagai putar badan. Default
-production tetap v7 sampai eval visual lulus.
+dan mengganti "delighted tilt" yang dibaca sebagai putar badan. Pada evaluasi
+v8, production tetap v7 karena kandidat itu tidak dipromosikan.
 
 ## 4. Template prompt sprite sheet
 
@@ -400,7 +400,9 @@ itu tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
 [CHARACTER CONSISTENCY]
 [HORIZONTAL FACING LOCK]            (v6: semua pose canvas-left; v8: kolom kiri)
 [NINE CELLS]                        (v7: 7 pose + 2 VFX)
+[SAFE ENVELOPE + VFX DIVERSITY]      (v12: aksen tetap ada, seam 12%)
 [COMPOSITION + TECHNICAL BACKGROUND]
+[NEGATIVE SPACE]                    (v9/v10 gagal; v11+: tanpa white keyline)
 [NEGATIVE STYLE]
 ```
 
@@ -417,9 +419,10 @@ const prompt = assemblePrompt(template, vision);
 // {{damage_hints_as_bullets}}        <- damage material; hint teknis disaring
 // {{character_direction}}            <- cue visual objek; netral bila ambigu
 // {{strike_name}} / {{surge_name}}   <- nama move unik (v7)
+// {{strike_vfx_*}} / {{surge_vfx_*}} <- form, motion, brief per-Anima (v12)
 ```
 
-Keempat keadaan visual v3 adalah Idle, Battle, Sleep, dan Damaged. Production v7 menambah Happy, Hungry, Dirty, plus dua sel efek battle (`fx_strike`, `fx_surge`) yang tidak berisi tubuh kreatur. Client menampilkan sel efek itu sebagai overlay VFX tambahan saat Attack/Special, bukan mengganti pose tubuh. Untuk kompatibilitas manifest/Godot yang sudah ada, slot Damaged masih memakai key internal `defeated`. Assembler v7 juga mengisi `{{strike_name}}` dan `{{surge_name}}`.
+Keempat keadaan visual v3 adalah Idle, Battle, Sleep, dan Damaged. V7 menambah Happy, Hungry, Dirty, plus dua sel efek battle (`fx_strike`, `fx_surge`) yang tidak berisi tubuh kreatur. Client menampilkan sel efek itu sebagai overlay VFX tambahan saat Attack/Special, bukan mengganti pose tubuh. Untuk kompatibilitas manifest/Godot yang sudah ada, slot Damaged masih memakai key internal `defeated`. Assembler v7 mengisi nama move; production v12 juga mengisi form, motion, dan brief VFX yang diturunkan Vision dari struktur serta material objek.
 
 ## 5. Payload Replicate
 
@@ -628,12 +631,60 @@ backend/prompts/
 │   ├── vision_schema.json
 │   ├── sprite_sheet.md    # sembilan sel
 │   └── sprite_sheet_evolve.md
-└── v8/                    <- predecessor candidate: facing lock kolom kiri
-    ├── vision_system.md   # identik v7; species cache key tetap
-    ├── vision_schema.json # identik v7
-    ├── sprite_sheet.md    # v7 + anti-inward Idle/Happy/Damaged
+├── v8/                    <- predecessor candidate: facing lock kolom kiri
+│   ├── vision_system.md   # identik v7; species cache key tetap
+│   ├── vision_schema.json # identik v7
+│   ├── sprite_sheet.md    # v7 + anti-inward Idle/Happy/Damaged
+│   └── sprite_sheet_evolve.md
+├── v9/                    <- rejected: negative-space generik diabaikan model
+│   ├── vision_system.md   # identik v7; species cache key tetap
+│   ├── vision_schema.json # identik v7
+│   ├── sprite_sheet.md    # v7 + lubang/celah internal bukan putih
+│   └── sprite_sheet_evolve.md
+├── v10/                   <- rejected: residu turun, slot putih masih terlihat
+│   ├── vision_system.md   # identik v7; species cache key tetap
+│   ├── vision_schema.json # identik v7
+│   ├── sprite_sheet.md    # v9 + larangan highlight putih material non-putih
+│   └── sprite_sheet_evolve.md
+├── v11/                   <- predecessor: borderless clean, seam leak sepatu
+│   ├── vision_system.md   # identik v7; species cache key tetap
+│   ├── vision_schema.json # identik v7
+│   ├── sprite_sheet.md    # v10 tanpa white keyline, termasuk VFX
+│   └── sprite_sheet_evolve.md
+└── v12/                   <- production: safe seam + VFX per-Anima
+    ├── vision_system.md   # form/motion/brief unik untuk dua move
+    ├── vision_schema.json # strike_vfx + surge_vfx; species_key tetap
+    ├── sprite_sheet.md    # aksen Battle dalam safe envelope 12%
     └── sprite_sheet_evolve.md
 ```
+
+Uji tunggal v11 pada Monstera menghasilkan 9/9 sel dalam 53 detik. Fenestrasi
+tidak lagi menjadi slot putih dan dark contour terbaca bersih pada screenshot
+Godot. QA otomatis tetap memberi `green_residue_ratio = 2,074%` karena warna
+daun sah sekitar RGB `(71,140,28)` masuk rentang metrik residue; hanya 1 dari
+28.874 piksel cincin alpha terluar yang memiliki `g >= 220`. Karena baru satu
+objek hijau, hasil ini cukup untuk mempertahankan v11 sebagai candidate. Uji
+kedua pada sepatu/cloth juga menghasilkan 9/9 sel dalam 51 detik, borderless
+bersih pada ukuran game, residue 0,446%, dan hanya 1 dari 23.244 piksel tepi
+yang chroma terang. Ada satu fragmen motion Attack yang jatuh ke frame Idle
+karena model melewati internal seam; itu cacat komposisi stokastik yang tidak
+dapat dipindahkan aman oleh post-process. Dua objek tetap belum cukup untuk
+promosi lintas material.
+
+V12 tidak menghapus motion line, spark, dust, debris, atau Z. Ia mengurung
+komponen sekunder itu dalam safe envelope 12% dari internal seam. Karena piksel
+tidak dapat membedakan debris sah dari kebocoran pada pose yang memang boleh
+memiliki aksen terlepas, `auditSourceGridSeams()` hanya menggagalkan fragmen
+sekunder dekat seam pada Idle; ownership mask tetap menangani komponen
+tersambung. Vision juga memilih form dan salah satu motion
+`projectile`/`sweep`/`impact`/`bloom` yang berbeda bagi Attack dan Special.
+Brief wajib berakar pada material serta fitur struktur objek; fireball/orb
+generik dilarang kecuali fungsi objek memang mendukung bola. Generation sepatu
+v12 selesai 55 detik dan lulus 9/9: cap telapak `impact` dan sapuan tali `sweep`
+berbeda jelas, sementara dua fragmen Idle pada raw v11 tetap ditolak audit.
+V12 dipromosikan ke production pada 15 Agustus 2026. Uji visual terukur masih
+satu material cloth; v7 tetap dibundel sebagai rollback jika evaluasi lintas
+material berikutnya menemukan regresi.
 
 Versi yang aktif dibaca dari tabel `app_config`, bukan dari env Edge Function, supaya rollback kualitas art tidak menunggu deploy.
 

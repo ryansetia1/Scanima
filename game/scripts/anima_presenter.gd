@@ -25,6 +25,7 @@ var _motion: Tween
 var _feedback: Tween
 var _fx_tween: Tween
 var _fx: Sprite2D
+var _fx_motion: Dictionary = {}
 var _queued_care: Dictionary = {}
 var _base_position: Vector2 = Vector2.ZERO
 var _current_pose: String = ""
@@ -44,6 +45,7 @@ func apply(loaded: Dictionary) -> bool:
 
 	sprite_frames = loaded["frames"]
 	offset = loaded["ground_offset"]
+	_fx_motion = (loaded.get("fx_motion", {}) as Dictionary).duplicate()
 	_base_position = position
 	set_pose(AnimaLoader.DEFAULT_POSE)
 	return true
@@ -64,6 +66,10 @@ func set_pose(pose: String) -> bool:
 
 func current_pose() -> String:
 	return _current_pose
+
+
+func fx_motion(pose: String) -> String:
+	return str(_fx_motion.get(pose, "projectile"))
 
 
 ## Sprite sheet selalu dibuat menghadap kiri. Arena membalik petarung di sisi
@@ -368,7 +374,8 @@ func apply_care_state(sleeping: bool, dormant: bool, care: Variant = {}) -> void
 
 ## Overlay sel fx_strike / fx_surge sebagai VFX tambahan, bukan ganti pose.
 ## Sibling di bawah parent yang sama supaya lunge Attack tidak menelan efeknya.
-## Kalau impact_global diisi, overlay meluncur ke tubuh lawan lalu fade.
+## Metadata manifest memilih projectile/sweep/impact/bloom. Sheet lama tanpa
+## metadata tetap memakai projectile supaya cache lama tidak berubah perilaku.
 ## Sheet 2×2 tanpa sel itu melewati pemanggilan ini diam-diam.
 func play_fx(pose: String, impact_global: Vector2 = Vector2.INF) -> void:
 	if sprite_frames == null or not sprite_frames.has_animation(pose):
@@ -388,6 +395,7 @@ func play_fx(pose: String, impact_global: Vector2 = Vector2.INF) -> void:
 	_fx.flip_h = flip_h
 	_fx.visible = true
 	_fx.modulate = Color.WHITE
+	_fx.rotation = 0.0
 	var toward := Vector2(36.0 * _facing_direction, -10.0)
 	var start := position + toward if host != self else toward
 	var impact := start
@@ -396,12 +404,52 @@ func play_fx(pose: String, impact_global: Vector2 = Vector2.INF) -> void:
 			impact = (host as CanvasItem).to_local(impact_global)
 		else:
 			impact = impact_global
-	_fx.position = start
+	var motion := fx_motion(pose)
+	_fx.position = impact if motion in ["impact", "bloom"] and impact_global.is_finite() else start
 	if UiMotion.reduced_motion:
 		_fx.position = impact
 		_fx.scale = Vector2.ONE
 		_fx_tween = create_tween()
 		_fx_tween.tween_interval(0.28)
+		_fx_tween.tween_callback(_hide_fx)
+		return
+	if motion == "sweep":
+		var sweep_center := impact if impact_global.is_finite() else start
+		_fx.position = sweep_center - Vector2(30.0 * _facing_direction, 0.0)
+		_fx.scale = Vector2(0.72, 0.92)
+		_fx.rotation = -0.28 * _facing_direction
+		_fx_tween = create_tween()
+		_fx_tween.set_parallel(true)
+		_fx_tween.tween_property(
+			_fx, "position", sweep_center + Vector2(22.0 * _facing_direction, 0.0), 0.22
+		).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		_fx_tween.tween_property(_fx, "scale", Vector2(1.12, 1.0), 0.22) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_fx_tween.tween_property(_fx, "rotation", 0.08 * _facing_direction, 0.22)
+		_fx_tween.chain().tween_property(_fx, "modulate:a", 0.0, 0.14)
+		_fx_tween.tween_callback(_hide_fx)
+		return
+	if motion == "impact":
+		_fx.position = impact if impact_global.is_finite() else start
+		_fx.scale = Vector2(0.46, 0.46)
+		_fx_tween = create_tween()
+		_fx_tween.tween_property(_fx, "scale", Vector2(1.14, 1.14), 0.12) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_fx_tween.tween_interval(0.08)
+		_fx_tween.tween_property(_fx, "modulate:a", 0.0, 0.16)
+		_fx_tween.tween_callback(_hide_fx)
+		return
+	if motion == "bloom":
+		_fx.position = impact if impact_global.is_finite() else start
+		_fx.scale = Vector2(0.34, 0.34)
+		_fx.rotation = -0.12 * _facing_direction
+		_fx_tween = create_tween()
+		_fx_tween.set_parallel(true)
+		_fx_tween.tween_property(_fx, "scale", Vector2(1.24, 1.24), 0.20) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_fx_tween.tween_property(_fx, "rotation", 0.10 * _facing_direction, 0.20)
+		_fx_tween.chain().tween_interval(0.02)
+		_fx_tween.tween_property(_fx, "modulate:a", 0.0, 0.14)
 		_fx_tween.tween_callback(_hide_fx)
 		return
 	if impact_global.is_finite():
@@ -426,6 +474,7 @@ func _hide_fx() -> void:
 	if is_instance_valid(_fx):
 		_fx.visible = false
 		_fx.scale = Vector2.ONE
+		_fx.rotation = 0.0
 		_fx.modulate = Color.WHITE
 
 

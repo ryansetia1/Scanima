@@ -698,7 +698,7 @@ Berjalan di dalam `replicate_webhook`. Ini langkah wajib, bukan opsional: runtim
 graph TD
     A["PNG GPT Image 2<br/>1024x1024, background hijau"] --> B["Normalisasi work size 1024"]
     B --> C["Chroma key HSV:<br/>hue 120 +/- 22, sat > 0.85, val > 0.5"]
-    C --> D["Edge softening 1px,<br/>zero-out warna piksel transparan"]
+    C --> D["Edge softening 1px +<br/>kupas matte putih terluar"]
     D --> E["Segmentasi alpha 8-connected:<br/>tetapkan owner pose per piksel"]
     E --> F["BBox per owner + masked blit<br/>ke frame seragam"]
     F --> G["Normalisasi pivot bottom-center"]
@@ -724,6 +724,85 @@ Dua ciri lain yang bisa. Pertama, **kedekatan ke piksel transparan**: halo selal
 Hasil terukurnya: residu turun ke 0,014% dan 0,024%, sekitar 15 kali lebih bersih, dan halo hilang dari layar. Biayanya jujur dan sempit: Anima bertubuh hijau **sangat terang** (g ≥ 220) kehilangan 1px di tepinya. Hijau daun, forest green, hijau pupus, dan hijau kekuningan yang didokumentasikan semuanya di bawah g=200 dan tidak tersentuh — ada test yang memakukan keduanya sekaligus di `eval/selftest.mjs`.
 
 Satu efek sampingan yang harus diketahui pembaca metrik: karena cincin terluar sudah dierosi, `green_residue_ratio` tidak lagi melaporkan halo setipis 1px. Yang masih dilaporkannya justru dua kasus yang lebih layak dialarmkan — hijau di interior sprite, dan fringe yang lebih tebal dari 1px, yang berarti keyline putih gagal muncul.
+
+### Keyline putih adalah matte, bukan bagian visual
+
+Prompt tetap meminta keyline putih 3–5px di antara dark line art dan background
+hijau. Ia adalah matte teknis: pemisah itu mencegah anti-alias background
+langsung mencemari warna tubuh Anima. Setelah green halo terluar dibuang,
+post-processing melakukan flood hanya melalui piksel putih/off-white yang
+tersambung ke transparansi, maksimal 6px. Dark line art menjadi pagar alami,
+sehingga badan Anima putih di sebelah dalam tetap utuh.
+
+Pembatas kedalaman sengaja membuat kegagalan model tidak berubah menjadi lubang
+besar. Plafonnya: keyline yang lebih tebal dari 6px dapat menyisakan fringe, dan
+dark outline yang putus dapat membuat maksimal 6px detail putih tepi ikut
+terkupas. Keduanya harus terlihat di eval visual. Rollback tidak memerlukan
+prompt baru: set `DEFAULTS.stripWhiteKeyline = false` lalu reproses `raw.png`
+yang sama. Manifest mencatat `white_keyline_pixels_stripped` agar perubahan ini
+bisa diukur tanpa menebak dari ukuran file.
+
+Flood itu sengaja tidak memasuki area putih yang tertutup dark outline. Aturan
+global yang lebih agresif akan melubangi mata, gigi, kerikil, atau badan Anima
+putih. Jika model menggambar lubang struktural sebagai putih—seperti fenestrasi
+daun Veridian—sheet lama diperbaiki dengan mask khusus dan menyimpan
+`internal_openings_previous_sheet_path` untuk rollback. Pencegahan umumnya hidup
+di prompt gambar, bukan detektor piksel: v9 yang hanya mewajibkan negative space
+`#00FF00` sudah diuji pada Monstera dan gagal karena model tetap menggambar
+fenestrasi putih. V10 candidate menambah larangan white accent pada material
+non-putih, menyebut fenestrasi daun sebagai lubang secara eksplisit, dan
+membatasi keyline putih ke outline terluar. Ia menurunkan residu dari 2,184%
+menjadi 0,166%, tetapi pemeriksaan visual masih menemukan beberapa slot putih;
+karena itu v9/v10 tidak dipromosikan dan kasus sheet lama tetap memakai mask
+khusus yang dapat di-rollback.
+
+V11 menguji hipotesis bahwa instruksi matte putih itu sendiri bocor menjadi
+aksen internal: seluruh white keyline, termasuk pada VFX, dihapus dari prompt
+dan dark contour diminta langsung menyentuh chroma green. Uji tunggal Monstera
+menghasilkan 9/9 sel, slot daun bersih, dan outline yang terlihat bersih pada
+ukuran game. Angka `green_residue_ratio` 2,074% pada run itu bukan bukti fringe:
+warna daun sah ikut memenuhi metrik longgar, sedangkan hanya 1 dari 28.874
+piksel cincin alpha terluar yang punya channel hijau `>=220`. Ini belum mengubah
+pipeline production. Uji sepatu/cloth kedua juga borderless bersih di Godot,
+9/9 sel, dengan residue 0,446% dan hanya 1 dari 23.244 piksel tepi yang chroma
+terang. Satu fragmen motion Attack terlepas ke frame Idle karena model melanggar
+margin seam; post-process sengaja tidak menebak kepemilikan fragmen yang tak
+tersambung. Smoke Set lintas material tetap harus lulus. Ambang chroma tidak
+boleh dilonggarkan demi Anima plant.
+
+V12 mempertahankan motion line, spark, dust, debris, dan Z, sambil meminta
+semuanya berada dalam safe envelope 12% dari internal seam. Audit sumber grid
+hanya aktif pada v12+: ownership mask tetap mempertahankan komponen tersambung,
+sedangkan gate keras hanya memeriksa fragmen sekunder di band seam Idle, tempat
+prompt melarang efek. Piksel saja tidak dapat membedakan debris sah dari
+kebocoran pada Battle, Dirty, Sleep, atau sel VFX; versi audit awal yang mencoba
+melakukannya memberi false reject dan dibuang. Raw sepatu v11 yang bocor tetap
+ditolak pada dua fragmen Idle (64/233 px). Jika gate ini gagal di webhook, jalur
+yang sudah ada merefund Core tanpa retry berbayar.
+
+V12 juga membawa art direction VFX dari `generations.vision_result` sampai
+manifest pustaka tanpa kolom baru. Vision memilih form, brief material-spesifik,
+dan salah satu motion `projectile`, `sweep`, `impact`, atau `bloom` untuk Attack
+dan Special; keduanya wajib berbeda. `finalizeSheet()` menulis motion itu ke
+`poses.fx_strike` / `poses.fx_surge`. JSONB `species_library.manifest` dan cache
+client sudah meneruskan key tambahan secara opaque, sehingga tidak diperlukan
+migrasi database.
+
+Generation sepatu v12 selesai 55 detik dan lulus 9/9 sel setelah kalibrasi audit.
+`Tread Kick` menjadi cap telapak `impact`, sedangkan `Lace Bind` menjadi sapuan
+tali `sweep`; keduanya berbeda bentuk dan animasi, dan Idle tidak tercemar.
+V12 dipromosikan ke production pada 15 Agustus 2026 melalui
+`app_config.prompt_version`; `create_anima` version 11 dan `replicate_webhook`
+version 6 sudah aktif. Cakupan visual terukur masih satu material cloth, jadi
+rollback operasional tetap v7 jika hasil lintas material berikutnya turun.
+
+Sheet lama yang raw green-screen-nya sudah tidak ada dapat diproses langsung
+dari PNG RGBA lewat `stripWhiteKeylineFromRgba()`. Migrasi menyimpan
+`white_keyline_previous_sheet_path` di `manifest.qa` dan tidak menghapus objek
+Storage lama, sehingga rollback hanya mengembalikan path tersebut. Cache device
+memakai prefix versi (`v4_` setelah koreksi negative space); tanpa bump itu, client yang
+sudah pernah melihat suatu spesies akan terus memuat PNG lama tanpa bertanya ke
+server.
 
 Satu pagar lagi yang wajib ada: kalau rasio piksel yang ter-key di bawah 15%, sheet **ditolak keras**. Background hijau selalu jadi mayoritas sheet, jadi angka di bawah itu berarti model mengembalikan latar putih, hitam, atau checkerboard. Tanpa pagar ini, sheet berlatar putih tidak menghasilkan error melainkan empat "sprite" palsu seukuran kuadran penuh — dan karena hasilnya masuk cache spesies, satu kegagalan sunyi akan dipakai oleh semua pemain yang men-scan spesies yang sama.
 

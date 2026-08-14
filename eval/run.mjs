@@ -368,11 +368,13 @@ async function main() {
   }
 
   const missing = [];
-  for (const it of items) {
-    try {
-      await access(it.path);
-    } catch {
-      missing.push(it.file);
+  if (!args.reprocess) {
+    for (const it of items) {
+      try {
+        await access(it.path);
+      } catch {
+        missing.push(it.file);
+      }
     }
   }
   if (missing.length) {
@@ -476,7 +478,8 @@ async function main() {
           knownSpecies,
           promptMajor(args.promptVersion) >= 4,
           promptMajor(args.promptVersion) >= 5,
-          promptMajor(args.promptVersion) >= 7
+          promptMajor(args.promptVersion) >= 7,
+          promptMajor(args.promptVersion) >= 12
         );
         row.vision = checked.vision;
         row.issues = [...(row.issues ?? []), ...checked.issues];
@@ -534,6 +537,10 @@ async function main() {
         colorBucket: checked.vision.color_bucket,
         promptVersion: args.promptVersion,
         sheetName: `${name}.png`,
+        vfxMotion: {
+          fx_strike: checked.vision.strike_vfx?.motion,
+          fx_surge: checked.vision.surge_vfx?.motion,
+        },
       });
       await writeFile(join(outDir, `${name}.png`), png);
       await writeFile(join(outDir, `${name}.json`), JSON.stringify(manifest, null, 2));

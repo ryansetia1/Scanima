@@ -19,6 +19,7 @@ import {
   findBBox,
   heightMetrics,
   postprocessSheet,
+  stripWhiteKeylineFromRgba,
 } from "../backend/supabase/functions/_shared/postprocess.mjs";
 import {
   validateVision,
@@ -65,6 +66,9 @@ const HALF = SIZE / 2;
 const PAD = DEFAULTS.framePadding;
 
 const GREEN = [0, 255, 0];
+const DARK_OUTLINE = [24, 31, 42];
+const OUTLINE_PX = 3;
+const KEYLINE_PX = 3;
 const FILLS = {
   idle: [220, 40, 40],
   attack: [40, 80, 230],
@@ -85,13 +89,19 @@ function setPx(bitmap, x, y, [r, g, b], a = 255) {
   bitmap[o + 3] = a;
 }
 
-/** Blob = persegi berisi warna, dikelilingi outline putih 3px seperti di prompt. */
+/** Blob realistis: badan -> dark line art 3px -> matte putih 3px. */
 function drawBlob(bitmap, x, y, w, h, fill) {
-  for (let yy = y - 3; yy < y + h + 3; yy++) {
-    for (let xx = x - 3; xx < x + w + 3; xx++) {
+  const edge = OUTLINE_PX + KEYLINE_PX;
+  for (let yy = y - edge; yy < y + h + edge; yy++) {
+    for (let xx = x - edge; xx < x + w + edge; xx++) {
       if (xx < 0 || yy < 0 || xx >= SIZE || yy >= SIZE) continue;
       const inside = xx >= x && xx < x + w && yy >= y && yy < y + h;
-      setPx(bitmap, xx, yy, inside ? fill : [255, 255, 255]);
+      const inOutline =
+        xx >= x - OUTLINE_PX &&
+        xx < x + w + OUTLINE_PX &&
+        yy >= y - OUTLINE_PX &&
+        yy < y + h + OUTLINE_PX;
+      setPx(bitmap, xx, yy, inside ? fill : inOutline ? DARK_OUTLINE : [255, 255, 255]);
     }
   }
 }
@@ -113,7 +123,7 @@ async function buildSheet(blobs, layout = { grid: 2, quadrant: POSE_QUADRANT }) 
   return await img.encode();
 }
 
-// Blob dengan outline: bbox nyata = ukuran blob + 3px outline di tiap sisi.
+// Matte putih dibuang; bbox nyata menyisakan dark outline 3px di tiap sisi.
 const outer = (spec) => ({ w: spec.w + 6, h: spec.h + 6 });
 
 // ---------------------------------------------------------------------------
@@ -150,6 +160,59 @@ console.log("2. REGRESI: tubuh Anima hijau tidak boleh ikut terhapus");
   for (const [r, g, b, nama] of greensYangHarusSelamat) {
     assert.ok(!isKeyColor(r, g, b), `${nama} rgb(${r},${g},${b}) tidak boleh terhapus`);
   }
+}
+
+console.log("2b. keyline putih dikupas, tubuh putih selamat, dan rollback tersedia");
+{
+  const spec = { x: 120, y: 120, w: 120, h: 160 };
+  const img = new Image(SIZE, SIZE);
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const o = i * 4;
+    img.bitmap[o] = GREEN[0];
+    img.bitmap[o + 1] = GREEN[1];
+    img.bitmap[o + 2] = GREEN[2];
+    img.bitmap[o + 3] = 255;
+  }
+  drawBlob(img.bitmap, spec.x, spec.y, spec.w, spec.h, [245, 245, 245]);
+  const source = await img.encode();
+
+  const stripped = await postprocessSheet(source, {});
+  assert.ok(stripped.manifest.qa.white_keyline_pixels_stripped > 0, "matte putih harus terdeteksi");
+  const strippedOut = await Image.decode(stripped.png);
+  const [sx, sy, sw, sh] = stripped.manifest.poses.idle.region;
+  const strippedBox = findBBox(strippedOut.bitmap, strippedOut.width, [sx, sy, sw, sh]);
+  assert.equal(strippedBox.w, spec.w + OUTLINE_PX * 2, "yang tersisa badan + dark outline");
+  assert.equal(strippedBox.h, spec.h + OUTLINE_PX * 2, "tinggi dark outline tetap utuh");
+  let whiteBodyPixels = 0;
+  for (let i = 0; i < strippedOut.bitmap.length; i += 4) {
+    if (
+      strippedOut.bitmap[i + 3] > DEFAULTS.alphaThreshold &&
+      strippedOut.bitmap[i] >= 240 &&
+      strippedOut.bitmap[i + 1] >= 240 &&
+      strippedOut.bitmap[i + 2] >= 240
+    ) {
+      whiteBodyPixels++;
+    }
+  }
+  assert.ok(whiteBodyPixels >= spec.w * spec.h, "badan putih di balik dark outline tidak boleh bolong");
+
+  const kept = await postprocessSheet(source, {}, { ...DEFAULTS, stripWhiteKeyline: false });
+  assert.equal(kept.manifest.qa.white_keyline_pixels_stripped, 0, "flag false harus menjadi rollback");
+  const keptOut = await Image.decode(kept.png);
+  const [kx, ky, kw, kh] = kept.manifest.poses.idle.region;
+  const keptBox = findBBox(keptOut.bitmap, keptOut.width, [kx, ky, kw, kh]);
+  assert.equal(
+    keptBox.w,
+    spec.w + (OUTLINE_PX + KEYLINE_PX) * 2,
+    "rollback mempertahankan keyline lama"
+  );
+
+  const migrated = await stripWhiteKeylineFromRgba(kept.png);
+  assert.ok(migrated.pixelsStripped > 0, "sheet RGBA lama harus bisa direproses tanpa raw hijau");
+  assert.deepEqual(migrated.size, [keptOut.width, keptOut.height], "migrasi tidak mengubah grid manifest");
+  const migratedOut = await Image.decode(migrated.png);
+  const migratedBox = findBBox(migratedOut.bitmap, migratedOut.width, [kx, ky, kw, kh]);
+  assert.equal(migratedBox.w, spec.w + OUTLINE_PX * 2, "migrasi RGBA menyisakan dark outline");
 }
 
 console.log("3. findBBox menemukan kotak rapat");
@@ -655,6 +718,22 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
   assert.ok(
     bundel.v8?.sprite_sheet.includes("Left-column cells (Idle, Happy, Damaged)"),
     "v8 facing lock kolom kiri ikut terbundel"
+  );
+  assert.ok(
+    bundel.v9?.sprite_sheet.includes("NEGATIVE SPACE — MUST REMAIN BACKGROUND"),
+    "v9 negative-space lock ikut terbundel"
+  );
+  assert.ok(
+    bundel.v10?.sprite_sheet.includes("WHITE IS NOT A GENERIC ACCENT"),
+    "v10 white-accent lock ikut terbundel"
+  );
+  assert.ok(
+    bundel.v11?.sprite_sheet.includes("EDGES — DARK CONTOUR DIRECTLY AGAINST GREEN"),
+    "v11 borderless dark-contour lock ikut terbundel"
+  );
+  assert.ok(
+    bundel.v12?.sprite_sheet.includes("VFX DIVERSITY CONTRACT"),
+    "v12 VFX diversity + safe-envelope lock ikut terbundel"
   );
 }
 
@@ -1244,6 +1323,35 @@ console.log("24. sheet v7 3x3 sembilan sel");
     assert.equal(bb.h, want.h, `${pose}: tinggi 3x3 berubah`);
     assert.equal(ry + fh - (bb.y + bb.h), PAD, `${pose}: 3x3 tidak rata bawah`);
   }
+
+  const v12 = await postprocessSheet(await buildSheet(blobs3, LAYOUT_3X3), {
+    speciesKey: "selftest_grid3_v12",
+    promptVersion: "v12",
+    vfxMotion: { fx_strike: "sweep", fx_surge: "bloom" },
+  });
+  assert.equal(v12.manifest.qa.seam_margin.passed, true, "sheet v12 yang rapi harus lolos seam gate");
+  assert.equal(v12.manifest.poses.fx_strike.motion, "sweep");
+  assert.equal(v12.manifest.poses.fx_surge.motion, "bloom");
+
+  const leaked = await Image.decode(await buildSheet(blobs3, LAYOUT_3X3));
+  const cell = Math.floor(SIZE / 3);
+  drawBlob(
+    leaked.bitmap,
+    cell - 36,
+    cell - 34,
+    18,
+    18,
+    FILLS.attack
+  );
+  const leakedPng = await leaked.encode();
+  await assert.rejects(
+    () => postprocessSheet(leakedPng, {
+      speciesKey: "selftest_grid3_leak",
+      promptVersion: "v12",
+    }),
+    /safe margin v12.*idle:detached_idle_seam_fragment/,
+    "fragmen Attack yang jatuh ke margin Idle wajib menolak sheet v12"
+  );
 }
 
 console.log("25. prompt v7 3x3 plus nama move, species_key tidak berubah");
@@ -1340,8 +1448,38 @@ console.log("26. prompt v8 mengunci kolom kiri agar tidak menoleh ke tengah shee
   );
   const visionV7 = await readFile(new URL("../backend/prompts/v7/vision_system.md", import.meta.url), "utf8");
   const visionV8 = await readFile(new URL("../backend/prompts/v8/vision_system.md", import.meta.url), "utf8");
+  const templateV9 = await readFile(new URL("../backend/prompts/v9/sprite_sheet.md", import.meta.url), "utf8");
+  const evolveV9 = await readFile(
+    new URL("../backend/prompts/v9/sprite_sheet_evolve.md", import.meta.url),
+    "utf8"
+  );
+  const visionV9 = await readFile(new URL("../backend/prompts/v9/vision_system.md", import.meta.url), "utf8");
+  const templateV10 = await readFile(new URL("../backend/prompts/v10/sprite_sheet.md", import.meta.url), "utf8");
+  const evolveV10 = await readFile(
+    new URL("../backend/prompts/v10/sprite_sheet_evolve.md", import.meta.url),
+    "utf8"
+  );
+  const visionV10 = await readFile(new URL("../backend/prompts/v10/vision_system.md", import.meta.url), "utf8");
+  const templateV11 = await readFile(new URL("../backend/prompts/v11/sprite_sheet.md", import.meta.url), "utf8");
+  const evolveV11 = await readFile(
+    new URL("../backend/prompts/v11/sprite_sheet_evolve.md", import.meta.url),
+    "utf8"
+  );
+  const visionV11 = await readFile(new URL("../backend/prompts/v11/vision_system.md", import.meta.url), "utf8");
+  const templateV12 = await readFile(new URL("../backend/prompts/v12/sprite_sheet.md", import.meta.url), "utf8");
+  const evolveV12 = await readFile(
+    new URL("../backend/prompts/v12/sprite_sheet_evolve.md", import.meta.url),
+    "utf8"
+  );
+  const visionV12 = await readFile(new URL("../backend/prompts/v12/vision_system.md", import.meta.url), "utf8");
   const schemaV7 = await readFile(new URL("../backend/prompts/v7/vision_schema.json", import.meta.url), "utf8");
   const schemaV8 = await readFile(new URL("../backend/prompts/v8/vision_schema.json", import.meta.url), "utf8");
+  const schemaV9 = await readFile(new URL("../backend/prompts/v9/vision_schema.json", import.meta.url), "utf8");
+  const schemaV10 = await readFile(new URL("../backend/prompts/v10/vision_schema.json", import.meta.url), "utf8");
+  const schemaV11 = await readFile(new URL("../backend/prompts/v11/vision_schema.json", import.meta.url), "utf8");
+  const schemaV12 = JSON.parse(
+    await readFile(new URL("../backend/prompts/v12/vision_schema.json", import.meta.url), "utf8")
+  );
   const createAnima = await readFile(
     new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
     "utf8"
@@ -1350,7 +1488,17 @@ console.log("26. prompt v8 mengunci kolom kiri agar tidak menoleh ke tengah shee
 
   assert.equal(visionV8, visionV7, "v8 tidak boleh mengubah Vision atau species cache key");
   assert.equal(schemaV8, schemaV7, "v8 tidak boleh mengubah kontrak output Vision");
+  assert.equal(visionV9, visionV7, "v9 tidak boleh mengubah Vision atau species cache key");
+  assert.equal(schemaV9, schemaV7, "v9 tidak boleh mengubah kontrak output Vision");
+  assert.equal(visionV10, visionV7, "v10 tidak boleh mengubah Vision atau species cache key");
+  assert.equal(schemaV10, schemaV7, "v10 tidak boleh mengubah kontrak output Vision");
+  assert.equal(visionV11, visionV7, "v11 tidak boleh mengubah Vision atau species cache key");
+  assert.equal(schemaV11, schemaV7, "v11 tidak boleh mengubah kontrak output Vision");
   assert.equal(promptMajor("v8"), 8);
+  assert.equal(promptMajor("v9"), 9);
+  assert.equal(promptMajor("v10"), 10);
+  assert.equal(promptMajor("v11"), 11);
+  assert.equal(promptMajor("v12"), 12);
   for (const prompt of [template, evolve]) {
     assert.ok(prompt.includes("HORIZONTAL FACING LOCK — BATTLE CONTRACT"));
     assert.ok(
@@ -1375,6 +1523,71 @@ console.log("26. prompt v8 mengunci kolom kiri agar tidak menoleh ke tengah shee
       "Happy wajib mengulang canvas-left di instruksi sel"
     );
   }
+  for (const prompt of [templateV9, evolveV9]) {
+    assert.ok(prompt.includes("NEGATIVE SPACE — MUST REMAIN BACKGROUND"));
+    assert.ok(
+      /must show the exact\s+chroma background #00FF00/.test(prompt),
+      "v9 wajib membuat lubang internal ikut chroma key"
+    );
+    assert.ok(
+      prompt.includes("never across or inside an opening"),
+      "v9 wajib melarang keyline putih di negative space"
+    );
+  }
+  for (const prompt of [templateV10, evolveV10]) {
+    assert.ok(prompt.includes("WHITE IS NOT A GENERIC ACCENT"));
+    assert.ok(
+      /each\s+fenestration is a literal hole through the leaf/.test(prompt),
+      "v10 wajib menyebut fenestrasi daun secara eksplisit"
+    );
+    assert.ok(
+      /Never draw\s+the white keyline around internal holes/.test(prompt),
+      "v10 wajib membatasi matte ke outline terluar"
+    );
+  }
+  for (const prompt of [templateV11, evolveV11]) {
+    assert.ok(prompt.includes("EDGES — DARK CONTOUR DIRECTLY AGAINST GREEN"));
+    assert.ok(
+      /Do NOT draw any white or off-white keyline/.test(prompt),
+      "v11 wajib melarang matte putih di seluruh sheet"
+    );
+    assert.ok(
+      !prompt.includes("White keyline around") && !prompt.includes("technical outer keyline"),
+      "v11 tidak boleh menyisakan instruksi positif white keyline"
+    );
+  }
+  for (const prompt of [templateV12, evolveV12]) {
+    assert.ok(prompt.includes("VFX DIVERSITY CONTRACT"));
+    assert.ok(prompt.includes("12% safe envelope"));
+    assert.ok(prompt.includes("motion lines") && prompt.includes("tiny debris"));
+    assert.ok(prompt.includes("{{strike_vfx_brief}}") && prompt.includes("{{surge_vfx_motion}}"));
+    assert.ok(
+      /Never default to a round\s+fireball/.test(prompt),
+      "v12 wajib melarang default fireball tanpa melarang aksen Battle"
+    );
+  }
+  assert.ok(visionV12.includes("Battle-effect plan"));
+  assert.ok(schemaV12.properties.strike_vfx && schemaV12.properties.surge_vfx);
+  const vfxChecked = validateVision({
+    safe: true,
+    is_object: true,
+    reject_reason: null,
+    species_key: "shoe_fabric_running",
+    stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+    signature_features: ["tread sole", "long lace"],
+    suggested_name: "Treadra",
+    surface_finish: "woven fabric and rubber",
+    damage_hints: ["frayed lace", "scuffed sole"],
+    character_direction: "agile",
+    strike_name: "Tread Snap",
+    surge_name: "Lace Cyclone",
+    strike_vfx: { form: "stamp", motion: "impact", brief: "A tread stamp snaps on target." },
+    surge_vfx: { form: "tether", motion: "sweep", brief: "A lace tether sweeps across target." },
+  }, [], true, true, true, true);
+  assert.deepEqual(vfxChecked.issues, []);
+  assert.equal(vfxChecked.vision.strike_vfx.motion, "impact");
+  assert.equal(vfxChecked.vision.surge_vfx.motion, "sweep");
+  assert.ok(!assemblePrompt(templateV12, vfxChecked.vision).includes("{{"));
   assert.ok(
     createAnima.includes('?? "v7"'),
     "fallback production tetap v7 sampai v8 dipromosikan"

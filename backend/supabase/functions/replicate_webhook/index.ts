@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
   const { data: gen, error: errCari } = await db
     .from("generations")
     .select(
-      "id, owner_id, anima_id, status, prompt_version, photo_path, " +
+      "id, owner_id, anima_id, status, prompt_version, photo_path, vision_result, " +
         "animas(id, species_key, color_bucket, stage)",
     )
     .eq("prediction_id", predictionId)

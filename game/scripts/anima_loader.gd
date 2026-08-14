@@ -16,6 +16,7 @@ const KNOWN_POSES: PackedStringArray = [
 ]
 const DEFAULT_POSE := "idle"
 const FX_POSES: PackedStringArray = ["fx_strike", "fx_surge"]
+const FX_MOTIONS: PackedStringArray = ["projectile", "sweep", "impact", "bloom"]
 
 
 ## Memuat dari path manifest.json. Sheet dicari dari field "sheet" di manifest,
@@ -83,6 +84,7 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 	frames.remove_animation("default")
 
 	var loaded: PackedStringArray = []
+	var fx_motion: Dictionary = {}
 	for pose in KNOWN_POSES:
 		if not poses.has(pose):
 			continue
@@ -120,6 +122,10 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 		frames.set_animation_loop(pose, false)
 		frames.add_frame(pose, atlas)
 		loaded.append(pose)
+		if pose in FX_POSES:
+			var motion := str(entry.get("motion", "")).strip_edges()
+			if motion in FX_MOTIONS:
+				fx_motion[pose] = motion
 
 	if loaded.is_empty():
 		return _fail("tidak ada pose yang bisa dipakai")
@@ -136,6 +142,7 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 		# node, sehingga tween "bernapas" membesar dari kaki, bukan dari perut.
 		"ground_offset": Vector2(0.0, -frame_size.y / 2.0),
 		"poses": loaded,
+		"fx_motion": fx_motion,
 		"species_key": str(manifest.get("species_key", "")),
 		"stage": int(manifest.get("stage", 1)),
 		"qa": manifest.get("qa", {}),

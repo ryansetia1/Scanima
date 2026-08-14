@@ -17,6 +17,10 @@ export type BarisGeneration = {
   anima_id: string | null;
   prompt_version: string;
   photo_path: string | null;
+  vision_result?: {
+    strike_vfx?: { motion?: string };
+    surge_vfx?: { motion?: string };
+  } | null;
 };
 
 export type BarisAnima = {
@@ -38,6 +42,10 @@ export async function finalizeSheet(
     colorBucket: anima.color_bucket,
     stage: anima.stage,
     promptVersion: gen.prompt_version,
+    vfxMotion: {
+      fx_strike: gen.vision_result?.strike_vfx?.motion,
+      fx_surge: gen.vision_result?.surge_vfx?.motion,
+    },
   });
   const msPostprocess = Date.now() - t0;
 

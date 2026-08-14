@@ -48,6 +48,8 @@ type Vision = {
   suggested_name?: string;
   strike_name?: string;
   surge_name?: string;
+  strike_vfx?: { form: string; motion: string; brief: string };
+  surge_vfx?: { form: string; motion: string; brief: string };
   creature_brief?: string;
   signature_features?: string[];
   surface_finish?: string;
@@ -181,6 +183,7 @@ Deno.serve(async (req) => {
         promptMajor(versiPrompt) >= 4,
         promptMajor(versiPrompt) >= 5,
         promptMajor(versiPrompt) >= 7,
+        promptMajor(versiPrompt) >= 12,
       );
     } catch (e) {
       await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "vision_unparseable" });

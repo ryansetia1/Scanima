@@ -344,6 +344,10 @@ func _test_state_rusak() -> void:
 
 func _test_cache_art() -> void:
 	print("8. art tersimpan dan bisa dimuat AnimaLoader")
+	_check(
+		GameState.sprite_dir("uji_kotak", "cool_blue", 1).get_file().begins_with("v4_"),
+		"cache art v4 harus mengabaikan PNG lama yang masih punya matte putih"
+	)
 	var built := PlaceholderSheet.build()
 	var image: Image = built["image"]
 	var manifest: Dictionary = built["manifest"]

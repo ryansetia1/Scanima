@@ -83,6 +83,10 @@ static func build() -> Dictionary:
 				)
 
 		poses[pose] = {"region": [cell.x, cell.y, FRAME.x, FRAME.y]}
+		if pose == "fx_strike":
+			poses[pose]["motion"] = "projectile"
+		elif pose == "fx_surge":
+			poses[pose]["motion"] = "bloom"
 
 	var manifest := {
 		"version": AnimaLoader.MANIFEST_VERSION,

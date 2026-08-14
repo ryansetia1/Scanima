@@ -14,6 +14,7 @@ extends Node
 ## Bukan const supaya uji bisa menunjuk folder sementara, bukan state pemain.
 var path_state: String = "user://state.json"
 var dir_animas: String = "user://animas"
+const SPRITE_CACHE_VERSION := 4
 
 ## Runtime saja: {access_token, refresh_token, expires_at, uid, is_anonymous}.
 var session: Dictionary = {}
@@ -346,11 +347,13 @@ func finish_purchase() -> void:
 	save()
 
 
-## Folder cache per varian art. Kuncinya sama dengan kunci pustaka di server
-## (species_key, color_bucket, stage), jadi dua Anima yang berbagi art memakai
-## satu salinan file di device.
+## Folder cache per varian art. Versi di prefix memaksa satu unduhan baru saat
+## pipeline visual berubah; folder versi lama dibiarkan agar rollback cukup
+## mengembalikan angka ini tanpa harus merekonstruksi PNG yang sudah diganti.
 func sprite_dir(species_key: String, color_bucket: String, stage: int) -> String:
-	return dir_animas.path_join("%s_%s_%d" % [species_key, color_bucket, stage])
+	return dir_animas.path_join(
+		"v%d_%s_%s_%d" % [SPRITE_CACHE_VERSION, species_key, color_bucket, stage]
+	)
 
 
 func manifest_path(species_key: String, color_bucket: String, stage: int) -> String:

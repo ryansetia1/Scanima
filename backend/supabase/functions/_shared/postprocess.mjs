@@ -66,11 +66,23 @@ export const DEFAULTS = {
   valMin: 0.5,
   alphaThreshold: 8, // di bawah ini dianggap kosong saat cari bbox
   framePadding: 6, // margin transparan di sekeliling sprite di sheet keluaran
+  // Keyline putih tetap diminta ke model sebagai matte pemisah dari green
+  // screen, lalu dikupas di backend agar tidak menjadi bagian visual Anima.
+  // Ubah flag ini ke false untuk rollback tanpa mengubah prompt atau algoritma.
+  stripWhiteKeyline: true,
+  whiteKeylineMaxDepth: 6, // prompt meminta 3–5px; satu piksel ekstra untuk AA
+  whiteKeylineMinChannel: 200,
+  whiteKeylineMaxSpread: 55,
   minCellAreaRatio: 0.01, // bbox di bawah 1% area kuadran dianggap sel kosong
   minCellSide: 16,
   // Komponen lebih kecil dari ini dianggap noise anti-alias. Nilainya sengaja
   // kecil: Z tidur, motion line, dan debris tipis tetap harus ikut sprite.
   minComponentPixels: 4,
+  // v12 mengizinkan aksen Battle terlepas, tetapi semuanya wajib tinggal di
+  // safe envelope selnya. Audit hanya menolak komponen sekunder dekat seam;
+  // ia tidak menebak lalu memindahkan piksel ke pose lain.
+  seamMarginRatio: 0.12,
+  minSeamLeakPixels: 16,
   // Background hijau selalu jadi mayoritas sheet. Kalau yang ter-key jauh di
   // bawah ini, latarnya bukan hijau dan sheet harus ditolak, bukan diproses.
   minKeyedRatio: 0.15,
@@ -238,6 +250,123 @@ export function softenAlphaEdges(bitmap, width, height, opts = DEFAULTS) {
   return { softened, eroded };
 }
 
+/** Putih/off-white yang boleh dianggap matte, bukan semua piksel putih gambar. */
+export function isWhiteKeylineColor(r, g, b, opts = DEFAULTS) {
+  const min = Math.min(r, g, b);
+  const max = Math.max(r, g, b);
+  return min >= opts.whiteKeylineMinChannel && max - min <= opts.whiteKeylineMaxSpread;
+}
+
+/**
+ * Kupas hanya matte putih yang tersambung ke transparansi, dengan kedalaman
+ * terbatas. Dark line art yang diminta prompt menjadi pagar alami sehingga
+ * badan Anima putih tetap utuh.
+ */
+export function stripWhiteKeylineInPlace(bitmap, width, height, opts = DEFAULTS) {
+  if (!opts.stripWhiteKeyline) return 0;
+  const maxDepth = Math.max(0, Math.floor(opts.whiteKeylineMaxDepth));
+  if (maxDepth === 0) return 0;
+
+  const pixelCount = width * height;
+  const depths = new Uint8Array(pixelCount);
+  const queue = new Int32Array(pixelCount);
+  let start = 0;
+  let end = 0;
+
+  // Seed = piksel matte yang langsung menyentuh transparansi.
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
+      const i = p * 4;
+      if (
+        bitmap[i + 3] <= opts.alphaThreshold ||
+        !isWhiteKeylineColor(bitmap[i], bitmap[i + 1], bitmap[i + 2], opts)
+      ) {
+        continue;
+      }
+
+      let touchesClear = false;
+      for (let dy = -1; dy <= 1 && !touchesClear; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          const ny = y + dy;
+          if (
+            nx < 0 ||
+            ny < 0 ||
+            nx >= width ||
+            ny >= height ||
+            bitmap[(ny * width + nx) * 4 + 3] <= opts.alphaThreshold
+          ) {
+            touchesClear = true;
+            break;
+          }
+        }
+      }
+      if (!touchesClear) continue;
+      depths[p] = 1;
+      queue[end++] = p;
+    }
+  }
+
+  // ponytail: flood dibatasi 6px, bukan segmentasi matte penuh. Kalau model
+  // mulai menggambar keyline lebih tebal, naikkan depth setelah eval visual.
+  while (start < end) {
+    const p = queue[start++];
+    const depth = depths[p];
+    if (depth >= maxDepth) continue;
+    const x = p % width;
+    const y = Math.floor(p / width);
+
+    for (let dy = -1; dy <= 1; dy++) {
+      const ny = y + dy;
+      if (ny < 0 || ny >= height) continue;
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x + dx;
+        if (nx < 0 || nx >= width) continue;
+        const np = ny * width + nx;
+        if (depths[np] !== 0) continue;
+        const ni = np * 4;
+        if (
+          bitmap[ni + 3] <= opts.alphaThreshold ||
+          !isWhiteKeylineColor(bitmap[ni], bitmap[ni + 1], bitmap[ni + 2], opts)
+        ) {
+          continue;
+        }
+        depths[np] = depth + 1;
+        queue[end++] = np;
+      }
+    }
+  }
+
+  for (let q = 0; q < end; q++) {
+    const i = queue[q] * 4;
+    bitmap[i] = 0;
+    bitmap[i + 1] = 0;
+    bitmap[i + 2] = 0;
+    bitmap[i + 3] = 0;
+  }
+  return end;
+}
+
+/** Reproses sheet RGBA lama tanpa membutuhkan raw green-screen dari model. */
+export async function stripWhiteKeylineFromRgba(pngBuffer, opts = DEFAULTS) {
+  const image = await Image.decode(pngBuffer);
+  const pixelsStripped = stripWhiteKeylineInPlace(
+    image.bitmap,
+    image.width,
+    image.height,
+    opts
+  );
+  if (pixelsStripped > 0) softenAlphaEdges(image.bitmap, image.width, image.height, opts);
+  return {
+    png: await image.encode(),
+    pixelsStripped,
+    size: [image.width, image.height],
+  };
+}
+
 /** Bounding box rapat dari piksel tak-transparan di dalam rect. */
 export function findBBox(bitmap, width, rect, alphaThreshold = DEFAULTS.alphaThreshold) {
   let minX = Infinity;
@@ -291,6 +420,7 @@ export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS, layout
   const boxes = Array(poseCount).fill(null);
   const opaquePixels = new Uint32Array(poseCount);
   const crossBoundaryPixels = new Uint32Array(poseCount);
+  const components = [];
 
   for (let seed = 0; seed < pixelCount; seed++) {
     if (visited[seed] || bitmap[seed * 4 + 3] <= opts.alphaThreshold) continue;
@@ -345,6 +475,13 @@ export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS, layout
     for (let i = 0; i < end; i++) owners[queue[i]] = owner;
 
     const component = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    components.push({
+      owner,
+      pose: layout.poses[owner],
+      pixels: end,
+      foreign_pixels: end - ownQuadrantPixels,
+      bbox: component,
+    });
     const current = boxes[owner];
     if (!current) {
       boxes[owner] = component;
@@ -367,7 +504,70 @@ export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS, layout
       cross_boundary_pixels: crossBoundaryPixels[i],
     };
   }
-  return { bboxes, owners, ownership };
+  return { bboxes, owners, ownership, components };
+}
+
+function touchesInternalSeam(component, width, height, layout, opts) {
+  const [col, row] = layout.quadrant[component.pose];
+  const cellW = Math.floor(width / layout.grid);
+  const cellH = Math.floor(height / layout.grid);
+  const left = col * cellW;
+  const top = row * cellH;
+  const right = col === layout.grid - 1 ? width : (col + 1) * cellW;
+  const bottom = row === layout.grid - 1 ? height : (row + 1) * cellH;
+  const marginX = Math.round((right - left) * opts.seamMarginRatio);
+  const marginY = Math.round((bottom - top) * opts.seamMarginRatio);
+  const box = component.bbox;
+  const boxRight = box.x + box.w;
+  const boxBottom = box.y + box.h;
+  return (
+    (col > 0 && box.x < left + marginX)
+    || (col < layout.grid - 1 && boxRight > right - marginX)
+    || (row > 0 && box.y < top + marginY)
+    || (row < layout.grid - 1 && boxBottom > bottom - marginY)
+  );
+}
+
+/**
+ * Menolak fragmen terlepas yang jatuh ke sel tetangga tanpa mengubah piksel.
+ *
+ * Hanya Idle yang aman diaudit keras: prompt melarang efek di sana. Pose lain
+ * memang boleh membawa spark, debris, Z, bau, kotoran, dan fragmen VFX, sehingga
+ * piksel saja tidak cukup untuk membedakan aksen sah dari kebocoran. Komponen
+ * tersambung tetap ditangani ownership mask seperti sebelumnya.
+ */
+export function auditSourceGridSeams(components, width, height, layout, opts = DEFAULTS) {
+  const largestByOwner = new Map();
+  for (const component of components) {
+    const current = largestByOwner.get(component.owner);
+    if (!current || component.pixels > current.pixels) largestByOwner.set(component.owner, component);
+  }
+
+  const violations = [];
+
+  for (const component of components) {
+    const primary = largestByOwner.get(component.owner);
+    if (
+      component.pose !== "idle"
+      || primary === component
+      || component.pixels < opts.minSeamLeakPixels
+      || !touchesInternalSeam(component, width, height, layout, opts)
+    ) {
+      continue;
+    }
+    violations.push({
+      pose: component.pose,
+      kind: "detached_idle_seam_fragment",
+      pixels: component.pixels,
+      bbox: component.bbox,
+    });
+  }
+
+  return {
+    passed: violations.length === 0,
+    ratio: opts.seamMarginRatio,
+    violations,
+  };
 }
 
 /**
@@ -456,7 +656,7 @@ function blitOwned(srcBitmap, srcW, src, owners, owner, dstBitmap, dstW, destX, 
  * Pipeline penuh: PNG mentah dari Replicate -> PNG RGBA rapi + manifest.
  *
  * @param {Uint8Array} pngBuffer PNG mentah, background hijau, opak
- * @param {object} meta { speciesKey, colorBucket, stage, promptVersion }
+ * @param {object} meta { speciesKey, colorBucket, stage, promptVersion, vfxMotion }
  * @returns {Promise<{ png: Uint8Array, manifest: object }>}
  */
 export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
@@ -487,6 +687,10 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
   }
 
   softenAlphaEdges(bitmap, width, height, opts);
+  const whiteKeylinePixelsStripped = stripWhiteKeylineInPlace(bitmap, width, height, opts);
+  // Pengupasan membuka dark line art sebagai tepi baru; haluskan sekali agar
+  // outline tidak bergerigi. Tanpa piksel terkelupas, jangan proses tepi dua kali.
+  if (whiteKeylinePixelsStripped > 0) softenAlphaEdges(bitmap, width, height, opts);
 
   // Segmentasi komponen terhubung membiarkan anggota tubuh melewati garis sel
   // tanpa ikut mencopy monster tetangga. Sel grid hanya menentukan pose pemilik,
@@ -496,6 +700,15 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
   const cellH = Math.floor(height / layout.grid);
   const quadrantArea = cellW * cellH;
   const segmented = segmentPosePixels(bitmap, width, height, opts, layout);
+  const seamAudit = promptMajor(meta.promptVersion) >= 12
+    ? auditSourceGridSeams(segmented.components, width, height, layout, opts)
+    : null;
+  if (seamAudit && !seamAudit.passed) {
+    const summary = seamAudit.violations
+      .map((v) => `${v.pose}:${v.kind}:${v.pixels}px`)
+      .join(", ");
+    throw new Error(`sheet melanggar safe margin v12: ${summary}`);
+  }
   const bboxes = segmented.bboxes;
   const rejected = {};
 
@@ -560,7 +773,15 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
   const metrics = heightMetrics(bboxes, layout);
 
   const poses = {};
-  for (const pose of detected) poses[pose] = { region: plan.placements[pose].region };
+  for (const pose of detected) {
+    poses[pose] = { region: plan.placements[pose].region };
+    if (
+      pose.startsWith("fx_")
+      && ["projectile", "sweep", "impact", "bloom"].includes(meta.vfxMotion?.[pose])
+    ) {
+      poses[pose].motion = meta.vfxMotion[pose];
+    }
+  }
 
   const manifest = {
     version: 1,
@@ -580,6 +801,8 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       bbox_heights: metrics.heights,
       pose_ownership: segmented.ownership,
       keyed_pixel_ratio: Number((keyedPixels / (bitmap.length / 4)).toFixed(4)),
+      white_keyline_pixels_stripped: whiteKeylinePixelsStripped,
+      ...(seamAudit ? { seam_margin: seamAudit } : {}),
       source_size: [decoded.width, decoded.height],
       // ponytail: erosi hijau hanya di cincin 1px terluar, bukan despill penuh.
       // Plafon: fringe yang lebih tebal dari 1px tetap lolos, dan itu terjadi

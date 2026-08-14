@@ -82,6 +82,8 @@ func _test_build_from_memory() -> void:
 
 	_check_eq(loaded["frame_size"], PlaceholderSheet.FRAME, "frame_size harus dari manifest")
 	_check_eq(loaded["species_key"], "placeholder_demo_box", "species_key harus terbawa")
+	_check_eq(loaded["fx_motion"]["fx_strike"], "projectile", "motion Attack harus terbawa")
+	_check_eq(loaded["fx_motion"]["fx_surge"], "bloom", "motion Special harus terbawa")
 
 
 func _test_atlas_regions() -> void:
@@ -236,6 +238,8 @@ func _test_presenter() -> void:
 	_check_eq(presenter.offset, loaded["ground_offset"], "offset harus dari ground_offset")
 	_check_eq(presenter.current_pose(), AnimaLoader.DEFAULT_POSE, "pose awal harus idle")
 	_check(presenter.centered, "sprite harus centered supaya offset bermakna")
+	_check_eq(presenter.fx_motion("fx_surge"), "bloom", "presenter harus menyimpan motion manifest")
+	_check_eq(presenter.fx_motion("tidak_ada"), "projectile", "sheet lama fallback ke projectile")
 
 	for pose in ["attack", "sleep", "defeated", "happy", "hungry", "dirty", "idle"]:
 		_check(presenter.set_pose(pose), "set_pose('%s') harus berhasil" % pose)
@@ -329,6 +333,24 @@ func _test_presenter() -> void:
 	_check(
 		fx.position.distance_to(local_impact) < 16.0,
 		"FX strike/surge harus masuk ke tubuh lawan"
+	)
+	presenter.set("_fx_motion", {"fx_strike": "sweep"})
+	presenter.play_fx("fx_strike", impact)
+	_check(
+		fx.position.distance_to(local_impact) < 80.0 and absf(fx.rotation) > 0.01,
+		"motion sweep harus muncul di sekitar target dengan rotasi sapuan"
+	)
+	presenter.set("_fx_motion", {"fx_strike": "impact"})
+	presenter.play_fx("fx_strike", impact)
+	_check(
+		fx.position.distance_to(local_impact) < 1.0 and fx.scale.x < 0.6,
+		"motion impact harus pop langsung di tubuh target"
+	)
+	presenter.set("_fx_motion", {"fx_strike": "bloom"})
+	presenter.play_fx("fx_strike", impact)
+	_check(
+		fx.position.distance_to(local_impact) < 1.0 and fx.scale.x < 0.5,
+		"motion bloom harus tumbuh radial dari tubuh target"
 	)
 
 	presenter.visible = false

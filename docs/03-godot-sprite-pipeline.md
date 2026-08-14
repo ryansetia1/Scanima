@@ -44,6 +44,29 @@ Kenapa ukuran seragam itu penting: `AnimatedSprite2D` hanya punya satu properti 
 
 Blok `qa` tidak dipakai game, tapi ikut disimpan agar sheet yang buruk bisa ditemukan lewat query alih-alih laporan pemain. `pose_ownership.cross_boundary_pixels` mengukur bagian pose yang melewati center seam pada PNG mentah tetapi berhasil dipertahankan oleh segmentasi; nilainya bukan error selama sel tetap terpisah.
 
+Manifest v12 menambah dua field opsional tanpa menaikkan `version`:
+
+```json
+{
+  "poses": {
+    "fx_strike": { "region": [420, 920, 420, 460], "motion": "sweep" },
+    "fx_surge":  { "region": [840, 920, 420, 460], "motion": "bloom" }
+  },
+  "qa": {
+    "seam_margin": { "passed": true, "ratio": 0.12, "violations": [] }
+  }
+}
+```
+
+`motion` hanya menerima `projectile`, `sweep`, `impact`, atau `bloom`.
+`AnimaLoader` mengabaikan nilai lain dan sheet lama fallback ke `projectile`.
+`seam_margin` membuktikan tidak ada komponen sekunder di band seam **Idle**.
+Itu satu-satunya pose yang aman diaudit keras karena prompt melarang efek di
+sana; debris Battle, kotoran, Z, dan pecahan VFX adalah komponen terlepas yang
+sah dan tidak dapat diklasifikasikan hanya dari piksel. Pada v12 pelanggaran
+Idle gagal sebelum sheet masuk pustaka dan Core direfund oleh jalur webhook
+yang sudah ada.
+
 Perhatikan metriknya: yang diukur `standing_height_variance`, **hanya antara Idle dan Attack**, bukan varians keempat pose. Membandingkan keempatnya adalah metrik yang salah, karena kreatur yang meringkuk tidur memang jauh lebih pendek daripada yang berdiri — ambang apa pun akan memberi alarm palsu pada sheet yang sempurna. Yang benar-benar menandakan model mengubah skala adalah selisih antara dua pose yang sama-sama berdiri penuh. Sebagai pelengkap, pose Sleep atau Defeated yang lebih *tinggi* dari Idle juga ditandai, karena arah itu hampir pasti berarti model membesarkan kreaturnya alih-alih menidurkannya.
 
 ## 2. Arsitektur node
@@ -340,8 +363,11 @@ match pose:
 ```
 
 Sel `fx_strike` / `fx_surge` tidak mengganti pose tubuh. `play_fx()` menaruhnya
-sebagai overlay sibling, lalu — saat Battle mengirim posisi lawan — meluncur
-cepat ke tubuh musuh, sempat terlihat, lalu fade. Sheet 2×2 tanpa sel itu melewati overlay diam-diam.
+sebagai overlay sibling dan membaca motion opsional dari manifest: projectile
+meluncur dari penyerang, sweep menyapu target, impact pop langsung di target,
+dan bloom tumbuh radial dari target. Keempatnya memakai beat waktu tetap agar
+event damage server tetap sinkron. Sheet lama fallback projectile; sheet 2×2
+tanpa sel efek melewati overlay diam-diam.
 
 Idle memakai squash-stretch halus. Sleep lebih lambat dan dalam. Key internal
 `defeated` berarti visual Damaged saat Anima Dormant, jadi ia bukan jasad yang

@@ -83,6 +83,21 @@ export function normalizeMoveName(name, fallback = "") {
   return candidate;
 }
 
+export const VFX_MOTIONS = ["projectile", "sweep", "impact", "bloom"];
+export const VFX_FORMS = [
+  "arc", "beam", "trail", "wave", "eruption", "ring",
+  "scatter", "tether", "stamp", "cloud", "shatter", "growth",
+];
+
+export function normalizeVfxPlan(value, fallback) {
+  const raw = value && typeof value === "object" ? value : {};
+  const form = VFX_FORMS.includes(raw.form) ? raw.form : fallback.form;
+  const motion = VFX_MOTIONS.includes(raw.motion) ? raw.motion : fallback.motion;
+  const brief = String(raw.brief ?? "").trim().replace(/\s+/g, " ").slice(0, 240)
+    || fallback.brief;
+  return { form, motion, brief };
+}
+
 /**
  * Schema menjamin bentuk, bukan kewajaran isi. Pemeriksaan di sini menegakkan
  * hal-hal yang tidak bisa diungkapkan di responseSchema Gemini.
@@ -92,7 +107,8 @@ export function validateVision(
   knownSpecies = [],
   requireMaterial = false,
   requireCharacter = false,
-  requireMoves = false
+  requireMoves = false,
+  requireVfx = false
 ) {
   const issues = [];
 
@@ -171,6 +187,36 @@ export function validateVision(
     v.strike_name = strike;
     v.surge_name = surge;
   }
+  if (requireVfx) {
+    const strikeFallback = {
+      form: "arc",
+      motion: "sweep",
+      brief: "a compact object-faithful contact arc shaped by one photographed structural feature",
+    };
+    const surgeFallback = {
+      form: "eruption",
+      motion: "bloom",
+      brief: "a larger object-faithful radial effect grown from the material and strongest structural feature",
+    };
+    const strike = normalizeVfxPlan(v.strike_vfx, strikeFallback);
+    const surge = normalizeVfxPlan(v.surge_vfx, surgeFallback);
+    if (!v.strike_vfx?.brief?.trim()) issues.push("strike_vfx brief kosong");
+    if (!VFX_FORMS.includes(v.strike_vfx?.form)) issues.push("strike_vfx form tidak sah");
+    if (!VFX_MOTIONS.includes(v.strike_vfx?.motion)) issues.push("strike_vfx motion tidak sah");
+    if (!v.surge_vfx?.brief?.trim()) issues.push("surge_vfx brief kosong");
+    if (!VFX_FORMS.includes(v.surge_vfx?.form)) issues.push("surge_vfx form tidak sah");
+    if (!VFX_MOTIONS.includes(v.surge_vfx?.motion)) issues.push("surge_vfx motion tidak sah");
+    if (strike.form === surge.form) {
+      issues.push(`strike_vfx dan surge_vfx tidak boleh sama-sama ${strike.form}`);
+      surge.form = surgeFallback.form === strike.form ? "ring" : surgeFallback.form;
+    }
+    if (strike.motion === surge.motion) {
+      issues.push(`strike_vfx dan surge_vfx tidak boleh sama-sama ${strike.motion}`);
+      surge.motion = surgeFallback.motion === strike.motion ? "impact" : surgeFallback.motion;
+    }
+    v.strike_vfx = strike;
+    v.surge_vfx = surge;
+  }
 
   return { gate: "passed", reason: null, issues, vision: v };
 }
@@ -233,7 +279,19 @@ export function assemblePrompt(template, vision) {
     .replaceAll("{{character_direction}}", characterDirection)
     .replaceAll("{{damage_hints_as_bullets}}", damageBullets)
     .replaceAll("{{strike_name}}", vision.strike_name?.trim() || "a close-range strike")
-    .replaceAll("{{surge_name}}", vision.surge_name?.trim() || "a charged special burst");
+    .replaceAll("{{surge_name}}", vision.surge_name?.trim() || "a charged special burst")
+    .replaceAll("{{strike_vfx_form}}", vision.strike_vfx?.form || "arc")
+    .replaceAll("{{strike_vfx_motion}}", vision.strike_vfx?.motion || "sweep")
+    .replaceAll(
+      "{{strike_vfx_brief}}",
+      vision.strike_vfx?.brief || "a compact object-faithful contact effect"
+    )
+    .replaceAll("{{surge_vfx_form}}", vision.surge_vfx?.form || "eruption")
+    .replaceAll("{{surge_vfx_motion}}", vision.surge_vfx?.motion || "bloom")
+    .replaceAll(
+      "{{surge_vfx_brief}}",
+      vision.surge_vfx?.brief || "a larger object-faithful radial effect"
+    );
 
   const leftover = out.match(/\{\{[a-z_]+\}\}/g);
   if (leftover) throw new Error(`placeholder belum terisi: ${leftover.join(", ")}`);
