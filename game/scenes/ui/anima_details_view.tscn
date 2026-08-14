@@ -418,9 +418,19 @@ theme_override_font_sizes/font_size = 25
 text = "VALUE_UNAVAILABLE"
 horizontal_alignment = 1
 
-[node name="DeleteAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
+[node name="DeleteRow" type="HBoxContainer" parent="Column/DetailsScroll/DetailsContent"]
 layout_mode = 2
-theme_type_variation = &"DangerButton"
+alignment = 1
+
+[node name="DeleteAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent/DeleteRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 96)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.42, 0.52, 0.88)
+theme_override_colors/font_hover_color = Color(1, 0.72, 0.78, 1)
+theme_override_colors/font_focus_color = Color(1, 0.72, 0.78, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.82, 0.4, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.6, 0.72, 0.58)
+theme_override_font_sizes/font_size = 24
 text = "ANIMA_DELETE_ACTION"
+flat = true

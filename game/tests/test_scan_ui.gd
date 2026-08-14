@@ -1260,6 +1260,12 @@ func _test_anima_delete_action() -> void:
 		rename.pressed.emit()
 	_check_eq(_requested_rename_id, "anima-delete-test", "Edit name emits the shown Anima id")
 	_check(button != null and not button.disabled, "loaded profile enables Delete")
+	_check(
+		button != null
+		and button.flat
+		and button.theme_type_variation != &"DangerButton",
+		"profile Delete is a quiet text action like Forfeit"
+	)
 	if button != null:
 		button.pressed.emit()
 	_check_eq(_requested_delete_id, "anima-delete-test", "Delete emits only the active Anima id")
