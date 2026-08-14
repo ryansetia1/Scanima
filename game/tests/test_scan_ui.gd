@@ -492,6 +492,36 @@ func _test_shared_components() -> void:
 		{"item_id": "pulse_cell", "quantity": 1},
 		{"item_id": "vital_patch", "quantity": 1},
 	]
+	var animated_bag = (load("res://scenes/ui/shop_sheet.tscn") as PackedScene).instantiate()
+	root.add_child(animated_bag)
+	await process_frame
+	UiMotion.set_reduced_motion(false)
+	animated_bag.set_meta("test_opened", false)
+	animated_bag.opened.connect(func() -> void: animated_bag.set_meta("test_opened", true))
+	animated_bag.set_catalog(catalog, inventory)
+	animated_bag.open_bag("item")
+	_check(
+		not bool(animated_bag.get_meta("test_opened")),
+		"dynamic Bag waits for container layout before its first-open tween"
+	)
+	var animated_panel := animated_bag.panel() as Control
+	var stayed_attached := true
+	var animation_deadline := Time.get_ticks_msec() + 500
+	while Time.get_ticks_msec() < animation_deadline:
+		await process_frame
+		if animated_panel.get_global_rect().end.y < animated_bag.get_global_rect().end.y - 1.0:
+			stayed_attached = false
+	_check(
+		bool(animated_bag.get_meta("test_opened"))
+		and stayed_attached
+		and absf(animated_panel.get_global_rect().end.y - animated_bag.get_global_rect().end.y) < 1.0,
+		"Bag first-open animation stays attached and settles flush with the bottom edge"
+	)
+	animated_bag.close()
+	await create_timer(0.3).timeout
+	animated_bag.queue_free()
+	UiMotion.set_reduced_motion(true)
+
 	shop_sheet.set_catalog(catalog, inventory)
 	shop_sheet.open_shop("item")
 	await process_frame
@@ -1852,11 +1882,11 @@ func _test_incubator_effect() -> void:
 	effect.free()
 
 
-func _sheet_button_labels(root: Node) -> PackedStringArray:
+func _sheet_button_labels(node_root: Node) -> PackedStringArray:
 	var labels := PackedStringArray()
-	if root == null:
+	if node_root == null:
 		return labels
-	for node in root.find_children("*", "Button", true, false):
+	for node in node_root.find_children("*", "Button", true, false):
 		var button := node as Button
 		if button == null or button.is_queued_for_deletion() or not button.visible:
 			continue
@@ -1866,11 +1896,11 @@ func _sheet_button_labels(root: Node) -> PackedStringArray:
 	return labels
 
 
-func _control_labels(root: Node) -> PackedStringArray:
+func _control_labels(node_root: Node) -> PackedStringArray:
 	var labels := PackedStringArray()
-	if root == null:
+	if node_root == null:
 		return labels
-	for node in root.find_children("*", "Label", true, false):
+	for node in node_root.find_children("*", "Label", true, false):
 		var label := node as Label
 		if label == null or label.is_queued_for_deletion():
 			continue

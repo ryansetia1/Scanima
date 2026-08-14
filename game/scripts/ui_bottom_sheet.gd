@@ -21,11 +21,11 @@ var _open_token := 0
 func _ready() -> void:
 	_dismiss_button.pressed.connect(close)
 	UiJuice.install_button(_dismiss_button)
-	for name in ["HandleCenter", "Header"]:
-		var node := _panel.find_child(name, true, false) as Control
+	for node_name in ["HandleCenter", "Header"]:
+		var node := _panel.find_child(node_name, true, false) as Control
 		if node == null:
 			continue
-		if name == "HandleCenter":
+		if node_name == "HandleCenter":
 			node.custom_minimum_size.y = maxf(node.custom_minimum_size.y, 96.0)
 		node.mouse_filter = Control.MOUSE_FILTER_STOP
 		node.gui_input.connect(_on_drag_input)
@@ -36,12 +36,14 @@ func open() -> void:
 	var token := _open_token
 	visible = true
 	modulate.a = 0.0
-	fit_to_content()
-	if is_inside_tree() and size.y < 1.0:
+	# Dynamic rows and queue_free() settle at frame end. Starting the tween
+	# sooner captures yesterday's panel height; its deferred relayout then moves
+	# the anchors under the running tween, leaving the first open floating.
+	if is_inside_tree():
 		await get_tree().process_frame
 		if token != _open_token or not is_instance_valid(self) or not visible:
 			return
-		fit_to_content()
+	fit_to_content()
 	UiJuice.show_bottom_sheet(self, _panel)
 	opened.emit()
 

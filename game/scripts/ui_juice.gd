@@ -120,9 +120,9 @@ static func hide_overlay(overlay: Control, panel: Control) -> void:
 		panel.modulate = Color.WHITE
 
 
-# ponytail: first open happens while a hidden overlay still has size 0, so
-# panel.position sits above the viewport and the slide tweens the sheet into
-# the air. Rest Y is host height − sheet height, viewport as fallback.
+# ponytail: hidden full-rect hosts can still report size 0 before their first
+# layout. Rest Y uses the viewport as fallback; UiBottomSheet.open() separately
+# waits one frame for dynamic Container rows before starting the tween.
 # Plafon: a nested sheet that is not full-rect still needs its host laid out.
 static func sheet_rest_position(overlay: Control, panel: Control) -> Vector2:
 	var height := maxf(panel.get_combined_minimum_size().y, 1.0)
