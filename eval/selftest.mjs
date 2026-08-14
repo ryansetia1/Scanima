@@ -15,6 +15,7 @@ import {
   LAYOUT_3X3,
   DEFAULTS,
   isKeyColor,
+  isCatalogKeyVapor,
   findBBox,
   heightMetrics,
   postprocessSheet,
@@ -124,6 +125,10 @@ console.log("1. isKeyColor memisahkan background dari warna sah");
   assert.ok(!isKeyColor(120, 140, 125), "abu kehijauan bukan kunci (sat rendah)");
   assert.ok(!isKeyColor(0, 255, 255), "cyan bukan kunci");
   assert.ok(!isKeyColor(255, 255, 0), "kuning bukan kunci");
+  assert.ok(!isCatalogKeyVapor(60, 160, 70), "hijau daun bukan uap katalog");
+  assert.ok(isCatalogKeyVapor(47, 242, 41), "steam neon sat 0,83 adalah uap katalog");
+  assert.ok(isCatalogKeyVapor(121, 238, 98), "steam campur putih tetap uap katalog");
+  assert.ok(isCatalogKeyVapor(177, 231, 3), "percikan chartreuse skewer adalah uap katalog");
 }
 
 console.log("2. REGRESI: tubuh Anima hijau tidak boleh ikut terhapus");
@@ -1455,6 +1460,7 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
       const col = index % 3;
       const row = Math.trunc(index / 3);
       let filled = 0;
+      let vapor = 0;
       for (let y = 0; y < cell; y += 1) {
         for (let x = 0; x < cell; x += 1) {
           const o = ((row * cell + y) * img.width + (col * cell + x)) * 4;
@@ -1463,9 +1469,13 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
           const b = img.bitmap[o + 2];
           const a = img.bitmap[o + 3];
           if (a > 0 && !isKeyColor(r, g, b)) filled += 1;
+          if (a > 0 && isCatalogKeyVapor(r, g, b)) vapor += 1;
         }
       }
       assert.ok(filled > 200, `${name} sel ${index} harus berisi ikon`);
+      if (name === "food_sheet.png") {
+        assert.ok(vapor < 80, `${name} sel ${index} tidak boleh menyisakan uap green-screen (${vapor})`);
+      }
     }
   }
 }

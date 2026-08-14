@@ -1,13 +1,14 @@
 // Membuat dua sheet katalog 3×3. Default: gambar lokal ImageScript, NOL API.
 // `--replicate` memanggil GPT Image 2 medium sekali per sheet (~$0.10 total)
 // dan WAJIB flag eksplisit; tidak ada retry.
+// `--rekey` mengulang chroma key + buang uap neon pada PNG yang sudah ada, NOL API.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Image } from "imagescript";
 import { CATALOG_ITEMS } from "../backend/supabase/functions/_shared/catalog.mjs";
-import { isKeyColor } from "../backend/supabase/functions/_shared/postprocess.mjs";
+import { isCatalogKeyVapor, isKeyColor, softenAlphaEdges } from "../backend/supabase/functions/_shared/postprocess.mjs";
 import { biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -34,6 +35,10 @@ const ITEM_COLORS = [
 async function main() {
   if (process.argv.includes("--replicate")) {
     await generatePaidSheets();
+    return;
+  }
+  if (process.argv.includes("--rekey")) {
+    await rekeyExisting();
     return;
   }
   await mkdir(OUT_DIR, { recursive: true });
@@ -178,16 +183,75 @@ function put(img, x, y, color) {
   img.bitmap[o + 3] = color[3] ?? 255;
 }
 
+async function rekeyExisting() {
+  await mkdir(OUT_DIR, { recursive: true });
+  for (const name of ["food_sheet.png", "item_sheet.png"]) {
+    const path = join(OUT_DIR, name);
+    const img = await Image.decode(await readFile(path));
+    if (img.width !== SIZE || img.height !== SIZE) {
+      throw new Error(`${name} ukuran ${img.width}×${img.height}, bukan 1024×1024`);
+    }
+    keyGreen(img);
+    await writeFile(path, await img.encode());
+    console.log("rekeyed", name);
+  }
+}
+
+function isLooseCatalogLime(r, g, b) {
+  if (!(g > r + 10 && g > b + 10)) return false;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  if (max === 0 || delta === 0) return false;
+  const v = max / 255;
+  const s = delta / max;
+  let hue;
+  if (max === r) hue = 60 * (((g - b) / delta) % 6);
+  else if (max === g) hue = 60 * ((b - r) / delta + 2);
+  else hue = 60 * ((r - g) / delta + 4);
+  if (hue < 0) hue += 360;
+  return hue >= 70 && hue <= 140 && s >= 0.4 && v >= 0.28;
+}
+
 function keyGreen(img) {
-  for (let i = 0; i < SIZE * SIZE; i += 1) {
+  const bitmap = img.bitmap;
+  const n = SIZE * SIZE;
+  const drop = new Uint8Array(n);
+  for (let i = 0; i < n; i += 1) {
     const o = i * 4;
-    if (isKeyColor(img.bitmap[o], img.bitmap[o + 1], img.bitmap[o + 2])) {
-      img.bitmap[o] = 0;
-      img.bitmap[o + 1] = 0;
-      img.bitmap[o + 2] = 0;
-      img.bitmap[o + 3] = 0;
+    if (bitmap[o + 3] < 8) continue;
+    if (
+      isKeyColor(bitmap[o], bitmap[o + 1], bitmap[o + 2])
+      || isCatalogKeyVapor(bitmap[o], bitmap[o + 1], bitmap[o + 2])
+    ) {
+      drop[i] = 1;
     }
   }
+  const next = Uint8Array.from(drop);
+  for (let i = 0; i < n; i += 1) {
+    if (drop[i] || bitmap[i * 4 + 3] < 8) continue;
+    const x = i % SIZE;
+    const y = (i / SIZE) | 0;
+    const near = (
+      (x > 0 && drop[i - 1])
+      || (x < SIZE - 1 && drop[i + 1])
+      || (y > 0 && drop[i - SIZE])
+      || (y < SIZE - 1 && drop[i + SIZE])
+    );
+    if (!near) continue;
+    if (isLooseCatalogLime(bitmap[i * 4], bitmap[i * 4 + 1], bitmap[i * 4 + 2])) {
+      next[i] = 1;
+    }
+  }
+  for (let i = 0; i < n; i += 1) {
+    if (!next[i]) continue;
+    const o = i * 4;
+    bitmap[o] = 0;
+    bitmap[o + 1] = 0;
+    bitmap[o + 2] = 0;
+    bitmap[o + 3] = 0;
+  }
+  softenAlphaEdges(bitmap, SIZE, SIZE);
 }
 
 await main();

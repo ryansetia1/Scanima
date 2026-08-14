@@ -111,6 +111,32 @@ export function isKeyColor(r, g, b, o = DEFAULTS) {
   return dist <= o.hueTolerance;
 }
 
+/**
+ * Uap/percikan neon di sheet katalog yang lolos isKeyColor.
+ * Steam GPT Image sering rgb(47,242,41) sat 0,83 — di bawah satMin 0,85 —
+ * jadi kelihatan green-screen. Daun makanan (val rendah / sat sedang) aman.
+ * Jangan dipakai di sheet Anima: itu jalur plant.
+ */
+export function isCatalogKeyVapor(r, g, b) {
+  if (g < 180) return false;
+  const max = Math.max(r, g, b);
+  const v = max / 255;
+  if (v < 0.72) return false;
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  if (delta === 0) return false;
+  const s = delta / max;
+  let hue;
+  if (max === r) hue = 60 * (((g - b) / delta) % 6);
+  else if (max === g) hue = 60 * ((b - r) / delta + 2);
+  else hue = 60 * ((r - g) / delta + 4);
+  if (hue < 0) hue += 360;
+  const chroma = hue >= 100 && hue <= 135 && s >= 0.60;
+  const spark = hue >= 65 && hue < 100 && s >= 0.85 && b <= 40 && v >= 0.75;
+  const spill = g >= 200 && v >= 0.82 && hue >= 95 && hue <= 130 && (g - r) >= 50;
+  return chroma || spark || spill;
+}
+
 // Sedikit lebih longgar dari keying, hanya untuk menangkap hijau nyaris murni
 // yang lolos. Celahnya sengaja tipis, bukan longgar: hijau pekat seperti forest
 // green rgb(34,139,34) adalah warna tubuh Anima yang sah, dan warna sendirian
