@@ -7,6 +7,7 @@ import { adminClient, json, syncProfileTimezone } from "../_shared/supa.ts";
 import {
   BATTLE_ACTIONS,
   baseStatTotal,
+  battleRewardPreview,
   createBattleState,
   levelFromExp,
   normalizeBaseStats,
@@ -37,6 +38,9 @@ const ERROR_STATUS: Record<string, number> = {
   ANIMA_LOW_ENERGY: 409,
   ANIMA_HUNGRY: 409,
   NO_MOMENTUM: 409,
+  NO_ITEM: 409,
+  INVALID_ITEM: 400,
+  ITEM_ALREADY_USED: 409,
   NO_BATTLE_OPPONENT: 409,
   ANIMA_NOT_FOUND: 404,
   BOT_NOT_FOUND: 404,
@@ -49,6 +53,7 @@ type BattleBody = {
   anima_id?: unknown;
   session_id?: unknown;
   action?: unknown;
+  item_id?: unknown;
   expected_turn?: unknown;
   expected_version?: unknown;
   idempotency_key?: unknown;
@@ -192,6 +197,7 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
     bot: botSnapshot,
     seed,
   });
+  const reward = battleRewardPreview(playerSnapshot, botSnapshot, seed);
 
   const { data, error } = await db.rpc("start_battle", {
     p_owner: ownerId,
@@ -201,6 +207,9 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
     p_bot_snapshot: botSnapshot,
     p_initial_state: initialState,
     p_seed: seed,
+    p_reward_tier: reward.tier,
+    p_reward_roll: reward.roll,
+    p_reward_bits: reward.bits,
   });
   if (error) throw error;
   return json(200, data);
@@ -222,10 +231,12 @@ async function resumeBattle(ownerId: string, body: BattleBody): Promise<Response
 async function playTurn(ownerId: string, body: BattleBody): Promise<Response> {
   const sessionId = asUuid(body.session_id, "session_id");
   const action = typeof body.action === "string" ? body.action : "";
+  const itemId = typeof body.item_id === "string" ? body.item_id : "";
   const key = typeof body.idempotency_key === "string" ? body.idempotency_key : "";
   const expectedTurn = asPositiveInt(body.expected_turn, "expected_turn");
   const expectedVersion = asPositiveInt(body.expected_version, "expected_version");
   if (!ACTIONS.has(action)) throw new Error("INVALID_ACTION");
+  if (action === "item" && !itemId) throw new Error("INVALID_ITEM");
   if (!key || key.length > 128) throw new Error("INVALID_IDEMPOTENCY_KEY");
 
   const { data: session, error: resumeError } = await db.rpc("resume_battle", {
@@ -237,21 +248,25 @@ async function playTurn(ownerId: string, body: BattleBody): Promise<Response> {
 
   const { data: prior, error: priorError } = await db
     .from("battle_turns")
-    .select("turn_number, action, response")
+    .select("turn_number, action, catalog_item_id, response")
     .eq("session_id", sessionId)
     .eq("idempotency_key", key)
     .maybeSingle();
   if (priorError) throw priorError;
   if (prior) {
-    if (prior.turn_number !== expectedTurn || prior.action !== action) {
+    if (
+      prior.turn_number !== expectedTurn ||
+      prior.action !== action ||
+      (prior.catalog_item_id ?? "") !== (action === "item" ? itemId : "")
+    ) {
       throw new Error("IDEMPOTENCY_CONFLICT");
     }
     return json(200, { ...prior.response, replayed: true });
   }
   if (session.status !== "active") throw new Error("BATTLE_FINISHED");
 
-  const result = resolveTurn(session.state, action, key);
-  const { data, error } = await db.rpc("commit_battle_turn", {
+  const result = resolveTurn(session.state, action, key, itemId);
+  const payload: Record<string, unknown> = {
     p_owner: ownerId,
     p_session_id: sessionId,
     p_expected_turn: expectedTurn,
@@ -261,7 +276,9 @@ async function playTurn(ownerId: string, body: BattleBody): Promise<Response> {
     p_state: result.state,
     p_events: result.events,
     p_bot_action: result.bot_action,
-  });
+  };
+  if (action === "item") payload.p_item_id = itemId;
+  const { data, error } = await db.rpc("commit_battle_turn", payload);
   if (error) throw error;
   return json(200, data);
 }

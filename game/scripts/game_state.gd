@@ -23,14 +23,17 @@ var session: Dictionary = {}
 ## {idempotency_key, photo_path, generation_id, anima_id}. Lihat begin_scan().
 var pending_scan: Dictionary = {}
 
-## {idempotency_key, anima_id, action}. Dipertahankan sampai server mengonfirmasi
+## {idempotency_key, anima_id, action, item_id}. Dipertahankan sampai server mengonfirmasi
 ## supaya retry Feed/Clean tidak mendebit Bits dua kali.
 var pending_care: Dictionary = {}
 
-## {session_id, expected_turn, expected_version, action, idempotency_key}.
+## {session_id, expected_turn, expected_version, action, item_id, idempotency_key}.
 ## Session tetap disimpan saat tidak ada action supaya app bisa resume; key action
 ## dipertahankan saat timeout supaya turn dan reward tidak pernah commit dua kali.
 var pending_battle: Dictionary = {}
+
+## {idempotency_key, item_id, expected_price}. Satu pembelian menggantung.
+var pending_purchase: Dictionary = {}
 
 ## Anima terakhir yang berhasil dimuat, supaya app bisa langsung menampilkannya
 ## saat dibuka lagi tanpa menunggu jaringan sama sekali.
@@ -65,6 +68,7 @@ func load_state() -> void:
 	pending_scan = as_dict(data.get("pending_scan"))
 	pending_care = as_dict(data.get("pending_care"))
 	pending_battle = as_dict(data.get("pending_battle"))
+	pending_purchase = as_dict(data.get("pending_purchase"))
 	last_anima = as_dict(data.get("last_anima"))
 
 
@@ -74,6 +78,7 @@ func save() -> void:
 		"pending_scan": pending_scan,
 		"pending_care": pending_care,
 		"pending_battle": pending_battle,
+		"pending_purchase": pending_purchase,
 		"last_anima": last_anima,
 	}
 	var tmp := path_state + ".tmp"
@@ -133,7 +138,7 @@ func finish_scan() -> void:
 	save()
 
 
-func begin_care(anima_id: String, action: String) -> Dictionary:
+func begin_care(anima_id: String, action: String, item_id: String = "") -> Dictionary:
 	if not pending_care.is_empty():
 		return pending_care
 	var key := "%d-%08x%08x" % [int(Time.get_unix_time_from_system()), randi(), randi()]
@@ -141,6 +146,7 @@ func begin_care(anima_id: String, action: String) -> Dictionary:
 		"idempotency_key": key,
 		"anima_id": anima_id,
 		"action": action,
+		"item_id": item_id,
 	}
 	save()
 	return pending_care
@@ -157,6 +163,7 @@ func remember_battle(session_id: String, expected_turn: int, expected_version: i
 		"expected_turn": expected_turn,
 		"expected_version": expected_version,
 		"action": "",
+		"item_id": "",
 		"idempotency_key": "",
 	}
 	save()
@@ -166,7 +173,8 @@ func begin_battle_action(
 	session_id: String,
 	expected_turn: int,
 	expected_version: int,
-	action: String
+	action: String,
+	item_id: String = ""
 ) -> Dictionary:
 	if not str(pending_battle.get("action", "")).is_empty():
 		return pending_battle
@@ -176,6 +184,7 @@ func begin_battle_action(
 		"expected_turn": expected_turn,
 		"expected_version": expected_version,
 		"action": action,
+		"item_id": item_id,
 		"idempotency_key": key,
 	}
 	save()
@@ -195,6 +204,24 @@ func confirm_battle_response(session_data: Dictionary) -> void:
 
 func finish_battle() -> void:
 	pending_battle = {}
+	save()
+
+
+func begin_purchase(item_id: String, expected_price: int) -> Dictionary:
+	if not pending_purchase.is_empty():
+		return pending_purchase
+	var key := "%d-%08x%08x" % [int(Time.get_unix_time_from_system()), randi(), randi()]
+	pending_purchase = {
+		"idempotency_key": key,
+		"item_id": item_id,
+		"expected_price": expected_price,
+	}
+	save()
+	return pending_purchase
+
+
+func finish_purchase() -> void:
+	pending_purchase = {}
 	save()
 
 

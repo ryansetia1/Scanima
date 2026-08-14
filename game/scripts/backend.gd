@@ -220,7 +220,12 @@ func timezone_offset_minutes() -> int:
 	return clampi(int(Time.get_time_zone_from_system().get("bias", 0)), -840, 840)
 
 
-func care_anima(anima_id: String, action: String, idempotency_key := "") -> Dictionary:
+func care_anima(
+	anima_id: String,
+	action: String,
+	idempotency_key := "",
+	item_id := ""
+) -> Dictionary:
 	var body := {
 		"anima_id": anima_id,
 		"action": action,
@@ -228,11 +233,35 @@ func care_anima(anima_id: String, action: String, idempotency_key := "") -> Dict
 	}
 	if not idempotency_key.is_empty():
 		body["idempotency_key"] = idempotency_key
+	if not item_id.is_empty():
+		body["item_id"] = item_id
 	return await _send(
 		HTTPClient.METHOD_POST,
 		URL_BASE + "/functions/v1/care_anima",
 		_headers(true, ["content-type: application/json"]),
 		JSON.stringify(body).to_utf8_buffer(),
+		TIMEOUT_SEC
+	)
+
+
+func fetch_catalog() -> Dictionary:
+	return await get_rest("catalog_items?select=id,kind,use_type,name_key,price,effect,effect_value,sprite_sheet,sprite_index&active=eq.true&order=kind.asc,sprite_index.asc")
+
+
+func fetch_inventory() -> Dictionary:
+	return await get_rest("player_inventory?select=item_id,quantity")
+
+
+func purchase_item(item_id: String, expected_price: int, idempotency_key: String) -> Dictionary:
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/functions/v1/shop",
+		_headers(true, ["content-type: application/json"]),
+		JSON.stringify({
+			"item_id": item_id,
+			"expected_price": expected_price,
+			"idempotency_key": idempotency_key,
+		}).to_utf8_buffer(),
 		TIMEOUT_SEC
 	)
 

@@ -74,11 +74,16 @@ static func apply_decay(
 	return care
 
 
-static func score_for_action(action: String, care_before: Variant, play_score_today: int = 0) -> int:
+static func score_for_action(
+	action: String,
+	care_before: Variant,
+	play_score_today: int = 0,
+	restore: float = CARE_RESTORE
+) -> int:
 	var care := normalized_care(care_before)
 	match action:
 		"feed":
-			return 3 if care["hunger"] < 40.0 else 0
+			return 3 if care["hunger"] < 40.0 and minf(100.0, care["hunger"] + restore) >= 40.0 else 0
 		"clean":
 			return 3 if care["hygiene"] < 50.0 else 0
 		"play":
@@ -150,7 +155,20 @@ static func collection_pose(row: Dictionary, active_id: String, now: float = -1.
 
 
 static func is_hungry(care_value: Variant) -> bool:
-	return normalized_care(care_value)["hunger"] < BATTLE_MIN_HUNGER
+	return need_is_low(care_value, "hunger")
+
+
+static func need_is_low(care_value: Variant, need: String) -> bool:
+	var care := normalized_care(care_value)
+	match need:
+		"hunger":
+			return care["hunger"] < HUNGRY_POSE_NEED
+		"hygiene":
+			return care["hygiene"] < DIRTY_POSE_NEED
+		"energy":
+			return care["energy"] < BATTLE_ENERGY_COST
+		_:
+			return false
 
 
 static func visual_pose(sleeping: bool, dormant: bool, care_value: Variant = {}) -> String:

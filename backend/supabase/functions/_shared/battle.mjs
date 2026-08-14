@@ -1,5 +1,14 @@
+import {
+  catalogItem,
+  isBattleItem,
+  combatPower,
+  rewardTierFromRatio,
+  rewardRollFromSeed,
+  bitsForTier,
+} from "./catalog.mjs";
+
 export const ELEMENT_CYCLE = Object.freeze(["metal", "plant", "flow", "spark", "cloth", "stone"]);
-export const BATTLE_ACTIONS = Object.freeze(["strike", "surge", "guard"]);
+export const BATTLE_ACTIONS = Object.freeze(["strike", "surge", "guard", "item"]);
 export const MOMENTUM_MAX = 3;
 export const MOMENTUM_START = 3;
 export const SURGE_COST = 1;
@@ -138,6 +147,33 @@ export function createBattleState({ player, bot, seed }) {
   };
 }
 
+export function battleRewardPreview(player, bot, seed) {
+  const playerStats = toBattleStats(
+    player?.base_stats,
+    player?.stage,
+    player?.evolution_branch,
+    player?.level,
+  );
+  const botStats = toBattleStats(
+    bot?.base_stats,
+    bot?.stage,
+    bot?.evolution_branch,
+    bot?.level,
+  );
+  const ratio = combatPower(botStats) / Math.max(1, combatPower(playerStats));
+  const tier = rewardTierFromRatio(ratio);
+  const roll = rewardRollFromSeed(seed);
+  const bits = bitsForTier(tier, roll);
+  return {
+    tier,
+    roll,
+    bits,
+    bits_min: bitsForTier(tier, -1),
+    bits_max: bitsForTier(tier, 1),
+    ratio,
+  };
+}
+
 export function chooseBotAction(fighter, random) {
   const roll = random();
   const hpRatio = fighter.hp / Math.max(1, fighter.max_hp);
@@ -146,9 +182,13 @@ export function chooseBotAction(fighter, random) {
   return "strike";
 }
 
-export function resolveTurn(previousState, playerAction, idempotencyKey = "") {
+export function resolveTurn(previousState, playerAction, idempotencyKey = "", itemId = "") {
   if (previousState?.status !== "active") throw battleError("BATTLE_FINISHED");
   if (!BATTLE_ACTIONS.includes(playerAction)) throw battleError("INVALID_ACTION");
+  if (playerAction === "item") {
+    if (previousState.player?.item_used) throw battleError("ITEM_ALREADY_USED");
+    if (!isBattleItem(itemId)) throw battleError("INVALID_ITEM");
+  }
 
   const state = structuredClone(previousState);
   const random = seededRandom(`${state.seed}:${state.turn}:${idempotencyKey}`);
@@ -158,9 +198,10 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "") {
 
   const actions = { player: playerAction, bot: botAction };
   const events = [];
-  applyIntent(state.player, playerAction);
+  applyIntent(state.player, playerAction, itemId);
   applyIntent(state.bot, botAction);
   if (playerAction === "guard") events.push(guardEvent("player", state.player));
+  if (playerAction === "item") events.push(itemEvent("player", state.player, itemId));
   if (botAction === "guard") events.push(guardEvent("bot", state.bot));
 
   const order = turnOrder(state.player, state.bot, random);
@@ -169,13 +210,15 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "") {
     const actor = state[actorName];
     const target = state[targetName];
     const action = actions[actorName];
-    if (actor.hp <= 0 || target.hp <= 0 || action === "guard") continue;
+    if (actor.hp <= 0 || target.hp <= 0 || action === "guard" || action === "item") continue;
 
     const crit = random() < critChance(actor.spd);
     const elem = elementMultiplier(actor.element, target.element);
-    const attack = action === "surge" ? actor.special : actor.atk;
+    const attack = action === "surge"
+      ? actor.special * (actor.special_mult || 1)
+      : actor.atk * (actor.atk_mult || 1);
     const defense = action === "surge" ? Math.trunc(target.def * 0.5) : target.def;
-    const damage = computeDamage({
+    let damage = computeDamage({
       attack,
       defense,
       power: action === "surge" ? 75 : 50,
@@ -184,6 +227,7 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "") {
       variance: 0.92 + random() * 0.16,
       guarding: target.guarding,
     });
+    damage = applyIncomingModifiers(target, damage);
     target.hp = Math.max(0, target.hp - damage);
     events.push({
       type: "attack",
@@ -232,7 +276,14 @@ function createFighter(input) {
     ...stats,
     hp: stats.max_hp,
     momentum: MOMENTUM_START,
+    momentum_max: MOMENTUM_MAX,
     guarding: false,
+    atk_mult: 1,
+    special_mult: 1,
+    incoming_mult: 1,
+    shield_charges: 0,
+    item_used: false,
+    item_id: "",
     element: normalizeElement(input?.element),
     species_key: String(input?.species_key ?? ""),
     color_bucket: String(input?.color_bucket ?? ""),
@@ -242,12 +293,49 @@ function createFighter(input) {
   };
 }
 
-function applyIntent(fighter, action) {
+function applyIntent(fighter, action, itemId = "") {
   if (action === "surge") fighter.momentum -= SURGE_COST;
   if (action === "guard") {
-    fighter.momentum = Math.min(MOMENTUM_MAX, fighter.momentum + 1);
+    fighter.momentum = Math.min(fighter.momentum_max || MOMENTUM_MAX, fighter.momentum + 1);
     fighter.guarding = true;
   }
+  if (action === "item") applyBattleItem(fighter, itemId);
+}
+
+function applyBattleItem(fighter, itemId) {
+  const item = catalogItem(itemId);
+  if (!item || item.use_type !== "battle") throw battleError("INVALID_ITEM");
+  fighter.item_used = true;
+  fighter.item_id = item.id;
+  const value = Number(item.effect_value) || 0;
+  if (item.effect === "heal_hp_pct") {
+    fighter.hp = Math.min(
+      fighter.max_hp,
+      fighter.hp + Math.trunc(fighter.max_hp * (value / 100)),
+    );
+  } else if (item.effect === "buff_atk") {
+    fighter.atk_mult = 1 + value / 100;
+  } else if (item.effect === "buff_special") {
+    fighter.special_mult = 1 + value / 100;
+  } else if (item.effect === "buff_guard") {
+    fighter.incoming_mult = 1 - value / 100;
+  } else if (item.effect === "buff_spd") {
+    fighter.spd = Math.max(1, Math.trunc(fighter.spd * (1 + value / 100)));
+  } else if (item.effect === "pp_boost") {
+    fighter.momentum_max = Math.min(5, (fighter.momentum_max || MOMENTUM_MAX) + value);
+    fighter.momentum = Math.min(fighter.momentum_max, fighter.momentum + value);
+  } else if (item.effect === "phase_shield") {
+    fighter.shield_charges = 1;
+  }
+}
+
+function applyIncomingModifiers(target, damage) {
+  let next = Math.max(1, Math.trunc(damage * (target.incoming_mult || 1)));
+  if ((target.shield_charges || 0) > 0) {
+    next = Math.max(1, Math.trunc(next * 0.2));
+    target.shield_charges -= 1;
+  }
+  return next;
 }
 
 function assertAffordable(fighter, action) {
@@ -264,6 +352,17 @@ function turnOrder(player, bot, random) {
 
 function guardEvent(actor, fighter) {
   return { type: "guard", actor, momentum: fighter.momentum };
+}
+
+function itemEvent(actor, fighter, itemId) {
+  return {
+    type: "item",
+    actor,
+    item_id: itemId,
+    hp: fighter.hp,
+    momentum: fighter.momentum,
+    momentum_max: fighter.momentum_max,
+  };
 }
 
 function battleError(code) {

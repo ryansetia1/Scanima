@@ -46,6 +46,7 @@ func _initialize() -> void:
 	_test_scan_selesai()
 	_test_kunci_care()
 	_test_kunci_battle()
+	_test_kunci_purchase()
 	_test_state_rusak()
 	_test_cache_art()
 	_test_cache_setengah()
@@ -219,10 +220,11 @@ func _test_scan_selesai() -> void:
 
 func _test_kunci_care() -> void:
 	print("5. aksi care bertahan sampai server mengonfirmasi")
-	var care: Dictionary = GameState.begin_care("anima-1", "feed")
+	var care: Dictionary = GameState.begin_care("anima-1", "feed", "ember_noodles")
 	var key := str(care.get("idempotency_key", ""))
 	_check(not key.is_empty(), "care harus punya idempotency key")
 	_check(key.length() <= 128, "key care harus muat batas server")
+	_check_eq(care.get("item_id"), "ember_noodles", "Feed pending harus membawa food_id")
 
 	# Hanya satu aksi boleh menggantung. Tap kedua sebelum jawaban harus memakai
 	# intent lama, bukan menimpa key dan berpotensi mendebit dua kali.
@@ -233,6 +235,7 @@ func _test_kunci_care() -> void:
 	_muat_ulang()
 	_check_eq(GameState.pending_care.get("idempotency_key"), key, "key care harus selamat dari restart")
 	_check_eq(GameState.pending_care.get("anima_id"), "anima-1", "anima care harus selamat dari restart")
+	_check_eq(GameState.pending_care.get("item_id"), "ember_noodles", "food_id care harus selamat dari restart")
 
 	GameState.finish_care()
 	_muat_ulang()
@@ -247,20 +250,23 @@ func _test_kunci_battle() -> void:
 	_check_eq(GameState.pending_battle.get("session_id"), "battle-1", "session Battle harus bertahan")
 	_check_eq(int(GameState.pending_battle.get("expected_turn")), 3, "turn server harus bertahan")
 
-	var turn: Dictionary = GameState.begin_battle_action("battle-1", 3, 7, "strike")
+	var turn: Dictionary = GameState.begin_battle_action("battle-1", 3, 7, "item", "vital_patch")
 	var key := str(turn.get("idempotency_key", ""))
 	_check(not key.is_empty(), "turn Battle harus punya idempotency key")
 	_check(key.length() <= 128, "key Battle harus muat batas server")
+	_check_eq(turn.get("item_id"), "vital_patch", "turn Item harus membawa item_id")
 
 	var kedua: Dictionary = GameState.begin_battle_action("battle-1", 3, 7, "guard")
 	_check_eq(kedua.get("idempotency_key"), key, "tap kedua tidak boleh mengganti key turn")
-	_check_eq(kedua.get("action"), "strike", "tap kedua tidak boleh mengganti action tertunda")
+	_check_eq(kedua.get("action"), "item", "tap kedua tidak boleh mengganti action tertunda")
+	_check_eq(kedua.get("item_id"), "vital_patch", "tap kedua tidak boleh mengganti item_id tertunda")
 	_muat_ulang()
 	_check_eq(
 		GameState.pending_battle.get("idempotency_key"),
 		key,
 		"timeout/restart harus me-replay key turn yang sama"
 	)
+	_check_eq(GameState.pending_battle.get("item_id"), "vital_patch", "item_id Battle harus selamat dari restart")
 
 	GameState.confirm_battle_response({
 		"id": "battle-1", "status": "active", "turn_number": 4, "version": 8,
@@ -281,8 +287,27 @@ func _test_kunci_battle() -> void:
 	_check_eq(GameState.uid(), "uid-abc", "menyelesaikan Battle tidak boleh menghapus sesi")
 
 
+func _test_kunci_purchase() -> void:
+	print("7. pembelian Shop bertahan sampai server mengonfirmasi")
+	var pending: Dictionary = GameState.begin_purchase("byte_berry", 2)
+	var key := str(pending.get("idempotency_key", ""))
+	_check(not key.is_empty(), "pembelian harus punya idempotency key")
+	_check_eq(pending.get("item_id"), "byte_berry", "pembelian harus membawa item_id")
+	_check_eq(int(pending.get("expected_price")), 2, "pembelian harus membawa harga yang dilihat pemain")
+	var kedua: Dictionary = GameState.begin_purchase("pulse_cell", 8)
+	_check_eq(kedua.get("idempotency_key"), key, "tap Buy kedua tidak boleh menimpa pending purchase")
+	_check_eq(kedua.get("item_id"), "byte_berry", "item pending harus tetap yang pertama")
+	_muat_ulang()
+	_check_eq(GameState.pending_purchase.get("idempotency_key"), key, "key pembelian harus selamat dari restart")
+	_check_eq(GameState.pending_purchase.get("item_id"), "byte_berry", "item_id pembelian harus selamat dari restart")
+	GameState.finish_purchase()
+	_muat_ulang()
+	_check(GameState.pending_purchase.is_empty(), "pembelian terkonfirmasi harus dihapus dari disk")
+	_check_eq(GameState.uid(), "uid-abc", "menyelesaikan pembelian tidak boleh menghapus sesi")
+
+
 func _test_state_rusak() -> void:
-	print("7. state.json rusak tidak menghapus apa pun (satu ERROR di bawah disengaja)")
+	print("8. state.json rusak tidak menghapus apa pun (satu ERROR di bawah disengaja)")
 	var file := FileAccess.open(PATH_UJI, FileAccess.WRITE)
 	file.store_string("{\"session\": {\"access_token\": \"akses")
 	file.close()

@@ -34,6 +34,7 @@ import {
   MOMENTUM_START,
   SURGE_COST,
   baseStatTotal,
+  battleRewardPreview,
   computeDamage,
   createBattleState,
   critChance,
@@ -45,6 +46,14 @@ import {
   growthMultiplier,
   formFromLevel,
 } from "../backend/supabase/functions/_shared/battle.mjs";
+import {
+  BATTLE_BITS_CAP,
+  CATALOG_ITEMS,
+  STARTER_BITS,
+  bitsForTier,
+  catalogItem,
+  rewardTierFromRatio,
+} from "../backend/supabase/functions/_shared/catalog.mjs";
 import { imageInputForModel } from "./run.mjs";
 
 const SIZE = DEFAULTS.workSize; // 1024, jadi tidak ada resize yang mengaburkan assert
@@ -726,8 +735,8 @@ console.log("19. tidak ada kredensial mahal di sumber client Godot");
   );
   const config = await readFile(new URL("../backend/supabase/config.toml", import.meta.url), "utf8");
   const careConfig = config.split("[functions.care_anima]")[1]?.split("\n[")[0] ?? "";
-  assert.ok(care.includes('ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon"])'),
-    "care_anima harus menerima summon supaya Collection bisa menidurkan companion lama");
+  assert.ok(care.includes('ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon", "use_item"])'),
+    "care_anima harus menerima summon dan use_item");
   assert.ok(!care.includes(".auth.getUser("), "care_anima tidak boleh mengembalikan round-trip getUser");
   assert.match(careConfig, /verify_jwt\s*=\s*true/, "gateway JWT care_anima harus tetap aktif");
   assert.ok(
@@ -1310,6 +1319,155 @@ console.log("26. prompt v8 mengunci kolom kiri agar tidak menoleh ke tengah shee
     evalRunner.includes('promptVersion: "v7"'),
     "eval default tetap v7 sampai v8 dipromosikan"
   );
+}
+
+console.log("27. katalog, reward tier, item Battle, dan sheet toko");
+{
+  assert.equal(STARTER_BITS, 50);
+  assert.equal(BATTLE_BITS_CAP, 100);
+  assert.equal(CATALOG_ITEMS.length, 18);
+  assert.equal(CATALOG_ITEMS.filter((item) => item.use_type === "food").length, 9);
+  assert.equal(CATALOG_ITEMS.filter((item) => item.use_type === "energy").length, 2);
+  assert.equal(CATALOG_ITEMS.filter((item) => item.use_type === "battle").length, 7);
+  assert.equal(rewardTierFromRatio(0.94), "favorable");
+  assert.equal(rewardTierFromRatio(0.95), "even");
+  assert.equal(rewardTierFromRatio(1.04), "even");
+  assert.equal(rewardTierFromRatio(1.05), "tough");
+  assert.equal(rewardTierFromRatio(1.09), "tough");
+  assert.equal(rewardTierFromRatio(1.1), "formidable");
+  assert.equal(bitsForTier("favorable", -1), 5);
+  assert.equal(bitsForTier("even", 0), 8);
+  assert.equal(bitsForTier("tough", 1), 12);
+  assert.equal(bitsForTier("formidable", 1), 16);
+
+  const twin = {
+    species_key: "twin",
+    color_bucket: "blue",
+    stage: 1,
+    element: "metal",
+    base_stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+  };
+  const evenPreview = battleRewardPreview(twin, twin, "reward-seed");
+  assert.equal(evenPreview.tier, "even");
+  assert.equal(evenPreview.bits, bitsForTier("even", evenPreview.roll));
+  assert.deepEqual(battleRewardPreview(twin, twin, "reward-seed"), evenPreview);
+
+  const weak = { ...twin, species_key: "weak", base_stats: { hp: 10, atk: 10, def: 10, spd: 10, special: 10 } };
+  const strong = { ...twin, species_key: "strong", base_stats: { hp: 95, atk: 95, def: 95, spd: 95, special: 95 } };
+  assert.equal(battleRewardPreview(strong, weak, "fav").tier, "favorable");
+  assert.equal(battleRewardPreview(weak, strong, "form").tier, "formidable");
+
+  const fighter = {
+    species_key: "item-player",
+    color_bucket: "blue",
+    stage: 1,
+    element: "metal",
+    base_stats: { hp: 50, atk: 50, def: 50, spd: 20, special: 50 },
+  };
+  const rival = {
+    species_key: "item-bot",
+    color_bucket: "green",
+    stage: 1,
+    element: "plant",
+    base_stats: { hp: 50, atk: 80, def: 50, spd: 50, special: 50 },
+  };
+
+  const hurt = createBattleState({ player: fighter, bot: rival, seed: "heal" });
+  hurt.player.hp = 100;
+  const healed = resolveTurn(hurt, "item", "heal-key", "vital_patch");
+  assert.equal(healed.events[0]?.type, "item");
+  assert.equal(healed.events[0].hp, 100 + Math.trunc(hurt.player.max_hp * 0.3));
+  assert.throws(() => resolveTurn(healed.state, "item", "second", "vital_patch"), /ITEM_ALREADY_USED/);
+
+  const power = resolveTurn(
+    createBattleState({ player: fighter, bot: rival, seed: "atk" }),
+    "item",
+    "atk-key",
+    "power_chip"
+  );
+  assert.equal(power.state.player.atk_mult, 1.35);
+
+  const lens = resolveTurn(
+    createBattleState({ player: fighter, bot: rival, seed: "spec" }),
+    "item",
+    "spec-key",
+    "surge_lens"
+  );
+  assert.equal(lens.state.player.special_mult, 1.35);
+
+  const aegis = resolveTurn(
+    createBattleState({ player: fighter, bot: rival, seed: "guard-item" }),
+    "item",
+    "aegis-key",
+    "aegis_plate"
+  );
+  assert.equal(aegis.state.player.incoming_mult, 0.75);
+
+  const coiled = resolveTurn(
+    createBattleState({
+      player: { ...fighter, base_stats: { ...fighter.base_stats, spd: 40 } },
+      bot: rival,
+      seed: "spd",
+    }),
+    "item",
+    "coil-key",
+    "tempo_coil"
+  );
+  assert.equal(coiled.state.player.spd, Math.trunc(40 * 1.4));
+  const afterCoil = resolveTurn(coiled.state, "strike", "after-coil");
+  assert.equal(
+    afterCoil.events.find((event) => event.type === "attack")?.actor,
+    "player",
+    "Tempo Coil harus membalik initiative sebelum serangan"
+  );
+
+  const capsule = resolveTurn(
+    createBattleState({ player: fighter, bot: rival, seed: "pp" }),
+    "item",
+    "pp-key",
+    "pp_capsule"
+  );
+  assert.equal(capsule.state.player.momentum_max, 5);
+  assert.equal(capsule.state.player.momentum, 5);
+  assert.equal(catalogItem("pp_capsule").effect_value, 2);
+
+  const strikeState = createBattleState({ player: fighter, bot: rival, seed: "shield-cmp" });
+  const shieldState = createBattleState({ player: fighter, bot: rival, seed: "shield-cmp" });
+  const struck = resolveTurn(strikeState, "strike", "same-key");
+  const shielded = resolveTurn(shieldState, "item", "same-key", "phase_shield");
+  const botStrike = struck.events.find((event) => event.type === "attack" && event.actor === "bot");
+  const botShielded = shielded.events.find((event) => event.type === "attack" && event.actor === "bot");
+  assert.equal(shielded.events[0]?.type, "item");
+  assert.ok(botStrike && botShielded, "bot tetap menyerang saat pemain memakai item");
+  assert.equal(botShielded.damage, Math.max(1, Math.trunc(botStrike.damage * 0.2)));
+  assert.equal(shielded.state.player.shield_charges, 0);
+
+  assert.throws(() => resolveTurn(createBattleState({ player: fighter, bot: rival, seed: "food" }), "item", "bad", "byte_berry"), /INVALID_ITEM/);
+
+  const { readFile } = await import("node:fs/promises");
+  for (const name of ["food_sheet.png", "item_sheet.png"]) {
+    const png = await readFile(new URL(`../game/assets/catalog/${name}`, import.meta.url));
+    const img = await Image.decode(png);
+    assert.equal(img.width, 1024, `${name} harus 1024 lebar`);
+    assert.equal(img.height, 1024, `${name} harus 1024 tinggi`);
+    const cell = Math.floor(1024 / 3);
+    for (let index = 0; index < 9; index += 1) {
+      const col = index % 3;
+      const row = Math.trunc(index / 3);
+      let filled = 0;
+      for (let y = 0; y < cell; y += 1) {
+        for (let x = 0; x < cell; x += 1) {
+          const o = ((row * cell + y) * img.width + (col * cell + x)) * 4;
+          const r = img.bitmap[o];
+          const g = img.bitmap[o + 1];
+          const b = img.bitmap[o + 2];
+          const a = img.bitmap[o + 3];
+          if (a > 0 && !isKeyColor(r, g, b)) filled += 1;
+        }
+      }
+      assert.ok(filled > 200, `${name} sel ${index} harus berisi ikon`);
+    }
+  }
 }
 
 // Menulis sheet hasil pipeline ke folder, untuk dibaca sisi Godot. Ini yang

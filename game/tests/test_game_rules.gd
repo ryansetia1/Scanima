@@ -46,6 +46,12 @@ func _initialize() -> void:
 	_check_eq(CareRules.BATTLE_MIN_HUNGER, 40.0, "Battle menolak Hunger di bawah pose Hungry")
 	_check(CareRules.is_hungry({"hunger": 39.0}), "Hunger 39 lapar")
 	_check(not CareRules.is_hungry({"hunger": 40.0}), "Hunger 40 siap Battle")
+	_check(CareRules.need_is_low({"hunger": 39.0}, "hunger"), "Hunger di bawah pose Hungry menandai panel")
+	_check(not CareRules.need_is_low({"hunger": 40.0}, "hunger"), "Hunger 40 tidak menandai panel")
+	_check(CareRules.need_is_low({"hygiene": 49.0}, "hygiene"), "Hygiene di bawah pose Dirty menandai panel")
+	_check(not CareRules.need_is_low({"hygiene": 50.0}, "hygiene"), "Hygiene 50 tidak menandai panel")
+	_check(CareRules.need_is_low({"energy": 19.0}, "energy"), "Energy di bawah biaya Battle menandai panel")
+	_check(not CareRules.need_is_low({"energy": 20.0}, "energy"), "Energy 20 tidak menandai panel")
 	_check_eq(CareRules.level_from_exp(0), 1, "0 EXP adalah Lv 1")
 	_check_eq(CareRules.level_from_exp(4), 1, "4 EXP masih Lv 1")
 	_check_eq(CareRules.level_from_exp(5), 2, "5 EXP adalah Lv 2")
@@ -81,8 +87,11 @@ func _initialize() -> void:
 	_check(absf(bench_full["energy"] - 100.0) < 0.1, "tidur Collection tiga jam mengisi penuh")
 
 	print("5. EXP, Dormant, dan gerbang aksi")
-	_check_eq(CareRules.score_for_action("feed", {"hunger": 39}), 3, "Feed lapar memberi score")
+	_check_eq(CareRules.score_for_action("feed", {"hunger": 39}), 3, "Feed lapar dengan restore default memberi score")
 	_check_eq(CareRules.score_for_action("feed", {"hunger": 40}), 0, "Feed Hunger 40 tidak memberi score")
+	_check_eq(CareRules.score_for_action("feed", {"hunger": 0}, 0, 10), 0, "Byte Berry dari 0 tidak menyeberang 40")
+	_check_eq(CareRules.score_for_action("feed", {"hunger": 0}, 0, 45), 3, "Ember Noodles dari 0 menyeberang 40")
+	_check_eq(CareRules.score_for_action("feed", {"hunger": 35}, 0, 10), 3, "restore kecil tetap +3 saat menyeberang 40")
 	_check_eq(CareRules.score_for_action("clean", {"hygiene": 49}), 3, "Clean kotor memberi score")
 	_check_eq(CareRules.score_for_action("clean", {"hygiene": 50}), 0, "Clean Hygiene 50 tidak memberi score")
 	_check_eq(CareRules.score_for_action("play", {}, 4), 1, "Play kelima memberi score")
@@ -146,6 +155,11 @@ func _initialize() -> void:
 	_check(
 		BATTLE_EVENT.normalized({"type": "reward", "bits": 999}).is_empty(),
 		"client tidak menerima event reward buatan sebagai combat event"
+	)
+	_check_eq(
+		BATTLE_EVENT.normalized({"type": "item", "actor": "player", "item_id": "vital_patch"}).get("type"),
+		"item",
+		"event item server yang sah diterima"
 	)
 
 	print("5. pose visual mengikuti Sleep, Dormant, lalu kebutuhan")

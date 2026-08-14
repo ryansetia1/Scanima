@@ -32,32 +32,28 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
 
 ## Tanggung jawab destination
 
-- **Home:** identity, Level, kebutuhan, bar EXP, Feed/Clean/Sleep/Play.
+- **Home:** identity, Level, kebutuhan, bar EXP, dan Feed/Clean/Sleep/Play.
   Play tidak terkunci Bond; saat tidur hanya Wake yang tampil selebar dock.
+  **Shop** seukuran chip Bits dan menempel tepat di bawahnya; baris HUD Animas/Cores/Bits tetap satu.
   Tanpa roster, Home membedakan Loading/Error/Empty dan memberi CTA first scan.
   Tap tepat pada sprite memberi reaksi lokal sesuai awake/Sleep/Dormant tanpa
   mengubah care atau mengirim request.
 - **Scan:** penjelasan discovery, preview foto, dua fase status, CTA kamera.
-- **Battle:** lobby Anima aktif, dua fighter, HP/PP, Attack/Special/Guard,
+- **Battle:** lobby Anima aktif, dua fighter, HP/PP, Attack/Special/Guard/Item,
   ordered event feedback, result/retry, dan forfeit. Counter PP hidup **hanya** di
   tombol Special, di tempat pemain membelanjakannya; label header yang dulu
   mengulanginya sudah dihapus. Saat duel aktif, judul halaman hanya milik lobby;
   status turn/reward, Forfeit, dan satu fighter HUD versus menjadi combat visor
   yang mengambang di dalam arena. HUD tidak memakai panel terpisah per monster:
   identity dan bar HP dicerminkan ke tengah, dengan angka `current / max` di atas
-  tiap bar. Footer tinggal satu baris feedback dan tiga aksi,
+  tiap bar. Footer tinggal satu baris feedback dan empat aksi 96px,
   sedangkan result membesar ke atas tanpa menggeser arena. Ini memberi sprite
   ruang utama tanpa mengecilkan target sentuh 96px. Kedua meter HP terkuras dari tepi luar layar ke
   dalam seperti Street Fighter — bar pemain `FILL_END_TO_BEGIN`, bar bot
   `FILL_BEGIN_TO_END` — sehingga sisa HP selalu memeluk tengah arena. Status row
-  menampilkan reward harian authoritative (`Rewards 2/3`) hanya selama Battle
-  berhadiah. Training menyembunyikan counter itu karena Training tidak terbatas;
-  feedback singkat tetap menjelaskan bahwa daily reward sudah selesai. Lobby memakai satu CTA kontekstual: `Battle` saat
-  reward tersedia, `Train` setelah 3/3; copy di bawahnya menjelaskan bahwa Bits,
-  Care Score, dan Battle Wins tidak diberikan serta reset terjadi 00:00 waktu setempat.
-  Kemenangan ketiga tetap `Rewards 3/3`, sedangkan hasil Training memakai title,
-  body, dan `Train Again` khusus agar pemain tidak dijanjikan reward yang tidak
-  di-credit server. Client refresh dari `server_now`/`reset_at` saat timer atau
+  menampilkan `Progress x/3 · Bits x/100` plus tier lawan. Sesudah 3/3 CTA menjadi
+  `Train` dengan copy Bits-only sampai cap 100; sesudah 100/100 Training nol hadiah.
+  Kemenangan ketiga tetap result Battle berhadiah (`Progress 3/3`). Client refresh dari `server_now`/`reset_at` saat timer atau
   app resume, bukan dari jam device.
 - **Collection:** roster dua kolom; tap langsung membuka bottom sheet identity +
   base stats. Condition memakai skeleton sampai care authoritative tersedia,
@@ -99,7 +95,9 @@ path, atau prose internal server kepada pemain.
 untuk body dan Oxanium untuk display. Locale dengan script yang belum dicakup
 font ini memakai system fallback yang aktif di import setting; font locale khusus
 bisa ditambahkan ke Theme tanpa mengubah komponen UI. Asset font memakai OFL;
-ikon Lucide memakai ISC dan lisensinya disimpan bersama asset.
+ikon Lucide memakai ISC dan lisensinya disimpan bersama asset. Panel kebutuhan
+Home memakai `NeedChipLow` (bingkai merah Danger) pada ambang pose/Battle yang
+sama, tanpa warna meter baru.
 
 Target minimum touch adalah 96 unit pada basis 720×1280. Layout memakai
 Container/anchor dan safe-area conversion milik `scan_flow.gd`; jangan mengunci

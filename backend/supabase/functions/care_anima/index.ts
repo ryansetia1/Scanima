@@ -6,8 +6,9 @@
 
 import { adminClient, json, syncProfileTimezone } from "../_shared/supa.ts";
 
-const ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon"]);
-const MUTATING = new Set(["feed", "clean", "sleep", "wake", "play", "summon"]);
+const ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon", "use_item"]);
+const MUTATING = new Set(["feed", "clean", "sleep", "wake", "play", "summon", "use_item"]);
+const ITEM_RE = /^[a-z][a-z0-9_]{1,62}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const ERROR_STATUS: Record<string, number> = {
@@ -18,7 +19,11 @@ const ERROR_STATUS: Record<string, number> = {
   ANIMA_NOT_READY: 409,
   NO_PROFILE: 404,
   NO_BITS: 409,
+  NO_ITEM: 409,
   NO_ENERGY: 409,
+  INVALID_ITEM: 400,
+  PRICE_CHANGED: 409,
+  STACK_FULL: 409,
   BOND_FULL: 409,
   NEED_FULL: 409,
   ALREADY_SLEEPING: 409,
@@ -29,6 +34,7 @@ type CareBody = {
   anima_id?: unknown;
   action?: unknown;
   idempotency_key?: unknown;
+  item_id?: unknown;
   timezone_offset_minutes?: unknown;
 };
 
@@ -53,21 +59,28 @@ Deno.serve(async (req) => {
   const animaId = typeof body.anima_id === "string" ? body.anima_id : "";
   const action = typeof body.action === "string" ? body.action : "";
   const key = typeof body.idempotency_key === "string" ? body.idempotency_key : null;
+  const itemId = typeof body.item_id === "string" ? body.item_id : "";
 
   if (!UUID_RE.test(animaId)) return json(400, { error: "anima_id tidak sah" });
   if (!ACTIONS.has(action)) return json(400, { error: "action tidak dikenal" });
   if (MUTATING.has(action) && (!key || key.length > 128)) {
     return json(400, { error: "idempotency_key wajib, maks 128 char" });
   }
+  if ((action === "feed" || action === "use_item") && !ITEM_RE.test(itemId)) {
+    return json(400, { error: "INVALID_ITEM" });
+  }
 
   await syncProfileTimezone(db, ownerId, body.timezone_offset_minutes);
 
-  const { data, error } = await db.rpc("apply_care", {
+  const payload: Record<string, unknown> = {
     p_owner: ownerId,
     p_anima_id: animaId,
     p_action: action,
     p_key: key,
-  });
+  };
+  if (action === "feed" || action === "use_item") payload.p_item_id = itemId;
+
+  const { data, error } = await db.rpc("apply_care", payload);
 
   if (error) {
     const marker = Object.keys(ERROR_STATUS).find((candidate) => error.message.includes(candidate));

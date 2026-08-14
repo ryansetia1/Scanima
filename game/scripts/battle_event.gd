@@ -7,7 +7,7 @@ static func normalized(value: Variant) -> Dictionary:
 		return {}
 	var event: Dictionary = value
 	var event_type := str(event.get("type", ""))
-	if event_type not in ["guard", "attack", "knockout", "timeout", "finished"]:
+	if event_type not in ["guard", "attack", "knockout", "timeout", "finished", "item"]:
 		return {}
 	if event_type in ["guard", "attack", "knockout"]:
 		var actor := str(event.get("actor", ""))

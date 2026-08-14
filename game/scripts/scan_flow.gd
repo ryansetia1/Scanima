@@ -41,6 +41,7 @@ const BASE_MARGIN := 32.0
 const HUD_TOP_PAD := 24.0
 const TOAST_GAP := 8.0
 const TOAST_MIN_HEIGHT := 76.0
+const SHOP_GAP := 6.0
 const SLEEP_SYNC_RETRY_SEC := 30.0
 const SLEEP_SYNC_EPSILON_SEC := 1.0
 const STAT_ORDER := ["hp", "atk", "def", "spd", "special"]
@@ -63,8 +64,10 @@ const STAT_LABEL_KEYS := {
 @onready var _top_hud: PanelContainer = %TopHud
 @onready var _animas_chip = %AnimasChip
 @onready var _cores_chip = %CoresChip
-@onready var _bits_chip = %BitsChip
+@onready var _bits_chip: ResourceChip = %BitsChip
+@onready var _shop_button: ResourceChip = %ShopButton
 @onready var _shell_modal = %ShellModal
+@onready var _shop_sheet = %ShopSheet
 @onready var _home_view: HomeView = %HomeView
 @onready var _scan_view: ScanView = %ScanView
 @onready var _battle_view = %BattleView
@@ -77,6 +80,8 @@ const STAT_LABEL_KEYS := {
 
 var _busy := false
 var _roster: Array[Dictionary] = []
+var _catalog: Array = []
+var _inventory: Array = []
 var _current_anima: Dictionary = {}
 var _profile_anima: Dictionary = {}
 var _roster_error := ""
@@ -110,6 +115,7 @@ func _ready() -> void:
 	_scan_view.scan_requested.connect(_on_pick_pressed)
 	_battle_view.start_requested.connect(_start_battle)
 	_battle_view.action_requested.connect(_battle_action_requested)
+	_battle_view.item_picker_requested.connect(_open_battle_item_picker)
 	_battle_view.resume_requested.connect(_retry_battle)
 	_battle_view.forfeit_requested.connect(_forfeit_battle)
 	_battle_view.reward_status_refresh_requested.connect(_refresh_battle_reward_status)
@@ -128,9 +134,13 @@ func _ready() -> void:
 	_bottom_nav.destination_selected.connect(_switch_destination)
 	_shell_modal.confirmed.connect(_modal_confirmed)
 	_shell_modal.canceled.connect(_modal_canceled)
+	_shop_sheet.buy_requested.connect(_buy_catalog_item)
+	_shop_sheet.use_requested.connect(_use_catalog_item)
+	_shop_sheet.shop_cta_requested.connect(_open_shop_from_empty)
 	_animas_chip.pressed.connect(_open_collection)
 	_cores_chip.pressed.connect(_show_core_info)
 	_bits_chip.pressed.connect(_show_bits_info)
+	_shop_button.pressed.connect(_open_shop)
 	LocaleManager.locale_changed.connect(_refresh_localized_ui)
 	_configure_resource_chips()
 	_dialog.file_selected.connect(_scan_file)
@@ -138,6 +148,7 @@ func _ready() -> void:
 	_layout_for_viewport()
 	await get_tree().process_frame
 	UiJuice.install_buttons(self)
+	_place_shop()
 	UiJuice.reveal(_top_hud, 0.02)
 	UiJuice.reveal(_home_view, 0.08)
 	UiJuice.reveal(_bottom_nav, 0.14)
@@ -257,11 +268,14 @@ func _boot() -> void:
 		return
 
 	await Backend.fetch_profile()
+	await _refresh_catalog()
 	_refresh_header()
 	var roster_loaded := await _reload_roster()
 	if not GameState.pending_care.is_empty():
 		_say(tr("STATUS_RESUMING_CARE"))
 		await _resume_pending_care()
+	if not GameState.pending_purchase.is_empty():
+		await _resume_pending_purchase()
 	_set_busy(false)
 
 	# Scan yang tertinggal dari sesi sebelumnya dilanjutkan, bukan dibuang. Core-nya
@@ -632,16 +646,19 @@ func _perform_care(action: String) -> void:
 	if not GameState.pending_care.is_empty():
 		_say(tr("ERROR_CARE_PENDING"), true)
 		return
+	if action == "feed":
+		_open_feed_picker()
+		return
+	await _commit_care(action)
 
+
+func _commit_care(action: String, item_id: String = "") -> void:
 	var anima_id := str(_current_anima.get("id", ""))
 	if anima_id.is_empty():
 		return
-
-	# Reaksi ini menyatakan intent pemain, bukan hasil transaksi. Meter, Bits,
-	# sleep, dan care_score tetap menunggu row authoritative dari server.
 	_home_view.set_busy(true)
-	var pending := GameState.begin_care(anima_id, action)
-	_anima.care_feedback(action)
+	var pending := GameState.begin_care(anima_id, action, item_id)
+	_anima.care_feedback("feed" if action == "use_item" else action)
 	await _send_pending_care(pending, true)
 	_home_view.set_busy(_busy)
 
@@ -658,10 +675,12 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> bool:
 	var res := await Backend.care_anima(
 		str(pending.get("anima_id", "")),
 		action,
-		str(pending.get("idempotency_key", ""))
+		str(pending.get("idempotency_key", "")),
+		str(pending.get("item_id", ""))
 	)
 	if res.ok:
 		GameState.finish_care()
+		await _refresh_catalog()
 		if _apply_care_response(GameState.as_dict(res.data)):
 			if show_feedback and not _level_up_banner.visible:
 				_say(_care_success_message(action), show_feedback)
@@ -732,6 +751,8 @@ func _care_success_message(action: String) -> String:
 	match action:
 		"feed":
 			return tr("FEEDBACK_FEED")
+		"use_item":
+			return tr("FEEDBACK_ENERGY_ITEM")
 		"clean":
 			return tr("FEEDBACK_CLEAN")
 		"play":
@@ -750,6 +771,14 @@ func _care_error_message(error: String) -> String:
 	match error:
 		"NO_BITS":
 			return tr("ERROR_NO_BITS")
+		"NO_ITEM":
+			return tr("ERROR_NO_ITEM")
+		"INVALID_ITEM":
+			return tr("ERROR_INVALID_ITEM")
+		"PRICE_CHANGED":
+			return tr("ERROR_PRICE_CHANGED")
+		"STACK_FULL":
+			return tr("ERROR_STACK_FULL")
 		"NO_ENERGY":
 			return tr("ERROR_NO_ENERGY")
 		"NEED_FULL":
@@ -900,13 +929,17 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 	_battle_reward_revision += 1
 	_battle_view.begin_action(str(pending.get("action", "")))
 	_set_busy(true)
-	var res := await Backend.battle_anima("turn", {
+	var payload := {
 		"session_id": str(pending.get("session_id", "")),
 		"expected_turn": int(pending.get("expected_turn", 1)),
 		"expected_version": int(pending.get("expected_version", 1)),
 		"action": str(pending.get("action", "")),
 		"idempotency_key": str(pending.get("idempotency_key", "")),
-	})
+	}
+	var item_id := str(pending.get("item_id", ""))
+	if str(pending.get("action", "")) == "item" and not item_id.is_empty():
+		payload["item_id"] = item_id
+	var res := await Backend.battle_anima("turn", payload)
 	if not res.ok:
 		if res.error == "STALE_BATTLE" or res.error == "BATTLE_FINISHED":
 			_set_busy(false)
@@ -926,6 +959,7 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 
 	var data := GameState.as_dict(res.data)
 	var next_session := GameState.as_dict(data.get("session"))
+	next_session["last_reward"] = GameState.as_dict(data.get("reward"))
 	var events: Array = data.get("events", []) if typeof(data.get("events")) == TYPE_ARRAY else []
 	if next_session.is_empty():
 		_battle_view.set_error("BATTLE_NOT_FOUND")
@@ -933,6 +967,7 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 		return
 	await _battle_view.play_events(events, next_session)
 	GameState.confirm_battle_response(next_session)
+	await _refresh_catalog()
 	await _apply_battle_reward(GameState.as_dict(data.get("reward")), next_session)
 	_set_busy(false)
 
@@ -1601,6 +1636,7 @@ func _layout_for_viewport() -> void:
 			)
 
 	_apply_margins(_safe_margin, insets, BASE_MARGIN, HUD_TOP_PAD)
+	_place_shop()
 	_place_toast(insets)
 	_stage.position = stage_position_for(viewport_size, insets)
 
@@ -1716,6 +1752,99 @@ func _show_core_info() -> void:
 	)
 
 
+func _open_shop(tab: String = "food") -> void:
+	if _shop_sheet.is_shop_open() and tab == "food":
+		return
+	_shop_sheet.set_catalog(_catalog, _inventory)
+	_shop_sheet.open_shop(tab)
+
+
+func _open_shop_from_empty() -> void:
+	_open_shop("item" if _shop_sheet.prefers_item_tab() else "food")
+
+
+func _open_feed_picker() -> void:
+	_shop_sheet.set_catalog(_catalog, _inventory)
+	_shop_sheet.open_feed()
+
+
+func _open_battle_item_picker() -> void:
+	_shop_sheet.set_catalog(_catalog, _inventory)
+	_shop_sheet.open_battle()
+
+
+func _buy_catalog_item(item: Dictionary) -> void:
+	if _busy or not GameState.pending_purchase.is_empty():
+		return
+	var pending := GameState.begin_purchase(str(item.get("id", "")), int(item.get("price", 0)))
+	await _send_pending_purchase(pending)
+
+
+func _use_catalog_item(item: Dictionary) -> void:
+	_shop_sheet.close()
+	if Catalog.is_food(item):
+		await _commit_care("feed", str(item.get("id", "")))
+		return
+	if Catalog.is_energy(item):
+		await _commit_care("use_item", str(item.get("id", "")))
+		return
+	if Catalog.is_battle(item):
+		if _busy:
+			return
+		var session: Dictionary = _battle_view.session_data()
+		if session.is_empty() or str(session.get("status", "")) != "active":
+			return
+		var pending := GameState.begin_battle_action(
+			str(session.get("id", "")),
+			int(session.get("turn_number", 1)),
+			int(session.get("version", 1)),
+			"item",
+			str(item.get("id", ""))
+		)
+		await _submit_pending_battle(pending)
+
+
+func _resume_pending_purchase() -> void:
+	var pending := GameState.pending_purchase.duplicate(true)
+	if pending.is_empty():
+		return
+	await _send_pending_purchase(pending)
+
+
+func _send_pending_purchase(pending: Dictionary) -> void:
+	_shop_sheet.set_busy(true)
+	var res := await Backend.purchase_item(
+		str(pending.get("item_id", "")),
+		int(pending.get("expected_price", 0)),
+		str(pending.get("idempotency_key", ""))
+	)
+	_shop_sheet.set_busy(false)
+	if res.ok:
+		GameState.finish_purchase()
+		var data := GameState.as_dict(res.data)
+		if data.has("bits"):
+			GameState.profile["bits"] = int(data.get("bits", 0))
+			_refresh_header()
+		await _refresh_catalog()
+		_shop_sheet.set_catalog(_catalog, _inventory)
+		_say(tr("FEEDBACK_PURCHASE"))
+		return
+	if res.code >= 400 and res.code < 500:
+		GameState.finish_purchase()
+	_say(_care_error_message(str(res.error)), true)
+
+
+func _refresh_catalog() -> void:
+	var catalog_res := await Backend.fetch_catalog()
+	if catalog_res.ok and typeof(catalog_res.data) == TYPE_ARRAY:
+		_catalog = catalog_res.data
+	var inventory_res := await Backend.fetch_inventory()
+	if inventory_res.ok and typeof(inventory_res.data) == TYPE_ARRAY:
+		_inventory = inventory_res.data
+	if is_instance_valid(_shop_sheet):
+		_shop_sheet.set_catalog(_catalog, _inventory)
+
+
 func _show_bits_info() -> void:
 	_modal_context = &"bits_info"
 	_shell_modal.open_info(
@@ -1736,6 +1865,9 @@ func _configure_resource_chips() -> void:
 	_cores_chip.set_interactive(true, tr("CORE_INFO_TITLE"))
 	_bits_chip.set_name_text(tr("RESOURCE_BITS"))
 	_bits_chip.set_interactive(true, tr("BITS_INFO_TITLE"))
+	_shop_button.set_value_text(tr("SHOP_OPEN"))
+	_shop_button.set_name_text("")
+	_shop_button.set_interactive(true, tr("SHOP_OPEN"))
 
 
 # ---------------------------------------------------------------- UI kecil
@@ -1927,6 +2059,9 @@ func _set_busy(busy: bool) -> void:
 	_collection_view.set_busy(busy)
 	_details_view.set_busy(busy)
 	_bottom_nav.set_busy(busy, _details_available())
+	_shop_button.set_interactive(not busy, tr("SHOP_OPEN"))
+	if is_instance_valid(_shop_sheet):
+		_shop_sheet.set_busy(busy)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -1939,6 +2074,9 @@ func _unhandled_input(event: InputEvent) -> void:
 func _handle_back(allow_quit: bool) -> bool:
 	if is_instance_valid(_shell_modal) and _shell_modal.visible:
 		_shell_modal.request_cancel()
+		return true
+	if is_instance_valid(_shop_sheet) and _shop_sheet.visible:
+		_shop_sheet.close()
 		return true
 	if _collection_view.is_sheet_open():
 		_collection_view.close_sheet()
@@ -1958,10 +2096,28 @@ func _cores_remaining() -> int:
 	return int(GameState.profile.get("genesis_cores", 0))
 
 
+func _place_shop() -> void:
+	if not is_instance_valid(_shop_button) or not is_instance_valid(_bits_chip) or not is_instance_valid(_top_hud):
+		return
+	var bits: Rect2 = _bits_chip.get_global_rect()
+	var hud: Rect2 = _top_hud.get_global_rect()
+	if bits.size.x <= 0.0 or hud.size.y <= 0.0:
+		return
+	var parent := _shop_button.get_parent() as Control
+	if parent == null:
+		return
+	var to_local := parent.get_global_transform_with_canvas().affine_inverse()
+	var origin: Vector2 = to_local * Vector2(bits.position.x, hud.position.y + hud.size.y)
+	_shop_button.position = origin + Vector2(0.0, SHOP_GAP)
+	_shop_button.size = bits.size
+
+
 func _place_toast(insets: Vector4) -> void:
 	if not is_instance_valid(_status_panel) or not is_instance_valid(_top_hud):
 		return
-	var top := HUD_TOP_PAD + insets.y + _top_hud.custom_minimum_size.y + TOAST_GAP
+	var hud_h := maxf(_top_hud.size.y, _top_hud.get_combined_minimum_size().y)
+	var shop_h := _shop_button.get_combined_minimum_size().y if is_instance_valid(_shop_button) else 0.0
+	var top := HUD_TOP_PAD + insets.y + hud_h + SHOP_GAP + shop_h + TOAST_GAP
 	var height := maxf(TOAST_MIN_HEIGHT, _status_panel.get_combined_minimum_size().y)
 	_status_panel.offset_top = top
 	_status_panel.offset_bottom = top + height
@@ -2138,7 +2294,17 @@ func _run_battle_demo(
 			"limit": 3,
 			"remaining": 0 if training or status == "won" else 1,
 			"rewarded": status == "won" and not training,
+			"bits_earned": 100 if training and status == "won" else (24 if status == "won" else 8),
+			"bits_limit": 100,
+			"bits_remaining": 0 if training and status == "won" else 76,
 		},
+		"last_reward": {
+			"bits": 0 if training else 8,
+			"care_score": 0 if training else 4,
+			"battle_wins": 0 if training else 1,
+		},
+		"reward_tier": "even",
+		"reward_bits": 8,
 		"state": {
 			"status": status,
 			"player": {"hp": 162, "max_hp": 240, "momentum": 2},

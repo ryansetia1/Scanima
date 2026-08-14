@@ -110,6 +110,8 @@ sequenceDiagram
 | `create_anima` | Vision, cek pustaka, lalu klaim Core hanya bila spesies baru | Menunggu gambar selesai (harus balik cepat) |
 | `replicate_webhook` | Post-processing gambar, isi cache, tandai ready | Dipercaya tanpa verifikasi signature |
 | `care_anima` | Verifikasi JWT, teruskan aksi care idempoten ke transaksi Postgres | Menerima `owner_id` dari client atau memanggil model |
+| `battle_anima` | Start/resume/turn/forfeit; hitung formula; commit session | Menerima HP baru atau klaim kemenangan dari client |
+| `shop` | Verifikasi JWT, debit Bits, upsert inventory, replay receipt | Dipanggil lewat RPC `purchase_catalog_item` dari client |
 | `evolve_anima` | Generation stage berikutnya pakai sprite lama sebagai input | Dipanggil tanpa cek syarat evolusi di server |
 | Postgres | Sumber kebenaran untuk kuota, stat, kepemilikan | Menyimpan foto mentah |
 | Storage | Foto sementara, sheet RGBA, manifest | Menyimpan foto lebih dari 24 jam |
@@ -252,7 +254,7 @@ create table battle_turns (
   session_id       uuid not null references battle_sessions on delete cascade,
   turn_number      int not null,
   idempotency_key  text not null,
-  action           text not null,         -- strike|surge|guard
+  action           text not null,         -- strike|surge|guard|item
   response         jsonb not null,        -- event log authoritative untuk replay
   created_at       timestamptz not null default now(),
   unique (session_id, turn_number),
@@ -273,11 +275,42 @@ create table pending_discoveries (
   claimed_at    timestamptz,
   unique (owner_id, species_key, color_bucket)
 );
+
+create table catalog_items (
+  id            text primary key,
+  kind          text not null,            -- food|item
+  use_type      text not null,            -- food|energy|battle
+  name_key      text not null,
+  price         int not null,
+  effect        text not null,
+  effect_value  numeric not null,
+  sprite_sheet  text not null,            -- food|item
+  sprite_index  smallint not null,        -- 0..8
+  active        boolean not null default true
+);
+
+create table player_inventory (
+  owner_id   uuid not null references profiles on delete cascade,
+  item_id    text not null references catalog_items,
+  quantity   int not null,                -- 0..999
+  updated_at timestamptz not null default now(),
+  primary key (owner_id, item_id)
+);
+
+create table shop_purchases (
+  id               uuid primary key default gen_random_uuid(),
+  owner_id         uuid not null references profiles on delete cascade,
+  item_id          text not null references catalog_items,
+  price            int not null,
+  idempotency_key  text not null,
+  created_at       timestamptz not null default now(),
+  unique (owner_id, idempotency_key)
+);
 ```
 
 ### Row Level Security
 
-RLS aktif di semua tabel. Pemain hanya bisa membaca miliknya sendiri dan **tidak bisa menulis apa pun yang berhubungan dengan kuota** — itu hak Edge Function lewat service role. `battle_sessions` dan `battle_turns` sengaja tidak punya policy sama sekali: client bahkan tidak membaca state internal lewat PostgREST; semua akses melewati `battle_anima`.
+RLS aktif di semua tabel. Pemain hanya bisa membaca miliknya sendiri dan **tidak bisa menulis apa pun yang berhubungan dengan kuota** — itu hak Edge Function lewat service role. `battle_sessions`, `battle_turns`, dan `shop_purchases` sengaja tidak punya policy sama sekali: client bahkan tidak membaca receipt pembelian atau state internal lewat PostgREST. Katalog `catalog_items` dan `player_inventory` SELECT-only; pembelian lewat `shop`.
 
 Bentuk yang benar-benar ter-apply ada di [`backend/supabase/migrations/20260812172744_rls_and_guards.sql`](../backend/supabase/migrations/20260812172744_rls_and_guards.sql). Blok di bawah adalah rancangannya, dan empat hal berubah saat implementasi karena rancangan ini kurang ketat:
 
@@ -347,9 +380,9 @@ create trigger guard_profiles before update on profiles
 
 Dua detail di trigger itu berbeda dari rancangan awal dan keduanya penting. Ia memeriksa `current_role`, bukan `request.jwt.claim.role`, karena klaim JWT adalah data request yang bisa hilang atau dipalsukan konteksnya sementara peran koneksi tidak. Dan ia berupa whitelist: daftar kolom mata uang yang harus diingat manusia adalah daftar yang cepat atau lambat ketinggalan satu kolom.
 
-Aksi perawatan **tidak lagi client-writable**. Begitu Feed/Clean memakai Bits dan semua aksi bisa menaikkan `care_score`, kebutuhan ikut menjadi bagian transaksi ekonomi. Hak UPDATE client pada `animas` sekarang hanya `nickname`; `care`, `care_synced_at`, sleep, counter harian, Dormant, dan `care_score` hanya berubah lewat `apply_care()` service-role.
+Aksi perawatan **tidak lagi client-writable**. Feed memakai inventory, Clean memakai Bits, dan semua aksi bisa menaikkan `care_score`, jadi kebutuhan ikut menjadi bagian transaksi ekonomi. Hak UPDATE client pada `animas` sekarang hanya `nickname`; `care`, `care_synced_at`, sleep, counter harian, Dormant, dan `care_score` hanya berubah lewat `apply_care()` service-role.
 
-RPC itu mengunci row Anima + profil, menghitung decay lebih dulu, mendebit Bits dan menulis `quota_ledger`, lalu menulis satu `care_events` untuk idempotency—semuanya satu transaksi. Edge Function `care_anima` memverifikasi JWT dan selalu menurunkan `owner_id` dari user terverifikasi, bukan body client. Timeout/app kill aman karena `GameState.pending_care` me-replay key yang sama.
+RPC itu mengunci row Anima + profil, menghitung decay lebih dulu, mengonsumsi makanan/item atau mendebit Bits, menulis `quota_ledger` bila perlu, lalu menulis satu `care_events` untuk idempotency—semuanya satu transaksi. Edge Function `care_anima` memverifikasi JWT dan selalu menurunkan `owner_id` dari user terverifikasi, bukan body client. Timeout/app kill aman karena `GameState.pending_care` me-replay key yang sama beserta `item_id`.
 
 ### Klaim Core yang atomik
 
@@ -536,10 +569,10 @@ Webhook idempoten: kalau `generations.status` sudah `succeeded`, balik 200 tanpa
 Endpoint JWT-protected, tanpa model call dan tanpa background job:
 
 ```jsonc
-{ "anima_id": "b3d1...", "action": "feed", "idempotency_key": "..." }
+{ "anima_id": "b3d1...", "action": "feed", "item_id": "ember_noodles", "idempotency_key": "..." }
 ```
 
-`sync` tidak membutuhkan key; `feed`, `clean`, `sleep`, `wake`, dan `play` wajib memilikinya. RPC `apply_care()` menghitung decay sejak `care_synced_at` (cap 48 jam, tanpa grace), Sleep, bonus harian, serta Dormant sebelum memproses aksi. Feed/Clean masing-masing mendebit 5 Bits, Play memakai 5 Energy, Battle/Train memotong 20 Energy saat session baru dimulai, dan response selalu membawa snapshot Anima terbaru beserta saldo Bits. Fungsi SQL hanya bisa dieksekusi `service_role`; peran `authenticated` tidak dapat melewati Edge Function lewat `/rest/v1/rpc`.
+`sync` tidak membutuhkan key; `feed`, `clean`, `sleep`, `wake`, `play`, `summon`, dan `use_item` wajib memilikinya. `feed` dan `use_item` wajib `item_id`. RPC `apply_care()` menghitung decay sejak `care_synced_at` (cap 48 jam, tanpa grace), Sleep, bonus harian, serta Dormant sebelum memproses aksi. Feed mengonsumsi makanan inventory; Clean mendebit 5 Bits; Play memakai 5 Energy; item Energy dijepit 100 tanpa EXP. Battle/Train memotong 20 Energy saat session baru dimulai, dan response selalu membawa snapshot Anima terbaru beserta saldo Bits. Fungsi SQL hanya bisa dieksekusi `service_role`; peran `authenticated` tidak dapat melewati Edge Function lewat `/rest/v1/rpc`.
 
 ### `POST /battle_anima`
 
@@ -550,6 +583,9 @@ Endpoint JWT-protected dengan empat operasi:
 { "operation": "resume", "session_id": "..." }
 { "operation": "turn", "session_id": "...", "expected_turn": 1,
   "expected_version": 1, "action": "strike", "idempotency_key": "..." }
+{ "operation": "turn", "session_id": "...", "expected_turn": 1,
+  "expected_version": 1, "action": "item", "item_id": "vital_patch",
+  "idempotency_key": "..." }
 { "operation": "forfeit", "session_id": "..." }
 ```
 
@@ -567,21 +603,35 @@ baru atau klaim kemenangan.
 
 Session aktif berumur 30 menit dan hanya satu per pemain. Satu
 `idempotency_key` disimpan di `battle_turns`, sehingga retry mengembalikan
-response yang sama tanpa damage atau reward kedua. Menang mengubah Bits +5,
-`care_score +4`, `battle_wins +1`, dan ledger dalam transaksi yang sama;
-kalah/forfeit nol reward dan Battle tidak pernah menyentuh Genesis Core. Reward
-itu dibatasi tiga kemenangan per akun per hari sipil lokal. `commit_battle_turn()`
-mengunci row profile lalu menghitung ledger `reason = 'battle_win'`; kemenangan
-setelah cap tetap terminal `won`, tetapi payload menandainya sebagai Training
-dan tidak mengubah Bits, `care_score`, `battle_wins`, atau ledger. Session
-payload membawa status `daily_reward`, jadi client tidak menghitung cap dari jam
-device maupun cache lokal. Operasi `battle_anima/status` memberi status yang
-sama sebelum session dibuat. Payload menyertakan `server_now` dan `reset_at`;
-client menjadwalkan refresh dari selisih keduanya dan meminta ulang saat app
-resume, sehingga CTA `Battle`/`Train` tidak bergantung pada jam device.
-`GameState.pending_battle` menyimpan session, expected turn/version, action, dan
-key sampai response authoritative diterima, sehingga restart melakukan resume
-atau replay key yang sama.
+response yang sama tanpa damage atau reward kedua. Reward Bits dihitung dari
+rasio combat power saat `start` dan disimpan di session; replay tidak
+mengubahnya. Tiga kemenangan pertama per hari sipil lokal menulis
+`reason = 'battle_win'` (Bits + EXP + win). Training sesudahnya menulis
+`reason = 'battle_train'` (Bits saja) sampai cap 100 Bits lokal. Kalah/forfeit
+nol reward dan Battle tidak pernah menyentuh Genesis Core. Aksi `item` membawa
+`item_id`; satu item per session, konsumsi inventory atomik. Session payload
+membawa `daily_reward` (progression dan Bits). Operasi `battle_anima/status`
+memberi status yang sama sebelum session dibuat. Payload menyertakan
+`server_now` dan `reset_at`; client menjadwalkan refresh dari selisih keduanya
+dan meminta ulang saat app resume, sehingga CTA `Battle`/`Train` tidak
+bergantung pada jam device. `GameState.pending_battle` menyimpan session,
+expected turn/version, action, `item_id`, dan key sampai response authoritative
+diterima.
+
+### `POST /shop`
+
+Endpoint JWT-protected, tanpa model call:
+
+```jsonc
+{ "item_id": "byte_berry", "expected_price": 2, "idempotency_key": "..." }
+```
+
+RPC `purchase_catalog_item()` mengunci profil, menolak harga basi
+(`PRICE_CHANGED`), Bits kurang (`NO_BITS`), dan stack 999 (`STACK_FULL`), lalu
+mendebit Bits, upsert inventory, dan menulis ledger `shop_buy` dalam satu
+transaksi. Replay key yang sama mengembalikan receipt tanpa debit kedua.
+EXECUTE dicabut dari `anon`/`authenticated`. Katalog dan tas dibaca lewat RLS
+SELECT; client tidak menulis inventory.
 
 ### `POST /evolve_anima`
 

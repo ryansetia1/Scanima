@@ -27,9 +27,12 @@ Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: h
 
 **Post-processing sudah dibuktikan jalan di Edge Function, dengan sheet sungguhan.** Sheet v3 sepatu (1024×1024) diproses di runtime Deno dalam **173 ms** — batas CPU 2 detik tidak pernah dekat — dan hasilnya identik piksel per piksel dengan hasil Node (3.544.272 byte channel, nol selisih). Satu modul `postprocess.mjs` dipakai kedua runtime, jadi paritas itu bukan kebetulan yang harus dijaga manual. Yang berbeda hanya kompresi PNG-nya (886 KB di Node, 964 KB di edge), sehingga hash berbasis byte tidak bisa dibandingkan lintas runtime.
 
-**Empat Edge Function sudah hidup di produksi.** `create_anima`,
-`replicate_webhook`, `care_anima`, dan `battle_anima` ter-deploy. Battle dan
-care JWT-protected dan tidak punya model call. Smoke produksi menjaga 401 tanpa
+**Lima Edge Function sudah hidup di produksi.** `create_anima`,
+`replicate_webhook`, `care_anima`, `battle_anima`, dan `shop` ter-deploy.
+Migrasi Shop/inventory/reward Bits sudah live di remote (starter 50, katalog
+18, Feed dari tas, item Battle, cap 100 Bits/hari). Smoke 401 tanpa user
+berlaku untuk `shop`, `care_anima`, dan `battle_anima`. Battle dan care
+JWT-protected dan tidak punya model call. Smoke produksi menjaga 401 tanpa
 user, validasi payload, care idempoten, serta start/resume/turn/forfeit Battle.
 
 Satu jebakan ditemukan hanya karena jalur itu dicoba sungguhan: **sign-in anonim mati secara default di project Supabase**, dan Scanima tidak punya layar login. Setiap pemain baru akan gagal di detik pertama, di jalur yang tidak berbiaya sehingga tidak ada uji berbayar yang akan menangkapnya. Sekarang menyala di remote dan dideklarasikan di `config.toml`.
@@ -50,33 +53,34 @@ target 96px tetap muat; Scan tetap CTA cyan dan Battle punya state aktif
 tersendiri. Child scene persisten membuat pindah tab tidak me-reset request,
 pending scan/care/battle, Stage, atau inkubator. Seluruh copy production memakai
 katalog English Godot-native, theme cyan-violet-gold, ikon SVG berlisensi, dan
-Reduced Motion bersama. `test_scan_ui.gd` menjaga 422 kontrak
-shell/touch/Battle/motion dan `test_i18n.gd` menjaga 1461 kontrak katalog.
+Reduced Motion bersama. `test_scan_ui.gd` menjaga 369 kontrak
+shell/touch/Battle/motion dan `test_i18n.gd` menjaga 1869 kontrak katalog.
 
 **Collection sekarang memisahkan inspect dari Summon.** Tap kartu membuka bottom sheet dengan portrait, lima base stat yang tumbuh menurut Level, tiga kebutuhan, dan bar EXP yang disinkronkan server. `View Profile` membuka stats/delete tanpa mengganti companion aktif; `Summon` baru memindahkan pilihan ke Home melalui dissolve, portal cyan-violet, dan reveal, tanpa biaya atau model call. Roster yang benar-benar kosong menampilkan scanner procedural serta CTA first scan di Home dan Collection; loading atau error jaringan tidak lagi menyamar sebagai pemain baru. Setiap hatch tetap menawarkan rename opsional. Delete owner-only sudah live di production dan tetap tanpa refund.
 
 **Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; Feed memberi satu hop, Play memberi enam bounce selama sekitar 2,5 detik, dan pose Damaged melakukan heavy breathing loop selama Dormant. Meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. Pemain melihat **EXP dan Level** (Adult di 16, Evolved di 36); kolom wire tetap `care_score`, Bond hilang dari UI, dan Dormant tidak mereset EXP. `evolve_anima` tetap Phase 3 — slice ini hanya lompatan stat plus copy, tanpa art baru. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
 
 **Battle vertical slice Phase 3 sudah live.** Anima aktif yang `ready`, bangun,
-tidak Dormant, dan memiliki minimal 20 Energy (tiap duel baru memotong 20 Energy) melawan snapshot anonim Anima pemain lain. Attack, Special, dan
-Guard dihitung server dari satu modul formula; Postgres mengunci turn/version,
-menyimpan replay idempoten, dan memberi reward menang 5 Bits,
-`care_score +4`, `battle_wins +1` dalam transaksi yang sama. Session berumur 30
-menit dan bisa dilanjutkan setelah restart. Kalah/forfeit nol reward; Battle
-tidak pernah memberi Genesis Core. PvP, tim, ranked, dan item drop belum masuk
-scope. Initiative mengikuti SPD dan diumumkan sebelum animasi; kedua petarung
-menghadap serta menerjang ke arah lawan. Hanya tiga kemenangan pertama per akun
-per hari sipil lokal yang memberi reward tersebut; kemenangan berikutnya tetap bisa
-dimainkan sebagai Training tanpa Bits maupun progression evolusi. Lobby tidak
-memberi dua pilihan palsu: satu CTA berubah dari `Battle` menjadi `Train` saat
-status server mencapai 3/3, sekaligus menjelaskan alasan dan reset tengah malam waktu setempat.
+tidak Dormant, dan memiliki minimal 20 Energy (tiap duel baru memotong 20 Energy)
+plus Hunger ≥40 melawan snapshot anonim Anima pemain lain. Attack, Special,
+Guard, dan satu Item per duel dihitung server dari satu modul formula; Postgres
+mengunci turn/version, menyimpan replay idempoten, dan memberi Bits menurut
+kekuatan lawan (tier Favorable/Even/Tough/Formidable, ±1). Tiga kemenangan
+pertama per hari sipil lokal juga memberi `care_score +4` dan `battle_wins +1`.
+Training sesudah 3/3 masih membayar Bits sampai cap 100 per hari lokal; sesudah
+itu nol. Session berumur 30 menit dan bisa dilanjutkan setelah restart.
+Kalah/forfeit nol reward; Battle tidak pernah memberi Genesis Core. PvP, tim,
+ranked, dan item drop belum masuk scope. Initiative mengikuti SPD dan diumumkan
+sebelum animasi; kedua petarung menghadap serta menerjang ke arah lawan. Lobby
+tidak memberi dua pilihan palsu: satu CTA berubah dari `Battle` menjadi `Train`
+saat progression 3/3, dengan copy Bits-only sampai cap harian.
 
 Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan.
 Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**:
 itu akan meninggalkan koleksi di akun yang tidak bisa dijangkau lagi. Kedua,
 **kunci idempotency scan, care, dan Battle bertahan di disk**, sehingga app yang
 mati tidak membayar atau commit dua kali. Transport juga memperbarui access
-token sebelum setiap request terautentikasi. Ini dijaga oleh 60 check di
+token sebelum setiap request terautentikasi. Ini dijaga oleh 74 check di
 `test_client_state.gd`.
 
 **Kamera sudah terpasang lewat plugin, bukan lewat `CameraServer`.** `CameraServer` memang mendukung Android sejak setelah 4.4, tapi ia memberi feed hidup sementara yang dibutuhkan satu jepretan — jadi memakainya berarti membangun sendiri fokus, eksposur, dan tombol jepret yang sudah gratis dari aplikasi kamera OEM. Yang dipakai [`GodotGetImage` fork PhotoPicker](https://github.com/cenullum/GodotGetImagePlugin-Android-PhotoPicker), prebuilt untuk 4.6.2, dan fork-nya dipilih karena manifest upstream menyuntikkan `READ_MEDIA_IMAGES` ke APK walau galeri tidak pernah dipanggil — izin yang ditolak Play untuk keperluan pilih-satu-foto. Galeri sengaja tidak dipakai: fiksinya memfoto benda di depanmu, dan galeri membuka pintu memindai gambar unduhan yang justru harus ditahan gate. Foto dikecilkan ke 1280 px di device sebelum diunggah, dan angka itu sama dengan foto terbesar di `eval/photos/` supaya input produksi tidak keluar dari amplop yang sudah divalidasi Smoke Set — dijaga gratis oleh skenario 18. Jalur `FileDialog` di desktop tetap ada, karena itu yang membuat seluruh alur bisa diperiksa tanpa perangkat Android.
@@ -217,8 +221,8 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 422 kontrak shell + Battle + touch
-│       ├── test_i18n.gd              # 1461 kontrak katalog + key + wrapping
+│       ├── test_scan_ui.gd           # 369 kontrak shell + Battle + Shop + touch
+│       ├── test_i18n.gd              # 1869 kontrak katalog + key + wrapping
 │       ├── test_game_rules.gd        # 68 kontrak care + EXP/Level + event Battle
 │       ├── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 │       └── live_battle.gd            # Battle produksi, nol model call

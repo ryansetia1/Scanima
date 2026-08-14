@@ -498,6 +498,27 @@ pivot_offset = Vector2(84, 3.5)
 mouse_filter = 2
 color = Color(0.66, 0.48, 1, 1)
 
+[node name="BattleItemButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "BATTLE_ACTION_ITEM"
+
+[node name="BattleItemCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleItemButton"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -7.0
+grow_horizontal = 2
+grow_vertical = 0
+pivot_offset = Vector2(84, 3.5)
+mouse_filter = 2
+color = Color(1, 0.9, 0.45, 1)
+
 [node name="BattleResultPanel" type="PanelContainer" parent="Column/BattleContent/BattleFooter"]
 unique_name_in_owner = true
 visible = false

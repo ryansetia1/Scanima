@@ -55,7 +55,7 @@ Tiga mata uang, dan yang menentukan pembagiannya adalah biaya nyata yang mereka 
 | --- | --- | --- |
 | **Scan Charge** | Discovery Scan, 8 per hari | Refill harian, rewarded ad, langganan |
 | **Genesis Core** | Menciptakan spesies baru | 3 saat onboarding, 1 per minggu gratis, IAP, langganan |
-| **Bits** | Makanan, sabun, revive, kosmetik | 30 saat onboarding, rewarded ad, hadiah battle, quest harian |
+| **Bits** | Makanan, item, Clean | 50 saat onboarding (akun baru saja), Shop, hadiah battle (cap 100/hari lokal) |
 
 > **Keputusan produk, dikonfirmasi 13 Agustus 2026:** jalur gratis Genesis Core adalah **1 Core per minggu**. Fitur ini belum diimplementasikan; build sekarang hanya memberi 3 Core saat onboarding dan refund ketika generation gagal. Grant mingguan nanti wajib server-authoritative dan tercatat di ledger. Detail auto-credit versus tombol claim, batas penumpukan minggu terlewat, serta anti-abuse akun anonim belum diputuskan—jangan menganggap salah satunya sudah final.
 
@@ -190,8 +190,8 @@ Jadi pengganti kematian: setelah cap **48 jam decay efektif** tercapai dengan Hu
 Kolom Postgres tetap `care_score`; pemain melihatnya sebagai **EXP**. `level = 1 + floor(exp / 5)`, cap 40. Form copy (sprite tetap stage 1 sampai `evolve_anima` ada): Hatchling 1–15, Adult 16–35, Evolved 36–40.
 
 ```
-Beri makan saat hunger < 40      : +3 EXP
-Beri makan saat hunger > 80      : +0   (tidak ada gunanya menimbun)
+Beri makan yang menyeberangkan Hunger ke ≥40 : +3 EXP
+Beri makan yang masih di bawah 40            : +0
 Bersihkan saat hygiene < 50      : +3 EXP
 Tidur penuh (siklus 6 jam nyata) : +5 EXP
 Bermain                          : +1 EXP (maksimal +5 per hari)
@@ -204,12 +204,13 @@ Bonus "terawat" +8 adalah pendorong terbesar dan itu memang tujuannya: yang ingi
 
 Nilai aksi yang live di Phase 2:
 
-- **Feed:** 5 Bits, Hunger +35; EXP +3 hanya jika Hunger sebelum aksi <40. Ditolak `NEED_FULL` kalau Hunger setelah decay >= 99.5 (meter yang tampil penuh, termasuk 99.99). Client meredupkan tombol dan toast tanpa request — Godot menelan `pressed` kalau `disabled`.
+- **Feed:** wajib `food_id` dari inventory; Hunger + nilai makanan (Byte Berry 10 … Nova Feast 100). Tidak mendebit Bits. EXP +3 hanya jika Hunger sebelum aksi <40 **dan** sesudah restore ≥40. Ditolak `NEED_FULL` kalau Hunger setelah decay >= 99.5, `NO_ITEM` kalau tas kosong, `INVALID_ITEM` kalau bukan makanan. Client meredupkan tombol dan toast tanpa request — Godot menelan `pressed` kalau `disabled`.
 - **Clean:** 5 Bits, Hygiene +35; EXP +3 hanya jika Hygiene sebelum aksi <50. Gerbang penuh yang sama.
+- **Energy item (`use_item`):** Pulse Cell +20 / Reactor Pack +50, dijepit 100, tanpa EXP. `NEED_FULL` pada Energy >= 99.5.
 - **Play:** gratis, Energy -5; EXP +1 maksimal lima kali per hari sipil lokal. Tidak ada cap Bond; anti-farm-nya Energy dan counter harian. Client menahan tap sesudah cap (toast, tanpa request).
 - **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 EXP. Wake lebih awal mempertahankan pemulihan parsial tanpa EXP. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap. Anima yang **tidak di-Summon** juga tidur, tanpa auto-bangun dan tanpa +5 EXP — Energy pulih dalam tiga jam (dua kali lipat companion). Collection menampilkan pose Idle begitu Energy penuh supaya pemain tahu Anima itu siap di-Summon; row Postgres tetap tidur agar Energy tidak luruh. `Summon` menulis `profiles.active_anima_id` dan menidurkan sisanya.
 
-Saldo, kebutuhan, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten, sedangkan `quota_ledger` mencatat debit Feed/Clean. Client menyimpan satu intent `pending_care`, bukan salinan saldo atau kebutuhan.
+Saldo, kebutuhan, inventory, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten; `quota_ledger` mencatat debit Clean dan pembelian Shop (`shop_buy`). Client menyimpan satu intent `pending_care` (plus `item_id`) dan satu `pending_purchase`, bukan salinan saldo atau tas.
 
 ## 4. Evo-tree
 
@@ -239,7 +240,7 @@ Battle harus memenuhi satu syarat yang tidak biasa: ia harus membuat stat yang b
 formula production adalah
 `backend/supabase/functions/_shared/battle.mjs`; potongan GDScript di bawah
 menjelaskan rumusnya, bukan implementasi kedua. Client hanya mengirim
-`strike`/`surge`/`guard` dan menganimasikan ordered event log dari server.
+`strike`/`surge`/`guard`/`item` dan menganimasikan ordered event log dari server.
 
 ### Stat turunan
 
@@ -330,11 +331,11 @@ Turn tetap menunggu event authoritative server, tetapi tap tidak boleh terlihat 
 
 Battle dan Training memakai entry gate yang sama: Anima harus memiliki **minimal 20 Energy**, dan **start session baru memotong 20 Energy**. `start_battle()` menjalankan `apply_care(..., 'sync')` sebelum memeriksa nilai authoritative itu, sehingga client tidak bisa memakai snapshot Energy lama untuk masuk. Client juga menonaktifkan CTA lebih awal ketika row roster sudah menunjukkan Energy di bawah 20, tetapi keputusan akhir tetap di transaksi server. Resume session aktif tidak memotong Energy kedua kali, dan duel yang sudah berjalan tidak dibatalkan di tengah.
 
-**PP** adalah budget per-battle: mulai penuh 3, satu Special memakan 1, dan ia **tidak pulih sendiri setiap turn** — satu-satunya pemulihan adalah Guard. Ia sengaja dinamai berbeda dari mata uang di bagian 2 karena ia bukan mata uang: ia lahir dan mati di dalam satu pertarungan, tidak pernah disimpan, dan tidak bisa dibeli. Perannya menciptakan ritme bertahan-lalu-menyerang tanpa perlu sistem cooldown per skill: tiga Special adalah anggaran yang pemain sendiri putuskan kapan dibelanjakan, dan Guard adalah harga untuk menambahnya.
+**PP** adalah budget per-battle: mulai penuh 3, satu Special memakan 1, dan ia **tidak pulih sendiri setiap turn** — satu-satunya pemulihan adalah Guard, plus item PP Capsule yang menaikkan max sementara sampai 5. Ia sengaja dinamai berbeda dari mata uang di bagian 2 karena ia bukan mata uang: ia lahir dan mati di dalam satu pertarungan, tidak pernah disimpan, dan tidak bisa dibawa ke duel berikutnya. Perannya menciptakan ritme bertahan-lalu-menyerang tanpa perlu sistem cooldown per skill: tiga Special adalah anggaran yang pemain sendiri putuskan kapan dibelanjakan, dan Guard adalah harga untuk menambahnya.
 
 **Regen per-turn dihapus karena panjang battle mengukurnya menjadi tidak relevan.** Diukur dengan modul formula ini sendiri pada stat 260 HP (Special ~70 damage, Attack ~37, elemen netral), satu battle selesai sekitar **empat turn**. Dengan regen +1 per turn, biaya 1 berarti PP pemain membeku di angka awalnya sepanjang pertarungan — counter di tombol tidak pernah bergerak dan Attack tidak pernah punya alasan ditekan, sebab Special selalu tersedia, selalu lebih kuat, dan selalu menembus DEF. Versi lama memakai biaya 2 dengan regen 1, yang memang mengekang tepat satu turn dari empat, tapi mengekangnya di turn yang terasa arbitrer bagi pemain karena harganya tidak pernah ditampilkan. Budget tanpa regen memindahkan keputusannya ke pemain dan membuat tombolnya menjelaskan dirinya sendiri.
 
-**PP tidak persist antar battle, dan itu keputusan sadar — bukan versi setengah jalan dari PP Pokémon.** Membuatnya persist (diisi lewat Feed/Sleep) pernah dipertimbangkan dan ditolak karena empat hal yang bisa ditunjuk di kode ini. Bot adalah snapshot anonim Anima pemain lain, jadi PP-nya harus sintetis dan rasionalisasinya cuma mengenai manusianya. Menang memberi tepat 5 Bits sementara Feed memakan tepat 5 Bits, jadi battle jadi break-even dan pemain baru dengan 30 Bits awal yang paling cepat menabrak dinding — sedangkan `apply_care()` menolak Feed pada Hunger 100 dengan `NEED_FULL`, sehingga Anima kenyang tapi PP kosong tidak bisa diisi sama sekali. Regen di dalam fight adalah satu-satunya sumber keputusan "Special sekarang atau Guard dulu"; tanpa itu jawabannya sepele, yaitu Special sampai habis lalu Attack terus. Dan tanpa tutorial, "tidak bisa Special sampai besok" adalah hukuman yang lebih keras daripada Dormant. Yang membuat resource ini terbaca oleh pemain baru bukan persistensinya, melainkan counter-nya menempel di tombol (`Special 3/5`), bukan cuma di header.
+**PP tidak persist antar battle, dan itu keputusan sadar — bukan versi setengah jalan dari PP Pokémon.** Membuatnya persist (diisi lewat Feed/Sleep) pernah dipertimbangkan dan ditolak karena empat hal yang bisa ditunjuk di kode ini. Bot adalah snapshot anonim Anima pemain lain, jadi PP-nya harus sintetis dan rasionalisasinya cuma mengenai manusianya. Feed sekarang memakan inventory, bukan 5 Bits tetap, jadi break-even battle-vs-makanan tidak lagi 1:1 — Bits masuk lewat Shop dan keluar lewat harga katalog. Regen di dalam fight adalah satu-satunya sumber keputusan "Special sekarang atau Guard dulu"; tanpa itu jawabannya sepele, yaitu Special sampai habis lalu Attack terus. Dan tanpa tutorial, "tidak bisa Special sampai besok" adalah hukuman yang lebih keras daripada Dormant. Yang membuat resource ini terbaca oleh pemain baru bukan persistensinya, melainkan counter-nya menempel di tombol (`Special 3/3`), bukan cuma di header. PP Capsule menaikkan max duel itu saja sampai 5; duel berikutnya tetap mulai 3.
 
 Urutan turn dari SPD, dengan tiebreak acak. Karena itu bot sah menyerang lebih
 dulu setelah pemain memilih aksi; client mengumumkan nama aktor serta kedua
@@ -346,40 +347,39 @@ Itu tujuan seluruh sistem ini.
 
 ### Hadiah dan tempat battle dalam loop
 
-Tiga kemenangan pertama per akun per hari sipil lokal masing-masing memberi tepat
-**5 Bits**, `care_score +4`, dan `battle_wins +1` untuk gerbang Ravager. Setelah
-itu Battle tetap tersedia sebagai **Training**, tetapi ketiga progression reward
-tersebut nol. Cap harus account-wide—bukan per Anima—supaya mengganti companion
-tidak membuka farming lagi. Kalah dan forfeit tidak memberi reward. Item drop
-sengaja ditunda; Battle **tidak pernah** memberi Genesis Core, karena itu akan
-membuka jalur farming yang biayanya kita tanggung tanpa batas.
+Combat power = `MaxHP / 4 + Attack + Special + Defense + Speed`. Rasio bot/pemain
+memilih tier saat session dibuat, lalu roll deterministik ±1 dari seed session
+(bukan dari turn) supaya replay tidak mengubah payout:
 
-Counter harian tidak punya kolom mutable sendiri. `quota_ledger` sudah mencatat
-setiap `reason = 'battle_win'`, jadi `commit_battle_turn()` menghitung tiga baris
-hari sipil lokal ini sambil memegang profile row lock, lalu membuat keputusan dan ledger
-dalam transaksi yang sama. Counter sengaja tidak memeriksa nominal 5 Bits:
-balancing reward kelak tidak boleh diam-diam membuka cap.
-`app_config.battle_rewarded_wins_per_day` menyimpan angka 3 agar balancing bisa
-diubah tanpa deploy. Payload session dan operasi `battle_anima/status` membawa
-`daily_reward` (`earned`, `limit`, `remaining`, `server_now`, `reset_at`,
-`rewarded`); client menampilkan `Rewards 2/3` selama Battle masih berhadiah.
-Training menyembunyikan counter karena mode latihannya sendiri tidak terbatas,
-sementara feedback dan hasil tetap menyatakan bahwa progression reward sudah
-habis. Selisih dua timestamp server menjadwalkan
-refresh tepat di reset tengah malam lokal tanpa mempercayai jam device.
-Offset zona hidup di `profiles.timezone_offset_minutes` (menit timur UTC).
-Client hanya melapor; `set_profile_timezone()` mengunci ganti zona 24 jam
-supaya memajukan jam HP tidak membuka hari extra. Membatasi Bits saja
-tidak cukup: `care_score` dan `battle_wins` juga gerbang evolusi, jadi exploit
-hanya akan berpindah.
+| Tier | Rasio bot/pemain | Bits dasar |
+| --- | --- | --- |
+| Favorable | < 0.95 | 6 |
+| Even | < 1.05 | 8 |
+| Tough | < 1.10 | 11 |
+| Formidable | sisanya | 15 |
+
+Payout disimpan di `battle_sessions.reward_tier/roll/bits`. Tiga kemenangan
+pertama per akun per hari sipil lokal masing-masing memberi Bits itu (dijepit
+sisa cap), `care_score +4`, dan `battle_wins +1`. Ledger progression memakai
+`reason = 'battle_win'` — dihitung dari **jumlah baris**, bukan nominal Bits.
+Setelah 3/3, duel tetap **Training**: EXP dan win nol, tetapi Bits masih
+dibayar sampai cap **100 Bits per hari lokal** (`app_config.battle_bits_per_day`),
+ledger `reason = 'battle_train'`. Payout terakhir dijepit sisa cap, tidak
+melewati 100. Sesudah 100/100 Training nol Bits. Cap account-wide. Kalah dan
+forfeit tidak memberi reward. Satu item Battle per session, mengganti aksi turn
+itu; konsumsi inventory atomik dengan commit turn. Battle **tidak pernah**
+memberi Genesis Core.
+
+`daily_reward` payload membawa `earned/limit/remaining` (progression) plus
+`bits_earned/bits_limit/bits_remaining`. Lobby menampilkan tier dan Bits, CTA
+`Battle` lalu `Train` (copy Bits-only) lalu Training nol hadiah. Client tidak
+menghitung cap dari jam device.
 
 **Keputusan UI 14 Agustus 2026:** Battle dan Training tidak menjadi dua tombol.
 Keduanya memakai duel yang sama, jadi dua pilihan hanya memberi keputusan palsu.
-Tab tetap bernama Battle; satu CTA berbunyi `Battle` selama reward tersedia dan
-berubah menjadi `Train` setelah 3/3, dengan penjelasan bahwa Bits, Care Score,
-dan Battle Wins tidak diberikan serta reward reset pukul 00:00 waktu setempat. Kemenangan
-ketiga tetap result Battle berhadiah (`Rewards 3/3`); mode Training baru berlaku
-untuk session berikutnya.
+Tab tetap bernama Battle; satu CTA berbunyi `Battle` selama progression tersedia
+dan berubah menjadi `Train` setelah 3/3. Kemenangan ketiga tetap result Battle
+berhadiah (`Progress 3/3`); mode Training baru berlaku session berikutnya.
 
 Lawan vertical slice adalah snapshot anonim Anima `ready` milik pemain lain,
 dengan art yang sudah ada di `species_library`. Prioritasnya stage sama dan
@@ -396,7 +396,8 @@ graph TD
     Cek --> Bonus["Jika semua >70: bonus harian +8"]
     Bonus --> Rawat["Beri makan, bersihkan, main"]
     Rawat --> Scan["Discovery Scan objek di sekitar, 8 gratis"]
-    Scan --> Battle["2-3 battle untuk Bits"]
+    Scan --> Shop["Shop: makanan dan item"]
+    Shop --> Battle["2-3 battle untuk Bits, sampai cap 100"]
     Battle --> Evo{"Syarat evolusi terpenuhi?"}
     Evo -->|ya| Ritual["Ritual evolusi, momen puncak"]
     Evo -->|tidak| Tidur["Tidurkan Anima, tutup aplikasi"]
@@ -413,9 +414,11 @@ Care dan combat sengaja diuji di runtime yang memiliki sumber kebenarannya:
   validasi kontrak event yang diterima client.
 - `eval/selftest.mjs` mengimpor **file combat production yang sama** dengan Edge
   Function. Ia menjaga enam relasi elemen, minimum damage, DEF pierce, crit cap,
-  Guard, PP, SPD order, KO, batas turn, dan deterministic retry.
+  Guard, PP, SPD order, KO, batas turn, deterministic retry, reward tier, dan
+  tujuh efek item Battle, plus dua sheet katalog 3×3.
 - `backend/tests/quota_rules.sql` menguji eligibility, satu active session,
-  stale/concurrent turn, replay idempoten, reward atomik, nol reward
+  stale/concurrent turn, replay idempoten, reward atomik, cap progression 3 vs
+  cap Bits 100, pembelian Shop, Feed inventory, satu item per Battle, nol reward
   loss/forfeit, Core tidak berubah, dan RPC/tabel tertutup dari client.
 - `game/tests/live_battle.gd` melewati transport production untuk
   start/resume/`strike`/`guard`/`surge`/replay/forfeit tanpa model call.

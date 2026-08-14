@@ -69,7 +69,7 @@ func _initialize() -> void:
 		"DeleteAnimaButton",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
 		"CollectionSummonButton", "BattleStartButton", "BattleStrikeButton",
-		"BattleSurgeButton", "BattleGuardButton", "BattleForfeitButton", "BattleRetryButton",
+		"BattleSurgeButton", "BattleGuardButton", "BattleItemButton", "BattleForfeitButton", "BattleRetryButton",
 	]:
 		var button := scene.find_child(name, true, false) as Button
 		_check(button != null, "%s must exist" % name)
@@ -119,6 +119,7 @@ func _initialize() -> void:
 		_check(margin.theme.default_font != null, "commercial UI font must be bundled")
 		for variation in [
 			"PrimaryButton", "DangerButton", "CareDock", "BottomNavPanel", "NavTabButton", "ToastPanel",
+			"NeedChip", "NeedChipLow",
 		]:
 			_check(
 				margin.theme.get_type_variation_base(StringName(variation)) != StringName(),
@@ -134,6 +135,18 @@ func _initialize() -> void:
 	_check(animas_chip != null and animas_chip.get_script() != null, "HUD uses the shared Animas chip")
 	_check(cores_chip != null and cores_chip.get_script() != null, "HUD uses the shared Cores chip")
 	_check(bits_chip != null and bits_chip.get_script() != null, "HUD uses the shared Bits chip")
+	var shop := scene.find_child("ShopButton", true, false) as PanelContainer
+	_check(shop != null and shop.get_script() != null, "Shop uses the same chip as Bits")
+	_check(
+		shop.get_parent() != bits_chip.get_parent()
+		and shop.get_parent() != null
+		and String(shop.get_parent().name) == "ToastLayer",
+		"Shop overlays below Bits instead of splitting the HUD resource row"
+	)
+	_check(
+		shop.custom_minimum_size == bits_chip.custom_minimum_size,
+		"Shop matches the Bits chip press target"
+	)
 	_check(
 		animas_chip.custom_minimum_size.y >= TOUCH_MIN
 		and cores_chip.custom_minimum_size.y >= TOUCH_MIN
@@ -153,6 +166,15 @@ func _initialize() -> void:
 	if toast != null:
 		_check_eq(toast.anchor_top, 0.0, "toast pins below the HUD instead of mid-screen")
 		_check_eq(toast.anchor_bottom, 0.0, "toast does not stretch through the Anima")
+	var toast_layer := scene.find_child("ToastLayer", true, false) as Control
+	var shop_sheet := scene.find_child("ShopSheet", true, false) as Control
+	_check(
+		toast_layer != null
+		and shop_sheet != null
+		and toast_layer.get_parent() == shop_sheet.get_parent()
+		and toast_layer.get_index() > shop_sheet.get_index(),
+		"toasts paint above the Shop sheet so NO_BITS stays visible"
+	)
 	_check(scene.find_child("PoseRow", true, false) == null, "debug pose controls must not ship in production")
 	var shell_modal := scene.find_child("ShellModal", true, false) as Control
 	var modal_panel := scene.find_child("ModalPanel", true, false) as PanelContainer
@@ -368,10 +390,10 @@ func _test_shared_components() -> void:
 
 func _test_care_feedback_is_immediate() -> void:
 	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
-	var start := source.find("func _perform_care")
+	var start := source.find("func _commit_care")
 	var end := source.find("\n\nfunc _resume_pending_care", start)
 	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
-	var feedback := body.find("_anima.care_feedback(action)")
+	var feedback := body.find("_anima.care_feedback(")
 	var request := body.find("await _send_pending_care")
 	_check(feedback >= 0 and request > feedback, "care reacts before its network response")
 	_check(
@@ -546,9 +568,11 @@ func _test_battle_view() -> void:
 	var strike := view.find_child("BattleStrikeButton", true, false) as Button
 	var surge := view.find_child("BattleSurgeButton", true, false) as Button
 	var guard := view.find_child("BattleGuardButton", true, false) as Button
+	var item := view.find_child("BattleItemButton", true, false) as Button
 	var strike_commit := view.find_child("BattleStrikeCommit", true, false) as ColorRect
 	var surge_commit := view.find_child("BattleSurgeCommit", true, false) as ColorRect
 	var guard_commit := view.find_child("BattleGuardCommit", true, false) as ColorRect
+	var item_commit := view.find_child("BattleItemCommit", true, false) as ColorRect
 	var forfeit := view.find_child("BattleForfeitButton", true, false) as Button
 	var player_hp := view.find_child("BattlePlayerHp", true, false) as ProgressBar
 	var bot_hp := view.find_child("BattleBotHp", true, false) as ProgressBar
@@ -590,6 +614,9 @@ func _test_battle_view() -> void:
 		"earned": 2,
 		"limit": 3,
 		"remaining": 1,
+		"bits_earned": 16,
+		"bits_limit": 100,
+		"bits_remaining": 84,
 		"rewarded": false,
 		"server_now": "2026-08-13T23:59:00.000000+00:00",
 		"reset_at": "2026-08-14T00:00:00+00:00",
@@ -599,11 +626,23 @@ func _test_battle_view() -> void:
 	var training_daily_reward: Dictionary = normal_daily_reward.duplicate(true)
 	training_daily_reward["earned"] = 7
 	training_daily_reward["remaining"] = 0
+	training_daily_reward["bits_earned"] = 24
+	training_daily_reward["bits_remaining"] = 76
 	view.set_daily_reward(training_daily_reward)
 	_check(
 		start.text == tr("BATTLE_TRAIN")
-		and lobby_meta.text == tr("BATTLE_LOBBY_TRAINING") % ["3", "3"],
-		"daily cap clamps overflow and changes the single lobby action to Train"
+		and lobby_meta.text == tr("BATTLE_LOBBY_TRAINING_BITS") % ["24", "100"],
+		"daily win cap changes the single lobby action to Train for Bits"
+	)
+	var bits_capped_reward: Dictionary = training_daily_reward.duplicate(true)
+	bits_capped_reward["bits_earned"] = 100
+	bits_capped_reward["bits_remaining"] = 0
+	bits_capped_reward["bits_limit"] = 100
+	view.set_daily_reward(bits_capped_reward)
+	_check(
+		start.text == tr("BATTLE_TRAIN")
+		and lobby_meta.text == tr("BATTLE_LOBBY_TRAINING") % ["100", "100"],
+		"Bits cap explains Training with no remaining Bits"
 	)
 	_check(
 		is_equal_approx(float(view.reward_reset_delay(training_daily_reward)), 60.0),
@@ -663,6 +702,7 @@ func _test_battle_view() -> void:
 		},
 		"daily_reward": {
 			"earned": 2, "limit": 3, "remaining": 1, "rewarded": false,
+			"bits_earned": 16, "bits_limit": 100, "bits_remaining": 84,
 			"server_now": "2026-08-13T23:59:00.000000+00:00",
 			"reset_at": "2026-08-14T00:00:00+00:00",
 		},
@@ -711,7 +751,7 @@ func _test_battle_view() -> void:
 	)
 	_check(
 		is_equal_approx(footer.custom_minimum_size.y, 148.0),
-		"Battle command footer keeps only feedback and the three primary actions"
+		"Battle command footer keeps feedback and the four primary actions"
 	)
 	_check(player_sprite.flip_h and not bot_sprite.flip_h, "Battle fighters face each other")
 	_check(
@@ -763,14 +803,20 @@ func _test_battle_view() -> void:
 	)
 	_check(
 		daily_reward.visible
-		and daily_reward.text == tr("BATTLE_DAILY_REWARDS") % ["2", "3"],
+		and daily_reward.text == "%s · %s" % [
+			tr("BATTLE_DAILY_PROGRESS") % ["2", "3"],
+			tr("BATTLE_DAILY_BITS") % ["16", "100"],
+		],
 		"Battle HUD shows authoritative daily rewarded wins"
 	)
 	_check(
 		view.find_child("BattleMomentum", true, false) == null,
 		"no redundant PP label survives outside the Special button"
 	)
-	_check(not strike.disabled and not surge.disabled and not guard.disabled, "active turn unlocks three actions")
+	_check(
+		not strike.disabled and not surge.disabled and not guard.disabled and item != null and not item.disabled,
+		"active turn unlocks four actions"
+	)
 	UiMotion.set_reduced_motion(false)
 	player_sprite.set_pose("attack")
 	bot_sprite.set_pose("attack")
@@ -828,19 +874,21 @@ func _test_battle_view() -> void:
 	training_active["daily_reward"] = training_daily_reward.duplicate(true)
 	view.set_session(training_active, loaded, loaded)
 	_check(
-		feedback.text == tr("BATTLE_TRAINING_HINT") and not daily_reward.visible,
-		"Training explains disabled rewards without presenting a fake Training limit"
+		feedback.text == tr("BATTLE_TRAINING_BITS_HINT") and daily_reward.visible,
+		"Training still shows Progress and Bits while Bits remain"
 	)
 	view.begin_action("strike")
 	_check(
-		not strike.disabled and not surge.disabled and not guard.disabled
+		not strike.disabled and not surge.disabled and not guard.disabled and not item.disabled
 		and strike.mouse_filter == Control.MOUSE_FILTER_IGNORE
 		and surge.mouse_filter == Control.MOUSE_FILTER_IGNORE
-		and guard.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+		and guard.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and item.mouse_filter == Control.MOUSE_FILTER_IGNORE,
 		"pending turn blocks repeat input without making every action look disabled"
 	)
 	_check(
 		strike_commit.visible and not surge_commit.visible and not guard_commit.visible
+		and not item_commit.visible
 		and feedback.text == tr("BATTLE_ACTION_PENDING_STRIKE") % ["D-Pad Jab"]
 		and surge.self_modulate.a < strike.self_modulate.a,
 		"selected Battle action reacts immediately with committed feedback"
@@ -851,7 +899,9 @@ func _test_battle_view() -> void:
 	won["state"]["bot"]["hp"] = 0
 	won["daily_reward"] = {
 		"earned": 3, "limit": 3, "remaining": 0, "rewarded": true,
+		"bits_earned": 24, "bits_limit": 100, "bits_remaining": 76,
 	}
+	won["last_reward"] = {"bits": 8, "care_score": 4, "battle_wins": 1}
 	await view.play_events([
 		{
 			"type": "attack", "actor": "player", "target": "bot", "action": "strike",
@@ -872,9 +922,12 @@ func _test_battle_view() -> void:
 		"terminal Battle HUD keeps the exact defeated HP visible"
 	)
 	_check(
-		daily_reward.text == tr("BATTLE_DAILY_REWARDS") % ["3", "3"]
+		daily_reward.text == "%s · %s" % [
+			tr("BATTLE_DAILY_PROGRESS") % ["3", "3"],
+			tr("BATTLE_DAILY_BITS") % ["24", "100"],
+		]
 		and result_title.text == tr("BATTLE_WIN_TITLE")
-		and result_body.text == tr("BATTLE_WIN_BODY"),
+		and result_body.text == tr("BATTLE_WIN_BODY") % "8",
 		"third rewarded win remains Battle even though it closes the daily cap"
 	)
 	var ready_again: Dictionary = anima.duplicate(true)
@@ -894,13 +947,16 @@ func _test_battle_view() -> void:
 
 	var training_win: Dictionary = won.duplicate(true)
 	training_win["daily_reward"] = training_daily_reward.duplicate(true)
+	training_win["daily_reward"]["bits_earned"] = 32
+	training_win["daily_reward"]["bits_remaining"] = 68
+	training_win["last_reward"] = {"bits": 8, "care_score": 0, "battle_wins": 0}
 	view.set_session(training_win, loaded, loaded)
 	_check(
-		not daily_reward.visible
+		daily_reward.visible
 		and result_title.text == tr("BATTLE_TRAINING_TITLE")
-		and result_body.text == tr("BATTLE_TRAINING_WIN_BODY")
+		and result_body.text == tr("BATTLE_TRAINING_BITS_BODY") % "8"
 		and retry.text == tr("BATTLE_TRAIN_AGAIN"),
-		"wins after the cap are consistently presented as Training"
+		"wins after the progression cap still pay Bits until the daily Bits cap"
 	)
 
 	var lost: Dictionary = session.duplicate(true)
@@ -1390,6 +1446,24 @@ func _test_home_care_actions() -> void:
 	home.update_care(row, false)
 	_check(is_equal_approx(feed.self_modulate.a, 1.0), "Feed brightens once Hunger drops")
 	_check(is_equal_approx(clean.self_modulate.a, 1.0), "Clean brightens once Hygiene drops")
+
+	var hunger_chip := home.find_child("HungerChip", true, false) as PanelContainer
+	var energy_chip := home.find_child("EnergyChip", true, false) as PanelContainer
+	var hygiene_chip := home.find_child("HygieneChip", true, false) as PanelContainer
+	row["care"]["hunger"] = 0.0
+	row["care"]["energy"] = 19.0
+	row["care"]["hygiene"] = 49.0
+	home.update_care(row, false)
+	_check_eq(hunger_chip.theme_type_variation, &"NeedChipLow", "empty Hunger highlights its chip")
+	_check_eq(energy_chip.theme_type_variation, &"NeedChipLow", "Energy below Battle cost highlights its chip")
+	_check_eq(hygiene_chip.theme_type_variation, &"NeedChipLow", "dirty Hygiene highlights its chip")
+	row["care"]["hunger"] = 40.0
+	row["care"]["energy"] = 20.0
+	row["care"]["hygiene"] = 50.0
+	home.update_care(row, false)
+	_check_eq(hunger_chip.theme_type_variation, &"NeedChip", "Hunger at 40 drops the alert")
+	_check_eq(energy_chip.theme_type_variation, &"NeedChip", "Energy at 20 drops the alert")
+	_check_eq(hygiene_chip.theme_type_variation, &"NeedChip", "Hygiene at 50 drops the alert")
 
 	row["sleep_started_at"] = "2026-08-13T00:00:00Z"
 	home.update_care(row, false)

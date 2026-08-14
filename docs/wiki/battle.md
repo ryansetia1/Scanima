@@ -13,27 +13,42 @@ Companion harus:
 
 Tiap duel baru memotong **20 Energy**. Duel yang sudah jalan tidak dipotong lagi kalau app sempat tertutup.
 
-Kalau syaratnya kurang, tombol Battle/Train redup dan memberi alasan. Satu Feed biasanya cukup untuk Hunger.
+Kalau syaratnya kurang, tombol Battle/Train redup dan memberi alasan. Satu makanan yang mengisi Hunger sampai 40 biasanya cukup.
 
 ## Battle atau Train
 
 Tiga kemenangan pertama per hari (reset **tengah malam waktu setempat**) adalah Battle berhadiah:
 
-- **+5 Bits**
+- Bits menurut kekuatan lawan (kira-kira 5–16)
 - **+4 EXP**
 - +1 kemenangan tercatat
 
-Sesudah 3/3, tombol yang sama jadi **Train**. Duelnya sama, hadiahnya nol. Core tidak pernah didapat dari sini.
+Layar lobby menulis tier lawan (Favorable / Even / Tough / Formidable) dan Bits yang akan didapat, plus **Progress x/3** dan **Bits x/100**.
+
+Sesudah 3/3, tombol yang sama jadi **Train**. Duelnya sama; EXP dan kemenangan tercatat berhenti, tetapi **Bits masih dibayar** sampai cap **100 Bits per hari**. Sesudah 100/100, Training nol hadiah. Core tidak pernah didapat dari sini.
 
 Kalah atau **Forfeit** juga nol hadiah.
 
-## Tiga perintah
+## Empat perintah
 
 | Tombol | Yang terjadi |
 | --- | --- |
 | **Attack** | Pukulan biasa. Memakai stat Attack. Power 50. Defense lawan penuh. |
 | **Special** | Jurus lebih berat. Memakai stat Special. Power 75. Defense lawan dihitung setengah. Memakan 1 PP. |
 | **Guard** | Bertahan (damage masuk dikurangi). Mengembalikan 1 PP. |
+| **Item** | Satu item dari tas, mengganti aksi turn itu. Hanya sekali per duel. |
+
+Item Battle dibeli di Shop. Picker hanya menampilkan tujuh item tempur (bukan makanan atau Energy). Sesudah terpakai, tombol jadi **Item Used**.
+
+| Item | Efek singkat |
+| --- | --- |
+| Vital Patch | Pulihkan HP |
+| Power Chip | Attack lebih keras turn berikutnya |
+| Surge Lens | Special lebih keras |
+| Aegis Plate | Damage masuk berkurang |
+| Tempo Coil | Speed naik — bisa gerak lebih dulu |
+| PP Capsule | PP dan batas PP naik untuk duel ini |
+| Phase Shield | Pukulan berikutnya hampir terhapus |
 
 Special terasa “tembus” karena memotong Defense, bukan karena angka Special di profil selalu lebih besar.
 

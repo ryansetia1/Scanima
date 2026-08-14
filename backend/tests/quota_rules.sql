@@ -53,12 +53,14 @@ begin
   -- lain yang akan menunjukkan letaknya.
   assert (select count(*) from public.profiles where id in (u1, u2)) = 2,
          'bootstrap profil saat sign-in anonim tidak jalan';
-  assert (select count(*) from public.profiles where id in (u1, u2) and bits = 30) = 2,
-         'profil baru harus menerima 30 starter Bits';
+  assert (select count(*) from public.profiles where id in (u1, u2) and bits = 50) = 2,
+         'profil baru harus menerima 50 starter Bits';
   assert (select count(*) from public.quota_ledger
            where owner_id in (u1, u2) and currency = 'bits'
-             and delta = 30 and reason = 'care_starter') = 2,
+             and delta = 50 and reason = 'care_starter') = 2,
          'starter Bits harus tercatat di ledger';
+  assert (select count(*) from public.catalog_items where active) = 18,
+         'katalog v1 harus berisi 9 makanan dan 9 item';
   update public.profiles set display_name = 'uji' where id in (u1, u2);
 
   assert extract(hour from ((public.battle_daily_reward_status(u1)->>'reset_at')::timestamptz at time zone 'UTC')) = 0,
@@ -456,7 +458,7 @@ begin
     from public.animas
    where owner_id = u1 and nickname = 'uji anima';
 
-  update public.profiles set bits = 30 where id = u1;
+  update public.profiles set bits = 50 where id = u1;
   update public.animas
      set status = 'ready',
          care = '{"hunger":0,"energy":100,"hygiene":0,"bond":0}'::jsonb,
@@ -469,25 +471,39 @@ begin
          play_score_today = 0,
          dormant_since = null
    where id = v_care_anima;
+  insert into public.player_inventory (owner_id, item_id, quantity)
+  values
+    (u1, 'ember_noodles', 10),
+    (u1, 'byte_berry', 10),
+    (u1, 'nova_feast', 4),
+    (u1, 'pulse_cell', 4),
+    (u1, 'vital_patch', 4)
+  on conflict (owner_id, item_id) do update
+    set quantity = excluded.quantity;
 
-  v_j := public.apply_care(u1, v_care_anima, 'feed', 'care-feed-1');
-  assert (v_j->>'bits')::int = 25, 'Feed harus mendebit tepat 5 Bits';
-  assert (v_j #>> '{anima,care,hunger}')::numeric = 35,
-         'Feed harus memulihkan 35 Hunger';
+  v_j := public.apply_care(u1, v_care_anima, 'feed', 'care-feed-1', 'ember_noodles');
+  assert (v_j->>'bits')::int = 50, 'Feed dari inventory tidak boleh mendebit Bits';
+  assert (v_j #>> '{anima,care,hunger}')::numeric = 45,
+         'Ember Noodles harus memulihkan 45 Hunger';
   assert (v_j #>> '{anima,care,bond}')::numeric = 0,
          'Bond tidak lagi meter progres';
   assert (v_j #>> '{anima,care_score}')::int = 3,
-         'Feed saat Hunger <40 harus memberi 3 care_score';
+         'Feed yang menyeberang Hunger 40 harus memberi 3 care_score';
+  assert (select quantity from public.player_inventory
+           where owner_id = u1 and item_id = 'ember_noodles') = 9,
+         'Feed harus mengonsumsi satu makanan';
   assert (select count(*) from public.quota_ledger
-           where owner_id = u1 and currency = 'bits' and delta = -5
-             and reason = 'feed') = 1,
-         'debit Feed harus punya tepat satu baris ledger';
+           where owner_id = u1 and currency = 'bits' and reason = 'feed') = 0,
+         'Feed inventory tidak boleh menulis ledger Bits';
 
-  v_j2 := public.apply_care(u1, v_care_anima, 'feed', 'care-feed-1');
+  v_j2 := public.apply_care(u1, v_care_anima, 'feed', 'care-feed-1', 'ember_noodles');
   assert (v_j2->>'replayed')::bool, 'key care yang sama harus masuk jalur replay';
-  assert (v_j2->>'bits')::int = 25, 'replay Feed tidak boleh mendebit lagi';
-  assert (v_j2 #>> '{anima,care,hunger}')::numeric = 35,
+  assert (v_j2->>'bits')::int = 50, 'replay Feed tidak boleh mendebit Bits';
+  assert (v_j2 #>> '{anima,care,hunger}')::numeric = 45,
          'replay Feed tidak boleh memulihkan dua kali';
+  assert (select quantity from public.player_inventory
+           where owner_id = u1 and item_id = 'ember_noodles') = 9,
+         'replay Feed tidak boleh mengonsumsi makanan lagi';
   assert (select count(*) from public.care_events
            where owner_id = u1 and idempotency_key = 'care-feed-1') = 1,
          'retry care harus tetap satu event';
@@ -500,26 +516,29 @@ begin
   assert ok, 'key yang dipakai ulang untuk aksi berbeda harus ditolak';
 
   v_j := public.apply_care(u1, v_care_anima, 'clean', 'care-clean-1');
-  assert (v_j->>'bits')::int = 20, 'Clean harus mendebit tepat 5 Bits';
+  assert (v_j->>'bits')::int = 45, 'Clean harus mendebit tepat 5 Bits';
   assert (v_j #>> '{anima,care,hygiene}')::numeric = 35,
          'Clean harus memulihkan 35 Hygiene';
   assert (v_j #>> '{anima,care_score}')::int = 6,
          'Clean saat Hygiene <50 harus memberi 3 care_score';
 
-  -- Meter yang tampil penuh (100 atau 99.99) tidak boleh mendebit Bits.
-  update public.profiles set bits = 20 where id = u1;
+  -- Meter yang tampil penuh (100 atau 99.99) tidak boleh mengonsumsi makanan.
+  update public.profiles set bits = 45 where id = u1;
   update public.animas
      set care = '{"hunger":99.99,"energy":100,"hygiene":99.99,"bond":0}'::jsonb,
          care_synced_at = now()
    where id = v_care_anima;
   begin
-    perform public.apply_care(u1, v_care_anima, 'feed', 'care-feed-full');
+    perform public.apply_care(u1, v_care_anima, 'feed', 'care-feed-full', 'ember_noodles');
     ok := false;
   exception when others then ok := (sqlerrm = 'NEED_FULL');
   end;
   assert ok, 'Feed pada Hunger yang tampil penuh harus ditolak';
-  assert (select bits from public.profiles where id = u1) = 20,
+  assert (select bits from public.profiles where id = u1) = 45,
          'NEED_FULL Feed tidak boleh mendebit Bits';
+  assert (select quantity from public.player_inventory
+           where owner_id = u1 and item_id = 'ember_noodles') = 9,
+         'NEED_FULL Feed tidak boleh mengonsumsi makanan';
   assert not exists (
     select 1 from public.care_events
      where owner_id = u1 and idempotency_key = 'care-feed-full'
@@ -531,7 +550,7 @@ begin
   exception when others then ok := (sqlerrm = 'NEED_FULL');
   end;
   assert ok, 'Clean pada Hygiene yang tampil penuh harus ditolak';
-  assert (select bits from public.profiles where id = u1) = 20,
+  assert (select bits from public.profiles where id = u1) = 45,
          'NEED_FULL Clean tidak boleh mendebit Bits';
 
   -- Play tetap memberi Bond setelah cap score harian tercapai, tetapi tidak
@@ -575,18 +594,59 @@ begin
   update public.profiles set bits = 0 where id = u1;
   update public.animas
      set care = '{"hunger":0,"energy":100,"hygiene":100,"bond":0}'::jsonb,
-         care_synced_at = now()
+         care_synced_at = now(),
+         care_score = 0
    where id = v_care_anima;
+  delete from public.player_inventory
+   where owner_id = u1 and item_id = 'byte_berry';
   begin
-    perform public.apply_care(u1, v_care_anima, 'feed', 'care-no-bits');
+    perform public.apply_care(u1, v_care_anima, 'feed', 'care-no-item', 'byte_berry');
     ok := false;
-  exception when others then ok := (sqlerrm = 'NO_BITS');
+  exception when others then ok := (sqlerrm = 'NO_ITEM');
   end;
-  assert ok, 'Feed tanpa saldo harus ditolak dengan NO_BITS';
+  assert ok, 'Feed tanpa makanan di inventory harus ditolak dengan NO_ITEM';
   assert not exists (
     select 1 from public.care_events
-     where owner_id = u1 and idempotency_key = 'care-no-bits'
+     where owner_id = u1 and idempotency_key = 'care-no-item'
   ), 'aksi gagal tidak boleh menyisakan event yang memblokir retry';
+  insert into public.player_inventory (owner_id, item_id, quantity)
+  values (u1, 'byte_berry', 2)
+  on conflict (owner_id, item_id) do update set quantity = 2;
+  v_j := public.apply_care(u1, v_care_anima, 'feed', 'care-byte-berry', 'byte_berry');
+  assert (v_j #>> '{anima,care,hunger}')::numeric = 10,
+         'Byte Berry dari 0 harus mengisi 10 Hunger';
+  assert (v_j #>> '{anima,care_score}')::int = 0,
+         'restore yang tidak menyeberang 40 tidak boleh +3 EXP';
+  v_j := public.apply_care(u1, v_care_anima, 'feed', 'care-byte-cross', 'byte_berry');
+  assert (v_j #>> '{anima,care,hunger}')::numeric = 20,
+         'Byte Berry kedua menambah Hunger tanpa Bits';
+  assert (v_j #>> '{anima,care_score}')::int = 0,
+         'Hunger 10+10 masih di bawah 40 jadi tanpa EXP';
+  insert into public.player_inventory (owner_id, item_id, quantity)
+  values (u1, 'ember_noodles', 1)
+  on conflict (owner_id, item_id) do update set quantity = public.player_inventory.quantity + 1;
+  v_j := public.apply_care(u1, v_care_anima, 'feed', 'care-ember-cross', 'ember_noodles');
+  assert (v_j #>> '{anima,care,hunger}')::numeric = 65,
+         'Ember Noodles dari 20 harus menyeberang 40';
+  assert (v_j #>> '{anima,care_score}')::int = 3,
+         'menyeberang 40 dari makanan kecil sebelumnya tetap +3 EXP';
+
+  update public.animas
+     set care = '{"hunger":80,"energy":90,"hygiene":80,"bond":0}'::jsonb,
+         care_synced_at = now(),
+         care_score = 3
+   where id = v_care_anima;
+  v_j := public.apply_care(u1, v_care_anima, 'use_item', 'care-energy-clamp', 'pulse_cell');
+  assert (v_j #>> '{anima,care,energy}')::numeric = 100,
+         'item Energy harus dijepit ke 100';
+  assert (v_j #>> '{anima,care_score}')::int = 3,
+         'item Energy tidak boleh menambah EXP';
+  begin
+    perform public.apply_care(u1, v_care_anima, 'use_item', 'care-energy-full', 'pulse_cell');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'NEED_FULL');
+  end;
+  assert ok, 'Energy yang tampil penuh harus menolak item Energy';
 
   -- Tidur memakai nilai Energy saat mulai, jadi sync berkali-kali tidak
   -- menggandakan pemulihan. Tiga jam = setengah jalan; enam jam = penuh +5.
@@ -664,7 +724,7 @@ begin
 
   -- Cap 48 jam memasukkan Dormant. EXP tetap. Dua Feed + dua Clean dari nol
   -- melewati ambang recovery 50 tanpa mengubah generation status=ready.
-  update public.profiles set bits = 30 where id = u1;
+  update public.profiles set bits = 50 where id = u1;
   update public.animas
      set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":40}'::jsonb,
          care_score = 99,
@@ -680,8 +740,11 @@ begin
   assert (select status from public.animas where id = v_care_anima) = 'ready',
          'Dormant tidak boleh mencampur arti generation status';
 
-  perform public.apply_care(u1, v_care_anima, 'feed', 'care-recover-feed-1');
-  perform public.apply_care(u1, v_care_anima, 'feed', 'care-recover-feed-2');
+  insert into public.player_inventory (owner_id, item_id, quantity)
+  values (u1, 'ember_noodles', 2)
+  on conflict (owner_id, item_id) do update set quantity = 2;
+  perform public.apply_care(u1, v_care_anima, 'feed', 'care-recover-feed-1', 'ember_noodles');
+  perform public.apply_care(u1, v_care_anima, 'feed', 'care-recover-feed-2', 'ember_noodles');
   perform public.apply_care(u1, v_care_anima, 'clean', 'care-recover-clean-1');
   perform public.apply_care(u1, v_care_anima, 'clean', 'care-recover-clean-2');
   assert (select dormant_since is null from public.animas where id = v_care_anima),
@@ -907,8 +970,8 @@ begin
     '[{"type":"attack","actor":"player","damage":220},{"type":"finished","result":"won"}]'::jsonb,
     'strike'
   );
-  assert (v_j #>> '{reward,bits}')::int = 5, 'menang harus memberi 5 Bits';
-  assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 5,
+  assert (v_j #>> '{reward,bits}')::int = 8, 'menang Even default harus memberi 8 Bits';
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 8,
          'saldo Bits dan response reward harus commit bersama';
   assert (select care_score from public.animas where id = v_battle_player)
            = v_score_before_battle + 4,
@@ -918,7 +981,7 @@ begin
          'menang harus menaikkan battle_wins satu';
   assert (select count(*) from public.quota_ledger
            where ref_id = v_battle_session and currency = 'bits'
-             and delta = 5 and reason = 'battle_win') = 1,
+             and delta = 8 and reason = 'battle_win') = 1,
          'reward Battle harus punya tepat satu baris ledger';
   assert (v_j #>> '{session,daily_reward,earned}')::int = 3
          and (v_j #>> '{session,daily_reward,remaining}')::int = 0
@@ -932,7 +995,7 @@ begin
     'strike'
   );
   assert (v_j2->>'replayed')::bool, 'retry turn harus mengembalikan response tersimpan';
-  assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 5,
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 8,
          'retry tidak boleh membayar reward kedua';
   assert (select count(*) from public.battle_turns
            where session_id = v_battle_session) = 1,
@@ -975,23 +1038,26 @@ begin
     '[{"type":"attack","actor":"player","damage":220},{"type":"finished","result":"won"}]'::jsonb,
     'strike'
   );
-  assert (v_j #>> '{reward,bits}')::int = 0
+  assert (v_j #>> '{reward,bits}')::int = 8
          and (v_j #>> '{reward,care_score}')::int = 0
          and (v_j #>> '{reward,battle_wins}')::int = 0
-         and (v_j #>> '{reward,capped}')::bool,
-         'win setelah cap harus menjadi Training tanpa progression reward';
+         and (v_j #>> '{reward,progression_capped}')::bool,
+         'win setelah 3/3 harus tetap membayar Bits sebagai Training';
   assert (v_j #>> '{session,daily_reward,rewarded}')::bool = false
          and (v_j #>> '{session,daily_reward,earned}')::int = 3,
-         'payload Training harus menjelaskan bahwa session ini tidak dibayar';
-  assert (select bits from public.profiles where id = u1) = v_bits_before_battle
+         'payload Training harus menjelaskan bahwa progression sudah cap';
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 8
          and (select care_score from public.animas where id = v_battle_player)
            = v_score_before_battle
          and (select battle_wins from public.animas where id = v_battle_player)
            = v_wins_before_battle,
-         'Training tidak boleh mengubah Bits, care_score, atau battle_wins';
+         'Training boleh menambah Bits tetapi tidak EXP atau win tercatat';
+  assert (select count(*) from public.quota_ledger
+           where ref_id = v_battle_session and reason = 'battle_train') = 1,
+         'Training ber-Bits harus memakai reason battle_train';
   assert (select count(*) from public.quota_ledger
            where ref_id = v_battle_session and reason = 'battle_win') = 0,
-         'Training tidak boleh meninggalkan ledger reward palsu';
+         'Training tidak boleh menambah counter progression';
   v_j2 := public.commit_battle_turn(
     u1, v_battle_session, 1, 1, 'battle-turn-training', 'surge',
     jsonb_build_object(
@@ -1003,9 +1069,9 @@ begin
     'strike'
   );
   assert (v_j2->>'replayed')::bool
-         and (v_j2 #>> '{reward,capped}')::bool,
-         'retry Training harus replay response capped yang sama';
-  assert (select bits from public.profiles where id = u1) = v_bits_before_battle,
+         and (v_j2 #>> '{reward,bits}')::int = 8,
+         'retry Training harus replay Bits yang sama';
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 8,
          'retry Training tidak boleh membuat reward baru';
 
   -- Kalah dan forfeit tidak pernah menyentuh Bits, score, wins, atau Core.
@@ -1065,6 +1131,150 @@ begin
          'forfeit harus menutup session';
   assert (select bits from public.profiles where id = u1) = v_bits_before_battle,
          'forfeit tidak boleh memberi reward';
+
+  ----------------------------------------------------------------------------
+  -- Shop: pembelian atomik, harga basi, stack, Bits kurang
+  ----------------------------------------------------------------------------
+  update public.profiles set bits = 50 where id = u1;
+  delete from public.player_inventory where owner_id = u1 and item_id = 'byte_berry';
+  v_j := public.purchase_catalog_item(u1, 'byte_berry', 2, 'buy-byte-1');
+  assert (v_j->>'bits')::int = 48 and (v_j->>'quantity')::int = 1
+         and not (v_j->>'replayed')::bool,
+         'pembelian harus mendebit harga katalog dan menambah inventory';
+  assert (select count(*) from public.quota_ledger
+           where owner_id = u1 and reason = 'shop_buy' and delta = -2) = 1,
+         'pembelian harus punya satu baris ledger';
+  v_j2 := public.purchase_catalog_item(u1, 'byte_berry', 2, 'buy-byte-1');
+  assert (v_j2->>'replayed')::bool and (v_j2->>'bits')::int = 48
+         and (v_j2->>'quantity')::int = 1,
+         'replay pembelian tidak boleh mendebit dua kali';
+  begin
+    perform public.purchase_catalog_item(u1, 'byte_berry', 99, 'buy-stale');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'PRICE_CHANGED');
+  end;
+  assert ok, 'harga yang tidak cocok harus ditolak';
+  assert (select bits from public.profiles where id = u1) = 48,
+         'PRICE_CHANGED tidak boleh mendebit';
+  insert into public.player_inventory (owner_id, item_id, quantity)
+  values (u1, 'moon_biscuit', 999)
+  on conflict (owner_id, item_id) do update set quantity = 999;
+  begin
+    perform public.purchase_catalog_item(u1, 'moon_biscuit', 3, 'buy-stack');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'STACK_FULL');
+  end;
+  assert ok, 'stack 999 harus menolak pembelian baru';
+  update public.profiles set bits = 1 where id = u1;
+  begin
+    perform public.purchase_catalog_item(u1, 'nova_feast', 20, 'buy-poor');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'NO_BITS');
+  end;
+  assert ok, 'Bits kurang harus menolak pembelian';
+
+  ----------------------------------------------------------------------------
+  -- Satu item per Battle, dan cap 100 Bits Training
+  ----------------------------------------------------------------------------
+  update public.profiles set bits = 50 where id = u1;
+  insert into public.player_inventory (owner_id, item_id, quantity)
+  values (u1, 'vital_patch', 2)
+  on conflict (owner_id, item_id) do update set quantity = 2;
+  update public.animas
+     set care = jsonb_set(care, '{energy}', '100'::jsonb),
+         care_synced_at = now()
+   where id = v_battle_player;
+  v_j := public.start_battle(
+    u1, v_battle_player, v_battle_bot,
+    v_battle_player_snapshot, v_battle_bot_snapshot,
+    jsonb_build_object(
+      'status', 'active', 'turn', 1, 'seed', 'battle-item',
+      'player', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3),
+      'bot', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3)
+    ),
+    'battle-item'
+  );
+  v_battle_session := (v_j->>'id')::uuid;
+  v_j := public.commit_battle_turn(
+    u1, v_battle_session, 1, 1, 'battle-turn-item', 'item',
+    jsonb_build_object(
+      'status', 'active', 'turn', 2, 'seed', 'battle-item',
+      'player', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3, 'item_used', true),
+      'bot', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3)
+    ),
+    '[{"type":"item","actor":"player","item_id":"vital_patch"}]'::jsonb,
+    'strike',
+    'vital_patch'
+  );
+  assert (v_j #>> '{session,item_used_id}') = 'vital_patch',
+         'item Battle harus tercatat di session';
+  assert (select quantity from public.player_inventory
+           where owner_id = u1 and item_id = 'vital_patch') = 1,
+         'item Battle harus dikonsumsi sekali';
+  begin
+    perform public.commit_battle_turn(
+      u1, v_battle_session, 2, 2, 'battle-turn-item-2', 'item',
+      jsonb_build_object(
+        'status', 'active', 'turn', 3, 'seed', 'battle-item',
+        'player', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3, 'item_used', true),
+        'bot', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3)
+      ),
+      '[{"type":"item","actor":"player","item_id":"vital_patch"}]'::jsonb,
+      'strike',
+      'vital_patch'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ITEM_ALREADY_USED');
+  end;
+  assert ok, 'item kedua dalam Battle yang sama harus ditolak';
+  assert (select quantity from public.player_inventory
+           where owner_id = u1 and item_id = 'vital_patch') = 1,
+         'item yang ditolak tidak boleh dikonsumsi';
+  perform public.forfeit_battle(u1, v_battle_session);
+
+  insert into public.quota_ledger (owner_id, currency, delta, reason, ref_id, created_at)
+  values (u1, 'bits', 70, 'battle_train', gen_random_uuid(), now());
+  update public.animas
+     set care = jsonb_set(care, '{energy}', '100'::jsonb),
+         care_synced_at = now()
+   where id = v_battle_player;
+  v_j := public.start_battle(
+    u1, v_battle_player, v_battle_bot,
+    v_battle_player_snapshot, v_battle_bot_snapshot,
+    jsonb_build_object(
+      'status', 'active', 'turn', 1, 'seed', 'battle-cap',
+      'player', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3),
+      'bot', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3)
+    ),
+    'battle-cap'
+  );
+  v_battle_session := (v_j->>'id')::uuid;
+  select bits into v_bits_before_battle from public.profiles where id = u1;
+  v_j := public.commit_battle_turn(
+    u1, v_battle_session, 1, 1, 'battle-turn-cap', 'surge',
+    jsonb_build_object(
+      'status', 'won', 'turn', 2, 'seed', 'battle-cap',
+      'player', jsonb_build_object('hp', 120, 'max_hp', 220, 'momentum', 2),
+      'bot', jsonb_build_object('hp', 0, 'max_hp', 220, 'momentum', 3)
+    ),
+    '[{"type":"finished","result":"won"}]'::jsonb,
+    'strike'
+  );
+  assert (v_j #>> '{reward,bits}')::int = 3
+         and (v_j #>> '{reward,capped}')::bool = false,
+         'payout terakhir harus dijepit sisa cap 100 tanpa melewatinya';
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 3,
+         'cap 100 Bits harus dihormati di saldo';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform public.purchase_catalog_item(u1, 'byte_berry', 2, 'buy-client');
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh memanggil RPC pembelian';
 
   perform set_config('request.jwt.claims',
     json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);

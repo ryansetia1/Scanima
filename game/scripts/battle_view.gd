@@ -16,6 +16,7 @@ const RESISTED_COLOR := Color(0.55, 0.68, 0.9, 1.0)
 
 signal start_requested
 signal action_requested(action: String)
+signal item_picker_requested
 signal resume_requested
 signal forfeit_requested
 signal reward_status_refresh_requested
@@ -59,9 +60,11 @@ signal reward_status_refresh_requested
 @onready var _strike_button: Button = %BattleStrikeButton
 @onready var _surge_button: Button = %BattleSurgeButton
 @onready var _guard_button: Button = %BattleGuardButton
+@onready var _item_button: Button = %BattleItemButton
 @onready var _strike_commit: ColorRect = %BattleStrikeCommit
 @onready var _surge_commit: ColorRect = %BattleSurgeCommit
 @onready var _guard_commit: ColorRect = %BattleGuardCommit
+@onready var _item_commit: ColorRect = %BattleItemCommit
 @onready var _forfeit_button: Button = %BattleForfeitButton
 @onready var _result_panel: PanelContainer = %BattleResultPanel
 @onready var _result_title: Label = %BattleResultTitle
@@ -76,6 +79,7 @@ var _busy := false
 var _element_icons: Dictionary = {}
 var _effectiveness_tween: Tween
 var _queued_action := ""
+var _last_reward: Dictionary = {}
 var _command_tween: Tween
 
 
@@ -92,6 +96,7 @@ func _ready() -> void:
 	_strike_button.pressed.connect(_request_action.bind("strike"))
 	_surge_button.pressed.connect(_request_action.bind("surge"))
 	_guard_button.pressed.connect(_request_action.bind("guard"))
+	_item_button.pressed.connect(_request_item)
 	_forfeit_button.pressed.connect(forfeit_requested.emit)
 	_retry_button.pressed.connect(resume_requested.emit)
 	_arena.resized.connect(_position_fighters)
@@ -144,14 +149,21 @@ func _remember_lobby_daily_reward(daily_reward: Dictionary) -> void:
 func _apply_lobby() -> void:
 	var unavailable_key := _lobby_unavailable_key()
 	var training := _is_training(_lobby_daily_reward)
+	var bits_capped := _is_bits_capped(_lobby_daily_reward)
 	if not unavailable_key.is_empty():
 		_lobby_name.text = tr(_lobby_title_key(unavailable_key))
 		_lobby_meta.text = tr(unavailable_key)
-	elif training:
+	elif training and bits_capped:
 		_lobby_name.text = LocaleManager.display_name(_lobby_row)
 		_lobby_meta.text = tr("BATTLE_LOBBY_TRAINING") % [
-			LocaleManager.format_integer(_display_daily_earned(_lobby_daily_reward)),
-			LocaleManager.format_integer(int(_lobby_daily_reward.get("limit", 0))),
+			LocaleManager.format_integer(_display_bits_earned(_lobby_daily_reward)),
+			LocaleManager.format_integer(int(_lobby_daily_reward.get("bits_limit", 100))),
+		]
+	elif training:
+		_lobby_name.text = LocaleManager.display_name(_lobby_row)
+		_lobby_meta.text = tr("BATTLE_LOBBY_TRAINING_BITS") % [
+			LocaleManager.format_integer(_display_bits_earned(_lobby_daily_reward)),
+			LocaleManager.format_integer(int(_lobby_daily_reward.get("bits_limit", 100))),
 		]
 	else:
 		_lobby_name.text = LocaleManager.display_name(_lobby_row)
@@ -221,7 +233,7 @@ func session_data() -> Dictionary:
 
 
 func begin_action(action: String) -> void:
-	if _busy or action not in ["strike", "surge", "guard"]:
+	if _busy or action not in ["strike", "surge", "guard", "item"]:
 		return
 	_queued_action = action
 	_busy = true
@@ -229,8 +241,9 @@ func begin_action(action: String) -> void:
 		"strike": "BATTLE_ACTION_PENDING_STRIKE",
 		"surge": "BATTLE_ACTION_PENDING_SURGE",
 		"guard": "BATTLE_ACTION_PENDING_GUARD",
+		"item": "BATTLE_ACTION_PENDING_ITEM",
 	}.get(action, "BATTLE_CHOOSE_ACTION"))
-	if action == "guard":
+	if action == "guard" or action == "item":
 		_feedback.text = tr(feedback_key)
 	else:
 		_feedback.text = tr(feedback_key) % _move_label(action, _as_dict(_session.get("player_snapshot")))
@@ -246,6 +259,15 @@ func set_busy(busy: bool) -> void:
 	_update_action_state()
 
 
+func _request_item() -> void:
+	if _busy:
+		return
+	if not str(_session.get("item_used_id", "")).is_empty() or bool(_as_dict(_as_dict(_session.get("state")).get("player")).get("item_used", false)):
+		_feedback.text = tr("BATTLE_ITEM_USED")
+		return
+	item_picker_requested.emit()
+
+
 func _request_action(action: String) -> void:
 	if _busy:
 		return
@@ -258,7 +280,7 @@ func _show_action_commit(action: String) -> void:
 	_queued_action = action
 	var selected_button := _button_for_action(action)
 	var selected_commit := _commit_for_action(action)
-	for button in [_strike_button, _surge_button, _guard_button]:
+	for button in [_strike_button, _surge_button, _guard_button, _item_button]:
 		(button as Button).self_modulate = (
 			Color.WHITE if button == selected_button else Color(1.0, 1.0, 1.0, 0.48)
 		)
@@ -282,9 +304,9 @@ func _clear_action_commit() -> void:
 		_command_tween.kill()
 	_command_tween = null
 	_queued_action = ""
-	for button in [_strike_button, _surge_button, _guard_button]:
+	for button in [_strike_button, _surge_button, _guard_button, _item_button]:
 		(button as Button).self_modulate = Color.WHITE
-	for commit in [_strike_commit, _surge_commit, _guard_commit]:
+	for commit in [_strike_commit, _surge_commit, _guard_commit, _item_commit]:
 		(commit as ColorRect).visible = false
 		(commit as ColorRect).scale = Vector2.ONE
 		(commit as ColorRect).modulate = Color.WHITE
@@ -295,6 +317,8 @@ func _button_for_action(action: String) -> Button:
 		return _surge_button
 	if action == "guard":
 		return _guard_button
+	if action == "item":
+		return _item_button
 	return _strike_button
 
 
@@ -303,6 +327,8 @@ func _commit_for_action(action: String) -> ColorRect:
 		return _surge_commit
 	if action == "guard":
 		return _guard_commit
+	if action == "item":
+		return _item_commit
 	return _strike_commit
 
 
@@ -344,6 +370,13 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 					str(event.get("actor", ""))
 				)
 				await _event_pause(0.24)
+			"item":
+				_feedback.text = tr("BATTLE_EVENT_ITEM") % _actor_name(
+					str(event.get("actor", ""))
+				)
+				if str(event.get("actor", "")) == "player":
+					_player_hp.value = int(event.get("hp", _player_hp.value))
+				await _event_pause(0.28)
 			"attack":
 				await _play_attack(event)
 			"knockout":
@@ -538,14 +571,19 @@ func _apply_state() -> void:
 	)
 	var daily_reward := _as_dict(_session.get("daily_reward"))
 	var training := _is_training(daily_reward)
-	# 3/3 adalah batas reward Battle, bukan batas Training. Lobby sudah menjelaskan
-	# alasan mode berubah; mengulang counter di duel membuat Training tampak terbatas.
-	_daily_reward_label.visible = not daily_reward.is_empty() and not training
+	_daily_reward_label.visible = not daily_reward.is_empty()
 	if _daily_reward_label.visible:
-		_daily_reward_label.text = tr("BATTLE_DAILY_REWARDS") % [
-			LocaleManager.format_integer(_display_daily_earned(daily_reward)),
-			LocaleManager.format_integer(int(daily_reward.get("limit", 0))),
-		]
+		var counter := _daily_counter_text(daily_reward)
+		var tier := str(_session.get("reward_tier", ""))
+		if not tier.is_empty():
+			counter = "%s · %s" % [
+				counter,
+				tr("BATTLE_REWARD_PAYOUT") % [
+					_tier_label(tier),
+					LocaleManager.format_integer(int(_session.get("reward_bits", 0))),
+				],
+			]
+		_daily_reward_label.text = counter
 	var status := str(_session.get("status", state.get("status", "active")))
 	_result_panel.visible = status != "active"
 	_actions.visible = status == "active"
@@ -555,8 +593,10 @@ func _apply_state() -> void:
 		# menyebutkan jalan keluarnya; tanpa ini pemain kehabisan PP tanpa tahu sebabnya.
 		if int(player.get("momentum", 0)) < SURGE_COST:
 			_feedback.text = tr("BATTLE_NO_MOMENTUM")
-		elif training:
+		elif training and _is_bits_capped(daily_reward):
 			_feedback.text = tr("BATTLE_TRAINING_HINT")
+		elif training:
+			_feedback.text = tr("BATTLE_TRAINING_BITS_HINT")
 		else:
 			_feedback.text = tr("BATTLE_CHOOSE_ACTION")
 	else:
@@ -568,15 +608,15 @@ func _apply_state() -> void:
 func _show_result(status: String) -> void:
 	_result_panel.visible = true
 	_retry_button.visible = true
-	var training := _is_training(_as_dict(_session.get("daily_reward")))
+	var daily_reward := _as_dict(_session.get("daily_reward"))
+	var training := _is_training(daily_reward)
+	var reward := _as_dict(_session.get("last_reward"))
 	match status:
 		"won":
 			_result_title.text = tr(
 				"BATTLE_TRAINING_TITLE" if training else "BATTLE_WIN_TITLE"
 			)
-			_result_body.text = tr(
-				"BATTLE_TRAINING_WIN_BODY" if training else "BATTLE_WIN_BODY"
-			)
+			_result_body.text = _win_body(reward)
 			if is_instance_valid(_player_sprite):
 				_player_sprite.set_pose("happy")
 		"lost":
@@ -588,19 +628,59 @@ func _show_result(status: String) -> void:
 	_retry_button.text = tr("BATTLE_TRAIN_AGAIN" if training else "BATTLE_AGAIN")
 
 
+func _win_body(reward: Dictionary) -> String:
+	var bits := int(reward.get("bits", 0))
+	if int(reward.get("care_score", 0)) > 0:
+		return tr("BATTLE_WIN_BODY") % LocaleManager.format_integer(bits)
+	if bits > 0:
+		return tr("BATTLE_TRAINING_BITS_BODY") % LocaleManager.format_integer(bits)
+	return tr("BATTLE_TRAINING_WIN_BODY")
+
+
+func _daily_counter_text(daily_reward: Dictionary) -> String:
+	return "%s · %s" % [
+		tr("BATTLE_DAILY_PROGRESS") % [
+			LocaleManager.format_integer(_display_daily_earned(daily_reward)),
+			LocaleManager.format_integer(int(daily_reward.get("limit", 0))),
+		],
+		tr("BATTLE_DAILY_BITS") % [
+			LocaleManager.format_integer(_display_bits_earned(daily_reward)),
+			LocaleManager.format_integer(int(daily_reward.get("bits_limit", 100))),
+		],
+	]
+
+
+func _tier_label(tier: String) -> String:
+	match tier:
+		"favorable":
+			return tr("BATTLE_TIER_FAVORABLE")
+		"tough":
+			return tr("BATTLE_TIER_TOUGH")
+		"formidable":
+			return tr("BATTLE_TIER_FORMIDABLE")
+		_:
+			return tr("BATTLE_TIER_EVEN")
+
+
 func _update_action_state() -> void:
 	var state := _as_dict(_session.get("state"))
 	var player := _as_dict(state.get("player"))
 	var active := str(_session.get("status", state.get("status", ""))) == "active"
 	var momentum := int(player.get("momentum", 0))
+	var momentum_max := int(player.get("momentum_max", MOMENTUM_MAX))
+	var item_used := (
+		not str(_session.get("item_used_id", "")).is_empty()
+		or bool(player.get("item_used", false))
+	)
 	var committed := _busy and not _queued_action.is_empty()
 	_strike_button.disabled = not active or (_busy and not committed)
 	_guard_button.disabled = not active or (_busy and not committed)
+	_item_button.disabled = not active or (_busy and not committed)
 	_surge_button.disabled = (
 		not active or momentum < SURGE_COST or (_busy and not committed)
 	)
 	var accepts_input := active and not _busy
-	for button in [_strike_button, _surge_button, _guard_button]:
+	for button in [_strike_button, _surge_button, _guard_button, _item_button]:
 		var action_button := button as Button
 		action_button.mouse_filter = (
 			Control.MOUSE_FILTER_STOP
@@ -618,8 +698,12 @@ func _update_action_state() -> void:
 	_surge_button.text = tr("BATTLE_ACTION_SURGE_COST") % [
 		_move_label("surge", player_snapshot),
 		LocaleManager.format_integer(momentum),
-		LocaleManager.format_integer(MOMENTUM_MAX),
+		LocaleManager.format_integer(momentum_max),
 	]
+	_item_button.text = tr("BATTLE_ITEM_USED" if item_used else "BATTLE_ACTION_ITEM")
+	_item_button.self_modulate = (
+		Color(1, 1, 1, 0.42) if item_used and not committed else Color.WHITE
+	)
 	_forfeit_button.disabled = _busy or not active
 
 
@@ -666,6 +750,9 @@ func _error_copy(error_code: String) -> String:
 		"ANIMA_NOT_READY": "BATTLE_ANIMA_NOT_READY",
 		"NO_BATTLE_OPPONENT": "BATTLE_NO_OPPONENT",
 		"NO_MOMENTUM": "BATTLE_NO_MOMENTUM",
+		"NO_ITEM": "ERROR_NO_ITEM",
+		"ITEM_ALREADY_USED": "BATTLE_ITEM_USED",
+		"INVALID_ITEM": "ERROR_INVALID_ITEM",
 		"BATTLE_EXPIRED": "BATTLE_EXPIRED",
 		"AUTH_EXPIRED": "BATTLE_AUTH_EXPIRED",
 	}.get(error_code, "BATTLE_ERROR_GENERIC"))
@@ -724,10 +811,27 @@ static func _is_training(daily_reward: Dictionary) -> bool:
 	)
 
 
+static func _is_bits_capped(daily_reward: Dictionary) -> bool:
+	if daily_reward.is_empty() or bool(daily_reward.get("rewarded", false)):
+		return false
+	if daily_reward.has("bits_remaining"):
+		return int(daily_reward.get("bits_remaining")) <= 0
+	if daily_reward.has("bits_earned"):
+		return int(daily_reward.get("bits_earned")) >= int(daily_reward.get("bits_limit", 100))
+	return false
+
+
 static func _display_daily_earned(daily_reward: Dictionary) -> int:
 	return mini(
 		maxi(0, int(daily_reward.get("earned", 0))),
 		maxi(0, int(daily_reward.get("limit", 0)))
+	)
+
+
+static func _display_bits_earned(daily_reward: Dictionary) -> int:
+	return mini(
+		maxi(0, int(daily_reward.get("bits_earned", 0))),
+		maxi(0, int(daily_reward.get("bits_limit", 100)))
 	)
 
 

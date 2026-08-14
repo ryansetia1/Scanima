@@ -33,6 +33,8 @@ const REQUIRED_KEYS := [
 	"BATTLE_ACTION_STRIKE",
 	"BATTLE_ACTION_SURGE",
 	"BATTLE_ACTION_GUARD",
+	"BATTLE_ACTION_ITEM",
+	"SHOP_OPEN",
 	"BATTLE_ERROR_GENERIC",
 	"STATUS_GATE_REJECTED",
 	"GATE_HUMAN_FACE",
@@ -60,12 +62,14 @@ const PLAYER_UI_FILES := [
 	"res://scripts/collection_view.gd",
 	"res://scripts/battle_view.gd",
 	"res://scripts/anima_details_view.gd",
+	"res://scripts/shop_sheet.gd",
 	"res://scenes/scan_flow.tscn",
 	"res://scenes/ui/home_view.tscn",
 	"res://scenes/ui/scan_view.tscn",
 	"res://scenes/ui/collection_view.tscn",
 	"res://scenes/ui/battle_view.tscn",
 	"res://scenes/ui/anima_details_view.tscn",
+	"res://scenes/ui/shop_sheet.tscn",
 	"res://scenes/ui/bottom_nav.tscn",
 ]
 

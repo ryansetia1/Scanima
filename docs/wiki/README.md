@@ -16,14 +16,14 @@ Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). A
 
 | Halaman | Isi |
 | --- | --- |
-| [Perawatan](caring.md) | Hunger, Energy, Hygiene, Feed, Clean, Play, Sleep, Dormant |
-| [Ekonomi](economy.md) | Genesis Cores, Bits, Scan, menunggu telur |
+| [Perawatan](caring.md) | Hunger, Energy, Hygiene, Shop, Feed, Clean, Play, Sleep, Dormant |
+| [Ekonomi](economy.md) | Genesis Cores, Bits, Shop, Scan, menunggu telur |
 | [Anima](anima.md) | Traits, attributes, EXP, Level, Collection, Summon |
-| [Battle](battle.md) | Syarat masuk, Attack / Special / Guard, PP, hadiah |
+| [Battle](battle.md) | Syarat masuk, Attack / Special / Guard / Item, PP, hadiah |
 
 ## Yang perlu diingat
 
 - Anima **tidak mati**. Kalau lama tidak dirawat, ia jadi Dormant — sedih dan tidak bisa Battle — lalu pulih setelah makan dan dibersihkan.
 - Hanya **satu** Anima hidup di Home. Yang lain tidur di Collection.
-- **Cores** untuk scan spesies baru. **Bits** untuk Feed dan Clean.
+- **Cores** untuk scan spesies baru. **Bits** untuk Shop dan Clean.
 - Kalau Cores habis, Scan terkunci dulu. Isi Core lewat toko / iklan / kunci sendiri belum ada.

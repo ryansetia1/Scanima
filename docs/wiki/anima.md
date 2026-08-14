@@ -43,7 +43,7 @@ Contoh: 25 EXP → Level 6.
 
 | Aksi | EXP | Catatan |
 | --- | --- | --- |
-| Feed saat lapar (Hunger di bawah 40) | +3 | Kenyang = 0 |
+| Feed yang menyeberangkan Hunger ke 40 | +3 | Camilan yang masih di bawah 40 = 0 |
 | Clean saat kotor (Hygiene di bawah 50) | +3 | Bersih = 0 |
 | Sleep penuh (companion di Home) | +5 | Bangun lebih awal = 0 |
 | Play | +1 | Maks 5 kali per hari, reset tengah malam waktu setempat |

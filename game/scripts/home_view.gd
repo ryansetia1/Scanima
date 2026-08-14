@@ -17,6 +17,9 @@ const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 @onready var _need_hunger: ProgressBar = %NeedHunger
 @onready var _need_energy: ProgressBar = %NeedEnergy
 @onready var _need_hygiene: ProgressBar = %NeedHygiene
+@onready var _hunger_chip: PanelContainer = %HungerChip
+@onready var _energy_chip: PanelContainer = %EnergyChip
+@onready var _hygiene_chip: PanelContainer = %HygieneChip
 @onready var _need_exp: ProgressBar = %NeedExp
 @onready var _care_actions: GridContainer = %CareActions
 @onready var _feed_button: Button = %FeedButton
@@ -94,6 +97,9 @@ func update_care(row: Dictionary, busy: bool) -> void:
 	UiJuice.tween_meter(_need_hunger, care["hunger"])
 	UiJuice.tween_meter(_need_energy, care["energy"])
 	UiJuice.tween_meter(_need_hygiene, care["hygiene"])
+	_set_need_alert(_hunger_chip, CARE_RULES.need_is_low(care, "hunger"))
+	_set_need_alert(_energy_chip, CARE_RULES.need_is_low(care, "energy"))
+	_set_need_alert(_hygiene_chip, CARE_RULES.need_is_low(care, "hygiene"))
 	var exp := int(_row.get("care_score", 0))
 	UiJuice.tween_meter(_need_exp, CARE_RULES.exp_progress(exp))
 
@@ -189,6 +195,10 @@ func _update_action_state(disabled: bool) -> void:
 
 func _play_capped() -> bool:
 	return CARE_RULES.play_exp_remaining(_row) <= 0
+
+
+static func _set_need_alert(chip: PanelContainer, low: bool) -> void:
+	chip.theme_type_variation = &"NeedChipLow" if low else &"NeedChip"
 
 
 static func _has_timestamp(value: Variant) -> bool:

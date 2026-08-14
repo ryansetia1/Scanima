@@ -1,0 +1,130 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/shop_sheet.gd" id="1_shop"]
+[ext_resource type="Theme" path="res://themes/mobile_theme.tres" id="2_theme"]
+
+[node name="ShopSheet" type="Control"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme = ExtResource("2_theme")
+script = ExtResource("1_shop")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.004, 0.008, 0.025, 0.78)
+
+[node name="DismissButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+flat = true
+
+[node name="Bottom" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Bottom"]
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -760.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 0
+theme_type_variation = &"ModalPanel"
+
+[node name="Column" type="VBoxContainer" parent="Bottom/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="HandleCenter" type="CenterContainer" parent="Bottom/Panel/Column"]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+mouse_filter = 0
+
+[node name="Handle" type="ColorRect" parent="Bottom/Panel/Column/HandleCenter"]
+custom_minimum_size = Vector2(84, 7)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.4, 0.5, 0.68, 0.72)
+
+[node name="ContentSlot" type="VBoxContainer" parent="Bottom/Panel/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="ShopTitle" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PageTitleLabel"
+text = "SHOP_TITLE"
+
+[node name="ShopTabs" type="HBoxContainer" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ShopFoodTab" type="Button" parent="Bottom/Panel/Column/ContentSlot/ShopTabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "SHOP_TAB_FOOD"
+
+[node name="ShopItemTab" type="Button" parent="Bottom/Panel/Column/ContentSlot/ShopTabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "SHOP_TAB_ITEMS"
+
+[node name="ShopScroll" type="ScrollContainer" parent="Bottom/Panel/Column/ContentSlot"]
+custom_minimum_size = Vector2(0, 360)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ShopList" type="VBoxContainer" parent="Bottom/Panel/Column/ContentSlot/ShopScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="ShopEmpty" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "SHOP_EMPTY"
+autowrap_mode = 2
+
+[node name="ShopEmptyCta" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "SHOP_OPEN"
