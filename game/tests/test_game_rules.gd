@@ -321,6 +321,12 @@ func _initialize() -> void:
 	_check_eq(Catalog.quantity_of(Catalog.with_quantity(bag, "power_chip", 0), "power_chip"), 0, "nol menghapus baris")
 	_check_eq(Catalog.quantity_of(Catalog.with_quantity([], "vital_patch", 1), "vital_patch"), 1, "item baru masuk tas")
 
+	print("13. gallery transport")
+	var backend_text := FileAccess.get_file_as_string("res://scripts/backend.gd")
+	_check(backend_text.find("func gallery(") >= 0, "Backend exposes gallery edge transport")
+	_check(backend_text.find("gallery_thumb_cache_path") >= 0, "gallery thumbs cache bounded per entry id")
+	_check(backend_text.find("download_url") >= 0, "signed gallery and battle art use ephemeral URL download")
+
 	_finish()
 
 

@@ -2,6 +2,49 @@
 
 Ini adalah dokumen paling menentukan kualitas Scanima. Kalau prompt-nya benar, sebuah mouse komputer jadi Anima yang jelas-jelas berasal dari mouse itu. Kalau salah, semua Anima terlihat seperti monster generik yang kebetulan diberi warna berbeda, dan seluruh premis game runtuh.
 
+## Kontrak capture v13 dan prompt production v15
+
+Sumber prompt production berada di `backend/prompts/v15/`; v13 tetap dibundel
+sebagai rollback langsung. Vision/schema v15 identik dengan kontrak v13 yang
+menambah:
+
+- `subject_kind`: `object` atau `animal`;
+- primary element dari roster tertutup 18 nilai dan `secondary_element` nullable
+  yang wajib berbeda;
+- safety gate hewan: semua spesies non-manusia boleh, tetapi distress, abuse,
+  gore, manusia, PII, dan situasi capture berbahaya ditolak;
+- primary Fauna untuk hewan, dengan secondary hanya dari ciri nyata;
+- `strike_vfx`/`surge_vfx` material/subjek-spesifik seperti v12.
+
+Capture v13 selalu menghasilkan art unik; `species_key` tetap berguna sebagai
+deskripsi/taksonomi, bukan lagi kunci dedup art. Assembler memilih
+`sprite_sheet_fauna.md` untuk hewan dan `sprite_sheet.md` untuk objek. Keduanya
+memakai grid 3×3 yang sama; pose Damaged hewan menunjukkan lelah/tertekan tanpa
+luka atau gore.
+
+Uji production Golden Retriever membuktikan pipeline fauna v13, tetapi hasil
+visualnya terlalu dekat ke anatomi hewan nyata. V14 menambah monsterization
+floor, namun satu eval Golden Retriever masih terbaca sebagai anjing anime biasa
+walau lebih ekspresif; kandidat itu ditolak dan tidak pernah dipromosikan.
+
+V15 hanya mengubah `sprite_sheet_fauna.md`; Vision, schema, prompt
+objek, dan prompt evolusi identik dengan v13. Selain mempertahankan spesies,
+warna, limb count, dan landmark utama, Idle sekarang wajib memuat tiga lapis
+transformasi sekaligus: proportion break, minimal dua landmark evolution, dan
+satu original organic motif yang menyatu ke 2–3 zona tubuh. Silhouette hitamnya
+tidak boleh lolos sebagai spesimen hewan biasa. Chroma green juga dilarang
+menjadi warna foreground atau VFX setelah eval v14 memberi residu 0,453%.
+Eval Golden Retriever v15 kemudian lulus 9/9 sel dalam 55 detik: kepala/mata,
+mane, kaki, ekor, massa tubuh, dan ekspresi sudah terbaca sebagai monster pada
+ukuran game. Residu hijau terukur 0,526% tetapi tidak mengganggu pada render
+ukuran game; tetap dipantau pada fauna berwarna non-hijau berikutnya.
+`create_anima` version 13 membawa bundle tersebut dan
+`app_config.prompt_version = "v15"` sudah live; rollback-nya v13.
+
+Bagian v1–v12 di bawah adalah decision log dan spesifikasi rollback. Pernyataan
+tentang enam elemen, penolakan semua hewan, atau optimasi `species_library`
+tidak berlaku untuk capture v13.
+
 Ada dua panggilan LLM per Anima, dengan pembagian kerja yang tegas:
 
 ```mermaid

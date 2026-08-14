@@ -15,11 +15,8 @@ extends Node2D
 ## desktop bukan sisa yang belum dibersihkan — ia yang membuat alur ini bisa
 ## diperiksa di laptop tanpa perangkat Android.
 ##
-## ponytail: hanya kamera, galeri tidak dipakai walau plugin mendukungnya.
-## Fiksinya memfoto benda di depanmu, dan galeri membuka pintu untuk memindai
-## gambar unduhan — karakter berhak cipta, foto orang, logo merek — yang persis
-## kategori yang harus ditahan gate. Plafonnya: pemain tidak bisa memakai foto
-## kemarin. Upgrade satu baris, panggil getGalleryImage() yang sudah ada.
+## Galeri sekarang tersedia lewat PhotoSourceSheet; kamera tetap default di perangkat
+## yang punya lensa, galeri hanya saat pemain memilihnya.
 
 ## ponytail: polling 2 detik, bukan Realtime. Plafon ~500 hatch bersamaan;
 ## upgrade ke Supabase Realtime kalau kena.
@@ -53,6 +50,7 @@ const STAT_LABEL_KEYS := {
 	"special": "STAT_SPECIAL",
 }
 const SEEKER_PROFILE_DEST := &"seeker_profile"
+const GALLERY_DEST := &"gallery"
 const SHOP_ICON := preload("res://assets/icons/shopping-bag.svg")
 const BAG_ICON := preload("res://assets/icons/backpack.svg")
 
@@ -74,6 +72,7 @@ const BAG_ICON := preload("res://assets/icons/backpack.svg")
 @onready var _shell_modal = %ShellModal
 @onready var _shop_sheet = %ShopSheet
 @onready var _battle_pick_sheet = %BattlePickSheet
+@onready var _photo_source_sheet: PhotoSourceSheet = %PhotoSourceSheet
 @onready var _seeker_menu_sheet: SeekerMenuSheet = %SeekerMenuSheet
 @onready var _seeker_onboarding_sheet: SeekerOnboardingSheet = %SeekerOnboardingSheet
 @onready var _home_view: HomeView = %HomeView
@@ -82,6 +81,7 @@ const BAG_ICON := preload("res://assets/icons/backpack.svg")
 @onready var _collection_view: CollectionView = %CollectionView
 @onready var _details_view: AnimaDetailsView = %AnimaDetailsView
 @onready var _seeker_profile_view: SeekerProfileView = %SeekerProfileView
+@onready var _gallery_view: GalleryView = %GalleryView
 @onready var _bottom_nav: BottomNav = %BottomNav
 @onready var _level_up_banner: Control = %LevelUpBanner
 @onready var _level_up_title: Label = %LevelUpTitle
@@ -102,6 +102,7 @@ var _level_up_revision := 0
 var _level_up_tween: Tween
 var _last_care_delta := 0
 var _battle_reward_revision := 0
+var _gallery_status_revision := 0
 var _sleep_completion_timer: Timer = null
 var _sleep_sync_in_flight := false
 var _pending_delete_id := ""
@@ -110,6 +111,8 @@ var _pending_rename_text := ""
 var _modal_context := &""
 var _last_anima_press_ms := -1000
 var _last_anima_press_position := Vector2(-1000.0, -1000.0)
+var _last_known_cores := -1
+var _update_required := false
 
 ## Singleton plugin Android, null di desktop dan di test headless.
 var _picker: Object = null
@@ -142,6 +145,7 @@ func _ready() -> void:
 	_details_view.rename_requested.connect(_show_rename)
 	_details_view.delete_requested.connect(_show_delete_confirmation)
 	_details_view.help_requested.connect(_show_details_help)
+	_details_view.gallery_publish_requested.connect(_toggle_gallery_publish)
 	_bottom_nav.destination_selected.connect(_switch_destination)
 	_shell_modal.confirmed.connect(_modal_confirmed)
 	_shell_modal.canceled.connect(_modal_canceled)
@@ -150,6 +154,8 @@ func _ready() -> void:
 	_shop_sheet.shop_cta_requested.connect(_open_shop_from_empty)
 	_battle_pick_sheet.profile_requested.connect(_show_collection_profile)
 	_battle_pick_sheet.battle_requested.connect(_battle_pick_start)
+	_photo_source_sheet.camera_requested.connect(_request_camera_photo)
+	_photo_source_sheet.gallery_requested.connect(_request_gallery_photo)
 	_animas_chip.pressed.connect(_open_collection)
 	_cores_chip.pressed.connect(_show_core_info)
 	_bits_chip.pressed.connect(_show_bits_info)
@@ -157,6 +163,7 @@ func _ready() -> void:
 	_shop_button.pressed.connect(_open_shop)
 	_seeker_menu_button.pressed.connect(_open_seeker_menu)
 	_seeker_menu_sheet.profile_requested.connect(_open_seeker_profile)
+	_seeker_menu_sheet.gallery_requested.connect(_open_gallery)
 	_seeker_menu_sheet.account_requested.connect(_show_account_action)
 	_seeker_menu_sheet.help_requested.connect(_show_seeker_help)
 	_seeker_menu_sheet.delete_account_requested.connect(_show_delete_account_confirmation)
@@ -165,6 +172,8 @@ func _ready() -> void:
 	_seeker_profile_view.back_requested.connect(func() -> void: _switch_destination(BottomNav.HOME))
 	_seeker_profile_view.help_requested.connect(_show_details_help)
 	_seeker_profile_view.rename_requested.connect(_show_rename_seeker)
+	_gallery_view.back_requested.connect(func() -> void: _switch_destination(BottomNav.HOME))
+	_gallery_view.toast_requested.connect(_say)
 	AuthFlow.auth_succeeded.connect(_on_auth_succeeded)
 	AuthFlow.auth_failed.connect(_on_auth_failed)
 	AuthFlow.existing_account_required.connect(_show_existing_account_warning)
@@ -294,7 +303,11 @@ func _boot() -> void:
 		_set_busy(false)
 		return
 
-	await Backend.fetch_profile()
+	var profile_res := await Backend.fetch_profile()
+	_apply_profile_refresh(profile_res)
+	if not await _ensure_client_version():
+		_set_busy(false)
+		return
 	# Link bisa selesai tepat sebelum app mati. Grant upgrade diulang sampai
 	# marker server terisi; RPC-nya memegang lock dan idempoten.
 	if (
@@ -437,7 +450,11 @@ func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> b
 	var loaded := await _prepare_anima_art(
 		str(row.get("species_key", "")),
 		str(row.get("color_bucket", "")),
-		int(row.get("stage", 1))
+		int(row.get("stage", 1)),
+		str(row.get("sheet_path", "")),
+		GameState.as_dict(row.get("manifest")),
+		true,
+		anima_id
 	)
 	if not bool(loaded.get("ok", false)):
 		if not stay_on_tab:
@@ -748,6 +765,69 @@ func _complete_seeker_profile(
 	_say(tr("SEEKER_CREATED"), true)
 
 
+func _open_gallery() -> void:
+	_seeker_menu_sheet.close()
+	_switch_destination(GALLERY_DEST)
+
+
+func _toggle_gallery_publish(anima_id: String, publish: bool) -> void:
+	if _busy or anima_id.is_empty():
+		return
+	_set_busy(true)
+	var operation := "publish" if publish else "unpublish"
+	var res := await Backend.gallery(operation, {"anima_id": anima_id})
+	if res.ok:
+		_say(tr("GALLERY_PUBLISHED") if publish else tr("GALLERY_UNPUBLISHED"), false)
+		await _refresh_gallery_status(anima_id)
+	else:
+		_say(_gallery_error(res.error), true)
+	_set_busy(false)
+
+
+func _gallery_error(code: String) -> String:
+	match code:
+		"GOOGLE_IDENTITY_REQUIRED", "ACCOUNT_STILL_ANONYMOUS":
+			return tr("GALLERY_LINK_REQUIRED")
+		"GALLERY_MODERATION_REJECTED":
+			return tr("GALLERY_MODERATION_REJECTED")
+		"FEATURE_DISABLED":
+			return tr("GALLERY_DISABLED")
+		"ANIMA_NOT_TYPING_V2", "ANIMA_NOT_READY", "ANIMA_NO_ART":
+			return tr("GALLERY_PUBLISH_UNAVAILABLE")
+		_:
+			var key := "ERROR_%s" % code
+			return tr(key) if tr(key) != key else tr("GALLERY_ERROR")
+
+
+func _refresh_gallery_status(anima_id: String = "") -> void:
+	var target_id := anima_id
+	if target_id.is_empty():
+		var row := _profile_anima if not _profile_anima.is_empty() else _current_anima
+		target_id = str(row.get("id", ""))
+	if target_id.is_empty():
+		_details_view.set_gallery_status({"available": false})
+		return
+	_gallery_status_revision += 1
+	var revision := _gallery_status_revision
+	var res := await Backend.gallery("my_status", {"anima_id": target_id})
+	if revision != _gallery_status_revision:
+		return
+	if not res.ok:
+		_details_view.set_gallery_status({"available": false})
+		return
+	var data := GameState.as_dict(res.data)
+	var entry := GameState.as_dict(data.get("entry"))
+	var available := (
+		bool(data.get("ready", false))
+		and bool(data.get("typing_v2", false))
+		and str(entry.get("moderation_status", "")) != "rejected"
+	)
+	_details_view.set_gallery_status({
+		"available": available,
+		"published": bool(entry.get("published", false)),
+	})
+
+
 func _open_seeker_menu() -> void:
 	if _busy:
 		return
@@ -863,7 +943,7 @@ func _on_auth_succeeded(mode: String, profile: Dictionary) -> void:
 	if not profile.is_empty():
 		GameState.profile.merge(profile, true)
 	else:
-		await Backend.fetch_profile()
+		_apply_profile_refresh(await Backend.fetch_profile())
 	var loaded := await _reload_roster()
 	_refresh_header()
 	if loaded and not _roster.is_empty():
@@ -948,8 +1028,8 @@ func _present_row(row: Dictionary) -> void:
 		str(row.get("species_key", "")),
 		str(row.get("color_bucket", "")),
 		int(row.get("stage", 1)),
-		"",
-		{},
+		str(row.get("sheet_path", "")),
+		GameState.as_dict(row.get("manifest")),
 		str(row.get("nickname", "")),
 		row,
 		false
@@ -1341,14 +1421,31 @@ func _show_battle_session(session: Dictionary) -> bool:
 
 
 func _prepare_battle_art(snapshot: Dictionary) -> Dictionary:
+	var sheet_url := str(snapshot.get("sheet_url", ""))
+	if not sheet_url.is_empty():
+		return await _prepare_signed_battle_art(snapshot, sheet_url)
 	return await _prepare_anima_art(
 		str(snapshot.get("species_key", "")),
 		str(snapshot.get("color_bucket", "")),
 		int(snapshot.get("stage", 1)),
 		str(snapshot.get("sheet_path", "")),
 		GameState.as_dict(snapshot.get("manifest")),
-		false
+		false,
+		str(snapshot.get("anima_id", ""))
 	)
+
+
+func _prepare_signed_battle_art(snapshot: Dictionary, sheet_url: String) -> Dictionary:
+	var manifest := GameState.as_dict(snapshot.get("manifest"))
+	if manifest.is_empty():
+		return {"ok": false}
+	var download := await Backend.download_url(sheet_url)
+	if not download.ok:
+		return {"ok": false}
+	var image := Image.new()
+	if image.load_png_from_buffer(download.bytes) != OK:
+		return {"ok": false}
+	return AnimaLoader.build(ImageTexture.create_from_image(image), manifest)
 
 
 func _apply_battle_reward(reward: Dictionary, session: Dictionary) -> void:
@@ -1369,7 +1466,7 @@ func _refresh_battle_authority(session: Dictionary) -> void:
 		if str(_current_anima.get("id", "")) == anima_id
 		else -1
 	)
-	await Backend.fetch_profile()
+	_apply_profile_refresh(await Backend.fetch_profile())
 	await _reload_roster()
 	for row in _roster:
 		if str(row.get("id", "")) != anima_id:
@@ -1432,7 +1529,7 @@ func _setup_picker() -> void:
 
 
 func _on_pick_pressed() -> void:
-	if _busy:
+	if _busy or _update_required:
 		return
 	if _guest_scan_locked():
 		_show_sign_in_confirmation()
@@ -1444,17 +1541,25 @@ func _on_pick_pressed() -> void:
 	if _picker == null:
 		_dialog.popup_centered_ratio(0.9)
 		return
-
-	# Sengaja tidak mengunci tombol di sini. Kamera itu Activity terpisah dan
-	# pembatalan tidak memancarkan signal apa pun, jadi tombol yang dikunci
-	# sekarang akan mati selamanya bagi pemain yang berubah pikiran. Kuncinya
-	# dipasang di _scan_bytes, saat byte-nya benar-benar sudah ada.
 	if _picker.hasCamera():
-		_picker.getCameraImage()
+		if is_instance_valid(_photo_source_sheet):
+			_photo_source_sheet.open_chooser()
+		else:
+			_request_camera_photo()
 	else:
-		# Perangkat tanpa kamera tetap bisa memasang app, sebab manifest plugin
-		# menandai fitur kameranya opsional. Jangan tinggalkan tombol mati di sana.
-		_picker.getGalleryImage()
+		_request_gallery_photo()
+
+
+func _request_camera_photo() -> void:
+	if _picker == null:
+		return
+	_picker.getCameraImage()
+
+
+func _request_gallery_photo() -> void:
+	if _picker == null:
+		return
+	_picker.getGalleryImage()
 
 
 ## Dictionary karena metode yang sama melayani pilih-banyak gambar. Isinya bisa
@@ -1533,7 +1638,7 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 
 
 func _handle_create_result(res: Dictionary) -> void:
-	await Backend.fetch_profile()
+	_apply_profile_refresh(await Backend.fetch_profile())
 	_refresh_header()
 
 	if not res.ok:
@@ -1625,8 +1730,8 @@ func _wait_for_hatch(anima_id: String) -> void:
 					str(row.get("species_key", "")),
 					str(row.get("color_bucket", "")),
 					int(row.get("stage", 1)),
-					"",
-					{},
+					str(row.get("sheet_path", "")),
+					GameState.as_dict(row.get("manifest")),
 					str(row.get("nickname", "")),
 					row
 				)
@@ -1634,7 +1739,7 @@ func _wait_for_hatch(anima_id: String) -> void:
 			"failed":
 				# Server sudah mengembalikan Core-nya sendiri lewat refund_generation.
 				_say(tr("STATUS_GENERATION_FAILED"))
-				await Backend.fetch_profile()
+				_apply_profile_refresh(await Backend.fetch_profile())
 				_refresh_header()
 				GameState.finish_scan()
 				_restore_previous_anima()
@@ -1663,7 +1768,7 @@ func _present(
 ) -> void:
 	var hatching := _incubator.is_active()
 	var loaded := await _prepare_anima_art(
-		species_key, color_bucket, stage, sheet_path, manifest
+		species_key, color_bucket, stage, sheet_path, manifest, complete_scan, anima_id
 	)
 	if not bool(loaded.get("ok", false)):
 		if complete_scan:
@@ -1725,46 +1830,67 @@ func _prepare_anima_art(
 	stage: int,
 	sheet_path: String = "",
 	manifest: Dictionary = {},
-	report_status: bool = true
+	report_status: bool = true,
+	anima_id: String = ""
 ) -> Dictionary:
 	if species_key.is_empty() or color_bucket.is_empty():
 		if report_status:
 			_say(tr("STATUS_SPECIES_DATA_ERROR"))
 		return {"ok": false}
 
-	if not GameState.has_sprite(species_key, color_bucket, stage):
-		if report_status:
-			_say(tr("STATUS_DOWNLOADING_ART"))
-		if manifest.is_empty() or sheet_path.is_empty():
-			var art := await Backend.fetch_species_art(species_key, color_bucket, stage)
-			if not art.ok or typeof(art.data) != TYPE_ARRAY or (art.data as Array).is_empty():
-				print("art library error: %s" % art.error)
-				if report_status:
-					_say(tr("STATUS_ART_LIBRARY_ERROR"))
-				return {"ok": false}
-			var row := GameState.as_dict((art.data as Array)[0])
-			sheet_path = str(row.get("sheet_path", ""))
-			manifest = GameState.as_dict(row.get("manifest"))
+	var use_anima_cache := not anima_id.is_empty()
+	if use_anima_cache and GameState.has_sprite_for_anima(anima_id):
+		return AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id))
+	if not use_anima_cache and GameState.has_sprite(species_key, color_bucket, stage):
+		return AnimaLoader.load_from_manifest(
+			GameState.manifest_path(species_key, color_bucket, stage)
+		)
 
-		var download := await Backend.download_sheet(sheet_path)
-		if not download.ok:
-			print("art download error: %s" % download.error)
+	if report_status:
+		_say(tr("STATUS_DOWNLOADING_ART"))
+
+	if manifest.is_empty() or sheet_path.is_empty():
+		var art := await Backend.fetch_species_art(species_key, color_bucket, stage)
+		if not art.ok or typeof(art.data) != TYPE_ARRAY or (art.data as Array).is_empty():
+			print("art library error: %s" % art.error)
 			if report_status:
-				_say(tr("STATUS_ART_DOWNLOAD_ERROR"))
+				_say(tr("STATUS_ART_LIBRARY_ERROR"))
 			return {"ok": false}
+		var row := GameState.as_dict((art.data as Array)[0])
+		sheet_path = str(row.get("sheet_path", ""))
+		manifest = GameState.as_dict(row.get("manifest"))
+		use_anima_cache = false
 
-		var stored := GameState.store_sprite(
+	var download := (
+		await Backend.download_anima_sheet(sheet_path)
+		if use_anima_cache
+		else await Backend.download_sheet(sheet_path)
+	)
+	if not download.ok and use_anima_cache:
+		download = await Backend.download_sheet(sheet_path)
+	if not download.ok:
+		print("art download error: %s" % download.error)
+		if report_status:
+			_say(tr("STATUS_ART_DOWNLOAD_ERROR"))
+		return {"ok": false}
+
+	var stored: Dictionary
+	var manifest_path := ""
+	if use_anima_cache:
+		stored = GameState.store_sprite_for_anima(anima_id, manifest, download.bytes)
+		manifest_path = GameState.manifest_path_for_anima(anima_id)
+	else:
+		stored = GameState.store_sprite(
 			species_key, color_bucket, stage, manifest, download.bytes
 		)
-		if not stored.ok:
-			print("art save error: %s" % stored.error)
-			if report_status:
-				_say(tr("STATUS_ART_SAVE_ERROR"))
-			return {"ok": false}
+		manifest_path = GameState.manifest_path(species_key, color_bucket, stage)
+	if not stored.ok:
+		print("art save error: %s" % stored.error)
+		if report_status:
+			_say(tr("STATUS_ART_SAVE_ERROR"))
+		return {"ok": false}
 
-	var loaded := AnimaLoader.load_from_manifest(
-		GameState.manifest_path(species_key, color_bucket, stage)
-	)
+	var loaded := AnimaLoader.load_from_manifest(manifest_path)
 	if not loaded.get("ok", false):
 		print("art load error: %s" % loaded.get("error", "?"))
 		if report_status:
@@ -1824,15 +1950,27 @@ func _populate_collection() -> void:
 
 
 func _thumbnail_for(row: Dictionary) -> Texture2D:
+	var anima_id := str(row.get("id", ""))
+	var sheet_path := str(row.get("sheet_path", ""))
 	var species := str(row.get("species_key", ""))
 	var color := str(row.get("color_bucket", ""))
 	var stage := int(row.get("stage", 1))
 	var pose := CareRules.collection_pose(row, _summoned_id())
-	var cache_key := "%s|%s|%d|%s" % [species, color, stage, pose]
+	var use_anima := not anima_id.is_empty() and not sheet_path.is_empty()
+	var cache_key := (
+		"%s|%s" % [anima_id, pose] if use_anima else "%s|%s|%d|%s" % [species, color, stage, pose]
+	)
 	if _thumbnail_cache.has(cache_key):
 		return _thumbnail_cache[cache_key] as Texture2D
-	if GameState.has_sprite(species, color, stage):
-		var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path(species, color, stage))
+
+	var manifest_path := ""
+	if use_anima and GameState.has_sprite_for_anima(anima_id):
+		manifest_path = GameState.manifest_path_for_anima(anima_id)
+	elif GameState.has_sprite(species, color, stage):
+		manifest_path = GameState.manifest_path(species, color, stage)
+
+	if not manifest_path.is_empty():
+		var loaded := AnimaLoader.load_from_manifest(manifest_path)
 		if bool(loaded.get("ok", false)):
 			var frames: SpriteFrames = loaded.get("frames")
 			if frames != null:
@@ -2019,7 +2157,8 @@ func _switch_destination(
 	_collection_view.visible = destination == BottomNav.COLLECTION
 	_details_view.visible = destination == BottomNav.ANIMA
 	_seeker_profile_view.visible = destination == SEEKER_PROFILE_DEST
-	if destination != SEEKER_PROFILE_DEST:
+	_gallery_view.visible = destination == GALLERY_DEST
+	if destination != SEEKER_PROFILE_DEST and destination != GALLERY_DEST:
 		_bottom_nav.set_active(destination)
 	if destination != BottomNav.HOME:
 		_toast_revision += 1
@@ -2049,6 +2188,9 @@ func _switch_destination(
 		_reload_roster()
 	if destination == BottomNav.ANIMA:
 		_refresh_stats()
+		call_deferred("_refresh_gallery_status")
+	if destination == GALLERY_DEST:
+		_gallery_view.begin_visit()
 	_sync_shop_chrome()
 	_bottom_nav.set_scan_emphasized(
 		_cores_remaining() > 0
@@ -2070,6 +2212,8 @@ func _active_view() -> Control:
 			return _details_view
 		SEEKER_PROFILE_DEST:
 			return _seeker_profile_view
+		GALLERY_DEST:
+			return _gallery_view
 		_:
 			return _home_view
 
@@ -2086,6 +2230,7 @@ func _refresh_localized_ui(_locale: String = "") -> void:
 	_setup_picker()
 	_configure_resource_chips()
 	_details_view.refresh_localized_ui()
+	_gallery_view.refresh_localized_ui()
 	_refresh_header()
 	_refresh_stats()
 	_refresh_care()
@@ -2424,9 +2569,38 @@ func _refresh_header() -> void:
 	_scan_view.set_cores(cores)
 	_scan_view.set_sign_in_required(sign_in_required)
 	_bottom_nav.set_scan_emphasized(
-		cores > 0 and not sign_in_required and _destination != BottomNav.BATTLE
+		cores > 0 and not sign_in_required and _destination != BottomNav.BATTLE and not _update_required
 	)
 	UiJuice.pop(_top_hud, 1.012)
+
+
+func _apply_profile_refresh(profile_res: Dictionary) -> void:
+	if not profile_res.ok or GameState.profile.is_empty():
+		return
+	var current := int(GameState.profile.get("genesis_cores", 0))
+	var previous := int(profile_res.get("previous_genesis_cores", _last_known_cores))
+	if previous >= 0 and current > previous:
+		_say(tr("FEEDBACK_WEEKLY_CORE") % LocaleManager.format_integer(current - previous), true)
+	_last_known_cores = current
+
+
+func _ensure_client_version() -> bool:
+	var config := await Backend.fetch_client_config()
+	var min_version: Variant = GameState.client_config.get("min_client_version", {})
+	if config.ok:
+		min_version = GameState.client_config.get("min_client_version", min_version)
+	if not ClientVersion.is_outdated(min_version):
+		return true
+	_update_required = true
+	_set_home_shell_state(&"error")
+	_anima.visible = false
+	var required := int(GameState.as_dict(min_version).get(ClientVersion.platform_key(), 0))
+	_shell_modal.open_info(
+		tr("UPDATE_REQUIRED_TITLE"),
+		tr("UPDATE_REQUIRED_BODY") % LocaleManager.format_integer(required),
+		tr("UPDATE_REQUIRED_CLOSE")
+	)
+	return false
 
 
 func _refresh_anima_count() -> void:
@@ -2440,6 +2614,7 @@ func _set_busy(busy: bool) -> void:
 	_battle_view.set_busy(busy)
 	_home_view.set_busy(busy)
 	_collection_view.set_busy(busy)
+	_gallery_view.set_busy(busy)
 	_details_view.set_busy(busy)
 	_seeker_profile_view.set_busy(busy)
 	_seeker_menu_button.disabled = busy
@@ -2478,6 +2653,9 @@ func _handle_back(allow_quit: bool) -> bool:
 		return true
 	if _collection_view.is_sheet_open():
 		_collection_view.close_sheet()
+		return true
+	if is_instance_valid(_gallery_view) and _gallery_view.is_detail_open():
+		_gallery_view.close_detail()
 		return true
 	if _destination != BottomNav.HOME:
 		_switch_destination(BottomNav.HOME)

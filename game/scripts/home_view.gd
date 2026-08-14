@@ -53,7 +53,7 @@ func set_anima(row: Dictionary, busy: bool) -> void:
 	_anima_name.text = LocaleManager.display_name(_row)
 	_anima_meta.text = tr("HOME_IDENTITY_META") % [
 		LocaleManager.level_label(CARE_RULES.level_from_exp(int(_row.get("care_score", 0)))),
-		LocaleManager.element_name(str(_row.get("element", ""))),
+		LocaleManager.element_compact(_row),
 	]
 	_set_loading_layout(false)
 	_identity.visible = true

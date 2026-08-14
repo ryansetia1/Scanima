@@ -4,7 +4,8 @@ Dua mata uang yang kamu lihat di pita atas: **Cores** dan **Bits**. Angka di lay
 
 ## Genesis Cores
 
-Dipakai untuk **Scan** — mengubah foto jadi Anima, terutama kalau spesies itu belum ada di pustaka.
+Dipakai untuk **Scan** — setiap foto yang lolos pemeriksaan dan menjadi Anima
+memakai **1 Core**. Setiap Anima mendapat art unik yang privat secara default.
 
 - Guest baru mulai dengan **1 Core**.
 - **Sign in with Google** memberi **2 Core tambahan sekali**, sehingga grant
@@ -12,12 +13,15 @@ Dipakai untuk **Scan** — mengubah foto jadi Anima, terutama kalau spesies itu 
   link bisa 2—bukan di-reset menjadi 3.
 - Pemain lama sebelum sistem guest tetap memiliki grant starter 3 Core dan tidak
   mendapat bonus kedua.
-- Kalau Cores **0**, tombol Scan redup. Tab tetap bisa dibuka, tapi kamera tidak jalan. Itu sementara, sampai toko, iklan berhadiah, atau kunci milik sendiri bisa mengisi Core.
+- Akun yang sudah terhubung ke Google otomatis mendapat **1 Core setiap 7 hari
+  server** selama saldo gratisnya di bawah 3. Tidak ada tombol Claim dan minggu
+  yang terlewat tidak dirapel. Kalau saldo sudah 3, jadwalnya menunggu sampai
+  satu Core dipakai.
+- Kalau Cores **0**, tombol Scan redup. Tab tetap bisa dibuka, tetapi kamera dan
+  pemilih foto tidak jalan. Pembelian Core belum tersedia.
 - Scan yang sudah berjalan tidak dibatalkan hanya karena Core habis di tengah jalan.
 - **Battle tidak pernah memberi Core.**
 - **Delete Anima tidak mengembalikan Core.**
-
-Kalau spesies dari fotomu sudah pernah ditemukan orang lain, art-nya bisa dipakai ulang. Yang memutuskan itu server, bukan tombol di HP.
 
 ## Bits
 
@@ -35,23 +39,25 @@ Dipakai di **Shop**.
 
 ## Scan
 
-Tab **Scan** memfoto benda di depanmu, bukan dari galeri.
+Tab **Scan** bisa membuka kamera atau memilih **satu foto** dari perangkat.
 
 1. Guest perlu masih punya kesempatan Scan; semua pemain perlu minimal **1 Core**
-   untuk membuka kamera pada build sekarang.
-2. Foto benda nyata. Tunggu sebentar.
-3. Kalau spesiesnya baru, muncul telur inkubator (bisa sekitar satu menit).
-4. Kalau art-nya sudah ada di pustaka, Anima langsung jadi.
-5. Sesudah menetas, kamu pindah ke Home. Bisa ganti namanya atau biarkan nama dari scan.
+   untuk membuka pilihan foto.
+2. Foto satu benda atau satu hewan non-manusia yang aman. Manusia, informasi
+   pribadi, kekerasan terhadap hewan, gore, dan situasi berbahaya akan ditolak.
+3. Setelah analisis lolos, 1 Core dipakai dan telur inkubator muncul. Pembuatan
+   art unik biasanya memerlukan sekitar satu menit.
+4. Sesudah menetas, kamu pindah ke Home. Bisa ganti namanya atau biarkan nama
+   dari Scan.
 
-Benda yang sama bisa menghasilkan Anima yang terasa mirip, tapi milikmu tetap milikmu.
+Foto serupa tetap menghasilkan art masing-masing. Art lengkap hanya dapat dilihat
+oleh pemilik kecuali pemilik memilih **Publish to Gallery**.
 
 ### Batas Scan guest
 
 Guest boleh menyelesaikan **satu Scan**:
 
-- Genesis spesies baru memakai 1 Core.
-- Cache hit tidak memakai Core, tetapi tetap menyelesaikan kesempatan Scan guest.
+- Scan yang berhasil memakai 1 Core dan kesempatan Scan guest.
 - Setelah itu tombol menjadi **Sign in to Scan Again**, meskipun Core masih ada.
 - Care, Battle, Shop, Collection, dan Anima tetap berjalan.
 

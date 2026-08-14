@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/scan_flow.gd" id="1_flow"]
 [ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
@@ -20,7 +20,9 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/seeker_onboarding_sheet.tscn" id="18_onboarding"]
 [ext_resource type="PackedScene" path="res://scenes/ui/seeker_menu_sheet.tscn" id="19_seeker_menu"]
 [ext_resource type="PackedScene" path="res://scenes/ui/seeker_profile_view.tscn" id="20_seeker_profile"]
+[ext_resource type="PackedScene" path="res://scenes/ui/gallery_view.tscn" id="21_gallery"]
 [ext_resource type="Texture2D" path="res://assets/icons/menu.svg" id="21_menu_icon"]
+[ext_resource type="PackedScene" path="res://scenes/ui/photo_source_sheet.tscn" id="22_photo"]
 
 [sub_resource type="FontVariation" id="LevelUpBold"]
 base_font = ExtResource("15_display")
@@ -146,6 +148,10 @@ layout_mode = 1
 unique_name_in_owner = true
 layout_mode = 1
 
+[node name="GalleryView" parent="UI/SafeMargin/Shell/ViewStack" instance=ExtResource("21_gallery")]
+unique_name_in_owner = true
+layout_mode = 1
+
 [node name="BottomNav" parent="UI/SafeMargin/Shell" instance=ExtResource("10_nav")]
 unique_name_in_owner = true
 layout_mode = 2
@@ -154,6 +160,9 @@ layout_mode = 2
 unique_name_in_owner = true
 
 [node name="BattlePickSheet" parent="UI" instance=ExtResource("17_pick")]
+unique_name_in_owner = true
+
+[node name="PhotoSourceSheet" parent="UI" instance=ExtResource("22_photo")]
 unique_name_in_owner = true
 
 [node name="SeekerMenuSheet" parent="UI" instance=ExtResource("19_seeker_menu")]

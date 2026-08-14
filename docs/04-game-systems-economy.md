@@ -2,6 +2,12 @@
 
 Dokumen ini mendesain tiga sistem yang saling terikat: perawatan gaya Tamagotchi, ekonomi yang menahan biaya API agar tidak meledak, dan pertarungan berbasis stat yang diturunkan dari foto objek.
 
+> **Status kontrak (15 Agustus 2026):** Ekonomi capture privat, 18 elemen,
+> dual typing, grant Core mingguan, dan bot Gallery di bawah sudah menjadi
+> kontrak production. Bagian bertanda *historis* dipertahankan hanya sebagai
+> decision record sebelum cutover. Spesifikasi art privat dan Gallery:
+> [08 — Art Privat dan Gallery](08-private-art-and-gallery.md).
+
 Urutannya sengaja: ekonomi dibahas lebih dulu daripada yang terlihat wajar, karena struktur biaya API menentukan bentuk game loop-nya. Mendesain loop dulu lalu menempelkan monetisasi belakangan akan menghasilkan game yang bangkrut pada pemain ke-500.
 
 ## 1. Kenyataan biaya yang membentuk seluruh desain
@@ -19,59 +25,55 @@ memakai $0.070 sebagai reserve konservatif, bukan mengubah harga produk dari sat
 sampel. Snapshot lengkap dan aturan pembanding model ada di
 [02](02-prompt-engineering.md#baseline-harga-untuk-pembanding-model).
 
-Selisih anggarannya masih sekitar **23 kali**. Aksi yang satu murah, yang lain mahal. Menyatukan keduanya di balik satu tombol "Foto" berarti setiap tap membawa risiko ~$0.07, dan itu tetap memaksa kita membatasi tap — padahal memfoto benda adalah hal paling menyenangkan di game ini dan seharusnya dilakukan sesering mungkin.
+Selisih anggarannya masih sekitar **23 kali**. Aksi yang satu murah, yang lain mahal. **Target kontrak** memisahkan keduanya secara eksplisit agar pemain bisa sering mencoba foto tanpa selalu memicu generation $0.07:
 
-Jadi jangan disatukan. Pisahkan menjadi dua aksi yang berbeda, dan biarkan struktur biaya menjadi mekanik game:
+| Langkah | Biaya ke kita | Biaya ke pemain (target) |
+| --- | --- | --- |
+| Percobaan Vision (gate + stat) | ~$0.003 | **1 Scan Charge** (batas percobaan) |
+| Capture diterima (gate lolos) | ~$0.07 generation | **1 Genesis Core** + generation unik privat |
 
-**Discovery Scan** — foto objek yang spesiesnya sudah ada di pustaka. Biaya ke kita hanya panggilan Vision, jadi **murah, langsung jadi, tanpa menunggu**. Pemain langsung dapat Anima dengan nama dan stat unik miliknya sendiri.
+**Scan Charge** tetap membatasi **percobaan Vision**, bukan jalur art gratis. Setiap capture yang lolos gate memicu **generation privat** (~57–63 detik terukur *historis*) dan mendebit **tepat satu Core** — tidak ada reuse sheet antar pemain. Dua pemain memfoto mug yang sama mendapat dua Anima terpisah; `species_key` hanya untuk deduplikasi internal/analitik, bukan cache hit ([08](08-private-art-and-gallery.md)).
 
-**Genesis** — foto objek yang spesiesnya belum pernah ada. Ini yang memicu image generation, terukur 57–63 detik, dan menghabiskan satu **Genesis Core**.
-
-Yang membuat pembagian ini bekerja bukan efisiensinya, tapi kenyataan bahwa ia jujur secara naratif. Memfoto mug yang ke-seribu memang *seharusnya* tidak terasa seperti penemuan besar. Memfoto sesuatu yang belum pernah dilihat siapa pun *seharusnya* terasa istimewa. Struktur biaya kita dan struktur rasa game-nya menunjuk ke arah yang sama.
+Objek yang boleh di-scan: **benda non-hidup** plus **hewan non-manusia**, dengan safety gate menolak manusia dan konten terlarang.
 
 ```mermaid
 graph TD
-    Foto["Pemain memfoto objek"] --> V["Vision LLM, ~$0.003"]
+    Foto["Pemain memfoto objek"] --> SC{"Punya Scan Charge?"}
+    SC -->|tidak| TolakSC["Tunggu refill / iklan / langganan"]
+    SC -->|ya| V["Vision LLM, ~$0.003"]
     V --> Gate{"Lolos gate?"}
-    Gate -->|tidak| Tolak["Pesan ramah, tidak ada biaya"]
-    Gate -->|ya| Cek{"species_key ada di pustaka?"}
-    Cek -->|ya| Scan["DISCOVERY SCAN<br/>gratis, instan, art di-reuse<br/>stat di-roll ulang"]
-    Cek -->|tidak| Core{"Punya Genesis Core?"}
-    Core -->|ya| Gen["GENESIS<br/>1 Core, ~1 menit<br/>kamu penemu pertama"]
-    Core -->|tidak| Simpan["Simpan sebagai Temuan Tertunda<br/>bisa diklaim nanti"]
+    Gate -->|tidak| Tolak["Pesan ramah, Core tidak debit"]
+    Gate -->|ya| Core{"Punya Genesis Core?"}
+    Core -->|ya| Gen["GENERATION PRIVAT<br/>1 Core, ~1 menit<br/>art unik milik pemain"]
+    Core -->|tidak| Simpan["Temuan Tertunda<br/>klaim nanti, tetap privat"]
 ```
 
-Ada satu pagar produk di atas diagram itu: **Guest Seeker hanya boleh satu Scan
-sukses**, baik hasilnya Discovery Scan maupun Genesis. Gate/transport yang gagal
-tidak menghabiskan kesempatan itu. Sesudah sukses, client menawarkan Google;
-Care, Battle, Shop, dan Collection tidak ikut terkunci. `claim_scan_charge()`
-memeriksa slot guest di bawah profile lock sebelum Vision, lalu cache/Genesis
-memeriksanya lagi saat commit. Guard awal mencegah modified client membayar Vision
-berulang; guard akhir menjaga dua request paralel tidak melahirkan dua Anima.
+**Guest Seeker** (target, selaras slice *historis*): satu capture sukses per akun anonim; gate/transport gagal tidak menghabiskan slot. Sesudah sukses, client menawarkan link Google; Care, Battle, Shop, dan Collection tidak terkunci. `claim_scan_charge()` sebelum Vision; debit Core atomik saat commit generation. Guard ganda mencegah Vision berulang dan dua request paralel melahirkan dua Anima.
 
-Momen "spesies ini belum pernah ditemukan siapa pun" adalah momen paling kuat yang dimiliki game ini, dan itu bukan paywall kalau dibingkai benar. Pemain pertama yang menciptakan sebuah spesies dicatat permanen sebagai penemunya di pustaka, terlihat oleh semua pemain lain yang nanti men-scan objek yang sama. Membayar Genesis Core bukan membuka konten yang ditahan; ia mengklaim sesuatu yang tidak bisa diklaim dua kali.
+**Temuan Tertunda** tetap berlaku: Vision sudah keluar (~$0.003), Core habis → simpan hasil, klaim dalam 7 hari tanpa foto ulang; saat klaim tetap generation privat.
 
-**Temuan Tertunda** menyelamatkan kasus pemain kehabisan Core tepat saat menemukan hal baru. Hasil Vision disimpan (biayanya sudah keluar, tidak perlu ulang) dan pemain bisa menuntaskannya nanti tanpa harus memfoto ulang objeknya — yang mungkin sudah tidak ada di dekatnya. Berlaku 7 hari.
+**Plafon client:** `genesis_cores == 0` mengunci commit capture (termasuk klaim tertunda). Guest: `guest_scan_used_at` → CTA `Sign in to Scan Again`. Server `NO_CORE` / `GUEST_SCAN_USED` pagar terakhir.
 
-**Plafon client sementara:** selama IAP, rewarded ads, dan BYOK belum mengisi
-Core, `genesis_cores == 0` mengunci Scan untuk akun linked (termasuk cache hit).
-Guest memakai pagar yang lebih dulu: `guest_scan_used_at` mengubah CTA menjadi
-`Sign in to Scan Again`, walau Core-nya belum habis. `species_key` Vision terlalu
-rapuh untuk diandalkan sebagai jalur gratis. Server `NO_CORE` dan
-`GUEST_SCAN_USED` tetap pagar terakhir; rumus Core vs cache hit di atas tidak
-berubah.
+#### Model historis (build production saat ini)
+
+Sebelum pivot privat, satu alur Scan memecah menjadi **Discovery Scan** (spesies sudah di `species_library` → hanya Vision, art reuse) dan **Genesis** (spesies baru → Core + generation ke pustaka bersama). Pemain pertama per spesies tercatat sebagai penemu publik. Diagram dan copy UI lama masih hidup di kode sampai migrasi selesai; angka blended cache hit di §2 *historis* merujuk ke model ini.
 
 ## 2. Mata uang dan sumbernya
 
 Tiga mata uang, dan yang menentukan pembagiannya adalah biaya nyata yang mereka wakili:
 
-| Mata uang | Untuk apa | Sumber |
+| Mata uang | Untuk apa (target) | Sumber |
 | --- | --- | --- |
-| **Scan Charge** | Discovery Scan, 8 per hari | Refill harian, rewarded ad, langganan |
-| **Genesis Core** | Menciptakan spesies baru | 1 untuk guest + 2 saat link Google (sekali), 1 per minggu gratis nanti, IAP/langganan nanti |
-| **Bits** | Makanan dan item di Shop | 50 saat onboarding (akun baru saja), Shop, hadiah battle (cap 100/hari lokal) |
+| **Scan Charge** | Batas **percobaan Vision** (gate), bukan art gratis | Refill harian, rewarded ad, langganan |
+| **Genesis Core** | **Setiap capture diterima** — generation privat ~$0.07 | Starter guest/link, **grant mingguan linked**, IAP/langganan |
+| **Bits** | Makanan dan item di Shop | 50 saat onboarding, Shop, hadiah battle (cap 100/hari lokal) |
 
-> **Keputusan produk, dikonfirmasi 13 Agustus 2026:** jalur gratis Genesis Core adalah **1 Core per minggu**. Fitur mingguan belum diimplementasikan. Build sekarang memberi 1 Core lewat ledger `starter_guest`, lalu upgrade Google melengkapi grant starter lifetime menjadi 3 dengan maksimal +2 sekali. Ini bukan reset saldo: guest yang sudah membelanjakan Core akan memiliki saldo 2 sesudah link. Akun lama diberi marker `starter_legacy` tanpa mengubah saldo atau menerima bonus kedua. Grant mingguan nanti wajib server-authoritative dan tercatat di ledger; detail claim/catch-up/anti-abuse belum final.
+> **Grant Core mingguan (live):** akun **linked** (bukan guest anonim) menerima **+1 Genesis Core otomatis setiap 7 hari kalender server** sejak grant terakhir. **Tidak ada catch-up** — offline 30 hari tetap +1 saat jatuh tempo, bukan +4. **Cap saldo gratis: 3 Core** — grant tidak menumpuk di atas 3; pembelian IAP di luar cap. Grant server-authoritative + ledger-backed. Starter tetap 1 Core guest, +2 sekali saat link Google → maks 3 lifetime starter.
+
+#### Starter dan grant — keadaan historis (build saat ini)
+
+*Historis, 13 Agustus 2026:* grant mingguan belum tersedia; catatan ini tidak
+menggambarkan build setelah cutover.
 
 ### Kenapa rewarded ad tidak boleh membiayai Genesis Core
 
@@ -81,16 +83,16 @@ Dengan eCPM rewarded ad di pasar Indonesia sekitar $1-4, satu tayangan bernilai 
 
 Tidak ada pembingkaian UX yang bisa menyelamatkan itu. Menawarkan Core dengan 1 iklan berarti kita rugi sekitar $0.066–0.069 setiap kali, dan pemain yang paling aktif menjadi pemain yang paling merugikan — kebalikan dari yang seharusnya.
 
-Iklan tetap bekerja untuk hal yang murah, tapi marginnya jauh lebih tipis daripada yang tampak di rancangan awal. Satu tayangan bernilai $0.001-0.004 bersih, dan satu Discovery Scan berbiaya $0.003. Artinya **satu iklan kurang-lebih membiayai satu scan, bukan enam** — dan pada eCPM rendah ia bahkan tidak menutupinya. Pemetaannya masih benar, tapi alasannya harus dinyatakan ulang dengan jujur:
+Iklan tetap bekerja untuk hal yang murah, tapi marginnya jauh lebih tipis daripada yang tampak di rancangan awal. Satu tayangan bernilai $0.001-0.004 bersih, dan satu percobaan Vision berbiaya $0.003. Artinya **satu iklan kurang-lebih membiayai satu percobaan Scan**, bukan satu capture penuh (~$0.073 target) — dan pada eCPM rendah ia bahkan tidak menutup Vision. Pemetaan target:
 
-- Iklan → **Bits** (biaya kita nol, di sini marginnya nyata dan besar)
-- Iklan → **Scan Charge**, dibatasi, 1 iklan = 1 charge (kira-kira pulang pokok, bukan sumber untung)
-- IAP dan langganan → Genesis Core (biaya kita ~$0.070)
-- BYOK → Genesis **dan** Vision tanpa batas (biaya kita nol; sejak Vision pindah ke Replicate, satu token pemain menutup keduanya)
+- Iklan → **Bits** (biaya kita nol, margin nyata)
+- Iklan → **Scan Charge**, dibatasi, 1 iklan ≈ 1 charge (pulang pokok Vision, bukan generation)
+- IAP dan langganan → Genesis Core (biaya kita ~$0.07 per capture)
+- BYOK → Vision + generation tanpa batas (biaya kita nol; satu token Replicate pemain)
 
 ### Biaya per pemain aktif, angka yang harus diawasi
 
-Yang berubah bukan hanya rasio iklan. Delapan Scan Charge gratis per hari, kalau dipakai habis, berarti **$0.024 per pemain per hari** dalam biaya Vision saja. Pada 1.000 DAU itu ~$24/hari atau **~$720/bulan** sebelum satu Genesis pun terjadi. Dengan model Vision kelas lite yang lebih kecil angkanya sepersepuluh dari itu.
+Delapan Scan Charge gratis per hari, kalau dipakai habis, berarti **$0.024 per pemain per hari** dalam biaya Vision saja — **sebelum** satu capture diterima (~$0.07). Pada 1.000 DAU itu ~$24/hari Vision-only atau **~$97/hari** jika setiap charge jadi capture (8 × $0.073). Model Vision lite bisa menurunkan bagian Vision sepersepuluh.
 
 Ini konsekuensi sadar dari memakai satu vendor untuk satu token (alasannya di [01](01-architecture-dataflow.md)), dan ada tiga tuas yang bisa ditarik sebelum menyentuh kuota gratis pemain, berurut dari yang paling murah:
 
@@ -117,28 +119,39 @@ Yang perlu dijaga: **jangan pernah menjual Core lebih murah dari $0.12 bersih.**
 
 ### Biaya rata-rata per pemain
 
-Yang menentukan sehat atau tidaknya seluruh model adalah **rasio cache hit** — berapa persen foto yang jatuh ke spesies yang sudah ada.
+**Target:** setiap capture diterima ≈ **$0.073** (Vision + generation privat). Scan Charge mengontrol percobaan; Core mengontrol capture. Tidak ada blended cache hit.
+
+#### Tabel historis — model shared cache (tidak lagi target)
+
+*Historis:* ketika Discovery Scan reuse art, rasio cache hit menentukan biaya blended:
 
 | Rasio cache hit | Biaya per Anima (blended) | Catatan |
 | --- | --- | --- |
-| 0% (hari pertama, pustaka kosong) | ~$0.073 | Fase paling mahal, DAU masih kecil |
-| 50% | ~$0.038 | Sekitar 500-1.000 spesies di pustaka |
-| 80% | ~$0.017 | Titik di mana model mulai nyaman |
-| 95% (matang) | ~$0.007 | Ribuan spesies, objek umum sudah tercakup |
+| 0% (hari pertama, pustaka kosong) | ~$0.073 | Fase paling mahal |
+| 50% | ~$0.038 | ~500–1.000 spesies di pustaka |
+| 80% | ~$0.017 | Model mulai nyaman |
+| 95% (matang) | ~$0.007 | Ribuan spesies |
 
-Kurvanya bergerak ke arah yang benar seiring waktu, dan itu adalah properti struktural yang paling berharga dari desain ini: **biaya per pemain turun saat basis pemain bertambah.** Pemain awal secara efektif membangun pustaka untuk pemain berikutnya. Karena itu soft launch dengan basis kecil adalah fase yang paling mahal per pemain, dan itu harus diantisipasi, bukan dikagetkan.
+Kurva turun seiring pustaka bertambah — alasan pivot ke art privat: margin per capture stabil dan selalu menutup generation.
 
-Instrumentasi wajib sejak Phase 2, dua query yang harus bisa dijawab kapan saja:
+Instrumentasi wajib sejak Phase 2 — target menambah metrik capture privat; query *historis* cache hit tetap berguna selama migrasi:
 
 ```sql
--- Rasio cache hit 7 hari terakhir
+-- Historis: rasio cache hit 7 hari (model lama)
 select
   count(*) filter (where status = 'cache_hit')::float / nullif(count(*), 0) as hit_rate,
   sum(cost_usd_estimate) as spend_usd
 from generations
 where created_at > now() - interval '7 days';
 
--- Pemain paling mahal, untuk mendeteksi kebocoran ekonomi lebih awal
+-- Target: capture diterima vs percobaan Vision
+select
+  count(*) filter (where status = 'succeeded') as captures,
+  sum(cost_usd_estimate) as spend_usd
+from generations
+where created_at > now() - interval '7 days';
+
+-- Pemain paling mahal (audit kebocoran)
 select owner_id, count(*) as gens, sum(cost_usd_estimate) as usd
 from generations
 where status = 'succeeded' and created_at > now() - interval '30 days'
@@ -147,29 +160,26 @@ group by owner_id order by usd desc limit 20;
 
 ### Sakelar darurat
 
-Kalau tagihan harian melewati ambang yang ditetapkan, sistem harus bisa menahan diri sendiri tanpa menunggu developer bangun. Satu baris konfigurasi di tabel `app_config` yang dibaca `create_anima`: `daily_spend_cap_usd`. Saat tercapai, Genesis masuk antrean dan diberi tahu jujur ("Inkubator sedang penuh, Anima-mu diproses beberapa jam lagi"), sementara Discovery Scan tetap jalan normal karena biayanya tidak signifikan. Menahan Genesis merusak satu momen; tagihan tak terkendali merusak proyeknya.
+Kalau tagihan harian melewati ambang yang ditetapkan, sistem harus bisa menahan diri sendiri tanpa menunggu developer bangun. Satu baris konfigurasi di tabel `app_config` yang dibaca `create_anima`: `daily_spend_cap_usd`. Saat tercapai, **generation privat** masuk antrean ("Inkubator sedang penuh…"); percobaan Vision dengan Scan Charge tetap bisa ditolak lebih awal jika cap sudah kritis. Menahan generation merusak satu momen; tagihan tak terkendali merusak proyeknya.
 
 ### Menghapus Anima tidak membalik transaksi
 
 Pemain boleh menghapus Anima miliknya secara permanen setelah satu dialog
 konfirmasi, tetapi **tidak menerima refund Genesis Core, Scan Charge, atau Bits**.
-Biaya Vision/generation sudah benar-benar keluar dan art spesies sudah menjadi
-bagian dari pustaka bersama; delete bukan mekanik ekonomi untuk mengulang roll.
+Biaya Vision/generation sudah keluar. **Target:** art privat pemilik dihapus dari storage scoped; tidak ada kewajiban mempertahankan sheet untuk pemain lain. **Historis:** delete tidak menyingkirkan entri `species_library` bersama — art reuse tetap untuk capture lain.
 
 Operasinya memakai DELETE PostgREST langsung dengan policy RLS
-`auth.uid() = owner_id`, bukan Edge Function service-role baru. Row `animas`
-hilang, `care_events` ikut cascade, sedangkan `generations` dipertahankan untuk
-audit dengan `anima_id = null`. `species_library` dan cache art di device juga
-tetap ada karena satu varian dapat dipakai Anima lain. Client reload roster lalu
-memilih Anima terbaru berikutnya; kalau tidak ada, Home kembali ke empty state.
+`auth.uid() = owner_id`. Row `animas` hilang, `care_events` cascade, `generations`
+audit dengan `anima_id = null`. Client reload roster lalu memilih Anima terbaru
+berikutnya; kalau tidak ada, Home kembali ke empty state.
 
 ### Seeker, upgrade akun, dan progression kosmetik
 
 Pemain baru masuk sebagai user anonim tanpa login gate. `handle_new_user()`
-memberi 1 Core dan 50 Bits; satu Scan sukses kemudian mengisi slot guest secara
-atomik di `record_cache_hit()` atau `claim_genesis()`. Cache hit tidak mendebit
-Core. Genesis gagal yang benar-benar direfund juga melepaskan slot guest bila
-tidak ada Scan sukses/pending lain.
+memberi 1 Core dan 50 Bits; satu capture sukses mengisi slot guest secara
+atomik. **Target:** setiap sukses mendebit Core dan memicu generation privat.
+**Historis:** cache hit memakai slot tanpa Core; Genesis gagal yang direfund
+melepaskan slot guest bila tidak ada sukses/pending lain.
 
 Link Google memakai identity linking Supabase sehingga UID dan semua row progres
 tetap sama. `upgrade_seeker_account()` memverifikasi identity Google, memegang
@@ -192,7 +202,8 @@ tidak dipakai untuk stat, matchmaking, reward, atau otorisasi.
 Nama Seeker wajib unik case-insensitive dan rename punya cooldown 30 hari.
 Birth year/gender opsional. **Delete Account** berbeda dari Delete Anima:
 Edge Function `seeker` menghapus `auth.users`, cascade membersihkan profil,
-Anima, inventory, dan session pemain, sedangkan pustaka art bersama tetap ada.
+Anima, inventory, dan session pemain. Entri Galeri published (target) ikut
+ditarik; bot pool tidak lagi memakai snapshot tersebut.
 
 ## 3. Survival / Tamagotchi mechanics
 
@@ -259,7 +270,7 @@ Saldo, kebutuhan, inventory, dan score diputuskan satu transaction function Post
 
 ## 4. Evo-tree
 
-Tiga form copy, sprite masih stage 1. Art baru (`evolve_anima`, ~$0.07, cache `(species_key, color_bucket, stage)`) menyusul. Percabangan Guardian/Ravager juga menunggu art.
+Tiga form copy, sprite masih stage 1. **Target:** art evolusi (`evolve_anima`, ~$0.07) **privat per Anima** — tidak reuse sheet antar pemain. **Historis:** cache `(species_key, color_bucket, stage)` ke pustaka bersama; pemain pertama trigger generation, lainnya hit.
 
 ```mermaid
 graph LR
@@ -273,19 +284,17 @@ graph LR
 | Adult | Level ≥ 16 (75 EXP) | multiplier +0.15 |
 | Evolved | Level ≥ 36 (175 EXP) | multiplier +0.20 lagi |
 
-`animas.stage` tetap 1 supaya loader art tidak mencari sheet stage 2 yang belum ada. Age-gate 2/7 hari dan `care_score` 60/200 diganti gerbang level. Stats Battle memakai `growthMultiplier(level)`, bukan `stageMultipliers`, sampai art evolusi live.
+`animas.stage` tetap 1 supaya loader art tidak mencari sheet stage 2 yang belum ada. Stats Battle memakai `growthMultiplier(level)`, bukan `stageMultipliers`, sampai art evolusi live.
 
-Cabang Guardian/Ravager tetap rencana Phase 3: ditentukan oleh **bagaimana pemain bermain**, bukan dropdown. Art evolusi (`evolve_anima`) tidak mendebit Genesis Core; pemain pertama per `(species_key, color_bucket, stage)` memicu generation ~$0.07, yang lain cache hit. Slice ini hanya lompatan stat + copy Adult/Evolved.
+Cabang Guardian/Ravager tetap rencana Phase 3. Evolusi tidak mendebit Core tambahan di kontrak target (generation sudah dibayar saat evolusi trigger); slice ini lompatan stat + copy Adult/Evolved.
 
 ## 5. Basic battle mechanics
 
 Battle harus memenuhi satu syarat yang tidak biasa: ia harus membuat stat yang berasal dari foto **terasa** berasal dari foto. Kalau gunting dan bantal bertarung dengan cara yang sama, seluruh premis "stat diturunkan dari objek nyata" jadi hiasan kosong.
 
-**Vertical slice ini sudah live sejak 13 Agustus 2026.** Satu-satunya sumber
-formula production adalah
-`backend/supabase/functions/_shared/battle.mjs`; potongan GDScript di bawah
-menjelaskan rumusnya, bukan implementasi kedua. Client hanya mengirim
-`strike`/`surge`/`guard`/`item` dan menganimasikan ordered event log dari server.
+Vertical slice Battle sekarang memakai **18 elemen** directed graph di bawah.
+Client tetap hanya mengirim `strike`/`surge`/`guard`/`item` dan menganimasikan
+ordered event log; server memilih elemen Attack/Special dan multiplier final.
 
 ### Stat turunan
 
@@ -307,46 +316,83 @@ HP dikali 4 supaya battle berlangsung 6-10 turn. Lebih pendek terasa dangkal, le
 
 `createFighter` memotong stat tempur pemain sesudah pertumbuhan level kalau care rendah. Hunger < 40 interpolasi linear ke ×0.6 di 0; Hygiene < 50 interpolasi ke ×0.7 di 0; keduanya dikalikan lalu dijepit minimal ×0.5. Ambang sama dengan pose Hungry/Dirty. Bot tidak dipotong. `battleRewardPreview` memakai stat tanpa penalti supaya care rendah tidak menaikkan tier Bits. Hunger dan Hygiene bukan gerbang masuk.
 
-### Element wheel
+### Element wheel — target (18 elemen)
 
-Enam elemen dalam satu siklus tertutup. Setiap elemen kuat terhadap elemen berikutnya (x1.5) dan lemah terhadap elemen sebelumnya (x0.67).
+Vision menetapkan **satu elemen primary** dan **satu elemen secondary** per Anima dari daftar tetap:
+
+`metal`, `wood`, `stone`, `ceramic`, `glass`, `plastic`, `cloth`, `paper`, `plant`, `food`, `fauna`, `flow`, `spark`, `flame`, `frost`, `air`, `toxin`, `sound`
+
+Setiap elemen punya **tepat dua kekuatan** (×1,5) dan **tepat dua kelemahan** (×0,67). Relasi **directed** — bukan satu siklus 6-node.
+
+| Elemen | Kuat vs (×1,5) | Lemah vs (×0,67) |
+| --- | --- | --- |
+| metal | plant, wood | stone, spark |
+| wood | spark, sound | metal, flame |
+| stone | metal, ceramic | cloth, paper |
+| ceramic | toxin, flame | stone, sound |
+| glass | toxin, air | plastic, sound |
+| plastic | flow, glass | frost, toxin |
+| cloth | stone, sound | fauna, spark |
+| paper | food, stone | flow, air |
+| plant | flow, air | metal, fauna |
+| food | fauna, frost | paper, toxin |
+| fauna | plant, cloth | food, frost |
+| flow | spark, paper | plastic, plant |
+| spark | cloth, metal | wood, flow |
+| flame | wood, frost | ceramic, air |
+| frost | fauna, plastic | food, flame |
+| air | flame, paper | glass, plant |
+| toxin | food, plastic | ceramic, glass |
+| sound | glass, ceramic | wood, cloth |
+
+Pemetaan objek → elemen di [02](02-prompt-engineering.md) harus diselaraskan ke 18 label ini (bukan 6).
+
+#### Resolusi elemen di turn
+
+| Sisi | Elemen dipakai |
+| --- | --- |
+| **Attack** (`strike`) | **Primary** penyerang |
+| **Special** (`surge`) | **Secondary** penserang; jika secondary null/invalid, fallback ke primary |
+| **Pertahanan lawan** | Evaluasi **primary dan secondary** defender |
+
+Untuk satu serangan, hitung multiplier terhadap **primary** dan **secondary** defender:
+
+- Jika **kuat** (×1,5) dan **lemah** (×0,67) keduanya terpicu → **netral ×1,0** (saling cancel).
+- Jika hanya kuat → ×1,5.
+- Jika hanya lemah → ×0,67.
+- Jika keduanya netral → ×1,0.
+
+**Plafon keras:** multiplier gabungan **tidak pernah** di luar **[0,67 ; 1,5]** — dual defense tidak menumpuk super-effective ganda atau resist ganda.
+
+```text
+function matchup(attacker_elem, defender_primary, defender_secondary):
+  m1 = directed_multiplier(attacker_elem, defender_primary)   // 1.0 | 1.5 | 0.67
+  m2 = directed_multiplier(attacker_elem, defender_secondary)
+  if m1 == 1.5 and m2 == 0.67: return 1.0
+  if m1 == 0.67 and m2 == 1.5: return 1.0
+  if m1 == 1.5 or m2 == 1.5: return 1.5
+  if m1 == 0.67 or m2 == 0.67: return 0.67
+  return 1.0
+```
+
+Client menampilkan `Super effective!` / `Not very effective.` dari `element_multiplier` authoritative event — tanpa menyalin graph ke client.
+
+#### Model historis — 6 elemen siklus (build saat ini)
+
+*Historis:* satu siklus `metal → plant → flow → spark → cloth → stone → metal`; satu elemen per Anima; multiplier dari posisi siklus saja.
 
 ```mermaid
 graph LR
     metal --> plant --> flow --> spark --> cloth --> stone --> metal
 ```
 
-| Menyerang | Kuat vs | Lemah vs | Logika |
-| --- | --- | --- | --- |
-| metal | plant | stone | Logam memotong yang organik, batu menumpulkan logam |
-| plant | flow | metal | Akar menyerap air |
-| flow | spark | plant | Air memendekkan arus listrik |
-| spark | cloth | flow | Listrik membakar kain |
-| cloth | stone | spark | Kain membungkus batu, seperti kertas menutup batu |
-| stone | metal | cloth | Batu menghantam logam |
-
-Satu siklus, satu arah, tanpa tabel matriks 6x6 yang harus dihafal. Pemain bisa memahami seluruh sistem dari satu gambar roda, dan tetap ada kedalaman taktis karena menyusun tim berarti menutupi kelemahan siklusnya.
-
-Pemetaan elemen dari objek nyata ada di [02](02-prompt-engineering.md), dan pemetaannya intuitif: gunting jadi `metal`, tanaman jadi `plant`, gelas jadi `flow`, keyboard jadi `spark`, batu jadi `stone`, bantal jadi `cloth`.
+Implementasi saat ini masih di `battle.mjs` sampai migrasi elemen selesai.
 
 ### Rumus damage
 
+Potongan GDScript di bawah mengilustrasikan peredam DEF; **multiplier elemen** target memakai `matchup()` di atas, bukan siklus 6-node.
+
 ```gdscript
-const ELEMENT_CYCLE := ["metal", "plant", "flow", "spark", "cloth", "stone"]
-
-static func element_multiplier(attacker: String, defender: String) -> float:
-	var a := ELEMENT_CYCLE.find(attacker)
-	var d := ELEMENT_CYCLE.find(defender)
-	if a < 0 or d < 0:
-		return 1.0
-	var n := ELEMENT_CYCLE.size()
-	if (a + 1) % n == d:
-		return 1.5          # menyerang yang lemah terhadapnya
-	if (d + 1) % n == a:
-		return 0.67         # menyerang yang kuat terhadapnya
-	return 1.0
-
-
 static func compute_damage(atk: int, def: int, power: float, elem_mult: float,
 		crit: bool, rng: RandomNumberGenerator) -> int:
 	# def masuk sebagai peredam, bukan pengurang: mencegah damage nol
@@ -358,7 +404,25 @@ static func compute_damage(atk: int, def: int, power: float, elem_mult: float,
 	return maxi(1, int(raw))
 ```
 
-DEF dipakai sebagai peredam multiplikatif `100/(100+DEF)`, bukan pengurang `ATK - DEF`. Alasannya praktis: dengan pengurang, Anima berbahan batu dengan DEF 90 akan kebal total terhadap Anima kertas dengan ATK 20, dan pertarungannya jadi macet tanpa jalan keluar. Dengan peredam, kertas tetap menggigit sedikit — dan roda elemen memberinya jalan menang yang sah (kain mengalahkan batu).
+*Historis — siklus 6 elemen masih di production:*
+
+```gdscript
+const ELEMENT_CYCLE := ["metal", "plant", "flow", "spark", "cloth", "stone"]
+
+static func element_multiplier(attacker: String, defender: String) -> float:
+	var a := ELEMENT_CYCLE.find(attacker)
+	var d := ELEMENT_CYCLE.find(defender)
+	if a < 0 or d < 0:
+		return 1.0
+	var n := ELEMENT_CYCLE.size()
+	if (a + 1) % n == d:
+		return 1.5
+	if (d + 1) % n == a:
+		return 0.67
+	return 1.0
+```
+
+DEF dipakai sebagai peredam multiplikatif `100/(100+DEF)`, bukan pengurang `ATK - DEF`. Alasannya praktis: dengan pengurang, Anima ber-DEF tinggi kebal total terhadap ATK rendah, dan pertarungan macet. Dengan peredam, damage minimum tetap mengalir — dan graph 18 elemen memberi jalan menang yang sah (mis. `paper` kuat vs `stone`).
 
 Setiap event serangan membawa `element_multiplier` authoritative dari formula server. Client menampilkan `Super effective!` untuk `1.5`, `Not very effective.` untuk `0.67`, dan tidak menampilkan callout pada matchup netral; warna serta punch angka damage mengikuti hasil yang sama. Callout memakai Oxanium ExtraBold besar dengan outline gelap dan glow warna—tanpa box, border, atau garis samping—di ruang kosong tepat di bawah fighter HUD agar tidak menutupi badan Anima. Tilt dan pop dimatikan oleh Reduced Motion. Dengan begitu feedback elemen terasa sebagai impact saat hit tanpa menyalin roda elemen ke client.
 
@@ -428,12 +492,16 @@ Tab tetap bernama Battle; satu CTA berbunyi `Battle` selama progression tersedia
 dan berubah menjadi `Train` setelah 3/3. Kemenangan ketiga tetap result Battle
 berhadiah (`Progress 3/3`); mode Training baru berlaku session berikutnya.
 
-Lawan vertical slice adalah snapshot anonim Anima `ready` milik pemain lain,
-dengan art yang sudah ada di `species_library`. Prioritasnya stage sama dan
-total base stat dalam ±15%; fallback dinormalisasi ke power pemain. `owner_id`
-dan nickname tidak pernah dikirim ke lawan. Ini memberi rasa dunia yang hidup
-tanpa netcode. PvP/asynchronous matchmaking, tim multi-Anima, ranked ladder,
-dan item drop ditunda setelah vertical slice terbukti.
+Lawan Battle:
+
+| | Target | Historis (build saat ini) |
+| --- | --- | --- |
+| Sumber | Snapshot Anima **published Galeri** saja | Semua `species_library` |
+| Identitas | Tidak pernah `owner_id` / nickname | Sama |
+| Kosong pool | **Bot sistem** fallback | Normalisasi stat ke power pemain |
+| Matching | ±15% base stat, prioritas stage sama | Sama |
+
+Detail publish/unpublish Galeri: [08](08-private-art-and-gallery.md). PvP ranked, tim multi-Anima, item drop — setelah slice terbukti.
 
 ## 6. Loop harian yang diharapkan
 
@@ -442,7 +510,7 @@ graph TD
     Buka["Buka aplikasi"] --> Cek["Cek kondisi Anima, decay sudah dihitung"]
     Cek --> Bonus["Jika semua >70: bonus harian +8"]
     Bonus --> Rawat["Beri makan, bersihkan, main"]
-    Rawat --> Scan["Discovery Scan objek di sekitar, 8 gratis"]
+    Rawat --> Scan["Scan objek — Scan Charge + Core saat capture"]
     Scan --> Shop["Shop: makanan dan item"]
     Shop --> Battle["2-3 battle untuk Bits, sampai cap 100"]
     Battle --> Evo{"Syarat evolusi terpenuhi?"}
@@ -451,7 +519,7 @@ graph TD
     Ritual --> Tidur
 ```
 
-Targetnya 5-8 menit per sesi, dua sesi per hari. Yang menarik pemain kembali besok adalah tiga hal berbeda yang jatuh pada jadwal berbeda: kebutuhan Anima yang menurun (harian), kemajuan menuju evolusi (mingguan), dan kemungkinan menemukan spesies baru (kapan saja, tidak terduga). Yang terakhir adalah satu-satunya yang tidak bisa direncanakan pemain, dan karena itu yang paling kuat — sebab objek yang belum pernah ada di pustaka bisa muncul di meja kantor kapan saja.
+Targetnya 5-8 menit per sesi, dua sesi per hari. Yang menarik pemain kembali: kebutuhan Anima (harian), evolusi (mingguan), dan **capture privat** (kapan saja — setiap objek = Anima unik, opsional publish ke Galeri).
 
 ## 7. Pemeriksaan yang wajib ada
 
@@ -459,10 +527,10 @@ Care dan combat sengaja diuji di runtime yang memiliki sumber kebenarannya:
 
 - `game/tests/test_game_rules.gd` menguji decay, Sleep, Dormant, score, dan
   validasi kontrak event yang diterima client.
-- `eval/selftest.mjs` mengimpor **file combat production yang sama** dengan Edge
-  Function. Ia menjaga enam relasi elemen, minimum damage, DEF pierce, crit cap,
-  Guard, PP, SPD order, KO, batas turn, deterministic retry, reward tier, dan
-  tujuh efek item Battle, plus dua sheet katalog 3×3.
+- `eval/selftest.mjs` mengimpor modul combat production yang sama dengan Edge
+  Function. **Target:** assert 18 relasi directed, dual-defense cancel, plafon
+  0,67–1,5, minimum damage, DEF pierce, crit, Guard, PP, SPD, reward tier, item
+  Battle. **Historis:** assert enam relasi siklus masih jalan sampai migrasi.
 - `backend/tests/quota_rules.sql` menguji eligibility, satu active session,
   stale/concurrent turn, replay idempoten, reward atomik, cap progression 3 vs
   cap Bits 100, pembelian Shop, Feed inventory, satu item per Battle, nol reward

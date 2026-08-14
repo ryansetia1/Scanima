@@ -14,7 +14,8 @@ extends Node
 ## Bukan const supaya uji bisa menunjuk folder sementara, bukan state pemain.
 var path_state: String = "user://state.json"
 var dir_animas: String = "user://animas"
-const SPRITE_CACHE_VERSION := 4
+const SPRITE_CACHE_VERSION := 5
+const LEGACY_SPRITE_CACHE_VERSION := 4
 
 ## Runtime saja: {access_token, refresh_token, expires_at, uid, is_anonymous}.
 var session: Dictionary = {}
@@ -47,6 +48,9 @@ var last_anima: Dictionary = {}
 
 ## Saldo dari server. Ditampilkan, tidak pernah dipercaya, tidak pernah disimpan.
 var profile: Dictionary = {}
+
+## Config rollout dari server (min_client_version, flags). Kosong = permissive.
+var client_config: Dictionary = {}
 
 
 func _ready() -> void:
@@ -190,6 +194,7 @@ func clear_account_state() -> void:
 	pending_oauth = {}
 	last_anima = {}
 	profile = {}
+	client_config = {}
 	var store := _secure_store()
 	if store != null:
 		store.clear_session()
@@ -206,6 +211,7 @@ func discard_guest_local_state() -> void:
 	pending_purchase = {}
 	last_anima = {}
 	profile = {}
+	client_config = {}
 	save()
 
 
@@ -347,12 +353,24 @@ func finish_purchase() -> void:
 	save()
 
 
-## Folder cache per varian art. Versi di prefix memaksa satu unduhan baru saat
-## pipeline visual berubah; folder versi lama dibiarkan agar rollback cukup
-## mengembalikan angka ini tanpa harus merekonstruksi PNG yang sudah diganti.
+## Folder cache per Anima (production baru). sheet_path server penuh; manifest.sheet
+## hanya basename relatif terhadap folder cache ini.
+func sprite_dir_for_anima(anima_id: String) -> String:
+	return dir_animas.path_join("v%d_%s" % [SPRITE_CACHE_VERSION, anima_id])
+
+
+func manifest_path_for_anima(anima_id: String) -> String:
+	return sprite_dir_for_anima(anima_id).path_join("manifest.json")
+
+
+func has_sprite_for_anima(anima_id: String) -> bool:
+	return _has_sprite_at(manifest_path_for_anima(anima_id), sprite_dir_for_anima(anima_id))
+
+
+## Folder cache legacy per varian species (pustaka publik / art lama).
 func sprite_dir(species_key: String, color_bucket: String, stage: int) -> String:
 	return dir_animas.path_join(
-		"v%d_%s_%s_%d" % [SPRITE_CACHE_VERSION, species_key, color_bucket, stage]
+		"v%d_%s_%s_%d" % [LEGACY_SPRITE_CACHE_VERSION, species_key, color_bucket, stage]
 	)
 
 
@@ -361,16 +379,19 @@ func manifest_path(species_key: String, color_bucket: String, stage: int) -> Str
 
 
 func has_sprite(species_key: String, color_bucket: String, stage: int) -> bool:
-	var path := manifest_path(species_key, color_bucket, stage)
-	if not FileAccess.file_exists(path):
+	return _has_sprite_at(manifest_path(species_key, color_bucket, stage), sprite_dir(species_key, color_bucket, stage))
+
+
+static func _has_sprite_at(manifest_file: String, dir: String) -> bool:
+	if not FileAccess.file_exists(manifest_file):
 		return false
-	var parsed: Variant = parse_json(FileAccess.get_file_as_string(path))
+	var parsed: Variant = parse_json(FileAccess.get_file_as_string(manifest_file))
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return false
 	var sheet := str(as_dict(parsed).get("sheet", ""))
 	if sheet.is_empty():
 		return false
-	return FileAccess.file_exists(sprite_dir(species_key, color_bucket, stage).path_join(sheet))
+	return FileAccess.file_exists(dir.path_join(sheet))
 
 
 ## Menyimpan sheet + manifest supaya AnimaLoader bisa memuatnya dari disk apa
@@ -379,6 +400,14 @@ func has_sprite(species_key: String, color_bucket: String, stage: int) -> bool:
 ## Manifest ditulis TERAKHIR. Kalau proses mati di tengah, has_sprite() melihat
 ## cache yang belum lengkap sebagai tidak ada, bukan memuat sheet setengah
 ## terunduh dan menampilkan Anima yang rusak.
+func store_sprite_for_anima(
+	anima_id: String,
+	manifest: Dictionary,
+	sheet: PackedByteArray
+) -> Dictionary:
+	return _store_sprite_bundle(sprite_dir_for_anima(anima_id), manifest_path_for_anima(anima_id), manifest, sheet)
+
+
 func store_sprite(
 	species_key: String,
 	color_bucket: String,
@@ -386,7 +415,20 @@ func store_sprite(
 	manifest: Dictionary,
 	sheet: PackedByteArray
 ) -> Dictionary:
-	var dir := sprite_dir(species_key, color_bucket, stage)
+	return _store_sprite_bundle(
+		sprite_dir(species_key, color_bucket, stage),
+		manifest_path(species_key, color_bucket, stage),
+		manifest,
+		sheet
+	)
+
+
+func _store_sprite_bundle(
+	dir: String,
+	manifest_file: String,
+	manifest: Dictionary,
+	sheet: PackedByteArray
+) -> Dictionary:
 	var err := DirAccess.make_dir_recursive_absolute(dir)
 	if err != OK and err != ERR_ALREADY_EXISTS:
 		return {"ok": false, "error": "tidak bisa membuat %s: %s" % [dir, error_string(err)]}
@@ -401,14 +443,13 @@ func store_sprite(
 	file.store_buffer(sheet)
 	file.close()
 
-	var path := manifest_path(species_key, color_bucket, stage)
-	var mf := FileAccess.open(path, FileAccess.WRITE)
+	var mf := FileAccess.open(manifest_file, FileAccess.WRITE)
 	if mf == null:
-		return {"ok": false, "error": "tidak bisa menulis manifest: %s" % path}
+		return {"ok": false, "error": "tidak bisa menulis manifest: %s" % manifest_file}
 	mf.store_string(JSON.stringify(manifest, "\t"))
 	mf.close()
 
-	return {"ok": true, "error": "", "manifest_path": path}
+	return {"ok": true, "error": "", "manifest_path": manifest_file}
 
 
 func remember_anima(anima: Dictionary) -> void:

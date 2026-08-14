@@ -6,8 +6,15 @@ import {
   rewardRollFromSeed,
   bitsForTier,
 } from "./catalog.mjs";
+import {
+  ELEMENT_CYCLE,
+  defenseElements,
+  dualDefenderMultiplier,
+  elementMultiplier,
+  normalizeElement,
+} from "./elements.mjs";
 
-export const ELEMENT_CYCLE = Object.freeze(["metal", "plant", "flow", "spark", "cloth", "stone"]);
+export { ELEMENT_CYCLE, elementMultiplier, normalizeElement };
 export const BATTLE_ACTIONS = Object.freeze(["strike", "surge", "guard", "item"]);
 export const MOMENTUM_MAX = 3;
 export const MOMENTUM_START = 3;
@@ -24,15 +31,6 @@ export const DIRTY_COMBAT_FLOOR = 0.7;
 export const CARE_COMBAT_FLOOR = 0.5;
 
 const STAT_KEYS = Object.freeze(["hp", "atk", "def", "spd", "special"]);
-const ELEMENT_ALIASES = Object.freeze({
-  tech: "spark",
-  electric: "spark",
-  water: "flow",
-  earth: "stone",
-  nature: "plant",
-  fire: "spark",
-  air: "cloth",
-});
 
 export function levelFromExp(exp) {
   return clampInt(1 + Math.floor(Math.max(0, Number(exp) || 0) / EXP_PER_LEVEL), 1, LEVEL_CAP);
@@ -130,21 +128,6 @@ export function normalizeBaseStats(baseStats, targetTotal = null) {
 export function baseStatTotal(baseStats) {
   const base = normalizeBaseStats(baseStats);
   return STAT_KEYS.reduce((sum, key) => sum + base[key], 0);
-}
-
-export function elementMultiplier(attacker, defender) {
-  const attackerIndex = ELEMENT_CYCLE.indexOf(normalizeElement(attacker, ""));
-  const defenderIndex = ELEMENT_CYCLE.indexOf(normalizeElement(defender, ""));
-  if (attackerIndex < 0 || defenderIndex < 0) return 1.0;
-  if ((attackerIndex + 1) % ELEMENT_CYCLE.length === defenderIndex) return 1.5;
-  if ((defenderIndex + 1) % ELEMENT_CYCLE.length === attackerIndex) return 0.67;
-  return 1.0;
-}
-
-export function normalizeElement(element, fallback = "stone") {
-  const value = String(element ?? "").toLowerCase();
-  if (ELEMENT_CYCLE.includes(value)) return value;
-  return ELEMENT_ALIASES[value] ?? fallback;
 }
 
 export function critChance(speed) {
@@ -250,7 +233,15 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "", it
     if (actor.hp <= 0 || target.hp <= 0 || action === "guard" || action === "item") continue;
 
     const crit = random() < critChance(actor.spd);
-    const elem = elementMultiplier(actor.element, target.element);
+    const attackElement = action === "surge"
+      ? (actor.secondary_element || actor.element)
+      : actor.element;
+    const targetDefenses = defenseElements(target.element, target.secondary_element);
+    const elem = dualDefenderMultiplier(
+      attackElement,
+      target.element,
+      target.secondary_element,
+    );
     const attack = action === "surge"
       ? actor.special * (actor.special_mult || 1)
       : actor.atk * (actor.atk_mult || 1);
@@ -273,6 +264,8 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "", it
       action,
       damage,
       crit,
+      attack_element: attackElement,
+      defense_elements: targetDefenses,
       element_multiplier: elem,
       target_hp: target.hp,
     });
@@ -325,6 +318,9 @@ function createFighter(input) {
     item_used: false,
     item_id: "",
     element: normalizeElement(input?.element),
+    secondary_element: input?.secondary_element
+      ? normalizeElement(input.secondary_element, "")
+      : "",
     species_key: String(input?.species_key ?? ""),
     color_bucket: String(input?.color_bucket ?? ""),
     stage: clampInt(input?.stage, 1, 3, 1),

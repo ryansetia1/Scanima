@@ -53,7 +53,9 @@ func _initialize() -> void:
 	_test_kunci_purchase()
 	_test_state_rusak()
 	_test_cache_art()
+	_test_cache_anima_id()
 	_test_cache_setengah()
+	_test_client_version()
 
 	_bersihkan()
 
@@ -376,8 +378,41 @@ func _test_cache_art() -> void:
 	)
 
 
+func _test_cache_anima_id() -> void:
+	print("10. cache per anima_id v5")
+	_check(
+		GameState.sprite_dir_for_anima("anima-123").get_file().begins_with("v5_"),
+		"cache anima baru harus memakai prefix v5"
+	)
+	var built := PlaceholderSheet.build()
+	var manifest: Dictionary = built["manifest"]
+	var png: PackedByteArray = (built["image"] as Image).save_png_to_buffer()
+	var anima_id := "anima-123"
+
+	_check(not GameState.has_sprite_for_anima(anima_id), "cache anima harus kosong sebelum disimpan")
+	var simpan: Dictionary = GameState.store_sprite_for_anima(anima_id, manifest, png)
+	_check(simpan.get("ok", false), "store_sprite_for_anima harus berhasil")
+	_check(GameState.has_sprite_for_anima(anima_id), "cache anima harus terbaca lengkap")
+	var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id))
+	_check(loaded.get("ok", false), "AnimaLoader harus memuat cache anima_id")
+
+
+func _test_client_version() -> void:
+	print("11. versi client minimum permissive saat config kosong")
+	_check(not ClientVersion.is_outdated({}), "config kosong tidak boleh memblokir")
+	_check(not ClientVersion.is_outdated({"android": 0}), "minimum nol tidak boleh memblokir")
+	_check(
+		ClientVersion.is_outdated({"desktop": 99}, 1),
+		"build di bawah minimum platform harus outdated"
+	)
+	_check(
+		not ClientVersion.is_outdated({"desktop": 1}, 1),
+		"build sama dengan minimum harus lolos"
+	)
+
+
 func _test_cache_setengah() -> void:
-	print("9. cache setengah terunduh dianggap tidak ada")
+	print("12. cache setengah terunduh dianggap tidak ada")
 	var dir: String = GameState.sprite_dir("uji_kotak", "cool_blue", 1)
 	var manifest_dict: Dictionary = PlaceholderSheet.build()["manifest"]
 	var sheet_name := str(manifest_dict["sheet"])

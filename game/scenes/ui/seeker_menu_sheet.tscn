@@ -87,6 +87,12 @@ custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "SEEKER_PROFILE_OPEN"
 
+[node name="SeekerGallery" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "GALLERY_OPEN"
+
 [node name="SeekerAccount" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)

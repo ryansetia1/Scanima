@@ -1,0 +1,105 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/photo_source_sheet.gd" id="1_sheet"]
+[ext_resource type="Theme" path="res://themes/mobile_theme.tres" id="2_theme"]
+[ext_resource type="Texture2D" path="res://assets/icons/camera.svg" id="3_camera"]
+
+[node name="PhotoSourceSheet" type="Control"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme = ExtResource("2_theme")
+script = ExtResource("1_sheet")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.004, 0.008, 0.025, 0.68)
+
+[node name="DismissButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+flat = true
+
+[node name="Bottom" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Bottom"]
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -360.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 0
+theme_type_variation = &"BottomSheetPanel"
+
+[node name="Column" type="VBoxContainer" parent="Bottom/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HandleCenter" type="CenterContainer" parent="Bottom/Panel/Column"]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+mouse_filter = 0
+
+[node name="Handle" type="ColorRect" parent="Bottom/Panel/Column/HandleCenter"]
+custom_minimum_size = Vector2(84, 7)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.4, 0.5, 0.68, 0.72)
+
+[node name="ContentSlot" type="VBoxContainer" parent="Bottom/Panel/Column"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="PhotoSourceTitle" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "PHOTO_SOURCE_TITLE"
+horizontal_alignment = 1
+
+[node name="PhotoSourceHint" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "PHOTO_SOURCE_HINT"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="PhotoSourceCamera" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "PHOTO_SOURCE_CAMERA"
+icon = ExtResource("3_camera")
+
+[node name="PhotoSourceGallery" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "PHOTO_SOURCE_GALLERY"

@@ -4,6 +4,11 @@
 // species_key yang bergeser satu huruf berarti dua entri cache untuk satu benda.
 // Dua salinan berarti eval bisa lulus sementara produksi memakai aturan lain.
 
+import {
+  isRosterElement,
+  normalizeElement,
+} from "./elements.mjs";
+
 function levenshtein(a, b) {
   const dp = Array.from({ length: b.length + 1 }, (_, i) => i);
   for (let i = 1; i <= a.length; i++) {
@@ -108,7 +113,10 @@ export function validateVision(
   requireMaterial = false,
   requireCharacter = false,
   requireMoves = false,
-  requireVfx = false
+  requireVfx = false,
+  requireTypingV13 = false,
+  allowAnimals = false,
+  skipSpeciesDedup = false,
 ) {
   const issues = [];
 
@@ -116,9 +124,21 @@ export function validateVision(
     return { gate: "rejected", reason: v.reject_reason ?? "unknown", issues, vision: v };
   }
 
+  if (requireTypingV13) {
+    const kind = String(v.subject_kind ?? "").trim().toLowerCase();
+    if (kind !== "object" && kind !== "animal") {
+      throw new Error(`subject_kind tidak sah: ${JSON.stringify(v.subject_kind)}`);
+    } else {
+      v.subject_kind = kind;
+    }
+    if (kind === "animal" && !allowAnimals) {
+      return { gate: "rejected", reason: "live_animal", issues, vision: v };
+    }
+  }
+
   if (!v.species_key || !/^[a-z]+(_[a-z]+){1,3}$/.test(v.species_key)) {
     issues.push(`species_key tidak sesuai format: ${JSON.stringify(v.species_key)}`);
-  } else {
+  } else if (!skipSpeciesDedup) {
     // Normalisasi ke kunci yang sudah ada supaya typo tidak memecah cache.
     // Satu huruf beda berarti dua entri cache dan dua kali biaya generation.
     for (const known of knownSpecies) {
@@ -127,6 +147,35 @@ export function validateVision(
         v.species_key = known;
         break;
       }
+    }
+  }
+
+  if (requireTypingV13) {
+    const primary = normalizeElement(v.element, "");
+    if (!isRosterElement(primary)) {
+      throw new Error(`element di luar roster v13: ${JSON.stringify(v.element)}`);
+    } else {
+      v.element = primary;
+    }
+
+    const rawSecondary = v.secondary_element;
+    if (rawSecondary == null || String(rawSecondary).trim() === "") {
+      v.secondary_element = null;
+    } else {
+      const secondary = normalizeElement(rawSecondary, "");
+      if (!isRosterElement(secondary)) {
+        issues.push(`secondary_element di luar roster v13: ${JSON.stringify(rawSecondary)}`);
+      } else if (secondary === v.element) {
+        issues.push("secondary_element tidak boleh sama dengan element");
+        v.secondary_element = null;
+      } else {
+        v.secondary_element = secondary;
+      }
+    }
+
+    if (v.subject_kind === "animal" && v.element !== "fauna") {
+      issues.push("hewan wajib element primary fauna");
+      v.element = "fauna";
     }
   }
 
@@ -296,6 +345,14 @@ export function assemblePrompt(template, vision) {
   const leftover = out.match(/\{\{[a-z_]+\}\}/g);
   if (leftover) throw new Error(`placeholder belum terisi: ${leftover.join(", ")}`);
   return out;
+}
+
+/** Pilih template sheet object vs fauna bila versi prompt menyediakan keduanya. */
+export function spriteSheetTemplate(prompts, subjectKind = "object") {
+  if (subjectKind === "animal" && prompts.sprite_sheet_fauna) {
+    return prompts.sprite_sheet_fauna;
+  }
+  return prompts.sprite_sheet;
 }
 
 /**

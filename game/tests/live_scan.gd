@@ -144,22 +144,43 @@ func _run(photo: String) -> bool:
 	var sheet_path := str(row.get("sheet_path", ""))
 	var manifest: Dictionary = GameState.as_dict(row.get("manifest"))
 
-	var unduh: Dictionary = await Backend.download_sheet(sheet_path)
+	var unduh: Dictionary
+	var use_anima := not anima_id.is_empty()
+	if use_anima:
+		unduh = await Backend.download_anima_sheet(sheet_path)
+		if not unduh.ok:
+			unduh = await Backend.download_sheet(sheet_path)
+	else:
+		unduh = await Backend.download_sheet(sheet_path)
 	if not unduh.ok:
 		printerr("  unduh sheet gagal: %s" % unduh.error)
 		return false
 	var png: PackedByteArray = unduh.bytes
-	print("  %s (%.0f KB dari CDN)" % [sheet_path, png.size() / 1024.0])
+	print("  %s (%.0f KB)" % [sheet_path, png.size() / 1024.0])
 
-	var simpan: Dictionary = GameState.store_sprite(species, color, stage, manifest, png)
+	var simpan: Dictionary
+	if use_anima:
+		simpan = GameState.store_sprite_for_anima(anima_id, manifest, png)
+	else:
+		simpan = GameState.store_sprite(species, color, stage, manifest, png)
 	if not simpan.ok:
 		printerr("  gagal menyimpan art: %s" % simpan.error)
 		return false
-	if not GameState.has_sprite(species, color, stage):
+	var cache_ok := (
+		GameState.has_sprite_for_anima(anima_id)
+		if use_anima
+		else GameState.has_sprite(species, color, stage)
+	)
+	if not cache_ok:
 		printerr("  cache tidak terbaca lengkap sesudah disimpan")
 		return false
 
-	var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path(species, color, stage))
+	var manifest_path := (
+		GameState.manifest_path_for_anima(anima_id)
+		if use_anima
+		else GameState.manifest_path(species, color, stage)
+	)
+	var loaded := AnimaLoader.load_from_manifest(manifest_path)
 	if not loaded.get("ok", false):
 		printerr("  AnimaLoader menolak art produksi: %s" % loaded.get("error", "?"))
 		return false

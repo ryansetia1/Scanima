@@ -2,6 +2,7 @@ class_name SeekerMenuSheet
 extends UiBottomSheet
 
 signal profile_requested
+signal gallery_requested
 signal account_requested
 signal help_requested
 signal delete_account_requested
@@ -18,6 +19,7 @@ var _configuring := false
 func _ready() -> void:
 	super._ready()
 	%SeekerProfile.pressed.connect(func() -> void: profile_requested.emit())
+	%SeekerGallery.pressed.connect(func() -> void: gallery_requested.emit())
 	_account.pressed.connect(func() -> void: account_requested.emit())
 	%SeekerHelp.pressed.connect(func() -> void: help_requested.emit())
 	_delete.pressed.connect(func() -> void: delete_account_requested.emit())

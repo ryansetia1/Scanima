@@ -5,6 +5,10 @@
 // hanya REPLICATE_API_TOKEN dan REPLICATE_WEBHOOK_SECRET.
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
+const CLIENT_PLATFORMS = new Set(["android", "ios", "desktop"]);
+let minClientCache: Record<string, number> | null = null;
+let minClientCacheUntil = 0;
+
 export function adminClient(): SupabaseClient {
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -32,6 +36,52 @@ export async function syncProfileTimezone(
     p_offset_minutes: offset,
   });
   if (error) console.error("set_profile_timezone gagal", error);
+}
+
+export async function clientVersionGate(
+  req: Request,
+  db: SupabaseClient,
+): Promise<Response | null> {
+  const now = Date.now();
+  if (!minClientCache || now >= minClientCacheUntil) {
+    const { data, error } = await db
+      .from("app_config")
+      .select("value")
+      .eq("key", "min_client_version")
+      .maybeSingle();
+    if (error) {
+      // Config failure must not brick every authenticated operation.
+      console.error("min_client_version gagal dibaca", error);
+      return null;
+    }
+    const raw = data?.value && typeof data.value === "object"
+      ? data.value as Record<string, unknown>
+      : {};
+    minClientCache = {
+      android: Math.max(0, Number(raw.android) || 0),
+      ios: Math.max(0, Number(raw.ios) || 0),
+      desktop: Math.max(0, Number(raw.desktop) || 0),
+    };
+    minClientCacheUntil = now + 30_000;
+  }
+
+  const minimums = minClientCache;
+  if (!minimums || Math.max(...Object.values(minimums)) <= 0) return null;
+
+  const platform = (req.headers.get("x-scanima-platform") ?? "").toLowerCase();
+  const buildText = req.headers.get("x-scanima-build") ?? "";
+  const build = Number(buildText);
+  if (
+    !CLIENT_PLATFORMS.has(platform) ||
+    !Number.isInteger(build) ||
+    build < (minimums[platform] ?? 0)
+  ) {
+    return json(426, {
+      error: "CLIENT_OUTDATED",
+      min_client_version: minimums,
+    });
+  }
+  return null;
 }
 
 export function json(status: number, body: unknown): Response {

@@ -33,7 +33,10 @@ const BERKAS = {
   vision_schema: "vision_schema.json",
   sprite_sheet: "sprite_sheet.md",
   sprite_sheet_evolve: "sprite_sheet_evolve.md",
+  sprite_sheet_fauna: "sprite_sheet_fauna.md",
 };
+
+const OPSIONAL = new Set(["sprite_sheet_fauna"]);
 
 export async function buildBundle() {
   const versi = (await readdir(DIR_PROMPT, { withFileTypes: true }))
@@ -45,7 +48,14 @@ export async function buildBundle() {
   for (const v of versi) {
     bundel[v] = {};
     for (const [kunci, berkas] of Object.entries(BERKAS)) {
-      const isi = await readFile(join(DIR_PROMPT, v, berkas), "utf8");
+      const jalur = join(DIR_PROMPT, v, berkas);
+      let isi;
+      try {
+        isi = await readFile(jalur, "utf8");
+      } catch (e) {
+        if (OPSIONAL.has(kunci)) continue;
+        throw e;
+      }
       // Skema di-parse di sini supaya berkas rusak gagal saat build, bukan saat
       // pemain menunggu Anima-nya.
       bundel[v][kunci] = berkas.endsWith(".json") ? JSON.parse(isi) : isi;

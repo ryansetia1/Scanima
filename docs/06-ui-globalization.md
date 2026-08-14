@@ -24,6 +24,7 @@ flowchart TD
     ViewStack --> CollectionView
     ViewStack --> AnimaDetailsView
     ViewStack --> SeekerProfileView
+    ViewStack --> GalleryView
     ScanFlow --> SeekerMenuSheet
     ScanFlow --> SeekerOnboardingSheet
     ScanFlow --> BottomNav
@@ -41,7 +42,9 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
   Tanpa roster, Home membedakan Loading/Error/Empty dan memberi CTA first scan.
   Tap tepat pada sprite memberi reaksi lokal sesuai awake/Sleep/Dormant tanpa
   mengubah care atau mengirim request.
-- **Scan:** penjelasan discovery, preview foto, dua fase status, CTA kamera.
+- **Scan:** penjelasan capture, preview foto, dua fase status, dan satu CTA yang
+  membuka `PhotoSourceSheet` berisi **Take Photo** / **Choose from Gallery**.
+  Kedua sumber masuk ke resize/preview/upload yang sama.
   Untuk Guest Seeker yang sudah memakai satu kesempatan Scan, CTA tetap aktif
   tetapi berubah menjadi **Sign in to Scan Again**; tab lain tidak ikut dikunci.
 - **Battle:** lobby Anima aktif, dua fighter, HP/PP, Attack/Special/Guard/Item,
@@ -68,6 +71,9 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
 - **Seeker Profile:** view tambahan di luar bottom nav. Portrait memakai companion
   aktif dan enam row menampilkan Level kosmetik, EXP, jumlah Anima/spesies,
   seluruh kemenangan, dan tanggal bergabung. Rename membuka `UiModal`.
+- **Gallery:** view dari menu Seeker, bukan tab keenam. Feed memakai pagination,
+  thumbnail cache bounded, detail art, Report/Hide, serta Publish/Unpublish pada
+  profil Anima. Identitas pemilik tidak pernah tampil.
 
 Tombol menu 96px di Top HUD membuka `SeekerMenuSheet`: Profile, aksi
 Google/account linked, Reduced Motion, Help, dan Delete Account. Setelah hatch
@@ -77,6 +83,9 @@ server masih null—tidak ada flag onboarding lokal yang bisa drift. Nama yang
 tidak valid atau sudah dipakai menyalakan label + field merah dan pesan inline
 merah; edit berikutnya membersihkan state error lama. Preflight client memakai
 format server yang sama, jadi spasi tidak pernah dikirim sebagai nama Seeker.
+Menu yang sama membuka Gallery. Jika server mensyaratkan build lebih baru,
+`UiModal` force-update menutup aksi online berdasarkan `min_client_version`;
+client juga mengirim header platform/build pada setiap request.
 
 Pose Idle/Attack/Sleep/Defeated bukan navigation production. Alat itu tetap ada
 di `anima_demo.tscn`.
@@ -123,7 +132,7 @@ empat menjadi dua kolom jika label locale tidak lagi muat.
 
 Bottom nav berurutan Home, Scan, Battle, Collection, Anima. Kelima tombol
 memakai ikon di atas label agar target 96px tetap muat; Scan tetap CTA cyan,
-sementara destination aktif punya state pressed yang terpisah. Enam elemen
+sementara destination aktif punya state pressed yang terpisah. Delapan belas elemen
 Battle memakai ikon berbentuk berbeda supaya informasi tidak bergantung pada
 warna.
 

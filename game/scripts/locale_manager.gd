@@ -60,9 +60,13 @@ func format_ratio(value: int, total: int) -> String:
 
 
 func element_name(code: String) -> String:
-	var key := "ELEMENT_%s" % code.to_upper()
+	var key := "ELEMENT_%s" % ElementCatalog.normalize(code, "unknown").to_upper()
 	var translated := tr(key)
 	return translated if translated != key else tr("ELEMENT_UNKNOWN")
+
+
+func element_compact(row: Dictionary) -> String:
+	return ElementCatalog.compact_label(row)
 
 
 func level_label(level: int) -> String:

@@ -28,10 +28,21 @@ import {
   normalizeSuggestedName,
   normalizeMoveName,
   promptMajor,
+  spriteSheetTemplate,
 } from "../backend/supabase/functions/_shared/vision.mjs";
 import { biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
 import {
   ELEMENT_CYCLE,
+  ELEMENT_ROSTER,
+  ELEMENT_STRENGTHS,
+  MATCHUP_NEUTRAL,
+  MATCHUP_STRONG,
+  MATCHUP_WEAK,
+  dualDefenderMultiplier,
+  normalizeElement,
+  singleMatchup,
+} from "../backend/supabase/functions/_shared/elements.mjs";
+import {
   MOMENTUM_MAX,
   MOMENTUM_START,
   SURGE_COST,
@@ -735,6 +746,28 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
     bundel.v12?.sprite_sheet.includes("VFX DIVERSITY CONTRACT"),
     "v12 VFX diversity + safe-envelope lock ikut terbundel"
   );
+  assert.ok(
+    bundel.v13?.vision_schema?.properties?.subject_kind,
+    "v13 subject_kind ikut terbundel"
+  );
+  assert.ok(
+    bundel.v13?.vision_schema?.properties?.secondary_element,
+    "v13 secondary_element ikut terbundel"
+  );
+  assert.ok(
+    bundel.v13?.sprite_sheet_fauna?.includes("Show **fatigue and"),
+    "v13 sprite_sheet_fauna ikut terbundel"
+  );
+  assert.ok(
+    bundel.v14?.sprite_sheet_fauna?.includes("SCANIMA MONSTERIZATION FLOOR"),
+    "v14 monsterization floor fauna ikut terbundel"
+  );
+  assert.equal(bundel.v14?.sprite_sheet, bundel.v13?.sprite_sheet, "v14 tidak mengubah prompt object");
+  assert.ok(
+    bundel.v15?.sprite_sheet_fauna?.includes("MANDATORY MONSTER IDENTITY LAYER"),
+    "v15 monster identity layer fauna ikut terbundel"
+  );
+  assert.equal(bundel.v15?.sprite_sheet, bundel.v13?.sprite_sheet, "v15 tidak mengubah prompt object");
 }
 
 console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
@@ -1102,14 +1135,42 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
     spd: 102,
     special: 102,
   });
+  for (const element of ELEMENT_ROSTER) {
+    const strengths = ELEMENT_STRENGTHS[element];
+    assert.equal(strengths?.length, 2, `${element} harus punya tepat 2 keunggulan`);
+    for (const target of strengths) {
+      assert.ok(ELEMENT_ROSTER.includes(target), `${element}→${target} harus ada di roster`);
+      assert.equal(singleMatchup(element, target), MATCHUP_STRONG);
+      assert.equal(elementMultiplier(element, target), MATCHUP_STRONG);
+    }
+    const weaknesses = ELEMENT_ROSTER.filter((other) => ELEMENT_STRENGTHS[other]?.includes(element));
+    assert.equal(weaknesses.length, 2, `${element} harus punya tepat 2 kelemahan`);
+    for (const source of weaknesses) {
+      assert.equal(singleMatchup(element, source), MATCHUP_WEAK);
+    }
+  }
+  for (const element of ELEMENT_ROSTER) {
+    for (const target of ELEMENT_STRENGTHS[element]) {
+      assert.notEqual(
+        singleMatchup(target, element),
+        MATCHUP_STRONG,
+        `${element}↔${target} tidak boleh saling kuat`
+      );
+    }
+  }
   for (let index = 0; index < ELEMENT_CYCLE.length; index++) {
     const attacker = ELEMENT_CYCLE[index];
     const strongAgainst = ELEMENT_CYCLE[(index + 1) % ELEMENT_CYCLE.length];
-    const weakAgainst = ELEMENT_CYCLE[(index - 1 + ELEMENT_CYCLE.length) % ELEMENT_CYCLE.length];
-    assert.equal(elementMultiplier(attacker, strongAgainst), 1.5);
-    assert.equal(elementMultiplier(attacker, weakAgainst), 0.67);
+    assert.equal(singleMatchup(attacker, strongAgainst), MATCHUP_STRONG, `siklus lama ${attacker}→${strongAgainst}`);
   }
-  assert.equal(elementMultiplier("unknown", "metal"), 1.0);
+  assert.equal(singleMatchup("plant", "air"), MATCHUP_STRONG);
+  assert.equal(singleMatchup("plant", "fauna"), MATCHUP_WEAK);
+  assert.equal(dualDefenderMultiplier("plant", "fauna", "air"), MATCHUP_NEUTRAL, "kuat+lemah dual defender netral");
+  assert.equal(dualDefenderMultiplier("metal", "plant", "wood"), MATCHUP_STRONG, "dua weakness tidak ditumpuk");
+  assert.equal(dualDefenderMultiplier("metal", "stone", "spark"), MATCHUP_WEAK, "dua resist tidak ditumpuk");
+  assert.equal(elementMultiplier("unknown", "metal"), MATCHUP_NEUTRAL);
+  assert.equal(normalizeElement("water"), "flow");
+  assert.equal(normalizeElement("fire"), "flame");
   assert.equal(critChance(1), 0.02);
   assert.equal(critChance(200), 0.25);
 
@@ -1212,10 +1273,60 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   const retry = resolveTurn(initial, "strike", "turn-key");
   assert.deepEqual(retry, first, "retry key sama harus memberi event log identik");
   assert.equal(first.state.status, "won");
+  const strikeHit = first.events.find((event) => event.type === "attack" && event.actor === "player");
+  assert.equal(strikeHit?.attack_element, "metal");
+  assert.deepEqual(strikeHit?.defense_elements, ["plant"]);
+  assert.equal(strikeHit?.element_multiplier, MATCHUP_STRONG);
   assert.ok(
     !first.events.some((event) => event.type === "attack" && event.actor === "bot"),
     "aktor yang KO sebelum giliran tidak boleh menyerang"
   );
+
+  const dualAttacker = createBattleState({
+    player: {
+      ...player,
+      element: "flow",
+      secondary_element: "spark",
+      base_stats: { hp: 50, atk: 50, def: 50, spd: 95, special: 95 },
+    },
+    bot: {
+      ...bot,
+      element: "cloth",
+      base_stats: { hp: 50, atk: 10, def: 10, spd: 10, special: 10 },
+    },
+    seed: "dual-elements",
+  });
+  const strikeTurn = resolveTurn(dualAttacker, "strike", "dual-strike");
+  const strikeEvent = strikeTurn.events.find((event) => event.type === "attack" && event.actor === "player");
+  assert.equal(strikeEvent?.action, "strike");
+  assert.equal(strikeEvent?.attack_element, "flow");
+  assert.deepEqual(strikeEvent?.defense_elements, ["cloth"]);
+  assert.equal(strikeEvent?.element_multiplier, MATCHUP_NEUTRAL);
+
+  const surgeTurn = resolveTurn(dualAttacker, "surge", "dual-surge");
+  const surgeEvent = surgeTurn.events.find((event) => event.type === "attack" && event.actor === "player");
+  assert.equal(surgeEvent?.action, "surge");
+  assert.equal(surgeEvent?.attack_element, "spark");
+  assert.equal(surgeEvent?.element_multiplier, MATCHUP_STRONG, "spark kuat terhadap cloth");
+
+  const cancelDefender = createBattleState({
+    player: {
+      ...player,
+      element: "plant",
+      base_stats: { hp: 50, atk: 50, def: 50, spd: 95, special: 50 },
+    },
+    bot: {
+      ...bot,
+      element: "fauna",
+      secondary_element: "air",
+      base_stats: { hp: 200, atk: 10, def: 10, spd: 10, special: 10 },
+    },
+    seed: "dual-defense",
+  });
+  const cancelTurn = resolveTurn(cancelDefender, "strike", "dual-defense");
+  const cancelEvent = cancelTurn.events.find((event) => event.type === "attack" && event.actor === "player");
+  assert.deepEqual(cancelEvent?.defense_elements, ["fauna", "air"]);
+  assert.equal(cancelEvent?.element_multiplier, MATCHUP_NEUTRAL);
 
   const slowerPlayer = createBattleState({
     player: { ...player, base_stats: { ...base, spd: 20 } },
@@ -1281,6 +1392,82 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   assert.ok(
     battleEdge.includes("syncProfileTimezone"),
     "battle_anima harus menyimpan offset zona sebelum status/start"
+  );
+  assert.match(
+    battleEdge,
+    /SECONDARY_ELEMENT_FIELD\s*=\s*", secondary_element"/,
+    "start Battle harus membaca secondary_element setelah migration foundation"
+  );
+  assert.match(
+    battleEdge,
+    /readSecondaryElement/,
+    "snapshot Battle siap membaca secondary_element saat kolom live"
+  );
+  assert.match(
+    battleEdge,
+    /gallery_entries/,
+    "bot Battle harus memprioritaskan gallery published"
+  );
+  assert.match(
+    battleEdge,
+    /pickLegacyBot/,
+    "bot Battle harus fallback legacy species_library saat gallery kosong"
+  );
+  assert.match(
+    battleEdge,
+    /sheet_url/,
+    "snapshot bot gallery harus membawa signed sheet_url, bukan path privat"
+  );
+}
+
+console.log("23b. gallery moderation + thumb crop");
+{
+  const { cropIdleThumb, parseModeration } = await import(
+    "../backend/supabase/functions/_shared/gallery_shared.mjs"
+  );
+  const { postprocessSheet, LAYOUT_3X3 } = await import(
+    "../backend/supabase/functions/_shared/postprocess.mjs"
+  );
+  const blobs3 = {
+    idle: { x: 8, y: 30, w: 150, h: 240 },
+    attack: { x: 16, y: 28, w: 170, h: 232 },
+    sleep: { x: 12, y: 170, w: 190, h: 110 },
+    happy: { x: 10, y: 32, w: 148, h: 236 },
+    hungry: { x: 14, y: 40, w: 144, h: 220 },
+    dirty: { x: 12, y: 36, w: 146, h: 228 },
+    defeated: { x: 18, y: 130, w: 160, h: 150 },
+    fx_strike: { x: 90, y: 180, w: 80, h: 60 },
+    fx_surge: { x: 80, y: 160, w: 100, h: 80 },
+  };
+  const sheet = await postprocessSheet(await buildSheet(blobs3, LAYOUT_3X3), {
+    speciesKey: "gallery_thumb",
+    promptVersion: "v12",
+  });
+  const thumb = await cropIdleThumb(sheet.png, sheet.manifest);
+  assert.ok(thumb.length > 256, "thumb gallery harus non-kosong");
+  const safe = parseModeration('{"safe": true}');
+  assert.equal(safe.safe, true);
+  const unsafe = parseModeration('{"safe": false, "reject_reason": "human"}');
+  assert.equal(unsafe.safe, false);
+  assert.equal(unsafe.reject_reason, "human");
+}
+
+console.log("23c. gallery edge function kontrak");
+{
+  const { readFile } = await import("node:fs/promises");
+  const galleryEdge = await readFile(
+    new URL("../backend/supabase/functions/gallery/index.ts", import.meta.url),
+    "utf8",
+  );
+  for (const op of ["list", "publish", "unpublish", "report", "hide", "my_status"]) {
+    assert.ok(galleryEdge.includes(`"${op}"`), `gallery operation ${op} harus ada`);
+  }
+  assert.match(galleryEdge, /feature_gallery/, "gallery harus menghormati feature flag");
+  assert.match(galleryEdge, /GOOGLE_IDENTITY_REQUIRED|requireLinkedGoogle/, "publish gallery harus linked Google");
+  assert.match(
+    galleryEdge,
+    /select\("id, display_name/,
+    "list gallery hanya mengekspos metadata publik",
   );
 }
 
@@ -1760,6 +1947,296 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
 //   node eval/selftest.mjs --emit /tmp/scanima_e2e
 //   godot --headless --path game --script res://tests/test_sprite_slicing.gd \
 //       -- --manifest=/tmp/scanima_e2e/manifest.json
+console.log("28. Vision v13 typing, fauna v14/v15 stylization, dan jalur capture privat");
+{
+  const { readFile } = await import("node:fs/promises");
+  const visionV13 = await readFile(new URL("../backend/prompts/v13/vision_system.md", import.meta.url), "utf8");
+  const schemaV13Source = await readFile(
+    new URL("../backend/prompts/v13/vision_schema.json", import.meta.url),
+    "utf8"
+  );
+  const schemaV13 = JSON.parse(schemaV13Source);
+  const templateV13 = await readFile(new URL("../backend/prompts/v13/sprite_sheet.md", import.meta.url), "utf8");
+  const evolveV13 = await readFile(
+    new URL("../backend/prompts/v13/sprite_sheet_evolve.md", import.meta.url),
+    "utf8"
+  );
+  const faunaV13 = await readFile(new URL("../backend/prompts/v13/sprite_sheet_fauna.md", import.meta.url), "utf8");
+  const visionV14 = await readFile(new URL("../backend/prompts/v14/vision_system.md", import.meta.url), "utf8");
+  const schemaV14Source = await readFile(
+    new URL("../backend/prompts/v14/vision_schema.json", import.meta.url),
+    "utf8"
+  );
+  const templateV14 = await readFile(new URL("../backend/prompts/v14/sprite_sheet.md", import.meta.url), "utf8");
+  const evolveV14 = await readFile(
+    new URL("../backend/prompts/v14/sprite_sheet_evolve.md", import.meta.url),
+    "utf8"
+  );
+  const faunaV14 = await readFile(new URL("../backend/prompts/v14/sprite_sheet_fauna.md", import.meta.url), "utf8");
+  const faunaV15 = await readFile(new URL("../backend/prompts/v15/sprite_sheet_fauna.md", import.meta.url), "utf8");
+  const createAnima = await readFile(
+    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
+    "utf8"
+  );
+  const evalRun = await readFile(new URL("./run.mjs", import.meta.url), "utf8");
+  const finalizeSheet = await readFile(
+    new URL("../backend/supabase/functions/_shared/finalize_sheet.ts", import.meta.url),
+    "utf8"
+  );
+
+  assert.equal(promptMajor("v13"), 13);
+  assert.equal(promptMajor("v14"), 14);
+  assert.equal(promptMajor("v15"), 15);
+  assert.ok(schemaV13.properties.subject_kind);
+  assert.ok(schemaV13.properties.secondary_element);
+  assert.equal(schemaV13.properties.element.enum.length, 18);
+  assert.ok(visionV13.includes("subject_kind"));
+  assert.ok(visionV13.includes("animal_distress"));
+  assert.ok(faunaV13.includes("Show **fatigue and"));
+  assert.ok(/BOTTOM LEFT — DAMAGED[\s\S]{0,400}Never.*blood/.test(faunaV13));
+  assert.ok(templateV13.includes("VFX DIVERSITY CONTRACT"));
+  assert.equal(visionV14, visionV13, "v14 tidak mengubah Vision");
+  assert.equal(schemaV14Source, schemaV13Source, "v14 tidak mengubah schema Vision");
+  assert.equal(templateV14, templateV13, "v14 tidak mengubah prompt object");
+  assert.equal(evolveV14, evolveV13, "v14 tidak mengubah prompt evolve");
+  assert.ok(faunaV14.includes("SCANIMA MONSTERIZATION FLOOR"));
+  assert.ok(faunaV14.includes("PRESERVE RECOGNITION, NOT REALISM"));
+  assert.ok(faunaV14.includes("FINAL SILENT STYLE CHECK"));
+  assert.ok(faunaV14.includes("Idle cannot be mistaken for a realistic wildlife or pet illustration"));
+  assert.ok(!faunaV14.includes("anatomy-led proportions faithful"));
+  assert.ok(/BOTTOM LEFT — DAMAGED[\s\S]{0,400}Never.*blood/.test(faunaV14));
+  assert.ok(faunaV15.includes("MANDATORY MONSTER IDENTITY LAYER"));
+  assert.ok(faunaV15.includes("PROPORTION BREAK"));
+  assert.ok(faunaV15.includes("LANDMARK EVOLUTION"));
+  assert.ok(faunaV15.includes("ORIGINAL ORGANIC MOTIF"));
+  assert.ok(faunaV15.includes("with only anime eyes, cleaner linework, extra"));
+  assert.ok(faunaV15.includes("Chroma green is a transport color only"));
+  assert.ok(/BOTTOM LEFT — DAMAGED[\s\S]{0,400}Never.*blood/.test(faunaV15));
+
+  const objectVision = {
+    safe: true,
+    is_object: true,
+    subject_kind: "object",
+    reject_reason: null,
+    species_key: "mug_ceramic_handled",
+    color_bucket: "neutral_light",
+    element: "ceramic",
+    secondary_element: "flow",
+    rarity: 1,
+    stats: { hp: 50, atk: 30, def: 60, spd: 40, special: 35 },
+    creature_brief: "A floating mug creature with a handle tail and rim crown.",
+    signature_features: ["handle tail-fin", "open rim crown"],
+    surface_finish: "smooth glazed ceramic",
+    damage_hints: ["hairline glaze crack", "small rim chip"],
+    character_direction: "soft and friendly",
+    suggested_name: "Mugra",
+    strike_name: "Rim Toss",
+    surge_name: "Glaze Burst",
+    strike_vfx: { form: "arc", motion: "sweep", brief: "A glazed crescent sweeps across target." },
+    surge_vfx: { form: "ring", motion: "bloom", brief: "Glaze rings bloom from the target." },
+  };
+  const typed = validateVision(objectVision, [], true, true, true, true, true, true, true);
+  assert.equal(typed.gate, "passed");
+  assert.equal(typed.vision.element, "ceramic");
+  assert.equal(typed.vision.secondary_element, "flow");
+
+  const animalVision = {
+    ...objectVision,
+    species_key: "cat_feline_tabby",
+    element: "plant",
+    secondary_element: null,
+    subject_kind: "animal",
+    object_label: "tabby cat",
+    surface_finish: "short tabby fur",
+    damage_hints: ["drooped ear", "dull ruffled fur"],
+  };
+  const animalFixed = validateVision(animalVision, [], true, true, true, true, true, true, true);
+  assert.equal(animalFixed.vision.element, "fauna", "hewan wajib dinormalisasi ke fauna");
+
+  const blockedAnimal = validateVision(animalVision, [], true, true, true, true, true, false, true);
+  assert.equal(blockedAnimal.gate, "rejected");
+  assert.equal(blockedAnimal.reason, "live_animal");
+
+  const bundel = await (await import("../backend/tools/bundle_prompts.mjs")).buildBundle();
+  assert.equal(spriteSheetTemplate(bundel.v13, "animal"), bundel.v13.sprite_sheet_fauna);
+  assert.equal(spriteSheetTemplate(bundel.v13, "object"), bundel.v13.sprite_sheet);
+  assert.ok(!assemblePrompt(bundel.v13.sprite_sheet_fauna, animalFixed.vision).includes("{{"));
+  assert.equal(spriteSheetTemplate(bundel.v14, "animal"), bundel.v14.sprite_sheet_fauna);
+  assert.equal(spriteSheetTemplate(bundel.v14, "object"), bundel.v14.sprite_sheet);
+  assert.ok(!assemblePrompt(bundel.v14.sprite_sheet_fauna, animalFixed.vision).includes("{{"));
+  assert.equal(spriteSheetTemplate(bundel.v15, "animal"), bundel.v15.sprite_sheet_fauna);
+  assert.equal(spriteSheetTemplate(bundel.v15, "object"), bundel.v15.sprite_sheet);
+  assert.equal(bundel.v15.vision_system, bundel.v13.vision_system, "v15 tidak mengubah Vision");
+  assert.deepEqual(bundel.v15.vision_schema, bundel.v13.vision_schema, "v15 tidak mengubah schema Vision");
+  assert.equal(bundel.v15.sprite_sheet_evolve, bundel.v13.sprite_sheet_evolve, "v15 tidak mengubah prompt evolve");
+  assert.ok(!assemblePrompt(bundel.v15.sprite_sheet_fauna, animalFixed.vision).includes("{{"));
+
+  assert.ok(createAnima.includes("feature_unique_generation"));
+  assert.ok(createAnima.includes("claim_capture"));
+  assert.ok(createAnima.includes("spriteSheetTemplate"));
+  assert.ok(createAnima.includes("useUniqueCapture"));
+  assert.ok(
+    evalRun.includes("spriteSheetTemplate(prompts, checked.vision.subject_kind)"),
+    "eval memilih template object/fauna dari subject_kind"
+  );
+  assert.ok(
+    /validateVision\([\s\S]{0,500}useV13,\s+useV13,\s+useV13,/.test(evalRun),
+    "eval v13+ mengizinkan fauna dan melewati dedup species"
+  );
+  assert.ok(finalizeSheet.includes("anima_sheets"));
+  assert.ok(finalizeSheet.includes("typing_version"));
+  assert.ok(finalizeSheet.includes("isPrivateCapture"));
+}
+
+console.log("29. Legacy typing inference + privatization audit planner");
+{
+  const {
+    inferCanonicalLegacyTyping,
+    gatherLegacyTypingCorpus,
+    stableStringify,
+  } = await import("../backend/supabase/functions/_shared/legacy_typing.mjs");
+  const {
+    buildAuditReport,
+    auditReportText,
+    privateSheetPath,
+    isAlreadyMigrated,
+  } = await import("../backend/supabase/functions/_shared/legacy_art_migration.mjs");
+
+  const mug = inferCanonicalLegacyTyping({
+    existingElement: "flow",
+    vision: {
+      object_label: "ceramic mug",
+      species_key: "mug_ceramic_handled",
+      surface_finish: "smooth glazed ceramic",
+    },
+  });
+  assert.equal(mug.element, "ceramic");
+  assert.equal(mug.secondary_element, "flow");
+
+  const mouse = inferCanonicalLegacyTyping({
+    existingElement: "tech",
+    vision: {
+      object_label: "wired computer mouse",
+      species_key: "mouse_plastic",
+      surface_finish: "molded plastic",
+    },
+  });
+  assert.equal(mouse.element, "plastic");
+  assert.equal(mouse.secondary_element, "spark");
+
+  const book = inferCanonicalLegacyTyping({
+    existingElement: "cloth",
+    vision: {
+      object_label: "hardcover notebook",
+      surface_finish: "cardboard cover",
+    },
+  });
+  assert.equal(book.element, "paper");
+  assert.equal(book.secondary_element, null, "cloth legacy tidak boleh tetap primary/secondary");
+
+  const unknown = inferCanonicalLegacyTyping({
+    existingElement: "stone",
+    vision: { object_label: "mysterious relic", species_key: "relic_unknown" },
+  });
+  assert.equal(unknown.element, "stone");
+  assert.equal(unknown.reason, "legacy:ambiguous");
+
+  assert.ok(
+    gatherLegacyTypingCorpus({ species_key: "mouse_plastic", object_label: "computer mouse" })
+      .includes("mouse plastic"),
+    "corpus harus menggabungkan species_key dan object_label",
+  );
+
+  const owner = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const animaId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  assert.equal(
+    privateSheetPath(owner, animaId, "deadbeefcafebabe.png"),
+    `${owner}/${animaId}/deadbeefcafebabe.png`,
+  );
+
+  const report = buildAuditReport({
+    animas: [{
+      id: animaId,
+      owner_id: owner,
+      species_key: "mug_ceramic_handled",
+      color_bucket: "gray",
+      stage: 1,
+      status: "ready",
+      element: "flow",
+      typing_version: 1,
+      sheet_path: null,
+    }],
+    libraryRows: [{
+      species_key: "mug_ceramic_handled",
+      color_bucket: "gray",
+      stage: 1,
+      sheet_path: "deadbeefcafebabe.png",
+      manifest: { sheet: "deadbeefcafebabe.png", poses: {} },
+    }],
+    generations: [{
+      id: "gen-1",
+      anima_id: animaId,
+      created_at: "2026-08-15T00:00:00Z",
+      vision_result: { object_label: "ceramic mug", surface_finish: "glazed ceramic" },
+    }],
+  });
+  assert.equal(report.summary.pending, 1);
+  assert.equal(report.rows[0].canonical.element, "ceramic");
+  assert.equal(report.rows[0].source.target_sheet_path, `${owner}/${animaId}/deadbeefcafebabe.png`);
+
+  const migrated = {
+    id: animaId,
+    owner_id: owner,
+    species_key: "mug_ceramic_handled",
+    color_bucket: "gray",
+    stage: 1,
+    status: "ready",
+    element: "ceramic",
+    secondary_element: "flow",
+    typing_version: 2,
+    sheet_path: `${owner}/${animaId}/deadbeefcafebabe.png`,
+  };
+  assert.ok(isAlreadyMigrated(migrated));
+  const doneReport = buildAuditReport({
+    animas: [migrated],
+    libraryRows: [],
+    generations: [],
+    mode: "audit",
+  });
+  assert.equal(doneReport.summary.ready_for_legacy_private, true);
+
+  const textOnce = auditReportText(report);
+  const textTwice = auditReportText(buildAuditReport({
+    animas: report.rows.map((row) => ({
+      id: row.anima_id,
+      owner_id: row.owner_id,
+      species_key: row.species_key,
+      color_bucket: row.color_bucket,
+      stage: row.stage,
+      status: "ready",
+      element: row.legacy.element,
+      typing_version: row.legacy.typing_version,
+      sheet_path: row.legacy.sheet_path,
+    })),
+    libraryRows: [{
+      species_key: "mug_ceramic_handled",
+      color_bucket: "gray",
+      stage: 1,
+      sheet_path: "deadbeefcafebabe.png",
+      manifest: { sheet: "deadbeefcafebabe.png", poses: {} },
+    }],
+    generations: [{
+      id: "gen-1",
+      anima_id: animaId,
+      created_at: "2026-08-15T00:00:00Z",
+      vision_result: { object_label: "ceramic mug", surface_finish: "glazed ceramic" },
+    }],
+  }));
+  assert.equal(textOnce, textTwice, "audit report harus deterministik");
+
+  assert.ok(stableStringify({ b: 1, a: 2 }).includes('"a"'));
+}
+
 const emitIdx = process.argv.indexOf("--emit");
 if (emitIdx > -1 && process.argv[emitIdx + 1]) {
   const { mkdir, writeFile } = await import("node:fs/promises");

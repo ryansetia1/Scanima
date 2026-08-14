@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     .from("generations")
     .select(
       "id, owner_id, anima_id, status, prompt_version, photo_path, vision_result, " +
-        "animas(id, species_key, color_bucket, stage)",
+        "animas(id, species_key, color_bucket, stage, typing_version)",
     )
     .eq("prediction_id", predictionId)
     .maybeSingle();

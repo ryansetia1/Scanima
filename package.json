@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Harness evaluasi prompt dan post-processing sprite sheet untuk Scanima",
   "scripts": {
-    "selftest": "node eval/selftest.mjs && node backend/tests/webhook_signature_check.mjs",
+    "selftest": "node eval/selftest.mjs && node backend/tests/webhook_signature_check.mjs && node backend/tools/migrate_legacy_art.mjs --selftest",
     "smoke": "node eval/run.mjs --set smoke",
     "full": "node eval/run.mjs --set full"
   },

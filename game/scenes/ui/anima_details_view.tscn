@@ -431,6 +431,12 @@ horizontal_alignment = 1
 layout_mode = 2
 alignment = 1
 
+[node name="GalleryPublishButton" type="Button" parent="Column/DetailsScroll/DetailsContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "GALLERY_PUBLISH"
+
 [node name="DeleteAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent/DeleteRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(160, 96)

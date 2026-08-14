@@ -2,6 +2,34 @@
 
 Dokumen ini mendefinisikan apa yang terjadi antara pemain menekan tombol kamera dan Anima muncul di layar: komponen apa yang terlibat, siapa yang memegang uang dan kunci, bagaimana biaya ditekan lewat caching, dan bagaimana jeda sekitar satu menit dibungkus jadi pengalaman yang menyenangkan.
 
+## Kontrak capture aktif v13, prompt art v15
+
+Mulai cutover 15 Agustus 2026, capture baru **tidak memakai cache art global**.
+Kamera dan single-photo picker bertemu di pipeline yang sama: resize lokal,
+upload foto privat, kontrak Vision v13 lewat bundle prompt v15, lalu
+`claim_capture()` atomik. Setiap foto yang
+lolos memakai satu Scan Charge sebagai batas percobaan dan satu Genesis Core,
+kemudian selalu membuat sheet unik. Objek dan hewan non-manusia diterima; manusia,
+PII, distress/abuse/gore, dan capture berbahaya ditolak sebelum generation.
+
+Sheet final disimpan di bucket privat
+`anima_sheets/<owner_id>/<anima_id>/<hash>.png`. Row `animas` menyimpan
+`subject_kind`, primary `element`, optional `secondary_element`,
+`typing_version`, `sheet_path`, dan `manifest`; client mengunduh dengan JWT dan
+men-cache berdasarkan `anima_id`. `species_library` dan bucket `sheets` hanya
+rollback legacy dan tidak menerima capture v13 baru.
+
+Gallery terpisah dari art privat. Publish akun Google memoderasi sheet satu kali
+per hash, membuat hanya thumbnail Idle di bucket privat `gallery_thumbs`, dan
+feed mengembalikan signed URL singkat tanpa owner ID, Seeker name, nickname,
+sheet path, atau foto asli. Battle memilih bot pemain hanya dari entry Gallery
+approved; lawan sistem/legacy tetap fallback saat feed kosong.
+
+Bagian lama di bawah yang menyebut cache hit, `record_cache_hit`,
+`claim_genesis`, CDN publik, atau `species_library` sebagai jalur normal adalah
+catatan arsitektur sebelum v13. Kontrak rollout dan rollback lengkap ada di
+[`08-private-art-and-gallery.md`](08-private-art-and-gallery.md).
+
 ## 1. Prinsip arsitektur
 
 Empat aturan yang menentukan bentuk seluruh sistem:

@@ -1,7 +1,7 @@
 // Boundary tunggal untuk profil Seeker, upgrade Google, dan penghapusan akun.
 // owner_id selalu berasal dari JWT terverifikasi, tidak pernah dari body.
 
-import { adminClient, json } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
 
 const db = adminClient();
 const OPERATIONS = new Set(["profile", "complete", "rename", "upgrade", "delete_account"]);
@@ -30,6 +30,8 @@ type SeekerBody = {
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
+  const versionError = await clientVersionGate(req, db);
+  if (versionError) return versionError;
 
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   const { data: auth, error: authError } = await db.auth.getClaims(token);

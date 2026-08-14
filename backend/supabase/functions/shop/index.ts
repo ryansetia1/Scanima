@@ -1,6 +1,6 @@
 // POST /shop { item_id, expected_price, idempotency_key }
 
-import { adminClient, json } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
 
 const ITEM_RE = /^[a-z][a-z0-9_]{1,62}$/;
 
@@ -24,6 +24,8 @@ const db = adminClient();
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
+  const versionError = await clientVersionGate(req, db);
+  if (versionError) return versionError;
 
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   const { data: auth, error: authError } = await db.auth.getClaims(token);

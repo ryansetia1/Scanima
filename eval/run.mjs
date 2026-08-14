@@ -30,6 +30,7 @@ import {
   assemblePrompt,
   extractJson,
   promptMajor,
+  spriteSheetTemplate,
   validateVision,
   visionInstruction,
 } from "../backend/supabase/functions/_shared/vision.mjs";
@@ -351,12 +352,18 @@ async function main() {
   }
 
   const pdir = join(REPO, "backend/prompts", args.promptVersion);
-  const [systemPrompt, schemaRaw, template] = await Promise.all([
+  const [systemPrompt, schemaRaw, template, faunaTemplate] = await Promise.all([
     readFile(join(pdir, "vision_system.md"), "utf8"),
     readFile(join(pdir, "vision_schema.json"), "utf8"),
     readFile(join(pdir, "sprite_sheet.md"), "utf8"),
+    readFile(join(pdir, "sprite_sheet_fauna.md"), "utf8").catch((error) => {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    }),
   ]);
   const schema = JSON.parse(schemaRaw);
+  const prompts = { sprite_sheet: template, sprite_sheet_fauna: faunaTemplate };
+  const useV13 = promptMajor(args.promptVersion) >= 13;
 
   let items;
   if (args.photo) {
@@ -409,7 +416,10 @@ async function main() {
       surge_name: "Cable Lash",
     };
     assemblePrompt(template, fake);
-    console.log(`template ${args.promptVersion} terisi tanpa placeholder sisa`);
+    if (faunaTemplate) assemblePrompt(faunaTemplate, fake);
+    console.log(
+      `template ${args.promptVersion}${faunaTemplate ? " object + fauna" : ""} terisi tanpa placeholder sisa`
+    );
     console.log(`semua ${items.length} foto ditemukan`);
     console.log("\ndry run: OK");
     return;
@@ -479,7 +489,10 @@ async function main() {
           promptMajor(args.promptVersion) >= 4,
           promptMajor(args.promptVersion) >= 5,
           promptMajor(args.promptVersion) >= 7,
-          promptMajor(args.promptVersion) >= 12
+          promptMajor(args.promptVersion) >= 12,
+          useV13,
+          useV13,
+          useV13,
         );
         row.vision = checked.vision;
         row.issues = [...(row.issues ?? []), ...checked.issues];
@@ -521,7 +534,10 @@ async function main() {
         process.stdout.write(`${label} reproses... `);
         gen = { png: new Uint8Array(await readFile(join(outDir, `${name}.raw.png`))), seconds: 0 };
       } else {
-        const prompt = assemblePrompt(template, checked.vision);
+        const prompt = assemblePrompt(
+          spriteSheetTemplate(prompts, checked.vision.subject_kind),
+          checked.vision
+        );
         await writeFile(join(outDir, `${name}.prompt.txt`), prompt);
 
         process.stdout.write(`${label} generate... `);

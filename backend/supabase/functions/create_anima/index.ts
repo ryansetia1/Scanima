@@ -19,12 +19,13 @@
 // Menulis endpoint penerbit signed URL berarti menulis ulang pagar yang sudah
 // disediakan platform.
 
-import { adminClient, json } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
 import {
   assemblePrompt,
   extractJson,
   normalizeSuggestedName,
   promptMajor,
+  spriteSheetTemplate,
   validateVision,
   visionInstruction,
 } from "../_shared/vision.mjs";
@@ -39,10 +40,18 @@ const TTL_SIGNED_URL = 900; // detik; harus melebihi ~60s generation plus antrea
 const CARE_AWAL = { hunger: 100, energy: 100, hygiene: 100, bond: 0 };
 const db = adminClient();
 
+function configBool(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value === "true";
+  return false;
+}
+
 type Vision = {
   species_key: string;
   color_bucket: string;
   element: string;
+  secondary_element?: string | null;
+  subject_kind?: string;
   rarity: number;
   stats: Record<string, number>;
   suggested_name?: string;
@@ -61,6 +70,8 @@ type Vision = {
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
+  const versionError = await clientVersionGate(req, db);
+  if (versionError) return versionError;
 
   // Autentikasi sebelum apa pun yang lain: uid yang dipakai untuk mendebit
   // datang dari token, tidak pernah dari body.
@@ -86,24 +97,49 @@ Deno.serve(async (req) => {
     return json(403, { error: "photo_path harus di dalam folder milik sendiri" });
   }
 
-  // Model dan versi prompt dibaca dari tabel, bukan dari env, supaya rollback
-  // kualitas art tidak perlu deploy. Lihat app_config di migrasi core_schema.
+  // Model, versi prompt, dan rollout flags dibaca dari tabel supaya rollback
+  // kualitas art tidak perlu deploy.
   const { data: konfigRows } = await db
     .from("app_config")
     .select("key, value")
-    .in("key", ["image_model", "prompt_version"]);
+    .in("key", [
+      "image_model",
+      "prompt_version",
+      "feature_typing_v13",
+      "feature_unique_generation",
+      "feature_animals",
+    ]);
   const konfig = Object.fromEntries((konfigRows ?? []).map((r) => [r.key, r.value]));
-  const modelGambar = (konfig.image_model as string) ?? "openai/gpt-image-2";
-  const versiPrompt = (konfig.prompt_version as string) ?? "v7";
-  const prompts = (PROMPTS as Record<string, { sprite_sheet: string; vision_system: string; vision_schema: unknown }>)[
-    versiPrompt
-  ];
+  let modelGambar = (konfig.image_model as string) ?? "openai/gpt-image-2";
+  const versiPromptConfigured = (konfig.prompt_version as string) ?? "v7";
+  const featureTypingV13 = configBool(konfig.feature_typing_v13);
+  const featureUnique = configBool(konfig.feature_unique_generation);
+  const featureAnimals = configBool(konfig.feature_animals);
+
+  let versiPrompt = versiPromptConfigured;
+  if (!featureTypingV13 && promptMajor(versiPrompt) >= 13) {
+    versiPrompt = "v12";
+  }
+  let useV13 = promptMajor(versiPrompt) >= 13;
+  let allowAnimals = featureAnimals && useV13;
+  let useUniqueCapture = featureUnique && useV13;
+
+  const promptBundle = PROMPTS as Record<
+    string,
+    {
+      sprite_sheet: string;
+      sprite_sheet_fauna?: string;
+      vision_system: string;
+      vision_schema: unknown;
+    }
+  >;
+  let prompts = promptBundle[versiPrompt];
   if (!prompts) return json(500, { error: `versi prompt ${versiPrompt} tidak ada di bundel` });
 
   // ------------------------------------------------------------ idempotency
   const { data: lama } = await db
     .from("generations")
-    .select("id, status, anima_id, prediction_id, vision_result")
+    .select("id, status, anima_id, prediction_id, vision_result, prompt_version, model")
     .eq("owner_id", uid)
     .eq("idempotency_key", kunci)
     .maybeSingle();
@@ -128,6 +164,19 @@ Deno.serve(async (req) => {
   // sebelum debit, yaitu satu tulisan tambahan di setiap request untuk melindungi
   // sepertigapuluh sen. Naikkan kalau log menunjukkan ini sering terjadi.
   const lanjutkan = Boolean(lama && !lama.prediction_id && lama.vision_result);
+  if (lanjutkan) {
+    // Request yang sudah mendebit Core harus dilanjutkan dengan kontrak model
+    // dan prompt yang tercatat, walau operator mematikan flag untuk request baru.
+    versiPrompt = lama!.prompt_version ?? versiPrompt;
+    modelGambar = lama!.model ?? modelGambar;
+    prompts = promptBundle[versiPrompt];
+    if (!prompts) {
+      return json(500, { error: `versi prompt pending ${versiPrompt} tidak ada di bundel` });
+    }
+    useV13 = promptMajor(versiPrompt) >= 13;
+    allowAnimals = useV13;
+    useUniqueCapture = useV13;
+  }
 
   // ------------------------------------------------------------ signed URL
   const { data: signed, error: errSigned } = await db.storage
@@ -154,8 +203,10 @@ Deno.serve(async (req) => {
     }
 
     // species_key yang ada dikirim ke validator supaya typo satu huruf tidak
-    // memecah cache — dan cache yang pecah berarti $0.07 yang tidak perlu.
-    const { data: spesiesAda } = await db.from("species_library").select("species_key");
+    // memecah cache — kecuali jalur capture privat yang sengaja unik per foto.
+    const { data: spesiesAda } = useUniqueCapture
+      ? { data: [] as { species_key: string }[] }
+      : await db.from("species_library").select("species_key");
     const dikenal = [...new Set((spesiesAda ?? []).map((r) => r.species_key))];
 
     let mentah: unknown;
@@ -184,6 +235,9 @@ Deno.serve(async (req) => {
         promptMajor(versiPrompt) >= 5,
         promptMajor(versiPrompt) >= 7,
         promptMajor(versiPrompt) >= 12,
+        useV13,
+        allowAnimals,
+        useUniqueCapture,
       );
     } catch (e) {
       await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "vision_unparseable" });
@@ -204,7 +258,7 @@ Deno.serve(async (req) => {
   const nickname = (body.nickname?.trim() || generatedName).slice(0, 32);
 
   // ------------------------------------------------------------ pustaka
-  if (!lanjutkan) {
+  if (!lanjutkan && !useUniqueCapture) {
     const { data: cache } = await db
       .from("species_library")
       .select("sheet_path, manifest, prompt_version, times_reused")
@@ -258,7 +312,7 @@ Deno.serve(async (req) => {
   let animaId = lama?.anima_id ?? null;
 
   if (!lanjutkan) {
-    const { data: gen, error } = await db.rpc("claim_genesis", {
+    const claimParams = {
       p_owner: uid,
       p_key: kunci,
       p_nickname: nickname,
@@ -274,7 +328,15 @@ Deno.serve(async (req) => {
       p_model: modelGambar,
       p_cost: biaya,
       p_photo_path: photoPath,
-    });
+    };
+
+    const { data: gen, error } = useUniqueCapture
+      ? await db.rpc("claim_capture", {
+        ...claimParams,
+        p_secondary_element: vision.secondary_element ?? null,
+        p_subject_kind: vision.subject_kind ?? "object",
+      })
+      : await db.rpc("claim_genesis", claimParams);
 
     if (error) {
       const msg = error.message;
@@ -307,7 +369,10 @@ Deno.serve(async (req) => {
   }
 
   // ------------------------------------------------------------ Replicate
-  const prompt = assemblePrompt(prompts.sprite_sheet, vision);
+  const prompt = assemblePrompt(
+    spriteSheetTemplate(prompts, vision.subject_kind ?? "object"),
+    vision,
+  );
   const input = modelGambar === "openai/gpt-image-2"
     ? {
       prompt,

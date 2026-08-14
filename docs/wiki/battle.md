@@ -1,6 +1,8 @@
 # Battle
 
-Duel singkat lawan Anima pemain lain (tanpa nama mereka). Kamu mengirim perintah; server yang menghitung hasilnya.
+Duel singkat lawan Anima yang sudah dipublikasikan pemain lain (tanpa identitas
+pemilik) atau lawan sistem. Kamu mengirim perintah; server yang menghitung
+hasilnya.
 
 ## Syarat masuk
 
@@ -86,10 +88,31 @@ Masih ada pengali kecil: elemen, crit dari Speed, Guard, dan sedikit random.
 
 ## Elemen
 
-Satu roda, satu arah. Kuat terhadap yang di depannya (×1.5), lemah terhadap yang di belakangnya (×0.67).
+**Attack** memakai elemen utama. **Special** memakai elemen kedua, atau elemen
+utama kalau Anima hanya punya satu. Serangan kuat bernilai ×1.5 dan serangan
+yang ditahan bernilai ×0.67.
 
-Metal → Plant → Flow → Spark → Cloth → Stone → kembali ke Metal
+- Metal → Plant, Wood
+- Wood → Spark, Sound
+- Stone → Metal, Ceramic
+- Ceramic → Toxin, Flame
+- Glass → Toxin, Air
+- Plastic → Flow, Glass
+- Cloth → Stone, Sound
+- Paper → Food, Stone
+- Plant → Flow, Air
+- Food → Fauna, Frost
+- Fauna → Plant, Cloth
+- Flow → Spark, Paper
+- Spark → Cloth, Metal
+- Flame → Wood, Frost
+- Frost → Fauna, Plastic
+- Air → Flame, Paper
+- Toxin → Food, Plastic
+- Sound → Glass, Ceramic
 
-Contoh: Flow (air, gelas) kuat lawan Spark (listrik), lemah lawan Plant.
+Kalau lawan punya dua elemen, satu weakness dan satu resistance saling
+membatalkan menjadi normal. Dua weakness tidak ditumpuk lebih tinggi dari ×1.5,
+dan dua resistance tidak ditumpuk lebih rendah dari ×0.67.
 
 Saat kena, layar bisa menulis **Super effective!** atau **Not very effective.**

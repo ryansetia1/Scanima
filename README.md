@@ -1,13 +1,38 @@
 # Scanima
 
-> Foto benda apa pun di sekitarmu. Benda itu jadi monster peliharaan.
+> Foto benda atau hewan non-manusia di sekitarmu. Subjek itu jadi monster peliharaan.
 
-Scanima adalah game mobile virtual pet (gaya Tamagotchi/Digimon) di mana setiap monster — disebut **Anima** — diciptakan dari foto objek nyata yang diambil pemain lewat kamera HP. Sebuah mouse komputer jadi Anima berkaki dengan dua tombol sebagai mata. Sebuah cangkir jadi Anima bulat dengan gagang sebagai ekor. Struktur monster harus **True to Object**: merepresentasikan bentuk geometris dan fitur unik objek aslinya, bukan monster generik yang ditempeli warna.
+Scanima adalah game mobile virtual pet (gaya Tamagotchi/Digimon) di mana setiap monster — disebut **Anima** — diciptakan dari foto objek nyata atau hewan non-manusia yang aman, lewat kamera atau satu foto dari perangkat. Sebuah mouse komputer jadi Anima berkaki dengan dua tombol sebagai mata. Sebuah cangkir jadi Anima bulat dengan gagang sebagai ekor. Struktur monster harus **True to Subject**: merepresentasikan bentuk dan fitur unik subjek aslinya, bukan monster generik yang ditempeli warna.
 
 Genre: Virtual Pet + Creature Collector + Basic Tactical Battle.
 Art style: 2D anime creature cel-shading — clean bold linework, flat colors, crisp 2–3 level shadows, cute-but-fierce techno-organic design, dan sudut pandang 3/4 terkunci.
 
 ## Status
+
+**Cutover Elements/Animals/Gallery, 15 Agustus 2026.** Kontrak aktif memakai 18
+elemen dengan secondary opsional; Attack memakai primary dan Special memakai
+secondary/fallback. Setiap capture yang diterima memakai 1 Genesis Core dan
+menghasilkan art unik di bucket privat per pemilik/Anima. Akun Google mendapat
+1 Core otomatis per 7 hari server saat saldo gratis di bawah 3. Gallery adalah
+feed thumbnail opt-in yang dimoderasi dan tidak mengekspos identitas pemilik.
+Enam Anima legacy telah disalin ke storage privat dan diretype tanpa model call;
+bucket `sheets` lama kini privat. Detail kontrak baru ada di
+[`docs/08-private-art-and-gallery.md`](docs/08-private-art-and-gallery.md).
+Catatan cache-hit/species-library di bawah adalah sejarah pipeline sebelum
+cutover dan hanya dipertahankan sebagai konteks rollback.
+
+Probe production berbayar setelah cutover memakai foto Golden Retriever
+public-domain: Vision mengembalikan `subject_kind=animal`, primary Fauna,
+secondary Air, generation v13 selesai, sheet hanya dapat diunduh lewat storage
+privat, dan `species_library` tetap tidak mendapat row baru. Akun serta art uji
+dibersihkan setelah verifikasi. Probe itu juga menunjukkan fauna v13 terlalu
+dekat dengan proporsi hewan nyata. V14 memperbaiki ekspresi dan proporsi, tetapi
+satu eval masih terbaca sebagai anjing anime biasa sehingga ditolak. Kandidat
+v15 memperkeras identitas monster lewat proportion break, landmark evolution,
+dan organic motif terintegrasi tanpa mengubah Vision atau prompt objek. Eval
+Golden Retriever v15 lulus visual 9/9 sel dalam 55 detik dan terbaca sebagai
+monster pada ukuran game. Bundle v15 sudah dideploy sebagai `create_anima`
+version 13 dan kini menjadi prompt production; v13 tetap rollback langsung.
 
 **Phase 1 — pipeline art. Terbukti end-to-end pada 12 Agustus 2026.** Foto sungguhan sudah masuk lewat seluruh rantai — Vision, prompt, generation, chroma key, slicing, manifest — dan Godot merender Anima hasilnya. "True to Object" terverifikasi dengan mata: foto mouse komputer menghasilkan kreatur yang dua tombol kliknya jadi mata, scroll wheel jadi hidung, dan kabelnya jadi ekor bersegmen.
 
@@ -27,9 +52,9 @@ Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: h
 
 **Post-processing sudah dibuktikan jalan di Edge Function, dengan sheet sungguhan.** Sheet v3 sepatu (1024×1024) diproses di runtime Deno dalam **173 ms** — batas CPU 2 detik tidak pernah dekat — dan hasilnya identik piksel per piksel dengan hasil Node (3.544.272 byte channel, nol selisih). Satu modul `postprocess.mjs` dipakai kedua runtime, jadi paritas itu bukan kebetulan yang harus dijaga manual. Yang berbeda hanya kompresi PNG-nya (886 KB di Node, 964 KB di edge), sehingga hash berbasis byte tidak bisa dibandingkan lintas runtime.
 
-**Enam Edge Function sudah hidup di produksi.** `create_anima`,
+**Tujuh Edge Function sudah hidup di produksi.** `create_anima`,
 `replicate_webhook`, `care_anima`, `battle_anima`, `shop`, dan `seeker`
-ter-deploy. `seeker` menjadi boundary profil, upgrade Google, dan hapus akun;
+serta `gallery` ter-deploy. `seeker` menjadi boundary profil, upgrade Google, dan hapus akun;
 operasinya menurunkan owner dari JWT, bukan body client.
 Migrasi Shop/inventory/reward Bits sudah live di remote (starter 50, katalog
 18, Feed dari tas, item Battle, cap 100 Bits/hari). Smoke 401 tanpa user
@@ -100,7 +125,12 @@ mati tidak membayar atau commit dua kali. Transport juga memperbarui access
 token sebelum setiap request terautentikasi. Ini dijaga oleh 74 check di
 `test_client_state.gd`.
 
-**Kamera sudah terpasang lewat plugin, bukan lewat `CameraServer`.** `CameraServer` memang mendukung Android sejak setelah 4.4, tapi ia memberi feed hidup sementara yang dibutuhkan satu jepretan — jadi memakainya berarti membangun sendiri fokus, eksposur, dan tombol jepret yang sudah gratis dari aplikasi kamera OEM. Yang dipakai [`GodotGetImage` fork PhotoPicker](https://github.com/cenullum/GodotGetImagePlugin-Android-PhotoPicker), prebuilt untuk 4.6.2, dan fork-nya dipilih karena manifest upstream menyuntikkan `READ_MEDIA_IMAGES` ke APK walau galeri tidak pernah dipanggil — izin yang ditolak Play untuk keperluan pilih-satu-foto. Galeri sengaja tidak dipakai: fiksinya memfoto benda di depanmu, dan galeri membuka pintu memindai gambar unduhan yang justru harus ditahan gate. Foto dikecilkan ke 1280 px di device sebelum diunggah, dan angka itu sama dengan foto terbesar di `eval/photos/` supaya input produksi tidak keluar dari amplop yang sudah divalidasi Smoke Set — dijaga gratis oleh skenario 18. Jalur `FileDialog` di desktop tetap ada, karena itu yang membuat seluruh alur bisa diperiksa tanpa perangkat Android.
+**Kamera dan single-photo picker memakai plugin yang sama, bukan `CameraServer`.**
+`GodotGetImage` membuka kamera OEM melalui `getCameraImage()` atau system Photo
+Picker melalui `getGalleryImage()`; keduanya bertemu di resize/preview/upload
+yang sama. Fork PhotoPicker tidak meminta akses pustaka luas
+`READ_MEDIA_IMAGES`, sehingga memilih satu foto tetap sesuai kebijakan Play.
+Foto dikecilkan ke 1280 px di device sebelum diunggah.
 
 **APK debug sudah benar-benar dibangun, dan yang diperiksa bukan bahwa file-nya ada.** Artefaknya memuat **tepat dua izin, `INTERNET` dan `CAMERA`** — nol `READ_MEDIA_IMAGES`, jadi pilihan fork PhotoPicker terbukti di APK jadi, bukan cuma di manifest sumbernya — dan kelas `GodotGetImage` terkonfirmasi ada di `classes.dex`. Dua jebakan ditemukan di jalan: Godot 4 **mematikan izin `INTERNET` secara default**, sehingga APK pertama terpasang dan terbuka lalu mati senyap di sign-in anonim; dan template Android 4.6.2 mematok Gradle 8.11.1 yang tidak menerima JDK di atas 23, jadi JDK 17 wajib terpasang berdampingan. Seluruh alurnya CLI, tanpa langkah editor — `--install-android-build-template` adalah flag, dan `export_presets.cfg` boleh ditulis tangan. Rinciannya di [CLAUDE.md](CLAUDE.md).
 

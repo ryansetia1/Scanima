@@ -2,7 +2,22 @@
 
 Dokumen ini menjelaskan apa yang terjadi di dalam Godot: bagaimana sprite sheet diunduh, dipecah jadi pose, dipasang ke `AnimatedSprite2D`, di-cache, dan dibuat terasa hidup meski hanya berisi gambar statis.
 
-Prinsip yang mengatur seluruh bab ini: **Godot tidak memproses piksel.** Semua keying, slicing, dan trimming sudah selesai di backend. Godot menerima satu PNG RGBA plus satu manifest JSON, lalu memasang `AtlasTexture` yang menunjuk region berbeda pada satu tekstur yang sama. Nol copy piksel, nol dekode ulang, nol beban CPU di device low-end. Sheet production v7 adalah 9 pose (Idle/Battle/Sleep/Happy/Hungry/Dirty/Damaged plus overlay `fx_strike`/`fx_surge`). Loader hanya mewajibkan Idle, jadi cache 2×2 lama tetap tampil.
+Prinsip yang mengatur seluruh bab ini: **Godot tidak memproses piksel.** Semua keying, slicing, dan trimming sudah selesai di backend. Godot menerima satu PNG RGBA plus satu manifest JSON, lalu memasang `AtlasTexture` yang menunjuk region berbeda pada satu tekstur yang sama. Nol copy piksel, nol dekode ulang, nol beban CPU di device low-end. Sheet production v15 adalah 9 pose (Idle/Battle/Sleep/Happy/Hungry/Dirty/Damaged plus overlay `fx_strike`/`fx_surge`). Loader hanya mewajibkan Idle, jadi cache 2×2 lama tetap tampil.
+
+## Kontrak private art v13
+
+Capture baru menyimpan manifest langsung di row Anima dan sheet di bucket privat
+`anima_sheets`. `Backend.download_anima_sheet()` memakai sesi pemain; URL privat
+permanen tidak disimpan client. Cache lokal berada di
+`user://animas/v5_<anima_id>/`, bukan lagi
+`species_key + color_bucket + stage`, karena dua capture subjek serupa tetap
+memiliki art unik. Manifest ditulis terakhir supaya download terputus tidak
+terbaca sebagai cache valid.
+
+Battle opponent adalah pengecualian sempit: server memberi signed URL singkat
+hanya untuk thumbnail/sheet lawan Gallery approved atau fallback sistem. Gallery
+thumbnail memiliki cache terpisah yang dibatasi 96 file. Contoh dan pembahasan
+cache berbasis spesies di bagian lama dokumen ini berlaku hanya untuk aset legacy.
 
 ## 1. Kontrak manifest
 

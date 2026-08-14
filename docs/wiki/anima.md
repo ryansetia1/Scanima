@@ -1,6 +1,8 @@
 # Anima: traits, attributes, EXP
 
-Setiap Anima lahir dari foto. Yang kelihatan di profil dan Collection datang dari benda itu, lalu tumbuh pelan lewat Level.
+Setiap Anima lahir dari foto satu benda atau hewan non-manusia. Bentuk, jurus,
+dan stats-nya mengikuti subjek itu, lalu tumbuh pelan lewat Level. Art setiap
+Anima unik dan privat kecuali kamu memilih memublikasikannya ke Gallery.
 
 Sesudah Anima pertama menetas, game menawarkan **Create Your Seeker**. Nama
 Seeker adalah identitas pemain dan berbeda dari nickname Anima. Sheet boleh
@@ -12,7 +14,7 @@ Kartu **About** di profil:
 
 | Trait | Artinya |
 | --- | --- |
-| **Element** | Bahan / fungsi benda: Metal, Plant, Flow, Spark, Cloth, atau Stone. Penting di Battle. |
+| **Element** | Satu elemen utama dan kadang elemen kedua: Metal, Wood, Stone, Ceramic, Glass, Plastic, Cloth, Paper, Plant, Food, Fauna, Flow, Spark, Flame, Frost, Air, Toxin, atau Sound. Penting di Battle. |
 | **Rarity** | Seberapa tidak biasa benda itu, 1–5. |
 | **Level / form** | Hatchling (Lv. 1–15), Adult (16–35), Evolved (36–40). Wajah Anima belum berubah saat naik form. |
 | **EXP** | Poin perawatan dan kemenangan. 5 EXP = 1 Level. |
@@ -20,6 +22,11 @@ Kartu **About** di profil:
 | **Special** | Nama jurus Special, juga dari foto. |
 
 Kalau Anima lama belum punya nama jurus, yang tampil cuma “Attack” dan “Special”. Itu label, bukan angka tempur.
+
+Elemen utama selalu dipakai **Attack**. **Special** memakai elemen kedua jika
+ada, atau elemen utama jika Anima hanya punya satu elemen. Hewan memakai Fauna
+sebagai elemen utama; elemen kedua hanya diberikan bila ciri yang terlihat
+benar-benar mendukungnya.
 
 ## Attributes
 

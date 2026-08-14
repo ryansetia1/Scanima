@@ -17,6 +17,7 @@ const URL_BASE := "https://kgcaisvmmpxswevjvgft.supabase.co"
 const KEY_PUBLISHABLE := "sb_publishable_piIQGzH_6YwgNS7EiyOZ_Q_z7WN8NGN"
 
 const TIMEOUT_SEC := 30.0
+const GALLERY_THUMB_CACHE_MAX := 96
 ## create_anima menunggu Vision di dalamnya; terukur 15 detik di produksi.
 const TIMEOUT_FUNGSI_SEC := 90.0
 ## Token hidup satu jam. Diperbarui saat sisanya di bawah angka ini, bukan setelah
@@ -24,7 +25,8 @@ const TIMEOUT_FUNGSI_SEC := 90.0
 ## karena umur token.
 const MARGIN_REFRESH_SEC := 120
 const ANIMA_FIELDS := (
-	"id,status,nickname,species_key,color_bucket,stage,element,rarity,base_stats,"
+	"id,status,nickname,species_key,color_bucket,stage,subject_kind,element,secondary_element,"
+	+ "typing_version,sheet_path,manifest,rarity,base_stats,"
 	+ "strike_name,surge_name,"
 	+ "care,care_score,care_synced_at,sleep_started_at,sleep_energy_at_start,"
 	+ "well_cared_on,play_score_on,play_score_today,dormant_since,battle_wins"
@@ -126,14 +128,29 @@ func get_rest(path_and_query: String) -> Dictionary:
 
 
 func fetch_profile() -> Dictionary:
-	var res := await get_rest(
-		"profiles?select=scan_charges,genesis_cores,bits,active_anima_id,"
-		+ "seeker_name,seeker_name_changed_at,seeker_xp,guest_scan_used_at,"
-		+ "account_upgraded_at,battle_victories,birth_year,gender,created_at"
-	)
-	if res.ok and typeof(res.data) == TYPE_ARRAY and (res.data as Array).size() > 0:
-		GameState.profile = GameState.as_dict((res.data as Array)[0])
+	var previous_cores := int(GameState.profile.get("genesis_cores", -1))
+	var res := await seeker("profile")
+	if res.ok and typeof(res.data) == TYPE_DICTIONARY:
+		GameState.profile = GameState.as_dict(res.data)
+		var config := GameState.as_dict(GameState.profile.get("client_config"))
+		if not config.is_empty():
+			GameState.client_config = config
+		GameState.profile.erase("client_config")
+		res["previous_genesis_cores"] = previous_cores
+	elif res.code == 426 and typeof(res.data) == TYPE_DICTIONARY:
+		var minimums := GameState.as_dict(GameState.as_dict(res.data).get("min_client_version"))
+		if not minimums.is_empty():
+			GameState.client_config = {"min_client_version": minimums}
 	return res
+
+
+func fetch_client_config() -> Dictionary:
+	if not GameState.client_config.is_empty():
+		return {"ok": true, "data": GameState.client_config, "error": ""}
+	var profile := await fetch_profile()
+	if not profile.ok or GameState.client_config.is_empty():
+		return {"ok": false, "data": {}, "error": profile.error}
+	return {"ok": true, "data": GameState.client_config, "error": ""}
 
 
 func fetch_anima(anima_id: String) -> Dictionary:
@@ -207,6 +224,19 @@ func download_sheet(sheet_path: String) -> Dictionary:
 		HTTPClient.METHOD_GET,
 		"%s/storage/v1/object/public/sheets/%s" % [URL_BASE, sheet_path.uri_encode()],
 		_headers(false),
+		PackedByteArray(),
+		TIMEOUT_SEC
+	)
+
+
+## Bucket anima_sheets privat — hanya prefix uid pemain sendiri (RLS Storage).
+func download_anima_sheet(sheet_path: String) -> Dictionary:
+	if sheet_path.is_empty():
+		return {"ok": false, "code": 0, "data": null, "bytes": PackedByteArray(), "error": "sheet_path kosong"}
+	return await _send(
+		HTTPClient.METHOD_GET,
+		"%s/storage/v1/object/authenticated/anima_sheets/%s" % [URL_BASE, sheet_path.uri_encode()],
+		_headers(true),
 		PackedByteArray(),
 		TIMEOUT_SEC
 	)
@@ -302,6 +332,70 @@ func seeker(operation: String, payload: Dictionary = {}) -> Dictionary:
 	)
 
 
+func gallery(operation: String, payload: Dictionary = {}) -> Dictionary:
+	var body := payload.duplicate(true)
+	body["operation"] = operation
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/functions/v1/gallery",
+		_headers(true, ["content-type: application/json"]),
+		JSON.stringify(body).to_utf8_buffer(),
+		TIMEOUT_FUNGSI_SEC if operation == "publish" else TIMEOUT_SEC
+	)
+
+
+func download_url(url: String) -> Dictionary:
+	if url.is_empty():
+		return {"ok": false, "code": 0, "data": null, "bytes": PackedByteArray(), "error": "url kosong"}
+	return await _send(
+		HTTPClient.METHOD_GET,
+		url,
+		PackedStringArray(),
+		PackedByteArray(),
+		TIMEOUT_SEC
+	)
+
+
+static func gallery_thumb_cache_path(entry_id: String) -> String:
+	return "user://gallery_thumbs/%s.png" % entry_id
+
+
+static func store_gallery_thumb(entry_id: String, bytes: PackedByteArray) -> Dictionary:
+	if entry_id.is_empty() or bytes.is_empty():
+		return {"ok": false, "error": "thumb kosong"}
+	var dir := DirAccess.open("user://")
+	if dir == null:
+		return {"ok": false, "error": "cache dir gagal"}
+	if not dir.dir_exists("gallery_thumbs"):
+		var mk := dir.make_dir("gallery_thumbs")
+		if mk != OK:
+			return {"ok": false, "error": "cache dir gagal dibuat"}
+	var path := gallery_thumb_cache_path(entry_id)
+	if not FileAccess.file_exists(path):
+		var files := DirAccess.get_files_at("user://gallery_thumbs")
+		while files.size() >= GALLERY_THUMB_CACHE_MAX:
+			var oldest := ""
+			var oldest_time := 9223372036854775807
+			for filename in files:
+				var candidate := "user://gallery_thumbs".path_join(filename)
+				var modified := FileAccess.get_modified_time(candidate)
+				if modified < oldest_time:
+					oldest_time = modified
+					oldest = filename
+			if oldest.is_empty():
+				break
+			DirAccess.remove_absolute(
+				ProjectSettings.globalize_path("user://gallery_thumbs".path_join(oldest))
+			)
+			files.remove_at(files.find(oldest))
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return {"ok": false, "error": "cache write gagal"}
+	file.store_buffer(bytes)
+	file.close()
+	return {"ok": true, "error": ""}
+
+
 func oauth_authorize(link_identity: bool, redirect_to: String, code_challenge: String) -> Dictionary:
 	var endpoint := "/auth/v1/user/identities/authorize" if link_identity else "/auth/v1/authorize"
 	var query := (
@@ -350,7 +444,11 @@ func accept_auth_session(data: Variant) -> Dictionary:
 # ------------------------------------------------------------------ transport
 
 func _headers(authed: bool, extra: PackedStringArray = PackedStringArray()) -> PackedStringArray:
-	var headers: PackedStringArray = ["apikey: " + KEY_PUBLISHABLE]
+	var headers: PackedStringArray = [
+		"apikey: " + KEY_PUBLISHABLE,
+		"x-scanima-platform: " + ClientVersion.platform_key(),
+		"x-scanima-build: " + str(ClientVersion.APP_BUILD_VERSION),
+	]
 	if authed:
 		headers.append("Authorization: Bearer " + str(GameState.session.get("access_token", "")))
 	headers.append_array(extra)

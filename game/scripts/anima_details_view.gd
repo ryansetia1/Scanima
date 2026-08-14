@@ -3,6 +3,7 @@ extends Control
 
 signal delete_requested(anima_id: String)
 signal rename_requested(anima_id: String)
+signal gallery_publish_requested(anima_id: String, publish: bool)
 signal help_requested(title: String, body: String)
 
 @onready var _empty_state: Label = %DetailsEmpty
@@ -24,14 +25,19 @@ signal help_requested(title: String, body: String)
 @onready var _about_help: Button = %AboutHelp
 @onready var _combat_help: Button = %CombatHelp
 @onready var _rename_button: Button = %EditAnimaNameButton
+@onready var _gallery_button: Button = %GalleryPublishButton
 @onready var _delete_button: Button = %DeleteAnimaButton
 
 var _anima_id := ""
+var _element_code := ""
 var _busy := false
+var _gallery_published := false
+var _gallery_available := false
 
 
 func _ready() -> void:
 	_rename_button.pressed.connect(_request_rename)
+	_gallery_button.pressed.connect(_request_gallery_toggle)
 	_delete_button.pressed.connect(_request_delete)
 	_about_help.pressed.connect(_show_about_help)
 	_combat_help.pressed.connect(_show_combat_help)
@@ -41,24 +47,28 @@ func _ready() -> void:
 func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 	if row.is_empty():
 		_anima_id = ""
+		_element_code = ""
 		_empty_state.visible = true
 		_content.visible = false
 		_rename_button.disabled = true
+		_gallery_button.disabled = true
 		_delete_button.disabled = true
 		return
 
 	_anima_id = str(row.get("id", ""))
+	_element_code = str(row.get("element", ""))
 	_empty_state.visible = false
 	_content.visible = true
 	_rename_button.disabled = _busy or _anima_id.is_empty()
+	_gallery_button.disabled = _busy or _anima_id.is_empty() or not _gallery_available
 	_delete_button.disabled = _busy or _anima_id.is_empty()
 	_portrait.texture = portrait
 	_name.text = LocaleManager.display_name(row)
 	_meta.text = tr("HOME_IDENTITY_META") % [
 		LocaleManager.level_label(CareRules.level_from_exp(int(row.get("care_score", 0)))),
-		LocaleManager.element_name(str(row.get("element", ""))),
+		LocaleManager.element_compact(row),
 	]
-	_trait_element.text = LocaleManager.element_name(str(row.get("element", "")))
+	_trait_element.text = LocaleManager.element_compact(row)
 	_trait_rarity.text = LocaleManager.format_ratio(int(row.get("rarity", 1)), 5)
 	var level := CareRules.level_from_exp(int(row.get("care_score", 0)))
 	_trait_stage.text = tr("HOME_IDENTITY_META") % [
@@ -81,12 +91,30 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 func set_busy(busy: bool) -> void:
 	_busy = busy
 	_rename_button.disabled = _busy or _anima_id.is_empty()
+	_gallery_button.disabled = _busy or _anima_id.is_empty() or not _gallery_available
 	_delete_button.disabled = _busy or _anima_id.is_empty()
+
+
+func set_gallery_status(status: Dictionary) -> void:
+	_gallery_available = bool(status.get("available", false))
+	_gallery_published = bool(status.get("published", false))
+	if not _gallery_available:
+		_gallery_button.visible = false
+		return
+	_gallery_button.visible = true
+	_gallery_button.text = tr("GALLERY_UNPUBLISH") if _gallery_published else tr("GALLERY_PUBLISH")
+	_gallery_button.disabled = _busy or _anima_id.is_empty()
 
 
 func _request_rename() -> void:
 	if not _anima_id.is_empty():
 		rename_requested.emit(_anima_id)
+
+
+func _request_gallery_toggle() -> void:
+	if _anima_id.is_empty():
+		return
+	gallery_publish_requested.emit(_anima_id, not _gallery_published)
 
 
 func _request_delete() -> void:
@@ -103,7 +131,7 @@ func _show_about_help() -> void:
 	help_requested.emit(
 		tr("DETAILS_TRAITS"),
 		"\n\n".join([
-			"%s — %s" % [tr("DETAILS_ELEMENT"), tr("DETAILS_ELEMENT_HELP")],
+			"%s — %s" % [tr("DETAILS_ELEMENT"), ElementCatalog.help_text(_element_code)],
 			"%s — %s" % [tr("DETAILS_RARITY"), tr("DETAILS_RARITY_HELP")],
 			"%s — %s" % [tr("DETAILS_STAGE"), tr("DETAILS_STAGE_HELP")],
 			"%s — %s" % [tr("DETAILS_CARE_SCORE"), tr("DETAILS_CARE_SCORE_HELP")],

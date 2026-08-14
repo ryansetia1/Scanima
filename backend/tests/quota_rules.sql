@@ -808,7 +808,11 @@ begin
          care_score = 0,
          care_synced_at = now(),
          sleep_started_at = null,
-         sleep_energy_at_start = null
+         sleep_energy_at_start = null,
+         well_cared_on = public.local_civil_date(
+           now(),
+           (select timezone_offset_minutes from public.profiles where id = u1)
+         )
    where id = v_care_anima;
   perform public.apply_care(u1, v_care_anima, 'sleep', 'care-sleep-1');
   update public.animas
@@ -1209,7 +1213,7 @@ begin
          and (v_j #>> '{reward,battle_wins}')::int = 0
          and (v_j #>> '{reward,progression_capped}')::bool,
          'win setelah 3/3 harus tetap membayar Bits sebagai Training';
-  assert (v_j #>> '{session,daily_reward,rewarded}')::bool = false
+  assert (v_j #>> '{session,daily_reward,progression_rewarded}')::bool = false
          and (v_j #>> '{session,daily_reward,earned}')::int = 3,
          'payload Training harus menjelaskan bahwa progression sudah cap';
   assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 8
@@ -1465,6 +1469,268 @@ begin
   end;
   assert ok, 'state internal Battle tidak boleh terbaca lewat Data API';
   perform set_config('role', 'none', true);
+
+  ----------------------------------------------------------------------------
+  -- Capture foundations: schema, flags, Core mingguan, antrian cleanup
+  ----------------------------------------------------------------------------
+  assert exists (
+           select 1
+             from pg_constraint
+            where conrelid = 'public.animas'::regclass
+              and conname = 'animas_element_v2_valid'
+              and pg_get_constraintdef(oid) like '%sound%'
+         ),
+         'constraint roster 18 elemen harus terpasang pada animas';
+  assert (select count(*) from public.app_config
+           where key in (
+             'feature_typing_v13', 'feature_unique_generation', 'feature_animals',
+             'feature_weekly_core', 'feature_gallery', 'min_client_version'
+           )) = 6,
+         'app_config rollout flags dan min_client_version harus ada';
+  assert (select value from public.app_config where key = 'feature_weekly_core') = 'false'::jsonb,
+         'feature_weekly_core harus default mati';
+  v_j := public.seeker_profile_summary(u1);
+  assert (v_j->'client_config'->'min_client_version') =
+         '{"android":0,"ios":0,"desktop":0}'::jsonb,
+         'profile bootstrap harus membawa min_client_version yang client-safe';
+  assert exists (
+           select 1 from storage.buckets
+            where id = 'anima_sheets' and not public
+         ),
+         'bucket anima_sheets harus privat';
+  assert exists (
+           select 1 from storage.buckets
+            where id = 'gallery_thumbs' and not public
+         ),
+         'bucket gallery_thumbs harus privat';
+
+  assert exists (
+           select 1 from information_schema.tables
+            where table_schema = 'public' and table_name = 'gallery_entries'
+         ),
+         'gallery_entries harus ada';
+  assert exists (
+           select 1 from information_schema.tables
+            where table_schema = 'public' and table_name = 'gallery_moderations'
+         ),
+         'gallery_moderations harus ada';
+  assert (
+           select relrowsecurity from pg_class
+            where oid = 'public.gallery_entries'::regclass
+         ),
+         'gallery_entries harus RLS aktif';
+
+  begin
+    insert into public.animas
+      (owner_id, nickname, species_key, color_bucket, subject_kind, element,
+       typing_version, rarity, base_stats, care)
+    values
+      (u1, 'bad kind', 'mouse_plastic', 'gray', 'creature', 'tech', 1, 1, v_stats, v_care);
+    ok := false;
+  exception when check_violation then ok := true;
+  end;
+  assert ok, 'subject_kind tidak dikenal harus ditolak';
+
+  begin
+    insert into public.animas
+      (owner_id, nickname, species_key, color_bucket, element, secondary_element,
+       typing_version, rarity, base_stats, care)
+    values
+      (u1, 'dup type', 'mouse_plastic', 'gray', 'metal', 'metal', 2, 1, v_stats, v_care);
+    ok := false;
+  exception when check_violation then ok := true;
+  end;
+  assert ok, 'secondary identik primary harus ditolak';
+
+  begin
+    insert into public.animas
+      (owner_id, nickname, species_key, color_bucket, element, secondary_element,
+       typing_version, rarity, base_stats, care)
+    values
+      (u1, 'bad v2', 'mouse_plastic', 'gray', 'tech', null, 2, 1, v_stats, v_care);
+    ok := false;
+  exception when check_violation then ok := true;
+  end;
+  assert ok, 'typing_version >= 2 menolak element di luar roster 18';
+
+  insert into public.animas
+    (owner_id, nickname, species_key, color_bucket, subject_kind, element,
+     secondary_element, typing_version, sheet_path, manifest, rarity, base_stats, care)
+  values
+    (u1, 'v2 ok', 'ceramic_mug', 'gray', 'object', 'ceramic', 'flow', 2,
+     u1::text || '/00000000-0000-4000-8000-000000000099/sheet.png',
+     '{"poses":{}}'::jsonb, 2, v_stats, v_care);
+
+  update public.profiles set genesis_cores = 3 where id = u1;
+  update public.app_config set value = '999'::jsonb where key = 'daily_spend_cap_usd';
+  v_j := public.claim_capture(
+    u1, 'uji-private-capture', 'private capture', 'mug_ceramic_handled', 'gray',
+    1, 'ceramic', 'flow', 'object', 2, v_stats, v_care,
+    v_visi || '{"strike_name":"Glaze Tap","surge_name":"Cup Torrent"}'::jsonb,
+    'v13', 'test-model', 0.07, u1::text || '/uji-private-capture.png'
+  );
+  v_id := (v_j->>'generation_id')::uuid;
+  assert (select genesis_cores from public.profiles where id = u1) = 2
+         and (select count(*) from public.generations
+               where owner_id = u1 and idempotency_key = 'uji-private-capture') = 1
+         and exists (
+           select 1 from public.animas
+            where id = (v_j->>'anima_id')::uuid
+              and subject_kind = 'object'
+              and element = 'ceramic'
+              and secondary_element = 'flow'
+              and typing_version = 2
+         ),
+         'claim_capture harus mendebit sekali dan menyimpan kontrak typing v2';
+  v_j2 := public.claim_capture(
+    u1, 'uji-private-capture', 'ignored retry', 'ignored_species', 'gray',
+    1, 'metal', null, 'object', 1, v_stats, v_care, v_visi,
+    'v13', 'test-model', 0.07, u1::text || '/ignored.png'
+  );
+  assert v_j2 = v_j
+         and (select genesis_cores from public.profiles where id = u1) = 2
+         and (select count(*) from public.quota_ledger
+               where ref_id = v_id and delta = -1 and reason = 'genesis') = 1,
+         'retry claim_capture harus replay tanpa debit atau row kedua';
+  perform public.refund_generation(v_id, 'uji private capture refund');
+  assert (select genesis_cores from public.profiles where id = u1) = 3
+         and (select count(*) from public.quota_ledger
+               where ref_id = v_id and reason = 'refund') = 1,
+         'refund capture privat harus mengembalikan Core tepat sekali';
+
+  update public.app_config set value = 'true'::jsonb where key = 'feature_weekly_core';
+
+  update public.profiles
+     set genesis_cores = 2,
+         last_weekly_core_at = now() - interval '8 days'
+   where id = u1;
+  v_j := public.seeker_profile_summary(u1);
+  assert (v_j->>'genesis_cores')::int = 3,
+         'linked account eligible harus menerima +1 Core mingguan';
+  assert (select count(*) from public.quota_ledger
+           where owner_id = u1 and reason = 'weekly_core' and delta = 1) = 1,
+         'grant mingguan harus tercatat di ledger';
+  v := (select genesis_cores from public.profiles where id = u1);
+  v_j := public.seeker_profile_summary(u1);
+  assert (v_j->>'genesis_cores')::int = v
+         and (select count(*) from public.quota_ledger
+               where owner_id = u1 and reason = 'weekly_core') = 1,
+         'sync profil ganda tidak boleh menggandakan grant mingguan';
+
+  update public.profiles
+     set genesis_cores = 2,
+         last_weekly_core_at = now() - interval '3 days'
+   where id = u1;
+  v := (select genesis_cores from public.profiles where id = u1);
+  v_j := public.seeker_profile_summary(u1);
+  assert (v_j->>'genesis_cores')::int = v,
+         'grant mingguan harus menunggu rolling 7 hari';
+
+  update public.profiles
+     set genesis_cores = 3,
+         last_weekly_core_at = now() - interval '14 days'
+   where id = u1;
+  v := (select last_weekly_core_at from public.profiles where id = u1);
+  perform public.seeker_profile_summary(u1);
+  assert (select genesis_cores from public.profiles where id = u1) = 3
+         and (select last_weekly_core_at from public.profiles where id = u1) = v
+         and (select count(*) from public.quota_ledger
+               where owner_id = u1 and reason = 'weekly_core') = 1,
+         'bank penuh tidak boleh membuang eligibility mingguan';
+  update public.profiles set genesis_cores = 2 where id = u1;
+  v_j := public.seeker_profile_summary(u1);
+  assert (v_j->>'genesis_cores')::int = 3
+         and (select count(*) from public.quota_ledger
+               where owner_id = u1 and reason = 'weekly_core') = 2,
+         'sesudah bank turun, grant tertunda harus langsung jatuh';
+
+  update public.profiles
+     set genesis_cores = 0,
+         last_weekly_core_at = now() - interval '21 days'
+   where id = u1;
+  v_j := public.seeker_profile_summary(u1);
+  assert (v_j->>'genesis_cores')::int = 1
+         and (select count(*) from public.quota_ledger
+               where owner_id = u1 and reason = 'weekly_core') = 3,
+         'tidak ada catch-up: 21 hari terlewat tetap hanya +1 Core';
+
+  update public.profiles set genesis_cores = 2 where id = u2;
+  perform public.seeker_profile_summary(u2);
+  assert (select genesis_cores from public.profiles where id = u2) = 2
+         and not exists (
+           select 1 from public.quota_ledger
+            where owner_id = u2 and reason = 'weekly_core'
+         ),
+         'guest/anonim tidak boleh menerima Core mingguan';
+
+  update public.app_config set value = 'false'::jsonb where key = 'feature_weekly_core';
+  update public.profiles
+     set genesis_cores = 0,
+         last_weekly_core_at = now() - interval '14 days'
+   where id = u1;
+  v := (select genesis_cores from public.profiles where id = u1);
+  perform public.seeker_profile_summary(u1);
+  assert (select genesis_cores from public.profiles where id = u1) = v
+         and not exists (
+           select 1 from public.quota_ledger
+            where owner_id = u1 and reason = 'weekly_core' and delta = 1
+              and created_at > now() - interval '1 minute'
+         ),
+         'feature_weekly_core mati tidak boleh memberi grant';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform public._grant_weekly_core_if_eligible(u1);
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh memanggil grant Core mingguan';
+  begin
+    perform public.claim_capture(
+      u1, 'forbidden', 'forbidden', 'forbidden_species', 'gray', 1,
+      'stone', null, 'object', 1, v_stats, v_care, v_visi,
+      'v13', 'test-model', 0.07, u1::text || '/forbidden.png'
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh memanggil claim_capture';
+  perform set_config('role', 'none', true);
+
+  begin
+    perform 1 from public.storage_cleanup_queue;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'storage_cleanup_queue tidak boleh terbaca client';
+
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform 1 from public.gallery_entries;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'gallery_entries tidak boleh terbaca langsung oleh client';
+  begin
+    insert into public.gallery_hidden (owner_id, entry_id)
+    values (u1, '00000000-0000-4000-8000-000000000099');
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'gallery_hidden hanya boleh ditulis lewat Edge Function';
+  perform set_config('role', 'none', true);
+
+  delete from public.animas where owner_id = u1 and nickname = 'v2 ok';
+  assert exists (
+           select 1 from public.storage_cleanup_queue
+            where bucket_id = 'anima_sheets'
+              and object_path =
+                u1::text || '/00000000-0000-4000-8000-000000000099/sheet.png'
+              and reason = 'anima_deleted'
+         ),
+         'delete Anima privat harus mengantrekan cleanup blob';
 
   ----------------------------------------------------------------------------
   -- Penghapusan auth user adalah mekanisme yang dipakai endpoint delete_account.

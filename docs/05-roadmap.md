@@ -4,6 +4,13 @@ Empat fase, masing-masing dengan exit criteria yang bisa dijawab ya atau tidak. 
 
 Estimasi waktu memakai asumsi satu developer indie, 15-20 jam per minggu.
 
+> **Update 15 Agustus 2026:** pivot Elements/Animals/Gallery sudah live:
+> capture unik privat, 18 elemen + dual typing, hewan non-manusia, weekly Core,
+> Gallery opt-in, dan bot Gallery. Bagian roadmap lama yang masih menyebut
+> Discovery Scan/cache hit, enam elemen, atau Gallery tidak dipakai adalah
+> decision record historis, bukan kontrak build saat ini. Kontrak aktif:
+> [08](08-private-art-and-gallery.md).
+
 ```mermaid
 graph LR
     P1["Phase 1<br/>MVP art pipeline<br/>1-2 minggu"] --> P2["Phase 2<br/>Backend + game loop<br/>4-6 minggu"]
@@ -121,9 +128,16 @@ guest lokal sebelum memakai akun Google.
 
 **Koleksi, Stats, sizing mobile, inkubator, care loop, dan visual shell sekarang selesai di Phase 2.** Tap Collection membuka bottom sheet base stats + care authoritative; `View Profile` menginspeksi tanpa mengganti active companion, sedangkan `Summon` memakai dissolve + portal sebelum membuka Home. Home membedakan Loading/Error/Empty/Ready dan memberi CTA first scan tanpa tutorial terpisah. Setiap hatch menawarkan rename opsional, dan Profile menyediakan hard delete owner-only tanpa refund lewat migration RLS yang sudah live di production. Empat meter berlabel serta Feed/Clean/Sleep/Play memakai target 96px. Theme cyan-violet-gold dipakai bersama production dan art inspector; chamber background, cards, CTA, modal, meter tween, serta press/reveal motion semuanya procedural tanpa texture UI tambahan. `care_anima` sudah live dan smoke produksi membuktikan sync serta Play idempoten tanpa model call. Decay sejak sync terakhir (cap 48 jam, tanpa grace), Sleep enam jam, score harian, debit Bits, dan Dormant dijaga oleh transaction function + 30 check `test_game_rules.gd`; `test_scan_ui.gd` menjaga 249 kontrak mobile, Battle, theme, dan roster.
 
-**Kamera sudah masuk, dan catatan lama yang bilang ia terhalang itu keliru.** `CameraServer` sudah mendukung Android sejak setelah 4.4, tapi yang dipakai plugin `GodotGetImage` (fork PhotoPicker) — sebab `CameraFeed` memberi feed hidup, sementara yang dibutuhkan satu jepretan dari aplikasi kamera sistem, lengkap dengan fokus dan kualitas OEM. Fork-nya dipilih karena manifest upstream menyuntikkan `READ_MEDIA_IMAGES` ke APK walau galeri tidak pernah dipanggil, dan Play menolak izin itu untuk pilih-satu-foto. Galeri sendiri sengaja tidak dipakai: fiksinya memfoto benda di depanmu, dan galeri membuka pintu untuk memindai gambar unduhan yang justru harus ditahan gate.
+**Kamera dan single-photo picker sudah masuk.** `CameraServer` memang mendukung
+Android, tetapi `GodotGetImage` memberi kamera OEM dan system Photo Picker dengan
+satu plugin. Fork-nya tidak menyuntikkan `READ_MEDIA_IMAGES`, jadi pemain dapat
+memilih tepat satu foto tanpa memberi akses pustaka luas. Kedua sumber masuk ke
+gate safety dan pipeline upload yang sama.
 
-Resize di device ikut sekarang, dan angkanya tidak dipilih bebas — 1280 px sama dengan foto terbesar di `eval/photos/`, sehingga produksi memberi Vision gambar yang persis di dalam amplop yang sudah divalidasi Smoke Set. Skenario 18 di `npm run selftest` menegakkan batas itu gratis, sebab `species_key` yang bergeser memecah dedup cache dan mengubah scan gratis menjadi $0.07. Jalur desktop lewat `FileDialog` tetap tinggal: ia yang membuat seluruh alur bisa diperiksa di laptop tanpa perangkat Android.
+Resize di device ikut sekarang, dan angkanya tidak dipilih bebas — 1280 px sama
+dengan input terbesar yang divalidasi. Skenario 18 di `npm run selftest`
+menegakkan batas itu gratis agar hasil Vision tetap stabil. Jalur desktop lewat
+`FileDialog` tetap tinggal untuk memeriksa alur tanpa perangkat Android.
 
 **Ekspor Android sudah berjalan, dan seluruhnya dari CLI.** Tidak ada langkah editor yang wajib: `--install-android-build-template` ternyata flag CLI dan `export_presets.cfg` boleh ditulis tangan, jadi APK debug 75 MB (`com.rekansebangku.scanima`, target SDK 35, arm64-v8a) lahir dari satu perintah. Dua jebakan ditemukan justru karena artefaknya diperiksa alih-alih dipercaya. Pertama, Godot 4 **mematikan izin `INTERNET` secara default**: APK pertama keluar dengan `CAMERA` sebagai satu-satunya izin, dan ia akan terpasang, terbuka, lalu mati senyap di sign-in anonim — kegagalan yang tampak seperti masalah jaringan, bukan seperti izin yang lupa. Kedua, template Android 4.6.2 mematok Gradle 8.11.1 yang tidak menerima JDK di atas 23, sementara mesin build punya JDK 26; JDK 17 dipasang berdampingan, bukan menggantikan. Hasil akhirnya diverifikasi tepat dua izin (`INTERNET` + `CAMERA`, nol `READ_MEDIA_IMAGES`) dengan kelas plugin terbukti ada di `classes.dex` — yang sekaligus memvalidasi pilihan fork PhotoPicker di artefak jadi, bukan cuma di manifest sumbernya.
 

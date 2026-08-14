@@ -48,7 +48,7 @@ func _initialize() -> void:
 	_check_full_rect(scene.find_child("SafeMargin", true, false) as Control, "safe margin")
 	for name in [
 		"HomeView", "ScanView", "BattleView", "CollectionView",
-		"AnimaDetailsView", "SeekerProfileView",
+		"AnimaDetailsView", "SeekerProfileView", "GalleryView",
 	]:
 		var view := scene.find_child(name, true, false) as Control
 		_check(view != null, "%s must exist" % name)
@@ -61,24 +61,26 @@ func _initialize() -> void:
 	var collection := scene.find_child("CollectionView", true, false) as Control
 	var details := scene.find_child("AnimaDetailsView", true, false) as Control
 	var seeker_profile := scene.find_child("SeekerProfileView", true, false) as Control
+	var gallery := scene.find_child("GalleryView", true, false) as Control
 	_check(home != null and home.visible, "Home is the default destination")
 	_check(scan != null and not scan.visible, "Scan starts hidden")
 	_check(battle != null and not battle.visible, "Battle starts hidden")
 	_check(collection != null and not collection.visible, "Collection starts hidden")
 	_check(details != null and not details.visible, "Details starts hidden")
 	_check(seeker_profile != null and not seeker_profile.visible, "Seeker profile starts hidden")
+	_check(gallery != null and not gallery.visible, "Gallery starts hidden")
 
 	for name in [
 		"ScanButton", "HomeNavButton", "ScanNavButton", "BattleNavButton",
 		"CollectionNavButton", "AnimaNavButton",
 		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "EditAnimaNameButton",
-		"DeleteAnimaButton",
+		"DeleteAnimaButton", "GalleryPublishButton", "GalleryBack", "GalleryLoadMore",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
 		"CollectionSummonButton", "BattlePickProfileButton", "BattlePickBattleButton",
 		"BattleStartButton", "BattleStrikeButton",
 		"BattleSurgeButton", "BattleGuardButton", "BattleItemButton", "BattleForfeitButton", "BattleRetryButton",
 		"SeekerMenuButton", "OnboardingSubmit", "SeekerProfileBack", "RenameSeeker",
-		"SeekerProfile", "SeekerAccount", "SeekerHelp", "DeleteAccount",
+		"SeekerProfile", "SeekerGallery", "SeekerAccount", "SeekerHelp", "DeleteAccount",
 	]:
 		var button := scene.find_child(name, true, false) as Button
 		_check(button != null, "%s must exist" % name)
@@ -94,6 +96,13 @@ func _initialize() -> void:
 		_check_eq(list.max_columns, 2, "collection uses two columns")
 		_check_eq(list.fixed_icon_size, Vector2i(128, 128), "collection thumbnails are 128 px")
 	var scan_flow := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var backend_flow := FileAccess.get_file_as_string("res://scripts/backend.gd")
+	_check(
+		scan_flow.find("_prepare_signed_battle_art") >= 0
+		and scan_flow.find("GALLERY_DEST") >= 0,
+		"scan_flow wires gallery destination and signed battle art"
+	)
+	_check(backend_flow.find("func gallery(") >= 0, "Backend exposes gallery transport")
 	_check(
 		scan_flow.find("CareRules.collection_pose") >= 0
 		and scan_flow.find("begin_visit()") >= 0
@@ -1877,7 +1886,8 @@ func _test_battle_art_has_no_global_toast() -> void:
 	var end := source.find("\n\nfunc _apply_battle_reward", start)
 	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
 	_check(
-		body.find("GameState.as_dict(snapshot.get(\"manifest\")),\n\t\tfalse") >= 0,
+		body.find("_prepare_signed_battle_art") >= 0
+		and body.find("false,") >= 0,
 		"Battle art loading must not reuse the shell's persistent download toast"
 	)
 

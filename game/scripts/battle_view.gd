@@ -76,7 +76,6 @@ var _lobby_row: Dictionary = {}
 var _lobby_daily_reward: Dictionary = {}
 var _session: Dictionary = {}
 var _busy := false
-var _element_icons: Dictionary = {}
 var _effectiveness_tween: Tween
 var _queued_action := ""
 var _last_reward: Dictionary = {}
@@ -84,14 +83,6 @@ var _command_tween: Tween
 
 
 func _ready() -> void:
-	_element_icons = {
-		"metal": metal_icon,
-		"plant": plant_icon,
-		"flow": flow_icon,
-		"spark": spark_icon,
-		"cloth": cloth_icon,
-		"stone": stone_icon,
-	}
 	_start_button.pressed.connect(_on_start_pressed)
 	_strike_button.pressed.connect(_request_action.bind("strike"))
 	_surge_button.pressed.connect(_request_action.bind("surge"))
@@ -168,7 +159,7 @@ func _apply_lobby() -> void:
 	else:
 		_lobby_name.text = LocaleManager.display_name(_lobby_row)
 		_lobby_meta.text = tr("BATTLE_LOBBY_READY") % [
-			LocaleManager.element_name(str(_lobby_row.get("element", ""))),
+			LocaleManager.element_compact(_lobby_row),
 			LocaleManager.level_label(CareRules.level_from_exp(int(_lobby_row.get("care_score", 0)))),
 		]
 	if unavailable_key.is_empty():
@@ -227,12 +218,8 @@ func set_session(
 	var bot_snapshot := _as_dict(_session.get("bot_snapshot"))
 	_player_name.text = str(player_snapshot.get("name", tr("ANIMA_FALLBACK_NAME")))
 	_bot_name.text = tr("BATTLE_BOT_NAME")
-	_apply_element(
-		_player_element_icon,
-		_player_element,
-		str(player_snapshot.get("element", "stone"))
-	)
-	_apply_element(_bot_element_icon, _bot_element, str(bot_snapshot.get("element", "stone")))
+	_apply_element_row(_player_element_icon, _player_element, player_snapshot)
+	_apply_element_row(_bot_element_icon, _bot_element, bot_snapshot)
 	_apply_state()
 
 
@@ -440,13 +427,17 @@ func _play_attack(event: Dictionary) -> void:
 	)
 	var action_label := _move_label(str(event.get("action", "")), actor_snapshot)
 	var element_multiplier := float(event.get("element_multiplier", 1.0))
+	var attack_element := str(event.get("attack_element", "")).strip_edges()
 	var effect_key := effectiveness_key(element_multiplier)
 	_show_effectiveness(element_multiplier)
 	if effect_key.is_empty():
 		_feedback.text = tr("BATTLE_EVENT_ATTACK") % [_actor_name(actor_name), action_label]
 	else:
+		var element_note := ""
+		if not attack_element.is_empty():
+			element_note = tr("BATTLE_ATTACK_ELEMENT") % LocaleManager.element_name(attack_element)
 		_feedback.text = tr("BATTLE_EVENT_ATTACK_EFFECTIVE") % [
-			_actor_name(actor_name), action_label, tr(effect_key),
+			_actor_name(actor_name), action_label, tr(effect_key) + element_note,
 		]
 	await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)
 	_damage.text = tr("BATTLE_DAMAGE") % LocaleManager.format_integer(int(event.get("damage", 0)))
@@ -786,12 +777,9 @@ func _update_action_state() -> void:
 	_forfeit_button.disabled = _busy or not active
 
 
-func _apply_element(icon: TextureRect, label: Label, element: String) -> void:
-	var normalized := element.to_lower()
-	if not _element_icons.has(normalized):
-		normalized = "stone"
-	icon.texture = _element_icons[normalized] as Texture2D
-	label.text = LocaleManager.element_name(normalized)
+func _apply_element_row(icon: TextureRect, label: Label, row: Dictionary) -> void:
+	ElementCatalog.apply_icon(icon, str(row.get("element", "stone")))
+	label.text = LocaleManager.element_compact(row)
 
 
 func _position_fighters() -> void:

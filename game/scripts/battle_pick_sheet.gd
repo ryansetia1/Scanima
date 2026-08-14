@@ -80,7 +80,7 @@ func _fill_list(rows: Array) -> void:
 			if not unavailable.is_empty()
 			else tr("COLLECTION_ITEM_META") % [
 				anima_name,
-				LocaleManager.element_name(str(row.get("element", ""))),
+				LocaleManager.element_compact(row),
 			]
 		)
 		var texture: Texture2D = (
@@ -110,7 +110,7 @@ func _fill_detail() -> void:
 	var unavailable := CareRules.battle_unavailable_key(_selected_row, _active_id, true)
 	_name.text = LocaleManager.display_name(_selected_row)
 	_meta.text = tr("COLLECTION_SHEET_META") % [
-		LocaleManager.element_name(str(_selected_row.get("element", ""))),
+		LocaleManager.element_compact(_selected_row),
 		LocaleManager.level_label(CareRules.level_from_exp(int(_selected_row.get("care_score", 0)))),
 		LocaleManager.format_integer(int(_selected_row.get("rarity", 1))),
 	]
