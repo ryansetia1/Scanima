@@ -24,7 +24,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.004, 0.008, 0.025, 0.78)
+color = Color(0.004, 0.008, 0.025, 0.68)
 
 [node name="DismissButton" type="Button" parent="."]
 layout_mode = 1
@@ -54,11 +54,11 @@ offset_top = -760.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 0
-theme_type_variation = &"ModalPanel"
+theme_type_variation = &"BottomSheetPanel"
 
 [node name="Column" type="VBoxContainer" parent="Bottom/Panel"]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 8
 
 [node name="HandleCenter" type="CenterContainer" parent="Bottom/Panel/Column"]
 custom_minimum_size = Vector2(0, 96)
@@ -74,7 +74,7 @@ color = Color(0.4, 0.5, 0.68, 0.72)
 [node name="ContentSlot" type="VBoxContainer" parent="Bottom/Panel/Column"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 14
+theme_override_constants/separation = 16
 
 [node name="BattlePickTitle" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
 unique_name_in_owner = true
@@ -101,19 +101,19 @@ icon_mode = 0
 max_columns = 2
 same_column_width = true
 allow_reselect = true
-theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 12
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
 theme_override_font_sizes/font_size = 25
 
 [node name="BattlePickDetail" type="VBoxContainer" parent="Bottom/Panel/Column/ContentSlot"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 16
 
 [node name="Header" type="HBoxContainer" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail"]
 layout_mode = 2
-theme_override_constants/separation = 18
+theme_override_constants/separation = 16
 
 [node name="BattlePickPortrait" type="TextureRect" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header"]
 unique_name_in_owner = true
@@ -160,7 +160,7 @@ autowrap_mode = 2
 
 [node name="Actions" type="HBoxContainer" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 
 [node name="BattlePickProfileButton" type="Button" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Actions"]
 unique_name_in_owner = true

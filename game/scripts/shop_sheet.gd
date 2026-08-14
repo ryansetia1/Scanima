@@ -7,10 +7,13 @@ signal shop_cta_requested
 
 enum Mode { SHOP, BAG, BATTLE }
 
+const CATALOG_VIEWPORT_HEIGHT := 560.0
+
 @onready var _title: Label = %ShopTitle
 @onready var _tabs: HBoxContainer = %ShopTabs
 @onready var _food_tab: Button = %ShopFoodTab
 @onready var _item_tab: Button = %ShopItemTab
+@onready var _catalog_scroll: ScrollContainer = %ShopScroll
 @onready var _list: VBoxContainer = %ShopList
 @onready var _empty: Label = %ShopEmpty
 @onready var _cta: Button = %ShopEmptyCta
@@ -73,6 +76,11 @@ func prefers_item_tab() -> bool:
 	return _mode == Mode.BATTLE or _tab == "item"
 
 
+func fit_to_content() -> void:
+	_fit_catalog_viewport()
+	super.fit_to_content()
+
+
 func _reveal() -> void:
 	if visible:
 		fit_to_content()
@@ -91,11 +99,14 @@ func _rebuild() -> void:
 	_tabs.visible = _mode == Mode.SHOP or _mode == Mode.BAG
 	_food_tab.disabled = _busy
 	_item_tab.disabled = _busy
-	_food_tab.self_modulate = Color.WHITE if _tab == "food" else Color(1, 1, 1, 0.55)
-	_item_tab.self_modulate = Color.WHITE if _tab == "item" else Color(1, 1, 1, 0.55)
+	_food_tab.theme_type_variation = &"PrimaryButton" if _tab == "food" else &""
+	_item_tab.theme_type_variation = &"PrimaryButton" if _tab == "item" else &""
+	_food_tab.self_modulate = Color.WHITE
+	_item_tab.self_modulate = Color.WHITE
 	for child in _list.get_children():
 		child.queue_free()
 	var rows := _visible_rows()
+	_catalog_scroll.visible = not rows.is_empty()
 	_empty.visible = rows.is_empty()
 	_cta.visible = rows.is_empty() and _mode != Mode.SHOP
 	_empty.text = tr(_empty_key())
@@ -103,6 +114,28 @@ func _rebuild() -> void:
 	for item in rows:
 		_list.add_child(_make_row(item))
 	call_deferred("fit_to_content")
+
+
+func _fit_catalog_viewport() -> void:
+	if not is_instance_valid(_catalog_scroll):
+		return
+	if not _catalog_scroll.visible:
+		_catalog_scroll.custom_minimum_size.y = 0.0
+		return
+	_catalog_scroll.custom_minimum_size.y = 0.0
+	var sheet_panel := panel()
+	var host := sheet_panel.get_parent() as Control
+	var host_h := host.size.y if host != null else size.y
+	if host_h < 1.0 and is_inside_tree():
+		host_h = get_viewport_rect().size.y
+	if host_h < 1.0:
+		_catalog_scroll.custom_minimum_size.y = CATALOG_VIEWPORT_HEIGHT
+		return
+	var chrome_h := sheet_panel.get_combined_minimum_size().y
+	_catalog_scroll.custom_minimum_size.y = minf(
+		CATALOG_VIEWPORT_HEIGHT,
+		maxf(0.0, host_h * max_height_ratio - chrome_h)
+	)
 
 
 func _visible_rows() -> Array[Dictionary]:

@@ -112,6 +112,12 @@ begin
   v_j := public.complete_seeker_profile(u1, 'TestSeeker', 2000, null);
   assert v_j->>'seeker_name' = 'TestSeeker', 'profil Seeker harus tersimpan';
   begin
+    perform public.complete_seeker_profile(u2, 'Has Space', null, null);
+    ok := false;
+  exception when others then ok := (sqlerrm = 'INVALID_SEEKER_NAME');
+  end;
+  assert ok, 'nama Seeker tidak boleh mengandung spasi';
+  begin
     perform public.complete_seeker_profile(u2, 'testseeker', null, null);
     ok := false;
   exception when others then ok := (sqlerrm = 'SEEKER_NAME_TAKEN');

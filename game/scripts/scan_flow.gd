@@ -737,7 +737,10 @@ func _complete_seeker_profile(
 		"gender": gender,
 	})
 	if not res.ok:
-		_seeker_onboarding_sheet.show_error(_seeker_error(res.error))
+		_seeker_onboarding_sheet.show_error(
+			_seeker_error(res.error),
+			&"birth_year" if res.error == "INVALID_BIRTH_YEAR" else &"name"
+		)
 		return
 	GameState.profile.merge(GameState.as_dict(res.data), true)
 	_seeker_onboarding_sheet.close()
@@ -785,8 +788,11 @@ func _show_rename_seeker() -> void:
 
 
 func _rename_seeker(value: String) -> void:
+	if not SeekerOnboardingSheet.is_valid_seeker_name(value):
+		_say(tr("SEEKER_NAME_INVALID"), true)
+		return
 	_set_busy(true)
-	var res := await Backend.seeker("rename", {"seeker_name": value.strip_edges()})
+	var res := await Backend.seeker("rename", {"seeker_name": value})
 	_set_busy(false)
 	if not res.ok:
 		_say(

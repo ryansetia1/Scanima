@@ -122,6 +122,8 @@ mouse_filter = 0
 script = ExtResource("4_sheet")
 panel_path = NodePath("Bottom/CollectionSheetPanel")
 dismiss_button_path = NodePath("CollectionSheetDismiss")
+scroll_content = true
+respect_safe_bottom = false
 
 [node name="Backdrop" type="ColorRect" parent="CollectionSheetOverlay"]
 layout_mode = 1
@@ -131,7 +133,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.004, 0.008, 0.025, 0.78)
+color = Color(0.004, 0.008, 0.025, 0.68)
 
 [node name="CollectionSheetDismiss" type="Button" parent="CollectionSheetOverlay"]
 unique_name_in_owner = true
@@ -152,11 +154,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Spacer" type="Control" parent="CollectionSheetOverlay/Bottom"]
-visible = false
-layout_mode = 0
-mouse_filter = 2
-
 [node name="CollectionSheetPanel" type="PanelContainer" parent="CollectionSheetOverlay/Bottom"]
 unique_name_in_owner = true
 layout_mode = 1
@@ -168,11 +165,11 @@ offset_top = -640.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 0
-theme_type_variation = &"ModalPanel"
+theme_type_variation = &"BottomSheetPanel"
 
 [node name="Column" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel"]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 8
 
 [node name="HandleCenter" type="CenterContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
 custom_minimum_size = Vector2(0, 96)
@@ -187,7 +184,7 @@ color = Color(0.4, 0.5, 0.68, 0.72)
 
 [node name="Header" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
 layout_mode = 2
-theme_override_constants/separation = 18
+theme_override_constants/separation = 16
 
 [node name="CollectionSheetPortrait" type="TextureRect" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Header"]
 unique_name_in_owner = true
@@ -372,11 +369,11 @@ layout_mode = 2
 [node name="CareRows" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 8
 
 [node name="Hunger" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 16
 
 [node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Hunger"]
 custom_minimum_size = Vector2(118, 0)
@@ -397,7 +394,7 @@ show_percentage = false
 
 [node name="Energy" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 16
 
 [node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Energy"]
 custom_minimum_size = Vector2(118, 0)
@@ -418,7 +415,7 @@ show_percentage = false
 
 [node name="Hygiene" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 16
 
 [node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Hygiene"]
 custom_minimum_size = Vector2(118, 0)
@@ -439,7 +436,7 @@ show_percentage = false
 
 [node name="Bond" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 16
 
 [node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Bond"]
 custom_minimum_size = Vector2(118, 0)
@@ -459,7 +456,7 @@ show_percentage = false
 
 [node name="Actions" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 
 [node name="CollectionProfileButton" type="Button" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Actions"]
 unique_name_in_owner = true

@@ -458,12 +458,35 @@ func _test_shared_components() -> void:
 	await process_frame
 	await process_frame
 	var fresh_panel := fresh.panel() as Control
+	var fresh_column := fresh_panel.find_child("Column", true, false) as VBoxContainer
+	var fresh_content := fresh_panel.find_child("ContentSlot", true, false) as VBoxContainer
+	var fresh_backdrop := fresh.find_child("Backdrop", true, false) as ColorRect
 	_check(
 		fresh.visible
 		and fresh_panel != null
 		and is_equal_approx(fresh_panel.offset_bottom, 0.0)
 		and fresh_panel.offset_top < 0.0,
 		"first bottom-sheet open sits on the bottom edge even before layout"
+	)
+	_check(
+		fresh_panel.theme_type_variation == &"BottomSheetPanel"
+		and fresh_column.get_theme_constant("separation") == 8
+		and fresh_content.get_theme_constant("separation") == 16,
+		"bottom sheets share compact handle spacing and an 8dp content rhythm"
+	)
+	_check(
+		fresh_backdrop != null and is_equal_approx(fresh_backdrop.color.a, 0.68),
+		"bottom-sheet scrim keeps the underlying destination legible"
+	)
+	var sheet_script := load("res://scripts/ui_bottom_sheet.gd") as GDScript
+	_check_eq(
+		sheet_script.scaled_safe_bottom(
+			Vector2(720, 1280),
+			Vector2(1440, 3200),
+			Rect2(0, 100, 1440, 3000)
+		),
+		40.0,
+		"bottom-sheet safe padding converts physical pixels into viewport coordinates"
 	)
 	fresh.close()
 	fresh.queue_free()
@@ -544,6 +567,23 @@ func _test_shared_components() -> void:
 	shop_sheet.set_catalog(catalog, inventory)
 	shop_sheet.open_shop("item")
 	await process_frame
+	var shop_panel := shop_sheet.panel() as Control
+	var shop_scroll := shop_sheet.find_child("ShopScroll", true, false) as ScrollContainer
+	var shop_list := shop_sheet.find_child("ShopList", true, false) as VBoxContainer
+	var food_tab := shop_sheet.find_child("ShopFoodTab", true, false) as Button
+	var item_tab := shop_sheet.find_child("ShopItemTab", true, false) as Button
+	_check(
+		shop_panel.theme_type_variation == &"BottomSheetPanel"
+		and is_equal_approx(shop_scroll.custom_minimum_size.y, 560.0)
+		and shop_panel.size.y <= shop_sheet.size.y * shop_sheet.max_height_ratio + 1.0
+		and shop_list.get_theme_constant("separation") == 16,
+		"Shop gives the catalog a tall viewport without exceeding the sheet height cap"
+	)
+	_check(
+		food_tab.theme_type_variation == &""
+		and item_tab.theme_type_variation == &"PrimaryButton",
+		"Shop tab emphasis follows the selected category"
+	)
 	_check(
 		_sheet_button_labels(shop_sheet).find(tr("SHOP_USE")) < 0,
 		"Shop sells items without a Use action"
@@ -551,8 +591,17 @@ func _test_shared_components() -> void:
 	shop_sheet.open_bag("food")
 	await process_frame
 	_check(
+		food_tab.theme_type_variation == &"PrimaryButton"
+		and item_tab.theme_type_variation == &"",
+		"Bag tab emphasis updates without leaving the old tab highlighted"
+	)
+	_check(
 		_sheet_button_labels(shop_sheet).find(tr("CARE_FEED")) >= 0,
 		"Bag food rows expose Feed"
+	)
+	_check(
+		is_equal_approx(shop_scroll.custom_minimum_size.y, 560.0),
+		"Bag shares the taller catalog viewport"
 	)
 	shop_sheet.open_bag("item")
 	await process_frame
@@ -574,6 +623,32 @@ func _test_shared_components() -> void:
 		battle_row != null and _sheet_button_labels(battle_row).find(tr("SHOP_USE")) < 0,
 		"Bag battle items have no Use button"
 	)
+	shop_sheet.set_catalog([], [])
+	shop_sheet.open_bag("food")
+	await process_frame
+	_check(
+		not shop_scroll.visible and shop_panel.size.y < 560.0,
+		"empty Bag stays compact instead of reserving a blank catalog viewport"
+	)
+
+	var compact_host := Control.new()
+	compact_host.size = Vector2(720, 720)
+	root.add_child(compact_host)
+	var compact_sheet = (load("res://scenes/ui/shop_sheet.tscn") as PackedScene).instantiate()
+	compact_host.add_child(compact_sheet)
+	await process_frame
+	compact_sheet.set_catalog(catalog, inventory)
+	compact_sheet.open_shop("item")
+	await process_frame
+	await process_frame
+	var compact_panel := compact_sheet.panel() as Control
+	var compact_scroll := compact_sheet.find_child("ShopScroll", true, false) as ScrollContainer
+	_check(
+		compact_panel.size.y <= compact_host.size.y * compact_sheet.max_height_ratio + 1.0
+		and compact_scroll.custom_minimum_size.y < 560.0,
+		"Shop shrinks its catalog viewport instead of clipping on a short display"
+	)
+	compact_host.queue_free()
 
 	var skeleton = (load("res://scenes/ui/ui_skeleton.tscn") as PackedScene).instantiate()
 	root.add_child(skeleton)
@@ -818,10 +893,55 @@ func _test_seeker_ui() -> void:
 			submitted.append({"name": name, "birth_year": birth_year, "gender": gender})
 	)
 	onboarding.show_for_profile()
-	(onboarding.find_child("SeekerName", true, false) as LineEdit).text = "Nova_13"
+	var onboarding_panel := onboarding.panel() as Control
+	var onboarding_scroll := onboarding.find_child("ContentScroll", true, false) as ScrollContainer
+	_check(
+		onboarding_scroll != null
+		and onboarding_panel.theme_type_variation == &"BottomSheetPanel",
+		"Seeker onboarding scrolls inside the shared bottom-sheet surface"
+	)
+	onboarding._fit_scroll_to_host(600.0)
+	_check(
+		onboarding_panel.get_combined_minimum_size().y <= 600.0 * onboarding.max_height_ratio + 1.0,
+		"Seeker onboarding stays operable in a short landscape viewport"
+	)
+	onboarding.fit_to_content()
+	var seeker_name_edit := onboarding.find_child("SeekerName", true, false) as LineEdit
+	var seeker_name_label := onboarding.find_child("NameLabel", true, false) as Label
+	var onboarding_feedback := (
+		onboarding.find_child("OnboardingFeedback", true, false) as Label
+	)
+	var onboarding_submit := onboarding.find_child("OnboardingSubmit", true, false) as Button
+	seeker_name_edit.text = "Nova Seeker"
+	onboarding_submit.pressed.emit()
+	_check_eq(submitted.size(), 0, "Seeker names containing spaces never reach the server")
+	_check(
+		onboarding_feedback.visible
+		and onboarding_feedback.text == tr("SEEKER_NAME_INVALID")
+		and onboarding_feedback.theme_type_variation == &"ErrorLabel"
+		and seeker_name_label.theme_type_variation == &"ErrorLabel"
+		and seeker_name_edit.theme_type_variation == &"ErrorLineEdit",
+		"invalid Seeker name highlights the label, field, and inline error in red"
+	)
+	seeker_name_edit.text = "Nova_13"
+	seeker_name_edit.text_changed.emit(seeker_name_edit.text)
+	onboarding.show_error(tr("SEEKER_NAME_TAKEN"))
+	_check(
+		onboarding_feedback.text == tr("SEEKER_NAME_TAKEN")
+		and seeker_name_edit.theme_type_variation == &"ErrorLineEdit",
+		"a taken Seeker name uses the same prominent field error state"
+	)
+	seeker_name_edit.text = "Nova_14"
+	seeker_name_edit.text_changed.emit(seeker_name_edit.text)
+	_check(
+		not onboarding_feedback.visible
+		and seeker_name_edit.theme_type_variation == &"",
+		"editing the rejected Seeker name clears its stale error state"
+	)
+	seeker_name_edit.text = "Nova_13"
 	(onboarding.find_child("BirthYear", true, false) as LineEdit).text = "2000"
 	(onboarding.find_child("Gender", true, false) as OptionButton).select(2)
-	(onboarding.find_child("OnboardingSubmit", true, false) as Button).pressed.emit()
+	onboarding_submit.pressed.emit()
 	_check_eq(submitted.size(), 1, "Seeker onboarding emits one normalized submission")
 	if not submitted.is_empty():
 		_check_eq(submitted[0].name, "Nova_13", "Seeker name reaches the server boundary")
@@ -848,6 +968,13 @@ func _test_seeker_ui() -> void:
 	_check(
 		(menu.find_child("DeleteAccount", true, false) as Button).visible,
 		"guest can delete the anonymous account and its data"
+	)
+	var delete_account := menu.find_child("DeleteAccount", true, false) as Button
+	_check(
+		menu.find_child("ContentScroll", true, false) is ScrollContainer
+		and menu.find_child("DangerDivider", true, false) is HSeparator
+		and delete_account.theme_type_variation == &"DangerButton",
+		"Seeker menu scrolls safely and separates the destructive account action"
 	)
 	menu.show_menu({"seeker_name": null}, true, false)
 	_check(
@@ -1401,7 +1528,14 @@ func _test_battle_pick_sheet() -> void:
 	var battle_btn := sheet.find_child("BattlePickBattleButton", true, false) as Button
 	var profile_btn := sheet.find_child("BattlePickProfileButton", true, false) as Button
 	var reason := sheet.find_child("BattlePickReason", true, false) as Label
+	var panel := sheet.panel() as Control
 	_check(sheet.visible and list != null and list.item_count == 2, "picker lists the roster")
+	_check(
+		panel.theme_type_variation == &"BottomSheetPanel"
+		and list.get_theme_constant("h_separation") == 16
+		and list.get_theme_constant("v_separation") == 16,
+		"Battle picker follows the shared sheet surface and roster spacing"
+	)
 	_check(
 		list.get_item_text(0).find(tr("BATTLE_PICK_LOW_ENERGY")) >= 0,
 		"ineligible row shows a short Low Energy reason"
@@ -1488,10 +1622,17 @@ func _test_collection_bottom_sheet() -> void:
 	var care_rows := collection.find_child("CareRows", true, false) as Control
 	_check(overlay != null and overlay.visible, "selecting an Anima opens the bottom sheet immediately")
 	var sheet_panel := collection.find_child("CollectionSheetPanel", true, false) as Control
+	var content_scroll := collection.find_child("ContentScroll", true, false) as ScrollContainer
 	_check(
 		sheet_panel != null
 		and is_equal_approx(sheet_panel.size.y, sheet_panel.get_combined_minimum_size().y),
 		"Collection sheet height follows its content"
+	)
+	_check(
+		content_scroll != null
+		and sheet_panel.theme_type_variation == &"BottomSheetPanel"
+		and sheet_panel.size.y <= overlay.size.y * 0.92 + 1.0,
+		"Collection details keep a bounded, scroll-safe bottom-sheet layout"
 	)
 	var handle := collection.find_child("HandleCenter", true, false) as Control
 	_check(

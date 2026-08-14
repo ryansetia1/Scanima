@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=48 format=3]
+[gd_resource type="Theme" load_steps=51 format=3]
 
 [ext_resource type="FontFile" path="res://assets/fonts/NunitoSans-Variable.ttf" id="1_body"]
 [ext_resource type="FontFile" path="res://assets/fonts/Oxanium-Variable.ttf" id="2_display"]
@@ -223,6 +223,38 @@ corner_radius_top_right = 14
 corner_radius_bottom_right = 14
 corner_radius_bottom_left = 14
 
+[sub_resource type="StyleBoxFlat" id="LineEditError"]
+content_margin_left = 18.0
+content_margin_top = 14.0
+content_margin_right = 18.0
+content_margin_bottom = 14.0
+bg_color = Color(0.11, 0.035, 0.065, 0.98)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.32, 0.42, 0.96)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="LineEditErrorFocus"]
+content_margin_left = 18.0
+content_margin_top = 14.0
+content_margin_right = 18.0
+content_margin_bottom = 14.0
+bg_color = Color(0.13, 0.04, 0.075, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1, 0.42, 0.52, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
 [sub_resource type="StyleBoxFlat" id="FeedNormal"]
 content_margin_left = 10.0
 content_margin_top = 12.0
@@ -321,6 +353,22 @@ corner_radius_top_left = 32
 corner_radius_top_right = 32
 corner_radius_bottom_right = 32
 corner_radius_bottom_left = 32
+shadow_color = Color(0, 0, 0, 0.62)
+shadow_size = 26
+shadow_offset = Vector2(0, 12)
+
+[sub_resource type="StyleBoxFlat" id="BottomSheetPanel"]
+content_margin_left = 32.0
+content_margin_top = 0.0
+content_margin_right = 32.0
+content_margin_bottom = 32.0
+bg_color = Color(0.035, 0.055, 0.125, 0.995)
+border_width_left = 2
+border_width_top = 3
+border_width_right = 2
+border_color = Color(0.39, 0.82, 1, 0.64)
+corner_radius_top_left = 32
+corner_radius_top_right = 32
 shadow_color = Color(0, 0, 0, 0.62)
 shadow_size = 26
 shadow_offset = Vector2(0, 12)
@@ -765,6 +813,9 @@ DangerButton/styles/normal = SubResource("DangerNormal")
 DangerButton/styles/hover = SubResource("DangerHover")
 DangerButton/styles/pressed = SubResource("DangerPressed")
 DangerButton/styles/disabled = SubResource("ButtonDisabled")
+ErrorLineEdit/base_type = &"LineEdit"
+ErrorLineEdit/styles/normal = SubResource("LineEditError")
+ErrorLineEdit/styles/focus = SubResource("LineEditErrorFocus")
 NavButton/base_type = &"Button"
 NavButton/font_sizes/font_size = 27
 NavButton/styles/normal = SubResource("NavNormal")
@@ -795,6 +846,8 @@ CarePlayButton/styles/normal = SubResource("PlayNormal")
 CarePlayButton/styles/disabled = SubResource("ButtonDisabled")
 ModalPanel/base_type = &"PanelContainer"
 ModalPanel/styles/panel = SubResource("ModalPanel")
+BottomSheetPanel/base_type = &"PanelContainer"
+BottomSheetPanel/styles/panel = SubResource("BottomSheetPanel")
 ResourceChip/base_type = &"PanelContainer"
 ResourceChip/styles/panel = SubResource("ResourceChip")
 StatusPanel/base_type = &"PanelContainer"
@@ -807,6 +860,9 @@ EyebrowLabel/font_sizes/font_size = 21
 MutedLabel/base_type = &"Label"
 MutedLabel/colors/font_color = Color(0.61, 0.67, 0.8, 1)
 MutedLabel/font_sizes/font_size = 24
+ErrorLabel/base_type = &"Label"
+ErrorLabel/colors/font_color = Color(1, 0.42, 0.52, 1)
+ErrorLabel/font_sizes/font_size = 24
 ModalTitle/base_type = &"Label"
 ModalTitle/colors/font_color = Color(0.97, 0.985, 1, 1)
 ModalTitle/colors/font_outline_color = Color(0.2, 0.74, 1, 0.3)

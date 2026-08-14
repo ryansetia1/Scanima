@@ -21,8 +21,8 @@ kembali selama belum ada Scan sukses lain.
 
 Sesudah Anima pertama menetas, sheet **Create Your Seeker** meminta:
 
-- **Seeker Name** — wajib, unik, 3–16 karakter; mulai dengan huruf, lalu boleh
-  memakai huruf, angka, atau `_`.
+- **Seeker Name** — wajib, unik, dan tanpa spasi. Panjangnya 3–16 karakter;
+  mulai dengan huruf, lalu boleh memakai huruf, angka, atau `_`.
 - **Birth Year** — opsional, untuk pemain usia 13+.
 - **Gender** — opsional dan boleh dilewati.
 

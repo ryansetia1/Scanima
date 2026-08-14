@@ -73,7 +73,10 @@ Tombol menu 96px di Top HUD membuka `SeekerMenuSheet`: Profile, aksi
 Google/account linked, Reduced Motion, Help, dan Delete Account. Setelah hatch
 pertama, `SeekerOnboardingSheet` meminta nama unik; birth year dan gender
 opsional. Sheet boleh ditutup dan akan ditawarkan lagi selama `seeker_name`
-server masih null—tidak ada flag onboarding lokal yang bisa drift.
+server masih null—tidak ada flag onboarding lokal yang bisa drift. Nama yang
+tidak valid atau sudah dipakai menyalakan label + field merah dan pesan inline
+merah; edit berikutnya membersihkan state error lama. Preflight client memakai
+format server yang sama, jadi spasi tidak pernah dikirim sebagai nama Seeker.
 
 Pose Idle/Attack/Sleep/Defeated bukan navigation production. Alat itu tetap ada
 di `anima_demo.tscn`.
@@ -137,8 +140,17 @@ Komponen reusable tinggal di `scenes/ui/` dengan logic di `scripts/`:
   backdrop, focus aman, busy, Cancel, dan Reduced Motion.
 - `ResourceChip`: value/name plus action overlay opsional 96px, isinya ditengahkan
   di dalam target itu. Tidak menyimpan domain saldo atau navigation.
-- `UiBottomSheet`: backdrop, handle, panel, dismiss, dan slide. Domain Collection
-  tetap memegang selection revision, cache, dan care sync.
+- `UiBottomSheet`: backdrop, handle 96px, panel, dismiss, safe-area bawah, dan
+  slide. Surface `BottomSheetPanel` hanya membulatkan sudut atas; rhythm chrome
+  memakai 8px setelah handle dan 16px antar-konten. Sheet panjang mengaktifkan
+  `scroll_content`: body dibatasi maksimal 92% tinggi host lalu scroll mengikuti
+  focus, sehingga onboarding, menu Seeker, dan detail Collection tetap operable
+  di landscape atau saat keyboard terbuka. Hanya handle yang menerima drag
+  dismiss agar gesture header tidak berebut dengan scroll. Domain Collection
+  tetap memegang selection revision, cache, dan care sync. Shop dan Bag memakai
+  satu `ShopScroll` internal dengan viewport pilihan 560px agar lima row katalog
+  terbaca sekaligus; tinggi itu menyusut mengikuti cap 92% pada layar pendek,
+  sedangkan empty state menyembunyikan viewport agar sheet tetap ringkas.
 - `UiSkeleton`: pulse bounded tanpa `_process`; Reduced Motion memakai state statis.
 - `InfoValueRow`: label, value rata kanan pada kolom lebar tetap, lalu help redup
   96px paling akhir. Urutan itu yang membuat baris tetap sejajar walau value

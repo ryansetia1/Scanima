@@ -13,6 +13,7 @@ grow_vertical = 2
 mouse_filter = 0
 theme = ExtResource("2_theme")
 script = ExtResource("1_script")
+scroll_content = true
 
 [node name="Backdrop" type="ColorRect" parent="."]
 layout_mode = 1
@@ -22,7 +23,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.004, 0.008, 0.025, 0.78)
+color = Color(0.004, 0.008, 0.025, 0.68)
 
 [node name="DismissButton" type="Button" parent="."]
 layout_mode = 1
@@ -52,11 +53,11 @@ offset_top = -760.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 0
-theme_type_variation = &"ModalPanel"
+theme_type_variation = &"BottomSheetPanel"
 
 [node name="Column" type="VBoxContainer" parent="Bottom/Panel"]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 8
 
 [node name="HandleCenter" type="CenterContainer" parent="Bottom/Panel/Column"]
 custom_minimum_size = Vector2(0, 96)
@@ -72,7 +73,7 @@ color = Color(0.4, 0.5, 0.68, 0.72)
 [node name="ContentSlot" type="VBoxContainer" parent="Bottom/Panel/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 
 [node name="Title" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
 layout_mode = 2
@@ -86,6 +87,7 @@ text = "SEEKER_ONBOARDING_BODY"
 autowrap_mode = 2
 
 [node name="NameLabel" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"SectionLabel"
 text = "SEEKER_NAME_LABEL"
@@ -98,6 +100,7 @@ placeholder_text = "SEEKER_NAME_PLACEHOLDER"
 clear_button_enabled = true
 
 [node name="BirthLabel" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"SectionLabel"
 text = "SEEKER_BIRTH_YEAR_LABEL"
@@ -127,8 +130,9 @@ autowrap_mode = 2
 
 [node name="OnboardingFeedback" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
-theme_type_variation = &"MutedLabel"
+theme_type_variation = &"ErrorLabel"
 autowrap_mode = 2
 
 [node name="OnboardingSubmit" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
