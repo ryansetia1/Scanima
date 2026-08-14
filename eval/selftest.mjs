@@ -741,8 +741,26 @@ console.log("19. tidak ada kredensial mahal di sumber client Godot");
     new URL("../backend/supabase/functions/care_anima/index.ts", import.meta.url),
     "utf8"
   );
+  const authFlow = await readFile(new URL("../game/scripts/auth_flow.gd", import.meta.url), "utf8");
   const config = await readFile(new URL("../backend/supabase/config.toml", import.meta.url), "utf8");
   const careConfig = config.split("[functions.care_anima]")[1]?.split("\n[")[0] ?? "";
+  assert.ok(
+    config.includes('site_url = "scanima://auth/callback"'),
+    "Site URL Auth mobile harus kembali ke aplikasi, bukan localhost"
+  );
+  assert.ok(
+    config.includes('"scanima://auth/callback**"'),
+    "allow-list OAuth harus menerima query state acak pada callback aplikasi"
+  );
+  assert.ok(
+    !authFlow.includes("OAUTH_ALREADY_PENDING") &&
+      authFlow.includes("GameState.cancel_oauth()"),
+    "tap Sign in berikutnya harus mengganti intent OAuth yang browsernya tidak kembali"
+  );
+  assert.ok(
+    authFlow.includes('auth_failed.emit("OAUTH_UPGRADE_PENDING")'),
+    "link tidak boleh mengumumkan sukses kalau grant starter belum tersimpan"
+  );
   assert.ok(care.includes('ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon", "use_item"])'),
     "care_anima harus menerima summon dan use_item");
   assert.ok(!care.includes(".auth.getUser("), "care_anima tidak boleh mengembalikan round-trip getUser");

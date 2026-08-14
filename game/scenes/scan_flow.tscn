@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/scan_flow.gd" id="1_flow"]
 [ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
@@ -17,6 +17,10 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/shop_sheet.tscn" id="16_shop"]
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_pick_sheet.tscn" id="17_pick"]
 [ext_resource type="FontFile" path="res://assets/fonts/Oxanium-Variable.ttf" id="15_display"]
+[ext_resource type="PackedScene" path="res://scenes/ui/seeker_onboarding_sheet.tscn" id="18_onboarding"]
+[ext_resource type="PackedScene" path="res://scenes/ui/seeker_menu_sheet.tscn" id="19_seeker_menu"]
+[ext_resource type="PackedScene" path="res://scenes/ui/seeker_profile_view.tscn" id="20_seeker_profile"]
+[ext_resource type="Texture2D" path="res://assets/icons/menu.svg" id="21_menu_icon"]
 
 [sub_resource type="FontVariation" id="LevelUpBold"]
 base_font = ExtResource("15_display")
@@ -89,6 +93,14 @@ theme_type_variation = &"BrandLabel"
 text = "APP_NAME"
 vertical_alignment = 1
 
+[node name="SeekerMenuButton" type="Button" parent="UI/SafeMargin/Shell/TopHud/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+tooltip_text = "SEEKER_MENU_TITLE"
+icon = ExtResource("21_menu_icon")
+flat = true
+
 [node name="Resources" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row"]
 layout_mode = 2
 theme_override_constants/separation = 6
@@ -130,6 +142,10 @@ layout_mode = 1
 unique_name_in_owner = true
 layout_mode = 1
 
+[node name="SeekerProfileView" parent="UI/SafeMargin/Shell/ViewStack" instance=ExtResource("20_seeker_profile")]
+unique_name_in_owner = true
+layout_mode = 1
+
 [node name="BottomNav" parent="UI/SafeMargin/Shell" instance=ExtResource("10_nav")]
 unique_name_in_owner = true
 layout_mode = 2
@@ -138,6 +154,12 @@ layout_mode = 2
 unique_name_in_owner = true
 
 [node name="BattlePickSheet" parent="UI" instance=ExtResource("17_pick")]
+unique_name_in_owner = true
+
+[node name="SeekerMenuSheet" parent="UI" instance=ExtResource("19_seeker_menu")]
+unique_name_in_owner = true
+
+[node name="SeekerOnboardingSheet" parent="UI" instance=ExtResource("18_onboarding")]
 unique_name_in_owner = true
 
 [node name="ToastLayer" type="Control" parent="UI"]

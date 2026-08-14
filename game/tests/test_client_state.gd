@@ -24,20 +24,24 @@ extends SceneTree
 ## gagal dengan "Identifier not found" sebelum satu baris pun jalan.
 
 const PATH_UJI := "user://uji_state.json"
+const PATH_SECURE_UJI := "user://uji_secure_session.json"
 const DIR_UJI := "user://uji_animas"
 
 var _failures: PackedStringArray = []
 var _checks := 0
 var GameState: Node
+var SecureStore: Node
 var Backend: GDScript
 
 
 func _initialize() -> void:
 	GameState = get_root().get_node("GameState")
+	SecureStore = get_root().get_node("SecureStore")
 	# Script-nya, bukan node-nya: yang dipakai di sini fungsi statis dan konstanta.
 	Backend = get_root().get_node("Backend").get_script()
 	GameState.path_state = PATH_UJI
 	GameState.dir_animas = DIR_UJI
+	SecureStore.fallback_path = PATH_SECURE_UJI
 	_bersihkan()
 
 	_test_sesi_bertahan()
@@ -93,6 +97,8 @@ func _muat_ulang() -> void:
 func _bersihkan() -> void:
 	DirAccess.remove_absolute(PATH_UJI)
 	DirAccess.remove_absolute(PATH_UJI + ".tmp")
+	DirAccess.remove_absolute(PATH_SECURE_UJI)
+	DirAccess.remove_absolute(PATH_SECURE_UJI + ".tmp")
 	_hapus_folder(DIR_UJI)
 
 
@@ -121,6 +127,15 @@ func _test_sesi_bertahan() -> void:
 	_check_eq(GameState.session.get("access_token"), "akses-1", "access token harus kembali")
 	_check_eq(GameState.session.get("refresh_token"), "refresh-1", "refresh token harus kembali")
 	_check_eq(GameState.uid(), "uid-abc", "uid harus kembali")
+	_check(GameState.is_anonymous(), "flag guest harus bertahan bersama secure session")
+	var state_on_disk := FileAccess.get_file_as_string(PATH_UJI)
+	_check(
+		not state_on_disk.contains("akses-1") and not state_on_disk.contains("refresh-1"),
+		"state.json tidak boleh lagi memuat token"
+	)
+	GameState.set_reduced_motion(true)
+	_muat_ulang()
+	_check(GameState.reduced_motion(), "Reduced Motion harus bertahan restart")
 	# expires_at wajib int, bukan float: JSON tidak punya int dan pembandingan
 	# umur token memakai aritmetika bilangan bulat.
 	_check_eq(int(GameState.session.get("expires_at")), 1786600000, "expires_at harus utuh")
@@ -313,7 +328,11 @@ func _test_state_rusak() -> void:
 	file.close()
 
 	_muat_ulang()
-	_check(GameState.session.is_empty(), "state rusak harus menghasilkan sesi kosong, bukan crash")
+	_check_eq(
+		GameState.uid(),
+		"uid-abc",
+		"state non-sensitif rusak tidak boleh menghalangi sesi dari SecureStore"
+	)
 	# Filenya sengaja dibiarkan: masih ada kemungkinan diselamatkan manual, dan
 	# menimpanya menutup kemungkinan itu untuk selamanya.
 	_check(FileAccess.file_exists(PATH_UJI), "file yang rusak tidak boleh dihapus otomatis")

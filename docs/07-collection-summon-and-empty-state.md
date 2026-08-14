@@ -10,7 +10,9 @@ Status: diimplementasikan dan diverifikasi 13 Agustus 2026.
 - Bottom sheet menampilkan base stats dan care stats authoritative.
 - Pemain tanpa Anima mendapat Home empty state dengan CTA scan yang jelas.
 - Loading, roster error, dan roster kosong harus menjadi tiga state berbeda.
-- Tidak ada tutorial carousel atau onboarding flag baru.
+- Tidak ada tutorial carousel atau onboarding flag lokal baru untuk Collection.
+  Onboarding identitas Seeker adalah sheet terpisah sesudah hatch pertama dan
+  memakai `seeker_name is null` dari server sebagai satu-satunya status.
 
 ## Asumsi non-fungsional
 
@@ -83,6 +85,9 @@ State Empty menampilkan visual scanner/orb procedural yang tenang, headline
 `Awaken Your First Anima`, satu kalimat penjelasan, dan CTA 96px
 `Scan Your First Object`. CTA hanya membuka tab Scan; kamera tetap dibuka oleh
 aksi eksplisit di layar Scan agar permission request memiliki konteks.
+Setelah satu Scan guest sukses, CTA utama di tab Scan berubah menjadi
+`Sign in to Scan Again`; Home/Collection dan Anima yang sudah lahir tetap dapat
+dipakai.
 
 Care Dock tetap tersembunyi, Profile disabled, sedangkan resource HUD dan bottom
 navigation tetap terlihat. Collection kosong memakai versi ringkas dengan CTA
@@ -119,3 +124,5 @@ sehingga tidak diperlukan flag first-launch.
 - Care freshness: sync satu kali saat Anima dipilih.
 - Transisi: dissolve companion lama, portal, lalu reveal companion baru.
 - First-time UX: contextual Home empty state, bukan redirect atau tutorial.
+- Identitas Seeker dibuat sesudah Anima pertama ada, sehingga nama Seeker tidak
+  menjadi login gate dan tidak tercampur dengan nickname Anima.

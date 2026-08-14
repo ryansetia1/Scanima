@@ -106,12 +106,14 @@ sequenceDiagram
 
 | Komponen | Tanggung jawab | Yang **tidak** boleh dilakukan |
 | --- | --- | --- |
-| Godot client | Ambil foto, resize, upload, polling, cache lokal, render | Simpan API key, tentukan kuota, proses piksel |
+| Godot client | Ambil foto, resize, upload, polling, cache lokal, render; Google PKCE/deep link | Simpan API key, tentukan kuota, proses piksel |
 | `create_anima` | Vision, cek pustaka, lalu klaim Core hanya bila spesies baru | Menunggu gambar selesai (harus balik cepat) |
 | `replicate_webhook` | Post-processing gambar, isi cache, tandai ready | Dipercaya tanpa verifikasi signature |
 | `care_anima` | Verifikasi JWT, teruskan aksi care idempoten ke transaksi Postgres | Menerima `owner_id` dari client atau memanggil model |
 | `battle_anima` | Start/resume/turn/forfeit; hitung formula; commit session | Menerima HP baru atau klaim kemenangan dari client |
 | `shop` | Verifikasi JWT, debit Bits, upsert inventory, replay receipt | Dipanggil lewat RPC `purchase_catalog_item` dari client |
+| `seeker` | Profil Seeker, grant upgrade Google, dan hapus akun | Menerima `owner_id` dari body atau menggabungkan dua akun |
+| `SecureStore` + `AuthFlow` | Token Keystore/Keychain, backup guest, link/restore OAuth | Menulis refresh token ke `state.json` atau mengganti sesi sebelum exchange valid |
 | `evolve_anima` | Generation stage berikutnya pakai sprite lama sebagai input | Dipanggil tanpa cek syarat evolusi di server |
 | Postgres | Sumber kebenaran untuk kuota, stat, kepemilikan | Menyimpan foto mentah |
 | Storage | Foto sementara, sheet RGBA, manifest | Menyimpan foto lebih dari 24 jam |
@@ -129,8 +131,15 @@ create table profiles (
   display_name   text,
   scan_charges   int  not null default 8,
   scan_charge_max int not null default 8,
-  genesis_cores  int  not null default 3,        -- 3 gratis saat onboarding
-  bits           int  not null default 30,       -- starter care pack
+  genesis_cores  int  not null default 1,        -- Guest Seeker
+  bits           int  not null default 50,       -- starter care pack
+  seeker_name    text,                            -- unik case-insensitive
+  birth_year     smallint,                        -- opsional, 13+
+  gender         text,                            -- opsional
+  seeker_xp      int not null default 0,
+  guest_scan_used_at timestamptz,                 -- satu Scan sukses saat anonim
+  account_upgraded_at timestamptz,                -- grant Google idempoten
+  battle_victories int not null default 0,
   next_refill_at timestamptz,
   byok_enabled   bool not null default false,
   timezone_offset_minutes int not null default 0, -- menit timur UTC; bukan jam device
@@ -400,6 +409,8 @@ declare
   v_gen   public.generations;
   v_anima public.animas;
   v_cores int;
+  v_guest_used timestamptz;
+  v_is_anonymous boolean;
 begin
   -- Idempotency: request yang sama dua kali balikkan baris yang sama.
   -- Inilah yang membuat retry jaringan tidak pernah berarti double charge.
@@ -409,15 +420,24 @@ begin
     return jsonb_build_object('generation_id', v_gen.id, 'anima_id', v_gen.anima_id);
   end if;
 
-  -- Lock baris profil, cegah race antar request paralel
-  select genesis_cores into v_cores from public.profiles where id = p_owner for update;
+  -- Lock profil sekaligus baca status anonim + slot guest.
+  select p.genesis_cores, p.guest_scan_used_at, coalesce(u.is_anonymous, false)
+    into v_cores, v_guest_used, v_is_anonymous
+    from public.profiles p join auth.users u on u.id = p.id
+   where p.id = p_owner for update of p;
+  if v_is_anonymous and v_guest_used is not null then
+    raise exception 'GUEST_SCAN_USED';
+  end if;
   if v_cores <= 0 then raise exception 'NO_CORE'; end if;
 
   -- Cap biaya harian diperiksa di sini, bukan di Edge Function: lock-nya sudah
   -- dipegang, jadi pemeriksaan dan debitnya satu transaksi.
   -- (... baca app_config.daily_spend_cap_usd, raise SPEND_CAP kalau tembus ...)
 
-  update public.profiles set genesis_cores = genesis_cores - 1 where id = p_owner;
+  update public.profiles
+     set genesis_cores = genesis_cores - 1,
+         guest_scan_used_at = case when v_is_anonymous then now() else guest_scan_used_at end
+   where id = p_owner;
 
   insert into public.animas (owner_id, nickname, species_key, color_bucket, stage,
                              status, element, rarity, base_stats, care)
@@ -445,13 +465,15 @@ disatukan: kalau fungsi mati di antara dua panggilan, pemain kehilangan satu Cor
 tanpa mendapat apa pun, dan tidak ada pemeriksaan yang bisa membedakan keadaan itu
 dari generation sah yang sedang menunggu. Kembarannya untuk jalur gratis,
 `record_cache_hit(...)`, menyatukan hal yang setara: baris `animas` berstatus
-`ready`, baris `generations` berbiaya nol, dan kenaikan `times_reused`.
+`ready`, baris `generations` berbiaya nol, kenaikan `times_reused`, dan reservasi
+slot guest bila owner masih anonim. Karena profile row dikunci, cache hit dan
+Genesis paralel tidak bisa sama-sama memakai satu kesempatan guest.
 
-Fungsi kembarnya, `refund_generation(p_gen_id, p_reason)`, mengembalikan Core, menulis ledger, dan menandai status. Dipanggil pada dua kondisi: kegagalan atau pembatalan dari Replicate, dan timeout keras.
+Fungsi kembarnya, `refund_generation(p_gen_id, p_reason)`, mengembalikan Core, menulis ledger, menandai status, dan melepaskan slot guest bila tidak ada Scan sukses/pending lain. Dipanggil pada dua kondisi: kegagalan atau pembatalan dari Replicate, dan timeout keras.
 
-Perhatikan bahwa cache hit **tidak** butuh refund, karena Core tidak pernah didebit untuk Discovery Scan — pengecekan pustaka terjadi sebelum `claim_genesis` dipanggil. Ini alasan urutan langkah di bawah tidak boleh ditukar: memeriksa lebih dulu lalu menagih menghasilkan lebih sedikit jalur refund, dan setiap jalur refund adalah tempat uang bisa hilang tanpa jejak.
+Perhatikan bahwa cache hit **tidak** butuh refund, karena Core tidak pernah didebit untuk Discovery Scan. Cache hit tetap menghabiskan satu kesempatan Scan guest karena Anima benar-benar sudah lahir. Ini alasan urutan langkah di bawah tidak boleh ditukar: memeriksa lebih dulu lalu menagih menghasilkan lebih sedikit jalur refund, dan setiap jalur refund adalah tempat uang bisa hilang tanpa jejak.
 
-Scan Charge memakai fungsi terpisah `claim_scan_charge(p_owner)` dengan pola lock yang sama. Ia lebih longgar (nilainya $0.003) tapi tetap harus atomik, sebab tanpa pagar itu satu klien yang rusak bisa memanggil Vision beribu kali — dan pada harga ini seribu panggilan liar sudah $3, bukan $0,30.
+Scan Charge memakai fungsi terpisah `claim_scan_charge(p_owner)` dengan pola lock yang sama. Selain saldo, fungsi ini menolak Guest Seeker yang `guest_scan_used_at`-nya sudah terisi **sebelum** Vision dipanggil; guard cache/Genesis tetap memeriksa ulang saat commit untuk menutup request paralel. Ia lebih longgar (nilainya $0.003) tapi tetap harus atomik, sebab tanpa pagar itu satu klien yang rusak bisa memanggil Vision beribu kali — dan pada harga ini seribu panggilan liar sudah $3, bukan $0,30.
 
 ## 5. Kontrak Edge Function
 
@@ -485,9 +507,10 @@ membacanya adalah Edge Function lewat signed URL service role, dan yang
 menghapusnya adalah server begitu post-processing selesai. Menambahkan SELECT
 berarti memberi jalan membaca foto yang seharusnya sudah lenyap.
 
-Identitas yang dipakai policy ini datang dari **sign-in anonim**, dan itu mati
+Identitas yang dipakai policy ini mula-mula datang dari **sign-in anonim**, dan itu mati
 secara default di project Supabase baru — `POST /auth/v1/signup` menjawab
-`anonymous_provider_disabled`. Karena Scanima tidak punya layar login, setelan itu
+`anonymous_provider_disabled`. Scanima tidak punya login gate di awal; Google
+ditawarkan sebagai upgrade setelah pemain punya progres. Karena itu provider anonim
 adalah prasyarat, bukan opsi: tanpa ia menyala, app gagal di detik pertama, di
 jalur yang tidak memanggil API sama sekali. Ia dideklarasikan di
 `backend/supabase/config.toml` supaya tidak hanya hidup sebagai sakelar dashboard.
@@ -529,6 +552,9 @@ dibandingkan dengan uid), dan field-nya bernama `nickname`, bukan
 // 402 — spesies baru tapi Core habis. Hasil Vision sudah dibayar, jadi disimpan
 { "error": "NO_CORE", "pending": true, "vision": { } }
 
+// 409 — Guest Seeker sudah menyelesaikan satu Scan; ditolak sebelum debit/Vision
+{ "error": "GUEST_SCAN_USED" }
+
 // 403 photo_path di luar folder sendiri · 400 idempotency_key hilang
 // 404 foto tidak ada · 502 Vision gagal atau tak bisa diparse (charge direfund)
 // 503 SPEND_CAP harian tercapai
@@ -542,11 +568,30 @@ Fungsi ini **harus** balik dalam beberapa detik. Ia tidak menunggu gambar selesa
 3. `claim_scan_charge(owner_id)` — pagar murah sebelum memanggil Vision. Kalau habis, balik 402 tanpa efek samping.
 4. Panggil Vision LLM. Kalau gate-nya menolak (wajah, tidak aman, bukan objek), refund Scan Charge, hapus fotonya, balik 200 dengan `gate: "rejected"` — penolakan yang wajar bukan galat, dan client menampilkannya sebagai saran, bukan error.
 5. Normalisasi `species_key` terhadap entri yang sudah ada (Levenshtein ≤ 2) supaya typo tidak memecah cache.
-6. Cari `species_library` untuk `(species_key, color_bucket, stage=1)`. **Ada** → Discovery Scan: `record_cache_hit(...)` membuat `animas` status `ready`, mencatat generation berbiaya nol, dan menaikkan `times_reused` dalam satu transaksi. Balik 200. Tidak ada Core yang tersentuh.
-7. **Tidak ada** → Genesis. `claim_genesis(...)`; kalau `NO_CORE`, simpan `pending_discoveries` (hasil Vision jangan dibuang, biayanya sudah keluar) dan balik 402 dengan `pending: true`. Kalau `SPEND_CAP`, balik 503.
+6. Cari `species_library` untuk `(species_key, color_bucket, stage=1)`. **Ada** → Discovery Scan: `record_cache_hit(...)` membuat `animas` status `ready`, mencatat generation berbiaya nol, menaikkan `times_reused`, dan memakai slot guest dalam satu transaksi. Balik 200. Tidak ada Core yang tersentuh.
+7. **Tidak ada** → Genesis. `claim_genesis(...)` memakai slot guest dan mendebit Core secara atomik. Kalau `GUEST_SCAN_USED`, refund Scan Charge dan balik 409. Kalau `NO_CORE`, simpan `pending_discoveries` (hasil Vision jangan dibuang, biayanya sudah keluar) dan balik 402 dengan `pending: true`. Kalau `SPEND_CAP`, balik 503.
 8. `POST` ke Replicate dengan `webhook` + `webhook_events_filter: ["completed"]`, simpan `prediction_id`, balik 202.
 
 Urutan langkah 6 sebelum 7 adalah inti kontrol biaya seluruh sistem, dan bukan sekadar optimasi: ia yang memisahkan aksi $0.003 dari aksi ~$0.07 sehingga keduanya bisa diberi harga berbeda kepada pemain. Alasan desain lengkapnya di [04](04-game-systems-economy.md).
+
+### `POST /seeker`
+
+Endpoint JWT-protected ini menjadi satu boundary untuk operasi `profile`,
+`complete`, `rename`, `upgrade`, dan `delete_account`. Owner selalu diambil dari
+klaim JWT. Nama Seeker wajib unik case-insensitive; rename memiliki cooldown 30
+hari. `upgrade` hanya berhasil sesudah user non-anonim memiliki identity Google,
+lalu melengkapi grant starter lifetime dari 1 menjadi 3 Core dengan ledger unik
+(`starter_guest` + `starter_google`). Akun lama diberi marker `starter_legacy`
+tanpa mengubah saldo agar tidak menerima bonus kedua.
+
+Client menautkan Google melalui PKCE dan `scanima://auth/callback`. Link wajib
+mempertahankan UID guest. Bila Google sudah dimiliki akun lain, pemain melihat
+peringatan sebelum restore; akun Google menang dan intent/cache pilihan guest
+lokal dibuang tanpa merge. Refresh token tidak pernah masuk `state.json`.
+Callback membawa `?state=<acak>`, sehingga URL Configuration production memakai
+Site URL `scanima://auth/callback` dan allow-list `scanima://auth/callback**`.
+Exact callback tanpa globstar ditolak ketika query state hadir dan GoTrue jatuh
+ke Site URL default—biasanya localhost—meskipun login Google sudah berhasil.
 
 ### `POST /replicate_webhook`
 

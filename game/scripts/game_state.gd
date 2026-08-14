@@ -2,11 +2,9 @@ extends Node
 
 ## Satu-satunya pemilik state yang bertahan antar sesi aplikasi.
 ##
-## Yang disimpan hanya hal yang tidak aman direkonstruksi: sesi pemain, scan
-## berbayar yang berjalan, satu aksi care, dan satu turn Battle yang belum
-## terkonfirmasi. Saldo, kebutuhan, dan daftar Anima sengaja TIDAK disimpan,
-## karena server yang berwenang dan salinan lokal hanya menambah satu sumber
-## kebenaran yang salah.
+## Yang disimpan di JSON hanya UID, preference, dan intent yang tidak aman
+## direkonstruksi. Token hidup di SecureStore (Keystore/Keychain), sedangkan
+## saldo, kebutuhan, dan roster selalu dibaca ulang dari server.
 ##
 ## Sesi adalah satu-satunya bukti kepemilikan akun. Pemain anonim tidak punya
 ## email maupun password, jadi file ini hilang atau rusak sama dengan kehilangan
@@ -17,7 +15,7 @@ extends Node
 var path_state: String = "user://state.json"
 var dir_animas: String = "user://animas"
 
-## {access_token, refresh_token, expires_at, uid}
+## Runtime saja: {access_token, refresh_token, expires_at, uid, is_anonymous}.
 var session: Dictionary = {}
 
 ## {idempotency_key, photo_path, generation_id, anima_id}. Lihat begin_scan().
@@ -34,6 +32,13 @@ var pending_battle: Dictionary = {}
 
 ## {idempotency_key, item_id, expected_price}. Satu pembelian menggantung.
 var pending_purchase: Dictionary = {}
+
+## {mode, state, code_verifier, started_at}. Sesi guest tetap aktif sampai
+## exchange berhasil, dan backup token disimpan terpisah di SecureStore.
+var pending_oauth: Dictionary = {}
+
+## Preference lokal yang aman dipersist, saat ini hanya Reduced Motion.
+var preferences: Dictionary = {"reduced_motion": false}
 
 ## Anima terakhir yang berhasil dimuat, supaya app bisa langsung menampilkannya
 ## saat dibuka lagi tanpa menunggu jaringan sama sekali.
@@ -52,33 +57,50 @@ func uid() -> String:
 
 
 func load_state() -> void:
-	if not FileAccess.file_exists(path_state):
-		return
-	# JSON.new().parse(), bukan JSON.parse_string(): yang kedua mencetak galat
-	# parser engine ke log setiap kali file rusak, dan pesan "Unterminated string"
-	# dari kedalaman engine hanya menutupi pesan kita yang berguna.
-	var parsed: Variant = parse_json(FileAccess.get_file_as_string(path_state))
-	if typeof(parsed) != TYPE_DICTIONARY:
-		# Sengaja tidak menghapus filenya. State yang tidak terbaca mungkin masih
-		# bisa diselamatkan manual, dan menimpanya menutup kemungkinan itu.
-		push_error("state tidak terbaca, diabaikan: %s" % path_state)
-		return
-	var data: Dictionary = parsed
-	session = as_dict(data.get("session"))
+	var data: Dictionary = {}
+	if FileAccess.file_exists(path_state):
+		# JSON.new().parse(), bukan JSON.parse_string(): yang kedua mencetak galat
+		# parser engine ke log setiap kali file rusak.
+		var parsed: Variant = parse_json(FileAccess.get_file_as_string(path_state))
+		if typeof(parsed) != TYPE_DICTIONARY:
+			# Jangan hapus file rusak: ia mungkin masih dapat dipulihkan manual.
+			push_error("state tidak terbaca, diabaikan: %s" % path_state)
+		else:
+			data = parsed
 	pending_scan = as_dict(data.get("pending_scan"))
 	pending_care = as_dict(data.get("pending_care"))
 	pending_battle = as_dict(data.get("pending_battle"))
 	pending_purchase = as_dict(data.get("pending_purchase"))
+	pending_oauth = as_dict(data.get("pending_oauth"))
+	preferences.merge(as_dict(data.get("preferences")), true)
 	last_anima = as_dict(data.get("last_anima"))
+
+	var legacy_session := as_dict(data.get("session"))
+	var store := _secure_store()
+	var stored: Dictionary = store.load_session() if store != null else {}
+	if not stored.is_empty():
+		session = stored
+	elif legacy_session.has("access_token"):
+		# Migrasi satu kali dari build lama. save() berikutnya menghapus token dari
+		# state.json setelah blob aman berhasil ditulis.
+		if store != null and store.save_session(legacy_session):
+			session = legacy_session
+			save()
+		elif not OS.has_feature("android") and not OS.has_feature("ios"):
+			session = legacy_session
+	else:
+		session = legacy_session
 
 
 func save() -> void:
 	var payload := {
-		"session": session,
+		"session": {"uid": uid()} if not uid().is_empty() else {},
 		"pending_scan": pending_scan,
 		"pending_care": pending_care,
 		"pending_battle": pending_battle,
 		"pending_purchase": pending_purchase,
+		"pending_oauth": pending_oauth,
+		"preferences": preferences,
 		"last_anima": last_anima,
 	}
 	var tmp := path_state + ".tmp"
@@ -97,14 +119,113 @@ func save() -> void:
 		push_error("gagal memindahkan state sementara: %s" % error_string(err))
 
 
-func set_session(access_token: String, refresh_token: String, expires_at: int, user_id: String) -> void:
-	session = {
+func set_session(
+	access_token: String,
+	refresh_token: String,
+	expires_at: int,
+	user_id: String,
+	anonymous: bool = true
+) -> bool:
+	var new_session := {
 		"access_token": access_token,
 		"refresh_token": refresh_token,
 		"expires_at": expires_at,
 		"uid": user_id,
+		"is_anonymous": anonymous,
+	}
+	var store := _secure_store()
+	if store == null or not store.save_session(new_session):
+		push_error("sesi tidak bisa ditulis ke SecureStore")
+		return false
+	session = new_session
+	save()
+	return true
+
+
+func is_anonymous() -> bool:
+	return bool(session.get("is_anonymous", true))
+
+
+func begin_oauth(mode: String, state: String, code_verifier: String) -> void:
+	var store := _secure_store()
+	if store != null:
+		store.backup_session(session)
+	pending_oauth = {
+		"mode": mode,
+		"state": state,
+		"code_verifier": code_verifier,
+		"started_at": int(Time.get_unix_time_from_system()),
 	}
 	save()
+
+
+func finish_oauth() -> void:
+	pending_oauth = {}
+	var store := _secure_store()
+	if store != null:
+		store.clear_backup()
+	save()
+
+
+func cancel_oauth(restore_backup: bool = false) -> void:
+	var store := _secure_store()
+	if restore_backup and store != null:
+		var backup: Dictionary = store.load_backup()
+		if not backup.is_empty():
+			session = backup
+			store.save_session(session)
+	pending_oauth = {}
+	if store != null:
+		store.clear_backup()
+	save()
+
+
+func clear_account_state() -> void:
+	session = {}
+	pending_scan = {}
+	pending_care = {}
+	pending_battle = {}
+	pending_purchase = {}
+	pending_oauth = {}
+	last_anima = {}
+	profile = {}
+	var store := _secure_store()
+	if store != null:
+		store.clear_session()
+		store.clear_backup()
+	save()
+
+
+func discard_guest_local_state() -> void:
+	# Restore akun yang sudah ada tidak menggabungkan intent atau pilihan guest
+	# dari instalasi ini. Preference device tetap dipertahankan.
+	pending_scan = {}
+	pending_care = {}
+	pending_battle = {}
+	pending_purchase = {}
+	last_anima = {}
+	profile = {}
+	save()
+
+
+func set_reduced_motion(enabled: bool) -> void:
+	preferences["reduced_motion"] = enabled
+	save()
+
+
+func reduced_motion() -> bool:
+	return bool(preferences.get("reduced_motion", false))
+
+
+func _secure_store() -> Node:
+	# --script dikompilasi sebelum autoload resmi masuk tree, tetapi node sibling
+	# sudah dipasang di root. get_parent() menjaga test dan startup frame pertama
+	# tetap memakai secure store tanpa bergantung pada SceneTree node ini.
+	var parent := get_parent()
+	if parent != null:
+		return parent.get_node_or_null("SecureStore")
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.root.get_node_or_null("SecureStore") if tree != null else null
 
 
 ## Kunci idempotency dibuat SEKALI per scan dan bertahan sampai scan itu selesai,

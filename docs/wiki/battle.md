@@ -22,11 +22,18 @@ Tiga kemenangan pertama per hari (reset **tengah malam waktu setempat**) adalah 
 
 - Bits menurut kekuatan lawan (kira-kira 5–16)
 - **+4 EXP**
-- +1 kemenangan tercatat
+- +1 kemenangan progression pada Anima
 
 Layar lobby menulis tier lawan (Favorable / Even / Tough / Formidable) dan Bits yang akan didapat, plus **Progress x/3** dan **Bits x/100**.
 
-Sesudah 3/3, tombol yang sama jadi **Train**. Duelnya sama; EXP dan kemenangan tercatat berhenti, tetapi **Bits masih dibayar** sampai cap **100 Bits per hari**. Sesudah 100/100, Training nol hadiah. Core tidak pernah didapat dari sini.
+Sesudah 3/3, tombol yang sama jadi **Train**. Duelnya sama; EXP dan kemenangan
+progression Anima berhenti, tetapi **Bits masih dibayar** sampai cap **100 Bits
+per hari**. Sesudah 100/100, Training nol hadiah. Core tidak pernah didapat dari
+sini.
+
+Stat **Enemies Defeated** di [Seeker Profile](seeker.md) menghitung semua duel
+menang, termasuk Train. Itu berbeda dari **Progress x/3**, yang hanya menentukan
+hadiah EXP harian.
 
 Kalah atau **Forfeit** juga nol hadiah. **Forfeit** ada di pojok kanan atas arena. Shop dan Bag hanya ada di Home, jadi arena tetap bersih.
 

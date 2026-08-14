@@ -46,7 +46,10 @@ func _initialize() -> void:
 	)
 
 	_check_full_rect(scene.find_child("SafeMargin", true, false) as Control, "safe margin")
-	for name in ["HomeView", "ScanView", "BattleView", "CollectionView", "AnimaDetailsView"]:
+	for name in [
+		"HomeView", "ScanView", "BattleView", "CollectionView",
+		"AnimaDetailsView", "SeekerProfileView",
+	]:
 		var view := scene.find_child(name, true, false) as Control
 		_check(view != null, "%s must exist" % name)
 		if view != null:
@@ -57,11 +60,13 @@ func _initialize() -> void:
 	var battle := scene.find_child("BattleView", true, false) as Control
 	var collection := scene.find_child("CollectionView", true, false) as Control
 	var details := scene.find_child("AnimaDetailsView", true, false) as Control
+	var seeker_profile := scene.find_child("SeekerProfileView", true, false) as Control
 	_check(home != null and home.visible, "Home is the default destination")
 	_check(scan != null and not scan.visible, "Scan starts hidden")
 	_check(battle != null and not battle.visible, "Battle starts hidden")
 	_check(collection != null and not collection.visible, "Collection starts hidden")
 	_check(details != null and not details.visible, "Details starts hidden")
+	_check(seeker_profile != null and not seeker_profile.visible, "Seeker profile starts hidden")
 
 	for name in [
 		"ScanButton", "HomeNavButton", "ScanNavButton", "BattleNavButton",
@@ -72,6 +77,8 @@ func _initialize() -> void:
 		"CollectionSummonButton", "BattlePickProfileButton", "BattlePickBattleButton",
 		"BattleStartButton", "BattleStrikeButton",
 		"BattleSurgeButton", "BattleGuardButton", "BattleItemButton", "BattleForfeitButton", "BattleRetryButton",
+		"SeekerMenuButton", "OnboardingSubmit", "SeekerProfileBack", "RenameSeeker",
+		"SeekerProfile", "SeekerAccount", "SeekerHelp", "DeleteAccount",
 	]:
 		var button := scene.find_child(name, true, false) as Button
 		_check(button != null, "%s must exist" % name)
@@ -377,6 +384,7 @@ func _initialize() -> void:
 	await _test_anima_tap_reactions()
 	await _test_shared_components()
 	await _test_scan_phase_visuals()
+	await _test_seeker_ui()
 	await _test_battle_view()
 	await _test_battle_pick_sheet()
 	await _test_collection_bottom_sheet()
@@ -767,8 +775,114 @@ func _test_scan_phase_visuals() -> void:
 		and hint.text == tr("SCAN_CAMERA_HINT"),
 		"a remaining Core restores the Scan CTA"
 	)
+	var sign_in_requests: Array[String] = []
+	view.sign_in_requested.connect(func() -> void: sign_in_requests.append("sign_in"))
+	view.set_sign_in_required(true)
+	_check(
+		scan_button.text == tr("SCAN_SIGN_IN_ACTION")
+		and hint.text == tr("SCAN_SIGN_IN_HINT")
+		and not scan_button.disabled,
+		"used guest Scan becomes an active Google sign-in CTA"
+	)
+	scan_button.pressed.emit()
+	_check_eq(sign_in_requests.size(), 1, "guest Scan CTA requests sign-in instead of camera")
 
 	view.queue_free()
+	await process_frame
+	UiMotion.set_reduced_motion(false)
+
+
+func _test_seeker_ui() -> void:
+	UiMotion.set_reduced_motion(true)
+	var flow_script := load("res://scripts/scan_flow.gd") as GDScript
+	_check(
+		not flow_script.profile_value_present({"guest_scan_used_at": null}, &"guest_scan_used_at"),
+		"database null must not lock a fresh guest Scan"
+	)
+	_check(
+		not flow_script.profile_value_present({"seeker_name": null}, &"seeker_name"),
+		"database null must leave Seeker onboarding incomplete"
+	)
+	_check(
+		not flow_script.profile_value_present({"account_upgraded_at": null}, &"account_upgraded_at"),
+		"database null must keep the idempotent Google grant retry enabled"
+	)
+	var onboarding = (
+		load("res://scenes/ui/seeker_onboarding_sheet.tscn") as PackedScene
+	).instantiate()
+	root.add_child(onboarding)
+	await process_frame
+	var submitted: Array[Dictionary] = []
+	onboarding.submit_requested.connect(
+		func(name: String, birth_year: Variant, gender: Variant) -> void:
+			submitted.append({"name": name, "birth_year": birth_year, "gender": gender})
+	)
+	onboarding.show_for_profile()
+	(onboarding.find_child("SeekerName", true, false) as LineEdit).text = "Nova_13"
+	(onboarding.find_child("BirthYear", true, false) as LineEdit).text = "2000"
+	(onboarding.find_child("Gender", true, false) as OptionButton).select(2)
+	(onboarding.find_child("OnboardingSubmit", true, false) as Button).pressed.emit()
+	_check_eq(submitted.size(), 1, "Seeker onboarding emits one normalized submission")
+	if not submitted.is_empty():
+		_check_eq(submitted[0].name, "Nova_13", "Seeker name reaches the server boundary")
+		_check_eq(submitted[0].birth_year, 2000, "optional birth year remains numeric")
+		_check_eq(submitted[0].gender, "man", "optional gender uses the server enum")
+
+	var menu = (load("res://scenes/ui/seeker_menu_sheet.tscn") as PackedScene).instantiate()
+	root.add_child(menu)
+	await process_frame
+	menu.show_menu({"seeker_name": "Nova_13"}, true, true)
+	_check(
+		(menu.find_child("SeekerMenuTitle", true, false) as Label).text == "Nova_13",
+		"Seeker menu shows the current Seeker name"
+	)
+	_check(
+		(menu.find_child("SeekerAccount", true, false) as Button).text
+			== tr("SEEKER_SIGN_IN_GOOGLE"),
+		"guest account action offers Google sign-in"
+	)
+	_check(
+		(menu.find_child("ReducedMotion", true, false) as CheckButton).button_pressed,
+		"Reduced Motion preference is reflected in Settings"
+	)
+	_check(
+		(menu.find_child("DeleteAccount", true, false) as Button).visible,
+		"guest can delete the anonymous account and its data"
+	)
+	menu.show_menu({"seeker_name": null}, true, false)
+	_check(
+		(menu.find_child("SeekerMenuTitle", true, false) as Label).text
+			== tr("SEEKER_MENU_TITLE"),
+		"guest menu never renders a null wire value"
+	)
+
+	var profile = (load("res://scenes/ui/seeker_profile_view.tscn") as PackedScene).instantiate()
+	root.add_child(profile)
+	await process_frame
+	profile.set_profile({
+		"seeker_name": "Nova_13",
+		"seeker_xp": 20,
+		"anima_count": 2,
+		"species_count": 2,
+		"battle_victories": 4,
+		"created_at": "2026-08-14T00:00:00Z",
+	}, null)
+	var rows := profile.find_child("SeekerRows", true, false) as VBoxContainer
+	_check_eq(rows.get_child_count(), 6, "Seeker profile shows six server-authoritative stats")
+	_check(
+		(profile.find_child("SeekerProfileName", true, false) as Label).text == "Nova_13",
+		"Seeker profile shows the unique name"
+	)
+	profile.set_profile({"seeker_name": null}, null)
+	_check(
+		(profile.find_child("SeekerProfileName", true, false) as Label).text
+			== tr("SEEKER_UNNAMED"),
+		"incomplete profile never renders a null wire value"
+	)
+
+	onboarding.queue_free()
+	menu.queue_free()
+	profile.queue_free()
 	await process_frame
 	UiMotion.set_reduced_motion(false)
 

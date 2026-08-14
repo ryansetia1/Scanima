@@ -2,6 +2,9 @@
 
 Anima punya tiga kebutuhan, masing-masing 0–100. Semuanya pelan-pelan turun selama waktu berjalan, termasuk saat app ditutup.
 
+Kalau gerakan terasa terlalu ramai, aktifkan **Reduced Motion** dari menu
+[Seeker](seeker.md). Informasi dan tombol tetap ada; animasinya yang dikurangi.
+
 | Kebutuhan | Artinya | Turun kira-kira | Dipulihkan oleh |
 | --- | --- | --- | --- |
 | **Hunger** | Lapar | Habis dalam ~10 jam | **Feed** |

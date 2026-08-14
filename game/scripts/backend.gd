@@ -100,7 +100,14 @@ func _store_session(data: Variant) -> Dictionary:
 		return {"ok": false, "code": 0, "data": data, "error": "balasan auth tidak lengkap"}
 
 	var umur := int(body.get("expires_in", 3600))
-	GameState.set_session(access, refresh, int(Time.get_unix_time_from_system()) + umur, user_id)
+	if not GameState.set_session(
+		access,
+		refresh,
+		int(Time.get_unix_time_from_system()) + umur,
+		user_id,
+		bool(user.get("is_anonymous", false))
+	):
+		return {"ok": false, "code": 0, "data": data, "error": "secure session storage unavailable"}
 	return {"ok": true, "code": 200, "data": data, "error": ""}
 
 
@@ -119,7 +126,11 @@ func get_rest(path_and_query: String) -> Dictionary:
 
 
 func fetch_profile() -> Dictionary:
-	var res := await get_rest("profiles?select=scan_charges,genesis_cores,bits,active_anima_id")
+	var res := await get_rest(
+		"profiles?select=scan_charges,genesis_cores,bits,active_anima_id,"
+		+ "seeker_name,seeker_name_changed_at,seeker_xp,guest_scan_used_at,"
+		+ "account_upgraded_at,battle_victories,birth_year,gender,created_at"
+	)
 	if res.ok and typeof(res.data) == TYPE_ARRAY and (res.data as Array).size() > 0:
 		GameState.profile = GameState.as_dict((res.data as Array)[0])
 	return res
@@ -277,6 +288,63 @@ func battle_anima(operation: String, payload: Dictionary = {}) -> Dictionary:
 		JSON.stringify(body).to_utf8_buffer(),
 		TIMEOUT_SEC
 	)
+
+
+func seeker(operation: String, payload: Dictionary = {}) -> Dictionary:
+	var body := payload.duplicate(true)
+	body["operation"] = operation
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/functions/v1/seeker",
+		_headers(true, ["content-type: application/json"]),
+		JSON.stringify(body).to_utf8_buffer(),
+		TIMEOUT_SEC
+	)
+
+
+func oauth_authorize(link_identity: bool, redirect_to: String, code_challenge: String) -> Dictionary:
+	var endpoint := "/auth/v1/user/identities/authorize" if link_identity else "/auth/v1/authorize"
+	var query := (
+		"?provider=google"
+		+ "&redirect_to=" + redirect_to.uri_encode()
+		+ "&scopes=" + "openid email profile".uri_encode()
+		+ "&code_challenge=" + code_challenge.uri_encode()
+		+ "&code_challenge_method=s256"
+		+ "&skip_http_redirect=true"
+	)
+	var auth_url := URL_BASE + endpoint + query
+	# Sign-in biasa tidak perlu request awal: browser harus membuka endpoint
+	# authorize dan mengikuti redirect provider. Link tetap di-fetch karena
+	# endpoint-nya memerlukan bearer guest dan mengembalikan URL sebagai JSON.
+	if not link_identity:
+		return {
+			"ok": true, "code": 0, "data": {"url": auth_url},
+			"bytes": PackedByteArray(), "error": "",
+		}
+	return await _send(
+		HTTPClient.METHOD_GET,
+		auth_url,
+		_headers(true),
+		PackedByteArray(),
+		TIMEOUT_SEC
+	)
+
+
+func exchange_oauth_code(auth_code: String, code_verifier: String) -> Dictionary:
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/auth/v1/token?grant_type=pkce",
+		_headers(false, ["content-type: application/json"]),
+		JSON.stringify({
+			"auth_code": auth_code,
+			"code_verifier": code_verifier,
+		}).to_utf8_buffer(),
+		TIMEOUT_SEC
+	)
+
+
+func accept_auth_session(data: Variant) -> Dictionary:
+	return _store_session(data)
 
 
 # ------------------------------------------------------------------ transport

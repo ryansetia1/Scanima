@@ -4,6 +4,9 @@ Foto benda di sekitarmu. Benda itu jadi monster peliharaan, disebut **Anima**. R
 
 Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). Angka dan rumus untuk developer ada di [docs/04](../04-game-systems-economy.md).
 
+Game langsung berjalan sebagai **guest Seeker** tanpa login. Ikon menu di HUD
+membuka profil, Google, Reduced Motion, bantuan, dan hapus akun.
+
 ## Mulai dari mana
 
 1. **Scan** — foto benda. Tunggu inkubator kalau spesiesnya baru; boleh pindah tab atau tutup app.
@@ -18,6 +21,7 @@ Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). A
 | --- | --- |
 | [Perawatan](caring.md) | Hunger, Energy, Hygiene, Shop, Bag, Feed, Clean, Play, Sleep, Dormant |
 | [Ekonomi](economy.md) | Genesis Cores, Bits, Shop, Scan, menunggu telur |
+| [Seeker](seeker.md) | Guest, Google, profil, onboarding, Reduced Motion, hapus akun |
 | [Anima](anima.md) | Traits, attributes, EXP, Level, Collection, Summon |
 | [Battle](battle.md) | Syarat masuk, Attack / Special / Guard / Item, PP, hadiah |
 
@@ -26,4 +30,6 @@ Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). A
 - Anima **tidak mati**. Kalau lama tidak dirawat, ia jadi Dormant — sedih dan tidak bisa Battle — lalu pulih setelah makan dan dibersihkan.
 - Hanya **satu** Anima hidup di Home. Yang lain tidur di Collection.
 - **Cores** untuk scan spesies baru. **Bits** untuk Shop. Clean gratis.
-- Kalau Cores habis, Scan terkunci dulu. Isi Core lewat toko / iklan / kunci sendiri belum ada.
+- Guest mulai dengan **1 Core** dan satu Scan. Sesudah itu, **Sign in with
+  Google** untuk Scan lagi; link memberi 2 Core tambahan sekali. Toko Core,
+  iklan, dan kunci sendiri belum ada.

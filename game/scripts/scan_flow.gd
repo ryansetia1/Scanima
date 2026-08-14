@@ -52,6 +52,7 @@ const STAT_LABEL_KEYS := {
 	"spd": "STAT_SPD",
 	"special": "STAT_SPECIAL",
 }
+const SEEKER_PROFILE_DEST := &"seeker_profile"
 const SHOP_ICON := preload("res://assets/icons/shopping-bag.svg")
 const BAG_ICON := preload("res://assets/icons/backpack.svg")
 
@@ -69,14 +70,18 @@ const BAG_ICON := preload("res://assets/icons/backpack.svg")
 @onready var _bits_chip: ResourceChip = %BitsChip
 @onready var _bag_button: ResourceChip = %BagButton
 @onready var _shop_button: ResourceChip = %ShopButton
+@onready var _seeker_menu_button: Button = %SeekerMenuButton
 @onready var _shell_modal = %ShellModal
 @onready var _shop_sheet = %ShopSheet
 @onready var _battle_pick_sheet = %BattlePickSheet
+@onready var _seeker_menu_sheet: SeekerMenuSheet = %SeekerMenuSheet
+@onready var _seeker_onboarding_sheet: SeekerOnboardingSheet = %SeekerOnboardingSheet
 @onready var _home_view: HomeView = %HomeView
 @onready var _scan_view: ScanView = %ScanView
 @onready var _battle_view = %BattleView
 @onready var _collection_view: CollectionView = %CollectionView
 @onready var _details_view: AnimaDetailsView = %AnimaDetailsView
+@onready var _seeker_profile_view: SeekerProfileView = %SeekerProfileView
 @onready var _bottom_nav: BottomNav = %BottomNav
 @onready var _level_up_banner: Control = %LevelUpBanner
 @onready var _level_up_title: Label = %LevelUpTitle
@@ -117,6 +122,7 @@ func _ready() -> void:
 	add_child(_sleep_completion_timer)
 	_sleep_completion_timer.timeout.connect(_sync_sleep_completion)
 	_scan_view.scan_requested.connect(_on_pick_pressed)
+	_scan_view.sign_in_requested.connect(_show_sign_in_confirmation)
 	_battle_view.start_requested.connect(_start_battle)
 	_battle_view.choose_anima_requested.connect(_open_battle_anima_picker)
 	_battle_view.action_requested.connect(_battle_action_requested)
@@ -149,7 +155,21 @@ func _ready() -> void:
 	_bits_chip.pressed.connect(_show_bits_info)
 	_bag_button.pressed.connect(_on_bag_pressed)
 	_shop_button.pressed.connect(_open_shop)
+	_seeker_menu_button.pressed.connect(_open_seeker_menu)
+	_seeker_menu_sheet.profile_requested.connect(_open_seeker_profile)
+	_seeker_menu_sheet.account_requested.connect(_show_account_action)
+	_seeker_menu_sheet.help_requested.connect(_show_seeker_help)
+	_seeker_menu_sheet.delete_account_requested.connect(_show_delete_account_confirmation)
+	_seeker_menu_sheet.reduced_motion_changed.connect(_set_reduced_motion)
+	_seeker_onboarding_sheet.submit_requested.connect(_complete_seeker_profile)
+	_seeker_profile_view.back_requested.connect(func() -> void: _switch_destination(BottomNav.HOME))
+	_seeker_profile_view.help_requested.connect(_show_details_help)
+	_seeker_profile_view.rename_requested.connect(_show_rename_seeker)
+	AuthFlow.auth_succeeded.connect(_on_auth_succeeded)
+	AuthFlow.auth_failed.connect(_on_auth_failed)
+	AuthFlow.existing_account_required.connect(_show_existing_account_warning)
 	LocaleManager.locale_changed.connect(_refresh_localized_ui)
+	UiMotion.set_reduced_motion(GameState.reduced_motion())
 	_configure_resource_chips()
 	_dialog.file_selected.connect(_scan_file)
 	get_viewport().size_changed.connect(_layout_for_viewport)
@@ -275,6 +295,15 @@ func _boot() -> void:
 		return
 
 	await Backend.fetch_profile()
+	# Link bisa selesai tepat sebelum app mati. Grant upgrade diulang sampai
+	# marker server terisi; RPC-nya memegang lock dan idempoten.
+	if (
+		not GameState.is_anonymous()
+		and not profile_value_present(GameState.profile, &"account_upgraded_at")
+	):
+		var upgraded := await Backend.seeker("upgrade")
+		if upgraded.ok:
+			GameState.profile.merge(GameState.as_dict(upgraded.data), true)
 	await _refresh_catalog()
 	_refresh_header()
 	var roster_loaded := await _reload_roster()
@@ -321,6 +350,8 @@ func _boot() -> void:
 	if not GameState.pending_battle.is_empty() and GameState.pending_scan.is_empty():
 		_switch_destination(BottomNav.BATTLE)
 		await _resume_battle()
+	if GameState.pending_scan.is_empty():
+		call_deferred("_maybe_prompt_seeker_onboarding")
 
 
 func _reload_roster() -> bool:
@@ -635,6 +666,7 @@ func _rename_confirmed(submitted_text: String) -> void:
 	_populate_collection()
 	_set_busy(false)
 	_say(tr("ANIMA_RENAME_SUCCESS") % nickname, true)
+	call_deferred("_maybe_prompt_seeker_onboarding")
 
 
 func _modal_confirmed(text: String) -> void:
@@ -649,6 +681,14 @@ func _modal_confirmed(text: String) -> void:
 			_cores_chip.grab_action_focus()
 		&"bits_info":
 			_bits_chip.grab_action_focus()
+		&"sign_in_google":
+			_start_google_link()
+		&"restore_google":
+			_start_google_restore()
+		&"delete_account":
+			_delete_account()
+		&"rename_seeker":
+			_rename_seeker(text)
 
 
 func _modal_canceled() -> void:
@@ -659,6 +699,7 @@ func _modal_canceled() -> void:
 	elif context == &"rename":
 		_pending_rename_id = ""
 		_pending_rename_text = ""
+		call_deferred("_maybe_prompt_seeker_onboarding")
 	elif context == &"core_info":
 		_cores_chip.grab_action_focus()
 	elif context == &"bits_info":
@@ -668,6 +709,231 @@ func _modal_canceled() -> void:
 func _show_details_help(title: String, body: String) -> void:
 	_modal_context = &"details_help"
 	_shell_modal.open_info(title, body, tr("CORE_INFO_CLOSE"))
+
+
+func _maybe_prompt_seeker_onboarding() -> void:
+	if (
+		_busy
+		or _roster.is_empty()
+		or profile_value_present(GameState.profile, &"seeker_name")
+		or _shell_modal.visible
+		or _seeker_onboarding_sheet.visible
+	):
+		return
+	_seeker_onboarding_sheet.show_for_profile()
+
+
+func _complete_seeker_profile(
+	seeker_name: String,
+	birth_year: Variant,
+	gender: Variant
+) -> void:
+	if _busy:
+		return
+	_seeker_onboarding_sheet.set_busy(true)
+	var res := await Backend.seeker("complete", {
+		"seeker_name": seeker_name,
+		"birth_year": birth_year,
+		"gender": gender,
+	})
+	if not res.ok:
+		_seeker_onboarding_sheet.show_error(_seeker_error(res.error))
+		return
+	GameState.profile.merge(GameState.as_dict(res.data), true)
+	_seeker_onboarding_sheet.close()
+	_refresh_header()
+	_say(tr("SEEKER_CREATED"), true)
+
+
+func _open_seeker_menu() -> void:
+	if _busy:
+		return
+	_seeker_menu_sheet.show_menu(
+		GameState.profile,
+		GameState.is_anonymous(),
+		GameState.reduced_motion()
+	)
+
+
+func _open_seeker_profile() -> void:
+	_seeker_menu_sheet.close()
+	_set_busy(true)
+	var res := await Backend.seeker("profile")
+	_set_busy(false)
+	if not res.ok:
+		_say(tr("SEEKER_PROFILE_ERROR"), true)
+		return
+	var profile := GameState.as_dict(res.data)
+	GameState.profile.merge(profile, true)
+	_seeker_profile_view.set_profile(
+		profile,
+		_thumbnail_for(_current_anima) if not _current_anima.is_empty() else null
+	)
+	_switch_destination(SEEKER_PROFILE_DEST)
+
+
+func _show_rename_seeker() -> void:
+	_modal_context = &"rename_seeker"
+	_shell_modal.open_input(
+		tr("SEEKER_RENAME_TITLE"),
+		tr("SEEKER_RENAME_BODY"),
+		str(GameState.profile.get("seeker_name", "")),
+		tr("SEEKER_RENAME_SAVE"),
+		tr("ACTION_CANCEL"),
+		tr("SEEKER_NAME_PLACEHOLDER")
+	)
+
+
+func _rename_seeker(value: String) -> void:
+	_set_busy(true)
+	var res := await Backend.seeker("rename", {"seeker_name": value.strip_edges()})
+	_set_busy(false)
+	if not res.ok:
+		_say(
+			tr("SEEKER_RENAME_COOLDOWN")
+			if res.error == "SEEKER_NAME_COOLDOWN"
+			else _seeker_error(res.error),
+			true
+		)
+		return
+	GameState.profile.merge(GameState.as_dict(res.data), true)
+	_say(tr("SEEKER_RENAME_SUCCESS") % str(GameState.profile.get("seeker_name", "")), true)
+	await _open_seeker_profile()
+
+
+func _show_account_action() -> void:
+	_seeker_menu_sheet.close()
+	if GameState.is_anonymous():
+		_show_sign_in_confirmation()
+	else:
+		_modal_context = &"account_linked"
+		_shell_modal.open_info(
+			tr("SEEKER_ACCOUNT_TITLE"),
+			tr("SEEKER_ACCOUNT_LINKED_BODY"),
+			tr("CORE_INFO_CLOSE")
+		)
+
+
+func _show_sign_in_confirmation() -> void:
+	if _busy:
+		return
+	if not GameState.is_anonymous():
+		_show_account_action()
+		return
+	_modal_context = &"sign_in_google"
+	_shell_modal.open_confirm(
+		tr("SEEKER_SIGN_IN_TITLE"),
+		tr("SEEKER_SIGN_IN_BODY"),
+		tr("SEEKER_SIGN_IN_GOOGLE"),
+		tr("ACTION_CANCEL")
+	)
+
+
+func _start_google_link() -> void:
+	var res := await AuthFlow.start_google_link()
+	if not bool(res.get("ok", false)):
+		_say(tr("SEEKER_AUTH_ERROR"), true)
+
+
+func _show_existing_account_warning() -> void:
+	_modal_context = &"restore_google"
+	_shell_modal.open_confirm(
+		tr("SEEKER_RESTORE_TITLE"),
+		tr("SEEKER_RESTORE_WARNING"),
+		tr("SEEKER_RESTORE_ACTION"),
+		tr("ACTION_CANCEL"),
+		true
+	)
+
+
+func _start_google_restore() -> void:
+	var res := await AuthFlow.start_google_restore()
+	if not bool(res.get("ok", false)):
+		_say(tr("SEEKER_AUTH_ERROR"), true)
+
+
+func _on_auth_succeeded(mode: String, profile: Dictionary) -> void:
+	_set_busy(true)
+	if not profile.is_empty():
+		GameState.profile.merge(profile, true)
+	else:
+		await Backend.fetch_profile()
+	var loaded := await _reload_roster()
+	_refresh_header()
+	if loaded and not _roster.is_empty():
+		var active := _active_row()
+		await _present_row(active if not active.is_empty() else _roster[0])
+	elif loaded:
+		_current_anima = {}
+		_set_home_shell_state(&"empty")
+	_set_busy(false)
+	_switch_destination(BottomNav.HOME)
+	_say(tr("SEEKER_RESTORED") if mode == "restore" else tr("SEEKER_LINKED"), true)
+	call_deferred("_maybe_prompt_seeker_onboarding")
+
+
+func _on_auth_failed(error: String) -> void:
+	print("oauth error: %s" % error)
+	_say(
+		tr("SEEKER_UPGRADE_PENDING")
+		if error == "OAUTH_UPGRADE_PENDING"
+		else tr("SEEKER_AUTH_ERROR"),
+		true
+	)
+
+
+func _show_delete_account_confirmation() -> void:
+	_seeker_menu_sheet.close()
+	_modal_context = &"delete_account"
+	_shell_modal.open_confirm(
+		tr("ACCOUNT_DELETE_TITLE"),
+		tr("ACCOUNT_DELETE_WARNING"),
+		tr("ACCOUNT_DELETE_ACTION"),
+		tr("ACTION_CANCEL"),
+		true
+	)
+
+
+func _delete_account() -> void:
+	_set_busy(true)
+	var res := await Backend.seeker("delete_account", {"confirmation": "DELETE"})
+	if not res.ok:
+		_set_busy(false)
+		_say(tr("ACCOUNT_DELETE_ERROR"), true)
+		return
+	GameState.clear_account_state()
+	_roster.clear()
+	_current_anima = {}
+	_anima.sprite_frames = null
+	_set_busy(false)
+	await _boot()
+
+
+func _show_seeker_help() -> void:
+	_seeker_menu_sheet.close()
+	_modal_context = &"seeker_help"
+	_shell_modal.open_info(
+		tr("SEEKER_HELP_TITLE"),
+		tr("SEEKER_HELP_BODY"),
+		tr("CORE_INFO_CLOSE")
+	)
+
+
+func _set_reduced_motion(enabled: bool) -> void:
+	GameState.set_reduced_motion(enabled)
+	UiMotion.set_reduced_motion(enabled)
+
+
+func _seeker_error(error: String) -> String:
+	match error:
+		"SEEKER_NAME_TAKEN":
+			return tr("SEEKER_NAME_TAKEN")
+		"SEEKER_NAME_RESERVED":
+			return tr("SEEKER_NAME_RESERVED")
+		"INVALID_BIRTH_YEAR":
+			return tr("SEEKER_BIRTH_YEAR_INVALID")
+		_:
+			return tr("SEEKER_NAME_INVALID")
 
 
 func _present_row(row: Dictionary) -> void:
@@ -1162,6 +1428,9 @@ func _setup_picker() -> void:
 func _on_pick_pressed() -> void:
 	if _busy:
 		return
+	if _guest_scan_locked():
+		_show_sign_in_confirmation()
+		return
 	if _cores_remaining() == 0:
 		_say(tr("STATUS_NEED_CORE"), true)
 		return
@@ -1263,6 +1532,8 @@ func _handle_create_result(res: Dictionary) -> void:
 
 	if not res.ok:
 		match res.error:
+			"GUEST_SCAN_USED":
+				_say(tr("STATUS_SIGN_IN_TO_SCAN"), true)
 			"NO_SCAN_CHARGE":
 				_say(tr("STATUS_NO_SCAN_CHARGE"))
 			"NO_CORE":
@@ -1741,7 +2012,9 @@ func _switch_destination(
 	_battle_view.visible = destination == BottomNav.BATTLE
 	_collection_view.visible = destination == BottomNav.COLLECTION
 	_details_view.visible = destination == BottomNav.ANIMA
-	_bottom_nav.set_active(destination)
+	_seeker_profile_view.visible = destination == SEEKER_PROFILE_DEST
+	if destination != SEEKER_PROFILE_DEST:
+		_bottom_nav.set_active(destination)
 	if destination != BottomNav.HOME:
 		_toast_revision += 1
 		_status_panel.visible = false
@@ -1771,7 +2044,11 @@ func _switch_destination(
 	if destination == BottomNav.ANIMA:
 		_refresh_stats()
 	_sync_shop_chrome()
-	_bottom_nav.set_scan_emphasized(_cores_remaining() > 0 and destination != BottomNav.BATTLE)
+	_bottom_nav.set_scan_emphasized(
+		_cores_remaining() > 0
+		and not _guest_scan_locked()
+		and destination != BottomNav.BATTLE
+	)
 	UiJuice.reveal(_active_view())
 
 
@@ -1785,6 +2062,8 @@ func _active_view() -> Control:
 			return _collection_view
 		BottomNav.ANIMA:
 			return _details_view
+		SEEKER_PROFILE_DEST:
+			return _seeker_profile_view
 		_:
 			return _home_view
 
@@ -2129,13 +2408,18 @@ func _refresh_header() -> void:
 		_cores_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		_bits_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		_scan_view.set_cores(-1)
+		_scan_view.set_sign_in_required(false)
 		_bottom_nav.set_scan_emphasized(_destination != BottomNav.BATTLE)
 		return
 	var cores := int(p.get("genesis_cores", 0))
+	var sign_in_required := _guest_scan_locked()
 	_cores_chip.set_value_text(LocaleManager.format_integer(cores))
 	_bits_chip.set_value_text(LocaleManager.format_integer(int(p.get("bits", 0))))
 	_scan_view.set_cores(cores)
-	_bottom_nav.set_scan_emphasized(cores > 0 and _destination != BottomNav.BATTLE)
+	_scan_view.set_sign_in_required(sign_in_required)
+	_bottom_nav.set_scan_emphasized(
+		cores > 0 and not sign_in_required and _destination != BottomNav.BATTLE
+	)
 	UiJuice.pop(_top_hud, 1.012)
 
 
@@ -2151,6 +2435,8 @@ func _set_busy(busy: bool) -> void:
 	_home_view.set_busy(busy)
 	_collection_view.set_busy(busy)
 	_details_view.set_busy(busy)
+	_seeker_profile_view.set_busy(busy)
+	_seeker_menu_button.disabled = busy
 	_bottom_nav.set_busy(busy, _details_available())
 	_bag_button.set_interactive(not busy, tr("BAG_OPEN"))
 	_shop_button.set_interactive(not busy, tr("SHOP_OPEN"))
@@ -2158,6 +2444,8 @@ func _set_busy(busy: bool) -> void:
 		_shop_sheet.set_busy(busy)
 	if is_instance_valid(_battle_pick_sheet):
 		_battle_pick_sheet.set_busy(busy)
+	if is_instance_valid(_seeker_onboarding_sheet) and _seeker_onboarding_sheet.visible:
+		_seeker_onboarding_sheet.set_busy(busy)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -2170,6 +2458,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func _handle_back(allow_quit: bool) -> bool:
 	if is_instance_valid(_shell_modal) and _shell_modal.visible:
 		_shell_modal.request_cancel()
+		return true
+	if is_instance_valid(_seeker_onboarding_sheet) and _seeker_onboarding_sheet.visible:
+		_seeker_onboarding_sheet.close()
+		return true
+	if is_instance_valid(_seeker_menu_sheet) and _seeker_menu_sheet.visible:
+		_seeker_menu_sheet.close()
 		return true
 	if is_instance_valid(_shop_sheet) and _shop_sheet.visible:
 		_shop_sheet.close()
@@ -2194,6 +2488,18 @@ func _cores_remaining() -> int:
 	return int(GameState.profile.get("genesis_cores", 0))
 
 
+func _guest_scan_locked() -> bool:
+	return (
+		GameState.is_anonymous()
+		and profile_value_present(GameState.profile, &"guest_scan_used_at")
+	)
+
+
+static func profile_value_present(profile: Dictionary, key: StringName) -> bool:
+	var value: Variant = profile.get(key)
+	return value != null and (typeof(value) != TYPE_STRING or not str(value).is_empty())
+
+
 func _sync_shop_chrome() -> void:
 	if not is_instance_valid(_shop_button):
 		return
@@ -2201,6 +2507,7 @@ func _sync_shop_chrome() -> void:
 	if is_instance_valid(_bag_button):
 		_bag_button.visible = show_chrome
 	_shop_button.visible = show_chrome
+	_seeker_menu_button.disabled = _busy
 	if not show_chrome and is_instance_valid(_shop_sheet) and _shop_sheet.visible:
 		_shop_sheet.close()
 	if show_chrome:

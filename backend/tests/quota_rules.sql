@@ -13,6 +13,8 @@ do $uji$
 declare
   u1        uuid := '00000000-0000-4000-8000-000000000001';
   u2        uuid := '00000000-0000-4000-8000-000000000002';
+  u3        uuid := '00000000-0000-4000-8000-000000000003';
+  u4        uuid := '00000000-0000-4000-8000-000000000004';
   v_spesies text := 'uji_cache_species';
   v_stats   jsonb := '{"hp":100,"atk":40,"def":30,"spd":50,"special":40}'::jsonb;
   v_care    jsonb := '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb;
@@ -38,20 +40,23 @@ declare
   v_bits_before_battle int;
   v_score_before_battle int;
   v_wins_before_battle int;
+  v_seeker_xp int;
+  v_seeker_victories int;
   v         int;
   n         int;
   ok        bool;
 begin
   -- Idempoten: sisa run yang gagal di tengah tidak boleh menggagalkan run ini.
-  delete from auth.users where id in (u1, u2);
+  delete from auth.users where id in (u1, u2, u3, u4);
   delete from public.species_library where species_key = v_spesies;
-  insert into auth.users (id, is_anonymous) values (u1, true), (u2, true);
+  insert into auth.users (id, is_anonymous)
+  values (u1, false), (u2, true), (u3, true);
 
   -- Profilnya TIDAK disisipkan di sini: trigger on_auth_user_created yang
   -- membuatnya. Kalau trigger itu hilang, panggilan pertama pemain baru gagal
   -- dengan NO_PROFILE dari fungsi kuota — jauh dari sebabnya, dan tidak ada uji
   -- lain yang akan menunjukkan letaknya.
-  assert (select count(*) from public.profiles where id in (u1, u2)) = 2,
+  assert (select count(*) from public.profiles where id in (u1, u2, u3)) = 3,
          'bootstrap profil saat sign-in anonim tidak jalan';
   assert (select count(*) from public.profiles where id in (u1, u2) and bits = 50) = 2,
          'profil baru harus menerima 50 starter Bits';
@@ -59,6 +64,71 @@ begin
            where owner_id in (u1, u2) and currency = 'bits'
              and delta = 50 and reason = 'care_starter') = 2,
          'starter Bits harus tercatat di ledger';
+  assert (select count(*) from public.profiles
+           where id in (u1, u2, u3) and genesis_cores = 1) = 3,
+         'profil baru harus menerima tepat 1 starter Core';
+  assert (select count(*) from public.quota_ledger
+           where owner_id in (u1, u2, u3) and currency = 'genesis_cores'
+             and delta = 1 and reason = 'starter_guest') = 3,
+         'starter guest Core harus tercatat tepat sekali';
+
+  insert into auth.identities
+    (provider_id, user_id, identity_data, provider)
+  values
+    ('uji-google-u1', u1, jsonb_build_object('sub', 'uji-google-u1'), 'google');
+  v_j := public.upgrade_seeker_account(u1);
+  assert (v_j->>'genesis_cores')::int = 3
+         and (v_j->>'account_upgraded_at') is not null,
+         'upgrade Google harus melengkapi starter lifetime dari 1 menjadi 3';
+  v_j2 := public.upgrade_seeker_account(u1);
+  assert (v_j2->>'genesis_cores')::int = 3
+         and (select count(*) from public.quota_ledger
+               where owner_id = u1 and reason = 'starter_google') = 1,
+         'retry upgrade tidak boleh menggandakan +2 Core';
+  begin
+    perform public.upgrade_seeker_account(u2);
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ACCOUNT_STILL_ANONYMOUS');
+  end;
+  assert ok, 'akun anonim tidak boleh menerima grant upgrade Google';
+
+  insert into auth.users (id, is_anonymous) values (u4, false);
+  delete from public.quota_ledger where owner_id = u4 and reason = 'starter_guest';
+  insert into public.quota_ledger (owner_id, currency, delta, reason)
+  values (u4, 'genesis_cores', 3, 'starter_legacy');
+  update public.profiles set genesis_cores = 9 where id = u4;
+  insert into auth.identities
+    (provider_id, user_id, identity_data, provider)
+  values
+    ('uji-google-u4', u4, jsonb_build_object('sub', 'uji-google-u4'), 'google');
+  v_j := public.upgrade_seeker_account(u4);
+  assert (v_j->>'genesis_cores')::int = 9
+         and not exists (
+           select 1 from public.quota_ledger
+            where owner_id = u4 and reason = 'starter_google'
+         ),
+         'akun legacy dengan lifetime starter 3 tidak boleh menerima Core tambahan';
+
+  v_j := public.complete_seeker_profile(u1, 'TestSeeker', 2000, null);
+  assert v_j->>'seeker_name' = 'TestSeeker', 'profil Seeker harus tersimpan';
+  begin
+    perform public.complete_seeker_profile(u2, 'testseeker', null, null);
+    ok := false;
+  exception when others then ok := (sqlerrm = 'SEEKER_NAME_TAKEN');
+  end;
+  assert ok, 'nama Seeker harus unik tanpa membedakan huruf besar kecil';
+  perform public.complete_seeker_profile(u2, 'GuestTwo', null, 'prefer_not_to_say');
+  begin
+    perform public.rename_seeker(u1, 'RenamedSeeker');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'SEEKER_NAME_COOLDOWN');
+  end;
+  assert ok, 'rename Seeker harus menunggu cooldown 30 hari';
+  update public.profiles
+     set seeker_name_changed_at = now() - interval '31 days'
+   where id = u1;
+  assert (public.rename_seeker(u1, 'RenamedSeeker')->>'seeker_name') = 'RenamedSeeker',
+         'rename sesudah cooldown harus berhasil';
   assert (select count(*) from public.catalog_items where active) = 18,
          'katalog v1 harus berisi 9 makanan dan 9 item';
   update public.profiles set display_name = 'uji' where id in (u1, u2);
@@ -87,6 +157,40 @@ begin
   insert into public.species_library
     (species_key, color_bucket, stage, sheet_path, manifest, prompt_version)
   values (v_spesies, 'gray', 1, 'uji.png', '{}'::jsonb, 'v3');
+
+  ----------------------------------------------------------------------------
+  -- Guest: satu Scan sukses per akun anonim, dan hatch gagal melepas slot
+  ----------------------------------------------------------------------------
+  v_j := public.claim_genesis(
+    u3, 'guest-genesis', 'Guest Genesis', 'guest_object', 'gray', 1::smallint,
+    'tech', 2, v_stats, v_care, v_visi, 'v7', 'model', 0.07, 'u3/photo.jpg'
+  );
+  v_refund := (v_j->>'generation_id')::uuid;
+  assert (select genesis_cores from public.profiles where id = u3) = 0
+         and (select guest_scan_used_at from public.profiles where id = u3) is not null,
+         'Genesis guest pertama harus mendebit Core dan mengisi slot';
+  begin
+    perform public.claim_genesis(
+      u3, 'guest-second', 'Guest Second', 'guest_second', 'gray', 1::smallint,
+      'tech', 2, v_stats, v_care, v_visi, 'v7', 'model', 0.07, 'u3/second.jpg'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'GUEST_SCAN_USED');
+  end;
+  assert ok, 'guest Scan kedua harus ditolak atomik';
+  v := (select scan_charges from public.profiles where id = u3);
+  begin
+    perform public.claim_scan_charge(u3);
+    ok := false;
+  exception when others then ok := (sqlerrm = 'GUEST_SCAN_USED');
+  end;
+  assert ok
+         and (select scan_charges from public.profiles where id = u3) = v,
+         'guest terpakai harus ditolak sebelum charge dan Vision';
+  perform public.refund_generation(v_refund, 'uji hatch gagal');
+  assert (select genesis_cores from public.profiles where id = u3) = 1
+         and (select guest_scan_used_at from public.profiles where id = u3) is null,
+         'refund hatch guest harus mengembalikan Core dan slot Scan';
 
   ----------------------------------------------------------------------------
   -- 1. Scan charge: debit tercatat, saldo nol menolak, refund dibatasi maksimum
@@ -217,6 +321,7 @@ begin
   -- 6. record_cache_hit: Anima siap tanpa Core, dan reuse terhitung sekali
   ----------------------------------------------------------------------------
   v := (select genesis_cores from public.profiles where id = u2);
+  v_seeker_xp := (select seeker_xp from public.profiles where id = u2);
   v_j := public.record_cache_hit(u2, 'key-cache', 'Uji Cache', v_spesies, 'gray',
                                  1::smallint, 'tech', 3, v_stats, v_care, v_visi, 'v3');
   assert (select genesis_cores from public.profiles where id = u2) = v,
@@ -229,6 +334,10 @@ begin
   assert (select times_reused from public.species_library
            where species_key = v_spesies and color_bucket = 'gray' and stage = 1) = 1,
          'reuse harus terhitung, angka itu yang mengukur apakah cache bekerja';
+  assert (select seeker_xp from public.profiles where id = u2) = v_seeker_xp + 5,
+         'Anima ready dari cache harus memberi +5 Seeker EXP';
+  assert (select guest_scan_used_at from public.profiles where id = u2) is not null,
+         'cache hit tetap harus memakai satu slot guest';
 
   v_j2 := public.record_cache_hit(u2, 'key-cache', 'Uji Cache', v_spesies, 'gray',
                                   1::smallint, 'tech', 3, v_stats, v_care, v_visi, 'v3');
@@ -238,6 +347,13 @@ begin
   assert (select times_reused from public.species_library
            where species_key = v_spesies and color_bucket = 'gray' and stage = 1) = 1,
          'retry tidak boleh menaikkan times_reused dua kali';
+  begin
+    perform public.record_cache_hit(u2, 'key-cache-second', 'Uji Cache 2', v_spesies, 'gray',
+                                    1::smallint, 'tech', 3, v_stats, v_care, v_visi, 'v3');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'GUEST_SCAN_USED');
+  end;
+  assert ok, 'cache hit kedua guest harus ditolak tanpa mendebit Core';
 
   -- Cache hit tidak pernah mendebit, jadi tidak ada yang bisa dikembalikan.
   perform public.refund_generation((v_j->>'generation_id')::uuid, 'uji: cache hit');
@@ -247,7 +363,13 @@ begin
   ----------------------------------------------------------------------------
   -- 7. Generation yang sudah berhasil tidak boleh direfund (art sudah diberikan)
   ----------------------------------------------------------------------------
+  v_seeker_xp := (select seeker_xp from public.profiles where id = u1);
   update public.generations set status = 'succeeded' where id = v_sukses;
+  update public.animas
+     set status = 'ready'
+   where id = (select anima_id from public.generations where id = v_sukses);
+  assert (select seeker_xp from public.profiles where id = u1) = v_seeker_xp + 5,
+         'Genesis hanya memberi +5 Seeker EXP saat Anima benar-benar ready';
   begin
     perform public.refund_generation(v_sukses, 'uji: seharusnya ditolak');
     ok := false;
@@ -295,6 +417,25 @@ begin
   exception when insufficient_privilege then ok := true;
   end;
   assert ok, 'client tidak boleh bisa menaikkan genesis_cores sendiri';
+
+  begin
+    update public.profiles
+       set seeker_xp = 9999,
+           battle_victories = 9999,
+           guest_scan_used_at = null,
+           account_upgraded_at = now()
+     where id = u1;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'progress dan status akun Seeker harus server-authoritative';
+
+  begin
+    perform public.complete_seeker_profile(u1, 'ClientBypass', null, null);
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh memanggil RPC Seeker dengan owner_id pilihan';
 
   begin
     update public.animas set care_score = 9999 where owner_id = u1;
@@ -481,6 +622,7 @@ begin
   on conflict (owner_id, item_id) do update
     set quantity = excluded.quantity;
 
+  v_seeker_xp := (select seeker_xp from public.profiles where id = u1);
   v_j := public.apply_care(u1, v_care_anima, 'feed', 'care-feed-1', 'ember_noodles');
   assert (v_j->>'bits')::int = 50, 'Feed dari inventory tidak boleh mendebit Bits';
   assert (v_j #>> '{anima,care,hunger}')::numeric = 45,
@@ -489,6 +631,8 @@ begin
          'Bond tidak lagi meter progres';
   assert (v_j #>> '{anima,care_score}')::int = 3,
          'Feed yang menyeberang Hunger 40 harus memberi 3 care_score';
+  assert (select seeker_xp from public.profiles where id = u1) = v_seeker_xp + 3,
+         'care_score yang sah harus dicerminkan ke Seeker EXP';
   assert (select quantity from public.player_inventory
            where owner_id = u1 and item_id = 'ember_noodles') = 9,
          'Feed harus mengonsumsi satu makanan';
@@ -963,6 +1107,9 @@ begin
   select care_score, battle_wins
     into v_score_before_battle, v_wins_before_battle
     from public.animas where id = v_battle_player;
+  select seeker_xp, battle_victories
+    into v_seeker_xp, v_seeker_victories
+    from public.profiles where id = u1;
   v_battle_state := jsonb_build_object(
     'status', 'won',
     'turn', 2,
@@ -985,6 +1132,10 @@ begin
   assert (select battle_wins from public.animas where id = v_battle_player)
            = v_wins_before_battle + 1,
          'menang harus menaikkan battle_wins satu';
+  assert (select seeker_xp from public.profiles where id = u1) = v_seeker_xp + 4
+         and (select battle_victories from public.profiles where id = u1)
+           = v_seeker_victories + 1,
+         'Battle rewarded harus memberi Seeker EXP dan satu victory';
   assert (select count(*) from public.quota_ledger
            where ref_id = v_battle_session and currency = 'bits'
              and delta = 8 and reason = 'battle_win') = 1,
@@ -1034,6 +1185,9 @@ begin
   select care_score, battle_wins
     into v_score_before_battle, v_wins_before_battle
     from public.animas where id = v_battle_player;
+  select seeker_xp, battle_victories
+    into v_seeker_xp, v_seeker_victories
+    from public.profiles where id = u1;
   v_j := public.commit_battle_turn(
     u1, v_battle_session, 1, 1, 'battle-turn-training', 'surge',
     jsonb_build_object(
@@ -1058,6 +1212,10 @@ begin
          and (select battle_wins from public.animas where id = v_battle_player)
            = v_wins_before_battle,
          'Training boleh menambah Bits tetapi tidak EXP atau win tercatat';
+  assert (select seeker_xp from public.profiles where id = u1) = v_seeker_xp
+         and (select battle_victories from public.profiles where id = u1)
+           = v_seeker_victories + 1,
+         'Training harus dihitung sebagai victory tanpa memberi Seeker EXP';
   assert (select count(*) from public.quota_ledger
            where ref_id = v_battle_session and reason = 'battle_train') = 1,
          'Training ber-Bits harus memakai reason battle_train';
@@ -1079,6 +1237,9 @@ begin
          'retry Training harus replay Bits yang sama';
   assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 8,
          'retry Training tidak boleh membuat reward baru';
+  assert (select battle_victories from public.profiles where id = u1)
+           = v_seeker_victories + 1,
+         'replay Training tidak boleh menghitung victory kedua';
 
   -- Kalah dan forfeit tidak pernah menyentuh Bits, score, wins, atau Core.
   update public.animas
@@ -1300,7 +1461,16 @@ begin
   perform set_config('role', 'none', true);
 
   ----------------------------------------------------------------------------
-  delete from auth.users where id in (u1, u2);
+  -- Penghapusan auth user adalah mekanisme yang dipakai endpoint delete_account.
+  delete from auth.users where id = u3;
+  assert not exists (select 1 from public.profiles where id = u3),
+         'delete account harus cascade ke profil pemain';
+  assert exists (
+    select 1 from public.species_library
+     where species_key = v_spesies and color_bucket = 'gray' and stage = 1
+  ), 'delete account tidak boleh menghapus pustaka spesies bersama';
+
+  delete from auth.users where id in (u1, u2, u3, u4);
   delete from public.species_library where species_key = v_spesies;
   raise notice 'SEMUA UJI LULUS';
 end $uji$;

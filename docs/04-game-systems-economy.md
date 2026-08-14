@@ -41,11 +41,25 @@ graph TD
     Core -->|tidak| Simpan["Simpan sebagai Temuan Tertunda<br/>bisa diklaim nanti"]
 ```
 
+Ada satu pagar produk di atas diagram itu: **Guest Seeker hanya boleh satu Scan
+sukses**, baik hasilnya Discovery Scan maupun Genesis. Gate/transport yang gagal
+tidak menghabiskan kesempatan itu. Sesudah sukses, client menawarkan Google;
+Care, Battle, Shop, dan Collection tidak ikut terkunci. `claim_scan_charge()`
+memeriksa slot guest di bawah profile lock sebelum Vision, lalu cache/Genesis
+memeriksanya lagi saat commit. Guard awal mencegah modified client membayar Vision
+berulang; guard akhir menjaga dua request paralel tidak melahirkan dua Anima.
+
 Momen "spesies ini belum pernah ditemukan siapa pun" adalah momen paling kuat yang dimiliki game ini, dan itu bukan paywall kalau dibingkai benar. Pemain pertama yang menciptakan sebuah spesies dicatat permanen sebagai penemunya di pustaka, terlihat oleh semua pemain lain yang nanti men-scan objek yang sama. Membayar Genesis Core bukan membuka konten yang ditahan; ia mengklaim sesuatu yang tidak bisa diklaim dua kali.
 
 **Temuan Tertunda** menyelamatkan kasus pemain kehabisan Core tepat saat menemukan hal baru. Hasil Vision disimpan (biayanya sudah keluar, tidak perlu ulang) dan pemain bisa menuntaskannya nanti tanpa harus memfoto ulang objeknya — yang mungkin sudah tidak ada di dekatnya. Berlaku 7 hari.
 
-**Plafon client sementara:** selama IAP, rewarded ads, dan BYOK belum mengisi Core, `genesis_cores == 0` mengunci tombol Scan di client (termasuk cache hit). `species_key` Vision terlalu rapuh untuk diandalkan sebagai jalur gratis. Server `NO_CORE` + Temuan Tertunda tetap pagar terakhir; rumus Core vs cache hit di atas tidak berubah.
+**Plafon client sementara:** selama IAP, rewarded ads, dan BYOK belum mengisi
+Core, `genesis_cores == 0` mengunci Scan untuk akun linked (termasuk cache hit).
+Guest memakai pagar yang lebih dulu: `guest_scan_used_at` mengubah CTA menjadi
+`Sign in to Scan Again`, walau Core-nya belum habis. `species_key` Vision terlalu
+rapuh untuk diandalkan sebagai jalur gratis. Server `NO_CORE` dan
+`GUEST_SCAN_USED` tetap pagar terakhir; rumus Core vs cache hit di atas tidak
+berubah.
 
 ## 2. Mata uang dan sumbernya
 
@@ -54,10 +68,10 @@ Tiga mata uang, dan yang menentukan pembagiannya adalah biaya nyata yang mereka 
 | Mata uang | Untuk apa | Sumber |
 | --- | --- | --- |
 | **Scan Charge** | Discovery Scan, 8 per hari | Refill harian, rewarded ad, langganan |
-| **Genesis Core** | Menciptakan spesies baru | 3 saat onboarding, 1 per minggu gratis, IAP, langganan |
+| **Genesis Core** | Menciptakan spesies baru | 1 untuk guest + 2 saat link Google (sekali), 1 per minggu gratis nanti, IAP/langganan nanti |
 | **Bits** | Makanan dan item di Shop | 50 saat onboarding (akun baru saja), Shop, hadiah battle (cap 100/hari lokal) |
 
-> **Keputusan produk, dikonfirmasi 13 Agustus 2026:** jalur gratis Genesis Core adalah **1 Core per minggu**. Fitur ini belum diimplementasikan; build sekarang hanya memberi 3 Core saat onboarding dan refund ketika generation gagal. Grant mingguan nanti wajib server-authoritative dan tercatat di ledger. Detail auto-credit versus tombol claim, batas penumpukan minggu terlewat, serta anti-abuse akun anonim belum diputuskan—jangan menganggap salah satunya sudah final.
+> **Keputusan produk, dikonfirmasi 13 Agustus 2026:** jalur gratis Genesis Core adalah **1 Core per minggu**. Fitur mingguan belum diimplementasikan. Build sekarang memberi 1 Core lewat ledger `starter_guest`, lalu upgrade Google melengkapi grant starter lifetime menjadi 3 dengan maksimal +2 sekali. Ini bukan reset saldo: guest yang sudah membelanjakan Core akan memiliki saldo 2 sesudah link. Akun lama diberi marker `starter_legacy` tanpa mengubah saldo atau menerima bonus kedua. Grant mingguan nanti wajib server-authoritative dan tercatat di ledger; detail claim/catch-up/anti-abuse belum final.
 
 ### Kenapa rewarded ad tidak boleh membiayai Genesis Core
 
@@ -148,6 +162,37 @@ hilang, `care_events` ikut cascade, sedangkan `generations` dipertahankan untuk
 audit dengan `anima_id = null`. `species_library` dan cache art di device juga
 tetap ada karena satu varian dapat dipakai Anima lain. Client reload roster lalu
 memilih Anima terbaru berikutnya; kalau tidak ada, Home kembali ke empty state.
+
+### Seeker, upgrade akun, dan progression kosmetik
+
+Pemain baru masuk sebagai user anonim tanpa login gate. `handle_new_user()`
+memberi 1 Core dan 50 Bits; satu Scan sukses kemudian mengisi slot guest secara
+atomik di `record_cache_hit()` atau `claim_genesis()`. Cache hit tidak mendebit
+Core. Genesis gagal yang benar-benar direfund juga melepaskan slot guest bila
+tidak ada Scan sukses/pending lain.
+
+Link Google memakai identity linking Supabase sehingga UID dan semua row progres
+tetap sama. `upgrade_seeker_account()` memverifikasi identity Google, memegang
+profile row lock, dan memakai indeks ledger unik agar retry hanya memberi
+pelengkap starter sekali. Sign-in ke Google yang sudah memiliki Seeker adalah
+restore, bukan merge: progres guest instalasi itu tidak dipindahkan.
+
+`seeker_xp` adalah progression akun yang kosmetik:
+
+```text
+Seeker Level = 1 + floor(sqrt(seeker_xp / 5))
+```
+
+Setiap Anima yang pertama kali menjadi `ready` memberi +5 Seeker EXP. Kenaikan
+EXP Anima (`care_score`) dari Care atau Battle dicerminkan 1:1 setelah transaksi
+dan idempotency yang sama lolos. `battle_victories` menghitung setiap session
+yang berubah terminal menjadi `won`, termasuk Training, tepat sekali. Level ini
+tidak dipakai untuk stat, matchmaking, reward, atau otorisasi.
+
+Nama Seeker wajib unik case-insensitive dan rename punya cooldown 30 hari.
+Birth year/gender opsional. **Delete Account** berbeda dari Delete Anima:
+Edge Function `seeker` menghapus `auth.users`, cascade membersihkan profil,
+Anima, inventory, dan session pemain, sedangkan pustaka art bersama tetap ada.
 
 ## 3. Survival / Tamagotchi mechanics
 

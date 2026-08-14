@@ -2,6 +2,7 @@ class_name ScanView
 extends Control
 
 signal scan_requested
+signal sign_in_requested
 
 @onready var _preview_panel: PanelContainer = %PreviewPanel
 @onready var _preview: TextureRect = %PhotoPreview
@@ -15,10 +16,11 @@ signal scan_requested
 var _phase := &"idle"
 var _cores := -1
 var _busy := false
+var _sign_in_required := false
 
 
 func _ready() -> void:
-	_scan_button.pressed.connect(scan_requested.emit)
+	_scan_button.pressed.connect(_on_primary_pressed)
 	set_phase(&"idle")
 
 
@@ -30,6 +32,11 @@ func set_busy(busy: bool) -> void:
 
 func set_cores(cores: int) -> void:
 	_cores = cores
+	_refresh_lock()
+
+
+func set_sign_in_required(required: bool) -> void:
+	_sign_in_required = required
 	_refresh_lock()
 
 
@@ -54,12 +61,23 @@ func set_phase(phase: StringName) -> void:
 
 
 func _refresh_lock() -> void:
-	var locked := _cores == 0
+	var locked := _cores == 0 and not _sign_in_required
 	_scan_button.self_modulate = (
 		Color(1, 1, 1, 0.42) if locked and not _busy else Color.WHITE
 	)
+	_scan_button.text = tr("SCAN_SIGN_IN_ACTION") if _sign_in_required else tr("SCAN_PRIMARY_ACTION")
 	if _phase == &"idle":
-		_hint.text = tr("SCAN_NO_CORE_HINT") if locked else tr("SCAN_CAMERA_HINT")
+		if _sign_in_required:
+			_hint.text = tr("SCAN_SIGN_IN_HINT")
+		else:
+			_hint.text = tr("SCAN_NO_CORE_HINT") if locked else tr("SCAN_CAMERA_HINT")
+
+
+func _on_primary_pressed() -> void:
+	if _sign_in_required:
+		sign_in_requested.emit()
+	else:
+		scan_requested.emit()
 
 
 func show_preview(texture: Texture2D) -> void:

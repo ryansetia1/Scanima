@@ -27,23 +27,25 @@ Tiga masalah post-processing yang ditemukan pada output nyata sudah ditangani: h
 
 **Post-processing sudah dibuktikan jalan di Edge Function, dengan sheet sungguhan.** Sheet v3 sepatu (1024×1024) diproses di runtime Deno dalam **173 ms** — batas CPU 2 detik tidak pernah dekat — dan hasilnya identik piksel per piksel dengan hasil Node (3.544.272 byte channel, nol selisih). Satu modul `postprocess.mjs` dipakai kedua runtime, jadi paritas itu bukan kebetulan yang harus dijaga manual. Yang berbeda hanya kompresi PNG-nya (886 KB di Node, 964 KB di edge), sehingga hash berbasis byte tidak bisa dibandingkan lintas runtime.
 
-**Lima Edge Function sudah hidup di produksi.** `create_anima`,
-`replicate_webhook`, `care_anima`, `battle_anima`, dan `shop` ter-deploy.
+**Enam Edge Function sudah hidup di produksi.** `create_anima`,
+`replicate_webhook`, `care_anima`, `battle_anima`, `shop`, dan `seeker`
+ter-deploy. `seeker` menjadi boundary profil, upgrade Google, dan hapus akun;
+operasinya menurunkan owner dari JWT, bukan body client.
 Migrasi Shop/inventory/reward Bits sudah live di remote (starter 50, katalog
 18, Feed dari tas, item Battle, cap 100 Bits/hari). Smoke 401 tanpa user
 berlaku untuk `shop`, `care_anima`, dan `battle_anima`. Battle dan care
 JWT-protected dan tidak punya model call. Smoke produksi menjaga 401 tanpa
 user, validasi payload, care idempoten, serta start/resume/turn/forfeit Battle.
 
-Satu jebakan ditemukan hanya karena jalur itu dicoba sungguhan: **sign-in anonim mati secara default di project Supabase**, dan Scanima tidak punya layar login. Setiap pemain baru akan gagal di detik pertama, di jalur yang tidak berbiaya sehingga tidak ada uji berbayar yang akan menangkapnya. Sekarang menyala di remote dan dideklarasikan di `config.toml`.
+Satu jebakan ditemukan hanya karena jalur itu dicoba sungguhan: **sign-in anonim mati secara default di project Supabase**. Scanima tidak memasang login gate saat app dibuka: pemain langsung menjadi Guest Seeker, lalu boleh menautkan Google setelah punya progres. Setiap pemain baru akan gagal di detik pertama kalau provider anonim mati, di jalur yang tidak berbiaya sehingga tidak ada uji berbayar yang akan menangkapnya. Sekarang menyala di remote dan dideklarasikan di `config.toml`.
 
 **Jalur uang sudah dijalankan utuh di produksi, sekali, dengan foto sungguhan (~$0.076).** Satu foto mug putih diunggah langsung ke Storage oleh pemain anonim, lalu `create_anima` balik dalam **15 detik** dengan Vision selesai dan generation berjalan; webhook Replicate menyelesaikan sisanya. Hasilnya "Muglet" (`mug_ceramic_handled` / `neutral_light`, element flow, def 75 dari badan keramiknya), **4 dari 4 pose terdeteksi**, residu hijau **0,005%**, varians tinggi Idle vs Attack 4,9%, dan `cross_boundary_pixels` **nol** di keempat pose. Mug putih adalah kasus keying tersulit yang sebelumnya belum pernah terbukti: 59% sheet-nya latar hijau, putih di atas hijau, dan tetap bersih. Foto mentahnya terhapus otomatis begitu sheet jadi.
 
-Pemain **kedua** lalu memfoto mug yang sama: `cache_hit` dalam **11 detik**, Genesis Core-nya **tidak tersentuh** (3 tetap 3), generation tercatat berbiaya $0.0000, dan `times_reused` naik ke 1. Itu Discovery Scan yang bekerja persis seperti desain ekonominya — dan seluruh invarian uangnya terverifikasi di ledger, bukan diasumsikan.
+Pemain **kedua** lalu memfoto mug yang sama: `cache_hit` dalam **11 detik**, Genesis Core-nya **tidak tersentuh** (saldo 3 pada akun uji lama tetap 3), generation tercatat berbiaya $0.0000, dan `times_reused` naik ke 1. Akun Guest Seeker baru sekarang mulai dengan 1 Core; cache hit tetap tidak memotong Core tetapi memakai satu kesempatan Scan guest. Itu Discovery Scan yang bekerja persis seperti desain ekonominya — dan seluruh invarian uangnya terverifikasi di ledger, bukan diasumsikan.
 
 Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya, dan `test_sprite_slicing.gd` lulus **75 dari 75** check terhadapnya. Bukan sheet buatan uji — art produksi yang keluar dari Edge Function.
 
-**Sisi client sudah menyusul, dan sudah dijalankan sungguhan terhadap produksi.** Godot kini punya dua autoload — `GameState` (pemilik satu-satunya `user://state.json`) dan `Backend` (transport ke auth, REST, Storage, dan Edge Function) — plus scene `scan_flow` yang menjadi entry point: sign-in anonim, pilih foto, unggah ke bucket sendiri, `create_anima`, Incubator, lalu Anima hidup di layar. Uji headless `live_scan.gd` menjalankan rantai itu terhadap produksi dengan biaya ~$0.003: `create_anima` balik **11–16 detik**, sheet ~1 MB terunduh dari CDN, `AnimaLoader` menerimanya dengan keempat pose, dan saldo berkurang tepat satu Scan Charge tanpa menyentuh Genesis Core. Screenshot layarnya menunjukkan saldo dari server, Anima dari cache lokal, dan tombol pose yang dibangun dari manifest.
+**Sisi client sudah menyusul, dan sudah dijalankan sungguhan terhadap produksi.** Godot kini punya lima autoload berurutan — `SecureStore`, `GameState`, `Backend`, `LocaleManager`, dan `AuthFlow`. Token hidup di Android Keystore/iOS Keychain; `user://state.json` hanya menyimpan UID, preference, dan intent idempoten. Scene `scan_flow` menjadi entry point: sign-in anonim, pilih foto, unggah ke bucket sendiri, `create_anima`, Incubator, lalu Anima hidup di layar. Uji headless `live_scan.gd` menjalankan rantai itu terhadap produksi dengan biaya ~$0.003: `create_anima` balik **11–16 detik**, sheet ~1 MB terunduh dari CDN, `AnimaLoader` menerimanya dengan keempat pose, dan saldo berkurang tepat satu Scan Charge tanpa menyentuh Genesis Core.
 
 **Jeda generation sekarang punya inkubator yang benar-benar hidup.** Setelah Genesis dimulai, foto atau Anima lama diganti telur energi procedural dengan orbit cyan-violet, scanner, spark emas, dan core yang berdenyut—tanpa asset tambahan. Ia tetap berjalan selama polling Replicate, termasuk saat pending scan dilanjutkan setelah restart. Saat webhook selesai, ring meledak menjadi flash lalu Anima muncul dengan bounce, squash-and-stretch, dan settle; kegagalan/timeout mengembalikan Anima lama. Cache hit tetap instan dan tidak memalsukan proses hatch.
 
@@ -53,8 +55,23 @@ target 96px tetap muat; Scan tetap CTA cyan dan Battle punya state aktif
 tersendiri. Child scene persisten membuat pindah tab tidak me-reset request,
 pending scan/care/battle, Stage, atau inkubator. Seluruh copy production memakai
 katalog English Godot-native, theme cyan-violet-gold, ikon SVG berlisensi, dan
-Reduced Motion bersama. `test_scan_ui.gd` menjaga 369 kontrak
-shell/touch/Battle/motion dan `test_i18n.gd` menjaga 1869 kontrak katalog.
+Reduced Motion bersama. Menu Seeker di HUD membuka profil, akun Google, bantuan,
+setting Reduced Motion, dan hapus akun; onboarding nama Seeker muncul sesudah
+Anima pertama menetas. `test_scan_ui.gd` menjaga 468 kontrak
+shell/touch/Battle/Seeker/motion dan `test_i18n.gd` menjaga 2290 kontrak katalog.
+
+**Guest Seeker dan upgrade Google sudah menjadi mekanik live.** Akun anonim baru
+mendapat 1 Core dan satu Scan sukses; Genesis maupun cache hit memakai kesempatan
+guest itu. Sesudahnya CTA Scan menjadi `Sign in to Scan Again`, sementara Care,
+Battle, Shop, dan Collection tetap berjalan. Link Google memakai PKCE dan deep
+link `scanima://auth/callback`, mempertahankan UID/progres, lalu melengkapi grant
+starter menjadi 3 Core lifetime (+2 sekali). Kalau identity Google sudah dimiliki
+akun lain, restore mengganti guest lokal tanpa merge setelah peringatan. Supabase
+Auth memakai Site URL `scanima://auth/callback` dan allow-list
+`scanima://auth/callback**` karena callback membawa query `state` acak; exact URL
+akan jatuh ke default localhost setelah Google selesai. Server menolak Scan guest
+kedua sebelum Vision berbayar; callback browser yang gagal bisa langsung dicoba
+ulang, dan link baru diumumkan sukses setelah grant Core tersimpan.
 
 **Collection sekarang memisahkan inspect dari Summon.** Tap kartu membuka bottom sheet dengan portrait, lima base stat yang tumbuh menurut Level, tiga kebutuhan, dan bar EXP yang disinkronkan server. `View Profile` membuka stats/delete tanpa mengganti companion aktif; `Summon` baru memindahkan pilihan ke Home melalui dissolve, portal cyan-violet, dan reveal, tanpa biaya atau model call. Roster yang benar-benar kosong menampilkan scanner procedural serta CTA first scan di Home dan Collection; loading atau error jaringan tidak lagi menyamar sebagai pemain baru. Setiap hatch tetap menawarkan rename opsional. Delete owner-only sudah live di production dan tetap tanpa refund.
 
@@ -92,34 +109,38 @@ token sebelum setiap request terautentikasi. Ini dijaga oleh 74 check di
 | 0 | Arsitektur, prompt spec, desain sistem | Selesai |
 | 1 | MVP: buktikan pipeline art end-to-end | Terbukti — Smoke Set v2 3/3 sheet 4/4 pose, gate 2/2 |
 | 2 | Backend Supabase + core game loop | Selesai — scan, hatch, Koleksi, Stats, Care, dan visual shell sudah hidup |
-| 3 | Battle, evolusi, onboarding, audio, monetisasi | Berjalan — Battle vertical slice live |
+| 3 | Battle, evolusi, onboarding, audio, monetisasi | Berjalan — Battle dan onboarding Seeker live |
 | 4 | Soft launch itch.io lalu Play Store | Belum mulai |
 
 Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 25 skenario + 12 uji tanda tangan webhook, tanpa API
+npm run selftest                 # 27 skenario + 12 uji tanda tangan webhook, tanpa API
 
-# Godot: 89 pemeriksaan slicing/presenter, tanpa jendela
+# Godot: 144 pemeriksaan slicing/presenter, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_sprite_slicing.gd
 
-# Godot: 55 pemeriksaan sesi, pending scan/care/Battle, dan cache art
+# Godot: 77 pemeriksaan sesi, secure token, pending intent, dan cache art
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 239 pemeriksaan shell, touch, Battle, roster, reduced motion
+# Godot: 468 pemeriksaan shell, touch, Battle, Seeker, roster, reduced motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
 
-# Godot: 1299 pemeriksaan katalog English, referensi key, formatter, dan layout
+# Godot: 2290 pemeriksaan katalog English, referensi key, formatter, dan layout
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_i18n.gd
 
-# Godot: 30 pemeriksaan care serta kontrak event Battle
+# Godot: 94 pemeriksaan care serta kontrak event Battle
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_game_rules.gd
+
+# Godot: 21 pemeriksaan PKCE callback, backup session, dan restore tanpa merge
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
+    --script res://tests/test_auth_flow.gd
 
 # Game: scan_flow, layar sungguhan. Butuh jaringan untuk sign-in.
 /Applications/Godot.app/Contents/MacOS/Godot --path game
@@ -178,7 +199,7 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 
 | Dokumen | Isi |
 | --- | --- |
-| [docs/wiki/README.md](docs/wiki/README.md) | Panduan pemain: perawatan, Cores/Bits, traits, EXP, Battle |
+| [docs/wiki/README.md](docs/wiki/README.md) | Panduan pemain: Seeker, perawatan, Cores/Bits, traits, EXP, Battle |
 | [docs/01-architecture-dataflow.md](docs/01-architecture-dataflow.md) | Pipeline data lengkap, skema Postgres + RLS, kontrak Edge Function, caching 3 lapis, penanganan latensi, jalur BYOK |
 | [docs/02-prompt-engineering.md](docs/02-prompt-engineering.md) | System prompt Vision LLM, JSON schema output, pemetaan fitur objek ke stat, style lock, payload Replicate, harness evaluasi |
 | [docs/03-godot-sprite-pipeline.md](docs/03-godot-sprite-pipeline.md) | Arsitektur node Godot, download + slicing sprite, background removal, animasi prosedural |
@@ -194,7 +215,7 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 ```
 scanima/
 ├── game/                         # Godot 4.6 project
-│   ├── addons/GodotGetImage/     # kamera Android, prebuilt 4.6.2, .aar ikut commit
+│   ├── addons/                    # kamera + OAuth2 + deep link, artefak mobile dipin
 │   ├── scenes/
 │   │   ├── scan_flow.tscn        # shell persisten: HUD + Stage + navigation
 │   │   ├── ui/                    # Home, Scan, Collection, Profile, bottom nav
@@ -202,9 +223,11 @@ scanima/
 │   ├── assets/                    # font OFL + ikon SVG beserta lisensinya
 │   ├── locales/ui.csv             # katalog player-facing, English source
 │   ├── scripts/
-│   │   ├── game_state.gd         # autoload: sesi, pending scan/care/Battle
+│   │   ├── secure_store.gd       # autoload: token Keystore/Keychain
+│   │   ├── game_state.gd         # autoload: preference + pending intent
 │   │   ├── backend.gd            # autoload: auth, REST, Storage, functions
 │   │   ├── locale_manager.gd     # autoload: locale, formatter, enum mapping
+│   │   ├── auth_flow.gd          # autoload: Google PKCE + link/restore
 │   │   ├── scan_flow.gd          # orkestrasi scan/care/Battle + navigation
 │   │   ├── *_view.gd             # presentation per destination
 │   │   ├── care_rules.gd         # mirror murni decay/sleep untuk preview + test
@@ -221,9 +244,10 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 369 kontrak shell + Battle + Shop + touch
-│       ├── test_i18n.gd              # 1869 kontrak katalog + key + wrapping
-│       ├── test_game_rules.gd        # 68 kontrak care + EXP/Level + event Battle
+│       ├── test_scan_ui.gd           # 468 kontrak shell + Battle + Seeker + touch
+│       ├── test_i18n.gd              # 2290 kontrak katalog + key + wrapping
+│       ├── test_game_rules.gd        # 94 kontrak care + EXP/Level + event Battle
+│       ├── test_auth_flow.gd         # PKCE/deep-link/session backup, tanpa jaringan
 │       ├── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 │       └── live_battle.gd            # Battle produksi, nol model call
 ├── backend/
@@ -245,6 +269,7 @@ scanima/
 │   │   │   ├── finalize_sheet.ts # sheet -> Storage + species_library
 │   │   │   └── replicate.ts      # satu jalur panggilan Replicate
 │   │   ├── create_anima/         # satu-satunya endpoint yang membelanjakan uang
+│   │   ├── seeker/               # profil, Google upgrade, delete account
 │   │   └── replicate_webhook/    # menyelesaikan generation, refund kalau gagal
 │   └── tests/quota_rules.sql     # uji invarian uang, aman di remote
 ├── eval/

@@ -89,7 +89,11 @@ Baru di sini Supabase masuk, dan alasannya karena sekarang kita tahu apa yang pe
 
 Fondasi backend lebih dulu: migrasi Postgres berisi tabel dari [01](01-architecture-dataflow.md), RLS di semuanya, trigger `guard_profile_columns`, dan fungsi `claim_genesis` / `record_cache_hit` / `refund_generation`. Sistem kuota dibangun **sebelum** endpoint yang membelanjakan uang, bukan sesudahnya — urutan sebaliknya berarti ada periode di mana ada endpoint tanpa pagar.
 
-**Status: fondasi itu sudah berdiri.** Delapan tabel, RLS plus hak kolom, fungsi kuota dan `apply_care`, bootstrap profil dengan 30 starter Bits, bucket Storage beserta policy per-folder, dan `backend/tests/quota_rules.sql` yang lulus di proyek remote. Client tidak bisa menulis kebutuhan/score atau memanggil RPC uang; satu key hanya mendebit satu Core/Bits.
+**Status: fondasi itu sudah berdiri.** Tabel/RLS plus hak kolom, fungsi kuota dan
+`apply_care`, bootstrap profil dengan 1 starter Core + 50 Bits, bucket Storage
+beserta policy per-folder, dan `backend/tests/quota_rules.sql` yang lulus di
+proyek remote. Client tidak bisa menulis kebutuhan/score/slot guest atau
+memanggil RPC uang; satu key hanya mendebit satu Core/Bits.
 
 **Titik keputusan CPU sudah dijawab dengan pengukuran, bukan dugaan: 173 ms** untuk sheet v3 sungguhan di runtime edge (batas 2 detik), dengan hasil identik piksel per piksel dengan Node. Tangga mitigasi di [01](01-architecture-dataflow.md) tidak perlu dinaiki.
 
@@ -99,13 +103,21 @@ Uji live itu menemukan satu hal yang tidak akan pernah ditemukan oleh test berba
 
 **Jalur uangnya sudah dijalankan utuh sekali di produksi (~$0.076).** Foto mug putih dari pemain anonim: `create_anima` balik 15 detik dengan Vision selesai, webhook menyelesaikan hatch-nya, hasilnya 4/4 pose, residu hijau 0,005%, nol piksel lintas kuadran, dan foto mentah terhapus sendiri. Pemain kedua yang memfoto mug yang sama mendapat `cache_hit` dalam 11 detik tanpa satu Core pun tersentuh, dengan `times_reused` naik ke 1. Sheet itu lalu diunduh dari CDN dan `test_sprite_slicing.gd` lulus 75/75 terhadapnya — art produksi, bukan fixture.
 
-**Sisi client sudah menyusul sampai Anima tampil di layar.** Dua autoload (`GameState` untuk sesi dan scan tertunda, `Backend` untuk transport) plus scene `scan_flow` sebagai entry point, dan rantainya sudah dijalankan sungguhan terhadap produksi lewat `tests/live_scan.gd` (~$0.003 per jalan): sign-in anonim, unggah ke folder sendiri, `create_anima` balik 11–16 detik, sheet ~1 MB dari CDN, `AnimaLoader` menerima keempat pose, saldo turun tepat satu Scan Charge tanpa menyentuh Core. Dua fase penantian dibedakan di UI karena panjangnya beda jauh: belasan detik untuk `create_anima`, lalu sekitar satu menit untuk gambarnya — satu spinner untuk keduanya akan terasa macet.
+**Sisi client sudah menyusul sampai Anima tampil di layar.** Lima autoload
+(`SecureStore`, `GameState`, `Backend`, `LocaleManager`, `AuthFlow`) plus scene
+`scan_flow` menjadi entry point. Guest sign-in, upload, hatch, dan resume tetap
+berjalan; token kini dipisahkan dari `state.json`. Google PKCE/deep link memberi
+link same-UID atau restore existing account tanpa merge. Rantai Scan produksi
+tetap terukur 11–16 detik sampai `create_anima`, lalu sekitar satu menit untuk
+sheet baru.
 
-Tiga invarian client dijaga oleh `tests/test_client_state.gd` (60 check, tanpa
+Invarian client dijaga oleh `tests/test_client_state.gd` dan
+`tests/test_auth_flow.gd` (tanpa
 jaringan): kunci idempotency scan/care/Battle bertahan di disk sehingga app
 yang mati tidak membayar atau commit kedua, access token diperbarui sebelum
-request terautentikasi, dan refresh token yang ditolak tidak pernah dijawab
-dengan sign-in anonim baru.
+request terautentikasi, refresh token yang ditolak tidak pernah dijawab dengan
+sign-in anonim baru, callback PKCE memvalidasi state, dan restore membuang intent
+guest lokal sebelum memakai akun Google.
 
 **Koleksi, Stats, sizing mobile, inkubator, care loop, dan visual shell sekarang selesai di Phase 2.** Tap Collection membuka bottom sheet base stats + care authoritative; `View Profile` menginspeksi tanpa mengganti active companion, sedangkan `Summon` memakai dissolve + portal sebelum membuka Home. Home membedakan Loading/Error/Empty/Ready dan memberi CTA first scan tanpa tutorial terpisah. Setiap hatch menawarkan rename opsional, dan Profile menyediakan hard delete owner-only tanpa refund lewat migration RLS yang sudah live di production. Empat meter berlabel serta Feed/Clean/Sleep/Play memakai target 96px. Theme cyan-violet-gold dipakai bersama production dan art inspector; chamber background, cards, CTA, modal, meter tween, serta press/reveal motion semuanya procedural tanpa texture UI tambahan. `care_anima` sudah live dan smoke produksi membuktikan sync serta Play idempoten tanpa model call. Decay sejak sync terakhir (cap 48 jam, tanpa grace), Sleep enam jam, score harian, debit Bits, dan Dormant dijaga oleh transaction function + 30 check `test_game_rules.gd`; `test_scan_ui.gd` menjaga 249 kontrak mobile, Battle, theme, dan roster.
 
@@ -115,11 +127,21 @@ Resize di device ikut sekarang, dan angkanya tidak dipilih bebas — 1280 px sam
 
 **Ekspor Android sudah berjalan, dan seluruhnya dari CLI.** Tidak ada langkah editor yang wajib: `--install-android-build-template` ternyata flag CLI dan `export_presets.cfg` boleh ditulis tangan, jadi APK debug 75 MB (`com.rekansebangku.scanima`, target SDK 35, arm64-v8a) lahir dari satu perintah. Dua jebakan ditemukan justru karena artefaknya diperiksa alih-alih dipercaya. Pertama, Godot 4 **mematikan izin `INTERNET` secara default**: APK pertama keluar dengan `CAMERA` sebagai satu-satunya izin, dan ia akan terpasang, terbuka, lalu mati senyap di sign-in anonim — kegagalan yang tampak seperti masalah jaringan, bukan seperti izin yang lupa. Kedua, template Android 4.6.2 mematok Gradle 8.11.1 yang tidak menerima JDK di atas 23, sementara mesin build punya JDK 26; JDK 17 dipasang berdampingan, bukan menggantikan. Hasil akhirnya diverifikasi tepat dua izin (`INTERNET` + `CAMERA`, nol `READ_MEDIA_IMAGES`) dengan kelas plugin terbukti ada di `classes.dex` — yang sekaligus memvalidasi pilihan fork PhotoPicker di artefak jadi, bukan cuma di manifest sumbernya.
 
-Dengan itu, core loop Phase 2 lengkap. Satu pemeriksaan yang tetap tidak bisa dijalankan headless adalah kamera pada perangkat sungguhan, memakai spesies cache-hit (~$0.003, bukan $0.07).
+Dengan itu, core loop Phase 2 lengkap. Guest Seeker mendapat satu Scan sukses
+dan 1 Core; cache hit memakai slot tetapi tidak Core. Link Google
+mempertahankan UID/progres dan melengkapi starter lifetime ke 3 Core. Satu
+pemeriksaan yang tetap tidak bisa dijalankan headless adalah kamera dan callback
+Google pada perangkat sungguhan.
 
-Edge Functions: `create_anima`, `replicate_webhook`, dan `care_anima`. Post-processing Phase 1 dipakai apa adanya di Deno lewat satu modul bersama; care tidak punya model call. Unggah foto tidak dapat endpoint sendiri—policy Storage per-folder sudah menjadi pagarnya.
+Edge Functions mencakup `create_anima`, `replicate_webhook`, `care_anima`,
+`battle_anima`, `shop`, dan `seeker`. Post-processing Phase 1 dipakai apa adanya
+di Deno lewat satu modul bersama. Unggah foto tidak dapat endpoint sendiri—policy
+Storage per-folder sudah menjadi pagarnya.
 
-Autentikasi memakai anonymous sign-in Supabase. Tidak ada layar login di awal permainan; pemain baru langsung memfoto sesuatu. Upgrade ke akun ber-email ditawarkan nanti saat mereka punya sesuatu yang layak diselamatkan, dan pembingkaiannya soal tidak kehilangan koleksi, bukan soal mendaftar.
+Autentikasi memakai anonymous sign-in Supabase tanpa login gate di awal.
+Sesudah Scan guest pertama, atau lewat menu Seeker, pemain dapat menautkan
+Google. Link mempertahankan UID; identity yang sudah dipakai membuka warning lalu
+restore akun lama tanpa merge progres guest. Tidak ada email/password UI.
 
 Sisi Godot: `AnimaLoader` lengkap dengan cache dan LRU, serta state machine Incubator dari [01](01-architecture-dataflow.md) beserta polling dan penanganan aplikasi masuk background. Integrasi kamera dan resize foto di device sudah selesai lebih awal, di Phase 2.
 
@@ -149,7 +171,7 @@ live—Anima aktif melawan snapshot anonim Anima pemain lain, tiga aksi per turn
 damage/elemen/PP server-authoritative, resume setelah restart, reward
 atomik, dan presentasi hit di Godot.
 
-Yang berikutnya di Phase 3 adalah evolusi vertical slice, onboarding, audio, dan
+Yang berikutnya di Phase 3 adalah evolusi vertical slice, onboarding tutorial, audio, dan
 weekly Core/pending-discovery claim. PvP/matchmaking, tim multi-Anima, ranked
 ladder, battle pass, dan item drop tetap ditunda; semuanya memperlebar sistem
 sebelum loop 1v1 punya data pemain nyata.
@@ -169,7 +191,11 @@ Evolusi: gerbang syarat di server, ritual evolusi sebagai momen puncak, percaban
 
 Monetisasi, dengan pemetaan yang sudah dikunci di [04](04-game-systems-economy.md) dan tidak boleh digeser: rewarded ad hanya untuk Scan Charge dan Bits, IAP dan langganan untuk Genesis Core. **Keputusan 13 Agustus 2026: pemain juga mendapat 1 Genesis Core gratis per minggu**, server-authoritative dan ledger-backed; detail auto-credit/claim serta akumulasi minggu terlewat belum diputuskan. Implementasinya harus datang bersama jalur memakai Core itu untuk menuntaskan `pending_discoveries`, karena build sekarang sudah menyimpan temuannya tetapi belum punya endpoint/UI claim. Plus jalur BYOK: layar tempel token, validasi ke Replicate, penyimpanan lokal di device, generation langsung dari Godot, post-processing lewat shader bake, dan tawaran opt-in menyumbang sheet ke pustaka global.
 
-UI Phase 3 berfokus pada permukaan fitur baru, bukan mengulang visual shell. Onboarding tiga layar berakhir dengan pemain memfoto sesuatu di dekatnya dalam 60 detik pertama — bukan tutorial berisi teks, tapi satu instruksi dan satu tombol kamera. Battle/evolution harus memakai theme dan `UiJuice` yang sudah ada. Koleksi dasar dan Stats numerik selesai di Phase 2; fase ini hanya mengganti placeholder kartu yang belum tercache dengan thumbnail server khusus bila jumlah roster nyata membuktikan kebutuhan itu, serta menambahkan `stat_reasoning` dari Vision LLM ("ATK tinggi karena ujungnya tajam"). Jangan mengunduh sheet 1 MB massal hanya untuk menghilangkan placeholder.
+UI Phase 3 berfokus pada permukaan fitur baru, bukan mengulang visual shell.
+Onboarding identitas Seeker sudah live sesudah hatch pertama: nama unik wajib,
+birth year/gender opsional, dan tanpa flag lokal kedua. Tutorial tiga layar yang
+berakhir dengan foto dalam 60 detik tetap pekerjaan terpisah. Battle/evolution
+harus memakai theme dan `UiJuice` yang sudah ada.
 
 Audio: musik latar untuk kandang dan battle, dan yang lebih penting, SFX untuk setiap aksi perawatan. Umpan balik audio pada tap adalah pembeda terbesar antara terasa murah dan terasa dibuat dengan sungguh-sungguh, dengan biaya kerja paling kecil.
 
@@ -231,7 +257,7 @@ Biaya tetap di luar API: akun developer Play Store $25 sekali bayar, Supabase gr
 | Vision gate bocor, konten tidak pantas masuk | Tinggi, risiko toko aplikasi | Gate LLM plus `safety_filter_level` plus tombol laporkan; entri species bisa dihapus dari pustaka |
 | Play Store menolak karena kebijakan foto/kamera | Menengah | Privacy policy dan data safety disiapkan di Phase 3, bukan saat mengunggah |
 | Satu pemain menghabiskan biaya tidak proporsional | Menengah | `daily_spend_cap_usd`, query 20 pemain termahal, harga Core di atas $0.20 bersih |
-| Pemain kehilangan Anima karena akun anonim | Menengah | Tawarkan upgrade akun setelah Anima pertama layak diselamatkan |
+| Pemain kehilangan Anima karena akun anonim | Menengah | Google link same-UID + secure token store sudah live; restore akun lama memberi warning dan tidak merge guest |
 | Scope creep ke PvP real-time atau trading | Menengah | Keduanya secara eksplisit ditunda ke Phase 5 |
 
 ## Yang sengaja tidak dikerjakan

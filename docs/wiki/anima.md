@@ -2,6 +2,10 @@
 
 Setiap Anima lahir dari foto. Yang kelihatan di profil dan Collection datang dari benda itu, lalu tumbuh pelan lewat Level.
 
+Sesudah Anima pertama menetas, game menawarkan **Create Your Seeker**. Nama
+Seeker adalah identitas pemain dan berbeda dari nickname Anima. Sheet boleh
+ditutup dan dilanjutkan nanti.
+
 ## Traits
 
 Kartu **About** di profil:
@@ -61,4 +65,9 @@ Tap kartu membuka sheet, bukan langsung pindah companion.
 
 Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Kartu Collection memakai pose-nya: Sleep selama Energy pulih, Hungry atau Dirty kalau lapar/kotor, Idle kalau siap, Damaged kalau Dormant. Tidak perlu tap dulu supaya kelihatan.
 
-**Delete** ada di profil sebagai teks kecil, bukan tombol besar. Menghapus itu permanen: tidak ada refund Core atau Bits.
+**Delete** ada di profil sebagai teks kecil, bukan tombol besar. Menghapus itu
+permanen: tidak ada refund Core atau Bits. Ini hanya menghapus satu Anima.
+**Delete Account** di menu [Seeker](seeker.md) menghapus seluruh akun.
+
+Rename Anima tidak memiliki cooldown Seeker. **Change Seeker Name** adalah aksi
+terpisah dan hanya tersedia sekali setiap 30 hari.

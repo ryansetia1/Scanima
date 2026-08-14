@@ -37,6 +37,7 @@ const KUALITAS_GAMBAR = Deno.env.get("IMAGE_QUALITY") ?? "medium";
 const STAGE_BAYI = 1;
 const TTL_SIGNED_URL = 900; // detik; harus melebihi ~60s generation plus antrean
 const CARE_AWAL = { hunger: 100, energy: 100, hygiene: 100, bond: 0 };
+const db = adminClient();
 
 type Vision = {
   species_key: string;
@@ -59,14 +60,12 @@ type Vision = {
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
 
-  const db = adminClient();
-
   // Autentikasi sebelum apa pun yang lain: uid yang dipakai untuk mendebit
   // datang dari token, tidak pernah dari body.
-  const authz = req.headers.get("authorization") ?? "";
-  const { data: auth, error: errAuth } = await db.auth.getUser(authz.replace(/^Bearer\s+/i, ""));
-  if (errAuth || !auth?.user) return json(401, { error: "token tidak sah" });
-  const uid = auth.user.id;
+  const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const { data: auth, error: errAuth } = await db.auth.getClaims(token);
+  const uid = auth?.claims?.sub;
+  if (errAuth || typeof uid !== "string") return json(401, { error: "token tidak sah" });
 
   let body: { photo_path?: string; idempotency_key?: string; nickname?: string };
   try {
@@ -144,6 +143,10 @@ Deno.serve(async (req) => {
   } else {
     const { error: errKlaim } = await db.rpc("claim_scan_charge", { p_owner: uid });
     if (errKlaim) {
+      if (errKlaim.message.includes("GUEST_SCAN_USED")) {
+        await db.storage.from("photos").remove([photoPath]);
+        return json(409, { error: "GUEST_SCAN_USED" });
+      }
       const kode = errKlaim.message.includes("NO_SCAN_CHARGE") ? 402 : 500;
       return json(kode, { error: errKlaim.message.includes("NO_SCAN_CHARGE") ? "NO_SCAN_CHARGE" : errKlaim.message });
     }
@@ -222,7 +225,14 @@ Deno.serve(async (req) => {
         p_vision: vision,
         p_prompt_version: cache.prompt_version,
       });
-      if (error) return json(500, { error: error.message });
+      if (error) {
+        if (error.message.includes("GUEST_SCAN_USED")) {
+          await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "guest_scan_used" });
+          await db.storage.from("photos").remove([photoPath]);
+          return json(409, { error: "GUEST_SCAN_USED" });
+        }
+        return json(500, { error: error.message });
+      }
 
       // Foto sudah tidak diperlukan: tidak ada generation yang akan memakainya.
       await db.storage.from("photos").remove([photoPath]);
@@ -265,6 +275,11 @@ Deno.serve(async (req) => {
 
     if (error) {
       const msg = error.message;
+      if (msg.includes("GUEST_SCAN_USED")) {
+        await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "guest_scan_used" });
+        await db.storage.from("photos").remove([photoPath]);
+        return json(409, { error: "GUEST_SCAN_USED" });
+      }
       // Spesies baru tapi tidak ada Core: hasil Vision sudah dibayar, jadi ia
       // disimpan sebagai Temuan Tertunda. Pemain bisa mengklaimnya nanti tanpa
       // memfoto ulang objek yang mungkin sudah tidak ada di dekatnya.

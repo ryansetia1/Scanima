@@ -23,6 +23,9 @@ flowchart TD
     ViewStack --> BattleView
     ViewStack --> CollectionView
     ViewStack --> AnimaDetailsView
+    ViewStack --> SeekerProfileView
+    ScanFlow --> SeekerMenuSheet
+    ScanFlow --> SeekerOnboardingSheet
     ScanFlow --> BottomNav
 ```
 
@@ -39,6 +42,8 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
   Tap tepat pada sprite memberi reaksi lokal sesuai awake/Sleep/Dormant tanpa
   mengubah care atau mengirim request.
 - **Scan:** penjelasan discovery, preview foto, dua fase status, CTA kamera.
+  Untuk Guest Seeker yang sudah memakai satu kesempatan Scan, CTA tetap aktif
+  tetapi berubah menjadi **Sign in to Scan Again**; tab lain tidak ikut dikunci.
 - **Battle:** lobby Anima aktif, dua fighter, HP/PP, Attack/Special/Guard/Item,
   ordered event feedback, result/retry, dan forfeit. Counter PP hidup **hanya** di
   tombol Special, di tempat pemain membelanjakannya; label header yang dulu
@@ -60,6 +65,15 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
   dengan aksi `View Profile` dan `Summon`. Thumbnail hanya dari cache.
 - **Anima Profile:** portrait dan sembilan row label/help/value untuk traits serta
   base stats. Konten scroll, dan setiap help membuka penjelasan singkat in-app.
+- **Seeker Profile:** view tambahan di luar bottom nav. Portrait memakai companion
+  aktif dan enam row menampilkan Level kosmetik, EXP, jumlah Anima/spesies,
+  seluruh kemenangan, dan tanggal bergabung. Rename membuka `UiModal`.
+
+Tombol menu 96px di Top HUD membuka `SeekerMenuSheet`: Profile, aksi
+Google/account linked, Reduced Motion, Help, dan Delete Account. Setelah hatch
+pertama, `SeekerOnboardingSheet` meminta nama unik; birth year dan gender
+opsional. Sheet boleh ditutup dan akan ditawarkan lagi selama `seeker_name`
+server masih null—tidak ada flag onboarding lokal yang bisa drift.
 
 Pose Idle/Attack/Sleep/Defeated bukan navigation production. Alat itu tetap ada
 di `anima_demo.tscn`.
@@ -146,8 +160,9 @@ portal; `FirstAnimaEffect` memiliki scanner empty state. Jangan membuat tween
 baru yang menulis properti milik komponen lain.
 
 `UiMotion.reduced_motion` mematikan ambient motion, squash/reveal, meter tween,
-dan hatch movement tanpa mematikan feedback atau kontrol. Settings
-accessibility masa depan cukup mengatur flag ini.
+dan hatch movement tanpa mematikan feedback atau kontrol. Check **Reduced
+Motion** di menu Seeker menulis preference lewat `GameState`; nilainya tetap
+lokal pada device dan dipertahankan saat restore/hapus akun.
 
 Tap pada Anima Home bergantung pada dua hal yang mudah dilanggar. Pertama, semua
 `Container` di atas Stage (`SafeMargin`, `Shell`, `ViewStack`, `HomeView`, dan
@@ -167,6 +182,8 @@ kesalahan itu terlihat sebagai `reaction=(0, 0)`.
   --script res://tests/test_i18n.gd
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
   --script res://tests/test_sprite_slicing.gd
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
+  --script res://tests/test_auth_flow.gd
 
 # Visual states tanpa panggilan model
 godot --path game -- --screenshot=/tmp/home.png
