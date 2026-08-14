@@ -4,7 +4,7 @@
 // memverifikasi identitas dari JWT, memvalidasi bentuk request, lalu meneruskan
 // uid tersebut ke RPC service-role. Client tidak pernah boleh memilih owner_id.
 
-import { adminClient, json } from "../_shared/supa.ts";
+import { adminClient, json, syncProfileTimezone } from "../_shared/supa.ts";
 
 const ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon"]);
 const MUTATING = new Set(["feed", "clean", "sleep", "wake", "play", "summon"]);
@@ -29,6 +29,7 @@ type CareBody = {
   anima_id?: unknown;
   action?: unknown;
   idempotency_key?: unknown;
+  timezone_offset_minutes?: unknown;
 };
 
 // Satu client per isolate mempertahankan cache JWKS getClaims() pada request hangat.
@@ -58,6 +59,8 @@ Deno.serve(async (req) => {
   if (MUTATING.has(action) && (!key || key.length > 128)) {
     return json(400, { error: "idempotency_key wajib, maks 128 char" });
   }
+
+  await syncProfileTimezone(db, ownerId, body.timezone_offset_minutes);
 
   const { data, error } = await db.rpc("apply_care", {
     p_owner: ownerId,

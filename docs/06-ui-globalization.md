@@ -54,7 +54,7 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
   berhadiah. Training menyembunyikan counter itu karena Training tidak terbatas;
   feedback singkat tetap menjelaskan bahwa daily reward sudah selesai. Lobby memakai satu CTA kontekstual: `Battle` saat
   reward tersedia, `Train` setelah 3/3; copy di bawahnya menjelaskan bahwa Bits,
-  Care Score, dan Battle Wins tidak diberikan serta reset terjadi 00:00 UTC.
+  Care Score, dan Battle Wins tidak diberikan serta reset terjadi 00:00 waktu setempat.
   Kemenangan ketiga tetap `Rewards 3/3`, sedangkan hasil Training memakai title,
   body, dan `Train Again` khusus agar pemain tidak dijanjikan reward yang tidak
   di-credit server. Client refresh dari `server_now`/`reset_at` saat timer atau

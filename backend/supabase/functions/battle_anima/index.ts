@@ -3,7 +3,7 @@
 // Body: { operation: status|start|resume|turn|forfeit, ... }
 // Combat runs in battle.mjs. Postgres alone commits turn order and rewards.
 
-import { adminClient, json } from "../_shared/supa.ts";
+import { adminClient, json, syncProfileTimezone } from "../_shared/supa.ts";
 import {
   BATTLE_ACTIONS,
   baseStatTotal,
@@ -52,6 +52,7 @@ type BattleBody = {
   expected_turn?: unknown;
   expected_version?: unknown;
   idempotency_key?: unknown;
+  timezone_offset_minutes?: unknown;
 };
 
 type AnimaRow = {
@@ -97,6 +98,7 @@ Deno.serve(async (req) => {
   }
 
   const operation = typeof body.operation === "string" ? body.operation : "";
+  await syncProfileTimezone(db, ownerId, body.timezone_offset_minutes);
   try {
     if (operation === "status") return await battleStatus(ownerId, body);
     if (operation === "start") return await startBattle(ownerId, body);

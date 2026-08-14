@@ -205,16 +205,21 @@ static func grown_stat(base_value: Variant, exp: int) -> int:
 	return int(float(base_value) * growth_multiplier(level_from_exp(exp)))
 
 
-static func play_exp_used(row: Dictionary) -> int:
+static func play_exp_used(row: Dictionary, today: String = "") -> int:
 	var used_on := _utc_date(row.get("play_score_on"))
-	var synced_on := _utc_date(row.get("care_synced_at"))
-	if used_on.is_empty() or synced_on.is_empty() or used_on != synced_on:
+	var current := today if not today.is_empty() else local_today_string()
+	if used_on.is_empty() or used_on != current:
 		return 0
 	return clampi(int(row.get("play_score_today", 0)), 0, PLAY_SCORE_DAILY_CAP)
 
 
-static func play_exp_remaining(row: Dictionary) -> int:
-	return PLAY_SCORE_DAILY_CAP - play_exp_used(row)
+static func play_exp_remaining(row: Dictionary, today: String = "") -> int:
+	return PLAY_SCORE_DAILY_CAP - play_exp_used(row, today)
+
+
+static func local_today_string() -> String:
+	var date := Time.get_date_dict_from_system(false)
+	return "%04d-%02d-%02d" % [int(date.year), int(date.month), int(date.day)]
 
 
 static func _utc_date(value: Variant) -> String:

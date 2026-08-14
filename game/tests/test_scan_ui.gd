@@ -1351,7 +1351,7 @@ func _test_home_care_actions() -> void:
 	_check_eq(_home_care_action, "play", "Play under the daily cap still requests care")
 	_home_care_action = ""
 	row["care_synced_at"] = "2026-08-14T12:00:00Z"
-	row["play_score_on"] = "2026-08-14"
+	row["play_score_on"] = CareRules.local_today_string()
 	row["play_score_today"] = 5
 	home.update_care(row, false)
 	_check(not play.disabled, "Play stays clickable after the daily EXP cap")

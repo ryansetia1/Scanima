@@ -61,6 +61,24 @@ begin
          'starter Bits harus tercatat di ledger';
   update public.profiles set display_name = 'uji' where id in (u1, u2);
 
+  assert extract(hour from ((public.battle_daily_reward_status(u1)->>'reset_at')::timestamptz at time zone 'UTC')) = 0,
+         'offset 0 harus reset di 00:00 UTC';
+  assert public.set_profile_timezone(u1, 420) = 420,
+         'set zona pertama harus diterima';
+  assert public.set_profile_timezone(u1, 0) = 420,
+         'ganti zona dalam 24 jam harus ditolak';
+  update public.profiles
+     set timezone_offset_set_at = now() - interval '25 hours'
+   where id = u1;
+  assert public.set_profile_timezone(u1, 0) = 0,
+         'ganti zona sesudah 24 jam harus diterima';
+  update public.profiles
+     set timezone_offset_minutes = 420,
+         timezone_offset_set_at = now()
+   where id = u1;
+  assert extract(hour from ((public.battle_daily_reward_status(u1)->>'reset_at')::timestamptz at time zone 'UTC')) = 17,
+         'WIB +420 harus reset di 17:00 UTC';
+
   insert into public.animas (owner_id, nickname, species_key, color_bucket,
                              element, rarity, base_stats, care)
   values (u1, 'uji anima', 'mouse_plastic', 'gray', 'tech', 3, v_stats, v_care);
@@ -360,6 +378,20 @@ begin
   end;
   assert ok, 'client tidak boleh menulis companion aktif';
 
+  begin
+    update public.profiles set timezone_offset_minutes = 0 where id = u1;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh menulis offset zona';
+
+  begin
+    perform public.set_profile_timezone(u1, 0);
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'set_profile_timezone tidak boleh dipanggil client';
+
   update public.animas set nickname = 'nama pilihan' where id = v_delete_own;
   assert (select nickname from public.animas where id = v_delete_own) = 'nama pilihan',
          'pemain harus bisa mengganti nickname Anima sendiri';
@@ -590,7 +622,7 @@ begin
   assert (v_j #>> '{anima,care_score}')::int = 5,
          'tidur penuh harus memberi 5 care_score';
 
-  -- Bonus terawat tepat sekali per UTC day, tanpa Bond.
+  -- Bonus terawat tepat sekali per hari sipil lokal, tanpa Bond.
   update public.animas
      set care = '{"hunger":80,"energy":80,"hygiene":80,"bond":0}'::jsonb,
          care_score = 0,
@@ -608,7 +640,7 @@ begin
      set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
          care_score = 0,
          care_synced_at = now() - interval '2 hours',
-         well_cared_on = (now() at time zone 'UTC')::date
+         well_cared_on = public.local_civil_date(now(), 420)
    where id = v_care_anima;
   perform public.apply_care(u1, v_care_anima, 'sync', null);
   assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 80,
@@ -638,7 +670,7 @@ begin
          care_score = 99,
          care_synced_at = now() - interval '56 hours',
          dormant_since = null,
-         well_cared_on = (now() at time zone 'UTC')::date
+         well_cared_on = public.local_civil_date(now(), 420)
    where id = v_care_anima;
   perform public.apply_care(u1, v_care_anima, 'sync', null);
   assert (select dormant_since is not null from public.animas where id = v_care_anima),

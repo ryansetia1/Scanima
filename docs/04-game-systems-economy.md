@@ -206,7 +206,7 @@ Nilai aksi yang live di Phase 2:
 
 - **Feed:** 5 Bits, Hunger +35; EXP +3 hanya jika Hunger sebelum aksi <40. Ditolak `NEED_FULL` kalau Hunger setelah decay >= 99.5 (meter yang tampil penuh, termasuk 99.99). Client meredupkan tombol dan toast tanpa request — Godot menelan `pressed` kalau `disabled`.
 - **Clean:** 5 Bits, Hygiene +35; EXP +3 hanya jika Hygiene sebelum aksi <50. Gerbang penuh yang sama.
-- **Play:** gratis, Energy -5; EXP +1 maksimal lima kali per UTC day. Tidak ada cap Bond; anti-farm-nya Energy dan counter harian. Client menahan tap sesudah cap (toast, tanpa request).
+- **Play:** gratis, Energy -5; EXP +1 maksimal lima kali per hari sipil lokal. Tidak ada cap Bond; anti-farm-nya Energy dan counter harian. Client menahan tap sesudah cap (toast, tanpa request).
 - **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 EXP. Wake lebih awal mempertahankan pemulihan parsial tanpa EXP. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap. Anima yang **tidak di-Summon** juga tidur, tanpa auto-bangun dan tanpa +5 EXP — Energy pulih dalam tiga jam (dua kali lipat companion). Collection menampilkan pose Idle begitu Energy penuh supaya pemain tahu Anima itu siap di-Summon; row Postgres tetap tidur agar Energy tidak luruh. `Summon` menulis `profiles.active_anima_id` dan menidurkan sisanya.
 
 Saldo, kebutuhan, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten, sedangkan `quota_ledger` mencatat debit Feed/Clean. Client menyimpan satu intent `pending_care`, bukan salinan saldo atau kebutuhan.
@@ -346,7 +346,7 @@ Itu tujuan seluruh sistem ini.
 
 ### Hadiah dan tempat battle dalam loop
 
-Tiga kemenangan pertama per akun per hari UTC masing-masing memberi tepat
+Tiga kemenangan pertama per akun per hari sipil lokal masing-masing memberi tepat
 **5 Bits**, `care_score +4`, dan `battle_wins +1` untuk gerbang Ravager. Setelah
 itu Battle tetap tersedia sebagai **Training**, tetapi ketiga progression reward
 tersebut nol. Cap harus account-wide—bukan per Anima—supaya mengganti companion
@@ -356,7 +356,7 @@ membuka jalur farming yang biayanya kita tanggung tanpa batas.
 
 Counter harian tidak punya kolom mutable sendiri. `quota_ledger` sudah mencatat
 setiap `reason = 'battle_win'`, jadi `commit_battle_turn()` menghitung tiga baris
-hari UTC ini sambil memegang profile row lock, lalu membuat keputusan dan ledger
+hari sipil lokal ini sambil memegang profile row lock, lalu membuat keputusan dan ledger
 dalam transaksi yang sama. Counter sengaja tidak memeriksa nominal 5 Bits:
 balancing reward kelak tidak boleh diam-diam membuka cap.
 `app_config.battle_rewarded_wins_per_day` menyimpan angka 3 agar balancing bisa
@@ -366,7 +366,10 @@ diubah tanpa deploy. Payload session dan operasi `battle_anima/status` membawa
 Training menyembunyikan counter karena mode latihannya sendiri tidak terbatas,
 sementara feedback dan hasil tetap menyatakan bahwa progression reward sudah
 habis. Selisih dua timestamp server menjadwalkan
-refresh tepat di reset UTC tanpa mempercayai jam device. Membatasi Bits saja
+refresh tepat di reset tengah malam lokal tanpa mempercayai jam device.
+Offset zona hidup di `profiles.timezone_offset_minutes` (menit timur UTC).
+Client hanya melapor; `set_profile_timezone()` mengunci ganti zona 24 jam
+supaya memajukan jam HP tidak membuka hari extra. Membatasi Bits saja
 tidak cukup: `care_score` dan `battle_wins` juga gerbang evolusi, jadi exploit
 hanya akan berpindah.
 
@@ -374,7 +377,7 @@ hanya akan berpindah.
 Keduanya memakai duel yang sama, jadi dua pilihan hanya memberi keputusan palsu.
 Tab tetap bernama Battle; satu CTA berbunyi `Battle` selama reward tersedia dan
 berubah menjadi `Train` setelah 3/3, dengan penjelasan bahwa Bits, Care Score,
-dan Battle Wins tidak diberikan serta reward reset pukul 00:00 UTC. Kemenangan
+dan Battle Wins tidak diberikan serta reward reset pukul 00:00 waktu setempat. Kemenangan
 ketiga tetap result Battle berhadiah (`Rewards 3/3`); mode Training baru berlaku
 untuk session berikutnya.
 

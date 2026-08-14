@@ -20,7 +20,7 @@ Dipakai untuk merawat.
 
 - Pemain baru mulai dengan **30 Bits**.
 - **Feed** dan **Clean** masing-masing 5 Bits.
-- Menang Battle berhadiah: **+5 Bits** (paling banyak 3 kemenangan per hari, reset 00:00 UTC).
+- Menang Battle berhadiah: **+5 Bits** (paling banyak 3 kemenangan per hari, reset tengah malam waktu setempat).
 - Play, Sleep, Summon, dan Training **gratis**.
 
 30 Bits awal = 6 kali Feed atau Clean. Menang Battle sekali mengembalikan tepat satu Feed.

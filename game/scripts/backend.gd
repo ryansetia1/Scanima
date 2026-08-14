@@ -216,8 +216,16 @@ func create_anima(photo_path: String, idempotency_key: String, nickname := "") -
 	)
 
 
+func timezone_offset_minutes() -> int:
+	return clampi(int(Time.get_time_zone_from_system().get("bias", 0)), -840, 840)
+
+
 func care_anima(anima_id: String, action: String, idempotency_key := "") -> Dictionary:
-	var body := {"anima_id": anima_id, "action": action}
+	var body := {
+		"anima_id": anima_id,
+		"action": action,
+		"timezone_offset_minutes": timezone_offset_minutes(),
+	}
 	if not idempotency_key.is_empty():
 		body["idempotency_key"] = idempotency_key
 	return await _send(
@@ -232,6 +240,7 @@ func care_anima(anima_id: String, action: String, idempotency_key := "") -> Dict
 func battle_anima(operation: String, payload: Dictionary = {}) -> Dictionary:
 	var body := payload.duplicate(true)
 	body["operation"] = operation
+	body["timezone_offset_minutes"] = timezone_offset_minutes()
 	return await _send(
 		HTTPClient.METHOD_POST,
 		URL_BASE + "/functions/v1/battle_anima",

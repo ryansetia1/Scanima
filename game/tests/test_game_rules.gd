@@ -96,19 +96,19 @@ func _initialize() -> void:
 		CareRules.play_exp_remaining({
 			"play_score_on": "2026-08-14",
 			"play_score_today": 2,
-			"care_synced_at": "2026-08-14T12:00:00Z",
-		}),
+			"care_synced_at": "2026-08-14T17:10:00Z",
+		}, "2026-08-14"),
 		3,
-		"sisa Play EXP memakai tanggal UTC server"
+		"sisa Play EXP memakai hari sipil lokal, bukan prefix UTC"
 	)
 	_check_eq(
 		CareRules.play_exp_remaining({
 			"play_score_on": "2026-08-13",
 			"play_score_today": 5,
 			"care_synced_at": "2026-08-14T00:10:00Z",
-		}),
+		}, "2026-08-14"),
 		5,
-		"jatah Play EXP pulih di hari UTC baru"
+		"jatah Play EXP pulih di hari sipil lokal baru"
 	)
 	_check(
 		CareRules.enters_dormant({"hunger": 0, "hygiene": 0}, 48.0),

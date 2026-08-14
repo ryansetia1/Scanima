@@ -730,6 +730,10 @@ console.log("19. tidak ada kredensial mahal di sumber client Godot");
     "care_anima harus menerima summon supaya Collection bisa menidurkan companion lama");
   assert.ok(!care.includes(".auth.getUser("), "care_anima tidak boleh mengembalikan round-trip getUser");
   assert.match(careConfig, /verify_jwt\s*=\s*true/, "gateway JWT care_anima harus tetap aktif");
+  assert.ok(
+    care.includes("syncProfileTimezone"),
+    "care_anima harus menyimpan offset zona sebelum apply_care"
+  );
 }
 
 console.log("20. prompt v4 tidak mengarang logo atau damage cyborg");
@@ -1122,6 +1126,10 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
 		/ANIMA_BATTLE_FIELDS[\s\S]*strike_name, surge_name/,
 		"start Battle harus membaca kolom nama move, bukan hanya menulisnya ke snapshot kosong"
 	);
+  assert.ok(
+    battleEdge.includes("syncProfileTimezone"),
+    "battle_anima harus menyimpan offset zona sebelum status/start"
+  );
 }
 
 console.log("24. sheet v7 3x3 sembilan sel");

@@ -131,6 +131,8 @@ create table profiles (
   bits           int  not null default 30,       -- starter care pack
   next_refill_at timestamptz,
   byok_enabled   bool not null default false,
+  timezone_offset_minutes int not null default 0, -- menit timur UTC; bukan jam device
+  timezone_offset_set_at timestamptz,             -- kunci ganti zona 24 jam
   created_at     timestamptz not null default now(),
   last_seen_at   timestamptz not null default now()
 );
@@ -173,9 +175,9 @@ create table animas (
   care_synced_at timestamptz not null default now(),  -- basis perhitungan decay
   sleep_started_at timestamptz,
   sleep_energy_at_start double precision,
-  well_cared_on  date,                                -- bonus +8 per UTC day
+  well_cared_on  date,                                -- bonus +8 per hari sipil lokal
   play_score_on  date,
-  play_score_today smallint not null default 0,       -- cap +5 per UTC day
+  play_score_today smallint not null default 0,       -- cap +5 per hari sipil lokal
   dormant_since  timestamptz,                         -- bukan generation status
   battle_wins    int not null default 0,
   created_at     timestamptz not null default now()
@@ -568,7 +570,7 @@ Session aktif berumur 30 menit dan hanya satu per pemain. Satu
 response yang sama tanpa damage atau reward kedua. Menang mengubah Bits +5,
 `care_score +4`, `battle_wins +1`, dan ledger dalam transaksi yang sama;
 kalah/forfeit nol reward dan Battle tidak pernah menyentuh Genesis Core. Reward
-itu dibatasi tiga kemenangan per akun per hari UTC. `commit_battle_turn()`
+itu dibatasi tiga kemenangan per akun per hari sipil lokal. `commit_battle_turn()`
 mengunci row profile lalu menghitung ledger `reason = 'battle_win'`; kemenangan
 setelah cap tetap terminal `won`, tetapi payload menandainya sebagai Training
 dan tidak mengubah Bits, `care_score`, `battle_wins`, atau ledger. Session

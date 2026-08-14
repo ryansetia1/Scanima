@@ -66,10 +66,10 @@ menit dan bisa dilanjutkan setelah restart. Kalah/forfeit nol reward; Battle
 tidak pernah memberi Genesis Core. PvP, tim, ranked, dan item drop belum masuk
 scope. Initiative mengikuti SPD dan diumumkan sebelum animasi; kedua petarung
 menghadap serta menerjang ke arah lawan. Hanya tiga kemenangan pertama per akun
-per hari UTC yang memberi reward tersebut; kemenangan berikutnya tetap bisa
+per hari sipil lokal yang memberi reward tersebut; kemenangan berikutnya tetap bisa
 dimainkan sebagai Training tanpa Bits maupun progression evolusi. Lobby tidak
 memberi dua pilihan palsu: satu CTA berubah dari `Battle` menjadi `Train` saat
-status server mencapai 3/3, sekaligus menjelaskan alasan dan reset 00:00 UTC.
+status server mencapai 3/3, sekaligus menjelaskan alasan dan reset tengah malam waktu setempat.
 
 Dua keputusan di client dibuat karena bentuk masalahnya, bukan karena kenyamanan.
 Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**:

@@ -17,7 +17,7 @@ Kalau syaratnya kurang, tombol Battle/Train redup dan memberi alasan. Satu Feed 
 
 ## Battle atau Train
 
-Tiga kemenangan pertama per hari (reset **00:00 UTC**) adalah Battle berhadiah:
+Tiga kemenangan pertama per hari (reset **tengah malam waktu setempat**) adalah Battle berhadiah:
 
 - **+5 Bits**
 - **+4 EXP**

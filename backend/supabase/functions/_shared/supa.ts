@@ -14,6 +14,26 @@ export function adminClient(): SupabaseClient {
   });
 }
 
+export function timezoneOffsetMinutes(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isInteger(value)) return null;
+  if (value < -840 || value > 840) return null;
+  return value;
+}
+
+export async function syncProfileTimezone(
+  db: SupabaseClient,
+  ownerId: string,
+  value: unknown,
+): Promise<void> {
+  const offset = timezoneOffsetMinutes(value);
+  if (offset === null) return;
+  const { error } = await db.rpc("set_profile_timezone", {
+    p_owner: ownerId,
+    p_offset_minutes: offset,
+  });
+  if (error) console.error("set_profile_timezone gagal", error);
+}
+
 export function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,

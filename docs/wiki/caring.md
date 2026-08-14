@@ -28,7 +28,7 @@ EXP +3 hanya kalau Anima **kotor** (Hygiene di bawah 50).
 
 Gratis. Anima senang, Energy **−5**, EXP **+1**.
 
-Paling banyak **lima kali Play yang dapat EXP per hari**. Sesudah itu tombol tetap ada tapi tap hanya memberitahu batasnya — Energy tidak dipotong dua kali.
+Paling banyak **lima kali Play yang dapat EXP per hari**, reset tengah malam waktu setempat. Sesudah itu tombol tetap ada tapi tap hanya memberitahu batasnya — Energy tidak dipotong dua kali.
 
 ## Sleep
 
