@@ -145,11 +145,7 @@ func _apply_lobby() -> void:
 	var unavailable_key := _lobby_unavailable_key()
 	var training := _is_training(_lobby_daily_reward)
 	if not unavailable_key.is_empty():
-		_lobby_name.text = tr(
-			"BATTLE_LOBBY_TITLE_LOW_ENERGY"
-			if unavailable_key == "BATTLE_ANIMA_LOW_ENERGY"
-			else "BATTLE_LOBBY_TITLE"
-		)
+		_lobby_name.text = tr(_lobby_title_key(unavailable_key))
 		_lobby_meta.text = tr(unavailable_key)
 	elif training:
 		_lobby_name.text = LocaleManager.display_name(_lobby_row)
@@ -666,6 +662,7 @@ func _error_copy(error_code: String) -> String:
 		"ANIMA_SLEEPING": "BATTLE_ANIMA_SLEEPING",
 		"ANIMA_DORMANT": "BATTLE_ANIMA_DORMANT",
 		"ANIMA_LOW_ENERGY": "BATTLE_ANIMA_LOW_ENERGY",
+		"ANIMA_HUNGRY": "BATTLE_ANIMA_HUNGRY",
 		"ANIMA_NOT_READY": "BATTLE_ANIMA_NOT_READY",
 		"NO_BATTLE_OPPONENT": "BATTLE_NO_OPPONENT",
 		"NO_MOMENTUM": "BATTLE_NO_MOMENTUM",
@@ -687,7 +684,17 @@ func _lobby_unavailable_key() -> String:
 	var care := _as_dict(_lobby_row.get("care"))
 	if not care.is_empty() and float(care.get("energy", 0.0)) < MIN_BATTLE_ENERGY:
 		return "BATTLE_ANIMA_LOW_ENERGY"
+	if not care.is_empty() and CareRules.is_hungry(care):
+		return "BATTLE_ANIMA_HUNGRY"
 	return ""
+
+
+func _lobby_title_key(unavailable_key: String) -> String:
+	if unavailable_key == "BATTLE_ANIMA_LOW_ENERGY":
+		return "BATTLE_LOBBY_TITLE_LOW_ENERGY"
+	if unavailable_key == "BATTLE_ANIMA_HUNGRY":
+		return "BATTLE_LOBBY_TITLE_HUNGRY"
+	return "BATTLE_LOBBY_TITLE"
 
 
 func _lobby_is_eligible() -> bool:

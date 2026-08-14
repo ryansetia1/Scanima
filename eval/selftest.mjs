@@ -1103,6 +1103,7 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
     "utf8"
   );
   assert.match(battleEdge, /ANIMA_LOW_ENERGY:\s*409/, "Energy rendah harus menjadi conflict");
+  assert.match(battleEdge, /ANIMA_HUNGRY:\s*409/, "Anima lapar harus menjadi conflict");
   assert.ok(
     battleEdge.includes('"message" in error'),
     "error RPC PostgREST berbentuk object tetap harus terbaca oleh mapper"

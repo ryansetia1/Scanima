@@ -86,6 +86,10 @@ func close() -> void:
 		UiJuice.hide_overlay(self, _panel)
 
 
+func request_cancel() -> void:
+	_cancel()
+
+
 func input_text() -> String:
 	return _input.text
 

@@ -86,8 +86,10 @@ func _initialize() -> void:
 		_check_eq(list.fixed_icon_size, Vector2i(128, 128), "collection thumbnails are 128 px")
 	var scan_flow := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
-		scan_flow.find("CareRules.collection_pose") >= 0,
-		"Collection thumbnails pick Sleep or Idle from the summoned companion"
+		scan_flow.find("CareRules.collection_pose") >= 0
+		and scan_flow.find("begin_visit()") >= 0
+		and scan_flow.find("_populate_collection()") >= 0,
+		"Collection thumbnails project Sleep or Idle when the tab opens"
 	)
 	var active_start := scan_flow.find("func _active_row")
 	var active_end := scan_flow.find("func _sync_collection_preview", active_start)
@@ -146,7 +148,11 @@ func _initialize() -> void:
 		)
 	_check(scene.find_child("ScanCount", true, false) == null, "HUD no longer labels scan charges as a count")
 	_check(scene.find_child("BottomNav", true, false) is PanelContainer, "bottom navigation must exist")
-	_check(scene.find_child("StatusPanel", true, false) is PanelContainer, "floating feedback must exist")
+	var toast := scene.find_child("StatusPanel", true, false) as PanelContainer
+	_check(toast != null, "floating feedback must exist")
+	if toast != null:
+		_check_eq(toast.anchor_top, 0.0, "toast pins below the HUD instead of mid-screen")
+		_check_eq(toast.anchor_bottom, 0.0, "toast does not stretch through the Anima")
 	_check(scene.find_child("PoseRow", true, false) == null, "debug pose controls must not ship in production")
 	var shell_modal := scene.find_child("ShellModal", true, false) as Control
 	var modal_panel := scene.find_child("ModalPanel", true, false) as PanelContainer
@@ -177,6 +183,12 @@ func _initialize() -> void:
 		"Animas chip navigates to Collection"
 	)
 	_check(
+		shell_source.find("NOTIFICATION_WM_GO_BACK_REQUEST") >= 0
+		and shell_source.find("_handle_back(true)") >= 0
+		and shell_source.find("STATUS_NEED_CORE") >= 0,
+		"Android back closes overlays and empty Cores block the camera"
+	)
+	_check(
 		shell_source.find("_shell_modal.open_input(") >= 0
 		and shell_source.find("tr(\"ACTION_CANCEL\")") >= 0
 		and shell_source.find("tr(\"ANIMA_RENAME_SKIP\")") < 0,
@@ -194,7 +206,16 @@ func _initialize() -> void:
 		_check_eq(scan_button.theme_type_variation, &"PrimaryButton", "Scan remains the signature CTA")
 	var scan_nav := scene.find_child("ScanNavButton", true, false) as Button
 	if scan_nav != null:
-		_check_eq(scan_nav.theme_type_variation, &"ScanTabButton", "Scan is emphasized in navigation")
+		_check_eq(scan_nav.theme_type_variation, &"ScanTabButton", "Scan is emphasized when Cores remain")
+		var nav := scene.find_child("BottomNav", true, false)
+		if nav != null and nav.has_method("set_scan_emphasized"):
+			nav.set_scan_emphasized(false)
+			_check_eq(
+				scan_nav.theme_type_variation,
+				&"NavTabButton",
+				"Scan nav matches other tabs when Cores are empty"
+			)
+			nav.set_scan_emphasized(true)
 
 	var juice_probe := Button.new()
 	UiJuice.install_button(juice_probe)
@@ -223,6 +244,11 @@ func _initialize() -> void:
 			level_up.mouse_filter,
 			Control.MOUSE_FILTER_IGNORE,
 			"level-up banner does not steal taps"
+		)
+		var level_up_column := scene.find_child("LevelUpColumn", true, false) as Control
+		_check(
+			level_up_column != null and level_up_column.anchor_top <= 0.22,
+			"level-up copy sits in the identity band above the Anima"
 		)
 	for name in ["NeedHunger", "NeedEnergy", "NeedHygiene", "NeedExp"]:
 		var meter := scene.find_child(name, true, false) as ProgressBar
@@ -483,6 +509,20 @@ func _test_scan_phase_visuals() -> void:
 	_check(not overlay.visible, "synthesis leaves only the Incubator visual")
 	view.set_phase(&"idle")
 	_check(idle_graphic.visible, "returning idle restores the camera graphic")
+	var scan_button := view.find_child("ScanButton", true, false) as Button
+	var hint := view.find_child("ScanPhaseHint", true, false) as Label
+	view.set_cores(0)
+	_check(
+		scan_button != null and scan_button.self_modulate.a < 0.5
+		and hint != null and hint.text == tr("SCAN_NO_CORE_HINT"),
+		"empty Cores dim Scan and explain the lock"
+	)
+	view.set_cores(1)
+	_check(
+		is_equal_approx(scan_button.self_modulate.a, 1.0)
+		and hint.text == tr("SCAN_CAMERA_HINT"),
+		"a remaining Core restores the Scan CTA"
+	)
 
 	view.queue_free()
 	await process_frame
@@ -591,6 +631,17 @@ func _test_battle_view() -> void:
 	view.set_daily_reward(normal_daily_reward)
 	view.set_lobby(anima)
 	_check(not start.disabled, "exactly 20 Energy remains eligible for Battle")
+	anima["care"]["hunger"] = 39.0
+	view.set_lobby(anima)
+	_check(
+		start.disabled
+		and lobby_name.text == tr("BATTLE_LOBBY_TITLE_HUNGRY")
+		and lobby_meta.text == tr("BATTLE_ANIMA_HUNGRY"),
+		"Hunger below 40 blocks Battle and Training"
+	)
+	anima["care"]["hunger"] = 40.0
+	view.set_lobby(anima)
+	_check(not start.disabled, "Hunger 40 remains eligible for Battle")
 
 	view.set_loading("BATTLE_RESUMING")
 	_check(lobby.visible and start.disabled, "Battle resume exposes a locked loading state")
@@ -927,6 +978,24 @@ func _test_collection_bottom_sheet() -> void:
 	var skeleton := collection.find_child("ConditionSkeleton", true, false) as Control
 	var care_rows := collection.find_child("CareRows", true, false) as Control
 	_check(overlay != null and overlay.visible, "selecting an Anima opens the bottom sheet immediately")
+	var sheet_panel := collection.find_child("CollectionSheetPanel", true, false) as Control
+	_check(
+		sheet_panel != null
+		and is_equal_approx(sheet_panel.size.y, sheet_panel.get_combined_minimum_size().y),
+		"Collection sheet height follows its content"
+	)
+	var handle := collection.find_child("HandleCenter", true, false) as Control
+	_check(
+		handle != null and handle.custom_minimum_size.y >= TOUCH_MIN,
+		"sheet handle exposes a swipe target"
+	)
+	var sheet_source := FileAccess.get_file_as_string("res://scripts/ui_bottom_sheet.gd")
+	_check(
+		sheet_source.find("if UiMotion.reduced_motion:") >= 0
+		and sheet_source.find("close()") >= 0
+		and sheet_source.find("DISMISS_PX") >= 0,
+		"sheet swipe follows the finger and closes immediately under reduced motion"
+	)
 	_check(
 		skeleton != null and skeleton.visible and care_rows != null and not care_rows.visible,
 		"uncached care sync replaces stale meters with a visible skeleton"
@@ -996,67 +1065,44 @@ func _test_profile_info_rows() -> void:
 	await process_frame
 
 	_check(details.find_child("DetailsScroll", true, false) is ScrollContainer, "long Profile rows scroll")
+	var portrait := details.find_child("DetailsPortrait", true, false) as TextureRect
+	_check(
+		portrait != null and portrait.custom_minimum_size.x <= 132.0,
+		"Profile hero stays compact"
+	)
+	var about := details.find_child("AboutPanel", true, false) as PanelContainer
+	var combat := details.find_child("CombatPanel", true, false) as PanelContainer
+	_check(
+		about != null and about.theme_type_variation == &"HudSurface"
+		and combat != null and combat.theme_type_variation == &"HudSurface",
+		"Profile sections share one card chrome"
+	)
 	_check_eq(
-		(details.find_child("DetailStrikeRow", true, false).find_child("RowValue", true, false) as Label).text,
+		(details.find_child("TraitStrike", true, false) as Label).text,
 		"D-Pad Jab",
 		"Profile Attack shows the generated move name"
 	)
 	_check_eq(
-		(details.find_child("DetailSurgeRow", true, false).find_child("RowValue", true, false) as Label).text,
+		(details.find_child("TraitSurge", true, false) as Label).text,
 		"Pocket Beam",
 		"Profile Special shows the generated move name"
 	)
-	var row_groups := {
-		"traits": [
-			"DetailElementRow", "DetailRarityRow", "DetailStageRow", "DetailCareScoreRow",
-			"DetailStrikeRow", "DetailSurgeRow",
-		],
-		"stats": ["StatHpRow", "StatAtkRow", "StatDefRow", "StatSpdRow", "StatSpecialRow"],
-	}
-	for group in row_groups:
-		var value_edges: Array[float] = []
-		var help_edges: Array[float] = []
-		for row_name in row_groups[group]:
-			var info_row := details.find_child(row_name, true, false) as Control
-			_check(info_row != null, "%s uses the shared info-value row" % row_name)
-			if info_row == null:
-				continue
-			var help := info_row.find_child("HelpButton", true, false) as Button
-			var value := info_row.find_child("RowValue", true, false) as Label
-			_check(
-				help != null and help.custom_minimum_size.y >= TOUCH_MIN,
-				"%s help action meets the touch target" % row_name
-			)
-			if help == null or value == null:
-				continue
-			_check(
-				info_row.get_child(info_row.get_child_count() - 1) == help,
-				"%s keeps help after the value" % row_name
-			)
-			_check(
-				value.horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT,
-				"%s right-aligns its value into a fixed column" % row_name
-			)
-			_check(
-				help.get_theme_color("icon_normal_color").a < 0.7,
-				"%s dims its help icon below the value" % row_name
-			)
-			value_edges.append(value.global_position.x + value.size.x)
-			help_edges.append(help.global_position.x)
-		for edge in value_edges:
-			_check(
-				absf(edge - value_edges[0]) < 1.0,
-				"%s values share one right edge regardless of length" % group
-			)
-		for edge in help_edges:
-			_check(absf(edge - help_edges[0]) < 1.0, "%s help buttons share one column" % group)
+	var traits := details.find_child("TraitsGrid", true, false) as GridContainer
+	var stats := details.find_child("StatsGrid", true, false) as GridContainer
+	_check(traits != null and traits.columns == 2, "Traits use a compact two-column grid")
+	_check(stats != null and stats.columns == 5, "Combat stats match the Collection grid")
+	var about_help := details.find_child("AboutHelp", true, false) as Button
+	var combat_help := details.find_child("CombatHelp", true, false) as Button
+	_check(
+		about_help != null and about_help.custom_minimum_size.y >= TOUCH_MIN
+		and combat_help != null and combat_help.custom_minimum_size.y >= TOUCH_MIN,
+		"each Profile section keeps one 96px help action"
+	)
 
 	_help_title = ""
 	_help_body = ""
 	details.help_requested.connect(_capture_help_request)
-	var element_row := details.find_child("DetailElementRow", true, false) as Control
-	var element_help := element_row.find_child("HelpButton", true, false) as Button
-	element_help.pressed.emit()
+	about_help.pressed.emit()
 	_check(not _help_title.is_empty() and not _help_body.is_empty(), "Profile help emits concise modal copy")
 
 	details.queue_free()

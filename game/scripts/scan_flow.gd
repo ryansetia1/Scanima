@@ -38,8 +38,19 @@ const FOTO_MAX_PX := 1280
 const FOTO_QUALITY := 85
 const THUMBNAIL_SIZE := 128
 const BASE_MARGIN := 32.0
+const HUD_TOP_PAD := 24.0
+const TOAST_GAP := 8.0
+const TOAST_MIN_HEIGHT := 76.0
 const SLEEP_SYNC_RETRY_SEC := 30.0
 const SLEEP_SYNC_EPSILON_SEC := 1.0
+const STAT_ORDER := ["hp", "atk", "def", "spd", "special"]
+const STAT_LABEL_KEYS := {
+	"hp": "STAT_HP",
+	"atk": "STAT_ATK",
+	"def": "STAT_DEF",
+	"spd": "STAT_SPD",
+	"special": "STAT_SPECIAL",
+}
 
 @onready var _stage: Node2D = %Stage
 @onready var _first_anima_effect: FirstAnimaEffect = %FirstAnimaEffect
@@ -183,7 +194,14 @@ func _ready() -> void:
 		if arg == "--home-tap-demo" and _anima.sprite_frames != null:
 			await _run_home_tap_demo()
 		if arg == "--level-up-demo":
-			_celebrate_level_up(4, 3)
+			if _current_anima.is_empty():
+				_current_anima = {
+					"base_stats": {
+						"hp": 50, "atk": 43, "def": 38, "spd": 51, "special": 44
+					},
+					"care_score": 15,
+				}
+			_celebrate_level_up(4, 3, 10, 15)
 		if arg == "--empty-demo":
 			_run_empty_demo()
 		if arg == "--summon-demo":
@@ -208,6 +226,10 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		if is_node_ready():
+			_handle_back(true)
+		return
 	if what != NOTIFICATION_APPLICATION_RESUMED or not is_node_ready():
 		return
 	if is_instance_valid(_sleep_completion_timer) and _is_sleeping(_current_anima):
@@ -1046,6 +1068,9 @@ func _setup_picker() -> void:
 func _on_pick_pressed() -> void:
 	if _busy:
 		return
+	if _cores_remaining() == 0:
+		_say(tr("STATUS_NEED_CORE"), true)
+		return
 	_switch_destination(BottomNav.SCAN)
 	if _picker == null:
 		_dialog.popup_centered_ratio(0.9)
@@ -1575,7 +1600,8 @@ func _layout_for_viewport() -> void:
 				(screen_size.y - safe.end.y) * scale.y
 			)
 
-	_apply_margins(_safe_margin, insets, BASE_MARGIN, 24.0)
+	_apply_margins(_safe_margin, insets, BASE_MARGIN, HUD_TOP_PAD)
+	_place_toast(insets)
 	_stage.position = stage_position_for(viewport_size, insets)
 
 
@@ -1607,6 +1633,7 @@ func _switch_destination(
 		_collection_view.close_sheet()
 	if destination == BottomNav.COLLECTION and previous != BottomNav.COLLECTION:
 		_collection_view.begin_visit()
+		_populate_collection()
 	if destination == BottomNav.ANIMA:
 		if profile_row.is_empty():
 			_profile_anima = _current_anima.duplicate(true)
@@ -1756,13 +1783,23 @@ func _maybe_celebrate_level(previous_score: int, new_score: int) -> void:
 		return
 	var new_level: int = CARE_RULES.leveled_up(previous_score, new_score)
 	if new_level > 0:
-		_celebrate_level_up(new_level, CARE_RULES.level_from_exp(previous_score))
+		_celebrate_level_up(
+			new_level,
+			CARE_RULES.level_from_exp(previous_score),
+			previous_score,
+			new_score
+		)
 
 
 # ponytail: one shell banner, not a per-screen fanfare. Plafon: no particles;
 # reuse Super Effective typography. Upgrade to Incubator-style burst if form
 # jumps (16/36) later get evolve art.
-func _celebrate_level_up(level: int, previous_level: int) -> void:
+func _celebrate_level_up(
+	level: int,
+	previous_level: int,
+	previous_score: int = -1,
+	new_score: int = -1
+) -> void:
 	if not is_instance_valid(_level_up_banner):
 		return
 	_status_panel.visible = false
@@ -1796,25 +1833,47 @@ func _celebrate_level_up(level: int, previous_level: int) -> void:
 		_level_up_tween.chain().tween_property(_level_up_banner, "scale", Vector2.ONE, 0.12)
 	_level_up_revision += 1
 	var revision := _level_up_revision
-	_hide_level_up_later(revision)
+	_hide_level_up_later(revision, previous_score, new_score)
 
 
-func _hide_level_up_later(revision: int) -> void:
+func _hide_level_up_later(revision: int, previous_score: int, new_score: int) -> void:
 	await get_tree().create_timer(1.8).timeout
 	if revision != _level_up_revision or not is_instance_valid(_level_up_banner):
 		return
 	if UiMotion.reduced_motion:
 		_level_up_banner.visible = false
-		return
-	if is_instance_valid(_level_up_tween):
-		_level_up_tween.kill()
-	_level_up_tween = create_tween()
-	_level_up_tween.tween_property(_level_up_banner, "modulate:a", 0.0, 0.22)
-	await _level_up_tween.finished
-	if revision == _level_up_revision and is_instance_valid(_level_up_banner):
+	else:
+		if is_instance_valid(_level_up_tween):
+			_level_up_tween.kill()
+		_level_up_tween = create_tween()
+		_level_up_tween.tween_property(_level_up_banner, "modulate:a", 0.0, 0.22)
+		await _level_up_tween.finished
+		if revision != _level_up_revision or not is_instance_valid(_level_up_banner):
+			return
 		_level_up_banner.visible = false
 		_level_up_banner.modulate = Color.WHITE
 		_level_up_banner.scale = Vector2.ONE
+	_show_level_up_stats(previous_score, new_score)
+
+
+func _show_level_up_stats(previous_score: int, new_score: int) -> void:
+	if previous_score < 0 or new_score < 0 or _current_anima.is_empty():
+		return
+	if is_instance_valid(_shell_modal) and _shell_modal.visible:
+		return
+	var stats := GameState.as_dict(_current_anima.get("base_stats"))
+	var lines: PackedStringArray = []
+	for key in STAT_ORDER:
+		lines.append(
+			tr("LEVEL_UP_STAT_ROW")
+			% [
+				tr(STAT_LABEL_KEYS[key]),
+				LocaleManager.format_integer(CARE_RULES.grown_stat(stats.get(key, 0), previous_score)),
+				LocaleManager.format_integer(CARE_RULES.grown_stat(stats.get(key, 0), new_score)),
+			]
+		)
+	_modal_context = &"level_up"
+	_shell_modal.open_info(tr("LEVEL_UP_STATS_TITLE"), "\n".join(lines), tr("CORE_INFO_CLOSE"))
 
 
 func _say(text: String, transient: bool = false) -> void:
@@ -1844,9 +1903,14 @@ func _refresh_header() -> void:
 		_animas_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		_cores_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		_bits_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
+		_scan_view.set_cores(-1)
+		_bottom_nav.set_scan_emphasized(true)
 		return
-	_cores_chip.set_value_text(LocaleManager.format_integer(int(p.get("genesis_cores", 0))))
+	var cores := int(p.get("genesis_cores", 0))
+	_cores_chip.set_value_text(LocaleManager.format_integer(cores))
 	_bits_chip.set_value_text(LocaleManager.format_integer(int(p.get("bits", 0))))
+	_scan_view.set_cores(cores)
+	_bottom_nav.set_scan_emphasized(cores > 0)
 	UiJuice.pop(_top_hud, 1.012)
 
 
@@ -1866,16 +1930,41 @@ func _set_busy(busy: bool) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		if _collection_view.is_sheet_open():
-			_collection_view.close_sheet()
-			get_viewport().set_input_as_handled()
-			return
-		if _destination != BottomNav.HOME:
-			_switch_destination(BottomNav.HOME)
-			get_viewport().set_input_as_handled()
-			return
+	if event.is_action_pressed("ui_cancel") and _handle_back(false):
+		get_viewport().set_input_as_handled()
+		return
 	_try_home_anima_tap(event)
+
+
+func _handle_back(allow_quit: bool) -> bool:
+	if is_instance_valid(_shell_modal) and _shell_modal.visible:
+		_shell_modal.request_cancel()
+		return true
+	if _collection_view.is_sheet_open():
+		_collection_view.close_sheet()
+		return true
+	if _destination != BottomNav.HOME:
+		_switch_destination(BottomNav.HOME)
+		return true
+	if allow_quit:
+		get_tree().quit()
+		return true
+	return false
+
+
+func _cores_remaining() -> int:
+	if GameState.profile.is_empty():
+		return -1
+	return int(GameState.profile.get("genesis_cores", 0))
+
+
+func _place_toast(insets: Vector4) -> void:
+	if not is_instance_valid(_status_panel) or not is_instance_valid(_top_hud):
+		return
+	var top := HUD_TOP_PAD + insets.y + _top_hud.custom_minimum_size.y + TOAST_GAP
+	var height := maxf(TOAST_MIN_HEIGHT, _status_panel.get_combined_minimum_size().y)
+	_status_panel.offset_top = top
+	_status_panel.offset_bottom = top + height
 
 
 func _try_home_anima_tap(event: InputEvent) -> void:

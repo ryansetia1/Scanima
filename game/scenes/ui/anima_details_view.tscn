@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/anima_details_view.gd" id="1_details"]
 [ext_resource type="Texture2D" path="res://assets/icons/pencil.svg" id="2_edit"]
-[ext_resource type="PackedScene" path="res://scenes/ui/info_value_row.tscn" id="3_info_row"]
+[ext_resource type="Texture2D" path="res://assets/icons/help-circle.svg" id="3_help"]
 
 [node name="AnimaDetailsView" type="Control"]
 unique_name_in_owner = true
@@ -63,11 +63,11 @@ theme_type_variation = &"HudSurface"
 
 [node name="HeroRow" type="HBoxContainer" parent="Column/DetailsScroll/DetailsContent/Hero"]
 layout_mode = 2
-theme_override_constants/separation = 18
+theme_override_constants/separation = 16
 
 [node name="DetailsPortrait" type="TextureRect" parent="Column/DetailsScroll/DetailsContent/Hero/HeroRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(210, 210)
+custom_minimum_size = Vector2(132, 132)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
@@ -106,75 +106,317 @@ theme_type_variation = &"BodyLabel"
 text = "VALUE_UNAVAILABLE"
 autowrap_mode = 2
 
-[node name="TraitsTitle" type="Label" parent="Column/DetailsScroll/DetailsContent"]
+[node name="AboutPanel" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent"]
 layout_mode = 2
+theme_type_variation = &"HudSurface"
+
+[node name="AboutColumn" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AboutHeader" type="HBoxContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn"]
+layout_mode = 2
+
+[node name="TraitsTitle" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/AboutHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"SectionLabel"
 text = "DETAILS_TRAITS"
 
-[node name="TraitsRows" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent"]
+[node name="AboutHelp" type="Button" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/AboutHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_colors/icon_normal_color = Color(0.61, 0.67, 0.8, 0.5)
+theme_override_colors/icon_hover_color = Color(0.85, 0.93, 1, 0.85)
+theme_override_colors/icon_pressed_color = Color(1, 0.86, 0.48, 0.9)
+mouse_default_cursor_shape = 2
+icon = ExtResource("3_help")
+flat = true
 
-[node name="DetailElementRow" parent="Column/DetailsScroll/DetailsContent/TraitsRows" instance=ExtResource("3_info_row")]
+[node name="TraitsGrid" type="GridContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="Element" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Element"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Element/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "DETAILS_ELEMENT"
+horizontal_alignment = 1
+
+[node name="TraitElement" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Element/Box"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+autowrap_mode = 3
 
-[node name="DetailRarityRow" parent="Column/DetailsScroll/DetailsContent/TraitsRows" instance=ExtResource("3_info_row")]
+[node name="Rarity" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Rarity"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Rarity/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "DETAILS_RARITY"
+horizontal_alignment = 1
+
+[node name="TraitRarity" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Rarity/Box"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
 
-[node name="DetailStageRow" parent="Column/DetailsScroll/DetailsContent/TraitsRows" instance=ExtResource("3_info_row")]
+[node name="Stage" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Stage"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Stage/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "DETAILS_STAGE"
+horizontal_alignment = 1
+
+[node name="TraitStage" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Stage/Box"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+autowrap_mode = 3
 
-[node name="DetailCareScoreRow" parent="Column/DetailsScroll/DetailsContent/TraitsRows" instance=ExtResource("3_info_row")]
+[node name="Exp" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Exp"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Exp/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "DETAILS_CARE_SCORE"
+horizontal_alignment = 1
+
+[node name="TraitExp" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Exp/Box"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
 
-[node name="DetailStrikeRow" parent="Column/DetailsScroll/DetailsContent/TraitsRows" instance=ExtResource("3_info_row")]
+[node name="Strike" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Strike"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Strike/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "DETAILS_STRIKE"
+horizontal_alignment = 1
+
+[node name="TraitStrike" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Strike/Box"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+autowrap_mode = 3
 
-[node name="DetailSurgeRow" parent="Column/DetailsScroll/DetailsContent/TraitsRows" instance=ExtResource("3_info_row")]
+[node name="Surge" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Surge"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Surge/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+text = "DETAILS_SURGE"
+horizontal_alignment = 1
+
+[node name="TraitSurge" type="Label" parent="Column/DetailsScroll/DetailsContent/AboutPanel/AboutColumn/TraitsGrid/Surge/Box"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+autowrap_mode = 3
 
-[node name="AttributesPanel" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent"]
+[node name="CombatPanel" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent"]
 layout_mode = 2
-theme_type_variation = &"CareDock"
+theme_type_variation = &"HudSurface"
 
-[node name="AttributesColumn" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/AttributesPanel"]
+[node name="CombatColumn" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 8
 
-[node name="AttributesTitle" type="Label" parent="Column/DetailsScroll/DetailsContent/AttributesPanel/AttributesColumn"]
+[node name="CombatHeader" type="HBoxContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn"]
 layout_mode = 2
+
+[node name="AttributesTitle" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/CombatHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"SectionLabel"
 text = "DETAILS_ATTRIBUTES"
 
-[node name="StatsRows" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/AttributesPanel/AttributesColumn"]
+[node name="CombatHelp" type="Button" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/CombatHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_colors/icon_normal_color = Color(0.61, 0.67, 0.8, 0.5)
+theme_override_colors/icon_hover_color = Color(0.85, 0.93, 1, 0.85)
+theme_override_colors/icon_pressed_color = Color(1, 0.86, 0.48, 0.9)
+mouse_default_cursor_shape = 2
+icon = ExtResource("3_help")
+flat = true
 
-[node name="StatHpRow" parent="Column/DetailsScroll/DetailsContent/AttributesPanel/AttributesColumn/StatsRows" instance=ExtResource("3_info_row")]
+[node name="StatsGrid" type="GridContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+columns = 5
+
+[node name="Hp" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Hp"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Hp/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+theme_override_font_sizes/font_size = 19
+text = "STAT_HP"
+horizontal_alignment = 1
+
+[node name="StatHp" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Hp/Box"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+theme_override_font_sizes/font_size = 25
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
 
-[node name="StatAtkRow" parent="Column/DetailsScroll/DetailsContent/AttributesPanel/AttributesColumn/StatsRows" instance=ExtResource("3_info_row")]
-unique_name_in_owner = true
+[node name="Attack" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Attack"]
 layout_mode = 2
 
-[node name="StatDefRow" parent="Column/DetailsScroll/DetailsContent/AttributesPanel/AttributesColumn/StatsRows" instance=ExtResource("3_info_row")]
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Attack/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+theme_override_font_sizes/font_size = 19
+text = "STAT_ATK"
+horizontal_alignment = 1
+
+[node name="StatAtk" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Attack/Box"]
 unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+theme_override_font_sizes/font_size = 25
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+
+[node name="Defense" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Defense"]
 layout_mode = 2
 
-[node name="StatSpdRow" parent="Column/DetailsScroll/DetailsContent/AttributesPanel/AttributesColumn/StatsRows" instance=ExtResource("3_info_row")]
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Defense/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+theme_override_font_sizes/font_size = 19
+text = "STAT_DEF"
+horizontal_alignment = 1
+
+[node name="StatDef" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Defense/Box"]
 unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+theme_override_font_sizes/font_size = 25
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+
+[node name="Speed" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Speed"]
 layout_mode = 2
 
-[node name="StatSpecialRow" parent="Column/DetailsScroll/DetailsContent/AttributesPanel/AttributesColumn/StatsRows" instance=ExtResource("3_info_row")]
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Speed/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+theme_override_font_sizes/font_size = 19
+text = "STAT_SPD"
+horizontal_alignment = 1
+
+[node name="StatSpd" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Speed/Box"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+theme_override_font_sizes/font_size = 25
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
+
+[node name="Special" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"StatValuePanel"
+
+[node name="Box" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Special"]
+layout_mode = 2
+
+[node name="Name" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Special/Box"]
+layout_mode = 2
+theme_type_variation = &"StatNameLabel"
+theme_override_font_sizes/font_size = 19
+text = "STAT_SPECIAL"
+horizontal_alignment = 1
+
+[node name="StatSpecial" type="Label" parent="Column/DetailsScroll/DetailsContent/CombatPanel/CombatColumn/StatsGrid/Special/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"StatValueLabel"
+theme_override_font_sizes/font_size = 25
+text = "VALUE_UNAVAILABLE"
+horizontal_alignment = 1
 
 [node name="DeleteAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent"]
 unique_name_in_owner = true

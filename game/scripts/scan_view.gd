@@ -13,6 +13,8 @@ signal scan_requested
 @onready var _scan_button: Button = %ScanButton
 
 var _phase := &"idle"
+var _cores := -1
+var _busy := false
 
 
 func _ready() -> void:
@@ -21,7 +23,14 @@ func _ready() -> void:
 
 
 func set_busy(busy: bool) -> void:
+	_busy = busy
 	_scan_button.disabled = busy
+	_refresh_lock()
+
+
+func set_cores(cores: int) -> void:
+	_cores = cores
+	_refresh_lock()
 
 
 func set_status(message: String) -> void:
@@ -41,7 +50,16 @@ func set_phase(phase: StringName) -> void:
 			_hint.text = tr("SCAN_PHASE_SYNTHESIZE_HINT")
 		_:
 			_phase_badge.text = tr("SCAN_NEW_DISCOVERY")
-			_hint.text = tr("SCAN_CAMERA_HINT")
+			_refresh_lock()
+
+
+func _refresh_lock() -> void:
+	var locked := _cores == 0
+	_scan_button.self_modulate = (
+		Color(1, 1, 1, 0.42) if locked and not _busy else Color.WHITE
+	)
+	if _phase == &"idle":
+		_hint.text = tr("SCAN_NO_CORE_HINT") if locked else tr("SCAN_CAMERA_HINT")
 
 
 func show_preview(texture: Texture2D) -> void:

@@ -45,6 +45,8 @@ Momen "spesies ini belum pernah ditemukan siapa pun" adalah momen paling kuat ya
 
 **Temuan Tertunda** menyelamatkan kasus pemain kehabisan Core tepat saat menemukan hal baru. Hasil Vision disimpan (biayanya sudah keluar, tidak perlu ulang) dan pemain bisa menuntaskannya nanti tanpa harus memfoto ulang objeknya — yang mungkin sudah tidak ada di dekatnya. Berlaku 7 hari.
 
+**Plafon client sementara:** selama IAP, rewarded ads, dan BYOK belum mengisi Core, `genesis_cores == 0` mengunci tombol Scan di client (termasuk cache hit). `species_key` Vision terlalu rapuh untuk diandalkan sebagai jalur gratis. Server `NO_CORE` + Temuan Tertunda tetap pagar terakhir; rumus Core vs cache hit di atas tidak berubah.
+
 ## 2. Mata uang dan sumbernya
 
 Tiga mata uang, dan yang menentukan pembagiannya adalah biaya nyata yang mereka wakili:

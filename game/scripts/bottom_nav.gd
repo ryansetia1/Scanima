@@ -35,6 +35,17 @@ func set_active(destination: StringName) -> void:
 		(_buttons[key] as Button).button_pressed = key == destination
 
 
+func set_scan_emphasized(emphasized: bool) -> void:
+	var button := (
+		_buttons.get(SCAN) as Button
+		if not _buttons.is_empty()
+		else find_child("ScanNavButton", true, false) as Button
+	)
+	if button == null:
+		return
+	button.theme_type_variation = &"ScanTabButton" if emphasized else &"NavTabButton"
+
+
 func set_busy(_busy: bool, details_available: bool) -> void:
 	# Requests continue in the persistent shell, so changing view stays safe.
 	for destination: StringName in _buttons:

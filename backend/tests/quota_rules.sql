@@ -799,6 +799,24 @@ begin
          care_synced_at = now()
    where id = v_battle_player;
 
+  update public.animas
+     set care = '{"hunger":39,"energy":100,"hygiene":100,"bond":0}'::jsonb,
+         care_synced_at = now()
+   where id = v_battle_player;
+  begin
+    perform public.start_battle(
+      u1, v_battle_player, v_battle_bot,
+      v_battle_player_snapshot, v_battle_bot_snapshot, v_battle_state, 'hungry'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ANIMA_HUNGRY');
+  end;
+  assert ok, 'Hunger di bawah 40 harus menolak Battle dan Training';
+  update public.animas
+     set care = '{"hunger":40,"energy":100,"hygiene":100,"bond":0}'::jsonb,
+         care_synced_at = now()
+   where id = v_battle_player;
+
   -- Dua reward sebelumnya membuat kemenangan berikutnya menjadi reward ketiga
   -- hari ini. Nominal kedua sengaja berbeda: reason battle_win adalah counter,
   -- sehingga balancing Bits tidak boleh diam-diam membuka cap.

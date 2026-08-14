@@ -25,6 +25,7 @@ const SLEEP_FULL_HOURS := 6.0
 const BENCH_SLEEP_FULL_HOURS := 3.0
 const DORMANT_RECOVERY_NEED := 50.0
 const HUNGRY_POSE_NEED := 40.0
+const BATTLE_MIN_HUNGER := HUNGRY_POSE_NEED
 const DIRTY_POSE_NEED := 50.0
 const NEED_FULL_AT := 99.5
 const LEVEL_CAP := 40
@@ -112,17 +113,44 @@ static func has_timestamp(value: Variant) -> bool:
 	return not text.is_empty() and text != "<null>"
 
 
-static func collection_pose(row: Dictionary, active_id: String) -> String:
+static func timestamp_seconds(value: Variant) -> float:
+	if not has_timestamp(value):
+		return -1.0
+	return float(Time.get_unix_time_from_datetime_string(str(value)))
+
+
+static func projected_care(row: Dictionary, active_id: String = "", now: float = -1.0) -> Dictionary:
+	var clock := now if now >= 0.0 else Time.get_unix_time_from_system()
+	var synced := timestamp_seconds(row.get("care_synced_at"))
+	if synced <= 0.0:
+		return normalized_care(row.get("care"))
+	var sleep_started := timestamp_seconds(row.get("sleep_started_at"))
+	if sleep_started <= 0.0:
+		return apply_decay(row.get("care"), synced, clock)
+	var start_energy := float(row.get("sleep_energy_at_start", -1.0))
+	var hours_to_full := (
+		SLEEP_FULL_HOURS if str(row.get("id", "")) == active_id else BENCH_SLEEP_FULL_HOURS
+	)
+	return apply_decay(row.get("care"), synced, clock, sleep_started, start_energy, hours_to_full)
+
+
+static func collection_pose(row: Dictionary, active_id: String, now: float = -1.0) -> String:
 	if has_timestamp(row.get("dormant_since")):
 		return "defeated"
 	# Energy penuh = Idle, termasuk yang masih ditandai tidur di bangku. Server
 	# menahan sleep supaya Energy tidak luruh dan tidak ada +5 EXP; pose bangun
-	# adalah sinyal siap Summon.
-	if need_is_full(row.get("care"), "energy"):
+	# adalah sinyal siap Summon. Jangan baca care.energy mentah: row roster
+	# menyimpan nilai saat sync terakhir, jadi tidur yang sudah pulih tetap
+	# terlihat Sleep sampai tap memicu apply_care.
+	if need_is_full(projected_care(row, active_id, now), "energy"):
 		return "idle"
 	if str(row.get("id", "")) != active_id or has_timestamp(row.get("sleep_started_at")):
 		return "sleep"
 	return "idle"
+
+
+static func is_hungry(care_value: Variant) -> bool:
+	return normalized_care(care_value)["hunger"] < BATTLE_MIN_HUNGER
 
 
 static func visual_pose(sleeping: bool, dormant: bool, care_value: Variant = {}) -> String:

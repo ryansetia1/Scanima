@@ -43,6 +43,9 @@ func _initialize() -> void:
 	)
 	_check_eq(hunger_only["bond"], 0.0, "Bond tidak dipakai dan selalu 0")
 	_check_eq(CareRules.BATTLE_ENERGY_COST, 20.0, "Battle memotong 20 Energy")
+	_check_eq(CareRules.BATTLE_MIN_HUNGER, 40.0, "Battle menolak Hunger di bawah pose Hungry")
+	_check(CareRules.is_hungry({"hunger": 39.0}), "Hunger 39 lapar")
+	_check(not CareRules.is_hungry({"hunger": 40.0}), "Hunger 40 siap Battle")
 	_check_eq(CareRules.level_from_exp(0), 1, "0 EXP adalah Lv 1")
 	_check_eq(CareRules.level_from_exp(4), 1, "4 EXP masih Lv 1")
 	_check_eq(CareRules.level_from_exp(5), 2, "5 EXP adalah Lv 2")
@@ -188,6 +191,25 @@ func _initialize() -> void:
 		CareRules.collection_pose({"id": "b", "dormant_since": "2026-08-14T00:00:00Z"}, "a"),
 		"defeated",
 		"Dormant mengalahkan pose Sleep di Collection"
+	)
+	var sleep_start := 1_000_000.0
+	var started_iso := Time.get_datetime_string_from_unix_time(int(sleep_start), true)
+	var recovering := {
+		"id": "b",
+		"sleep_started_at": started_iso,
+		"sleep_energy_at_start": 10.0,
+		"care_synced_at": started_iso,
+		"care": {"hunger": 80.0, "energy": 10.0, "hygiene": 80.0},
+	}
+	_check_eq(
+		CareRules.collection_pose(recovering, "a", sleep_start + 30.0 * 60.0),
+		"sleep",
+		"tidur Collection yang Energy-nya belum penuh tetap Sleep tanpa tap"
+	)
+	_check_eq(
+		CareRules.collection_pose(recovering, "a", sleep_start + 3.0 * 3600.0),
+		"idle",
+		"Energy penuh dihitung dari timestamp tidur, bukan dari tap sync"
 	)
 	_check_eq(CareRules.visual_pose(false, true), "defeated", "Dormant mengalahkan kebutuhan")
 	_check_eq(

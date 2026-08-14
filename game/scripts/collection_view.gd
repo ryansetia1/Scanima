@@ -166,6 +166,7 @@ func apply_care_sync(row: Dictionary, revision: int) -> bool:
 	_selected_row = normalized
 	_fill_identity()
 	_apply_condition(normalized, true)
+	_sheet.fit_to_content()
 	return true
 
 
@@ -235,6 +236,7 @@ func _set_condition_loading() -> void:
 		care_meter.value = 0.0
 		care_meter.modulate = Color.WHITE
 	_update_action_state()
+	_sheet.fit_to_content()
 
 
 func _apply_condition(row: Dictionary, synced: bool) -> void:
@@ -252,6 +254,7 @@ func _apply_condition(row: Dictionary, synced: bool) -> void:
 	_condition_synced = synced
 	_condition_status.visible = not synced
 	_update_action_state()
+	_sheet.fit_to_content()
 
 
 func _update_active_state() -> void:

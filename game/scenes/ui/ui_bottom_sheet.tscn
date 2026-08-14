@@ -59,7 +59,9 @@ layout_mode = 2
 theme_override_constants/separation = 14
 
 [node name="HandleCenter" type="CenterContainer" parent="Bottom/Panel/Column"]
+custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
+mouse_filter = 0
 
 [node name="Handle" type="ColorRect" parent="Bottom/Panel/Column/HandleCenter"]
 custom_minimum_size = Vector2(84, 7)
