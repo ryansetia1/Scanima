@@ -24,6 +24,26 @@ static func quantity_of(inventory: Array, item_id: String) -> int:
 	return 0
 
 
+static func with_quantity(inventory: Array, item_id: String, quantity: int) -> Array:
+	var rows: Array = []
+	var found := false
+	var qty := maxi(0, quantity)
+	for value in inventory:
+		var row: Dictionary = value if typeof(value) == TYPE_DICTIONARY else {}
+		if str(row.get("item_id", "")) != item_id:
+			rows.append(row)
+			continue
+		found = true
+		if qty <= 0:
+			continue
+		var copy := row.duplicate(true)
+		copy["quantity"] = qty
+		rows.append(copy)
+	if not found and qty > 0:
+		rows.append({"item_id": item_id, "quantity": qty})
+	return rows
+
+
 static func owned_rows(catalog: Array, inventory: Array, kind: String) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	for value in catalog:

@@ -55,7 +55,7 @@ Tiga mata uang, dan yang menentukan pembagiannya adalah biaya nyata yang mereka 
 | --- | --- | --- |
 | **Scan Charge** | Discovery Scan, 8 per hari | Refill harian, rewarded ad, langganan |
 | **Genesis Core** | Menciptakan spesies baru | 3 saat onboarding, 1 per minggu gratis, IAP, langganan |
-| **Bits** | Makanan, item, Clean | 50 saat onboarding (akun baru saja), Shop, hadiah battle (cap 100/hari lokal) |
+| **Bits** | Makanan dan item di Shop | 50 saat onboarding (akun baru saja), Shop, hadiah battle (cap 100/hari lokal) |
 
 > **Keputusan produk, dikonfirmasi 13 Agustus 2026:** jalur gratis Genesis Core adalah **1 Core per minggu**. Fitur ini belum diimplementasikan; build sekarang hanya memberi 3 Core saat onboarding dan refund ketika generation gagal. Grant mingguan nanti wajib server-authoritative dan tercatat di ledger. Detail auto-credit versus tombol claim, batas penumpukan minggu terlewat, serta anti-abuse akun anonim belum diputuskan—jangan menganggap salah satunya sudah final.
 
@@ -205,12 +205,12 @@ Bonus "terawat" +8 adalah pendorong terbesar dan itu memang tujuannya: yang ingi
 Nilai aksi yang live di Phase 2:
 
 - **Feed:** wajib `food_id` dari inventory; Hunger + nilai makanan (Byte Berry 10 … Nova Feast 100). Tidak mendebit Bits. EXP +3 hanya jika Hunger sebelum aksi <40 **dan** sesudah restore ≥40. Ditolak `NEED_FULL` kalau Hunger setelah decay >= 99.5, `NO_ITEM` kalau tas kosong, `INVALID_ITEM` kalau bukan makanan. Client meredupkan tombol dan toast tanpa request — Godot menelan `pressed` kalau `disabled`.
-- **Clean:** 5 Bits, Hygiene +35; EXP +3 hanya jika Hygiene sebelum aksi <50. Gerbang penuh yang sama.
+- **Clean:** gratis, Hygiene +35; EXP +3 hanya jika Hygiene sebelum aksi <50. Gerbang penuh yang sama.
 - **Energy item (`use_item`):** Pulse Cell +20 / Reactor Pack +50, dijepit 100, tanpa EXP. `NEED_FULL` pada Energy >= 99.5.
 - **Play:** gratis, Energy -5; EXP +1 maksimal lima kali per hari sipil lokal. Tidak ada cap Bond; anti-farm-nya Energy dan counter harian. Client menahan tap sesudah cap (toast, tanpa request).
-- **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 EXP. Wake lebih awal mempertahankan pemulihan parsial tanpa EXP. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap. Anima yang **tidak di-Summon** juga tidur, tanpa auto-bangun dan tanpa +5 EXP — Energy pulih dalam tiga jam (dua kali lipat companion). Collection menampilkan pose Idle begitu Energy penuh supaya pemain tahu Anima itu siap di-Summon; row Postgres tetap tidur agar Energy tidak luruh. `Summon` menulis `profiles.active_anima_id` dan menidurkan sisanya.
+- **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 EXP. Wake lebih awal mempertahankan pemulihan parsial tanpa EXP. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap. Anima yang **tidak di-Summon** juga tidur, tanpa auto-bangun dan tanpa +5 EXP — Energy pulih dalam tiga jam (dua kali lipat companion). Collection menampilkan Sleep selama Energy pulih, Hungry/Dirty kalau lapar/kotor, Idle begitu siap Summon; row Postgres tetap tidur agar Energy tidak luruh. `Summon` menulis `profiles.active_anima_id` dan menidurkan sisanya.
 
-Saldo, kebutuhan, inventory, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten; `quota_ledger` mencatat debit Clean dan pembelian Shop (`shop_buy`). Client menyimpan satu intent `pending_care` (plus `item_id`) dan satu `pending_purchase`, bukan salinan saldo atau tas.
+Saldo, kebutuhan, inventory, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten; `quota_ledger` mencatat pembelian Shop (`shop_buy`). Client menyimpan satu intent `pending_care` (plus `item_id`) dan satu `pending_purchase`, bukan salinan saldo atau tas.
 
 ## 4. Evo-tree
 

@@ -142,16 +142,14 @@ static func projected_care(row: Dictionary, active_id: String = "", now: float =
 static func collection_pose(row: Dictionary, active_id: String, now: float = -1.0) -> String:
 	if has_timestamp(row.get("dormant_since")):
 		return "defeated"
-	# Energy penuh = Idle, termasuk yang masih ditandai tidur di bangku. Server
-	# menahan sleep supaya Energy tidak luruh dan tidak ada +5 EXP; pose bangun
-	# adalah sinyal siap Summon. Jangan baca care.energy mentah: row roster
-	# menyimpan nilai saat sync terakhir, jadi tidur yang sudah pulih tetap
-	# terlihat Sleep sampai tap memicu apply_care.
-	if need_is_full(projected_care(row, active_id, now), "energy"):
-		return "idle"
-	if str(row.get("id", "")) != active_id or has_timestamp(row.get("sleep_started_at")):
-		return "sleep"
-	return "idle"
+	# Energy penuh = bangun di kartu, termasuk bangku yang server masih tandai
+	# tidur. Jangan baca care.energy mentah: row roster adalah nilai sync
+	# terakhir. Sesudah bangun, Hungry/Dirty harus kelihatan sekilas.
+	var projected := projected_care(row, active_id, now)
+	if not need_is_full(projected, "energy"):
+		if str(row.get("id", "")) != active_id or has_timestamp(row.get("sleep_started_at")):
+			return "sleep"
+	return visual_pose(false, false, projected)
 
 
 static func battle_unavailable_key(

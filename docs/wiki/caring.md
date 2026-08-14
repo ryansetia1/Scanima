@@ -8,11 +8,11 @@ Anima punya tiga kebutuhan, masing-masing 0–100. Semuanya pelan-pelan turun se
 | **Energy** | Stamina | Habis dalam ~14 jam kalau bangun | **Sleep**, atau item Energy di Shop |
 | **Hygiene** | Kebersihan | Habis dalam ~24 jam | **Clean** |
 
-**Clean** masih **5 Bits**. **Feed** memakai makanan dari tas. Play dan Sleep gratis. Item Energy dibeli di Shop, dipakai dari tab Items.
+**Clean** gratis. **Feed** memakai makanan dari tas. Play dan Sleep juga gratis. Item Energy dibeli di Shop, dipakai dari tab Items.
 
 ## Shop
 
-Tombol **Shop** seukuran chip **Bits** dan duduk tepat di bawah baris HUD, selaras dengan Bits. Animas / Cores / Bits tetap satu baris. Tetap kelihatan saat Anima tidur, dari tab mana pun.
+Tombol **Shop** seukuran chip **Bits** dan duduk tepat di bawah baris HUD, selaras dengan Bits. Animas / Cores / Bits tetap satu baris. Tetap kelihatan saat Anima tidur, dari tab mana pun — kecuali selama duel, supaya tidak menimpa Forfeit.
 
 - Tab **Food**: sembilan makanan, dari Byte Berry (10 Hunger / 2 Bits) sampai Nova Feast (penuh / 20 Bits).
 - Tab **Items**: Pulse Cell dan Reactor Pack mengisi Energy; tujuh item lain hanya untuk Battle.
@@ -30,7 +30,7 @@ Lapar atau kotor tidak mengunci Battle, tapi stats duel turun — makin rendah m
 
 ## Clean
 
-Mengisi Hygiene **+35**. Sama seperti Feed: ditolak kalau meter sudah penuh.
+Gratis. Mengisi Hygiene **+35**. Ditolak kalau meter sudah penuh.
 
 EXP +3 hanya kalau Anima **kotor** (Hygiene di bawah 50).
 
@@ -53,7 +53,7 @@ Kalau kamu bangunin sebelum penuh, Energy yang sudah pulih tetap ada, tapi bonus
 
 **Pulse Cell** (+20) dan **Reactor Pack** (+50) mengisi Energy dari Shop tanpa menunggu tidur. Meter yang sudah penuh menolaknya, dan keduanya **tidak** memberi EXP.
 
-Di Collection, Anima yang Energy-nya sudah penuh kelihatan **bangun** (siap di-Summon), meski ia belum kamu tap.
+Di Collection, kartu memakai pose-nya: Sleep selama Energy pulih, Hungry atau Dirty kalau lapar/kotor, Idle kalau siap Summon — tanpa perlu tap dulu.
 
 ## Dormant
 

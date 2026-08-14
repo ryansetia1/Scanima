@@ -59,6 +59,6 @@ Tap kartu membuka sheet, bukan langsung pindah companion.
 - **View Profile** — lihat traits dan attributes, ganti nama, atau Delete.
 - **Summon** — Anima ini pindah ke Home. Yang tadi di Home tidur.
 
-Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Begitu Energy penuh, kartunya kelihatan bangun — siap di-Summon, tanpa perlu kamu tap dulu.
+Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Kartu Collection memakai pose-nya: Sleep selama Energy pulih, Hungry atau Dirty kalau lapar/kotor, Idle kalau siap, Damaged kalau Dormant. Tidak perlu tap dulu supaya kelihatan.
 
 **Delete** ada di profil sebagai teks kecil, bukan tombol besar. Menghapus itu permanen: tidak ada refund Core atau Bits.

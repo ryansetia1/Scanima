@@ -192,6 +192,30 @@ func _initialize() -> void:
 	_check_eq(
 		CareRules.collection_pose(
 			{
+				"id": "b",
+				"sleep_started_at": "2026-08-14T00:00:00Z",
+				"care": {"hunger": 20.0, "energy": 100.0, "hygiene": 80.0},
+			},
+			"a"
+		),
+		"hungry",
+		"Energy penuh tapi lapar memakai pose Hungry di Collection"
+	)
+	_check_eq(
+		CareRules.collection_pose(
+			{
+				"id": "b",
+				"sleep_started_at": "2026-08-14T00:00:00Z",
+				"care": {"hunger": 80.0, "energy": 100.0, "hygiene": 20.0},
+			},
+			"a"
+		),
+		"dirty",
+		"Energy penuh tapi kotor memakai pose Dirty di Collection"
+	)
+	_check_eq(
+		CareRules.collection_pose(
+			{
 				"id": "a",
 				"sleep_started_at": "2026-08-14T00:00:00Z",
 				"care": {"hunger": 80.0, "energy": 40.0, "hygiene": 80.0},
@@ -290,6 +314,12 @@ func _initialize() -> void:
 		"BATTLE_PICK_LOW_ENERGY",
 		"alasan picker memakai label pendek"
 	)
+
+	print("12. tas Shop menulis ulang quantity dari respons")
+	var bag: Array = [{"item_id": "power_chip", "quantity": 1}]
+	_check_eq(Catalog.quantity_of(Catalog.with_quantity(bag, "power_chip", 3), "power_chip"), 3, "beli menambah tumpukan")
+	_check_eq(Catalog.quantity_of(Catalog.with_quantity(bag, "power_chip", 0), "power_chip"), 0, "nol menghapus baris")
+	_check_eq(Catalog.quantity_of(Catalog.with_quantity([], "vital_patch", 1), "vital_patch"), 1, "item baru masuk tas")
 
 	_finish()
 

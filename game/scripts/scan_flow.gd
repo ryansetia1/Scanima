@@ -153,7 +153,7 @@ func _ready() -> void:
 	_layout_for_viewport()
 	await get_tree().process_frame
 	UiJuice.install_buttons(self)
-	_place_shop()
+	_sync_shop_chrome()
 	UiJuice.reveal(_top_hud, 0.02)
 	UiJuice.reveal(_home_view, 0.08)
 	UiJuice.reveal(_bottom_nav, 0.14)
@@ -726,8 +726,9 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> bool:
 	)
 	if res.ok:
 		GameState.finish_care()
-		await _refresh_catalog()
 		if _apply_care_response(GameState.as_dict(res.data)):
+			if action == "feed" or action == "use_item":
+				_refresh_inventory()
 			if show_feedback and not _level_up_banner.visible:
 				_say(_care_success_message(action), show_feedback)
 			return true
@@ -911,6 +912,7 @@ func _resume_battle() -> void:
 	var session_id := str(pending.get("session_id", ""))
 	if session_id.is_empty():
 		_battle_view.set_lobby(_current_anima)
+		_sync_shop_chrome()
 		return
 
 	_set_busy(true)
@@ -919,6 +921,7 @@ func _resume_battle() -> void:
 	if not res.ok and res.error == "BATTLE_NOT_FOUND":
 		GameState.finish_battle()
 		_battle_view.set_lobby(_current_anima)
+		_sync_shop_chrome()
 		_set_busy(false)
 		return
 	if not res.ok:
@@ -956,9 +959,12 @@ func _retry_battle() -> void:
 
 func _battle_action_requested(action: String) -> void:
 	if _busy:
+		# begin_action sudah menampilkan Resolving; tanpa request itu membeku.
+		_battle_view.set_busy(false)
 		return
 	var session: Dictionary = _battle_view.session_data()
 	if session.is_empty() or str(session.get("status", "")) != "active":
+		_battle_view.set_busy(false)
 		return
 	var pending := GameState.begin_battle_action(
 		str(session.get("id", "")),
@@ -1013,9 +1019,12 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 		return
 	await _battle_view.play_events(events, next_session)
 	GameState.confirm_battle_response(next_session)
-	await _refresh_catalog()
-	await _apply_battle_reward(GameState.as_dict(data.get("reward")), next_session)
+	# Katalog/profil boleh menyusul. Menahan _busy di sini membuat tap Special
+	# berikutnya menampilkan Resolving tanpa pernah mengirim turn.
 	_set_busy(false)
+	if str(pending.get("action", "")) == "item":
+		_refresh_inventory()
+	await _apply_battle_reward(GameState.as_dict(data.get("reward")), next_session)
 
 
 func _forfeit_battle() -> void:
@@ -1032,6 +1041,7 @@ func _forfeit_battle() -> void:
 		var closed := GameState.as_dict(res.data)
 		GameState.finish_battle()
 		_battle_view.set_session(closed)
+		_sync_shop_chrome()
 	else:
 		_battle_view.set_error(res.error)
 	_set_busy(false)
@@ -1052,6 +1062,7 @@ func _show_battle_session(session: Dictionary) -> bool:
 		_battle_view.set_error("BATTLE_ERROR_GENERIC")
 		return false
 	_battle_view.set_session(session, player_loaded, bot_loaded)
+	_sync_shop_chrome()
 	return true
 
 
@@ -1682,7 +1693,7 @@ func _layout_for_viewport() -> void:
 			)
 
 	_apply_margins(_safe_margin, insets, BASE_MARGIN, HUD_TOP_PAD)
-	_place_shop()
+	_sync_shop_chrome()
 	_place_toast(insets)
 	_stage.position = stage_position_for(viewport_size, insets)
 
@@ -1757,6 +1768,8 @@ func _switch_destination(
 		_reload_roster()
 	if destination == BottomNav.ANIMA:
 		_refresh_stats()
+	_sync_shop_chrome()
+	_bottom_nav.set_scan_emphasized(_cores_remaining() > 0 and destination != BottomNav.BATTLE)
 	UiJuice.reveal(_active_view())
 
 
@@ -1802,6 +1815,8 @@ func _show_core_info() -> void:
 
 
 func _open_shop(tab: String = "food") -> void:
+	if _battle_owns_arena():
+		return
 	if _shop_sheet.is_shop_open() and tab == "food":
 		return
 	_shop_sheet.set_catalog(_catalog, _inventory)
@@ -1874,8 +1889,13 @@ func _send_pending_purchase(pending: Dictionary) -> void:
 		if data.has("bits"):
 			GameState.profile["bits"] = int(data.get("bits", 0))
 			_refresh_header()
-		await _refresh_catalog()
-		_shop_sheet.set_catalog(_catalog, _inventory)
+		if data.has("quantity"):
+			_inventory = Catalog.with_quantity(
+				_inventory, str(data.get("item_id", pending.get("item_id", ""))), int(data.get("quantity", 0))
+			)
+			_shop_sheet.set_catalog(_catalog, _inventory)
+		else:
+			_refresh_inventory()
 		_say(tr("FEEDBACK_PURCHASE"))
 		return
 	if res.code >= 400 and res.code < 500:
@@ -1884,9 +1904,14 @@ func _send_pending_purchase(pending: Dictionary) -> void:
 
 
 func _refresh_catalog() -> void:
-	var catalog_res := await Backend.fetch_catalog()
-	if catalog_res.ok and typeof(catalog_res.data) == TYPE_ARRAY:
-		_catalog = catalog_res.data
+	if _catalog.is_empty():
+		var catalog_res := await Backend.fetch_catalog()
+		if catalog_res.ok and typeof(catalog_res.data) == TYPE_ARRAY:
+			_catalog = catalog_res.data
+	await _refresh_inventory()
+
+
+func _refresh_inventory() -> void:
 	var inventory_res := await Backend.fetch_inventory()
 	if inventory_res.ok and typeof(inventory_res.data) == TYPE_ARRAY:
 		_inventory = inventory_res.data
@@ -2086,13 +2111,13 @@ func _refresh_header() -> void:
 		_cores_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		_bits_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		_scan_view.set_cores(-1)
-		_bottom_nav.set_scan_emphasized(true)
+		_bottom_nav.set_scan_emphasized(_destination != BottomNav.BATTLE)
 		return
 	var cores := int(p.get("genesis_cores", 0))
 	_cores_chip.set_value_text(LocaleManager.format_integer(cores))
 	_bits_chip.set_value_text(LocaleManager.format_integer(int(p.get("bits", 0))))
 	_scan_view.set_cores(cores)
-	_bottom_nav.set_scan_emphasized(cores > 0)
+	_bottom_nav.set_scan_emphasized(cores > 0 and _destination != BottomNav.BATTLE)
 	UiJuice.pop(_top_hud, 1.012)
 
 
@@ -2150,8 +2175,29 @@ func _cores_remaining() -> int:
 	return int(GameState.profile.get("genesis_cores", 0))
 
 
+func _battle_owns_arena() -> bool:
+	return (
+		is_instance_valid(_battle_view)
+		and _battle_view.visible
+		and not _battle_view.session_data().is_empty()
+	)
+
+
+func _sync_shop_chrome() -> void:
+	if not is_instance_valid(_shop_button):
+		return
+	var hide := _battle_owns_arena()
+	_shop_button.visible = not hide
+	if hide and is_instance_valid(_shop_sheet) and _shop_sheet.is_shop_open():
+		_shop_sheet.close()
+	if not hide:
+		_place_shop()
+
+
 func _place_shop() -> void:
 	if not is_instance_valid(_shop_button) or not is_instance_valid(_bits_chip) or not is_instance_valid(_top_hud):
+		return
+	if not _shop_button.visible:
 		return
 	var bits: Rect2 = _bits_chip.get_global_rect()
 	var hud: Rect2 = _top_hud.get_global_rect()
@@ -2170,7 +2216,11 @@ func _place_toast(insets: Vector4) -> void:
 	if not is_instance_valid(_status_panel) or not is_instance_valid(_top_hud):
 		return
 	var hud_h := maxf(_top_hud.size.y, _top_hud.get_combined_minimum_size().y)
-	var shop_h := _shop_button.get_combined_minimum_size().y if is_instance_valid(_shop_button) else 0.0
+	var shop_h := (
+		_shop_button.get_combined_minimum_size().y
+		if is_instance_valid(_shop_button) and _shop_button.visible
+		else 0.0
+	)
 	var top := HUD_TOP_PAD + insets.y + hud_h + SHOP_GAP + shop_h + TOAST_GAP
 	var height := maxf(TOAST_MIN_HEIGHT, _status_panel.get_combined_minimum_size().y)
 	_status_panel.offset_top = top
@@ -2367,6 +2417,7 @@ func _run_battle_demo(
 	}
 	_switch_destination(BottomNav.BATTLE, {}, false)
 	_battle_view.set_session(session, loaded, loaded)
+	_sync_shop_chrome()
 	if not is_zero_approx(effectiveness):
 		_battle_view.call("_show_effectiveness", effectiveness)
 

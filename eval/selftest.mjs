@@ -1422,6 +1422,8 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
   hurt.player.hp = 100;
   const healed = resolveTurn(hurt, "item", "heal-key", "vital_patch");
   assert.equal(healed.events[0]?.type, "item");
+  assert.equal(healed.events[0].effect, "heal_hp_pct");
+  assert.equal(healed.events[0].effect_value, 30);
   assert.equal(healed.events[0].hp, 100 + Math.trunc(hurt.player.max_hp * 0.3));
   assert.throws(() => resolveTurn(healed.state, "item", "second", "vital_patch"), /ITEM_ALREADY_USED/);
 

@@ -572,7 +572,7 @@ Endpoint JWT-protected, tanpa model call dan tanpa background job:
 { "anima_id": "b3d1...", "action": "feed", "item_id": "ember_noodles", "idempotency_key": "..." }
 ```
 
-`sync` tidak membutuhkan key; `feed`, `clean`, `sleep`, `wake`, `play`, `summon`, dan `use_item` wajib memilikinya. `feed` dan `use_item` wajib `item_id`. RPC `apply_care()` menghitung decay sejak `care_synced_at` (cap 48 jam, tanpa grace), Sleep, bonus harian, serta Dormant sebelum memproses aksi. Feed mengonsumsi makanan inventory; Clean mendebit 5 Bits; Play memakai 5 Energy; item Energy dijepit 100 tanpa EXP. Battle/Train memotong 20 Energy saat session baru dimulai, dan response selalu membawa snapshot Anima terbaru beserta saldo Bits. Fungsi SQL hanya bisa dieksekusi `service_role`; peran `authenticated` tidak dapat melewati Edge Function lewat `/rest/v1/rpc`.
+`sync` tidak membutuhkan key; `feed`, `clean`, `sleep`, `wake`, `play`, `summon`, dan `use_item` wajib memilikinya. `feed` dan `use_item` wajib `item_id`. RPC `apply_care()` menghitung decay sejak `care_synced_at` (cap 48 jam, tanpa grace), Sleep, bonus harian, serta Dormant sebelum memproses aksi. Feed mengonsumsi makanan inventory; Clean gratis; Play memakai 5 Energy; item Energy dijepit 100 tanpa EXP. Battle/Train memotong 20 Energy saat session baru dimulai, dan response selalu membawa snapshot Anima terbaru beserta saldo Bits. Fungsi SQL hanya bisa dieksekusi `service_role`; peran `authenticated` tidak dapat melewati Edge Function lewat `/rest/v1/rpc`.
 
 ### `POST /battle_anima`
 

@@ -19,6 +19,7 @@ var _home_care_blocked := ""
 var _preview_requests := 0
 var _help_title := ""
 var _help_body := ""
+var _item_picker_opens := false
 
 
 func _initialize() -> void:
@@ -90,7 +91,7 @@ func _initialize() -> void:
 		scan_flow.find("CareRules.collection_pose") >= 0
 		and scan_flow.find("begin_visit()") >= 0
 		and scan_flow.find("_populate_collection()") >= 0,
-		"Collection thumbnails project Sleep or Idle when the tab opens"
+		"Collection thumbnails project Sleep, Hungry, Dirty, or Idle when the tab opens"
 	)
 	var active_start := scan_flow.find("func _active_row")
 	var active_end := scan_flow.find("func _sync_collection_preview", active_start)
@@ -209,6 +210,26 @@ func _initialize() -> void:
 		"shared input mode enforces the server name length and touch target"
 	)
 	var shell_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		shell_source.find("func _battle_owns_arena") >= 0
+		and shell_source.find("if _battle_owns_arena():") >= 0
+		and shell_source.find("_shop_button.visible = not hide") >= 0,
+		"Shop only locks while the Battle arena is on screen"
+	)
+	var submit_start := shell_source.find("func _submit_pending_battle")
+	var submit_end := shell_source.find("func _forfeit_battle", submit_start)
+	var submit_body := (
+		shell_source.substr(submit_start, submit_end - submit_start)
+		if submit_start >= 0 and submit_end > submit_start
+		else ""
+	)
+	var unlock_at := submit_body.find("_set_busy(false)")
+	_check(
+		unlock_at >= 0
+		and submit_body.find("await _refresh_catalog()") < 0
+		and shell_source.find("_battle_view.set_busy(false)") >= 0,
+		"Battle unlocks after the event log so a follow-up Special can send"
+	)
 	_check(
 		shell_source.find("_animas_chip.pressed.connect(_open_collection)") >= 0,
 		"Animas chip navigates to Collection"
@@ -423,6 +444,30 @@ func _test_care_feedback_is_immediate() -> void:
 		body.find("_home_view.set_busy(true)") >= 0 and body.find("_set_busy(true)") < 0,
 		"care locks only its action dock, not the whole shell"
 	)
+	var send_start := source.find("func _send_pending_care")
+	var send_end := source.find("func _sync_active_care", send_start)
+	var send_body := (
+		source.substr(send_start, send_end - send_start)
+		if send_start >= 0 and send_end > send_start
+		else ""
+	)
+	var apply_at := send_body.find("_apply_care_response")
+	_check(
+		apply_at >= 0 and send_body.find("await _refresh_catalog") < 0,
+		"care meters update without waiting on a catalog refetch"
+	)
+	var buy_start := source.find("func _send_pending_purchase")
+	var buy_end := source.find("func _refresh_catalog", buy_start)
+	var buy_body := (
+		source.substr(buy_start, buy_end - buy_start)
+		if buy_start >= 0 and buy_end > buy_start
+		else ""
+	)
+	_check(
+		buy_body.find("Catalog.with_quantity") >= 0
+		and buy_body.find("await _refresh_catalog") < 0,
+		"a purchase applies the shop quantity without a second round trip"
+	)
 
 
 func _test_home_tap_interaction(scene: Node) -> void:
@@ -600,6 +645,7 @@ func _test_battle_view() -> void:
 	var guard_commit := view.find_child("BattleGuardCommit", true, false) as ColorRect
 	var item_commit := view.find_child("BattleItemCommit", true, false) as ColorRect
 	var forfeit := view.find_child("BattleForfeitButton", true, false) as Button
+	var turn := view.find_child("BattleTurn", true, false) as Label
 	var player_hp := view.find_child("BattlePlayerHp", true, false) as ProgressBar
 	var bot_hp := view.find_child("BattleBotHp", true, false) as ProgressBar
 	var player_hp_value := view.find_child("BattlePlayerHpValue", true, false) as Label
@@ -763,6 +809,24 @@ func _test_battle_view() -> void:
 	}
 	view.set_session(session, loaded, loaded)
 	await process_frame
+	session["item_used_id"] = null
+	view.set_session(session, loaded, loaded)
+	_item_picker_opens = false
+	view.item_picker_requested.connect(func() -> void: _item_picker_opens = true)
+	view.call("_request_item")
+	_check(not item.disabled, "unused Item stays enabled")
+	_check(item.self_modulate.a > 0.9, "JSON null item_used_id does not dim Item")
+	_check(_item_picker_opens, "unused Item opens the battle picker")
+	session["item_used_id"] = "power_chip"
+	view.set_session(session, loaded, loaded)
+	_item_picker_opens = false
+	view.call("_request_item")
+	_check(
+		item.self_modulate.a < 0.5 and not _item_picker_opens,
+		"a real item_used_id dims Item and blocks a second use"
+	)
+	session.erase("item_used_id")
+	view.set_session(session, loaded, loaded)
 	_check(
 		player_sprite.sprite_frames.has_animation("fx_strike")
 		and player_sprite.sprite_frames.has_animation("fx_surge"),
@@ -812,8 +876,15 @@ func _test_battle_view() -> void:
 	_check_eq(player_hp.value, 220.0, "Battle HUD displays authoritative HP")
 	_check(
 		player_hp_value.text == "220 / 220"
-		and bot_hp_value.text == "205 / 205",
-		"unified fighter HUD overlays exact current and maximum HP"
+		and bot_hp_value.text == "205 / 205"
+		and player_hp_value.get_parent() != player_hp
+		and bot_hp_value.get_parent() != bot_hp,
+		"fighter HUD shows exact current and maximum HP above each bar"
+	)
+	_check(
+		turn.get_parent() == forfeit.get_parent()
+		and daily_reward.get_parent() != forfeit.get_parent(),
+		"Turn and Forfeit share one row; Progress sits on the line below"
 	)
 	_check(
 		view.find_child("PlayerCard", true, false) == null
@@ -846,6 +917,18 @@ func _test_battle_view() -> void:
 	)
 	view.call("_show_effectiveness", 1.0)
 	_check(not effectiveness.visible, "neutral attacks do not show a misleading indicator")
+	var battle_source := FileAccess.get_file_as_string("res://scripts/battle_view.gd")
+	_check(
+		battle_source.find("func item_banner_text") >= 0
+		and battle_source.find("care_feedback(\"item\")") >= 0
+		and battle_source.find("_show_banner(item_banner_text(event)") >= 0,
+		"Item banners name the effect and shine the Anima"
+	)
+	view.call("_show_banner", "Attack +35%!", Color(1.0, 0.82, 0.4, 1.0), true)
+	_check(
+		effectiveness.visible and effectiveness_label.text == "Attack +35%!",
+		"using an item reuses the Super effective banner for its effect"
+	)
 	_check_eq(strike.text, "D-Pad Jab", "Attack button uses the generated move name")
 	_check(
 		surge.text == tr("BATTLE_ACTION_SURGE_COST") % ["Pocket Beam", "3", "3"],

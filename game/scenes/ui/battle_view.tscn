@@ -141,36 +141,33 @@ layout_mode = 2
 clip_contents = true
 mouse_filter = 2
 
-[node name="StatusRow" type="HBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena"]
+[node name="StatusOverlay" type="VBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena"]
 z_index = 2
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 4.0
-offset_top = 2.0
-offset_right = -4.0
-offset_bottom = 98.0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = 140.0
 grow_horizontal = 2
+theme_override_constants/separation = 4
+mouse_filter = 2
+
+[node name="StatusRow" type="HBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay"]
+layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="BattleTurn" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusRow"]
+[node name="BattleTurn" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay/StatusRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"SectionLabel"
 text = "BATTLE_TURN"
 vertical_alignment = 1
+text_overrun_behavior = 3
 
-[node name="BattleDailyReward" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusRow"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_type_variation = &"EyebrowLabel"
-text = "BATTLE_DAILY_REWARDS"
-horizontal_alignment = 2
-vertical_alignment = 1
-
-[node name="BattleForfeitButton" type="Button" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusRow"]
+[node name="BattleForfeitButton" type="Button" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay/StatusRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(108, 96)
 layout_mode = 2
@@ -182,15 +179,23 @@ theme_override_font_sizes/font_size = 24
 text = "BATTLE_FORFEIT"
 flat = true
 
+[node name="BattleDailyReward" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "BATTLE_DAILY_REWARDS"
+autowrap_mode = 3
+
 [node name="FighterHud" type="HBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena"]
 z_index = 2
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 10.0
-offset_top = 100.0
-offset_right = -10.0
-offset_bottom = 192.0
+offset_left = 16.0
+offset_top = 148.0
+offset_right = -16.0
+offset_bottom = 248.0
 grow_horizontal = 2
 theme_override_constants/separation = 12
 
@@ -225,32 +230,24 @@ theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 22
 text = "ELEMENT_UNKNOWN"
 
+[node name="BattlePlayerHpValue" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud/PlayerSide"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SectionLabel"
+theme_override_font_sizes/font_size = 22
+text = "FORMAT_RATIO"
+horizontal_alignment = 1
+
 [node name="BattlePlayerHp" type="ProgressBar" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud/PlayerSide"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 theme_override_styles/background = SubResource("HpBackground")
 theme_override_styles/fill = SubResource("HpFill")
 fill_mode = 1
 value = 100.0
 show_percentage = false
-
-[node name="BattlePlayerHpValue" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud/PlayerSide/BattlePlayerHp"]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.97, 0.985, 1, 1)
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.95)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 21
-text = "FORMAT_RATIO"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="Versus" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud"]
 custom_minimum_size = Vector2(42, 0)
@@ -292,31 +289,23 @@ text = "BATTLE_BOT_NAME"
 horizontal_alignment = 2
 text_overrun_behavior = 3
 
+[node name="BattleBotHpValue" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud/BotSide"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SectionLabel"
+theme_override_font_sizes/font_size = 22
+text = "FORMAT_RATIO"
+horizontal_alignment = 1
+
 [node name="BattleBotHp" type="ProgressBar" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud/BotSide"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 theme_override_styles/background = SubResource("HpBackground")
 theme_override_styles/fill = SubResource("HpFill")
 value = 100.0
 show_percentage = false
-
-[node name="BattleBotHpValue" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud/BotSide/BattleBotHp"]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.97, 0.985, 1, 1)
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.95)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 21
-text = "FORMAT_RATIO"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="BattlePlayerAnchor" type="Node2D" parent="Column/BattleContent/ArenaPanel/BattleArena"]
 unique_name_in_owner = true

@@ -283,7 +283,7 @@ func _on_start_pressed() -> void:
 func _request_item() -> void:
 	if _busy:
 		return
-	if not str(_session.get("item_used_id", "")).is_empty() or bool(_as_dict(_as_dict(_session.get("state")).get("player")).get("item_used", false)):
+	if _item_already_used():
 		_feedback.text = tr("BATTLE_ITEM_USED")
 		return
 	item_picker_requested.emit()
@@ -392,12 +392,7 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 				)
 				await _event_pause(0.24)
 			"item":
-				_feedback.text = tr("BATTLE_EVENT_ITEM") % _actor_name(
-					str(event.get("actor", ""))
-				)
-				if str(event.get("actor", "")) == "player":
-					_player_hp.value = int(event.get("hp", _player_hp.value))
-				await _event_pause(0.28)
+				await _play_item(event)
 			"attack":
 				await _play_attack(event)
 			"knockout":
@@ -410,6 +405,22 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 				_feedback.text = tr("BATTLE_EVENT_FINISHED")
 	set_session(next_session)
 	set_busy(false)
+
+
+func _play_item(event: Dictionary) -> void:
+	var actor_name := str(event.get("actor", ""))
+	_feedback.text = tr("BATTLE_EVENT_ITEM") % _actor_name(actor_name)
+	_show_banner(item_banner_text(event), EFFECTIVE_COLOR, true)
+	var actor := _sprite_for(actor_name)
+	if is_instance_valid(actor):
+		actor.care_feedback("item")
+	if actor_name == "player":
+		_player_hp.value = int(event.get("hp", _player_hp.value))
+		_player_hp_value.text = LocaleManager.format_ratio(
+			int(event.get("hp", _player_hp.value)), int(_player_hp.max_value)
+		)
+	await _event_pause(0.64)
+	await _hide_effectiveness()
 
 
 func _play_attack(event: Dictionary) -> void:
@@ -484,7 +495,11 @@ func _show_effectiveness(multiplier: float) -> void:
 		color = EFFECTIVE_COLOR
 	elif key == "BATTLE_NOT_EFFECTIVE":
 		color = RESISTED_COLOR
-	_effectiveness.visible = not key.is_empty()
+	_show_banner(tr(key) if not key.is_empty() else "", color, key == "BATTLE_EFFECTIVE")
+
+
+func _show_banner(text: String, color: Color, big: bool = true) -> void:
+	_effectiveness.visible = not text.is_empty()
 	if not _effectiveness.visible:
 		_damage.add_theme_color_override("font_color", color)
 		return
@@ -493,22 +508,18 @@ func _show_effectiveness(multiplier: float) -> void:
 	_effectiveness.modulate = Color.WHITE
 	_effectiveness.scale = Vector2.ONE
 	_effectiveness_badge.rotation = 0.0
-	_effectiveness_label.text = tr(key)
+	_effectiveness_label.text = text
 	_effectiveness_label.add_theme_color_override("font_color", color)
 	_effectiveness_label.add_theme_color_override(
 		"font_shadow_color", Color(color.r, color.g, color.b, 0.48)
 	)
 	_damage.add_theme_color_override("font_color", color)
-	_damage.add_theme_font_size_override(
-		"font_size", 54 if key == "BATTLE_EFFECTIVE" else 46
-	)
+	_damage.add_theme_font_size_override("font_size", 54 if big else 46)
 	if UiMotion.reduced_motion:
 		return
 	_effectiveness.modulate.a = 0.0
 	_effectiveness.scale = Vector2(0.70, 0.70)
-	_effectiveness_badge.rotation = deg_to_rad(
-		-3.5 if key == "BATTLE_EFFECTIVE" else 3.5
-	)
+	_effectiveness_badge.rotation = deg_to_rad(-3.5 if big else 3.5)
 	_effectiveness_tween = create_tween().set_parallel(true)
 	_effectiveness_tween.tween_property(_effectiveness, "modulate:a", 1.0, 0.08)
 	_effectiveness_tween.tween_property(_effectiveness, "scale", Vector2(1.08, 1.08), 0.16) \
@@ -537,6 +548,56 @@ func _hide_effectiveness() -> void:
 	_effectiveness.visible = false
 	_effectiveness.modulate = Color.WHITE
 	_effectiveness.scale = Vector2.ONE
+
+
+func item_banner_text(event: Dictionary) -> String:
+	var effect := str(event.get("effect", ""))
+	var value := int(event.get("effect_value", 0))
+	if effect.is_empty():
+		match str(event.get("item_id", "")):
+			"vital_patch":
+				effect = "heal_hp_pct"
+				value = 30
+			"power_chip":
+				effect = "buff_atk"
+				value = 35
+			"surge_lens":
+				effect = "buff_special"
+				value = 35
+			"aegis_plate":
+				effect = "buff_guard"
+				value = 25
+			"tempo_coil":
+				effect = "buff_spd"
+				value = 40
+			"pp_capsule":
+				effect = "pp_boost"
+				value = 2
+			"phase_shield":
+				effect = "phase_shield"
+				value = 80
+	var key := ""
+	match effect:
+		"heal_hp_pct":
+			key = "BATTLE_ITEM_HEAL"
+		"buff_atk":
+			key = "BATTLE_ITEM_ATK"
+		"buff_special":
+			key = "BATTLE_ITEM_SPECIAL"
+		"buff_guard":
+			key = "BATTLE_ITEM_GUARD"
+		"buff_spd":
+			key = "BATTLE_ITEM_SPD"
+		"pp_boost":
+			key = "BATTLE_ITEM_PP"
+		"phase_shield":
+			key = "BATTLE_ITEM_SHIELD"
+		_:
+			key = "BATTLE_ITEM_GENERIC"
+	var copy := tr(key)
+	return copy % str(value) if copy.find("%s") >= 0 else copy
+
+
 static func effectiveness_key(multiplier: float) -> String:
 	if multiplier > 1.0:
 		return "BATTLE_EFFECTIVE"
@@ -689,10 +750,7 @@ func _update_action_state() -> void:
 	var active := str(_session.get("status", state.get("status", ""))) == "active"
 	var momentum := int(player.get("momentum", 0))
 	var momentum_max := int(player.get("momentum_max", MOMENTUM_MAX))
-	var item_used := (
-		not str(_session.get("item_used_id", "")).is_empty()
-		or bool(player.get("item_used", false))
-	)
+	var item_used := _item_already_used()
 	var committed := _busy and not _queued_action.is_empty()
 	_strike_button.disabled = not active or (_busy and not committed)
 	_guard_button.disabled = not active or (_busy and not committed)
@@ -721,7 +779,7 @@ func _update_action_state() -> void:
 		LocaleManager.format_integer(momentum),
 		LocaleManager.format_integer(momentum_max),
 	]
-	_item_button.text = tr("BATTLE_ITEM_USED" if item_used else "BATTLE_ACTION_ITEM")
+	_item_button.text = tr("BATTLE_ACTION_ITEM")
 	_item_button.self_modulate = (
 		Color(1, 1, 1, 0.42) if item_used and not committed else Color.WHITE
 	)
@@ -854,3 +912,13 @@ static func _as_dict(value: Variant) -> Dictionary:
 	if typeof(value) == TYPE_DICTIONARY:
 		return value
 	return {}
+
+
+func _item_already_used() -> bool:
+	# Payload session selalu membawa item_used_id: null. str(null) == "<null>".
+	var used_id: Variant = _session.get("item_used_id")
+	if used_id != null:
+		var text := str(used_id).strip_edges()
+		if not text.is_empty() and text != "<null>":
+			return true
+	return bool(_as_dict(_as_dict(_session.get("state")).get("player")).get("item_used", false))

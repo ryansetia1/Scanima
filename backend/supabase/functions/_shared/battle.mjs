@@ -395,10 +395,13 @@ function guardEvent(actor, fighter) {
 }
 
 function itemEvent(actor, fighter, itemId) {
+  const item = catalogItem(itemId);
   return {
     type: "item",
     actor,
     item_id: itemId,
+    effect: item?.effect ?? "",
+    effect_value: item?.effect_value ?? 0,
     hp: fighter.hp,
     momentum: fighter.momentum,
     momentum_max: fighter.momentum_max,

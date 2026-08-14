@@ -25,5 +25,5 @@ Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). A
 
 - Anima **tidak mati**. Kalau lama tidak dirawat, ia jadi Dormant — sedih dan tidak bisa Battle — lalu pulih setelah makan dan dibersihkan.
 - Hanya **satu** Anima hidup di Home. Yang lain tidur di Collection.
-- **Cores** untuk scan spesies baru. **Bits** untuk Shop dan Clean.
+- **Cores** untuk scan spesies baru. **Bits** untuk Shop. Clean gratis.
 - Kalau Cores habis, Scan terkunci dulu. Isi Core lewat toko / iklan / kunci sendiri belum ada.

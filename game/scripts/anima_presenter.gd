@@ -324,6 +324,8 @@ func care_feedback(action: String) -> void:
 			return
 		"clean":
 			tint = Color(0.55, 1.2, 1.35, 1.0)
+		"item":
+			tint = Color(1.55, 1.38, 0.55, 1.0)
 		"sleep":
 			tint = Color(0.72, 0.78, 1.08, 1.0)
 		"wake":
@@ -332,8 +334,11 @@ func care_feedback(action: String) -> void:
 			return
 
 	_feedback = create_tween()
-	_feedback.tween_property(self, "modulate", tint, 0.12)
-	_feedback.tween_property(self, "modulate", Color.WHITE, 0.34) \
+	_feedback.tween_property(self, "modulate", tint, 0.08)
+	if action == "item":
+		_feedback.tween_property(self, "modulate", Color.WHITE, 0.12)
+		_feedback.tween_property(self, "modulate", tint, 0.08)
+	_feedback.tween_property(self, "modulate", Color.WHITE, 0.22) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 
 

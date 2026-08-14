@@ -516,11 +516,14 @@ begin
   assert ok, 'key yang dipakai ulang untuk aksi berbeda harus ditolak';
 
   v_j := public.apply_care(u1, v_care_anima, 'clean', 'care-clean-1');
-  assert (v_j->>'bits')::int = 45, 'Clean harus mendebit tepat 5 Bits';
+  assert (v_j->>'bits')::int = 50, 'Clean tidak boleh mendebit Bits';
   assert (v_j #>> '{anima,care,hygiene}')::numeric = 35,
          'Clean harus memulihkan 35 Hygiene';
   assert (v_j #>> '{anima,care_score}')::int = 6,
          'Clean saat Hygiene <50 harus memberi 3 care_score';
+  assert (select count(*) from public.quota_ledger
+           where owner_id = u1 and currency = 'bits' and reason = 'clean') = 0,
+         'Clean gratis tidak boleh menulis ledger Bits';
 
   -- Meter yang tampil penuh (100 atau 99.99) tidak boleh mengonsumsi makanan.
   update public.profiles set bits = 45 where id = u1;
