@@ -9,12 +9,12 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 # menyalakan Special yang lalu ditolak server sebagai NO_MOMENTUM.
 const MOMENTUM_MAX := 3
 const SURGE_COST := 1
-const MIN_BATTLE_ENERGY := CareRules.BATTLE_ENERGY_COST
 const DAMAGE_COLOR := Color(1.0, 0.35, 0.48, 1.0)
 const EFFECTIVE_COLOR := Color(1.0, 0.82, 0.4, 1.0)
 const RESISTED_COLOR := Color(0.55, 0.68, 0.9, 1.0)
 
 signal start_requested
+signal choose_anima_requested
 signal action_requested(action: String)
 signal item_picker_requested
 signal resume_requested
@@ -28,7 +28,7 @@ signal reward_status_refresh_requested
 @export var cloth_icon: Texture2D
 @export var stone_icon: Texture2D
 
-@onready var _header: VBoxContainer = %Header
+@onready var _header: Control = %Header
 @onready var _lobby_panel: PanelContainer = %BattleLobbyPanel
 @onready var _lobby_name: Label = %BattleLobbyName
 @onready var _lobby_meta: Label = %BattleLobbyMeta
@@ -92,7 +92,7 @@ func _ready() -> void:
 		"cloth": cloth_icon,
 		"stone": stone_icon,
 	}
-	_start_button.pressed.connect(start_requested.emit)
+	_start_button.pressed.connect(_on_start_pressed)
 	_strike_button.pressed.connect(_request_action.bind("strike"))
 	_surge_button.pressed.connect(_request_action.bind("surge"))
 	_guard_button.pressed.connect(_request_action.bind("guard"))
@@ -171,8 +171,16 @@ func _apply_lobby() -> void:
 			LocaleManager.element_name(str(_lobby_row.get("element", ""))),
 			LocaleManager.level_label(CareRules.level_from_exp(int(_lobby_row.get("care_score", 0)))),
 		]
-	_start_button.text = tr("BATTLE_TRAIN") if training else tr("BATTLE_START")
-	_start_button.disabled = _busy or not unavailable_key.is_empty()
+	if unavailable_key.is_empty():
+		var care: Variant = _lobby_row.get("care")
+		if CareRules.is_hungry(care):
+			_lobby_meta.text = _lobby_meta.text + "\n" + tr("BATTLE_HUNGRY_PENALTY")
+		if CareRules.need_is_low(care, "hygiene"):
+			_lobby_meta.text = _lobby_meta.text + "\n" + tr("BATTLE_DIRTY_PENALTY")
+		_start_button.text = tr("BATTLE_TRAIN") if training else tr("BATTLE_START")
+	else:
+		_start_button.text = tr("BATTLE_CHOOSE_ANIMA")
+	_start_button.disabled = _busy
 	_schedule_daily_reward_reset(_lobby_daily_reward)
 
 
@@ -255,8 +263,21 @@ func set_busy(busy: bool) -> void:
 	_busy = busy
 	if not busy:
 		_clear_action_commit()
-	_start_button.disabled = busy or not _lobby_is_eligible()
+	_start_button.disabled = busy
 	_update_action_state()
+
+
+func is_training_lobby() -> bool:
+	return _is_training(_lobby_daily_reward)
+
+
+func _on_start_pressed() -> void:
+	if _busy:
+		return
+	if _lobby_unavailable_key().is_empty():
+		start_requested.emit()
+		return
+	choose_anima_requested.emit()
 
 
 func _request_item() -> void:
@@ -760,20 +781,7 @@ func _error_copy(error_code: String) -> String:
 
 
 func _lobby_unavailable_key() -> String:
-	if _lobby_row.is_empty():
-		return "BATTLE_NO_ANIMA"
-	if str(_lobby_row.get("status", "")) != "ready":
-		return "BATTLE_ANIMA_NOT_READY"
-	if _has_timestamp(_lobby_row.get("sleep_started_at")):
-		return "BATTLE_ANIMA_SLEEPING"
-	if _has_timestamp(_lobby_row.get("dormant_since")):
-		return "BATTLE_ANIMA_DORMANT"
-	var care := _as_dict(_lobby_row.get("care"))
-	if not care.is_empty() and float(care.get("energy", 0.0)) < MIN_BATTLE_ENERGY:
-		return "BATTLE_ANIMA_LOW_ENERGY"
-	if not care.is_empty() and CareRules.is_hungry(care):
-		return "BATTLE_ANIMA_HUNGRY"
-	return ""
+	return CareRules.battle_unavailable_key(_lobby_row)
 
 
 func _lobby_title_key(unavailable_key: String) -> String:
@@ -840,10 +848,6 @@ static func _timestamp_seconds(value: Variant) -> float:
 	if timestamp.is_empty():
 		return -1.0
 	return float(Time.get_unix_time_from_datetime_string(timestamp))
-
-
-static func _has_timestamp(value: Variant) -> bool:
-	return value != null and not str(value).is_empty()
 
 
 static func _as_dict(value: Variant) -> Dictionary:

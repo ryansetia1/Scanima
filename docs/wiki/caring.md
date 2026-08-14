@@ -26,7 +26,7 @@ Tidak bisa dipakai kalau meter Hunger sudah kelihatan penuh — tombol redup, ma
 
 EXP +3 hanya saat Hunger **menyeberang dari bawah 40 ke 40 atau lebih**. Camilan kecil dari 0 tidak cukup; makanan yang lebih mengenyangkan, atau beberapa camilan lalu satu yang menyeberang, baru dapat EXP.
 
-Satu makanan yang cukup kenyang biasanya membuka gerbang Battle lagi (Hunger minimal 40).
+Lapar atau kotor tidak mengunci Battle, tapi stats duel turun — makin rendah meternya, makin lemah. Feed dan Clean mengembalikan stats. Feed juga memberi EXP +3 saat Hunger menyeberang 40. Hunger plus Hygiene yang habis lama-lama jadi Dormant.
 
 ## Clean
 

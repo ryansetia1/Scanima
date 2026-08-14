@@ -154,6 +154,52 @@ static func collection_pose(row: Dictionary, active_id: String, now: float = -1.
 	return "idle"
 
 
+static func battle_unavailable_key(
+	row: Dictionary,
+	active_id: String = "",
+	picking: bool = false,
+	now: float = -1.0
+) -> String:
+	if row.is_empty():
+		return "BATTLE_NO_ANIMA"
+	if str(row.get("status", "")) != "ready":
+		return "BATTLE_ANIMA_NOT_READY"
+	if has_timestamp(row.get("dormant_since")):
+		return "BATTLE_ANIMA_DORMANT"
+	var is_active := not active_id.is_empty() and str(row.get("id", "")) == active_id
+	if has_timestamp(row.get("sleep_started_at")) and (not picking or is_active):
+		return "BATTLE_ANIMA_SLEEPING"
+	# Hunger is a care pose, not a Battle lock. Bits come from Battle; food
+	# costs Bits. Gating the faucet on the sink soft-locks 0 Bits + empty bag.
+	if picking:
+		var projected := projected_care(row, active_id, now)
+		if float(projected.get("energy", 0.0)) < BATTLE_ENERGY_COST:
+			return "BATTLE_ANIMA_LOW_ENERGY"
+		return ""
+	var stored: Variant = row.get("care")
+	if typeof(stored) != TYPE_DICTIONARY or (stored as Dictionary).is_empty():
+		return ""
+	if float((stored as Dictionary).get("energy", 0.0)) < BATTLE_ENERGY_COST:
+		return "BATTLE_ANIMA_LOW_ENERGY"
+	return ""
+
+
+static func battle_pick_reason_key(unavailable_key: String) -> String:
+	match unavailable_key:
+		"BATTLE_ANIMA_HUNGRY":
+			return "BATTLE_PICK_HUNGRY"
+		"BATTLE_ANIMA_LOW_ENERGY":
+			return "BATTLE_PICK_LOW_ENERGY"
+		"BATTLE_ANIMA_SLEEPING":
+			return "BATTLE_PICK_SLEEPING"
+		"BATTLE_ANIMA_DORMANT":
+			return "BATTLE_PICK_DORMANT"
+		"BATTLE_ANIMA_NOT_READY":
+			return "BATTLE_PICK_NOT_READY"
+		_:
+			return unavailable_key
+
+
 static func is_hungry(care_value: Variant) -> bool:
 	return need_is_low(care_value, "hunger")
 

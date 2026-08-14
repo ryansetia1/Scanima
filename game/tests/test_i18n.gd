@@ -25,7 +25,12 @@ const REQUIRED_KEYS := [
 	"SCAN_NO_CORE_HINT",
 	"STATUS_NEED_CORE",
 	"BATTLE_ANIMA_HUNGRY",
+	"BATTLE_HUNGRY_PENALTY",
+	"BATTLE_DIRTY_PENALTY",
 	"BATTLE_LOBBY_TITLE_HUNGRY",
+	"BATTLE_CHOOSE_ANIMA",
+	"BATTLE_PICK_HUNGRY",
+	"BATTLE_PICK_LOW_ENERGY",
 	"LEVEL_SHORT",
 	"FORM_HATCHLING",
 	"FORM_ADULT",
@@ -63,6 +68,7 @@ const PLAYER_UI_FILES := [
 	"res://scripts/battle_view.gd",
 	"res://scripts/anima_details_view.gd",
 	"res://scripts/shop_sheet.gd",
+	"res://scripts/battle_pick_sheet.gd",
 	"res://scenes/scan_flow.tscn",
 	"res://scenes/ui/home_view.tscn",
 	"res://scenes/ui/scan_view.tscn",
@@ -70,6 +76,7 @@ const PLAYER_UI_FILES := [
 	"res://scenes/ui/battle_view.tscn",
 	"res://scenes/ui/anima_details_view.tscn",
 	"res://scenes/ui/shop_sheet.tscn",
+	"res://scenes/ui/battle_pick_sheet.tscn",
 	"res://scenes/ui/bottom_nav.tscn",
 ]
 

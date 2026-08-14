@@ -260,6 +260,8 @@ static func to_battle_stats(base: Dictionary, level: int) -> Dictionary:
 
 HP dikali 4 supaya battle berlangsung 6-10 turn. Lebih pendek terasa dangkal, lebih panjang membosankan di sesi mobile.
 
+`createFighter` memotong stat tempur pemain sesudah pertumbuhan level kalau care rendah. Hunger < 40 interpolasi linear ke ×0.6 di 0; Hygiene < 50 interpolasi ke ×0.7 di 0; keduanya dikalikan lalu dijepit minimal ×0.5. Ambang sama dengan pose Hungry/Dirty. Bot tidak dipotong. `battleRewardPreview` memakai stat tanpa penalti supaya care rendah tidak menaikkan tier Bits. Hunger dan Hygiene bukan gerbang masuk.
+
 ### Element wheel
 
 Enam elemen dalam satu siklus tertutup. Setiap elemen kuat terhadap elemen berikutnya (x1.5) dan lemah terhadap elemen sebelumnya (x0.67).
@@ -329,7 +331,7 @@ Auto-battle akan lebih mudah dibuat, tapi tiga pilihan per turn adalah harga yan
 
 Turn tetap menunggu event authoritative server, tetapi tap tidak boleh terlihat seperti tombol mati selama round-trip jaringan. Client langsung menandai aksi pilihan dengan underline pulse, meredupkan dua pilihan lain, menampilkan `Attack locked in`/`Special charged`/`Guard up`, lalu mengabaikan input ulang tanpa menerapkan style disabled. Ini hanya mengakui command pemain—damage, initiative, PP, dan animasi hasil tetap menunggu response server sehingga snappiness tidak dibayar dengan state optimistis yang bisa salah.
 
-Battle dan Training memakai entry gate yang sama: Anima harus memiliki **minimal 20 Energy**, dan **start session baru memotong 20 Energy**. `start_battle()` menjalankan `apply_care(..., 'sync')` sebelum memeriksa nilai authoritative itu, sehingga client tidak bisa memakai snapshot Energy lama untuk masuk. Client juga menonaktifkan CTA lebih awal ketika row roster sudah menunjukkan Energy di bawah 20, tetapi keputusan akhir tetap di transaksi server. Resume session aktif tidak memotong Energy kedua kali, dan duel yang sudah berjalan tidak dibatalkan di tengah.
+Battle dan Training memakai entry gate yang sama: Anima harus memiliki **minimal 20 Energy**, dan **start session baru memotong 20 Energy**. Hunger **bukan** gerbang masuk — Bits didapat dari duel dan makanan dibeli pakai Bits, jadi mengunci faucet di belakang sink-nya membuat 0 Bits + tas kosong jadi soft-lock. Pose Hungry dan EXP Feed tetap memakai ambang 40. `start_battle()` menjalankan `apply_care(..., 'sync')` sebelum memeriksa Energy authoritative, sehingga client tidak bisa memakai snapshot Energy lama untuk masuk. Client juga menonaktifkan CTA lebih awal ketika row roster sudah menunjukkan Energy di bawah 20, tetapi keputusan akhir tetap di transaksi server. Resume session aktif tidak memotong Energy kedua kali, dan duel yang sudah berjalan tidak dibatalkan di tengah.
 
 **PP** adalah budget per-battle: mulai penuh 3, satu Special memakan 1, dan ia **tidak pulih sendiri setiap turn** — satu-satunya pemulihan adalah Guard, plus item PP Capsule yang menaikkan max sementara sampai 5. Ia sengaja dinamai berbeda dari mata uang di bagian 2 karena ia bukan mata uang: ia lahir dan mati di dalam satu pertarungan, tidak pernah disimpan, dan tidak bisa dibawa ke duel berikutnya. Perannya menciptakan ritme bertahan-lalu-menyerang tanpa perlu sistem cooldown per skill: tiga Special adalah anggaran yang pemain sendiri putuskan kapan dibelanjakan, dan Guard adalah harga untuk menambahnya.
 

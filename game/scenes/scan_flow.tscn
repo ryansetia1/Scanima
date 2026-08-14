@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/scan_flow.gd" id="1_flow"]
 [ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
@@ -15,6 +15,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/resource_chip.tscn" id="13_chip"]
 [ext_resource type="PackedScene" path="res://scenes/ui/ui_modal.tscn" id="14_modal"]
 [ext_resource type="PackedScene" path="res://scenes/ui/shop_sheet.tscn" id="16_shop"]
+[ext_resource type="PackedScene" path="res://scenes/ui/battle_pick_sheet.tscn" id="17_pick"]
 [ext_resource type="FontFile" path="res://assets/fonts/Oxanium-Variable.ttf" id="15_display"]
 
 [sub_resource type="FontVariation" id="LevelUpBold"]
@@ -134,6 +135,9 @@ unique_name_in_owner = true
 layout_mode = 2
 
 [node name="ShopSheet" parent="UI" instance=ExtResource("16_shop")]
+unique_name_in_owner = true
+
+[node name="BattlePickSheet" parent="UI" instance=ExtResource("17_pick")]
 unique_name_in_owner = true
 
 [node name="ToastLayer" type="Control" parent="UI"]

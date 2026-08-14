@@ -56,23 +56,31 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 10
 
-[node name="Header" type="VBoxContainer" parent="Column"]
+[node name="Header" type="HBoxContainer" parent="Column"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="Title" type="Label" parent="Column/Header"]
+[node name="Titles" type="VBoxContainer" parent="Column/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="Column/Header/Titles"]
 layout_mode = 2
 theme_type_variation = &"PageTitleLabel"
 text = "BATTLE_TITLE"
-horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="Column/Header"]
+[node name="Subtitle" type="Label" parent="Column/Header/Titles"]
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
 text = "BATTLE_SUBTITLE"
-horizontal_alignment = 1
 autowrap_mode = 2
+
+[node name="ShopGutter" type="Control" parent="Column/Header"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+mouse_filter = 2
 
 [node name="BattleLobbyPanel" type="PanelContainer" parent="Column"]
 unique_name_in_owner = true

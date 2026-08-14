@@ -43,6 +43,9 @@ import {
   normalizeBaseStats,
   resolveTurn,
   toBattleStats,
+  hungerCombatMultiplier,
+  hygieneCombatMultiplier,
+  careCombatMultiplier,
   levelFromExp,
   growthMultiplier,
   formFromLevel,
@@ -1069,6 +1072,44 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   assert.equal(grown.player.max_hp, 310);
   assert.equal(grown.player.atk, 72);
   assert.equal(grown.bot.max_hp, 220);
+  assert.equal(hungerCombatMultiplier(40), 1);
+  assert.equal(hungerCombatMultiplier(20), 0.8);
+  assert.equal(hungerCombatMultiplier(0), 0.6);
+  assert.equal(hygieneCombatMultiplier(50), 1);
+  assert.equal(hygieneCombatMultiplier(0), 0.7);
+  assert.equal(careCombatMultiplier(0, 0), 0.5);
+  const hungry = createBattleState({
+    player: { ...player, base_stats: base, hunger: 20 },
+    bot: { ...bot, base_stats: base },
+    seed: "hungry-penalty",
+  });
+  assert.equal(hungry.player.max_hp, 176);
+  assert.equal(hungry.player.atk, 40);
+  assert.equal(hungry.player.hp, 176);
+  assert.equal(hungry.bot.max_hp, 220);
+  const starving = createBattleState({
+    player: { ...player, base_stats: base, hunger: 0 },
+    bot: { ...bot, base_stats: base },
+    seed: "starving-penalty",
+  });
+  assert.equal(starving.player.max_hp, 132);
+  const dirty = createBattleState({
+    player: { ...player, base_stats: base, hygiene: 0 },
+    bot: { ...bot, base_stats: base },
+    seed: "dirty-penalty",
+  });
+  assert.equal(dirty.player.max_hp, 154);
+  const previewFed = battleRewardPreview(
+    { base_stats: base, level: 1 },
+    { base_stats: base, level: 1 },
+    "hungry-bits",
+  );
+  const previewHungry = battleRewardPreview(
+    { base_stats: base, level: 1, hunger: 0 },
+    { base_stats: base, level: 1 },
+    "hungry-bits",
+  );
+  assert.equal(previewHungry.bits, previewFed.bits, "lapar tidak boleh menaikkan Bits");
 
   const first = resolveTurn(initial, "strike", "turn-key");
   const retry = resolveTurn(initial, "strike", "turn-key");

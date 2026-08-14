@@ -899,16 +899,19 @@ begin
          care_synced_at = now()
    where id = v_battle_player;
   begin
-    perform public.start_battle(
+    v_j := public.start_battle(
       u1, v_battle_player, v_battle_bot,
       v_battle_player_snapshot, v_battle_bot_snapshot, v_battle_state, 'hungry'
     );
-    ok := false;
-  exception when others then ok := (sqlerrm = 'ANIMA_HUNGRY');
+    ok := coalesce(v_j->>'id', '') <> '';
+  exception when others then ok := false;
   end;
-  assert ok, 'Hunger di bawah 40 harus menolak Battle dan Training';
+  assert ok, 'Anima lapar tetap boleh Battle supaya Bits tidak terkunci';
+  update public.battle_sessions
+     set status = 'forfeited', finished_at = now(), updated_at = now()
+   where owner_id = u1 and status = 'active';
   update public.animas
-     set care = '{"hunger":40,"energy":100,"hygiene":100,"bond":0}'::jsonb,
+     set care = '{"hunger":40,"energy":20,"hygiene":100,"bond":0}'::jsonb,
          care_synced_at = now()
    where id = v_battle_player;
 

@@ -9,11 +9,12 @@ Companion harus:
 - bangun (bukan Sleep)
 - tidak Dormant
 - **Energy minimal 20**
-- **Hunger minimal 40** (tidak dalam pose lapar)
 
-Tiap duel baru memotong **20 Energy**. Duel yang sudah jalan tidak dipotong lagi kalau app sempat tertutup.
+Lapar atau kotor tidak mengunci Battle, tapi Anima jadi **lebih lemah** di duel itu. Makin lapar atau makin kotor, potongannya makin dalam (HP, Attack, Special, Guard, Speed). Keduanya sekaligus lebih parah, tapi tidak sampai membuat duel mustahil. Bits tetap dari kekuatan lawan, bukan dari seberapa lemah kamu. Feed dan Clean mengembalikan stats.
 
-Kalau syaratnya kurang, tombol Battle/Train redup dan memberi alasan. Satu makanan yang mengisi Hunger sampai 40 biasanya cukup.
+Tiap duel baru memotong **20 Energy**. Duel yang sudah jalan tidak dipotong lagi kalau app sempat tertutup. Energy pulih lewat **Sleep** (gratis).
+
+Kalau companion aktif tidak memenuhi syarat, tombolnya jadi **Choose Anima**. Tap membuka daftar Anima-mu: yang siap bisa dipilih, yang belum siap redup dengan alasan singkat (Low Energy, Sleeping, Dormant). Tap kartu membuka sheet seperti di Collection — **View Profile** tetap ada, **Battle** atau **Train** langsung memulai duel (Anima bangku di-Summon otomatis).
 
 ## Battle atau Train
 

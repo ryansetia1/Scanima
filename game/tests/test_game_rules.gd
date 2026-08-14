@@ -43,9 +43,9 @@ func _initialize() -> void:
 	)
 	_check_eq(hunger_only["bond"], 0.0, "Bond tidak dipakai dan selalu 0")
 	_check_eq(CareRules.BATTLE_ENERGY_COST, 20.0, "Battle memotong 20 Energy")
-	_check_eq(CareRules.BATTLE_MIN_HUNGER, 40.0, "Battle menolak Hunger di bawah pose Hungry")
+	_check_eq(CareRules.BATTLE_MIN_HUNGER, 40.0, "pose Hungry menyala di bawah 40")
 	_check(CareRules.is_hungry({"hunger": 39.0}), "Hunger 39 lapar")
-	_check(not CareRules.is_hungry({"hunger": 40.0}), "Hunger 40 siap Battle")
+	_check(not CareRules.is_hungry({"hunger": 40.0}), "Hunger 40 tidak lapar")
 	_check(CareRules.need_is_low({"hunger": 39.0}, "hunger"), "Hunger di bawah pose Hungry menandai panel")
 	_check(not CareRules.need_is_low({"hunger": 40.0}, "hunger"), "Hunger 40 tidak menandai panel")
 	_check(CareRules.need_is_low({"hygiene": 49.0}, "hygiene"), "Hygiene di bawah pose Dirty menandai panel")
@@ -245,6 +245,50 @@ func _initialize() -> void:
 		CareRules.visual_pose(false, false, {"hunger": 55.0, "energy": 55.0, "hygiene": 55.0}),
 		"idle",
 		"kebutuhan sedang memakai Idle"
+	)
+
+	print("7. eligibility Battle lobby vs picker bangku")
+	_check_eq(CareRules.battle_unavailable_key({}), "BATTLE_NO_ANIMA", "row kosong menolak Battle")
+	var active_sleep := {
+		"id": "active",
+		"status": "ready",
+		"sleep_started_at": "2026-08-14T00:00:00Z",
+		"care": {"hunger": 80.0, "energy": 80.0, "hygiene": 80.0, "bond": 0.0},
+	}
+	_check_eq(
+		CareRules.battle_unavailable_key(active_sleep, "active", false),
+		"BATTLE_ANIMA_SLEEPING",
+		"companion aktif yang tidur menolak lobby"
+	)
+	_check_eq(
+		CareRules.battle_unavailable_key(active_sleep, "active", true),
+		"BATTLE_ANIMA_SLEEPING",
+		"companion aktif yang tidur tetap redup di picker"
+	)
+	var bench := {
+		"id": "bench",
+		"status": "ready",
+		"sleep_started_at": "2026-08-14T00:00:00Z",
+		"sleep_energy_at_start": 0.0,
+		"care_synced_at": "2026-08-14T00:00:00Z",
+		"care": {"hunger": 100.0, "energy": 0.0, "hygiene": 100.0, "bond": 0.0},
+	}
+	var full_energy_at := Time.get_unix_time_from_datetime_string("2026-08-14T03:00:00Z")
+	var hungry_at := Time.get_unix_time_from_datetime_string("2026-08-14T07:00:00Z")
+	_check_eq(
+		CareRules.battle_unavailable_key(bench, "active", true, full_energy_at),
+		"",
+		"bangku tidur dengan Energy penuh dan Hunger cukup lolos picker"
+	)
+	_check_eq(
+		CareRules.battle_unavailable_key(bench, "active", true, hungry_at),
+		"",
+		"bangku lapar tetap lolos picker supaya Bits tidak terkunci di belakang makanan"
+	)
+	_check_eq(
+		CareRules.battle_pick_reason_key("BATTLE_ANIMA_LOW_ENERGY"),
+		"BATTLE_PICK_LOW_ENERGY",
+		"alasan picker memakai label pendek"
 	)
 
 	_finish()

@@ -52,6 +52,7 @@ const STAT_LABEL_KEYS := {
 	"spd": "STAT_SPD",
 	"special": "STAT_SPECIAL",
 }
+const SHOP_ICON := preload("res://assets/icons/shopping-bag.svg")
 
 @onready var _stage: Node2D = %Stage
 @onready var _first_anima_effect: FirstAnimaEffect = %FirstAnimaEffect
@@ -68,6 +69,7 @@ const STAT_LABEL_KEYS := {
 @onready var _shop_button: ResourceChip = %ShopButton
 @onready var _shell_modal = %ShellModal
 @onready var _shop_sheet = %ShopSheet
+@onready var _battle_pick_sheet = %BattlePickSheet
 @onready var _home_view: HomeView = %HomeView
 @onready var _scan_view: ScanView = %ScanView
 @onready var _battle_view = %BattleView
@@ -114,6 +116,7 @@ func _ready() -> void:
 	_sleep_completion_timer.timeout.connect(_sync_sleep_completion)
 	_scan_view.scan_requested.connect(_on_pick_pressed)
 	_battle_view.start_requested.connect(_start_battle)
+	_battle_view.choose_anima_requested.connect(_open_battle_anima_picker)
 	_battle_view.action_requested.connect(_battle_action_requested)
 	_battle_view.item_picker_requested.connect(_open_battle_item_picker)
 	_battle_view.resume_requested.connect(_retry_battle)
@@ -137,6 +140,8 @@ func _ready() -> void:
 	_shop_sheet.buy_requested.connect(_buy_catalog_item)
 	_shop_sheet.use_requested.connect(_use_catalog_item)
 	_shop_sheet.shop_cta_requested.connect(_open_shop_from_empty)
+	_battle_pick_sheet.profile_requested.connect(_show_collection_profile)
+	_battle_pick_sheet.battle_requested.connect(_battle_pick_start)
 	_animas_chip.pressed.connect(_open_collection)
 	_cores_chip.pressed.connect(_show_core_info)
 	_bits_chip.pressed.connect(_show_bits_info)
@@ -383,13 +388,18 @@ func _show_collection_profile(row: Dictionary) -> void:
 
 
 func _summon_collection_anima(row: Dictionary, care_synced: bool) -> void:
+	await _activate_anima(row, care_synced, false)
+
+
+func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> bool:
 	if row.is_empty() or _busy:
-		return
+		return false
 	if not GameState.pending_care.is_empty():
 		_say(tr("ERROR_CARE_PENDING"), true)
-		return
+		return false
 	_set_busy(true)
-	_collection_view.set_sheet_busy(true)
+	if not stay_on_tab:
+		_collection_view.set_sheet_busy(true)
 	var anima_id := str(row.get("id", ""))
 	var loaded := await _prepare_anima_art(
 		str(row.get("species_key", "")),
@@ -397,24 +407,20 @@ func _summon_collection_anima(row: Dictionary, care_synced: bool) -> void:
 		int(row.get("stage", 1))
 	)
 	if not bool(loaded.get("ok", false)):
-		_collection_view.set_sheet_busy(false)
+		if not stay_on_tab:
+			_collection_view.set_sheet_busy(false)
 		_set_busy(false)
-		return
+		return false
 	var pending := GameState.begin_care(anima_id, "summon")
 	var summoned := await _send_pending_care(pending, false)
 	if not summoned:
-		_collection_view.set_sheet_busy(false)
+		if not stay_on_tab:
+			_collection_view.set_sheet_busy(false)
 		_set_busy(false)
-		return
+		return false
 	var synced := _roster_row(anima_id)
 	if not synced.is_empty():
 		row = synced
-
-	_switch_destination(BottomNav.HOME)
-	await _anima.summon_dissolve()
-	await _incubator.start_portal()
-	_anima.apply(loaded)
-	_anima.visible = false
 
 	_current_anima = normalize_anima_data(row)
 	_profile_anima = {}
@@ -428,6 +434,19 @@ func _summon_collection_anima(row: Dictionary, care_synced: bool) -> void:
 	_upsert_roster(_current_anima)
 	_refresh_stats()
 	_populate_collection()
+	if stay_on_tab:
+		_anima.apply(loaded)
+		_refresh_care()
+		if not care_synced:
+			await _sync_active_care(false)
+		_set_busy(false)
+		return true
+
+	_switch_destination(BottomNav.HOME)
+	await _anima.summon_dissolve()
+	await _incubator.start_portal()
+	_anima.apply(loaded)
+	_anima.visible = false
 	await _incubator.burst()
 	await _anima.summon_reveal()
 	_refresh_care()
@@ -435,6 +454,33 @@ func _summon_collection_anima(row: Dictionary, care_synced: bool) -> void:
 		await _sync_active_care(false)
 	_set_busy(false)
 	_say(tr("COLLECTION_SUMMON_SUCCESS") % LocaleManager.display_name(_current_anima), true)
+	return true
+
+
+func _open_battle_anima_picker() -> void:
+	if _busy or not is_instance_valid(_battle_pick_sheet):
+		return
+	_battle_pick_sheet.open_picker(
+		_roster,
+		_summoned_id(),
+		_thumbnail_for,
+		_battle_view.is_training_lobby()
+	)
+
+
+func _battle_pick_start(row: Dictionary) -> void:
+	if _busy or row.is_empty():
+		return
+	if is_instance_valid(_battle_pick_sheet):
+		_battle_pick_sheet.close()
+	var anima_id := str(row.get("id", ""))
+	if anima_id != _summoned_id():
+		var ok := await _activate_anima(row, false, true)
+		if not ok:
+			if _destination == BottomNav.BATTLE:
+				_battle_view.set_lobby(_current_anima)
+			return
+	await _start_battle()
 
 
 func _open_scan() -> void:
@@ -1667,6 +1713,9 @@ func _switch_destination(
 	var previous := _destination
 	if previous == BottomNav.COLLECTION and destination != BottomNav.COLLECTION:
 		_collection_view.close_sheet()
+	if previous == BottomNav.BATTLE and destination != BottomNav.BATTLE:
+		if is_instance_valid(_battle_pick_sheet) and _battle_pick_sheet.visible:
+			_battle_pick_sheet.close()
 	if destination == BottomNav.COLLECTION and previous != BottomNav.COLLECTION:
 		_collection_view.begin_visit()
 		_populate_collection()
@@ -1865,6 +1914,7 @@ func _configure_resource_chips() -> void:
 	_cores_chip.set_interactive(true, tr("CORE_INFO_TITLE"))
 	_bits_chip.set_name_text(tr("RESOURCE_BITS"))
 	_bits_chip.set_interactive(true, tr("BITS_INFO_TITLE"))
+	_shop_button.set_icon(SHOP_ICON)
 	_shop_button.set_value_text(tr("SHOP_OPEN"))
 	_shop_button.set_name_text("")
 	_shop_button.set_interactive(true, tr("SHOP_OPEN"))
@@ -2062,6 +2112,8 @@ func _set_busy(busy: bool) -> void:
 	_shop_button.set_interactive(not busy, tr("SHOP_OPEN"))
 	if is_instance_valid(_shop_sheet):
 		_shop_sheet.set_busy(busy)
+	if is_instance_valid(_battle_pick_sheet):
+		_battle_pick_sheet.set_busy(busy)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -2077,6 +2129,8 @@ func _handle_back(allow_quit: bool) -> bool:
 		return true
 	if is_instance_valid(_shop_sheet) and _shop_sheet.visible:
 		_shop_sheet.close()
+		return true
+	if is_instance_valid(_battle_pick_sheet) and _battle_pick_sheet.handle_back():
 		return true
 	if _collection_view.is_sheet_open():
 		_collection_view.close_sheet()

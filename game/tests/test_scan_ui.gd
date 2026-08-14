@@ -68,7 +68,8 @@ func _initialize() -> void:
 		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "EditAnimaNameButton",
 		"DeleteAnimaButton",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
-		"CollectionSummonButton", "BattleStartButton", "BattleStrikeButton",
+		"CollectionSummonButton", "BattlePickProfileButton", "BattlePickBattleButton",
+		"BattleStartButton", "BattleStrikeButton",
 		"BattleSurgeButton", "BattleGuardButton", "BattleItemButton", "BattleForfeitButton", "BattleRetryButton",
 	]:
 		var button := scene.find_child(name, true, false) as Button
@@ -153,12 +154,20 @@ func _initialize() -> void:
 		and bits_chip.custom_minimum_size.y >= TOUCH_MIN,
 		"interactive resource chips expose 96px press targets"
 	)
-	for chip in [animas_chip, cores_chip, bits_chip]:
+	for chip in [animas_chip, cores_chip, bits_chip, shop]:
 		var column := chip.get_node_or_null("Column") as BoxContainer
 		_check(
 			column != null and column.alignment == BoxContainer.ALIGNMENT_CENTER,
 			"%s centers its content inside the press target" % chip.name
 		)
+	_check(
+		shop.find_child("Icon", true, false) is TextureRect,
+		"Shop chip has an icon slot"
+	)
+	_check(
+		scene.find_child("BattlePickSheet", true, false) != null,
+		"Battle lobby picker lives on the shell overlay"
+	)
 	_check(scene.find_child("ScanCount", true, false) == null, "HUD no longer labels scan charges as a count")
 	_check(scene.find_child("BottomNav", true, false) is PanelContainer, "bottom navigation must exist")
 	var toast := scene.find_child("StatusPanel", true, false) as PanelContainer
@@ -318,6 +327,7 @@ func _initialize() -> void:
 	await _test_shared_components()
 	await _test_scan_phase_visuals()
 	await _test_battle_view()
+	await _test_battle_pick_sheet()
 	await _test_collection_bottom_sheet()
 	await _test_profile_info_rows()
 	await _test_anima_delete_action()
@@ -357,9 +367,22 @@ func _test_shared_components() -> void:
 	chip.set_name_text("Animas")
 	chip.set_interactive(true, "Open Collection")
 	var chip_action := chip.find_child("ActionButton", true, false) as Button
+	var chip_name := chip.find_child("Name", true, false) as Label
+	var chip_icon := chip.find_child("Icon", true, false) as TextureRect
 	_check(
 		chip_action.visible and chip.custom_minimum_size.y >= TOUCH_MIN,
 		"ResourceChip can expose a touch-safe action overlay"
+	)
+	_check(chip_name != null and chip_name.visible, "ResourceChip shows a name when set")
+	chip.set_name_text("")
+	_check(chip_name != null and not chip_name.visible, "empty ResourceChip name is hidden so Shop can center")
+	_check(chip_icon != null and not chip_icon.visible, "ResourceChip icon stays hidden until set")
+	chip.set_icon(load("res://assets/icons/shopping-bag.svg") as Texture2D)
+	var chip_column := chip.get_node_or_null("Column") as BoxContainer
+	_check(chip_icon != null and chip_icon.visible and chip_icon.texture != null, "ResourceChip can show a Shop icon")
+	_check(
+		chip_column != null and chip_column.get_theme_constant("separation") >= 8,
+		"Shop icon keeps a gap above the label"
 	)
 
 	var sheet = (load("res://scenes/ui/ui_bottom_sheet.tscn") as PackedScene).instantiate()
@@ -560,6 +583,9 @@ func _test_battle_view() -> void:
 
 	var lobby := view.find_child("BattleLobbyPanel", true, false) as Control
 	var header := view.find_child("Header", true, false) as Control
+	var shop_gutter := view.find_child("ShopGutter", true, false) as Control
+	var page_title := view.find_child("Title", true, false) as Label
+	var page_subtitle := view.find_child("Subtitle", true, false) as Label
 	var content := view.find_child("BattleContent", true, false) as Control
 	var result := view.find_child("BattleResultPanel", true, false) as Control
 	var start := view.find_child("BattleStartButton", true, false) as Button
@@ -609,6 +635,15 @@ func _test_battle_view() -> void:
 	view.set_lobby(anima)
 	_check(lobby.visible and not content.visible and not result.visible, "Battle opens in its lobby")
 	_check(header.visible, "Battle lobby keeps its page title and explanation")
+	_check(
+		shop_gutter != null and shop_gutter.custom_minimum_size.x >= 108.0,
+		"Battle header reserves a gutter so the subtitle misses Shop"
+	)
+	_check(
+		page_title != null and page_title.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT
+		and page_subtitle != null and page_subtitle.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT,
+		"Battle title and subtitle align left like Collection"
+	)
 	_check(not start.disabled, "ready awake active Anima can start Battle")
 	var normal_daily_reward := {
 		"earned": 2,
@@ -651,20 +686,26 @@ func _test_battle_view() -> void:
 	view.set_daily_reward(normal_daily_reward)
 	anima["sleep_started_at"] = "2026-08-13T00:00:00Z"
 	view.set_lobby(anima)
-	_check(start.disabled, "sleeping Anima cannot start Battle")
+	_check(
+		not start.disabled and start.text == tr("BATTLE_CHOOSE_ANIMA"),
+		"sleeping Anima offers Choose Anima instead of a dead Battle button"
+	)
 	anima.erase("sleep_started_at")
 	anima["dormant_since"] = "2026-08-13T00:00:00Z"
 	view.set_lobby(anima)
-	_check(start.disabled, "Dormant Anima cannot start Battle")
+	_check(
+		not start.disabled and start.text == tr("BATTLE_CHOOSE_ANIMA"),
+		"Dormant Anima offers Choose Anima"
+	)
 	anima.erase("dormant_since")
 	anima["care"]["energy"] = 19.0
 	view.set_daily_reward(training_daily_reward)
 	view.set_lobby(anima)
 	_check(
-		start.disabled and start.text == tr("BATTLE_TRAIN")
+		not start.disabled and start.text == tr("BATTLE_CHOOSE_ANIMA")
 		and lobby_name.text == tr("BATTLE_LOBBY_TITLE_LOW_ENERGY")
 		and lobby_meta.text == tr("BATTLE_ANIMA_LOW_ENERGY"),
-		"Energy below 20 replaces Prepare for Battle with a rest title"
+		"Energy below 20 keeps the reason and swaps the CTA to Choose Anima"
 	)
 	anima["care"]["energy"] = 20.0
 	view.set_daily_reward(normal_daily_reward)
@@ -673,12 +714,21 @@ func _test_battle_view() -> void:
 	anima["care"]["hunger"] = 39.0
 	view.set_lobby(anima)
 	_check(
-		start.disabled
-		and lobby_name.text == tr("BATTLE_LOBBY_TITLE_HUNGRY")
-		and lobby_meta.text == tr("BATTLE_ANIMA_HUNGRY"),
-		"Hunger below 40 blocks Battle and Training"
+		not start.disabled
+		and start.text == tr("BATTLE_START")
+		and lobby_meta.text.find(tr("BATTLE_HUNGRY_PENALTY")) >= 0,
+		"Hunger below 40 still allows Battle and warns that stats drop"
 	)
 	anima["care"]["hunger"] = 40.0
+	anima["care"]["hygiene"] = 10.0
+	view.set_lobby(anima)
+	_check(
+		not start.disabled
+		and start.text == tr("BATTLE_START")
+		and lobby_meta.text.find(tr("BATTLE_DIRTY_PENALTY")) >= 0,
+		"low Hygiene still allows Battle and warns that stats drop"
+	)
+	anima["care"]["hygiene"] = 80.0
 	view.set_lobby(anima)
 	_check(not start.disabled, "Hunger 40 remains eligible for Battle")
 
@@ -971,6 +1021,63 @@ func _test_battle_view() -> void:
 	)
 
 	view.queue_free()
+	await process_frame
+	UiMotion.set_reduced_motion(false)
+
+
+func _test_battle_pick_sheet() -> void:
+	UiMotion.set_reduced_motion(true)
+	var packed := load("res://scenes/ui/battle_pick_sheet.tscn") as PackedScene
+	var sheet := packed.instantiate()
+	root.add_child(sheet)
+	await process_frame
+	var tired := {
+		"id": "active",
+		"nickname": "Velumi",
+		"status": "ready",
+		"element": "spark",
+		"rarity": 2,
+		"care_score": 5,
+		"care": {"hunger": 80.0, "energy": 10.0, "hygiene": 80.0, "bond": 0.0},
+	}
+	var ready := {
+		"id": "ready-one",
+		"nickname": "Noodl",
+		"status": "ready",
+		"element": "flow",
+		"rarity": 1,
+		"care_score": 0,
+		"care": {"hunger": 80.0, "energy": 80.0, "hygiene": 80.0, "bond": 0.0},
+	}
+	sheet.open_picker([tired, ready], "active", Callable(), false)
+	var list := sheet.find_child("BattlePickList", true, false) as ItemList
+	var detail := sheet.find_child("BattlePickDetail", true, false) as Control
+	var battle_btn := sheet.find_child("BattlePickBattleButton", true, false) as Button
+	var profile_btn := sheet.find_child("BattlePickProfileButton", true, false) as Button
+	var reason := sheet.find_child("BattlePickReason", true, false) as Label
+	_check(sheet.visible and list != null and list.item_count == 2, "picker lists the roster")
+	_check(
+		list.get_item_text(0).find(tr("BATTLE_PICK_LOW_ENERGY")) >= 0,
+		"ineligible row shows a short Low Energy reason"
+	)
+	sheet._on_item_selected(0)
+	_check(
+		detail.visible and battle_btn.disabled and reason.visible
+		and reason.text == tr("BATTLE_PICK_LOW_ENERGY"),
+		"low-energy detail keeps View Profile and dims Battle"
+	)
+	_check(not profile_btn.disabled, "ineligible Anima can still open View Profile")
+	sheet._on_item_selected(1)
+	_check(
+		not battle_btn.disabled and battle_btn.text == tr("BATTLE_START"),
+		"eligible detail enables Battle"
+	)
+	_check(sheet.handle_back() and not detail.visible and sheet.visible, "back from detail returns to the list")
+	sheet.open_picker([ready], "ready-one", Callable(), true)
+	sheet._on_item_selected(0)
+	_check(battle_btn.text == tr("BATTLE_TRAIN"), "training lobby labels the sheet action Train")
+	_check(sheet.handle_back() and sheet.handle_back() and not sheet.visible, "back from the list closes the picker")
+	sheet.queue_free()
 	await process_frame
 	UiMotion.set_reduced_motion(false)
 

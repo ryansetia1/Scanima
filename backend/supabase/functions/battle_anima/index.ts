@@ -70,6 +70,7 @@ type AnimaRow = {
   element: string;
   base_stats: Record<string, number>;
   care_score?: number;
+  care?: { hunger?: number; hygiene?: number };
   strike_name?: string;
   surge_name?: string;
 };
@@ -83,7 +84,7 @@ type ArtRow = {
 };
 
 const ANIMA_BATTLE_FIELDS =
-  "id, owner_id, nickname, species_key, color_bucket, stage, element, base_stats, care_score, strike_name, surge_name";
+  "id, owner_id, nickname, species_key, color_bucket, stage, element, base_stats, care_score, care, strike_name, surge_name";
 
 const db = adminClient();
 
@@ -307,7 +308,11 @@ function snapshot(row: AnimaRow, art: ArtRow | null, includeName: boolean): Reco
     strike_name: row.strike_name ?? "",
     surge_name: row.surge_name ?? "",
   };
-  if (includeName) result.name = row.nickname;
+  if (includeName) {
+    result.name = row.nickname;
+    result.hunger = Number(row.care?.hunger ?? 100);
+    result.hygiene = Number(row.care?.hygiene ?? 100);
+  }
   return result;
 }
 

@@ -22,7 +22,7 @@ Dipakai di **Shop** dan untuk **Clean**.
 - Buka **Shop** tepat di bawah chip Bits: tab Food dan Items. Harga tertulis di tiap kartu.
 - **Clean** tetap 5 Bits.
 - **Feed** memakai makanan dari tas, bukan Bits langsung. Beli dulu di Shop.
-- Menang Battle memberi Bits menurut seberapa berat lawannya (kira-kira 5–16), paling banyak **100 Bits per hari** (reset tengah malam waktu setempat).
+- Menang Battle memberi Bits menurut seberapa berat lawannya (kira-kira 5–16), paling banyak **100 Bits per hari** (reset tengah malam waktu setempat). Lapar atau kotor tidak mengunci duel, tapi Anima bertarung lebih lemah.
 - Tiga kemenangan pertama juga memberi EXP dan kemenangan tercatat. Sesudah itu duel jadi **Train**: masih bisa dapat Bits sampai cap harian, tanpa EXP.
 - Play, Sleep, dan Summon **gratis**.
 

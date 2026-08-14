@@ -17,6 +17,11 @@ export const LEVEL_CAP = 40;
 export const EXP_PER_LEVEL = 5;
 export const ADULT_LEVEL = 16;
 export const EVOLVED_LEVEL = 36;
+export const HUNGRY_NEED = 40;
+export const DIRTY_NEED = 50;
+export const HUNGRY_COMBAT_FLOOR = 0.6;
+export const DIRTY_COMBAT_FLOOR = 0.7;
+export const CARE_COMBAT_FLOOR = 0.5;
 
 const STAT_KEYS = Object.freeze(["hp", "atk", "def", "spd", "special"]);
 const ELEMENT_ALIASES = Object.freeze({
@@ -59,6 +64,38 @@ export function stageMultipliers(stage, branch = "") {
     return { hp: 1.0, atk: 1.9, def: 1.4, spd: 1.9, special: 1.0 };
   }
   return { hp: 1.0, atk: 1.0, def: 1.0, spd: 1.0, special: 1.0 };
+}
+
+export function hungerCombatMultiplier(hunger) {
+  return meterCombatMultiplier(hunger, HUNGRY_NEED, HUNGRY_COMBAT_FLOOR);
+}
+
+export function hygieneCombatMultiplier(hygiene) {
+  return meterCombatMultiplier(hygiene, DIRTY_NEED, DIRTY_COMBAT_FLOOR);
+}
+
+export function careCombatMultiplier(hunger, hygiene) {
+  return Math.max(
+    CARE_COMBAT_FLOOR,
+    hungerCombatMultiplier(hunger) * hygieneCombatMultiplier(hygiene),
+  );
+}
+
+function meterCombatMultiplier(value, need, floor) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n >= need) return 1;
+  return floor + (1 - floor) * Math.max(0, n) / need;
+}
+
+function scaleCombatStats(stats, mult) {
+  if (mult >= 1) return stats;
+  return {
+    max_hp: Math.max(1, Math.trunc(stats.max_hp * mult)),
+    atk: Math.max(1, Math.trunc(stats.atk * mult)),
+    def: Math.max(1, Math.trunc(stats.def * mult)),
+    spd: Math.max(1, Math.trunc(stats.spd * mult)),
+    special: Math.max(1, Math.trunc(stats.special * mult)),
+  };
 }
 
 export function toBattleStats(baseStats, stage = 1, branch = "", level = 1) {
@@ -266,12 +303,15 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "", it
 }
 
 function createFighter(input) {
-  const stats = toBattleStats(
+  const grown = toBattleStats(
     input?.base_stats,
     input?.stage,
     input?.evolution_branch,
     input?.level,
   );
+  const hunger = input?.hunger ?? input?.care?.hunger;
+  const hygiene = input?.hygiene ?? input?.care?.hygiene;
+  const stats = scaleCombatStats(grown, careCombatMultiplier(hunger, hygiene));
   return {
     ...stats,
     hp: stats.max_hp,

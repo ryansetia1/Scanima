@@ -9,7 +9,7 @@ Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). A
 1. **Scan** — foto benda. Tunggu inkubator kalau spesiesnya baru; boleh pindah tab atau tutup app.
 2. **Home** — rawat companion yang sedang di-Summon.
 3. **Collection** — lihat semua Anima. Tap kartu, lalu **Summon** untuk membawanya ke Home.
-4. **Battle** — duel kalau Anima kenyang dan berenergi.
+4. **Battle** — duel kalau Anima bangun dan berenergi. Lapar atau kotor tidak mengunci, tapi stats turun. Kalau yang aktif belum siap, **Choose Anima** memilih companion lain.
 5. **Anima** — profil: traits, attributes, ganti nama, Delete.
 
 ## Isi wiki

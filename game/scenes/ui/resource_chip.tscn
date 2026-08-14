@@ -15,6 +15,16 @@ mouse_filter = 2
 theme_override_constants/separation = -4
 alignment = 1
 
+[node name="Icon" type="TextureRect" parent="Column"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
 [node name="Value" type="Label" parent="Column"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -23,6 +33,7 @@ horizontal_alignment = 1
 
 [node name="Name" type="Label" parent="Column"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 theme_type_variation = &"ResourceNameLabel"
 horizontal_alignment = 1
