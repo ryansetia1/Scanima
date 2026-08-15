@@ -278,8 +278,8 @@ func set_session(
 
 	var player_snapshot := _as_dict(_session.get("player_snapshot"))
 	var bot_snapshot := _as_dict(_session.get("bot_snapshot"))
-	_player_name.text = str(player_snapshot.get("name", tr("ANIMA_FALLBACK_NAME")))
-	_bot_name.text = tr("BATTLE_BOT_NAME")
+	_player_name.text = _fighter_title(player_snapshot)
+	_bot_name.text = _fighter_title(bot_snapshot, tr("BATTLE_BOT_NAME"))
 	_apply_element_row(_player_element_icon, _player_element, player_snapshot)
 	_apply_element_row(_bot_element_icon, _bot_element, bot_snapshot)
 	_apply_state()
@@ -501,6 +501,7 @@ func _play_attack(event: Dictionary) -> void:
 	else:
 		_bot_hp.value = int(event.get("target_hp", 0))
 	if is_instance_valid(target):
+		target.hit_react()
 		if UiMotion.reduced_motion:
 			target.modulate = Color.WHITE
 		else:
@@ -716,11 +717,7 @@ func _apply_state() -> void:
 	_actions.visible = status == "active"
 	_forfeit_button.visible = status == "active"
 	if status == "active":
-		# PP hanya pulih lewat Guard, jadi tombol yang mati butuh satu kalimat yang
-		# menyebutkan jalan keluarnya; tanpa ini pemain kehabisan PP tanpa tahu sebabnya.
-		if int(player.get("momentum", 0)) < SURGE_COST:
-			_feedback.text = tr("BATTLE_NO_MOMENTUM")
-		elif training and _is_bits_capped(daily_reward):
+		if training and _is_bits_capped(daily_reward):
 			_feedback.text = tr("BATTLE_TRAINING_HINT")
 		elif training:
 			_feedback.text = tr("BATTLE_TRAINING_BITS_HINT")
@@ -846,6 +843,16 @@ func _position_fighters() -> void:
 
 func _sprite_for(actor: String) -> AnimaPresenter:
 	return _player_sprite if actor == "player" else _bot_sprite
+
+
+func _fighter_title(snapshot: Dictionary, fallback_name: String = "") -> String:
+	var anima_name := fallback_name
+	if anima_name.is_empty():
+		anima_name = str(snapshot.get("name", tr("ANIMA_FALLBACK_NAME")))
+	var level := int(snapshot.get("level", 0))
+	if level <= 0:
+		level = CareRules.level_from_exp(int(snapshot.get("care_score", 0)))
+	return "%s %s" % [anima_name, LocaleManager.level_label(maxi(1, level))]
 
 
 func _actor_name(actor: String) -> String:

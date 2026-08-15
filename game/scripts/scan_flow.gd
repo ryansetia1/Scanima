@@ -1965,27 +1965,34 @@ func _prepare_team_active_art(session: Dictionary) -> Dictionary:
 	for side in ["player", "opponent"]:
 		var party := GameState.as_dict(state.get(side))
 		var state_roster := _variant_array(party.get("roster"))
-		var slot := int(party.get("active_slot", 0))
-		if slot < 0 or slot >= state_roster.size():
+		var active_slot := int(party.get("active_slot", 0))
+		if active_slot < 0 or active_slot >= state_roster.size():
 			return {}
-		var member := GameState.as_dict(state_roster[slot])
-		var anima_id := str(member.get("anima_id", ""))
-		if anima_id.is_empty():
-			return {}
-		if _team_art_cache.has(anima_id):
-			loaded_by_id[anima_id] = _team_art_cache[anima_id]
-			continue
 		var snapshots := _variant_array(
 			session.get("player_snapshot" if side == "player" else "opponent_snapshot")
 		)
-		var snapshot := _snapshot_for_anima(snapshots, anima_id)
-		if snapshot.is_empty():
-			return {}
-		var loaded := await _prepare_battle_art(snapshot)
-		if not bool(loaded.get("ok", false)):
-			return {}
-		_team_art_cache[anima_id] = loaded
-		loaded_by_id[anima_id] = loaded
+		for slot in state_roster.size():
+			var member := GameState.as_dict(state_roster[slot])
+			var anima_id := str(member.get("anima_id", ""))
+			if anima_id.is_empty():
+				if slot == active_slot:
+					return {}
+				continue
+			if _team_art_cache.has(anima_id):
+				loaded_by_id[anima_id] = _team_art_cache[anima_id]
+				continue
+			var snapshot := _snapshot_for_anima(snapshots, anima_id)
+			if snapshot.is_empty():
+				if slot == active_slot:
+					return {}
+				continue
+			var loaded := await _prepare_battle_art(snapshot)
+			if not bool(loaded.get("ok", false)):
+				if slot == active_slot:
+					return {}
+				continue
+			_team_art_cache[anima_id] = loaded
+			loaded_by_id[anima_id] = loaded
 	return loaded_by_id
 
 
@@ -2581,6 +2588,8 @@ func _populate_collection() -> void:
 
 func _thumbnail_for(row: Dictionary) -> Texture2D:
 	var anima_id := str(row.get("id", ""))
+	if anima_id.is_empty():
+		anima_id = str(row.get("anima_id", ""))
 	var sheet_path := str(row.get("sheet_path", ""))
 	var species := str(row.get("species_key", ""))
 	var color := str(row.get("color_bucket", ""))

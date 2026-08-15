@@ -13,6 +13,7 @@ const VIOLET := Color(0.67, 0.35, 1.00)
 const GOLD := Color(1.00, 0.78, 0.30)
 const CORE_DARK := Color(0.025, 0.055, 0.12)
 const BASE_SCALE := Vector2(1.32, 1.32)
+const DRAW_CENTER := Vector2(0.0, -116.0)
 const REDRAW_INTERVAL_SEC := 1.0 / 30.0
 
 var _phase := 0.0
@@ -53,6 +54,14 @@ func start() -> void:
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	_fx_tween.tween_property(self, "modulate:a", 1.0, 0.24) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+
+
+func align_visual_center(global_point: Vector2) -> void:
+	var parent := get_parent() as Node2D
+	if parent == null:
+		global_position = global_point
+		return
+	position = parent.to_local(global_point) - DRAW_CENTER * BASE_SCALE.y
 
 
 func start_portal() -> void:
@@ -154,7 +163,7 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	var center := Vector2(0.0, -116.0)
+	var center := DRAW_CENTER
 	var pulse := 1.0 + sin(_phase * 3.2) * 0.025
 	var energy := 0.72 + _charge * 0.28
 

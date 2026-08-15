@@ -135,9 +135,15 @@ func sync_ground_shadow(shadow: Sprite2D) -> void:
 	var bounds := opaque_local_rect()
 	var feet := _feet_local(bounds)
 	var width := bounds.size.x if bounds.size.x > 0.0 else 96.0
+	var parent := shadow.get_parent() as Node2D
 	shadow.visible = true
 	shadow.z_index = 0
-	shadow.position = feet + Vector2(0.0, 8.0)
+	# Feet are sprite-local; the blob lives on the arena anchor so hop/flip
+	# do not leave it beside the body.
+	if parent != null:
+		shadow.position = parent.to_local(to_global(feet + Vector2(0.0, 8.0)))
+	else:
+		shadow.position = feet + Vector2(0.0, 8.0)
 	shadow.scale = Vector2(clampf(width / 180.0, 0.5, 2.0), 0.7)
 
 
@@ -171,6 +177,24 @@ func react_to_tap() -> void:
 			_feedback = _dormant_tap()
 		_:
 			_feedback = _awake_tap()
+	_feedback.finished.connect(_resume_pose_motion)
+
+
+func hit_react() -> void:
+	if sprite_frames == null:
+		return
+	_stop_tap_motion()
+	if UiMotion.reduced_motion:
+		_start_motion(_current_pose)
+		return
+	var knockback := -_facing_direction * 16.0
+	_feedback = create_tween()
+	_feedback.tween_property(self, "position", _base_position + Vector2(knockback, 0.0), 0.04) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_feedback.tween_property(self, "position", _base_position + Vector2(knockback * -0.55, 0.0), 0.05)
+	_feedback.tween_property(self, "position", _base_position + Vector2(knockback * 0.28, 0.0), 0.04)
+	_feedback.tween_property(self, "position", _base_position, 0.06) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_feedback.finished.connect(_resume_pose_motion)
 
 

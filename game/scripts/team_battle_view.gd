@@ -128,6 +128,8 @@ func _ready() -> void:
 	_battle_stage.resized.connect(_position_fighters)
 	_player_sprite.set_facing(1.0)
 	_opponent_sprite.set_facing(-1.0)
+	_player_sprite.pose_changed.connect(func(_pose: String) -> void: _sync_shadow("player"))
+	_opponent_sprite.pose_changed.connect(func(_pose: String) -> void: _sync_shadow("opponent"))
 	_action_commits = {
 		"strike": _make_commit(_attack_button, COMMIT_COLORS["strike"]),
 		"surge": _make_commit(_special_button, COMMIT_COLORS["surge"]),
@@ -500,6 +502,10 @@ func _request_switch(slot: int) -> void:
 func _open_switch_picker(forced: bool) -> void:
 	if _busy:
 		return
+	var remaining := _living_switch_slots()
+	if remaining.size() == 1:
+		_request_switch(remaining[0])
+		return
 	var party := _party("player")
 	var active_slot := int(party.get("active_slot", 0))
 	var roster := _as_array(party.get("roster"))
@@ -592,7 +598,7 @@ func _apply_side(
 		return
 	var member := GameState.as_dict(roster[slot])
 	var name_label := _player_name if side == "player" else _opponent_name
-	name_label.text = str(member.get("name", tr("ANIMA_FALLBACK_NAME")))
+	name_label.text = _fighter_title(member)
 	var anima_id := str(member.get("anima_id", ""))
 	var loaded := GameState.as_dict(_art_cache.get(anima_id))
 	var sprite := _sprite_for(side)
@@ -629,11 +635,13 @@ func _play_switch(event: Dictionary, next_session: Dictionary) -> void:
 	if sprite.visible and sprite.sprite_frames != null:
 		await sprite.summon_dissolve()
 	_apply_side(next_session, side, true, false)
+	_align_portal(side)
 	if is_instance_valid(portal):
 		await portal.start_portal()
 		portal.burst()
 	if sprite.sprite_frames != null:
 		await sprite.summon_reveal()
+		_sync_shadow(side)
 	else:
 		sprite.visible = true
 
@@ -666,6 +674,7 @@ func _play_attack(event: Dictionary) -> void:
 		_opponent_hp.value = hp
 		_opponent_hp_value.text = LocaleManager.format_ratio(hp, int(_opponent_hp.max_value))
 	if is_instance_valid(target):
+		target.hit_react()
 		if UiMotion.reduced_motion:
 			target.modulate = Color.WHITE
 		else:
@@ -918,14 +927,27 @@ func _forced_switch() -> bool:
 	return bool(_party("player").get("forced_switch", false))
 
 
-func _has_living_bench() -> bool:
+func _fighter_title(member: Dictionary) -> String:
+	var anima_name := str(member.get("name", tr("ANIMA_FALLBACK_NAME")))
+	var level := int(member.get("level", 0))
+	if level <= 0:
+		level = CARE_RULES.level_from_exp(int(member.get("care_score", 0)))
+	return "%s %s" % [anima_name, LocaleManager.level_label(maxi(1, level))]
+
+
+func _living_switch_slots() -> Array[int]:
+	var slots: Array[int] = []
 	var party := _party("player")
 	var active_slot := int(party.get("active_slot", 0))
 	var roster := _as_array(party.get("roster"))
 	for slot in roster.size():
 		if slot != active_slot and int(GameState.as_dict(roster[slot]).get("hp", 0)) > 0:
-			return true
-	return false
+			slots.append(slot)
+	return slots
+
+
+func _has_living_bench() -> bool:
+	return not _living_switch_slots().is_empty()
 
 
 func _item_already_used() -> bool:
@@ -1145,10 +1167,7 @@ func _make_switch_meter(button: Button) -> ProgressBar:
 
 
 func _set_idle_feedback() -> void:
-	if int(_active_member("player").get("momentum", 0)) < SURGE_COST:
-		_set_feedback(tr("BATTLE_NO_MOMENTUM"))
-	else:
-		_set_feedback("")
+	_set_feedback("")
 
 
 func _set_feedback(text: String) -> void:
@@ -1158,6 +1177,17 @@ func _set_feedback(text: String) -> void:
 
 func _emit_arena_open() -> void:
 	arena_open_changed.emit(is_arena_open())
+
+
+func _align_portal(side: String) -> void:
+	var sprite := _sprite_for(side)
+	var portal := _portal_for(side)
+	if not is_instance_valid(sprite) or not is_instance_valid(portal):
+		return
+	if sprite.sprite_frames == null:
+		portal.position = Vector2(0.0, -140.0)
+		return
+	portal.align_visual_center(sprite.body_center_global())
 
 
 func _sync_shadow(side: String) -> void:

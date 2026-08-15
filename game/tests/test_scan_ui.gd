@@ -684,6 +684,18 @@ func _test_shared_components() -> void:
 		not shop_scroll.visible and shop_panel.size.y < 560.0,
 		"empty Bag stays compact instead of reserving a blank catalog viewport"
 	)
+	shop_sheet.open_battle()
+	await process_frame
+	var battle_empty := shop_sheet.find_child("ShopEmpty", true, false) as Label
+	var battle_cta := shop_sheet.find_child("ShopEmptyCta", true, false) as Button
+	_check(
+		battle_empty != null
+		and battle_empty.visible
+		and battle_empty.text == tr("SHOP_BATTLE_EMPTY")
+		and battle_cta != null
+		and not battle_cta.visible,
+		"empty Battle item sheet never offers Shop"
+	)
 
 	var compact_host := Control.new()
 	compact_host.size = Vector2(720, 720)
@@ -1503,8 +1515,8 @@ func _test_battle_view() -> void:
 	view.set_session(session, loaded, loaded)
 	_check(surge.disabled, "Special is disabled once PP runs out")
 	_check(
-		feedback.text == tr("BATTLE_NO_MOMENTUM"),
-		"empty PP names Guard as the way back instead of leaving a dead button"
+		feedback.text != tr("BATTLE_NO_MOMENTUM"),
+		"empty PP no longer prints a Guard hint in the dock"
 	)
 	var training_active: Dictionary = session.duplicate(true)
 	training_active["state"]["player"]["momentum"] = 1
@@ -1652,6 +1664,7 @@ func _test_team_battle_view() -> void:
 			"anima_id": anima_id,
 			"name": row.nickname,
 			"slot": index,
+			"level": index + 1,
 			"hp": 50,
 			"max_hp": 50,
 			"momentum": 3,
@@ -1847,6 +1860,10 @@ func _test_team_battle_view() -> void:
 		"party pips sit above the active Anima name"
 	)
 	_check(
+		player_name.text.begins_with("Team 1") and player_name.text.contains(tr("LEVEL_SHORT")),
+		"arena HUD names the active Anima with its Level"
+	)
+	_check(
 		not feedback.visible and not player_slots.text.contains("Team 1"),
 		"idle arena hides the choose-action prompt and keeps party pips nameless"
 	)
@@ -1893,7 +1910,7 @@ func _test_team_battle_view() -> void:
 		{"type": "switch", "actor": "player", "from_slot": 0, "to_slot": 1},
 	], switched)
 	_check(
-		player_name.text == "Team 2",
+		player_name.text.begins_with("Team 2") and player_name.text.contains(tr("LEVEL_SHORT")),
 		"Switch replaces the active fighter after the Summon handoff"
 	)
 	session["state"]["player"]["active_slot"] = 0
@@ -1943,6 +1960,21 @@ func _test_team_battle_view() -> void:
 	_check(
 		switch_panel.visible and not actions.visible,
 		"resumed knockout still requires a free replacement before another action"
+	)
+	var last_stand := session.duplicate(true)
+	last_stand["state"]["player"]["forced_switch"] = true
+	last_stand["state"]["player"]["roster"][0]["hp"] = 0
+	last_stand["state"]["player"]["roster"][1]["hp"] = 0
+	last_stand["state"]["player"]["roster"][2]["hp"] = 0
+	var auto_switch := []
+	view.action_requested.connect(
+		func(action: String, slot: int) -> void: auto_switch.append([action, slot])
+	)
+	view.set_session(last_stand, art_cache)
+	_check(
+		not switch_panel.visible
+		and auto_switch == [["switch", 3]],
+		"the last living Anima summons without a picker"
 	)
 	session["status"] = "won"
 	session["state"]["status"] = "won"

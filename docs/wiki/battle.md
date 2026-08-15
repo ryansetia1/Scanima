@@ -35,13 +35,16 @@ menampilkan satu fighter aktif dari setiap tim.
   battle** / **Ready** / **KO**, dan sisa HP tiap anggota. **Cancel** menutup
   picker dan mengembalikan tombol aksi. Setelah Anima KO, pose Defeated tampil
   sebentar, lalu picker pengganti terbuka tanpa memakai turn berikutnya — di
-  situ Cancel tidak ada karena pengganti wajib. Anima yang masuk arena memakai
-  animasi Summon yang sama seperti di Home.
+  situ Cancel tidak ada karena pengganti wajib. Kalau hanya satu Anima yang
+  masih hidup, ia langsung masuk arena tanpa picker. Anima yang masuk memakai
+  animasi Summon yang sama seperti di Home. HUD menampilkan nama plus Level,
+  misalnya **Soundhund Lv. 5**.
 - Ketuk Attack, Special, Guard, Item, atau Switch langsung mengunci tombol
   itu (garis di bawahnya). Tidak ada teks “locked in” atau “Resolving”.
   Nama jurus, Guard, item, dan KO tampil besar di arena seperti
   **Super effective!**, bukan di atas tombol. Hasil turn tetap dari server.
 - Satu item Battle berlaku untuk seluruh encounter, bukan satu per anggota.
+  **Item** membuka Bag; tombol **Shop** tidak muncul di tengah battle.
 - Dua kemenangan progression pertama per hari memberi EXP: **+2** untuk anggota
   yang pernah aktif dan masih hidup, **+1** untuk bench yang masih hidup.
   Anggota yang KO tidak mendapat EXP.
@@ -167,7 +170,7 @@ PP adalah budget **satu duel**, mulai dari **3**.
 - Tidak pulih tiap giliran
 - Habis di akhir duel — duel berikutnya mulai 3 lagi
 
-Kalau PP habis, satu-satunya jalan Special lagi adalah Guard dulu. Tombol yang mati tanpa kalimat itu membingungkan; game akan memberitahumu.
+Kalau PP habis, tombol Special mati. Satu-satunya jalan Special lagi adalah Guard dulu.
 
 ## Damage, sederhana
 

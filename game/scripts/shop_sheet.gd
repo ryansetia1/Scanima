@@ -110,7 +110,7 @@ func _rebuild() -> void:
 	var rows := _visible_rows()
 	_catalog_scroll.visible = not rows.is_empty()
 	_empty.visible = rows.is_empty()
-	_cta.visible = rows.is_empty() and _mode != Mode.SHOP
+	_cta.visible = rows.is_empty() and _mode == Mode.BAG
 	_empty.text = tr(_empty_key())
 	_cta.text = tr("SHOP_OPEN")
 	for item in rows:

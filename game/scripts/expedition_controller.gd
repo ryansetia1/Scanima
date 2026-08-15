@@ -375,25 +375,30 @@ func _prepare_active_art(encounter: Dictionary, include_background: bool = true)
 	for side in ["player", "opponent"]:
 		var party := GameState.as_dict(state.get(side))
 		var roster := _array(party.get("roster"))
-		var slot := int(party.get("active_slot", 0))
-		if slot < 0 or slot >= roster.size():
+		var active_slot := int(party.get("active_slot", 0))
+		if active_slot < 0 or active_slot >= roster.size():
 			return {}
-		var member := GameState.as_dict(roster[slot])
-		var anima_id := str(member.get("anima_id", ""))
-		if anima_id.is_empty():
-			return {}
-		if _art_cache.has(anima_id):
-			result[anima_id] = _art_cache[anima_id]
-			continue
 		var snapshots := _array(
 			encounter.get("player_snapshot" if side == "player" else "opponent_snapshot")
 		)
-		var snapshot := _snapshot(snapshots, anima_id)
-		var loaded := await _load_art(snapshot)
-		if not bool(loaded.get("ok", false)):
-			return {}
-		_art_cache[anima_id] = loaded
-		result[anima_id] = loaded
+		for slot in roster.size():
+			var member := GameState.as_dict(roster[slot])
+			var anima_id := str(member.get("anima_id", ""))
+			if anima_id.is_empty():
+				if slot == active_slot:
+					return {}
+				continue
+			if _art_cache.has(anima_id):
+				result[anima_id] = _art_cache[anima_id]
+				continue
+			var snapshot := _snapshot(snapshots, anima_id)
+			var loaded := await _load_art(snapshot)
+			if not bool(loaded.get("ok", false)):
+				if slot == active_slot:
+					return {}
+				continue
+			_art_cache[anima_id] = loaded
+			result[anima_id] = loaded
 	if include_background:
 		var background := await _load_arena_background(encounter)
 		if background != null:

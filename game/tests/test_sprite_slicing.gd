@@ -307,6 +307,14 @@ func _test_presenter() -> void:
 	_check_eq(presenter.current_pose(), "dirty", "Hygiene rendah harus memakai pose Dirty")
 	presenter.celebrate_level_up()
 	_check_eq(presenter.current_pose(), "happy", "naik level memakai pose Happy")
+	presenter.set_facing(1.0)
+	var rest := presenter.position
+	UiMotion.set_reduced_motion(true)
+	presenter.hit_react()
+	_check_eq(presenter.position, rest, "Reduced Motion hit does not shake")
+	UiMotion.set_reduced_motion(false)
+	presenter.hit_react()
+	_check(presenter.get("_feedback") != null, "hit_react starts a shake tween")
 	presenter.set_pose("dirty")
 	presenter.play_fx("fx_strike")
 	var fx := presenter.get("_fx") as Sprite2D
