@@ -2,7 +2,7 @@
 
 Ini adalah dokumen paling menentukan kualitas Scanima. Kalau prompt-nya benar, sebuah mouse komputer jadi Anima yang jelas-jelas berasal dari mouse itu. Kalau salah, semua Anima terlihat seperti monster generik yang kebetulan diberi warna berbeda, dan seluruh premis game runtuh.
 
-## Kontrak capture v13 dan prompt production v15
+## Kontrak capture v13, production v15, dan candidate v16
 
 Sumber prompt production berada di `backend/prompts/v15/`; v13 tetap dibundel
 sebagai rollback langsung. Vision/schema v15 identik dengan kontrak v13 yang
@@ -40,6 +40,23 @@ ukuran game. Residu hijau terukur 0,526% tetapi tidak mengganggu pada render
 ukuran game; tetap dipantau pada fauna berwarna non-hijau berikutnya.
 `create_anima` version 13 membawa bundle tersebut dan
 `app_config.prompt_version = "v15"` sudah live; rollback-nya v13.
+
+V16 adalah candidate pertama sesudah v15. Ia tidak mengubah Vision, schema,
+typing, body-plan input, layout, VFX contract, atau post-process. Perubahannya
+hanya memperkeras arah sumber untuk object, fauna, dan evolve setelah uji manual
+Gumdrop menunjukkan sebagian pose berbalik dan pupil menatap target berbeda.
+Semua tujuh sel karakter sekarang mengunci face/leading sensory plane, flank
+yang dekat kamera, tubuh, support point, dan landmark asimetris ke
+forward-left/canvas-left. Semua mata terbuka menatap satu target canvas-left;
+Sleep menutup mata, sedangkan Damaged boleh half-lidded tanpa mengubah arah.
+
+Arah sumber yang sama sengaja dipakai di Home dan Battle. Di Home, Anima
+terlihat mengamati ruang di canvas-left tanpa harus menatap kamera. Di Battle,
+client membalik seluruh sheet petarung pemain sehingga kedua pihak saling
+menghadap dan saling menatap. Selftest dan dry-run Smoke Set memastikan semua
+template terisi serta bundled prompt konsisten, tetapi v16 belum boleh
+dipromosikan sebelum eval gambar menilai orientasi badan, pupil, seam, dan
+kualitas visual nyata.
 
 Bagian v1–v12 di bawah adalah decision log dan spesifikasi rollback. Pernyataan
 tentang enam elemen, penolakan semua hewan, atau optimasi `species_library`

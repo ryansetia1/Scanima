@@ -15,6 +15,8 @@ const RESISTED_COLOR := Color(0.55, 0.68, 0.9, 1.0)
 
 signal start_requested
 signal choose_anima_requested
+signal team_mode_requested
+signal expedition_mode_requested
 signal action_requested(action: String)
 signal item_picker_requested
 signal resume_requested
@@ -29,10 +31,15 @@ signal reward_status_refresh_requested
 @export var stone_icon: Texture2D
 
 @onready var _header: Control = %Header
+@onready var _duel_column: VBoxContainer = %Column
 @onready var _lobby_panel: PanelContainer = %BattleLobbyPanel
 @onready var _lobby_name: Label = %BattleLobbyName
 @onready var _lobby_meta: Label = %BattleLobbyMeta
 @onready var _start_button: Button = %BattleStartButton
+@onready var _team_button: Button = %BattleTeamButton
+@onready var _team_view: TeamBattleView = %TeamBattleView
+@onready var _expedition_button: Button = %BattleExpeditionButton
+@onready var _expedition_view: ExpeditionView = %ExpeditionView
 @onready var _battle_content: VBoxContainer = %BattleContent
 @onready var _turn_label: Label = %BattleTurn
 @onready var _daily_reward_label: Label = %BattleDailyReward
@@ -84,6 +91,8 @@ var _command_tween: Tween
 
 func _ready() -> void:
 	_start_button.pressed.connect(_on_start_pressed)
+	_team_button.pressed.connect(team_mode_requested.emit)
+	_expedition_button.pressed.connect(expedition_mode_requested.emit)
 	_strike_button.pressed.connect(_request_action.bind("strike"))
 	_surge_button.pressed.connect(_request_action.bind("surge"))
 	_guard_button.pressed.connect(_request_action.bind("guard"))
@@ -95,7 +104,60 @@ func _ready() -> void:
 	_position_fighters.call_deferred()
 	_player_sprite.set_facing(1.0)
 	_bot_sprite.set_facing(-1.0)
+	set_team_available(GameState.team_battle_available())
+	set_expedition_available(GameState.expedition_available())
+	set_expedition_pending(not GameState.pending_expedition.is_empty())
 	set_lobby({})
+
+
+func set_team_available(available: bool) -> void:
+	_team_button.visible = true
+	_team_button.disabled = not available
+
+
+func set_expedition_available(available: bool) -> void:
+	_expedition_button.visible = true
+	_expedition_button.disabled = not available
+
+
+func set_expedition_pending(pending: bool) -> void:
+	_expedition_button.text = tr(
+		"EXPEDITION_CONTINUE" if pending else "EXPEDITION_OPEN"
+	)
+
+
+func set_expedition_new(has_new: bool) -> void:
+	%ExpeditionNewBadge.visible = has_new
+
+
+func show_team_mode() -> void:
+	_duel_column.visible = false
+	_expedition_view.close_mode(true)
+	_team_view.open_mode()
+
+
+func show_expedition_mode() -> void:
+	_duel_column.visible = false
+	_team_view.close_mode()
+	if _team_view.is_open():
+		return
+	_expedition_view.open_mode()
+
+
+func show_duel_mode() -> void:
+	_team_view.close_mode()
+	_expedition_view.close_mode()
+	if _team_view.is_open() or _expedition_view.is_open():
+		return
+	_duel_column.visible = true
+
+
+func is_team_mode() -> bool:
+	return _team_view.is_open()
+
+
+func is_expedition_mode() -> bool:
+	return _expedition_view.is_open()
 
 
 func set_lobby(row: Dictionary) -> void:
@@ -232,17 +294,9 @@ func begin_action(action: String) -> void:
 		return
 	_queued_action = action
 	_busy = true
-	var feedback_key: String = str({
-		"strike": "BATTLE_ACTION_PENDING_STRIKE",
-		"surge": "BATTLE_ACTION_PENDING_SURGE",
-		"guard": "BATTLE_ACTION_PENDING_GUARD",
-		"item": "BATTLE_ACTION_PENDING_ITEM",
-	}.get(action, "BATTLE_CHOOSE_ACTION"))
-	if action == "guard" or action == "item":
-		_feedback.text = tr(feedback_key)
-	else:
-		_feedback.text = tr(feedback_key) % _move_label(action, _as_dict(_session.get("player_snapshot")))
 	_show_action_commit(action)
+	if not UiMotion.reduced_motion:
+		Input.vibrate_handheld(18)
 	_update_action_state()
 
 
@@ -419,7 +473,7 @@ func _play_attack(event: Dictionary) -> void:
 		attacker.set_pose("attack")
 		var fx_pose := "fx_surge" if str(event.get("action", "")) == "surge" else "fx_strike"
 		if is_instance_valid(target):
-			attacker.play_fx(fx_pose, target.to_global(target.offset))
+			attacker.play_fx(fx_pose, target.body_center_global())
 		else:
 			attacker.play_fx(fx_pose)
 	var actor_snapshot := _as_dict(
@@ -541,7 +595,7 @@ func _hide_effectiveness() -> void:
 	_effectiveness.scale = Vector2.ONE
 
 
-func item_banner_text(event: Dictionary) -> String:
+static func item_banner_text(event: Dictionary) -> String:
 	var effect := str(event.get("effect", ""))
 	var value := int(event.get("effect_value", 0))
 	if effect.is_empty():
@@ -585,7 +639,7 @@ func item_banner_text(event: Dictionary) -> String:
 			key = "BATTLE_ITEM_SHIELD"
 		_:
 			key = "BATTLE_ITEM_GENERIC"
-	var copy := tr(key)
+	var copy := TranslationServer.translate(key)
 	return copy % str(value) if copy.find("%s") >= 0 else copy
 
 

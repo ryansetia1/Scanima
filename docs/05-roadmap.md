@@ -185,18 +185,25 @@ live—Anima aktif melawan snapshot anonim Anima pemain lain, tiga aksi per turn
 damage/elemen/PP server-authoritative, resume setelah restart, reward
 atomik, dan presentasi hit di Godot.
 
-Yang berikutnya di Phase 3 adalah evolusi vertical slice, onboarding tutorial, audio, dan
-weekly Core/pending-discovery claim. PvP/matchmaking, tim multi-Anima, ranked
-ladder, battle pass, dan item drop tetap ditunda; semuanya memperlebar sistem
-sebelum loop 1v1 punya data pemain nyata.
+Yang berikutnya di Phase 3 adalah evolusi vertical slice, onboarding tutorial,
+dan audio. Weekly Core sudah live. Infrastruktur **Team Battle async** dan
+**Expedition** sudah terpasang di production pada 15 Agustus 2026: migration,
+SQL ownership/reward/idempotency suite, serta dua Edge Function JWT lulus,
+sementara ketiga rollout flag tetap off. Team Battle membawa empat Anima melawan
+Defense Team opt-in; Expedition memakai resolver roster yang sama untuk campaign
+bercabang dan chapter server-delivered. Candy masih placeholder dan diblokir
+dari publish sampai asset production serta review manusia. Kontrak lengkapnya ada di
+[`09-team-battle-and-expedition.md`](09-team-battle-and-expedition.md).
+PvP real-time, ranked ladder, battle pass, dan item drop tetap ditunda.
 
 ### Yang dikerjakan
 
 Battle dari [04](04-game-systems-economy.md) sekarang punya stat turunan, roda
 elemen, Attack/Special/Guard, PP, bot anonim, flash, angka damage, dan haptic
 ringan. Session Postgres berumur 30 menit; client menyimpan action/key tertunda,
-sedangkan server sendiri yang memutuskan turn dan reward. Menang memberi 5 Bits,
-`care_score +4`, dan `battle_wins +1`; loss/forfeit nol reward dan tidak ada
+sedangkan server sendiri yang memutuskan turn dan reward. Menang memberi Bits
+menurut tier sekitar 5–16, `care_score +4`, dan `battle_wins +1`;
+loss/forfeit nol reward dan tidak ada
 Genesis Core. Hanya tiga win pertama per akun per hari sipil lokal yang memberi ketiga
 reward itu; sesudahnya satu CTA lobby berubah dari Battle menjadi Train dan duel
 tetap tersedia sebagai Training tanpa progression.
@@ -278,4 +285,10 @@ Biaya tetap di luar API: akun developer Play Store $25 sekali bayar, Supabase gr
 
 Menuliskan ini sama pentingnya dengan menuliskan yang dikerjakan, karena masing-masing terdengar menarik dan masing-masing akan menunda rilis:
 
-PvP real-time (netcode, matchmaking, anti-cheat — bot dari `species_library` sudah memberi 80% rasanya dengan 5% kerjanya), trading antar pemain (butuh ekonomi yang aman dan moderasi), breeding (butuh generation ekstra per anak, biaya tidak terkendali), sistem quest bercabang, animasi frame-by-frame, dukungan iOS (tambah $99 per tahun dan satu pipeline rilis lagi; tunda sampai Android terbukti), dan lokalisasi di luar bahasa Indonesia dan Inggris.
+PvP real-time (netcode, matchmaking, anti-cheat), trading antar pemain (butuh
+ekonomi yang aman dan moderasi), breeding (butuh generation ekstra per anak,
+biaya tidak terkendali), deck/card system untuk Expedition, animasi
+frame-by-frame, dukungan iOS penuh (tambah $99 per tahun dan satu pipeline rilis
+lagi; tunda sampai Android terbukti), dan lokalisasi di luar bahasa Indonesia
+dan Inggris. Team Battle yang direncanakan tetap async melawan snapshot Defense
+Team; ia bukan PvP live.

@@ -15,6 +15,7 @@ eval/photos/*
 
 # Godot
 game/.godot/
+game/.godotiq/
 game/android/
 game/export_presets.cfg
 *.translation

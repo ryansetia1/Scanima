@@ -50,6 +50,8 @@ func _initialize() -> void:
 	_test_scan_selesai()
 	_test_kunci_care()
 	_test_kunci_battle()
+	_test_kunci_team_battle()
+	_test_kunci_expedition()
 	_test_kunci_purchase()
 	_test_state_rusak()
 	_test_cache_art()
@@ -92,6 +94,8 @@ func _muat_ulang() -> void:
 	GameState.pending_scan = {}
 	GameState.pending_care = {}
 	GameState.pending_battle = {}
+	GameState.pending_team_battle = {}
+	GameState.pending_expedition = {}
 	GameState.last_anima = {}
 	GameState.load_state()
 
@@ -136,8 +140,26 @@ func _test_sesi_bertahan() -> void:
 		"state.json tidak boleh lagi memuat token"
 	)
 	GameState.set_reduced_motion(true)
+	GameState.set_chapter_push_enabled(true)
 	_muat_ulang()
 	_check(GameState.reduced_motion(), "Reduced Motion harus bertahan restart")
+	_check(
+		GameState.chapter_push_enabled(),
+		"opt-in push chapter harus bertahan sebagai preference per-device"
+	)
+	_check(
+		GameState.team_battle_available() and GameState.expedition_available(),
+		"mode Battle default permissive sebelum server menolak"
+	)
+	GameState.set_team_battle_available(false)
+	GameState.set_expedition_available(false)
+	_muat_ulang()
+	_check(
+		not GameState.team_battle_available() and not GameState.expedition_available(),
+		"penolakan mode Battle harus bertahan restart"
+	)
+	GameState.set_team_battle_available(true)
+	GameState.set_expedition_available(true)
 	# expires_at wajib int, bukan float: JSON tidak punya int dan pembandingan
 	# umur token memakai aritmetika bilangan bulat.
 	_check_eq(int(GameState.session.get("expires_at")), 1786600000, "expires_at harus utuh")
@@ -302,6 +324,163 @@ func _test_kunci_battle() -> void:
 	_muat_ulang()
 	_check(GameState.pending_battle.is_empty(), "Battle terminal tidak boleh di-resume lagi")
 	_check_eq(GameState.uid(), "uid-abc", "menyelesaikan Battle tidak boleh menghapus sesi")
+
+
+func _test_kunci_team_battle() -> void:
+	print("6b. session, Item, dan Switch Team Battle bertahan restart")
+	GameState.remember_team_battle("team-1", 5, 9)
+	_muat_ulang()
+	_check_eq(
+		GameState.pending_team_battle.get("session_id"),
+		"team-1",
+		"session Team Battle harus bertahan"
+	)
+	_check_eq(
+		int(GameState.pending_team_battle.get("expected_turn")),
+		5,
+		"turn Team Battle harus bertahan"
+	)
+	_check_eq(
+		int(GameState.pending_team_battle.get("expected_version")),
+		9,
+		"version Team Battle harus bertahan"
+	)
+	var wrong_session: Dictionary = GameState.begin_team_battle_action(
+		"team-2", 1, 1, "strike"
+	)
+	_check_eq(
+		wrong_session.get("session_id"),
+		"team-1",
+		"session baru tidak boleh menimpa Team Battle yang wajib di-resume"
+	)
+	var switched: Dictionary = GameState.begin_team_battle_action(
+		"team-1", 5, 9, "switch", "", 3
+	)
+	var switch_key := str(switched.get("idempotency_key", ""))
+	_check(not switch_key.is_empty(), "turn Team Battle harus punya idempotency key")
+	_check(switch_key.length() <= 128, "key Team Battle harus muat batas server")
+	_muat_ulang()
+	_check_eq(
+		GameState.pending_team_battle.get("idempotency_key"),
+		switch_key,
+		"restart harus me-replay key Team Battle yang sama"
+	)
+	_check_eq(
+		int(GameState.pending_team_battle.get("switch_to_slot")),
+		3,
+		"target Switch Team Battle harus bertahan restart"
+	)
+	var ignored: Dictionary = GameState.begin_team_battle_action(
+		"team-1", 5, 9, "item", "vital_patch"
+	)
+	_check_eq(
+		ignored.get("idempotency_key"),
+		switch_key,
+		"tap kedua tidak boleh menimpa turn Team Battle"
+	)
+	_check_eq(
+		ignored.get("action"),
+		"switch",
+		"intent Switch Team Battle harus tetap yang pertama"
+	)
+	_check_eq(
+		int(ignored.get("switch_to_slot")),
+		3,
+		"tap kedua tidak boleh mengganti target Switch Team Battle"
+	)
+	GameState.confirm_team_battle_response({
+		"id": "team-1", "status": "active", "turn_number": 6, "version": 10,
+	})
+	_muat_ulang()
+	_check_eq(
+		int(GameState.pending_team_battle.get("expected_turn")),
+		6,
+		"response memajukan turn Team Battle"
+	)
+	_check_eq(
+		int(GameState.pending_team_battle.get("expected_version")),
+		10,
+		"response memajukan version Team Battle"
+	)
+	_check(
+		str(GameState.pending_team_battle.get("action", "")).is_empty()
+		and int(GameState.pending_team_battle.get("switch_to_slot", -1)) == -1,
+		"response Team Battle mengosongkan intent yang sudah terkonfirmasi"
+	)
+	var item: Dictionary = GameState.begin_team_battle_action(
+		"team-1", 6, 10, "item", "vital_patch"
+	)
+	var item_key := str(item.get("idempotency_key", ""))
+	_check(item_key != switch_key, "turn Team Battle berikutnya harus mendapat key baru")
+	_check_eq(item.get("item_id"), "vital_patch", "Item Team Battle membawa item_id")
+	_muat_ulang()
+	_check_eq(
+		GameState.pending_team_battle.get("item_id"),
+		"vital_patch",
+		"item_id Team Battle harus bertahan restart"
+	)
+	_check_eq(
+		GameState.pending_team_battle.get("idempotency_key"),
+		item_key,
+		"key Item Team Battle harus bertahan restart"
+	)
+	GameState.confirm_team_battle_response({"id": "team-1", "status": "won"})
+	_muat_ulang()
+	_check(
+		GameState.pending_team_battle.is_empty(),
+		"Team Battle terminal tidak boleh di-resume lagi"
+	)
+	_check_eq(GameState.uid(), "uid-abc", "menyelesaikan Team Battle tidak menghapus sesi")
+
+
+func _test_kunci_expedition() -> void:
+	print("6c. run, node, dan turn Expedition bertahan restart")
+	GameState.remember_expedition(
+		{"id": "run-1", "status": "active", "version": 7},
+		{"id": "encounter-1", "turn_number": 3, "version": 4}
+	)
+	var pending: Dictionary = GameState.begin_expedition_operation("turn", {
+		"action": "switch",
+		"switch_to_slot": 2,
+	})
+	var key := str(pending.get("idempotency_key", ""))
+	_check(not key.is_empty(), "turn Expedition harus punya idempotency key")
+	_muat_ulang()
+	_check_eq(GameState.pending_expedition.get("run_id"), "run-1", "run Expedition bertahan")
+	_check_eq(
+		GameState.pending_expedition.get("encounter_id"),
+		"encounter-1",
+		"encounter Expedition bertahan"
+	)
+	_check_eq(
+		int(GameState.pending_expedition.get("switch_to_slot")),
+		2,
+		"slot Switch Expedition bertahan"
+	)
+	_check_eq(
+		GameState.pending_expedition.get("idempotency_key"),
+		key,
+		"restart me-replay key Expedition yang sama"
+	)
+	var ignored: Dictionary = GameState.begin_expedition_operation("turn", {
+		"action": "item",
+		"item_id": "vital_patch",
+	})
+	_check_eq(ignored.get("action"), "switch", "tap kedua tidak menimpa intent Expedition")
+	GameState.confirm_expedition_response(
+		{"id": "run-1", "status": "active", "version": 8},
+		{"id": "encounter-1", "turn_number": 4, "version": 5}
+	)
+	var node: Dictionary = GameState.begin_expedition_operation("choose", {
+		"option_id": "heal",
+		"target_slot": 1,
+	})
+	_check_eq(int(node.get("run_version")), 8, "choice memakai run version terbaru")
+	_check_eq(node.get("option_id"), "heal", "choice menyimpan option")
+	_check(str(node.get("idempotency_key", "")) != key, "operation berikutnya mendapat key baru")
+	GameState.confirm_expedition_response({"id": "run-1", "status": "complete", "version": 9})
+	_muat_ulang()
+	_check(GameState.pending_expedition.is_empty(), "run Expedition terminal tidak di-resume lagi")
 
 
 func _test_kunci_purchase() -> void:

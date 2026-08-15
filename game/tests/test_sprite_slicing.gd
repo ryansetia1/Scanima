@@ -236,6 +236,12 @@ func _test_presenter() -> void:
 
 	_check(presenter.apply(loaded), "apply harus berhasil")
 	_check_eq(presenter.offset, loaded["ground_offset"], "offset harus dari ground_offset")
+	var body_center: Vector2 = presenter.body_center_global()
+	var frame_center: Vector2 = presenter.to_global(presenter.offset)
+	_check(
+		body_center.y >= frame_center.y,
+		"pusat tubuh harus di massa opak, bukan di tengah sel yang banyak padding"
+	)
 	_check_eq(presenter.current_pose(), AnimaLoader.DEFAULT_POSE, "pose awal harus idle")
 	_check(presenter.centered, "sprite harus centered supaya offset bermakna")
 	_check_eq(presenter.fx_motion("fx_surge"), "bloom", "presenter harus menyimpan motion manifest")
@@ -305,6 +311,7 @@ func _test_presenter() -> void:
 	presenter.play_fx("fx_strike")
 	var fx := presenter.get("_fx") as Sprite2D
 	_check(fx != null and fx.visible, "fx_strike harus menampilkan overlay efek")
+	_check(fx.offset == Vector2.ZERO, "VFX harus terpusat di titik impact, bukan ground offset Anima")
 	_check(
 		fx.get_parent() == root and fx.get_parent() != presenter,
 		"overlay FX harus sibling supaya lunge Attack tidak menelan VFX"

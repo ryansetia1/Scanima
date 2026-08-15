@@ -58,7 +58,9 @@ Contoh: 25 EXP → Level 6.
 | Clean saat kotor (Hygiene di bawah 50) | +3 | Bersih = 0 |
 | Sleep penuh (companion di Home) | +5 | Bangun lebih awal = 0 |
 | Play | +1 | Maks 5 kali per hari, reset tengah malam waktu setempat |
-| Menang Battle berhadiah | +4 | Training = 0 |
+| Menang Duel berhadiah | +4 | Training = 0 |
+| Menang Team Battle berhadiah | +2 aktif / +1 bench | Dua kemenangan pertama per hari; KO = 0 |
+| Menang encounter Expedition | +2 aktif / +1 bench | Tiga encounter pertama per hari; KO = 0 |
 | Bonus terawat (ketiga kebutuhan &gt; 70) | +8 | Sekali per hari, reset tengah malam waktu setempat |
 
 Dormant **tidak** menghapus EXP.

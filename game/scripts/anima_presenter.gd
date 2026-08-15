@@ -30,6 +30,7 @@ var _queued_care: Dictionary = {}
 var _base_position: Vector2 = Vector2.ZERO
 var _current_pose: String = ""
 var _facing_direction := -1.0
+var _opaque_local_by_pose: Dictionary = {}
 
 
 func _ready() -> void:
@@ -46,6 +47,7 @@ func apply(loaded: Dictionary) -> bool:
 	sprite_frames = loaded["frames"]
 	offset = loaded["ground_offset"]
 	_fx_motion = (loaded.get("fx_motion", {}) as Dictionary).duplicate()
+	_opaque_local_by_pose.clear()
 	_base_position = position
 	set_pose(AnimaLoader.DEFAULT_POSE)
 	return true
@@ -93,6 +95,69 @@ func hit_test(global_point: Vector2) -> bool:
 	if flip_h:
 		local.x = -local.x
 	return Rect2(top_left, texture_size).grow(TAP_HIT_PADDING_PX).has_point(local)
+
+
+## Pusat massa opak pose saat ini, bukan pusat sel sheet (banyak padding).
+func body_center_global() -> Vector2:
+	return to_global(_body_center_local())
+
+
+func opaque_local_rect() -> Rect2:
+	if sprite_frames == null:
+		return Rect2()
+	var pose: String = _current_pose
+	if pose.is_empty():
+		pose = String(animation)
+	if _opaque_local_by_pose.has(pose):
+		return _opaque_local_by_pose[pose]
+	var texture := sprite_frames.get_frame_texture(animation, frame)
+	if texture == null:
+		return Rect2()
+	var image := texture.get_image()
+	if image == null:
+		return Rect2()
+	var used := image.get_used_rect()
+	if used.size.x <= 0 or used.size.y <= 0:
+		return Rect2()
+	var texture_size := Vector2(image.get_width(), image.get_height())
+	var top_left := offset - texture_size * 0.5 if centered else offset
+	var rect := Rect2(top_left + Vector2(used.position), Vector2(used.size))
+	_opaque_local_by_pose[pose] = rect
+	return rect
+
+
+func sync_ground_shadow(shadow: Sprite2D) -> void:
+	if not is_instance_valid(shadow):
+		return
+	if sprite_frames == null or not visible:
+		shadow.visible = false
+		return
+	var bounds := opaque_local_rect()
+	var feet := _feet_local(bounds)
+	var width := bounds.size.x if bounds.size.x > 0.0 else 96.0
+	shadow.visible = true
+	shadow.z_index = 0
+	shadow.position = feet + Vector2(0.0, 8.0)
+	shadow.scale = Vector2(clampf(width / 180.0, 0.5, 2.0), 0.7)
+
+
+func _body_center_local() -> Vector2:
+	var bounds := opaque_local_rect()
+	if bounds.size == Vector2.ZERO:
+		return offset
+	return _flip_local(bounds.get_center())
+
+
+func _feet_local(bounds: Rect2) -> Vector2:
+	if bounds.size == Vector2.ZERO:
+		return Vector2(offset.x, 0.0)
+	return _flip_local(Vector2(bounds.get_center().x, bounds.end.y))
+
+
+func _flip_local(point: Vector2) -> Vector2:
+	if flip_h:
+		point.x = (2.0 * offset.x) - point.x
+	return point
 
 
 func react_to_tap() -> void:
@@ -391,7 +456,7 @@ func play_fx(pose: String, impact_global: Vector2 = Vector2.INF) -> void:
 	if _fx_tween != null and _fx_tween.is_valid():
 		_fx_tween.kill()
 	_fx.texture = sprite_frames.get_frame_texture(pose, 0)
-	_fx.offset = offset
+	_fx.offset = Vector2.ZERO
 	_fx.flip_h = flip_h
 	_fx.visible = true
 	_fx.modulate = Color.WHITE

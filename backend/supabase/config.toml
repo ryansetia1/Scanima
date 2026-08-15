@@ -4,7 +4,7 @@
 # working directory name when running `supabase init`.
 project_id = "scanima"
 
-# Keempat fungsi dideklarasikan di sini supaya `supabase functions deploy` tanpa
+# Semua fungsi dideklarasikan di sini supaya `supabase functions deploy` tanpa
 # argumen memperlakukan semuanya sama seperti deploy manual.
 #
 # verify_jwt pada replicate_webhook WAJIB false: Replicate tidak mengirim JWT
@@ -22,6 +22,14 @@ verify_jwt = true
 import_map = "./functions/import_map.json"
 
 [functions.battle_anima]
+verify_jwt = true
+import_map = "./functions/import_map.json"
+
+[functions.team_battle]
+verify_jwt = true
+import_map = "./functions/import_map.json"
+
+[functions.expedition]
 verify_jwt = true
 import_map = "./functions/import_map.json"
 

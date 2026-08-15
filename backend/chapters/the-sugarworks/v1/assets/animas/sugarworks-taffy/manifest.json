@@ -1,0 +1,160 @@
+{
+  "color_bucket": "amber",
+  "frame_size": [
+    347,
+    281
+  ],
+  "poses": {
+    "attack": {
+      "region": [
+        347,
+        0,
+        347,
+        281
+      ]
+    },
+    "defeated": {
+      "region": [
+        0,
+        562,
+        347,
+        281
+      ]
+    },
+    "dirty": {
+      "region": [
+        694,
+        281,
+        347,
+        281
+      ]
+    },
+    "fx_strike": {
+      "region": [
+        347,
+        562,
+        347,
+        281
+      ]
+    },
+    "fx_surge": {
+      "region": [
+        694,
+        562,
+        347,
+        281
+      ]
+    },
+    "happy": {
+      "region": [
+        0,
+        281,
+        347,
+        281
+      ]
+    },
+    "hungry": {
+      "region": [
+        347,
+        281,
+        347,
+        281
+      ]
+    },
+    "idle": {
+      "region": [
+        0,
+        0,
+        347,
+        281
+      ]
+    },
+    "sleep": {
+      "region": [
+        694,
+        0,
+        347,
+        281
+      ]
+    }
+  },
+  "prompt_version": "v12",
+  "qa": {
+    "bbox_heights": {
+      "attack": 219,
+      "defeated": 269,
+      "dirty": 216,
+      "fx_strike": 165,
+      "fx_surge": 266,
+      "happy": 231,
+      "hungry": 217,
+      "idle": 216,
+      "sleep": 197
+    },
+    "cells_detected": 9,
+    "cells_rejected": {},
+    "green_residue_ratio": 0.00504,
+    "keyed_pixel_ratio": 0.7765,
+    "pose_ownership": {
+      "attack": {
+        "cross_boundary_pixels": 78,
+        "opaque_pixels": 27502
+      },
+      "defeated": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 28184
+      },
+      "dirty": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 24605
+      },
+      "fx_strike": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 13863
+      },
+      "fx_surge": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 37833
+      },
+      "happy": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 26483
+      },
+      "hungry": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 25025
+      },
+      "idle": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 25925
+      },
+      "sleep": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 24459
+      }
+    },
+    "seam_margin": {
+      "passed": true,
+      "ratio": 0.12,
+      "violations": []
+    },
+    "source_size": [
+      1024,
+      1024
+    ],
+    "standing_height_variance": 0.014,
+    "warnings": [
+      "pose defeated lebih tinggi dari idle",
+      "residu hijau 0.50%"
+    ],
+    "white_keyline_pixels_stripped": 483
+  },
+  "sheet": null,
+  "sheet_size": [
+    1041,
+    843
+  ],
+  "species_key": "sugarworks_taffy",
+  "stage": 2,
+  "version": 1
+}

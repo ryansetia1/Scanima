@@ -46,6 +46,10 @@ func set_scan_emphasized(emphasized: bool) -> void:
 	button.theme_type_variation = &"ScanTabButton" if emphasized else &"NavTabButton"
 
 
+func set_battle_badge(visible: bool) -> void:
+	%BattleNewBadge.visible = visible
+
+
 func set_busy(_busy: bool, details_available: bool) -> void:
 	# Requests continue in the persistent shell, so changing view stays safe.
 	for destination: StringName in _buttons:

@@ -478,6 +478,7 @@ export function segmentPosePixels(bitmap, width, height, opts = DEFAULTS, layout
     components.push({
       owner,
       pose: layout.poses[owner],
+      seed,
       pixels: end,
       foreign_pixels: end - ownQuadrantPixels,
       bbox: component,
@@ -558,6 +559,7 @@ export function auditSourceGridSeams(components, width, height, layout, opts = D
     violations.push({
       pose: component.pose,
       kind: "detached_idle_seam_fragment",
+      seed: component.seed,
       pixels: component.pixels,
       bbox: component.bbox,
     });
@@ -568,6 +570,36 @@ export function auditSourceGridSeams(components, width, height, layout, opts = D
     ratio: opts.seamMarginRatio,
     violations,
   };
+}
+
+function clearAlphaComponent(bitmap, width, height, seed, alphaThreshold) {
+  if (bitmap[seed * 4 + 3] <= alphaThreshold) return 0;
+  const queue = new Int32Array(width * height);
+  let start = 0;
+  let end = 1;
+  let cleared = 0;
+  queue[0] = seed;
+  bitmap.set([0, 0, 0, 0], seed * 4);
+  while (start < end) {
+    const pixel = queue[start++];
+    cleared++;
+    const x = pixel % width;
+    const y = Math.floor(pixel / width);
+    for (let dy = -1; dy <= 1; dy++) {
+      const nextY = y + dy;
+      if (nextY < 0 || nextY >= height) continue;
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nextX = x + dx;
+        if (nextX < 0 || nextX >= width) continue;
+        const next = nextY * width + nextX;
+        if (bitmap[next * 4 + 3] <= alphaThreshold) continue;
+        bitmap.set([0, 0, 0, 0], next * 4);
+        queue[end++] = next;
+      }
+    }
+  }
+  return cleared;
 }
 
 /**
@@ -699,10 +731,30 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
   const cellW = Math.floor(width / layout.grid);
   const cellH = Math.floor(height / layout.grid);
   const quadrantArea = cellW * cellH;
-  const segmented = segmentPosePixels(bitmap, width, height, opts, layout);
-  const seamAudit = promptMajor(meta.promptVersion) >= 12
+  let segmented = segmentPosePixels(bitmap, width, height, opts, layout);
+  let seamAudit = promptMajor(meta.promptVersion) >= 12
     ? auditSourceGridSeams(segmented.components, width, height, layout, opts)
     : null;
+  let seamCleanup = null;
+  if (seamAudit && !seamAudit.passed && opts.removeIdleSeamLeaks === true) {
+    let pixels = 0;
+    for (const violation of seamAudit.violations) {
+      pixels += clearAlphaComponent(
+        bitmap,
+        width,
+        height,
+        violation.seed,
+        opts.alphaThreshold,
+      );
+    }
+    seamCleanup = {
+      mode: "remove_detached_idle_components_v1",
+      components: seamAudit.violations.length,
+      pixels,
+    };
+    segmented = segmentPosePixels(bitmap, width, height, opts, layout);
+    seamAudit = auditSourceGridSeams(segmented.components, width, height, layout, opts);
+  }
   if (seamAudit && !seamAudit.passed) {
     const summary = seamAudit.violations
       .map((v) => `${v.pose}:${v.kind}:${v.pixels}px`)
@@ -803,6 +855,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       keyed_pixel_ratio: Number((keyedPixels / (bitmap.length / 4)).toFixed(4)),
       white_keyline_pixels_stripped: whiteKeylinePixelsStripped,
       ...(seamAudit ? { seam_margin: seamAudit } : {}),
+      ...(seamCleanup ? { seam_cleanup: seamCleanup } : {}),
       source_size: [decoded.width, decoded.height],
       // ponytail: erosi hijau hanya di cincin 1px terluar, bukan despill penuh.
       // Plafon: fringe yang lebih tebal dari 1px tetap lolos, dan itu terjadi

@@ -1,0 +1,91 @@
+{
+  "frame_size": [
+    300,
+    300
+  ],
+  "poses": {
+    "attack_command": {
+      "region": [
+        341,
+        0,
+        300,
+        300
+      ]
+    },
+    "concern_hit": {
+      "region": [
+        341,
+        341,
+        300,
+        300
+      ]
+    },
+    "defeat": {
+      "region": [
+        341,
+        682,
+        300,
+        300
+      ]
+    },
+    "intro_idle": {
+      "region": [
+        0,
+        0,
+        300,
+        300
+      ]
+    },
+    "last_anima": {
+      "region": [
+        682,
+        341,
+        300,
+        300
+      ]
+    },
+    "profile": {
+      "region": [
+        682,
+        682,
+        300,
+        300
+      ]
+    },
+    "special_command": {
+      "region": [
+        682,
+        0,
+        300,
+        300
+      ]
+    },
+    "switch_command": {
+      "region": [
+        0,
+        341,
+        300,
+        300
+      ]
+    },
+    "victory": {
+      "region": [
+        0,
+        682,
+        300,
+        300
+      ]
+    }
+  },
+  "prompt_version": "chapter_factory/v1",
+  "qa": {
+    "cells_detected": 9,
+    "mode": "chroma_grid"
+  },
+  "seeker_id": "confectioner",
+  "sheet_size": [
+    1024,
+    1024
+  ],
+  "version": 1
+}

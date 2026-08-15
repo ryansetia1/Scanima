@@ -1,0 +1,26 @@
+{
+  "approved_at": "2026-08-15T09:45:01.996Z",
+  "approved_by": "Ryan Setiawan",
+  "asset_hashes": {
+    "expeditions/the-sugarworks/trophy/sugarworks-trophy.png": "af063bf31653a744c608edf8278bc979124a4ed3d33be3e30cfa6364c1a87dec",
+    "expeditions/the-sugarworks/v1/animas/sugarworks-caramel/sheet.png": "ecc2130987a99b2fa0d0cac96951c4d7a9b41fca0f986ec6433677689f4222bb",
+    "expeditions/the-sugarworks/v1/animas/sugarworks-cotton/sheet.png": "a470e9690cb7301cb0e32456bc446c0e96ee18ff222ade4740a7e0e55a73f39a",
+    "expeditions/the-sugarworks/v1/animas/sugarworks-fudge/sheet.png": "f5d2b20cd6a04e71fa080cb59e3b38482b2b2bffcbfd2343357d9cc57e848ffe",
+    "expeditions/the-sugarworks/v1/animas/sugarworks-gumdrop/sheet.png": "269f4fa290286d7fcad400436d042a85ec1054f31841bbfc9b0037293a09537f",
+    "expeditions/the-sugarworks/v1/animas/sugarworks-licorice/sheet.png": "f218e002f6705f7606d78b1595e9ae985e7b8cd228773a11fc616e313a5be97f",
+    "expeditions/the-sugarworks/v1/animas/sugarworks-nougat/sheet.png": "04adc150c99348f8417f227bbe45a6fae3f2ed90a0855f23a2743c1707acb782",
+    "expeditions/the-sugarworks/v1/animas/sugarworks-peppermint/sheet.png": "45fc21709eed7f52bf055962eef2b8a892ffacdbe76bfcff4d2224bfc3ee5502",
+    "expeditions/the-sugarworks/v1/animas/sugarworks-syrup/sheet.png": "1aab182c36b3f8944582c7f9cd2eff032e51ff6e99ebac0cf92fb2b96e12cc6a",
+    "expeditions/the-sugarworks/v1/animas/sugarworks-taffy/sheet.png": "1681f38085cd3d1575b8280ce2a3674c04b84297dcd05e6838061f5d9bc04126",
+    "expeditions/the-sugarworks/v1/boss/confectioner-seeker.png": "54917c4ecb549af90f3338147361fc00eb8f8f463eaa21fbb37e9258018a198d",
+    "expeditions/the-sugarworks/v1/zones/zone-1.png": "c150213eb39fc97a59f626811d7fb9f889bebf4927316410cbacad007d849c69",
+    "expeditions/the-sugarworks/v1/zones/zone-2.png": "4aff708592737f3840b9a4e0698d83d7686629141dac54f513a27b869c4324d2",
+    "expeditions/the-sugarworks/v1/zones/zone-3.png": "79f8f5ced713c1435541cebc23a1372684d3c4a042a2a7fadaf88bfcc8fa4d1b"
+  },
+  "chapter_slug": "the-sugarworks",
+  "content_version": 1,
+  "manifest_hash": "309be7018291047b25512e62aff9d020d0966356098ba70e3bf37c065b05d7f8",
+  "notes": "Manual visual review confirmed by operator",
+  "review_confirmed": true,
+  "sequence": 1
+}

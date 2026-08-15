@@ -320,6 +320,32 @@ func battle_anima(operation: String, payload: Dictionary = {}) -> Dictionary:
 	)
 
 
+func team_battle(operation: String, payload: Dictionary = {}) -> Dictionary:
+	var body := payload.duplicate(true)
+	body["operation"] = operation
+	body["timezone_offset_minutes"] = timezone_offset_minutes()
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/functions/v1/team_battle",
+		_headers(true, ["content-type: application/json"]),
+		JSON.stringify(body).to_utf8_buffer(),
+		TIMEOUT_SEC
+	)
+
+
+func expedition(operation: String, payload: Dictionary = {}) -> Dictionary:
+	var body := payload.duplicate(true)
+	body["operation"] = operation
+	body["timezone_offset_minutes"] = timezone_offset_minutes()
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/functions/v1/expedition",
+		_headers(true, ["content-type: application/json"]),
+		JSON.stringify(body).to_utf8_buffer(),
+		TIMEOUT_SEC
+	)
+
+
 func seeker(operation: String, payload: Dictionary = {}) -> Dictionary:
 	var body := payload.duplicate(true)
 	body["operation"] = operation

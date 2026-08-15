@@ -105,6 +105,13 @@ custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "SETTINGS_REDUCED_MOTION"
 
+[node name="ChapterPush" type="CheckButton" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "SETTINGS_CHAPTER_PUSH"
+
 [node name="SeekerHelp" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)

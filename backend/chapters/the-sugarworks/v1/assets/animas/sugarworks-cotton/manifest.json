@@ -1,0 +1,166 @@
+{
+  "color_bucket": "cloud",
+  "frame_size": [
+    355,
+    289
+  ],
+  "poses": {
+    "attack": {
+      "region": [
+        355,
+        0,
+        355,
+        289
+      ]
+    },
+    "defeated": {
+      "region": [
+        0,
+        578,
+        355,
+        289
+      ]
+    },
+    "dirty": {
+      "region": [
+        710,
+        289,
+        355,
+        289
+      ]
+    },
+    "fx_strike": {
+      "region": [
+        355,
+        578,
+        355,
+        289
+      ]
+    },
+    "fx_surge": {
+      "region": [
+        710,
+        578,
+        355,
+        289
+      ]
+    },
+    "happy": {
+      "region": [
+        0,
+        289,
+        355,
+        289
+      ]
+    },
+    "hungry": {
+      "region": [
+        355,
+        289,
+        355,
+        289
+      ]
+    },
+    "idle": {
+      "region": [
+        0,
+        0,
+        355,
+        289
+      ]
+    },
+    "sleep": {
+      "region": [
+        710,
+        0,
+        355,
+        289
+      ]
+    }
+  },
+  "prompt_version": "v12",
+  "qa": {
+    "bbox_heights": {
+      "attack": 262,
+      "defeated": 272,
+      "dirty": 245,
+      "fx_strike": 266,
+      "fx_surge": 277,
+      "happy": 253,
+      "hungry": 240,
+      "idle": 236,
+      "sleep": 271
+    },
+    "cells_detected": 9,
+    "cells_rejected": {},
+    "green_residue_ratio": 0.01027,
+    "keyed_pixel_ratio": 0.6573,
+    "pose_ownership": {
+      "attack": {
+        "cross_boundary_pixels": 2,
+        "opaque_pixels": 36257
+      },
+      "defeated": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 37555
+      },
+      "dirty": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 36688
+      },
+      "fx_strike": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 28866
+      },
+      "fx_surge": {
+        "cross_boundary_pixels": 89,
+        "opaque_pixels": 65882
+      },
+      "happy": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 36952
+      },
+      "hungry": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 35423
+      },
+      "idle": {
+        "cross_boundary_pixels": 351,
+        "opaque_pixels": 36124
+      },
+      "sleep": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 36417
+      }
+    },
+    "seam_cleanup": {
+      "components": 2,
+      "mode": "remove_detached_idle_components_v1",
+      "pixels": 78
+    },
+    "seam_margin": {
+      "passed": true,
+      "ratio": 0.12,
+      "violations": []
+    },
+    "source_size": [
+      1024,
+      1024
+    ],
+    "standing_height_variance": 0.099,
+    "warnings": [
+      "pose sleep lebih tinggi dari idle",
+      "pose defeated lebih tinggi dari idle",
+      "residu hijau 1.03%"
+    ],
+    "white_keyline_pixels_stripped": 8597
+  },
+  "sheet": null,
+  "sheet_size": [
+    1065,
+    867
+  ],
+  "species_key": "sugarworks_cotton",
+  "stage": 2,
+  "version": 1
+}

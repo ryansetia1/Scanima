@@ -15,7 +15,8 @@ membuka profil, Google, Reduced Motion, bantuan, dan hapus akun.
    memakai 1 Core dan membuat art privat yang unik.
 2. **Home** — rawat companion yang sedang di-Summon.
 3. **Collection** — lihat semua Anima. Tap kartu, lalu **Summon** untuk membawanya ke Home.
-4. **Battle** — duel kalau Anima bangun dan berenergi. Lapar atau kotor tidak mengunci, tapi stats turun. Kalau yang aktif belum siap, **Choose Anima** memilih companion lain.
+4. **Battle** — mainkan Duel, Team Battle dengan 4 Anima, atau Expedition **The
+   Sugarworks**. Lapar atau kotor tidak mengunci battle, tapi stats turun.
 5. **Anima** — profil: traits, attributes, ganti nama, Delete.
 6. **Gallery** — buka dari menu Seeker untuk melihat atau memublikasikan art.
 
@@ -27,7 +28,7 @@ membuka profil, Google, Reduced Motion, bantuan, dan hapus akun.
 | [Ekonomi](economy.md) | Genesis Cores, Bits, Shop, Scan, menunggu telur |
 | [Seeker](seeker.md) | Guest, Google, profil, onboarding, Reduced Motion, hapus akun |
 | [Anima](anima.md) | Traits, attributes, EXP, Level, Collection, Summon |
-| [Battle](battle.md) | Syarat masuk, Attack / Special / Guard / Item, PP, hadiah |
+| [Battle](battle.md) | Duel, Team Battle, Expedition The Sugarworks, perintah, PP, hadiah |
 | [Gallery](gallery.md) | Publish, moderation, Report, Hide, dan privasi |
 
 ## Yang perlu diingat

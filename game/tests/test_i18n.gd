@@ -77,6 +77,9 @@ const PLAYER_UI_FILES := [
 	"res://scripts/scan_view.gd",
 	"res://scripts/collection_view.gd",
 	"res://scripts/battle_view.gd",
+	"res://scripts/team_battle_view.gd",
+	"res://scripts/expedition_view.gd",
+	"res://scripts/expedition_controller.gd",
 	"res://scripts/anima_details_view.gd",
 	"res://scripts/shop_sheet.gd",
 	"res://scripts/battle_pick_sheet.gd",
@@ -88,6 +91,8 @@ const PLAYER_UI_FILES := [
 	"res://scenes/ui/scan_view.tscn",
 	"res://scenes/ui/collection_view.tscn",
 	"res://scenes/ui/battle_view.tscn",
+	"res://scenes/ui/team_battle_view.tscn",
+	"res://scenes/ui/expedition_view.tscn",
 	"res://scenes/ui/anima_details_view.tscn",
 	"res://scenes/ui/shop_sheet.tscn",
 	"res://scenes/ui/battle_pick_sheet.tscn",
@@ -152,7 +157,10 @@ func _initialize() -> void:
 
 func _check_referenced_keys(keys: Dictionary) -> void:
 	var pattern := RegEx.new()
-	pattern.compile("(?:tr\\(|text = |title = |ok_button_text = )\\\"([A-Z][A-Z0-9_]+)\\\"")
+	pattern.compile(
+		"(?:tr\\(|set_loading\\(|text = |title = |ok_button_text = )"
+		+ "\\s*\\\"([A-Z][A-Z0-9_]+)\\\""
+	)
 	var direct_text := RegEx.new()
 	direct_text.compile("\\.text\\s*=\\s*\\\"")
 	for path in PLAYER_UI_FILES:

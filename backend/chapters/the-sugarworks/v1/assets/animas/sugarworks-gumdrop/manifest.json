@@ -1,0 +1,161 @@
+{
+  "color_bucket": "pink",
+  "frame_size": [
+    329,
+    284
+  ],
+  "poses": {
+    "attack": {
+      "region": [
+        329,
+        0,
+        329,
+        284
+      ]
+    },
+    "defeated": {
+      "region": [
+        0,
+        568,
+        329,
+        284
+      ]
+    },
+    "dirty": {
+      "region": [
+        658,
+        284,
+        329,
+        284
+      ]
+    },
+    "fx_strike": {
+      "region": [
+        329,
+        568,
+        329,
+        284
+      ]
+    },
+    "fx_surge": {
+      "region": [
+        658,
+        568,
+        329,
+        284
+      ]
+    },
+    "happy": {
+      "region": [
+        0,
+        284,
+        329,
+        284
+      ]
+    },
+    "hungry": {
+      "region": [
+        329,
+        284,
+        329,
+        284
+      ]
+    },
+    "idle": {
+      "region": [
+        0,
+        0,
+        329,
+        284
+      ]
+    },
+    "sleep": {
+      "region": [
+        658,
+        0,
+        329,
+        284
+      ]
+    }
+  },
+  "prompt_version": "v12",
+  "qa": {
+    "bbox_heights": {
+      "attack": 186,
+      "defeated": 272,
+      "dirty": 203,
+      "fx_strike": 199,
+      "fx_surge": 265,
+      "happy": 227,
+      "hungry": 202,
+      "idle": 205,
+      "sleep": 232
+    },
+    "cells_detected": 9,
+    "cells_rejected": {},
+    "green_residue_ratio": 0.01085,
+    "keyed_pixel_ratio": 0.7129,
+    "pose_ownership": {
+      "attack": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 34655
+      },
+      "defeated": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 35388
+      },
+      "dirty": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 33831
+      },
+      "fx_strike": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 16611
+      },
+      "fx_surge": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 49948
+      },
+      "happy": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 32919
+      },
+      "hungry": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 31797
+      },
+      "idle": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 32007
+      },
+      "sleep": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 33527
+      }
+    },
+    "seam_margin": {
+      "passed": true,
+      "ratio": 0.12,
+      "violations": []
+    },
+    "source_size": [
+      1024,
+      1024
+    ],
+    "standing_height_variance": 0.093,
+    "warnings": [
+      "pose sleep lebih tinggi dari idle",
+      "pose defeated lebih tinggi dari idle",
+      "residu hijau 1.08%"
+    ],
+    "white_keyline_pixels_stripped": 280
+  },
+  "sheet": null,
+  "sheet_size": [
+    987,
+    852
+  ],
+  "species_key": "sugarworks_gumdrop",
+  "stage": 2,
+  "version": 1
+}

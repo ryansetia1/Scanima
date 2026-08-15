@@ -25,6 +25,13 @@ feed mengembalikan signed URL singkat tanpa owner ID, Seeker name, nickname,
 sheet path, atau foto asli. Battle memilih bot pemain hanya dari entry Gallery
 approved; lawan sistem/legacy tetap fallback saat feed kosong.
 
+Target mode berikutnya tidak mengganti jalur Duel. `team_battle` memakai
+resolver roster terpisah yang mengimpor formula stat/damage/elemen yang sama,
+sedangkan `expedition` mengorkestrasi map, checkpoint, node, Trophy, dan
+encounter melalui resolver team itu. Chapter dan aset boss dipublish sebagai
+manifest immutable di server; client tidak memanggil model. Lihat
+[`09-team-battle-and-expedition.md`](09-team-battle-and-expedition.md).
+
 Bagian lama di bawah yang menyebut cache hit, `record_cache_hit`,
 `claim_genesis`, CDN publik, atau `species_library` sebagai jalur normal adalah
 catatan arsitektur sebelum v13. Kontrak rollout dan rollback lengkap ada di
@@ -139,6 +146,8 @@ sequenceDiagram
 | `replicate_webhook` | Post-processing gambar, isi cache, tandai ready | Dipercaya tanpa verifikasi signature |
 | `care_anima` | Verifikasi JWT, teruskan aksi care idempoten ke transaksi Postgres | Menerima `owner_id` dari client atau memanggil model |
 | `battle_anima` | Start/resume/turn/forfeit; hitung formula; commit session | Menerima HP baru atau klaim kemenangan dari client |
+| `team_battle` | Team/Defense roster, kandidat async, switch, session, cap Team | Mengubah kontrak Duel atau menerima snapshot client |
+| `expedition` | Chapter list, map, checkpoint, node, Trophy, encounter team | Menjalankan model atau mempercayai route/reward client |
 | `shop` | Verifikasi JWT, debit Bits, upsert inventory, replay receipt | Dipanggil lewat RPC `purchase_catalog_item` dari client |
 | `seeker` | Profil Seeker, grant upgrade Google, dan hapus akun | Menerima `owner_id` dari body atau menggabungkan dua akun |
 | `SecureStore` + `AuthFlow` | Token Keystore/Keychain, backup guest, link/restore OAuth | Menulis refresh token ke `state.json` atau mengganti sesi sebelum exchange valid |

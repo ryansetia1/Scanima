@@ -32,6 +32,16 @@ var pending_care: Dictionary = {}
 ## dipertahankan saat timeout supaya turn dan reward tidak pernah commit dua kali.
 var pending_battle: Dictionary = {}
 
+## Team Battle punya lifecycle sendiri karena action Switch membawa slot dan
+## endpoint-nya berbeda dari Duel. Bentuknya sama dengan pending_battle plus
+## switch_to_slot, sehingga restart tidak dapat mengubah target pergantian.
+var pending_team_battle: Dictionary = {}
+
+## Expedition menyimpan run dan encounter sekaligus. `operation` kosong berarti
+## hanya bookmark untuk resume; operation terisi dipertahankan sampai response
+## authoritative supaya node, Supplies, damage, atau reward tidak commit dua kali.
+var pending_expedition: Dictionary = {}
+
 ## {idempotency_key, item_id, expected_price}. Satu pembelian menggantung.
 var pending_purchase: Dictionary = {}
 
@@ -39,8 +49,12 @@ var pending_purchase: Dictionary = {}
 ## exchange berhasil, dan backup token disimpan terpisah di SecureStore.
 var pending_oauth: Dictionary = {}
 
-## Preference lokal yang aman dipersist, saat ini hanya Reduced Motion.
-var preferences: Dictionary = {"reduced_motion": false}
+## Preference lokal yang aman dipersist. Push adalah pilihan per-device karena
+## izin OS dan FCM topic subscription juga hidup per-device.
+var preferences: Dictionary = {
+	"reduced_motion": false,
+	"chapter_push_enabled": false,
+}
 
 ## Anima terakhir yang berhasil dimuat, supaya app bisa langsung menampilkannya
 ## saat dibuka lagi tanpa menunggu jaringan sama sekali.
@@ -75,6 +89,8 @@ func load_state() -> void:
 	pending_scan = as_dict(data.get("pending_scan"))
 	pending_care = as_dict(data.get("pending_care"))
 	pending_battle = as_dict(data.get("pending_battle"))
+	pending_team_battle = as_dict(data.get("pending_team_battle"))
+	pending_expedition = as_dict(data.get("pending_expedition"))
 	pending_purchase = as_dict(data.get("pending_purchase"))
 	pending_oauth = as_dict(data.get("pending_oauth"))
 	preferences.merge(as_dict(data.get("preferences")), true)
@@ -103,6 +119,8 @@ func save() -> void:
 		"pending_scan": pending_scan,
 		"pending_care": pending_care,
 		"pending_battle": pending_battle,
+		"pending_team_battle": pending_team_battle,
+		"pending_expedition": pending_expedition,
 		"pending_purchase": pending_purchase,
 		"pending_oauth": pending_oauth,
 		"preferences": preferences,
@@ -190,6 +208,8 @@ func clear_account_state() -> void:
 	pending_scan = {}
 	pending_care = {}
 	pending_battle = {}
+	pending_team_battle = {}
+	pending_expedition = {}
 	pending_purchase = {}
 	pending_oauth = {}
 	last_anima = {}
@@ -208,6 +228,8 @@ func discard_guest_local_state() -> void:
 	pending_scan = {}
 	pending_care = {}
 	pending_battle = {}
+	pending_team_battle = {}
+	pending_expedition = {}
 	pending_purchase = {}
 	last_anima = {}
 	profile = {}
@@ -222,6 +244,38 @@ func set_reduced_motion(enabled: bool) -> void:
 
 func reduced_motion() -> bool:
 	return bool(preferences.get("reduced_motion", false))
+
+
+func set_chapter_push_enabled(enabled: bool) -> void:
+	preferences["chapter_push_enabled"] = enabled
+	save()
+
+
+func chapter_push_enabled() -> bool:
+	return bool(preferences.get("chapter_push_enabled", false))
+
+
+func set_team_battle_available(available: bool) -> void:
+	if team_battle_available() == available and preferences.has("team_battle_available"):
+		return
+	preferences["team_battle_available"] = available
+	save()
+
+
+func team_battle_available() -> bool:
+	# Kosong = permissive: flag production sudah on, jangan lock lobby menunggu RPC.
+	return bool(preferences.get("team_battle_available", true))
+
+
+func set_expedition_available(available: bool) -> void:
+	if expedition_available() == available and preferences.has("expedition_available"):
+		return
+	preferences["expedition_available"] = available
+	save()
+
+
+func expedition_available() -> bool:
+	return bool(preferences.get("expedition_available", true))
 
 
 func _secure_store() -> Node:
@@ -332,6 +386,119 @@ func confirm_battle_response(session_data: Dictionary) -> void:
 
 func finish_battle() -> void:
 	pending_battle = {}
+	save()
+
+
+func remember_team_battle(session_id: String, expected_turn: int, expected_version: int) -> void:
+	pending_team_battle = {
+		"session_id": session_id,
+		"expected_turn": expected_turn,
+		"expected_version": expected_version,
+		"action": "",
+		"item_id": "",
+		"switch_to_slot": -1,
+		"idempotency_key": "",
+	}
+	save()
+
+
+func begin_team_battle_action(
+	session_id: String,
+	expected_turn: int,
+	expected_version: int,
+	action: String,
+	item_id: String = "",
+	switch_to_slot: int = -1
+) -> Dictionary:
+	if (
+		not pending_team_battle.is_empty()
+		and (
+			str(pending_team_battle.get("session_id", "")) != session_id
+			or not str(pending_team_battle.get("action", "")).is_empty()
+		)
+	):
+		return pending_team_battle
+	var key := "%d-%08x%08x" % [int(Time.get_unix_time_from_system()), randi(), randi()]
+	pending_team_battle = {
+		"session_id": session_id,
+		"expected_turn": expected_turn,
+		"expected_version": expected_version,
+		"action": action,
+		"item_id": item_id,
+		"switch_to_slot": switch_to_slot,
+		"idempotency_key": key,
+	}
+	save()
+	return pending_team_battle
+
+
+func confirm_team_battle_response(session_data: Dictionary) -> void:
+	if str(session_data.get("status", "")) == "active":
+		remember_team_battle(
+			str(session_data.get("id", "")),
+			int(session_data.get("turn_number", 1)),
+			int(session_data.get("version", 1))
+		)
+	else:
+		finish_team_battle()
+
+
+func finish_team_battle() -> void:
+	pending_team_battle = {}
+	save()
+
+
+func remember_expedition(run_data: Dictionary, encounter_data: Dictionary = {}) -> void:
+	var status := str(run_data.get("status", ""))
+	if status in ["complete", "abandoned"]:
+		finish_expedition()
+		return
+	pending_expedition = {
+		"run_id": str(run_data.get("id", "")),
+		"run_version": int(run_data.get("version", 1)),
+		"encounter_id": str(encounter_data.get("id", "")),
+		"expected_turn": int(encounter_data.get("turn_number", 1)),
+		"expected_version": int(encounter_data.get("version", 1)),
+		"operation": "",
+		"action": "",
+		"item_id": "",
+		"switch_to_slot": -1,
+		"node_id": "",
+		"option_id": "",
+		"target_slot": -1,
+		"team_id": "",
+		"idempotency_key": "",
+	}
+	save()
+
+
+func begin_expedition_operation(
+	operation: String,
+	fields: Dictionary = {}
+) -> Dictionary:
+	if (
+		not pending_expedition.is_empty()
+		and not str(pending_expedition.get("operation", "")).is_empty()
+	):
+		return pending_expedition
+	var pending := pending_expedition.duplicate(true)
+	pending["operation"] = operation
+	pending["idempotency_key"] = (
+		"%d-%08x%08x" % [int(Time.get_unix_time_from_system()), randi(), randi()]
+	)
+	for key: Variant in fields:
+		pending[key] = fields[key]
+	pending_expedition = pending
+	save()
+	return pending_expedition
+
+
+func confirm_expedition_response(run_data: Dictionary, encounter_data: Dictionary = {}) -> void:
+	remember_expedition(run_data, encounter_data)
+
+
+func finish_expedition() -> void:
+	pending_expedition = {}
 	save()
 
 

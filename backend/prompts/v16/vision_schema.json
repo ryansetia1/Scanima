@@ -1,0 +1,191 @@
+{
+  "type": "object",
+  "description": "Hasil analisis Anima Analyst v13. Skema disisipkan ke system_instruction; extractJson() dan validateVision() tetap pagar akhir.",
+  "propertyOrdering": [
+    "safe", "is_object", "subject_kind", "reject_reason", "object_label", "species_key",
+    "color_bucket", "element", "secondary_element", "rarity", "stats", "stat_reasoning",
+    "surface_finish", "damage_hints", "character_direction", "creature_brief",
+    "signature_features", "suggested_name", "strike_name", "surge_name",
+    "strike_vfx", "surge_vfx", "dominant_colors"
+  ],
+  "required": ["safe", "is_object", "subject_kind", "reject_reason"],
+  "properties": {
+    "safe": {
+      "type": "boolean",
+      "description": "false kalau foto melanggar salah satu aturan GATE"
+    },
+    "is_object": {
+      "type": "boolean",
+      "description": "true kalau ada satu subjek diskret yang jelas (objek atau hewan)"
+    },
+    "subject_kind": {
+      "type": "string",
+      "nullable": true,
+      "enum": ["object", "animal"]
+    },
+    "reject_reason": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "human_face", "human_body", "unsafe_content", "personal_info",
+        "too_unclear", "no_object", "animal_distress", "animal_abuse",
+        "dangerous_situation"
+      ]
+    },
+    "object_label": {
+      "type": "string",
+      "nullable": true,
+      "description": "Nama subjek sehari-hari dalam bahasa Inggris"
+    },
+    "species_key": {
+      "type": "string",
+      "nullable": true,
+      "description": "snake_case, 2-4 segmen; boleh memuat cue visual unik foto ini"
+    },
+    "color_bucket": {
+      "type": "string",
+      "nullable": true,
+      "enum": ["warm_red", "warm_yellow", "cool_blue", "cool_green", "purple_pink", "neutral_light", "neutral_dark", "metallic", "multicolor"]
+    },
+    "element": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "metal", "wood", "stone", "ceramic", "glass", "plastic", "cloth", "paper",
+        "plant", "food", "fauna", "flow", "spark", "flame", "frost", "air",
+        "toxin", "sound"
+      ]
+    },
+    "secondary_element": {
+      "type": "string",
+      "nullable": true,
+      "enum": [
+        "metal", "wood", "stone", "ceramic", "glass", "plastic", "cloth", "paper",
+        "plant", "food", "fauna", "flow", "spark", "flame", "frost", "air",
+        "toxin", "sound"
+      ]
+    },
+    "rarity": {
+      "type": "integer",
+      "nullable": true,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "stats": {
+      "type": "object",
+      "nullable": true,
+      "required": ["hp", "atk", "def", "spd", "special"],
+      "propertyOrdering": ["hp", "atk", "def", "spd", "special"],
+      "properties": {
+        "hp": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "atk": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "def": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "spd": { "type": "integer", "minimum": 10, "maximum": 95 },
+        "special": { "type": "integer", "minimum": 10, "maximum": 95 }
+      }
+    },
+    "stat_reasoning": {
+      "type": "object",
+      "nullable": true,
+      "propertyOrdering": ["hp", "atk", "def", "spd", "special"],
+      "properties": {
+        "hp": { "type": "string" },
+        "atk": { "type": "string" },
+        "def": { "type": "string" },
+        "spd": { "type": "string" },
+        "special": { "type": "string" }
+      }
+    },
+    "surface_finish": {
+      "type": "string",
+      "nullable": true,
+      "description": "Material, coat, plumage, shell, atau finish dominan yang terlihat"
+    },
+    "damage_hints": {
+      "type": "array",
+      "nullable": true,
+      "minItems": 2,
+      "maxItems": 3,
+      "items": { "type": "string" }
+    },
+    "character_direction": {
+      "type": "string",
+      "nullable": true,
+      "description": "Arahan visual berdasarkan cue bentuk, proporsi, warna, dan material"
+    },
+    "creature_brief": {
+      "type": "string",
+      "nullable": true,
+      "description": "40-80 kata termasuk silhouette dan body plan"
+    },
+    "signature_features": {
+      "type": "array",
+      "nullable": true,
+      "minItems": 2,
+      "maxItems": 4,
+      "items": { "type": "string" }
+    },
+    "suggested_name": {
+      "type": "string",
+      "nullable": true,
+      "description": "Nama kreatur rekaan, 2-4 suku kata"
+    },
+    "strike_name": {
+      "type": "string",
+      "nullable": true,
+      "description": "Nama serangan biasa unik, tepat dua kata Inggris pendek"
+    },
+    "surge_name": {
+      "type": "string",
+      "nullable": true,
+      "description": "Nama Special unik, tepat dua kata Inggris pendek"
+    },
+    "strike_vfx": {
+      "type": "object",
+      "nullable": true,
+      "required": ["form", "motion", "brief"],
+      "propertyOrdering": ["form", "motion", "brief"],
+      "properties": {
+        "form": {
+          "type": "string",
+          "enum": ["arc", "beam", "trail", "wave", "eruption", "ring", "scatter", "tether", "stamp", "cloud", "shatter", "growth"]
+        },
+        "motion": {
+          "type": "string",
+          "enum": ["projectile", "sweep", "impact", "bloom"]
+        },
+        "brief": {
+          "type": "string",
+          "description": "Satu kalimat visual grounded pada struktur, material, dan nama move"
+        }
+      }
+    },
+    "surge_vfx": {
+      "type": "object",
+      "nullable": true,
+      "required": ["form", "motion", "brief"],
+      "propertyOrdering": ["form", "motion", "brief"],
+      "properties": {
+        "form": {
+          "type": "string",
+          "enum": ["arc", "beam", "trail", "wave", "eruption", "ring", "scatter", "tether", "stamp", "cloud", "shatter", "growth"]
+        },
+        "motion": {
+          "type": "string",
+          "enum": ["projectile", "sweep", "impact", "bloom"]
+        },
+        "brief": {
+          "type": "string",
+          "description": "Satu kalimat visual yang berbeda bentuk dan motion dari strike_vfx"
+        }
+      }
+    },
+    "dominant_colors": {
+      "type": "array",
+      "nullable": true,
+      "maxItems": 3,
+      "items": { "type": "string" },
+      "description": "Hex seperti #a1b2c3"
+    }
+  }
+}

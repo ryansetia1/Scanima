@@ -22,6 +22,7 @@ GameState="*res://scripts/game_state.gd"
 Backend="*res://scripts/backend.gd"
 LocaleManager="*res://scripts/locale_manager.gd"
 AuthFlow="*res://scripts/auth_flow.gd"
+GodotIQRuntime="*uid://s8e7qo1v4umi"
 
 [display]
 
@@ -33,7 +34,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/GodotGetImage/plugin.cfg", "res://addons/DeeplinkPlugin/plugin.cfg", "res://addons/OAuth2Plugin/plugin.cfg")
+enabled=PackedStringArray("res://addons/DeeplinkPlugin/plugin.cfg", "res://addons/GodotGetImage/plugin.cfg", "res://addons/OAuth2Plugin/plugin.cfg", "res://addons/godotiq/plugin.cfg")
 
 [internationalization]
 

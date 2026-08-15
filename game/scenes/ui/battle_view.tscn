@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/battle_view.gd" id="1_battle"]
 [ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
@@ -9,6 +9,8 @@
 [ext_resource type="Texture2D" path="res://assets/icons/element-cloth.svg" id="7_cloth"]
 [ext_resource type="Texture2D" path="res://assets/icons/element-stone.svg" id="8_stone"]
 [ext_resource type="FontFile" path="res://assets/fonts/Oxanium-Variable.ttf" id="9_display"]
+[ext_resource type="PackedScene" path="res://scenes/ui/team_battle_view.tscn" id="10_team"]
+[ext_resource type="PackedScene" path="res://scenes/ui/expedition_view.tscn" id="11_expedition"]
 
 [sub_resource type="StyleBoxFlat" id="HpBackground"]
 bg_color = Color(0.025, 0.04, 0.09, 0.96)
@@ -48,6 +50,7 @@ cloth_icon = ExtResource("7_cloth")
 stone_icon = ExtResource("8_stone")
 
 [node name="Column" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -55,6 +58,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 10
+metadata/_edit_group_ = true
 
 [node name="Header" type="HBoxContainer" parent="Column"]
 unique_name_in_owner = true
@@ -116,6 +120,38 @@ custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 theme_type_variation = &"PrimaryButton"
 text = "BATTLE_START"
+
+[node name="BattleTeamButton" type="Button" parent="Column/BattleLobbyPanel/LobbyColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "TEAM_OPEN"
+
+[node name="BattleExpeditionButton" type="Button" parent="Column/BattleLobbyPanel/LobbyColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "EXPEDITION_OPEN"
+
+[node name="ExpeditionNewBadge" type="Label" parent="Column/BattleLobbyPanel/LobbyColumn/BattleExpeditionButton"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -96.0
+offset_top = 8.0
+offset_right = -16.0
+offset_bottom = 40.0
+grow_horizontal = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.78, 0.28, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.04, 0.09, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "CHAPTER_NEW_BADGE"
+horizontal_alignment = 2
 
 [node name="BattleContent" type="VBoxContainer" parent="Column"]
 unique_name_in_owner = true
@@ -549,6 +585,14 @@ custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 theme_type_variation = &"PrimaryButton"
 text = "BATTLE_AGAIN"
+
+[node name="TeamBattleView" parent="." instance=ExtResource("10_team")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="ExpeditionView" parent="." instance=ExtResource("11_expedition")]
+unique_name_in_owner = true
+layout_mode = 1
 
 [node name="BattleRewardResetTimer" type="Timer" parent="."]
 unique_name_in_owner = true

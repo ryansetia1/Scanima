@@ -78,6 +78,8 @@ const BAG_ICON := preload("res://assets/icons/backpack.svg")
 @onready var _home_view: HomeView = %HomeView
 @onready var _scan_view: ScanView = %ScanView
 @onready var _battle_view = %BattleView
+@onready var _team_battle_view: TeamBattleView = _battle_view.get_node("TeamBattleView")
+@onready var _expedition_view: ExpeditionView = _battle_view.get_node("ExpeditionView")
 @onready var _collection_view: CollectionView = %CollectionView
 @onready var _details_view: AnimaDetailsView = %AnimaDetailsView
 @onready var _seeker_profile_view: SeekerProfileView = %SeekerProfileView
@@ -102,6 +104,13 @@ var _level_up_revision := 0
 var _level_up_tween: Tween
 var _last_care_delta := 0
 var _battle_reward_revision := 0
+var _team_battle_team: Dictionary = {}
+var _team_battle_candidates: Array = []
+var _team_battle_daily: Dictionary = {}
+var _team_defense_published := false
+var _team_art_cache: Dictionary = {}
+var _trophy_icon_cache: Dictionary = {}
+var _expedition_controller: ExpeditionController
 var _gallery_status_revision := 0
 var _sleep_completion_timer: Timer = null
 var _sleep_sync_in_flight := false
@@ -113,12 +122,25 @@ var _last_anima_press_ms := -1000
 var _last_anima_press_position := Vector2(-1000.0, -1000.0)
 var _last_known_cores := -1
 var _update_required := false
+var _chapter_announcements: Dictionary = {}
+var _pending_chapter_popup: Array = []
+var _chapter_announcement_revision := 0
+var _chapter_push: ChapterPush
 
 ## Singleton plugin Android, null di desktop dan di test headless.
 var _picker: Object = null
 
 
 func _ready() -> void:
+	_chapter_push = ChapterPush.new()
+	_chapter_push.name = "ChapterPush"
+	add_child(_chapter_push)
+	_chapter_push.enabled_changed.connect(_on_chapter_push_enabled)
+	_chapter_push.chapter_message_received.connect(_refresh_chapter_announcements)
+	_chapter_push.failed.connect(_on_chapter_push_failed)
+	_chapter_push.configure(GameState.chapter_push_enabled())
+	_team_battle_view.set_thumbnail_provider(_thumbnail_for)
+	_expedition_view.set_thumbnail_provider(_thumbnail_for)
 	_sleep_completion_timer = Timer.new()
 	_sleep_completion_timer.name = "SleepCompletionTimer"
 	_sleep_completion_timer.one_shot = true
@@ -128,11 +150,34 @@ func _ready() -> void:
 	_scan_view.sign_in_requested.connect(_show_sign_in_confirmation)
 	_battle_view.start_requested.connect(_start_battle)
 	_battle_view.choose_anima_requested.connect(_open_battle_anima_picker)
+	_battle_view.team_mode_requested.connect(_open_team_battle_mode)
+	_battle_view.expedition_mode_requested.connect(func() -> void:
+		await _expedition_controller.open()
+	)
 	_battle_view.action_requested.connect(_battle_action_requested)
 	_battle_view.item_picker_requested.connect(_open_battle_item_picker)
 	_battle_view.resume_requested.connect(_retry_battle)
 	_battle_view.forfeit_requested.connect(_forfeit_battle)
 	_battle_view.reward_status_refresh_requested.connect(_refresh_battle_reward_status)
+	_team_battle_view.back_requested.connect(_close_team_battle_mode)
+	_team_battle_view.save_team_requested.connect(_save_team_battle_roster)
+	_team_battle_view.defense_requested.connect(_set_team_defense)
+	_team_battle_view.refresh_requested.connect(_refresh_team_battle_candidates)
+	_team_battle_view.start_requested.connect(_start_team_battle)
+	_team_battle_view.action_requested.connect(_team_battle_action_requested)
+	_team_battle_view.item_picker_requested.connect(_open_battle_item_picker)
+	_team_battle_view.forfeit_requested.connect(_forfeit_team_battle)
+	_team_battle_view.retry_requested.connect(_retry_team_battle)
+	_team_battle_view.arena_open_changed.connect(_on_immersive_arena_changed)
+	_expedition_view.combat_open_changed.connect(_on_immersive_arena_changed)
+	_expedition_controller = ExpeditionController.new()
+	_expedition_controller.name = "ExpeditionController"
+	add_child(_expedition_controller)
+	_expedition_controller.configure(_expedition_view, _battle_view)
+	_expedition_controller.item_picker_requested.connect(_open_battle_item_picker)
+	_expedition_controller.inventory_refresh_requested.connect(_refresh_inventory)
+	_expedition_controller.authority_refresh_requested.connect(_refresh_team_battle_authority)
+	_expedition_controller.announcements_changed.connect(_apply_chapter_announcements)
 	_home_view.care_requested.connect(_perform_care)
 	_home_view.care_blocked.connect(_on_care_blocked)
 	_home_view.first_scan_requested.connect(_open_scan)
@@ -168,10 +213,12 @@ func _ready() -> void:
 	_seeker_menu_sheet.help_requested.connect(_show_seeker_help)
 	_seeker_menu_sheet.delete_account_requested.connect(_show_delete_account_confirmation)
 	_seeker_menu_sheet.reduced_motion_changed.connect(_set_reduced_motion)
+	_seeker_menu_sheet.chapter_push_changed.connect(_set_chapter_push)
 	_seeker_onboarding_sheet.submit_requested.connect(_complete_seeker_profile)
 	_seeker_profile_view.back_requested.connect(func() -> void: _switch_destination(BottomNav.HOME))
 	_seeker_profile_view.help_requested.connect(_show_details_help)
 	_seeker_profile_view.rename_requested.connect(_show_rename_seeker)
+	_seeker_profile_view.trophies_save_requested.connect(_save_featured_trophies)
 	_gallery_view.back_requested.connect(func() -> void: _switch_destination(BottomNav.HOME))
 	_gallery_view.toast_requested.connect(_say)
 	AuthFlow.auth_succeeded.connect(_on_auth_succeeded)
@@ -269,6 +316,14 @@ func _ready() -> void:
 			_run_battle_demo("active", true)
 		if arg == "--battle-training-demo":
 			_run_battle_training_demo()
+		if arg == "--team-battle-demo":
+			_run_team_battle_demo()
+		if arg == "--expedition-demo":
+			_run_expedition_demo()
+		if arg == "--expedition-builder-demo":
+			_run_expedition_builder_demo()
+		if arg == "--chapter-announcement-demo":
+			_run_chapter_announcement_demo()
 		if arg.begins_with("--screenshot="):
 			await _capture_and_quit(arg.trim_prefix("--screenshot="))
 
@@ -285,6 +340,7 @@ func _notification(what: int) -> void:
 		call_deferred("_sync_sleep_completion")
 	if _destination == BottomNav.BATTLE:
 		call_deferred("_refresh_battle_reward_status")
+	call_deferred("_refresh_chapter_announcements")
 
 
 # ---------------------------------------------------------------- boot
@@ -302,6 +358,9 @@ func _boot() -> void:
 		_say(tr("STATUS_ACCOUNT_ERROR"))
 		_set_busy(false)
 		return
+	_apply_cached_mode_availability()
+	_discover_team_battle()
+	_expedition_controller.discover()
 
 	var profile_res := await Backend.fetch_profile()
 	_apply_profile_refresh(profile_res)
@@ -326,6 +385,7 @@ func _boot() -> void:
 	if not GameState.pending_purchase.is_empty():
 		await _resume_pending_purchase()
 	_set_busy(false)
+	call_deferred("_refresh_chapter_announcements")
 
 	# Scan yang tertinggal dari sesi sebelumnya dilanjutkan, bukan dibuang. Core-nya
 	# sudah terdebit dan gambarnya mungkin sudah selesai selagi app tertutup.
@@ -360,7 +420,15 @@ func _boot() -> void:
 		_anima.sprite_frames = null
 		_set_home_shell_state(&"empty")
 		_say(tr("STATUS_FIRST_SCAN"))
-	if not GameState.pending_battle.is_empty() and GameState.pending_scan.is_empty():
+	if not GameState.pending_expedition.is_empty() and GameState.pending_scan.is_empty():
+		_switch_destination(BottomNav.BATTLE)
+		_battle_view.show_expedition_mode()
+		await _expedition_controller.resume_pending()
+	elif not GameState.pending_team_battle.is_empty() and GameState.pending_scan.is_empty():
+		_switch_destination(BottomNav.BATTLE)
+		_battle_view.show_team_mode()
+		await _resume_team_battle()
+	elif not GameState.pending_battle.is_empty() and GameState.pending_scan.is_empty():
 		_switch_destination(BottomNav.BATTLE)
 		await _resume_battle()
 	if GameState.pending_scan.is_empty():
@@ -381,6 +449,8 @@ func _reload_roster() -> bool:
 		if not str(row.get("id", "")).is_empty():
 			ready.append(row)
 	_roster = ready
+	if is_instance_valid(_expedition_controller):
+		_expedition_controller.set_roster(_roster)
 	_roster_error = ""
 	_populate_collection()
 	return true
@@ -706,6 +776,8 @@ func _modal_confirmed(text: String) -> void:
 			_delete_account()
 		&"rename_seeker":
 			_rename_seeker(text)
+		&"chapter_announcement":
+			_ack_chapter_popup(true)
 
 
 func _modal_canceled() -> void:
@@ -721,11 +793,107 @@ func _modal_canceled() -> void:
 		_cores_chip.grab_action_focus()
 	elif context == &"bits_info":
 		_bits_chip.grab_action_focus()
+	elif context == &"chapter_announcement":
+		_ack_chapter_popup(false)
 
 
 func _show_details_help(title: String, body: String) -> void:
 	_modal_context = &"details_help"
 	_shell_modal.open_info(title, body, tr("CORE_INFO_CLOSE"))
+
+
+func _refresh_chapter_announcements() -> void:
+	_chapter_announcement_revision += 1
+	var revision := _chapter_announcement_revision
+	var res := await Backend.expedition("announcements")
+	if revision != _chapter_announcement_revision:
+		return
+	if res.ok:
+		_apply_chapter_announcements(GameState.as_dict(res.data), false)
+	elif res.error == "FEATURE_DISABLED":
+		_apply_chapter_announcements({}, false)
+
+
+func _apply_chapter_announcements(
+	announcements: Dictionary,
+	advance_revision: bool = true
+) -> void:
+	if advance_revision:
+		_chapter_announcement_revision += 1
+	_chapter_announcements = announcements.duplicate(true)
+	var unread: Array = (
+		announcements.get("unread", [])
+		if typeof(announcements.get("unread")) == TYPE_ARRAY else []
+	)
+	_pending_chapter_popup = (
+		announcements.get("home_popup", []).duplicate(true)
+		if typeof(announcements.get("home_popup")) == TYPE_ARRAY else []
+	)
+	var has_new := not unread.is_empty()
+	_bottom_nav.set_battle_badge(has_new)
+	_battle_view.set_expedition_new(has_new)
+	call_deferred("_maybe_show_chapter_popup")
+
+
+func _maybe_show_chapter_popup() -> void:
+	if (
+		_pending_chapter_popup.is_empty()
+		or _destination != BottomNav.HOME
+		or _busy
+		or _update_required
+		or _shell_modal.visible
+		or _seeker_onboarding_sheet.visible
+		or (
+			not _roster.is_empty()
+			and not profile_value_present(GameState.profile, &"seeker_name")
+		)
+	):
+		return
+	var titles := PackedStringArray()
+	var descriptions := PackedStringArray()
+	for value in _pending_chapter_popup:
+		var summary := GameState.as_dict(GameState.as_dict(value).get("summary"))
+		var title := str(summary.get("title", tr("EXPEDITION_CHAPTER")))
+		var description := str(summary.get("description", ""))
+		titles.append(title)
+		if not description.is_empty():
+			descriptions.append(description)
+	var body := (
+		tr("CHAPTER_ANNOUNCEMENT_ONE") % [
+			titles[0] if not titles.is_empty() else tr("EXPEDITION_CHAPTER"),
+			descriptions[0] if not descriptions.is_empty() else tr("EXPEDITION_CHAPTER_READY"),
+		]
+		if _pending_chapter_popup.size() == 1
+		else tr("CHAPTER_ANNOUNCEMENT_MANY") % [
+			LocaleManager.format_integer(_pending_chapter_popup.size()),
+			", ".join(titles),
+		]
+	)
+	_modal_context = &"chapter_announcement"
+	_shell_modal.open_info(
+		tr("CHAPTER_ANNOUNCEMENT_TITLE"),
+		body,
+		tr("CHAPTER_ANNOUNCEMENT_OPEN")
+	)
+
+
+func _ack_chapter_popup(open_expedition: bool) -> void:
+	var popup := _pending_chapter_popup.duplicate(true)
+	_pending_chapter_popup = []
+	var chapter_ids: Array[String] = []
+	for value in popup:
+		var chapter_id := str(GameState.as_dict(value).get("chapter_id", ""))
+		if not chapter_id.is_empty():
+			chapter_ids.append(chapter_id)
+	if not chapter_ids.is_empty():
+		_chapter_announcement_revision += 1
+		var revision := _chapter_announcement_revision
+		var res := await Backend.expedition("ack_home_popup", {"chapter_ids": chapter_ids})
+		if res.ok and revision == _chapter_announcement_revision:
+			_apply_chapter_announcements(GameState.as_dict(res.data), false)
+	if open_expedition:
+		_switch_destination(BottomNav.BATTLE)
+		await _expedition_controller.open()
 
 
 func _maybe_prompt_seeker_onboarding() -> void:
@@ -763,6 +931,7 @@ func _complete_seeker_profile(
 	_seeker_onboarding_sheet.close()
 	_refresh_header()
 	_say(tr("SEEKER_CREATED"), true)
+	call_deferred("_maybe_show_chapter_popup")
 
 
 func _open_gallery() -> void:
@@ -834,7 +1003,9 @@ func _open_seeker_menu() -> void:
 	_seeker_menu_sheet.show_menu(
 		GameState.profile,
 		GameState.is_anonymous(),
-		GameState.reduced_motion()
+		GameState.reduced_motion(),
+		ChapterPush.available(),
+		GameState.chapter_push_enabled()
 	)
 
 
@@ -852,7 +1023,49 @@ func _open_seeker_profile() -> void:
 		profile,
 		_thumbnail_for(_current_anima) if not _current_anima.is_empty() else null
 	)
+	_seeker_profile_view.hide_trophies()
 	_switch_destination(SEEKER_PROFILE_DEST)
+	await _load_seeker_trophies()
+
+
+func _load_seeker_trophies() -> void:
+	var res := await Backend.expedition("trophies")
+	if not res.ok:
+		_seeker_profile_view.hide_trophies()
+		return
+	var data := GameState.as_dict(res.data)
+	var textures: Dictionary = {}
+	var featured: Array = data.get("featured", []) if typeof(data.get("featured")) == TYPE_ARRAY else []
+	for value in featured:
+		var trophy := GameState.as_dict(GameState.as_dict(value).get("expedition_trophies"))
+		var trophy_id := str(trophy.get("id", ""))
+		var art_url := str(trophy.get("art_url", ""))
+		if trophy_id.is_empty() or art_url.is_empty():
+			continue
+		if _trophy_icon_cache.has(trophy_id):
+			textures[trophy_id] = _trophy_icon_cache[trophy_id]
+			continue
+		var download := await Backend.download_url(art_url)
+		if not download.ok:
+			continue
+		var image := Image.new()
+		if image.load_png_from_buffer(download.bytes) != OK:
+			continue
+		var texture := ImageTexture.create_from_image(image)
+		_trophy_icon_cache[trophy_id] = texture
+		textures[trophy_id] = texture
+	_seeker_profile_view.set_trophies(data, textures)
+
+
+func _save_featured_trophies(trophy_ids: Array[String]) -> void:
+	_seeker_profile_view.set_busy(true)
+	var res := await Backend.expedition("feature_trophies", {"trophy_ids": trophy_ids})
+	_seeker_profile_view.set_busy(false)
+	if not res.ok:
+		_say(tr("SEEKER_TROPHY_SAVE_ERROR"), true)
+		return
+	await _load_seeker_trophies()
+	_say(tr("SEEKER_TROPHY_SAVED"), true)
 
 
 func _show_rename_seeker() -> void:
@@ -956,6 +1169,7 @@ func _on_auth_succeeded(mode: String, profile: Dictionary) -> void:
 	_switch_destination(BottomNav.HOME)
 	_say(tr("SEEKER_RESTORED") if mode == "restore" else tr("SEEKER_LINKED"), true)
 	call_deferred("_maybe_prompt_seeker_onboarding")
+	call_deferred("_refresh_chapter_announcements")
 
 
 func _on_auth_failed(error: String) -> void:
@@ -1008,6 +1222,20 @@ func _show_seeker_help() -> void:
 func _set_reduced_motion(enabled: bool) -> void:
 	GameState.set_reduced_motion(enabled)
 	UiMotion.set_reduced_motion(enabled)
+
+
+func _set_chapter_push(enabled: bool) -> void:
+	_chapter_push.set_enabled(enabled)
+
+
+func _on_chapter_push_enabled(enabled: bool) -> void:
+	GameState.set_chapter_push_enabled(enabled)
+	_say(tr("CHAPTER_PUSH_ENABLED") if enabled else tr("CHAPTER_PUSH_DISABLED"), true)
+
+
+func _on_chapter_push_failed() -> void:
+	GameState.set_chapter_push_enabled(false)
+	_say(tr("CHAPTER_PUSH_ERROR"), true)
 
 
 func _seeker_error(error: String) -> String:
@@ -1313,7 +1541,7 @@ func _retry_battle() -> void:
 
 func _battle_action_requested(action: String) -> void:
 	if _busy:
-		# begin_action sudah menampilkan Resolving; tanpa request itu membeku.
+		# begin_action sudah mengunci tombol; tanpa request itu membeku.
 		_battle_view.set_busy(false)
 		return
 	var session: Dictionary = _battle_view.session_data()
@@ -1401,6 +1629,402 @@ func _forfeit_battle() -> void:
 	_set_busy(false)
 
 
+# ---------------------------------------------------------------- Team Battle
+
+func _apply_cached_mode_availability() -> void:
+	_battle_view.set_team_available(GameState.team_battle_available())
+	_battle_view.set_expedition_available(GameState.expedition_available())
+	_battle_view.set_expedition_pending(not GameState.pending_expedition.is_empty())
+
+
+func _discover_team_battle() -> void:
+	var res := await Backend.team_battle("status")
+	if res.ok:
+		GameState.set_team_battle_available(true)
+		_battle_view.set_team_available(true)
+		return
+	if str(res.error) == "FEATURE_DISABLED":
+		GameState.set_team_battle_available(false)
+		_battle_view.set_team_available(false)
+
+
+func _open_team_battle_mode() -> void:
+	if _busy:
+		return
+	_battle_view.show_team_mode()
+	if not GameState.pending_team_battle.is_empty():
+		await _resume_team_battle()
+		return
+	await _load_team_battle_hub()
+
+
+func _close_team_battle_mode() -> void:
+	if _busy:
+		return
+	_battle_view.show_duel_mode()
+	if not _battle_view.is_team_mode():
+		_battle_view.set_lobby(_current_anima)
+		_refresh_battle_reward_status()
+
+
+func _load_team_battle_hub() -> void:
+	_set_busy(true)
+	_team_battle_view.set_loading()
+	var res := await Backend.team_battle("teams")
+	if not res.ok:
+		_team_battle_view.set_error(res.error)
+		_set_busy(false)
+		return
+	var data := GameState.as_dict(res.data)
+	var teams := _variant_array(data.get("teams"))
+	_team_battle_team = _team_of_kind(teams, "team_battle")
+	var defense := _team_of_kind(teams, "defense")
+	_team_defense_published = bool(defense.get("published", false))
+	if _team_battle_team.is_empty():
+		_team_battle_view.set_builder(_roster)
+		_set_busy(false)
+		return
+	_set_busy(false)
+	await _refresh_team_battle_candidates(str(_team_battle_team.get("id", "")))
+
+
+func _save_team_battle_roster(anima_ids: Array[String]) -> void:
+	if _busy or anima_ids.size() != 4:
+		return
+	_set_busy(true)
+	_team_battle_view.set_loading("TEAM_SAVING")
+	var res := await Backend.team_battle("save_team", {
+		"kind": "team_battle",
+		"anima_ids": anima_ids,
+	})
+	if not res.ok:
+		_team_battle_view.set_error(res.error)
+		_set_busy(false)
+		return
+	_team_battle_team = GameState.as_dict(GameState.as_dict(res.data).get("team"))
+	_set_busy(false)
+	await _refresh_team_battle_candidates(str(_team_battle_team.get("id", "")))
+
+
+func _set_team_defense(publish: bool, anima_ids: Array[String]) -> void:
+	if _busy or anima_ids.size() != 4:
+		return
+	_set_busy(true)
+	if publish:
+		_team_battle_view.set_loading("TEAM_PUBLISHING_DEFENSE")
+	else:
+		_team_battle_view.set_loading("TEAM_UNPUBLISHING_DEFENSE")
+	if publish:
+		var saved := await Backend.team_battle("save_team", {
+			"kind": "defense",
+			"anima_ids": anima_ids,
+		})
+		if not saved.ok:
+			_team_battle_view.set_error(saved.error)
+			_set_busy(false)
+			return
+	var res := await Backend.team_battle("publish_defense", {"publish": publish})
+	if not res.ok:
+		_team_battle_view.set_error(res.error)
+		_set_busy(false)
+		return
+	_team_defense_published = publish
+	_team_battle_view.set_lobby(
+		_team_battle_team,
+		_team_battle_daily,
+		_team_battle_candidates,
+		_team_defense_published
+	)
+	_set_busy(false)
+
+
+func _refresh_team_battle_candidates(team_id: String = "") -> void:
+	if _busy:
+		return
+	if team_id.is_empty():
+		team_id = str(_team_battle_team.get("id", ""))
+	if team_id.is_empty():
+		_team_battle_view.set_builder(_roster)
+		return
+	_set_busy(true)
+	_team_battle_view.set_loading("TEAM_FINDING_RIVALS")
+	var status_res := await Backend.team_battle("status")
+	_team_battle_daily = (
+		GameState.as_dict(status_res.data) if status_res.ok else {}
+	)
+	var res := await Backend.team_battle("candidates", {"team_id": team_id})
+	if not res.ok:
+		_team_battle_view.set_error(res.error)
+		_set_busy(false)
+		return
+	var data := GameState.as_dict(res.data)
+	var returned_team := GameState.as_dict(data.get("team"))
+	if not returned_team.is_empty():
+		_team_battle_team = returned_team
+	_team_battle_candidates = _variant_array(data.get("candidates"))
+	_team_battle_view.set_lobby(
+		_team_battle_team,
+		_team_battle_daily,
+		_team_battle_candidates,
+		_team_defense_published
+	)
+	_set_busy(false)
+
+
+func _start_team_battle(team_id: String, candidate_id: String) -> void:
+	if _busy or team_id.is_empty() or candidate_id.is_empty():
+		return
+	_set_busy(true)
+	_team_battle_view.set_loading("TEAM_STARTING")
+	var res := await Backend.team_battle("start", {
+		"team_id": team_id,
+		"candidate_id": candidate_id,
+	})
+	if not res.ok:
+		_team_battle_view.set_error(res.error)
+		_set_busy(false)
+		return
+	var session := GameState.as_dict(res.data)
+	if session.is_empty():
+		_team_battle_view.set_error("TEAM_BATTLE_NOT_FOUND")
+		_set_busy(false)
+		return
+	GameState.remember_team_battle(
+		str(session.get("id", "")),
+		int(session.get("turn_number", 1)),
+		int(session.get("version", 1))
+	)
+	_team_art_cache = {}
+	await _show_team_battle_session(session)
+	await _reload_roster()
+	_set_busy(false)
+
+
+func _resume_team_battle() -> void:
+	if _busy:
+		return
+	var pending := GameState.pending_team_battle.duplicate(true)
+	var session_id := str(pending.get("session_id", ""))
+	if session_id.is_empty():
+		await _load_team_battle_hub()
+		return
+	_set_busy(true)
+	_team_battle_view.set_loading("TEAM_RESUMING")
+	var res := await Backend.team_battle("resume", {"session_id": session_id})
+	if not res.ok and res.error == "TEAM_BATTLE_NOT_FOUND":
+		GameState.finish_team_battle()
+		_set_busy(false)
+		await _load_team_battle_hub()
+		return
+	if not res.ok:
+		_team_battle_view.set_error(res.error)
+		_set_busy(false)
+		return
+	var session := GameState.as_dict(res.data)
+	if not await _show_team_battle_session(session):
+		_set_busy(false)
+		return
+	var should_replay := (
+		not str(pending.get("action", "")).is_empty()
+		and str(session.get("status", "")) == "active"
+		and int(session.get("turn_number", 0)) == int(pending.get("expected_turn", -1))
+		and int(session.get("version", 0)) == int(pending.get("expected_version", -1))
+	)
+	if should_replay:
+		_set_busy(false)
+		await _submit_pending_team_battle(pending)
+	else:
+		GameState.confirm_team_battle_response(session)
+		if str(session.get("status", "")) != "active":
+			await _refresh_team_battle_authority()
+		_set_busy(false)
+
+
+func _retry_team_battle() -> void:
+	if GameState.pending_team_battle.is_empty():
+		await _load_team_battle_hub()
+	else:
+		await _resume_team_battle()
+
+
+func _team_battle_action_requested(action: String, switch_to_slot: int) -> void:
+	if _busy:
+		_team_battle_view.set_busy(false)
+		return
+	var session := _team_battle_view.session_data()
+	if session.is_empty() or str(session.get("status", "")) != "active":
+		_team_battle_view.set_busy(false)
+		return
+	var pending := GameState.begin_team_battle_action(
+		str(session.get("id", "")),
+		int(session.get("turn_number", 1)),
+		int(session.get("version", 1)),
+		action,
+		"",
+		switch_to_slot
+	)
+	await _submit_pending_team_battle(pending)
+
+
+func _submit_pending_team_battle(pending: Dictionary) -> void:
+	if pending.is_empty():
+		return
+	var action := str(pending.get("action", ""))
+	_team_battle_view.begin_action(action)
+	_set_busy(true)
+	var payload := team_battle_turn_payload(pending)
+	var res := await Backend.team_battle("turn", payload)
+	if not res.ok:
+		if res.error in ["STALE_TEAM_BATTLE", "TEAM_BATTLE_FINISHED"]:
+			_set_busy(false)
+			await _resume_team_battle()
+			return
+		var session := _team_battle_view.session_data()
+		if not session.is_empty():
+			GameState.remember_team_battle(
+				str(session.get("id", "")),
+				int(session.get("turn_number", 1)),
+				int(session.get("version", 1))
+			)
+		_team_battle_view.set_error(res.error)
+		_set_busy(false)
+		return
+	var data := GameState.as_dict(res.data)
+	var next_session := GameState.as_dict(data.get("session"))
+	next_session["last_reward"] = GameState.as_dict(data.get("reward"))
+	var events := _variant_array(data.get("events"))
+	if next_session.is_empty():
+		_team_battle_view.set_error("TEAM_BATTLE_NOT_FOUND")
+		_set_busy(false)
+		return
+	var art := _team_art_cache.duplicate()
+	for value in events:
+		if str(GameState.as_dict(value).get("type", "")) == "switch":
+			art = await _prepare_team_active_art(next_session)
+			break
+	await _team_battle_view.play_events(events, next_session, art)
+	GameState.confirm_team_battle_response(next_session)
+	_set_busy(false)
+	if action == "item":
+		_refresh_inventory()
+	await _apply_team_battle_reward(GameState.as_dict(data.get("reward")))
+
+
+static func team_battle_turn_payload(pending: Dictionary) -> Dictionary:
+	var action := str(pending.get("action", ""))
+	var payload := {
+		"session_id": str(pending.get("session_id", "")),
+		"expected_turn": int(pending.get("expected_turn", 1)),
+		"expected_version": int(pending.get("expected_version", 1)),
+		"action": action,
+		"idempotency_key": str(pending.get("idempotency_key", "")),
+	}
+	if action == "item":
+		payload["item_id"] = str(pending.get("item_id", ""))
+	if action == "switch":
+		payload["switch_to_slot"] = int(pending.get("switch_to_slot", -1))
+	return payload
+
+
+func _forfeit_team_battle() -> void:
+	if _busy:
+		return
+	var session := _team_battle_view.session_data()
+	var session_id := str(
+		session.get("id", GameState.pending_team_battle.get("session_id", ""))
+	)
+	if session_id.is_empty():
+		return
+	_set_busy(true)
+	var res := await Backend.team_battle("forfeit", {"session_id": session_id})
+	if res.ok:
+		var closed := GameState.as_dict(res.data)
+		GameState.finish_team_battle()
+		var art := await _prepare_team_active_art(closed)
+		_team_battle_view.set_session(closed, art)
+	else:
+		_team_battle_view.set_error(res.error)
+	_set_busy(false)
+
+
+func _show_team_battle_session(session: Dictionary) -> bool:
+	if session.is_empty():
+		_team_battle_view.set_error("TEAM_BATTLE_NOT_FOUND")
+		return false
+	var art := await _prepare_team_active_art(session)
+	if art.is_empty():
+		_team_battle_view.set_error("TEAM_ART_NOT_READY")
+		return false
+	_team_battle_view.set_session(session, art)
+	return true
+
+
+func _prepare_team_active_art(session: Dictionary) -> Dictionary:
+	var loaded_by_id: Dictionary = {}
+	var state := GameState.as_dict(session.get("state"))
+	for side in ["player", "opponent"]:
+		var party := GameState.as_dict(state.get(side))
+		var state_roster := _variant_array(party.get("roster"))
+		var slot := int(party.get("active_slot", 0))
+		if slot < 0 or slot >= state_roster.size():
+			return {}
+		var member := GameState.as_dict(state_roster[slot])
+		var anima_id := str(member.get("anima_id", ""))
+		if anima_id.is_empty():
+			return {}
+		if _team_art_cache.has(anima_id):
+			loaded_by_id[anima_id] = _team_art_cache[anima_id]
+			continue
+		var snapshots := _variant_array(
+			session.get("player_snapshot" if side == "player" else "opponent_snapshot")
+		)
+		var snapshot := _snapshot_for_anima(snapshots, anima_id)
+		if snapshot.is_empty():
+			return {}
+		var loaded := await _prepare_battle_art(snapshot)
+		if not bool(loaded.get("ok", false)):
+			return {}
+		_team_art_cache[anima_id] = loaded
+		loaded_by_id[anima_id] = loaded
+	return loaded_by_id
+
+
+func _apply_team_battle_reward(reward: Dictionary) -> void:
+	var exp_rows := _variant_array(reward.get("anima_exp"))
+	if int(reward.get("bits", 0)) <= 0 and exp_rows.is_empty():
+		return
+	await _refresh_team_battle_authority()
+
+
+func _refresh_team_battle_authority() -> void:
+	_apply_profile_refresh(await Backend.fetch_profile())
+	await _reload_roster()
+	_refresh_header()
+	_refresh_stats()
+	_refresh_care()
+	_populate_collection()
+
+
+static func _team_of_kind(teams: Array, kind: String) -> Dictionary:
+	for value in teams:
+		var team := GameState.as_dict(value)
+		if str(team.get("kind", "")) == kind:
+			return team
+	return {}
+
+
+static func _snapshot_for_anima(snapshots: Array, anima_id: String) -> Dictionary:
+	for value in snapshots:
+		var snapshot := GameState.as_dict(value)
+		if str(snapshot.get("anima_id", "")) == anima_id:
+			return snapshot
+	return {}
+
+
+static func _variant_array(value: Variant) -> Array:
+	return value if typeof(value) == TYPE_ARRAY else []
+
+
 func _show_battle_session(session: Dictionary) -> bool:
 	if session.is_empty():
 		_battle_view.set_error("BATTLE_NOT_FOUND")
@@ -1421,6 +2045,12 @@ func _show_battle_session(session: Dictionary) -> bool:
 
 
 func _prepare_battle_art(snapshot: Dictionary) -> Dictionary:
+	if str(snapshot.get("system_asset", "")) == "placeholder":
+		var placeholder := PlaceholderSheet.build()
+		return AnimaLoader.build(
+			ImageTexture.create_from_image(placeholder["image"]),
+			placeholder["manifest"]
+		)
 	var sheet_url := str(snapshot.get("sheet_url", ""))
 	if not sheet_url.is_empty():
 		return await _prepare_signed_battle_art(snapshot, sheet_url)
@@ -2109,7 +2739,13 @@ func _layout_for_viewport() -> void:
 				(screen_size.y - safe.end.y) * scale.y
 			)
 
-	_apply_margins(_safe_margin, insets, BASE_MARGIN, HUD_TOP_PAD)
+	var immersive := _is_immersive_arena()
+	_apply_margins(
+		_safe_margin,
+		insets,
+		16.0 if immersive else BASE_MARGIN,
+		8.0 if immersive else HUD_TOP_PAD
+	)
 	_sync_shop_chrome()
 	_place_toast(insets)
 	_stage.position = stage_position_for(viewport_size, insets)
@@ -2170,6 +2806,10 @@ func _switch_destination(
 	if (
 		destination == BottomNav.BATTLE
 		and GameState.pending_battle.is_empty()
+		and GameState.pending_team_battle.is_empty()
+		and GameState.pending_expedition.is_empty()
+		and not _battle_view.is_team_mode()
+		and not _battle_view.is_expedition_mode()
 		and refresh_battle_reward
 	):
 		_battle_view.set_lobby(_current_anima)
@@ -2191,6 +2831,8 @@ func _switch_destination(
 		call_deferred("_refresh_gallery_status")
 	if destination == GALLERY_DEST:
 		_gallery_view.begin_visit()
+	if destination == BottomNav.HOME:
+		call_deferred("_maybe_show_chapter_popup")
 	_sync_shop_chrome()
 	_bottom_nav.set_scan_emphasized(
 		_cores_remaining() > 0
@@ -2251,7 +2893,7 @@ func _open_shop(tab: String = "food") -> void:
 		return
 	if _shop_sheet.is_shop_open() and tab == "food":
 		return
-	_shop_sheet.set_catalog(_catalog, _inventory)
+	_shop_sheet.set_catalog(_catalog, _inventory, int(GameState.profile.get("bits", 0)))
 	_shop_sheet.open_shop(tab)
 
 
@@ -2264,7 +2906,7 @@ func _on_bag_pressed() -> void:
 func _open_bag(tab: String = "food") -> void:
 	if _destination != BottomNav.HOME:
 		return
-	_shop_sheet.set_catalog(_catalog, _inventory)
+	_shop_sheet.set_catalog(_catalog, _inventory, int(GameState.profile.get("bits", 0)))
 	_shop_sheet.open_bag(tab)
 
 
@@ -2277,7 +2919,7 @@ func _open_feed_picker() -> void:
 
 
 func _open_battle_item_picker() -> void:
-	_shop_sheet.set_catalog(_catalog, _inventory)
+	_shop_sheet.set_catalog(_catalog, _inventory, int(GameState.profile.get("bits", 0)))
 	_shop_sheet.open_battle()
 
 
@@ -2298,6 +2940,22 @@ func _use_catalog_item(item: Dictionary) -> void:
 		return
 	if Catalog.is_battle(item):
 		if _busy:
+			return
+		if _battle_view.is_expedition_mode():
+			await _expedition_controller.use_item(str(item.get("id", "")))
+			return
+		if _battle_view.is_team_mode():
+			var team_session := _team_battle_view.session_data()
+			if team_session.is_empty() or str(team_session.get("status", "")) != "active":
+				return
+			var team_pending := GameState.begin_team_battle_action(
+				str(team_session.get("id", "")),
+				int(team_session.get("turn_number", 1)),
+				int(team_session.get("version", 1)),
+				"item",
+				str(item.get("id", ""))
+			)
+			await _submit_pending_team_battle(team_pending)
 			return
 		var session: Dictionary = _battle_view.session_data()
 		if session.is_empty() or str(session.get("status", "")) != "active":
@@ -2337,10 +2995,10 @@ func _send_pending_purchase(pending: Dictionary) -> void:
 			_inventory = Catalog.with_quantity(
 				_inventory, str(data.get("item_id", pending.get("item_id", ""))), int(data.get("quantity", 0))
 			)
-			_shop_sheet.set_catalog(_catalog, _inventory)
+			_shop_sheet.set_catalog(_catalog, _inventory, int(GameState.profile.get("bits", 0)))
 		else:
 			_refresh_inventory()
-		_say(tr("FEEDBACK_PURCHASE"))
+		_say(tr("FEEDBACK_PURCHASE"), true)
 		return
 	if res.code >= 400 and res.code < 500:
 		GameState.finish_purchase()
@@ -2360,7 +3018,7 @@ func _refresh_inventory() -> void:
 	if inventory_res.ok and typeof(inventory_res.data) == TYPE_ARRAY:
 		_inventory = inventory_res.data
 	if is_instance_valid(_shop_sheet):
-		_shop_sheet.set_catalog(_catalog, _inventory)
+		_shop_sheet.set_catalog(_catalog, _inventory, int(GameState.profile.get("bits", 0)))
 
 
 func _show_bits_info() -> void:
@@ -2612,6 +3270,7 @@ func _set_busy(busy: bool) -> void:
 	_busy = busy
 	_scan_view.set_busy(busy)
 	_battle_view.set_busy(busy)
+	_team_battle_view.set_busy(busy)
 	_home_view.set_busy(busy)
 	_collection_view.set_busy(busy)
 	_gallery_view.set_busy(busy)
@@ -2651,6 +3310,19 @@ func _handle_back(allow_quit: bool) -> bool:
 		return true
 	if is_instance_valid(_battle_pick_sheet) and _battle_pick_sheet.handle_back():
 		return true
+	if (
+		_destination == BottomNav.BATTLE
+		and is_instance_valid(_expedition_controller)
+		and _battle_view.is_expedition_mode()
+		and _expedition_controller.handle_back()
+	):
+		return true
+	if (
+		_destination == BottomNav.BATTLE
+		and is_instance_valid(_team_battle_view)
+		and _team_battle_view.handle_back()
+	):
+		return true
 	if _collection_view.is_sheet_open():
 		_collection_view.close_sheet()
 		return true
@@ -2684,14 +3356,36 @@ static func profile_value_present(profile: Dictionary, key: StringName) -> bool:
 	return value != null and (typeof(value) != TYPE_STRING or not str(value).is_empty())
 
 
+func _is_immersive_arena() -> bool:
+	if not is_instance_valid(_battle_view) or not _battle_view.visible:
+		return false
+	if is_instance_valid(_expedition_view) and _expedition_view.is_combat_open():
+		return true
+	return (
+		is_instance_valid(_team_battle_view)
+		and _team_battle_view.visible
+		and _team_battle_view.is_arena_open()
+	)
+
+
+func _on_immersive_arena_changed(_open: bool) -> void:
+	_sync_shop_chrome()
+	_layout_for_viewport()
+
+
 func _sync_shop_chrome() -> void:
 	if not is_instance_valid(_shop_button):
 		return
-	var show_chrome := _destination == BottomNav.HOME
+	var immersive := _is_immersive_arena()
+	if is_instance_valid(_top_hud):
+		_top_hud.visible = not immersive
+	if is_instance_valid(_bottom_nav):
+		_bottom_nav.visible = not immersive
+	var show_chrome := _destination == BottomNav.HOME and not immersive
 	if is_instance_valid(_bag_button):
 		_bag_button.visible = show_chrome
 	_shop_button.visible = show_chrome
-	_seeker_menu_button.disabled = _busy
+	_seeker_menu_button.disabled = _busy or immersive
 	if not show_chrome and is_instance_valid(_shop_sheet) and _shop_sheet.visible:
 		_shop_sheet.close()
 	if show_chrome:
@@ -2929,6 +3623,158 @@ func _run_battle_demo(
 	_sync_shop_chrome()
 	if not is_zero_approx(effectiveness):
 		_battle_view.call("_show_effectiveness", effectiveness)
+
+
+func _run_team_battle_demo() -> void:
+	var placeholder := PlaceholderSheet.build()
+	var loaded := AnimaLoader.build(
+		ImageTexture.create_from_image(placeholder["image"]),
+		placeholder["manifest"]
+	)
+	var player_roster: Array[Dictionary] = []
+	var opponent_roster: Array[Dictionary] = []
+	var player_snapshots: Array[Dictionary] = []
+	var opponent_snapshots: Array[Dictionary] = []
+	var art: Dictionary = {}
+	for slot in 4:
+		var player_id := "team-demo-player-%d" % slot
+		var opponent_id := "team-demo-opponent-%d" % slot
+		player_roster.append({
+			"anima_id": player_id,
+			"name": ["Velumi", "Mugora", "Treadle", "Monstera"][slot],
+			"slot": slot,
+			"hp": 162 - slot * 8,
+			"max_hp": 180,
+			"momentum": 2,
+			"momentum_max": 3,
+			"strike_name": "Prism Jab",
+			"surge_name": "Neon Burst",
+		})
+		opponent_roster.append({
+			"anima_id": opponent_id,
+			"name": ["Byte Scout", "Moss Guard", "Pebble Dash", "Paper Kite"][slot],
+			"slot": slot,
+			"hp": 154 - slot * 6,
+			"max_hp": 172,
+			"momentum": 3,
+			"momentum_max": 3,
+			"strike_name": "Pixel Jab",
+			"surge_name": "Static Arc",
+		})
+		player_snapshots.append({"anima_id": player_id})
+		opponent_snapshots.append({"anima_id": opponent_id})
+		art[player_id] = loaded
+		art[opponent_id] = loaded
+	var session := {
+		"id": "team-demo",
+		"status": "active",
+		"turn_number": 4,
+		"version": 3,
+		"item_used_id": null,
+		"player_snapshot": player_snapshots,
+		"opponent_snapshot": opponent_snapshots,
+		"state": {
+			"status": "active",
+			"turn": 4,
+			"player": {
+				"active_slot": 0,
+				"forced_switch": false,
+				"item_used": false,
+				"roster": player_roster,
+			},
+			"opponent": {
+				"active_slot": 0,
+				"forced_switch": false,
+				"item_used": false,
+				"roster": opponent_roster,
+			},
+		},
+	}
+	_switch_destination(BottomNav.BATTLE, {}, false)
+	_battle_view.show_team_mode()
+	_team_battle_view.set_session(session, art)
+	_sync_shop_chrome()
+
+
+func _run_expedition_demo() -> void:
+	_switch_destination(BottomNav.BATTLE, {}, false)
+	_battle_view.show_expedition_mode()
+	_expedition_view.set_team({"id": "expedition-demo-team"})
+	_expedition_view.set_run({
+		"id": "expedition-demo",
+		"status": "active",
+		"zone": 1,
+		"supplies": 7,
+		"team_id": "expedition-demo-team",
+		"available_node_ids": ["battle-1", "recovery-1"],
+		"party_state": [
+			{"name": "Velumi", "hp": 154, "max_hp": 180},
+			{"name": "Mugora", "hp": 132, "max_hp": 160},
+			{"name": "Treadle", "hp": 118, "max_hp": 170},
+			{"name": "Monstera", "hp": 149, "max_hp": 175},
+		],
+		"zone_map": {"nodes": [
+			{"id": "battle-1", "kind": "battle", "depth": 1},
+			{"id": "recovery-1", "kind": "recovery", "depth": 1},
+			{"id": "elite-2", "kind": "elite", "depth": 2},
+			{"id": "cache-2", "kind": "cache", "depth": 2},
+			{"id": "boss-4", "kind": "boss", "depth": 4},
+		]},
+	})
+	_sync_shop_chrome()
+
+
+func _run_expedition_builder_demo() -> void:
+	var placeholder := PlaceholderSheet.build()
+	var loaded := AnimaLoader.build(
+		ImageTexture.create_from_image(placeholder["image"]),
+		placeholder["manifest"]
+	)
+	var frames: SpriteFrames = loaded.get("frames")
+	_expedition_view.set_thumbnail_provider(func(row: Dictionary) -> Texture2D:
+		var pose := CareRules.collection_pose(row, "demo-idle")
+		return frames.get_frame_texture(pose, 0)
+	)
+	_switch_destination(BottomNav.BATTLE, {}, false)
+	_battle_view.show_expedition_mode()
+	_expedition_view.set_builder([
+		{"id": "demo-idle", "nickname": "Sunhound", "status": "ready", "element": "food",
+			"care": {"energy": 100.0, "hunger": 80.0, "hygiene": 80.0}},
+		{"id": "demo-hungry", "nickname": "Veridian", "status": "ready", "element": "plant",
+			"care": {"energy": 100.0, "hunger": 20.0, "hygiene": 80.0}},
+		{"id": "demo-dirty", "nickname": "Playtron", "status": "ready", "element": "spark",
+			"care": {"energy": 100.0, "hunger": 80.0, "hygiene": 20.0}},
+		{"id": "demo-sleep", "nickname": "Hydron", "status": "ready", "element": "flow",
+			"care": {"energy": 5.0, "hunger": 80.0, "hygiene": 80.0}},
+		{"id": "demo-dormant", "nickname": "Mugshot", "status": "ready", "element": "ceramic",
+			"dormant_since": "2026-08-15T00:00:00Z",
+			"care": {"energy": 80.0, "hunger": 0.0, "hygiene": 0.0}},
+	], {"members": [{"slot": 0, "anima_id": "demo-idle"}]})
+	_sync_shop_chrome()
+
+
+func _run_chapter_announcement_demo() -> void:
+	_switch_destination(BottomNav.HOME)
+	GameState.profile["seeker_name"] = "Sunhound"
+	_apply_chapter_announcements({
+		"unread": [{
+			"chapter_id": "chapter-demo",
+			"version_id": "chapter-demo-v1",
+			"summary": {
+				"title": "The Sugarworks",
+				"description": "Follow the candy trails and challenge the Confectioner.",
+			},
+		}],
+		"home_popup": [{
+			"chapter_id": "chapter-demo",
+			"version_id": "chapter-demo-v1",
+			"summary": {
+				"title": "The Sugarworks",
+				"description": "Follow the candy trails and challenge the Confectioner.",
+			},
+		}],
+	})
+	_maybe_show_chapter_popup()
 
 
 func _run_battle_training_demo() -> void:

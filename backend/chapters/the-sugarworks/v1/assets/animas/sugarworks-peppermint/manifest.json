@@ -1,0 +1,160 @@
+{
+  "color_bucket": "mint",
+  "frame_size": [
+    359,
+    297
+  ],
+  "poses": {
+    "attack": {
+      "region": [
+        359,
+        0,
+        359,
+        297
+      ]
+    },
+    "defeated": {
+      "region": [
+        0,
+        594,
+        359,
+        297
+      ]
+    },
+    "dirty": {
+      "region": [
+        718,
+        297,
+        359,
+        297
+      ]
+    },
+    "fx_strike": {
+      "region": [
+        359,
+        594,
+        359,
+        297
+      ]
+    },
+    "fx_surge": {
+      "region": [
+        718,
+        594,
+        359,
+        297
+      ]
+    },
+    "happy": {
+      "region": [
+        0,
+        297,
+        359,
+        297
+      ]
+    },
+    "hungry": {
+      "region": [
+        359,
+        297,
+        359,
+        297
+      ]
+    },
+    "idle": {
+      "region": [
+        0,
+        0,
+        359,
+        297
+      ]
+    },
+    "sleep": {
+      "region": [
+        718,
+        0,
+        359,
+        297
+      ]
+    }
+  },
+  "prompt_version": "v12",
+  "qa": {
+    "bbox_heights": {
+      "attack": 244,
+      "defeated": 285,
+      "dirty": 243,
+      "fx_strike": 227,
+      "fx_surge": 262,
+      "happy": 262,
+      "hungry": 243,
+      "idle": 247,
+      "sleep": 253
+    },
+    "cells_detected": 9,
+    "cells_rejected": {},
+    "green_residue_ratio": 0.006,
+    "keyed_pixel_ratio": 0.6772,
+    "pose_ownership": {
+      "attack": {
+        "cross_boundary_pixels": 51,
+        "opaque_pixels": 40537
+      },
+      "defeated": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 40473
+      },
+      "dirty": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 35578
+      },
+      "fx_strike": {
+        "cross_boundary_pixels": 10,
+        "opaque_pixels": 21075
+      },
+      "fx_surge": {
+        "cross_boundary_pixels": 125,
+        "opaque_pixels": 52528
+      },
+      "happy": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 36401
+      },
+      "hungry": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 35338
+      },
+      "idle": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 36278
+      },
+      "sleep": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 35158
+      }
+    },
+    "seam_margin": {
+      "passed": true,
+      "ratio": 0.12,
+      "violations": []
+    },
+    "source_size": [
+      1024,
+      1024
+    ],
+    "standing_height_variance": 0.012,
+    "warnings": [
+      "pose defeated lebih tinggi dari idle",
+      "residu hijau 0.60%"
+    ],
+    "white_keyline_pixels_stripped": 4401
+  },
+  "sheet": null,
+  "sheet_size": [
+    1077,
+    891
+  ],
+  "species_key": "sugarworks_peppermint",
+  "stage": 2,
+  "version": 1
+}

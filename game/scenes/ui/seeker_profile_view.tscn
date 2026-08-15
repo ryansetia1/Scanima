@@ -68,8 +68,51 @@ layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="SeekerRows" type="VBoxContainer" parent="Column/Scroll"]
+[node name="SeekerScrollContent" type="VBoxContainer" parent="Column/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="SeekerRows" type="VBoxContainer" parent="Column/Scroll/SeekerScrollContent"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
+
+[node name="TrophySection" type="VBoxContainer" parent="Column/Scroll/SeekerScrollContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Column/Scroll/SeekerScrollContent/TrophySection"]
+layout_mode = 2
+theme_type_variation = &"SectionTitleLabel"
+text = "SEEKER_TROPHY_SHOWCASE"
+
+[node name="FeaturedTrophies" type="HBoxContainer" parent="Column/Scroll/SeekerScrollContent/TrophySection"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="TrophyEmpty" type="Label" parent="Column/Scroll/SeekerScrollContent/TrophySection"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "SEEKER_TROPHY_EMPTY"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="TrophyList" type="ItemList" parent="Column/Scroll/SeekerScrollContent/TrophySection"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 224)
+layout_mode = 2
+select_mode = 1
+allow_reselect = true
+
+[node name="SaveTrophies" type="Button" parent="Column/Scroll/SeekerScrollContent/TrophySection"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "SEEKER_TROPHY_SAVE"

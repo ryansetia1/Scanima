@@ -1,0 +1,370 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/expedition_view.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/team_battle_view.tscn" id="2_combat"]
+[ext_resource type="Texture2D" path="res://assets/icons/chevron-left.svg" id="3_back"]
+[ext_resource type="Script" path="res://scripts/team_roster_list.gd" id="4_roster"]
+
+[node name="ExpeditionView" type="Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="ExpeditionColumn" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="ExpeditionColumn"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ExpeditionBack" type="Button" parent="ExpeditionColumn/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+flat = true
+
+[node name="ExpeditionBackIcon" type="TextureRect" parent="ExpeditionColumn/Header/ExpeditionBack"]
+layout_mode = 0
+offset_left = 32.0
+offset_top = 10.0
+offset_right = 64.0
+offset_bottom = 42.0
+mouse_filter = 2
+texture = ExtResource("3_back")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Titles" type="VBoxContainer" parent="ExpeditionColumn/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="Label" parent="ExpeditionColumn/Header/Titles"]
+layout_mode = 2
+theme_type_variation = &"PageTitleLabel"
+text = "EXPEDITION_TITLE"
+
+[node name="Subtitle" type="Label" parent="ExpeditionColumn/Header/Titles"]
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "EXPEDITION_SUBTITLE"
+autowrap_mode = 2
+
+[node name="ExpeditionLoading" type="VBoxContainer" parent="ExpeditionColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="ExpeditionLoadingLabel" type="Label" parent="ExpeditionColumn/ExpeditionLoading"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "EXPEDITION_LOADING"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ExpeditionCatalog" type="VBoxContainer" parent="ExpeditionColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="CatalogTitle" type="Label" parent="ExpeditionColumn/ExpeditionCatalog"]
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "EXPEDITION_CHAPTERS"
+
+[node name="ExpeditionCatalogMeta" type="Label" parent="ExpeditionColumn/ExpeditionCatalog"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "EXPEDITION_CATALOG_HINT"
+autowrap_mode = 2
+
+[node name="ExpeditionChapterList" type="ItemList" parent="ExpeditionColumn/ExpeditionCatalog"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 520)
+layout_mode = 2
+size_flags_vertical = 3
+allow_reselect = true
+theme_override_constants/v_separation = 12
+theme_override_font_sizes/font_size = 28
+
+[node name="CatalogActions" type="HBoxContainer" parent="ExpeditionColumn/ExpeditionCatalog"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ExpeditionCatalogTeam" type="Button" parent="ExpeditionColumn/ExpeditionCatalog/CatalogActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "EXPEDITION_BUILD_TEAM"
+
+[node name="ExpeditionOpenChapter" type="Button" parent="ExpeditionColumn/ExpeditionCatalog/CatalogActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "EXPEDITION_OPEN_CHAPTER"
+
+[node name="ExpeditionDetail" type="VBoxContainer" parent="ExpeditionColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="ExpeditionDetailTitle" type="Label" parent="ExpeditionColumn/ExpeditionDetail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PageTitleLabel"
+text = "EXPEDITION_CHAPTER"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ExpeditionDetailBody" type="Label" parent="ExpeditionColumn/ExpeditionDetail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "EXPEDITION_CHAPTER_READY"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ExpeditionDetailTrophy" type="Label" parent="ExpeditionColumn/ExpeditionDetail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "EXPEDITION_TROPHY_PREVIEW"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ExpeditionStartRun" type="Button" parent="ExpeditionColumn/ExpeditionDetail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "EXPEDITION_BEGIN"
+
+[node name="ExpeditionDetailTeam" type="Button" parent="ExpeditionColumn/ExpeditionDetail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "EXPEDITION_BUILD_TEAM"
+
+[node name="ExpeditionDetailBack" type="Button" parent="ExpeditionColumn/ExpeditionDetail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "ACTION_BACK"
+
+[node name="ExpeditionBuilder" type="VBoxContainer" parent="ExpeditionColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="BuilderTitle" type="Label" parent="ExpeditionColumn/ExpeditionBuilder"]
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "EXPEDITION_TEAM_TITLE"
+
+[node name="ExpeditionBuilderMeta" type="Label" parent="ExpeditionColumn/ExpeditionBuilder"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "EXPEDITION_TEAM_COUNT"
+
+[node name="ExpeditionRosterList" type="ItemList" parent="ExpeditionColumn/ExpeditionBuilder"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 500)
+layout_mode = 2
+size_flags_vertical = 3
+fixed_column_width = 300
+max_columns = 2
+same_column_width = true
+allow_reselect = true
+select_mode = 1
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+theme_override_font_sizes/font_size = 25
+script = ExtResource("4_roster")
+
+[node name="BuilderActions" type="HBoxContainer" parent="ExpeditionColumn/ExpeditionBuilder"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ExpeditionBuilderBack" type="Button" parent="ExpeditionColumn/ExpeditionBuilder/BuilderActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ACTION_BACK"
+
+[node name="ExpeditionSaveTeam" type="Button" parent="ExpeditionColumn/ExpeditionBuilder/BuilderActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "EXPEDITION_SAVE_TEAM"
+
+[node name="ExpeditionMap" type="VBoxContainer" parent="ExpeditionColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="ExpeditionMapMeta" type="Label" parent="ExpeditionColumn/ExpeditionMap"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "EXPEDITION_MAP_STATUS"
+horizontal_alignment = 1
+
+[node name="ExpeditionPartyMeta" type="Label" parent="ExpeditionColumn/ExpeditionMap"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "EXPEDITION_PARTY_STATUS"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="MapScroll" type="ScrollContainer" parent="ExpeditionColumn/ExpeditionMap"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ExpeditionNodeGrid" type="GridContainer" parent="ExpeditionColumn/ExpeditionMap/MapScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 2
+
+[node name="ExpeditionStartZone" type="Button" parent="ExpeditionColumn/ExpeditionMap"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "EXPEDITION_START_ZONE"
+
+[node name="ExpeditionAbandon" type="Button" parent="ExpeditionColumn/ExpeditionMap"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "EXPEDITION_ABANDON"
+
+[node name="ExpeditionChoice" type="VBoxContainer" parent="ExpeditionColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="ExpeditionChoiceTitle" type="Label" parent="ExpeditionColumn/ExpeditionChoice"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PageTitleLabel"
+text = "EXPEDITION_CHOICE"
+horizontal_alignment = 1
+
+[node name="ExpeditionChoiceMeta" type="Label" parent="ExpeditionColumn/ExpeditionChoice"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "EXPEDITION_CHOICE_SUPPLIES"
+horizontal_alignment = 1
+
+[node name="ExpeditionChoiceButtons" type="VBoxContainer" parent="ExpeditionColumn/ExpeditionChoice"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ExpeditionTargetList" type="ItemList" parent="ExpeditionColumn/ExpeditionChoice"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+
+[node name="ExpeditionTargetConfirm" type="Button" parent="ExpeditionColumn/ExpeditionChoice"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "EXPEDITION_CONFIRM_TARGET"
+
+[node name="ExpeditionRefreshShop" type="Button" parent="ExpeditionColumn/ExpeditionChoice"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "EXPEDITION_REFRESH_SHOP"
+
+[node name="ExpeditionChoiceAbandon" type="Button" parent="ExpeditionColumn/ExpeditionChoice"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "EXPEDITION_ABANDON"
+
+[node name="ExpeditionComplete" type="VBoxContainer" parent="ExpeditionColumn"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="ExpeditionCompleteTitle" type="Label" parent="ExpeditionColumn/ExpeditionComplete"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PageTitleLabel"
+text = "EXPEDITION_COMPLETE_TITLE"
+horizontal_alignment = 1
+
+[node name="ExpeditionCompleteBody" type="Label" parent="ExpeditionColumn/ExpeditionComplete"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "EXPEDITION_COMPLETE_BODY"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ExpeditionCompleteBack" type="Button" parent="ExpeditionColumn/ExpeditionComplete"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "EXPEDITION_RETURN_CHAPTERS"
+
+[node name="ExpeditionCombat" parent="." instance=ExtResource("2_combat")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

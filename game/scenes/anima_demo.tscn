@@ -1,27 +1,27 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://dxmrt67rnybhp"]
 
-[ext_resource type="Script" path="res://scripts/anima_demo.gd" id="1_demo"]
-[ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="2_presenter"]
-[ext_resource type="Theme" path="res://themes/mobile_theme.tres" id="3_theme"]
-[ext_resource type="Script" path="res://scripts/scanima_background.gd" id="4_background"]
+[ext_resource type="Script" uid="uid://7na7f1x7rgj2" path="res://scripts/anima_demo.gd" id="1_demo"]
+[ext_resource type="Script" uid="uid://ctfolp0b4kusd" path="res://scripts/anima_presenter.gd" id="2_presenter"]
+[ext_resource type="Theme" uid="uid://cbi43xka3xsp5" path="res://themes/mobile_theme.tres" id="3_theme"]
+[ext_resource type="Script" uid="uid://dptota5pyehri" path="res://scripts/scanima_background.gd" id="4_background"]
 
-[node name="AnimaDemo" type="Node2D"]
+[node name="AnimaDemo" type="Node2D" unique_id=569658980]
 script = ExtResource("1_demo")
 
-[node name="Background" type="Node2D" parent="."]
+[node name="Background" type="Node2D" parent="." unique_id=576393283]
 z_index = -10
 script = ExtResource("4_background")
 
-[node name="Stage" type="Node2D" parent="."]
+[node name="Stage" type="Node2D" parent="." unique_id=1265040573]
 position = Vector2(360, 700)
 
-[node name="Anima" type="AnimatedSprite2D" parent="Stage"]
+[node name="Anima" type="AnimatedSprite2D" parent="Stage" unique_id=1409880048]
 unique_name_in_owner = true
 script = ExtResource("2_presenter")
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="." unique_id=1518988994]
 
-[node name="Margin" type="MarginContainer" parent="UI"]
+[node name="Margin" type="MarginContainer" parent="UI" unique_id=694726424]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -33,19 +33,19 @@ theme_override_constants/margin_top = 32
 theme_override_constants/margin_right = 32
 theme_override_constants/margin_bottom = 32
 
-[node name="Column" type="VBoxContainer" parent="UI/Margin"]
+[node name="Column" type="VBoxContainer" parent="UI/Margin" unique_id=969989199]
 layout_mode = 2
-alignment = 2
 theme_override_constants/separation = 16
+alignment = 2
 
-[node name="HeaderCard" type="PanelContainer" parent="UI/Margin/Column"]
+[node name="HeaderCard" type="PanelContainer" parent="UI/Margin/Column" unique_id=91386120]
 layout_mode = 2
 
-[node name="HeaderColumn" type="VBoxContainer" parent="UI/Margin/Column/HeaderCard"]
+[node name="HeaderColumn" type="VBoxContainer" parent="UI/Margin/Column/HeaderCard" unique_id=1080780012]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="Title" type="Label" parent="UI/Margin/Column/HeaderCard/HeaderColumn"]
+[node name="Title" type="Label" parent="UI/Margin/Column/HeaderCard/HeaderColumn" unique_id=1641465478]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.278, 0.902, 1, 1)
 theme_override_colors/font_outline_color = Color(0.2, 0.55, 1, 0.32)
@@ -53,33 +53,33 @@ theme_override_constants/outline_size = 8
 theme_override_font_sizes/font_size = 46
 text = "ANIMA LAB"
 
-[node name="Subtitle" type="Label" parent="UI/Margin/Column/HeaderCard/HeaderColumn"]
+[node name="Subtitle" type="Label" parent="UI/Margin/Column/HeaderCard/HeaderColumn" unique_id=1135361635]
 layout_mode = 2
 theme_type_variation = &"EyebrowLabel"
 text = "SPRITE INSPECTOR  //  DEVELOPMENT UNIT"
 
-[node name="Spacer" type="Control" parent="UI/Margin/Column"]
+[node name="Spacer" type="Control" parent="UI/Margin/Column" unique_id=314460654]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="InfoCard" type="PanelContainer" parent="UI/Margin/Column"]
+[node name="InfoCard" type="PanelContainer" parent="UI/Margin/Column" unique_id=1433074975]
 layout_mode = 2
 
-[node name="Info" type="Label" parent="UI/Margin/Column/InfoCard"]
+[node name="Info" type="Label" parent="UI/Margin/Column/InfoCard" unique_id=335532589]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 text = "INITIALIZING ART LINK…"
 autowrap_mode = 2
 
-[node name="PoseRow" type="HBoxContainer" parent="UI/Margin/Column"]
+[node name="PoseRow" type="HBoxContainer" parent="UI/Margin/Column" unique_id=1257686594]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="HopButton" type="Button" parent="UI/Margin/Column"]
+[node name="HopButton" type="Button" parent="UI/Margin/Column" unique_id=421349620]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(0, 104)
+layout_mode = 2
 theme_type_variation = &"PrimaryButton"
 text = "INTERACT WITH ANIMA"

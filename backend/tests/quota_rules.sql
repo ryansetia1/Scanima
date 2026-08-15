@@ -37,17 +37,38 @@ declare
   v_battle_player_snapshot jsonb;
   v_battle_bot_snapshot jsonb;
   v_battle_state jsonb;
+  v_team_ids uuid[];
+  v_defense_ids uuid[];
+  v_team_id uuid;
+  v_defense_team_id uuid;
+  v_team_candidate uuid;
+  v_team_session uuid;
+  v_team_snapshot jsonb;
+  v_opponent_snapshot jsonb;
+  v_team_state jsonb;
+  v_team_scores_before int[];
+  v_expedition_chapter uuid;
+  v_expedition_version uuid;
+  v_expedition_version_next uuid;
+  v_expedition_trophy uuid;
+  v_expedition_run uuid;
+  v_expedition_encounter uuid;
+  v_expedition_map jsonb;
+  v_expedition_party jsonb;
+  v_expedition_state jsonb;
   v_bits_before_battle int;
   v_score_before_battle int;
   v_wins_before_battle int;
   v_seeker_xp int;
   v_seeker_victories int;
+  v_weekly_at timestamptz;
   v         int;
   n         int;
   ok        bool;
 begin
   -- Idempoten: sisa run yang gagal di tengah tidak boleh menggagalkan run ini.
   delete from auth.users where id in (u1, u2, u3, u4);
+  perform set_config('scanima.deleting_profiles', '', true);
   delete from public.species_library where species_key = v_spesies;
   insert into auth.users (id, is_anonymous)
   values (u1, false), (u2, true), (u3, true);
@@ -1487,11 +1508,460 @@ begin
              'feature_weekly_core', 'feature_gallery', 'min_client_version'
            )) = 6,
          'app_config rollout flags dan min_client_version harus ada';
-  assert (select value from public.app_config where key = 'feature_weekly_core') = 'false'::jsonb,
-         'feature_weekly_core harus default mati';
+  assert (
+           select jsonb_typeof(value) = 'boolean'
+             from public.app_config
+            where key = 'feature_weekly_core'
+         ),
+         'feature_weekly_core harus berupa feature flag boolean';
+  assert (select count(*) from public.app_config
+           where key in (
+             'feature_team_battle', 'feature_expedition', 'feature_chapter_push',
+             'team_battle_energy_per_member', 'team_battle_rewarded_wins_per_day',
+             'team_battle_bits_per_day', 'team_battle_active_exp',
+             'team_battle_bench_exp', 'expedition_energy_per_member',
+             'expedition_rewarded_encounters_per_day', 'expedition_active_exp',
+             'expedition_bench_exp'
+           )) = 12,
+         'app_config Team Battle/Expedition harus lengkap';
+  assert (select count(*) from public.app_config
+           where key in (
+             'feature_team_battle', 'feature_expedition', 'feature_chapter_push'
+           )
+             and jsonb_typeof(value) = 'boolean') = 3,
+         'feature Team Battle/Expedition/push harus berupa boolean';
+  assert exists (
+           select 1 from public.system_team_templates where active
+         ),
+         'fresh database harus punya system team fallback';
+  assert (select value from public.app_config where key = 'team_battle_energy_per_member') = '10'::jsonb
+         and (select value from public.app_config where key = 'team_battle_rewarded_wins_per_day') = '2'::jsonb
+         and (select value from public.app_config where key = 'team_battle_bits_per_day') = '40'::jsonb
+         and (select value from public.app_config where key = 'team_battle_active_exp') = '2'::jsonb
+         and (select value from public.app_config where key = 'team_battle_bench_exp') = '1'::jsonb
+         and (select value from public.app_config where key = 'expedition_energy_per_member') = '30'::jsonb
+         and (select value from public.app_config where key = 'expedition_rewarded_encounters_per_day') = '3'::jsonb
+         and (select value from public.app_config where key = 'expedition_active_exp') = '2'::jsonb
+         and (select value from public.app_config where key = 'expedition_bench_exp') = '1'::jsonb,
+         'baseline economy Team Battle/Expedition harus sesuai spesifikasi';
+
+  with inserted as (
+    insert into public.animas (
+      owner_id, nickname, species_key, color_bucket, element, rarity,
+      base_stats, care, status, sheet_path, manifest
+    )
+    select
+      u1, 'team-' || gs.n, 'team_species_' || gs.n, 'blue', 'metal', 1,
+      v_stats, v_care, 'ready', u1::text || '/team-' || gs.n || '/sheet.png',
+      '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+      from generate_series(1, 4) as gs(n)
+    returning id, nickname
+  )
+  select array_agg(id order by nickname) into v_team_ids from inserted;
+
+  with inserted as (
+    insert into public.animas (
+      owner_id, nickname, species_key, color_bucket, element, rarity,
+      base_stats, care, status, sheet_path, manifest
+    )
+    select
+      u2, 'defense-' || gs.n, 'defense_species_' || gs.n, 'red', 'plant', 1,
+      v_stats, v_care, 'ready', u2::text || '/defense-' || gs.n || '/sheet.png',
+      '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+      from generate_series(1, 4) as gs(n)
+    returning id, nickname
+  )
+  select array_agg(id order by nickname) into v_defense_ids from inserted;
+
+  v_j := public.save_anima_team(u1, 'team_battle', v_team_ids);
+  v_team_id := (v_j->>'id')::uuid;
+  v_j := public.save_anima_team(u2, 'defense', v_defense_ids);
+  v_defense_team_id := (v_j->>'id')::uuid;
+  assert jsonb_array_length(v_j->'members') = 4,
+         'save Team harus atomik berisi tepat empat Anima';
+
+  select jsonb_agg(jsonb_build_object(
+    'anima_id', a.id,
+    'name', a.nickname,
+    'species_key', a.species_key,
+    'color_bucket', a.color_bucket,
+    'stage', a.stage,
+    'level', 1,
+    'element', a.element,
+    'base_stats', a.base_stats,
+    'hunger', 100,
+    'hygiene', 100,
+    'strike_name', a.strike_name,
+    'surge_name', a.surge_name,
+    'sheet_path', a.sheet_path,
+    'manifest', a.manifest
+  ) order by ids.ordinality)
+  into v_team_snapshot
+  from unnest(v_team_ids) with ordinality ids(id, ordinality)
+  join public.animas a on a.id = ids.id;
+
+  select jsonb_agg(jsonb_build_object(
+    'anima_id', a.id,
+    'name', 'Anima',
+    'species_key', a.species_key,
+    'color_bucket', a.color_bucket,
+    'stage', a.stage,
+    'level', 1,
+    'element', a.element,
+    'base_stats', a.base_stats,
+    'hunger', 100,
+    'hygiene', 100,
+    'strike_name', a.strike_name,
+    'surge_name', a.surge_name,
+    'sheet_path', a.sheet_path,
+    'manifest', a.manifest
+  ) order by ids.ordinality)
+  into v_opponent_snapshot
+  from unnest(v_defense_ids) with ordinality ids(id, ordinality)
+  join public.animas a on a.id = ids.id;
+
+  v_j := public.publish_defense_team(u2, v_opponent_snapshot, true);
+  assert (v_j->>'published')::boolean,
+         'Defense Team harus opt-in sebelum masuk pool';
+
+  v_j := public.replace_team_battle_candidates(
+    u1,
+    v_team_id,
+    jsonb_build_array(jsonb_build_object(
+      'opponent_source', 'defense',
+      'opponent_team_id', v_defense_team_id,
+      'opponent_snapshot', v_opponent_snapshot,
+      'reward_tier', 'even',
+      'reward_roll', 0,
+      'reward_bits', 8
+    ))
+  );
+  v_team_candidate := (v_j->0->>'id')::uuid;
+  v_j2 := public.replace_team_battle_candidates(
+    u1,
+    v_team_id,
+    jsonb_build_array(jsonb_build_object(
+      'opponent_source', 'defense',
+      'opponent_team_id', v_defense_team_id,
+      'opponent_snapshot', v_opponent_snapshot,
+      'reward_tier', 'even',
+      'reward_roll', 0,
+      'reward_bits', 8
+    ))
+  );
+  assert not exists (
+           select 1 from public.team_battle_candidates where id = v_team_candidate
+         )
+         and (select count(*) from public.team_battle_candidates
+               where owner_id = u1 and consumed_at is null) = 1,
+         'refresh rival harus mengganti candidate lama, bukan menumpuk pilihan';
+  v_team_candidate := (v_j2->0->>'id')::uuid;
+
+  select jsonb_build_object(
+    'status', 'active',
+    'turn', 1,
+    'seed', 'team-sql-test',
+    'player', jsonb_build_object(
+      'active_slot', 0,
+      'forced_switch', false,
+      'item_used', false,
+      'roster', (
+        select jsonb_agg(jsonb_build_object(
+          'anima_id', member->>'anima_id',
+          'slot', ordinality - 1,
+          'hp', 100,
+          'max_hp', 100,
+          'momentum', 3,
+          'participated', ordinality = 1
+        ) order by ordinality)
+        from jsonb_array_elements(v_team_snapshot) with ordinality roster(member, ordinality)
+      )
+    ),
+    'opponent', jsonb_build_object(
+      'active_slot', 0,
+      'forced_switch', false,
+      'item_used', false,
+      'roster', (
+        select jsonb_agg(jsonb_build_object(
+          'anima_id', member->>'anima_id',
+          'slot', ordinality - 1,
+          'hp', 100,
+          'max_hp', 100,
+          'momentum', 3,
+          'participated', false
+        ) order by ordinality)
+        from jsonb_array_elements(v_opponent_snapshot) with ordinality roster(member, ordinality)
+      )
+    )
+  ) into v_team_state;
+
+  update public.profiles set active_anima_id = v_team_ids[1] where id = u1;
+  update public.animas
+     set sleep_started_at = now(),
+         sleep_energy_at_start = (care->>'energy')::numeric
+   where id = v_team_ids[1];
+  begin
+    perform public.start_team_battle(
+      u1, v_team_id, v_team_candidate, v_team_snapshot, v_team_state, 'team-sleep-test'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'TEAM_MEMBER_SLEEPING');
+  end;
+  assert ok, 'companion aktif yang tidur tidak boleh mulai Team Battle';
+  update public.animas
+     set sleep_started_at = null, sleep_energy_at_start = null
+   where id = v_team_ids[1];
+
+  update public.animas
+     set care = jsonb_set(care, '{energy}', '9'::jsonb),
+         care_synced_at = now()
+   where id = v_team_ids[4];
+  begin
+    perform public.start_team_battle(
+      u1, v_team_id, v_team_candidate, v_team_snapshot, v_team_state, 'team-energy-test'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'TEAM_MEMBER_LOW_ENERGY');
+  end;
+  assert ok
+         and (select count(*) from public.animas
+               where id = any(v_team_ids[1:3])
+                 and (care->>'energy')::numeric = 100) = 3,
+         'Energy rendah harus menolak atomik tanpa debit anggota sebelumnya';
+  update public.animas
+     set care = jsonb_set(care, '{energy}', '100'::jsonb),
+         care_synced_at = now()
+   where id = v_team_ids[4];
+
+  v_j := public.start_team_battle(
+    u1, v_team_id, v_team_candidate, v_team_snapshot, v_team_state, 'team-sql-test'
+  );
+  v_team_session := (v_j->>'id')::uuid;
+  assert (select count(*) from public.animas
+           where id = any(v_team_ids) and (care->>'energy')::numeric = 90) = 4,
+         'start Team Battle harus memotong 10 Energy dari semua anggota';
+  select array_agg(a.care_score order by ids.ordinality)
+    into v_team_scores_before
+    from unnest(v_team_ids) with ordinality ids(id, ordinality)
+    join public.animas a on a.id = ids.id;
+  begin
+    delete from public.animas where id = v_team_ids[1];
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ANIMA_IN_ACTIVE_COMBAT');
+  end;
+  assert ok, 'Anima di active Team Battle tidak boleh dihapus';
+
+  begin
+    insert into public.battle_sessions (
+      owner_id, player_anima_id, bot_anima_id,
+      player_snapshot, bot_snapshot, state,
+      player_hp, bot_hp, rng_seed
+    ) values (
+      u1, v_team_ids[1], v_defense_ids[1],
+      '{}'::jsonb, '{}'::jsonb, '{}'::jsonb,
+      100, 100, 'cross-mode-test'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'COMBAT_ALREADY_ACTIVE');
+  end;
+  assert ok, 'Duel dan Team Battle tidak boleh aktif bersamaan';
+
+  v_team_state := jsonb_set(
+    v_team_state,
+    '{player,roster}',
+    (
+      select jsonb_agg(
+        case
+          when ordinality <= 2
+            then jsonb_set(member, '{participated}', 'true'::jsonb)
+          when ordinality = 4
+            then jsonb_set(member, '{hp}', '0'::jsonb)
+          else member
+        end
+        order by ordinality
+      )
+      from jsonb_array_elements(v_team_state #> '{player,roster}')
+           with ordinality roster(member, ordinality)
+    )
+  );
+  v_team_state := jsonb_set(v_team_state, '{status}', '"won"'::jsonb);
+  v_team_state := jsonb_set(v_team_state, '{turn}', '2'::jsonb);
+  v_team_state := jsonb_set(
+    v_team_state,
+    '{opponent,roster}',
+    (
+      select jsonb_agg(jsonb_set(member, '{hp}', '0'::jsonb) order by ordinality)
+      from jsonb_array_elements(v_team_state #> '{opponent,roster}')
+           with ordinality roster(member, ordinality)
+    )
+  );
+  v_bits_before_battle := (select bits from public.profiles where id = u1);
+  v_seeker_victories := (select battle_victories from public.profiles where id = u1);
+  v_j := public.commit_team_battle_turn(
+    u1, v_team_session, 1, 1, 'team-turn-1', 'strike',
+    null, null, v_team_state,
+    '[{"type":"finished","result":"won"}]'::jsonb,
+    '{"action":"strike","switch_to_slot":null}'::jsonb
+  );
+  assert (v_j->'reward'->>'bits')::integer = 8
+         and (v_j->'reward'->>'progression')::boolean,
+         'win Team pertama harus memberi Bits dan progression';
+  assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 8,
+         'reward Bits Team harus commit atomik';
+  assert (
+           select bool_and(
+             a.care_score = v_team_scores_before[ids.ordinality::integer]
+               + case
+                   when ids.ordinality <= 2 then 2
+                   when ids.ordinality = 3 then 1
+                   else 0
+                 end
+           )
+             from unnest(v_team_ids) with ordinality ids(id, ordinality)
+             join public.animas a on a.id = ids.id
+         ),
+         format(
+           'active Team mendapat +2, bench hidup +1, KO 0; actual=%s',
+           (select jsonb_agg(jsonb_build_object(
+             'id', id,
+             'nickname', nickname,
+             'care_score', care_score
+           ) order by nickname)
+              from public.animas
+             where id = any(v_team_ids))
+         );
+  assert (select count(*) from public.animas
+           where id = v_team_ids[1] and battle_wins = 1) = 1
+         and (select count(*) from public.animas
+               where id = any(v_team_ids[2:4]) and battle_wins = 0) = 3,
+         'satu Team win hanya boleh menambah satu battle_wins Anima';
+  assert (select battle_victories from public.profiles where id = u1)
+           = v_seeker_victories + 1,
+         'satu session Team won harus menghitung satu Seeker victory';
+  assert (select count(*) from public.team_battle_rewards
+           where session_id = v_team_session and progression and bits = 8) = 1,
+         'receipt reward Team harus unik per session';
+  v_j2 := public.resume_team_battle(u1, v_team_session);
+  assert (v_j2->'last_reward'->>'bits')::integer = 8
+         and (v_j2->'last_reward'->>'progression')::boolean,
+         'resume Team terminal harus membawa receipt reward untuk result UI';
+
+  v_j2 := public.commit_team_battle_turn(
+    u1, v_team_session, 1, 1, 'team-turn-1', 'strike',
+    null, null, v_team_state,
+    '[{"type":"finished","result":"won"}]'::jsonb,
+    '{"action":"strike","switch_to_slot":null}'::jsonb
+  );
+  assert (v_j2->>'replayed')::boolean
+         and (select bits from public.profiles where id = u1) = v_bits_before_battle + 8
+         and (select count(*) from public.team_battle_rewards
+               where session_id = v_team_session) = 1,
+         'replay turn Team tidak boleh menggandakan reward atau EXP';
+
+  insert into public.battle_sessions (
+    owner_id, player_anima_id, bot_anima_id,
+    player_snapshot, bot_snapshot, state,
+    player_hp, bot_hp, rng_seed
+  ) values (
+    u1, v_team_ids[1], v_defense_ids[1],
+    '{}'::jsonb, '{}'::jsonb, '{}'::jsonb,
+    100, 100, 'reverse-cross-mode'
+  ) returning id into v_battle_session;
+  begin
+    insert into public.team_battle_sessions (
+      owner_id, player_team_id, opponent_source, opponent_team_id,
+      player_snapshot, opponent_snapshot, state, rng_seed,
+      reward_tier, reward_roll, reward_bits
+    ) values (
+      u1, v_team_id, 'defense', v_defense_team_id,
+      v_team_snapshot, v_opponent_snapshot, v_team_state, 'blocked-team',
+      'even', 0, 8
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'COMBAT_ALREADY_ACTIVE');
+  end;
+  assert ok, 'Team Battle juga harus ditolak saat Duel sudah aktif';
+  update public.battle_sessions
+     set status = 'forfeited', finished_at = now()
+   where id = v_battle_session;
+
+  update public.app_config set value = '1'::jsonb
+   where key = 'team_battle_rewarded_wins_per_day';
+  update public.app_config set value = '40'::jsonb
+   where key = 'team_battle_bits_per_day';
+  v_team_state := jsonb_set(v_team_state, '{status}', '"active"'::jsonb);
+  v_team_state := jsonb_set(v_team_state, '{turn}', '1'::jsonb);
+  v_team_state := jsonb_set(
+    v_team_state,
+    '{opponent,roster}',
+    (
+      select jsonb_agg(jsonb_set(member, '{hp}', '100'::jsonb) order by ordinality)
+      from jsonb_array_elements(v_team_state #> '{opponent,roster}')
+           with ordinality roster(member, ordinality)
+    )
+  );
+  insert into public.team_battle_sessions (
+    owner_id, player_team_id, opponent_source, opponent_team_id,
+    player_snapshot, opponent_snapshot, state, rng_seed,
+    reward_tier, reward_roll, reward_bits
+  ) values (
+    u1, v_team_id, 'defense', v_defense_team_id,
+    v_team_snapshot, v_opponent_snapshot, v_team_state, 'team-training',
+    'even', 0, 8
+  ) returning id into v_team_session;
+  v_team_state := jsonb_set(v_team_state, '{status}', '"won"'::jsonb);
+  v_team_state := jsonb_set(v_team_state, '{turn}', '2'::jsonb);
+  v_team_state := jsonb_set(
+    v_team_state,
+    '{opponent,roster}',
+    (
+      select jsonb_agg(jsonb_set(member, '{hp}', '0'::jsonb) order by ordinality)
+      from jsonb_array_elements(v_team_state #> '{opponent,roster}')
+           with ordinality roster(member, ordinality)
+    )
+  );
+  v_score_before_battle := (
+    select sum(care_score)::integer from public.animas where id = any(v_team_ids)
+  );
+  v_bits_before_battle := (select bits from public.profiles where id = u1);
+  v_j := public.commit_team_battle_turn(
+    u1, v_team_session, 1, 1, 'team-training-turn', 'strike',
+    null, null, v_team_state,
+    '[{"type":"finished","result":"won"}]'::jsonb,
+    '{"action":"strike","switch_to_slot":null}'::jsonb
+  );
+  assert (v_j->'reward'->>'bits')::integer = 8
+         and not (v_j->'reward'->>'progression')::boolean
+         and (select sum(care_score)::integer from public.animas
+               where id = any(v_team_ids)) = v_score_before_battle
+         and (select bits from public.profiles where id = u1) = v_bits_before_battle + 8
+         and exists (
+           select 1 from public.quota_ledger
+            where ref_id = v_team_session and reason = 'team_battle_train' and delta = 8
+         ),
+         'setelah cap progression, Team Training hanya memberi Bits';
+  update public.app_config set value = '16'::jsonb
+   where key = 'team_battle_bits_per_day';
+  v_j := public.team_battle_daily_reward_status(u1, v_team_session);
+  assert (v_j->>'bits_earned')::integer = 16
+         and (v_j->>'bits_remaining')::integer = 0,
+         'cap Bits Team harus memakai receipt harian terpisah dari Duel';
+  update public.app_config set value = '2'::jsonb
+   where key = 'team_battle_rewarded_wins_per_day';
+  update public.app_config set value = '40'::jsonb
+   where key = 'team_battle_bits_per_day';
+
+  perform public.publish_defense_team(u2, '[]'::jsonb, false);
+  assert not exists (
+           select 1 from public.team_battle_candidates where id = v_team_candidate
+         ),
+         'unpublish Defense harus membatalkan candidate yang belum/baru dipakai';
+
   v_j := public.seeker_profile_summary(u1);
-  assert (v_j->'client_config'->'min_client_version') =
-         '{"android":0,"ios":0,"desktop":0}'::jsonb,
+  assert jsonb_typeof(v_j->'client_config'->'min_client_version') = 'object'
+         and coalesce((v_j->'client_config'->'min_client_version'->>'android')::int, -1) >= 0
+         and coalesce((v_j->'client_config'->'min_client_version'->>'ios')::int, -1) >= 0
+         and coalesce((v_j->'client_config'->'min_client_version'->>'desktop')::int, -1) >= 0,
          'profile bootstrap harus membawa min_client_version yang client-safe';
   assert exists (
            select 1 from storage.buckets
@@ -1565,7 +2035,7 @@ begin
   update public.app_config set value = '999'::jsonb where key = 'daily_spend_cap_usd';
   v_j := public.claim_capture(
     u1, 'uji-private-capture', 'private capture', 'mug_ceramic_handled', 'gray',
-    1, 'ceramic', 'flow', 'object', 2, v_stats, v_care,
+    1::smallint, 'ceramic', 'flow', 'object', 2, v_stats, v_care,
     v_visi || '{"strike_name":"Glaze Tap","surge_name":"Cup Torrent"}'::jsonb,
     'v13', 'test-model', 0.07, u1::text || '/uji-private-capture.png'
   );
@@ -1584,7 +2054,7 @@ begin
          'claim_capture harus mendebit sekali dan menyimpan kontrak typing v2';
   v_j2 := public.claim_capture(
     u1, 'uji-private-capture', 'ignored retry', 'ignored_species', 'gray',
-    1, 'metal', null, 'object', 1, v_stats, v_care, v_visi,
+    1::smallint, 'metal', null, 'object', 1, v_stats, v_care, v_visi,
     'v13', 'test-model', 0.07, u1::text || '/ignored.png'
   );
   assert v_j2 = v_j
@@ -1598,6 +2068,8 @@ begin
                where ref_id = v_id and reason = 'refund') = 1,
          'refund capture privat harus mengembalikan Core tepat sekali';
 
+  delete from public.quota_ledger
+   where owner_id = u1 and reason = 'weekly_core';
   update public.app_config set value = 'true'::jsonb where key = 'feature_weekly_core';
 
   update public.profiles
@@ -1630,10 +2102,10 @@ begin
      set genesis_cores = 3,
          last_weekly_core_at = now() - interval '14 days'
    where id = u1;
-  v := (select last_weekly_core_at from public.profiles where id = u1);
+  v_weekly_at := (select last_weekly_core_at from public.profiles where id = u1);
   perform public.seeker_profile_summary(u1);
   assert (select genesis_cores from public.profiles where id = u1) = 3
-         and (select last_weekly_core_at from public.profiles where id = u1) = v
+         and (select last_weekly_core_at from public.profiles where id = u1) = v_weekly_at
          and (select count(*) from public.quota_ledger
                where owner_id = u1 and reason = 'weekly_core') = 1,
          'bank penuh tidak boleh membuang eligibility mingguan';
@@ -1663,6 +2135,8 @@ begin
          ),
          'guest/anonim tidak boleh menerima Core mingguan';
 
+  n := (select count(*) from public.quota_ledger
+         where owner_id = u1 and reason = 'weekly_core');
   update public.app_config set value = 'false'::jsonb where key = 'feature_weekly_core';
   update public.profiles
      set genesis_cores = 0,
@@ -1671,12 +2145,664 @@ begin
   v := (select genesis_cores from public.profiles where id = u1);
   perform public.seeker_profile_summary(u1);
   assert (select genesis_cores from public.profiles where id = u1) = v
-         and not exists (
-           select 1 from public.quota_ledger
-            where owner_id = u1 and reason = 'weekly_core' and delta = 1
-              and created_at > now() - interval '1 minute'
-         ),
+         and (select count(*) from public.quota_ledger
+               where owner_id = u1 and reason = 'weekly_core') = n,
          'feature_weekly_core mati tidak boleh memberi grant';
+
+  begin
+    begin
+      perform public.stage_expedition_chapter_version(
+        'test-stage-gate', 9996, 1, 1,
+        '{"android":0,"ios":0,"desktop":0}'::jsonb,
+        '{"schema_version":1}'::jsonb,
+        repeat('d', 64),
+        'expeditions/test-stage-gate/v1/',
+        null,
+        'test-stage-gate-trophy',
+        'Stage Gate Trophy',
+        'Only used by the transactional publish gate test.',
+        'expeditions/test-stage-gate/trophy/test.png',
+        repeat('e', 64),
+        '{}'::jsonb
+      );
+      ok := false;
+    exception when others then ok := (sqlerrm = 'CHAPTER_NOT_APPROVED');
+    end;
+    assert ok, 'staging wajib menolak chapter tanpa approval timestamp';
+
+    v_j := public.stage_expedition_chapter_version(
+      'test-stage-gate', 9996, 1, 1,
+      '{"android":0,"ios":0,"desktop":0}'::jsonb,
+      jsonb_build_object(
+        'schema_version', 1,
+        'content_version', 1,
+        'sequence', 9996,
+        'factory', jsonb_build_object(
+          'slug', 'test-stage-gate',
+          'mode', 'production'
+        ),
+        'assets', jsonb_build_object(
+          'prefix', 'expeditions/test-stage-gate/v1/'
+        ),
+        'manifest_hash', repeat('d', 64),
+        'summary', jsonb_build_object('title', 'Stage Gate'),
+        'zones', jsonb_build_array('{}'::jsonb, '{}'::jsonb, '{}'::jsonb),
+        'opponents', jsonb_build_array(
+          '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb
+        ),
+        'boss', '{}'::jsonb
+      ),
+      repeat('d', 64),
+      'expeditions/test-stage-gate/v1/',
+      now(),
+      'test-stage-gate-trophy',
+      'Stage Gate Trophy',
+      'Only used by the transactional publish gate test.',
+      'expeditions/test-stage-gate/trophy/test.png',
+      repeat('e', 64),
+      '{}'::jsonb
+    );
+    assert not (v_j->>'active')::boolean
+           and exists (
+             select 1
+               from public.expedition_chapter_versions
+              where id = (v_j->>'version_id')::uuid
+                and approved_at is not null
+                and published_at is not null
+                and not active
+           )
+           and exists (
+             select 1
+               from public.expedition_trophies
+              where chapter_id = (v_j->>'chapter_id')::uuid
+           ),
+           'staging harus menulis version inactive + Trophy secara atomik';
+    begin
+      perform public.stage_expedition_chapter_version(
+        'test-stage-gate', 9996, 2, 1,
+        '{"android":0,"ios":0,"desktop":0}'::jsonb,
+        jsonb_build_object(
+          'schema_version', 1,
+          'content_version', 2,
+          'sequence', 9996,
+          'factory', jsonb_build_object(
+            'slug', 'test-stage-gate',
+            'mode', 'procedural'
+          ),
+          'assets', jsonb_build_object(
+            'prefix', 'expeditions/test-stage-gate/v2/'
+          ),
+          'manifest_hash', repeat('f', 64),
+          'summary', jsonb_build_object('title', 'Placeholder'),
+          'zones', jsonb_build_array('{}'::jsonb, '{}'::jsonb, '{}'::jsonb),
+          'opponents', jsonb_build_array(
+            '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb
+          ),
+          'boss', '{}'::jsonb
+        ),
+        repeat('f', 64),
+        'expeditions/test-stage-gate/v2/',
+        now(),
+        'test-stage-gate-trophy',
+        'Stage Gate Trophy',
+        'Only used by the transactional publish gate test.',
+        'expeditions/test-stage-gate/trophy/test.png',
+        repeat('e', 64),
+        '{}'::jsonb
+      );
+      ok := false;
+    exception when others then ok := (sqlerrm = 'INVALID_CHAPTER_MANIFEST');
+    end;
+    assert ok, 'staging wajib menolak placeholder chapter';
+    raise exception using errcode = 'ZX005', message = 'rollback stage gate fixture';
+  exception when sqlstate 'ZX005' then
+    null;
+  end;
+
+  ----------------------------------------------------------------------------
+  -- Expedition memakai subtransaksi yang sengaja di-rollback supaya chapter
+  -- published immutable tidak meninggalkan fixture di production.
+  begin
+    insert into public.expedition_chapters (slug, sequence, status)
+    values ('test-sugarworks-prerequisite', 9998, 'retired')
+    returning id into v_id;
+    insert into public.expedition_progress (
+      owner_id, chapter_id, first_cleared_at, clear_count
+    ) values (u1, v_id, now(), 1);
+    insert into public.expedition_chapters (slug, sequence, status)
+    values ('test-sugarworks', 9999, 'published')
+    returning id into v_expedition_chapter;
+    insert into public.expedition_chapter_versions (
+      chapter_id, content_version, manifest, manifest_hash, asset_prefix,
+      approved_at, published_at, active
+    ) values (
+      v_expedition_chapter,
+      1,
+      jsonb_build_object(
+        'schema_version', 1,
+        'summary', jsonb_build_object('title', 'Test Sugarworks'),
+        'zones', '[]'::jsonb,
+        'opponents', '[]'::jsonb,
+        'boss', '{}'::jsonb
+      ),
+      repeat('a', 64),
+      'expeditions/test-sugarworks/v1/',
+      now(),
+      clock_timestamp(),
+      true
+    ) returning id into v_expedition_version;
+    v_j := public.expedition_announcements_payload(u1);
+    assert jsonb_array_length(v_j->'unread') = 1
+           and jsonb_array_length(v_j->'home_popup') = 1,
+           format('chapter baru harus membuat badge dan satu popup Home; actual=%s', v_j);
+    v_j := public.ack_expedition_home_popup(
+      u1, array[v_expedition_chapter]
+    );
+    assert jsonb_array_length(v_j->'unread') = 1
+           and jsonb_array_length(v_j->'home_popup') = 0,
+           'ack popup tidak boleh menghapus badge sebelum chapter dibuka';
+    perform public.ack_expedition_home_popup(
+      u1, array[v_expedition_chapter]
+    );
+    assert (
+      select home_popup_seen_at is not null and chapter_opened_at is null
+      from public.seeker_chapter_receipts
+      where owner_id = u1 and chapter_id = v_expedition_chapter
+    ), 'ack popup harus idempoten dan tidak menandai chapter terbuka';
+    v_j := public.mark_expedition_chapter_opened(
+      u1, v_expedition_version
+    );
+    assert jsonb_array_length(v_j->'unread') = 0
+           and jsonb_array_length(v_j->'home_popup') = 0
+           and exists (
+             select 1 from public.seeker_chapter_receipts
+              where owner_id = u1
+                and chapter_id = v_expedition_chapter
+                and home_popup_seen_at is not null
+                and chapter_opened_at is not null
+           ),
+           'membuka detail chapter harus menghapus badge lintas device';
+    insert into public.expedition_trophies (
+      chapter_id, slug, display_name, description, art_path, art_hash
+    ) values (
+      v_expedition_chapter,
+      'test-sugarworks-trophy',
+      'Sugarworks Trophy',
+      'Proof that the test expedition was cleared.',
+      'expeditions/test-sugarworks/trophy/test.png',
+      repeat('b', 64)
+    ) returning id into v_expedition_trophy;
+
+    v_j := public.save_anima_team(u1, 'expedition', v_team_ids);
+    v_team_id := (v_j->>'id')::uuid;
+    select jsonb_agg(
+      member || jsonb_build_object(
+        'slot', ordinality - 1,
+        'hp', 50,
+        'current_hp', 50,
+        'max_hp', 50,
+        'momentum', 3,
+        'momentum_max', 3,
+        'guarding', false,
+        'participated', ordinality = 1
+      )
+      order by ordinality
+    ) into v_expedition_party
+    from jsonb_array_elements(v_team_snapshot)
+         with ordinality roster(member, ordinality);
+    update public.animas
+       set care = jsonb_set(care, '{energy}', '100'::jsonb),
+           care_synced_at = now()
+     where id = any(v_team_ids);
+
+    update public.animas
+       set care = jsonb_set(care, '{energy}', '29'::jsonb)
+     where id = v_team_ids[4];
+    begin
+      perform public.start_expedition_run(
+        u1, v_expedition_version, v_team_id, 'test-low-energy-seed',
+        v_expedition_party, 'test-expedition-low-energy'
+      );
+      ok := false;
+    exception when others then ok := sqlerrm = 'TEAM_MEMBER_LOW_ENERGY';
+    end;
+    assert ok
+           and (select count(*) from public.expedition_runs
+                 where owner_id = u1 and status in ('checkpoint', 'active')) = 0
+           and (select count(*) from public.animas
+                 where id = any(v_team_ids[1:3])
+                   and (care->>'energy')::numeric = 100) = 3,
+           'biaya masuk Expedition harus gagal atomik jika satu anggota di bawah 30 Energy';
+    update public.animas
+       set care = jsonb_set(care, '{energy}', '100'::jsonb),
+           care_synced_at = now()
+     where id = any(v_team_ids);
+
+    v_j := public.start_expedition_run(
+      u1, v_expedition_version, v_team_id, 'test-run-seed',
+      v_expedition_party, 'test-expedition-start'
+    );
+    v_expedition_run := (v_j->>'id')::uuid;
+    assert (select count(*) from public.animas
+             where id = any(v_team_ids)
+               and (care->>'energy')::numeric = 70) = 4,
+           'Begin Expedition harus memotong 30 Energy dari semua anggota sekali';
+    v_j2 := public.start_expedition_run(
+      u1, v_expedition_version, v_team_id, 'ignored-replay-seed',
+      v_expedition_party, 'test-expedition-start'
+    );
+    assert (v_j2->>'replayed')::boolean
+           and (select count(*) from public.animas
+                 where id = any(v_team_ids)
+                   and (care->>'energy')::numeric = 70) = 4,
+           'replay Begin Expedition tidak boleh memotong Energy kedua kali';
+    begin
+      perform public.save_anima_team(u1, 'expedition', v_team_ids);
+      ok := false;
+    exception when others then ok := sqlerrm = 'EXPEDITION_TEAM_LOCKED';
+    end;
+    assert ok, 'roster Expedition harus terkunci sejak checkpoint awal';
+    v_expedition_map := '{
+      "entry":["recovery-1"],
+      "nodes":[{
+        "id":"recovery-1","kind":"recovery","depth":1,"next":["next-1"],
+        "options":[{"id":"heal","effect":{"type":"heal_party","ratio":0.25}}]
+      }]
+    }'::jsonb;
+    update public.animas
+       set care = jsonb_set(care, '{energy}', '0'::jsonb),
+           care_synced_at = now()
+     where id = any(v_team_ids);
+    v_j := public.start_expedition_zone(
+      u1, v_expedition_run, 1, v_team_id, 'test-zone-seed',
+      v_expedition_party, v_expedition_map, 'test-zone-start'
+    );
+    assert (v_j->>'status') = 'active'
+           and (v_j->>'version')::integer = 2
+           and (select count(*) from public.animas
+                 where id = any(v_team_ids)
+                   and (care->>'energy')::numeric = 0) = 4,
+           'Start Zone harus mengabaikan Energy setelah biaya masuk dibayar';
+    begin
+      perform public.save_anima_team(u1, 'expedition', v_team_ids);
+      ok := false;
+    exception when others then ok := sqlerrm = 'EXPEDITION_TEAM_LOCKED';
+    end;
+    assert ok, 'roster Expedition tidak boleh diubah selama zona aktif';
+
+    v_j := public.enter_expedition_node(
+      u1, v_expedition_run, 2,
+      v_expedition_map->'nodes'->0, 'test-enter-recovery'
+    );
+    v_j := public.commit_expedition_choice(
+      u1, v_expedition_run, 3, 'recovery-1', 'heal',
+      v_expedition_party, 2, '[]'::jsonb, '["next-1"]'::jsonb, false,
+      'test-choose-recovery'
+    );
+    assert (v_j->>'supplies')::integer = 2
+           and (v_j->>'nodes_completed')::integer = 1,
+           'node non-combat harus commit Supplies dan progress satu kali';
+    v_j2 := public.commit_expedition_choice(
+      u1, v_expedition_run, 3, 'recovery-1', 'heal',
+      v_expedition_party, 2, '[]'::jsonb, '["next-1"]'::jsonb, false,
+      'test-choose-recovery'
+    );
+    assert (v_j2->>'replayed')::boolean,
+           'retry choice Expedition harus replay tanpa mutation kedua';
+
+    v_expedition_map := '{
+      "entry":["shop-1"],
+      "nodes":[{
+        "id":"shop-1","kind":"shop","depth":3,"next":["battle-1"],
+        "options":[{"id":"buy","effect":{"type":"supplies","value":1}}]
+      }]
+    }'::jsonb;
+    update public.expedition_runs set
+      zone_map = v_expedition_map,
+      available_node_ids = '["shop-1"]'::jsonb,
+      current_node_id = null,
+      pending_node = null
+    where id = v_expedition_run;
+    v_bits_before_battle := (select bits from public.profiles where id = u1);
+    v_j := public.enter_expedition_node(
+      u1, v_expedition_run, 4,
+      v_expedition_map->'nodes'->0, 'test-enter-shop'
+    );
+    v_j := public.refresh_expedition_shop(
+      u1, v_expedition_run, 5,
+      v_expedition_map->'nodes'->0, 'test-refresh-shop'
+    );
+    assert (select bits from public.profiles where id = u1)
+             = v_bits_before_battle - 3
+           and (v_j->>'shop_refreshed')::boolean,
+           'refresh Shop Expedition harus mendebit Bits sekali';
+    v_j2 := public.refresh_expedition_shop(
+      u1, v_expedition_run, 5,
+      v_expedition_map->'nodes'->0, 'test-refresh-shop'
+    );
+    assert (v_j2->>'replayed')::boolean
+           and (select bits from public.profiles where id = u1)
+                 = v_bits_before_battle - 3,
+           'retry refresh Shop tidak boleh mendebit Bits kedua kali';
+
+    v_expedition_map := '{
+      "entry":["battle-1"],
+      "nodes":[{
+        "id":"battle-1","kind":"battle","depth":1,"next":["next-1"],
+        "opponent_id":"test-battle","supplies_reward":2
+      }]
+    }'::jsonb;
+    update public.expedition_runs set
+      zone_map = v_expedition_map,
+      available_node_ids = '["battle-1"]'::jsonb,
+      current_node_id = null,
+      pending_node = null
+    where id = v_expedition_run;
+    select jsonb_agg(
+      member || jsonb_build_object(
+        'slot', ordinality - 1,
+        'hp', 50,
+        'max_hp', 50,
+        'momentum', 3,
+        'momentum_max', 3,
+        'guarding', false,
+        'participated', ordinality = 1
+      )
+      order by ordinality
+    ) into v_expedition_state
+    from jsonb_array_elements(v_opponent_snapshot)
+         with ordinality roster(member, ordinality);
+    v_expedition_state := jsonb_build_object(
+      'status', 'active',
+      'turn', 1,
+      'seed', 'test-reset-seed',
+      'player', jsonb_build_object(
+        'active_slot', 0, 'forced_switch', false, 'item_used', false,
+        'roster', v_expedition_party
+      ),
+      'opponent', jsonb_build_object(
+        'active_slot', 0, 'forced_switch', false, 'item_used', false,
+        'roster', v_expedition_state
+      )
+    );
+    update public.team_battle_sessions set
+      status = 'active',
+      finished_at = null,
+      expires_at = now() + interval '30 minutes'
+    where id = v_team_session;
+    begin
+      perform public.start_expedition_encounter(
+        u1, v_expedition_run, 6, v_expedition_map->'nodes'->0,
+        v_team_snapshot, v_opponent_snapshot, v_expedition_state,
+        'test-reset-seed', 2, 'test-cross-mode-expedition'
+      );
+      ok := false;
+    exception when others then ok := sqlerrm = 'COMBAT_ALREADY_ACTIVE';
+    end;
+    assert ok, 'Team Battle aktif harus memblokir encounter Expedition';
+    update public.team_battle_sessions set
+      status = 'won',
+      finished_at = now()
+    where id = v_team_session;
+    begin
+      v_j2 := (
+        select jsonb_agg(
+          jsonb_set(
+            member,
+            '{anima_id}',
+            to_jsonb('sugarworks-gumdrop-' || ordinality::text)
+          )
+          order by ordinality
+        )
+        from jsonb_array_elements(v_opponent_snapshot)
+             with ordinality roster(member, ordinality)
+      );
+      v_j := public.start_expedition_encounter(
+        u1, v_expedition_run, 6, v_expedition_map->'nodes'->0,
+        v_team_snapshot, v_j2,
+        jsonb_set(v_expedition_state, '{opponent,roster}', (
+          select jsonb_agg(
+            jsonb_set(
+              member,
+              '{anima_id}',
+              to_jsonb('sugarworks-gumdrop-' || ordinality::text)
+            )
+            order by ordinality
+          )
+          from jsonb_array_elements(v_expedition_state #> '{opponent,roster}')
+               with ordinality roster(member, ordinality)
+        )),
+        'test-chapter-seed', 2, 'test-chapter-opponent-slug'
+      );
+      assert v_j->'encounter'->>'id' is not null,
+             'encounter Expedition harus menerima anima_id chapter berupa slug';
+      raise exception using errcode = 'ZX003',
+        message = 'rollback chapter opponent fixture';
+    exception when sqlstate 'ZX003' then
+      null;
+    end;
+    v_j := public.start_expedition_encounter(
+      u1, v_expedition_run, 6, v_expedition_map->'nodes'->0,
+      v_team_snapshot, v_opponent_snapshot, v_expedition_state,
+      'test-reset-seed', 2, 'test-enter-reset-battle'
+    );
+    v_expedition_encounter := (v_j->'encounter'->>'id')::uuid;
+    v_j := public.forfeit_expedition_encounter(
+      u1, v_expedition_encounter,
+      '{"entry":["retry-1"],"nodes":[{"id":"retry-1","kind":"battle","next":[]}]}'::jsonb,
+      'test-retry-seed'
+    );
+    assert (v_j->'run'->>'status') = 'active'
+           and (v_j->'run'->>'supplies')::integer = 0
+           and (v_j->'run'->>'zone_attempt')::integer = 2
+           and (select bits from public.profiles where id = u1)
+                 = v_bits_before_battle
+           and exists (
+             select 1 from public.quota_ledger
+              where owner_id = u1 and reason = 'expedition_refund'
+           ),
+           'forfeit harus memulihkan checkpoint dan refund refresh Shop sekali';
+    v := (v_j->'run'->>'version')::integer;
+
+    v_expedition_map := '{
+      "entry":["boss-1"],
+      "nodes":[{
+        "id":"boss-1","kind":"boss","depth":5,"next":[],
+        "opponent_id":"test-boss","supplies_reward":8
+      }]
+    }'::jsonb;
+    update public.expedition_runs set
+      zone = 3,
+      nodes_completed = 4,
+      zone_map = v_expedition_map,
+      available_node_ids = '["boss-1"]'::jsonb,
+      current_node_id = null,
+      pending_node = null
+    where id = v_expedition_run;
+    select jsonb_agg(
+      member || jsonb_build_object(
+        'slot', ordinality - 1,
+        'hp', 50,
+        'max_hp', 50,
+        'momentum', 3,
+        'momentum_max', 3,
+        'guarding', false,
+        'participated', ordinality = 1
+      )
+      order by ordinality
+    ) into v_expedition_state
+    from jsonb_array_elements(v_opponent_snapshot)
+         with ordinality roster(member, ordinality);
+    v_expedition_state := jsonb_build_object(
+      'status', 'active',
+      'turn', 1,
+      'seed', 'test-boss-seed',
+      'player', jsonb_build_object(
+        'active_slot', 0, 'forced_switch', false, 'item_used', false,
+        'roster', v_expedition_party
+      ),
+      'opponent', jsonb_build_object(
+        'active_slot', 0, 'forced_switch', false, 'item_used', false,
+        'roster', v_expedition_state
+      )
+    );
+    update public.app_config set value = '1'::jsonb
+     where key = 'expedition_rewarded_encounters_per_day';
+    insert into public.expedition_encounters (
+      run_id, owner_id, node_id, kind, player_snapshot, opponent_snapshot,
+      state, status, rng_seed, finished_at, rewarded_at
+    ) values (
+      v_expedition_run, u1, 'reward-cap-fixture', 'battle',
+      v_team_snapshot, v_opponent_snapshot, v_expedition_state,
+      'won', 'reward-cap-fixture', now(), now()
+    ) returning id into v_id;
+    insert into public.expedition_encounter_rewards (
+      encounter_id, owner_id, progression, supplies
+    ) values (v_id, u1, true, 2);
+    begin
+      perform public.start_expedition_encounter(
+        u1, v_expedition_run, v, v_expedition_map->'nodes'->0,
+        v_team_snapshot, v_opponent_snapshot,
+        jsonb_set(v_expedition_state, '{player,roster,0,momentum}', '2'::jsonb),
+        'test-boss-seed', 8, 'test-invalid-pp'
+      );
+      ok := false;
+    exception when others then ok := sqlerrm = 'INVALID_EXPEDITION_PP';
+    end;
+    assert ok, 'setiap encounter Expedition harus mulai dengan PP penuh';
+    v_j := public.start_expedition_encounter(
+      u1, v_expedition_run, v, v_expedition_map->'nodes'->0,
+      v_team_snapshot, v_opponent_snapshot, v_expedition_state,
+      'test-boss-seed', 8, 'test-enter-boss'
+    );
+    v_expedition_encounter := (v_j->'encounter'->>'id')::uuid;
+    begin
+      v_j2 := public.abandon_expedition_run(
+        u1, v_expedition_run, 'test-abandon-active'
+      );
+      assert v_j2->>'status' = 'abandoned'
+             and (select status from public.expedition_encounters
+                   where id = v_expedition_encounter) = 'forfeited',
+             'abandon harus menutup encounter aktif dalam transaksi yang sama';
+      raise exception using errcode = 'ZX002', message = 'rollback abandon fixture';
+    exception when sqlstate 'ZX002' then
+      null;
+    end;
+    v_expedition_state := jsonb_set(v_expedition_state, '{status}', '"won"'::jsonb);
+    v_expedition_state := jsonb_set(v_expedition_state, '{turn}', '2'::jsonb);
+    v_expedition_state := jsonb_set(
+      v_expedition_state,
+      '{opponent,roster}',
+      (
+        select jsonb_agg(jsonb_set(member, '{hp}', '0'::jsonb) order by ordinality)
+        from jsonb_array_elements(v_expedition_state #> '{opponent,roster}')
+             with ordinality roster(member, ordinality)
+      )
+    );
+    v_bits_before_battle := (select bits from public.profiles where id = u1);
+    v_score_before_battle := (
+      select sum(care_score)::integer from public.animas where id = any(v_team_ids)
+    );
+    v_j := public.commit_expedition_turn(
+      u1, v_expedition_encounter, 1, 1, 'test-boss-turn', 'strike',
+      null, null, v_expedition_state,
+      '[{"type":"finished","result":"won"}]'::jsonb,
+      '{"action":"strike"}'::jsonb,
+      '[]'::jsonb, false, true, '{}'::jsonb, 'unused-retry'
+    );
+    assert v_j->'run'->>'status' = 'complete'
+           and (v_j->'reward'->>'first_clear')::boolean
+           and (v_j->'reward'->>'clear_bits')::integer = 25
+           and not (v_j->'reward'->>'progression')::boolean
+           and (v_j->'reward'->>'supplies')::integer = 8
+           and (select sum(care_score)::integer from public.animas
+                 where id = any(v_team_ids)) = v_score_before_battle,
+           'Boss pertama harus menyelesaikan run dan memberi first-clear reward';
+    assert exists (
+             select 1 from public.seeker_trophies
+              where owner_id = u1 and trophy_id = v_expedition_trophy
+           )
+           and (select bits from public.profiles where id = u1)
+                 = v_bits_before_battle + 25,
+           'first clear harus memberi Trophy unik dan Bits atomik';
+    v_j2 := public.commit_expedition_turn(
+      u1, v_expedition_encounter, 1, 1, 'test-boss-turn', 'strike',
+      null, null, v_expedition_state,
+      '[{"type":"finished","result":"won"}]'::jsonb,
+      '{"action":"strike"}'::jsonb,
+      '[]'::jsonb, false, true, '{}'::jsonb, 'unused-retry'
+    );
+    assert (v_j2->>'replayed')::boolean
+           and (select count(*) from public.seeker_trophies
+                 where owner_id = u1 and trophy_id = v_expedition_trophy) = 1
+           and (select count(*) from public.quota_ledger
+                 where reason = 'expedition_clear' and ref_id = v_expedition_run) = 1,
+           'replay Boss tidak boleh menggandakan Trophy atau first-clear Bits';
+
+    insert into public.expedition_chapter_versions (
+      chapter_id, content_version, manifest, manifest_hash, asset_prefix,
+      approved_at, published_at, active
+    ) values (
+      v_expedition_chapter,
+      2,
+      jsonb_build_object(
+        'schema_version', 1,
+        'summary', jsonb_build_object('title', 'Test Sugarworks v2'),
+        'zones', '[]'::jsonb,
+        'opponents', '[]'::jsonb,
+        'boss', '{}'::jsonb
+      ),
+      repeat('c', 64),
+      'expeditions/test-sugarworks/v2/',
+      now(),
+      now(),
+      false
+    ) returning id into v_expedition_version_next;
+    v_j := public.activate_expedition_chapter_version(
+      v_expedition_chapter, 2
+    );
+    assert (v_j->>'version_id')::uuid = v_expedition_version_next
+           and (v_j->>'active')::boolean
+           and (select active from public.expedition_chapter_versions
+                 where id = v_expedition_version_next)
+           and not (select active from public.expedition_chapter_versions
+                     where id = v_expedition_version)
+           and (select status from public.expedition_chapters
+                 where id = v_expedition_chapter) = 'published',
+           'activation harus menukar satu versi aktif secara atomik';
+    update public.app_config
+       set value = 'true'::jsonb
+     where key = 'feature_chapter_push';
+    v_j := public.claim_expedition_chapter_push(v_expedition_version_next);
+    assert (v_j->>'chapter_version_id')::uuid = v_expedition_version_next
+           and v_j->>'slug' = 'test-sugarworks',
+           'push claim hanya boleh mengambil chapter aktif';
+    begin
+      perform public.claim_expedition_chapter_push(v_expedition_version_next);
+      ok := false;
+    exception when others then ok := (sqlerrm = 'CHAPTER_PUSH_ALREADY_CLAIMED');
+    end;
+    assert ok, 'push claim pending harus mencegah kirim ganda';
+    v_j := public.finish_expedition_chapter_push(
+      v_expedition_version_next, 'sent', 'test-fcm-message', null
+    );
+    assert v_j->>'status' = 'sent'
+           and v_j->>'message_id' = 'test-fcm-message'
+           and (v_j->>'sent_at') is not null,
+           'push completion harus menyimpan receipt satu kali';
+
+    begin
+      update public.expedition_chapter_versions
+         set manifest = '{"changed":true}'::jsonb
+       where id = v_expedition_version;
+      ok := false;
+    exception when others then ok := (sqlerrm = 'PUBLISHED_CHAPTER_IMMUTABLE');
+    end;
+    assert ok, 'chapter version published harus immutable';
+    raise exception using errcode = 'ZX001', message = 'rollback fixture Expedition';
+  exception when sqlstate 'ZX001' then
+    null;
+  end;
 
   perform set_config('request.jwt.claims',
     json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);
@@ -1689,7 +2815,7 @@ begin
   assert ok, 'client tidak boleh memanggil grant Core mingguan';
   begin
     perform public.claim_capture(
-      u1, 'forbidden', 'forbidden', 'forbidden_species', 'gray', 1,
+      u1, 'forbidden', 'forbidden', 'forbidden_species', 'gray', 1::smallint,
       'stone', null, 'object', 1, v_stats, v_care, v_visi,
       'v13', 'test-model', 0.07, u1::text || '/forbidden.png'
     );
@@ -1697,7 +2823,6 @@ begin
   exception when insufficient_privilege then ok := true;
   end;
   assert ok, 'client tidak boleh memanggil claim_capture';
-  perform set_config('role', 'none', true);
 
   begin
     perform 1 from public.storage_cleanup_queue;
@@ -1720,6 +2845,86 @@ begin
   exception when insufficient_privilege then ok := true;
   end;
   assert ok, 'gallery_hidden hanya boleh ditulis lewat Edge Function';
+  begin
+    perform 1 from public.anima_teams;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'anima_teams tidak boleh dibaca langsung oleh client';
+  begin
+    perform public.save_anima_team(u1, 'team_battle', v_team_ids);
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh memanggil save_anima_team';
+  begin
+    perform public.commit_team_battle_turn(
+      u1, v_team_session, 1, 1, 'forbidden-team', 'strike',
+      null, null, v_team_state, '[]'::jsonb, '{}'::jsonb
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh commit turn Team Battle langsung';
+  begin
+    perform 1 from public.expedition_runs;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'expedition_runs tidak boleh dibaca langsung oleh client';
+  begin
+    perform public.expedition_chapter_catalog(u1);
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh memanggil RPC Expedition service-only';
+  begin
+    perform public.activate_expedition_chapter_version(
+      '00000000-0000-4000-8000-000000000099', 1
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh mengaktifkan chapter version langsung';
+  begin
+    perform public.stage_expedition_chapter_version(
+      'forbidden-stage', 1, 1, 1, '{}'::jsonb, '{}'::jsonb,
+      repeat('f', 64), 'expeditions/forbidden-stage/v1/', now(),
+      'forbidden-trophy', 'Forbidden', 'Forbidden',
+      'expeditions/forbidden-stage/trophy/test.png', repeat('f', 64), '{}'::jsonb
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh staging chapter version langsung';
+  begin
+    perform 1 from public.expedition_chapter_push_events;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'receipt push chapter tidak boleh dibaca client';
+  begin
+    perform public.claim_expedition_chapter_push(
+      '00000000-0000-4000-8000-000000000099'
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh claim pengiriman push chapter';
+  begin
+    perform 1 from public.seeker_chapter_receipts;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'receipt announcement tidak boleh dibaca langsung oleh client';
+  begin
+    perform public.ack_expedition_home_popup(
+      u1, array[v_expedition_chapter]
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh menulis receipt announcement langsung';
   perform set_config('role', 'none', true);
 
   delete from public.animas where owner_id = u1 and nickname = 'v2 ok';
@@ -1734,13 +2939,121 @@ begin
 
   ----------------------------------------------------------------------------
   -- Penghapusan auth user adalah mekanisme yang dipakai endpoint delete_account.
+  with inserted as (
+    insert into public.animas (
+      owner_id, nickname, species_key, color_bucket, element, rarity,
+      base_stats, care, status, sheet_path, manifest
+    )
+    select
+      u3, 'account-team-' || gs.n, 'account_team_species_' || gs.n, 'blue', 'metal', 1,
+      v_stats, v_care, 'ready', u3::text || '/account-team-' || gs.n || '/sheet.png',
+      '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+      from generate_series(1, 4) as gs(n)
+    returning id, nickname
+  )
+  select array_agg(id order by nickname) into v_team_ids from inserted;
+  v_j := public.save_anima_team(u3, 'team_battle', v_team_ids);
+  v_team_id := (v_j->>'id')::uuid;
+  select jsonb_agg(jsonb_build_object(
+    'anima_id', a.id,
+    'name', a.nickname,
+    'species_key', a.species_key,
+    'color_bucket', a.color_bucket,
+    'stage', a.stage,
+    'level', 1,
+    'element', a.element,
+    'base_stats', a.base_stats,
+    'sheet_path', a.sheet_path,
+    'manifest', a.manifest
+  ) order by ids.ordinality)
+  into v_team_snapshot
+  from unnest(v_team_ids) with ordinality ids(id, ordinality)
+  join public.animas a on a.id = ids.id;
+  select roster_snapshot into v_opponent_snapshot
+    from public.system_team_templates
+   where active
+   order by created_at
+   limit 1;
+  insert into public.team_battle_sessions (
+    owner_id, player_team_id, opponent_source,
+    player_snapshot, opponent_snapshot, state, rng_seed,
+    reward_tier, reward_roll, reward_bits
+  ) values (
+    u3, v_team_id, 'system',
+    v_team_snapshot, v_opponent_snapshot, '{"status":"active"}'::jsonb,
+    'account-delete-active-team', 'even', 0, 8
+  );
   delete from auth.users where id = u3;
   assert not exists (select 1 from public.profiles where id = u3),
-         'delete account harus cascade ke profil pemain';
+         'delete account harus melewati guard active Team dan cascade ke profil';
+  assert not exists (select 1 from public.team_battle_sessions where owner_id = u3),
+         'delete account harus cascade active Team session';
   assert exists (
     select 1 from public.species_library
      where species_key = v_spesies and color_bucket = 'gray' and stage = 1
   ), 'delete account tidak boleh menghapus pustaka spesies bersama';
+
+  begin
+    with inserted as (
+      insert into public.animas (
+        owner_id, nickname, species_key, color_bucket, element, rarity,
+        base_stats, care, status, sheet_path, manifest
+      )
+      select
+        u4, 'expedition-delete-' || gs.n, 'expedition_delete_species_' || gs.n,
+        'blue', 'metal', 1, v_stats, v_care, 'ready',
+        u4::text || '/expedition-delete-' || gs.n || '/sheet.png',
+        '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+      from generate_series(1, 4) as gs(n)
+      returning id, nickname
+    )
+    select array_agg(id order by nickname) into v_team_ids from inserted;
+    v_j := public.save_anima_team(u4, 'expedition', v_team_ids);
+    v_team_id := (v_j->>'id')::uuid;
+    select jsonb_agg(jsonb_build_object(
+      'anima_id', a.id,
+      'name', a.nickname,
+      'base_stats', a.base_stats,
+      'hp', 100,
+      'max_hp', 100
+    ) order by ids.ordinality)
+    into v_team_snapshot
+    from unnest(v_team_ids) with ordinality ids(id, ordinality)
+    join public.animas a on a.id = ids.id;
+    insert into public.expedition_chapters (slug, sequence)
+    values ('test-account-delete-expedition', 9997)
+    returning id into v_expedition_chapter;
+    insert into public.expedition_chapter_versions (
+      chapter_id, content_version, manifest, manifest_hash, asset_prefix
+    ) values (
+      v_expedition_chapter, 1, '{}'::jsonb, repeat('c', 64),
+      'expeditions/test-account-delete-expedition/v1/'
+    ) returning id into v_expedition_version;
+    insert into public.expedition_runs (
+      owner_id, chapter_version_id, team_id, status, seed,
+      zone_map, available_node_ids, party_state
+    ) values (
+      u4, v_expedition_version, v_team_id, 'active', 'delete-expedition',
+      '{"entry":["active"],"nodes":[]}'::jsonb, '[]'::jsonb, v_team_snapshot
+    ) returning id into v_expedition_run;
+    insert into public.expedition_encounters (
+      run_id, owner_id, node_id, kind, player_snapshot, opponent_snapshot,
+      state, rng_seed
+    ) values (
+      v_expedition_run, u4, 'active-delete', 'battle',
+      v_team_snapshot, v_opponent_snapshot, '{}'::jsonb, 'delete-expedition'
+    ) returning id into v_expedition_encounter;
+    delete from auth.users where id = u4;
+    assert not exists (select 1 from public.expedition_runs where owner_id = u4)
+           and not exists (
+             select 1 from public.expedition_encounters
+              where id = v_expedition_encounter
+           ),
+           'delete account harus cascade active run dan encounter Expedition';
+    raise exception using errcode = 'ZX003', message = 'rollback delete Expedition fixture';
+  exception when sqlstate 'ZX003' then
+    null;
+  end;
 
   delete from auth.users where id in (u1, u2, u3, u4);
   delete from public.species_library where species_key = v_spesies;

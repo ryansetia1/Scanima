@@ -266,7 +266,12 @@ Nilai aksi yang live di Phase 2:
 - **Play:** gratis, Energy -5; EXP +1 maksimal lima kali per hari sipil lokal. Tidak ada cap Bond; anti-farm-nya Energy dan counter harian. Client menahan tap sesudah cap (toast, tanpa request).
 - **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 EXP. Wake lebih awal mempertahankan pemulihan parsial tanpa EXP. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap. Anima yang **tidak di-Summon** juga tidur, tanpa auto-bangun dan tanpa +5 EXP — Energy pulih dalam tiga jam (dua kali lipat companion). Collection menampilkan Sleep selama Energy pulih, Hungry/Dirty kalau lapar/kotor, Idle begitu siap Summon; row Postgres tetap tidur agar Energy tidak luruh. `Summon` menulis `profiles.active_anima_id` dan menidurkan sisanya.
 
-Saldo, kebutuhan, inventory, dan score diputuskan satu transaction function Postgres. `care_events` membuat retry idempoten; `quota_ledger` mencatat pembelian Shop (`shop_buy`). Client menyimpan satu intent `pending_care` (plus `item_id`) dan satu `pending_purchase`, bukan salinan saldo atau tas.
+Saldo, kebutuhan, inventory, dan score diputuskan satu transaction function
+Postgres. `care_events` membuat retry idempoten; `quota_ledger` mencatat
+pembelian Shop (`shop_buy`). Client menyimpan satu intent `pending_care` (plus
+`item_id`) dan satu `pending_purchase`, bukan salinan saldo atau tas. Shop
+menerima saldo Bits last-known authoritative dari profile dan men-disable harga
+yang lebih mahal sebagai preflight; transaksi server tetap pagar akhirnya.
 
 ## 4. Evo-tree
 
@@ -438,7 +443,7 @@ Auto-battle akan lebih mudah dibuat, tapi tiga pilihan per turn adalah harga yan
 | `surge` | **Special** | 75, berbasis SPECIAL | 1 | Menembus 50% DEF lawan |
 | `guard` | **Guard** | — | 0, memulihkan 1 | Damage masuk x0.5 turn ini |
 
-Turn tetap menunggu event authoritative server, tetapi tap tidak boleh terlihat seperti tombol mati selama round-trip jaringan. Client langsung menandai aksi pilihan dengan underline pulse, meredupkan dua pilihan lain, menampilkan `Attack locked in`/`Special charged`/`Guard up`, lalu mengabaikan input ulang tanpa menerapkan style disabled. Ini hanya mengakui command pemain—damage, initiative, PP, dan animasi hasil tetap menunggu response server sehingga snappiness tidak dibayar dengan state optimistis yang bisa salah.
+Turn tetap menunggu event authoritative server, tetapi tap tidak boleh terlihat seperti loading. Client langsung menandai aksi pilihan dengan underline pulse + haptic, meredupkan pilihan lain, dan mengabaikan input ulang tanpa style disabled. Jangan tampilkan `Attack locked in` / `Special charged` / `Resolving turn` — copy itu mengumumkan freeze. Damage, initiative, PP, dan animasi hasil tetap menunggu response server; yang instan hanya acknowledgement di tombol, supaya SPD lawan yang lebih tinggi tidak terlihat seperti animasi pemain yang “salah”.
 
 Battle dan Training memakai entry gate yang sama: Anima harus memiliki **minimal 20 Energy**, dan **start session baru memotong 20 Energy**. Hunger **bukan** gerbang masuk — Bits didapat dari duel dan makanan dibeli pakai Bits, jadi mengunci faucet di belakang sink-nya membuat 0 Bits + tas kosong jadi soft-lock. Pose Hungry dan EXP Feed tetap memakai ambang 40. `start_battle()` menjalankan `apply_care(..., 'sync')` sebelum memeriksa Energy authoritative, sehingga client tidak bisa memakai snapshot Energy lama untuk masuk. Client juga menonaktifkan CTA lebih awal ketika row roster sudah menunjukkan Energy di bawah 20, tetapi keputusan akhir tetap di transaksi server. Resume session aktif tidak memotong Energy kedua kali, dan duel yang sudah berjalan tidak dibatalkan di tengah.
 
@@ -501,7 +506,31 @@ Lawan Battle:
 | Kosong pool | **Bot sistem** fallback | Normalisasi stat ke power pemain |
 | Matching | ±15% base stat, prioritas stage sama | Sama |
 
-Detail publish/unpublish Galeri: [08](08-private-art-and-gallery.md). PvP ranked, tim multi-Anima, item drop — setelah slice terbukti.
+Detail publish/unpublish Galeri: [08](08-private-art-and-gallery.md). PvP
+real-time, ranked, dan item drop tetap ditunda.
+
+### Target berikutnya: Team Battle dan Expedition
+
+Team Battle tidak mengubah economy Duel. Ia mempunyai cap account-wide sendiri:
+baseline **2 rewarded wins** dan **40 Bits per hari sipil lokal**. Empat anggota
+membayar 10 Energy saat session baru dibuat. Fighter yang pernah aktif mendapat
++2 EXP dan bench tim mendapat +1; loss, draw, dan forfeit nol. Angka ini hidup
+di `app_config` dan wajib dituning dari telemetry sebelum rollout luas.
+
+Expedition tidak menjadi faucet Bits berulang. **Begin Expedition** mendebit
+30 Energy dari masing-masing empat anggota satu kali; seluruh Start Zone dan
+Boss dalam run itu tidak lagi memakai Energy. Roster dikunci sampai complete
+atau abandon supaya anggota pengganti tidak menghindari biaya masuk. Tiga
+encounter pertama per hari memberi pembagian EXP yang sama, sedangkan Tokens
+(wire `supplies`) tetap masuk karena hanya berlaku di run. First clear chapter
+memberi reward satu kali + Trophy. Bits hanya keluar untuk satu refresh Shop
+opsional; jika attempt zona gagal, debit itu direfund idempoten bersama rollback
+checkpoint.
+
+HP persisten hanya di dalam zona, PP reset tiap encounter, dan growth dari EXP
+baru dipakai di encounter Battle berikutnya di zona yang sama. Aturan roster, switch, node,
+checkpoint, Trophy, dan Chapter Factory ada di
+[`09-team-battle-and-expedition.md`](09-team-battle-and-expedition.md).
 
 ## 6. Loop harian yang diharapkan
 

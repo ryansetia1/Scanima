@@ -70,6 +70,22 @@ import {
   catalogItem,
   rewardTierFromRatio,
 } from "../backend/supabase/functions/_shared/catalog.mjs";
+import {
+  createTeamBattleState,
+  resolveTeamTurn,
+  teamCombatPower,
+  teamRewardPreview,
+} from "../backend/supabase/functions/_shared/team_combat.mjs";
+import {
+  applyEncounterBoosts,
+  applyNodeOption,
+  findExpeditionNode,
+  generateZoneMap,
+  nextNodeIds,
+  opponentForNode,
+  prepareExpeditionRoster,
+  validateChapterManifest,
+} from "../backend/supabase/functions/_shared/expedition.mjs";
 import { imageInputForModel } from "./run.mjs";
 
 const SIZE = DEFAULTS.workSize; // 1024, jadi tidak ada resize yang mengaburkan assert
@@ -768,6 +784,16 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
     "v15 monster identity layer fauna ikut terbundel"
   );
   assert.equal(bundel.v15?.sprite_sheet, bundel.v13?.sprite_sheet, "v15 tidak mengubah prompt object");
+  for (const prompt of [
+    bundel.v16?.sprite_sheet,
+    bundel.v16?.sprite_sheet_fauna,
+    bundel.v16?.sprite_sheet_evolve,
+  ]) {
+    assert.ok(prompt?.includes("EYE GAZE LOCK"), "v16 gaze lock ikut terbundel di semua jalur");
+    assert.ok(prompt?.includes("ONE shared target in open"));
+    assert.match(prompt, /Never look\s+at the viewer/);
+    assert.ok(prompt?.includes("Sleep keeps every eye fully closed"));
+  }
 }
 
 console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
@@ -1445,7 +1471,516 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   );
 }
 
-console.log("23b. gallery moderation + thumb crop");
+console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
+{
+  const member = (id, stats = {}) => ({
+    anima_id: id,
+    name: id,
+    species_key: id,
+    color_bucket: "blue",
+    stage: 1,
+    level: 1,
+    element: "metal",
+    base_stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50, ...stats },
+  });
+  const player = [
+    member("p0", { atk: 95, spd: 95 }),
+    member("p1"),
+    member("p2"),
+    member("p3"),
+  ];
+  const opponent = [
+    member("o0", { hp: 10, def: 10, spd: 10 }),
+    member("o1", { hp: 10, def: 10, spd: 10 }),
+    member("o2", { hp: 10, def: 10, spd: 10 }),
+    member("o3", { hp: 10, def: 10, spd: 10 }),
+  ];
+  const initial = createTeamBattleState({ player, opponent, seed: "team-selftest" });
+  assert.equal(initial.player.roster.length, 4);
+  assert.equal(initial.player.roster[0].participated, true);
+  assert.equal(initial.player.roster[1].participated, false);
+  assert.ok(teamCombatPower(player) > 0);
+  assert.deepEqual(
+    teamRewardPreview(player, opponent, "reward"),
+    teamRewardPreview(player, opponent, "reward"),
+    "preview reward team harus deterministik",
+  );
+
+  const switched = resolveTeamTurn(initial, "switch", "switch-key", "", 1);
+  assert.equal(switched.state.player.active_slot, 1);
+  assert.equal(switched.state.player.roster[1].participated, true);
+  assert.ok(
+    switched.events.some((event) =>
+      event.type === "switch" && event.actor === "player" && event.forced === false
+    ),
+    "switch sukarela harus tercatat dan memakan turn",
+  );
+  assert.deepEqual(
+    resolveTeamTurn(initial, "switch", "switch-key", "", 1),
+    switched,
+    "resolver Team harus deterministik untuk replay key sama",
+  );
+  assert.throws(
+    () => resolveTeamTurn(initial, "switch", "bad-switch", "", 0),
+    /INVALID_SWITCH_SLOT/,
+  );
+
+  const knockout = resolveTeamTurn(initial, "strike", "knockout-key");
+  assert.equal(knockout.state.opponent.active_slot, 1);
+  assert.ok(
+    knockout.events.some((event) =>
+      event.type === "switch" && event.actor === "opponent" && event.forced === true
+    ),
+    "opponent KO harus auto-switch gratis",
+  );
+  assert.ok(
+    !knockout.events.some((event) => event.type === "attack" && event.actor === "opponent"),
+    "replacement tidak boleh mewarisi initiative fighter yang KO",
+  );
+
+  const fragile = [
+    member("f0", { hp: 10, def: 10, atk: 10, spd: 10 }),
+    member("f1"),
+    member("f2"),
+    member("f3"),
+  ];
+  const striker = [member("s0", { atk: 95, spd: 95 }), member("s1")];
+  const forcedState = createTeamBattleState({
+    player: fragile,
+    opponent: striker,
+    seed: "forced-switch",
+  });
+  const playerKnockedOut = resolveTeamTurn(forcedState, "strike", "player-ko");
+  assert.equal(playerKnockedOut.state.player.forced_switch, true);
+  const forcedSwitch = resolveTeamTurn(
+    playerKnockedOut.state,
+    "switch",
+    "forced-switch-key",
+    "",
+    1,
+  );
+  assert.equal(forcedSwitch.state.player.active_slot, 1);
+  assert.ok(
+    !forcedSwitch.events.some((event) => event.type === "attack"),
+    "forced switch gratis tidak boleh memberi opponent serangan tambahan",
+  );
+
+  const soloOpponent = createTeamBattleState({
+    player,
+    opponent: [member("solo", { hp: 10, def: 10, spd: 10 })],
+    seed: "solo-opponent",
+  });
+  const partyWipe = resolveTeamTurn(soloOpponent, "strike", "party-wipe");
+  assert.equal(partyWipe.state.status, "won", "1-member opponent harus selesai saat KO");
+
+  const itemState = createTeamBattleState({
+    player: player.map((entry) => ({ ...entry, base_stats: { ...entry.base_stats, hp: 95 } })),
+    opponent,
+    seed: "team-item",
+  });
+  const usedItem = resolveTeamTurn(itemState, "item", "item-key", "vital_patch");
+  assert.equal(usedItem.state.player.item_used, true);
+  assert.throws(
+    () => resolveTeamTurn(usedItem.state, "item", "second-item", "vital_patch"),
+    /ITEM_ALREADY_USED/,
+    "satu item berlaku untuk seluruh encounter, bukan per fighter",
+  );
+
+  const { readFile } = await import("node:fs/promises");
+  const teamEdge = await readFile(
+    new URL("../backend/supabase/functions/team_battle/index.ts", import.meta.url),
+    "utf8",
+  );
+  const teamTurnHandler = teamEdge.slice(teamEdge.indexOf("async function playTeamTurn"));
+  assert.ok(
+    teamTurnHandler.indexOf('db.rpc("resume_team_battle"') <
+      teamTurnHandler.indexOf('.from("team_battle_turns")'),
+    "replay lookup Team harus memverifikasi owner session lebih dulu",
+  );
+  assert.ok(!teamEdge.includes("body.owner_id"), "owner Team harus selalu turun dari JWT");
+  assert.ok(
+    teamEdge.includes('"feature_team_battle"') && teamEdge.includes('"FEATURE_DISABLED"'),
+    "feature flag Team harus ditegakkan server-side",
+  );
+  assert.ok(
+    teamEdge.includes("!lifecycleOperation && !await teamBattleEnabled()") &&
+      teamEdge.includes('operation === "resume"') &&
+      teamEdge.includes('operation === "turn"') &&
+      teamEdge.includes('operation === "forfeit"'),
+    "feature rollback tidak boleh mengunci session Team yang sudah aktif",
+  );
+  assert.ok(
+    teamEdge.includes('"replace_team_battle_candidates"'),
+    "refresh rival harus replace atomik lewat RPC",
+  );
+  const signedRoster = await readFile(
+    new URL("../backend/supabase/functions/_shared/signed_roster.ts", import.meta.url),
+    "utf8",
+  );
+  assert.ok(
+    signedRoster.includes('member.system_asset === "placeholder"'),
+    "fresh database harus bisa memakai system team tanpa Storage art",
+  );
+  const teamConfig = await readFile(
+    new URL("../backend/supabase/config.toml", import.meta.url),
+    "utf8",
+  );
+  assert.match(teamConfig, /\[functions\.team_battle\][\s\S]*verify_jwt = true/);
+}
+
+console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist");
+{
+  const roster = (prefix) => Array.from({ length: 4 }, (_, index) => ({
+    anima_id: `${prefix}-${index}`,
+    name: `${prefix}-${index}`,
+    stage: 1,
+    level: 1,
+    element: "food",
+    base_stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+  }));
+  const opponents = Array.from({ length: 4 }, (_, index) => ({
+    id: `candy-${index}`,
+    roster: roster(`candy-${index}`),
+  }));
+  const optionPools = {
+    recovery: [{
+      title_key: "RECOVERY",
+      options: [{ id: "heal", effect: { type: "heal_party", ratio: 0.25 } }],
+    }],
+    cache: [{
+      title_key: "CACHE",
+      options: [{
+        id: "power",
+        effect: { type: "stat_boost", stat: "atk", value: 0.1 },
+      }],
+    }],
+    shop: [{
+      title_key: "SHOP",
+      options: [{
+        id: "shop-heal",
+        cost_supplies: 2,
+        effect: { type: "heal_party", ratio: 0.25 },
+      }],
+    }],
+    mystery: [{
+      title_key: "MYSTERY",
+      options: [{ id: "supply", effect: { type: "supplies", value: 2 } }],
+    }],
+  };
+  const zone = (index) => ({
+    id: `zone-${index}`,
+    background_path: `expeditions/demo/v1/zones/zone-${index}.png`,
+    node_pools: {
+      battle: [{ opponent_id: "candy-0", supplies_reward: 2 }],
+      elite: [{ opponent_id: "candy-1", supplies_reward: 4 }],
+      ...optionPools,
+    },
+  });
+  const manifest = {
+    schema_version: 1,
+    summary: { title: "The Sugarworks" },
+    zones: [zone(1), zone(2), zone(3)],
+    opponents,
+    boss: {
+      opponent_id: "candy-3",
+      supplies_reward: 8,
+      title_key: "CANDY_BOSS",
+    },
+  };
+  assert.equal(validateChapterManifest(manifest).zones.length, 3);
+  assert.throws(
+    () => validateChapterManifest({
+      ...manifest,
+      zones: [{ ...zone(1), node_pools: { ...zone(1).node_pools, mystery: [{
+        options: [{ id: "bad", effect: { type: "arbitrary_script" } }],
+      }] } }, zone(2), zone(3)],
+    }),
+    /UNSUPPORTED_CHAPTER_EFFECT/,
+    "manifest tidak boleh mengarang effect runtime baru",
+  );
+  const map = generateZoneMap(manifest, 3, 1, "sugar-seed");
+  assert.deepEqual(
+    map,
+    generateZoneMap(manifest, 3, 1, "sugar-seed"),
+    "map Expedition harus deterministik untuk seed + attempt sama",
+  );
+  assert.equal(map.background_path, "expeditions/demo/v1/zones/zone-3.png");
+  assert.equal(map.nodes.length, 9, "empat layer bercabang plus satu Boss");
+  assert.equal(findExpeditionNode(map, map.entry[0]).depth, 1);
+  const fourthLayer = map.nodes.find((node) => node.depth === 4);
+  assert.equal(
+    findExpeditionNode(map, nextNodeIds(map, fourthLayer.id)[0]).kind,
+    "boss",
+    "zona ketiga harus mengarah ke Boss sesudah empat node",
+  );
+  assert.equal(opponentForNode(manifest, {
+    kind: "boss",
+    opponent_id: "candy-3",
+  }).roster.length, 4);
+
+  const fresh = createTeamBattleState({
+    player: prepareExpeditionRoster(roster("player"), []),
+    opponent: opponents[0].roster,
+    seed: "fresh-hp",
+  });
+  assert.ok(
+    fresh.player.roster.every((fighter) => fighter.hp === fighter.max_hp),
+    "zona baru harus mulai dengan HP penuh",
+  );
+  assert.equal(
+    fresh.player.roster[0].max_hp,
+    toBattleStats({ hp: 50, atk: 50, def: 50, spd: 50, special: 50 }, 1, "", 1).max_hp,
+    "max HP zona baru memakai rumus Battle, bukan base_stats.hp",
+  );
+  const stamped = createTeamBattleState({
+    player: prepareExpeditionRoster(
+      roster("player"),
+      roster("player").map((member) => ({
+        anima_id: member.anima_id,
+        hp: 50,
+        max_hp: 220,
+      })),
+    ),
+    opponent: opponents[0].roster,
+    seed: "stamped-hp",
+  });
+  assert.ok(
+    stamped.player.roster.every((fighter) => fighter.hp === fighter.max_hp),
+    "HP yang tercatat sebagai base_stats.hp plus max Battle adalah stamp startZone, bukan damage",
+  );
+  const persistent = prepareExpeditionRoster(
+    roster("player"),
+    [
+      { anima_id: "player-0", hp: 0 },
+      { anima_id: "player-1", hp: 17 },
+      { anima_id: "player-2", hp: 50 },
+      { anima_id: "player-3", hp: 50 },
+    ],
+    [{ type: "stat_boost", stat: "atk", value: 0.1 }],
+  );
+  const encounter = createTeamBattleState({
+    player: persistent,
+    opponent: opponents[0].roster,
+    seed: "persistent-hp",
+  });
+  assert.equal(encounter.player.active_slot, 1, "encounter baru melewati fighter yang masih KO");
+  assert.equal(encounter.player.roster[1].hp, 17, "HP harus bertahan antar-node dalam zona");
+  assert.equal(encounter.player.roster[0].participated, false);
+  assert.equal(encounter.player.roster[1].participated, true);
+  assert.ok(persistent[0].base_stats.atk > 50, "boost run diterapkan sebelum snapshot encounter");
+  assert.ok(
+    encounter.player.roster[2].max_hp > 50,
+    "max HP Battle tidak boleh jatuh ke base_stats.hp",
+  );
+
+  const levelOne = toBattleStats(
+    { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+    1,
+    "",
+    1,
+  );
+  const levelTwo = toBattleStats(
+    { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+    1,
+    "",
+    2,
+  );
+  const grownRoster = roster("player").map((member, index) => (
+    index <= 1 ? { ...member, level: 2, care_score: 5 } : { ...member, care_score: 0 }
+  ));
+  const savedStats = { hp: 50, atk: 50, def: 50, spd: 50, special: 50 };
+  const grown = prepareExpeditionRoster(
+    grownRoster,
+    [
+      {
+        anima_id: "player-0",
+        hp: levelOne.max_hp,
+        max_hp: levelOne.max_hp,
+        level: 1,
+        atk: 1,
+        boosts_applied: true,
+        base_stats: savedStats,
+      },
+      {
+        anima_id: "player-1",
+        hp: 17,
+        max_hp: levelOne.max_hp,
+        level: 1,
+        atk: 1,
+        boosts_applied: true,
+        base_stats: savedStats,
+      },
+      {
+        anima_id: "player-2",
+        hp: 0,
+        max_hp: levelOne.max_hp,
+        level: 1,
+        boosts_applied: true,
+        base_stats: savedStats,
+      },
+      {
+        anima_id: "player-3",
+        hp: levelOne.max_hp,
+        max_hp: levelOne.max_hp,
+        level: 1,
+        boosts_applied: true,
+        base_stats: savedStats,
+      },
+    ],
+  );
+  assert.equal(grown[0].level, 2, "party_state tidak boleh membekukan Level setelah EXP");
+  assert.equal(grown[1].level, 2, "fighter yang terluka tetap memakai Level live");
+  const grownFight = createTeamBattleState({
+    player: grown,
+    opponent: opponents[0].roster,
+    seed: "grown-level",
+  });
+  assert.equal(grownFight.player.roster[1].atk, levelTwo.atk);
+  assert.equal(grownFight.player.roster[1].max_hp, levelTwo.max_hp);
+  assert.equal(
+    grownFight.player.roster[1].hp,
+    17 + (levelTwo.max_hp - levelOne.max_hp),
+    "naik Level menambah sisa HP sebesar kenaikan max HP",
+  );
+  assert.equal(grownFight.player.roster[2].hp, 0, "KO tidak bangkit dari Level Up");
+  assert.equal(
+    grownFight.player.roster[0].hp,
+    levelTwo.max_hp,
+    "HP penuh mengikuti max HP Level baru",
+  );
+
+  const healed = applyNodeOption({
+    partyState: encounter.player.roster.map((fighter, index) => ({
+      ...persistent[index],
+      ...fighter,
+    })),
+    supplies: 3,
+    boosts: [],
+    node: optionPools.shop[0],
+    optionId: "shop-heal",
+  });
+  assert.equal(healed.supplies, 1, "Shop Expedition memakai Supplies");
+  assert.ok(healed.party_state[1].hp > 17, "Recovery/Shop mengubah HP persisten");
+  const boosted = applyNodeOption({
+    partyState: healed.party_state,
+    supplies: 5,
+    boosts: [{ type: "shop_discount", value: 0.5 }],
+    node: {
+      options: [{
+        id: "boost",
+        cost_supplies: 3,
+        effect: { type: "stat_boost", stat: "max_hp", value: 0.2 },
+      }],
+    },
+    optionId: "boost",
+  });
+  assert.equal(boosted.supplies, 3, "diskon Shop harus menurunkan biaya Supplies");
+  assert.equal(boosted.party_state[1].max_hp, 60, "boost max HP berlaku pada zona aktif");
+  const ppState = applyEncounterBoosts(encounter, [
+    { type: "start_pp", value: 1 },
+    { type: "start_pp", value: 1 },
+  ]);
+  assert.equal(ppState.player.roster[0].momentum, 5, "boost PP diterapkan per encounter");
+  assert.equal(ppState.player.roster[0].momentum_max, 5, "bonus PP dibatasi dua");
+
+  const { readFile } = await import("node:fs/promises");
+  const koExpSql = await readFile(
+    new URL("../backend/supabase/migrations/20260815191302_deny_ko_party_exp.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    koExpSql,
+    /when coalesce\(\(p_member->>'hp'\)::integer, 0\) <= 0 then 0/,
+    "anggota KO tidak boleh mendapat EXP Team/Expedition",
+  );
+  const expeditionEdge = await readFile(
+    new URL("../backend/supabase/functions/expedition/index.ts", import.meta.url),
+    "utf8",
+  );
+  const expeditionTurn = expeditionEdge.slice(expeditionEdge.indexOf("async function playTurn"));
+  assert.ok(!expeditionEdge.includes("body.owner_id"), "owner Expedition harus turun dari JWT");
+  assert.ok(
+    expeditionEdge.includes('"feature_expedition"') &&
+      expeditionEdge.includes('"ack_home_popup"') &&
+      expeditionEdge.includes('"start_zone"') &&
+      expeditionEdge.includes('"refresh_shop"'),
+    "flag Expedition harus menutup start baru tanpa mengunci lifecycle run lama",
+  );
+  assert.ok(
+    !expeditionEdge.includes("announcementsEnabled") &&
+      !expeditionEdge.includes('"feature_chapter_push"'),
+    "announcement in-app tidak boleh bergantung pada flag push OS",
+  );
+  assert.ok(
+    expeditionEdge.includes("chapterBuildError") &&
+      expeditionEdge.includes('"x-scanima-build"'),
+    "minimum build chapter harus dipagari di server",
+  );
+  assert.ok(
+    expeditionTurn.indexOf("loadEncounter(ownerId, encounterId)") <
+      expeditionTurn.indexOf('.from("expedition_encounter_turns")'),
+    "replay turn Expedition harus memverifikasi owner encounter lebih dulu",
+  );
+  assert.ok(
+    !expeditionEdge.includes("REPLICATE_API_TOKEN") &&
+      !expeditionEdge.includes("IMAGE_MODEL"),
+    "runtime Expedition tidak boleh memanggil model",
+  );
+  assert.ok(
+    expeditionEdge.includes("arena_background_url") &&
+      expeditionEdge.includes("background_path"),
+    "arena Expedition harus menerima URL art zona dari zone_map",
+  );
+  const expeditionConfig = await readFile(
+    new URL("../backend/supabase/config.toml", import.meta.url),
+    "utf8",
+  );
+  const expeditionRpcs = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260815013028_expedition_rpcs.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const expeditionEncounterRpcs = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260815013155_expedition_encounter_rpcs.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const expeditionAnnouncements = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260815023934_chapter_announcements.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.ok(
+    expeditionRpcs.includes("v_next_party_ids is distinct from v_party_ids") &&
+      expeditionRpcs.includes("status = 'forfeited'"),
+    "choice dan abandon Expedition harus menjaga roster serta encounter aktif",
+  );
+  assert.ok(
+    expeditionEncounterRpcs.indexOf("for update;") <
+      expeditionEncounterRpcs.indexOf("expedition_daily_reward_status(p_owner"),
+    "cap progression Expedition harus dibaca setelah profile row lock",
+  );
+  assert.ok(
+    expeditionAnnouncements.includes("version.published_at > profile.created_at") &&
+      expeditionAnnouncements.includes("receipt.chapter_opened_at is null") &&
+      expeditionAnnouncements.includes("home_popup_seen_at = coalesce") &&
+      expeditionAnnouncements.includes("revoke all on function"),
+    "announcement harus one-time per akun, idempoten, dan service-role-only",
+  );
+  assert.match(
+    expeditionConfig,
+    /\[functions\.expedition\][\s\S]*verify_jwt = true/,
+    "Expedition wajib melewati JWT gateway",
+  );
+}
+
+console.log("23c. gallery moderation + thumb crop");
 {
   const { cropIdleThumb, parseModeration } = await import(
     "../backend/supabase/functions/_shared/gallery_shared.mjs"
@@ -1972,7 +2507,7 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
 //   node eval/selftest.mjs --emit /tmp/scanima_e2e
 //   godot --headless --path game --script res://tests/test_sprite_slicing.gd \
 //       -- --manifest=/tmp/scanima_e2e/manifest.json
-console.log("28. Vision v13 typing, fauna v14/v15 stylization, dan jalur capture privat");
+console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture privat");
 {
   const { readFile } = await import("node:fs/promises");
   const visionV13 = await readFile(new URL("../backend/prompts/v13/vision_system.md", import.meta.url), "utf8");
@@ -1999,6 +2534,25 @@ console.log("28. Vision v13 typing, fauna v14/v15 stylization, dan jalur capture
   );
   const faunaV14 = await readFile(new URL("../backend/prompts/v14/sprite_sheet_fauna.md", import.meta.url), "utf8");
   const faunaV15 = await readFile(new URL("../backend/prompts/v15/sprite_sheet_fauna.md", import.meta.url), "utf8");
+  const visionV16 = await readFile(new URL("../backend/prompts/v16/vision_system.md", import.meta.url), "utf8");
+  const schemaV16Source = await readFile(
+    new URL("../backend/prompts/v16/vision_schema.json", import.meta.url),
+    "utf8"
+  );
+  const templateV16 = await readFile(new URL("../backend/prompts/v16/sprite_sheet.md", import.meta.url), "utf8");
+  const faunaV16 = await readFile(new URL("../backend/prompts/v16/sprite_sheet_fauna.md", import.meta.url), "utf8");
+  const evolveV16 = await readFile(
+    new URL("../backend/prompts/v16/sprite_sheet_evolve.md", import.meta.url),
+    "utf8"
+  );
+  const chapterAnimaPrompt = await readFile(
+    new URL("../backend/prompts/chapter_factory/anima_sheet.md", import.meta.url),
+    "utf8"
+  );
+  const manualChapterGuide = await readFile(
+    new URL("../docs/10-manual-chapter-assets.md", import.meta.url),
+    "utf8"
+  );
   const createAnima = await readFile(
     new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
     "utf8"
@@ -2012,6 +2566,7 @@ console.log("28. Vision v13 typing, fauna v14/v15 stylization, dan jalur capture
   assert.equal(promptMajor("v13"), 13);
   assert.equal(promptMajor("v14"), 14);
   assert.equal(promptMajor("v15"), 15);
+  assert.equal(promptMajor("v16"), 16);
   assert.ok(schemaV13.properties.subject_kind);
   assert.ok(schemaV13.properties.secondary_element);
   assert.equal(schemaV13.properties.element.enum.length, 18);
@@ -2037,6 +2592,95 @@ console.log("28. Vision v13 typing, fauna v14/v15 stylization, dan jalur capture
   assert.ok(faunaV15.includes("with only anime eyes, cleaner linework, extra"));
   assert.ok(faunaV15.includes("Chroma green is a transport color only"));
   assert.ok(/BOTTOM LEFT — DAMAGED[\s\S]{0,400}Never.*blood/.test(faunaV15));
+  assert.equal(visionV16, visionV13, "v16 tidak mengubah Vision");
+  assert.equal(schemaV16Source, schemaV13Source, "v16 tidak mengubah schema Vision");
+  for (const prompt of [templateV16, faunaV16, evolveV16]) {
+    assert.ok(prompt.includes("HORIZONTAL FACING LOCK — HOME AND BATTLE CONTRACT"));
+    assert.ok(prompt.includes("EYE GAZE LOCK"));
+    assert.ok(prompt.includes("ONE shared target in open"));
+    assert.match(prompt, /Never look\s+at the viewer/);
+    assert.ok(prompt.includes("Sleep keeps every eye fully closed"));
+    assert.ok(prompt.includes("client mirrors the complete sheet"));
+    assert.ok(prompt.includes("VFX DIVERSITY CONTRACT"));
+    assert.ok(prompt.includes("12% safe envelope"));
+    assert.ok(prompt.includes("BACKGROUND — TECHNICAL TRANSPORT LAYER"));
+    assert.ok(prompt.includes("EDGES — DARK CONTOUR DIRECTLY AGAINST GREEN"));
+    assert.ok(/TOP LEFT — IDLE[\s\S]{0,400}canvas-left/.test(prompt));
+    assert.ok(/MIDDLE LEFT — HAPPY[\s\S]{0,500}canvas-left/.test(prompt));
+    assert.ok(/BOTTOM LEFT — DAMAGED[\s\S]{0,500}canvas-left/.test(prompt));
+  }
+  assert.ok(faunaV16.includes("MANDATORY MONSTER IDENTITY LAYER"));
+  assert.ok(chapterAnimaPrompt.includes("both pupils focus on the same canvas-left target"));
+  assert.equal(
+    manualChapterGuide.match(/Every open-eye pose/g)?.length,
+    9,
+    "sembilan prompt manual Anima wajib mengulang gaze lock lokal"
+  );
+  assert.ok(
+    manualChapterGuide.includes("recognizable as a solid black silhouette"),
+    "manual Boss Seeker lock wajib silhouette-first"
+  );
+  assert.ok(
+    manualChapterGuide.includes("never make every Boss Seeker a young"),
+    "manual Boss Seeker lock wajib menuntut variasi antar-chapter"
+  );
+  const manualConfectionerPrompt =
+    manualChapterGuide.match(/### 13\. Boss Seeker[\s\S]*?(?=### 14\.)/)?.[0] ?? "";
+  assert.ok(
+    manualConfectionerPrompt.includes("youngest archive curator"),
+    "prompt Confectioner wajib membawa background Curator"
+  );
+  assert.ok(
+    manualConfectionerPrompt.includes("octagonal dark-plum recipe folio"),
+    "prompt Confectioner wajib memakai folio, bukan alat dapur"
+  );
+  assert.ok(
+    manualConfectionerPrompt.includes("cells 1 through 8 keep the exact same three-quarter"),
+    "delapan pose penuh Confectioner wajib memakai angle lock yang sama"
+  );
+  assert.ok(
+    manualConfectionerPrompt.includes("both eyes remain visible while only the pupils turn"),
+    "portrait dialog Confectioner wajib menatap pemain tanpa mengubah angle"
+  );
+  assert.ok(
+    /front-facing\s+passport portrait/.test(manualConfectionerPrompt),
+    "nama pose Profile tidak boleh dibaca sebagai side profile atau front-facing penuh"
+  );
+  assert.doesNotMatch(
+    manualConfectionerPrompt,
+    /whisk-baton|Graphic Commandant|mid-40s/i,
+    "prompt Confectioner tidak boleh membawa desain lama"
+  );
+  const manualSugarworksCorePrompt =
+    manualChapterGuide.match(/### 14\. Trophy[\s\S]*?(?=## Lokasi file)/)?.[0] ?? "";
+  assert.ok(
+    manualSugarworksCorePrompt.includes("two-layer Chapter Core v3 grammar"),
+    "Trophy manual wajib memakai sistem dua lapis Chapter Core"
+  );
+  assert.ok(
+    /Generate\s+the Inner Core only/.test(manualSugarworksCorePrompt),
+    "model manual tidak boleh menggambar ulang canonical Vessel"
+  );
+  assert.ok(
+    manualSugarworksCorePrompt.includes("point-top Hexagonal Vessel"),
+    "prompt wajib menjelaskan canonical Vessel ditambahkan sesudah generation"
+  );
+  assert.ok(
+    manualSugarworksCorePrompt.includes("broad shallow concave"),
+    "Sugarfold Core wajib punya silhouette motif chapter-specific"
+  );
+  assert.ok(
+    manualSugarworksCorePrompt.includes("eight to ten large"),
+    "Sugarfold Core wajib sederhana dan bounded"
+  );
+  assert.ok(
+    manualSugarworksCorePrompt.includes("not one continuous ribbon, letter"),
+    "internal construction tidak boleh kembali menjadi huruf S"
+  );
+  assert.ok(
+    manualSugarworksCorePrompt.includes("No glass shell, orb, crystal"),
+    "Inner Core tidak boleh menggambar ulang Vessel atau artifact scene"
+  );
 
   const objectVision = {
     safe: true,
@@ -2095,6 +2739,12 @@ console.log("28. Vision v13 typing, fauna v14/v15 stylization, dan jalur capture
   assert.deepEqual(bundel.v15.vision_schema, bundel.v13.vision_schema, "v15 tidak mengubah schema Vision");
   assert.equal(bundel.v15.sprite_sheet_evolve, bundel.v13.sprite_sheet_evolve, "v15 tidak mengubah prompt evolve");
   assert.ok(!assemblePrompt(bundel.v15.sprite_sheet_fauna, animalFixed.vision).includes("{{"));
+  assert.equal(spriteSheetTemplate(bundel.v16, "animal"), bundel.v16.sprite_sheet_fauna);
+  assert.equal(spriteSheetTemplate(bundel.v16, "object"), bundel.v16.sprite_sheet);
+  assert.equal(bundel.v16.vision_system, bundel.v15.vision_system, "v16 tidak mengubah Vision");
+  assert.deepEqual(bundel.v16.vision_schema, bundel.v15.vision_schema, "v16 tidak mengubah schema Vision");
+  assert.ok(!assemblePrompt(bundel.v16.sprite_sheet, typed.vision).includes("{{"));
+  assert.ok(!assemblePrompt(bundel.v16.sprite_sheet_fauna, animalFixed.vision).includes("{{"));
 
   assert.ok(createAnima.includes("feature_unique_generation"));
   assert.ok(createAnima.includes("claim_capture"));
@@ -2260,6 +2910,62 @@ console.log("29. Legacy typing inference + privatization audit planner");
   assert.equal(textOnce, textTwice, "audit report harus deterministik");
 
   assert.ok(stableStringify({ b: 1, a: 2 }).includes('"a"'));
+}
+
+console.log("30. helper _shared berklien selalu dipanggil dengan client-nya");
+{
+  // Deploy Edge Function tidak melakukan type check, jadi argumen yang hilang
+  // hanya terlihat sebagai kegagalan runtime di tangan pemain. Terukur: satu
+  // `withSignedRoster(candidate.opponent_snapshot)` tanpa `db` membuat setiap
+  // "Find New Rivals" menjawab INVALID_TEAM_SNAPSHOT, sebab snapshot-nya masuk
+  // ke parameter client dan parameter value menjadi undefined.
+  //
+  // ponytail: pemindai sumber, bukan type checker. Plafon: hanya helper yang
+  // parameter pertamanya SupabaseClient; ganti dengan `deno check` begitu Deno
+  // tersedia di mesin build.
+  const { readFile, readdir } = await import("node:fs/promises");
+  const functionsDir = new URL("../backend/supabase/functions/", import.meta.url);
+  const sources = [];
+  const walk = async (dir) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) await walk(new URL(`${entry.name}/`, dir));
+      else if (/\.(ts|mjs)$/.test(entry.name)) sources.push(new URL(entry.name, dir));
+    }
+  };
+  await walk(functionsDir);
+  assert.ok(sources.length > 10, `hanya ${sources.length} sumber terpindai, penjelajahannya salah`);
+
+  const bodies = new Map();
+  for (const file of sources) bodies.set(file, await readFile(file, "utf8"));
+
+  const clientFirst = new Set();
+  for (const [file, body] of bodies) {
+    if (!file.pathname.includes("/_shared/")) continue;
+    for (const match of body.matchAll(
+      /export\s+(?:async\s+)?function\s+(\w+)\(\s*\n?\s*\w+\s*:\s*SupabaseClient/g
+    )) {
+      clientFirst.add(match[1]);
+    }
+  }
+  assert.ok(
+    clientFirst.has("withSignedRoster") && clientFirst.size >= 3,
+    `helper berklien tidak terdeteksi: ${[...clientFirst].join(", ")}`
+  );
+
+  for (const [file, body] of bodies) {
+    if (file.pathname.includes("/_shared/")) continue;
+    for (const name of clientFirst) {
+      for (const match of body.matchAll(new RegExp(`\\b${name}\\(([^,)]*)[,)]`, "g"))) {
+        const first = match[1].trim();
+        assert.match(
+          first,
+          /^(db|client|admin)\b/,
+          `${name}() di ${file.pathname.split("/functions/")[1]} harus menerima client ` +
+            `Supabase di argumen pertama, bukan "${first}"`
+        );
+      }
+    }
+  }
 }
 
 const emitIdx = process.argv.indexOf("--emit");

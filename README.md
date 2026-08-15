@@ -21,6 +21,17 @@ bucket `sheets` lama kini privat. Detail kontrak baru ada di
 Catatan cache-hit/species-library di bawah adalah sejarah pipeline sebelum
 cutover dan hanya dipertahankan sebagai konteks rollback.
 
+**Expedition pertama sudah aktif:** The Sugarworks v1 telah dipublish,
+diverifikasi hash CDN-nya, dan diaktifkan dengan 14/14 asset production.
+`feature_expedition` serta `feature_chapter_push` sudah menyala; popup Home dan
+badge New tersedia dari jalur in-app authoritative. Push OS pertama belum
+terkirim karena project/access token FCM belum dikonfigurasi. Team Battle juga
+aktif untuk device playtest dengan `feature_team_battle=true`. Tidak ada model
+call saat pemain bermain. Begin Expedition mendebit 30 Energy dari masing-masing
+empat anggota satu kali; zona dan Boss berikutnya tidak memakai Energy lagi,
+dan roster terkunci sampai run selesai atau di-Abandon. Spesifikasi ada di
+[`docs/09-team-battle-and-expedition.md`](docs/09-team-battle-and-expedition.md).
+
 Probe production berbayar setelah cutover memakai foto Golden Retriever
 public-domain: Vision mengembalikan `subject_kind=animal`, primary Fauna,
 secondary Air, generation v13 selesai, sheet hanya dapat diunduh lewat storage
@@ -104,15 +115,17 @@ ulang, dan link baru diumumkan sukses setelah grant Core tersimpan.
 
 **Battle vertical slice Phase 3 sudah live.** Anima aktif yang `ready`, bangun,
 tidak Dormant, dan memiliki minimal 20 Energy (tiap duel baru memotong 20 Energy)
-plus Hunger ≥40 melawan snapshot anonim Anima pemain lain. Attack, Special,
-Guard, dan satu Item per duel dihitung server dari satu modul formula; Postgres
+melawan snapshot anonim Anima pemain lain. Hunger dan Hygiene tidak mengunci,
+tetapi kondisi buruk memotong combat stats. Attack, Special, Guard, dan satu
+Item per duel dihitung server dari satu modul formula; Postgres
 mengunci turn/version, menyimpan replay idempoten, dan memberi Bits menurut
 kekuatan lawan (tier Favorable/Even/Tough/Formidable, ±1). Tiga kemenangan
 pertama per hari sipil lokal juga memberi `care_score +4` dan `battle_wins +1`.
 Training sesudah 3/3 masih membayar Bits sampai cap 100 per hari lokal; sesudah
 itu nol. Session berumur 30 menit dan bisa dilanjutkan setelah restart.
-Kalah/forfeit nol reward; Battle tidak pernah memberi Genesis Core. PvP, tim,
-ranked, dan item drop belum masuk scope. Initiative mengikuti SPD dan diumumkan
+Kalah/forfeit nol reward; Battle tidak pernah memberi Genesis Core. PvP
+real-time, ranked, dan item drop belum masuk scope; Team Battle async adalah
+target rilis berikutnya. Initiative mengikuti SPD dan diumumkan
 sebelum animasi; kedua petarung menghadap serta menerjang ke arah lawan. Lobby
 tidak memberi dua pilihan palsu: satu CTA berubah dari `Battle` menjadi `Train`
 saat progression 3/3, dengan copy Bits-only sampai cap harian.
@@ -237,6 +250,8 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 | [docs/05-roadmap.md](docs/05-roadmap.md) | Breakdown Phase 1-4 dengan exit criteria dan risiko |
 | [docs/06-ui-globalization.md](docs/06-ui-globalization.md) | Shell mobile lima destination, design tokens, i18n, accessibility, dan aturan penambahan locale |
 | [docs/07-collection-summon-and-empty-state.md](docs/07-collection-summon-and-empty-state.md) | Desain bottom sheet Collection, transisi Summon, dan empty state pemain tanpa Anima |
+| [docs/09-team-battle-and-expedition.md](docs/09-team-battle-and-expedition.md) | Kontrak Team Battle, Expedition, chapter server-delivered, Trophy, dan rollout |
+| [docs/10-manual-chapter-assets.md](docs/10-manual-chapter-assets.md) | Prompt reusable + The Sugarworks dan folder handoff untuk generation aset manual di ChatGPT |
 | [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md) | Sumber art direction v2: linework, cel shading, transformasi objek, pose, dan negative style |
 | [CLAUDE.md](CLAUDE.md) | Konteks dan konvensi untuk AI coding agent |
 

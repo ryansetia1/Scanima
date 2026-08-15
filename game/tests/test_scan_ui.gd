@@ -77,9 +77,16 @@ func _initialize() -> void:
 		"DeleteAnimaButton", "GalleryPublishButton", "GalleryBack", "GalleryLoadMore",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
 		"CollectionSummonButton", "BattlePickProfileButton", "BattlePickBattleButton",
-		"BattleStartButton", "BattleStrikeButton",
+		"BattleStartButton", "BattleTeamButton", "BattleExpeditionButton", "BattleStrikeButton",
 		"BattleSurgeButton", "BattleGuardButton", "BattleItemButton", "BattleForfeitButton", "BattleRetryButton",
+		"TeamBackButton", "TeamSaveButton", "TeamEditButton", "TeamDefenseButton",
+		"TeamRefreshButton", "TeamStartButton", "TeamAttackButton", "TeamSpecialButton",
+		"TeamGuardButton", "TeamItemButton", "TeamSwitchButton", "TeamForfeitButton",
+		"TeamSwitchSlot0", "TeamSwitchSlot1", "TeamSwitchSlot2", "TeamSwitchSlot3",
+		"TeamRetryButton",
+		"ExpeditionChoiceAbandon",
 		"SeekerMenuButton", "OnboardingSubmit", "SeekerProfileBack", "RenameSeeker",
+		"SaveTrophies", "ChapterPush",
 		"SeekerProfile", "SeekerGallery", "SeekerAccount", "SeekerHelp", "DeleteAccount",
 	]:
 		var button := scene.find_child(name, true, false) as Button
@@ -153,6 +160,11 @@ func _initialize() -> void:
 	_check(animas_chip != null and animas_chip.get_script() != null, "HUD uses the shared Animas chip")
 	_check(cores_chip != null and cores_chip.get_script() != null, "HUD uses the shared Cores chip")
 	_check(bits_chip != null and bits_chip.get_script() != null, "HUD uses the shared Bits chip")
+	var bottom_nav := scene.find_child("BottomNav", true, false) as BottomNav
+	var battle_badge := scene.find_child("BattleNewBadge", true, false) as Label
+	bottom_nav.set_battle_badge(true)
+	_check(battle_badge.visible, "new chapter state reaches the persistent Battle nav badge")
+	bottom_nav.set_battle_badge(false)
 	var shop := scene.find_child("ShopButton", true, false) as PanelContainer
 	var bag := scene.find_child("BagButton", true, false) as PanelContainer
 	_check(shop != null and shop.get_script() != null, "Shop uses the same chip as Bits")
@@ -246,10 +258,12 @@ func _initialize() -> void:
 	)
 	var shell_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
-		shell_source.find("var show_chrome := _destination == BottomNav.HOME") >= 0
+		shell_source.find("var show_chrome := _destination == BottomNav.HOME and not immersive") >= 0
 		and shell_source.find("_shop_button.visible = show_chrome") >= 0
-		and shell_source.find("_bag_button.visible = show_chrome") >= 0,
-		"Bag and Shop only appear on Home"
+		and shell_source.find("_bag_button.visible = show_chrome") >= 0
+		and shell_source.find("_top_hud.visible = not immersive") >= 0
+		and shell_source.find("_bottom_nav.visible = not immersive") >= 0,
+		"Bag and Shop only appear on Home, and arena combat hides shell chrome"
 	)
 	var boot_start := shell_source.find("func _boot()")
 	var boot_end := shell_source.find("\n\nfunc _reload_roster", boot_start)
@@ -395,6 +409,8 @@ func _initialize() -> void:
 	await _test_scan_phase_visuals()
 	await _test_seeker_ui()
 	await _test_battle_view()
+	await _test_team_battle_view()
+	await _test_expedition_view()
 	await _test_battle_pick_sheet()
 	await _test_collection_bottom_sheet()
 	await _test_profile_info_rows()
@@ -549,7 +565,7 @@ func _test_shared_components() -> void:
 	UiMotion.set_reduced_motion(false)
 	animated_bag.set_meta("test_opened", false)
 	animated_bag.opened.connect(func() -> void: animated_bag.set_meta("test_opened", true))
-	animated_bag.set_catalog(catalog, inventory)
+	animated_bag.set_catalog(catalog, inventory, 0)
 	animated_bag.open_bag("item")
 	_check(
 		not bool(animated_bag.get_meta("test_opened")),
@@ -573,7 +589,7 @@ func _test_shared_components() -> void:
 	animated_bag.queue_free()
 	UiMotion.set_reduced_motion(true)
 
-	shop_sheet.set_catalog(catalog, inventory)
+	shop_sheet.set_catalog(catalog, inventory, 0)
 	shop_sheet.open_shop("item")
 	await process_frame
 	var shop_panel := shop_sheet.panel() as Control
@@ -592,6 +608,35 @@ func _test_shared_components() -> void:
 		food_tab.theme_type_variation == &""
 		and item_tab.theme_type_variation == &"PrimaryButton",
 		"Shop tab emphasis follows the selected category"
+	)
+	var zero_balance_buttons := 0
+	var all_zero_balance_disabled := true
+	for node in shop_list.find_children("*", "Button", true, false):
+		var buy := node as Button
+		if buy == null or buy.is_queued_for_deletion():
+			continue
+		zero_balance_buttons += 1
+		all_zero_balance_disabled = all_zero_balance_disabled and buy.disabled
+	_check(
+		zero_balance_buttons == 2 and all_zero_balance_disabled,
+		"Shop disables every purchase when the player has 0 Bits"
+	)
+	shop_sheet.set_catalog(catalog, inventory, 10)
+	await process_frame
+	var affordable_buy: Button = null
+	var expensive_buy: Button = null
+	for node in shop_list.find_children("*", "Button", true, false):
+		var buy := node as Button
+		if buy == null or buy.is_queued_for_deletion():
+			continue
+		if buy.text == tr("SHOP_BUY") % "8":
+			affordable_buy = buy
+		elif buy.text == tr("SHOP_BUY") % "12":
+			expensive_buy = buy
+	_check(
+		affordable_buy != null and not affordable_buy.disabled
+		and expensive_buy != null and expensive_buy.disabled,
+		"Shop enables only prices covered by the authoritative Bits balance"
 	)
 	_check(
 		_sheet_button_labels(shop_sheet).find(tr("SHOP_USE")) < 0,
@@ -632,7 +677,7 @@ func _test_shared_components() -> void:
 		battle_row != null and _sheet_button_labels(battle_row).find(tr("SHOP_USE")) < 0,
 		"Bag battle items have no Use button"
 	)
-	shop_sheet.set_catalog([], [])
+	shop_sheet.set_catalog([], [], 0)
 	shop_sheet.open_bag("food")
 	await process_frame
 	_check(
@@ -646,7 +691,7 @@ func _test_shared_components() -> void:
 	var compact_sheet = (load("res://scenes/ui/shop_sheet.tscn") as PackedScene).instantiate()
 	compact_host.add_child(compact_sheet)
 	await process_frame
-	compact_sheet.set_catalog(catalog, inventory)
+	compact_sheet.set_catalog(catalog, inventory, 10)
 	compact_sheet.open_shop("item")
 	await process_frame
 	await process_frame
@@ -713,6 +758,10 @@ func _test_care_feedback_is_immediate() -> void:
 		buy_body.find("Catalog.with_quantity") >= 0
 		and buy_body.find("await _refresh_catalog") < 0,
 		"a purchase applies the shop quantity without a second round trip"
+	)
+	_check(
+		buy_body.find("_say(tr(\"FEEDBACK_PURCHASE\"), true)") >= 0,
+		"purchase feedback is transient instead of persisting above the Shop"
 	)
 
 
@@ -960,7 +1009,7 @@ func _test_seeker_ui() -> void:
 	var menu = (load("res://scenes/ui/seeker_menu_sheet.tscn") as PackedScene).instantiate()
 	root.add_child(menu)
 	await process_frame
-	menu.show_menu({"seeker_name": "Nova_13"}, true, true)
+	menu.show_menu({"seeker_name": "Nova_13"}, true, true, true, true)
 	_check(
 		(menu.find_child("SeekerMenuTitle", true, false) as Label).text == "Nova_13",
 		"Seeker menu shows the current Seeker name"
@@ -973,6 +1022,11 @@ func _test_seeker_ui() -> void:
 	_check(
 		(menu.find_child("ReducedMotion", true, false) as CheckButton).button_pressed,
 		"Reduced Motion preference is reflected in Settings"
+	)
+	_check(
+		(menu.find_child("ChapterPush", true, false) as CheckButton).visible
+		and (menu.find_child("ChapterPush", true, false) as CheckButton).button_pressed,
+		"OS chapter push is an explicit opt-in shown only when its native adapter exists"
 	)
 	_check(
 		(menu.find_child("DeleteAccount", true, false) as Button).visible,
@@ -1009,6 +1063,32 @@ func _test_seeker_ui() -> void:
 		(profile.find_child("SeekerProfileName", true, false) as Label).text == "Nova_13",
 		"Seeker profile shows the unique name"
 	)
+	var trophy_rows: Array[Dictionary] = []
+	var featured_rows: Array[Dictionary] = []
+	for index in 4:
+		var trophy := {
+			"id": "60000000-0000-4000-8000-00000000000%d" % index,
+			"display_name": "Trail Trophy %d" % (index + 1),
+		}
+		trophy_rows.append({"expedition_trophies": trophy})
+		if index < 2:
+			featured_rows.append({"slot": index, "expedition_trophies": trophy})
+	profile.set_trophies({"trophies": trophy_rows, "featured": featured_rows})
+	var trophy_list := profile.find_child("TrophyList", true, false) as ItemList
+	var featured := profile.find_child("FeaturedTrophies", true, false) as HBoxContainer
+	_check(
+		trophy_list.item_count == 4
+		and trophy_list.get_selected_items().size() == 2
+		and featured.get_child_count() == 2,
+		"Seeker profile shows owned Trophies and the saved Showcase"
+	)
+	trophy_list.select(2, false)
+	trophy_list.select(3, false)
+	profile.call("_on_trophy_selected", 3, true)
+	_check(
+		trophy_list.get_selected_items().size() == 3,
+		"Trophy Showcase enforces the three-slot maximum before the request"
+	)
 	profile.set_profile({"seeker_name": null}, null)
 	_check(
 		(profile.find_child("SeekerProfileName", true, false) as Label).text
@@ -1037,6 +1117,9 @@ func _test_battle_view() -> void:
 	var content := view.find_child("BattleContent", true, false) as Control
 	var result := view.find_child("BattleResultPanel", true, false) as Control
 	var start := view.find_child("BattleStartButton", true, false) as Button
+	var team_button := view.find_child("BattleTeamButton", true, false) as Button
+	var expedition_button := view.find_child("BattleExpeditionButton", true, false) as Button
+	var expedition_badge := view.find_child("ExpeditionNewBadge", true, false) as Label
 	var lobby_name := view.find_child("BattleLobbyName", true, false) as Label
 	var lobby_meta := view.find_child("BattleLobbyMeta", true, false) as Label
 	var strike := view.find_child("BattleStrikeButton", true, false) as Button
@@ -1072,6 +1155,28 @@ func _test_battle_view() -> void:
 	var player_sprite := view.find_child("BattlePlayerSprite", true, false) as AnimaPresenter
 	var bot_sprite := view.find_child("BattleBotSprite", true, false) as AnimaPresenter
 
+	_check(
+		team_button.visible and not team_button.disabled,
+		"Team entry is ready immediately from last-known availability"
+	)
+	view.set_team_available(false)
+	_check(team_button.disabled, "an authoritative refusal can lock Team Battle")
+	view.set_team_available(true)
+	_check(
+		expedition_button.visible and not expedition_button.disabled,
+		"Expedition entry is ready immediately from last-known availability"
+	)
+	view.set_expedition_pending(true)
+	_check(
+		expedition_button.visible
+		and not expedition_button.disabled
+		and expedition_button.text == tr("EXPEDITION_CONTINUE"),
+		"an open run stays discoverable as Continue Expedition from the Duel lobby"
+	)
+	view.set_expedition_pending(false)
+	view.set_expedition_new(true)
+	_check(expedition_badge.visible, "unopened chapter marks the Expedition entry as New")
+	view.set_expedition_new(false)
 	var anima := {
 		"id": "battle-player",
 		"nickname": "Velumi",
@@ -1421,9 +1526,9 @@ func _test_battle_view() -> void:
 	_check(
 		strike_commit.visible and not surge_commit.visible and not guard_commit.visible
 		and not item_commit.visible
-		and feedback.text == tr("BATTLE_ACTION_PENDING_STRIKE") % ["D-Pad Jab"]
+		and feedback.text == tr("BATTLE_TRAINING_BITS_HINT")
 		and surge.self_modulate.a < strike.self_modulate.a,
-		"selected Battle action reacts immediately with committed feedback"
+		"selected Battle action locks on the button without Resolving copy"
 	)
 
 	var won: Dictionary = session.duplicate(true)
@@ -1505,6 +1610,665 @@ func _test_battle_view() -> void:
 	view.queue_free()
 	await process_frame
 	UiMotion.set_reduced_motion(false)
+
+
+func _test_team_battle_view() -> void:
+	UiMotion.set_reduced_motion(true)
+	var packed := load("res://scenes/ui/team_battle_view.tscn") as PackedScene
+	var view := packed.instantiate()
+	root.add_child(view)
+	await process_frame
+	var back := view.find_child("TeamBackButton", true, false) as Button
+	var back_icon := view.find_child("TeamBackIcon", true, false) as TextureRect
+	_check(
+		back.flat and back.text.is_empty() and back_icon.texture != null
+		and back_icon.position.y < 16.0,
+		"Team Battle header uses a compact chevron Back control"
+	)
+	var roster: Array[Dictionary] = []
+	var members: Array[Dictionary] = []
+	var player_state: Array[Dictionary] = []
+	var opponent_state: Array[Dictionary] = []
+	var player_snapshots: Array[Dictionary] = []
+	var opponent_snapshots: Array[Dictionary] = []
+	var placeholder := PlaceholderSheet.build()
+	var thumbnail := ImageTexture.create_from_image(placeholder["image"])
+	var loaded := AnimaLoader.build(thumbnail, placeholder["manifest"])
+	view.set_thumbnail_provider(func(_row: Dictionary) -> Texture2D: return thumbnail)
+	var art_cache := {}
+	for index in 4:
+		var anima_id := "00000000-0000-4000-8000-00000000000%d" % index
+		var row := {
+			"id": anima_id,
+			"nickname": "Team %d" % (index + 1),
+			"status": "ready",
+			"element": "metal",
+			"care": {"energy": 80.0, "hunger": 80.0, "hygiene": 80.0},
+			"care_score": index,
+		}
+		roster.append(row)
+		members.append({"slot": index, "anima_id": anima_id, "nickname": row.nickname})
+		var fighter := {
+			"anima_id": anima_id,
+			"name": row.nickname,
+			"slot": index,
+			"hp": 50,
+			"max_hp": 50,
+			"momentum": 3,
+			"momentum_max": 3,
+			"strike_name": "Team Tap",
+			"surge_name": "Team Burst",
+		}
+		player_state.append(fighter)
+		player_snapshots.append({"anima_id": anima_id, "care_score": 4 if index == 0 else 0})
+		art_cache[anima_id] = loaded
+		var rival_id := "10000000-0000-4000-8000-00000000000%d" % index
+		var rival := fighter.duplicate(true)
+		rival["anima_id"] = rival_id
+		rival["name"] = "Rival %d" % (index + 1)
+		opponent_state.append(rival)
+		opponent_snapshots.append({"anima_id": rival_id})
+		art_cache[rival_id] = loaded
+	var unavailable := roster[0].duplicate(true)
+	unavailable["id"] = "00000000-0000-4000-8000-000000000009"
+	unavailable["nickname"] = "Tired Team"
+	unavailable["care"] = {"energy": 5.0, "hunger": 80.0, "hygiene": 80.0}
+	roster.append(unavailable)
+	var team := {
+		"id": "20000000-0000-4000-8000-000000000001",
+		"kind": "team_battle",
+		"members": members,
+	}
+	view.set_builder(roster, team)
+	var roster_list := view.find_child("TeamRosterList", true, false) as ItemList
+	var save := view.find_child("TeamSaveButton", true, false) as Button
+	_check(roster_list.item_count == 5, "Team builder lists the current roster")
+	_check(roster_list.is_item_disabled(4), "unavailable Anima cannot be selected for a Team")
+	_check(
+		roster_list.get_item_icon(0) == thumbnail
+		and roster_list.get_item_text(0).contains(tr("TEAM_ROSTER_READY"))
+		and roster_list.get_item_text(4).contains(tr("BATTLE_PICK_LOW_ENERGY")),
+		"Team builder shows Anima art and concise readiness"
+	)
+	roster_list.deselect_all()
+	roster_list.call("sync_chosen")
+	for index in 4:
+		_tap_roster_item(roster_list, index)
+	var selected_style := roster_list.get_theme_stylebox("selected_focus") as StyleBoxFlat
+	var cursor_style := roster_list.get_theme_stylebox("cursor")
+	_check(
+		not save.disabled
+		and roster_list.get_selected_items().size() == 4
+		and roster_list.get_script().resource_path == "res://scripts/team_roster_list.gd"
+		and selected_style.border_color.a > 0.0
+		and roster_list.get_theme_color("font_selected_color").a == 1.0
+		and cursor_style is StyleBoxEmpty
+		and roster_list.get_theme_stylebox("hovered") is StyleBoxEmpty,
+		"four taps keep four checked cards and enable Save without a stale count"
+	)
+	_tap_roster_item(roster_list, 4)
+	_tap_roster_item(roster_list, 1)
+	_check(
+		save.disabled
+		and roster_list.get_selected_items().size() == 3
+		and not roster_list.is_selected(1),
+		"tapping again releases a member and a blocked Anima never joins"
+	)
+	_tap_roster_item(roster_list, 1)
+	_check(not save.disabled, "re-tapping restores the fourth member")
+	var daily := {
+		"earned": 1, "limit": 2, "bits_earned": 8, "bits_limit": 40,
+	}
+	var candidates := [{
+		"id": "30000000-0000-4000-8000-000000000001",
+		"roster": opponent_state,
+		"reward_tier": "even",
+		"reward_bits": 8,
+	}]
+	view.set_lobby(team, daily, candidates, false)
+	var rivals := view.find_child("TeamRivalList", true, false) as ItemList
+	var start := view.find_child("TeamStartButton", true, false) as Button
+	_check(rivals.item_count == 1 and start.disabled, "Team lobby requires a rival selection")
+	view.call("_select_candidate", 0)
+	_check(not start.disabled, "selecting one rival enables Team Battle")
+	var session := {
+		"id": "40000000-0000-4000-8000-000000000001",
+		"status": "active",
+		"turn_number": 1,
+		"version": 1,
+		"item_used_id": null,
+		"player_snapshot": player_snapshots,
+		"opponent_snapshot": opponent_snapshots,
+		"state": {
+			"status": "active",
+			"turn": 1,
+			"player": {
+				"active_slot": 0,
+				"forced_switch": false,
+				"item_used": false,
+				"roster": player_state,
+			},
+			"opponent": {
+				"active_slot": 0,
+				"forced_switch": false,
+				"item_used": false,
+				"roster": opponent_state,
+			},
+		},
+	}
+	view.set_session(session, art_cache)
+	_check(view.is_arena_open(), "set_session opens the immersive arena")
+	var arena_background := view.find_child("TeamArenaBackground", true, false) as TextureRect
+	_check(
+		arena_background != null and not arena_background.visible,
+		"Team Battle arena keeps zone art hidden without an Expedition background"
+	)
+	var header := view.get_node("Column/Header") as Control
+	var turn := view.find_child("TeamTurn", true, false) as Label
+	var forfeit := view.find_child("TeamForfeitButton", true, false) as Button
+	var arena_hud := view.find_child("ArenaHud", true, false) as PanelContainer
+	var arena_panel := view.find_child("ArenaPanel", true, false)
+	var player_shadow := view.find_child("TeamPlayerAnchor", true, false).find_child(
+		"GroundShadow", false, false
+	)
+	var opponent_shadow := view.find_child("TeamOpponentAnchor", true, false).find_child(
+		"GroundShadow", false, false
+	)
+	var effectiveness := view.find_child("TeamEffectiveness", true, false) as Control
+	var effectiveness_label := view.find_child(
+		"TeamEffectivenessLabel", true, false
+	) as Label
+	_check(
+		not header.visible
+		and not turn.visible
+		and forfeit.visible
+		and forfeit.custom_minimum_size.y >= TOUCH_MIN
+		and forfeit.get_parent() != null
+		and forfeit.get_parent().name == "SupportRow"
+		and forfeit.get_index() == 2
+		and not forfeit.flat,
+		"active arena hides page chrome; Retreat is a regular support-row button"
+	)
+	_check(
+		arena_hud != null
+		and arena_hud.offset_right >= -16.0
+		and arena_panel == null
+		and player_shadow != null
+		and opponent_shadow != null
+		and int(player_shadow.z_index) >= 0
+		and int(opponent_shadow.z_index) >= 0,
+		"arena is borderless, HUD is full width, and fighters have ground shadows"
+	)
+	view.set_expedition_mode(true)
+	view.set_arena_location("The Sugarworks — Zone 1")
+	_check(
+		turn.visible
+		and turn.text.contains("Sugarworks")
+		and arena_hud.offset_top >= 40.0,
+		"Expedition arena shows the chapter-zone label above a lowered HUD"
+	)
+	view.set_expedition_mode(false)
+	view.set_arena_location("")
+	view.call("_show_effectiveness", 1.5)
+	_check(
+		effectiveness.visible and effectiveness_label.text == tr("BATTLE_EFFECTIVE"),
+		"Team Battle shows Super effective in the arena"
+	)
+	view.call("_show_effectiveness", 0.67)
+	_check(
+		effectiveness.visible and effectiveness_label.text == tr("BATTLE_NOT_EFFECTIVE"),
+		"Team Battle shows Not very effective in the arena"
+	)
+	view.call("_show_effectiveness", 1.0)
+	_check(not effectiveness.visible, "neutral Team attacks do not show a matchup banner")
+	var actions := view.find_child("TeamActions", true, false) as VBoxContainer
+	var primary_row := view.find_child("PrimaryRow", true, false) as HBoxContainer
+	var support_row := view.find_child("SupportRow", true, false) as HBoxContainer
+	var switch_panel := view.find_child("TeamSwitchPanel", true, false) as VBoxContainer
+	var special := view.find_child("TeamSpecialButton", true, false) as Button
+	var attack := view.find_child("TeamAttackButton", true, false) as Button
+	var feedback := view.find_child("TeamFeedback", true, false) as Label
+	var player_slots := view.find_child("TeamPlayerSlots", true, false) as Label
+	var player_name := view.find_child("TeamPlayerName", true, false) as Label
+	_check(
+		actions.visible
+		and primary_row != null
+		and support_row != null
+		and primary_row.get_child_count() == 3
+		and support_row.get_child_count() == 3
+		and special.theme_type_variation == &""
+		and attack.custom_minimum_size.y >= TOUCH_MIN
+		and special.custom_minimum_size.y >= TOUCH_MIN
+		and not special.disabled,
+		"Team arena uses a balanced 3+3 action grid"
+	)
+	_check(
+		player_slots.get_index() < player_name.get_index(),
+		"party pips sit above the active Anima name"
+	)
+	_check(
+		not feedback.visible and not player_slots.text.contains("Team 1"),
+		"idle arena hides the choose-action prompt and keeps party pips nameless"
+	)
+	view.open_mode()
+	view.call("_open_switch_picker", false)
+	var switch_grid := view.find_child("SwitchButtons", true, false) as GridContainer
+	var switch_slot := view.find_child("TeamSwitchSlot0", true, false) as Button
+	_check(switch_panel.visible and not actions.visible, "Switch opens the four-member picker")
+	var switch_cancel := view.find_child("TeamSwitchCancel", true, false) as Button
+	_check(
+		switch_grid != null
+		and switch_grid.columns == 2
+		and switch_slot.icon != null
+		and switch_slot.text.contains(tr("TEAM_SWITCH_ACTIVE"))
+		and switch_slot.find_child("Hp", true, false) != null,
+		"Switch cards keep art, HP, and status readable without a horizontal overflow"
+	)
+	_check(
+		switch_cancel.visible and switch_cancel.custom_minimum_size.y >= TOUCH_MIN,
+		"voluntary Switch exposes a 96px Cancel control"
+	)
+	_check(
+		view.handle_back() and not switch_panel.visible and actions.visible,
+		"Cancel/back closes the voluntary Switch picker and restores actions"
+	)
+	view.call("_open_switch_picker", false)
+	switch_cancel.pressed.emit()
+	_check(
+		not switch_panel.visible and actions.visible,
+		"tapping Cancel dismisses the Switch picker without sending a turn"
+	)
+	view.begin_action("strike")
+	_check(
+		not attack.disabled
+		and attack.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and not feedback.visible
+		and special.self_modulate.a < attack.self_modulate.a,
+		"Team Battle locks the tapped action on the button without Resolving copy"
+	)
+	view.set_busy(false)
+	var switched := session.duplicate(true)
+	switched["state"]["player"]["active_slot"] = 1
+	await view.play_events([
+		{"type": "switch", "actor": "player", "from_slot": 0, "to_slot": 1},
+	], switched)
+	_check(
+		player_name.text == "Team 2",
+		"Switch replaces the active fighter after the Summon handoff"
+	)
+	session["state"]["player"]["active_slot"] = 0
+	view.set_session(session, art_cache)
+	var after_ko := session.duplicate(true)
+	after_ko["turn_number"] = 9
+	after_ko["state"]["turn"] = 9
+	after_ko["state"]["player"]["forced_switch"] = true
+	after_ko["state"]["player"]["roster"][0]["hp"] = 0
+	after_ko["state"]["player"]["roster"][0]["momentum"] = 0
+	await view.play_events([
+		{
+			"type": "attack",
+			"actor": "opponent",
+			"target": "player",
+			"action": "strike",
+			"damage": 50,
+			"target_hp": 0,
+			"critical": false,
+			"element": 1.0,
+		},
+		{"type": "knockout", "actor": "player"},
+	], after_ko)
+	var player_sprite := view.find_child("TeamPlayerSprite", true, false)
+	_check(
+		switch_panel.visible and not actions.visible and not switch_cancel.visible,
+		"knockout event log opens the replacement picker after the faint"
+	)
+	_check(
+		not view.handle_back() and switch_panel.visible,
+		"forced replacement cannot be cancelled"
+	)
+	var switch_title := view.find_child("TeamSwitchTitle", true, false) as Label
+	_check(
+		not feedback.visible
+		and switch_title != null
+		and switch_title.text == tr("TEAM_SWITCH_FORCED"),
+		"forced replacement uses the picker title once, not a second dock line"
+	)
+	_check(
+		player_sprite.current_pose() == "defeated",
+		"knocked-out fighter stays in the Defeated pose until a replacement is sent"
+	)
+	session["state"]["player"]["forced_switch"] = true
+	session["state"]["player"]["roster"][0]["hp"] = 0
+	view.set_session(session, art_cache)
+	_check(
+		switch_panel.visible and not actions.visible,
+		"resumed knockout still requires a free replacement before another action"
+	)
+	session["status"] = "won"
+	session["state"]["status"] = "won"
+	session["state"]["player"]["forced_switch"] = false
+	session["last_reward"] = {
+		"bits": 8,
+		"anima_exp": [
+			{"anima_id": members[0].anima_id, "exp": 2},
+			{"anima_id": members[1].anima_id, "exp": 1},
+		],
+	}
+	view.set_session(session, art_cache)
+	var result := view.find_child("TeamResult", true, false) as VBoxContainer
+	var result_body := view.find_child("TeamResultBody", true, false) as Label
+	_check(result.visible, "terminal Team session restores its result")
+	_check(
+		result_body.text.contains("Team 1")
+		and result_body.text.contains("Team 2")
+		and result_body.text.contains("LEVEL UP")
+		and result_body.text.contains("Lv. 2"),
+		"Team win lists each member EXP and who leveled up"
+	)
+	session["last_reward"] = {"bits": 6, "progression": true}
+	view.set_session(session, art_cache)
+	_check(
+		"6" in result_body.text and "settled" in result_body.text,
+		"resumed Team win uses its reward receipt instead of showing zero EXP"
+	)
+	view.set_expedition_mode(true)
+	session["last_reward"] = {
+		"supplies": 4,
+		"anima_exp": [{"anima_id": members[0].anima_id, "exp": 2}],
+	}
+	view.set_session(session, art_cache)
+	_check(
+		"4" in result_body.text
+		and result_body.text.contains("Team 1")
+		and result_body.text.contains("LEVEL UP"),
+		"Expedition win lists Tokens, member EXP, and Level Up"
+	)
+	var flow_script := load("res://scripts/scan_flow.gd") as GDScript
+	var item_payload: Dictionary = flow_script.team_battle_turn_payload({
+		"session_id": "team-session",
+		"expected_turn": 2,
+		"expected_version": 3,
+		"action": "item",
+		"item_id": "battle_patch",
+		"switch_to_slot": 2,
+		"idempotency_key": "team-item-key",
+	})
+	_check(
+		item_payload.get("item_id") == "battle_patch"
+		and not item_payload.has("switch_to_slot"),
+		"Team item payload cannot leak a stale switch slot"
+	)
+	var switch_payload: Dictionary = flow_script.team_battle_turn_payload({
+		"session_id": "team-session",
+		"expected_turn": 2,
+		"expected_version": 3,
+		"action": "switch",
+		"item_id": "battle_patch",
+		"switch_to_slot": 2,
+		"idempotency_key": "team-switch-key",
+	})
+	_check(
+		switch_payload.get("switch_to_slot") == 2
+		and not switch_payload.has("item_id"),
+		"Team switch payload cannot leak a stale item"
+	)
+	view.queue_free()
+	await process_frame
+	UiMotion.set_reduced_motion(false)
+
+
+func _test_expedition_view() -> void:
+	var controller_script := load("res://scripts/expedition_controller.gd") as GDScript
+	var choice_payload: Dictionary = controller_script.operation_payload({
+		"operation": "choose",
+		"run_id": "run",
+		"run_version": 3,
+		"option_id": "heal",
+		"target_slot": -1,
+		"idempotency_key": "choice-key",
+	})
+	_check(
+		choice_payload.get("expected_version") == 3
+		and choice_payload.get("option_id") == "heal"
+		and not choice_payload.has("target_slot"),
+		"Expedition choice payload omits an unused target slot"
+	)
+	_check(
+		controller_script.pending_matches(
+			{
+				"operation": "turn",
+				"expected_turn": 2,
+				"expected_version": 4,
+			},
+			{"version": 7},
+			{"status": "active", "turn_number": 2, "version": 4}
+		)
+		and not controller_script.pending_matches(
+			{
+				"operation": "turn",
+				"expected_turn": 2,
+				"expected_version": 3,
+			},
+			{"version": 7},
+			{"status": "active", "turn_number": 2, "version": 4}
+		),
+		"Expedition replays only an intent matching authoritative encounter state"
+	)
+	_check(
+		controller_script.should_resume_error("STALE_EXPEDITION_ENCOUNTER")
+		and not controller_script.should_resume_error("NO_SUPPLIES"),
+		"only stale or terminal encounter errors enter the bounded resume path"
+	)
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		flow_source.find("await _expedition_controller.resume_pending()") >= 0
+		and flow_source.find("GameState.pending_expedition.is_empty()") >= 0,
+		"shell boot resumes a persisted Expedition before opening another Battle mode"
+	)
+	var packed := load("res://scenes/ui/expedition_view.tscn") as PackedScene
+	var view := packed.instantiate()
+	root.add_child(view)
+	await process_frame
+	var back := view.find_child("ExpeditionBack", true, false) as Button
+	var back_icon := view.find_child("ExpeditionBackIcon", true, false) as TextureRect
+	_check(
+		back.flat and back.text.is_empty() and back_icon.texture != null
+		and back_icon.position.y < 16.0,
+		"Expedition header uses a compact chevron Back control"
+	)
+	var chapter_list := view.find_child("ExpeditionChapterList", true, false) as ItemList
+	var open_chapter := view.find_child("ExpeditionOpenChapter", true, false) as Button
+	view.set_catalog([
+		{
+			"version_id": "chapter-v1",
+			"unlocked": true,
+			"first_cleared_at": null,
+			"summary": {"title": "Sugartrail", "description": "Candy paths"},
+		},
+		{
+			"version_id": "chapter-v2",
+			"unlocked": false,
+			"first_cleared_at": null,
+			"summary": {"title": "Locked chapter"},
+		},
+	])
+	_check(
+		chapter_list.item_count == 2
+		and chapter_list.is_item_disabled(1)
+		and not open_chapter.disabled,
+		"Expedition catalog opens unlocked chapters and blocks locked chapters"
+	)
+	var roster: Array[Dictionary] = []
+	var members: Array[Dictionary] = []
+	var thumbnail_image := Image.create_empty(2, 2, false, Image.FORMAT_RGBA8)
+	thumbnail_image.fill(Color.WHITE)
+	var thumbnail := ImageTexture.create_from_image(thumbnail_image)
+	view.set_thumbnail_provider(func(_row: Dictionary) -> Texture2D: return thumbnail)
+	for index in 4:
+		var anima_id := "50000000-0000-4000-8000-00000000000%d" % index
+		roster.append({
+			"id": anima_id,
+			"nickname": "Trail %d" % (index + 1),
+			"status": "ready",
+			"element": "food",
+			"care": {"energy": 80.0},
+		})
+		members.append({"slot": index, "anima_id": anima_id})
+	var tired := roster[0].duplicate(true)
+	tired["id"] = "50000000-0000-4000-8000-000000000009"
+	tired["care"] = {"energy": 20.0}
+	roster.append(tired)
+	view.set_builder(roster, {"id": "expedition-team", "members": members})
+	var roster_list := view.find_child("ExpeditionRosterList", true, false) as ItemList
+	var save_team := view.find_child("ExpeditionSaveTeam", true, false) as Button
+	_check(
+		roster_list.is_item_disabled(4) and not save_team.disabled
+		and roster_list.get_script().resource_path == "res://scripts/team_roster_list.gd"
+		and roster_list.get_theme_color("font_selected_color").a == 1.0,
+		"Expedition Team keeps four visible checked selections and blocks low Energy"
+	)
+	_tap_roster_item(roster_list, 2)
+	_check(
+		save_team.disabled and roster_list.get_selected_items().size() == 3,
+		"Expedition Save follows the tapped selection instead of Godot's raw state"
+	)
+	_tap_roster_item(roster_list, 2)
+	_check(
+		roster_list.get_item_icon(0) == thumbnail
+		and roster_list.get_item_text(0).contains(tr("TEAM_ROSTER_READY"))
+		and roster_list.get_item_text(4).contains(tr("BATTLE_PICK_LOW_ENERGY")),
+		"Expedition Team shows Anima art and concise readiness"
+	)
+	var builder_back := view.find_child("ExpeditionBuilderBack", true, false) as Button
+	_check(
+		builder_back.flat and builder_back.size_flags_horizontal != Control.SIZE_EXPAND_FILL,
+		"Expedition Back stays compact while preserving its touch height"
+	)
+	var run := {
+		"id": "expedition-run",
+		"status": "active",
+		"zone": 1,
+		"supplies": 7,
+		"team_id": "expedition-team",
+		"available_node_ids": ["battle-1"],
+		"party_state": [
+			{"name": "Trail 1", "hp": 0, "max_hp": 50},
+			{"name": "Trail 2", "hp": 50, "max_hp": 50},
+		],
+		"zone_map": {"nodes": [
+			{"id": "battle-1", "kind": "battle", "depth": 1},
+			{"id": "elite-2", "kind": "elite", "depth": 2},
+		]},
+	}
+	view.set_busy(true)
+	view.set_run(run)
+	var node_grid := view.find_child("ExpeditionNodeGrid", true, false) as GridContainer
+	var start_zone := view.find_child("ExpeditionStartZone", true, false) as Button
+	_check(
+		node_grid.get_child_count() == 2
+		and not (node_grid.get_child(0) as Button).disabled
+		and (node_grid.get_child(1) as Button).disabled,
+		"Expedition map enables only server-authorized next nodes"
+	)
+	var checkpoint := run.duplicate(true)
+	checkpoint["status"] = "checkpoint"
+	checkpoint["zone"] = 2
+	view.set_team({})
+	view.set_run(checkpoint)
+	_check(
+		start_zone.visible
+		and not start_zone.disabled
+		and view.call("_team_id") == "expedition-team",
+		"checkpoint Start Zone stays tappable using the run team"
+	)
+	view.set_team({"id": "expedition-team"})
+	run["pending_node"] = {
+		"id": "recovery-1",
+		"kind": "recovery",
+		"options": [{
+			"id": "revive",
+			"title_key": "EXPEDITION_NODE_RECOVERY",
+			"effect": {"type": "revive_target"},
+		}],
+	}
+	view.set_run(run)
+	view.call("_choose_option", run.pending_node.options[0])
+	var targets := view.find_child("ExpeditionTargetList", true, false) as ItemList
+	var confirm := view.find_child("ExpeditionTargetConfirm", true, false) as Button
+	var choice_abandon := view.find_child("ExpeditionChoiceAbandon", true, false) as Button
+	_check(
+		targets.item_count == 2
+		and not targets.is_item_disabled(0)
+		and targets.is_item_disabled(1)
+		and confirm.disabled,
+		"Expedition revive choice accepts only a knocked-out target"
+	)
+	_check(
+		choice_abandon.visible
+		and not choice_abandon.disabled
+		and not (view.find_child("ExpeditionBack", true, false) as Button).visible,
+		"server-committed node choice hides the inert header Back chevron"
+	)
+	run["pending_node"] = {
+		"id": "mystery-1",
+		"kind": "mystery",
+		"options": [{
+			"id": "supply-cache",
+			"effect": {"type": "supplies", "value": 3},
+		}],
+	}
+	run["supplies"] = 6
+	view.set_run(run)
+	var choice_buttons := view.find_child("ExpeditionChoiceButtons", true, false) as VBoxContainer
+	var option_button := choice_buttons.get_child(0) as Button if choice_buttons.get_child_count() > 0 else null
+	var choice_meta := view.find_child("ExpeditionChoiceMeta", true, false) as Label
+	_check(
+		choice_meta.visible
+		and choice_meta.text == tr("EXPEDITION_EFFECT_SUPPLIES") % "3"
+		and not choice_meta.text.contains("supply-cache"),
+		"a free Mystery grant shows the Tokens found, not an internal option id"
+	)
+	_check(
+		option_button != null
+		and option_button.text == tr("EXPEDITION_CHOICE_CONTINUE")
+		and not option_button.text.contains("supply-cache"),
+		"a free Mystery grant uses Continue instead of a claim button"
+	)
+	run["pending_node"] = {
+		"id": "cache-1",
+		"kind": "cache",
+		"options": [{
+			"id": "power-up",
+			"effect": {"type": "stat_boost", "stat": "atk", "value": 0.12},
+		}],
+	}
+	view.set_run(run)
+	option_button = choice_buttons.get_child(0) as Button if choice_buttons.get_child_count() > 0 else null
+	_check(
+		choice_meta.text.begins_with("Raise")
+		and option_button != null
+		and option_button.text == tr("EXPEDITION_CHOICE_CONTINUE"),
+		"a free Cache grant shows the boost and Continue back to the map"
+	)
+	run["pending_node"] = {
+		"id": "shop-1",
+		"kind": "shop",
+		"options": [{
+			"id": "shop-heal",
+			"cost_supplies": 2,
+			"effect": {"type": "heal_party", "ratio": 0.25},
+		}],
+	}
+	view.set_run(run)
+	option_button = choice_buttons.get_child(0) as Button if choice_buttons.get_child_count() > 0 else null
+	_check(
+		choice_meta.text == tr("EXPEDITION_CHOICE_SUPPLIES") % "6"
+		and option_button != null
+		and option_button.text.contains("2"),
+		"Trail Shop still shows the Token balance and a priced offer"
+	)
+	view.queue_free()
+	await process_frame
 
 
 func _test_battle_pick_sheet() -> void:
@@ -2198,6 +2962,15 @@ func _live_row_count(list: Node) -> int:
 		if not child.is_queued_for_deletion():
 			count += 1
 	return count
+
+
+## Mirrors a real tap: Godot replaces the whole multi-selection, emits
+## multi_selected from that pre-correction state, then emits item_clicked.
+func _tap_roster_item(list: ItemList, index: int) -> void:
+	if not list.is_item_disabled(index):
+		list.select(index, true)
+		list.multi_selected.emit(index, true)
+	list.item_clicked.emit(index, Vector2.ZERO, MOUSE_BUTTON_LEFT)
 
 
 func _check_full_rect(node: Control, label: String) -> void:

@@ -295,7 +295,7 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "", it
   return { state, events, bot_action: botAction };
 }
 
-function createFighter(input) {
+export function createFighter(input) {
   const grown = toBattleStats(
     input?.base_stats,
     input?.stage,
@@ -329,7 +329,7 @@ function createFighter(input) {
   };
 }
 
-function applyIntent(fighter, action, itemId = "") {
+export function applyIntent(fighter, action, itemId = "") {
   if (action === "surge") fighter.momentum -= SURGE_COST;
   if (action === "guard") {
     fighter.momentum = Math.min(fighter.momentum_max || MOMENTUM_MAX, fighter.momentum + 1);
@@ -365,7 +365,7 @@ function applyBattleItem(fighter, itemId) {
   }
 }
 
-function applyIncomingModifiers(target, damage) {
+export function applyIncomingModifiers(target, damage) {
   let next = Math.max(1, Math.trunc(damage * (target.incoming_mult || 1)));
   if ((target.shield_charges || 0) > 0) {
     next = Math.max(1, Math.trunc(next * 0.2));
@@ -374,23 +374,23 @@ function applyIncomingModifiers(target, damage) {
   return next;
 }
 
-function assertAffordable(fighter, action) {
+export function assertAffordable(fighter, action) {
   if (action === "surge" && fighter.momentum < SURGE_COST) {
     throw battleError("NO_MOMENTUM");
   }
 }
 
-function turnOrder(player, bot, random) {
+export function turnOrder(player, bot, random) {
   if (player.spd > bot.spd) return ["player", "bot"];
   if (bot.spd > player.spd) return ["bot", "player"];
   return random() < 0.5 ? ["player", "bot"] : ["bot", "player"];
 }
 
-function guardEvent(actor, fighter) {
+export function guardEvent(actor, fighter) {
   return { type: "guard", actor, momentum: fighter.momentum };
 }
 
-function itemEvent(actor, fighter, itemId) {
+export function itemEvent(actor, fighter, itemId) {
   const item = catalogItem(itemId);
   return {
     type: "item",
@@ -404,13 +404,13 @@ function itemEvent(actor, fighter, itemId) {
   };
 }
 
-function battleError(code) {
+export function battleError(code) {
   const error = new Error(code);
   error.code = code;
   return error;
 }
 
-function seededRandom(seed) {
+export function seededRandom(seed) {
   let value = hashSeed(seed);
   return () => {
     value += 0x6d2b79f5;

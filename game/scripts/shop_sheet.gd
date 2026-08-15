@@ -22,6 +22,7 @@ var _mode := Mode.SHOP
 var _tab := "food"
 var _catalog: Array = []
 var _inventory: Array = []
+var _bits := 0
 var _busy := false
 
 
@@ -32,9 +33,10 @@ func _ready() -> void:
 	_cta.pressed.connect(func() -> void: shop_cta_requested.emit())
 
 
-func set_catalog(catalog: Array, inventory: Array) -> void:
+func set_catalog(catalog: Array, inventory: Array, bits: int) -> void:
 	_catalog = catalog.duplicate(true)
 	_inventory = inventory.duplicate(true)
+	_bits = maxi(0, bits)
 	_rebuild()
 
 
@@ -183,10 +185,11 @@ func _make_row(item: Dictionary) -> Control:
 	actions.add_theme_constant_override("separation", 8)
 	if _mode == Mode.SHOP:
 		var buy := Button.new()
+		var price := int(item.get("price", 0))
 		buy.custom_minimum_size = Vector2(148, 96)
 		buy.theme_type_variation = "PrimaryButton"
-		buy.disabled = _busy
-		buy.text = tr("SHOP_BUY") % LocaleManager.format_integer(int(item.get("price", 0)))
+		buy.disabled = _busy or _bits < price
+		buy.text = tr("SHOP_BUY") % LocaleManager.format_integer(price)
 		buy.pressed.connect(func() -> void: buy_requested.emit(item))
 		actions.add_child(buy)
 	elif _can_use(item):
