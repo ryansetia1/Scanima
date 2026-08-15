@@ -4,6 +4,7 @@ extends SceneTree
 ##
 ##   /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
 ##     --script res://tests/live_battle.gd
+##   # -- --art-only berhenti setelah signed sheet bot berhasil diunduh.
 ##
 ## Memakai akun uji live_scan yang sama agar tidak menumpuk anonymous user.
 ## Menjalankan resume, ketiga action, replay idempoten, forfeit, dan cross-owner.
@@ -94,8 +95,17 @@ func _run() -> bool:
 	var session: Dictionary = GameState.as_dict(start.data)
 	var session_id := str(session.get("id", ""))
 	var bot: Dictionary = GameState.as_dict(session.get("bot_snapshot"))
-	if session_id.is_empty() or bot.has("owner_id") or bot.has("nickname"):
-		return _fail("session atau anonimitas bot tidak sah")
+	if (
+		session_id.is_empty()
+		or bot.has("owner_id")
+		or bot.has("nickname")
+		or bot.has("sheet_path")
+		or str(bot.get("sheet_url", "")).is_empty()
+	):
+		return _fail("session atau anonimitas bot tidak sah: %s" % str(bot.keys()))
+	var bot_art: Dictionary = await Backend.download_url(str(bot.get("sheet_url", "")))
+	if not bot_art.ok or bot_art.bytes.is_empty():
+		return _fail("signed art bot tidak dapat diunduh: %s" % bot_art.error)
 	GameState.remember_battle(
 		session_id,
 		int(session.get("turn_number", 1)),
@@ -104,6 +114,8 @@ func _run() -> bool:
 	var resumed: Dictionary = await Backend.battle_anima("resume", {"session_id": session_id})
 	if not resumed.ok or str(GameState.as_dict(resumed.data).get("id", "")) != session_id:
 		return _fail("resume tidak mengembalikan session yang sama")
+	if OS.get_cmdline_user_args().has("--art-only"):
+		return true
 
 	print("5. Strike, Guard, Surge dan replay")
 	var replay_checked := false

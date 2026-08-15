@@ -1418,6 +1418,31 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
     /sheet_url/,
     "snapshot bot gallery harus membawa signed sheet_url, bukan path privat"
   );
+  assert.match(
+    battleEdge,
+    /async function startBattle[\s\S]*withFreshBotArt\(existing\)[\s\S]*withFreshBotArt\(data\)/,
+    "start/resume existing Battle harus menyegarkan signed art bot"
+  );
+  assert.match(
+    battleEdge,
+    /async function resumeBattle[\s\S]*withFreshBotArt\(data\)/,
+    "resume Battle harus menyegarkan signed art bot yang kedaluwarsa"
+  );
+  assert.match(
+    battleEdge,
+    /withFreshBotArt[\s\S]*\.from\("anima_sheets"\)[\s\S]*createSignedUrl\(bot\.sheet_path/,
+    "art bot fallback harus ditandatangani dari salinan privat per-Anima"
+  );
+  assert.match(
+    battleEdge,
+    /typeof botSnapshot\.anima_id === "string"/,
+    "refresh art harus membaca ID bot dari snapshot karena payload publik menyembunyikan FK session"
+  );
+  assert.match(
+    battleEdge,
+    /artByKey\.has\(artKey\(candidate\)\) && candidate\.sheet_path && candidate\.manifest/,
+    "fallback legacy hanya boleh memakai kandidat yang sudah punya salinan art privat"
+  );
 }
 
 console.log("23b. gallery moderation + thumb crop");

@@ -75,6 +75,8 @@ type AnimaRow = {
   care?: { hunger?: number; hygiene?: number };
   strike_name?: string;
   surge_name?: string;
+  sheet_path?: string;
+  manifest?: unknown;
 };
 
 type ArtRow = {
@@ -98,6 +100,10 @@ type GalleryBotRow = {
 const SECONDARY_ELEMENT_FIELD = ", secondary_element";
 const ANIMA_BATTLE_FIELDS =
   `id, owner_id, nickname, species_key, color_bucket, stage, element${SECONDARY_ELEMENT_FIELD}, base_stats, care_score, care, strike_name, surge_name`;
+const normalizeStats = normalizeBaseStats as unknown as (
+  baseStats: unknown,
+  targetTotal?: number | null,
+) => Record<string, number>;
 
 const db = adminClient();
 
@@ -160,7 +166,7 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
     p_session_id: null,
   });
   if (resumeError) throw resumeError;
-  if (existing) return json(200, existing);
+  if (existing) return json(200, await withFreshBotArt(existing));
 
   const [{ data: player, error: playerError }, { data: galleryRows, error: galleryError }, { data: legacyBots, error: legacyError }, { data: artRows }] =
     await Promise.all([
@@ -183,7 +189,7 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
         .limit(200),
       db
         .from("animas")
-        .select(ANIMA_BATTLE_FIELDS)
+        .select(ANIMA_BATTLE_FIELDS + ", sheet_path, manifest")
         .neq("owner_id", ownerId)
         .eq("status", "ready")
         .limit(200),
@@ -194,10 +200,13 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
   if (galleryError) throw galleryError;
   if (legacyError) throw legacyError;
 
-  const artByKey = new Map(((artRows ?? []) as ArtRow[]).map((art) => [artKey(art), art]));
+  const playerRow = player as unknown as AnimaRow;
+  const legacyCandidates = (legacyBots ?? []) as unknown as AnimaRow[];
+  const artCandidates = (artRows ?? []) as unknown as ArtRow[];
+  const artByKey = new Map(artCandidates.map((art) => [artKey(art), art]));
   const seed = crypto.randomUUID();
-  const playerTotal = baseStatTotal(player.base_stats);
-  const galleryCandidates = ((galleryRows ?? []) as GalleryBotRow[])
+  const playerTotal = baseStatTotal(playerRow.base_stats);
+  const galleryCandidates = ((galleryRows ?? []) as unknown as GalleryBotRow[])
     .filter((row) => row.animas?.sheet_path && row.animas?.manifest);
 
   let botSnapshot: Record<string, unknown>;
@@ -205,7 +214,7 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
 
   if (galleryCandidates.length > 0) {
     const close = galleryCandidates.filter((candidate) =>
-      candidate.stage === player.stage &&
+      candidate.stage === playerRow.stage &&
       Math.abs(baseStatTotal(candidate.animas.base_stats) - playerTotal) <= playerTotal * 0.15
     );
     const pool = close.length > 0 ? close : galleryCandidates;
@@ -213,8 +222,8 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
     const picked = pool[0];
     const botRow = picked.animas;
     const botBaseStats = close.length > 0
-      ? normalizeBaseStats(botRow.base_stats)
-      : normalizeBaseStats(botRow.base_stats, playerTotal);
+      ? normalizeStats(botRow.base_stats)
+      : normalizeStats(botRow.base_stats, playerTotal);
     botAnimaId = picked.anima_id;
     try {
       botSnapshot = await gallerySnapshot(
@@ -225,9 +234,9 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
       console.error("signed art bot Gallery gagal; memakai fallback legacy", error);
       const legacy = pickLegacyBot(
         seed,
-        player as AnimaRow,
+        playerRow,
         playerTotal,
-        (legacyBots ?? []) as AnimaRow[],
+        legacyCandidates,
         artByKey,
       );
       if (!legacy) throw new Error("NO_BATTLE_OPPONENT");
@@ -235,15 +244,15 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
       botSnapshot = legacy.snapshot;
     }
   } else {
-    // ponytail: gallery kosong → bot legacy dari species_library publik; tidak pernah art privat.
-    const legacy = pickLegacyBot(seed, player as AnimaRow, playerTotal, (legacyBots ?? []) as AnimaRow[], artByKey);
+    // ponytail: species_library hanya menandai bot legacy; bytes memakai salinan privat hasil migrasi.
+    const legacy = pickLegacyBot(seed, playerRow, playerTotal, legacyCandidates, artByKey);
     if (!legacy) throw new Error("NO_BATTLE_OPPONENT");
     botAnimaId = legacy.bot.id;
     botSnapshot = legacy.snapshot;
   }
 
-  const playerArt = playerArtSource(player as AnimaRow & { sheet_path?: string; manifest?: unknown }, artRows ?? []);
-  const playerSnapshot = snapshot(player as AnimaRow, playerArt, true);
+  const playerArt = playerArtSource(playerRow, artCandidates);
+  const playerSnapshot = snapshot(playerRow, playerArt, true);
   const initialState = createBattleState({
     player: playerSnapshot,
     bot: botSnapshot,
@@ -264,7 +273,7 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
     p_reward_bits: reward.bits,
   });
   if (error) throw error;
-  return json(200, data);
+  return json(200, await withFreshBotArt(data));
 }
 
 async function resumeBattle(ownerId: string, body: BattleBody): Promise<Response> {
@@ -277,7 +286,7 @@ async function resumeBattle(ownerId: string, body: BattleBody): Promise<Response
   });
   if (error) throw error;
   if (!data) throw new Error("BATTLE_NOT_FOUND");
-  return json(200, data);
+  return json(200, await withFreshBotArt(data));
 }
 
 async function playTurn(ownerId: string, body: BattleBody): Promise<Response> {
@@ -359,7 +368,7 @@ function snapshot(
     stage: row.stage,
     level: levelFromExp(row.care_score),
     element: normalizeElement(row.element),
-    base_stats: normalizeBaseStats(row.base_stats),
+    base_stats: normalizeStats(row.base_stats),
     manifest: art?.manifest ?? {},
     strike_name: row.strike_name ?? "",
     surge_name: row.surge_name ?? "",
@@ -405,6 +414,44 @@ async function gallerySnapshot(
   );
 }
 
+async function withFreshBotArt(value: unknown): Promise<unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const session = value as Record<string, unknown>;
+  const botSnapshot = session.bot_snapshot && typeof session.bot_snapshot === "object"
+    ? { ...(session.bot_snapshot as Record<string, unknown>) }
+    : {};
+  const botId = typeof session.bot_anima_id === "string"
+    ? session.bot_anima_id
+    : typeof botSnapshot.anima_id === "string"
+    ? botSnapshot.anima_id
+    : "";
+  if (!botId) return value;
+
+  const { data: bot, error: botError } = await db
+    .from("animas")
+    .select("sheet_path, manifest")
+    .eq("id", botId)
+    .maybeSingle();
+  if (botError) throw botError;
+  if (!bot?.sheet_path || !bot.manifest) throw new Error("BOT_NOT_FOUND");
+
+  const { data: signed, error: signedError } = await db.storage
+    .from("anima_sheets")
+    .createSignedUrl(bot.sheet_path, BATTLE_SHEET_SIGNED_TTL);
+  if (signedError) throw signedError;
+  if (!signed?.signedUrl) throw new Error("BOT_NOT_FOUND");
+
+  delete botSnapshot.sheet_path;
+  return {
+    ...session,
+    bot_snapshot: {
+      ...botSnapshot,
+      manifest: bot.manifest,
+      sheet_url: signed.signedUrl,
+    },
+  };
+}
+
 function playerArtSource(
   row: AnimaRow & { sheet_path?: string; manifest?: unknown },
   artRows: ArtRow[],
@@ -429,7 +476,9 @@ function pickLegacyBot(
   candidates: AnimaRow[],
   artByKey: Map<string, ArtRow>,
 ): { bot: AnimaRow; snapshot: Record<string, unknown> } | null {
-  const eligible = candidates.filter((candidate) => artByKey.has(artKey(candidate)));
+  const eligible = candidates.filter((candidate) =>
+    artByKey.has(artKey(candidate)) && candidate.sheet_path && candidate.manifest
+  );
   if (eligible.length === 0) return null;
   const close = eligible.filter((candidate) =>
     candidate.stage === player.stage &&
@@ -439,9 +488,15 @@ function pickLegacyBot(
   pool.sort((left, right) => stableRank(`${seed}:${left.id}`) - stableRank(`${seed}:${right.id}`));
   const bot = pool[0];
   const botBaseStats = close.length > 0
-    ? normalizeBaseStats(bot.base_stats)
-    : normalizeBaseStats(bot.base_stats, playerTotal);
-  const art = artByKey.get(artKey(bot)) ?? null;
+    ? normalizeStats(bot.base_stats)
+    : normalizeStats(bot.base_stats, playerTotal);
+  const art = {
+    species_key: bot.species_key,
+    color_bucket: bot.color_bucket,
+    stage: bot.stage,
+    sheet_path: bot.sheet_path!,
+    manifest: bot.manifest,
+  };
   return {
     bot,
     snapshot: snapshot({ ...bot, base_stats: botBaseStats }, art, false),
