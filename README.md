@@ -29,7 +29,8 @@ terkirim karena project/access token FCM belum dikonfigurasi. Team Battle juga
 aktif untuk device playtest dengan `feature_team_battle=true`. Tidak ada model
 call saat pemain bermain. Begin Expedition mendebit 30 Energy dari masing-masing
 empat anggota satu kali; zona dan Boss berikutnya tidak memakai Energy lagi,
-dan roster terkunci sampai run selesai atau di-Abandon. Spesifikasi ada di
+dan roster terkunci sampai run selesai atau di-Abandon. Boss menampilkan Seeker
+chapter di belakang Anima lawan beserta dialog event. Spesifikasi ada di
 [`docs/09-team-battle-and-expedition.md`](docs/09-team-battle-and-expedition.md).
 
 Probe production berbayar setelah cutover memakai foto Golden Retriever

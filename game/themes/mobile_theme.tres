@@ -3,6 +3,25 @@
 [ext_resource type="FontFile" uid="uid://ddeeoa3enkda" path="res://assets/fonts/NunitoSans-Variable.ttf" id="1_body"]
 [ext_resource type="FontFile" uid="uid://b0ugtjpmyt7ix" path="res://assets/fonts/Oxanium-Variable.ttf" id="2_display"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_joq8t"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.018, 0.032, 0.075, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.278, 0.902, 1, 0.72)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0, 0, 0, 0.42)
+shadow_size = 10
+shadow_offset = Vector2(0, 4)
+
 [sub_resource type="StyleBoxFlat" id="BondChip"]
 content_margin_left = 12.0
 content_margin_top = 10.0
@@ -734,6 +753,8 @@ AnimaNameLabel/base_type = &"Label"
 AnimaNameLabel/colors/font_color = Color(1, 0.97, 0.88, 1)
 AnimaNameLabel/font_sizes/font_size = 46
 AnimaNameLabel/fonts/font = ExtResource("2_display")
+BattleEventPlate/base_type = &"PanelContainer"
+BattleEventPlate/styles/panel = SubResource("StyleBoxFlat_joq8t")
 BodyLabel/base_type = &"Label"
 BodyLabel/colors/font_color = Color(0.76, 0.82, 0.92, 1)
 BodyLabel/font_sizes/font_size = 26

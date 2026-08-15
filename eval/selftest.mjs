@@ -79,11 +79,13 @@ import {
 import {
   applyEncounterBoosts,
   applyNodeOption,
+  attachBossSeeker,
   findExpeditionNode,
   generateZoneMap,
   nextNodeIds,
   opponentForNode,
   prepareExpeditionRoster,
+  publicBossSeeker,
   validateChapterManifest,
 } from "../backend/supabase/functions/_shared/expedition.mjs";
 import { imageInputForModel } from "./run.mjs";
@@ -1885,7 +1887,7 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
 
   const { readFile } = await import("node:fs/promises");
   const koExpSql = await readFile(
-    new URL("../backend/supabase/migrations/20260815191302_deny_ko_party_exp.sql", import.meta.url),
+    new URL("../backend/supabase/migrations/20260815191450_deny_ko_party_exp.sql", import.meta.url),
     "utf8",
   );
   assert.match(
@@ -1977,6 +1979,48 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     expeditionConfig,
     /\[functions\.expedition\][\s\S]*verify_jwt = true/,
     "Expedition wajib melewati JWT gateway",
+  );
+  const seekerManifest = {
+    ...manifest,
+    boss_seeker: {
+      id: "confectioner",
+      display_name: "The Confectioner",
+      portrait_pose: "profile",
+      sheet_path: "expeditions/demo/v1/boss/seeker.png",
+      poses: ["intro_idle", "profile"],
+      dialogue: {
+        chapter_intro: "Welcome to the archive.",
+        boss_intro: "Show me your formula.",
+      },
+      manifest: { version: 1, frame_size: [300, 300], poses: {} },
+    },
+  };
+  const seeker = publicBossSeeker(seekerManifest);
+  assert.equal(seeker.display_name, "The Confectioner");
+  assert.equal(seeker.sheet_path, "expeditions/demo/v1/boss/seeker.png");
+  assert.equal(seeker.dialogue.boss_intro, "Show me your formula.");
+  assert.equal(publicBossSeeker(manifest), null, "chapter tanpa seeker tidak boleh mengarang payload");
+  assert.equal(
+    publicBossSeeker({
+      boss_seeker: {
+        dialogue: { boss_intro: "x" },
+        sheet_path: "../escape.png",
+      },
+    }),
+    null,
+    "sheet_path seeker tidak boleh keluar prefix",
+  );
+  const attached = attachBossSeeker({
+    run: { id: "run-1", zone_attempt: 2 },
+    encounter: { id: "enc-1", kind: "boss" },
+  }, seekerManifest);
+  assert.equal(attached.run.boss_seeker.id, "confectioner");
+  assert.equal(attached.encounter.zone_attempt, 2);
+  assert.ok(
+    expeditionEdge.includes("publicBossSeeker") &&
+      expeditionEdge.includes("sheet_path") &&
+      expeditionEdge.includes("boss_seeker"),
+    "payload Expedition harus menandatangani sheet Boss Seeker",
   );
 }
 

@@ -19,6 +19,28 @@ export const EXPEDITION_EFFECT_TYPES = Object.freeze([
   "start_pp",
   "shop_discount",
 ]);
+export const BOSS_SEEKER_TRIGGERS = Object.freeze([
+  "chapter_intro",
+  "boss_intro",
+  "rematch",
+  "first_attack",
+  "first_special",
+  "first_switch",
+  "last_anima",
+  "victory",
+  "defeat",
+]);
+export const BOSS_SEEKER_POSES = Object.freeze([
+  "intro_idle",
+  "attack_command",
+  "special_command",
+  "switch_command",
+  "concern_hit",
+  "last_anima",
+  "victory",
+  "defeat",
+  "profile",
+]);
 
 const NODE_KIND_SET = new Set(EXPEDITION_NODE_KINDS);
 const EFFECT_SET = new Set(EXPEDITION_EFFECT_TYPES);
@@ -59,6 +81,54 @@ export function validateChapterManifest(input) {
     throw chapterError("INVALID_CHAPTER_BOSS");
   }
   return structuredClone(input);
+}
+
+export function publicBossSeeker(manifestInput) {
+  const seeker = isObject(manifestInput) && isObject(manifestInput.boss_seeker)
+    ? manifestInput.boss_seeker
+    : null;
+  if (!seeker || !isObject(seeker.dialogue)) return null;
+  const sheetPath = typeof seeker.sheet_path === "string" ? seeker.sheet_path.trim() : "";
+  if (!sheetPath || sheetPath.includes("..")) return null;
+  const dialogue = {};
+  for (const trigger of BOSS_SEEKER_TRIGGERS) {
+    const line = typeof seeker.dialogue[trigger] === "string"
+      ? seeker.dialogue[trigger].trim()
+      : "";
+    if (line) dialogue[trigger] = line;
+  }
+  if (Object.keys(dialogue).length === 0) return null;
+  const poses = Array.isArray(seeker.poses)
+    ? seeker.poses.filter((pose) => BOSS_SEEKER_POSES.includes(pose))
+    : [...BOSS_SEEKER_POSES];
+  return {
+    id: typeof seeker.id === "string" ? seeker.id : "",
+    display_name: typeof seeker.display_name === "string" ? seeker.display_name : "",
+    title_key: typeof seeker.title_key === "string" ? seeker.title_key : "",
+    portrait_pose: typeof seeker.portrait_pose === "string" ? seeker.portrait_pose : "profile",
+    dialogue,
+    poses,
+    sheet_path: sheetPath,
+    manifest: isObject(seeker.manifest) ? seeker.manifest : {},
+  };
+}
+
+export function attachBossSeeker(payload, manifestInput) {
+  const seeker = publicBossSeeker(manifestInput);
+  if (!seeker || !isObject(payload)) return payload;
+  const next = { ...payload };
+  if (isObject(next.run)) {
+    next.run = { ...next.run, boss_seeker: seeker };
+  }
+  if (isObject(next.encounter)) {
+    const zoneAttempt = Number(next.run?.zone_attempt) || Number(next.encounter.zone_attempt) || 1;
+    next.encounter = {
+      ...next.encounter,
+      boss_seeker: seeker,
+      zone_attempt: zoneAttempt,
+    };
+  }
+  return next;
 }
 
 export function generateZoneMap(manifestInput, zoneNumber, attempt, seed) {

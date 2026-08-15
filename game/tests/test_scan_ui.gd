@@ -1150,11 +1150,11 @@ func _test_battle_view() -> void:
 	var bot_hp_value := view.find_child("BattleBotHpValue", true, false) as Label
 	var daily_reward := view.find_child("BattleDailyReward", true, false) as Label
 	var feedback := view.find_child("BattleFeedback", true, false) as Label
-	var damage := view.find_child("BattleDamage", true, false) as Label
 	var effectiveness := view.find_child("BattleEffectiveness", true, false) as Control
 	var effectiveness_badge := view.find_child(
 		"BattleEffectivenessBadge", true, false
 	) as Control
+	var event_plate := view.find_child("BattleEventPlate", true, false) as PanelContainer
 	var effectiveness_label := view.find_child(
 		"BattleEffectivenessLabel", true, false
 	) as Label
@@ -1418,13 +1418,22 @@ func _test_battle_view() -> void:
 		"advantaged attacks show a Super effective indicator"
 	)
 	_check(
-		effectiveness.position.y + effectiveness.size.y < damage.position.y
-		and effectiveness_badge is CenterContainer
-		and view.find_child("BattleEffectivenessLeftStreak", true, false) == null
-		and view.find_child("BattleEffectivenessRightStreak", true, false) == null
+		is_equal_approx(effectiveness.offset_top, -118.0)
+		and is_equal_approx(effectiveness.offset_bottom, -36.0),
+		"Duel event copy keeps its clear arena-relative band below the HUD"
+	)
+	_check(
+		effectiveness_badge is CenterContainer
+		and event_plate != null
+		and event_plate.theme_type_variation == &"BattleEventPlate"
+		and event_plate.z_index < effectiveness_badge.z_index,
+		"Duel event copy has a dark bordered plate behind its text"
+	)
+	_check(
+		float(view.get_script().get_script_constant_map().get("ACTION_CUE_SEC", 0.0)) >= 1.0
 		and effectiveness_label.get_theme_font("font") is FontVariation
 		and effectiveness_label.get_theme_font_size("font_size") >= 36,
-		"effectiveness impact uses bold type above fighters without a box or side lines"
+		"Duel event copy remains readable for one second before animation"
 	)
 	view.call("_show_effectiveness", 0.67)
 	_check(
@@ -1781,13 +1790,15 @@ func _test_team_battle_view() -> void:
 	var forfeit := view.find_child("TeamForfeitButton", true, false) as Button
 	var arena_hud := view.find_child("ArenaHud", true, false) as PanelContainer
 	var arena_panel := view.find_child("ArenaPanel", true, false)
-	var player_shadow := view.find_child("TeamPlayerAnchor", true, false).find_child(
-		"GroundShadow", false, false
-	)
+	var player_anchor := view.find_child("TeamPlayerAnchor", true, false)
+	var player_shadow := player_anchor.find_child("GroundShadow", false, false)
 	var opponent_shadow := view.find_child("TeamOpponentAnchor", true, false).find_child(
 		"GroundShadow", false, false
 	)
+	var player_portal := player_anchor.find_child("SummonPortal", false, false)
+	var arena_fighter := view.find_child("TeamPlayerSprite", true, false) as Node2D
 	var effectiveness := view.find_child("TeamEffectiveness", true, false) as Control
+	var event_plate := view.find_child("TeamEventPlate", true, false) as PanelContainer
 	var effectiveness_label := view.find_child(
 		"TeamEffectivenessLabel", true, false
 	) as Label
@@ -1809,8 +1820,11 @@ func _test_team_battle_view() -> void:
 		and player_shadow != null
 		and opponent_shadow != null
 		and int(player_shadow.z_index) >= 0
-		and int(opponent_shadow.z_index) >= 0,
-		"arena is borderless, HUD is full width, and fighters have ground shadows"
+		and int(opponent_shadow.z_index) >= 0
+		and player_portal != null
+		and arena_fighter != null
+		and int(arena_fighter.z_index) > int(player_portal.z_index),
+		"arena is borderless, HUD is full width, and Anima draws in front of the summon portal"
 	)
 	view.set_expedition_mode(true)
 	view.set_arena_location("The Sugarworks — Zone 1")
@@ -1826,6 +1840,12 @@ func _test_team_battle_view() -> void:
 	_check(
 		effectiveness.visible and effectiveness_label.text == tr("BATTLE_EFFECTIVE"),
 		"Team Battle shows Super effective in the arena"
+	)
+	_check(
+		event_plate != null
+		and event_plate.theme_type_variation == &"BattleEventPlate"
+		and float(view.get_script().get_script_constant_map().get("ACTION_CUE_SEC", 0.0)) >= 1.0,
+		"Team Battle and Expedition share the readable one-second event plate"
 	)
 	view.call("_show_effectiveness", 0.67)
 	_check(
@@ -1878,8 +1898,9 @@ func _test_team_battle_view() -> void:
 		and switch_grid.columns == 2
 		and switch_slot.icon != null
 		and switch_slot.text.contains(tr("TEAM_SWITCH_ACTIVE"))
+		and switch_slot.text.contains("Lv.")
 		and switch_slot.find_child("Hp", true, false) != null,
-		"Switch cards keep art, HP, and status readable without a horizontal overflow"
+		"Switch cards keep art, Level, HP, and status readable without a horizontal overflow"
 	)
 	_check(
 		switch_cancel.visible and switch_cancel.custom_minimum_size.y >= TOUCH_MIN,
@@ -1970,11 +1991,18 @@ func _test_team_battle_view() -> void:
 	view.action_requested.connect(
 		func(action: String, slot: int) -> void: auto_switch.append([action, slot])
 	)
+	view.set_busy(true)
 	view.set_session(last_stand, art_cache)
+	_check(
+		auto_switch.is_empty(),
+		"auto-switch waits while the authoritative turn is still committing"
+	)
+	view.set_busy(false)
+	await process_frame
 	_check(
 		not switch_panel.visible
 		and auto_switch == [["switch", 3]],
-		"the last living Anima summons without a picker"
+		"the last living Anima summons after the controller releases its lock"
 	)
 	session["status"] = "won"
 	session["state"]["status"] = "won"
@@ -2044,6 +2072,79 @@ func _test_team_battle_view() -> void:
 		and not switch_payload.has("item_id"),
 		"Team switch payload cannot leak a stale item"
 	)
+	var seeker_art := art_cache.duplicate()
+	seeker_art["boss_seeker"] = _boss_seeker_loaded()
+	var boss_session := session.duplicate(true)
+	boss_session["id"] = "boss-session-1"
+	boss_session["kind"] = "boss"
+	boss_session["status"] = "active"
+	boss_session["turn_number"] = 1
+	boss_session["zone_attempt"] = 1
+	boss_session["boss_seeker"] = _boss_seeker_payload()
+	boss_session["state"]["status"] = "active"
+	boss_session["last_reward"] = {}
+	view.set_session(boss_session, seeker_art)
+	await process_frame
+	var seeker := view.find_child("BossSeeker", true, false) as AnimatedSprite2D
+	var boss_opponent := view.find_child("TeamOpponentSprite", true, false) as AnimaPresenter
+	var dialog := view.find_child("BossSeekerDialog", true, false) as BossSeekerDialog
+	_check(
+		seeker != null
+		and seeker.visible
+		and seeker.sprite_frames != null
+		and seeker.z_index > 0
+		and boss_opponent != null
+		and seeker.z_index < boss_opponent.z_index,
+		"boss arena draws the Seeker above the background and behind the opponent"
+	)
+	var intro_line := dialog.find_child("SeekerLine", true, false) as Label if dialog != null else null
+	_check(
+		dialog != null and dialog.is_open()
+		and intro_line != null
+		and intro_line.text.contains("Show me"),
+		"boss intro opens before commands"
+	)
+	_check(view.handle_back(), "back dismisses boss intro instead of leaving the arena")
+	await process_frame
+	_check(not dialog.is_open(), "dismissed boss intro stays closed")
+	_dismiss_when_open(dialog)
+	await view.play_events([{
+		"type": "attack",
+		"actor": "opponent",
+		"target": "player",
+		"action": "strike",
+		"target_hp": 40,
+		"element_multiplier": 1.0,
+	}], boss_session, seeker_art)
+	_check(not dialog.is_open(), "first opponent Attack speaks once then closes")
+	await view.play_events([{
+		"type": "attack",
+		"actor": "opponent",
+		"target": "player",
+		"action": "strike",
+		"target_hp": 30,
+		"element_multiplier": 1.0,
+	}], boss_session, seeker_art)
+	_check(not dialog.is_open(), "replayed opponent Attack does not repeat first_attack")
+	var last_page := boss_session.duplicate(true)
+	last_page["state"]["player"]["roster"][0]["hp"] = 0
+	last_page["state"]["player"]["roster"][1]["hp"] = 0
+	last_page["state"]["player"]["roster"][2]["hp"] = 0
+	_dismiss_when_open(dialog)
+	await view.play_events([{
+		"type": "knockout",
+		"actor": "player",
+	}], last_page, seeker_art)
+	_check(not dialog.is_open(), "last living Anima speaks once")
+	var won := last_page.duplicate(true)
+	won["status"] = "won"
+	won["state"]["status"] = "won"
+	view.set_session(won, seeker_art)
+	await process_frame
+	_check(dialog.is_open(), "player win opens the Seeker victory line")
+	_check(seeker.animation == "defeat", "player win uses the Seeker defeat pose")
+	dialog.dismiss()
+	await process_frame
 	view.queue_free()
 	await process_frame
 	UiMotion.set_reduced_motion(false)
@@ -2299,6 +2400,35 @@ func _test_expedition_view() -> void:
 		and option_button.text.contains("2"),
 		"Trail Shop still shows the Token balance and a priced offer"
 	)
+	var intro_run := {
+		"id": "sugarworks-fresh",
+		"status": "active",
+		"zone": 1,
+		"nodes_completed": 0,
+		"supplies": 0,
+		"team_id": "expedition-team",
+		"available_node_ids": ["battle-1"],
+		"zone_map": {"nodes": [{"id": "battle-1", "kind": "battle", "depth": 1}]},
+		"boss_seeker": _boss_seeker_payload(),
+	}
+	view.visible = true
+	view.set_run(intro_run, {}, {"boss_seeker": _boss_seeker_loaded()})
+	await process_frame
+	var chapter_dialog := view.find_child("ChapterSeekerDialog", true, false) as BossSeekerDialog
+	var chapter_line := chapter_dialog.find_child("SeekerLine", true, false) as Label if chapter_dialog != null else null
+	_check(
+		chapter_dialog != null
+		and chapter_dialog.is_open()
+		and chapter_line != null
+		and chapter_line.text.contains("Every path"),
+		"fresh Zone 1 map opens the chapter intro"
+	)
+	_check(view.handle_back(), "back dismisses chapter intro before leaving the map")
+	await process_frame
+	_check(not chapter_dialog.is_open(), "chapter intro does not reopen on the same run")
+	view.set_run(intro_run)
+	await process_frame
+	_check(not chapter_dialog.is_open(), "resumed same-run map skips chapter intro")
 	view.queue_free()
 	await process_frame
 
@@ -2998,6 +3128,55 @@ func _live_row_count(list: Node) -> int:
 
 ## Mirrors a real tap: Godot replaces the whole multi-selection, emits
 ## multi_selected from that pre-correction state, then emits item_clicked.
+func _boss_seeker_payload() -> Dictionary:
+	return {
+		"id": "confectioner",
+		"display_name": "The Confectioner",
+		"portrait_pose": "profile",
+		"dialogue": {
+			"chapter_intro": "Every path began as a page.",
+			"boss_intro": "Show me what your team adds.",
+			"rematch": "A second reading?",
+			"first_attack": "First measure.",
+			"first_special": "Open the sealed formula.",
+			"first_switch": "Turn the page.",
+			"last_anima": "One page remains.",
+			"victory": "You changed the formula.",
+			"defeat": "Return when stronger.",
+		},
+	}
+
+
+func _boss_seeker_loaded() -> Dictionary:
+	var image := Image.create_empty(1024, 1024, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 1, 0, 1))
+	var names := [
+		"intro_idle", "attack_command", "special_command",
+		"switch_command", "concern_hit", "last_anima",
+		"victory", "defeat", "profile",
+	]
+	var poses := {}
+	for index in names.size():
+		var col := index % 3
+		var row := index / 3
+		var x := col * 341
+		var y := row * 341
+		image.fill_rect(Rect2i(x, y, 300, 300), Color(0.25, 0.2, 0.7, 1))
+		poses[names[index]] = {"region": [x, y, 300, 300]}
+	return BossSeekerSheet.build(
+		ImageTexture.create_from_image(image),
+		{"version": 1, "frame_size": [300, 300], "poses": poses}
+	)
+
+
+func _dismiss_when_open(dialog: BossSeekerDialog) -> void:
+	for _step in 180:
+		if dialog != null and dialog.is_open():
+			dialog.dismiss()
+			return
+		await process_frame
+
+
 func _tap_roster_item(list: ItemList, index: int) -> void:
 	if not list.is_item_disabled(index):
 		list.select(index, true)

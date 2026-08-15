@@ -166,7 +166,9 @@ Portrait, profile image, dan cut-in diturunkan dari sheet yang sama. Dialog
 dibatasi ke trigger `chapter_intro`, `boss_intro`, `first_attack`,
 `first_special`, `first_switch`, `last_anima`, `victory`, `defeat`, dan
 `rematch`. Setiap line hanya boleh tampil sekali per session state; replay event
-tidak mengulang dialog.
+tidak mengulang dialog. Runtime menempel `boss_seeker` plus `sheet_url` pada
+run/encounter; client memuat sheet 3×3, menaruh Seeker di belakang Anima lawan,
+memainkan cut-in pada command, dan menampilkan dialog tap-to-continue.
 
 Referensi monster-handler hanya menjadi bahasa genre: anime ekspresif, siluet
 kuat, outfit dan prop bertema, serta gesture command yang jelas. Prompt dan

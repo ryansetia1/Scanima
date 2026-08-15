@@ -9,6 +9,9 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 # menyalakan Special yang lalu ditolak server sebagai NO_MOMENTUM.
 const MOMENTUM_MAX := 3
 const SURGE_COST := 1
+const ACTION_CUE_SEC := 1.0
+const RESULT_HOLD_SEC := 0.72
+const CUE_COLOR := Color(0.92, 0.97, 1.0, 1.0)
 const DAMAGE_COLOR := Color(1.0, 0.35, 0.48, 1.0)
 const EFFECTIVE_COLOR := Color(1.0, 0.82, 0.4, 1.0)
 const RESISTED_COLOR := Color(0.55, 0.68, 0.9, 1.0)
@@ -431,19 +434,32 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 				_feedback.text = tr("BATTLE_EVENT_GUARD") % _actor_name(
 					str(event.get("actor", ""))
 				)
-				await _event_pause(0.24)
+				_show_banner(_feedback.text, CUE_COLOR, false)
+				await _readability_pause()
+				await _hide_effectiveness()
 			"item":
 				await _play_item(event)
 			"attack":
 				await _play_attack(event)
 			"knockout":
-				var defeated := _sprite_for(str(event.get("actor", "")))
+				var defeated_side := str(event.get("actor", ""))
+				_feedback.text = tr("BATTLE_EVENT_KO") % _actor_name(defeated_side)
+				_show_banner(_feedback.text, DAMAGE_COLOR, true)
+				await _readability_pause()
+				var defeated := _sprite_for(defeated_side)
 				if is_instance_valid(defeated):
 					defeated.set_pose("defeated")
+				await _hide_effectiveness()
 			"timeout":
 				_feedback.text = tr("BATTLE_EVENT_TIMEOUT")
+				_show_banner(_feedback.text, DAMAGE_COLOR, false)
+				await _readability_pause()
+				await _hide_effectiveness()
 			"finished":
 				_feedback.text = tr("BATTLE_EVENT_FINISHED")
+				_show_banner(_feedback.text, DAMAGE_COLOR, false)
+				await _readability_pause()
+				await _hide_effectiveness()
 	set_session(next_session)
 	set_busy(false)
 
@@ -451,7 +467,8 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 func _play_item(event: Dictionary) -> void:
 	var actor_name := str(event.get("actor", ""))
 	_feedback.text = tr("BATTLE_EVENT_ITEM") % _actor_name(actor_name)
-	_show_banner(item_banner_text(event), EFFECTIVE_COLOR, true)
+	_show_banner(_feedback.text, CUE_COLOR, false)
+	await _readability_pause()
 	var actor := _sprite_for(actor_name)
 	if is_instance_valid(actor):
 		actor.care_feedback("item")
@@ -460,7 +477,8 @@ func _play_item(event: Dictionary) -> void:
 		_player_hp_value.text = LocaleManager.format_ratio(
 			int(event.get("hp", _player_hp.value)), int(_player_hp.max_value)
 		)
-	await _event_pause(0.64)
+	_show_banner(item_banner_text(event), EFFECTIVE_COLOR, true)
+	await _readability_pause(RESULT_HOLD_SEC)
 	await _hide_effectiveness()
 
 
@@ -469,13 +487,6 @@ func _play_attack(event: Dictionary) -> void:
 	var target_name := str(event.get("target", ""))
 	var attacker := _sprite_for(actor_name)
 	var target := _sprite_for(target_name)
-	if is_instance_valid(attacker):
-		attacker.set_pose("attack")
-		var fx_pose := "fx_surge" if str(event.get("action", "")) == "surge" else "fx_strike"
-		if is_instance_valid(target):
-			attacker.play_fx(fx_pose, target.body_center_global())
-		else:
-			attacker.play_fx(fx_pose)
 	var actor_snapshot := _as_dict(
 		_session.get("player_snapshot" if actor_name == "player" else "bot_snapshot")
 	)
@@ -483,16 +494,16 @@ func _play_attack(event: Dictionary) -> void:
 	var element_multiplier := float(event.get("element_multiplier", 1.0))
 	var attack_element := str(event.get("attack_element", "")).strip_edges()
 	var effect_key := effectiveness_key(element_multiplier)
-	_show_effectiveness(element_multiplier)
-	if effect_key.is_empty():
-		_feedback.text = tr("BATTLE_EVENT_ATTACK") % [_actor_name(actor_name), action_label]
-	else:
-		var element_note := ""
-		if not attack_element.is_empty():
-			element_note = tr("BATTLE_ATTACK_ELEMENT") % LocaleManager.element_name(attack_element)
-		_feedback.text = tr("BATTLE_EVENT_ATTACK_EFFECTIVE") % [
-			_actor_name(actor_name), action_label, tr(effect_key) + element_note,
-		]
+	_feedback.text = tr("BATTLE_EVENT_ATTACK") % [_actor_name(actor_name), action_label]
+	_show_banner(_feedback.text, CUE_COLOR, false)
+	await _readability_pause()
+	if is_instance_valid(attacker):
+		attacker.set_pose("attack")
+		var fx_pose := "fx_surge" if str(event.get("action", "")) == "surge" else "fx_strike"
+		if is_instance_valid(target):
+			attacker.play_fx(fx_pose, target.body_center_global())
+		else:
+			attacker.play_fx(fx_pose)
 	await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)
 	_damage.text = tr("BATTLE_DAMAGE") % LocaleManager.format_integer(int(event.get("damage", 0)))
 	_damage.visible = true
@@ -509,6 +520,14 @@ func _play_attack(event: Dictionary) -> void:
 			var flash := create_tween()
 			flash.tween_property(target, "modulate", Color.WHITE, 0.28)
 			Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
+	if not effect_key.is_empty():
+		var element_note := ""
+		if not attack_element.is_empty():
+			element_note = tr("BATTLE_ATTACK_ELEMENT") % LocaleManager.element_name(attack_element)
+		_feedback.text = tr("BATTLE_EVENT_ATTACK_EFFECTIVE") % [
+			_actor_name(actor_name), action_label, tr(effect_key) + element_note,
+		]
+		_show_effectiveness(element_multiplier)
 	if not UiMotion.reduced_motion:
 		_damage.modulate = Color.WHITE
 		_damage.pivot_offset = _damage.size * 0.5
@@ -529,6 +548,8 @@ func _play_attack(event: Dictionary) -> void:
 		_damage.scale = Vector2.ONE
 		_damage.modulate = Color.WHITE
 	_damage.visible = false
+	if not effect_key.is_empty():
+		await _readability_pause(RESULT_HOLD_SEC)
 	await _hide_effectiveness()
 	if is_instance_valid(attacker):
 		attacker.set_pose("idle")
@@ -676,7 +697,9 @@ func _announce_initiative(events: Array) -> void:
 				LocaleManager.format_integer(actor_speed),
 				LocaleManager.format_integer(target_speed),
 			]
-		await _event_pause(0.36)
+		_show_banner(_feedback.text, CUE_COLOR, false)
+		await _readability_pause()
+		await _hide_effectiveness()
 		return
 
 
@@ -861,6 +884,10 @@ func _actor_name(actor: String) -> String:
 
 func _move_label(action: String, snapshot: Dictionary) -> String:
 	return LocaleManager.move_name(snapshot, action)
+
+
+func _readability_pause(seconds: float = ACTION_CUE_SEC) -> void:
+	await get_tree().create_timer(seconds).timeout
 
 
 func _event_pause(seconds: float) -> void:

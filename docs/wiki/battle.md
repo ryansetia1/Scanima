@@ -31,9 +31,9 @@ menampilkan satu fighter aktif dari setiap tim.
   seimbang: **Attack** / **Special** / **Guard**, lalu **Item** / **Switch** /
   **Retreat**. HUD menaruh pip tim di atas nama Anima, lalu HP. Di Expedition,
   label chapter dan zona duduk di atas pelat HP.
-- **Switch** sukarela memakai satu turn. Picker menampilkan art, status **In
-  battle** / **Ready** / **KO**, dan sisa HP tiap anggota. **Cancel** menutup
-  picker dan mengembalikan tombol aksi. Setelah Anima KO, pose Defeated tampil
+- **Switch** sukarela memakai satu turn. Picker menampilkan art, nama plus
+  Level, status **In battle** / **Ready** / **KO**, dan sisa HP tiap anggota.
+  **Cancel** menutup picker dan mengembalikan tombol aksi. Setelah Anima KO, pose Defeated tampil
   sebentar, lalu picker pengganti terbuka tanpa memakai turn berikutnya — di
   situ Cancel tidak ada karena pengganti wajib. Kalau hanya satu Anima yang
   masih hidup, ia langsung masuk arena tanpa picker. Anima yang masuk memakai
@@ -41,8 +41,10 @@ menampilkan satu fighter aktif dari setiap tim.
   misalnya **Soundhund Lv. 5**.
 - Ketuk Attack, Special, Guard, Item, atau Switch langsung mengunci tombol
   itu (garis di bawahnya). Tidak ada teks “locked in” atau “Resolving”.
-  Nama jurus, Guard, item, dan KO tampil besar di arena seperti
-  **Super effective!**, bukan di atas tombol. Hasil turn tetap dari server.
+  Setelah hasil turn kembali dari server, nama jurus, Guard, item, Switch,
+  dan KO tampil sekitar satu detik di pelat gelap arena sebelum animasinya
+  mulai. **Super effective!** dan hasil item memakai pelat yang sama, jadi
+  teks tetap terbaca di atas art zona yang terang.
 - Satu item Battle berlaku untuk seluruh encounter, bukan satu per anggota.
   **Item** membuka Bag; tombol **Shop** tidak muncul di tengah battle.
 - Dua kemenangan progression pertama per hari memberi EXP: **+2** untuk anggota
@@ -93,6 +95,11 @@ Seeker.
   pernah aktif dan masih hidup, **+1** untuk bench yang masih hidup. Yang KO
   tidak mendapat EXP. Tokens tetap dapat diperoleh.
 - First clear Boss memberi **Sugarfold Core** untuk koleksi Trophy Seeker.
+- Boss menampilkan **The Confectioner** di belakang Anima lawan selama fight.
+  Ia berbicara di awal chapter, saat Boss dimulai (atau **rematch** jika zona
+  itu diulang), pada Attack / Special / Switch pertamanya, ketika satu Anima
+  pemain tersisa, lalu saat menang atau kalah. **Tap to continue** menutup
+  setiap baris; baris yang sama tidak diulang dalam satu fight.
 
 Chapter baru menampilkan popup sekali di Home dan badge **New** sampai chapter
 dibuka. Push perangkat bersifat opsional; popup dan badge di dalam game tetap

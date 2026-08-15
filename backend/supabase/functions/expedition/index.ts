@@ -12,6 +12,7 @@ import {
   nextNodeIds,
   opponentForNode,
   prepareExpeditionRoster,
+  publicBossSeeker,
   validateChapterManifest,
 } from "../_shared/expedition.mjs";
 import {
@@ -771,7 +772,11 @@ async function loadActiveEncounter(
   return data as unknown as EncounterRow | null;
 }
 
+const versionMemo = new Map<string, VersionRow>();
+
 async function loadVersion(versionId: string): Promise<VersionRow> {
+  const cached = versionMemo.get(versionId);
+  if (cached) return cached;
   const { data, error } = await db
     .from("expedition_chapter_versions")
     .select("id, chapter_id, asset_prefix, manifest, minimum_build")
@@ -779,7 +784,9 @@ async function loadVersion(versionId: string): Promise<VersionRow> {
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("CHAPTER_NOT_AVAILABLE");
-  return data as unknown as VersionRow;
+  const row = data as unknown as VersionRow;
+  versionMemo.set(versionId, row);
+  return row;
 }
 
 async function withFreshExpeditionArt(value: unknown): Promise<unknown> {
@@ -810,7 +817,25 @@ async function withFreshExpeditionArt(value: unknown): Promise<unknown> {
       (response.encounter as Record<string, unknown>).arena_background_url = arenaUrl;
     }
   }
-  response.asset_base_url = chapterAssetBaseUrl();
+  const versionId = typeof runRecord?.chapter_version_id === "string"
+    ? runRecord.chapter_version_id
+    : "";
+  if (versionId) {
+    const version = await loadVersion(versionId);
+    const seeker = publicBossSeeker(version.manifest);
+    if (seeker) {
+      const signed = withPublicAssets(seeker) as Record<string, unknown>;
+      runRecord.boss_seeker = signed;
+      if (response.encounter && typeof response.encounter === "object") {
+        const encounter = response.encounter as Record<string, unknown>;
+        encounter.boss_seeker = signed;
+        encounter.zone_attempt = runRecord.zone_attempt ?? encounter.zone_attempt ?? 1;
+      }
+    }
+  }
+  const assetBase = chapterAssetBaseUrl();
+  if (runRecord) runRecord.asset_base_url = assetBase;
+  response.asset_base_url = assetBase;
   return response;
 }
 
@@ -848,7 +873,7 @@ function withPublicAssets(value: unknown): unknown {
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
     result[key] = withPublicAssets(child);
   }
-  for (const field of ["art_path", "portrait_path", "background_path"]) {
+  for (const field of ["art_path", "portrait_path", "background_path", "sheet_path"]) {
     if (typeof result[field] === "string" && !String(result[field]).includes("..")) {
       result[field.replace(/_path$/, "_url")] = chapterAssetUrl(String(result[field]));
     }

@@ -21,6 +21,7 @@ func _initialize() -> void:
 	_test_rejects_bad_manifest()
 	_test_partial_poses()
 	await _test_presenter()
+	_test_boss_seeker_sheet()
 	_test_real_sheet_if_given()
 
 	print("")
@@ -385,6 +386,42 @@ func _test_presenter() -> void:
 	presenter.free()
 
 
+func _test_boss_seeker_sheet() -> void:
+	print("8. Boss Seeker sheet memakai pose command, bukan pose Anima")
+	var image := Image.create_empty(1024, 1024, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 1, 0, 1))
+	var names := [
+		"intro_idle", "attack_command", "special_command",
+		"switch_command", "concern_hit", "last_anima",
+		"victory", "defeat", "profile",
+	]
+	var poses := {}
+	for index in names.size():
+		var col := index % 3
+		var row := index / 3
+		var x := col * 341
+		var y := row * 341
+		image.fill_rect(Rect2i(x, y, 300, 300), Color(0.2, 0.3, 0.8, 1))
+		poses[names[index]] = {"region": [x, y, 300, 300]}
+	var loaded := BossSeekerSheet.build(
+		ImageTexture.create_from_image(image),
+		{"version": 1, "frame_size": [300, 300], "poses": poses}
+	)
+	_check(bool(loaded.get("ok", false)), "sheet seeker harus dibangun: %s" % loaded.get("error", ""))
+	var frames: SpriteFrames = loaded.get("frames")
+	_check(frames != null and frames.has_animation("intro_idle"), "seeker wajib punya intro_idle")
+	_check(frames.has_animation("profile") and not frames.has_animation("idle"), "seeker tidak memakai pose Anima")
+	_check(BossSeekerSheet.portrait(loaded, "profile") != null, "portrait seeker turun dari sheet yang sama")
+	_check(
+		not bool(BossSeekerSheet.build(ImageTexture.create_from_image(image), {
+			"version": 1,
+			"frame_size": [300, 300],
+			"poses": {"profile": {"region": [682, 682, 300, 300]}},
+		}).get("ok", false)),
+		"sheet seeker tanpa intro_idle harus ditolak"
+	)
+
+
 ## Memeriksa sheet sungguhan yang dihasilkan pipeline Node, kalau path-nya
 ## diberikan. Ini satu-satunya test yang membuktikan kontrak antara
 ## backend/supabase/functions/_shared/postprocess.mjs dan AnimaLoader benar-benar cocok, bukan hanya cocok
@@ -400,10 +437,10 @@ func _test_real_sheet_if_given() -> void:
 			manifest_path = arg.trim_prefix("--manifest=")
 
 	if manifest_path.is_empty():
-		print("8. sheet nyata: dilewati (tidak ada --manifest=)")
+		print("9. sheet nyata: dilewati (tidak ada --manifest=)")
 		return
 
-	print("8. sheet nyata dari pipeline Node: %s" % manifest_path)
+	print("9. sheet nyata dari pipeline Node: %s" % manifest_path)
 	var loaded: Dictionary = AnimaLoader.load_from_manifest(manifest_path)
 	_check(loaded.get("ok", false), "sheet pipeline harus dimuat: %s" % loaded.get("error", ""))
 	if not loaded.get("ok", false):

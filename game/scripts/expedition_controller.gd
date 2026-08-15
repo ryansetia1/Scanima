@@ -6,6 +6,8 @@ signal inventory_refresh_requested
 signal authority_refresh_requested
 signal announcements_changed(announcements: Dictionary)
 
+const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
+
 var _view: ExpeditionView
 var _battle_view: BattleView
 var _roster: Array = []
@@ -334,6 +336,7 @@ func _submit_pending(pending: Dictionary) -> void:
 			if str(GameState.as_dict(value).get("type", "")) == "switch":
 				art = await _prepare_active_art(next_encounter, false)
 				break
+		art = await _attach_seeker_art(art)
 		await _view.play_combat_events(events, next_encounter, art)
 	_run = next_run
 	_encounter = next_encounter
@@ -366,6 +369,7 @@ func _present() -> void:
 		if art.is_empty():
 			_view.set_error("TEAM_ART_NOT_READY")
 			return
+	art = await _attach_seeker_art(art)
 	_view.set_run(_run, _encounter, art)
 
 
@@ -406,6 +410,41 @@ func _prepare_active_art(encounter: Dictionary, include_background: bool = true)
 	elif _art_cache.get("arena_background") is Texture2D:
 		result["arena_background"] = _art_cache["arena_background"]
 	return result
+
+
+func _attach_seeker_art(art: Dictionary) -> Dictionary:
+	var seeker := GameState.as_dict(_encounter.get("boss_seeker"))
+	if seeker.is_empty():
+		seeker = GameState.as_dict(_run.get("boss_seeker"))
+	if seeker.is_empty():
+		return art
+	if _art_cache.has("boss_seeker"):
+		art["boss_seeker"] = _art_cache["boss_seeker"]
+		return art
+	var loaded := await _load_seeker_art(seeker)
+	if bool(loaded.get("ok", false)):
+		_art_cache["boss_seeker"] = loaded
+		art["boss_seeker"] = loaded
+	return art
+
+
+func _load_seeker_art(seeker: Dictionary) -> Dictionary:
+	var url := str(seeker.get("sheet_url", "")).strip_edges()
+	if url.is_empty():
+		var base := str(_run.get("asset_base_url", "")).rstrip("/")
+		var path := str(seeker.get("sheet_path", "")).strip_edges()
+		if not base.is_empty() and not path.is_empty() and not path.contains(".."):
+			url = "%s/%s" % [base, path]
+	var manifest := GameState.as_dict(seeker.get("manifest"))
+	if url.is_empty() or manifest.is_empty():
+		return {"ok": false}
+	var download := await Backend.download_url(url)
+	if not download.ok:
+		return {"ok": false}
+	var image := Image.new()
+	if image.load_png_from_buffer(download.bytes) != OK:
+		return {"ok": false}
+	return BOSS_SEEKER_SHEET.build(ImageTexture.create_from_image(image), manifest)
 
 
 func _load_arena_background(encounter: Dictionary) -> Texture2D:

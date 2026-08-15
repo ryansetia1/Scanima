@@ -18,6 +18,8 @@ signal complete_requested
 signal combat_open_changed(open: bool)
 
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
+const BOSS_SEEKER_DIALOG := preload("res://scripts/boss_seeker_dialog.gd")
+const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
 
 @onready var _column: VBoxContainer = %ExpeditionColumn
 @onready var _back: Button = %ExpeditionBack
@@ -67,6 +69,8 @@ var _selected_version := ""
 var _pending_option: Dictionary = {}
 var _busy := false
 var _thumbnail_provider: Callable
+var _seeker_dialog: BOSS_SEEKER_DIALOG
+var _chapter_intro_run := ""
 
 
 func _ready() -> void:
@@ -104,6 +108,9 @@ func _ready() -> void:
 	_combat.item_picker_requested.connect(item_picker_requested.emit)
 	_combat.forfeit_requested.connect(forfeit_requested.emit)
 	_combat.retry_requested.connect(combat_continue_requested.emit)
+	_seeker_dialog = BOSS_SEEKER_DIALOG.new()
+	_seeker_dialog.name = "ChapterSeekerDialog"
+	add_child(_seeker_dialog)
 	_show_only(_loading)
 
 
@@ -140,6 +147,9 @@ func is_combat_open() -> bool:
 func handle_back() -> bool:
 	if not visible:
 		return false
+	if is_instance_valid(_seeker_dialog) and _seeker_dialog.is_open():
+		_seeker_dialog.dismiss()
+		return true
 	if _combat.visible:
 		if _combat.handle_back():
 			return true
@@ -311,6 +321,7 @@ func set_run(
 	_render_map()
 	_show_only(_map)
 	set_busy(false)
+	_begin_chapter_intro(art_cache)
 
 
 func combat_session_data() -> Dictionary:
@@ -705,6 +716,43 @@ func _error_key(code: String) -> String:
 		"COMBAT_ALREADY_ACTIVE": "EXPEDITION_COMBAT_ACTIVE",
 		"FEATURE_DISABLED": "EXPEDITION_UNAVAILABLE",
 	}.get(code, "EXPEDITION_ERROR_GENERIC"))
+
+
+func _begin_chapter_intro(art_cache: Dictionary) -> void:
+	if not _should_chapter_intro():
+		return
+	var seeker := GameState.as_dict(_run.get("boss_seeker"))
+	var line := str(GameState.as_dict(seeker.get("dialogue")).get("chapter_intro", "")).strip_edges()
+	if line.is_empty() or not is_instance_valid(_seeker_dialog):
+		return
+	_chapter_intro_run = str(_run.get("id", ""))
+	set_busy(true)
+	await _seeker_dialog.present(
+		str(seeker.get("display_name", "")),
+		line,
+		BOSS_SEEKER_SHEET.portrait(
+			GameState.as_dict(art_cache.get("boss_seeker")),
+			str(seeker.get("portrait_pose", "profile"))
+		)
+	)
+	set_busy(false)
+
+
+func _should_chapter_intro() -> bool:
+	var run_id := str(_run.get("id", ""))
+	if run_id.is_empty() or run_id == _chapter_intro_run:
+		return false
+	if int(_run.get("zone", 1)) != 1 or int(_run.get("nodes_completed", 0)) > 0:
+		return false
+	if not str(_run.get("current_node_id", "")).is_empty():
+		return false
+	var line := str(
+		GameState.as_dict(GameState.as_dict(_run.get("boss_seeker")).get("dialogue")).get(
+			"chapter_intro",
+			""
+		)
+	).strip_edges()
+	return not line.is_empty()
 
 
 func _emit_combat_open() -> void:
