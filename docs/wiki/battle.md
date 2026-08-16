@@ -31,7 +31,8 @@ menampilkan satu fighter aktif dari setiap tim.
   seimbang: **Attack** / **Special** / **Guard**, lalu **Item** / **Switch** /
   **Retreat**. HUD menaruh pip tim di atas nama Anima, lalu HP. Di Expedition,
   label chapter dan zona duduk di atas pelat HP.
-- **Switch** sukarela memakai satu turn. Picker menampilkan art, nama plus
+- **Switch** sukarela memakai satu turn. Tombol aksi tetap di tempatnya
+  supaya arena tidak bergeser. Picker menampilkan art, nama plus
   Level, status **In battle** / **Ready** / **KO**, dan sisa HP tiap anggota.
   **Cancel** menutup picker dan mengembalikan tombol aksi. Setelah Anima KO, pose Defeated tampil
   sebentar, lalu picker pengganti terbuka tanpa memakai turn berikutnya — di
@@ -95,12 +96,11 @@ Seeker.
   pernah aktif dan masih hidup, **+1** untuk bench yang masih hidup. Yang KO
   tidak mendapat EXP. Tokens tetap dapat diperoleh.
 - First clear Boss memberi **Sugarfold Core** untuk koleksi Trophy Seeker.
-- Boss menampilkan **The Confectioner** di belakang Anima lawan selama fight.
-  Ia berbicara saat Boss dimulai (atau **rematch**), paling banyak sekali lagi
-  saat memberi perintah di tengah fight, ketika ace terakhirnya masuk, lalu saat
-  menang atau kalah. Pose The Confectioner tampil lebih dulu, baru teks dan aksi
-  Anima, jadi Summon atau serangan tidak bertumpuk dengan dialog. **Tap to
-  continue** menutup setiap baris.
+- Boss menampilkan **The Confectioner** dulu, tanpa Anima lawan. Ia berbicara
+  tanpa overlay gelap. **Tap to continue** menutup baris itu, lalu The
+  Confectioner memanggil Anima-nya ke arena dan fight baru dimulai. Selama
+  fight ia berdiri di belakang Anima lawan, paling banyak bicara sekali lagi
+  saat perintah, ketika ace terakhirnya masuk, lalu saat menang atau kalah.
 - Cotton adalah ace The Confectioner dan selalu disimpan sampai semua Anima
   regulernya KO. Saat Cotton masuk, **Final Confection** aktif sekali dan
   memberinya +1 PP untuk encounter itu.

@@ -183,8 +183,10 @@ menyediakan trigger `chapter_intro`, `boss_intro`, `first_attack`,
 `first_special`, `first_switch`, `last_anima`, `victory`, `defeat`, dan
 `rematch`; director memilihnya sesuai budget di atas. Setiap line hanya boleh
 tampil sekali per session state; replay event tidak mengulang dialog. Runtime menempel `boss_seeker` plus `sheet_url` pada
-run/encounter; client memuat sheet 3×3, menaruh Seeker di belakang Anima lawan,
-memainkan cut-in pada command, dan menampilkan dialog tap-to-continue.
+run/encounter; client memuat sheet 3×3. Encounter Boss pertama menampilkan
+Seeker saja, dialog tanpa overlay gelap, lalu pose command dan Summon Anima
+lawan sebelum input nyala. Sesudah itu Seeker di belakang Anima, di-clamp di
+dalam stage, cut-in pada command, dan dialog tap-to-continue.
 
 Semua cast dan Boss Seeker content v2+ wajib mempunyai `body_height_cm`.
 Post-process menyimpan bbox opak pose Idle/Intro Idle sebagai

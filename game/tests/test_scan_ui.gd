@@ -1906,7 +1906,7 @@ func _test_team_battle_view() -> void:
 	view.call("_open_switch_picker", false)
 	var switch_grid := view.find_child("SwitchButtons", true, false) as GridContainer
 	var switch_slot := view.find_child("TeamSwitchSlot0", true, false) as Button
-	_check(switch_panel.visible and not actions.visible, "Switch opens the four-member picker")
+	_check(switch_panel.visible and actions.visible, "Switch opens the picker without hiding the action dock")
 	var switch_cancel := view.find_child("TeamSwitchCancel", true, false) as Button
 	_check(
 		switch_grid != null
@@ -1972,7 +1972,7 @@ func _test_team_battle_view() -> void:
 	], after_ko)
 	var player_sprite := view.find_child("TeamPlayerSprite", true, false)
 	_check(
-		switch_panel.visible and not actions.visible and not switch_cancel.visible,
+		switch_panel.visible and actions.visible and not switch_cancel.visible,
 		"knockout event log opens the replacement picker after the faint"
 	)
 	_check(
@@ -1994,7 +1994,7 @@ func _test_team_battle_view() -> void:
 	session["state"]["player"]["roster"][0]["hp"] = 0
 	view.set_session(session, art_cache)
 	_check(
-		switch_panel.visible and not actions.visible,
+		switch_panel.visible and actions.visible,
 		"resumed knockout still requires a free replacement before another action"
 	)
 	var last_stand := session.duplicate(true)
@@ -2109,19 +2109,27 @@ func _test_team_battle_view() -> void:
 		and seeker.sprite_frames != null
 		and seeker.z_index > 0
 		and boss_opponent != null
-		and seeker.z_index < boss_opponent.z_index,
-		"boss arena draws the Seeker above the background and behind the opponent"
+		and seeker.z_index < boss_opponent.z_index
+		and not boss_opponent.visible,
+		"boss intro shows the Seeker before her Anima"
 	)
+	var dim := dialog.find_child("SeekerDim", true, false) as ColorRect if dialog != null else null
 	var intro_line := dialog.find_child("SeekerLine", true, false) as Label if dialog != null else null
 	_check(
 		dialog != null and dialog.is_open()
 		and intro_line != null
-		and intro_line.text.contains("Show me"),
-		"boss intro opens before commands"
+		and intro_line.text.contains("Show me")
+		and (dim == null or not dim.visible),
+		"boss intro opens without a dark overlay"
 	)
 	_check(view.handle_back(), "back dismisses boss intro instead of leaving the arena")
 	await process_frame
 	_check(not dialog.is_open(), "dismissed boss intro stays closed")
+	for _step in 120:
+		if boss_opponent.visible:
+			break
+		await process_frame
+	_check(boss_opponent.visible, "tap continues into the Seeker summoning her Anima")
 	_dismiss_when_open(dialog)
 	await view.play_events([{
 		"type": "attack",

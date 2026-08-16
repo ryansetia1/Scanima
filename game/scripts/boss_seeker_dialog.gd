@@ -17,8 +17,10 @@ func _ready() -> void:
 	visible = false
 	z_index = 24
 	_backdrop = ColorRect.new()
+	_backdrop.name = "SeekerDim"
 	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_backdrop.color = Color(0.012, 0.02, 0.05, 0.72)
+	_backdrop.color = Color(0.012, 0.02, 0.05, 0.0)
+	_backdrop.visible = false
 	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_backdrop)
 	var panel := PanelContainer.new()

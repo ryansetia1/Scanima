@@ -111,8 +111,10 @@ var _seeker_loaded: Dictionary = {}
 var _spoken: Dictionary = {}
 var _spoken_session := ""
 var _intro_started := false
+var _intro_pending_summon := false
 var _command_dialogue_used := false
 var _final_ace_pending := false
+var _switch_overlay: Control
 
 
 func _ready() -> void:
@@ -154,6 +156,7 @@ func _ready() -> void:
 	}
 	for button in _switch_buttons:
 		_switch_meters.append(_make_switch_meter(button))
+	_mount_switch_overlay()
 	_player_portal = _make_portal(_player_anchor)
 	_opponent_portal = _make_portal(_opponent_anchor)
 	_player_shadow = _make_ground_shadow(_player_anchor)
@@ -327,9 +330,10 @@ func set_session(session: Dictionary, art_cache: Dictionary = {}) -> void:
 	_present_seeker()
 	if _should_boss_intro():
 		_intro_started = true
+		_intro_pending_summon = true
 		_busy = true
 	_apply_session_state()
-	if _intro_started and not bool(_spoken.get("boss_intro", false)) and not bool(_spoken.get("rematch", false)):
+	if _intro_pending_summon:
 		_begin_boss_intro()
 
 
@@ -567,8 +571,40 @@ func _request_switch(slot: int) -> void:
 		or int(GameState.as_dict(roster[slot]).get("hp", 0)) <= 0
 	):
 		return
-	_switch_panel.visible = false
+	_hide_switch_overlay()
 	_request_action("switch", slot)
+
+
+func _mount_switch_overlay() -> void:
+	var dock := _actions.get_parent()
+	if dock != null:
+		dock = dock.get_parent()
+	if dock == null or not dock is Control:
+		return
+	var overlay := Control.new()
+	overlay.name = "SwitchOverlay"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.visible = false
+	var plate := ColorRect.new()
+	plate.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	plate.color = Color(0.025, 0.04, 0.09, 0.98)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(plate)
+	_switch_panel.reparent(overlay)
+	_switch_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_switch_panel.offset_left = 16.0
+	_switch_panel.offset_right = -16.0
+	_switch_panel.offset_top = 12.0
+	_switch_panel.offset_bottom = -12.0
+	dock.add_child(overlay)
+	_switch_overlay = overlay
+
+
+func _hide_switch_overlay() -> void:
+	_switch_panel.visible = false
+	if is_instance_valid(_switch_overlay):
+		_switch_overlay.visible = false
 
 
 func _open_switch_picker(forced: bool) -> void:
@@ -615,14 +651,16 @@ func _open_switch_picker(forced: bool) -> void:
 			meter.visible = true
 	_switch_cancel.visible = not forced
 	_switch_panel.visible = true
-	_actions.visible = false
+	if is_instance_valid(_switch_overlay):
+		_switch_overlay.visible = true
+	_actions.visible = true
 	_set_feedback("")
 
 
 func _close_switch_picker() -> bool:
 	if not _switch_panel.visible or _forced_switch() or _busy:
 		return false
-	_switch_panel.visible = false
+	_hide_switch_overlay()
 	_actions.visible = true
 	_set_idle_feedback()
 	return true
@@ -634,7 +672,7 @@ func _apply_session_state() -> void:
 	_sync_location_chrome()
 	_effectiveness.visible = false
 	_apply_side(_session, "player", true)
-	_apply_side(_session, "opponent", true)
+	_apply_side(_session, "opponent", true, not _intro_pending_summon)
 	_position_seeker()
 	_player_slots.text = _slots_text("player")
 	_opponent_slots.text = _slots_text("opponent")
@@ -645,16 +683,16 @@ func _apply_session_state() -> void:
 	if status == "active":
 		if _forced_switch():
 			_set_feedback("")
-			_actions.visible = false
+			_actions.visible = true
 			if not _busy:
 				_open_switch_picker(true)
 		else:
 			_set_idle_feedback()
-			_switch_panel.visible = false
+			_hide_switch_overlay()
 			_actions.visible = true
 	else:
 		_actions.visible = false
-		_switch_panel.visible = false
+		_hide_switch_overlay()
 		if _is_boss_encounter() and status in ["won", "lost", "draw"]:
 			_result.visible = false
 			_retry.visible = false
@@ -687,8 +725,13 @@ func _apply_side(
 		sprite.visible = show_sprite
 		if show_sprite:
 			sprite.set_pose("defeated" if int(member.get("hp", 0)) <= 0 else "idle")
+	else:
+		sprite.visible = show_sprite
 	_apply_fighter_scales(session)
 	_sync_shadow(side)
+	var shadow := _player_shadow if side == "player" else _opponent_shadow
+	if is_instance_valid(shadow):
+		shadow.visible = show_sprite
 	if update_hp:
 		var hp := _player_hp if side == "player" else _opponent_hp
 		var hp_value := _player_hp_value if side == "player" else _opponent_hp_value
@@ -1391,12 +1434,21 @@ func _position_seeker() -> void:
 		var loaded := GameState.as_dict(_art_cache.get(str(member.get("anima_id", ""))))
 		var opponent_metrics := GameState.as_dict(loaded.get("render_metrics"))
 		opponent_width = float(opponent_metrics.get("reference_width_px", 240.0)) * scales[1]
-	var separation := maxf(48.0, (opponent_width + seeker_width) * 0.24)
-	var x := clampf(
-		_opponent_anchor.position.x + separation,
-		seeker_width * 0.36,
-		_battle_stage.size.x - seeker_width * 0.36
-	)
+	var desired_x := _battle_stage.size.x * 0.62
+	if not _intro_pending_summon:
+		desired_x = _opponent_anchor.position.x + maxf(
+			48.0, (opponent_width + seeker_width) * 0.24
+		)
+	var frame_value: Variant = _seeker_loaded.get("frame_size", Vector2i(341, 341))
+	var frame_w := 341.0
+	if typeof(frame_value) == TYPE_VECTOR2I:
+		frame_w = float((frame_value as Vector2i).x)
+	elif typeof(frame_value) == TYPE_VECTOR2:
+		frame_w = (frame_value as Vector2).x
+	var half := maxf(seeker_width, frame_w * seeker_scale) * 0.5
+	var x := _battle_stage.size.x * 0.5
+	if half * 2.0 < _battle_stage.size.x:
+		x = clampf(desired_x, half, _battle_stage.size.x - half)
 	var y := _opponent_anchor.position.y - _battle_stage.size.y * 0.055
 	_seeker.set_layout(Vector2(x, y), seeker_scale)
 
@@ -1424,6 +1476,7 @@ func _reset_spoken_if_needed() -> void:
 	_spoken_session = session_id
 	_spoken = {}
 	_intro_started = false
+	_intro_pending_summon = false
 	_command_dialogue_used = false
 	_final_ace_pending = false
 
@@ -1457,10 +1510,40 @@ func _should_boss_intro() -> bool:
 
 func _begin_boss_intro() -> void:
 	var trigger := "rematch" if int(_session.get("zone_attempt", 1)) > 1 else "boss_intro"
+	_position_seeker()
 	await _speak_seeker(trigger, "intro_idle", false)
+	await _summon_boss_opening()
 	if str(_session.get("status", "")) == "active":
 		_busy = false
 		_update_arena_actions()
+
+
+func _summon_boss_opening() -> void:
+	if not _intro_pending_summon or not _is_boss_encounter():
+		_intro_pending_summon = false
+		return
+	if is_instance_valid(_seeker) and _seeker.has_sheet():
+		_seeker.set_pose("switch_command")
+	await _event_pause(0.42)
+	_intro_pending_summon = false
+	_apply_side(_session, "opponent", true, false)
+	_position_seeker()
+	var sprite := _opponent_sprite
+	var portal := _opponent_portal
+	if UiMotion.reduced_motion or not is_instance_valid(sprite):
+		_apply_side(_session, "opponent", true)
+		_restore_seeker_idle()
+		return
+	_align_portal("opponent")
+	if is_instance_valid(portal):
+		await portal.start_portal()
+		portal.burst()
+	if sprite.sprite_frames != null:
+		await sprite.summon_reveal()
+		_sync_shadow("opponent")
+	else:
+		sprite.visible = true
+	_restore_seeker_idle()
 
 
 func _react_seeker_attack(event: Dictionary) -> void:
