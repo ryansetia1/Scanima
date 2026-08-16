@@ -75,17 +75,21 @@ kali aspek bergeser.
 
 `BattleScale.shared_scales()` memakai satu kurva tinggi untuk setiap tubuh di
 shot yang sama, termasuk Boss Seeker. Tinggi dikunci ke kartu desain 720×800
-tanpa memandang lebar layar: Anima 120 cm mengisi sekitar setengah kartu itu.
-Ruang vertikal ekstra menjadi latar; arena yang lebih pendek dari kartu itu
-adalah satu-satunya yang mengecilkan semua tubuh bersama. Cap 1.40 pada Boss
-Seeker sudah dihapus supaya trainer tidak tertinggal saat Anima membesar. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px) di client, karena
+tanpa memandang lebar jendela: Anima 120 cm mengisi sekitar 45% kartu itu.
+Tubuh yang lebih lebar dari 50% kartu — Fudge Fang 326 px pada tinggi 135 cm
+adalah contohnya — mengecilkan kedua Anima bersama supaya muat di 720.
+Seeker memakai back lane terpisah dan tidak ikut mengecil hanya karena Anima
+lebar. Tepi opak kedua Anima dipin 5,5% dari tepi layar; padding transparan
+sel tidak ikut menentukan posisi. Kaki opak, bukan dasar sel kotak, duduk di
+garis tanah 91% tinggi stage. Itu pola Godot Keep-Width / zoom-to-fit tanpa
+Camera2D: sumbu pendek (lebar HP) yang membatasi foto tempur, ruang vertikal
+ekstra menjadi latar. Arena yang lebih pendek dari kartu itu tetap
+mengecilkan semua tubuh bersama. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px) di client, karena
 capture 300 px memotong kaki tubuh yang lebih tinggi dari jendela itu. Duel
 memakai wrapper dua tubuh `fighter_pair_scales()`. Sprite lebar tidak dikecilkan
-sendiri sampai monster yang lebih tinggi tampak lebih pendek, dan trainer
-manusia tidak tinggal di skala penuh sementara Anima menyusut. Skala tubuh
+sendiri sampai monster yang lebih tinggi tampak lebih pendek. Skala tubuh
 dipasang pada anchor di luar `AnimaPresenter`; tween napas/lunge tetap bebas
-menulis transform presenter tanpa menghapus skala kanonis. Boss Seeker hanya
-pindah ke back lane; dunia skalanya sama.
+menulis transform presenter tanpa menghapus skala kanonis.
 
 Vision production v19 memilih `body_height_cm` sebagai tinggi vertikal stance
 Battle. Skala nyata adalah anchor; benda genggam kecil menjadi companion

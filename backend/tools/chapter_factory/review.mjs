@@ -28,6 +28,21 @@ async function imageCard(chapterDir, { title, relPath, subtitle = "", crop = nul
   </div>`;
 }
 
+function zoneArenaCard({ title, relPath, subtitle = "" }) {
+  return `<div class="card arena-card">
+    <div><strong>${escapeHtml(title)} — arena crop</strong></div>
+    ${subtitle ? `<div class="muted">${escapeHtml(subtitle)}</div>` : ""}
+    <div class="muted">Center crop · feet at 88% · protected floor band</div>
+    <div class="arena-stage">
+      <img src="${relPath}" alt="${escapeHtml(title)} arena crop">
+      <div class="arena-floor"></div>
+      <div class="arena-foot"></div>
+      <div class="arena-anchor arena-player"></div>
+      <div class="arena-anchor arena-opponent"></div>
+    </div>
+  </div>`;
+}
+
 export async function buildReviewPage({ manifest, chapterDir, ctx }) {
   const castRows = manifest.opponents.flatMap((opponent) =>
     opponent.roster.map((member) => ({
@@ -44,11 +59,14 @@ export async function buildReviewPage({ manifest, chapterDir, ctx }) {
     subtitle: `${member.anima_id} · ${member.element}${member.secondary_element ? ` / ${member.secondary_element}` : ""}`,
   })));
 
-  const zoneCards = await Promise.all(manifest.zones.map((zone, index) => imageCard(chapterDir, {
-    title: `Zone ${index + 1}`,
-    relPath: ctx.storageToLocalRel(zone.background_path),
-    subtitle: zone.title_key,
-  })));
+  const zoneCards = await Promise.all(manifest.zones.flatMap((zone, index) => {
+    const relPath = ctx.storageToLocalRel(zone.background_path);
+    const title = `Zone ${index + 1}`;
+    return [
+      imageCard(chapterDir, { title, relPath, subtitle: zone.title_key }),
+      zoneArenaCard({ title, relPath, subtitle: zone.title_key }),
+    ];
+  }));
 
   const bossPath = ctx.storageToLocalRel(manifest.boss_seeker.sheet_path);
   const bossFull = await imageCard(chapterDir, {
@@ -98,6 +116,13 @@ export async function buildReviewPage({ manifest, chapterDir, ctx }) {
     .card { background:#0d1428; border:1px solid #314068; border-radius: 10px; padding: 12px; }
     .card img { width:100%; image-rendering: pixelated; border-radius: 8px; background:#000; }
     .crop { border-radius: 8px; background-color:#000; background-repeat:no-repeat; max-width:100%; }
+    .arena-stage { position:relative; width:100%; aspect-ratio:4 / 5; overflow:hidden; border-radius:8px; background:#000; }
+    .arena-stage img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; border-radius:0; }
+    .arena-floor { position:absolute; left:0; right:0; bottom:0; height:35%; background:rgba(255,217,120,0.12); border-top:1px dashed rgba(255,217,120,0.55); pointer-events:none; }
+    .arena-foot { position:absolute; left:0; right:0; top:88%; border-top:2px solid #ffd978; pointer-events:none; }
+    .arena-anchor { position:absolute; top:88%; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; background:#9fd6ff; pointer-events:none; }
+    .arena-player { left:27%; }
+    .arena-opponent { left:73%; }
     .muted { color:#9fb0d0; font-size: 13px; }
     .hash { font-family: ui-monospace, monospace; font-size: 12px; word-break: break-all; }
   </style>
@@ -113,7 +138,8 @@ export async function buildReviewPage({ manifest, chapterDir, ctx }) {
   </section>
 
   <section>
-    <h2>Zone Art (${zoneCards.length})</h2>
+    <h2>Zone Art (${manifest.zones.length})</h2>
+    <p class="muted">Full frame plus tall-phone arena crop. Amber band is the protected floor; gold line is the 88% foot line; dots mark fighter anchors. Advisory only — reject liquid, rails, or chasms under the dots.</p>
     <div class="grid">${zoneCards.join("")}</div>
   </section>
 

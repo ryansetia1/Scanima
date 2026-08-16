@@ -109,6 +109,8 @@ func _ready() -> void:
 	_position_fighters.call_deferred()
 	_player_sprite.set_facing(1.0)
 	_bot_sprite.set_facing(-1.0)
+	_player_sprite.z_index = 3
+	_bot_sprite.z_index = 2
 	set_team_available(GameState.team_battle_available())
 	set_expedition_available(GameState.expedition_available())
 	set_expedition_pending(not GameState.pending_expedition.is_empty())
@@ -841,7 +843,7 @@ func _apply_element_row(icon: TextureRect, label: Label, row: Dictionary) -> voi
 func _position_fighters() -> void:
 	if not is_instance_valid(_arena):
 		return
-	var ground_y := _arena.size.y * 0.88
+	var ground_y := _arena.size.y * BattleScale.GROUND_Y_RATIO
 	_player_anchor.position = Vector2(_arena.size.x * 0.27, ground_y)
 	_bot_anchor.position = Vector2(_arena.size.x * 0.73, ground_y)
 	var player_snapshot := _as_dict(_session.get("player_snapshot"))
@@ -855,6 +857,16 @@ func _position_fighters() -> void:
 	)
 	_player_anchor.scale = Vector2(scales.x, scales.x)
 	_bot_anchor.scale = Vector2(scales.y, scales.y)
+	_player_sprite.plant_on_anchor()
+	_bot_sprite.plant_on_anchor()
+	var player_width := _player_sprite.opaque_local_rect().size.x * absf(_player_anchor.scale.x)
+	var bot_width := _bot_sprite.opaque_local_rect().size.x * absf(_bot_anchor.scale.x)
+	_player_anchor.position.x = BattleScale.fighter_anchor_x(
+		true, player_width, _arena.size.x
+	)
+	_bot_anchor.position.x = BattleScale.fighter_anchor_x(
+		false, bot_width, _arena.size.x
+	)
 
 
 func _sprite_for(actor: String) -> AnimaPresenter:

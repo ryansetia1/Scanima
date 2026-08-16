@@ -237,6 +237,13 @@ func _test_presenter() -> void:
 
 	_check(presenter.apply(loaded), "apply harus berhasil")
 	_check_eq(presenter.offset, loaded["ground_offset"], "offset harus dari ground_offset")
+	presenter.call("plant_on_anchor")
+	var planted: Rect2 = presenter.call("opaque_local_rect")
+	_check(
+		planted.size.y > 0.0
+		and absf(planted.end.y + presenter.position.y) < 1.0,
+		"kaki opak duduk di origin, bukan dasar sel kotak"
+	)
 	var body_center: Vector2 = presenter.body_center_global()
 	var frame_center: Vector2 = presenter.to_global(presenter.offset)
 	_check(
@@ -283,7 +290,7 @@ func _test_presenter() -> void:
 		(presenter.get("_feedback") as Tween).get_loops_left() != 6,
 		"Reduced Motion tidak boleh memulai bounce Play"
 	)
-	_check_eq(presenter.position, Vector2.ZERO, "Reduced Motion harus mengembalikan posisi dasar")
+	_check_eq(presenter.position, presenter.get("_base_position"), "Reduced Motion harus mengembalikan posisi dasar")
 	_check(
 		presenter.modulate != Color.WHITE,
 		"Reduced Motion tidak boleh menghapus tint state authoritative"

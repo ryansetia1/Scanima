@@ -389,7 +389,7 @@ func _initialize() -> void:
 	)
 	_check(
 		absf(300.0 * roomy_pair.x - roomy_arena.y * BATTLE_SCALE.ARENA_REFERENCE_HEIGHT_RATIO) < 1.0,
-		"Anima 120 cm mengisi sekitar setengah kartu desain"
+		"Anima 120 cm mengisi sekitar 45% kartu desain"
 	)
 	var arena_size := Vector2(550.0, 680.0)
 	var veridian_render := {"render_metrics": {"reference_height_px": 327, "reference_width_px": 274}}
@@ -449,18 +449,46 @@ func _initialize() -> void:
 	_check(trio.size() == 3, "shared_scales menerima Seeker sebagai tubuh ketiga")
 	_check(
 		is_equal_approx(trio[0], narrow_pair.x) and is_equal_approx(trio[1], narrow_pair.y),
-		"Seeker memakai kurva tinggi yang sama, bukan slot sendiri"
+		"menambah Seeker tidak mengubah fit dua Anima"
 	)
 	var rendered_seeker_height := 282.0 * trio[2]
 	var rendered_trio_fudge := 235.0 * trio[1]
+	var solo_seeker := BATTLE_SCALE.fighter_scale(156.0, seeker_render, phone_arena)
 	_check(
-		absf(rendered_seeker_height / rendered_trio_fudge - pow(156.0 / 135.0, BATTLE_SCALE.BODY_HEIGHT_CURVE)) < 0.001,
-		"rasio tinggi Seeker vs Fudge tetap kanonis"
+		is_equal_approx(trio[2], solo_seeker)
+		and rendered_seeker_height / rendered_trio_fudge > pow(
+			156.0 / 135.0, BATTLE_SCALE.BODY_HEIGHT_CURVE
+		),
+		"fit lebar Anima tidak mengerdilkan Seeker di back lane"
 	)
-	var solo_seeker := BATTLE_SCALE.fighter_scale(156.0, seeker_render, narrow_arena)
+	var crowded := BATTLE_SCALE.shared_scales(
+		[150.0, 135.0, 156.0],
+		[veridian_render, fudge_render, seeker_render],
+		phone_arena
+	)
 	_check(
-		is_equal_approx(trio[2], solo_seeker),
-		"skala Seeker di grup sama dengan skala tingginya sendiri"
+		326.0 * crowded[1] <= BATTLE_SCALE.DESIGN_ARENA.x * BATTLE_SCALE.MAX_BODY_WIDTH_RATIO + 0.5,
+		"tubuh lebar tidak melebihi 50% kartu desain"
+	)
+	_check(
+		is_equal_approx(crowded[2], solo_seeker),
+		"shot lebar hanya mengecilkan dua Anima"
+	)
+	var solo_group := BATTLE_SCALE.shared_scales(
+		[156.0], [seeker_render], phone_arena
+	)
+	_check(
+		is_equal_approx(solo_group[0], solo_seeker),
+		"Seeker sendirian tidak kena fit lebar"
+	)
+	var visible_width := 226.0
+	var player_x := BATTLE_SCALE.fighter_anchor_x(true, visible_width, phone_arena.x)
+	var opponent_x := BATTLE_SCALE.fighter_anchor_x(false, visible_width, phone_arena.x)
+	var edge_pad := phone_arena.x * BATTLE_SCALE.FIGHTER_EDGE_PAD_RATIO
+	_check(
+		is_equal_approx(player_x - visible_width * 0.5, edge_pad)
+		and is_equal_approx(opponent_x + visible_width * 0.5, phone_arena.x - edge_pad),
+		"anchor memakai tepi piksel opak, bukan tengah sel kotak"
 	)
 
 	print("14. gallery transport")

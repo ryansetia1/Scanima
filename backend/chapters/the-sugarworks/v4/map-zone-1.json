@@ -1,0 +1,135 @@
+{
+  "attempt": 1,
+  "background_path": "expeditions/the-sugarworks/v4/zones/zone-1.png",
+  "entry": [
+    "z1-a1-d1-1",
+    "z1-a1-d1-2"
+  ],
+  "nodes": [
+    {
+      "depth": 1,
+      "id": "z1-a1-d1-1",
+      "kind": "mystery",
+      "next": [
+        "z1-a1-d2-1",
+        "z1-a1-d2-2"
+      ],
+      "options": [
+        {
+          "effect": {
+            "type": "supplies",
+            "value": 3
+          },
+          "id": "supply-cache"
+        }
+      ],
+      "title_key": "EXPEDITION_MYSTERY"
+    },
+    {
+      "depth": 1,
+      "id": "z1-a1-d1-2",
+      "kind": "battle",
+      "next": [
+        "z1-a1-d2-2"
+      ],
+      "opponent_id": "sugarworks-regular-1",
+      "supplies_reward": 3
+    },
+    {
+      "depth": 2,
+      "id": "z1-a1-d2-1",
+      "kind": "cache",
+      "next": [
+        "z1-a1-d3-1",
+        "z1-a1-d3-2"
+      ],
+      "options": [
+        {
+          "effect": {
+            "stat": "atk",
+            "type": "stat_boost",
+            "value": 0.08
+          },
+          "id": "power-up"
+        }
+      ],
+      "title_key": "EXPEDITION_CACHE"
+    },
+    {
+      "depth": 2,
+      "id": "z1-a1-d2-2",
+      "kind": "recovery",
+      "next": [
+        "z1-a1-d3-1",
+        "z1-a1-d3-2"
+      ],
+      "options": [
+        {
+          "effect": {
+            "ratio": 0.25,
+            "type": "heal_party"
+          },
+          "id": "heal-party"
+        }
+      ],
+      "title_key": "EXPEDITION_RECOVERY"
+    },
+    {
+      "depth": 3,
+      "id": "z1-a1-d3-1",
+      "kind": "battle",
+      "next": [
+        "z1-a1-d4-1"
+      ],
+      "opponent_id": "sugarworks-regular-1",
+      "supplies_reward": 3
+    },
+    {
+      "depth": 3,
+      "id": "z1-a1-d3-2",
+      "kind": "elite",
+      "next": [
+        "z1-a1-d4-2"
+      ],
+      "opponent_id": "sugarworks-elite-1",
+      "supplies_reward": 5
+    },
+    {
+      "depth": 4,
+      "id": "z1-a1-d4-1",
+      "kind": "cache",
+      "next": [],
+      "options": [
+        {
+          "effect": {
+            "stat": "atk",
+            "type": "stat_boost",
+            "value": 0.08
+          },
+          "id": "power-up"
+        }
+      ],
+      "title_key": "EXPEDITION_CACHE"
+    },
+    {
+      "depth": 4,
+      "id": "z1-a1-d4-2",
+      "kind": "cache",
+      "next": [],
+      "options": [
+        {
+          "effect": {
+            "stat": "atk",
+            "type": "stat_boost",
+            "value": 0.08
+          },
+          "id": "power-up"
+        }
+      ],
+      "title_key": "EXPEDITION_CACHE"
+    }
+  ],
+  "schema_version": 1,
+  "seed": "the-sugarworks-v3",
+  "zone": 1
+}

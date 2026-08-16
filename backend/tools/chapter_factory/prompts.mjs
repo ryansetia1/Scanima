@@ -32,7 +32,8 @@ Silhouette brief: original ${cast.color_bucket} monster for ${design.summary.tit
 
 Chapter: ${design.summary.title}
 Zone ${index}: ${zone.title}
-Theme: ${brief.theme ?? design.summary.description} — opaque background, readable path lanes.`;
+Theme: ${brief.theme ?? design.summary.description}
+Combat floor: lower 30–35% is one continuous solid plane; no liquid, rails, gutters, or chasms under the fighters.`;
   }
   if (slot === "boss_seeker") {
     const seeker = design.boss_seeker;

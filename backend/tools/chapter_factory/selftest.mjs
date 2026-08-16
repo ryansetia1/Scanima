@@ -267,6 +267,12 @@ export async function runChapterFactorySelftest(repoRoot) {
   assert.match(trophyPrompt, /never stamp a random\s+emblem or letter/i);
   assert.match(trophyPrompt, /No glass shell, orb, crystal container, outer frame/i);
   assert.doesNotMatch(trophyPrompt, /whisk|furnace|sprinkle/i);
+  const zonePrompt = await promptForSlot("zone:1", ctx);
+  assert.match(zonePrompt, /combat arena/i);
+  assert.match(zonePrompt, /lower 30–35%/);
+  assert.match(zonePrompt, /no liquid, rails, gutters, or chasms/i);
+  assert.match(zonePrompt, /four to six major flat colors/i);
+  assert.doesNotMatch(zonePrompt, /readable path lanes|route-like lanes/i);
   const processedBoss = await postprocessChromaGridSheet(
     await manualGridFixture(),
     { poses: BOSS_SEEKER_POSES },
@@ -323,6 +329,10 @@ export async function runChapterFactorySelftest(repoRoot) {
   // disk-source manual diuji terpisah lewat fixture temp di bawah.
   const { manifest, assets } = await buildCompleteManifest({ ctx });
   validateChapterDraft(manifest, ctx);
+  const reviewPage = await buildReviewPage({ manifest, chapterDir: defaultDir, ctx });
+  assert.match(reviewPage, /arena-stage/);
+  assert.match(reviewPage, /arena-foot/);
+  assert.match(reviewPage, /protected floor band/);
   assert.equal(manifest.trophy.metadata.chassis, "chapter_core_v3");
   assert.equal(manifest.trophy.metadata.vessel, "point_hex_vessel_v1");
   const reprocessedSource = withReprocessedAssetSource(

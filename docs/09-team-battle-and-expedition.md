@@ -106,7 +106,13 @@ dibandingkan sebagai text, bukan UUID. Config wire
 `expedition_energy_per_member` berarti biaya masuk per run, bukan biaya zona.
 
 HP penuh saat zona dimulai, lalu bertahan antar-node dalam zona; PP kembali
-penuh setiap encounter. Arena memakai `zones[].background_path` dari manifest. EXP yang
+penuh setiap encounter. Arena memakai `zones[].background_path` dari manifest.
+Art zona adalah backdrop Battle, bukan peta node: kaki petarung duduk dekat
+88% tinggi stage, layar tinggi mencrop sisi kiri/kanan, dan Boss Seeker
+mengisi pita kanan. Background wajib menyediakan lantai padat lebar di pita
+bawah serta detail yang tenang di tengah supaya Anima tetap fokus. Kontrak
+prompt hidup di `backend/prompts/chapter_factory/zone_art.md` dan
+[runbook manual](10-manual-chapter-assets.md). EXP yang
 didapat langsung masuk ke Anima, dan growth stat dipakai di encounter Battle
 berikutnya di zona yang sama. Retreat dari encounter memakai reset zona yang sama. Jika seluruh tim KO:
 
@@ -193,7 +199,10 @@ Post-process menyimpan bbox opak pose Idle/Intro Idle sebagai
 `render_metrics.reference_height_px` dan `reference_width_px`. Godot menghitung
 skala non-linear dari dua kontrak itu lewat satu `shared_scales()` untuk
 seluruh tubuh di arena, termasuk Seeker di back lane. Anima 120 cm mengisi
-sekitar setengah kartu desain 720×800; lebar layar tidak mengubah skala, dan
+sekitar 45% kartu desain 720×800, lalu shot lebar di-fit ke 50% lebar kartu;
+fit lebar hanya mengecilkan dua Anima karena Seeker memakai back lane
+terpisah. Posisi X memakai tepi piksel opak dengan margin 5,5%, bukan tengah
+sel transparan. Lebar jendela tidak mengubah skala, dan
 ruang vertikal ekstra tidak membesarkan karakter. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px)
 di client supaya kaki Seeker tidak terpotong oleh capture 300 px. Tinggi
 visual tidak mengubah combat power.
@@ -327,6 +336,10 @@ yang sudah disetujui dan direprocess tanpa model call. `feature_expedition` dan 
 dengan `feature_team_battle=true` untuk device playtest Godot. Jalur announcement
 in-app sudah aktif; push OS pertama masih menunggu konfigurasi FCM sehingga
 belum terkirim.
+
+**The Sugarworks v4** masih draft lokal: zona Battle memakai backdrop manual
+baru dan tinggi presentasi The Confectioner dinaikkan menjadi 165 cm. V3 tetap
+authoritative sampai v4 di-review, di-approve, dipublish, dan diaktifkan.
 
 Untuk chapter atau mode berikutnya, sebelum aktivasi:
 

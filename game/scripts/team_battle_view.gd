@@ -144,7 +144,7 @@ func _ready() -> void:
 	_battle_stage.resized.connect(_position_fighters)
 	_player_sprite.set_facing(1.0)
 	_opponent_sprite.set_facing(-1.0)
-	_player_sprite.z_index = 2
+	_player_sprite.z_index = 3
 	_opponent_sprite.z_index = 2
 	_player_sprite.pose_changed.connect(func(_pose: String) -> void: _sync_shadow("player"))
 	_opponent_sprite.pose_changed.connect(func(_pose: String) -> void: _sync_shadow("opponent"))
@@ -1362,7 +1362,7 @@ func _make_ground_shadow(anchor: Node2D) -> Sprite2D:
 	shadow.name = "GroundShadow"
 	shadow.texture = texture
 	shadow.z_index = 0
-	shadow.position = Vector2(0.0, 8.0)
+	shadow.position = Vector2(0.0, 2.0)
 	shadow.scale = Vector2(1.35, 0.7)
 	anchor.add_child(shadow)
 	anchor.move_child(shadow, 0)
@@ -1385,10 +1385,22 @@ func _portal_for(side: String) -> IncubatorEffect:
 func _position_fighters() -> void:
 	if not is_instance_valid(_battle_stage):
 		return
-	var ground_y := _battle_stage.size.y * 0.88
+	var ground_y := _battle_stage.size.y * BattleScale.GROUND_Y_RATIO
 	_player_anchor.position = Vector2(_battle_stage.size.x * 0.27, ground_y)
 	_opponent_anchor.position = Vector2(_battle_stage.size.x * 0.73, ground_y)
 	_apply_fighter_scales(_session)
+	_player_sprite.plant_on_anchor()
+	_opponent_sprite.plant_on_anchor()
+	var player_width := _player_sprite.opaque_local_rect().size.x * absf(_player_anchor.scale.x)
+	var opponent_width := _opponent_sprite.opaque_local_rect().size.x * absf(_opponent_anchor.scale.x)
+	_player_anchor.position.x = BattleScale.fighter_anchor_x(
+		true, player_width, _battle_stage.size.x
+	)
+	_opponent_anchor.position.x = BattleScale.fighter_anchor_x(
+		false, opponent_width, _battle_stage.size.x
+	)
+	_sync_shadow("player")
+	_sync_shadow("opponent")
 	_position_seeker()
 
 
@@ -1456,7 +1468,7 @@ func _position_seeker() -> void:
 	# ponytail: pin the opaque right edge, not the 341 empty frame. Ceiling:
 	# no per-pose used-rect; upgrade if a command pose overhangs more than Idle.
 	var x := _battle_stage.size.x - SEEKER_EDGE_PAD - maxf(opaque_right, 1.0) * seeker_scale
-	var y := _opponent_anchor.position.y - _battle_stage.size.y * 0.055
+	var y := _opponent_anchor.position.y
 	_seeker.set_layout(Vector2(x, y), seeker_scale)
 
 

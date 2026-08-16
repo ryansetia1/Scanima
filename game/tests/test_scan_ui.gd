@@ -4,6 +4,7 @@ extends SceneTree
 ## off-tree, so no authentication or network requests run.
 
 const TOUCH_MIN := 96.0
+const BATTLE_SCALE := preload("res://scripts/battle_scale.gd")
 
 var _checks := 0
 var _failures: PackedStringArray = []
@@ -1411,7 +1412,7 @@ func _test_battle_view() -> void:
 	)
 	_check(player_sprite.flip_h and not bot_sprite.flip_h, "Battle fighters face each other")
 	_check(
-		is_equal_approx(active_ground_y, active_arena_height * 0.88),
+		is_equal_approx(active_ground_y, active_arena_height * BATTLE_SCALE.GROUND_Y_RATIO),
 		"Battle fighters stand near the arena floor"
 	)
 	_check(result.get_parent() == footer, "Battle result overlays the fixed footer")

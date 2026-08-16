@@ -109,15 +109,15 @@ Seeker.
   regulernya KO. Saat Cotton masuk, **Final Confection** aktif sekali dan
   memberinya +1 PP untuk encounter itu.
 - Ukuran Anima dan The Confectioner di arena mengikuti tinggi tubuh mereka.
-  Anima setinggi manusia mengisi sekitar setengah arena pada layar HP. Anima
+  Anima setinggi manusia mengisi kurang dari setengah arena pada layar HP,
+  supaya dua petarung plus trainer masih punya ruang. Anima
   berbadan kecil (sekitar boneka yang bisa digendong) tetap lebih pendek dari
-  companion biasa. Tinggi Anima dan The Confectioner dikunci bersama, jadi
-  lebar atau tinggi layar tidak membuat salah satu tiba-tiba lebih besar.
-  Proporsi Anima dan The Confectioner dijaga bersama, jadi Anima yang lebih
-  tinggi tidak tampak lebih pendek hanya karena tubuh lawannya lebih lebar,
-  dan trainer tidak tiba-tiba lebih besar dari petarungnya. Monster besar
-  tetap terasa besar, tetapi semuanya dijaga agar tidak menutup HUD. The
-  Confectioner tampil full body.
+  companion biasa. Anima yang sangat lebar dapat mengecilkan kedua petarung
+  agar tetap muat, tetapi tidak ikut mengerdilkan The Confectioner yang
+  berdiri di belakang. Margin arena mengikuti tepi tubuh yang terlihat,
+  bukan ruang transparan di dalam sprite. Monster besar tetap terasa besar,
+  tetapi semuanya dijaga agar tidak menutup HUD. The Confectioner tampil full
+  body.
 
 Chapter baru menampilkan popup sekali di Home dan badge **New** sampai chapter
 dibuka. Push perangkat bersifat opsional; popup dan badge di dalam game tetap

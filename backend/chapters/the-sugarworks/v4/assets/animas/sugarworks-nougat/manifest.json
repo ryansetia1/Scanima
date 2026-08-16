@@ -1,0 +1,164 @@
+{
+  "color_bucket": "cream",
+  "frame_size": [
+    346,
+    298
+  ],
+  "poses": {
+    "attack": {
+      "region": [
+        346,
+        0,
+        346,
+        298
+      ]
+    },
+    "defeated": {
+      "region": [
+        0,
+        596,
+        346,
+        298
+      ]
+    },
+    "dirty": {
+      "region": [
+        692,
+        298,
+        346,
+        298
+      ]
+    },
+    "fx_strike": {
+      "region": [
+        346,
+        596,
+        346,
+        298
+      ]
+    },
+    "fx_surge": {
+      "region": [
+        692,
+        596,
+        346,
+        298
+      ]
+    },
+    "happy": {
+      "region": [
+        0,
+        298,
+        346,
+        298
+      ]
+    },
+    "hungry": {
+      "region": [
+        346,
+        298,
+        346,
+        298
+      ]
+    },
+    "idle": {
+      "region": [
+        0,
+        0,
+        346,
+        298
+      ]
+    },
+    "sleep": {
+      "region": [
+        692,
+        0,
+        346,
+        298
+      ]
+    }
+  },
+  "prompt_version": "v12",
+  "qa": {
+    "bbox_heights": {
+      "attack": 242,
+      "defeated": 286,
+      "dirty": 251,
+      "fx_strike": 221,
+      "fx_surge": 254,
+      "happy": 276,
+      "hungry": 247,
+      "idle": 249,
+      "sleep": 231
+    },
+    "cells_detected": 9,
+    "cells_rejected": {},
+    "green_residue_ratio": 0.0035,
+    "keyed_pixel_ratio": 0.6024,
+    "pose_ownership": {
+      "attack": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 47334
+      },
+      "defeated": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 49102
+      },
+      "dirty": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 47604
+      },
+      "fx_strike": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 32331
+      },
+      "fx_surge": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 55154
+      },
+      "happy": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 48586
+      },
+      "hungry": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 46435
+      },
+      "idle": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 46870
+      },
+      "sleep": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 41595
+      }
+    },
+    "seam_margin": {
+      "passed": true,
+      "ratio": 0.12,
+      "violations": []
+    },
+    "source_size": [
+      1024,
+      1024
+    ],
+    "standing_height_variance": 0.028,
+    "warnings": [
+      "pose defeated lebih tinggi dari idle",
+      "residu hijau 0.35%"
+    ],
+    "white_keyline_pixels_stripped": 1788
+  },
+  "render_metrics": {
+    "reference_height_px": 249,
+    "reference_width_px": 298
+  },
+  "sheet": null,
+  "sheet_size": [
+    1038,
+    894
+  ],
+  "species_key": "sugarworks_nougat",
+  "stage": 2,
+  "version": 1
+}

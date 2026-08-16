@@ -76,12 +76,16 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 			"reference_height_px": used.size.y,
 			"reference_min_x_px": used.position.x,
 		}
+	var display_h := float(display_size.y)
+	var opaque_bottom := (
+		float(used.position.y + used.size.y) if used.size.y > 0 else display_h
+	)
 	return {
 		"ok": true,
 		"error": "",
 		"frames": frames,
 		"frame_size": display_size,
-		"ground_offset": Vector2(0.0, -display_size.y / 2.0),
+		"ground_offset": Vector2(0.0, display_h * 0.5 - opaque_bottom),
 		"poses": loaded,
 		"render_metrics": metrics,
 	}

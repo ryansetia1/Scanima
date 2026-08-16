@@ -2651,6 +2651,10 @@ console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture 
     new URL("../backend/prompts/chapter_factory/anima_sheet.md", import.meta.url),
     "utf8"
   );
+  const chapterZonePrompt = await readFile(
+    new URL("../backend/prompts/chapter_factory/zone_art.md", import.meta.url),
+    "utf8"
+  );
   const manualChapterGuide = await readFile(
     new URL("../docs/10-manual-chapter-assets.md", import.meta.url),
     "utf8"
@@ -2713,6 +2717,57 @@ console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture 
   }
   assert.ok(faunaV16.includes("MANDATORY MONSTER IDENTITY LAYER"));
   assert.ok(chapterAnimaPrompt.includes("both pupils focus on the same canvas-left target"));
+  assert.ok(
+    chapterZonePrompt.includes("Expedition combat arena"),
+    "prompt zona Replicate wajib memakai backdrop Battle, bukan peta node"
+  );
+  assert.ok(
+    chapterZonePrompt.includes("lower 30–35% is one continuous solid floor"),
+    "prompt zona wajib mengunci pita lantai tempur"
+  );
+  assert.ok(
+    chapterZonePrompt.includes("no liquid, lava, syrup, rails, gutters, chasms"),
+    "prompt zona wajib menolak hazard di bawah kaki"
+  );
+  assert.doesNotMatch(
+    chapterZonePrompt,
+    /route-like lanes|readable path lanes|node map/i,
+    "prompt zona tidak boleh kembali ke wording peta node"
+  );
+  const manualZoneTemplate =
+    manualChapterGuide.match(/### Template zone[\s\S]*?(?=### Template Trophy)/)?.[0] ?? "";
+  assert.ok(
+    manualZoneTemplate.includes("Expedition combat arena"),
+    "template zona manual wajib memakai backdrop Battle"
+  );
+  assert.ok(
+    manualZoneTemplate.includes("lower 30–35% is one continuous solid floor"),
+    "template zona manual wajib mengunci pita lantai"
+  );
+  assert.doesNotMatch(
+    manualZoneTemplate,
+    /route-like lanes|readable path lanes/i,
+    "template zona manual tidak boleh meminta lane peta"
+  );
+  const manualSugarworksZones =
+    manualChapterGuide.match(/### 10\. Zone 1[\s\S]*?(?=### 13\. Boss Seeker)/)?.[0] ?? "";
+  assert.ok(
+    manualSugarworksZones.includes("wide, flat, solid floor"),
+    "Gumdrop Yard wajib punya lantai padat"
+  );
+  assert.ok(
+    manualSugarworksZones.includes("refractory foundry work floor"),
+    "Caramel Foundry wajib punya lantai kerja padat"
+  );
+  assert.ok(
+    manualSugarworksZones.includes("broad solid peppermint-stone"),
+    "Peppermint Furnace wajib punya forecourt padat"
+  );
+  assert.doesNotMatch(
+    manualSugarworksZones,
+    /route-like lanes|narrow syrup runnels/i,
+    "prompt zona Sugarworks tidak boleh meminta got atau lane peta"
+  );
   assert.equal(
     manualChapterGuide.match(/Every open-eye pose/g)?.length,
     9,

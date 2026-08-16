@@ -330,6 +330,10 @@ func _ready() -> void:
 			await _run_boss_ace_demo()
 		if arg == "--boss-scale-demo":
 			_run_boss_scale_demo()
+		if arg.begins_with("--sugarworks-zone-demo="):
+			_run_sugarworks_zone_demo(int(arg.trim_prefix("--sugarworks-zone-demo=")))
+		if arg == "--sugarworks-fudge-demo":
+			_run_sugarworks_zone_demo(3, true)
 		if arg == "--expedition-demo":
 			_run_expedition_demo()
 		if arg == "--expedition-builder-demo":
@@ -3802,7 +3806,7 @@ func _run_team_battle_demo(boss: bool = false) -> Dictionary:
 		session["zone_attempt"] = 1
 		session["boss_seeker"] = {
 			"display_name": "The Confectioner",
-			"body_height_cm": 156,
+			"body_height_cm": 165,
 			"portrait_pose": "profile",
 			"dialogue": {
 				"boss_intro": "Show me what belongs in the archive.",
@@ -3819,35 +3823,62 @@ func _run_team_battle_demo(boss: bool = false) -> Dictionary:
 
 
 func _run_boss_scale_demo() -> void:
+	_run_sugarworks_zone_demo(3)
+
+
+func _run_sugarworks_zone_demo(zone: int, hide_seeker: bool = false) -> void:
+	var index := clampi(zone, 1, 3)
 	var chapter := _sugarworks_asset_dir()
 	var player := _demo_player_sheet()
-	var fudge := _load_local_anima_sheet(chapter, "animas/sugarworks-fudge")
-	var seeker := _load_local_seeker_sheet(chapter)
-	var zone := AnimaLoader.load_sheet_texture(chapter.path_join("zones/zone-3.png"))
-	if not bool(player.get("ok", false)) or not bool(fudge.get("ok", false)) or not bool(seeker.get("ok", false)):
-		push_error("boss-scale-demo: aset Sugarworks v3 tidak ketemu di %s" % chapter)
+	var opponent_slug := "animas/sugarworks-gumdrop"
+	var opponent_name := "Gumdrop Grunt"
+	var opponent_height := 95
+	var with_seeker := index == 3 and not hide_seeker
+	if index == 2:
+		opponent_slug = "animas/sugarworks-caramel"
+		opponent_name = "Caramel Clad"
+		opponent_height = 155
+	elif index == 3:
+		opponent_slug = "animas/sugarworks-fudge"
+		opponent_name = "Fudge Fang"
+		opponent_height = 135
+	var opponent := _load_local_anima_sheet(chapter, opponent_slug)
+	var seeker := _load_local_seeker_sheet(chapter) if with_seeker else {}
+	var zone_tex := AnimaLoader.load_sheet_texture(chapter.path_join("zones/zone-%d.png" % index))
+	if not bool(player.get("ok", false)) or not bool(opponent.get("ok", false)):
+		push_error("sugarworks-zone-demo: aset Sugarworks tidak ketemu di %s" % chapter)
 		return
-	var demo := _run_team_battle_demo(true)
+	if with_seeker and seeker.is_empty():
+		push_error("sugarworks-zone-demo: Boss Seeker tidak ketemu di %s" % chapter)
+		return
+	var demo := _run_team_battle_demo(with_seeker)
 	var session: Dictionary = demo.get("session", {})
 	var art: Dictionary = {}
 	var player_id := str(session["state"]["player"]["roster"][0].get("anima_id", ""))
-	var fudge_id := str(session["state"]["opponent"]["roster"][0].get("anima_id", ""))
+	var opponent_id := str(session["state"]["opponent"]["roster"][0].get("anima_id", ""))
 	art[player_id] = player
-	art[fudge_id] = fudge
-	art["boss_seeker"] = seeker
-	if zone != null:
-		art["arena_background"] = zone
+	art[opponent_id] = opponent
+	if with_seeker:
+		art["boss_seeker"] = seeker
+	if zone_tex != null:
+		art["arena_background"] = zone_tex
 	session["state"]["player"]["roster"][0]["name"] = str(player.get("demo_name", "Licorice"))
 	session["state"]["player"]["roster"][0]["body_height_cm"] = int(player.get("demo_height_cm", 170))
+	session["state"]["opponent"]["roster"][0]["name"] = opponent_name
+	session["state"]["opponent"]["roster"][0]["body_height_cm"] = opponent_height
 	session["turn_number"] = 2
 	session["state"]["turn"] = 2
 	_team_battle_view.set_session(session, art)
-	_team_battle_view.set_arena_location(tr("EXPEDITION_ARENA_LOCATION") % ["The Sugarworks", 3])
+	_team_battle_view.set_arena_location(tr("EXPEDITION_ARENA_LOCATION") % ["The Sugarworks", index])
 
 
 func _sugarworks_asset_dir() -> String:
 	var game_dir := ProjectSettings.globalize_path("res://").trim_suffix("/")
-	return game_dir.get_base_dir().path_join("backend/chapters/the-sugarworks/v3/assets")
+	var root := game_dir.get_base_dir()
+	var v4 := root.path_join("backend/chapters/the-sugarworks/v4/assets")
+	if FileAccess.file_exists(v4.path_join("zones/zone-3.png")):
+		return v4
+	return root.path_join("backend/chapters/the-sugarworks/v3/assets")
 
 
 func _demo_player_sheet() -> Dictionary:

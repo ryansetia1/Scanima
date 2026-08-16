@@ -326,11 +326,13 @@ floor boneka gendong ~50 cm (bukan tinggi anak), dan hanya memakai exaggeration
 besar bila transformed silhouette memang menuntutnya. Snapshot Battle meneruskannya bersama
 `render_metrics` sheet; client memakai kurva non-linear dari kartu desain
 720×800 yang di-contain ke arena, termasuk Boss Seeker. Anima 120 cm mengisi
-sekitar setengah kartu itu; lebar layar tidak mengubah skala, dan ruang
+sekitar 45% kartu itu; tubuh lebih lebar dari 50% kartu mengecilkan kedua
+Anima bersama, bukan Seeker di back lane. Tepi piksel opak Anima dipin ke
+margin arena sehingga padding transparan sel tidak membuang ruang. Lebar
+jendela tidak mengubah skala, dan ruang
 vertikal ekstra tidak membesarkan tubuh. Perbedaan kecil/normal/raksasa
 tetap terbaca tanpa memberi damage/HP gratis, tanpa satu sprite lebar
-terkompres sendiri, tanpa trainer tinggal di skala penuh, dan tanpa menutup
-HUD. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px) di client; capture
+terkompres sendiri, dan tanpa menutup HUD. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px) di client; capture
 300 px memotong kaki tubuh yang lebih tinggi dari jendela itu.
 
 `createFighter` memotong stat tempur pemain sesudah pertumbuhan level kalau care rendah. Hunger < 40 interpolasi linear ke ×0.6 di 0; Hygiene < 50 interpolasi ke ×0.7 di 0; keduanya dikalikan lalu dijepit minimal ×0.5. Ambang sama dengan pose Hungry/Dirty. Bot tidak dipotong. `battleRewardPreview` memakai stat tanpa penalti supaya care rendah tidak menaikkan tier Bits. Hunger dan Hygiene bukan gerbang masuk.

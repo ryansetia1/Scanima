@@ -125,9 +125,11 @@ For every Boss Seeker sprite sheet:
   hyper-detailed hair, random belts/straps/buckles/piping, symmetrical generic
   long coat, or repeated tiny ornaments
 
-When a later prompt asks for a zone, Boss Seeker, or Trophy, follow that
-prompt's canvas and layout rules instead. Generate exactly one image per
-request. Do not add an explanation around the image.
+When a later prompt asks for a zone, keep this same cel-shaded style lock and
+use that prompt's 16:9 combat-arena canvas and floor rules instead of a
+chroma-green sprite sheet. When a later prompt asks for a Boss Seeker or
+Trophy, follow that prompt's canvas and layout rules instead. Generate
+exactly one image per request. Do not add an explanation around the image.
 ```
 
 ## Template reusable untuk chapter lain
@@ -230,7 +232,7 @@ white matte keyline, or bright chroma-green foreground.
 
 ```text
 Create exactly one original 16:9 landscape background for a Scanima
-Expedition zone.
+Expedition combat arena.
 
 Chapter: <CHAPTER_TITLE>
 Zone: <ZONE_TITLE>
@@ -238,11 +240,23 @@ Environment: <ENVIRONMENT_DESCRIPTION>
 Palette and lighting: <PALETTE_AND_LIGHTING>
 Recurring chapter motifs: <MOTIFS>
 
-Compose a clear foreground, middle ground, and background with two or three
-readable route-like lanes suitable behind a branching node map. Preserve empty
-visual breathing room for mobile UI. Opaque background, no chroma green
-requirement. No character, creature, text, logo, sign lettering, watermark,
-UI, node icon, or recognizable IP landmark. Generate one landscape image only,
+This is a Battle backdrop, not a node-map illustration. Match the chapter
+Anima and Boss Seeker: 2D anime cel-shaded art, four to six major flat
+colors, dark charcoal or plum contours, one hard cel-shadow, and only a few
+large material accents. Keep the center quiet so fighters stay readable.
+
+The lower 30–35% is one continuous solid floor plane wide enough for two
+fighters and a Boss Seeker. The bottom 15–20% stays unbroken across the
+center 50–60% of the width. No liquid, lava, syrup, rails, gutters, chasms,
+vents, fences, or props under the fighter foot line. Place vats, silos,
+furnaces, and gates in the upper or mid background behind a clear floor
+edge. Center-weight the composition; keep the top quarter simple for HUD;
+leave the right-third lower band uncluttered.
+
+No photoreal or PBR rendering, glossy 3D, airbrush gradients, bloom, glow,
+steam, particle haze, or repeated micro-detail. Opaque background, no chroma
+green. No character, creature, text, logo, sign lettering, watermark, UI,
+node icon, or recognizable IP landmark. Generate one landscape image only,
 target 768×432 or a larger exact 16:9 equivalent.
 ```
 
@@ -565,17 +579,22 @@ Simpan sebagai `zones/zone-1.png`.
 Create exactly one original 16:9 landscape background for The Sugarworks,
 Zone 1: Gumdrop Yard.
 
-Show a bright fantasy confectionery storage yard with monumental translucent
-gumdrop silos, low candy-brick warehouses, narrow syrup runnels, sugar-dusted
-rails, and distant factory stacks. Build two or three clear route-like lanes
-through the middle ground for a branching Expedition node map. Use
-raspberry, amber, violet, and cyan accents under clear morning light. Keep the
-center readable and avoid excessive tiny detail.
+Show an open candy-brick storage courtyard with a wide, flat, solid floor in
+the lower third. Monumental gumdrop silos and low warehouses sit behind a
+clear floor edge. Any syrup stays sealed inside tanks or pipes, never as
+open runnels, gutters, or puddles underfoot. Use raspberry, amber, ivory,
+and muted mint under clear morning light. Keep only two or three large
+background shapes; the center must stay quiet for combat.
 
-Original anime-inspired cel-shaded mobile-game environment, opaque background.
-No character, creature, text, logo, sign lettering, watermark, UI, node icon,
-or recognizable IP landmark. Generate one landscape image only, target
-768×432 or a larger exact 16:9 equivalent.
+This is a Battle backdrop, not a node-map illustration. Match The
+Sugarworks Anima and The Confectioner: 2D anime cel-shaded art, four to six
+major flat colors, dark charcoal or plum contours, one hard cel-shadow, and
+no glossy 3D, bloom, glow, steam, or micro-detail soup. The bottom 15–20%
+stays unbroken across the center. Leave the right-third lower band
+uncluttered for a Boss Seeker. Opaque background. No character, creature,
+text, logo, sign lettering, watermark, UI, node icon, or recognizable IP
+landmark. Generate one landscape image only, target 768×432 or a larger
+exact 16:9 equivalent.
 ```
 
 ### 11. Zone 2 — Caramel Foundry
@@ -586,17 +605,22 @@ Simpan sebagai `zones/zone-2.png`.
 Create exactly one original 16:9 landscape background for The Sugarworks,
 Zone 2: Caramel Foundry.
 
-Show a vast confectionery foundry with glowing caramel vats, heavy dark-cocoa
-conveyor bridges, amber glass pipes, cooling racks, hard-candy armor molds,
-and warm furnace light reflected across polished floors. Compose two or three
-clear route-like lanes from foreground to middle ground for a branching node
-map. The area should feel more dangerous than Zone 1 but still bright,
-adventurous, and readable on mobile.
+Show a wide refractory foundry work floor of dark-cocoa brick or caramel
+slab, continuous and solid in the lower third. Heavy vats, conveyor
+bridges, amber pipes, and cooling racks stay behind a low guard wall, never
+cutting the arena with molten channels. Warm furnace light, still bright
+and readable. Escalation comes from warmer palette and larger industrial
+silhouettes, not denser detail.
 
-Original anime-inspired cel-shaded mobile-game environment, opaque background.
-No character, creature, text, logo, sign lettering, watermark, UI, node icon,
-or recognizable IP landmark. Generate one landscape image only, target
-768×432 or a larger exact 16:9 equivalent.
+This is a Battle backdrop, not a node-map illustration. Match The
+Sugarworks Anima and The Confectioner: 2D anime cel-shaded art, four to six
+major flat colors, dark charcoal or plum contours, one hard cel-shadow, and
+no glossy 3D, bloom, glow, steam, or micro-detail soup. The bottom 15–20%
+stays unbroken across the center. Leave the right-third lower band
+uncluttered for a Boss Seeker. Opaque background. No character, creature,
+text, logo, sign lettering, watermark, UI, node icon, or recognizable IP
+landmark. Generate one landscape image only, target 768×432 or a larger
+exact 16:9 equivalent.
 ```
 
 ### 12. Zone 3 — Peppermint Furnace
@@ -607,18 +631,22 @@ Simpan sebagai `zones/zone-3.png`.
 Create exactly one original 16:9 landscape background for The Sugarworks,
 Zone 3: Peppermint Furnace.
 
-Show a dramatic final-zone complex where crimson-and-ivory furnace towers are
-lined with blue frost, peppermint cooling turbines oppose orange heat vents,
-and crystalline mint vapor crosses dark industrial platforms. Place a distant
-sealed boss gate as an original architectural focal point without symbols or
-lettering. Preserve two or three readable route-like lanes and enough visual
-breathing room for a branching node map. High tension, clear silhouettes,
-mobile-readable detail.
+Show a broad solid peppermint-stone or candy-brick boss forecourt, continuous
+and wide in the lower third. Crimson-and-ivory furnace towers and frost-lined
+cooling stacks frame the rear; a distant sealed boss gate is one large
+architectural silhouette without symbols or lettering. Frost and heat stay
+in the background machinery. No chasms, lava pits, ice rivers, vapor
+carpets, or vents underfoot.
 
-Original anime-inspired cel-shaded mobile-game environment, opaque background.
-No character, creature, text, logo, sign lettering, watermark, UI, node icon,
-or recognizable IP landmark. Generate one landscape image only, target
-768×432 or a larger exact 16:9 equivalent.
+This is a Battle backdrop, not a node-map illustration. Match The
+Sugarworks Anima and The Confectioner: 2D anime cel-shaded art, four to six
+major flat colors, dark charcoal or plum contours, one hard cel-shadow, and
+no glossy 3D, bloom, glow, steam, or micro-detail soup. The bottom 15–20%
+stays unbroken across the center. Leave the right-third lower band
+uncluttered for a Boss Seeker. Opaque background. No character, creature,
+text, logo, sign lettering, watermark, UI, node icon, or recognizable IP
+landmark. Generate one landscape image only, target 768×432 or a larger
+exact 16:9 equivalent.
 ```
 
 ### 13. Boss Seeker — The Confectioner
@@ -845,8 +873,10 @@ Untuk Boss Seeker:
 Untuk zona:
 
 - landscape 16:9, opaque, dan tanpa karakter/UI;
-- jalur visual terbaca setelah downscale;
-- Zone 1 → 3 terasa satu chapter dengan escalation yang jelas.
+- style cel-shaded yang sama dengan Anima/Boss Seeker, bukan render 3D glossy;
+- lantai padat kontinu di 30–35% bawah, tanpa cairan/rel/jurang di bawah kaki;
+- detail cukup untuk identitas zona, tidak sampai mendistrak pertarungan;
+- Zone 1 → 3 terasa satu chapter dengan escalation palet dan siluet, bukan noise.
 
 Untuk Trophy:
 

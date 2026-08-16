@@ -61,6 +61,7 @@ func set_pose(pose: String) -> bool:
 	# Tiap pose satu frame, jadi play() hanya menampilkannya; yang bergerak Tween.
 	play()
 	_current_pose = pose
+	plant_on_anchor()
 	_start_motion(pose)
 	pose_changed.emit(pose)
 	return true
@@ -79,6 +80,7 @@ func fx_motion(pose: String) -> String:
 func set_facing(direction: float) -> void:
 	_facing_direction = -1.0 if direction < 0.0 else 1.0
 	flip_h = _facing_direction > 0.0
+	plant_on_anchor()
 
 
 func hit_test(global_point: Vector2) -> bool:
@@ -95,6 +97,16 @@ func hit_test(global_point: Vector2) -> bool:
 	if flip_h:
 		local.x = -local.x
 	return Rect2(top_left, texture_size).grow(TAP_HIT_PADDING_PX).has_point(local)
+
+
+## Geser sprite supaya kaki opak duduk di origin node, bukan dasar sel kotak.
+func plant_on_anchor() -> void:
+	var bounds := opaque_local_rect()
+	if bounds.size == Vector2.ZERO:
+		return
+	_base_position = -_feet_local(bounds)
+	if _feedback == null or not _feedback.is_valid():
+		position = _base_position
 
 
 ## Pusat massa opak pose saat ini, bukan pusat sel sheet (banyak padding).
@@ -141,9 +153,9 @@ func sync_ground_shadow(shadow: Sprite2D) -> void:
 	# Feet are sprite-local; the blob lives on the arena anchor so hop/flip
 	# do not leave it beside the body.
 	if parent != null:
-		shadow.position = parent.to_local(to_global(feet + Vector2(0.0, 8.0)))
+		shadow.position = parent.to_local(to_global(feet + Vector2(0.0, 2.0)))
 	else:
-		shadow.position = feet + Vector2(0.0, 8.0)
+		shadow.position = feet + Vector2(0.0, 2.0)
 	shadow.scale = Vector2(clampf(width / 180.0, 0.5, 2.0), 0.7)
 
 
