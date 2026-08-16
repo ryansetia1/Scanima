@@ -482,6 +482,19 @@ Auto-battle akan lebih mudah dibuat, tapi tiga pilihan per turn adalah harga yan
 
 Turn tetap menunggu event authoritative server, tetapi tap tidak boleh terlihat seperti loading. Client langsung menandai aksi pilihan dengan underline pulse + haptic, meredupkan pilihan lain, dan mengabaikan input ulang tanpa style disabled. Jangan tampilkan `Attack locked in` / `Special charged` / `Resolving turn` — copy itu mengumumkan freeze. Damage, initiative, PP, dan animasi hasil tetap menunggu response server; yang instan hanya acknowledgement di tombol, supaya SPD lawan yang lebih tinggi tidak terlihat seperti animasi pemain yang “salah”.
 
+Sesudah ordered event log authoritative diterima, pelat event menahan nama aksi
+selama 1,4 detik lalu **wajib hilang sebelum pose Attack dipasang**. Setelah itu
+urutan visualnya Attack → VFX/lunge → impact → Idle. Tepat sesudah
+`FX_TRAVEL_SEC`, penyerang kembali Idle sebelum damage/effectiveness copy
+berikutnya. Damage tetap tidak diprediksi client. Boss Seeker tidak memakai
+`concern_hit` pada Guard; pose itu dimulai tepat pada beat impact yang sama
+dengan `target.hit_react()`, lalu kembali Idle setelah animasi damage selesai
+dan sebelum effectiveness copy ditampilkan.
+
+Semua HP bar memakai interpolasi kontinu `red.lerp(blue_cyan, hp / max_hp)`.
+Angka `current / max` tetap ditampilkan untuk aksesibilitas. Ground shadow
+Team/Expedition/Boss memakai alpha pusat 0,45, setengah dari nilai lama 0,90.
+
 Battle dan Training memakai entry gate yang sama: Anima harus memiliki **minimal 20 Energy**, dan **start session baru memotong 20 Energy**. Hunger **bukan** gerbang masuk — Bits didapat dari duel dan makanan dibeli pakai Bits, jadi mengunci faucet di belakang sink-nya membuat 0 Bits + tas kosong jadi soft-lock. Pose Hungry dan EXP Feed tetap memakai ambang 40. `start_battle()` menjalankan `apply_care(..., 'sync')` sebelum memeriksa Energy authoritative, sehingga client tidak bisa memakai snapshot Energy lama untuk masuk. Client juga menonaktifkan CTA lebih awal ketika row roster sudah menunjukkan Energy di bawah 20, tetapi keputusan akhir tetap di transaksi server. Resume session aktif tidak memotong Energy kedua kali, dan duel yang sudah berjalan tidak dibatalkan di tengah.
 
 **PP** adalah budget per-battle: mulai penuh 3, satu Special memakan 1, dan ia **tidak pulih sendiri setiap turn** — satu-satunya pemulihan adalah Guard, plus item PP Capsule yang menaikkan max sementara sampai 5. Ia sengaja dinamai berbeda dari mata uang di bagian 2 karena ia bukan mata uang: ia lahir dan mati di dalam satu pertarungan, tidak pernah disimpan, dan tidak bisa dibawa ke duel berikutnya. Perannya menciptakan ritme bertahan-lalu-menyerang tanpa perlu sistem cooldown per skill: tiga Special adalah anggaran yang pemain sendiri putuskan kapan dibelanjakan, dan Guard adalah harga untuk menambahnya.
@@ -523,6 +536,9 @@ forfeit tidak memberi reward. Satu item Battle per session, mengganti aksi turn
 itu; konsumsi inventory atomik dengan commit turn. Battle **tidak pernah**
 memberi Genesis Core.
 
+Result Duel yang memberi EXP menampilkan nama Anima aktif dan jumlah EXP
+authoritative. Training/capped tidak memakai copy itu.
+
 `daily_reward` payload membawa `earned/limit/remaining` (progression) plus
 `bits_earned/bits_limit/bits_remaining`. Lobby menampilkan tier dan Bits, CTA
 `Battle` lalu `Train` (copy Bits-only) lalu Training nol hadiah. Client tidak
@@ -553,6 +569,9 @@ baseline **2 rewarded wins** dan **40 Bits per hari sipil lokal**. Empat anggota
 membayar 10 Energy saat session baru dibuat. Fighter yang pernah aktif mendapat
 +2 EXP dan bench tim mendapat +1; loss, draw, dan forfeit nol. Angka ini hidup
 di `app_config` dan wajib dituning dari telemetry sebelum rollout luas.
+Result memfilter `anima_exp` ke row `exp > 0`, menampilkan nama penerima serta
+Level Up, dan payload terminal Team memulihkan array itu dari receipt JSON turn
+saat resume/replay.
 
 Expedition tidak menjadi faucet Bits berulang. **Begin Expedition** mendebit
 30 Energy dari masing-masing empat anggota satu kali; seluruh Start Zone dan
@@ -571,6 +590,11 @@ growth dari EXP dipakai di encounter Battle berikutnya; kenaikan max HP menambah
 sisa HP sebesar delta max HP tanpa membangunkan KO. Aturan roster, switch, node,
 checkpoint, Trophy, dan Chapter Factory ada di
 [`09-team-battle-and-expedition.md`](09-team-battle-and-expedition.md).
+
+Roster node Expedition non-Boss tidak boleh membawa cast member `special`.
+Runtime menggantinya secara deterministik dari pool Battle zona yang sama tanpa
+mengubah manifest immutable. Hanya encounter `kind = boss` yang mempertahankan
+ace untuk urutan final authoritative.
 
 Boss chapter menandai tepat satu anggota lawan sebagai `special`/ace. Resolver
 server menahan ace selama masih ada anggota reguler hidup, termasuk untuk

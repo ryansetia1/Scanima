@@ -69,6 +69,11 @@ charge portal, sebelum Anima baru di-reveal atau serangan berikutnya dimainkan.
 Reduced Motion menerapkan target tanpa tween. Reframe tidak boleh ditunda sampai
 event Attack berikutnya atau commit session di akhir event log.
 
+Semua mode Battle memakai warna HP kontinu: merah pada 0%, campuran di tengah,
+dan biru/cyan pada 100%. Angka `current / max` tetap wajib karena status tidak
+boleh bergantung pada warna. Alpha pusat ground shadow arena adalah 0,45 untuk
+Anima pemain, lawan, dan Boss Seeker.
+
 Menang berarti seluruh roster lawan KO. Saat turn ceiling tercapai, hasil
 ditentukan dari rasio total HP roster yang tersisa; rasio sama menjadi draw dan
 tidak memberi reward.
@@ -85,6 +90,10 @@ Baseline rollout, semuanya tetap `app_config`:
 
 Cap Team Battle terpisah dari Duel. Loss, draw, dan forfeit memberi nol. Seeker
 EXP tetap bertambah hanya dari delta EXP Anima yang benar-benar committed.
+Result memakai `last_reward.anima_exp`, memfilter `exp > 0`, lalu menampilkan
+nama penerima dan Level Up. Payload terminal memulihkan array yang sama dari
+receipt `team_battle_turns.response`, sehingga restart/replay tidak mengubah
+siapa yang ditampilkan.
 
 ## 3. Expedition
 
@@ -174,6 +183,12 @@ mengikuti refund idempoten server.
 | Mystery | Dua pilihan singkat dari effect allowlist |
 | Boss | Boss Seeker + 3 Anima reguler + 1 ace `special` yang ditahan sampai akhir |
 
+Node `battle` dan `elite` tidak boleh membawa anggota `special`. Runtime membuang
+ace dan mengisi slot secara deterministik dari roster Battle zona yang sama;
+fallback lintas opponent hanya dipakai bila pool itu belum cukup. Policy runtime
+ini melindungi run yang sudah terkunci pada manifest immutable. Hanya node
+`boss` yang mempertahankan roster special asli.
+
 Effect v1 dibatasi ke heal, revive, Tokens (wire `supplies`), max HP, Attack,
 Special, Guard, Speed, start PP, dan Shop discount. Manifest tidak boleh
 mengarang effect baru. Copy pemain memakai Tokens; kolom dan effect type tetap
@@ -199,19 +214,24 @@ tetap satu kali serta berada di luar cap Zone Bits.
 
 ## 4. Boss Seeker dan dialog
 
-Setiap boss mempunyai Seeker original yang selalu terlihat di belakang Anima
-lawan. Pose idle dipakai saat menunggu; event authoritative dapat mengganti ke
+Setiap boss mempunyai Seeker original yang selalu terlihat bersama Anima
+lawan sesuai perbandingan tinggi. Pose idle dipakai saat menunggu; event
+authoritative dapat mengganti ke
 Attack Command, Special Command, Switch Command, Concern/Hit, Last Anima,
-Victory, atau Defeat. Pada momen command, pose boleh maju sebagai cut-in singkat.
-Reduced Motion mengganti pose tanpa tween.
+Victory, atau Defeat. Semua pose tetap pada anchor tubuh yang sama; pose lebih
+lebar boleh tercrop viewport tetapi tidak menggeser Seeker maju. Reduced Motion
+mengganti pose tanpa tween.
 
 Dialog memakai budget per encounter: opening (`boss_intro` atau `rematch`),
 maksimal satu line command dari Attack/Special/Switch pertama yang terjadi,
 `last_anima` wajib ketika ace Boss masuk, lalu line terminal victory/defeat.
 `chapter_intro` tetap sekali per run. Pose command tetap dimainkan pada setiap
-aksi lawan meski budget dialog sudah habis. Urutannya selalu pose Seeker →
-dialog opsional → event plate → animasi Anima → kembali ke Intro/Idle, sehingga
-copy, Summon, dan serangan tidak saling menimpa.
+aksi lawan meski budget dialog sudah habis. Pada serangan, pose Attack Anima
+baru dipasang setelah event plate menahan copy 1,4 detik dan selesai menghilang.
+Urutannya plate → Attack → VFX → impact → Idle → effectiveness plate.
+Pose Concern/Hit Seeker dipasang tepat pada beat impact yang sama dengan reaksi
+Anima, bukan ketika Anima Guard. Seeker kembali ke Intro/Idle setelah animasi
+damage selesai dan sebelum effectiveness plate muncul.
 
 Boss roster tepat empat dan tepat satu cast member bertanda `special`. Hanya
 encounter `kind = boss` yang mengaktifkan reserve: starter dan switch AI memakai
@@ -240,8 +260,10 @@ menyediakan trigger `chapter_intro`, `boss_intro`, `first_attack`,
 tampil sekali per session state; replay event tidak mengulang dialog. Runtime menempel `boss_seeker` plus `sheet_url` pada
 run/encounter; client memuat sheet 3×3. Encounter Boss pertama menampilkan
 Seeker saja, dialog tanpa overlay gelap, lalu pose command dan Summon Anima
-lawan sebelum input nyala. Sesudah itu Seeker di belakang Anima, di-clamp di
-dalam stage, cut-in pada command, dan dialog tap-to-continue.
+lawan sebelum input nyala. Sesudah mode intro dilepas, client menghitung ulang
+posisi dan layer sebelum Anima pertama di-reveal; ini mencegah satu turn awal
+dengan layer yang salah. Seeker di-clamp di dalam stage, pose command tetap
+berpijak, dan dialog memakai tap-to-continue.
 
 Semua cast dan Boss Seeker content v2+ wajib mempunyai `body_height_cm`.
 Post-process menyimpan bbox opak pose Idle/Intro Idle sebagai

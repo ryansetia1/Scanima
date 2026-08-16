@@ -10,7 +10,7 @@ import {
   findExpeditionNode,
   generateZoneMap,
   nextNodeIds,
-  opponentForNode,
+  opponentRosterForEncounter,
   prepareExpeditionRoster,
   prepareExpeditionZoneRoster,
   publicBossSeeker,
@@ -483,9 +483,11 @@ async function startEncounter(
     loadTeam(ownerId, run.team_id),
   ]);
   const manifest = validateChapterManifest(version.manifest);
-  const opponent = opponentForNode(manifest, node);
   const playerSnapshot = prepareExpeditionRoster(teamSnapshot(team), run.party_state, run.boosts);
-  const opponentSnapshot = chapterRoster(opponent.roster, version.asset_prefix);
+  const opponentSnapshot = chapterRoster(
+    opponentRosterForEncounter(manifest, node, run.zone),
+    version.asset_prefix,
+  );
   const seed = crypto.randomUUID();
   const initialState = applyEncounterBoosts(
     createTeamBattleState({

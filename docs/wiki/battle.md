@@ -24,14 +24,19 @@ menampilkan satu fighter aktif dari setiap tim.
   belum banyak pemain memasang Defense Team, sebagian rival adalah tim sistem.
 - Memulai battle memakai **10 Energy dari setiap anggota**.
 - Attack, Special, Guard, dan Item bekerja seperti Duel. **Super effective!**
-  dan **Not very effective.** tampil besar di arena, tepat di bawah HUD.
+  dan **Not very effective.** tampil besar di arena, tepat di bawah HUD. Pelat
+  nama serangan tampil lebih dulu sekitar 1,4 detik lalu hilang. Sesudah itu
+  pose Attack dan VFX dimainkan; saat VFX mengenai lawan, penyerang langsung
+  kembali Idle sebelum teks efektivitas berikutnya.
 - Saat battle berjalan, layar jadi arena penuh: judul Scanima, menu, chip
   Animas/Cores/Bits, dan navigasi bawah hilang. Satu-satunya jalan keluar
   adalah **Retreat** di paling kanan baris bawah. Tombol aksi dua baris
   seimbang: **Attack** / **Special** / **Guard**, lalu **Item** / **Switch** /
   **Retreat**. HUD menaruh pip tim di atas nama Anima, lalu HP. Di Expedition,
   label `{judul chapter} — Zone {n}` duduk di atas pelat HP; Final Battle
-  menulis `{nama Seeker} · Final Battle`.
+  menulis `{nama Seeker} · Final Battle`. Warna HP berubah bertahap dari biru
+  saat penuh ke merah saat habis. Bayangan kaki dibuat lembut agar tidak
+  mengalahkan art karakter.
 - **Switch** sukarela memakai satu turn. Tombol aksi tetap di tempatnya
   supaya arena tidak bergeser. Picker naik sebagai lembar dari bawah layar
   dan menampilkan art, nama plus
@@ -44,17 +49,19 @@ menampilkan satu fighter aktif dari setiap tim.
   misalnya **Soundhund Lv. 5**.
 - Ketuk Attack, Special, Guard, Item, atau Switch langsung mengunci tombol
   itu (garis di bawahnya). Tidak ada teks “locked in” atau “Resolving”.
-  Setelah hasil turn kembali dari server, pelat gelap menulis
+  Setelah hasil turn kembali dari server, pelat gelap lebih dulu menulis
   **{nama} uses {move}.**, **{nama} braces for impact.**, item, Switch, atau
-  KO, lalu diam sekitar 1,4 detik sebelum animasinya mulai. **Super
-  effective!**, **Not very effective.**, dan hasil item memakai pelat yang
-  sama, jadi teks tetap terbaca di atas art zona yang terang. Angka damage
-  muncul di atas Anima yang kena, sama seperti Duel.
+  KO dan diam sekitar 1,4 detik. Untuk serangan, pelat itu hilang sebelum pose
+  Attack dan VFX dimulai. Penyerang kembali Idle tepat saat VFX mengenai
+  target, baru **Super effective!** atau **Not very effective.** tampil pada
+  pelat yang sama. Angka damage muncul di atas Anima yang kena, sama seperti
+  Duel.
 - Satu item Battle berlaku untuk seluruh encounter, bukan satu per anggota.
   **Item** membuka Bag; tombol **Shop** tidak muncul di tengah battle.
 - Dua kemenangan progression pertama per hari memberi EXP: **+2** untuk anggota
   yang pernah aktif dan masih hidup, **+1** untuk bench yang masih hidup.
-  Anggota yang KO tidak mendapat EXP.
+  Anggota yang KO tidak mendapat EXP. Kartu hasil menyebut nama setiap Anima
+  yang benar-benar menerima EXP, termasuk sesudah battle dipulihkan dari restart.
 - Bits dibayar sampai total **40 per hari** dari Team Battle. Cap ini terpisah
   dari Duel.
 - Kalah, draw, atau Retreat tidak memberi hadiah.
@@ -99,6 +106,9 @@ Seeker.
 - Sesudah menang Battle, Elite, atau Boss, layar hasil menampilkan Tokens,
   EXP tiap anggota, dan siapa yang naik Level. Stats dari Level baru dipakai
   di fight berikutnya di zona yang sama.
+- Anima special milik Boss Seeker tidak pernah muncul di node Battle atau Elite.
+  Jika roster node memakai tim Boss, slot special diganti Anima reguler dari
+  zona itu. Special baru dapat masuk sebagai Anima terakhir di Final Battle.
 - **Tokens** adalah mata uang run, bukan Bits. Dipakai di **Trail Shop**. Saldo
   **You have 6 Tokens to spend** hanya tampil saat ada yang bisa dibeli.
   Tekan **Skip Shop** untuk melanjutkan tanpa membeli jika tidak menginginkan
@@ -132,6 +142,11 @@ Seeker.
 - Cotton adalah ace The Confectioner dan selalu disimpan sampai semua Anima
   regulernya KO. Saat Cotton masuk, **Final Confection** aktif sekali dan
   memberinya +1 PP untuk encounter itu.
+- The Confectioner tetap berpijak di tempat yang sama ketika mengganti pose.
+  Ia tidak memakai pose terkena damage saat Anima-nya Guard, dan baru bereaksi
+  tepat ketika serangan benar-benar mengenai Anima. Setelah beat damage selesai,
+  ia langsung kembali normal sebelum teks **Super effective!** atau
+  **Not very effective.** muncul.
 - Ukuran Anima dan The Confectioner di arena mengikuti tinggi tubuh mereka.
   Anima setinggi manusia mengisi kurang dari setengah arena pada layar HP,
   supaya dua petarung plus trainer masih punya ruang. Anima
@@ -180,6 +195,9 @@ Tiga kemenangan pertama per hari (reset **tengah malam waktu setempat**) adalah 
 - Bits menurut kekuatan lawan (kira-kira 5–16)
 - **+4 EXP**
 - +1 kemenangan progression pada Anima
+
+Kartu hasil menyebut nama Anima yang menerima **+4 EXP**. Training tidak
+menampilkan klaim EXP karena memang tidak memberikannya.
 
 Di Duel, lawan dan tingkat kesulitannya dipilih server; tidak ada pengaturan
 tier manual. Arena hanya menampilkan nama, Level, HP, dan perintah yang berguna

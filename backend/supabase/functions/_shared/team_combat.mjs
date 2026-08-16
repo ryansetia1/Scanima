@@ -359,7 +359,7 @@ function livingOpponentBenchSlots(party) {
   const bench = livingBenchSlots(party);
   if (party.reserve_ace !== true) return bench;
   const regular = bench.filter((slot) => party.roster[slot].is_ace !== true);
-  return regular.length > 0 ? regular : bench;
+  return hasLivingRegular(party) ? regular : bench;
 }
 
 function firstLivingOpponentBenchSlot(party) {

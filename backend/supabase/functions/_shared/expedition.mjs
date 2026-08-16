@@ -228,9 +228,41 @@ export function opponentForNode(manifestInput, node) {
   if (!isObject(node) || !["battle", "elite", "boss"].includes(node.kind)) {
     throw chapterError("INVALID_EXPEDITION_NODE");
   }
-  const opponent = manifest.opponents.find((candidate) => candidate.id === node.opponent_id);
-  if (!opponent) throw chapterError("EXPEDITION_OPPONENT_NOT_FOUND");
-  return structuredClone(opponent);
+  return structuredClone(findChapterOpponent(manifest, node.opponent_id));
+}
+
+export function opponentRosterForEncounter(manifestInput, node, zoneNumber) {
+  const manifest = validateChapterManifest(manifestInput);
+  if (!isObject(node) || !["battle", "elite", "boss"].includes(node.kind)) {
+    throw chapterError("INVALID_EXPEDITION_NODE");
+  }
+  const opponent = findChapterOpponent(manifest, node.opponent_id);
+  const roster = structuredClone(opponent.roster);
+  if (node.kind === "boss" || !roster.some((member) => member?.special === true)) {
+    return roster;
+  }
+
+  const zoneIndex = Number(zoneNumber) - 1;
+  if (!Number.isInteger(zoneIndex) || zoneIndex < 0 || zoneIndex >= manifest.zones.length) {
+    throw chapterError("INVALID_EXPEDITION_ZONE");
+  }
+  const regulars = roster.filter((member) => member?.special !== true);
+  const memberIds = new Set(regulars.map(memberId).filter(Boolean));
+  const preferredOpponentIds = [
+    ...manifest.zones[zoneIndex].node_pools.battle.map((template) => template.opponent_id),
+    ...manifest.opponents.map((candidate) => candidate.id),
+  ];
+  for (const opponentId of preferredOpponentIds) {
+    const fallback = findChapterOpponent(manifest, opponentId);
+    for (const member of fallback.roster) {
+      const id = memberId(member);
+      if (member?.special === true || !id || memberIds.has(id)) continue;
+      regulars.push(structuredClone(member));
+      memberIds.add(id);
+      if (regulars.length === roster.length) return regulars;
+    }
+  }
+  throw chapterError("INVALID_CHAPTER_OPPONENTS");
 }
 
 export function prepareExpeditionZoneRoster(
@@ -436,6 +468,16 @@ function validateNodeTemplate(template, kind, zoneNumber, opponentIds) {
     optionIds.add(option.id);
     validateEffect(option.effect, zoneNumber);
   }
+}
+
+function findChapterOpponent(manifest, opponentId) {
+  const opponent = manifest.opponents.find((candidate) => candidate.id === opponentId);
+  if (!opponent) throw chapterError("EXPEDITION_OPPONENT_NOT_FOUND");
+  return opponent;
+}
+
+function memberId(member) {
+  return String(member?.anima_id ?? member?.id ?? "");
 }
 
 function validateEffect(effect, zoneNumber) {

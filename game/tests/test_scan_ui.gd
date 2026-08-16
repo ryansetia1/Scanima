@@ -1424,6 +1424,29 @@ func _test_battle_view() -> void:
 		"Battle result overlays the fixed footer above both fighters"
 	)
 	_check_eq(player_hp.value, 220.0, "Battle HUD displays authoritative HP")
+	var battle_script_resource := view.get_script() as GDScript
+	var battle_constants := battle_script_resource.get_script_constant_map()
+	var hp_full_color: Color = battle_constants.get("HP_FULL_COLOR", Color.CYAN)
+	var hp_empty_color: Color = battle_constants.get("HP_EMPTY_COLOR", Color.RED)
+	var full_hp_fill := player_hp.get_theme_stylebox("fill") as StyleBoxFlat
+	_check(
+		full_hp_fill != null and full_hp_fill.bg_color.is_equal_approx(hp_full_color),
+		"full HP uses the blue end of the progressive Battle gradient"
+	)
+	battle_script_resource.call("apply_hp_bar_state", player_hp, 110.0, 220.0)
+	var half_hp_fill := player_hp.get_theme_stylebox("fill") as StyleBoxFlat
+	_check(
+		half_hp_fill != null
+		and half_hp_fill.bg_color.is_equal_approx(hp_empty_color.lerp(hp_full_color, 0.5)),
+		"half HP blends continuously between red and blue"
+	)
+	battle_script_resource.call("apply_hp_bar_state", player_hp, 0.0, 220.0)
+	var empty_hp_fill := player_hp.get_theme_stylebox("fill") as StyleBoxFlat
+	_check(
+		empty_hp_fill != null and empty_hp_fill.bg_color.is_equal_approx(hp_empty_color),
+		"empty HP reaches the red end of the Battle gradient"
+	)
+	battle_script_resource.call("apply_hp_bar_state", player_hp, 220.0, 220.0)
 	_check(
 		player_hp_value.text == "220 / 220"
 		and bot_hp_value.text == "205 / 205"
@@ -1479,7 +1502,7 @@ func _test_battle_view() -> void:
 		float(view.get_script().get_script_constant_map().get("ACTION_CUE_SEC", 0.0)) >= 1.4
 		and effectiveness_label.get_theme_font("font") is FontVariation
 		and effectiveness_label.get_theme_font_size("font_size") >= 32,
-		"Duel event copy holds after the plate is visible before animation"
+		"Duel event plate keeps its readability hold after the Attack pose appears"
 	)
 	_check(
 		str(view.call("_actor_name", "player")) == "Velumi"
@@ -1494,6 +1517,25 @@ func _test_battle_view() -> void:
 	view.call("_show_effectiveness", 1.0)
 	_check(not effectiveness.visible, "neutral attacks do not show a misleading indicator")
 	var battle_source := FileAccess.get_file_as_string("res://scripts/battle_view.gd")
+	var duel_attack_fn := battle_source.substr(battle_source.find("func _play_attack"), 4200)
+	_check(
+		duel_attack_fn.find("_present_banner") >= 0
+		and duel_attack_fn.find("_present_banner")
+		< duel_attack_fn.find("await _hide_effectiveness()")
+		and duel_attack_fn.find("await _hide_effectiveness()")
+		< duel_attack_fn.find("attacker.set_pose(\"attack\")")
+		and duel_attack_fn.find("attacker.set_pose(\"attack\")")
+		< duel_attack_fn.find("attacker.play_fx"),
+		"Duel hides action copy before Attack pose and VFX"
+	)
+	_check(
+		duel_attack_fn.find("await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)") >= 0
+		and duel_attack_fn.find("await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)")
+		< duel_attack_fn.find("attacker.set_pose(\"idle\")")
+		and duel_attack_fn.find("attacker.set_pose(\"idle\")")
+		< duel_attack_fn.find("if not effect_key.is_empty()"),
+		"Duel Attack returns to Idle on impact before effectiveness copy"
+	)
 	_check(
 		battle_source.find("func item_banner_text") >= 0
 		and battle_source.find("care_feedback(\"item\")") >= 0
@@ -1647,8 +1689,8 @@ func _test_battle_view() -> void:
 	_check(
 		not daily_reward.visible
 		and result_title.text == tr("BATTLE_WIN_TITLE")
-		and result_body.text == tr("BATTLE_WIN_BODY") % "8",
-		"third rewarded win explains its actual reward only in the result card"
+		and result_body.text == tr("BATTLE_WIN_BODY") % ["8", "Velumi", "4"],
+		"rewarded Duel names the Anima that received EXP"
 	)
 	var ready_again: Dictionary = anima.duplicate(true)
 	ready_again.erase("dormant_since")
@@ -1889,6 +1931,12 @@ func _test_team_battle_view() -> void:
 		and int(arena_fighter.z_index) > int(player_portal.z_index),
 		"arena is borderless, HUD is full width, and Anima draws in front of the summon portal"
 	)
+	var shadow_texture := player_shadow.texture as GradientTexture2D
+	_check(
+		shadow_texture != null
+		and shadow_texture.gradient.colors[0].a <= 0.45,
+		"arena ground shadows stay subtle under every fighter"
+	)
 	view.set_expedition_mode(true)
 	view.set_arena_location("The Sugarworks — Zone 1")
 	_check(
@@ -1972,7 +2020,7 @@ func _test_team_battle_view() -> void:
 		"Team and Expedition show floating damage"
 	)
 	var team_source := FileAccess.get_file_as_string("res://scripts/team_battle_view.gd")
-	var attack_fn := team_source.substr(team_source.find("func _play_attack"), 500)
+	var attack_fn := team_source.substr(team_source.find("func _play_attack"), 3600)
 	_check(
 		team_source.find("BATTLE_EVENT_ITEM") >= 0
 		and team_source.find("BATTLE_EVENT_ATTACK") >= 0
@@ -1981,9 +2029,34 @@ func _test_team_battle_view() -> void:
 	)
 	_check(
 		attack_fn.find("_present_banner") >= 0
-		and attack_fn.find("_present_banner") < attack_fn.find("set_pose(\"attack\")")
+		and attack_fn.find("_present_banner") < attack_fn.find("await _hide_effectiveness()")
+		and attack_fn.find("await _hide_effectiveness()")
+		< attack_fn.find("actor.set_pose(\"attack\")")
+		and attack_fn.find("actor.set_pose(\"attack\")") < attack_fn.find("actor.play_fx")
 		and team_source.find("_effectiveness_badge") < 0,
-		"Team attack holds the plate before the Attack pose"
+		"Team and Expedition hide action copy before Attack pose and VFX"
+	)
+	_check(
+		attack_fn.find("await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)") >= 0
+		and attack_fn.find("await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)")
+		< attack_fn.find("actor.set_pose(\"idle\")")
+		and attack_fn.find("actor.set_pose(\"idle\")")
+		< attack_fn.find("if not effect_key.is_empty()"),
+		"Team and Expedition return Attack to Idle on impact before effectiveness copy"
+	)
+	var guard_fn := team_source.substr(team_source.find("\"guard\":"), 500)
+	_check(
+		guard_fn.find("concern_hit") < 0,
+		"Boss Seeker does not look damaged when her Anima Guards"
+	)
+	_check(
+		attack_fn.find("_react_seeker_attack(event)") >= 0
+		and attack_fn.find("_react_seeker_attack(event)") < attack_fn.find("target.hit_react()")
+		and attack_fn.find("target.hit_react()") < attack_fn.find("_play_damage")
+		and attack_fn.find("_play_damage") < attack_fn.find("_restore_seeker_idle()")
+		and attack_fn.find("_restore_seeker_idle()")
+		< attack_fn.find("if not effect_key.is_empty()"),
+		"Boss Seeker reacts on impact and returns Idle before effectiveness copy"
 	)
 	view.open_mode()
 	view.call("_open_switch_picker", false)
@@ -2171,11 +2244,15 @@ func _test_team_battle_view() -> void:
 		and result_body.text.contains("Lv. 2"),
 		"Team win lists each member EXP and who leveled up"
 	)
-	session["last_reward"] = {"bits": 6, "progression": true}
+	session["last_reward"] = {
+		"bits": 6,
+		"progression": true,
+		"anima_exp": [{"anima_id": members[0].anima_id, "exp": 2}],
+	}
 	view.set_session(session, art_cache)
 	_check(
-		"6" in result_body.text and "settled" in result_body.text,
-		"resumed Team win uses its reward receipt instead of showing zero EXP"
+		"6" in result_body.text and result_body.text.contains("Team 1"),
+		"resumed Team win restores its per-Anima EXP receipt"
 	)
 	view.set_expedition_mode(true)
 	session["last_reward"] = {
@@ -2310,6 +2387,17 @@ func _test_team_battle_view() -> void:
 			break
 		await process_frame
 	_check(boss_opponent.visible, "tap continues into the Seeker summoning her Anima")
+	_check(
+		opponent_anchor.z_index < seeker.z_index,
+		"first Boss summon recomputes the tall Anima behind the Seeker before turn one"
+	)
+	var seeker_rest := seeker.position
+	seeker.call("play_cut_in")
+	await process_frame
+	_check(
+		seeker.position.is_equal_approx(seeker_rest),
+		"Boss Seeker command poses stay on their planted anchor"
+	)
 	_dismiss_when_open(dialog)
 	await view.play_events([{
 		"type": "attack",

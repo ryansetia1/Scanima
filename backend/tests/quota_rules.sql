@@ -1944,8 +1944,10 @@ begin
          'receipt reward Team harus unik per session';
   v_j2 := public.resume_team_battle(u1, v_team_session);
   assert (v_j2->'last_reward'->>'bits')::integer = 8
-         and (v_j2->'last_reward'->>'progression')::boolean,
-         'resume Team terminal harus membawa receipt reward untuk result UI';
+         and (v_j2->'last_reward'->>'progression')::boolean
+         and v_j2->'last_reward'->'anima_exp' = v_j->'reward'->'anima_exp'
+         and jsonb_array_length(v_j2->'last_reward'->'anima_exp') = 4,
+         'resume Team terminal harus membawa receipt per-Anima EXP untuk result UI';
 
   v_j2 := public.commit_team_battle_turn(
     u1, v_team_session, 1, 1, 'team-turn-1', 'strike',
@@ -3012,6 +3014,12 @@ begin
            and (select sum(care_score)::integer from public.animas
                  where id = any(v_team_ids)) = v_score_before_battle,
            'Boss pertama harus menyelesaikan run dan memberi reward Zone 3';
+    select public.expedition_encounter_payload(encounter)
+      into v_j2
+      from public.expedition_encounters encounter
+     where encounter.id = v_expedition_encounter;
+    assert v_j2->'last_reward'->'anima_exp' = v_j->'reward'->'anima_exp',
+           'payload encounter terminal harus memulihkan receipt per-Anima EXP';
     assert exists (
              select 1 from public.seeker_trophies
               where owner_id = u1 and trophy_id = v_expedition_trophy

@@ -12,6 +12,8 @@ const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
 const CUE_COLOR := Color(0.92, 0.97, 1.0, 1.0)
 const DAMAGE_COLOR := Color(1.0, 0.35, 0.48, 1.0)
+const HP_FULL_COLOR := Color(0.28, 0.90, 1.0, 1.0)
+const HP_EMPTY_COLOR := DAMAGE_COLOR
 const EFFECTIVE_COLOR := Color(1.0, 0.82, 0.4, 1.0)
 const RESISTED_COLOR := Color(0.55, 0.68, 0.9, 1.0)
 
@@ -484,7 +486,9 @@ func _play_item(event: Dictionary) -> void:
 	if is_instance_valid(actor):
 		actor.care_feedback("item")
 	if actor_name == "player":
-		_player_hp.value = int(event.get("hp", _player_hp.value))
+		apply_hp_bar_state(
+			_player_hp, float(event.get("hp", _player_hp.value)), _player_hp.max_value
+		)
 		_player_hp_value.text = LocaleManager.format_ratio(
 			int(event.get("hp", _player_hp.value)), int(_player_hp.max_value)
 		)
@@ -508,6 +512,7 @@ func _play_attack(event: Dictionary) -> void:
 		CUE_COLOR,
 		false
 	)
+	await _hide_effectiveness()
 	if is_instance_valid(attacker):
 		attacker.set_pose("attack")
 		var fx_pose := "fx_surge" if str(event.get("action", "")) == "surge" else "fx_strike"
@@ -516,12 +521,14 @@ func _play_attack(event: Dictionary) -> void:
 		else:
 			attacker.play_fx(fx_pose)
 	await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)
+	if is_instance_valid(attacker):
+		attacker.set_pose("idle")
 	_damage.text = tr("BATTLE_DAMAGE") % LocaleManager.format_integer(int(event.get("damage", 0)))
 	_damage.visible = true
 	if target_name == "player":
-		_player_hp.value = int(event.get("target_hp", 0))
+		apply_hp_bar_state(_player_hp, float(event.get("target_hp", 0)), _player_hp.max_value)
 	else:
-		_bot_hp.value = int(event.get("target_hp", 0))
+		apply_hp_bar_state(_bot_hp, float(event.get("target_hp", 0)), _bot_hp.max_value)
 	if is_instance_valid(target):
 		target.hit_react()
 		if UiMotion.reduced_motion:
@@ -558,8 +565,6 @@ func _play_attack(event: Dictionary) -> void:
 			effect_key == "BATTLE_EFFECTIVE"
 		)
 	await _hide_effectiveness()
-	if is_instance_valid(attacker):
-		attacker.set_pose("idle")
 
 
 func _present_banner(text: String, color: Color, big: bool = true) -> void:
@@ -684,6 +689,19 @@ static func effectiveness_key(multiplier: float) -> String:
 	return ""
 
 
+static func apply_hp_bar_state(meter: ProgressBar, current: float, maximum: float) -> void:
+	if not is_instance_valid(meter):
+		return
+	var safe_maximum := maxf(1.0, maximum)
+	meter.max_value = safe_maximum
+	meter.value = clampf(current, 0.0, safe_maximum)
+	var fill_style := meter.get_theme_stylebox("fill")
+	if fill_style is StyleBoxFlat:
+		var fill := fill_style.duplicate() as StyleBoxFlat
+		fill.bg_color = HP_EMPTY_COLOR.lerp(HP_FULL_COLOR, meter.value / safe_maximum)
+		meter.add_theme_stylebox_override("fill", fill)
+
+
 func _announce_initiative(events: Array) -> void:
 	for value in events:
 		var event: Dictionary = BATTLE_EVENT.normalized(value)
@@ -703,10 +721,12 @@ func _apply_state() -> void:
 	var state := _as_dict(_session.get("state"))
 	var player := _as_dict(state.get("player"))
 	var bot := _as_dict(state.get("bot"))
-	_player_hp.max_value = maxf(1.0, float(player.get("max_hp", 1)))
-	_bot_hp.max_value = maxf(1.0, float(bot.get("max_hp", 1)))
-	_player_hp.value = float(player.get("hp", 0))
-	_bot_hp.value = float(bot.get("hp", 0))
+	apply_hp_bar_state(
+		_player_hp, float(player.get("hp", 0)), float(player.get("max_hp", 1))
+	)
+	apply_hp_bar_state(
+		_bot_hp, float(bot.get("hp", 0)), float(bot.get("max_hp", 1))
+	)
 	_player_hp_value.text = LocaleManager.format_ratio(
 		int(player.get("hp", 0)), int(player.get("max_hp", 1))
 	)
@@ -752,8 +772,13 @@ func _show_result(status: String) -> void:
 
 func _win_body(reward: Dictionary) -> String:
 	var bits := int(reward.get("bits", 0))
-	if int(reward.get("care_score", 0)) > 0:
-		return tr("BATTLE_WIN_BODY") % LocaleManager.format_integer(bits)
+	var exp := int(reward.get("care_score", 0))
+	if exp > 0:
+		return tr("BATTLE_WIN_BODY") % [
+			LocaleManager.format_integer(bits),
+			_actor_name("player"),
+			LocaleManager.format_integer(exp),
+		]
 	if bits > 0:
 		return tr("BATTLE_TRAINING_BITS_BODY") % LocaleManager.format_integer(bits)
 	return tr("BATTLE_TRAINING_WIN_BODY")

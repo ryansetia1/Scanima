@@ -85,6 +85,7 @@ import {
   generateZoneMap,
   nextNodeIds,
   opponentForNode,
+  opponentRosterForEncounter,
   prepareExpeditionRoster,
   prepareExpeditionZoneRoster,
   publicBossSeeker,
@@ -1615,6 +1616,28 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
     },
   });
   assert.equal(bossState.opponent.active_slot, 1, "ace tidak boleh menjadi starter Boss");
+  const lowRegularState = structuredClone(bossState);
+  lowRegularState.opponent.roster[1].hp = Math.floor(
+    lowRegularState.opponent.roster[1].max_hp * 0.2,
+  );
+  lowRegularState.opponent.roster[2].hp = 0;
+  lowRegularState.opponent.roster[3].hp = 0;
+  const lowRegularTurn = resolveTeamTurn(
+    lowRegularState,
+    "guard",
+    "ace-low-hp-2",
+  );
+  assert.equal(
+    lowRegularTurn.state.opponent.active_slot,
+    1,
+    "Boss tidak boleh switch sukarela ke ace saat reguler aktif masih hidup",
+  );
+  assert.ok(
+    !lowRegularTurn.events.some((event) =>
+      event.type === "switch" && event.actor === "opponent" && event.to_slot === 0
+    ),
+    "ace hanya boleh masuk lewat forced switch setelah reguler terakhir KO",
+  );
   const firstRegular = resolveTeamTurn(bossState, "strike", "ace-ko-1");
   const secondRegular = resolveTeamTurn(firstRegular.state, "strike", "ace-ko-2");
   assert.notEqual(firstRegular.state.opponent.active_slot, 0, "ace tetap di-reserve saat reguler hidup");
@@ -1788,6 +1811,34 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     kind: "boss",
     opponent_id: "candy-3",
   }).roster.length, 4);
+  const manifestWithAce = structuredClone(manifest);
+  manifestWithAce.opponents[3].roster[3].special = true;
+  manifestWithAce.zones[2].node_pools.elite = [{
+    opponent_id: "candy-3",
+    supplies_reward: 7,
+  }];
+  const eliteRoster = opponentRosterForEncounter(manifestWithAce, {
+    kind: "elite",
+    opponent_id: "candy-3",
+  }, 3);
+  assert.equal(eliteRoster.length, 4, "elite pengganti ace tetap membawa roster penuh");
+  assert.ok(
+    eliteRoster.every((member) => member.special !== true),
+    "Battle dan Elite tidak boleh memunculkan Anima special Boss",
+  );
+  assert.equal(
+    eliteRoster[3].anima_id,
+    "candy-0-0",
+    "ace Elite diganti deterministik dari pool Battle zona yang sama",
+  );
+  assert.equal(
+    opponentRosterForEncounter(manifestWithAce, {
+      kind: "boss",
+      opponent_id: "candy-3",
+    }, 3)[3].special,
+    true,
+    "Boss tetap membawa ace untuk final_ace server-authoritative",
+  );
 
   const fresh = createTeamBattleState({
     player: prepareExpeditionRoster(roster("player"), []),

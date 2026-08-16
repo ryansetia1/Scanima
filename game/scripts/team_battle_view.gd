@@ -409,16 +409,12 @@ func play_events(
 		match str(event.get("type", "")):
 			"guard":
 				var guard_actor := str(event.get("actor", ""))
-				if guard_actor == "opponent":
-					await _cue_seeker_pose("concern_hit")
 				await _present_banner(
 					tr("BATTLE_EVENT_GUARD") % _actor_name(guard_actor),
 					BattleView.CUE_COLOR,
 					false
 				)
 				await _hide_effectiveness()
-				if guard_actor == "opponent":
-					_restore_seeker_idle()
 			"item":
 				var item_actor := str(event.get("actor", "player"))
 				await _present_banner(
@@ -457,10 +453,7 @@ func play_events(
 						"special_command" if action == "surge" else "attack_command"
 					)
 				await _play_attack(event)
-				if attack_actor == "opponent":
-					_restore_seeker_idle()
-				else:
-					await _react_seeker_attack(event)
+				_restore_seeker_idle()
 			"knockout":
 				var side := str(event.get("actor", ""))
 				_sprite_for(side).set_pose("defeated")
@@ -701,8 +694,7 @@ func _open_switch_picker(forced: bool) -> void:
 		button.self_modulate = Color.WHITE if hp > 0 else DIM
 		if slot < _switch_meters.size():
 			var meter := _switch_meters[slot]
-			meter.max_value = float(max_hp)
-			meter.value = float(hp)
+			BattleView.apply_hp_bar_state(meter, float(hp), float(max_hp))
 			meter.visible = true
 	_switch_cancel.visible = not forced
 	_switch_panel.visible = true
@@ -788,8 +780,9 @@ func _apply_side(
 	if update_hp:
 		var hp := _player_hp if side == "player" else _opponent_hp
 		var hp_value := _player_hp_value if side == "player" else _opponent_hp_value
-		hp.max_value = maxf(1.0, float(member.get("max_hp", 1)))
-		hp.value = float(member.get("hp", 0))
+		BattleView.apply_hp_bar_state(
+			hp, float(member.get("hp", 0)), float(member.get("max_hp", 1))
+		)
 		hp_value.text = LocaleManager.format_ratio(
 			int(member.get("hp", 0)),
 			int(member.get("max_hp", 1))
@@ -929,21 +922,26 @@ func _play_attack(event: Dictionary) -> void:
 		BattleView.CUE_COLOR,
 		false
 	)
-	actor.set_pose("attack")
-	if is_instance_valid(target):
+	await _hide_effectiveness()
+	if is_instance_valid(actor):
+		actor.set_pose("attack")
+	if is_instance_valid(actor) and is_instance_valid(target):
 		var fx := "fx_surge" if str(event.get("action", "")) == "surge" else "fx_strike"
 		actor.play_fx(fx, target.body_center_global())
 	var element_multiplier := float(event.get("element_multiplier", 1.0))
 	var effect_key := BattleView.effectiveness_key(element_multiplier)
 	await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)
+	if is_instance_valid(actor):
+		actor.set_pose("idle")
 	var hp := int(event.get("target_hp", 0))
 	if target_side == "player":
-		_player_hp.value = hp
+		BattleView.apply_hp_bar_state(_player_hp, float(hp), _player_hp.max_value)
 		_player_hp_value.text = LocaleManager.format_ratio(hp, int(_player_hp.max_value))
 	else:
-		_opponent_hp.value = hp
+		BattleView.apply_hp_bar_state(_opponent_hp, float(hp), _opponent_hp.max_value)
 		_opponent_hp_value.text = LocaleManager.format_ratio(hp, int(_opponent_hp.max_value))
 	if is_instance_valid(target):
+		_react_seeker_attack(event)
 		target.hit_react()
 		if UiMotion.reduced_motion:
 			target.modulate = Color.WHITE
@@ -953,6 +951,7 @@ func _play_attack(event: Dictionary) -> void:
 			flash.tween_property(target, "modulate", Color.WHITE, 0.28)
 			Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
 	await _play_damage(int(event.get("damage", 0)), element_multiplier)
+	_restore_seeker_idle()
 	if not effect_key.is_empty():
 		await _present_banner(
 			tr(effect_key),
@@ -960,7 +959,6 @@ func _play_attack(event: Dictionary) -> void:
 			effect_key == "BATTLE_EFFECTIVE"
 		)
 	await _hide_effectiveness()
-	actor.set_pose("idle")
 
 
 func _present_banner(text: String, color: Color, big: bool = true) -> void:
@@ -1528,7 +1526,7 @@ func _sync_shadow(side: String) -> void:
 func _make_ground_shadow(anchor: Node2D) -> Sprite2D:
 	var gradient := Gradient.new()
 	gradient.colors = PackedColorArray([
-		Color(0.01, 0.02, 0.05, 0.90),
+		Color(0.01, 0.02, 0.05, 0.45),
 		Color(0.01, 0.02, 0.05, 0.0),
 	])
 	var texture := GradientTexture2D.new()
@@ -1977,7 +1975,8 @@ func _summon_boss_opening() -> void:
 	await _event_pause(0.42)
 	_intro_pending_summon = false
 	_apply_side(_session, "opponent", true, false)
-	_position_seeker()
+	# Intro forced the opponent above the Seeker; recompute before reveal.
+	_position_fighters()
 	var sprite := _opponent_sprite
 	var portal := _opponent_portal
 	if UiMotion.reduced_motion or not is_instance_valid(sprite):
@@ -1997,11 +1996,13 @@ func _summon_boss_opening() -> void:
 
 
 func _react_seeker_attack(event: Dictionary) -> void:
-	if not _is_boss_encounter() or not is_instance_valid(_seeker):
+	if (
+		not _is_boss_encounter()
+		or not is_instance_valid(_seeker)
+		or str(event.get("target", "")) != "opponent"
+	):
 		return
-	if str(event.get("target", "")) == "opponent":
-		await _cue_seeker_pose("concern_hit")
-		_restore_seeker_idle()
+	_seeker.set_pose("concern_hit")
 
 
 func _cue_seeker_command(trigger: String, pose: String) -> void:
