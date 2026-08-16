@@ -87,11 +87,14 @@ Seeker.
   Energy anggota sudah 0. Retry dan melanjutkan run juga tidak membayar ulang.
 - Encounter Expedition memakai arena penuh yang sama: art zona mengisi layar,
   Anima berpijak dengan bayangan, dan **Retreat** di paling kanan baris
-  bawah adalah satu-satunya cara keluar. Sesudah zona selesai, **Start Zone**
-  memakai tim run yang sama — tidak perlu membangun tim lagi. Navigasi tab
-  dan chip resource tidak tampil selama fight.
-- Kamu bisa mengganti Anima aktif saat battle; HP penuh saat zona dimulai, lalu
-  bertahan antar-node di zona yang sama, sedangkan PP kembali penuh pada
+  bawah adalah satu-satunya cara keluar. Navigasi tab dan chip resource tidak
+  tampil selama fight.
+- HP penuh saat Zona 1 dimulai. Sesudah Zona 1 dan 2, pilih satu manfaat sebelum
+  **Start Zone**: **Recover** memulihkan 50% max HP semua anggota dan
+  membangunkan Anima KO dengan 50% HP; **Power Up** mempertahankan HP lalu
+  menaikkan Attack, Guard, dan Speed 10% selama zona berikutnya saja.
+- Kamu bisa mengganti Anima aktif saat battle. HP bertahan antar-node dan
+  melewati checkpoint sesuai pilihanmu, sedangkan PP kembali penuh pada
   encounter berikutnya.
 - Sesudah menang Battle, Elite, atau Boss, layar hasil menampilkan Tokens,
   EXP tiap anggota, dan siapa yang naik Level. Stats dari Level baru dipakai
@@ -105,6 +108,10 @@ Seeker.
   **Continue** kembali ke peta. Tokens hilang saat run selesai.
 - Empat anggota terkunci selama run. Tim baru bisa diedit setelah chapter
   selesai atau **Abandon**.
+- **Abandon** selalu meminta konfirmasi. Ini mengakhiri run permanen: progress
+  zona aktif, Tokens, dan boost tidak dapat dipakai lagi, serta Energy masuk
+  tidak kembali. Reward yang sudah diterima tetap aman. Run baru membuat route
+  baru.
 - Run bisa ditutup dan dilanjutkan lagi; progress zona yang selesai tidak hilang.
 - Jika seluruh tim KO, atau kamu **Retreat** dari fight, attempt zona itu
   dimulai ulang dari awal. Zona sebelumnya tetap selesai.

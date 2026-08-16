@@ -86,6 +86,7 @@ import {
   nextNodeIds,
   opponentForNode,
   prepareExpeditionRoster,
+  prepareExpeditionZoneRoster,
   publicBossSeeker,
   validateChapterManifest,
 } from "../backend/supabase/functions/_shared/expedition.mjs";
@@ -1795,7 +1796,7 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
   });
   assert.ok(
     fresh.player.roster.every((fighter) => fighter.hp === fighter.max_hp),
-    "zona baru harus mulai dengan HP penuh",
+    "zona pertama harus mulai dengan HP penuh",
   );
   assert.equal(
     fresh.player.roster[0].max_hp,
@@ -1841,6 +1842,51 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
   assert.ok(
     encounter.player.roster[2].max_hp > 50,
     "max HP Battle tidak boleh jatuh ke base_stats.hp",
+  );
+  const checkpointParty = encounter.player.roster.map((fighter, index) => ({
+    anima_id: `player-${index}`,
+    hp: index === 0 ? 0 : Math.max(1, fighter.max_hp - 80),
+    current_hp: index === 0 ? 0 : Math.max(1, fighter.max_hp - 80),
+    max_hp: fighter.max_hp,
+    boosts_applied: true,
+    base_stats: { hp: 50, atk: 80, def: 80, spd: 80, special: 50 },
+  }));
+  const poweredZone = createTeamBattleState({
+    player: prepareExpeditionZoneRoster(
+      roster("player"),
+      checkpointParty,
+      [],
+      "power_up",
+    ),
+    opponent: opponents[0].roster,
+    seed: "checkpoint-power",
+  });
+  assert.equal(poweredZone.player.roster[0].hp, 0, "Power Up tidak boleh membangunkan KO");
+  assert.equal(
+    poweredZone.player.roster[1].hp,
+    checkpointParty[1].hp,
+    "Start zona berikutnya harus mempertahankan HP checkpoint",
+  );
+  assert.ok(
+    poweredZone.player.roster[1].atk > fresh.player.roster[1].atk
+    && poweredZone.player.roster[1].def > fresh.player.roster[1].def
+    && poweredZone.player.roster[1].spd > fresh.player.roster[1].spd,
+    "Power Up memberi +10% Attack, Guard, dan Speed untuk zona berikutnya",
+  );
+  const expiredPower = createTeamBattleState({
+    player: prepareExpeditionZoneRoster(
+      roster("player"),
+      poweredZone.player.roster,
+      [],
+      "recover",
+    ),
+    opponent: opponents[0].roster,
+    seed: "checkpoint-power-expired",
+  });
+  assert.equal(
+    expiredPower.player.roster[1].atk,
+    fresh.player.roster[1].atk,
+    "Power Up checkpoint harus kedaluwarsa pada zona berikutnya",
   );
 
   const levelOne = toBattleStats(
@@ -1996,6 +2042,7 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     expeditionEdge.includes('"feature_expedition"') &&
       expeditionEdge.includes('"ack_home_popup"') &&
       expeditionEdge.includes('"start_zone"') &&
+      expeditionEdge.includes('"checkpoint_choice"') &&
       expeditionEdge.includes('"refresh_shop"'),
     "flag Expedition harus menutup start baru tanpa mengunci lifecycle run lama",
   );

@@ -1,7 +1,7 @@
 // POST /expedition
 // Content: chapters | chapter | trophies | feature_trophies
-// Run: save_team | start_run | start_zone | resume | enter_node | choose |
-//      refresh_shop | turn | forfeit | abandon
+// Run: save_team | start_run | checkpoint_choice | start_zone | resume |
+//      enter_node | choose | refresh_shop | turn | forfeit | abandon
 
 import { adminClient, clientVersionGate, json, syncProfileTimezone } from "../_shared/supa.ts";
 import {
@@ -12,6 +12,7 @@ import {
   nextNodeIds,
   opponentForNode,
   prepareExpeditionRoster,
+  prepareExpeditionZoneRoster,
   publicBossSeeker,
   validateChapterManifest,
 } from "../_shared/expedition.mjs";
@@ -33,6 +34,7 @@ const LIFECYCLE_OPERATIONS = new Set([
   "team",
   "save_team",
   "start_zone",
+  "checkpoint_choice",
   "resume",
   "enter_node",
   "choose",
@@ -72,6 +74,7 @@ const ERROR_STATUS: Record<string, number> = {
   INVALID_EXPEDITION_ENCOUNTER: 400,
   INVALID_CHAPTER_COMPLETION: 400,
   INVALID_EXPEDITION_CHECKPOINT: 400,
+  INVALID_EXPEDITION_CHECKPOINT_CHOICE: 400,
   UNSUPPORTED_CHAPTER_SCHEMA: 409,
   UNSUPPORTED_CHAPTER_EFFECT: 409,
   CHAPTER_NOT_AVAILABLE: 404,
@@ -87,6 +90,8 @@ const ERROR_STATUS: Record<string, number> = {
   EXPEDITION_RUN_NOT_FOUND: 404,
   EXPEDITION_ENCOUNTER_NOT_FOUND: 404,
   EXPEDITION_NOT_AT_CHECKPOINT: 409,
+  EXPEDITION_CHECKPOINT_CHOICE_REQUIRED: 409,
+  EXPEDITION_CHECKPOINT_CHOICE_UNAVAILABLE: 409,
   EXPEDITION_NODE_PENDING: 409,
   EXPEDITION_ENCOUNTER_FINISHED: 409,
   EXPEDITION_ENCOUNTER_EXPIRED: 409,
@@ -158,6 +163,8 @@ type RunRow = {
   boosts: unknown[];
   party_state: Record<string, unknown>[];
   pending_node: Record<string, unknown> | null;
+  checkpoint_choice: string | null;
+  checkpoint_choice_pending: boolean;
 };
 
 type EncounterRow = {
@@ -225,6 +232,7 @@ Deno.serve(async (req) => {
     if (operation === "save_team") return await saveTeam(ownerId, body);
     if (operation === "start_run") return await startRun(ownerId, body, req);
     if (operation === "start_zone") return await startZone(ownerId, body);
+    if (operation === "checkpoint_choice") return await chooseCheckpoint(ownerId, body);
     if (operation === "resume") return await resume(ownerId, body);
     if (operation === "enter_node") return await enterNode(ownerId, body);
     if (operation === "choose") return await chooseNodeOption(ownerId, body);
@@ -347,6 +355,9 @@ async function startRun(ownerId: string, body: ExpeditionBody, req: Request): Pr
 
 async function startZone(ownerId: string, body: ExpeditionBody): Promise<Response> {
   const run = await loadRun(ownerId, asUuid(body.run_id, "run_id"));
+  if (run.checkpoint_choice_pending || (run.zone > 1 && !run.checkpoint_choice)) {
+    throw new Error("EXPEDITION_CHECKPOINT_CHOICE_REQUIRED");
+  }
   const expectedVersion = asPositiveInteger(body.expected_version, "expected_version");
   const key = asKey(body.idempotency_key);
   const teamId = asUuid(body.team_id, "team_id");
@@ -359,7 +370,12 @@ async function startZone(ownerId: string, body: ExpeditionBody): Promise<Respons
   const manifest = validateChapterManifest(version.manifest);
   const seed = crypto.randomUUID();
   const map = generateZoneMap(manifest, run.zone, run.zone_attempt + 1, seed);
-  const prepared = prepareExpeditionRoster(teamSnapshot(team), [], run.boosts);
+  const prepared = prepareExpeditionZoneRoster(
+    teamSnapshot(team),
+    run.party_state,
+    run.boosts,
+    run.checkpoint_choice,
+  );
   const fighters = createTeamParty(prepared, true).roster;
   const partyState = prepared.map((member, index) => ({
     ...member,
@@ -376,6 +392,22 @@ async function startZone(ownerId: string, body: ExpeditionBody): Promise<Respons
     p_party_state: partyState,
     p_zone_map: map,
     p_key: key,
+  });
+  if (error) throw error;
+  return json(200, await withFreshExpeditionArt({ run: data }));
+}
+
+async function chooseCheckpoint(ownerId: string, body: ExpeditionBody): Promise<Response> {
+  const optionId = asTextId(body.option_id, "option_id");
+  if (!["recover", "power_up"].includes(optionId)) {
+    throw new Error("INVALID_EXPEDITION_CHECKPOINT_CHOICE");
+  }
+  const { data, error } = await db.rpc("commit_expedition_checkpoint_choice", {
+    p_owner: ownerId,
+    p_run_id: asUuid(body.run_id, "run_id"),
+    p_expected_version: asPositiveInteger(body.expected_version, "expected_version"),
+    p_option_id: optionId,
+    p_key: asKey(body.idempotency_key),
   });
   if (error) throw error;
   return json(200, await withFreshExpeditionArt({ run: data }));

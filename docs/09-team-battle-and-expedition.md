@@ -62,6 +62,13 @@ memakan turn berikutnya. PP, HP, buff, dan status item milik masing-masing
 fighter bertahan selama encounter. Satu item Battle hanya boleh dipakai sekali
 untuk seluruh encounter.
 
+Sesudah art anggota baru dipasang dalam keadaan tersembunyi, client langsung
+menghitung ulang rasio tinggi, posisi, layer, framing kamera, Boss Seeker, dan
+backdrop. Layout lama lalu bergerak ke target selama 0,32 detik bersamaan dengan
+charge portal, sebelum Anima baru di-reveal atau serangan berikutnya dimainkan.
+Reduced Motion menerapkan target tanpa tween. Reframe tidak boleh ditunda sampai
+event Attack berikutnya atau commit session di akhir event log.
+
 Menang berarti seluruh roster lawan KO. Saat turn ceiling tercapai, hasil
 ditentukan dari rasio total HP roster yang tersisa; rasio sama menjadi draw dan
 tidak memberi reward.
@@ -117,8 +124,23 @@ Anima; roster lawan chapter memakai slug konten (`sugarworks-gumdrop`) dan
 dibandingkan sebagai text, bukan UUID. Config wire
 `expedition_energy_per_member` berarti biaya masuk per run, bukan biaya zona.
 
-HP penuh saat zona dimulai, lalu bertahan antar-node dalam zona; PP kembali
-penuh setiap encounter. Arena memakai `zones[].background_path` dari manifest.
+HP penuh hanya saat Zona 1 dimulai. Sesudah Zona 1 dan 2 selesai, run berhenti
+di checkpoint dan server mewajibkan tepat satu pilihan idempoten sebelum zona
+berikutnya:
+
+- **Recover** menambah 50% max HP ke setiap anggota, dijepit ke max HP; anggota
+  KO bangkit dengan 50% max HP.
+- **Power Up** mempertahankan HP dan memberi +10% Attack, Guard, serta Speed
+  selama zona berikutnya saja. Boost ini tidak masuk ke daftar boost permanen
+  run dan kedaluwarsa pada checkpoint berikutnya.
+
+HP sesudah pilihan bertahan ke zona berikutnya; PP tetap kembali penuh setiap
+encounter. Nilai 50% dipilih untuk chapter pemula: ia cukup memulihkan satu
+roster yang rusak tanpa menghapus keputusan rute atau membuat Boss Zona 3
+otomatis mudah. Power Up menjadi pilihan untuk tim yang masih sehat, bukan heal
+gratis sekaligus buff.
+
+Arena memakai `zones[].background_path` dari manifest.
 Art zona adalah backdrop Battle, bukan peta node: kaki petarung duduk dekat
 88% tinggi stage, layar tinggi mencrop sisi kiri/kanan, dan Boss Seeker
 mengisi pita kanan. Background wajib menyediakan lantai padat lebar di pita
@@ -133,8 +155,12 @@ berikutnya di zona yang sama. Retreat dari encounter memakai reset zona yang sam
 3. HP, Tokens (wire `supplies`), dan boost dari attempt gagal dibatalkan,
 4. Bits untuk refresh Shop direfund sekali lewat ledger idempoten.
 
-Zona yang sudah selesai tidak hilang. Abandon manual menutup run setelah refund
-attempt yang masih berhak.
+Zona yang sudah selesai tidak hilang saat attempt zona gagal. **Abandon** manual
+selalu membuka dialog destruktif: run berakhir permanen, progres zona aktif,
+Tokens, dan boost run tidak dapat dipakai lagi, serta biaya Energy masuk tidak
+dikembalikan. Reward yang sudah authoritative tetap dimiliki. Run baru memakai
+seed baru sehingga route-nya juga baru; refresh Shop yang memang eligible tetap
+mengikuti refund idempoten server.
 
 ### Node allowlist
 

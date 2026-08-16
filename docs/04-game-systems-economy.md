@@ -564,8 +564,11 @@ memberi reward satu kali + Trophy. Bits hanya keluar untuk satu refresh Shop
 opsional; jika attempt zona gagal, debit itu direfund idempoten bersama rollback
 checkpoint.
 
-HP persisten hanya di dalam zona, PP reset tiap encounter, dan growth dari EXP
-baru dipakai di encounter Battle berikutnya di zona yang sama. Aturan roster, switch, node,
+HP persisten antar-node dan antar-zona. Sebelum Zona 2/3, checkpoint
+server-authoritative mewajibkan Recover (+50% max HP; KO bangkit 50%) atau Power
+Up (+10% Attack/Guard/Speed untuk satu zona). PP reset tiap encounter, dan
+growth dari EXP dipakai di encounter Battle berikutnya; kenaikan max HP menambah
+sisa HP sebesar delta max HP tanpa membangunkan KO. Aturan roster, switch, node,
 checkpoint, Trophy, dan Chapter Factory ada di
 [`09-team-battle-and-expedition.md`](09-team-battle-and-expedition.md).
 

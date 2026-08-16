@@ -6,6 +6,7 @@ signal chapter_requested(chapter_version_id: String)
 signal save_team_requested(anima_ids: Array[String])
 signal start_run_requested(chapter_version_id: String, team_id: String)
 signal start_zone_requested(run_id: String, team_id: String)
+signal checkpoint_choice_requested(option_id: String)
 signal enter_node_requested(node_id: String)
 signal choice_requested(option_id: String, target_slot: int)
 signal refresh_shop_requested
@@ -325,6 +326,9 @@ func set_run(
 	_combat.visible = false
 	_column.visible = true
 	_emit_combat_open()
+	if bool(_run.get("checkpoint_choice_pending", false)):
+		_show_checkpoint_choice()
+		return
 	var pending := GameState.as_dict(_run.get("pending_node"))
 	if not pending.is_empty() and not str(pending.get("kind", "")) in ["battle", "elite", "boss"]:
 		_show_choice(pending)
@@ -357,7 +361,7 @@ func _show_only(panel: Control) -> void:
 	_emit_combat_open()
 	for child in [_loading, _catalog, _detail, _builder, _map, _choice, _complete]:
 		(child as Control).visible = child == panel
-	_subtitle.visible = panel != _map
+	_subtitle.visible = panel not in [_map, _choice]
 	_sync_back_chrome()
 
 
@@ -477,7 +481,8 @@ func _sync_map_primary() -> void:
 		return
 	var checkpoint := str(_run.get("status", "")) == "checkpoint"
 	_map_primary.disabled = _busy or (
-		_team_id().is_empty() if checkpoint else _selected_route_node.is_empty()
+		(_team_id().is_empty() or bool(_run.get("checkpoint_choice_pending", false)))
+		if checkpoint else _selected_route_node.is_empty()
 	)
 
 
@@ -522,6 +527,42 @@ func _completion_text() -> String:
 			LocaleManager.format_integer(int(reward.get("bits", 0))),
 		],
 	]
+
+
+func _show_checkpoint_choice() -> void:
+	_choice_title.text = tr("EXPEDITION_CHECKPOINT_CHOICE_TITLE")
+	var reward := GameState.as_dict(_run.get("last_zone_reward"))
+	var reward_text := ""
+	if not reward.is_empty():
+		reward_text = tr("EXPEDITION_ZONE_REWARD") % [
+			LocaleManager.format_integer(int(reward.get("zone", 0))),
+			LocaleManager.format_integer(int(reward.get("bits", 0))),
+		]
+	var hp_text := _injured_party_text(_as_array(_run.get("party_state")))
+	_choice_meta.text = (
+		tr("EXPEDITION_TWO_LINES") % [reward_text, hp_text]
+		if not reward_text.is_empty() and not hp_text.is_empty()
+		else (reward_text if not reward_text.is_empty() else hp_text)
+	)
+	_choice_meta.visible = not _choice_meta.text.is_empty()
+	for child in _choice_buttons.get_children():
+		child.free()
+	for option_id: String in ["recover", "power_up"]:
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(0, 96)
+		button.theme_type_variation = &"PrimaryButton"
+		button.text = tr(
+			"EXPEDITION_CHECKPOINT_RECOVER"
+			if option_id == "recover" else "EXPEDITION_CHECKPOINT_POWER_UP"
+		)
+		button.pressed.connect(checkpoint_choice_requested.emit.bind(option_id))
+		_choice_buttons.add_child(button)
+	_target_list.visible = false
+	_target_confirm.visible = false
+	_pending_option = {}
+	_refresh_shop.visible = false
+	_show_only(_choice)
+	set_busy(false)
 
 
 func _show_choice(node: Dictionary) -> void:
@@ -842,6 +883,9 @@ func _error_key(code: String) -> String:
 		"INVALID_EXPEDITION_MAP": "EXPEDITION_INVALID_MAP",
 		"INVALID_EXPEDITION_NODE": "EXPEDITION_NODE_UNAVAILABLE",
 		"INVALID_EXPEDITION_CHOICE": "EXPEDITION_CHOICE_INVALID",
+		"INVALID_EXPEDITION_CHECKPOINT_CHOICE": "EXPEDITION_CHECKPOINT_CHOICE_INVALID",
+		"EXPEDITION_CHECKPOINT_CHOICE_REQUIRED": "EXPEDITION_CHECKPOINT_CHOICE_REQUIRED",
+		"EXPEDITION_CHECKPOINT_CHOICE_UNAVAILABLE": "EXPEDITION_CHECKPOINT_CHOICE_INVALID",
 		"EXPEDITION_SHOP_REFRESH_UNAVAILABLE": "EXPEDITION_SHOP_REFRESH_UNAVAILABLE",
 		"EXPEDITION_ENCOUNTER_EXPIRED": "EXPEDITION_ENCOUNTER_EXPIRED",
 		"EXPEDITION_RUN_NOT_FOUND": "EXPEDITION_RUN_NOT_FOUND",

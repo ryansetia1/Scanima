@@ -28,10 +28,10 @@ func configure(view: ExpeditionView, battle_view: BattleView) -> void:
 	_view.save_team_requested.connect(_save_team)
 	_view.start_run_requested.connect(_start_run)
 	_view.start_zone_requested.connect(_start_zone)
+	_view.checkpoint_choice_requested.connect(_choose_checkpoint)
 	_view.enter_node_requested.connect(_enter_node)
 	_view.choice_requested.connect(_choose)
 	_view.refresh_shop_requested.connect(_refresh_shop)
-	_view.abandon_requested.connect(_abandon)
 	_view.action_requested.connect(_request_turn)
 	_view.item_picker_requested.connect(item_picker_requested.emit)
 	_view.combat_continue_requested.connect(_continue_after_combat)
@@ -40,6 +40,10 @@ func configure(view: ExpeditionView, battle_view: BattleView) -> void:
 
 func forfeit() -> void:
 	await _forfeit()
+
+
+func abandon() -> void:
+	await _abandon()
 
 
 func set_roster(roster: Array) -> void:
@@ -222,6 +226,15 @@ func _start_zone(_run_id: String, team_id: String) -> void:
 		return
 	var pending := GameState.begin_expedition_operation("start_zone", {
 		"team_id": team_id,
+	})
+	await _submit_pending(pending)
+
+
+func _choose_checkpoint(option_id: String) -> void:
+	if _busy or option_id not in ["recover", "power_up"]:
+		return
+	var pending := GameState.begin_expedition_operation("checkpoint_choice", {
+		"option_id": option_id,
 	})
 	await _submit_pending(pending)
 
@@ -553,6 +566,7 @@ func _loading_key(operation: String) -> String:
 	return str({
 		"start_run": "EXPEDITION_STARTING_RUN",
 		"start_zone": "EXPEDITION_STARTING_ZONE",
+		"checkpoint_choice": "EXPEDITION_APPLYING_CHECKPOINT",
 		"enter_node": "EXPEDITION_ENTERING_NODE",
 		"choose": "EXPEDITION_CHOOSING",
 		"refresh_shop": "EXPEDITION_REFRESHING_SHOP",
@@ -568,13 +582,13 @@ static func operation_payload(pending: Dictionary) -> Dictionary:
 		payload["team_id"] = str(pending.get("team_id", ""))
 		return payload
 	payload["run_id"] = str(pending.get("run_id", ""))
-	if operation in ["start_zone", "enter_node", "choose", "refresh_shop"]:
+	if operation in ["start_zone", "checkpoint_choice", "enter_node", "choose", "refresh_shop"]:
 		payload["expected_version"] = int(pending.get("run_version", 1))
 	if operation == "start_zone":
 		payload["team_id"] = str(pending.get("team_id", ""))
 	if operation == "enter_node":
 		payload["node_id"] = str(pending.get("node_id", ""))
-	if operation == "choose":
+	if operation in ["checkpoint_choice", "choose"]:
 		payload["option_id"] = str(pending.get("option_id", ""))
 		var target_slot := int(pending.get("target_slot", -1))
 		if target_slot >= 0:

@@ -1742,6 +1742,7 @@ func _test_team_battle_view() -> void:
 			"momentum_max": 3,
 			"strike_name": "Team Tap",
 			"surge_name": "Team Burst",
+			"body_height_cm": 75 if index == 0 else 180 if index == 1 else 90,
 		}
 		player_state.append(fighter)
 		player_snapshots.append({"anima_id": anima_id, "care_score": 4 if index == 0 else 0})
@@ -2042,9 +2043,39 @@ func _test_team_battle_view() -> void:
 	view.set_busy(false)
 	var switched := session.duplicate(true)
 	switched["state"]["player"]["active_slot"] = 1
-	await view.play_events([
+	var switch_camera_layer := player_anchor.get_parent() as Node2D
+	var camera_before := switch_camera_layer.scale
+	var previous_layout: Dictionary = view.call("_fighter_layout")
+	view.call("_apply_side", switched, "player", true, false)
+	UiMotion.set_reduced_motion(false)
+	var refit := view.call(
+		"_reframe_for_switch", switched, previous_layout, true
+	) as Tween
+	_check(
+		refit != null
+		and refit.is_running()
+		and switch_camera_layer.scale.is_equal_approx(camera_before),
+		"Switch camera refit starts from the current framing instead of snapping"
+	)
+	if refit != null and refit.is_running():
+		await refit.finished
+	var camera_after := switch_camera_layer.scale
+	_check(
+		not camera_after.is_equal_approx(camera_before),
+		"Switch camera refit reaches framing for the incoming Anima height"
+	)
+	view.set_session(session, art_cache)
+	await process_frame
+	await view.call(
+		"_play_switch",
 		{"type": "switch", "actor": "player", "from_slot": 0, "to_slot": 1},
-	], switched)
+		switched
+	)
+	UiMotion.set_reduced_motion(true)
+	_check(
+		switch_camera_layer.scale.is_equal_approx(camera_after),
+		"Switch applies the new framing before the next attack event"
+	)
 	_check(
 		player_name.text.begins_with("Team 2") and player_name.text.contains(tr("LEVEL_SHORT")),
 		"Switch replaces the active fighter after the Summon handoff"
@@ -2352,6 +2383,18 @@ func _test_expedition_view() -> void:
 		and not choice_payload.has("target_slot"),
 		"Expedition choice payload omits an unused target slot"
 	)
+	var checkpoint_payload: Dictionary = controller_script.operation_payload({
+		"operation": "checkpoint_choice",
+		"run_id": "run",
+		"run_version": 4,
+		"option_id": "power_up",
+		"idempotency_key": "checkpoint-key",
+	})
+	_check(
+		checkpoint_payload.get("expected_version") == 4
+		and checkpoint_payload.get("option_id") == "power_up",
+		"Expedition checkpoint choice persists its authoritative option and version"
+	)
 	_check(
 		controller_script.pending_matches(
 			{
@@ -2383,6 +2426,12 @@ func _test_expedition_view() -> void:
 		flow_source.find("await _expedition_controller.resume_pending()") >= 0
 		and flow_source.find("GameState.pending_expedition.is_empty()") >= 0,
 		"shell boot resumes a persisted Expedition before opening another Battle mode"
+	)
+	_check(
+		flow_source.find("abandon_requested.connect(_confirm_expedition_abandon)") >= 0
+		and flow_source.find("EXPEDITION_ABANDON_CONFIRM") >= 0
+		and flow_source.find("_expedition_controller.abandon()") >= 0,
+		"Expedition Abandon requires a destructive consequence dialog before commit"
 	)
 	var packed := load("res://scenes/ui/expedition_view.tscn") as PackedScene
 	var view := packed.instantiate()
@@ -2501,14 +2550,39 @@ func _test_expedition_view() -> void:
 	var checkpoint := run.duplicate(true)
 	checkpoint["status"] = "checkpoint"
 	checkpoint["zone"] = 2
+	checkpoint["checkpoint_choice_pending"] = true
+	checkpoint["last_zone_reward"] = {"zone": 1, "bits": 10}
 	view.set_team({})
+	view.set_run(checkpoint)
+	var checkpoint_choice := view.find_child("ExpeditionChoice", true, false) as Control
+	var checkpoint_buttons := view.find_child("ExpeditionChoiceButtons", true, false) as VBoxContainer
+	var expedition_subtitle := view.find_child("Subtitle", true, false) as Label
+	_check(
+		checkpoint_choice.visible
+		and not expedition_subtitle.visible
+		and checkpoint_buttons.get_child_count() == 2
+		and (checkpoint_buttons.get_child(0) as Button).text.contains("50%")
+		and (checkpoint_buttons.get_child(1) as Button).text.contains("10%"),
+		"checkpoint hides lobby copy and requires Recover or one-zone Power Up"
+	)
+	var selected_checkpoint := {"id": ""}
+	view.checkpoint_choice_requested.connect(func(option_id: String) -> void:
+		selected_checkpoint["id"] = option_id
+	)
+	(checkpoint_buttons.get_child(0) as Button).pressed.emit()
+	_check(
+		selected_checkpoint.id == "recover",
+		"checkpoint benefit button emits only its server-authoritative option id"
+	)
+	checkpoint["checkpoint_choice_pending"] = false
+	checkpoint["checkpoint_choice"] = "recover"
 	view.set_run(checkpoint)
 	_check(
 		not route_map.visible
 		and map_primary.visible
 		and not map_primary.disabled
 		and view.call("_team_id") == "expedition-team",
-		"checkpoint Start Zone stays tappable using the run team"
+		"checkpoint Start Zone unlocks only after the server commits a benefit"
 	)
 	view.set_team({"id": "expedition-team"})
 	run["pending_node"] = {

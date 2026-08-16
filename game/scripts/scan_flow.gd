@@ -176,6 +176,7 @@ func _ready() -> void:
 	add_child(_expedition_controller)
 	_expedition_controller.configure(_expedition_view, _battle_view)
 	_expedition_view.forfeit_requested.connect(_confirm_retreat.bind("expedition"))
+	_expedition_view.abandon_requested.connect(_confirm_expedition_abandon)
 	_expedition_controller.item_picker_requested.connect(_open_battle_item_picker)
 	_expedition_controller.inventory_refresh_requested.connect(_refresh_inventory)
 	_expedition_controller.authority_refresh_requested.connect(_refresh_team_battle_authority)
@@ -804,6 +805,9 @@ func _modal_confirmed(text: String) -> void:
 			_ack_chapter_popup(true)
 		&"retreat":
 			_retreat_confirmed()
+		&"expedition_abandon":
+			if is_instance_valid(_expedition_controller):
+				_expedition_controller.abandon()
 
 
 func _modal_canceled() -> void:
@@ -1635,6 +1639,19 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 	if str(pending.get("action", "")) == "item":
 		_refresh_inventory()
 	await _apply_battle_reward(GameState.as_dict(data.get("reward")), next_session)
+
+
+func _confirm_expedition_abandon() -> void:
+	if _busy or (is_instance_valid(_shell_modal) and _shell_modal.visible):
+		return
+	_modal_context = &"expedition_abandon"
+	_shell_modal.open_confirm(
+		tr("EXPEDITION_ABANDON_TITLE"),
+		tr("EXPEDITION_ABANDON_CONFIRM"),
+		tr("EXPEDITION_ABANDON_ACTION"),
+		tr("ACTION_CANCEL"),
+		true
+	)
 
 
 func _confirm_retreat(kind: String) -> void:

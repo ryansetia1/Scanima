@@ -2755,6 +2755,16 @@ begin
       v_expedition_map->'nodes'->0, 'test-enter-zone-1-exit'
     );
     v := (v_j->>'version')::integer;
+    select jsonb_agg(
+      member || jsonb_build_object(
+        'hp', case ordinality when 1 then 0 when 2 then 10 when 3 then 30 else 50 end,
+        'current_hp', case ordinality when 1 then 0 when 2 then 10 when 3 then 30 else 50 end,
+        'max_hp', 50
+      )
+      order by ordinality
+    ) into v_expedition_party
+      from jsonb_array_elements(v_expedition_party)
+      with ordinality as roster(member, ordinality);
     v_j := public.commit_expedition_choice(
       u1, v_expedition_run, v, 'zone-1-exit', 'continue',
       v_expedition_party, 0, '[]'::jsonb, '[]'::jsonb, true,
@@ -2762,6 +2772,7 @@ begin
     );
     assert (v_j->>'status') = 'checkpoint'
            and (v_j->>'zone')::integer = 2
+           and (v_j->>'checkpoint_choice_pending')::boolean
            and (v_j->'last_zone_reward'->>'bits')::integer = 10
            and (v_j->'daily_bits'->>'bits_earned')::integer = 10
            and (v_j->'daily_bits'->>'bits_limit')::integer = 60,
@@ -2776,6 +2787,35 @@ begin
                  where run_id = v_expedition_run and zone = 1) = 1,
            'replay checkpoint Zone 1 tidak boleh mint kedua kali';
     v := (v_j->>'version')::integer;
+    begin
+      perform public.start_expedition_zone(
+        u1, v_expedition_run, v, v_team_id, 'test-choice-required',
+        v_expedition_party, v_expedition_map, 'test-choice-required'
+      );
+      ok := false;
+    exception when others then
+      ok := sqlerrm = 'EXPEDITION_CHECKPOINT_CHOICE_REQUIRED';
+    end;
+    assert ok, 'zona berikutnya tidak boleh dimulai sebelum checkpoint choice';
+
+    v_j := public.commit_expedition_checkpoint_choice(
+      u1, v_expedition_run, v, 'recover', 'test-checkpoint-recover'
+    );
+    assert not (v_j->>'checkpoint_choice_pending')::boolean
+           and v_j->>'checkpoint_choice' = 'recover'
+           and (v_j->'party_state'->0->>'hp')::integer = 25
+           and (v_j->'party_state'->1->>'hp')::integer = 35
+           and (v_j->'party_state'->2->>'hp')::integer = 50
+           and (v_j->'party_state'->3->>'hp')::integer = 50,
+           'Recover harus heal 50 persen dan membangunkan KO pada 50 persen';
+    v_j2 := public.commit_expedition_checkpoint_choice(
+      u1, v_expedition_run, v, 'recover', 'test-checkpoint-recover'
+    );
+    assert (v_j2->>'replayed')::boolean
+           and v_j2->'party_state' = v_j->'party_state',
+           'replay Recover tidak boleh heal checkpoint dua kali';
+    v := (v_j->>'version')::integer;
+    v_expedition_party := v_j->'party_state';
 
     v_expedition_map := '{
       "entry":["zone-2-exit"],
@@ -2803,9 +2843,17 @@ begin
     );
     assert (v_j->>'status') = 'checkpoint'
            and (v_j->>'zone')::integer = 3
+           and (v_j->>'checkpoint_choice_pending')::boolean
            and (v_j->'last_zone_reward'->>'bits')::integer = 20
            and (v_j->'daily_bits'->>'bits_earned')::integer = 30,
            'checkpoint RPC Zone 2 harus memberi 20 Bits dari manifest';
+    v := (v_j->>'version')::integer;
+    v_j := public.commit_expedition_checkpoint_choice(
+      u1, v_expedition_run, v, 'power_up', 'test-checkpoint-power'
+    );
+    assert not (v_j->>'checkpoint_choice_pending')::boolean
+           and v_j->>'checkpoint_choice' = 'power_up',
+           'Power Up harus disimpan sampai Start Zone berikutnya';
 
     -- Represent 20 Bits earned by another completed run in this stable chapter.
     -- The live Boss clear below must clip its scheduled 30 Bits to the 10 left.
@@ -2839,6 +2887,9 @@ begin
       u1, v_expedition_run, v, v_team_id, 'test-zone-3-seed',
       v_expedition_party, v_expedition_map, 'test-zone-3-start'
     );
+    assert v_j->>'checkpoint_choice' is null
+           and not (v_j->>'checkpoint_choice_pending')::boolean,
+           'Start Zone harus mengonsumsi checkpoint choice sekali';
     v := (v_j->>'version')::integer;
 
     v_expedition_map := '{
@@ -3172,6 +3223,11 @@ begin
     'public.commit_expedition_choice(uuid,uuid,integer,text,text,jsonb,integer,jsonb,jsonb,boolean,text)',
     'EXECUTE'
   ), 'client tidak boleh melewati Edge Function untuk choice atau skip Expedition';
+  assert not pg_catalog.has_function_privilege(
+    'authenticated',
+    'public.commit_expedition_checkpoint_choice(uuid,uuid,integer,text,text)',
+    'EXECUTE'
+  ), 'client tidak boleh commit checkpoint choice langsung';
   begin
     perform public.expedition_daily_bits_status(
       u1, '00000000-0000-4000-8000-000000000099'

@@ -473,17 +473,33 @@ func _test_kunci_expedition() -> void:
 	})
 	_check_eq(ignored.get("action"), "switch", "tap kedua tidak menimpa intent Expedition")
 	GameState.confirm_expedition_response(
-		{"id": "run-1", "status": "active", "version": 8},
+		{"id": "run-1", "status": "checkpoint", "version": 8},
 		{"id": "encounter-1", "turn_number": 4, "version": 5}
 	)
+	var checkpoint: Dictionary = GameState.begin_expedition_operation("checkpoint_choice", {
+		"option_id": "recover",
+	})
+	var checkpoint_key := str(checkpoint.get("idempotency_key", ""))
+	_muat_ulang()
+	_check_eq(
+		GameState.pending_expedition.get("option_id"),
+		"recover",
+		"checkpoint choice Expedition bertahan restart"
+	)
+	_check_eq(
+		GameState.pending_expedition.get("idempotency_key"),
+		checkpoint_key,
+		"checkpoint choice me-replay key yang sama"
+	)
+	GameState.confirm_expedition_response({"id": "run-1", "status": "active", "version": 9})
 	var node: Dictionary = GameState.begin_expedition_operation("choose", {
 		"option_id": "heal",
 		"target_slot": 1,
 	})
-	_check_eq(int(node.get("run_version")), 8, "choice memakai run version terbaru")
+	_check_eq(int(node.get("run_version")), 9, "choice memakai run version terbaru")
 	_check_eq(node.get("option_id"), "heal", "choice menyimpan option")
 	_check(str(node.get("idempotency_key", "")) != key, "operation berikutnya mendapat key baru")
-	GameState.confirm_expedition_response({"id": "run-1", "status": "complete", "version": 9})
+	GameState.confirm_expedition_response({"id": "run-1", "status": "complete", "version": 10})
 	_muat_ulang()
 	_check(GameState.pending_expedition.is_empty(), "run Expedition terminal tidak di-resume lagi")
 	_check(not GameState.shop_locked(), "Shop unlocks after the Expedition ends")

@@ -21,6 +21,7 @@ const CAMERA_TOP_PAD_RATIO := 0.05
 const CAMERA_SIDE_PAD_RATIO := 0.05
 const CAMERA_FIGHTER_GAP_RATIO := 0.025
 const CAMERA_BACKGROUND_MAX_SCALE := 1.55
+const CAMERA_REFIT_SEC := 0.32
 const SEEKER_CAMERA_EDGE_PAD_RATIO := 0.025
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
@@ -107,6 +108,7 @@ var _thumbnail_provider: Callable
 var _queued_action := ""
 var _command_tween: Tween
 var _effectiveness_tween: Tween
+var _layout_tween: Tween
 var _action_commits: Dictionary = {}
 var _switch_meters: Array[ProgressBar] = []
 var _player_portal: IncubatorEffect
@@ -461,12 +463,12 @@ func play_events(
 					await _react_seeker_attack(event)
 			"knockout":
 				var side := str(event.get("actor", ""))
+				_sprite_for(side).set_pose("defeated")
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(side),
 					BattleView.DAMAGE_COLOR,
 					true
 				)
-				_sprite_for(side).set_pose("defeated")
 				# Hold the faint so a KO is readable before the replacement picker.
 				await _event_pause(1.2)
 				await _hide_effectiveness()
@@ -804,15 +806,21 @@ func _play_switch(event: Dictionary, next_session: Dictionary) -> void:
 	)
 	var sprite := _sprite_for(side)
 	var portal := _portal_for(side)
+	var previous_layout := _fighter_layout()
 	if UiMotion.reduced_motion or not is_instance_valid(sprite):
 		_apply_side(next_session, side, true)
+		_reframe_for_switch(next_session, previous_layout, false)
 		return
 	if sprite.visible and sprite.sprite_frames != null:
 		await sprite.summon_dissolve()
 	_apply_side(next_session, side, true, false)
+	var refit := _reframe_for_switch(next_session, previous_layout, true)
 	_align_portal(side)
 	if is_instance_valid(portal):
 		await portal.start_portal()
+	if is_instance_valid(refit) and refit.is_running():
+		await refit.finished
+	if is_instance_valid(portal):
 		portal.burst()
 	if sprite.sprite_frames != null:
 		await sprite.summon_reveal()
@@ -820,6 +828,92 @@ func _play_switch(event: Dictionary, next_session: Dictionary) -> void:
 	else:
 		sprite.visible = true
 	await _hide_effectiveness()
+
+
+func _reframe_for_switch(
+	next_session: Dictionary,
+	previous_layout: Dictionary,
+	animate: bool
+) -> Tween:
+	_session = next_session.duplicate(true)
+	_position_fighters(false)
+	var target_layout := _fighter_layout()
+	if not animate:
+		return null
+	_apply_fighter_layout(previous_layout)
+	return _tween_fighter_layout(target_layout)
+
+
+func _fighter_layout() -> Dictionary:
+	return {
+		"layer_position": _fighter_layer.position,
+		"layer_scale": _fighter_layer.scale,
+		"player_position": _player_anchor.position,
+		"player_scale": _player_anchor.scale,
+		"opponent_position": _opponent_anchor.position,
+		"opponent_scale": _opponent_anchor.scale,
+		"seeker_position": _seeker.position,
+		"seeker_scale": _seeker.scale,
+		"seeker_shadow_position": _seeker_shadow.position,
+		"seeker_shadow_scale": _seeker_shadow.scale,
+		"background_position": _arena_background.position,
+		"background_size": _arena_background.size,
+	}
+
+
+func _apply_fighter_layout(layout: Dictionary) -> void:
+	_fighter_layer.position = layout.get("layer_position", _fighter_layer.position)
+	_fighter_layer.scale = layout.get("layer_scale", _fighter_layer.scale)
+	_player_anchor.position = layout.get("player_position", _player_anchor.position)
+	_player_anchor.scale = layout.get("player_scale", _player_anchor.scale)
+	_opponent_anchor.position = layout.get("opponent_position", _opponent_anchor.position)
+	_opponent_anchor.scale = layout.get("opponent_scale", _opponent_anchor.scale)
+	_seeker.position = layout.get("seeker_position", _seeker.position)
+	_seeker.scale = layout.get("seeker_scale", _seeker.scale)
+	_seeker_shadow.position = layout.get("seeker_shadow_position", _seeker_shadow.position)
+	_seeker_shadow.scale = layout.get("seeker_shadow_scale", _seeker_shadow.scale)
+	_arena_background.position = layout.get("background_position", _arena_background.position)
+	_arena_background.size = layout.get("background_size", _arena_background.size)
+
+
+func _tween_fighter_layout(target: Dictionary) -> Tween:
+	if _layout_tween != null and _layout_tween.is_valid():
+		_layout_tween.kill()
+	_layout_tween = create_tween().set_parallel(true)
+	_layout_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	_layout_tween.tween_property(
+		_fighter_layer, "position", target["layer_position"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_fighter_layer, "scale", target["layer_scale"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_player_anchor, "position", target["player_position"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_player_anchor, "scale", target["player_scale"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_opponent_anchor, "position", target["opponent_position"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_opponent_anchor, "scale", target["opponent_scale"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(_seeker, "position", target["seeker_position"], CAMERA_REFIT_SEC)
+	_layout_tween.tween_property(_seeker, "scale", target["seeker_scale"], CAMERA_REFIT_SEC)
+	_layout_tween.tween_property(
+		_seeker_shadow, "position", target["seeker_shadow_position"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_seeker_shadow, "scale", target["seeker_shadow_scale"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_arena_background, "position", target["background_position"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_arena_background, "size", target["background_size"], CAMERA_REFIT_SEC
+	)
+	return _layout_tween
 
 
 func _play_attack(event: Dictionary) -> void:
@@ -871,7 +965,7 @@ func _play_attack(event: Dictionary) -> void:
 
 func _present_banner(text: String, color: Color, big: bool = true) -> void:
 	_show_banner(text, color, big)
-	if is_instance_valid(_effectiveness_tween):
+	if is_instance_valid(_effectiveness_tween) and _effectiveness_tween.is_running():
 		await _effectiveness_tween.finished
 	await _readability_pause()
 
@@ -1468,7 +1562,10 @@ func _portal_for(side: String) -> IncubatorEffect:
 	return _player_portal if side == "player" else _opponent_portal
 
 
-func _position_fighters() -> void:
+func _position_fighters(cancel_transition: bool = true) -> void:
+	if cancel_transition and _layout_tween != null and _layout_tween.is_valid():
+		_layout_tween.kill()
+		_layout_tween = null
 	if not is_instance_valid(_battle_stage) or not is_instance_valid(_fighter_layer):
 		return
 	_fighter_layer.position = Vector2.ZERO

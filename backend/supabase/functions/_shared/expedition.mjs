@@ -2,6 +2,8 @@ import { seededRandom } from "./battle.mjs";
 
 export const EXPEDITION_SCHEMA_VERSION = 1;
 export const EXPEDITION_SHOP_SKIP_OPTION_ID = "shop-skip";
+export const EXPEDITION_CHECKPOINT_RECOVER_RATIO = 0.5;
+export const EXPEDITION_CHECKPOINT_POWER_VALUE = 0.1;
 export const EXPEDITION_NODE_KINDS = Object.freeze([
   "battle",
   "elite",
@@ -229,6 +231,37 @@ export function opponentForNode(manifestInput, node) {
   const opponent = manifest.opponents.find((candidate) => candidate.id === node.opponent_id);
   if (!opponent) throw chapterError("EXPEDITION_OPPONENT_NOT_FOUND");
   return structuredClone(opponent);
+}
+
+export function prepareExpeditionZoneRoster(
+  roster,
+  partyState = [],
+  boosts = [],
+  checkpointChoice = null,
+) {
+  const hpOverlay = (Array.isArray(partyState) ? partyState : [])
+    .filter(isObject)
+    .map((member) => {
+      const currentHp = member.hp ?? member.current_hp;
+      return {
+        anima_id: String(member.anima_id ?? ""),
+        ...(currentHp == null ? {} : { hp: currentHp, current_hp: currentHp }),
+        ...(member.max_hp == null ? {} : { max_hp: member.max_hp }),
+      };
+    });
+  // ponytail: one global checkpoint tune is enough for the live chapter.
+  // Move this into manifest policy only when two chapters need different values.
+  const zoneBoosts = checkpointChoice === "power_up"
+    ? ["atk", "def", "spd"].map((stat) => ({
+      type: "stat_boost",
+      stat,
+      value: EXPEDITION_CHECKPOINT_POWER_VALUE,
+    }))
+    : [];
+  return prepareExpeditionRoster(roster, hpOverlay, [
+    ...(Array.isArray(boosts) ? boosts : []),
+    ...zoneBoosts,
+  ]);
 }
 
 export function prepareExpeditionRoster(roster, partyState = [], boosts = []) {
