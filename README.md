@@ -46,11 +46,12 @@ satu eval masih terbaca sebagai anjing anime biasa sehingga ditolak. Kandidat
 v15 memperkeras identitas monster lewat proportion break, landmark evolution,
 dan organic motif terintegrasi tanpa mengubah Vision atau prompt objek. Eval
 Golden Retriever v15 lulus visual 9/9 sel dalam 55 detik dan terbaca sebagai
-monster pada ukuran game. Production sekarang v18: sprite prompt tetap identik
+monster pada ukuran game. Production sekarang v19: sprite prompt tetap identik
 v15, sedangkan Vision menentukan `body_height_cm` 20–2000 dengan skala nyata
-sebagai anchor, floor playable untuk benda kecil, dan exaggeration hanya saat
-silhouette memang menuntutnya. `create_anima` version 15 sudah live; v17 adalah
-rollback kebijakan tinggi, v15 rollback art, dan v13 rollback kontrak capture.
+sebagai anchor, floor boneka gendong ~50 cm untuk benda kecil, dan exaggeration
+hanya saat silhouette memang menuntutnya. `create_anima` version 15 sudah live;
+v18 adalah rollback kebijakan tinggi handheld, v17 rollback kebijakan tinggi
+awal, v15 rollback art, dan v13 rollback kontrak capture.
 
 **Phase 1 — pipeline art. Terbukti end-to-end pada 12 Agustus 2026.** Foto sungguhan sudah masuk lewat seluruh rantai — Vision, prompt, generation, chroma key, slicing, manifest — dan Godot merender Anima hasilnya. "True to Object" terverifikasi dengan mata: foto mouse komputer menghasilkan kreatur yang dua tombol kliknya jadi mata, scroll wheel jadi hidung, dan kabelnya jadi ekor bersegmen.
 

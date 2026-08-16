@@ -69,11 +69,12 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 		return _fail("pose wajib intro_idle tidak ada")
 	var metrics_value: Variant = manifest.get("render_metrics", {})
 	var metrics: Dictionary = metrics_value if typeof(metrics_value) == TYPE_DICTIONARY else {}
-	var measured := _opaque_size(sheet, idle_region)
-	if measured.x > 0 and measured.y > 0:
+	var used := _opaque_bounds(sheet, idle_region)
+	if used.size.x > 0 and used.size.y > 0:
 		metrics = {
-			"reference_width_px": measured.x,
-			"reference_height_px": measured.y,
+			"reference_width_px": used.size.x,
+			"reference_height_px": used.size.y,
+			"reference_min_x_px": used.position.x,
 		}
 	return {
 		"ok": true,
@@ -114,14 +115,13 @@ static func _full_grid_cell(region: Rect2i, sheet_size: Vector2, frame_size: Vec
 	return Rect2i(col * cell, row * cell, width, height)
 
 
-static func _opaque_size(sheet: Texture2D, region: Rect2i) -> Vector2i:
+static func _opaque_bounds(sheet: Texture2D, region: Rect2i) -> Rect2i:
 	if region.size.x <= 0 or region.size.y <= 0:
-		return Vector2i.ZERO
+		return Rect2i()
 	var image := sheet.get_image()
 	if image == null or image.is_empty():
-		return Vector2i.ZERO
-	var used := image.get_region(region).get_used_rect()
-	return used.size
+		return Rect2i()
+	return image.get_region(region).get_used_rect()
 
 
 static func _fail(message: String) -> Dictionary:

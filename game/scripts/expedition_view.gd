@@ -181,6 +181,10 @@ func set_error(error_code: String) -> void:
 	_back.disabled = false
 
 
+func show_retreat_banner() -> void:
+	_combat.show_retreat_banner()
+
+
 func set_busy(busy: bool) -> void:
 	_busy = busy
 	_sync_back_chrome()

@@ -87,10 +87,11 @@ dipasang pada anchor di luar `AnimaPresenter`; tween napas/lunge tetap bebas
 menulis transform presenter tanpa menghapus skala kanonis. Boss Seeker hanya
 pindah ke back lane; dunia skalanya sama.
 
-Vision production v18 memilih `body_height_cm` sebagai tinggi vertikal stance
-Battle. Skala nyata adalah anchor; benda genggam kecil boleh dibesarkan menjadi
-companion 70–120 cm, sedangkan exaggeration besar hanya untuk silhouette yang
-memang towering atau massive. Angka ini hanya presentasi, bukan combat stat.
+Vision production v19 memilih `body_height_cm` sebagai tinggi vertikal stance
+Battle. Skala nyata adalah anchor; benda genggam kecil menjadi companion
+berbadan kecil sekitar boneka gendong (~50 cm), sedangkan exaggeration besar
+hanya untuk silhouette yang memang towering atau massive. Angka ini hanya
+presentasi, bukan combat stat.
 
 Blok `qa` tidak dipakai game, tapi ikut disimpan agar sheet yang buruk bisa ditemukan lewat query alih-alih laporan pemain. `pose_ownership.cross_boundary_pixels` mengukur bagian pose yang melewati center seam pada PNG mentah tetapi berhasil dipertahankan oleh segmentasi; nilainya bukan error selama sel tetap terpisah.
 

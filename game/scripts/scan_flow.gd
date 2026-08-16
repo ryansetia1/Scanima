@@ -117,6 +117,7 @@ var _sleep_sync_in_flight := false
 var _pending_delete_id := ""
 var _pending_rename_id := ""
 var _pending_rename_text := ""
+var _pending_retreat := ""
 var _modal_context := &""
 var _last_anima_press_ms := -1000
 var _last_anima_press_position := Vector2(-1000.0, -1000.0)
@@ -157,7 +158,7 @@ func _ready() -> void:
 	_battle_view.action_requested.connect(_battle_action_requested)
 	_battle_view.item_picker_requested.connect(_open_battle_item_picker)
 	_battle_view.resume_requested.connect(_retry_battle)
-	_battle_view.forfeit_requested.connect(_forfeit_battle)
+	_battle_view.forfeit_requested.connect(_confirm_retreat.bind("duel"))
 	_battle_view.reward_status_refresh_requested.connect(_refresh_battle_reward_status)
 	_team_battle_view.back_requested.connect(_close_team_battle_mode)
 	_team_battle_view.save_team_requested.connect(_save_team_battle_roster)
@@ -166,7 +167,7 @@ func _ready() -> void:
 	_team_battle_view.start_requested.connect(_start_team_battle)
 	_team_battle_view.action_requested.connect(_team_battle_action_requested)
 	_team_battle_view.item_picker_requested.connect(_open_battle_item_picker)
-	_team_battle_view.forfeit_requested.connect(_forfeit_team_battle)
+	_team_battle_view.forfeit_requested.connect(_confirm_retreat.bind("team"))
 	_team_battle_view.retry_requested.connect(_retry_team_battle)
 	_team_battle_view.arena_open_changed.connect(_on_immersive_arena_changed)
 	_expedition_view.combat_open_changed.connect(_on_immersive_arena_changed)
@@ -174,6 +175,7 @@ func _ready() -> void:
 	_expedition_controller.name = "ExpeditionController"
 	add_child(_expedition_controller)
 	_expedition_controller.configure(_expedition_view, _battle_view)
+	_expedition_view.forfeit_requested.connect(_confirm_retreat.bind("expedition"))
 	_expedition_controller.item_picker_requested.connect(_open_battle_item_picker)
 	_expedition_controller.inventory_refresh_requested.connect(_refresh_inventory)
 	_expedition_controller.authority_refresh_requested.connect(_refresh_team_battle_authority)
@@ -304,7 +306,7 @@ func _ready() -> void:
 		if arg == "--battle-demo":
 			_run_battle_demo()
 		if arg == "--battle-small-demo":
-			_run_battle_demo("active", false, 0.0, 20.0, 120.0)
+			_run_battle_demo("active", false, 0.0, 50.0, 120.0)
 		if arg == "--battle-normal-demo":
 			_run_battle_demo("active", false, 0.0, 120.0, 120.0)
 		if arg == "--battle-giant-demo":
@@ -788,6 +790,8 @@ func _modal_confirmed(text: String) -> void:
 			_rename_seeker(text)
 		&"chapter_announcement":
 			_ack_chapter_popup(true)
+		&"retreat":
+			_retreat_confirmed()
 
 
 func _modal_canceled() -> void:
@@ -805,6 +809,8 @@ func _modal_canceled() -> void:
 		_bits_chip.grab_action_focus()
 	elif context == &"chapter_announcement":
 		_ack_chapter_popup(false)
+	elif context == &"retreat":
+		_pending_retreat = ""
 
 
 func _show_details_help(title: String, body: String) -> void:
@@ -1619,6 +1625,37 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 	await _apply_battle_reward(GameState.as_dict(data.get("reward")), next_session)
 
 
+func _confirm_retreat(kind: String) -> void:
+	if _busy or (is_instance_valid(_shell_modal) and _shell_modal.visible):
+		return
+	_pending_retreat = kind
+	_modal_context = &"retreat"
+	_shell_modal.open_confirm(
+		tr("BATTLE_RETREAT_TITLE"),
+		tr(
+			"BATTLE_RETREAT_CONFIRM_EXPEDITION"
+			if kind == "expedition"
+			else "BATTLE_RETREAT_CONFIRM"
+		),
+		tr("BATTLE_FORFEIT"),
+		tr("ACTION_CANCEL"),
+		true
+	)
+
+
+func _retreat_confirmed() -> void:
+	var kind := _pending_retreat
+	_pending_retreat = ""
+	match kind:
+		"duel":
+			_forfeit_battle()
+		"team":
+			_forfeit_team_battle()
+		"expedition":
+			if is_instance_valid(_expedition_controller):
+				_expedition_controller.forfeit()
+
+
 func _forfeit_battle() -> void:
 	if _busy:
 		return
@@ -1627,6 +1664,7 @@ func _forfeit_battle() -> void:
 	var session_id := str(session.get("id", GameState.pending_battle.get("session_id", "")))
 	if session_id.is_empty():
 		return
+	_battle_view.show_retreat_banner()
 	_set_busy(true)
 	var res := await Backend.battle_anima("forfeit", {"session_id": session_id})
 	if res.ok:
@@ -1945,6 +1983,7 @@ func _forfeit_team_battle() -> void:
 	)
 	if session_id.is_empty():
 		return
+	_team_battle_view.show_retreat_banner()
 	_set_busy(true)
 	var res := await Backend.team_battle("forfeit", {"session_id": session_id})
 	if res.ok:
@@ -2910,6 +2949,9 @@ func _show_core_info() -> void:
 func _open_shop(tab: String = "food") -> void:
 	if _destination != BottomNav.HOME:
 		return
+	if GameState.shop_locked():
+		_say(tr("ERROR_SHOP_IN_BATTLE"), true)
+		return
 	if _shop_sheet.is_shop_open() and tab == "food":
 		return
 	_shop_sheet.set_catalog(_catalog, _inventory, int(GameState.profile.get("bits", 0)))
@@ -2944,6 +2986,9 @@ func _open_battle_item_picker() -> void:
 
 func _buy_catalog_item(item: Dictionary) -> void:
 	if _busy or not GameState.pending_purchase.is_empty():
+		return
+	if GameState.shop_locked():
+		_say(tr("ERROR_SHOP_IN_BATTLE"), true)
 		return
 	var pending := GameState.begin_purchase(str(item.get("id", "")), int(item.get("price", 0)))
 	await _send_pending_purchase(pending)
@@ -3401,11 +3446,17 @@ func _sync_shop_chrome() -> void:
 	if is_instance_valid(_bottom_nav):
 		_bottom_nav.visible = not immersive
 	var show_chrome := _destination == BottomNav.HOME and not immersive
+	var shop_locked := GameState.shop_locked()
 	if is_instance_valid(_bag_button):
 		_bag_button.visible = show_chrome
 	_shop_button.visible = show_chrome
+	_shop_button.modulate = Color(1.0, 1.0, 1.0, 0.45) if shop_locked else Color.WHITE
 	_seeker_menu_button.disabled = _busy or immersive
-	if not show_chrome and is_instance_valid(_shop_sheet) and _shop_sheet.visible:
+	if (
+		is_instance_valid(_shop_sheet)
+		and _shop_sheet.visible
+		and (not show_chrome or (shop_locked and _shop_sheet.is_shop_open()))
+	):
 		_shop_sheet.close()
 	if show_chrome:
 		_place_shop()
@@ -3666,7 +3717,7 @@ func _run_team_battle_demo(boss: bool = false) -> Dictionary:
 	var player_snapshots: Array[Dictionary] = []
 	var opponent_snapshots: Array[Dictionary] = []
 	var art: Dictionary = {}
-	var player_heights: Array[int] = [175, 90, 100, 75]
+	var player_heights: Array[int] = [175, 90, 50, 75]
 	var boss_names: Array[String] = ["Fudge Fang", "Syrup Sentry", "Gumdrop Grunt", "Cotton"]
 	var boss_heights: Array[int] = [135, 170, 95, 130]
 	for slot in 4:

@@ -502,6 +502,14 @@ func finish_expedition() -> void:
 	save()
 
 
+func shop_locked() -> bool:
+	return (
+		not pending_battle.is_empty()
+		or not pending_team_battle.is_empty()
+		or not pending_expedition.is_empty()
+	)
+
+
 func begin_purchase(item_id: String, expected_price: int) -> Dictionary:
 	if not pending_purchase.is_empty():
 		return pending_purchase

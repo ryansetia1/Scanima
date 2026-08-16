@@ -17,7 +17,10 @@ Kalau gerakan terasa terlalu ramai, aktifkan **Reduced Motion** dari menu
 
 Tombol **Shop** seukuran chip **Bits** dan duduk tepat di bawah baris HUD, selaras dengan Bits di kanan. **Bag** sama ukurannya, rata kiri di pojok kiri atas, sejajar dengan Shop. Keduanya hanya tampil di **Home**, termasuk saat Anima tidur; tab lain tetap bersih. Animas / Cores / Bits tetap satu baris.
 
-Shop hanya untuk beli. Isi tas dibuka dari **Bag**.
+Shop hanya untuk beli. Isi tas dibuka dari **Bag**. Beli makanan dan item
+**sebelum** memulai Duel, Team Battle, atau Expedition. Selama battle atau
+run masih berjalan, **Shop** redup dan menolak pembelian; **Bag** tetap bisa
+memakai makanan dan Energy yang sudah ada.
 
 - Shop tab **Food**: sembilan makanan, dari Byte Berry (10 Hunger / 2 Bits) sampai Nova Feast (penuh / 20 Bits).
 - Shop tab **Items**: Pulse Cell dan Reactor Pack mengisi Energy; tujuh item lain hanya untuk Battle.

@@ -23,6 +23,7 @@ var _busy := false
 
 
 func _ready() -> void:
+	z_index = 20
 	_dismiss_button.pressed.connect(_cancel)
 	_cancel_button.pressed.connect(_cancel)
 	_primary_button.pressed.connect(_submit)

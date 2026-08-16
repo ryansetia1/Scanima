@@ -108,7 +108,7 @@ dibandingkan sebagai text, bukan UUID. Config wire
 HP penuh saat zona dimulai, lalu bertahan antar-node dalam zona; PP kembali
 penuh setiap encounter. Arena memakai `zones[].background_path` dari manifest. EXP yang
 didapat langsung masuk ke Anima, dan growth stat dipakai di encounter Battle
-berikutnya di zona yang sama. Jika seluruh tim KO:
+berikutnya di zona yang sama. Retreat dari encounter memakai reset zona yang sama. Jika seluruh tim KO:
 
 1. state kembali ke snapshot masuk zona,
 2. map zona dibuat ulang dari seed baru,

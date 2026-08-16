@@ -5,8 +5,10 @@ dan stats-nya mengikuti subjek itu, lalu tumbuh pelan lewat Level. Art setiap
 Anima unik dan privat kecuali kamu memilih memublikasikannya ke Gallery.
 
 Setiap Anima juga lahir dengan ukuran tubuh khas. Ukurannya berangkat dari
-subjek asli, tetapi transformasi bisa membesarkan benda genggam kecil menjadi
-companion yang tetap terbaca atau membuat monster tertentu jauh lebih besar.
+subjek asli. Benda genggam kecil (konsol, remote, mainan) menjadi Anima
+**berbadan kecil** — kira-kira sebesar boneka yang masih bisa dipeluk dan
+digendong, bukan setinggi anak. Hewan mengikuti tinggi aslinya. Benda yang
+memang besar, atau monster yang siluetnya menjulang, boleh jauh lebih tinggi.
 Ukuran ini dipakai untuk proporsi di Battle: ada Anima yang mungil, normal, atau
 sangat besar. Tingginya mengikuti kartu arena HP, jadi tetap terbaca sama di layar
 tinggi maupun lebar dan tidak memenuhi seluruh layar tinggi. Angkanya belum ditampilkan di Profile dan tidak menambah

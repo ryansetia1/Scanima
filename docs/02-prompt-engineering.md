@@ -2,15 +2,17 @@
 
 Ini adalah dokumen paling menentukan kualitas Scanima. Kalau prompt-nya benar, sebuah mouse komputer jadi Anima yang jelas-jelas berasal dari mouse itu. Kalau salah, semua Anima terlihat seperti monster generik yang kebetulan diberi warna berbeda, dan seluruh premis game runtuh.
 
-## Kontrak capture v13, production v18, dan candidate art v16
+## Kontrak capture v13, production v19, dan candidate art v16
 
-Sumber prompt production berada di `backend/prompts/v18/`; v17 menjadi rollback
-kebijakan tinggi, v15 rollback art langsung, dan v13 rollback kontrak capture.
+Sumber prompt production berada di `backend/prompts/v19/`; v18 menjadi rollback
+kebijakan tinggi handheld, v17 rollback kebijakan tinggi awal, v15 rollback art
+langsung, dan v13 rollback kontrak capture.
 V18 mempertahankan seluruh sprite prompt v15 tanpa perubahan gambar serta output
 Vision `body_height_cm` 20–2000 dari v17. Perubahannya ada pada keputusan skala:
 Vision mulai dari tinggi biologis/objek normal, menjaga hewan dekat anatomi nyata,
-membesarkan benda genggam kecil ke floor playable 70–120 cm, dan memakai skala
-di atas 220 cm hanya saat transformed silhouette memang towering atau massive.
+membesarkan benda genggam kecil ke floor boneka gendong ~50 cm (bukan
+tinggi anak), dan memakai skala di atas 220 cm hanya saat transformed
+silhouette memang towering atau massive.
 Yang dilaporkan selalu tinggi vertikal stance Battle, bukan panjang tubuh,
 ukuran pada foto, atau tinggi piksel sprite.
 Kontrak dasar Vision v15 tetap berasal dari v13 yang menambah:
@@ -45,7 +47,7 @@ Eval Golden Retriever v15 kemudian lulus 9/9 sel dalam 55 detik: kepala/mata,
 mane, kaki, ekor, massa tubuh, dan ekspresi sudah terbaca sebagai monster pada
 ukuran game. Residu hijau terukur 0,526% tetapi tidak mengganggu pada render
 ukuran game; tetap dipantau pada fauna berwarna non-hijau berikutnya.
-`create_anima` version 15 membawa bundle sampai v18. V18 dipromosikan lewat
+`create_anima` version 15 membawa bundle sampai v19. V19 dipromosikan lewat
 dry-run template tanpa image generation karena prompt sprite byte-identik v15;
 rollback kebijakan tinggi adalah v17, rollback art v15, dan rollback kontrak
 capture langsung v13.

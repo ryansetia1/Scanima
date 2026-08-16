@@ -286,6 +286,7 @@ func _test_kunci_battle() -> void:
 	print("6. session dan turn Battle bertahan sampai server mengonfirmasi")
 	GameState.remember_battle("battle-1", 3, 7)
 	_muat_ulang()
+	_check(GameState.shop_locked(), "Shop locks while a Duel session is pending")
 	_check_eq(GameState.pending_battle.get("session_id"), "battle-1", "session Battle harus bertahan")
 	_check_eq(int(GameState.pending_battle.get("expected_turn")), 3, "turn server harus bertahan")
 
@@ -323,6 +324,7 @@ func _test_kunci_battle() -> void:
 	GameState.confirm_battle_response({"id": "battle-1", "status": "won"})
 	_muat_ulang()
 	_check(GameState.pending_battle.is_empty(), "Battle terminal tidak boleh di-resume lagi")
+	_check(not GameState.shop_locked(), "Shop unlocks after the Duel ends")
 	_check_eq(GameState.uid(), "uid-abc", "menyelesaikan Battle tidak boleh menghapus sesi")
 
 
@@ -330,6 +332,7 @@ func _test_kunci_team_battle() -> void:
 	print("6b. session, Item, dan Switch Team Battle bertahan restart")
 	GameState.remember_team_battle("team-1", 5, 9)
 	_muat_ulang()
+	_check(GameState.shop_locked(), "Shop locks while a Team Battle session is pending")
 	_check_eq(
 		GameState.pending_team_battle.get("session_id"),
 		"team-1",
@@ -430,6 +433,7 @@ func _test_kunci_team_battle() -> void:
 		GameState.pending_team_battle.is_empty(),
 		"Team Battle terminal tidak boleh di-resume lagi"
 	)
+	_check(not GameState.shop_locked(), "Shop unlocks after Team Battle ends")
 	_check_eq(GameState.uid(), "uid-abc", "menyelesaikan Team Battle tidak menghapus sesi")
 
 
@@ -439,6 +443,7 @@ func _test_kunci_expedition() -> void:
 		{"id": "run-1", "status": "active", "version": 7},
 		{"id": "encounter-1", "turn_number": 3, "version": 4}
 	)
+	_check(GameState.shop_locked(), "Shop locks while an Expedition run is pending")
 	var pending: Dictionary = GameState.begin_expedition_operation("turn", {
 		"action": "switch",
 		"switch_to_slot": 2,
@@ -481,6 +486,7 @@ func _test_kunci_expedition() -> void:
 	GameState.confirm_expedition_response({"id": "run-1", "status": "complete", "version": 9})
 	_muat_ulang()
 	_check(GameState.pending_expedition.is_empty(), "run Expedition terminal tidak di-resume lagi")
+	_check(not GameState.shop_locked(), "Shop unlocks after the Expedition ends")
 
 
 func _test_kunci_purchase() -> void:

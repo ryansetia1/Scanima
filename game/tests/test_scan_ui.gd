@@ -240,6 +240,10 @@ func _initialize() -> void:
 	var modal_primary := scene.find_child("PrimaryButton", true, false) as Button
 	_check(shell_modal != null and not shell_modal.visible, "shared shell modal starts hidden")
 	_check(
+		shell_modal.z_index >= 10,
+		"shell modal paints above battle sprites so Retreat confirm stays readable"
+	)
+	_check(
 		modal_panel != null and modal_panel.theme_type_variation == &"ModalPanel",
 		"all blocking dialogs share one modal chrome"
 	)
@@ -262,8 +266,16 @@ func _initialize() -> void:
 		and shell_source.find("_shop_button.visible = show_chrome") >= 0
 		and shell_source.find("_bag_button.visible = show_chrome") >= 0
 		and shell_source.find("_top_hud.visible = not immersive") >= 0
-		and shell_source.find("_bottom_nav.visible = not immersive") >= 0,
-		"Bag and Shop only appear on Home, and arena combat hides shell chrome"
+		and shell_source.find("_bottom_nav.visible = not immersive") >= 0
+		and shell_source.find("GameState.shop_locked()") >= 0
+		and shell_source.find("ERROR_SHOP_IN_BATTLE") >= 0
+		and shell_source.find("_confirm_retreat.bind(\"duel\")") >= 0
+		and shell_source.find("_confirm_retreat.bind(\"team\")") >= 0
+		and shell_source.find("_confirm_retreat.bind(\"expedition\")") >= 0
+		and shell_source.find("BATTLE_RETREAT_CONFIRM") >= 0
+		and shell_source.find("BATTLE_RETREAT_CONFIRM_EXPEDITION") >= 0
+		and shell_source.find("show_retreat_banner()") >= 0,
+		"Bag and Shop only appear on Home, Shop locks mid-run, and Retreat asks first"
 	)
 	var boot_start := shell_source.find("func _boot()")
 	var boot_end := shell_source.find("\n\nfunc _reload_roster", boot_start)
@@ -1432,6 +1444,11 @@ func _test_battle_view() -> void:
 		effectiveness.visible and effectiveness_label.text == tr("BATTLE_EFFECTIVE"),
 		"advantaged attacks show a Super effective indicator"
 	)
+	view.show_retreat_banner()
+	_check(
+		effectiveness.visible and effectiveness_label.text == tr("BATTLE_RETREATING"),
+		"Retreat processing uses the same arena event plate as Super effective"
+	)
 	_check(
 		is_equal_approx(effectiveness.offset_top, -118.0)
 		and is_equal_approx(effectiveness.offset_bottom, -36.0),
@@ -1869,6 +1886,11 @@ func _test_team_battle_view() -> void:
 	)
 	view.call("_show_effectiveness", 1.0)
 	_check(not effectiveness.visible, "neutral Team attacks do not show a matchup banner")
+	view.show_retreat_banner()
+	_check(
+		effectiveness.visible and effectiveness_label.text == tr("BATTLE_RETREATING"),
+		"Team Retreat processing uses the same arena event plate as Super effective"
+	)
 	var actions := view.find_child("TeamActions", true, false) as VBoxContainer
 	var primary_row := view.find_child("PrimaryRow", true, false) as HBoxContainer
 	var support_row := view.find_child("SupportRow", true, false) as HBoxContainer
@@ -1907,6 +1929,20 @@ func _test_team_battle_view() -> void:
 	var switch_grid := view.find_child("SwitchButtons", true, false) as GridContainer
 	var switch_slot := view.find_child("TeamSwitchSlot0", true, false) as Button
 	_check(switch_panel.visible and actions.visible, "Switch opens the picker without hiding the action dock")
+	await process_frame
+	var overlay := view.find_child("SwitchOverlay", true, false) as Control
+	_check(
+		overlay != null
+		and overlay.get_parent() == view
+		and overlay.clip_contents
+		and overlay.z_index > 2
+		and overlay.visible
+		and overlay.find_children("*", "ColorRect", true, false).is_empty()
+		and overlay.size.y >= view.size.y - 1.0
+		and switch_panel.get_global_rect().size.y >= 128.0
+		and switch_panel.get_global_rect().end.y <= view.get_global_rect().end.y + 1.0,
+		"Switch picker covers the view root so VBox cannot zero its height"
+	)
 	var switch_cancel := view.find_child("TeamSwitchCancel", true, false) as Button
 	_check(
 		switch_grid != null
@@ -2112,6 +2148,23 @@ func _test_team_battle_view() -> void:
 		and seeker.z_index < boss_opponent.z_index
 		and not boss_opponent.visible,
 		"boss intro shows the Seeker before her Anima"
+	)
+	var stage := view.find_child("TeamBattleStage", true, false) as Control
+	var metrics_value: Variant = seeker_art["boss_seeker"].get("render_metrics")
+	var seeker_metrics: Dictionary = (
+		metrics_value if typeof(metrics_value) == TYPE_DICTIONARY else {}
+	)
+	var frame_value: Variant = seeker_art["boss_seeker"].get("frame_size", Vector2i(341, 341))
+	var frame_w := float((frame_value as Vector2i).x) if typeof(frame_value) == TYPE_VECTOR2I else 341.0
+	var opaque_w := float(seeker_metrics.get("reference_width_px", 300.0))
+	var min_x := float(seeker_metrics.get("reference_min_x_px", 0.0))
+	var opaque_right := (min_x + opaque_w) - frame_w * 0.5
+	var expected_seeker_x := stage.size.x - 12.0 - maxf(opaque_right, 1.0) * seeker.scale.x
+	_check(
+		stage != null
+		and stage.size.x > 0.0
+		and absf(seeker.position.x - expected_seeker_x) <= 2.0,
+		"Boss Seeker pins her opaque right edge to the arena, not the empty frame"
 	)
 	var dim := dialog.find_child("SeekerDim", true, false) as ColorRect if dialog != null else null
 	var intro_line := dialog.find_child("SeekerLine", true, false) as Label if dialog != null else null

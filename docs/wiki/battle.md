@@ -90,8 +90,8 @@ Seeker.
 - Empat anggota terkunci selama run. Tim baru bisa diedit setelah chapter
   selesai atau **Abandon**.
 - Run bisa ditutup dan dilanjutkan lagi; progress zona yang selesai tidak hilang.
-- Jika seluruh tim KO, attempt zona itu dimulai ulang. Zona sebelumnya tetap
-  selesai.
+- Jika seluruh tim KO, atau kamu **Retreat** dari fight, attempt zona itu
+  dimulai ulang dari awal. Zona sebelumnya tetap selesai.
 - Tiga encounter pertama per hari memberi EXP: **+2** untuk Anima yang
   pernah aktif dan masih hidup, **+1** untuk bench yang masih hidup. Yang KO
   tidak mendapat EXP. Tokens tetap dapat diperoleh.
@@ -105,13 +105,15 @@ Seeker.
   regulernya KO. Saat Cotton masuk, **Final Confection** aktif sekali dan
   memberinya +1 PP untuk encounter itu.
 - Ukuran Anima dan The Confectioner di arena mengikuti tinggi tubuh mereka.
-  Anima setinggi manusia mengisi sekitar setengah arena pada layar HP. Tinggi
-  Anima dan The Confectioner dikunci bersama, jadi lebar atau tinggi layar
-  tidak membuat salah satu tiba-tiba lebih besar. Proporsi Anima dan The Confectioner dijaga
-  bersama, jadi Anima yang lebih tinggi tidak tampak lebih pendek hanya karena
-  tubuh lawannya lebih lebar, dan trainer tidak tiba-tiba lebih besar dari
-  petarungnya. Monster besar tetap terasa besar, tetapi semuanya dijaga agar
-  tidak menutup HUD. The Confectioner tampil full body.
+  Anima setinggi manusia mengisi sekitar setengah arena pada layar HP. Anima
+  berbadan kecil (sekitar boneka yang bisa digendong) tetap lebih pendek dari
+  companion biasa. Tinggi Anima dan The Confectioner dikunci bersama, jadi
+  lebar atau tinggi layar tidak membuat salah satu tiba-tiba lebih besar.
+  Proporsi Anima dan The Confectioner dijaga bersama, jadi Anima yang lebih
+  tinggi tidak tampak lebih pendek hanya karena tubuh lawannya lebih lebar,
+  dan trainer tidak tiba-tiba lebih besar dari petarungnya. Monster besar
+  tetap terasa besar, tetapi semuanya dijaga agar tidak menutup HUD. The
+  Confectioner tampil full body.
 
 Chapter baru menampilkan popup sekali di Home dan badge **New** sampai chapter
 dibuka. Push perangkat bersifat opsional; popup dan badge di dalam game tetap
@@ -150,10 +152,15 @@ Stat **Enemies Defeated** di [Seeker Profile](seeker.md) menghitung semua duel
 menang, termasuk Train. Itu berbeda dari **Progress x/3**, yang hanya menentukan
 hadiah EXP harian.
 
-Kalah atau **Retreat** juga nol hadiah. Di Duel, **Retreat** ada di baris
-Turn di atas arena. Di Team Battle dan Expedition, **Retreat** ada di paling
-kanan baris Item / Switch. Shop dan Bag hanya ada di Home, jadi
-arena tetap bersih.
+Kalah atau **Retreat** juga nol hadiah. **Retreat** membuka konfirmasi dulu;
+Cancel kembali ke arena. Di Expedition, konfirmasi itu menjelaskan bahwa zona
+saat ini dimulai ulang dari awal. Sesudah kamu konfirmasi, arena menampilkan
+**Retreating** di pelat event yang sama dengan Super effective sampai fight
+berakhir. Di Duel, **Retreat** ada di baris Turn di atas arena.
+Di Team Battle dan Expedition, **Retreat** ada di paling kanan baris Item /
+Switch. Shop dan Bag hanya ada di Home, jadi arena tetap bersih. Beli item di
+**Shop** sebelum memulai Duel, Team Battle, atau Expedition — tombol Shop
+redup selama battle atau run masih berjalan.
 
 ## Empat perintah
 

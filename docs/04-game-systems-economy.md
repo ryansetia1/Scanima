@@ -322,8 +322,8 @@ HP dikali 4 supaya battle berlangsung 6-10 turn. Lebih pendek terasa dangkal, le
 `body_height_cm` bukan stat tempur dan tidak masuk combat power. Ia adalah tinggi
 vertikal stance Battle 20–2000 cm yang ditentukan Vision v18 atau author chapter.
 Vision memakai skala nyata sebagai anchor, membesarkan benda genggam kecil ke
-floor playable 70–120 cm, dan hanya memakai exaggeration besar bila transformed
-silhouette memang menuntutnya. Snapshot Battle meneruskannya bersama
+floor boneka gendong ~50 cm (bukan tinggi anak), dan hanya memakai exaggeration
+besar bila transformed silhouette memang menuntutnya. Snapshot Battle meneruskannya bersama
 `render_metrics` sheet; client memakai kurva non-linear dari kartu desain
 720×800 yang di-contain ke arena, termasuk Boss Seeker. Anima 120 cm mengisi
 sekitar setengah kartu itu; lebar layar tidak mengubah skala, dan ruang

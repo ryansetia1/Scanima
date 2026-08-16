@@ -402,7 +402,12 @@ func _commit_for_action(action: String) -> ColorRect:
 	return _strike_commit
 
 
+func show_retreat_banner() -> void:
+	_show_banner(tr("BATTLE_RETREATING"), CUE_COLOR, false)
+
+
 func set_error(error_code: String) -> void:
+	_effectiveness.visible = false
 	_clear_action_commit()
 	_header.visible = _session.is_empty()
 	if _session.is_empty():

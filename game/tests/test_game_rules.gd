@@ -326,9 +326,12 @@ func _initialize() -> void:
 	var render := {"render_metrics": {"reference_height_px": 300, "reference_width_px": 220}}
 	var design_arena := BATTLE_SCALE.DESIGN_ARENA
 	var small_scale := BATTLE_SCALE.fighter_scale(20.0, render, design_arena)
+	var doll_scale := BATTLE_SCALE.fighter_scale(50.0, render, design_arena)
+	var old_handheld_scale := BATTLE_SCALE.fighter_scale(100.0, render, design_arena)
 	var normal_scale := BATTLE_SCALE.fighter_scale(120.0, render, design_arena)
 	var giant_scale := BATTLE_SCALE.fighter_scale(2000.0, render, design_arena)
 	_check(small_scale < normal_scale, "Anima 20 cm tampil lebih kecil dari Anima 120 cm")
+	_check(doll_scale < old_handheld_scale, "floor boneka 50 cm lebih kecil dari companion 100 cm")
 	_check(normal_scale < giant_scale, "Anima 2000 cm tetap terasa lebih besar")
 	_check(
 		300.0 * giant_scale <= BATTLE_SCALE.usable_height(design_arena) * 0.88 + 0.01,

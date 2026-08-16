@@ -34,9 +34,12 @@ func configure(view: ExpeditionView, battle_view: BattleView) -> void:
 	_view.abandon_requested.connect(_abandon)
 	_view.action_requested.connect(_request_turn)
 	_view.item_picker_requested.connect(item_picker_requested.emit)
-	_view.forfeit_requested.connect(_forfeit)
 	_view.combat_continue_requested.connect(_continue_after_combat)
 	_view.complete_requested.connect(_leave_complete)
+
+
+func forfeit() -> void:
+	await _forfeit()
 
 
 func set_roster(roster: Array) -> void:
@@ -266,6 +269,7 @@ func _request_turn(action: String, switch_to_slot: int) -> void:
 func _forfeit() -> void:
 	if _busy or _encounter.is_empty():
 		return
+	_view.show_retreat_banner()
 	_set_busy(true)
 	var res := await Backend.expedition("forfeit", {
 		"encounter_id": str(_encounter.get("id", "")),

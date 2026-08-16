@@ -14,6 +14,7 @@ signal arena_open_changed(open: bool)
 
 const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.0
+const SEEKER_EDGE_PAD := 12.0
 const RESULT_HOLD_SEC := 0.72
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
@@ -299,7 +300,12 @@ func set_lobby(
 	_update_lobby_actions()
 
 
+func show_retreat_banner() -> void:
+	_announce(tr("BATTLE_RETREATING"), BattleView.CUE_COLOR, false)
+
+
 func set_error(error_code: String) -> void:
+	_effectiveness.visible = false
 	_clear_action_commit()
 	_show_only(_loading)
 	_loading_label.text = _error_copy(error_code)
@@ -576,29 +582,34 @@ func _request_switch(slot: int) -> void:
 
 
 func _mount_switch_overlay() -> void:
-	var dock := _actions.get_parent()
-	if dock != null:
-		dock = dock.get_parent()
-	if dock == null or not dock is Control:
-		return
+	# TeamArena is a VBoxContainer: a FULL_RECT child becomes a zero-height row.
 	var overlay := Control.new()
 	overlay.name = "SwitchOverlay"
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.clip_contents = true
+	overlay.z_index = 10
 	overlay.visible = false
-	var plate := ColorRect.new()
-	plate.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	plate.color = Color(0.025, 0.04, 0.09, 0.98)
-	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.add_child(plate)
 	_switch_panel.reparent(overlay)
-	_switch_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_switch_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_switch_panel.anchor_left = 0.0
+	_switch_panel.anchor_right = 1.0
+	_switch_panel.anchor_top = 1.0
+	_switch_panel.anchor_bottom = 1.0
 	_switch_panel.offset_left = 16.0
 	_switch_panel.offset_right = -16.0
-	_switch_panel.offset_top = 12.0
 	_switch_panel.offset_bottom = -12.0
-	dock.add_child(overlay)
+	_switch_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_switch_panel.size_flags_vertical = Control.SIZE_SHRINK_END
+	add_child(overlay)
 	_switch_overlay = overlay
+
+
+func _layout_switch_panel() -> void:
+	if not is_instance_valid(_switch_panel):
+		return
+	var height := maxf(_switch_panel.get_combined_minimum_size().y, 280.0)
+	_switch_panel.offset_top = -height
 
 
 func _hide_switch_overlay() -> void:
@@ -651,8 +662,10 @@ func _open_switch_picker(forced: bool) -> void:
 			meter.visible = true
 	_switch_cancel.visible = not forced
 	_switch_panel.visible = true
+	_layout_switch_panel()
 	if is_instance_valid(_switch_overlay):
 		_switch_overlay.visible = true
+	_layout_switch_panel.call_deferred()
 	_actions.visible = true
 	_set_feedback("")
 
@@ -1423,32 +1436,18 @@ func _position_seeker() -> void:
 		return
 	var seeker_scale := scales[2]
 	var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
-	var seeker_width := float(metrics.get("reference_width_px", 240.0)) * seeker_scale
-	var opponent_width := 180.0
-	var state := GameState.as_dict(_session.get("state"))
-	var party := GameState.as_dict(state.get("opponent"))
-	var roster := _as_array(party.get("roster"))
-	var active_slot := int(party.get("active_slot", -1))
-	if active_slot >= 0 and active_slot < roster.size():
-		var member := GameState.as_dict(roster[active_slot])
-		var loaded := GameState.as_dict(_art_cache.get(str(member.get("anima_id", ""))))
-		var opponent_metrics := GameState.as_dict(loaded.get("render_metrics"))
-		opponent_width = float(opponent_metrics.get("reference_width_px", 240.0)) * scales[1]
-	var desired_x := _battle_stage.size.x * 0.62
-	if not _intro_pending_summon:
-		desired_x = _opponent_anchor.position.x + maxf(
-			48.0, (opponent_width + seeker_width) * 0.24
-		)
+	var seeker_width := float(metrics.get("reference_width_px", 240.0))
 	var frame_value: Variant = _seeker_loaded.get("frame_size", Vector2i(341, 341))
 	var frame_w := 341.0
 	if typeof(frame_value) == TYPE_VECTOR2I:
 		frame_w = float((frame_value as Vector2i).x)
 	elif typeof(frame_value) == TYPE_VECTOR2:
 		frame_w = (frame_value as Vector2).x
-	var half := maxf(seeker_width, frame_w * seeker_scale) * 0.5
-	var x := _battle_stage.size.x * 0.5
-	if half * 2.0 < _battle_stage.size.x:
-		x = clampf(desired_x, half, _battle_stage.size.x - half)
+	var min_x := float(metrics.get("reference_min_x_px", (frame_w - seeker_width) * 0.5))
+	var opaque_right := (min_x + seeker_width) - frame_w * 0.5
+	# ponytail: pin the opaque right edge, not the 341 empty frame. Ceiling:
+	# no per-pose used-rect; upgrade if a command pose overhangs more than Idle.
+	var x := _battle_stage.size.x - SEEKER_EDGE_PAD - maxf(opaque_right, 1.0) * seeker_scale
 	var y := _opponent_anchor.position.y - _battle_stage.size.y * 0.055
 	_seeker.set_layout(Vector2(x, y), seeker_scale)
 

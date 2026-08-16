@@ -796,6 +796,12 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
     assert.match(prompt, /Never look\s+at the viewer/);
     assert.ok(prompt?.includes("Sleep keeps every eye fully closed"));
   }
+  assert.equal(bundel.v19?.sprite_sheet, bundel.v18?.sprite_sheet, "v19 tidak mengubah prompt object");
+  assert.equal(bundel.v19?.sprite_sheet_fauna, bundel.v18?.sprite_sheet_fauna, "v19 tidak mengubah prompt fauna");
+  assert.ok(
+    bundel.v19?.vision_system.includes("hug-and-carry doll"),
+    "v19 memakai floor boneka gendong untuk benda genggam kecil"
+  );
 }
 
 console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
