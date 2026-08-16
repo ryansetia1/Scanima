@@ -36,6 +36,7 @@ const DIRTY_POSE_NEED := 50.0
 const NEED_FULL_AT := 99.5
 const LEVEL_CAP := 40
 const EXP_PER_LEVEL := 5
+const EXP_MAX := 860
 const ADULT_LEVEL := 16
 const EVOLVED_LEVEL := 36
 
@@ -258,20 +259,41 @@ static func visual_pose(sleeping: bool, dormant: bool, care_value: Variant = {})
 	return "idle"
 
 
-static func level_from_exp(exp: int) -> int:
-	return clampi(1 + int(maxi(0, exp) / EXP_PER_LEVEL), 1, LEVEL_CAP)
+static func exp_to_next_level(level: int) -> int:
+	var lv := clampi(level, 1, LEVEL_CAP)
+	return 0 if lv >= LEVEL_CAP else EXP_PER_LEVEL * ceili(float(lv) / 5.0)
 
 
-static func exp_into_level(exp: int) -> int:
-	if level_from_exp(exp) >= LEVEL_CAP:
-		return EXP_PER_LEVEL
-	return maxi(0, exp) % EXP_PER_LEVEL
+static func exp_for_level(level: int) -> int:
+	var steps := clampi(level, 1, LEVEL_CAP) - 1
+	var complete_bands := floori(float(steps) / 5.0)
+	var remaining_steps := steps % 5
+	return (
+		EXP_PER_LEVEL * 5 * complete_bands * (complete_bands + 1) / 2
+		+ remaining_steps * EXP_PER_LEVEL * (complete_bands + 1)
+	)
 
 
-static func exp_progress(exp: int) -> float:
-	if level_from_exp(exp) >= LEVEL_CAP:
+static func level_from_exp(total_exp: int) -> int:
+	var value := maxi(0, total_exp)
+	for level in range(LEVEL_CAP, 1, -1):
+		if value >= exp_for_level(level):
+			return level
+	return 1
+
+
+static func exp_into_level(total_exp: int) -> int:
+	var level := level_from_exp(total_exp)
+	if level >= LEVEL_CAP:
+		return 0
+	return maxi(0, total_exp) - exp_for_level(level)
+
+
+static func exp_progress(total_exp: int) -> float:
+	var level := level_from_exp(total_exp)
+	if level >= LEVEL_CAP:
 		return 100.0
-	return float(exp_into_level(exp)) / float(EXP_PER_LEVEL) * 100.0
+	return float(exp_into_level(total_exp)) / float(exp_to_next_level(level)) * 100.0
 
 
 static func form_key(level: int) -> String:
@@ -293,8 +315,8 @@ static func growth_multiplier(level: int) -> float:
 	return mult
 
 
-static func grown_stat(base_value: Variant, exp: int) -> int:
-	return int(float(base_value) * growth_multiplier(level_from_exp(exp)))
+static func grown_stat(base_value: Variant, total_exp: int) -> int:
+	return int(float(base_value) * growth_multiplier(level_from_exp(total_exp)))
 
 
 static func play_exp_used(row: Dictionary, today: String = "") -> int:

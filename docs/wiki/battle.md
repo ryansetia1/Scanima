@@ -67,10 +67,13 @@ menampilkan satu fighter aktif dari setiap tim.
   Duel.
 - Satu item Battle berlaku untuk seluruh encounter, bukan satu per anggota.
   **Item** membuka Bag; tombol **Shop** tidak muncul di tengah battle.
-- Dua kemenangan progression pertama per hari memberi EXP: **+2** untuk anggota
-  yang pernah aktif dan masih hidup, **+1** untuk bench yang masih hidup.
-  Anggota yang KO tidak mendapat EXP. Kartu hasil menyebut nama setiap Anima
-  yang benar-benar menerima EXP, termasuk sesudah battle dipulihkan dari restart.
+- Dua kemenangan progression pertama per hari memberi EXP yang mengikuti
+  rata-rata Level roster lawan dan tier rival. Lawan yang lebih tinggi memberi
+  bonus underdog. Setiap anggota memakai Level-nya saat battle dimulai:
+  anggota yang pernah aktif dan masih hidup menerima setengah hadiah penuh
+  (dibulatkan ke atas), bench hidup menerima seperempat (dibulatkan ke atas),
+  dan anggota KO mendapat 0. Kartu hasil menyebut nama dan jumlah aktual setiap
+  Anima, termasuk sesudah battle dipulihkan dari restart.
 - Bits dibayar sampai total **40 per hari** dari Team Battle. Cap ini terpisah
   dari Duel.
 - Kalah, draw, atau Retreat tidak memberi hadiah.
@@ -137,9 +140,13 @@ Seeker.
 - Run bisa ditutup dan dilanjutkan lagi; progress zona yang selesai tidak hilang.
 - Jika seluruh tim KO, atau kamu **Retreat** dari fight, attempt zona itu
   dimulai ulang dari awal. Zona sebelumnya tetap selesai.
-- Tiga encounter pertama per hari memberi EXP: **+2** untuk Anima yang
-  pernah aktif dan masih hidup, **+1** untuk bench yang masih hidup. Yang KO
-  tidak mendapat EXP. Tokens tetap dapat diperoleh.
+- Expedition memiliki budget **30 total EXP roster per hari**. Selama masih ada
+  sisa budget, satu encounter dibayar penuh; sesudah budget terlewati,
+  encounter berikutnya memberi 0 EXP. Pembagiannya mengikuti rata-rata Level
+  roster lawan: anggota yang pernah aktif mendapat setengah, bench hidup
+  seperempat (keduanya dibulatkan ke atas), dan KO mendapat 0. **Boss selalu
+  memberi payout party normal sekali per run** meski budget hari itu habis;
+  ini bukan bonus kedua. Tokens tetap dapat diperoleh.
 - Menyelesaikan zona The Sugarworks memberi Bits permanen: **10** dari Zone 1,
   **20** dari Zone 2, dan **30** dari Zone 3. Totalnya dibatasi **60 Bits per
   chapter per hari** untuk seluruh run akun itu dan reset tengah malam waktu
@@ -205,10 +212,13 @@ Kalau companion aktif tidak memenuhi syarat, tombolnya jadi **Choose Anima**. Ta
 Tiga kemenangan pertama per hari (reset **tengah malam waktu setempat**) adalah Battle berhadiah:
 
 - Bits menurut kekuatan lawan (kira-kira 5–16)
-- **+4 EXP**
+- EXP yang mengikuti Level lawan, selisih Level, dan tier Tough/Formidable
 - +1 kemenangan progression pada Anima
 
-Kartu hasil menyebut nama Anima yang menerima **+4 EXP**. Training tidak
+Lawan Level tinggi memberi lebih banyak EXP, terutama jika Level Anima-mu lebih
+rendah. Nilainya dikunci dari snapshot awal duel, jadi kenaikan Level di hasil
+tidak mengubah reward yang baru saja diperoleh. Kartu hasil menyebut nama dan
+jumlah EXP aktual. Training tidak
 menampilkan klaim EXP karena memang tidak memberikannya.
 
 Di Duel, lawan dan tingkat kesulitannya dipilih server; tidak ada pengaturan

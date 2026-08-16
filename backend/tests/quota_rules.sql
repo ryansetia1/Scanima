@@ -93,6 +93,29 @@ begin
              and delta = 1 and reason = 'starter_guest') = 3,
          'starter guest Core harus tercatat tepat sekali';
 
+  assert public.anima_exp_to_next(1) = 5
+         and public.anima_exp_to_next(5) = 5
+         and public.anima_exp_to_next(6) = 10
+         and public.anima_exp_to_next(39) = 40
+         and public.anima_exp_to_next(40) = 0,
+         'biaya Level harus naik per band lima Level';
+  assert public.anima_exp_for_level(16) = 150
+         and public.anima_exp_for_level(36) = 700
+         and public.anima_exp_for_level(40) = 860,
+         'threshold Adult, Evolved, dan Level cap harus kanonis';
+  assert public.anima_level_from_exp(149) = 15
+         and public.anima_level_from_exp(150) = 16
+         and public.anima_level_from_exp(699) = 35
+         and public.anima_level_from_exp(700) = 36
+         and public.anima_level_from_exp(859) = 39
+         and public.anima_level_from_exp(860) = 40,
+         'inverse Level harus tepat di setiap boundary utama';
+  assert public.battle_exp_yield(1, 1, 'even') = 2
+         and public.battle_exp_yield(1, 11, 'even') = 5
+         and public.battle_exp_yield(40, 40, 'tough') = 6
+         and public.battle_exp_yield(1, 40, 'boss') = 8,
+         'yield Battle harus memuat level lawan, underdog, tier, dan clamp';
+
   insert into auth.identities
     (provider_id, user_id, identity_data, provider)
   values
@@ -653,6 +676,25 @@ begin
     from public.animas
    where owner_id = u1 and nickname = 'uji anima';
 
+  update public.animas set care_score = 34 where id = v_care_anima;
+  v_seeker_xp := (select seeker_xp from public.profiles where id = u1);
+  alter table public.animas disable trigger animas_mirror_seeker_xp;
+  update public.animas
+     set care_score = public.anima_exp_for_level(1 + care_score / 5)
+       + floor(
+           (care_score % 5)::numeric
+           * public.anima_exp_to_next(1 + care_score / 5)
+           / 5.0
+         )::integer
+   where id = v_care_anima;
+  alter table public.animas enable trigger animas_mirror_seeker_xp;
+  assert (select care_score from public.animas where id = v_care_anima) = 43
+         and public.anima_level_from_exp(
+           (select care_score from public.animas where id = v_care_anima)
+         ) = 7
+         and (select seeker_xp from public.profiles where id = u1) = v_seeker_xp,
+         'rebase harus menjaga Level/bar tanpa memberi Seeker EXP administratif';
+
   update public.profiles set bits = 50 where id = u1;
   update public.animas
      set status = 'ready',
@@ -754,7 +796,20 @@ begin
   assert (select bits from public.profiles where id = u1) = 45,
          'NEED_FULL Clean tidak boleh mendebit Bits';
 
-  -- Play tetap memberi Bond setelah cap score harian tercapai, tetapi tidak
+  update public.animas
+     set care = '{"hunger":100,"energy":100,"hygiene":0,"bond":0}'::jsonb,
+         care_score = 859,
+         care_synced_at = now()
+   where id = v_care_anima;
+  v_seeker_xp := (select seeker_xp from public.profiles where id = u1);
+  v_j := public.apply_care(u1, v_care_anima, 'clean', 'care-score-clamp');
+  assert (v_j #>> '{anima,care_score}')::integer = 860
+         and (select care_score_delta from public.care_events
+               where owner_id = u1 and idempotency_key = 'care-score-clamp') = 1
+         and (select seeker_xp from public.profiles where id = u1) = v_seeker_xp + 1,
+         'grant lewat Lv.40 harus menjepit receipt dan Seeker ke delta aktual';
+
+  -- Play tetap berjalan setelah cap score harian tercapai, tetapi tidak
   -- boleh menjadi mesin care_score tanpa batas.
   update public.animas
      set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
@@ -857,6 +912,7 @@ begin
          care_synced_at = now(),
          sleep_started_at = null,
          sleep_energy_at_start = null,
+         sleep_exp_on = null,
          well_cared_on = public.local_civil_date(
            now(),
            (select timezone_offset_minutes from public.profiles where id = u1)
@@ -886,6 +942,17 @@ begin
          'tidur penuh harus selesai otomatis';
   assert (v_j #>> '{anima,care_score}')::int = 5,
          'tidur penuh harus memberi 5 care_score';
+  update public.animas
+     set care = jsonb_set(care, '{energy}', '0'::jsonb),
+         sleep_started_at = now() - interval '6 hours',
+         sleep_energy_at_start = 0,
+         care_synced_at = now()
+   where id = v_care_anima;
+  v_j := public.apply_care(u1, v_care_anima, 'sync', null);
+  assert (v_j #>> '{anima,care,energy}')::numeric = 100
+         and (v_j #>> '{anima,care_score}')::integer = 5
+         and (v_j #>> '{anima,sleep_started_at}') is null,
+         'siklus tidur kedua tetap memulihkan Energy tanpa EXP tambahan hari itu';
 
   -- Bonus terawat tepat sekali per hari sipil lokal, tanpa Bond.
   update public.animas
@@ -1089,6 +1156,7 @@ begin
     'species_key', 'mouse_plastic',
     'color_bucket', 'gray',
     'stage', 1,
+    'level', 1,
     'element', 'metal',
     'base_stats', '{"hp":50,"atk":50,"def":50,"spd":50,"special":50}'::jsonb
   );
@@ -1099,6 +1167,7 @@ begin
     'species_key', v_spesies,
     'color_bucket', 'gray',
     'stage', 1,
+    'level', 11,
     'element', 'plant',
     'base_stats', '{"hp":50,"atk":50,"def":50,"spd":50,"special":50}'::jsonb
   );
@@ -1259,12 +1328,13 @@ begin
   assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 8,
          'saldo Bits dan response reward harus commit bersama';
   assert (select care_score from public.animas where id = v_battle_player)
-           = v_score_before_battle + 4,
-         'menang harus memberi care_score +4';
+           = v_score_before_battle + 5
+         and (v_j #>> '{reward,care_score}')::integer = 5,
+         'Duel lawan Lv.11 harus memberi base + underdog dari snapshot';
   assert (select battle_wins from public.animas where id = v_battle_player)
            = v_wins_before_battle + 1,
          'menang harus menaikkan battle_wins satu';
-  assert (select seeker_xp from public.profiles where id = u1) = v_seeker_xp + 4
+  assert (select seeker_xp from public.profiles where id = u1) = v_seeker_xp + 5
          and (select battle_victories from public.profiles where id = u1)
            = v_seeker_victories + 1,
          'Battle rewarded harus memberi Seeker EXP dan satu victory';
@@ -1622,8 +1692,8 @@ begin
              'team_battle_bits_per_day', 'team_battle_active_exp',
              'team_battle_bench_exp', 'expedition_energy_per_member',
              'expedition_rewarded_encounters_per_day', 'expedition_active_exp',
-             'expedition_bench_exp'
-           )) = 12,
+             'expedition_bench_exp', 'expedition_daily_exp_budget'
+           )) = 13,
          'app_config Team Battle/Expedition harus lengkap';
   assert (select count(*) from public.app_config
            where key in (
@@ -1643,7 +1713,8 @@ begin
          and (select value from public.app_config where key = 'expedition_energy_per_member') = '30'::jsonb
          and (select value from public.app_config where key = 'expedition_rewarded_encounters_per_day') = '3'::jsonb
          and (select value from public.app_config where key = 'expedition_active_exp') = '2'::jsonb
-         and (select value from public.app_config where key = 'expedition_bench_exp') = '1'::jsonb,
+         and (select value from public.app_config where key = 'expedition_bench_exp') = '1'::jsonb
+         and (select value from public.app_config where key = 'expedition_daily_exp_budget') = '30'::jsonb,
          'baseline economy Team Battle/Expedition harus sesuai spesifikasi';
 
   with inserted as (
@@ -1707,7 +1778,7 @@ begin
     'species_key', a.species_key,
     'color_bucket', a.color_bucket,
     'stage', a.stage,
-    'level', 1,
+    'level', 11,
     'element', a.element,
     'base_stats', a.base_stats,
     'hunger', 100,
@@ -1913,8 +1984,8 @@ begin
            select bool_and(
              a.care_score = v_team_scores_before[ids.ordinality::integer]
                + case
-                   when ids.ordinality <= 2 then 2
-                   when ids.ordinality = 3 then 1
+                  when ids.ordinality <= 2 then 3
+                  when ids.ordinality = 3 then 2
                    else 0
                  end
            )
@@ -1922,7 +1993,7 @@ begin
              join public.animas a on a.id = ids.id
          ),
          format(
-           'active Team mendapat +2, bench hidup +1, KO 0; actual=%s',
+           'yield penuh 5 dibagi active +3, bench hidup +2, KO 0; actual=%s',
            (select jsonb_agg(jsonb_build_object(
              'id', id,
              'nickname', nickname,
@@ -2936,8 +3007,8 @@ begin
         'roster', v_expedition_state
       )
     );
-    update public.app_config set value = '1'::jsonb
-     where key = 'expedition_rewarded_encounters_per_day';
+    update public.app_config set value = '30'::jsonb
+     where key = 'expedition_daily_exp_budget';
     insert into public.expedition_encounters (
       run_id, owner_id, node_id, kind, player_snapshot, opponent_snapshot,
       state, status, rng_seed, finished_at, rewarded_at
@@ -2947,8 +3018,15 @@ begin
       'won', 'reward-cap-fixture', now(), now()
     ) returning id into v_id;
     insert into public.expedition_encounter_rewards (
-      encounter_id, owner_id, progression, supplies
-    ) values (v_id, u1, true, 2);
+      encounter_id, owner_id, progression, supplies, anima_exp_total
+    ) values (v_id, u1, true, 2, 29);
+    assert (public.expedition_daily_reward_status(u1, v_id)->>'exp_remaining')::integer = 1,
+           'sisa budget positif harus mempertahankan eligibility encounter penuh berikutnya';
+    update public.expedition_encounter_rewards
+       set anima_exp_total = 30
+     where encounter_id = v_id;
+    assert (public.expedition_daily_reward_status(u1, v_id)->>'exp_remaining')::integer = 0,
+           'budget 30 EXP harus habis berdasarkan total receipt roster';
     begin
       perform public.start_expedition_encounter(
         u1, v_expedition_run, v, v_expedition_map->'nodes'->0,
@@ -3003,7 +3081,7 @@ begin
     assert v_j->'run'->>'status' = 'complete'
            and (v_j->'reward'->>'first_clear')::boolean
            and (v_j->'reward'->>'clear_bits')::integer = 25
-           and not (v_j->'reward'->>'progression')::boolean
+           and (v_j->'reward'->>'progression')::boolean
            and (v_j->'reward'->>'supplies')::integer = 8
            and (v_j->'run'->'last_zone_reward'->>'scheduled_bits')::integer = 30
            and (v_j->'run'->'last_zone_reward'->>'bits')::integer = 10
@@ -3012,8 +3090,12 @@ begin
            and (v_j->'run'->'daily_bits'->>'bits_remaining')::integer = 0
            and v_j->'run'->'visited_node_ids' ? 'boss-1'
            and (select sum(care_score)::integer from public.animas
-                 where id = any(v_team_ids)) = v_score_before_battle,
-           'Boss pertama harus menyelesaikan run dan memberi reward Zone 3';
+                 where id = any(v_team_ids)) = v_score_before_battle + 9
+           and (select boss_exp_awarded_at is not null from public.expedition_runs
+                 where id = v_expedition_run)
+           and (select anima_exp_total from public.expedition_encounter_rewards
+                 where encounter_id = v_expedition_encounter) = 9,
+           'Boss harus membayar party sekali meski budget harian habis';
     select public.expedition_encounter_payload(encounter)
       into v_j2
       from public.expedition_encounters encounter
@@ -3035,6 +3117,8 @@ begin
       '[]'::jsonb, false, true, '{}'::jsonb, 'unused-retry'
     );
     assert (v_j2->>'replayed')::boolean
+           and (select sum(care_score)::integer from public.animas
+                 where id = any(v_team_ids)) = v_score_before_battle + 9
            and (select count(*) from public.seeker_trophies
                  where owner_id = u1 and trophy_id = v_expedition_trophy) = 1
            and (select count(*) from public.quota_ledger

@@ -22,6 +22,7 @@ export const SURGE_COST = 1;
 export const BATTLE_MAX_TURNS = 30;
 export const LEVEL_CAP = 40;
 export const EXP_PER_LEVEL = 5;
+export const EXP_MAX = 860;
 export const ADULT_LEVEL = 16;
 export const EVOLVED_LEVEL = 36;
 export const HUNGRY_NEED = 40;
@@ -32,8 +33,36 @@ export const CARE_COMBAT_FLOOR = 0.5;
 
 const STAT_KEYS = Object.freeze(["hp", "atk", "def", "spd", "special"]);
 
+export function expToNextLevel(level) {
+  const lv = clampInt(level, 1, LEVEL_CAP);
+  return lv >= LEVEL_CAP ? 0 : EXP_PER_LEVEL * Math.ceil(lv / 5);
+}
+
+export function expForLevel(level) {
+  const steps = clampInt(level, 1, LEVEL_CAP) - 1;
+  const completeBands = Math.floor(steps / 5);
+  const remainingSteps = steps % 5;
+  return (
+    (EXP_PER_LEVEL * 5 * completeBands * (completeBands + 1)) / 2
+    + remainingSteps * EXP_PER_LEVEL * (completeBands + 1)
+  );
+}
+
 export function levelFromExp(exp) {
-  return clampInt(1 + Math.floor(Math.max(0, Number(exp) || 0) / EXP_PER_LEVEL), 1, LEVEL_CAP);
+  const value = Math.max(0, Math.trunc(Number(exp) || 0));
+  for (let level = LEVEL_CAP; level > 1; level -= 1) {
+    if (value >= expForLevel(level)) return level;
+  }
+  return 1;
+}
+
+export function battleExpYield(recipientLevel, opponentLevel, difficulty = "even") {
+  const recipient = clampInt(recipientLevel, 1, LEVEL_CAP);
+  const opponent = clampInt(opponentLevel, 1, LEVEL_CAP);
+  const base = 1 + Math.ceil(opponent / 10);
+  const underdog = Math.min(2, Math.floor(Math.max(0, opponent - recipient) / 5));
+  const tier = ["tough", "formidable", "elite", "boss"].includes(difficulty) ? 1 : 0;
+  return clampInt(base + underdog + tier, 1, 8);
 }
 
 export function formFromLevel(level) {

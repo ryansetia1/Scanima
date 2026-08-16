@@ -28,7 +28,7 @@ Kartu **About** di profil:
 | **Element** | Satu elemen utama dan kadang elemen kedua: Metal, Wood, Stone, Ceramic, Glass, Plastic, Cloth, Paper, Plant, Food, Fauna, Flow, Spark, Flame, Frost, Air, Toxin, atau Sound. Penting di Battle. |
 | **Rarity** | Seberapa tidak biasa benda itu, 1–5. |
 | **Level / form** | Hatchling (Lv. 1–15), Adult (16–35), Evolved (36–40). Wajah Anima belum berubah saat naik form. |
-| **EXP** | Poin perawatan dan kemenangan. 5 EXP = 1 Level. |
+| **EXP** | Poin perawatan dan kemenangan. Level awal naik cepat; Level tinggi butuh lebih banyak EXP. |
 | **Attack** | Nama jurus biasa, dari benda di foto. |
 | **Special** | Nama jurus Special, juga dari foto. |
 
@@ -57,21 +57,31 @@ Naik Level membuat kelima angka itu tumbuh kira-kira **2% per level**, plus lonj
 
 ## EXP dan Level
 
-```
-Level = 1 + (EXP ÷ 5), paling tinggi 40
-```
+Biaya naik Level bertambah setiap lima Level:
 
-Contoh: 25 EXP → Level 6.
+| Level saat ini | EXP ke Level berikutnya |
+| --- | --- |
+| 1–5 | 5 |
+| 6–10 | 10 |
+| 11–15 | 15 |
+| 16–20 | 20 |
+| 21–25 | 25 |
+| 26–30 | 30 |
+| 31–35 | 35 |
+| 36–39 | 40 |
+
+Adult dimulai pada **150 total EXP**, Evolved pada **700**, dan Level 40
+tercapai pada **860**. Di Level 40, meter menampilkan **MAX**.
 
 | Aksi | EXP | Catatan |
 | --- | --- | --- |
 | Feed yang menyeberangkan Hunger ke 40 | +3 | Camilan yang masih di bawah 40 = 0 |
 | Clean saat kotor (Hygiene di bawah 50) | +3 | Bersih = 0 |
-| Sleep penuh (companion di Home) | +5 | Bangun lebih awal = 0 |
+| Sleep penuh (companion di Home) | +5 | Maks sekali per Anima per hari; bangun lebih awal = 0 |
 | Play | +1 | Maks 5 kali per hari, reset tengah malam waktu setempat |
-| Menang Duel berhadiah | +4 | Training = 0 |
-| Menang Team Battle berhadiah | +2 aktif / +1 bench | Dua kemenangan pertama per hari; KO = 0 |
-| Menang encounter Expedition | +2 aktif / +1 bench | Tiga encounter pertama per hari; KO = 0 |
+| Menang Duel berhadiah | Mengikuti Level lawan | Lawan lebih tinggi dan tier Tough/Formidable memberi lebih banyak; Training = 0 |
+| Menang Team Battle berhadiah | Bagian dari hadiah lawan | Pernah aktif mendapat sekitar separuh; bench hidup sekitar seperempat; KO = 0 |
+| Menang encounter Expedition | Bagian dari hadiah lawan | Budget tim 30 EXP per hari; Boss tetap membayar sekali per run; KO = 0 |
 | Bonus terawat (ketiga kebutuhan &gt; 70) | +8 | Hanya companion di Home, sekali per hari, reset tengah malam waktu setempat |
 
 Dormant **tidak** menghapus EXP.

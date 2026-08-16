@@ -3440,6 +3440,7 @@ func _test_home_care_actions() -> void:
 	var actions := home.find_child("CareActions", true, false) as GridContainer
 	var primary := home.find_child("HomePrimaryAction", true, false) as Button
 	var identity := home.find_child("Identity", true, false) as VBoxContainer
+	var care_summary := home.find_child("CareSummary", true, false) as Label
 	var stage_space := home.find_child("StageSpace", true, false) as Control
 	var stage_footer_space := home.find_child("StageFooterSpace", true, false) as Control
 	_home_action = ""
@@ -3481,6 +3482,15 @@ func _test_home_care_actions() -> void:
 	home.set_anima(row, false)
 	_check_eq(home.shell_state(), &"ready", "loaded companion replaces the empty state")
 	_check(not primary.visible, "ready Home hides its onboarding CTA")
+	_check(care_summary.text.contains("EXP 3/5"), "Lv.2 still uses the first 5-EXP band")
+	row["care_score"] = 150
+	home.update_care(row, false)
+	_check(care_summary.text.contains("EXP 0/20"), "Lv.16 shows its 20-EXP denominator")
+	row["care_score"] = 860
+	home.update_care(row, false)
+	_check(care_summary.text.contains("EXP MAX"), "Lv.40 replaces the denominator with MAX")
+	row["care_score"] = 8
+	home.update_care(row, false)
 	_check(not play.disabled, "Play remains available without a Bond cap")
 	row["care"]["bond"] = 100.0
 	home.update_care(row, false)

@@ -119,7 +119,7 @@ ulang, dan link baru diumumkan sukses setelah grant Core tersimpan.
 
 **Collection sekarang memisahkan inspect dari Summon.** Tap kartu membuka bottom sheet dengan portrait, lima base stat yang tumbuh menurut Level, tiga kebutuhan, dan bar EXP yang disinkronkan server. `View Profile` membuka stats/delete tanpa mengganti companion aktif; `Summon` baru memindahkan pilihan ke Home melalui dissolve, portal cyan-violet, dan reveal, tanpa biaya atau model call. Roster yang benar-benar kosong menampilkan scanner procedural serta CTA first scan di Home dan Collection; loading atau error jaringan tidak lagi menyamar sebagai pemain baru. Setiap hatch tetap menawarkan rename opsional. Delete owner-only sudah live di production dan tetap tanpa refund.
 
-**Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; Feed memberi satu hop, Play memberi enam bounce selama sekitar 2,5 detik, dan pose Damaged melakukan heavy breathing loop selama Dormant. Meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. Pemain melihat **EXP dan Level** (Adult di 16, Evolved di 36); kolom wire tetap `care_score`, Bond hilang dari UI, dan Dormant tidak mereset EXP. `evolve_anima` tetap Phase 3 — slice ini hanya lompatan stat plus copy, tanpa art baru. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
+**Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; Feed memberi satu hop, Play memberi enam bounce selama sekitar 2,5 detik, dan pose Damaged melakukan heavy breathing loop selama Dormant. Meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. Pemain melihat **EXP dan Level** dengan biaya naik yang bertambah tiap lima Level: Adult pada 150 EXP, Evolved pada 700, dan cap Level 40 pada 860. Kolom wire tetap `care_score`, Bond hilang dari UI, dan Dormant tidak mereset EXP. Sleep penuh tetap memulihkan Energy tiap siklus, tetapi +5 EXP hanya sekali per Anima per hari. `evolve_anima` tetap Phase 3 — slice ini hanya lompatan stat plus copy, tanpa art baru. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
 
 **Battle vertical slice Phase 3 sudah live.** Anima aktif yang `ready`, bangun,
 tidak Dormant, dan memiliki minimal 20 Energy (tiap duel baru memotong 20 Energy)
@@ -128,12 +128,14 @@ tetapi kondisi buruk memotong combat stats. Attack, Special, Guard, dan satu
 Item per duel dihitung server dari satu modul formula; Postgres
 mengunci turn/version, menyimpan replay idempoten, dan memberi Bits menurut
 kekuatan lawan (tier Favorable/Even/Tough/Formidable, ±1). Tiga kemenangan
-pertama per hari sipil lokal juga memberi `care_score +4` dan `battle_wins +1`.
+pertama per hari sipil lokal juga memberi EXP berskala Level/tier lawan dan
+`battle_wins +1`.
 Training sesudah 3/3 masih membayar Bits sampai cap 100 per hari lokal; sesudah
 itu nol. Session berumur 30 menit dan bisa dilanjutkan setelah restart.
-Kalah/forfeit nol reward; Battle tidak pernah memberi Genesis Core. PvP
-real-time, ranked, dan item drop belum masuk scope; Team Battle async adalah
-target rilis berikutnya. Initiative mengikuti SPD dan diumumkan
+Kalah/forfeit nol reward; Battle tidak pernah memberi Genesis Core. Team Battle
+membagi yield ke anggota aktif/bench yang hidup, sedangkan Expedition memakai
+budget 30 total EXP roster per hari dan tetap membayar Boss sekali per run.
+PvP real-time, ranked, dan item drop belum masuk scope. Initiative mengikuti SPD dan diumumkan
 sebelum animasi; kedua petarung menghadap serta menerjang ke arah lawan. Lobby
 tidak memberi dua pilihan palsu: satu CTA berubah dari `Battle` menjadi `Train`
 saat progression 3/3, dengan copy Bits-only sampai cap harian.

@@ -47,6 +47,7 @@ import {
   MOMENTUM_START,
   SURGE_COST,
   baseStatTotal,
+  battleExpYield,
   battleRewardPreview,
   computeDamage,
   createBattleState,
@@ -58,6 +59,9 @@ import {
   hungerCombatMultiplier,
   hygieneCombatMultiplier,
   careCombatMultiplier,
+  EXP_MAX,
+  expForLevel,
+  expToNextLevel,
   levelFromExp,
   growthMultiplier,
   formFromLevel,
@@ -1149,9 +1153,25 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   assert.equal(levelFromExp(0), 1);
   assert.equal(levelFromExp(4), 1);
   assert.equal(levelFromExp(5), 2);
-  assert.equal(levelFromExp(75), 16);
-  assert.equal(levelFromExp(175), 36);
+  assert.equal(expToNextLevel(1), 5);
+  assert.equal(expToNextLevel(5), 5);
+  assert.equal(expToNextLevel(6), 10);
+  assert.equal(expToNextLevel(39), 40);
+  assert.equal(expToNextLevel(40), 0);
+  assert.equal(expForLevel(16), 150);
+  assert.equal(expForLevel(36), 700);
+  assert.equal(expForLevel(40), EXP_MAX);
+  assert.equal(levelFromExp(149), 15);
+  assert.equal(levelFromExp(150), 16);
+  assert.equal(levelFromExp(699), 35);
+  assert.equal(levelFromExp(700), 36);
+  assert.equal(levelFromExp(859), 39);
+  assert.equal(levelFromExp(860), 40);
   assert.equal(levelFromExp(999), 40);
+  assert.equal(battleExpYield(1, 1, "even"), 2);
+  assert.equal(battleExpYield(1, 11, "even"), 5);
+  assert.equal(battleExpYield(40, 40, "tough"), 6);
+  assert.equal(battleExpYield(1, 40, "boss"), 8);
   assert.equal(formFromLevel(1), "hatchling");
   assert.equal(formFromLevel(16), "adult");
   assert.equal(formFromLevel(36), "evolved");
@@ -1405,6 +1425,27 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   const battleEdge = await readFile(
     new URL("../backend/supabase/functions/battle_anima/index.ts", import.meta.url),
     "utf8"
+  );
+  const tieredExpMigration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260816200507_tiered_exp_and_battle_rewards.sql",
+      import.meta.url
+    ),
+    "utf8"
+  );
+  assert.match(
+    tieredExpMigration,
+    /disable trigger animas_mirror_seeker_xp[\s\S]*update public\.animas[\s\S]*enable trigger animas_mirror_seeker_xp/,
+    "rebase EXP harus mencegah Seeker EXP administratif"
+  );
+  assert.ok(
+    tieredExpMigration.includes("v_anima.sleep_exp_on is distinct from v_today"),
+    "Sleep EXP harus dibatasi sekali per Anima per hari lokal"
+  );
+  assert.ok(
+    tieredExpMigration.includes("v_session.reward_tier")
+      && tieredExpMigration.includes("v_encounter.kind = 'boss' and v_run.boss_exp_awarded_at is null"),
+    "reward Battle harus memakai tier snapshot dan Boss Expedition sekali per run"
   );
   assert.match(battleEdge, /ANIMA_LOW_ENERGY:\s*409/, "Energy rendah harus menjadi conflict");
   assert.match(battleEdge, /ANIMA_HUNGRY:\s*409/, "Anima lapar harus menjadi conflict");

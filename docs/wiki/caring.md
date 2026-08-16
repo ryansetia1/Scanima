@@ -54,7 +54,10 @@ Paling banyak **lima kali Play yang dapat EXP per hari**, reset tengah malam wak
 
 Anima tidur untuk mengisi Energy.
 
-- Companion di Home: penuh dalam **6 jam**, lalu bangun sendiri dan dapat **+5 EXP**.
+- Companion di Home: penuh dalam **6 jam**, lalu bangun sendiri. Siklus penuh
+  pertama tiap Anima pada hari itu mendapat **+5 EXP**; siklus berikutnya tetap
+  mengisi Energy tetapi tidak memberi EXP lagi sampai reset tengah malam waktu
+  setempat.
 - Anima di Collection (tidak di-Summon): penuh lebih cepat, **3 jam**, **tanpa** +5 EXP, dan tetap tidur di server supaya Energy tidak langsung luruh lagi.
 
 Hunger dan Hygiene **tetap turun** selama tidur di Home. Anima di Collection turun jauh lebih pelan dan tidak sampai lapar atau kotor — mereka istirahat aman sampai di-Summon. Bangun pagi di Home tetap perlu makan.

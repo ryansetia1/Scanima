@@ -94,8 +94,11 @@ Baseline rollout, semuanya tetap `app_config`:
 
 - 2 kemenangan progression per hari sipil lokal.
 - 40 Bits per hari dari Team Battle.
-- Anima yang pernah aktif dan masih hidup mendapat +2 EXP.
-- Bench yang tidak pernah aktif dan masih hidup mendapat +1 EXP.
+- Full yield memakai Level rata-rata roster lawan yang dibulatkan, Level snapshot
+  masing-masing penerima, bonus underdog maksimum +2, dan bonus +1 untuk tier
+  Tough/Formidable; hasil full dijepit 1–8.
+- Anima yang pernah aktif dan masih hidup mendapat `ceil(full / 2)`.
+- Bench yang tidak pernah aktif dan masih hidup mendapat `ceil(full / 4)`.
 - Anggota yang KO di akhir encounter mendapat 0 EXP.
 
 Cap Team Battle terpisah dari Duel. Loss, draw, dan forfeit memberi nol. Seeker
@@ -206,12 +209,18 @@ mengarang effect baru. Copy pemain memakai Tokens; kolom dan effect type tetap
 effect atau option manifest. RPC hanya menerimanya pada pending node `shop` dan
 menuntut `party_state`, Tokens, serta boost identik dengan state authoritative.
 
-Tiga encounter pertama per hari sipil lokal memberi progression EXP:
-+2 untuk fighter yang pernah aktif dan masih hidup, +1 untuk bench yang masih
-hidup, dan 0 untuk yang KO. Layar hasil menampilkan
-EXP tiap anggota dan siapa yang naik Level. Tokens tetap diberikan
-setelah cap karena merupakan resource run, bukan mata uang permanen. Encounter
-biasa tidak mencetak Bits.
+Expedition memakai soft budget 30 total EXP roster per hari sipil lokal.
+Receipt menyimpan `anima_exp_total`; selama `exp_remaining > 0`, satu encounter
+dibayar penuh dan boleh membawa total harian melewati 30, lalu encounter
+berikutnya 0. Level lawan adalah rata-rata roster snapshot yang dibulatkan.
+`battle` memakai bonus difficulty normal, `elite` setara Tough, dan `boss`
+setara Formidable. Pembagian per anggota sama dengan Team: active hidup
+`ceil(full / 2)`, bench hidup `ceil(full / 4)`, KO 0. Boss membypass budget
+untuk tepat satu payout party normal per run; `boss_exp_awarded_at` dan receipt
+turn menjaga replay/rematch tidak membayar ulang. Layar hasil menampilkan EXP
+tiap anggota dan siapa yang naik Level. Tokens tetap diberikan setelah cap
+karena merupakan resource run, bukan mata uang permanen. Encounter biasa tidak
+mencetak Bits.
 
 Sesudah result summary terbentuk, client membuat queue dari seluruh row
 `anima_exp` yang melintasi batas Level dengan memakai `care_score` snapshot

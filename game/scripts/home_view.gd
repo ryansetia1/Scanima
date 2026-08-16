@@ -116,17 +116,21 @@ func update_care(row: Dictionary, busy: bool) -> void:
 	_set_need_alert(_hunger_chip, CARE_RULES.need_is_low(care, "hunger"))
 	_set_need_alert(_energy_chip, CARE_RULES.need_is_low(care, "energy"))
 	_set_need_alert(_hygiene_chip, CARE_RULES.need_is_low(care, "hygiene"))
-	var exp := int(_row.get("care_score", 0))
-	UiJuice.tween_meter(_need_exp, CARE_RULES.exp_progress(exp))
+	var total_exp := int(_row.get("care_score", 0))
+	UiJuice.tween_meter(_need_exp, CARE_RULES.exp_progress(total_exp))
 
 	var sleeping := _has_timestamp(_row.get("sleep_started_at"))
 	var dormant := _has_timestamp(_row.get("dormant_since"))
+	var level: int = CARE_RULES.level_from_exp(total_exp)
+	var exp_label: String = tr("HOME_LEVEL_MAX") % LocaleManager.format_integer(level)
+	if level < CARE_RULES.LEVEL_CAP:
+		exp_label = tr("HOME_LEVEL_EXP") % [
+			LocaleManager.format_integer(level),
+			LocaleManager.format_integer(CARE_RULES.exp_into_level(total_exp)),
+			LocaleManager.format_integer(CARE_RULES.exp_to_next_level(level)),
+		]
 	_care_summary.text = tr("HOME_CARE_SUMMARY") % [
-		tr("HOME_LEVEL_EXP") % [
-			LocaleManager.format_integer(CARE_RULES.level_from_exp(exp)),
-			LocaleManager.format_integer(CARE_RULES.exp_into_level(exp)),
-			LocaleManager.format_integer(CARE_RULES.EXP_PER_LEVEL),
-		],
+		exp_label,
 		LocaleManager.care_state(sleeping, dormant),
 	]
 	_sleep_button.text = tr("CARE_WAKE") if sleeping else tr("CARE_SLEEP")

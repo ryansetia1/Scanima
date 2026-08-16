@@ -243,15 +243,28 @@ Jadi pengganti kematian: setelah cap **48 jam decay efektif** tercapai dengan Hu
 
 ### EXP, Level, dan aksi perawatan
 
-Kolom Postgres tetap `care_score`; pemain melihatnya sebagai **EXP**. `level = 1 + floor(exp / 5)`, cap 40. Form copy (sprite tetap stage 1 sampai `evolve_anima` ada): Hatchling 1–15, Adult 16–35, Evolved 36–40.
+Kolom Postgres tetap `care_score`; pemain melihatnya sebagai **EXP**. Kurva live:
+
+```text
+need_next(level) = 5 × ceil(level / 5), untuk Level 1–39
+EXP Level 16 = 150
+EXP Level 36 = 700
+EXP Level 40 = 860
+```
+
+Level adalah inverse threshold itu dan di-cap 40; `care_score` dijepit 0–860.
+Form copy (sprite tetap stage 1 sampai `evolve_anima` ada): Hatchling 1–15,
+Adult 16–35, Evolved 36–40. Migrasi dari kurva flat mempertahankan Level lama
+serta fraksi progress bar, dengan trigger mirror Seeker EXP dimatikan hanya
+selama rebase administratif.
 
 ```
 Beri makan yang menyeberangkan Hunger ke ≥40 : +3 EXP
 Beri makan yang masih di bawah 40            : +0
 Bersihkan saat hygiene < 50      : +3 EXP
-Tidur penuh (siklus 6 jam nyata) : +5 EXP
+Tidur penuh (siklus 6 jam nyata) : +5 EXP sekali per Anima/hari
 Bermain                          : +1 EXP (maksimal +5 per hari)
-Menang battle                    : +4 EXP
+Menang battle                    : yield Level/tier lawan
 Hunger, Energy, Hygiene > 70     : +8 EXP (bonus harian "terawat")
 Masuk state Dormant              : EXP tidak direset
 ```
@@ -264,7 +277,7 @@ Nilai aksi yang live di Phase 2:
 - **Clean:** gratis, Hygiene +35; EXP +3 hanya jika Hygiene sebelum aksi <50. Gerbang penuh yang sama.
 - **Energy item (`use_item`):** Pulse Cell +20 / Reactor Pack +50, dijepit 100, tanpa EXP. `NEED_FULL` pada Energy >= 99.5.
 - **Play:** gratis, Energy -5; EXP +1 maksimal lima kali per hari sipil lokal. Tidak ada cap Bond; anti-farm-nya Energy dan counter harian. Client menahan tap sesudah cap (toast, tanpa request).
-- **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh +5 EXP. Wake lebih awal mempertahankan pemulihan parsial tanpa EXP. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap. Anima yang **tidak di-Summon** juga tidur, tanpa auto-bangun dan tanpa +5 EXP — Energy pulih dalam tiga jam (dua kali lipat companion). Collection menampilkan Sleep selama Energy pulih, Hungry/Dirty kalau lapar/kotor, Idle begitu siap Summon; row Postgres tetap tidur agar Energy tidak luruh. `Summon` menulis `profiles.active_anima_id` dan menidurkan sisanya.
+- **Sleep:** pulih linear dari Energy awal sampai 100 selama enam jam nyata; selesai penuh memberi +5 EXP hanya sekali per Anima per hari sipil lokal. Siklus berikutnya tetap memulihkan Energy tanpa EXP. Wake lebih awal mempertahankan pemulihan parsial tanpa EXP. Client menjadwalkan satu sync di batas enam jam dari timestamp server dan mengulang sync saat app kembali dari background, sehingga pose berubah ke Awake tanpa menunggu tap. Anima yang **tidak di-Summon** juga tidur, tanpa auto-bangun dan tanpa +5 EXP — Energy pulih dalam tiga jam (dua kali lipat companion). Collection menampilkan Sleep selama Energy pulih, Hungry/Dirty kalau lapar/kotor, Idle begitu siap Summon; row Postgres tetap tidur agar Energy tidak luruh. `Summon` menulis `profiles.active_anima_id` dan menidurkan sisanya.
 
 Saldo, kebutuhan, inventory, dan score diputuskan satu transaction function
 Postgres. `care_events` membuat retry idempoten; `quota_ledger` mencatat
@@ -286,8 +299,8 @@ graph LR
 | Form | Syarat | Efek stat |
 | --- | --- | --- |
 | Hatchling | — | `1 + 0.02 * (level - 1)` |
-| Adult | Level ≥ 16 (75 EXP) | multiplier +0.15 |
-| Evolved | Level ≥ 36 (175 EXP) | multiplier +0.20 lagi |
+| Adult | Level ≥ 16 (150 EXP) | multiplier +0.15 |
+| Evolved | Level ≥ 36 (700 EXP) | multiplier +0.20 lagi |
 
 `animas.stage` tetap 1 supaya loader art tidak mencari sheet stage 2 yang belum ada. Stats Battle memakai `growthMultiplier(level)`, bukan `stageMultipliers`, sampai art evolusi live.
 
@@ -528,9 +541,19 @@ memilih tier saat session dibuat, lalu roll deterministik ±1 dari seed session
 | Tough | < 1.10 | 11 |
 | Formidable | sisanya | 15 |
 
-Payout disimpan di `battle_sessions.reward_tier/roll/bits`. Tiga kemenangan
-pertama per akun per hari sipil lokal masing-masing memberi Bits itu (dijepit
-sisa cap), `care_score +4`, dan `battle_wins +1`. Ledger progression memakai
+Payout disimpan di `battle_sessions.reward_tier/roll/bits`. EXP Duel dihitung
+dari snapshot immutable:
+
+```text
+base = 1 + ceil(opponent_level / 10)
+underdog = +1 per selisih 5 Level saat lawan lebih tinggi, maksimum +2
+difficulty = +1 untuk Tough atau Formidable
+full_yield = clamp(base + underdog + difficulty, 1, 8)
+```
+
+Tiga kemenangan pertama per akun per hari sipil lokal masing-masing memberi
+Bits itu (dijepit sisa cap), `full_yield` aktual setelah clamp Level 40, dan
+`battle_wins +1`. Ledger progression memakai
 `reason = 'battle_win'` — dihitung dari **jumlah baris**, bukan nominal Bits.
 Setelah 3/3, duel tetap **Training**: EXP dan win nol, tetapi Bits masih
 dibayar sampai cap **100 Bits per hari lokal** (`app_config.battle_bits_per_day`),
@@ -570,9 +593,11 @@ real-time, ranked, dan item drop tetap ditunda.
 
 Team Battle tidak mengubah economy Duel. Ia mempunyai cap account-wide sendiri:
 baseline **2 rewarded wins** dan **40 Bits per hari sipil lokal**. Empat anggota
-membayar 10 Energy saat session baru dibuat. Fighter yang pernah aktif mendapat
-+2 EXP dan bench tim mendapat +1; loss, draw, dan forfeit nol. Angka ini hidup
-di `app_config` dan wajib dituning dari telemetry sebelum rollout luas.
+membayar 10 Energy saat session baru dibuat. Level lawan memakai rata-rata
+roster snapshot yang dibulatkan; setiap anggota memakai Level snapshot-nya
+sendiri. `full_yield` memakai formula Duel, lalu fighter hidup yang pernah aktif
+mendapat `ceil(full_yield / 2)`, bench hidup mendapat
+`ceil(full_yield / 4)`, dan KO mendapat 0. Loss, draw, dan forfeit nol.
 Result memfilter `anima_exp` ke row `exp > 0`, menampilkan nama penerima serta
 Level Up, dan payload terminal Team memulihkan array itu dari receipt JSON turn
 saat resume/replay.
@@ -585,12 +610,16 @@ seluruh anggota yang naik Level selesai ditampilkan.
 Expedition tidak menjadi faucet Bits berulang. **Begin Expedition** mendebit
 30 Energy dari masing-masing empat anggota satu kali; seluruh Start Zone dan
 Boss dalam run itu tidak lagi memakai Energy. Roster dikunci sampai complete
-atau abandon supaya anggota pengganti tidak menghindari biaya masuk. Tiga
-encounter pertama per hari memberi pembagian EXP yang sama, sedangkan Tokens
-(wire `supplies`) tetap masuk karena hanya berlaku di run. First clear chapter
-memberi reward satu kali + Trophy. Bits hanya keluar untuk satu refresh Shop
-opsional; jika attempt zona gagal, debit itu direfund idempoten bersama rollback
-checkpoint.
+atau abandon supaya anggota pengganti tidak menghindari biaya masuk. Expedition
+memakai soft budget **30 total EXP roster per hari**: bila budget masih
+menyisakan minimal 1, encounter dibayar penuh dan boleh melewati 30; encounter
+berikutnya memberi 0. Battle/Elite/Boss memetakan bonus difficulty ke
+normal/Tough/Formidable, lalu pembagian active/bench/KO sama seperti Team.
+Boss membypass budget untuk satu payout party normal per run dan
+`boss_exp_awarded_at` mencegah replay/rematch menggandakannya. Tokens (wire
+`supplies`) tetap masuk karena hanya berlaku di run. First clear chapter memberi
+reward satu kali + Trophy. Bits hanya keluar untuk satu refresh Shop opsional;
+jika attempt zona gagal, debit itu direfund idempoten bersama rollback checkpoint.
 
 HP persisten antar-node dan antar-zona. Sebelum Zona 2/3, checkpoint
 server-authoritative mewajibkan Recover (+50% max HP; KO bangkit 50%) atau Power
