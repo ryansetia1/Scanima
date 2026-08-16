@@ -11,6 +11,12 @@ membuang request karena turn sebelumnya masih commit.
 
 Game mobile virtual pet. Pemain memfoto objek nyata atau hewan non-manusia yang aman, foto itu jadi monster (**Anima**) lewat Vision LLM + image generation. Lalu dirawat gaya Tamagotchi, dievolusikan, dan dipakai bertarung. Panduan pemain (bukan spek) di [docs/wiki/](docs/wiki/README.md). Spek dan rumus di [README.md](README.md) dan [docs/](docs/).
 
+Diagnosis produk non-teknis hidup di
+[`docs/11-core-loop-and-player-motivation.md`](docs/11-core-loop-and-player-motivation.md):
+Scan adalah hook terkuat, Care/Battle adalah loop berulang paling lengkap, dan
+aktivitas harian belum membawa pemain kembali ke discovery. Itu baseline untuk
+diskusi arah produk, **bukan** keputusan redesign atau fitur yang sudah dijanjikan.
+
 ## Aturan yang tidak bisa dinegosiasikan
 
 1. **API key tidak pernah masuk ke build Godot.** Hanya ada satu, `REPLICATE_API_TOKEN`, dan ia hanya hidup di Supabase Edge Function secrets. Client Godot bicara ke Edge Function, bukan ke Replicate. Satu-satunya pengecualian adalah mode BYOK di mana token milik pemain sendiri disimpan lokal di device.

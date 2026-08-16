@@ -260,6 +260,7 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 | [docs/07-collection-summon-and-empty-state.md](docs/07-collection-summon-and-empty-state.md) | Desain bottom sheet Collection, transisi Summon, dan empty state pemain tanpa Anima |
 | [docs/09-team-battle-and-expedition.md](docs/09-team-battle-and-expedition.md) | Kontrak Team Battle, Expedition, chapter server-delivered, Trophy, dan rollout |
 | [docs/10-manual-chapter-assets.md](docs/10-manual-chapter-assets.md) | Prompt reusable + The Sugarworks dan folder handoff untuk generation aset manual di ChatGPT |
+| [docs/11-core-loop-and-player-motivation.md](docs/11-core-loop-and-player-motivation.md) | Diagnosis non-teknis: tindakan, hambatan, motivasi pemain, kekuatan loop saat ini, dan pilihan arah produk |
 | [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md) | Sumber art direction v2: linework, cel shading, transformasi objek, pose, dan negative style |
 | [CLAUDE.md](CLAUDE.md) | Konteks dan konvensi untuk AI coding agent |
 
