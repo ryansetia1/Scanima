@@ -1,0 +1,67 @@
+{
+  "chapter_slug": "the-sugarworks",
+  "content_version": 4,
+  "manifest_hash": "db8ec65def0de3b00f46d0389761e9cfaa35553da1e19e2b9a6885d4e894ed42",
+  "staged_at": "2026-08-16T12:39:03.691Z",
+  "started_at": "2026-08-16T12:37:38.741Z",
+  "status": "staged",
+  "uploads": [
+    {
+      "path": "expeditions/the-sugarworks/v4/animas/sugarworks-gumdrop/sheet.png",
+      "sha256": "269f4fa290286d7fcad400436d042a85ec1054f31841bbfc9b0037293a09537f"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/animas/sugarworks-taffy/sheet.png",
+      "sha256": "1681f38085cd3d1575b8280ce2a3674c04b84297dcd05e6838061f5d9bc04126"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/animas/sugarworks-licorice/sheet.png",
+      "sha256": "f218e002f6705f7606d78b1595e9ae985e7b8cd228773a11fc616e313a5be97f"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/animas/sugarworks-caramel/sheet.png",
+      "sha256": "ecc2130987a99b2fa0d0cac96951c4d7a9b41fca0f986ec6433677689f4222bb"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/animas/sugarworks-peppermint/sheet.png",
+      "sha256": "45fc21709eed7f52bf055962eef2b8a892ffacdbe76bfcff4d2224bfc3ee5502"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/animas/sugarworks-nougat/sheet.png",
+      "sha256": "04adc150c99348f8417f227bbe45a6fae3f2ed90a0855f23a2743c1707acb782"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/animas/sugarworks-fudge/sheet.png",
+      "sha256": "f5d2b20cd6a04e71fa080cb59e3b38482b2b2bffcbfd2343357d9cc57e848ffe"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/animas/sugarworks-syrup/sheet.png",
+      "sha256": "1aab182c36b3f8944582c7f9cd2eff032e51ff6e99ebac0cf92fb2b96e12cc6a"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/animas/sugarworks-cotton/sheet.png",
+      "sha256": "a470e9690cb7301cb0e32456bc446c0e96ee18ff222ade4740a7e0e55a73f39a"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/zones/zone-1.png",
+      "sha256": "61a91679aa350afb21f6c4df5cd8fb47f5f4522e04008fafd8e08eff528f1c6d"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/zones/zone-2.png",
+      "sha256": "9b6f2ab15ec071920091d1a8c43a254ee6d36e6cff4c7e3028c229b6515a5657"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/zones/zone-3.png",
+      "sha256": "ecfe6a2a71fca05ca89508fadd2f88515a391a73b55978cd51b28347f3144da8"
+    },
+    {
+      "path": "expeditions/the-sugarworks/v4/boss/confectioner-seeker.png",
+      "sha256": "41591f4a5e994122a731a045d8a6989a1e8e6643cf5e92294acb73c27bd9bee7"
+    },
+    {
+      "path": "expeditions/the-sugarworks/trophy/sugarworks-trophy.png",
+      "sha256": "af063bf31653a744c608edf8278bc979124a4ed3d33be3e30cfa6364c1a87dec"
+    }
+  ],
+  "version_id": "2d1afd83-1e6b-4b5f-a5c3-8a5092b976dc"
+}
