@@ -12,6 +12,7 @@ const OPPONENT_SHOT_X := 0.73
 const GROUND_Y_RATIO := 0.91
 const ANIMA_VISUAL_HEIGHT_CAP_CM := 300.0
 const SEEKER_OVERLAP_RATIO := 0.6
+const BACKGROUND_PAN_EDGE_MARGIN := 0.04
 
 
 static func anima_display_height_cm(body_height_cm: float) -> float:
@@ -26,6 +27,13 @@ static func anima_behind_seeker(anima_height_cm: float, seeker_height_cm: float)
 		seeker_height_cm > 0.0
 		and anima_display_height_cm(anima_height_cm) > seeker_height_cm * SEEKER_OVERLAP_RATIO
 	)
+
+
+static func background_pan_for_session(session_id: String) -> float:
+	if session_id.is_empty():
+		return 0.5
+	var normalized := float(posmod(session_id.hash(), 10001)) / 10000.0
+	return lerpf(BACKGROUND_PAN_EDGE_MARGIN, 1.0 - BACKGROUND_PAN_EDGE_MARGIN, normalized)
 
 
 static func usable_height(arena_size: Vector2) -> float:

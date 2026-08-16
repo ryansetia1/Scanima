@@ -249,6 +249,7 @@ export async function postprocessChromaGridSheet(rawPng, {
 export async function postprocessChapterZone(rawPng) {
   const decoded = await Image.decode(rawPng);
   const targetRatio = 16 / 9;
+  const maxWidth = 2048;
   const sourceRatio = decoded.width / decoded.height;
   const width = sourceRatio > targetRatio
     ? Math.round(decoded.height * targetRatio)
@@ -265,9 +266,11 @@ export async function postprocessChapterZone(rawPng) {
     width,
     height,
   );
-  const work = cropped.width === 768 && cropped.height === 432
-    ? cropped
-    : cropped.resize(768, 432);
+  // ponytail: cap 2048px menjaga satu backdrop <10 MB RGBA di mobile; naikkan
+  // hanya jika target viewport melewati 1080p dan budget memori sudah diukur.
+  const work = cropped.width > maxWidth
+    ? cropped.resize(maxWidth, Math.round(maxWidth / targetRatio))
+    : cropped;
   const png = encodeRgbaPng(work);
   return { png, hash: hashFile(png), manifest: null };
 }

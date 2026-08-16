@@ -3857,7 +3857,9 @@ func _run_sugarworks_zone_demo(
 		opponent_height = 135
 	var opponent := _load_local_anima_sheet(chapter, opponent_slug)
 	var seeker := _load_local_seeker_sheet(chapter) if with_seeker else {}
-	var zone_tex := AnimaLoader.load_sheet_texture(chapter.path_join("zones/zone-%d.png" % index))
+	var zone_tex := AnimaLoader.load_sheet_texture(
+		chapter.path_join("zones/zone-%d.png" % index), true
+	)
 	if not bool(player.get("ok", false)) or not bool(opponent.get("ok", false)):
 		push_error("sugarworks-zone-demo: aset Sugarworks tidak ketemu di %s" % chapter)
 		return
@@ -3885,6 +3887,11 @@ func _run_sugarworks_zone_demo(
 	session["state"]["opponent"]["roster"][0]["body_height_cm"] = (
 		opponent_height_override if opponent_height_override > 0 else opponent_height
 	)
+	session["id"] = "sugarworks-zone-%d-%d-%d" % [
+		index,
+		int(session["state"]["player"]["roster"][0]["body_height_cm"]),
+		int(session["state"]["opponent"]["roster"][0]["body_height_cm"]),
+	]
 	session["turn_number"] = 2
 	session["state"]["turn"] = 2
 	_team_battle_view.set_session(session, art)

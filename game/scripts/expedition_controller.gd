@@ -463,6 +463,8 @@ func _load_arena_background(encounter: Dictionary) -> Texture2D:
 	var image := Image.new()
 	if image.load_png_from_buffer(download.bytes) != OK:
 		return null
+	if image.generate_mipmaps() != OK:
+		return null
 	var texture := ImageTexture.create_from_image(image)
 	_art_cache[url] = texture
 	return texture

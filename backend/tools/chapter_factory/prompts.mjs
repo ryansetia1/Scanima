@@ -28,12 +28,19 @@ Silhouette brief: original ${cast.color_bucket} monster for ${design.summary.tit
     const zone = design.zones.find((entry) => entry.index === index);
     if (!zone) throw new Error(`PROMPT_ZONE_MISSING:${index}`);
     const template = await readPrompt("zone_art.md");
+    const composition = {
+      1: "Asymmetric open courtyard: cluster the largest silos left of center, use low distant warehouses on the opposite side, and preserve an irregular open view through the middle.",
+      2: "Depth-centered industrial aisle: let the eye travel through an open central work corridor, framed by unequal foundry structures on both sides; no single object sits at center and the two sides must not mirror.",
+      3: "Layered diagonal forecourt: step furnace towers, cooling stacks, and the distant sealed gate across different depths on a gentle diagonal, with no dominant center pedestal.",
+    }[index] ?? "Choose a natural composition unlike the other chapter zones; avoid a default centered hero object.";
     return `${template.trim()}
 
 Chapter: ${design.summary.title}
 Zone ${index}: ${zone.title}
 Theme: ${brief.theme ?? design.summary.description}
-Combat floor: lower 30–35% is one continuous solid plane; no liquid, rails, gutters, or chasms under the fighters.`;
+Framing: wide distant establishing shot with open sky across the upper 40–45%, chapter architecture in the middle distance, and no dominant foreground object.
+Zone composition: ${composition}
+Combat floor: only the lower 22–26% is one continuous solid plane; no liquid, rails, gutters, or chasms under the fighters.`;
   }
   if (slot === "boss_seeker") {
     const seeker = design.boss_seeker;

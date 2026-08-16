@@ -135,73 +135,28 @@
       "source": "replicate"
     },
     "zone:1": {
-      "generated_at": "2026-08-16 (UTC+7)",
-      "ingested_at": "2026-08-16T09:05:24.259Z",
-      "input_path": "manual_inbox/zones/zone-1.png",
-      "input_sha256": "c285b15d99afc1a7dda7b55816cfd9fd4463690950129ea25a5fc7202e6f3bfc",
-      "notes_sha256": "df8c34b6a22fceb6b3276c0d285d156ee9d093ba06494806e4e2cc2d15e83d69",
-      "operator": "Ryan Setiawan",
-      "output_sha256": "2ed7fa504df0999b665d9a3850c250692c4ad85f596dc4fc34b7cba47d279a08",
-      "provider": "ChatGPT image generation",
-      "regeneration_history": [
-        {
-          "ingested_at": "2026-08-15T09:36:43.298Z",
-          "input_sha256": "f6afd8136cb3e3478e319ae02b9f081ed7fe7fc0ee565b5d680c38d5950333a3",
-          "output_sha256": "c150213eb39fc97a59f626811d7fb9f889bebf4927316410cbacad007d849c69"
-        },
-        {
-          "ingested_at": "2026-08-16T08:35:16.996Z",
-          "input_sha256": "90127fd81babd19cdd6d571ab7bb29491092c36ba90ee63ff0441ff40cc2d097",
-          "output_sha256": "3b8f7d2960ad016391332487766c277aad1a1994bab00fcaa8bcb38994ec489f"
-        }
-      ],
-      "source": "manual_chatgpt"
+      "generated_at": "2026-08-16T11:59:27.647Z",
+      "model": "openai/gpt-image-2",
+      "output_sha256": "61a91679aa350afb21f6c4df5cd8fb47f5f4522e04008fafd8e08eff528f1c6d",
+      "prediction_id": "8h5mwssta9rmw0d019rax4ymsr",
+      "reprocessed_at": "2026-08-16T12:18:44.215Z",
+      "source": "replicate"
     },
     "zone:2": {
-      "generated_at": "2026-08-16 (UTC+7)",
-      "ingested_at": "2026-08-16T09:05:24.260Z",
-      "input_path": "manual_inbox/zones/zone-2.png",
-      "input_sha256": "4669f1f76b436e5d12f6ce71e1aa656bcf01d451ba2a5b34f0ce89e6dc9d16fa",
-      "notes_sha256": "df8c34b6a22fceb6b3276c0d285d156ee9d093ba06494806e4e2cc2d15e83d69",
-      "operator": "Ryan Setiawan",
-      "output_sha256": "2f3de961995a9fe6f74411880fd4f4c20e24eeb604361d3756c5312db52ca2c7",
-      "provider": "ChatGPT image generation",
-      "regeneration_history": [
-        {
-          "ingested_at": "2026-08-15T09:36:43.298Z",
-          "input_sha256": "f3dedc8b7d7767a54c6ef2746a7faeb7a92c8dd9674e2c2573a038ed52bbebd1",
-          "output_sha256": "4aff708592737f3840b9a4e0698d83d7686629141dac54f513a27b869c4324d2"
-        },
-        {
-          "ingested_at": "2026-08-16T08:35:16.996Z",
-          "input_sha256": "489dea45ae196a47551854a9ada2e498e9d4ae15fe18342744f6631ea9653c9d",
-          "output_sha256": "4730df904a5479173ebab37dd260fbb8bd874e1a1bf3bde5075a4660a607a9b7"
-        }
-      ],
-      "source": "manual_chatgpt"
+      "generated_at": "2026-08-16T12:00:23.942Z",
+      "model": "openai/gpt-image-2",
+      "output_sha256": "9b6f2ab15ec071920091d1a8c43a254ee6d36e6cff4c7e3028c229b6515a5657",
+      "prediction_id": "7sg9vxzdfxrmr0d019ra7yqcpg",
+      "reprocessed_at": "2026-08-16T12:18:44.930Z",
+      "source": "replicate"
     },
     "zone:3": {
-      "generated_at": "2026-08-16 (UTC+7)",
-      "ingested_at": "2026-08-16T09:05:24.260Z",
-      "input_path": "manual_inbox/zones/zone-3.png",
-      "input_sha256": "0fa86231646b7df10da261ff3387469423a2a7c870277d39fe256cd4060cc851",
-      "notes_sha256": "df8c34b6a22fceb6b3276c0d285d156ee9d093ba06494806e4e2cc2d15e83d69",
-      "operator": "Ryan Setiawan",
-      "output_sha256": "0f1596d517816a1c8e6ca8c6e5b55d751acbd99669ce01fd0f39446a8b774344",
-      "provider": "ChatGPT image generation",
-      "regeneration_history": [
-        {
-          "ingested_at": "2026-08-15T09:36:43.298Z",
-          "input_sha256": "1405fc0894d10eb0c0840c11b73a1f0edff650c029bc8f72f6433220b6412241",
-          "output_sha256": "79f8f5ced713c1435541cebc23a1372684d3c4a042a2a7fadaf88bfcc8fa4d1b"
-        },
-        {
-          "ingested_at": "2026-08-16T08:35:16.996Z",
-          "input_sha256": "8bdd81c84876766d10955a47fc101d9532583d267e2c6efd4712cc6a12ffdf40",
-          "output_sha256": "5cdafcddf38a0ba017b927b304799af8233f438eaccfd27c9babcb7b8f788360"
-        }
-      ],
-      "source": "manual_chatgpt"
+      "generated_at": "2026-08-16T12:01:09.220Z",
+      "model": "openai/gpt-image-2",
+      "output_sha256": "ecfe6a2a71fca05ca89508fadd2f88515a391a73b55978cd51b28347f3144da8",
+      "prediction_id": "5vrn4weayxrmw0d019rvsh85sg",
+      "reprocessed_at": "2026-08-16T12:18:45.431Z",
+      "source": "replicate"
     }
   }
 }

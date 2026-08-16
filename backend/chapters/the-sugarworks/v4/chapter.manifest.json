@@ -49,17 +49,17 @@
       {
         "kind": "zone_art",
         "path": "expeditions/the-sugarworks/v4/zones/zone-1.png",
-        "sha256": "2ed7fa504df0999b665d9a3850c250692c4ad85f596dc4fc34b7cba47d279a08"
+        "sha256": "61a91679aa350afb21f6c4df5cd8fb47f5f4522e04008fafd8e08eff528f1c6d"
       },
       {
         "kind": "zone_art",
         "path": "expeditions/the-sugarworks/v4/zones/zone-2.png",
-        "sha256": "2f3de961995a9fe6f74411880fd4f4c20e24eeb604361d3756c5312db52ca2c7"
+        "sha256": "9b6f2ab15ec071920091d1a8c43a254ee6d36e6cff4c7e3028c229b6515a5657"
       },
       {
         "kind": "zone_art",
         "path": "expeditions/the-sugarworks/v4/zones/zone-3.png",
-        "sha256": "0f1596d517816a1c8e6ca8c6e5b55d751acbd99669ce01fd0f39446a8b774344"
+        "sha256": "ecfe6a2a71fca05ca89508fadd2f88515a391a73b55978cd51b28347f3144da8"
       },
       {
         "kind": "boss_seeker_sheet",
@@ -225,7 +225,7 @@
     "sequence": 1,
     "slug": "the-sugarworks"
   },
-  "manifest_hash": "1904b001b0bbbfe4f0ba679e745a1bb9a3dc9b4005fd6acfd10a11acead387cc",
+  "manifest_hash": "db8ec65def0de3b00f46d0389761e9cfaa35553da1e19e2b9a6885d4e894ed42",
   "minimum_build": {
     "android": 0,
     "desktop": 0,
@@ -2585,7 +2585,7 @@
   },
   "zones": [
     {
-      "background_hash": "2ed7fa504df0999b665d9a3850c250692c4ad85f596dc4fc34b7cba47d279a08",
+      "background_hash": "61a91679aa350afb21f6c4df5cd8fb47f5f4522e04008fafd8e08eff528f1c6d",
       "background_path": "expeditions/the-sugarworks/v4/zones/zone-1.png",
       "id": "zone-1",
       "node_pools": {
@@ -2663,7 +2663,7 @@
       "title_key": "SUGARWORKS_ZONE_1"
     },
     {
-      "background_hash": "2f3de961995a9fe6f74411880fd4f4c20e24eeb604361d3756c5312db52ca2c7",
+      "background_hash": "9b6f2ab15ec071920091d1a8c43a254ee6d36e6cff4c7e3028c229b6515a5657",
       "background_path": "expeditions/the-sugarworks/v4/zones/zone-2.png",
       "id": "zone-2",
       "node_pools": {
@@ -2741,7 +2741,7 @@
       "title_key": "SUGARWORKS_ZONE_2"
     },
     {
-      "background_hash": "0f1596d517816a1c8e6ca8c6e5b55d751acbd99669ce01fd0f39446a8b774344",
+      "background_hash": "ecfe6a2a71fca05ca89508fadd2f88515a391a73b55978cd51b28347f3144da8",
       "background_path": "expeditions/the-sugarworks/v4/zones/zone-3.png",
       "id": "zone-3",
       "node_pools": {

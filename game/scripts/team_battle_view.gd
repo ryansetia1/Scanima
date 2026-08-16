@@ -24,6 +24,7 @@ const CAMERA_BACKGROUND_MAX_SCALE := 1.55
 const SEEKER_CAMERA_EDGE_PAD_RATIO := 0.025
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
+const BACKGROUND_DOF_SHADER: Shader = preload("res://shaders/battle_background_dof.gdshader")
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 const BOSS_SEEKER_PRESENTER := preload("res://scripts/boss_seeker_presenter.gd")
 const BOSS_SEEKER_DIALOG := preload("res://scripts/boss_seeker_dialog.gd")
@@ -115,6 +116,8 @@ var _opponent_shadow: Sprite2D
 var _seeker: BOSS_SEEKER_PRESENTER
 var _seeker_shadow: Sprite2D
 var _fighter_layer: Node2D
+var _background_session_id := ""
+var _background_pan := 0.5
 var _seeker_dialog: BOSS_SEEKER_DIALOG
 var _seeker_loaded: Dictionary = {}
 var _spoken: Dictionary = {}
@@ -151,6 +154,9 @@ func _ready() -> void:
 	for slot in _switch_buttons.size():
 		_switch_buttons[slot].pressed.connect(_request_switch.bind(slot))
 	_battle_stage.resized.connect(_position_fighters)
+	var background_material := ShaderMaterial.new()
+	background_material.shader = BACKGROUND_DOF_SHADER
+	_arena_background.material = background_material
 	_player_sprite.set_facing(1.0)
 	_opponent_sprite.set_facing(-1.0)
 	_player_sprite.z_index = 1
@@ -349,6 +355,7 @@ func set_session(session: Dictionary, art_cache: Dictionary = {}) -> void:
 	_session = session.duplicate(true)
 	_art_cache.merge(art_cache, true)
 	_reset_spoken_if_needed()
+	_sync_background_pan()
 	_show_only(_arena)
 	_apply_arena_background(art_cache)
 	_present_seeker()
@@ -370,7 +377,8 @@ func _apply_arena_background(art_cache: Dictionary) -> void:
 	var ready := texture is Texture2D
 	if ready:
 		_arena_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		_arena_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		_arena_background.stretch_mode = TextureRect.STRETCH_SCALE
+		_arena_background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		_arena_background.texture = texture
 	else:
 		_arena_background.texture = null
@@ -1516,8 +1524,38 @@ func _apply_dynamic_camera() -> void:
 	)
 	_pin_seeker_to_camera_right(zoom)
 	var background_zoom := lerpf(CAMERA_BACKGROUND_MAX_SCALE, 1.0, size_mix)
-	_arena_background.pivot_offset = _arena_background.size * 0.5
-	_arena_background.scale = Vector2(background_zoom, background_zoom)
+	_layout_arena_background(background_zoom)
+
+
+func _sync_background_pan() -> void:
+	var session_id := str(_session.get("id", ""))
+	if session_id == _background_session_id:
+		return
+	_background_session_id = session_id
+	_background_pan = BattleScale.background_pan_for_session(session_id)
+
+
+func _layout_arena_background(background_zoom: float) -> void:
+	if not is_instance_valid(_arena_background) or not _arena_background.texture is Texture2D:
+		return
+	var texture_size := _arena_background.texture.get_size()
+	var stage_size := _battle_stage.size
+	if texture_size.x <= 0.0 or texture_size.y <= 0.0 or stage_size.x <= 0.0 or stage_size.y <= 0.0:
+		return
+	var cover_scale := maxf(stage_size.x / texture_size.x, stage_size.y / texture_size.y)
+	var draw_size := texture_size * cover_scale * maxf(1.0, background_zoom)
+	var overflow := Vector2(
+		maxf(0.0, draw_size.x - stage_size.x),
+		maxf(0.0, draw_size.y - stage_size.y)
+	)
+	_arena_background.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_arena_background.pivot_offset = Vector2.ZERO
+	_arena_background.scale = Vector2.ONE
+	_arena_background.size = draw_size
+	_arena_background.position = Vector2(
+		-overflow.x * _background_pan,
+		-overflow.y * 0.5
+	)
 
 
 func _pin_seeker_to_camera_right(camera_zoom: float) -> void:

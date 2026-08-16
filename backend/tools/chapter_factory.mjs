@@ -12,6 +12,7 @@ import {
   paidExecutionGate,
   reprocessBossSeeker,
   reprocessTrophy,
+  reprocessZones,
   runPaidGeneration,
 } from "./chapter_factory/paid.mjs";
 import { ensureCostLedger } from "./chapter_factory/cost_ledger.mjs";
@@ -53,6 +54,7 @@ Usage:
   node backend/tools/chapter_factory.mjs [--chapter-dir=path] ingest-manual [--apply] [--slots=...] [--cleanup-seams=...]
   node backend/tools/chapter_factory.mjs [--chapter-dir=path] reprocess-boss [--apply]
   node backend/tools/chapter_factory.mjs [--chapter-dir=path] reprocess-trophy [--apply]
+  node backend/tools/chapter_factory.mjs [--chapter-dir=path] reprocess-zones [--apply]
   node backend/tools/chapter_factory.mjs --selftest
 
 Default --chapter-dir: backend/chapters/the-sugarworks/v1
@@ -297,6 +299,12 @@ async function commandReprocessBoss(chapterDir, apply) {
   process.stdout.write(stableStringify({ command: "reprocess-boss", ...result }));
 }
 
+async function commandReprocessZones(chapterDir, apply) {
+  const ctx = await loadChapterContext(chapterDir);
+  const result = await reprocessZones({ chapterDir, ctx, apply });
+  process.stdout.write(stableStringify({ command: "reprocess-zones", ...result }));
+}
+
 async function commandIngestManual(chapterDir, args) {
   const ctx = await loadChapterContext(chapterDir);
   const result = await runManualIngest({
@@ -354,6 +362,9 @@ async function main() {
       break;
     case "reprocess-trophy":
       await commandReprocessTrophy(chapterDir, args.apply);
+      break;
+    case "reprocess-zones":
+      await commandReprocessZones(chapterDir, args.apply);
       break;
     case "reprocess-boss":
       await commandReprocessBoss(chapterDir, args.apply);

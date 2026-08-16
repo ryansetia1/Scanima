@@ -50,12 +50,14 @@ static func load_from_manifest(manifest_path: String) -> Dictionary:
 ## Memuat PNG jadi tekstur. Dipisah karena sheet hidup di user:// setelah
 ## diunduh, dan file di user:// tidak lewat pipeline impor Godot, jadi load()
 ## biasa tidak bisa dipakai.
-static func load_sheet_texture(sheet_path: String) -> Texture2D:
+static func load_sheet_texture(sheet_path: String, mipmaps: bool = false) -> Texture2D:
 	var image := Image.new()
 	if image.load(sheet_path) != OK:
 		return null
 	if image.is_empty():
 		return null
+	if mipmaps:
+		image.generate_mipmaps()
 	return ImageTexture.create_from_image(image)
 
 

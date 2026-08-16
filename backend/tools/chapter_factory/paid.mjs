@@ -274,6 +274,42 @@ export async function runPaidGeneration({
   };
 }
 
+export async function reprocessZones({ chapterDir, ctx, apply = false }) {
+  validateDesign(ctx.design, ctx.brief, ctx);
+  const slots = ctx.imageSlots().filter((slot) => slot.startsWith("zone:"));
+  const processed = [];
+  const bundle = await loadOrCreateAssetBundle(chapterDir, ctx);
+  let sources = await readAssetSources(chapterDir);
+  for (const slot of slots) {
+    const safeName = slot.replace(/[^a-z0-9_-]+/gi, "_");
+    const rawPath = join(chapterDir, "raw", `${safeName}.png`);
+    const asset = await postprocessChapterZone(await readFile(rawPath));
+    processed.push({ slot, hash: asset.hash, raw_path: rawPath });
+    if (apply) {
+      applySlotToBundle(bundle, slot, asset);
+      sources = withReprocessedAssetSource(sources, slot, asset.hash);
+    }
+  }
+  if (!apply) {
+    return { ok: true, mode: "preview", processed };
+  }
+  const rebuilt = await rebuildFromAssets(
+    chapterDir,
+    bundle,
+    ctx,
+    assetMode(ctx, sources),
+  );
+  validateChapterDraft(rebuilt.manifest, ctx);
+  await writeChapterOutputs(chapterDir, rebuilt, ctx);
+  await writeAssetSources(chapterDir, sources);
+  return {
+    ok: true,
+    mode: "apply",
+    processed,
+    manifest_hash: rebuilt.manifest.manifest_hash,
+  };
+}
+
 export async function reprocessTrophy({ chapterDir, ctx, apply = false }) {
   validateDesign(ctx.design, ctx.brief, ctx);
   const raw = await readFile(join(chapterDir, "raw", "trophy.png"));

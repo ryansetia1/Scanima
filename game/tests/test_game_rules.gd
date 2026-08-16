@@ -566,6 +566,19 @@ func _initialize() -> void:
 		absf((327.0 * giant_trio[0]) / seeker_px - 300.0 / 165.0) < 0.02,
 		"Anima 3 m di layar hampir 2× Seeker 165 cm"
 	)
+	var pan_a := BATTLE_SCALE.background_pan_for_session("encounter-a")
+	var pan_b := BATTLE_SCALE.background_pan_for_session("encounter-b")
+	_check_eq(
+		pan_a,
+		BATTLE_SCALE.background_pan_for_session("encounter-a"),
+		"framing background stabil selama encounter yang sama"
+	)
+	_check(
+		pan_a >= BATTLE_SCALE.BACKGROUND_PAN_EDGE_MARGIN
+		and pan_a <= 1.0 - BATTLE_SCALE.BACKGROUND_PAN_EDGE_MARGIN,
+		"framing background tetap menutup arena"
+	)
+	_check(not is_equal_approx(pan_a, pan_b), "encounter berbeda mendapat framing berbeda")
 
 	print("14. gallery transport")
 	var backend_text := FileAccess.get_file_as_string("res://scripts/backend.gd")

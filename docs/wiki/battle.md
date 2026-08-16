@@ -118,8 +118,13 @@ Seeker.
   sekitar 3 meter — hampir dua kali The Confectioner. Kamera lalu
   menyesuaikan jarak agar kedua Anima dan The Confectioner terlihat utuh:
   petarung kecil membuat kamera mendekat, sedangkan petarung besar membuat
-  kamera menjauh dan memperlihatkan lebih banyak latar. The Confectioner
-  tetap berada dekat sisi kanan, di belakang posisi Anima lawan. Kalau Anima itu lebih tinggi dari sekitar
+  kamera menjauh dan memperlihatkan lebih banyak latar. Setiap encounter bisa
+  mengambil potongan kiri, tengah, atau kanan yang berbeda dari lokasi yang
+  sama; framing itu tidak bergeser lagi selama pertarungan berlangsung. Latar
+  jauh diberi blur halus sementara lantai dekat petarung tetap lebih jelas,
+  supaya Anima dan Seeker mudah dibaca. The Confectioner tetap berada dekat
+  sisi kanan, di belakang posisi Anima lawan.
+  Kalau Anima itu lebih tinggi dari sekitar
   60% tinggi The Confectioner, ia berdiri di belakang The Confectioner.
   The Confectioner juga punya bayangan di kaki. Margin arena mengikuti tepi tubuh yang terlihat,
   bukan ruang transparan di dalam sprite. Monster besar tetap terasa besar,

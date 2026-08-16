@@ -335,8 +335,18 @@ pada seluruh fighter layer. Kamera mendekat untuk pasangan kecil dan menjauh
 untuk pasangan besar, lalu dibatasi lagi oleh gabungan bbox opak agar kedua
 Anima dan Seeker selalu terlihat utuh dengan margin 5%. Karena zoom-nya
 seragam, rasio tinggi 300/165 tidak berubah; hanya ukuran seluruh shot yang
-berubah. Art arena chapter ikut zoom dari titik tengah agar framing latar
-bergerak bersama karakter.
+berubah. Art arena chapter mempertahankan crop 16:9 raw sampai maksimal 2048 px
+lebar, lalu client membuat mipmap dan memakai linear-with-mipmaps supaya zoom
+out tidak aliasing. Shader `battle_background_dof.gdshader` memakai satu
+`textureLod` per piksel: langit/arsitektur mengambil mip lebih blur, lantai
+dekat mengambil mip lebih tajam, lalu saturation dan brightness turun tipis
+agar fighter tetap menjadi focal point tanpa Gaussian multi-tap. TextureRect
+diukur manual sebagai cover, bukan
+`KEEP_ASPECT_COVERED`, sehingga overflow horizontal bisa dipan. Posisi pan
+diturunkan dari ID encounter: encounter berbeda mendapat potongan kiri/tengah/
+kanan berbeda, tetapi retry turn dan resume session yang sama tidak menggeser
+latar. Zoom latar tetap 1,55× untuk pasangan normal dan menuju 1× pada Anima
+di cap 3 m.
 Anima yang tinggi tampilannya > 60% tinggi Seeker (`SEEKER_OVERLAP_RATIO`)
 pindah ke layer belakang Seeker. Tepi piksel opak
 Anima menentukan shot sehingga padding transparan sel tidak membuang

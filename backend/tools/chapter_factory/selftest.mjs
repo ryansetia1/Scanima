@@ -10,6 +10,7 @@ import {
 } from "./approval.mjs";
 import {
   postprocessChapterAnima,
+  postprocessChapterZone,
   postprocessChromaGridSheet,
   renderTrophyArt,
 } from "./assets.mjs";
@@ -269,10 +270,20 @@ export async function runChapterFactorySelftest(repoRoot) {
   assert.doesNotMatch(trophyPrompt, /whisk|furnace|sprinkle/i);
   const zonePrompt = await promptForSlot("zone:1", ctx);
   assert.match(zonePrompt, /combat arena/i);
-  assert.match(zonePrompt, /lower 30–35%/);
+  assert.match(zonePrompt, /lower 22–26%/);
   assert.match(zonePrompt, /no liquid, rails, gutters, or chasms/i);
-  assert.match(zonePrompt, /four to six major flat colors/i);
+  assert.match(zonePrompt, /six to nine harmonized color groups/i);
+  assert.match(zonePrompt, /Asymmetric open courtyard/i);
   assert.doesNotMatch(zonePrompt, /readable path lanes|route-like lanes/i);
+  const highResolutionZone = new Image(1536, 1024);
+  highResolutionZone.bitmap.fill(120);
+  const processedZone = await postprocessChapterZone(await highResolutionZone.encode());
+  const decodedZone = await Image.decode(processedZone.png);
+  assert.deepEqual(
+    [decodedZone.width, decodedZone.height],
+    [1536, 864],
+    "zone crop mempertahankan resolusi raw alih-alih turun ke 768×432",
+  );
   const processedBoss = await postprocessChromaGridSheet(
     await manualGridFixture(),
     { poses: BOSS_SEEKER_POSES },
