@@ -774,8 +774,13 @@ func _test_care_feedback_is_immediate() -> void:
 	var request := body.find("await _send_pending_care")
 	_check(feedback >= 0 and request > feedback, "care reacts before its network response")
 	_check(
-		body.find("_home_view.set_busy(true)") >= 0 and body.find("_set_busy(true)") < 0,
-		"care locks only its action dock, not the whole shell"
+		body.find("set_busy(true)") < 0,
+		"the Care Dock stays lit while its care action is in flight"
+	)
+	_check(
+		body.find("GameState.pending_care.is_empty()") >= 0
+		and body.find("GameState.begin_care") > body.find("GameState.pending_care.is_empty()"),
+		"a second care action is refused where every caller passes, including Bag"
 	)
 	var send_start := source.find("func _send_pending_care")
 	var send_end := source.find("func _sync_active_care", send_start)
@@ -826,6 +831,34 @@ func _test_care_feedback_is_immediate() -> void:
 		"a rejected purchase puts the Bits it predicted back"
 	)
 	_test_optimistic_care()
+	_test_summon_overlaps_portal()
+
+
+## Mengganti companion memutar dissolve dan portal lebih dulu, jadi round trip
+## `summon` habis di balik animasi yang memang harus jalan. Sprite tetap tidak
+## ditukar sebelum server mengizinkan.
+func _test_summon_overlaps_portal() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var start := source.find("func _activate_anima")
+	var end := source.find("\n\n\n", start)
+	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
+	var dispatch := body.find("_dispatch_summon(")
+	var dissolve := body.find("await _anima.summon_dissolve()")
+	var portal := body.find("await _incubator.start_portal()")
+	var settled := body.find("await _await_summon()")
+	var swap := body.find("_anima.apply(loaded)", settled)
+	_check(
+		dispatch >= 0 and dissolve > dispatch and portal > dissolve,
+		"the summon request leaves before the transition it hides behind"
+	)
+	_check(
+		settled > portal and swap > settled,
+		"the sprite only swaps once the server has allowed the summon"
+	)
+	_check(
+		body.find("await _anima.summon_reveal()", settled) < swap,
+		"a refused summon closes the portal and brings the old companion back"
+	)
 
 
 ## Meter bergerak di frame yang sama dengan tap. Angkanya berasal dari CareRules
@@ -3489,7 +3522,7 @@ func _test_battle_turn_prediction(scene: Node) -> void:
 			has_switch = true
 	_check(
 		has_switch and team_predicted.is_empty(),
-		"a Team turn that forces a Switch waits for the server because the art is not cached yet"
+		"a Switch waits for the server while the incoming sheet is missing from the arena"
 	)
 	_check(
 		not (scene.call("_predict_team_turn", team_session, {
@@ -3497,6 +3530,26 @@ func _test_battle_turn_prediction(scene: Node) -> void:
 		}) as Dictionary).is_empty(),
 		"a plain Team action animates from the local simulation"
 	)
+	# Sheet seluruh roster sudah dimuat saat session dibuka, jadi Switch yang
+	# lazim justru punya art-nya dan boleh dianimasikan seketika.
+	var named := TeamSim.create_team_state(
+		[{"anima_id": "mine-a"}.merged(fighter), {"anima_id": "mine-b"}.merged(fighter)],
+		[glass_jaw, glass_jaw],
+		"predict-team-seed"
+	)
+	var cached_session := {"id": "predict-team", "turn_number": 1, "status": "active"}
+	cached_session["state"] = named["state"]
+	scene.set("_team_art_cache", {"mine-a": {"ok": true}, "mine-b": {"ok": true}})
+	var switched: Dictionary = scene.call("_predict_team_turn", cached_session, {
+		"expected_turn": 1, "action": "switch", "switch_to_slot": 1,
+		"idempotency_key": "key-d",
+	})
+	_check(
+		not switched.is_empty()
+		and int(switched["session"]["state"]["player"]["active_slot"]) == 1,
+		"a Switch into a cached sheet animates on the frame of the tap"
+	)
+	scene.set("_team_art_cache", {})
 	_test_failed_turn_rolls_back()
 	_test_boot_cache_is_display_only()
 

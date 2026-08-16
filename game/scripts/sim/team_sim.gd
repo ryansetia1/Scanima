@@ -309,6 +309,23 @@ static func _switch_party(
 	return ""
 
 
+## anima_id yang masuk pada setiap event `switch` di log. Pemanggil memakainya
+## untuk memastikan sheet penggantinya sudah ada sebelum menganimasikan turn dari
+## simulasi lokal; slot yang tidak masuk akal mengembalikan "" supaya gagal cek.
+static func switch_targets(events: Array, state: Dictionary) -> PackedStringArray:
+	var targets := PackedStringArray()
+	for value in events:
+		var event: Dictionary = value if value is Dictionary else {}
+		if str(event.get("type", "")) != "switch":
+			continue
+		var party: Variant = state.get(str(event.get("actor", "")))
+		var roster: Array = (party as Dictionary).get("roster", []) if party is Dictionary else []
+		var slot := int(event.get("to_slot", -1))
+		var member: Variant = roster[slot] if slot >= 0 and slot < roster.size() else null
+		targets.append(str((member as Dictionary).get("anima_id", "")) if member is Dictionary else "")
+	return targets
+
+
 static func _validate_switch_slot(party: Dictionary, slot: Variant) -> String:
 	var roster: Array = party.get("roster", [])
 	if typeof(slot) != TYPE_INT or int(slot) < 0 or int(slot) >= roster.size():

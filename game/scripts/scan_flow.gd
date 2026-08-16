@@ -26,6 +26,7 @@ extends Node2D
 ## berbarengan; sinyal ini yang menyatukan keduanya lagi.
 signal _battle_turn_settled
 signal _team_turn_settled
+signal _summon_settled
 
 const POLL_INTERVAL_SEC := 2.0
 const POLL_TIMEOUT_SEC := 180.0
@@ -116,6 +117,8 @@ var _last_care_delta := 0
 var _battle_reward_revision := 0
 var _battle_turn_result: Dictionary = {}
 var _battle_turn_in_flight := false
+var _summon_result := false
+var _summon_in_flight := false
 var _team_turn_result: Dictionary = {}
 var _team_turn_in_flight := false
 var _team_battle_team: Dictionary = {}
@@ -573,17 +576,53 @@ func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> b
 		_set_busy(false)
 		return false
 	var pending := GameState.begin_care(anima_id, "summon")
-	var summoned := await _send_pending_care(pending, false)
-	if not summoned:
-		if not stay_on_tab:
-			_collection_view.set_sheet_busy(false)
+
+	if stay_on_tab:
+		if not await _send_pending_care(pending, false):
+			_set_busy(false)
+			return false
+		_adopt_companion(_roster_row(anima_id), row)
+		_anima.apply(loaded)
+		_refresh_care()
+		if not care_synced:
+			await _sync_active_care(false)
+		_set_busy(false)
+		return true
+
+	# Portal menyala sementara request terbang. Art-nya sudah ada di cache lokal,
+	# jadi satu-satunya yang benar-benar ditunggu adalah izin server sebelum
+	# sprite ditukar — dan 0,46 detik dissolve + charge biasanya sudah menutupinya.
+	_dispatch_summon(pending)
+	_switch_destination(BottomNav.HOME)
+	await _anima.summon_dissolve()
+	await _incubator.start_portal()
+	if not await _await_summon():
+		_collection_view.set_sheet_busy(false)
+		await _incubator.burst()
+		await _anima.summon_reveal()
+		# Companion lama bisa saja sedang tidur atau Dormant; reveal mengembalikan
+		# transform-nya, `_refresh_care()` yang mengembalikan pose-nya.
+		_refresh_care()
 		_set_busy(false)
 		return false
-	var synced := _roster_row(anima_id)
-	if not synced.is_empty():
-		row = synced
 
-	_current_anima = normalize_anima_data(row)
+	_adopt_companion(_roster_row(anima_id), row)
+	_anima.apply(loaded)
+	_anima.visible = false
+	await _incubator.burst()
+	await _anima.summon_reveal()
+	_refresh_care()
+	if not care_synced:
+		await _sync_active_care(false)
+	_set_busy(false)
+	_say(tr("COLLECTION_SUMMON_SUCCESS") % LocaleManager.display_name(_current_anima), true)
+	return true
+
+
+## Companion baru sudah disetujui server: `synced` adalah row hasil `care_anima`
+## kalau roster sempat menerimanya, `fallback` row yang dipilih pemain.
+func _adopt_companion(synced: Dictionary, fallback: Dictionary) -> void:
+	_current_anima = normalize_anima_data(fallback if synced.is_empty() else synced)
 	_profile_anima = {}
 	GameState.remember_anima({
 		"id": str(_current_anima.get("id", "")),
@@ -595,27 +634,19 @@ func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> b
 	_upsert_roster(_current_anima)
 	_refresh_stats()
 	_populate_collection()
-	if stay_on_tab:
-		_anima.apply(loaded)
-		_refresh_care()
-		if not care_synced:
-			await _sync_active_care(false)
-		_set_busy(false)
-		return true
 
-	_switch_destination(BottomNav.HOME)
-	await _anima.summon_dissolve()
-	await _incubator.start_portal()
-	_anima.apply(loaded)
-	_anima.visible = false
-	await _incubator.burst()
-	await _anima.summon_reveal()
-	_refresh_care()
-	if not care_synced:
-		await _sync_active_care(false)
-	_set_busy(false)
-	_say(tr("COLLECTION_SUMMON_SUCCESS") % LocaleManager.display_name(_current_anima), true)
-	return true
+
+func _dispatch_summon(pending: Dictionary) -> void:
+	_summon_in_flight = true
+	_summon_result = await _send_pending_care(pending, false)
+	_summon_in_flight = false
+	_summon_settled.emit()
+
+
+func _await_summon() -> bool:
+	if _summon_in_flight:
+		await _summon_settled
+	return _summon_result
 
 
 func _open_battle_anima_picker() -> void:
@@ -1332,23 +1363,26 @@ func _perform_care(action: String) -> void:
 	await _commit_care(action)
 
 
+## Care Dock sengaja tidak diredupkan selama request: pemain sudah melihat
+## hop-nya dan meternya bergerak, jadi tombol yang mati sesudahnya hanya terbaca
+## sebagai loading. Yang menjaga jalur uang tetap satu adalah `pending_care` —
+## dan pemeriksaannya duduk di sini, bukan di pemanggil, sebab Bag memanggil
+## `_commit_care` langsung tanpa lewat Care Dock.
 func _commit_care(action: String, item_id: String = "") -> void:
 	var anima_id := str(_current_anima.get("id", ""))
 	if anima_id.is_empty():
 		return
+	if not GameState.pending_care.is_empty():
+		_say(tr("ERROR_CARE_PENDING"), true)
+		return
 	var pending := GameState.begin_care(anima_id, action, item_id)
 	_anima.care_feedback("feed" if action == "use_item" else action)
-	# Meter digerakkan sebelum dock dikunci: `_refresh_care()` di dalamnya
-	# menghitung ulang keadaan tombol dari `_busy`, jadi urutan terbalik akan
-	# membuka lagi Care Dock selama request masih jalan.
 	var care_before: Variant = _current_anima.get("care")
 	_apply_optimistic_care(action, item_id)
-	_home_view.set_busy(true)
 	var committed := await _send_pending_care(pending, true)
 	if not committed and care_before != null:
 		_current_anima["care"] = care_before
 		_refresh_care()
-	_home_view.set_busy(_busy)
 
 
 ## Meter sesudah satu aksi care, dihitung dari aturan decay yang sama dengan
@@ -2119,11 +2153,10 @@ func _team_battle_action_requested(action: String, switch_to_slot: int) -> void:
 	await _submit_pending_team_battle(pending)
 
 
-## Sama seperti Duel, tetapi turn yang memunculkan Switch dilewati: penggantinya
-## butuh art yang belum tentu ada di cache, dan mengunduhnya di tengah prediksi
-## menghapus keuntungan latensinya.
-# ponytail: Switch selalu menunggu server. Plafonnya turn KO dan Switch sukarela;
-# upgrade dengan memuat art seluruh roster di awal battle, lalu prediksi penuh.
+## Sama seperti Duel. Turn yang memunculkan Switch ikut diprediksi selama sheet
+## penggantinya sudah ada di arena — `_prepare_team_active_art()` memuat seluruh
+## roster saat session dibuka, jadi biasanya sudah ada. `final_ace` tetap milik
+## server: pelat dan dialog Boss-nya sekali per run, jadi tidak boleh ditebak.
 func _predict_team_turn(session: Dictionary, pending: Dictionary) -> Dictionary:
 	var state := GameState.as_dict(session.get("state"))
 	if state.is_empty() or str(state.get("status", "")) != "active":
@@ -2141,10 +2174,13 @@ func _predict_team_turn(session: Dictionary, pending: Dictionary) -> Dictionary:
 	if not bool(outcome.get("ok", false)):
 		return {}
 	var events: Array = outcome["events"]
-	for value in events:
-		if str(GameState.as_dict(value).get("type", "")) == "switch":
-			return {}
 	var next_state: Dictionary = outcome["state"]
+	for value in events:
+		if str(GameState.as_dict(value).get("type", "")) == "final_ace":
+			return {}
+	for anima_id in TeamSim.switch_targets(events, next_state):
+		if not _team_art_cache.has(anima_id):
+			return {}
 	var predicted := session.duplicate(true)
 	predicted["state"] = next_state
 	predicted["turn_number"] = int(next_state.get("turn", session.get("turn_number", 1)))

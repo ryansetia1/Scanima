@@ -329,11 +329,11 @@ func _leave_complete() -> void:
 
 
 ## Simulasi turn dari state encounter authoritative yang sudah ada di client.
-## Kosong kalau state-nya belum lengkap, aksinya ditolak aturan, atau hasilnya
-## memunculkan Switch — penggantinya butuh art yang belum tentu ada di cache.
-# ponytail: Switch, Item, dan Boss ace selalu menunggu server. Item ikut lewat
-# karena controller ini tidak memegang katalog Shop; upgrade dengan mengoper
-# katalog dari scan_flow kalau item Expedition terasa lambat.
+## Kosong kalau state-nya belum lengkap, aksinya ditolak aturan, Switch-nya
+## memanggil anggota yang sheet-nya belum ada di arena, atau Boss membuka ace-nya.
+# ponytail: Item dan Boss ace selalu menunggu server. Item ikut lewat karena
+# controller ini tidak memegang katalog Shop; upgrade dengan mengoper katalog
+# dari scan_flow kalau item Expedition terasa lambat.
 func _predict_turn(pending: Dictionary) -> Dictionary:
 	var state := GameState.as_dict(_encounter.get("state"))
 	if state.is_empty() or str(state.get("status", "")) != "active":
@@ -351,7 +351,10 @@ func _predict_turn(pending: Dictionary) -> Dictionary:
 		return {}
 	var events: Array = outcome["events"]
 	for value in events:
-		if str(GameState.as_dict(value).get("type", "")) == "switch":
+		if str(GameState.as_dict(value).get("type", "")) == "final_ace":
+			return {}
+	for anima_id in TeamSim.switch_targets(events, GameState.as_dict(outcome["state"])):
+		if not _art_cache.has(anima_id):
 			return {}
 	var encounter := _encounter.duplicate(true)
 	encounter["state"] = outcome["state"]

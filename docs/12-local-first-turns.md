@@ -73,10 +73,18 @@ ulang, karena `set_session` tetap memasang row authoritative.
 
 ## Yang sengaja tetap menunggu server
 
-- **Switch, di semua mode.** Anggota yang masuk butuh sprite sheet-nya, dan sheet
-  itu belum tentu ada di cache. Mengunduhnya di tengah prediksi menghapus seluruh
-  keuntungan latensinya. Turn yang menghasilkan event `switch` — termasuk forced
-  switch sesudah KO dan `final_ace` Boss — jatuh ke jalur lama.
+- **Switch yang sheet-nya belum ada di arena.** Anggota yang masuk butuh sprite
+  sheet-nya, dan mengunduhnya di tengah prediksi menghapus seluruh keuntungan
+  latensinya. Yang dipakai sebagai gerbang adalah cache arena, bukan jenis
+  aksinya: `TeamSim.switch_targets()` membaca `anima_id` yang masuk dari tiap
+  event `switch`, lalu prediksi hanya lanjut kalau `_team_art_cache` /
+  `_art_cache` sudah memegang semuanya. Dalam praktiknya hampir selalu memegang,
+  sebab `_prepare_team_active_art()` dan `_prepare_active_art()` memuat **seluruh**
+  slot kedua party saat session dibuka — bukan hanya yang aktif. Switch sukarela,
+  forced switch sesudah KO, dan switch bot karena itu dianimasikan seketika.
+- **`final_ace` Boss.** Ini bukan soal art. Pelat dan dialog `last_anima`-nya
+  tampil sekali per run, jadi memancarkannya dari tebakan berarti mempertaruhkan
+  beat naratif yang tidak bisa ditarik kembali. Sekali per run, satu round trip.
 - **Item Expedition.** `ExpeditionController` tidak memegang katalog Shop, jadi
   `TeamSim` menolak aksinya dan prediksinya kosong. Upgrade-nya mengoper katalog
   dari `scan_flow`.
@@ -92,13 +100,33 @@ Energy memakai `effect_value` dari row katalog yang sudah dipegang client. Aksi
 lain (Sleep, Wake, Summon) mengembalikan Dictionary kosong dan tidak mengecat
 apa pun.
 
-Urutannya penting: meter dicat **sebelum** `_home_view.set_busy(true)`, sebab
-`_refresh_care()` menghitung ulang keadaan tombol dari `_busy`. Urutan terbalik
-membuka lagi Care Dock selama request masih jalan.
+Care Dock **tidak** diredupkan selama request. Pemain sudah melihat hop-nya dan
+meternya bergerak; tombol yang mati sesudah itu satu-satunya hal yang tersisa
+untuk dibaca sebagai loading. Yang menjaga jalur uang tetap satu adalah
+`GameState.pending_care`, dan pemeriksaannya duduk di `_commit_care` sendiri —
+bukan di pemanggilnya — sebab Bag memanggil `_commit_care` langsung tanpa lewat
+Care Dock, sehingga versi lama bisa menimpa pending key milik Feed yang masih
+terbang.
 
 Kalau `care_anima` menolak, `_commit_care` mengembalikan `care` sebelumnya dan
 mengecat ulang. Meter yang salah karena koneksi putus jadi tidak menetap sampai
 sync berikutnya.
+
+## Ganti companion
+
+Summon tidak bisa optimistis — sprite tidak boleh ditukar sebelum server
+mengizinkan — tetapi round trip-nya tidak perlu dilihat pemain. `_activate_anima`
+memuat art dari cache, memanggil `_dispatch_summon()` tanpa `await`, lalu
+langsung pindah ke Home dan memainkan dissolve (0,28 s) plus charge portal
+(0,18 s). Baru sesudah itu `_await_summon()` menagih hasilnya. Portal yang
+berputar sudah bagian dari ritual Summon, jadi sisa latensi apa pun terbaca
+sebagai animasi, bukan tunggu.
+
+Kalau server menolak, portal ditutup dengan `burst()` dan companion lama
+di-`summon_reveal()` kembali. Karena `_anima.apply()` belum pernah dipanggil,
+`sprite_frames` masih memegang Anima lama dan rollback-nya tidak perlu memuat
+apa pun. Jalur picker Battle (`stay_on_tab`) tetap berurutan: tidak ada animasi
+transisi di sana untuk ditumpangi.
 
 ## Shop
 

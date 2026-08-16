@@ -13,9 +13,11 @@ Kalau gerakan terasa terlalu ramai, aktifkan **Reduced Motion** dari menu
 
 **Clean** gratis. **Feed** memakai makanan dari **Bag**. Play dan Sleep juga gratis. Item Energy dibeli di Shop, dipakai dari **Bag**.
 
-Meter bergerak di detik yang sama dengan ketukanmu. Angka resminya datang dari
-server sesaat kemudian dan menimpa tampilan itu; kalau aksinya ternyata ditolak
-(misalnya koneksi putus), meternya kembali ke nilai sebelumnya.
+Meter bergerak di detik yang sama dengan ketukanmu, dan tombol Care tidak mati
+sesudahnya. Angka resminya datang dari server sesaat kemudian dan menimpa
+tampilan itu; kalau aksinya ternyata ditolak (misalnya koneksi putus), meternya
+kembali ke nilai sebelumnya. Satu aksi Care diproses pada satu waktu, jadi aksi
+kedua yang datang sebelum yang pertama selesai akan diminta ulang sebentar.
 
 Membuka app juga tidak lagi memperlihatkan layar tunggu: companion terakhirmu
 langsung tampil beserta perkiraan meternya, lalu angka resmi dari server

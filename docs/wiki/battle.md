@@ -9,8 +9,9 @@ aksi, turn-nya langsung dimainkan memakai aturan yang sama persis dengan yang
 dipakai server, dan hasil resmi menyusul di belakang layar. HP, PP, hadiah, dan
 Bits yang tersimpan selalu versi server. Kalau keduanya sampai berbeda — jarang,
 tetapi mungkin setelah koneksi bermasalah — arena memutar ulang hasil resminya.
-Pergantian Anima (Switch) dan item di Expedition tetap menunggu jawaban server
-karena keduanya butuh data yang belum tentu ada di perangkat.
+Pergantian Anima (Switch) ikut langsung dimainkan, termasuk penggantian paksa
+sesudah KO. Yang masih menunggu jawaban server hanya saat Boss menurunkan Anima
+terakhirnya dan item di Expedition.
 
 Sinyal yang putus sebentar — lift, terowongan, kereta — tidak membuang aksimu.
 Turn yang gagal terkirim dicoba ulang sendiri beberapa detik sebelum menyerah,

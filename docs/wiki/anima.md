@@ -91,7 +91,9 @@ Dormant **tidak** menghapus EXP.
 Tap kartu membuka sheet, bukan langsung pindah companion.
 
 - **View Profile** — lihat traits dan attributes, ganti nama, atau Delete.
-- **Summon** — Anima ini pindah ke Home. Yang tadi di Home tidur.
+- **Summon** — Anima ini pindah ke Home. Yang tadi di Home tidur. Portalnya mulai
+  begitu kamu menekan, bukan sesudah menunggu; kalau pergantiannya gagal, portal
+  menutup dan companion lamamu kembali.
 
 Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Hunger dan Hygiene di Collection turun pelan dan berhenti sebelum lapar atau kotor, jadi merawat tim tidak berarti memberi makan semua orang setiap hari. Yang sudah lapar, kotor, atau Dormant sebelum istirahat tetap begitu sampai di-Summon lalu diurus di Home. Kartu Collection memakai pose-nya: Sleep selama Energy pulih, Idle kalau siap, Damaged kalau Dormant. Tidak perlu tap dulu supaya kelihatan.
 

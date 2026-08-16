@@ -321,12 +321,33 @@ func _check_turn_prediction() -> void:
 		"a divergent server turn replays the authoritative event log"
 	)
 
+	var switch_request := {
+		"expected_turn": 1, "action": "switch", "switch_to_slot": 1,
+		"idempotency_key": "key-c",
+	}
 	_check(
-		(controller.call("_predict_turn", {
-			"expected_turn": 1, "action": "switch", "switch_to_slot": 1,
-			"idempotency_key": "key-c",
-		}) as Dictionary).is_empty(),
-		"an Expedition Switch waits for the incoming member's art"
+		(controller.call("_predict_turn", switch_request) as Dictionary).is_empty(),
+		"a Switch whose incoming sheet is missing still waits for the server"
+	)
+	controller.set("_art_cache", {"party-a": {"ok": true}, "party-b": {"ok": true}})
+	controller.set("_encounter", {
+		"id": "predict-switch",
+		"turn_number": 1,
+		"status": "active",
+		"state": TeamSim.create_team_state(
+			[
+				{"anima_id": "party-a"}.merged(member),
+				{"anima_id": "party-b"}.merged(member),
+			],
+			[member, member],
+			"predict-switch-seed"
+		)["state"],
+	})
+	var switched: Dictionary = controller.call("_predict_turn", switch_request)
+	_check(
+		not switched.is_empty()
+		and int(switched["encounter"]["state"]["player"]["active_slot"]) == 1,
+		"a Switch into a cached sheet animates without waiting for the server"
 	)
 	controller.free()
 
