@@ -90,6 +90,7 @@ var _last_reward: Dictionary = {}
 var _command_tween: Tween
 var _player_loaded: Dictionary = {}
 var _bot_loaded: Dictionary = {}
+var _fighter_layer: Node2D
 
 
 func _ready() -> void:
@@ -106,6 +107,13 @@ func _ready() -> void:
 	_reward_reset_timer.timeout.connect(reward_status_refresh_requested.emit)
 	_feedback.visible = false
 	_turn_label.visible = false
+	var fighter_index := _player_anchor.get_index()
+	_fighter_layer = Node2D.new()
+	_fighter_layer.name = "DuelFighterLayer"
+	_arena.add_child(_fighter_layer)
+	_arena.move_child(_fighter_layer, fighter_index)
+	_player_anchor.reparent(_fighter_layer)
+	_bot_anchor.reparent(_fighter_layer)
 	_position_fighters.call_deferred()
 	_player_sprite.set_facing(1.0)
 	_bot_sprite.set_facing(-1.0)
@@ -841,17 +849,25 @@ func _apply_element_row(icon: TextureRect, label: Label, row: Dictionary) -> voi
 
 
 func _position_fighters() -> void:
-	if not is_instance_valid(_arena):
+	if not is_instance_valid(_arena) or not is_instance_valid(_fighter_layer):
 		return
+	_fighter_layer.position = Vector2.ZERO
+	_fighter_layer.scale = Vector2.ONE
 	var ground_y := _arena.size.y * BattleScale.GROUND_Y_RATIO
-	_player_anchor.position = Vector2(_arena.size.x * 0.27, ground_y)
-	_bot_anchor.position = Vector2(_arena.size.x * 0.73, ground_y)
+	_player_anchor.position = Vector2(_arena.size.x * BattleScale.PLAYER_SHOT_X, ground_y)
+	_bot_anchor.position = Vector2(_arena.size.x * BattleScale.OPPONENT_SHOT_X, ground_y)
 	var player_snapshot := _as_dict(_session.get("player_snapshot"))
 	var bot_snapshot := _as_dict(_session.get("bot_snapshot"))
+	var player_height := float(
+		player_snapshot.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)
+	)
+	var bot_height := float(
+		bot_snapshot.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)
+	)
 	var scales := BattleScale.fighter_pair_scales(
-		float(player_snapshot.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)),
+		player_height,
 		_player_loaded,
-		float(bot_snapshot.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)),
+		bot_height,
 		_bot_loaded,
 		_arena.size
 	)
@@ -859,13 +875,52 @@ func _position_fighters() -> void:
 	_bot_anchor.scale = Vector2(scales.y, scales.y)
 	_player_sprite.plant_on_anchor()
 	_bot_sprite.plant_on_anchor()
-	var player_width := _player_sprite.opaque_local_rect().size.x * absf(_player_anchor.scale.x)
-	var bot_width := _bot_sprite.opaque_local_rect().size.x * absf(_bot_anchor.scale.x)
-	_player_anchor.position.x = BattleScale.fighter_anchor_x(
-		true, player_width, _arena.size.x
+	var player_size := _player_sprite.opaque_local_rect().size * absf(_player_anchor.scale.x)
+	var bot_size := _bot_sprite.opaque_local_rect().size * absf(_bot_anchor.scale.x)
+	var gap := _arena.size.x * TeamBattleView.CAMERA_FIGHTER_GAP_RATIO
+	var overlap := (
+		_player_anchor.position.x + player_size.x * 0.5 + gap
+		- (_bot_anchor.position.x - bot_size.x * 0.5)
 	)
-	_bot_anchor.position.x = BattleScale.fighter_anchor_x(
-		false, bot_width, _arena.size.x
+	if overlap > 0.0:
+		_player_anchor.position.x -= overlap * 0.5
+		_bot_anchor.position.x += overlap * 0.5
+	var bounds := Rect2(
+		_player_anchor.position.x - player_size.x * 0.5,
+		ground_y - player_size.y,
+		player_size.x,
+		player_size.y
+	).merge(Rect2(
+		_bot_anchor.position.x - bot_size.x * 0.5,
+		ground_y - bot_size.y,
+		bot_size.x,
+		bot_size.y
+	))
+	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
+		return
+	var fit_zoom := minf(
+		(_arena.size.x * 0.90) / bounds.size.x,
+		(_arena.size.y * (BattleScale.GROUND_Y_RATIO - 0.05)) / bounds.size.y
+	)
+	var tallest := maxf(
+		BattleScale.anima_display_height_cm(player_height),
+		BattleScale.anima_display_height_cm(bot_height)
+	)
+	var size_mix := clampf(
+		inverse_lerp(50.0, BattleScale.ANIMA_VISUAL_HEIGHT_CAP_CM, tallest), 0.0, 1.0
+	)
+	var preferred_zoom := lerpf(
+		TeamBattleView.CAMERA_MAX_ZOOM, 0.72, size_mix
+	)
+	var zoom := clampf(
+		minf(fit_zoom, preferred_zoom),
+		TeamBattleView.CAMERA_MIN_ZOOM,
+		TeamBattleView.CAMERA_MAX_ZOOM
+	)
+	_fighter_layer.scale = Vector2(zoom, zoom)
+	_fighter_layer.position = Vector2(
+		_arena.size.x * 0.5 - bounds.get_center().x * zoom,
+		ground_y * (1.0 - zoom)
 	)
 
 

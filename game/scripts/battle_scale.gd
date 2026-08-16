@@ -7,12 +7,25 @@ const BODY_HEIGHT_MIN_CM := 20.0
 const BODY_HEIGHT_MAX_CM := 2000.0
 const ARENA_REFERENCE_HEIGHT_RATIO := 0.45
 const DESIGN_ARENA := Vector2(720.0, 800.0)
-const MAX_BODY_WIDTH_RATIO := 0.50
-const SHOT_WIDTH_RATIO := 0.90
 const PLAYER_SHOT_X := 0.27
 const OPPONENT_SHOT_X := 0.73
 const GROUND_Y_RATIO := 0.91
-const FIGHTER_EDGE_PAD_RATIO := 0.055
+const ANIMA_VISUAL_HEIGHT_CAP_CM := 300.0
+const SEEKER_OVERLAP_RATIO := 0.6
+
+
+static func anima_display_height_cm(body_height_cm: float) -> float:
+	return minf(
+		clampf(body_height_cm, BODY_HEIGHT_MIN_CM, BODY_HEIGHT_MAX_CM),
+		ANIMA_VISUAL_HEIGHT_CAP_CM
+	)
+
+
+static func anima_behind_seeker(anima_height_cm: float, seeker_height_cm: float) -> bool:
+	return (
+		seeker_height_cm > 0.0
+		and anima_display_height_cm(anima_height_cm) > seeker_height_cm * SEEKER_OVERLAP_RATIO
+	)
 
 
 static func usable_height(arena_size: Vector2) -> float:
@@ -24,9 +37,8 @@ static func usable_height(arena_size: Vector2) -> float:
 static func fighter_scale(body_height_cm: float, loaded: Dictionary, arena_size: Vector2) -> float:
 	var reference_height := _reference_size(loaded).y
 	var arena_height := usable_height(arena_size)
-	var height_ratio := clampf(
-		body_height_cm, BODY_HEIGHT_MIN_CM, BODY_HEIGHT_MAX_CM
-	) / BODY_HEIGHT_REFERENCE_CM
+	var clamped_height := clampf(body_height_cm, BODY_HEIGHT_MIN_CM, BODY_HEIGHT_MAX_CM)
+	var height_ratio := clamped_height / BODY_HEIGHT_REFERENCE_CM
 	var target_height := arena_height * ARENA_REFERENCE_HEIGHT_RATIO * pow(
 		height_ratio, BODY_HEIGHT_CURVE
 	)
@@ -54,8 +66,8 @@ static func fighter_pair_scales(
 
 
 ## Height follows the 720×800 design card; extra window height is background.
-## A wide body shrinks both Animas together to fit the 720-wide card. The
-## Seeker occupies a separate back lane, so Anima width must not shrink her.
+## Beside a Seeker, Anima height is linear to her on-screen height so 3 m is
+## about 2× a 165 cm Seeker. A wide body still shrinks only the Animas.
 static func shared_scales(
 	heights: Array,
 	loadeds: Array,
@@ -64,52 +76,27 @@ static func shared_scales(
 	var count := mini(heights.size(), loadeds.size())
 	var scales := PackedFloat32Array()
 	scales.resize(count)
+	var seeker_px := 0.0
+	var seeker_cm := 0.0
+	if count >= 3:
+		var seeker_loaded: Dictionary = (
+			loadeds[2] if typeof(loadeds[2]) == TYPE_DICTIONARY else {}
+		)
+		seeker_cm = float(heights[2])
+		scales[2] = fighter_scale(seeker_cm, seeker_loaded, arena_size)
+		seeker_px = _reference_size(seeker_loaded).y * scales[2]
 	for index in count:
+		if index == 2:
+			continue
 		var loaded: Dictionary = (
 			loadeds[index] if typeof(loadeds[index]) == TYPE_DICTIONARY else {}
 		)
-		scales[index] = fighter_scale(float(heights[index]), loaded, arena_size)
-	return _fit_shot(scales, loadeds)
-
-
-# ponytail: Camera2D zoom-to-fit without a camera. Ceiling: uses the 720-wide
-# design card, not the window. Upgrade to a real Camera2D if the arena leaves Control.
-static func _fit_shot(scales: PackedFloat32Array, loadeds: Array) -> PackedFloat32Array:
-	var count := scales.size()
-	if count == 0:
-		return scales
-	var widths := PackedFloat32Array()
-	widths.resize(count)
-	var max_width := 0.0
-	for index in count:
-		var loaded: Dictionary = (
-			loadeds[index] if index < loadeds.size() and typeof(loadeds[index]) == TYPE_DICTIONARY else {}
-		)
-		widths[index] = _reference_size(loaded).x * scales[index]
-		max_width = maxf(max_width, widths[index])
-	var fit := 1.0
-	var max_body := DESIGN_ARENA.x * MAX_BODY_WIDTH_RATIO
-	if max_width > max_body:
-		fit = minf(fit, max_body / max_width)
-	if count >= 2:
-		var left := DESIGN_ARENA.x * PLAYER_SHOT_X - widths[0] * 0.5
-		var right := DESIGN_ARENA.x * OPPONENT_SHOT_X + widths[1] * 0.5
-		var span := right - left
-		var budget := DESIGN_ARENA.x * SHOT_WIDTH_RATIO
-		if span > budget:
-			fit = minf(fit, budget / span)
-	if fit < 1.0:
-		for index in mini(count, 2):
-			scales[index] *= fit
+		var height := anima_display_height_cm(float(heights[index])) if index < 2 else float(heights[index])
+		if index < 2 and seeker_cm > 0.0 and seeker_px > 0.0:
+			scales[index] = (seeker_px * (height / seeker_cm)) / _reference_size(loaded).y
+		else:
+			scales[index] = fighter_scale(height, loaded, arena_size)
 	return scales
-
-
-static func fighter_anchor_x(is_player: bool, opaque_width: float, arena_width: float) -> float:
-	var fallback := arena_width * (PLAYER_SHOT_X if is_player else OPPONENT_SHOT_X)
-	if opaque_width <= 0.0 or arena_width <= 0.0:
-		return fallback
-	var pad := arena_width * FIGHTER_EDGE_PAD_RATIO
-	return pad + opaque_width * 0.5 if is_player else arena_width - pad - opaque_width * 0.5
 
 
 static func _reference_size(loaded: Dictionary) -> Vector2:

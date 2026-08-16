@@ -18,7 +18,6 @@ func apply(loaded: Dictionary) -> void:
 	scale = Vector2(_body_scale, _body_scale)
 	position = _rest_position
 	visible = sprite_frames != null
-	z_index = 1
 	set_pose("intro_idle")
 
 

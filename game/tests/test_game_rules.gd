@@ -448,8 +448,8 @@ func _initialize() -> void:
 	)
 	_check(trio.size() == 3, "shared_scales menerima Seeker sebagai tubuh ketiga")
 	_check(
-		is_equal_approx(trio[0], narrow_pair.x) and is_equal_approx(trio[1], narrow_pair.y),
-		"menambah Seeker tidak mengubah fit dua Anima"
+		absf((327.0 * trio[0]) / (235.0 * trio[1]) - 175.0 / 135.0) < 0.02,
+		"di samping Seeker, rasio tinggi Anima mengikuti cm kanonis"
 	)
 	var rendered_seeker_height := 282.0 * trio[2]
 	var rendered_trio_fudge := 235.0 * trio[1]
@@ -467,8 +467,8 @@ func _initialize() -> void:
 		phone_arena
 	)
 	_check(
-		326.0 * crowded[1] <= BATTLE_SCALE.DESIGN_ARENA.x * BATTLE_SCALE.MAX_BODY_WIDTH_RATIO + 0.5,
-		"tubuh lebar tidak melebihi 50% kartu desain"
+		absf((327.0 * crowded[0]) / (235.0 * crowded[1]) - 150.0 / 135.0) < 0.02,
+		"tubuh lebar mempertahankan rasio tinggi sebelum kamera memuat shot"
 	)
 	_check(
 		is_equal_approx(crowded[2], solo_seeker),
@@ -481,14 +481,90 @@ func _initialize() -> void:
 		is_equal_approx(solo_group[0], solo_seeker),
 		"Seeker sendirian tidak kena fit lebar"
 	)
-	var visible_width := 226.0
-	var player_x := BATTLE_SCALE.fighter_anchor_x(true, visible_width, phone_arena.x)
-	var opponent_x := BATTLE_SCALE.fighter_anchor_x(false, visible_width, phone_arena.x)
-	var edge_pad := phone_arena.x * BATTLE_SCALE.FIGHTER_EDGE_PAD_RATIO
+	var anchors := [20.0, 50.0, 120.0, 300.0, 800.0, 2000.0]
+	var rendered: PackedFloat32Array = PackedFloat32Array()
+	rendered.resize(anchors.size())
+	var arena_h := BATTLE_SCALE.usable_height(design_arena)
+	var cap_h := arena_h * 0.88
+	for index in anchors.size():
+		rendered[index] = 300.0 * BATTLE_SCALE.fighter_scale(anchors[index], render, design_arena)
+		_check(rendered[index] <= cap_h + 0.01, "anchor %s cm tetap full-body di bawah cap HUD" % str(anchors[index]))
+	for index in range(1, anchors.size()):
+		_check(
+			rendered[index] + 0.01 >= rendered[index - 1],
+			"tinggi %s cm tidak lebih kecil dari %s cm" % [str(anchors[index]), str(anchors[index - 1])]
+		)
+	_check(rendered[0] < rendered[1], "20 cm lebih kecil dari 50 cm")
+	_check(rendered[1] < rendered[2], "50 cm lebih kecil dari 120 cm")
+	_check(rendered[2] < rendered[3], "120 cm lebih kecil dari 300 cm")
+	_check(rendered[0] >= arena_h * BATTLE_SCALE.ARENA_REFERENCE_HEIGHT_RATIO * 0.42 - 0.01, "tubuh 20 cm tetap di readability floor")
+	_check_eq(
+		BATTLE_SCALE.anima_display_height_cm(2000.0),
+		BATTLE_SCALE.ANIMA_VISUAL_HEIGHT_CAP_CM,
+		"20 m Anima tampil sebagai 3 m"
+	)
+	_check_eq(
+		BATTLE_SCALE.anima_display_height_cm(165.0),
+		165.0,
+		"tinggi di bawah cap tidak diubah"
+	)
+	var capped_pair := BATTLE_SCALE.fighter_pair_scales(
+		2000.0, render, 300.0, render, design_arena
+	)
 	_check(
-		is_equal_approx(player_x - visible_width * 0.5, edge_pad)
-		and is_equal_approx(opponent_x + visible_width * 0.5, phone_arena.x - edge_pad),
-		"anchor memakai tepi piksel opak, bukan tengah sel kotak"
+		is_equal_approx(capped_pair.x, capped_pair.y),
+		"20 m dan 3 m memakai skala Anima yang sama"
+	)
+	var colossal_pair := BATTLE_SCALE.fighter_pair_scales(
+		2000.0, render, 2000.0, render, design_arena
+	)
+	_check(
+		absf(colossal_pair.x - colossal_pair.y) < 0.001
+		and 300.0 * colossal_pair.x <= cap_h + 0.01,
+		"pasangan 20 m menjaga rasio 1:1 di bawah cap HUD"
+	)
+	var mixed_pair := BATTLE_SCALE.fighter_pair_scales(
+		50.0, render, 2000.0, render, design_arena
+	)
+	var solo_small := BATTLE_SCALE.fighter_scale(50.0, render, design_arena)
+	var solo_capped := BATTLE_SCALE.fighter_scale(
+		BATTLE_SCALE.ANIMA_VISUAL_HEIGHT_CAP_CM, render, design_arena
+	)
+	_check(
+		is_equal_approx(mixed_pair.x, solo_small)
+		and is_equal_approx(mixed_pair.y, solo_capped),
+		"Anima 20 m tidak mengubah rasio dasar pasangan 50 cm sebelum camera zoom"
+	)
+	var seeker_165 := BATTLE_SCALE.fighter_scale(165.0, seeker_render, phone_arena)
+	var giant_trio := BATTLE_SCALE.shared_scales(
+		[2000.0, 135.0, 165.0],
+		[veridian_render, fudge_render, seeker_render],
+		phone_arena
+	)
+	var normal_trio := BATTLE_SCALE.shared_scales(
+		[150.0, 135.0, 165.0],
+		[veridian_render, fudge_render, seeker_render],
+		phone_arena
+	)
+	_check(
+		is_equal_approx(giant_trio[2], seeker_165)
+		and is_equal_approx(normal_trio[2], seeker_165),
+		"cap 3 m Anima tidak mengubah skala Boss Seeker"
+	)
+	_check(
+		BATTLE_SCALE.anima_behind_seeker(2000.0, 165.0)
+		and BATTLE_SCALE.anima_behind_seeker(150.0, 165.0)
+		and not BATTLE_SCALE.anima_behind_seeker(90.0, 165.0),
+		"Anima di belakang Seeker hanya jika tampilannya > 60% tinggi Seeker"
+	)
+	var seeker_px := 282.0 * giant_trio[2]
+	_check(
+		327.0 * normal_trio[0] < seeker_px - 1.0,
+		"Veridian 150 cm lebih pendek dari Seeker 165 cm"
+	)
+	_check(
+		absf((327.0 * giant_trio[0]) / seeker_px - 300.0 / 165.0) < 0.02,
+		"Anima 3 m di layar hampir 2× Seeker 165 cm"
 	)
 
 	print("14. gallery transport")

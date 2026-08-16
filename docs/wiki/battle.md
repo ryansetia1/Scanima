@@ -112,9 +112,16 @@ Seeker.
   Anima setinggi manusia mengisi kurang dari setengah arena pada layar HP,
   supaya dua petarung plus trainer masih punya ruang. Anima
   berbadan kecil (sekitar boneka yang bisa digendong) tetap lebih pendek dari
-  companion biasa. Anima yang sangat lebar dapat mengecilkan kedua petarung
-  agar tetap muat, tetapi tidak ikut mengerdilkan The Confectioner yang
-  berdiri di belakang. Margin arena mengikuti tepi tubuh yang terlihat,
+  companion biasa. Anima yang sangat lebar membuat kamera menjauh untuk
+  memuat seluruh petarung, termasuk The Confectioner.
+  Anima yang jauh lebih tinggi dari 3 meter tetap dihitung setinggi
+  sekitar 3 meter — hampir dua kali The Confectioner. Kamera lalu
+  menyesuaikan jarak agar kedua Anima dan The Confectioner terlihat utuh:
+  petarung kecil membuat kamera mendekat, sedangkan petarung besar membuat
+  kamera menjauh dan memperlihatkan lebih banyak latar. The Confectioner
+  tetap berada dekat sisi kanan, di belakang posisi Anima lawan. Kalau Anima itu lebih tinggi dari sekitar
+  60% tinggi The Confectioner, ia berdiri di belakang The Confectioner.
+  The Confectioner juga punya bayangan di kaki. Margin arena mengikuti tepi tubuh yang terlihat,
   bukan ruang transparan di dalam sprite. Monster besar tetap terasa besar,
   tetapi semuanya dijaga agar tidak menutup HUD. The Confectioner tampil full
   body.

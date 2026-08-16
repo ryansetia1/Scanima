@@ -14,7 +14,14 @@ signal arena_open_changed(open: bool)
 
 const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
-const SEEKER_EDGE_PAD := 12.0
+const SEEKER_SHOT_X := 0.83
+const CAMERA_MIN_ZOOM := 0.30
+const CAMERA_MAX_ZOOM := 1.30
+const CAMERA_TOP_PAD_RATIO := 0.05
+const CAMERA_SIDE_PAD_RATIO := 0.05
+const CAMERA_FIGHTER_GAP_RATIO := 0.025
+const CAMERA_BACKGROUND_MAX_SCALE := 1.55
+const SEEKER_CAMERA_EDGE_PAD_RATIO := 0.025
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
@@ -106,6 +113,8 @@ var _opponent_portal: IncubatorEffect
 var _player_shadow: Sprite2D
 var _opponent_shadow: Sprite2D
 var _seeker: BOSS_SEEKER_PRESENTER
+var _seeker_shadow: Sprite2D
+var _fighter_layer: Node2D
 var _seeker_dialog: BOSS_SEEKER_DIALOG
 var _seeker_loaded: Dictionary = {}
 var _spoken: Dictionary = {}
@@ -144,8 +153,10 @@ func _ready() -> void:
 	_battle_stage.resized.connect(_position_fighters)
 	_player_sprite.set_facing(1.0)
 	_opponent_sprite.set_facing(-1.0)
-	_player_sprite.z_index = 3
-	_opponent_sprite.z_index = 2
+	_player_sprite.z_index = 1
+	_opponent_sprite.z_index = 1
+	_player_anchor.z_index = 3
+	_opponent_anchor.z_index = 2
 	_player_sprite.pose_changed.connect(func(_pose: String) -> void: _sync_shadow("player"))
 	_opponent_sprite.pose_changed.connect(func(_pose: String) -> void: _sync_shadow("opponent"))
 	_action_commits = {
@@ -165,7 +176,13 @@ func _ready() -> void:
 	_opponent_shadow = _make_ground_shadow(_opponent_anchor)
 	_seeker = BOSS_SEEKER_PRESENTER.new()
 	_seeker.name = "BossSeeker"
-	_battle_stage.add_child(_seeker)
+	_fighter_layer = Node2D.new()
+	_fighter_layer.name = "FighterLayer"
+	_battle_stage.add_child(_fighter_layer)
+	_opponent_anchor.reparent(_fighter_layer)
+	_player_anchor.reparent(_fighter_layer)
+	_fighter_layer.add_child(_seeker)
+	_seeker_shadow = _make_ground_shadow(_fighter_layer)
 	_seeker_dialog = BOSS_SEEKER_DIALOG.new()
 	_seeker_dialog.name = "BossSeekerDialog"
 	add_child(_seeker_dialog)
@@ -701,7 +718,7 @@ func _apply_session_state() -> void:
 	_effectiveness.visible = false
 	_apply_side(_session, "player", true)
 	_apply_side(_session, "opponent", true, not _intro_pending_summon)
-	_position_seeker()
+	_position_fighters()
 	_player_slots.text = _slots_text("player")
 	_opponent_slots.text = _slots_text("opponent")
 	_forfeit.visible = status == "active"
@@ -1338,6 +1355,55 @@ func _align_portal(side: String) -> void:
 	portal.align_visual_center(sprite.body_center_global())
 
 
+func _match_anima_opaque_to_seeker() -> void:
+	if not is_instance_valid(_seeker) or not _seeker.has_sheet():
+		return
+	var heights := _active_body_heights()
+	var seeker_cm := heights[2]
+	if seeker_cm <= 0.0:
+		return
+	var scales := _arena_scales(_session)
+	if scales.size() < 3:
+		return
+	var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
+	var seeker_h := maxf(1.0, float(metrics.get("reference_height_px", 282.0))) * scales[2]
+	_fit_sprite_opaque_height(
+		_player_sprite, _player_anchor, seeker_h * BattleScale.anima_display_height_cm(heights[0]) / seeker_cm
+	)
+	_fit_sprite_opaque_height(
+		_opponent_sprite,
+		_opponent_anchor,
+		seeker_h * BattleScale.anima_display_height_cm(heights[1]) / seeker_cm
+	)
+
+
+func _fit_sprite_opaque_height(sprite: AnimaPresenter, anchor: Node2D, target_px: float) -> void:
+	if not is_instance_valid(sprite) or target_px <= 0.0:
+		return
+	sprite.plant_on_anchor()
+	var opaque_h := sprite.opaque_local_rect().size.y
+	if opaque_h <= 0.0:
+		return
+	var current := opaque_h * absf(anchor.scale.y)
+	if current <= 0.0:
+		return
+	anchor.scale *= target_px / current
+
+
+func _sync_seeker_shadow() -> void:
+	if not is_instance_valid(_seeker_shadow):
+		return
+	if not is_instance_valid(_seeker) or not _seeker.has_sheet():
+		_seeker_shadow.visible = false
+		return
+	var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
+	var width := maxf(1.0, float(metrics.get("reference_width_px", 158.0))) * absf(_seeker.scale.x)
+	_seeker_shadow.visible = true
+	_seeker_shadow.z_index = _seeker.z_index
+	_seeker_shadow.position = _seeker.position + Vector2(0.0, 4.0)
+	_seeker_shadow.scale = Vector2(clampf(width / 130.0, 0.9, 3.0), 1.15)
+
+
 func _sync_shadow(side: String) -> void:
 	var sprite := _sprite_for(side)
 	var shadow := _player_shadow if side == "player" else _opponent_shadow
@@ -1348,7 +1414,7 @@ func _sync_shadow(side: String) -> void:
 func _make_ground_shadow(anchor: Node2D) -> Sprite2D:
 	var gradient := Gradient.new()
 	gradient.colors = PackedColorArray([
-		Color(0.01, 0.02, 0.05, 0.82),
+		Color(0.01, 0.02, 0.05, 0.90),
 		Color(0.01, 0.02, 0.05, 0.0),
 	])
 	var texture := GradientTexture2D.new()
@@ -1383,25 +1449,205 @@ func _portal_for(side: String) -> IncubatorEffect:
 
 
 func _position_fighters() -> void:
-	if not is_instance_valid(_battle_stage):
+	if not is_instance_valid(_battle_stage) or not is_instance_valid(_fighter_layer):
 		return
+	_fighter_layer.position = Vector2.ZERO
+	_fighter_layer.scale = Vector2.ONE
 	var ground_y := _battle_stage.size.y * BattleScale.GROUND_Y_RATIO
-	_player_anchor.position = Vector2(_battle_stage.size.x * 0.27, ground_y)
-	_opponent_anchor.position = Vector2(_battle_stage.size.x * 0.73, ground_y)
+	_player_anchor.position = Vector2(_battle_stage.size.x * BattleScale.PLAYER_SHOT_X, ground_y)
+	_opponent_anchor.position = Vector2(
+		_battle_stage.size.x * BattleScale.OPPONENT_SHOT_X, ground_y
+	)
 	_apply_fighter_scales(_session)
+	_position_seeker()
+	_match_anima_opaque_to_seeker()
 	_player_sprite.plant_on_anchor()
 	_opponent_sprite.plant_on_anchor()
-	var player_width := _player_sprite.opaque_local_rect().size.x * absf(_player_anchor.scale.x)
-	var opponent_width := _opponent_sprite.opaque_local_rect().size.x * absf(_opponent_anchor.scale.x)
-	_player_anchor.position.x = BattleScale.fighter_anchor_x(
-		true, player_width, _battle_stage.size.x
-	)
-	_opponent_anchor.position.x = BattleScale.fighter_anchor_x(
-		false, opponent_width, _battle_stage.size.x
-	)
+	_separate_fighter_bodies()
 	_sync_shadow("player")
 	_sync_shadow("opponent")
-	_position_seeker()
+	_apply_fighter_layers()
+	_apply_dynamic_camera()
+	_sync_seeker_shadow()
+
+
+func _separate_fighter_bodies() -> void:
+	var player_width := _player_sprite.opaque_local_rect().size.x * absf(_player_anchor.scale.x)
+	var opponent_width := (
+		_opponent_sprite.opaque_local_rect().size.x * absf(_opponent_anchor.scale.x)
+	)
+	var gap := _battle_stage.size.x * CAMERA_FIGHTER_GAP_RATIO
+	var overlap := (
+		_player_anchor.position.x + player_width * 0.5 + gap
+		- (_opponent_anchor.position.x - opponent_width * 0.5)
+	)
+	if overlap > 0.0:
+		_player_anchor.position.x -= overlap * 0.5
+		_opponent_anchor.position.x += overlap * 0.5
+
+
+func _apply_dynamic_camera() -> void:
+	var bounds := _fighter_shot_bounds()
+	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
+		return
+	var side_pad := _battle_stage.size.x * CAMERA_SIDE_PAD_RATIO
+	var top_pad := _battle_stage.size.y * CAMERA_TOP_PAD_RATIO
+	var ground_y := _battle_stage.size.y * BattleScale.GROUND_Y_RATIO
+	var fit_zoom := minf(
+		(_battle_stage.size.x - side_pad * 2.0) / bounds.size.x,
+		(ground_y - top_pad) / bounds.size.y
+	)
+	var heights := _active_body_heights()
+	var tallest_anima := maxf(
+		BattleScale.anima_display_height_cm(heights[0]),
+		BattleScale.anima_display_height_cm(heights[1])
+	)
+	var size_mix := clampf(
+		inverse_lerp(50.0, BattleScale.ANIMA_VISUAL_HEIGHT_CAP_CM, tallest_anima),
+		0.0,
+		1.0
+	)
+	var preferred_zoom := lerpf(CAMERA_MAX_ZOOM, 0.72, size_mix)
+	var zoom := clampf(minf(fit_zoom, preferred_zoom), CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+	_fighter_layer.scale = Vector2(zoom, zoom)
+	_fighter_layer.position = Vector2(
+		_battle_stage.size.x * 0.5 - bounds.get_center().x * zoom,
+		ground_y * (1.0 - zoom)
+	)
+	_pin_seeker_to_camera_right(zoom)
+	var background_zoom := lerpf(CAMERA_BACKGROUND_MAX_SCALE, 1.0, size_mix)
+	_arena_background.pivot_offset = _arena_background.size * 0.5
+	_arena_background.scale = Vector2(background_zoom, background_zoom)
+
+
+func _pin_seeker_to_camera_right(camera_zoom: float) -> void:
+	if not is_instance_valid(_seeker) or not _seeker.has_sheet() or camera_zoom <= 0.0:
+		return
+	var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
+	var frame_value: Variant = _seeker_loaded.get("frame_size", Vector2i(341, 341))
+	var frame_w := 341.0
+	if typeof(frame_value) == TYPE_VECTOR2I:
+		frame_w = float((frame_value as Vector2i).x)
+	elif typeof(frame_value) == TYPE_VECTOR2:
+		frame_w = (frame_value as Vector2).x
+	var width := float(metrics.get("reference_width_px", 158.0))
+	var min_x := float(metrics.get("reference_min_x_px", (frame_w - width) * 0.5))
+	var opaque_center := min_x + width * 0.5 - frame_w * 0.5
+	var screen_width := width * absf(_seeker.scale.x) * camera_zoom
+	var target_center := (
+		_battle_stage.size.x * (1.0 - SEEKER_CAMERA_EDGE_PAD_RATIO) - screen_width * 0.5
+	)
+	_seeker.position.x = (
+		(target_center - _fighter_layer.position.x) / camera_zoom
+		- opaque_center * absf(_seeker.scale.x)
+	)
+
+
+func _fighter_shot_bounds() -> Rect2:
+	var ground_y := _player_anchor.position.y
+	var player_rect := _anima_shot_rect(_player_sprite, _player_anchor, ground_y)
+	var opponent_rect := _anima_shot_rect(_opponent_sprite, _opponent_anchor, ground_y)
+	var bounds := player_rect.merge(opponent_rect)
+	if is_instance_valid(_seeker) and _seeker.has_sheet():
+		var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
+		var frame_value: Variant = _seeker_loaded.get("frame_size", Vector2i(341, 341))
+		var frame_w := 341.0
+		if typeof(frame_value) == TYPE_VECTOR2I:
+			frame_w = float((frame_value as Vector2i).x)
+		elif typeof(frame_value) == TYPE_VECTOR2:
+			frame_w = (frame_value as Vector2).x
+		var width := float(metrics.get("reference_width_px", 158.0)) * absf(_seeker.scale.x)
+		var height := float(metrics.get("reference_height_px", 282.0)) * absf(_seeker.scale.y)
+		var min_x := float(metrics.get("reference_min_x_px", (frame_w - width) * 0.5))
+		var left := _seeker.position.x + (min_x - frame_w * 0.5) * absf(_seeker.scale.x)
+		bounds = bounds.merge(Rect2(left, ground_y - height, width, height))
+	return bounds
+
+
+func _anima_shot_rect(sprite: AnimaPresenter, anchor: Node2D, ground_y: float) -> Rect2:
+	var opaque := sprite.opaque_local_rect().size
+	var width := opaque.x * absf(anchor.scale.x)
+	var height := opaque.y * absf(anchor.scale.y)
+	return Rect2(anchor.position.x - width * 0.5, ground_y - height, width, height)
+
+
+func _apply_fighter_layers() -> void:
+	if _intro_pending_summon:
+		_set_fighter_z(3, 2, 1)
+		return
+	var heights := _active_body_heights()
+	var seeker_cm := heights[2]
+	var player_back := (
+		seeker_cm > 0.0 and BattleScale.anima_behind_seeker(heights[0], seeker_cm)
+	)
+	var opponent_back := (
+		seeker_cm > 0.0 and BattleScale.anima_behind_seeker(heights[1], seeker_cm)
+	)
+	if player_back and opponent_back:
+		_set_fighter_z(2, 1, 3)
+	elif player_back:
+		_set_fighter_z(1, 3, 2)
+	elif opponent_back:
+		_set_fighter_z(3, 1, 2)
+	else:
+		_set_fighter_z(3, 2, 1)
+
+
+func _set_fighter_z(player_z: int, opponent_z: int, seeker_z: int) -> void:
+	_player_anchor.z_index = player_z
+	_opponent_anchor.z_index = opponent_z
+	_player_sprite.z_index = 1
+	_opponent_sprite.z_index = 1
+	if is_instance_valid(_seeker):
+		_seeker.z_index = seeker_z
+	_order_stage_fighters()
+
+
+func _order_stage_fighters() -> void:
+	if not is_instance_valid(_fighter_layer):
+		return
+	var fighters: Array[Node] = [_player_anchor, _opponent_anchor]
+	if is_instance_valid(_seeker):
+		fighters.append(_seeker)
+	fighters.sort_custom(func(left: Node, right: Node) -> bool: return left.z_index < right.z_index)
+	for fighter in fighters:
+		_fighter_layer.move_child(fighter, -1)
+	if is_instance_valid(_seeker) and is_instance_valid(_seeker_shadow):
+		_fighter_layer.move_child(_seeker_shadow, _seeker.get_index())
+
+
+func _active_body_heights() -> PackedFloat32Array:
+	var heights := PackedFloat32Array([0.0, 0.0, 0.0])
+	var state := GameState.as_dict(_session.get("state"))
+	var player_party := GameState.as_dict(state.get("player"))
+	var opponent_party := GameState.as_dict(state.get("opponent"))
+	var player_roster := _as_array(player_party.get("roster"))
+	var opponent_roster := _as_array(opponent_party.get("roster"))
+	var player_slot := int(player_party.get("active_slot", -1))
+	var opponent_slot := int(opponent_party.get("active_slot", -1))
+	if player_slot >= 0 and player_slot < player_roster.size():
+		heights[0] = float(
+			GameState.as_dict(player_roster[player_slot]).get(
+				"body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM
+			)
+		)
+	if opponent_slot >= 0 and opponent_slot < opponent_roster.size():
+		heights[1] = float(
+			GameState.as_dict(opponent_roster[opponent_slot]).get(
+				"body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM
+			)
+		)
+	if (
+		is_instance_valid(_seeker)
+		and _seeker.has_sheet()
+		and not GameState.as_dict(_session.get("boss_seeker")).is_empty()
+	):
+		heights[2] = float(
+			GameState.as_dict(_session.get("boss_seeker")).get(
+				"body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM
+			)
+		)
+	return heights
 
 
 func _apply_fighter_scales(session: Dictionary) -> PackedFloat32Array:
@@ -1450,8 +1696,10 @@ func _arena_scales(session: Dictionary) -> PackedFloat32Array:
 
 func _position_seeker() -> void:
 	if not is_instance_valid(_seeker) or not _seeker.has_sheet():
+		if is_instance_valid(_seeker_shadow):
+			_seeker_shadow.visible = false
 		return
-	var scales := _apply_fighter_scales(_session)
+	var scales := _arena_scales(_session)
 	if scales.size() < 3:
 		return
 	var seeker_scale := scales[2]
@@ -1464,12 +1712,13 @@ func _position_seeker() -> void:
 	elif typeof(frame_value) == TYPE_VECTOR2:
 		frame_w = (frame_value as Vector2).x
 	var min_x := float(metrics.get("reference_min_x_px", (frame_w - seeker_width) * 0.5))
-	var opaque_right := (min_x + seeker_width) - frame_w * 0.5
-	# ponytail: pin the opaque right edge, not the 341 empty frame. Ceiling:
-	# no per-pose used-rect; upgrade if a command pose overhangs more than Idle.
-	var x := _battle_stage.size.x - SEEKER_EDGE_PAD - maxf(opaque_right, 1.0) * seeker_scale
+	var opaque_center := min_x + seeker_width * 0.5 - frame_w * 0.5
+	# The camera owns the final fit. Place the visible body in the shot first;
+	# transparent 3×3 cell padding must not affect composition.
+	var x := _battle_stage.size.x * SEEKER_SHOT_X - opaque_center * seeker_scale
 	var y := _opponent_anchor.position.y
 	_seeker.set_layout(Vector2(x, y), seeker_scale)
+	_sync_seeker_shadow()
 
 
 func _play_damage(amount: int, multiplier: float) -> void:

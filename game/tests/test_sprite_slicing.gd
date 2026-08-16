@@ -390,6 +390,24 @@ func _test_presenter() -> void:
 		"summon transition harus mengembalikan transform pose"
 	)
 
+	var haze := Image.create_empty(64, 64, false, Image.FORMAT_RGBA8)
+	haze.fill(Color(0, 1, 0, 0.04))
+	haze.fill_rect(Rect2i(20, 12, 16, 28), Color(0.2, 0.8, 0.3, 1))
+	var haze_frames := SpriteFrames.new()
+	haze_frames.add_animation("idle")
+	haze_frames.add_frame("idle", ImageTexture.create_from_image(haze))
+	presenter.sprite_frames = haze_frames
+	presenter.set("_opaque_local_by_pose", {})
+	presenter.set("_current_pose", "idle")
+	presenter.animation = "idle"
+	var tight: Rect2 = presenter.call("opaque_local_rect")
+	_check(
+		tight.size.x >= 15.0
+		and tight.size.x <= 18.0
+		and tight.size.y >= 27.0
+		and tight.size.y <= 30.0,
+		"haze sel kotak tidak dihitung sebagai tubuh opak"
+	)
 	presenter.free()
 
 

@@ -334,6 +334,14 @@ func _ready() -> void:
 			_run_sugarworks_zone_demo(int(arg.trim_prefix("--sugarworks-zone-demo=")))
 		if arg == "--sugarworks-fudge-demo":
 			_run_sugarworks_zone_demo(3, true)
+		if arg == "--sugarworks-giant-fudge-demo":
+			_run_sugarworks_zone_demo(3, false, -1, int(BattleScale.BODY_HEIGHT_MAX_CM))
+		if arg == "--sugarworks-giant-veridian-demo":
+			_run_sugarworks_zone_demo(3, false, int(BattleScale.BODY_HEIGHT_MAX_CM), -1)
+		if arg == "--sugarworks-giant-both-demo":
+			_run_sugarworks_zone_demo(
+				3, false, int(BattleScale.BODY_HEIGHT_MAX_CM), int(BattleScale.BODY_HEIGHT_MAX_CM)
+			)
 		if arg == "--expedition-demo":
 			_run_expedition_demo()
 		if arg == "--expedition-builder-demo":
@@ -3826,7 +3834,12 @@ func _run_boss_scale_demo() -> void:
 	_run_sugarworks_zone_demo(3)
 
 
-func _run_sugarworks_zone_demo(zone: int, hide_seeker: bool = false) -> void:
+func _run_sugarworks_zone_demo(
+	zone: int,
+	hide_seeker: bool = false,
+	player_height_override: int = -1,
+	opponent_height_override: int = -1
+) -> void:
 	var index := clampi(zone, 1, 3)
 	var chapter := _sugarworks_asset_dir()
 	var player := _demo_player_sheet()
@@ -3863,9 +3876,15 @@ func _run_sugarworks_zone_demo(zone: int, hide_seeker: bool = false) -> void:
 	if zone_tex != null:
 		art["arena_background"] = zone_tex
 	session["state"]["player"]["roster"][0]["name"] = str(player.get("demo_name", "Licorice"))
-	session["state"]["player"]["roster"][0]["body_height_cm"] = int(player.get("demo_height_cm", 170))
+	session["state"]["player"]["roster"][0]["body_height_cm"] = (
+		player_height_override
+		if player_height_override > 0
+		else int(player.get("demo_height_cm", 150))
+	)
 	session["state"]["opponent"]["roster"][0]["name"] = opponent_name
-	session["state"]["opponent"]["roster"][0]["body_height_cm"] = opponent_height
+	session["state"]["opponent"]["roster"][0]["body_height_cm"] = (
+		opponent_height_override if opponent_height_override > 0 else opponent_height
+	)
 	session["turn_number"] = 2
 	session["state"]["turn"] = 2
 	_team_battle_view.set_session(session, art)

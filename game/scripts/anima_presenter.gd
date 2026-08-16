@@ -20,6 +20,7 @@ const PLAY_BOUNCE_HEIGHT_PX := 14.0
 const PLAY_BOUNCE_COUNT := 6
 const TAP_HIT_PADDING_PX := 28.0
 const FX_TRAVEL_SEC := 0.36
+const OPAQUE_ALPHA_MIN := 0.12
 
 var _motion: Tween
 var _feedback: Tween
@@ -128,7 +129,7 @@ func opaque_local_rect() -> Rect2:
 	var image := texture.get_image()
 	if image == null:
 		return Rect2()
-	var used := image.get_used_rect()
+	var used := _tight_used_rect(image)
 	if used.size.x <= 0 or used.size.y <= 0:
 		return Rect2()
 	var texture_size := Vector2(image.get_width(), image.get_height())
@@ -157,6 +158,59 @@ func sync_ground_shadow(shadow: Sprite2D) -> void:
 	else:
 		shadow.position = feet + Vector2(0.0, 2.0)
 	shadow.scale = Vector2(clampf(width / 180.0, 0.5, 2.0), 0.7)
+
+
+func _tight_used_rect(image: Image) -> Rect2i:
+	# ponytail: get_used_rect counts a>0, so sheet-cell haze becomes the square.
+	# Ceiling: shrinks edges once per pose; bake manifest bbox if hatch hitches.
+	var src := image
+	if image.get_format() != Image.FORMAT_RGBA8:
+		src = image.duplicate()
+		src.convert(Image.FORMAT_RGBA8)
+	var data := src.get_data()
+	var full := src.get_used_rect()
+	if full.size.x <= 0 or full.size.y <= 0:
+		return full
+	var width := src.get_width()
+	var threshold := int(OPAQUE_ALPHA_MIN * 255.0)
+	var x0 := full.position.x
+	var y0 := full.position.y
+	var x1 := full.end.x - 1
+	var y1 := full.end.y - 1
+	while y0 < y1 and not _row_opaque(data, width, y0, x0, x1, threshold):
+		y0 += 1
+	while y1 > y0 and not _row_opaque(data, width, y1, x0, x1, threshold):
+		y1 -= 1
+	while x0 < x1 and not _col_opaque(data, width, x0, y0, y1, threshold):
+		x0 += 1
+	while x1 > x0 and not _col_opaque(data, width, x1, y0, y1, threshold):
+		x1 -= 1
+	return Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
+
+
+func _row_opaque(
+	data: PackedByteArray, width: int, y: int, x0: int, x1: int, threshold: int
+) -> bool:
+	var index := (y * width + x0) * 4 + 3
+	var last := (y * width + x1) * 4 + 3
+	while index <= last:
+		if data[index] >= threshold:
+			return true
+		index += 4
+	return false
+
+
+func _col_opaque(
+	data: PackedByteArray, width: int, x: int, y0: int, y1: int, threshold: int
+) -> bool:
+	var index := (y0 * width + x) * 4 + 3
+	var last := (y1 * width + x) * 4 + 3
+	var stride := width * 4
+	while index <= last:
+		if data[index] >= threshold:
+			return true
+		index += stride
+	return false
 
 
 func _body_center_local() -> Vector2:

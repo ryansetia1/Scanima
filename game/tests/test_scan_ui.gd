@@ -2198,6 +2198,7 @@ func _test_team_battle_view() -> void:
 	await process_frame
 	var seeker := view.find_child("BossSeeker", true, false) as AnimatedSprite2D
 	var boss_opponent := view.find_child("TeamOpponentSprite", true, false) as AnimaPresenter
+	var opponent_anchor := view.find_child("TeamOpponentAnchor", true, false) as Node2D
 	var dialog := view.find_child("BossSeekerDialog", true, false) as BossSeekerDialog
 	_check(
 		seeker != null
@@ -2205,8 +2206,11 @@ func _test_team_battle_view() -> void:
 		and seeker.sprite_frames != null
 		and seeker.z_index > 0
 		and boss_opponent != null
-		and seeker.z_index < boss_opponent.z_index
-		and not boss_opponent.visible,
+		and opponent_anchor != null
+		and seeker.z_index < opponent_anchor.z_index
+		and not boss_opponent.visible
+		and seeker.get_parent() != null
+		and seeker.get_parent().find_child("GroundShadow", false, false) != null,
 		"boss intro shows the Seeker before her Anima"
 	)
 	var stage := view.find_child("TeamBattleStage", true, false) as Control
@@ -2214,17 +2218,45 @@ func _test_team_battle_view() -> void:
 	var seeker_metrics: Dictionary = (
 		metrics_value if typeof(metrics_value) == TYPE_DICTIONARY else {}
 	)
-	var frame_value: Variant = seeker_art["boss_seeker"].get("frame_size", Vector2i(341, 341))
-	var frame_w := float((frame_value as Vector2i).x) if typeof(frame_value) == TYPE_VECTOR2I else 341.0
-	var opaque_w := float(seeker_metrics.get("reference_width_px", 300.0))
-	var min_x := float(seeker_metrics.get("reference_min_x_px", 0.0))
-	var opaque_right := (min_x + opaque_w) - frame_w * 0.5
-	var expected_seeker_x := stage.size.x - 12.0 - maxf(opaque_right, 1.0) * seeker.scale.x
+	_check(stage != null and stage.size.x > 0.0, "Boss arena has a camera viewport")
+	var giant_session := boss_session.duplicate(true)
+	giant_session["id"] = "boss-giant-1"
+	giant_session["turn_number"] = 2
+	giant_session["state"]["turn"] = 2
+	giant_session["state"]["player"]["roster"][0]["body_height_cm"] = 2000
+	giant_session["state"]["opponent"]["roster"][0]["body_height_cm"] = 2000
+	giant_session["boss_seeker"]["body_height_cm"] = 165
+	view.set_session(giant_session, seeker_art)
+	await process_frame
+	await process_frame
+	var giant_player := view.find_child("TeamPlayerSprite", true, false) as AnimaPresenter
+	var giant_opponent := view.find_child("TeamOpponentSprite", true, false) as AnimaPresenter
+	var giant_anchor := view.find_child("TeamPlayerAnchor", true, false) as Node2D
+	var opponent_giant_anchor := view.find_child("TeamOpponentAnchor", true, false) as Node2D
+	var camera_layer := giant_anchor.get_parent() as Node2D
+	var seeker_h := float(seeker_metrics.get("reference_height_px", 300.0)) * absf(seeker.scale.y)
+	var player_h := giant_player.opaque_local_rect().size.y * absf(giant_anchor.scale.y)
+	var player_half := giant_player.opaque_local_rect().size.x * absf(giant_anchor.scale.x) * 0.5
+	var opponent_half := (
+		giant_opponent.opaque_local_rect().size.x * absf(opponent_giant_anchor.scale.x) * 0.5
+	)
 	_check(
-		stage != null
-		and stage.size.x > 0.0
-		and absf(seeker.position.x - expected_seeker_x) <= 2.0,
-		"Boss Seeker pins her opaque right edge to the arena, not the empty frame"
+		seeker_h > 1.0
+		and player_h > 1.0
+		and absf(player_h / seeker_h - 300.0 / 165.0) < 0.08,
+		"capped 20 m Anima is almost 2× the Seeker on screen"
+	)
+	var player_left := camera_layer.position.x + (
+		giant_anchor.position.x - player_half
+	) * camera_layer.scale.x
+	var opponent_right := camera_layer.position.x + (
+		opponent_giant_anchor.position.x + opponent_half
+	) * camera_layer.scale.x
+	_check(
+		camera_layer.scale.x < 1.0
+		and player_left >= -1.0
+		and opponent_right <= stage.size.x + 1.0,
+		"dynamic camera zooms out until both capped Animas stay fully visible"
 	)
 	var dim := dialog.find_child("SeekerDim", true, false) as ColorRect if dialog != null else null
 	var intro_line := dialog.find_child("SeekerLine", true, false) as Label if dialog != null else null
