@@ -59,6 +59,7 @@ const STAT_LABEL_KEYS := {
 }
 const SEEKER_PROFILE_DEST := &"seeker_profile"
 const GALLERY_DEST := &"gallery"
+const TROPHY_ART_DIR := "user://trophies"
 const SHOP_ICON := preload("res://assets/icons/shopping-bag.svg")
 const BAG_ICON := preload("res://assets/icons/backpack.svg")
 
@@ -240,7 +241,6 @@ func _ready() -> void:
 	_seeker_profile_view.back_requested.connect(func() -> void: _switch_destination(BottomNav.HOME))
 	_seeker_profile_view.help_requested.connect(_show_details_help)
 	_seeker_profile_view.rename_requested.connect(_show_rename_seeker)
-	_seeker_profile_view.trophies_save_requested.connect(_save_featured_trophies)
 	_gallery_view.back_requested.connect(func() -> void: _switch_destination(BottomNav.HOME))
 	_gallery_view.toast_requested.connect(_say)
 	AuthFlow.auth_succeeded.connect(_on_auth_succeeded)
@@ -319,6 +319,8 @@ func _ready() -> void:
 					"care_score": 15,
 				}
 			_celebrate_level_up(4, 3, 10, 15)
+		if arg == "--trophy-demo":
+			_run_trophy_demo()
 		if arg == "--empty-demo":
 			_run_empty_demo()
 		if arg == "--summon-demo":
@@ -1106,49 +1108,80 @@ func _open_seeker_profile() -> void:
 		profile,
 		_thumbnail_for(_current_anima) if not _current_anima.is_empty() else null
 	)
-	_seeker_profile_view.hide_trophies()
+	_paint_cached_trophies()
 	_switch_destination(SEEKER_PROFILE_DEST)
 	await _load_seeker_trophies()
+
+
+## Daftar Core berubah paling sering sekali per chapter, jadi kunjungan kedua
+## tidak boleh menunggu jaringan: nama datang dari boot cache dan art-nya dari
+## disk, keduanya terpasang di frame yang sama dengan pindah layar.
+func _paint_cached_trophies() -> void:
+	var cached: Variant = GameState.boot_cache.get("trophies")
+	if typeof(cached) != TYPE_ARRAY:
+		_seeker_profile_view.hide_trophies()
+		return
+	_seeker_profile_view.set_trophies(cached)
+	for trophy in SeekerProfileView.trophy_entries(cached):
+		var trophy_id := str(trophy.get("id", ""))
+		_seeker_profile_view.set_trophy_art(trophy_id, _stored_trophy_art(trophy_id))
 
 
 func _load_seeker_trophies() -> void:
 	var res := await Backend.expedition("trophies")
 	if not res.ok:
-		_seeker_profile_view.hide_trophies()
+		if typeof(GameState.boot_cache.get("trophies")) != TYPE_ARRAY:
+			_seeker_profile_view.hide_trophies()
 		return
-	var data := GameState.as_dict(res.data)
-	var textures: Dictionary = {}
-	var featured: Array = data.get("featured", []) if typeof(data.get("featured")) == TYPE_ARRAY else []
-	for value in featured:
-		var trophy := GameState.as_dict(GameState.as_dict(value).get("expedition_trophies"))
+	var rows: Variant = GameState.as_dict(res.data).get("trophies")
+	if typeof(rows) != TYPE_ARRAY:
+		rows = []
+	GameState.remember_boot_cache({"trophies": rows})
+	_seeker_profile_view.set_trophies(rows)
+	for trophy in SeekerProfileView.trophy_entries(rows):
 		var trophy_id := str(trophy.get("id", ""))
-		var art_url := str(trophy.get("art_url", ""))
-		if trophy_id.is_empty() or art_url.is_empty():
-			continue
-		if _trophy_icon_cache.has(trophy_id):
-			textures[trophy_id] = _trophy_icon_cache[trophy_id]
-			continue
-		var download := await Backend.download_url(art_url)
-		if not download.ok:
-			continue
-		var image := Image.new()
-		if image.load_png_from_buffer(download.bytes) != OK:
-			continue
-		var texture := ImageTexture.create_from_image(image)
-		_trophy_icon_cache[trophy_id] = texture
-		textures[trophy_id] = texture
-	_seeker_profile_view.set_trophies(data, textures)
+		var texture := _stored_trophy_art(trophy_id)
+		if texture == null:
+			texture = await _download_trophy_art(trophy_id, str(trophy.get("art_url", "")))
+		_seeker_profile_view.set_trophy_art(trophy_id, texture)
 
 
-func _save_featured_trophies(trophy_ids: Array[String]) -> void:
-	_seeker_profile_view.set_busy(true)
-	var res := await Backend.expedition("feature_trophies", {"trophy_ids": trophy_ids})
-	_seeker_profile_view.set_busy(false)
-	if not res.ok:
-		_say(tr("SEEKER_TROPHY_SAVE_ERROR"), true)
-		return
-	await _load_seeker_trophies()
-	_say(tr("SEEKER_TROPHY_SAVED"), true)
+## Art Core adalah aset chapter publik yang dikunci ke UUID trophy, jadi ia boleh
+## bertahan lintas akun di device yang sama dan tidak ikut dibuang bersama cache
+## boot milik akun sebelumnya.
+func _stored_trophy_art(trophy_id: String) -> Texture2D:
+	if _trophy_icon_cache.has(trophy_id):
+		return _trophy_icon_cache[trophy_id]
+	var path := TROPHY_ART_DIR.path_join("%s.png" % trophy_id)
+	if trophy_id.is_empty() or not FileAccess.file_exists(path):
+		return null
+	return _decode_trophy_art(trophy_id, FileAccess.get_file_as_bytes(path))
+
+
+func _download_trophy_art(trophy_id: String, art_url: String) -> Texture2D:
+	if trophy_id.is_empty() or art_url.is_empty():
+		return null
+	var download := await Backend.download_url(art_url)
+	if not download.ok:
+		return null
+	var texture := _decode_trophy_art(trophy_id, download.bytes)
+	if texture == null:
+		return null
+	DirAccess.make_dir_recursive_absolute(TROPHY_ART_DIR)
+	var file := FileAccess.open(TROPHY_ART_DIR.path_join("%s.png" % trophy_id), FileAccess.WRITE)
+	if file != null:
+		file.store_buffer(download.bytes)
+		file.close()
+	return texture
+
+
+func _decode_trophy_art(trophy_id: String, bytes: PackedByteArray) -> Texture2D:
+	var image := Image.new()
+	if image.load_png_from_buffer(bytes) != OK:
+		return null
+	var texture := ImageTexture.create_from_image(image)
+	_trophy_icon_cache[trophy_id] = texture
+	return texture
 
 
 func _show_rename_seeker() -> void:
@@ -4123,6 +4156,31 @@ func _run_profile_help_demo(show_help: bool = true) -> void:
 	_refresh_stats()
 	if show_help:
 		_show_details_help(tr("STAT_SPD"), tr("STAT_SPD_HELP"))
+
+
+## Kartu kedua sengaja dibiarkan tanpa art supaya slot yang sudah dipesan
+## sebelum PNG-nya turun ikut terlihat saat layar ini diperiksa.
+func _run_trophy_demo() -> void:
+	var rows: Array = []
+	for index in 4:
+		rows.append({"expedition_trophies": {
+			"id": "trophy-demo-%d" % index,
+			"display_name": "Sugarfold Core %d" % (index + 1),
+		}})
+	_seeker_profile_view.set_profile(GameState.profile, null)
+	_seeker_profile_view.set_trophies(rows)
+	var swatch := Image.create(240, 240, false, Image.FORMAT_RGBA8)
+	swatch.fill(Color(0.52, 0.24, 0.34))
+	for index in 4:
+		if index != 1:
+			_seeker_profile_view.set_trophy_art(
+				"trophy-demo-%d" % index,
+				ImageTexture.create_from_image(swatch)
+			)
+	_switch_destination(SEEKER_PROFILE_DEST)
+	var scroll := _seeker_profile_view.find_child("Scroll", true, false) as ScrollContainer
+	await get_tree().process_frame
+	scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
 
 
 func _run_empty_demo() -> void:

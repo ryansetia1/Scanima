@@ -170,8 +170,9 @@ Seeker.
   **Sugarfold Core** untuk koleksi Trophy Seeker. Begitu baris terakhir The
   Confectioner ditutup, gambar Core-nya muncul beserta pengumuman bahwa Core itu
   sudah menjadi milikmu; **tap to continue** membawamu ke ringkasan hadiah.
-  Core-nya tersimpan permanen di **Trophy Showcase** pada profil Seeker, dan di
-  sana kamu memilih maksimal tiga Core yang ingin dipamerkan.
+  Core-nya tersimpan permanen di **Trophy Showcase** pada profil Seeker, yang
+  memajang semua Core yang pernah kamu menangkan. Tidak ada yang perlu diatur
+  atau disimpan di sana — buka profilnya dan Core-nya sudah ada.
 - Boss menampilkan **The Confectioner** dulu, tanpa Anima lawan. Ia berbicara
   tanpa overlay gelap. **Tap to continue** menutup baris itu, lalu The
   Confectioner memanggil Anima-nya ke arena dan fight baru dimulai. Selama

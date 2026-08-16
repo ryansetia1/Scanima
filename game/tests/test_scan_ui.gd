@@ -87,7 +87,7 @@ func _initialize() -> void:
 		"TeamRetryButton",
 		"ExpeditionChoiceAbandon",
 		"SeekerMenuButton", "OnboardingSubmit", "SeekerProfileBack", "RenameSeeker",
-		"SaveTrophies", "ChapterPush",
+		"ChapterPush",
 		"SeekerProfile", "SeekerGallery", "SeekerAccount", "SeekerHelp", "DeleteAccount",
 	]:
 		var button := scene.find_child(name, true, false) as Button
@@ -1200,30 +1200,39 @@ func _test_seeker_ui() -> void:
 		"Seeker profile shows the unique name"
 	)
 	var trophy_rows: Array[Dictionary] = []
-	var featured_rows: Array[Dictionary] = []
 	for index in 4:
-		var trophy := {
+		trophy_rows.append({"expedition_trophies": {
 			"id": "60000000-0000-4000-8000-00000000000%d" % index,
 			"display_name": "Trail Trophy %d" % (index + 1),
-		}
-		trophy_rows.append({"expedition_trophies": trophy})
-		if index < 2:
-			featured_rows.append({"slot": index, "expedition_trophies": trophy})
-	profile.set_trophies({"trophies": trophy_rows, "featured": featured_rows})
-	var trophy_list := profile.find_child("TrophyList", true, false) as ItemList
-	var featured := profile.find_child("FeaturedTrophies", true, false) as HBoxContainer
+		}})
+	profile.set_trophies(trophy_rows)
+	var trophy_grid := profile.find_child("TrophyGrid", true, false) as GridContainer
+	var trophy_empty := profile.find_child("TrophyEmpty", true, false) as Label
 	_check(
-		trophy_list.item_count == 4
-		and trophy_list.get_selected_items().size() == 2
-		and featured.get_child_count() == 2,
-		"Seeker profile shows owned Trophies and the saved Showcase"
+		trophy_grid.visible
+		and not trophy_empty.visible
+		and trophy_grid.get_child_count() == 4,
+		"Trophy Showcase renders one art card per owned Core"
 	)
-	trophy_list.select(2, false)
-	trophy_list.select(3, false)
-	profile.call("_on_trophy_selected", 3, true)
+	var first_card := trophy_grid.get_child(0).get_child(0) as TextureRect
 	_check(
-		trophy_list.get_selected_items().size() == 3,
-		"Trophy Showcase enforces the three-slot maximum before the request"
+		first_card.texture == null and first_card.custom_minimum_size.y > 0.0,
+		"a Core card reserves its art slot before the PNG lands"
+	)
+	profile.set_trophies(trophy_rows)
+	_check(
+		trophy_grid.get_child(0).get_child(0) == first_card,
+		"repainting the same Cores keeps the cards instead of rebuilding them"
+	)
+	var core_art := ImageTexture.create_from_image(
+		Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	)
+	profile.set_trophy_art("60000000-0000-4000-8000-000000000000", core_art)
+	_check(first_card.texture == core_art, "Core art drops into the card it belongs to")
+	profile.set_trophies([])
+	_check(
+		trophy_empty.visible and not trophy_grid.visible,
+		"an account without a Core sees the earn-one hint instead of an empty grid"
 	)
 	profile.set_profile({"seeker_name": null}, null)
 	_check(

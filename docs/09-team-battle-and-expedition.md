@@ -315,9 +315,27 @@ Pokémon, Digimon, dan IP lain.
 
 ## 5. Trophy dan announcement
 
-First clear memberi satu Trophy unik per chapter. Seeker Profile menampilkan
-tiga Featured Trophy; koleksi lengkap tetap dapat dibuka terpisah. Trophy tidak
-dicabut ketika chapter direvisi atau di-unpublish.
+First clear memberi satu Trophy unik per chapter. Trophy tidak dicabut ketika
+chapter direvisi atau di-unpublish.
+
+Trophy Showcase di Seeker Profile menampilkan **seluruh** Core yang dimiliki
+sebagai kartu art bernama, tanpa picker dan tanpa tombol Save. `seeker_featured_trophies`
+dan `set_featured_trophies` tetap hidup di server, tetapi client tidak lagi
+memanggilnya: satu-satunya layar yang menampilkan Trophy adalah profil pemiliknya
+sendiri, dan di sana Featured berada tepat di atas daftar lengkap yang sama —
+memilih tiga dari daftar yang seluruhnya sudah terlihat tidak mengubah apa pun
+yang bisa dilihat siapa pun. Kembalikan picker-nya ketika profil publik atau
+perbandingan antar-Seeker benar-benar ada; sampai itu terjadi, wire-nya sengaja
+menganggur.
+
+Layar itu tidak boleh terasa seperti loading. Daftar Core disimpan di
+`user://boot_cache.json` dan PNG-nya di `user://trophies/<trophy_id>.png`, jadi
+kunjungan kedua memasang nama dan art di frame yang sama dengan perpindahan
+layar, lalu `expedition("trophies")` menyusul dan hanya membangun ulang grid
+kalau daftarnya memang berubah. Kartu memesan slot art berukuran tetap sejak
+dibuat, sehingga PNG yang datang belakangan tidak menggeser layout. Art Core
+adalah aset chapter publik yang dikunci ke UUID trophy, jadi ia sengaja tidak
+ikut dibuang bersama cache boot ketika device berpindah akun.
 
 Trophy diumumkan **tepat sesudah baris terakhir Boss Seeker di-tap** dan sebelum
 ringkasan hadiah, memakai dialog tap-to-continue yang sama dengan dialog Seeker:
@@ -328,10 +346,11 @@ sengaja **tidak** diprediksi lokal; `play_events()` juga menahan reward dan
 antrean Level Up sampai kedua dialog itu benar-benar habis. Reveal tercatat per
 session, jadi replay maupun resume tidak mengumumkannya dua kali.
 
-Operasi `trophies` membaca Featured lewat embed PostgREST
+Operasi `trophies` masih membaca Featured lewat embed PostgREST
 `seeker_featured_trophies → expedition_trophies`. Relasi itu wajib berupa
 foreign key langsung: composite key ke `seeker_trophies` saja dijawab 400, dan
-seluruh operasi jatuh 500 sehingga Trophy Showcase tidak pernah tampil.
+seluruh operasi jatuh 500 sehingga Trophy Showcase tidak pernah tampil — termasuk
+daftar `trophies` yang sebenarnya tidak bermasalah.
 
 Secara visual semua Trophy memakai sistem dua lapis **Chapter Core v3**. Chapter
 menyediakan satu Inner Core dengan perimeter, internal construction, dan palet
