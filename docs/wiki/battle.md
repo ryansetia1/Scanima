@@ -4,6 +4,20 @@ Duel singkat lawan Anima yang sudah dipublikasikan pemain lain (tanpa identitas
 pemilik) atau lawan sistem. Kamu mengirim perintah; server yang menghitung
 hasilnya.
 
+Arena tidak menunggu jaringan sebelum bergerak. Begitu kamu menekan sebuah
+aksi, turn-nya langsung dimainkan memakai aturan yang sama persis dengan yang
+dipakai server, dan hasil resmi menyusul di belakang layar. HP, PP, hadiah, dan
+Bits yang tersimpan selalu versi server. Kalau keduanya sampai berbeda — jarang,
+tetapi mungkin setelah koneksi bermasalah — arena memutar ulang hasil resminya.
+Pergantian Anima (Switch) dan item di Expedition tetap menunggu jawaban server
+karena keduanya butuh data yang belum tentu ada di perangkat.
+
+Sinyal yang putus sebentar — lift, terowongan, kereta — tidak membuang aksimu.
+Turn yang gagal terkirim dicoba ulang sendiri beberapa detik sebelum menyerah,
+jadi biasanya pertarungan lanjut tanpa kamu menyadari apa pun. Kalau koneksinya
+benar-benar hilang, arena mundur ke keadaan terakhir yang sudah disahkan server
+dan kamu bisa mengulang aksi yang sama.
+
 ## Mode yang tersedia
 
 Layar Battle menampilkan **Duel**, **Team Battle**, dan **Expedition** sejak
@@ -58,7 +72,7 @@ menampilkan satu fighter aktif dari setiap tim.
   misalnya **Soundhund Lv. 5**.
 - Ketuk Attack, Special, Guard, Item, atau Switch langsung mengunci tombol
   itu (garis di bawahnya). Tidak ada teks “locked in” atau “Resolving”.
-  Setelah hasil turn kembali dari server, pelat gelap lebih dulu menulis
+  Turn-nya juga langsung dimainkan tanpa menunggu jaringan: pelat gelap menulis
   **{nama} uses {move}.**, **{nama} braces for impact.**, item, Switch, atau
   KO dan diam sekitar 1,4 detik. Untuk serangan, pelat itu hilang sebelum pose
   Attack dan VFX dimulai. Penyerang kembali Idle tepat saat VFX mengenai

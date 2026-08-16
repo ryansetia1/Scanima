@@ -359,6 +359,12 @@ func play_combat_events(
 	await _combat.play_events(events, next_encounter, art_cache)
 
 
+## Memasang encounter authoritative tanpa memutar ulang event-nya. Dipakai saat
+## turn sudah dianimasikan dari simulasi lokal dan server setuju hasilnya.
+func set_combat_encounter(encounter: Dictionary, art_cache: Dictionary = {}) -> void:
+	_combat.set_session(encounter, art_cache)
+
+
 func _show_only(panel: Control) -> void:
 	_column.visible = true
 	_combat.visible = false

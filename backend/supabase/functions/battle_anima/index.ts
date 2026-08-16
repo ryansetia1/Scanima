@@ -4,7 +4,7 @@
 // Combat runs in battle.mjs. Postgres alone commits turn order and rewards.
 
 import { adminClient, clientVersionGate, json, syncProfileTimezone } from "../_shared/supa.ts";
-import { BATTLE_SHEET_SIGNED_TTL } from "../_shared/gallery.mjs";
+import { signSheetUrl } from "../_shared/signed_roster.ts";
 import {
   BATTLE_ACTIONS,
   baseStatTotal,
@@ -396,10 +396,7 @@ async function gallerySnapshot(
   entry: GalleryBotRow,
   botRow: AnimaRow & { sheet_path: string; manifest: unknown },
 ): Promise<Record<string, unknown>> {
-  const { data: signed } = await db.storage
-    .from("anima_sheets")
-    .createSignedUrl(botRow.sheet_path, BATTLE_SHEET_SIGNED_TTL);
-  const sheetUrl = signed?.signedUrl ?? "";
+  const sheetUrl = await signSheetUrl(db, botRow.sheet_path);
   if (!sheetUrl) throw new Error("BOT_NOT_FOUND");
   return snapshot(
     botRow,
@@ -437,11 +434,8 @@ async function withFreshBotArt(value: unknown): Promise<unknown> {
   if (botError) throw botError;
   if (!bot?.sheet_path || !bot.manifest) throw new Error("BOT_NOT_FOUND");
 
-  const { data: signed, error: signedError } = await db.storage
-    .from("anima_sheets")
-    .createSignedUrl(bot.sheet_path, BATTLE_SHEET_SIGNED_TTL);
-  if (signedError) throw signedError;
-  if (!signed?.signedUrl) throw new Error("BOT_NOT_FOUND");
+  const sheetUrl = await signSheetUrl(db, bot.sheet_path);
+  if (!sheetUrl) throw new Error("BOT_NOT_FOUND");
 
   delete botSnapshot.sheet_path;
   return {
@@ -449,7 +443,7 @@ async function withFreshBotArt(value: unknown): Promise<unknown> {
     bot_snapshot: {
       ...botSnapshot,
       manifest: bot.manifest,
-      sheet_url: signed.signedUrl,
+      sheet_url: sheetUrl,
     },
   };
 }

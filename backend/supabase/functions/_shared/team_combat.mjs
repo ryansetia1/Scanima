@@ -1,5 +1,6 @@
 import {
   BATTLE_ACTIONS,
+  RULES_VERSION,
   SURGE_COST,
   applyIncomingModifiers,
   applyIntent,
@@ -13,6 +14,7 @@ import {
   itemEvent,
   seededRandom,
   turnOrder,
+  turnSeed,
 } from "./battle.mjs";
 import {
   bitsForTier,
@@ -39,6 +41,7 @@ export function createTeamBattleState({
     status: "active",
     turn: 1,
     seed: String(seed ?? ""),
+    rules_version: RULES_VERSION,
     player: createTeamParty(player, true),
     opponent: createTeamParty(opponent, false, {
       reserveAce,
@@ -77,7 +80,7 @@ export function resolveTeamTurn(
   if (!TEAM_ACTIONS.includes(playerAction)) throw battleError("INVALID_ACTION");
 
   const state = structuredClone(previousState);
-  const random = seededRandom(`${state.seed}:${state.turn}:${idempotencyKey}`);
+  const random = seededRandom(turnSeed(state, idempotencyKey));
   const events = [];
 
   if (state.player.forced_switch) {

@@ -32,6 +32,7 @@ import {
 } from "../backend/supabase/functions/_shared/vision.mjs";
 import { biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
 import {
+  ELEMENT_ALIASES,
   ELEMENT_CYCLE,
   ELEMENT_ROSTER,
   ELEMENT_STRENGTHS,
@@ -45,7 +46,9 @@ import {
 import {
   MOMENTUM_MAX,
   MOMENTUM_START,
+  RULES_VERSION,
   SURGE_COST,
+  turnSeed,
   baseStatTotal,
   battleExpYield,
   battleRewardPreview,
@@ -65,16 +68,25 @@ import {
   levelFromExp,
   growthMultiplier,
   formFromLevel,
+  BATTLE_MAX_TURNS,
+  LEVEL_CAP,
+  HUNGRY_NEED,
+  DIRTY_NEED,
+  HUNGRY_COMBAT_FLOOR,
+  DIRTY_COMBAT_FLOOR,
+  CARE_COMBAT_FLOOR,
 } from "../backend/supabase/functions/_shared/battle.mjs";
 import {
   BATTLE_BITS_CAP,
   CATALOG_ITEMS,
+  REWARD_TIERS,
   STARTER_BITS,
   bitsForTier,
   catalogItem,
   rewardTierFromRatio,
 } from "../backend/supabase/functions/_shared/catalog.mjs";
 import {
+  TEAM_MAX_TURNS,
   createTeamBattleState,
   resolveTeamTurn,
   teamCombatPower,
@@ -1508,8 +1520,22 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   );
   assert.match(
     battleEdge,
-    /withFreshBotArt[\s\S]*\.from\("anima_sheets"\)[\s\S]*createSignedUrl\(bot\.sheet_path/,
+    /withFreshBotArt[\s\S]*signSheetUrl\(db, bot\.sheet_path\)/,
     "art bot fallback harus ditandatangani dari salinan privat per-Anima"
+  );
+  const signedRoster = await readFile(
+    new URL("../backend/supabase/functions/_shared/signed_roster.ts", import.meta.url),
+    "utf8"
+  );
+  assert.match(
+    signedRoster,
+    /\.from\("anima_sheets"\)[\s\S]*createSignedUrl\(path, BATTLE_SHEET_SIGNED_TTL\)/,
+    "signSheetUrl harus menandatangani bucket privat anima_sheets"
+  );
+  assert.match(
+    signedRoster,
+    /hit\.expires_at - now > SIGN_REFRESH_MARGIN_MS/,
+    "cache signed URL harus menandatangani ulang sebelum masa berlakunya menipis"
   );
   assert.match(
     battleEdge,
@@ -3299,6 +3325,148 @@ console.log("30. helper _shared berklien selalu dipanggil dengan client-nya");
       }
     }
   }
+}
+
+console.log("31. idempotency_key tidak lagi menggerakkan RNG turn");
+{
+  // Sebelum rules_version 2, seed turn adalah `seed:turn:idempotency_key` dan
+  // key itu dipilih client. Pemain bisa mengaduk key sampai crit-nya keluar.
+  // Sesi lama tetap wajib memakai formula lamanya, karena battle_turns sudah
+  // menyimpan response yang dihitung dengan seed itu.
+  const fighter = {
+    base_stats: { hp: 60, atk: 55, def: 45, spd: 50, special: 55 },
+    element: "metal",
+    level: 8,
+  };
+  const fresh = createBattleState({ player: fighter, bot: fighter, seed: "rng-gate" });
+  assert.equal(fresh.rules_version, RULES_VERSION);
+  assert.equal(turnSeed(fresh, "apa-pun"), "rng-gate:1");
+
+  const a = resolveTurn(fresh, "strike", "key-aaaaaaaa");
+  const b = resolveTurn(fresh, "strike", "key-zzzzzzzz");
+  assert.deepEqual(a.state, b.state, "dua key berbeda harus memberi state identik");
+  assert.deepEqual(a.events, b.events, "dua key berbeda harus memberi events identik");
+  assert.equal(a.bot_action, b.bot_action);
+
+  const legacy = { ...structuredClone(fresh) };
+  delete legacy.rules_version;
+  assert.equal(turnSeed(legacy, "key-aaaaaaaa"), "rng-gate:1:key-aaaaaaaa");
+  const legacyA = resolveTurn(legacy, "strike", "key-aaaaaaaa");
+  const legacyB = resolveTurn(legacy, "strike", "key-zzzzzzzz");
+  assert.notDeepEqual(
+    legacyA.events,
+    legacyB.events,
+    "state lama harus tetap memakai formula lama supaya replay-nya cocok"
+  );
+
+  const roster = [{ ...fighter, anima_id: "a", name: "A" }, { ...fighter, anima_id: "b", name: "B" }];
+  const team = createTeamBattleState({ player: roster, opponent: roster, seed: "team-rng-gate" });
+  assert.equal(team.rules_version, RULES_VERSION);
+  assert.deepEqual(
+    resolveTeamTurn(team, "strike", "key-aaaaaaaa").events,
+    resolveTeamTurn(team, "strike", "key-zzzzzzzz").events,
+    "Team Battle juga tidak boleh menggerakkan RNG dari key client"
+  );
+}
+
+console.log("32. konstanta simulasi client tidak boleh menyimpang dari _shared");
+{
+  // Client menjalankan resolver yang sama secara lokal supaya animasi mulai di
+  // frame yang sama dengan tap. `test_battle_sim_parity.gd` membuktikan
+  // perilakunya identik, tetapi test itu butuh Godot. Pemindai ini menangkap
+  // konstanta yang diubah di satu sisi saja pada gate Node yang gratis.
+  //
+  // ponytail: pemindai teks, bukan parser GDScript. Plafon: hanya const skalar
+  // dan tiga tabel elemen; perilaku selengkapnya dijaga vektor paritas.
+  const { readFile } = await import("node:fs/promises");
+  const gdSource = async (path) =>
+    readFile(new URL(`../game/scripts/${path}`, import.meta.url), "utf8");
+
+  const scalarConst = (body, name) => {
+    const match = body.match(
+      new RegExp(`^const\\s+${name}\\s*(?::\\s*\\w+\\s*)?:?=\\s*(-?[\\d.]+)\\s*$`, "m")
+    );
+    assert.ok(match, `const ${name} tidak ditemukan di sumber GDScript`);
+    return Number(match[1]);
+  };
+
+  const battleSim = await gdSource("sim/battle_sim.gd");
+  const teamSim = await gdSource("sim/team_sim.gd");
+  const elementRules = await gdSource("sim/element_rules.gd");
+
+  const expectedScalars = [
+    [battleSim, "RULES_VERSION", RULES_VERSION],
+    [battleSim, "MOMENTUM_MAX", MOMENTUM_MAX],
+    [battleSim, "MOMENTUM_START", MOMENTUM_START],
+    [battleSim, "SURGE_COST", SURGE_COST],
+    [battleSim, "BATTLE_MAX_TURNS", BATTLE_MAX_TURNS],
+    [battleSim, "LEVEL_CAP", LEVEL_CAP],
+    [battleSim, "HUNGRY_NEED", HUNGRY_NEED],
+    [battleSim, "DIRTY_NEED", DIRTY_NEED],
+    [battleSim, "HUNGRY_COMBAT_FLOOR", HUNGRY_COMBAT_FLOOR],
+    [battleSim, "DIRTY_COMBAT_FLOOR", DIRTY_COMBAT_FLOOR],
+    [battleSim, "CARE_COMBAT_FLOOR", CARE_COMBAT_FLOOR],
+    [battleSim, "CRIT_MULTIPLIER", 1.8],
+    [battleSim, "GUARD_MULTIPLIER", 0.5],
+    [battleSim, "STRIKE_POWER", 50],
+    [battleSim, "SURGE_POWER", 75],
+    [battleSim, "VARIANCE_MIN", 0.92],
+    [battleSim, "VARIANCE_SPAN", 0.16],
+    [teamSim, "TEAM_MAX_TURNS", TEAM_MAX_TURNS],
+    [elementRules, "MATCHUP_STRONG", MATCHUP_STRONG],
+    [elementRules, "MATCHUP_WEAK", MATCHUP_WEAK],
+    [elementRules, "MATCHUP_NEUTRAL", MATCHUP_NEUTRAL],
+  ];
+  for (const [body, name, expected] of expectedScalars) {
+    assert.equal(scalarConst(body, name), expected, `const GDScript ${name} berbeda dari _shared`);
+  }
+
+  // Tiga tabel elemen: satu-satunya data yang benar-benar disalin ke client.
+  const roster = [
+    ...elementRules
+      .slice(elementRules.indexOf("const ROSTER"), elementRules.indexOf("const ALIASES"))
+      .matchAll(/"(\w+)"/g),
+  ].map((match) => match[1]);
+  assert.deepEqual(roster, [...ELEMENT_ROSTER], "ROSTER GDScript berbeda dari ELEMENT_ROSTER");
+
+  const aliasBlock = elementRules.slice(
+    elementRules.indexOf("const ALIASES"),
+    elementRules.indexOf("const STRENGTHS")
+  );
+  const aliases = Object.fromEntries(
+    [...aliasBlock.matchAll(/"(\w+)":\s*"(\w+)"/g)].map((match) => [match[1], match[2]])
+  );
+  assert.deepEqual(aliases, { ...ELEMENT_ALIASES }, "ALIASES GDScript berbeda dari _shared");
+
+  const strengthBlock = elementRules.slice(
+    elementRules.indexOf("const STRENGTHS"),
+    elementRules.indexOf("const MATCHUP_STRONG")
+  );
+  const strengths = Object.fromEntries(
+    [...strengthBlock.matchAll(/"(\w+)":\s*\[([^\]]*)\]/g)].map((match) => [
+      match[1],
+      [...match[2].matchAll(/"(\w+)"/g)].map((inner) => inner[1]),
+    ])
+  );
+  assert.deepEqual(
+    strengths,
+    JSON.parse(JSON.stringify(ELEMENT_STRENGTHS)),
+    "STRENGTHS GDScript berbeda dari ELEMENT_STRENGTHS"
+  );
+
+  const rewardBits = Object.fromEntries(
+    [
+      ...battleSim
+        .slice(battleSim.indexOf("const REWARD_TIER_BITS"))
+        .split("\n")[0]
+        .matchAll(/"(\w+)":\s*(\d+)/g),
+    ].map((match) => [match[1], Number(match[2])])
+  );
+  assert.deepEqual(
+    rewardBits,
+    Object.fromEntries(Object.entries(REWARD_TIERS).map(([tier, spec]) => [tier, spec.bits])),
+    "REWARD_TIER_BITS GDScript berbeda dari REWARD_TIERS"
+  );
 }
 
 const emitIdx = process.argv.indexOf("--emit");

@@ -7,6 +7,11 @@ signal authority_refresh_requested
 signal reward_presented(reward: Dictionary, encounter: Dictionary)
 signal announcements_changed(announcements: Dictionary)
 
+## Dipancarkan saat response turn tiba. Turn disimulasikan lokal lebih dulu supaya
+## animasi mulai di frame yang sama dengan tap, sementara request-nya jalan
+## berbarengan; sinyal ini yang menyatukan keduanya lagi.
+signal _turn_settled
+
 const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
 
 var _view: ExpeditionView
@@ -19,6 +24,8 @@ var _encounter: Dictionary = {}
 var _art_cache: Dictionary = {}
 var _busy := false
 var _catalog_available := false
+var _turn_result: Dictionary = {}
+var _turn_in_flight := false
 
 
 func configure(view: ExpeditionView, battle_view: BattleView) -> void:
@@ -321,6 +328,84 @@ func _leave_complete() -> void:
 		close()
 
 
+## Simulasi turn dari state encounter authoritative yang sudah ada di client.
+## Kosong kalau state-nya belum lengkap, aksinya ditolak aturan, atau hasilnya
+## memunculkan Switch — penggantinya butuh art yang belum tentu ada di cache.
+# ponytail: Switch, Item, dan Boss ace selalu menunggu server. Item ikut lewat
+# karena controller ini tidak memegang katalog Shop; upgrade dengan mengoper
+# katalog dari scan_flow kalau item Expedition terasa lambat.
+func _predict_turn(pending: Dictionary) -> Dictionary:
+	var state := GameState.as_dict(_encounter.get("state"))
+	if state.is_empty() or str(state.get("status", "")) != "active":
+		return {}
+	if int(state.get("turn", 0)) != int(pending.get("expected_turn", -1)):
+		return {}
+	var outcome := TeamSim.resolve_team_turn(
+		state,
+		str(pending.get("action", "")),
+		str(pending.get("idempotency_key", "")),
+		str(pending.get("item_id", "")),
+		pending.get("switch_to_slot", null)
+	)
+	if not bool(outcome.get("ok", false)):
+		return {}
+	var events: Array = outcome["events"]
+	for value in events:
+		if str(GameState.as_dict(value).get("type", "")) == "switch":
+			return {}
+	var encounter := _encounter.duplicate(true)
+	encounter["state"] = outcome["state"]
+	encounter["turn_number"] = int(outcome["state"].get("turn", encounter.get("turn_number", 1)))
+	encounter["status"] = str(outcome["state"].get("status", "active"))
+	return {"encounter": encounter, "events": events}
+
+
+## Ringkasan turn seperti yang dilihat pemain. HP Expedition hidup di dalam roster,
+## jadi event-nya yang membawa angka itu.
+static func _turn_outcome_digest(state: Dictionary, events: Array) -> String:
+	var parts := PackedStringArray([
+		str(state.get("status", "")),
+		str(int(float(state.get("turn", 0)))),
+	])
+	for value in events:
+		var event := GameState.as_dict(value)
+		parts.append(
+			"%s/%s/%d/%d"
+			% [
+				str(event.get("type", "")),
+				str(event.get("actor", "")),
+				int(float(event.get("damage", 0))),
+				int(float(event.get("target_hp", -1))),
+			]
+		)
+	return "|".join(parts)
+
+
+static func _turn_outcome_matches(
+	predicted: Dictionary, next_encounter: Dictionary, events: Array
+) -> bool:
+	if predicted.is_empty():
+		return false
+	var predicted_encounter: Dictionary = predicted["encounter"]
+	return (
+		_turn_outcome_digest(GameState.as_dict(predicted_encounter.get("state")), predicted["events"])
+		== _turn_outcome_digest(GameState.as_dict(next_encounter.get("state")), events)
+	)
+
+
+func _dispatch(operation: String, payload: Dictionary) -> void:
+	_turn_in_flight = true
+	_turn_result = await Backend.expedition(operation, payload)
+	_turn_in_flight = false
+	_turn_settled.emit()
+
+
+func _await_turn() -> Dictionary:
+	if _turn_in_flight:
+		await _turn_settled
+	return _turn_result
+
+
 func _submit_pending(pending: Dictionary) -> void:
 	if pending.is_empty():
 		return
@@ -330,8 +415,23 @@ func _submit_pending(pending: Dictionary) -> void:
 	else:
 		_view.set_loading(_loading_key(operation))
 	_set_busy(true)
-	var res := await Backend.expedition(operation, operation_payload(pending))
+	var predicted := _predict_turn(pending) if operation == "turn" else {}
+	_dispatch(operation, operation_payload(pending))
+	if not predicted.is_empty():
+		await _view.play_combat_events(
+			predicted["events"],
+			predicted["encounter"],
+			await _attach_seeker_art(_art_cache.duplicate())
+		)
+		# play_events melepas tombolnya sendiri. Turn berikutnya baru boleh dikirim
+		# setelah server memberi version-nya, jadi redupkan lagi kalau masih terbang.
+		_view.set_busy(_turn_in_flight)
+	var res := await _await_turn()
 	if not res.ok:
+		# Turn yang tidak sampai ke server tidak boleh meninggalkan arena di masa
+		# depan: `_encounter` masih memegang state authoritative terakhir.
+		if not predicted.is_empty() and not _encounter.is_empty():
+			_view.set_combat_encounter(_encounter, _art_cache.duplicate())
 		if should_resume_error(res.error):
 			_set_busy(false)
 			await resume_pending()
@@ -356,13 +456,18 @@ func _submit_pending(pending: Dictionary) -> void:
 			turn_reward["zone_scheduled_bits"] = int(zone_reward.get("scheduled_bits", 0))
 		next_encounter["last_reward"] = turn_reward
 		var events := _array(data.get("events"))
-		var art := _art_cache.duplicate()
-		for value in events:
-			if str(GameState.as_dict(value).get("type", "")) == "switch":
-				art = await _prepare_active_art(next_encounter, false)
-				break
-		art = await _attach_seeker_art(art)
-		await _view.play_combat_events(events, next_encounter, art)
+		if _turn_outcome_matches(predicted, next_encounter, events):
+			# Animasinya sudah jalan dari simulasi lokal; ini tinggal memasang row
+			# authoritative supaya version/reward-nya yang dipakai turn berikutnya.
+			_view.set_combat_encounter(next_encounter, _art_cache.duplicate())
+		else:
+			var art := _art_cache.duplicate()
+			for value in events:
+				if str(GameState.as_dict(value).get("type", "")) == "switch":
+					art = await _prepare_active_art(next_encounter, false)
+					break
+			art = await _attach_seeker_art(art)
+			await _view.play_combat_events(events, next_encounter, art)
 	_run = next_run
 	_encounter = next_encounter
 	GameState.confirm_expedition_response(_run, _encounter)

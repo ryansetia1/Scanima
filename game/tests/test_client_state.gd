@@ -25,6 +25,7 @@ extends SceneTree
 
 const PATH_UJI := "user://uji_state.json"
 const PATH_SECURE_UJI := "user://uji_secure_session.json"
+const PATH_CACHE_UJI := "user://uji_boot_cache.json"
 const DIR_UJI := "user://uji_animas"
 
 var _failures: PackedStringArray = []
@@ -41,6 +42,7 @@ func _initialize() -> void:
 	Backend = get_root().get_node("Backend").get_script()
 	GameState.path_state = PATH_UJI
 	GameState.dir_animas = DIR_UJI
+	GameState.path_boot_cache = PATH_CACHE_UJI
 	SecureStore.fallback_path = PATH_SECURE_UJI
 	_bersihkan()
 
@@ -58,6 +60,8 @@ func _initialize() -> void:
 	_test_cache_anima_id()
 	_test_cache_setengah()
 	_test_client_version()
+	_test_cache_boot()
+	await _test_retry_transport()
 
 	_bersihkan()
 
@@ -105,6 +109,7 @@ func _bersihkan() -> void:
 	DirAccess.remove_absolute(PATH_UJI + ".tmp")
 	DirAccess.remove_absolute(PATH_SECURE_UJI)
 	DirAccess.remove_absolute(PATH_SECURE_UJI + ".tmp")
+	DirAccess.remove_absolute(PATH_CACHE_UJI)
 	_hapus_folder(DIR_UJI)
 
 
@@ -633,4 +638,84 @@ func _test_cache_setengah() -> void:
 	_check(
 		not GameState.has_sprite("uji_kotak", "cool_blue", 1),
 		"sheet tanpa manifest harus dianggap belum ada"
+	)
+
+
+## Cache boot hanya alat gambar. Yang mahal kalau rusak: cache akun lain terbaca
+## sebagai roster pemain ini, atau cache tertinggal sesudah akun dihapus.
+func _test_cache_boot() -> void:
+	print("13. cache boot display-only per akun")
+	GameState.set_session("akses-cache", "refresh-cache", 1786600000, "uid-cache")
+	GameState.remember_boot_cache({
+		"profile": {"bits": 120},
+		"roster": [{"id": "anima-cache", "care": {"hunger": 50.0}}],
+		"catalog": [{"id": "food_basic", "price": 10}],
+		"inventory": [{"item_id": "food_basic", "quantity": 2}],
+	})
+	_muat_ulang()
+	_check_eq(
+		int(GameState.as_dict(GameState.boot_cache.get("profile")).get("bits", 0)),
+		120,
+		"cache boot harus kembali setelah restart"
+	)
+	_check_eq(
+		(GameState.boot_cache.get("catalog") as Array).size(),
+		1,
+		"katalog cache ikut bertahan supaya Shop terbuka tanpa menunggu jaringan"
+	)
+
+	GameState.set_session("akses-lain", "refresh-lain", 1786600000, "uid-lain")
+	_muat_ulang()
+	_check(
+		GameState.boot_cache.is_empty(),
+		"cache milik akun lain tidak boleh dipakai setelah pindah akun"
+	)
+
+	GameState.set_session("akses-cache", "refresh-cache", 1786600000, "uid-cache")
+	GameState.remember_boot_cache({"profile": {"bits": 7}})
+	GameState.clear_account_state()
+	_check(
+		GameState.boot_cache.is_empty() and not FileAccess.file_exists(PATH_CACHE_UJI),
+		"hapus akun harus menghapus cache boot dari disk"
+	)
+
+
+## Port 1 selalu menolak koneksi, jadi ini kegagalan transport nyata tanpa
+## jaringan keluar dan tanpa server palsu.
+func _test_retry_transport() -> void:
+	print("14. commit turn mengulang sendiri saat transport gagal")
+	var backoff_ms := int(float(Backend.get_script_constant_map()["RETRY_BACKOFF_SEC"]) * 1000.0)
+	_check_eq(
+		Backend.turn_retries("turn"),
+		int(Backend.get_script_constant_map()["TURN_RETRIES"]),
+		"commit turn harus punya jatah ulang"
+	)
+	for operation in ["start", "resume", "forfeit", "status", "candidates"]:
+		_check_eq(
+			Backend.turn_retries(operation), 0,
+			"operasi %s harus gagal cepat, bukan menahan pemain" % operation
+		)
+
+	# Autoload sudah ada di mode --script, tetapi child yang ditambahkan sebelum
+	# frame pertama belum masuk tree dan HTTPRequest menolak ERR_UNCONFIGURED.
+	await process_frame
+	var node: Node = get_root().get_node("Backend")
+	var dead := "http://127.0.0.1:1/"
+	var headers := PackedStringArray(["content-type: application/json"])
+	var body := PackedByteArray()
+	var direct: Dictionary = await node._send(HTTPClient.METHOD_POST, dead, headers, body, 5.0)
+	_check(
+		bool(direct.get("transport", false)),
+		"koneksi yang ditolak harus ditandai transport, bukan keputusan server"
+	)
+
+	var started := Time.get_ticks_msec()
+	var retried: Dictionary = await node._send(
+		HTTPClient.METHOD_POST, dead, headers, body, 5.0, 1
+	)
+	var elapsed := Time.get_ticks_msec() - started
+	_check(not retried.ok, "percobaan ulang tetap gagal kalau tujuannya memang mati")
+	_check(
+		elapsed >= backoff_ms,
+		"jatah ulang harus benar-benar menunggu backoff, dapat %d ms" % elapsed
 	)

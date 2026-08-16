@@ -13,6 +13,14 @@ Kalau gerakan terasa terlalu ramai, aktifkan **Reduced Motion** dari menu
 
 **Clean** gratis. **Feed** memakai makanan dari **Bag**. Play dan Sleep juga gratis. Item Energy dibeli di Shop, dipakai dari **Bag**.
 
+Meter bergerak di detik yang sama dengan ketukanmu. Angka resminya datang dari
+server sesaat kemudian dan menimpa tampilan itu; kalau aksinya ternyata ditolak
+(misalnya koneksi putus), meternya kembali ke nilai sebelumnya.
+
+Membuka app juga tidak lagi memperlihatkan layar tunggu: companion terakhirmu
+langsung tampil beserta perkiraan meternya, lalu angka resmi dari server
+menyusul beberapa saat kemudian.
+
 ## Shop dan Bag
 
 Tombol **Shop** seukuran chip **Bits** dan duduk tepat di bawah baris HUD, selaras dengan Bits di kanan. **Bag** sama ukurannya, rata kiri di pojok kiri atas, sejajar dengan Shop. Keduanya hanya tampil di **Home**, termasuk saat Anima tidur; tab lain tetap bersih. Animas / Cores / Bits tetap satu baris.

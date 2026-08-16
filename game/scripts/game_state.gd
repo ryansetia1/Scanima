@@ -60,6 +60,15 @@ var preferences: Dictionary = {
 ## saat dibuka lagi tanpa menunggu jaringan sama sekali.
 var last_anima: Dictionary = {}
 
+## Salinan display-only dari respons server terakhir: {uid, saved_at, profile,
+## roster, catalog, inventory}. Home mengecatnya sebelum jaringan menjawab lalu
+## row authoritative menimpanya beberapa ratus milidetik kemudian. Ia **bukan**
+## otoritas: saldo, kebutuhan, dan roster tetap milik Postgres, dan meter yang
+## ditampilkan dari sini diproyeksikan ulang lewat `CareRules.projected_care()`.
+## File terpisah supaya `state.json` tetap kecil dan cache boleh dibuang sendiri.
+var path_boot_cache: String = "user://boot_cache.json"
+var boot_cache: Dictionary = {}
+
 ## Saldo dari server. Ditampilkan, tidak pernah dipercaya, tidak pernah disimpan.
 var profile: Dictionary = {}
 
@@ -111,6 +120,43 @@ func load_state() -> void:
 			session = legacy_session
 	else:
 		session = legacy_session
+	_load_boot_cache()
+
+
+## Cache boot milik akun lain tidak pernah dipakai maupun dipertahankan: satu
+## device bisa berpindah dari guest ke akun Google, dan roster keduanya berbeda.
+func _load_boot_cache() -> void:
+	boot_cache = {}
+	if not FileAccess.file_exists(path_boot_cache):
+		return
+	var parsed: Variant = parse_json(FileAccess.get_file_as_string(path_boot_cache))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	var cached := as_dict(parsed)
+	if str(cached.get("uid", "")).is_empty() or str(cached.get("uid", "")) != uid():
+		return
+	boot_cache = cached
+
+
+## Dipanggil setelah respons server sukses. Field yang tidak dikirim tetap
+## memakai nilai cache sebelumnya supaya refresh parsial tidak mengosongkan Home.
+func remember_boot_cache(values: Dictionary) -> void:
+	if uid().is_empty():
+		return
+	boot_cache.merge(values, true)
+	boot_cache["uid"] = uid()
+	boot_cache["saved_at"] = Time.get_unix_time_from_system()
+	var file := FileAccess.open(path_boot_cache, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(JSON.stringify(boot_cache))
+	file.close()
+
+
+func clear_boot_cache() -> void:
+	boot_cache = {}
+	if FileAccess.file_exists(path_boot_cache):
+		DirAccess.remove_absolute(path_boot_cache)
 
 
 func save() -> void:
@@ -215,6 +261,7 @@ func clear_account_state() -> void:
 	last_anima = {}
 	profile = {}
 	client_config = {}
+	clear_boot_cache()
 	var store := _secure_store()
 	if store != null:
 		store.clear_session()
@@ -234,6 +281,7 @@ func discard_guest_local_state() -> void:
 	last_anima = {}
 	profile = {}
 	client_config = {}
+	clear_boot_cache()
 	save()
 
 

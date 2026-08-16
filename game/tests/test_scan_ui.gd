@@ -429,6 +429,7 @@ func _initialize() -> void:
 	_test_present_toast_respects_sleep()
 	_test_battle_reward_is_authoritative()
 	_test_battle_art_has_no_global_toast()
+	_test_battle_turn_prediction(scene)
 	_test_home_tap_interaction(scene)
 
 	scene.free()
@@ -801,8 +802,69 @@ func _test_care_feedback_is_immediate() -> void:
 		"a purchase applies the shop quantity without a second round trip"
 	)
 	_check(
-		buy_body.find("_say(tr(\"FEEDBACK_PURCHASE\"), true)") >= 0,
+		buy_body.find("set_busy(true)") < 0,
+		"the Shop stays interactive while a purchase is in flight"
+	)
+	var tap_start := source.find("func _buy_catalog_item")
+	var tap_end := source.find("func _resume_pending_purchase", tap_start)
+	var tap_body := (
+		source.substr(tap_start, tap_end - tap_start)
+		if tap_start >= 0 and tap_end > tap_start
+		else ""
+	)
+	var optimistic_at := tap_body.find("_apply_optimistic_purchase(item_id, price)")
+	_check(
+		optimistic_at >= 0 and tap_body.find("await _send_pending_purchase") > optimistic_at,
+		"Bits and bag quantity move before the purchase response"
+	)
+	_check(
+		tap_body.find("_say(tr(\"FEEDBACK_PURCHASE\"), true)") >= 0,
 		"purchase feedback is transient instead of persisting above the Shop"
+	)
+	_check(
+		tap_body.find("GameState.profile[\"bits\"] = bits_before") >= 0,
+		"a rejected purchase puts the Bits it predicted back"
+	)
+	_test_optimistic_care()
+
+
+## Meter bergerak di frame yang sama dengan tap. Angkanya berasal dari CareRules
+## dan katalog server, jadi yang diuji di sini pemetaan aksi ke meter dan
+## gerbang aksi yang tidak boleh menebak.
+func _test_optimistic_care() -> void:
+	var shell: GDScript = load("res://scripts/scan_flow.gd")
+	var row := {
+		"id": "care-optimistic",
+		"care": {"hunger": 50.0, "energy": 40.0, "hygiene": 30.0, "bond": 0.0},
+		"care_synced_at": Time.get_datetime_string_from_system(true) + "Z",
+	}
+	var catalog: Array = [
+		{"id": "berry", "use_type": "food", "effect": "hunger", "effect_value": 25},
+	]
+	var cleaned: Dictionary = shell.optimistic_care(row, "care-optimistic", "clean", "", catalog)
+	_check(
+		absf(float(cleaned["hygiene"]) - 65.0) < 1.0 and absf(float(cleaned["hunger"]) - 50.0) < 1.0,
+		"Clean paints Hygiene immediately and leaves the other meters alone"
+	)
+	var played: Dictionary = shell.optimistic_care(row, "care-optimistic", "play", "", catalog)
+	_check(
+		absf(float(played["energy"]) - 35.0) < 1.0,
+		"Play spends its Energy on screen before the server confirms"
+	)
+	var fed: Dictionary = shell.optimistic_care(row, "care-optimistic", "feed", "berry", catalog)
+	_check(
+		absf(float(fed["hunger"]) - 75.0) < 1.0,
+		"Feed restores the catalog value the client already holds"
+	)
+	_check(
+		(shell.optimistic_care(row, "care-optimistic", "feed", "unknown", catalog) as Dictionary)
+		.is_empty(),
+		"an unknown food guesses nothing and waits for the server"
+	)
+	_check(
+		(shell.optimistic_care(row, "care-optimistic", "sleep", "", catalog) as Dictionary).is_empty()
+		and (shell.optimistic_care({}, "", "clean", "", catalog) as Dictionary).is_empty(),
+		"Sleep and an unloaded Anima leave the meters untouched"
 	)
 
 
@@ -3354,6 +3416,146 @@ func _test_battle_art_has_no_global_toast() -> void:
 		and body.find("false,") >= 0,
 		"Battle art loading must not reuse the shell's persistent download toast"
 	)
+
+
+## Jalur local-first Duel: turn dianimasikan dari simulasi lokal, lalu hasil
+## server dibandingkan lewat ringkasan yang sama. Yang diuji di sini gerbang
+## prediksinya dan deteksi divergensinya, bukan lagi rumus combat-nya —
+## itu sudah dijaga test_battle_sim_parity.
+func _test_battle_turn_prediction(scene: Node) -> void:
+	var fighter := {
+		"element": "spark",
+		"level": 6,
+		"base_stats": {"hp": 60, "atk": 40, "def": 30, "spd": 35, "special": 38},
+	}
+	var session := {
+		"id": "predict-session",
+		"turn_number": 3,
+		"status": "active",
+		"state": {
+			"seed": "predict-seed",
+			"turn": 3,
+			"status": "active",
+			"rules_version": BattleSim.RULES_VERSION,
+			"player": BattleSim.create_fighter(fighter),
+			"bot": BattleSim.create_fighter(fighter),
+		},
+	}
+	var pending := {"expected_turn": 3, "action": "strike", "idempotency_key": "key-a"}
+	var predicted: Dictionary = scene.call("_predict_battle_turn", session, pending)
+	_check(
+		not predicted.is_empty()
+		and int(predicted["session"]["turn_number"]) == 4
+		and not (predicted["events"] as Array).is_empty(),
+		"Duel predicts the next turn locally so the arena animates before the server replies"
+	)
+	_check(
+		(scene.call("_predict_battle_turn", session, {
+			"expected_turn": 9, "action": "strike", "idempotency_key": "key-a",
+		}) as Dictionary).is_empty(),
+		"a stale local turn falls back to the server instead of animating a guess"
+	)
+
+	var server_session: Dictionary = predicted["session"].duplicate(true)
+	_check(
+		bool(scene.call("_turn_outcome_matches", predicted, server_session, predicted["events"])),
+		"an identical server turn reuses the animation already played"
+	)
+	server_session["state"]["bot"]["hp"] = int(server_session["state"]["bot"]["hp"]) - 1
+	_check(
+		not bool(
+			scene.call("_turn_outcome_matches", predicted, server_session, predicted["events"])
+		),
+		"a divergent server turn replays the authoritative event log"
+	)
+
+	var glass_jaw := fighter.duplicate(true)
+	glass_jaw["base_stats"] = {"hp": 1, "atk": 10, "def": 1, "spd": 1, "special": 10}
+	var team := TeamSim.create_team_state(
+		[fighter, fighter], [glass_jaw, glass_jaw], "predict-team-seed"
+	)
+	var team_session := {"id": "predict-team", "turn_number": 1, "status": "active"}
+	team_session["state"] = team["state"]
+	var team_pending := {"expected_turn": 1, "action": "surge", "idempotency_key": "key-b"}
+	var team_predicted: Dictionary = scene.call(
+		"_predict_team_turn", team_session, team_pending
+	)
+	var team_events: Array = TeamSim.resolve_team_turn(
+		team["state"], "surge", "key-b"
+	)["events"]
+	var has_switch := false
+	for value in team_events:
+		if str((value as Dictionary).get("type", "")) == "switch":
+			has_switch = true
+	_check(
+		has_switch and team_predicted.is_empty(),
+		"a Team turn that forces a Switch waits for the server because the art is not cached yet"
+	)
+	_check(
+		not (scene.call("_predict_team_turn", team_session, {
+			"expected_turn": 1, "action": "guard", "idempotency_key": "key-c",
+		}) as Dictionary).is_empty(),
+		"a plain Team action animates from the local simulation"
+	)
+	_test_failed_turn_rolls_back()
+	_test_boot_cache_is_display_only()
+
+
+## Turn yang animasinya sudah jalan tetapi requestnya tidak sampai harus
+## mengembalikan arena ke state server terakhir. Tanpa itu tap berikutnya
+## mengirim nomor turn yang belum pernah ada dan langsung STALE.
+func _test_failed_turn_rolls_back() -> void:
+	var shell := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var duel_start := shell.find("func _submit_pending_battle")
+	var duel_body := shell.substr(duel_start, shell.find("\n\nfunc ", duel_start) - duel_start)
+	_check(
+		duel_body.find("_battle_view.set_session(session_before)") >= 0,
+		"a Duel turn that never reached the server rewinds the arena"
+	)
+	var team_start := shell.find("func _submit_pending_team_battle")
+	var team_body := shell.substr(team_start, shell.find("\n\nstatic func ", team_start) - team_start)
+	_check(
+		team_body.find("_team_battle_view.set_session(session_before") >= 0,
+		"a Team turn that never reached the server rewinds the arena"
+	)
+	var trail := FileAccess.get_file_as_string("res://scripts/expedition_controller.gd")
+	var trail_start := trail.find("func _submit_pending")
+	var trail_body := trail.substr(trail_start, trail.find("\n\nfunc ", trail_start) - trail_start)
+	_check(
+		trail_body.find("_view.set_combat_encounter(_encounter") >= 0,
+		"an Expedition turn that never reached the server rewinds the arena"
+	)
+
+
+## Cache boot hanya boleh mempercepat gambar pertama. Dua hal yang bisa rusak
+## diam-diam: layar Loading kembali menimpa cache, dan katalog berhenti disegarkan
+## karena cache dianggap sudah tersinkron.
+func _test_boot_cache_is_display_only() -> void:
+	var shell := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var boot_start := shell.find("func _boot()")
+	var boot_body := shell.substr(boot_start, shell.find("\n\nfunc ", boot_start) - boot_start)
+	_check(
+		boot_body.find("_home_view.shell_state() == &\"ready\"") >= 0
+		and boot_body.find("if not from_cache:") >= 0,
+		"boot keeps the cached Home instead of covering it with Loading"
+	)
+	var catalog_start := shell.find("func _refresh_catalog()")
+	var catalog_body := shell.substr(
+		catalog_start, shell.find("\n\nfunc ", catalog_start) - catalog_start
+	)
+	_check(
+		catalog_body.find("if not _catalog_synced:") >= 0
+		and catalog_body.find("_catalog_synced = true") >= 0,
+		"the catalog is still fetched once per session, cache or not"
+	)
+	var state := FileAccess.get_file_as_string("res://scripts/game_state.gd")
+	for entry in ["func clear_account_state", "func discard_guest_local_state"]:
+		var start := state.find(entry)
+		var body := state.substr(start, state.find("\n\nfunc ", start) - start)
+		_check(
+			body.find("clear_boot_cache()") >= 0,
+			"%s also drops the cached Home" % entry
+		)
 
 
 func _test_anima_delete_action() -> void:

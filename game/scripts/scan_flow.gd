@@ -20,6 +20,13 @@ extends Node2D
 
 ## ponytail: polling 2 detik, bukan Realtime. Plafon ~500 hatch bersamaan;
 ## upgrade ke Supabase Realtime kalau kena.
+
+## Dipancarkan saat response turn tiba. Turn disimulasikan lokal lebih dulu supaya
+## animasi mulai di frame yang sama dengan tap, sementara request-nya jalan
+## berbarengan; sinyal ini yang menyatukan keduanya lagi.
+signal _battle_turn_settled
+signal _team_turn_settled
+
 const POLL_INTERVAL_SEC := 2.0
 const POLL_TIMEOUT_SEC := 180.0
 const MAX_FOTO_BYTE := 6 * 1024 * 1024
@@ -92,6 +99,7 @@ const BAG_ICON := preload("res://assets/icons/backpack.svg")
 var _busy := false
 var _roster: Array[Dictionary] = []
 var _catalog: Array = []
+var _catalog_synced := false
 var _inventory: Array = []
 var _current_anima: Dictionary = {}
 var _profile_anima: Dictionary = {}
@@ -106,6 +114,10 @@ var _expedition_level_queue: Array[Dictionary] = []
 var _expedition_level_sequence_active := false
 var _last_care_delta := 0
 var _battle_reward_revision := 0
+var _battle_turn_result: Dictionary = {}
+var _battle_turn_in_flight := false
+var _team_turn_result: Dictionary = {}
+var _team_turn_in_flight := false
 var _team_battle_team: Dictionary = {}
 var _team_battle_candidates: Array = []
 var _team_battle_daily: Dictionary = {}
@@ -376,14 +388,19 @@ func _notification(what: int) -> void:
 
 func _boot() -> void:
 	_set_busy(true)
-	_set_home_shell_state(&"loading")
+	# Cache boot yang sudah tercat tidak diganti layar Loading: refresh-nya jalan
+	# di belakang dan menimpa angkanya sendiri saat Postgres menjawab.
+	var from_cache := _home_view.shell_state() == &"ready"
+	if not from_cache:
+		_set_home_shell_state(&"loading")
 
 	var sesi := await Backend.ensure_session()
 	if not sesi.ok:
 		# Kegagalan di sini tidak boleh terlihat seperti app rusak biasa: kalau
 		# refresh token ditolak, akun pemain berisiko tidak bisa dijangkau lagi.
 		print("session error: %s" % sesi.error)
-		_set_home_shell_state(&"error")
+		if not from_cache:
+			_set_home_shell_state(&"error")
 		_say(tr("STATUS_ACCOUNT_ERROR"))
 		_set_busy(false)
 		return
@@ -431,7 +448,10 @@ func _boot() -> void:
 			await _wait_for_hatch(anima_id)
 			_set_busy(false)
 	elif not roster_loaded:
-		_set_home_shell_state(&"error")
+		# Roster cache tetap lebih berguna daripada layar error: yang gagal hanya
+		# penyegarannya, dan angkanya sudah diproyeksikan dari sync terakhir.
+		if not from_cache:
+			_set_home_shell_state(&"error")
 		_say(tr("STATUS_ROSTER_ERROR"))
 	elif not _roster.is_empty():
 		var active := _active_row()
@@ -473,6 +493,7 @@ func _reload_roster() -> bool:
 		_expedition_controller.set_roster(_roster)
 	_roster_error = ""
 	_populate_collection()
+	GameState.remember_boot_cache({"roster": _roster, "profile": GameState.profile})
 	return true
 
 
@@ -1315,11 +1336,62 @@ func _commit_care(action: String, item_id: String = "") -> void:
 	var anima_id := str(_current_anima.get("id", ""))
 	if anima_id.is_empty():
 		return
-	_home_view.set_busy(true)
 	var pending := GameState.begin_care(anima_id, action, item_id)
 	_anima.care_feedback("feed" if action == "use_item" else action)
-	await _send_pending_care(pending, true)
+	# Meter digerakkan sebelum dock dikunci: `_refresh_care()` di dalamnya
+	# menghitung ulang keadaan tombol dari `_busy`, jadi urutan terbalik akan
+	# membuka lagi Care Dock selama request masih jalan.
+	var care_before: Variant = _current_anima.get("care")
+	_apply_optimistic_care(action, item_id)
+	_home_view.set_busy(true)
+	var committed := await _send_pending_care(pending, true)
+	if not committed and care_before != null:
+		_current_anima["care"] = care_before
+		_refresh_care()
 	_home_view.set_busy(_busy)
+
+
+## Meter sesudah satu aksi care, dihitung dari aturan decay yang sama dengan
+## Collection dan nilai efek katalog yang sudah dipegang client. Kosong berarti
+## aksi itu tidak menggerakkan meter, jadi tidak ada yang dicat.
+static func optimistic_care(
+	row: Dictionary, active_id: String, action: String, item_id: String, catalog: Array
+) -> Dictionary:
+	if typeof(row.get("care")) != TYPE_DICTIONARY:
+		return {}
+	var care := CareRules.projected_care(row, active_id)
+	match action:
+		"clean":
+			care["hygiene"] = minf(100.0, float(care["hygiene"]) + CareRules.CARE_RESTORE)
+		"play":
+			care["energy"] = maxf(0.0, float(care["energy"]) - CareRules.PLAY_ENERGY_COST)
+		"feed", "use_item":
+			var need := "hunger" if action == "feed" else "energy"
+			var item: Dictionary = BattleSim.index_catalog(catalog).get(item_id, {})
+			var restore := float(item.get("effect_value", 0.0))
+			if restore <= 0.0:
+				return {}
+			care[need] = minf(100.0, float(care[need]) + restore)
+		_:
+			return {}
+	return care
+
+
+## Menggerakkan meter di frame yang sama dengan tap. Server tetap otoritas: row
+## dari `care_anima` menimpa angka ini beberapa ratus milidetik kemudian, dan
+## `_commit_care` mengembalikannya kalau aksinya ditolak.
+func _apply_optimistic_care(action: String, item_id: String) -> void:
+	var care := optimistic_care(
+		_current_anima,
+		str(GameState.profile.get("active_anima_id", "")),
+		action,
+		item_id,
+		_catalog
+	)
+	if care.is_empty():
+		return
+	_current_anima["care"] = care
+	_refresh_care()
 
 
 func _resume_pending_care() -> void:
@@ -1588,6 +1660,86 @@ func _battle_action_requested(action: String) -> void:
 	await _submit_pending_battle(pending)
 
 
+## Simulasi turn dari state authoritative yang sudah ada di client. Kosong kalau
+## state-nya belum lengkap atau aksinya ditolak aturan; pemanggil lalu jatuh ke
+## jalur lama dan menunggu server.
+func _predict_battle_turn(session: Dictionary, pending: Dictionary) -> Dictionary:
+	var state := GameState.as_dict(session.get("state"))
+	if state.is_empty() or str(state.get("status", "")) != "active":
+		return {}
+	if int(state.get("turn", 0)) != int(pending.get("expected_turn", -1)):
+		return {}
+	var outcome := BattleSim.resolve_turn(
+		state,
+		str(pending.get("action", "")),
+		str(pending.get("idempotency_key", "")),
+		str(pending.get("item_id", "")),
+		BattleSim.index_catalog(_catalog)
+	)
+	if not bool(outcome.get("ok", false)):
+		return {}
+	var next_state: Dictionary = outcome["state"]
+	var predicted := session.duplicate(true)
+	predicted["state"] = next_state
+	predicted["turn_number"] = int(next_state.get("turn", session.get("turn_number", 1)))
+	predicted["status"] = str(next_state.get("status", "active"))
+	return {"session": predicted, "events": outcome["events"]}
+
+
+## Ringkasan turn seperti yang dilihat pemain: status, nomor turn, HP/PP petarung
+## Duel, lalu tiap event beserta HP target dan damage-nya. Dipakai Duel maupun
+## Team untuk membandingkan hasil server dengan animasi yang sudah terlanjur jalan;
+## state Team menyimpan HP di dalam roster, jadi event-nya yang membawa angka itu.
+func _turn_outcome_digest(state: Dictionary, events: Array) -> String:
+	var player := GameState.as_dict(state.get("player"))
+	var bot := GameState.as_dict(state.get("bot"))
+	var parts := PackedStringArray([
+		str(state.get("status", "")),
+		str(int(float(state.get("turn", 0)))),
+		str(int(float(player.get("hp", 0)))),
+		str(int(float(bot.get("hp", 0)))),
+		str(int(float(player.get("momentum", 0)))),
+		str(int(float(bot.get("momentum", 0)))),
+	])
+	for value in events:
+		var event := GameState.as_dict(value)
+		parts.append(
+			"%s/%s/%d/%d"
+			% [
+				str(event.get("type", "")),
+				str(event.get("actor", "")),
+				int(float(event.get("damage", 0))),
+				int(float(event.get("target_hp", -1))),
+			]
+		)
+	return "|".join(parts)
+
+
+func _turn_outcome_matches(
+	predicted: Dictionary, next_session: Dictionary, events: Array
+) -> bool:
+	if predicted.is_empty():
+		return false
+	var predicted_session: Dictionary = predicted["session"]
+	return (
+		_turn_outcome_digest(GameState.as_dict(predicted_session.get("state")), predicted["events"])
+		== _turn_outcome_digest(GameState.as_dict(next_session.get("state")), events)
+	)
+
+
+func _dispatch_battle_turn(payload: Dictionary) -> void:
+	_battle_turn_in_flight = true
+	_battle_turn_result = await Backend.battle_anima("turn", payload)
+	_battle_turn_in_flight = false
+	_battle_turn_settled.emit()
+
+
+func _await_battle_turn() -> Dictionary:
+	if _battle_turn_in_flight:
+		await _battle_turn_settled
+	return _battle_turn_result
+
+
 func _submit_pending_battle(pending: Dictionary) -> void:
 	if pending.is_empty():
 		return
@@ -1604,8 +1756,25 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 	var item_id := str(pending.get("item_id", ""))
 	if str(pending.get("action", "")) == "item" and not item_id.is_empty():
 		payload["item_id"] = item_id
-	var res := await Backend.battle_anima("turn", payload)
+
+	# Animasi jalan dari hasil simulasi lokal sementara request-nya terbang.
+	# Server tetap otoritas: state, reward, dan version-nya yang dipakai begitu
+	# response tiba, dan turn yang sama dihitung ulang di sana.
+	var session_before: Dictionary = _battle_view.session_data()
+	var predicted := _predict_battle_turn(session_before, pending)
+	_dispatch_battle_turn(payload)
+	if not predicted.is_empty():
+		await _battle_view.play_events(predicted["events"], predicted["session"])
+		# play_events melepas tombolnya sendiri. Turn berikutnya baru boleh dikirim
+		# setelah server memberi version-nya, jadi redupkan lagi kalau masih terbang.
+		_battle_view.set_busy(_battle_turn_in_flight)
+	var res := await _await_battle_turn()
+
 	if not res.ok:
+		# Turn yang tidak sampai ke server tidak boleh meninggalkan arena di masa
+		# depan: tap berikutnya akan mengirim nomor turn yang belum pernah ada.
+		if not predicted.is_empty() and not session_before.is_empty():
+			_battle_view.set_session(session_before)
 		if res.error == "STALE_BATTLE" or res.error == "BATTLE_FINISHED":
 			_set_busy(false)
 			await _resume_battle()
@@ -1630,7 +1799,13 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 		_battle_view.set_error("BATTLE_NOT_FOUND")
 		_set_busy(false)
 		return
-	await _battle_view.play_events(events, next_session)
+	if _turn_outcome_matches(predicted, next_session, events):
+		# Animasinya sudah jalan dari simulasi lokal; ini tinggal memasang row
+		# authoritative supaya version/reward-nya yang dipakai turn berikutnya.
+		# `_set_busy(false)` di bawah yang melepas tombolnya.
+		_battle_view.set_session(next_session)
+	else:
+		await _battle_view.play_events(events, next_session)
 	GameState.confirm_battle_response(next_session)
 	# Katalog/profil boleh menyusul. Menahan _busy di sini membuat tap Special
 	# berikutnya menampilkan Resolving tanpa pernah mengirim turn.
@@ -1944,6 +2119,52 @@ func _team_battle_action_requested(action: String, switch_to_slot: int) -> void:
 	await _submit_pending_team_battle(pending)
 
 
+## Sama seperti Duel, tetapi turn yang memunculkan Switch dilewati: penggantinya
+## butuh art yang belum tentu ada di cache, dan mengunduhnya di tengah prediksi
+## menghapus keuntungan latensinya.
+# ponytail: Switch selalu menunggu server. Plafonnya turn KO dan Switch sukarela;
+# upgrade dengan memuat art seluruh roster di awal battle, lalu prediksi penuh.
+func _predict_team_turn(session: Dictionary, pending: Dictionary) -> Dictionary:
+	var state := GameState.as_dict(session.get("state"))
+	if state.is_empty() or str(state.get("status", "")) != "active":
+		return {}
+	if int(state.get("turn", 0)) != int(pending.get("expected_turn", -1)):
+		return {}
+	var outcome := TeamSim.resolve_team_turn(
+		state,
+		str(pending.get("action", "")),
+		str(pending.get("idempotency_key", "")),
+		str(pending.get("item_id", "")),
+		pending.get("switch_to_slot", null),
+		BattleSim.index_catalog(_catalog)
+	)
+	if not bool(outcome.get("ok", false)):
+		return {}
+	var events: Array = outcome["events"]
+	for value in events:
+		if str(GameState.as_dict(value).get("type", "")) == "switch":
+			return {}
+	var next_state: Dictionary = outcome["state"]
+	var predicted := session.duplicate(true)
+	predicted["state"] = next_state
+	predicted["turn_number"] = int(next_state.get("turn", session.get("turn_number", 1)))
+	predicted["status"] = str(next_state.get("status", "active"))
+	return {"session": predicted, "events": events}
+
+
+func _dispatch_team_turn(payload: Dictionary) -> void:
+	_team_turn_in_flight = true
+	_team_turn_result = await Backend.team_battle("turn", payload)
+	_team_turn_in_flight = false
+	_team_turn_settled.emit()
+
+
+func _await_team_turn() -> Dictionary:
+	if _team_turn_in_flight:
+		await _team_turn_settled
+	return _team_turn_result
+
+
 func _submit_pending_team_battle(pending: Dictionary) -> void:
 	if pending.is_empty():
 		return
@@ -1951,8 +2172,20 @@ func _submit_pending_team_battle(pending: Dictionary) -> void:
 	_team_battle_view.begin_action(action)
 	_set_busy(true)
 	var payload := team_battle_turn_payload(pending)
-	var res := await Backend.team_battle("turn", payload)
+	var session_before: Dictionary = _team_battle_view.session_data()
+	var predicted := _predict_team_turn(session_before, pending)
+	_dispatch_team_turn(payload)
+	if not predicted.is_empty():
+		await _team_battle_view.play_events(
+			predicted["events"], predicted["session"], _team_art_cache.duplicate()
+		)
+		_team_battle_view.set_busy(_team_turn_in_flight)
+	var res := await _await_team_turn()
 	if not res.ok:
+		# Turn yang tidak sampai ke server tidak boleh meninggalkan arena di masa
+		# depan: tap berikutnya akan mengirim nomor turn yang belum pernah ada.
+		if not predicted.is_empty() and not session_before.is_empty():
+			_team_battle_view.set_session(session_before, _team_art_cache.duplicate())
 		if res.error in ["STALE_TEAM_BATTLE", "TEAM_BATTLE_FINISHED"]:
 			_set_busy(false)
 			await _resume_team_battle()
@@ -1975,12 +2208,17 @@ func _submit_pending_team_battle(pending: Dictionary) -> void:
 		_team_battle_view.set_error("TEAM_BATTLE_NOT_FOUND")
 		_set_busy(false)
 		return
-	var art := _team_art_cache.duplicate()
-	for value in events:
-		if str(GameState.as_dict(value).get("type", "")) == "switch":
-			art = await _prepare_team_active_art(next_session)
-			break
-	await _team_battle_view.play_events(events, next_session, art)
+	if _turn_outcome_matches(predicted, next_session, events):
+		# Animasinya sudah jalan dari simulasi lokal; `_set_busy(false)` di bawah
+		# yang melepas tombolnya.
+		_team_battle_view.set_session(next_session, _team_art_cache.duplicate())
+	else:
+		var art := _team_art_cache.duplicate()
+		for value in events:
+			if str(GameState.as_dict(value).get("type", "")) == "switch":
+				art = await _prepare_team_active_art(next_session)
+				break
+		await _team_battle_view.play_events(events, next_session, art)
 	GameState.confirm_team_battle_response(next_session)
 	_set_busy(false)
 	if action == "item":
@@ -2698,18 +2936,70 @@ static func normalize_anima_data(anima_data: Dictionary) -> Dictionary:
 	return normalized
 
 
+## Mengecat Home dari salinan display-only respons server terakhir supaya boot
+## tidak menampilkan layar kosong selama empat round trip. Semua angka di sini
+## ditimpa `_boot()` begitu Postgres menjawab.
+func _paint_boot_cache() -> bool:
+	var cache: Dictionary = GameState.boot_cache
+	if cache.is_empty():
+		return false
+	var roster := _variant_array(cache.get("roster"))
+	var rows: Array[Dictionary] = []
+	for value in roster:
+		var row := GameState.as_dict(value)
+		if not str(row.get("id", "")).is_empty():
+			rows.append(row)
+	if rows.is_empty():
+		return false
+	GameState.profile = GameState.as_dict(cache.get("profile"))
+	_catalog = _variant_array(cache.get("catalog"))
+	_inventory = _variant_array(cache.get("inventory"))
+	_roster = rows
+	if is_instance_valid(_expedition_controller):
+		_expedition_controller.set_roster(_roster)
+	_refresh_header()
+	_populate_collection()
+	# ShopSheet memegang salinannya sendiri, jadi tanpa ini membuka Shop sebelum
+	# jaringan menjawab memperlihatkan daftar kosong padahal katalognya sudah ada.
+	if is_instance_valid(_shop_sheet) and not _catalog.is_empty():
+		_shop_sheet.set_catalog(
+			_catalog, _inventory, int(GameState.profile.get("bits", 0))
+		)
+	_set_home_shell_state(&"ready")
+	return true
+
+
 func _show_cached_anima() -> void:
-	var anima := GameState.last_anima
+	var painted := _paint_boot_cache()
+	var anima := _active_row() if painted else {}
+	if anima.is_empty():
+		anima = GameState.last_anima
+		painted = false
 	if anima.is_empty():
 		return
 	_anima.visible = false
-	_current_anima = anima.duplicate(true)
+	_current_anima = normalize_anima_data(anima)
+	# Cache adalah nilai sync terakhir, jadi meter-nya diproyeksikan ke sekarang
+	# dengan aturan decay yang sama seperti Collection. Tanpa itu Home membuka
+	# dengan Hunger jam delapan pagi setelah app ditutup semalaman.
+	if painted and typeof(_current_anima.get("care")) == TYPE_DICTIONARY:
+		_current_anima["care"] = CareRules.projected_care(
+			_current_anima, str(GameState.profile.get("active_anima_id", ""))
+		)
+	# last_anima hanya menyimpan pilihan terakhir, bukan care server-authoritative.
+	# Menampilkan art cache dari sana selalu memulai pose Idle dan membuat Anima
+	# yang sedang tidur berkedip bangun. Art hanya boleh terlihat kalau row-nya
+	# membawa care sungguhan — dari cache boot atau dari _present().
+	var anima_id := str(_current_anima.get("id", ""))
+	if painted and not anima_id.is_empty() and GameState.has_sprite_for_anima(anima_id):
+		var loaded := AnimaLoader.load_from_manifest(
+			GameState.manifest_path_for_anima(anima_id)
+		)
+		if bool(loaded.get("ok", false)):
+			_anima.apply(loaded)
+			_anima.visible = true
 	_refresh_stats()
 	_refresh_care()
-	# last_anima hanya menyimpan pilihan terakhir, bukan care server-authoritative.
-	# Menampilkan art cache di sini selalu memulai pose Idle dan membuat Anima yang
-	# sedang tidur berkedip bangun sampai roster selesai dimuat. Art baru boleh
-	# terlihat setelah _present() memiliki row server dan menerapkan pose care.
 
 
 func _upsert_roster(row: Dictionary) -> void:
@@ -3092,14 +3382,41 @@ func _open_battle_item_picker() -> void:
 	_shop_sheet.open_battle()
 
 
+## ponytail: satu pembelian in-flight per waktu, jadi tap kedua selama request
+## masih terbang diabaikan. Plafonnya jendela satu round trip — sesudah saldo dan
+## jumlah item bergerak optimistis, tap ulang biasanya sudah lolos. Upgrade ke
+## antrean hanya kalau telemetri menunjukkan tap yang benar-benar hilang.
 func _buy_catalog_item(item: Dictionary) -> void:
 	if _busy or not GameState.pending_purchase.is_empty():
 		return
 	if GameState.shop_locked():
 		_say(tr("ERROR_SHOP_IN_BATTLE"), true)
 		return
-	var pending := GameState.begin_purchase(str(item.get("id", "")), int(item.get("price", 0)))
-	await _send_pending_purchase(pending)
+	var item_id := str(item.get("id", ""))
+	var price := int(item.get("price", 0))
+	var pending := GameState.begin_purchase(item_id, price)
+	var bits_before := int(GameState.profile.get("bits", 0))
+	var inventory_before := _inventory.duplicate(true)
+	_apply_optimistic_purchase(item_id, price)
+	if not await _send_pending_purchase(pending):
+		GameState.profile["bits"] = bits_before
+		_inventory = inventory_before
+		_refresh_header()
+		_shop_sheet.set_catalog(_catalog, _inventory, bits_before)
+
+
+## Saldo dan jumlah tas bergerak di frame yang sama dengan tap. Server tetap
+## otoritas: `purchase_catalog_item` menimpa keduanya beberapa ratus milidetik
+## kemudian, dan `_buy_catalog_item` mengembalikannya kalau pembelian ditolak.
+func _apply_optimistic_purchase(item_id: String, price: int) -> void:
+	var bits := maxi(0, int(GameState.profile.get("bits", 0)) - maxi(0, price))
+	GameState.profile["bits"] = bits
+	_inventory = Catalog.with_quantity(
+		_inventory, item_id, Catalog.quantity_of(_inventory, item_id) + 1
+	)
+	_refresh_header()
+	_shop_sheet.set_catalog(_catalog, _inventory, bits)
+	_say(tr("FEEDBACK_PURCHASE"), true)
 
 
 func _use_catalog_item(item: Dictionary) -> void:
@@ -3146,17 +3463,16 @@ func _resume_pending_purchase() -> void:
 	var pending := GameState.pending_purchase.duplicate(true)
 	if pending.is_empty():
 		return
-	await _send_pending_purchase(pending)
+	if await _send_pending_purchase(pending):
+		_say(tr("FEEDBACK_PURCHASE"), true)
 
 
-func _send_pending_purchase(pending: Dictionary) -> void:
-	_shop_sheet.set_busy(true)
+func _send_pending_purchase(pending: Dictionary) -> bool:
 	var res := await Backend.purchase_item(
 		str(pending.get("item_id", "")),
 		int(pending.get("expected_price", 0)),
 		str(pending.get("idempotency_key", ""))
 	)
-	_shop_sheet.set_busy(false)
 	if res.ok:
 		GameState.finish_purchase()
 		var data := GameState.as_dict(res.data)
@@ -3170,18 +3486,22 @@ func _send_pending_purchase(pending: Dictionary) -> void:
 			_shop_sheet.set_catalog(_catalog, _inventory, int(GameState.profile.get("bits", 0)))
 		else:
 			_refresh_inventory()
-		_say(tr("FEEDBACK_PURCHASE"), true)
-		return
+		return true
 	if res.code >= 400 and res.code < 500:
 		GameState.finish_purchase()
 	_say(_care_error_message(str(res.error)), true)
+	return false
 
 
+## Katalog di-fetch sekali per sesi app. Salinan cache boot cukup untuk mengecat
+## Shop segera, tetapi harga dan item baru tetap harus datang dari server, jadi
+## cache tidak boleh menghitung sebagai sudah tersinkron.
 func _refresh_catalog() -> void:
-	if _catalog.is_empty():
+	if not _catalog_synced:
 		var catalog_res := await Backend.fetch_catalog()
 		if catalog_res.ok and typeof(catalog_res.data) == TYPE_ARRAY:
 			_catalog = catalog_res.data
+			_catalog_synced = true
 	await _refresh_inventory()
 
 
@@ -3189,6 +3509,7 @@ func _refresh_inventory() -> void:
 	var inventory_res := await Backend.fetch_inventory()
 	if inventory_res.ok and typeof(inventory_res.data) == TYPE_ARRAY:
 		_inventory = inventory_res.data
+		GameState.remember_boot_cache({"catalog": _catalog, "inventory": _inventory})
 	if is_instance_valid(_shop_sheet):
 		_shop_sheet.set_catalog(_catalog, _inventory, int(GameState.profile.get("bits", 0)))
 

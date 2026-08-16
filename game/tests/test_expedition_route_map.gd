@@ -255,10 +255,80 @@ func _run() -> void:
 		"damaged party uses one contextual health summary instead of four readouts"
 	)
 
+	_check_turn_prediction()
+
 	view.free()
 	route.free()
 	print("test_expedition_route_map: %s checks passed" % _checks)
 	quit()
+
+
+## Jalur local-first Expedition: turn dianimasikan dari simulasi lokal, lalu hasil
+## server dibandingkan lewat ringkasan yang sama. Rumus combat-nya sendiri sudah
+## dijaga test_battle_sim_parity.
+func _check_turn_prediction() -> void:
+	var member := {
+		"element": "spark",
+		"level": 5,
+		"base_stats": {"hp": 60, "atk": 40, "def": 30, "spd": 35, "special": 38},
+	}
+	# Dimuat saat runtime: menyebut ExpeditionController langsung membuat skrip ini
+	# ikut dikompilasi sebelum autoload GameState terdaftar sebagai global.
+	var controller_script: GDScript = load("res://scripts/expedition_controller.gd")
+	var controller: Node = controller_script.new()
+	var encounter := {
+		"id": "predict-encounter",
+		"turn_number": 1,
+		"status": "active",
+		"state": TeamSim.create_team_state(
+			[member, member], [member, member], "predict-expedition-seed"
+		)["state"],
+	}
+	controller.set("_encounter", encounter)
+	var predicted: Dictionary = controller.call(
+		"_predict_turn", {"expected_turn": 1, "action": "guard", "idempotency_key": "key-a"}
+	)
+	_check(
+		not predicted.is_empty() and int(predicted["encounter"]["turn_number"]) == 2,
+		"Expedition animates a plain action from the local simulation"
+	)
+	_check(
+		(controller.call("_predict_turn", {
+			"expected_turn": 7, "action": "guard", "idempotency_key": "key-a",
+		}) as Dictionary).is_empty(),
+		"a stale Expedition turn falls back to the server instead of animating a guess"
+	)
+	_check(
+		(controller.call("_predict_turn", {
+			"expected_turn": 1, "action": "item", "item_id": "revive-kit",
+			"idempotency_key": "key-b",
+		}) as Dictionary).is_empty(),
+		"Expedition items wait for the server because the controller holds no Shop catalog"
+	)
+
+	var server_encounter: Dictionary = predicted["encounter"].duplicate(true)
+	_check(
+		controller_script._turn_outcome_matches(
+			predicted, server_encounter, predicted["events"]
+		),
+		"an identical server turn reuses the animation already played"
+	)
+	server_encounter["state"]["turn"] = 9
+	_check(
+		not controller_script._turn_outcome_matches(
+			predicted, server_encounter, predicted["events"]
+		),
+		"a divergent server turn replays the authoritative event log"
+	)
+
+	_check(
+		(controller.call("_predict_turn", {
+			"expected_turn": 1, "action": "switch", "switch_to_slot": 1,
+			"idempotency_key": "key-c",
+		}) as Dictionary).is_empty(),
+		"an Expedition Switch waits for the incoming member's art"
+	)
+	controller.free()
 
 
 func _save_screenshot_if_requested(prefix: String = "--screenshot=") -> void:

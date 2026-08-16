@@ -24,6 +24,14 @@ const TIMEOUT_FUNGSI_SEC := 90.0
 ## ada request yang gagal, supaya tidak ada panggilan mati di tengah jalan hanya
 ## karena umur token.
 const MARGIN_REFRESH_SEC := 120
+## Sinyal mobile putus dalam hitungan detik, bukan menit. Commit turn boleh
+## mengulang sendiri sebelum menyerah supaya lift dan terowongan tidak menjadi
+## aksi yang hilang; yang diulang hanya kegagalan transport, sebab server yang
+## sudah menjawab 4xx berarti sudah memutuskan. Dua ulangan menambah ~6 detik
+## saat benar-benar offline, dan itu tertutup animasi dari simulasi lokal.
+const RETRY_BACKOFF_SEC := 2.0
+const RETRY_BACKOFF_MAX_SEC := 8.0
+const TURN_RETRIES := 2
 const ANIMA_FIELDS := (
 	"id,status,nickname,species_key,color_bucket,stage,subject_kind,element,secondary_element,"
 	+ "typing_version,sheet_path,manifest,rarity,base_stats,body_height_cm,"
@@ -316,7 +324,8 @@ func battle_anima(operation: String, payload: Dictionary = {}) -> Dictionary:
 		URL_BASE + "/functions/v1/battle_anima",
 		_headers(true, ["content-type: application/json"]),
 		JSON.stringify(body).to_utf8_buffer(),
-		TIMEOUT_SEC
+		TIMEOUT_SEC,
+		turn_retries(operation)
 	)
 
 
@@ -329,7 +338,8 @@ func team_battle(operation: String, payload: Dictionary = {}) -> Dictionary:
 		URL_BASE + "/functions/v1/team_battle",
 		_headers(true, ["content-type: application/json"]),
 		JSON.stringify(body).to_utf8_buffer(),
-		TIMEOUT_SEC
+		TIMEOUT_SEC,
+		turn_retries(operation)
 	)
 
 
@@ -342,8 +352,17 @@ func expedition(operation: String, payload: Dictionary = {}) -> Dictionary:
 		URL_BASE + "/functions/v1/expedition",
 		_headers(true, ["content-type: application/json"]),
 		JSON.stringify(body).to_utf8_buffer(),
-		TIMEOUT_SEC
+		TIMEOUT_SEC,
+		turn_retries(operation)
 	)
+
+
+## Hanya commit turn yang boleh mengulang sendiri. Ia idempoten lewat
+## `idempotency_key`, animasinya sudah jalan dari simulasi lokal, dan gagalnya
+## berarti pemain kehilangan aksi yang sudah dilihatnya terjadi. Operasi lain
+## (start, resume, forfeit, katalog) lebih baik gagal cepat lalu ditawarkan lagi.
+static func turn_retries(operation: String) -> int:
+	return TURN_RETRIES if operation == "turn" else 0
 
 
 func seeker(operation: String, payload: Dictionary = {}) -> Dictionary:
@@ -489,6 +508,25 @@ func _send(
 	url: String,
 	headers: PackedStringArray,
 	body: PackedByteArray,
+	timeout: float,
+	retries := 0
+) -> Dictionary:
+	var response := await _send_attempt(method, url, headers, body, timeout)
+	var delay := RETRY_BACKOFF_SEC
+	var left := retries
+	while left > 0 and bool(response.get("transport", false)):
+		await get_tree().create_timer(delay).timeout
+		delay = minf(delay * 2.0, RETRY_BACKOFF_MAX_SEC)
+		left -= 1
+		response = await _send_attempt(method, url, headers, body, timeout)
+	return response
+
+
+func _send_attempt(
+	method: int,
+	url: String,
+	headers: PackedStringArray,
+	body: PackedByteArray,
 	timeout: float
 ) -> Dictionary:
 	var authenticated := _has_authorization(headers)
@@ -537,6 +575,7 @@ func _send_once(
 		return {
 			"ok": false, "code": 0, "data": null, "bytes": PackedByteArray(),
 			"error": "request tidak bisa dimulai: %s" % error_string(started),
+			"transport": true,
 		}
 
 	var res: Array = await http.request_completed
@@ -550,6 +589,7 @@ func _send_once(
 		return {
 			"ok": false, "code": code, "data": null, "bytes": raw,
 			"error": "jaringan gagal (result %d, http %d)" % [result, code],
+			"transport": true,
 		}
 
 	var text := ""

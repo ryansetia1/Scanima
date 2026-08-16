@@ -16,6 +16,7 @@ import {
 
 export { ELEMENT_CYCLE, elementMultiplier, normalizeElement };
 export const BATTLE_ACTIONS = Object.freeze(["strike", "surge", "guard", "item"]);
+export const RULES_VERSION = 2;
 export const MOMENTUM_MAX = 3;
 export const MOMENTUM_START = 3;
 export const SURGE_COST = 1;
@@ -191,9 +192,21 @@ export function createBattleState({ player, bot, seed }) {
     status: "active",
     turn: 1,
     seed: String(seed ?? ""),
+    rules_version: RULES_VERSION,
     player: createFighter(player),
     bot: createFighter(bot),
   };
+}
+
+// Sampai rules_version 1, idempotency_key ikut masuk ke seed turn. Key itu
+// dipilih client, jadi pemain bisa mengaduknya sampai mendapat crit. Sejak
+// versi 2 seed hanya bergantung pada nilai server. State lama tetap memakai
+// formula lamanya supaya sesi yang sedang berjalan dan turn yang sudah
+// tercatat di battle_turns tetap bisa direplay dengan hasil yang sama.
+export function turnSeed(state, idempotencyKey = "") {
+  const version = Math.trunc(Number(state?.rules_version) || 1);
+  if (version >= 2) return `${state?.seed}:${state?.turn}`;
+  return `${state?.seed}:${state?.turn}:${idempotencyKey}`;
 }
 
 export function battleRewardPreview(player, bot, seed) {
@@ -240,7 +253,7 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "", it
   }
 
   const state = structuredClone(previousState);
-  const random = seededRandom(`${state.seed}:${state.turn}:${idempotencyKey}`);
+  const random = seededRandom(turnSeed(state, idempotencyKey));
   const botAction = chooseBotAction(state.bot, random);
   assertAffordable(state.player, playerAction);
   assertAffordable(state.bot, botAction);

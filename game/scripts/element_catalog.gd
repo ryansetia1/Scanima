@@ -1,30 +1,11 @@
 class_name ElementCatalog
 extends RefCounted
 
-## Daftar elemen v2 — selaras dengan backend/supabase/functions/_shared/elements.mjs.
-const ROSTER: PackedStringArray = [
-	"metal", "wood", "stone", "ceramic", "glass", "plastic", "cloth", "paper",
-	"plant", "food", "fauna", "flow", "spark", "flame", "frost", "air",
-	"toxin", "sound",
-]
-
-const ALIASES := {
-	"tech": "spark",
-	"electric": "spark",
-	"electricity": "spark",
-	"water": "flow",
-	"earth": "stone",
-	"nature": "plant",
-	"fire": "flame",
-	"ice": "frost",
-	"wind": "air",
-	"poison": "toxin",
-	"organic": "food",
-	"animal": "fauna",
-	"beast": "fauna",
-	"fabric": "cloth",
-	"textile": "cloth",
-}
+## Lapisan presentasi elemen: ikon, label, dan teks bantuan. Roster serta alias
+## dimiliki `ElementRules` supaya simulasi tidak perlu ikut menarik autoload
+## `LocaleManager` yang dipakai di bawah.
+const ROSTER: PackedStringArray = ElementRules.ROSTER
+const ALIASES := ElementRules.ALIASES
 
 const _ICON_PATHS := {
 	"metal": "res://assets/icons/element-metal.svg",

@@ -34,6 +34,9 @@ Dipakai di **Shop**.
   Shop terkunci selama battle atau run masih berjalan. **Bag** di kiri, sejajar
   dengan Shop: isi tas, **Feed**, dan **Use** item Energy. Item Battle tidak
   punya Use di Bag. Keduanya tidak tampil di tab lain.
+- Beli terasa langsung: Bits turun dan barang masuk tas begitu tombolnya ditekan,
+  dan Shop tetap bisa dipakai untuk membeli berikutnya. Kalau koneksi gagal,
+  keduanya dikembalikan seperti semula.
 - **Feed** memakai makanan dari **Bag**, bukan Bits langsung. Beli dulu di Shop.
 - **Clean** gratis.
 - Menang Battle memberi Bits menurut seberapa berat lawannya (kira-kira 5–16), paling banyak **100 Bits per hari** (reset tengah malam waktu setempat). Lapar atau kotor tidak mengunci duel, tapi Anima bertarung lebih lemah.
