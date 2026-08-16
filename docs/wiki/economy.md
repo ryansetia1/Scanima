@@ -38,6 +38,10 @@ Dipakai di **Shop**.
 - **Clean** gratis.
 - Menang Battle memberi Bits menurut seberapa berat lawannya (kira-kira 5–16), paling banyak **100 Bits per hari** (reset tengah malam waktu setempat). Lapar atau kotor tidak mengunci duel, tapi Anima bertarung lebih lemah.
 - Tiga kemenangan pertama juga memberi EXP dan kemenangan tercatat. Sesudah itu duel jadi **Train**: masih bisa dapat Bits sampai cap harian, tanpa EXP.
+- Menyelesaikan Zone 1/2/3 The Sugarworks memberi **10/20/30 Bits**. Maksimal
+  **60 Expedition Bits per chapter per hari** untuk seluruh run akun, terpisah
+  dari cap Duel dan Team Battle. Bonus first clear Boss **25 Bits** tetap di
+  luar cap itu.
 - Play, Sleep, dan Summon **gratis**.
 
 50 Bits awal cukup untuk beberapa makanan murah. Makanan mahal dan item Battle lebih jarang.

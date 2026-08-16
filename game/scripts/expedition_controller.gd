@@ -328,12 +328,18 @@ func _submit_pending(pending: Dictionary) -> void:
 	var data := GameState.as_dict(res.data)
 	var next_run := GameState.as_dict(data.get("run"))
 	var next_encounter := GameState.as_dict(data.get("encounter"))
+	var zone_reward_changed := _zone_reward_changed(_run, next_run)
 	if next_run.is_empty():
 		_view.set_error("EXPEDITION_RUN_NOT_FOUND")
 		_set_busy(false)
 		return
 	if operation == "turn":
-		next_encounter["last_reward"] = GameState.as_dict(data.get("reward"))
+		var turn_reward := GameState.as_dict(data.get("reward"))
+		if zone_reward_changed:
+			var zone_reward := GameState.as_dict(next_run.get("last_zone_reward"))
+			turn_reward["zone_bits"] = int(zone_reward.get("bits", 0))
+			turn_reward["zone_scheduled_bits"] = int(zone_reward.get("scheduled_bits", 0))
+		next_encounter["last_reward"] = turn_reward
 		var events := _array(data.get("events"))
 		var art := _art_cache.duplicate()
 		for value in events:
@@ -357,7 +363,13 @@ func _submit_pending(pending: Dictionary) -> void:
 		return
 	if operation == "turn" and str(pending.get("action", "")) == "item":
 		inventory_refresh_requested.emit()
-	if operation == "turn" and not GameState.as_dict(data.get("reward")).is_empty():
+	var encounter_rewarded := (
+		operation == "turn" and not GameState.as_dict(data.get("reward")).is_empty()
+	)
+	var zone_bits_awarded := zone_reward_changed and int(
+		GameState.as_dict(next_run.get("last_zone_reward")).get("bits", 0)
+	) > 0
+	if encounter_rewarded or zone_bits_awarded:
 		authority_refresh_requested.emit()
 	_battle_view.set_expedition_pending(not GameState.pending_expedition.is_empty())
 	_set_busy(false)
@@ -520,6 +532,15 @@ static func should_resume_error(error_code: String) -> bool:
 		"EXPEDITION_ENCOUNTER_FINISHED",
 		"EXPEDITION_ENCOUNTER_EXPIRED",
 	]
+
+
+static func _zone_reward_changed(previous_run: Dictionary, next_run: Dictionary) -> bool:
+	var previous := GameState.as_dict(previous_run.get("last_zone_reward"))
+	var current := GameState.as_dict(next_run.get("last_zone_reward"))
+	return not current.is_empty() and (
+		int(previous.get("zone", 0)) != int(current.get("zone", 0))
+		or int(previous.get("bits", -1)) != int(current.get("bits", -1))
+	)
 
 
 func _set_busy(busy: bool) -> void:

@@ -1,0 +1,49 @@
+{
+  "chapter_slug": "the-sugarworks",
+  "content_version": 5,
+  "design_call": {
+    "completed": [],
+    "planned_usd": 0.003
+  },
+  "image_calls": {
+    "completed": [
+      {
+        "estimated_usd": 0.07,
+        "prediction_id": "27xek5f0d5rmr0d019mr74s9em",
+        "recorded_at": "2026-08-16T11:52:47.884Z",
+        "seconds": 61,
+        "slot": "zone:1",
+        "status": "succeeded"
+      },
+      {
+        "estimated_usd": 0.07,
+        "prediction_id": "8h5mwssta9rmw0d019rax4ymsr",
+        "recorded_at": "2026-08-16T11:59:27.923Z",
+        "seconds": 45,
+        "slot": "zone:1",
+        "status": "succeeded"
+      },
+      {
+        "estimated_usd": 0.07,
+        "prediction_id": "7sg9vxzdfxrmr0d019ra7yqcpg",
+        "recorded_at": "2026-08-16T12:00:24.247Z",
+        "seconds": 56,
+        "slot": "zone:2",
+        "status": "succeeded"
+      },
+      {
+        "estimated_usd": 0.07,
+        "prediction_id": "5vrn4weayxrmw0d019rvsh85sg",
+        "recorded_at": "2026-08-16T12:01:09.504Z",
+        "seconds": 44,
+        "slot": "zone:3",
+        "status": "succeeded"
+      }
+    ],
+    "cost_ceiling_usd": 0.98,
+    "image_model": "openai/gpt-image-2",
+    "image_quality": "medium",
+    "planned_calls": 14,
+    "unit_usd": 0.07
+  }
+}

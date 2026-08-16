@@ -1,14 +1,15 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://kl1jxjl2p56i"]
 
-[ext_resource type="Script" path="res://scripts/expedition_view.gd" id="1_script"]
-[ext_resource type="PackedScene" path="res://scenes/ui/team_battle_view.tscn" id="2_combat"]
-[ext_resource type="Texture2D" path="res://assets/icons/chevron-left.svg" id="3_back"]
-[ext_resource type="Script" path="res://scripts/team_roster_list.gd" id="4_roster"]
+[ext_resource type="Script" uid="uid://tw7d36b6535c" path="res://scripts/expedition_view.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://vuy5pib6yib6" path="res://scenes/ui/team_battle_view.tscn" id="2_combat"]
+[ext_resource type="Texture2D" uid="uid://venrejy6qbty" path="res://assets/icons/chevron-left.svg" id="3_back"]
+[ext_resource type="Script" uid="uid://dqonc4v7yr1vw" path="res://scripts/team_roster_list.gd" id="4_roster"]
+[ext_resource type="Script" uid="uid://cggtt77mmv38" path="res://scripts/expedition_route_map.gd" id="4_s831p"]
 
-[node name="ExpeditionView" type="Control"]
+[node name="ExpeditionView" type="Control" unique_id=1892859011]
 unique_name_in_owner = true
 visible = false
-layout_mode = 1
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -16,7 +17,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
-[node name="ExpeditionColumn" type="VBoxContainer" parent="."]
+[node name="ExpeditionColumn" type="VBoxContainer" parent="." unique_id=976665665]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -26,17 +27,17 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 12
 
-[node name="Header" type="HBoxContainer" parent="ExpeditionColumn"]
+[node name="Header" type="HBoxContainer" parent="ExpeditionColumn" unique_id=2016269157]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="ExpeditionBack" type="Button" parent="ExpeditionColumn/Header"]
+[node name="ExpeditionBack" type="Button" parent="ExpeditionColumn/Header" unique_id=676770977]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
 flat = true
 
-[node name="ExpeditionBackIcon" type="TextureRect" parent="ExpeditionColumn/Header/ExpeditionBack"]
+[node name="ExpeditionBackIcon" type="TextureRect" parent="ExpeditionColumn/Header/ExpeditionBack" unique_id=694428678]
 layout_mode = 0
 offset_left = 32.0
 offset_top = 10.0
@@ -47,28 +48,28 @@ texture = ExtResource("3_back")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Titles" type="VBoxContainer" parent="ExpeditionColumn/Header"]
+[node name="Titles" type="VBoxContainer" parent="ExpeditionColumn/Header" unique_id=1961874822]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Title" type="Label" parent="ExpeditionColumn/Header/Titles"]
+[node name="Title" type="Label" parent="ExpeditionColumn/Header/Titles" unique_id=1969452739]
 layout_mode = 2
 theme_type_variation = &"PageTitleLabel"
 text = "EXPEDITION_TITLE"
 
-[node name="Subtitle" type="Label" parent="ExpeditionColumn/Header/Titles"]
+[node name="Subtitle" type="Label" parent="ExpeditionColumn/Header/Titles" unique_id=1839372582]
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
 text = "EXPEDITION_SUBTITLE"
 autowrap_mode = 2
 
-[node name="ExpeditionLoading" type="VBoxContainer" parent="ExpeditionColumn"]
+[node name="ExpeditionLoading" type="VBoxContainer" parent="ExpeditionColumn" unique_id=2121185950]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 alignment = 1
 
-[node name="ExpeditionLoadingLabel" type="Label" parent="ExpeditionColumn/ExpeditionLoading"]
+[node name="ExpeditionLoadingLabel" type="Label" parent="ExpeditionColumn/ExpeditionLoading" unique_id=1365524394]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
@@ -76,46 +77,46 @@ text = "EXPEDITION_LOADING"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ExpeditionCatalog" type="VBoxContainer" parent="ExpeditionColumn"]
+[node name="ExpeditionCatalog" type="VBoxContainer" parent="ExpeditionColumn" unique_id=166222253]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="CatalogTitle" type="Label" parent="ExpeditionColumn/ExpeditionCatalog"]
+[node name="CatalogTitle" type="Label" parent="ExpeditionColumn/ExpeditionCatalog" unique_id=1841016153]
 layout_mode = 2
 theme_type_variation = &"SectionLabel"
 text = "EXPEDITION_CHAPTERS"
 
-[node name="ExpeditionCatalogMeta" type="Label" parent="ExpeditionColumn/ExpeditionCatalog"]
+[node name="ExpeditionCatalogMeta" type="Label" parent="ExpeditionColumn/ExpeditionCatalog" unique_id=950939554]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
 text = "EXPEDITION_CATALOG_HINT"
 autowrap_mode = 2
 
-[node name="ExpeditionChapterList" type="ItemList" parent="ExpeditionColumn/ExpeditionCatalog"]
+[node name="ExpeditionChapterList" type="ItemList" parent="ExpeditionColumn/ExpeditionCatalog" unique_id=2077528095]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 520)
 layout_mode = 2
 size_flags_vertical = 3
-allow_reselect = true
 theme_override_constants/v_separation = 12
 theme_override_font_sizes/font_size = 28
+allow_reselect = true
 
-[node name="CatalogActions" type="HBoxContainer" parent="ExpeditionColumn/ExpeditionCatalog"]
+[node name="CatalogActions" type="HBoxContainer" parent="ExpeditionColumn/ExpeditionCatalog" unique_id=705506711]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="ExpeditionCatalogTeam" type="Button" parent="ExpeditionColumn/ExpeditionCatalog/CatalogActions"]
+[node name="ExpeditionCatalogTeam" type="Button" parent="ExpeditionColumn/ExpeditionCatalog/CatalogActions" unique_id=1502527006]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "EXPEDITION_BUILD_TEAM"
 
-[node name="ExpeditionOpenChapter" type="Button" parent="ExpeditionColumn/ExpeditionCatalog/CatalogActions"]
+[node name="ExpeditionOpenChapter" type="Button" parent="ExpeditionColumn/ExpeditionCatalog/CatalogActions" unique_id=1990800869]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
@@ -123,7 +124,7 @@ size_flags_horizontal = 3
 theme_type_variation = &"PrimaryButton"
 text = "EXPEDITION_OPEN_CHAPTER"
 
-[node name="ExpeditionDetail" type="VBoxContainer" parent="ExpeditionColumn"]
+[node name="ExpeditionDetail" type="VBoxContainer" parent="ExpeditionColumn" unique_id=1050596899]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -131,7 +132,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 16
 alignment = 1
 
-[node name="ExpeditionDetailTitle" type="Label" parent="ExpeditionColumn/ExpeditionDetail"]
+[node name="ExpeditionDetailTitle" type="Label" parent="ExpeditionColumn/ExpeditionDetail" unique_id=312207579]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PageTitleLabel"
@@ -139,7 +140,7 @@ text = "EXPEDITION_CHAPTER"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ExpeditionDetailBody" type="Label" parent="ExpeditionColumn/ExpeditionDetail"]
+[node name="ExpeditionDetailBody" type="Label" parent="ExpeditionColumn/ExpeditionDetail" unique_id=2077201781]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
@@ -147,7 +148,7 @@ text = "EXPEDITION_CHAPTER_READY"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ExpeditionDetailTrophy" type="Label" parent="ExpeditionColumn/ExpeditionDetail"]
+[node name="ExpeditionDetailTrophy" type="Label" parent="ExpeditionColumn/ExpeditionDetail" unique_id=1255319629]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"SectionLabel"
@@ -155,70 +156,70 @@ text = "EXPEDITION_TROPHY_PREVIEW"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ExpeditionStartRun" type="Button" parent="ExpeditionColumn/ExpeditionDetail"]
+[node name="ExpeditionStartRun" type="Button" parent="ExpeditionColumn/ExpeditionDetail" unique_id=2015228602]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 theme_type_variation = &"PrimaryButton"
 text = "EXPEDITION_BEGIN"
 
-[node name="ExpeditionDetailTeam" type="Button" parent="ExpeditionColumn/ExpeditionDetail"]
+[node name="ExpeditionDetailTeam" type="Button" parent="ExpeditionColumn/ExpeditionDetail" unique_id=2059876973]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "EXPEDITION_BUILD_TEAM"
 
-[node name="ExpeditionDetailBack" type="Button" parent="ExpeditionColumn/ExpeditionDetail"]
+[node name="ExpeditionDetailBack" type="Button" parent="ExpeditionColumn/ExpeditionDetail" unique_id=1593984786]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "ACTION_BACK"
 
-[node name="ExpeditionBuilder" type="VBoxContainer" parent="ExpeditionColumn"]
+[node name="ExpeditionBuilder" type="VBoxContainer" parent="ExpeditionColumn" unique_id=433705986]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="BuilderTitle" type="Label" parent="ExpeditionColumn/ExpeditionBuilder"]
+[node name="BuilderTitle" type="Label" parent="ExpeditionColumn/ExpeditionBuilder" unique_id=96194258]
 layout_mode = 2
 theme_type_variation = &"SectionLabel"
 text = "EXPEDITION_TEAM_TITLE"
 
-[node name="ExpeditionBuilderMeta" type="Label" parent="ExpeditionColumn/ExpeditionBuilder"]
+[node name="ExpeditionBuilderMeta" type="Label" parent="ExpeditionColumn/ExpeditionBuilder" unique_id=1336005362]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
 text = "EXPEDITION_TEAM_COUNT"
 
-[node name="ExpeditionRosterList" type="ItemList" parent="ExpeditionColumn/ExpeditionBuilder"]
+[node name="ExpeditionRosterList" type="ItemList" parent="ExpeditionColumn/ExpeditionBuilder" unique_id=862133643]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 500)
 layout_mode = 2
 size_flags_vertical = 3
-fixed_column_width = 300
-max_columns = 2
-same_column_width = true
-allow_reselect = true
-select_mode = 1
 theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 12
 theme_override_font_sizes/font_size = 25
+select_mode = 1
+allow_reselect = true
+max_columns = 2
+same_column_width = true
+fixed_column_width = 300
 script = ExtResource("4_roster")
 
-[node name="BuilderActions" type="HBoxContainer" parent="ExpeditionColumn/ExpeditionBuilder"]
+[node name="BuilderActions" type="HBoxContainer" parent="ExpeditionColumn/ExpeditionBuilder" unique_id=1898678563]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="ExpeditionBuilderBack" type="Button" parent="ExpeditionColumn/ExpeditionBuilder/BuilderActions"]
+[node name="ExpeditionBuilderBack" type="Button" parent="ExpeditionColumn/ExpeditionBuilder/BuilderActions" unique_id=1170976776]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "ACTION_BACK"
 
-[node name="ExpeditionSaveTeam" type="Button" parent="ExpeditionColumn/ExpeditionBuilder/BuilderActions"]
+[node name="ExpeditionSaveTeam" type="Button" parent="ExpeditionColumn/ExpeditionBuilder/BuilderActions" unique_id=933689646]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
@@ -226,21 +227,22 @@ size_flags_horizontal = 3
 theme_type_variation = &"PrimaryButton"
 text = "EXPEDITION_SAVE_TEAM"
 
-[node name="ExpeditionMap" type="VBoxContainer" parent="ExpeditionColumn"]
+[node name="ExpeditionMap" type="VBoxContainer" parent="ExpeditionColumn" unique_id=1007006954]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="ExpeditionMapMeta" type="Label" parent="ExpeditionColumn/ExpeditionMap"]
+[node name="ExpeditionMapMeta" type="Label" parent="ExpeditionColumn/ExpeditionMap" unique_id=280861870]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"SectionLabel"
 text = "EXPEDITION_MAP_STATUS"
 horizontal_alignment = 1
+autowrap_mode = 2
 
-[node name="ExpeditionPartyMeta" type="Label" parent="ExpeditionColumn/ExpeditionMap"]
+[node name="ExpeditionPartyMeta" type="Label" parent="ExpeditionColumn/ExpeditionMap" unique_id=1343040612]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
@@ -248,68 +250,66 @@ text = "EXPEDITION_PARTY_STATUS"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="MapScroll" type="ScrollContainer" parent="ExpeditionColumn/ExpeditionMap"]
+[node name="MapScroll" type="ScrollContainer" parent="ExpeditionColumn/ExpeditionMap" unique_id=1615950180]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="ExpeditionNodeGrid" type="GridContainer" parent="ExpeditionColumn/ExpeditionMap/MapScroll"]
+[node name="ExpeditionRouteMap" type="Control" parent="ExpeditionColumn/ExpeditionMap/MapScroll" unique_id=1950924366]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 12
-columns = 2
+script = ExtResource("4_s831p")
 
-[node name="ExpeditionStartZone" type="Button" parent="ExpeditionColumn/ExpeditionMap"]
+[node name="ExpeditionMapPrimary" type="Button" parent="ExpeditionColumn/ExpeditionMap" unique_id=377746793]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 theme_type_variation = &"PrimaryButton"
 text = "EXPEDITION_START_ZONE"
 
-[node name="ExpeditionAbandon" type="Button" parent="ExpeditionColumn/ExpeditionMap"]
+[node name="ExpeditionAbandon" type="Button" parent="ExpeditionColumn/ExpeditionMap" unique_id=1060560447]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "EXPEDITION_ABANDON"
 
-[node name="ExpeditionChoice" type="VBoxContainer" parent="ExpeditionColumn"]
+[node name="ExpeditionChoice" type="VBoxContainer" parent="ExpeditionColumn" unique_id=2106625689]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="ExpeditionChoiceTitle" type="Label" parent="ExpeditionColumn/ExpeditionChoice"]
+[node name="ExpeditionChoiceTitle" type="Label" parent="ExpeditionColumn/ExpeditionChoice" unique_id=790288193]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PageTitleLabel"
 text = "EXPEDITION_CHOICE"
 horizontal_alignment = 1
 
-[node name="ExpeditionChoiceMeta" type="Label" parent="ExpeditionColumn/ExpeditionChoice"]
+[node name="ExpeditionChoiceMeta" type="Label" parent="ExpeditionColumn/ExpeditionChoice" unique_id=33445269]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
 text = "EXPEDITION_CHOICE_SUPPLIES"
 horizontal_alignment = 1
 
-[node name="ExpeditionChoiceButtons" type="VBoxContainer" parent="ExpeditionColumn/ExpeditionChoice"]
+[node name="ExpeditionChoiceButtons" type="VBoxContainer" parent="ExpeditionColumn/ExpeditionChoice" unique_id=1649269211]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="ExpeditionTargetList" type="ItemList" parent="ExpeditionColumn/ExpeditionChoice"]
+[node name="ExpeditionTargetList" type="ItemList" parent="ExpeditionColumn/ExpeditionChoice" unique_id=1302470128]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(0, 260)
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 
-[node name="ExpeditionTargetConfirm" type="Button" parent="ExpeditionColumn/ExpeditionChoice"]
+[node name="ExpeditionTargetConfirm" type="Button" parent="ExpeditionColumn/ExpeditionChoice" unique_id=1209189911]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(0, 96)
@@ -317,20 +317,20 @@ layout_mode = 2
 theme_type_variation = &"PrimaryButton"
 text = "EXPEDITION_CONFIRM_TARGET"
 
-[node name="ExpeditionRefreshShop" type="Button" parent="ExpeditionColumn/ExpeditionChoice"]
+[node name="ExpeditionRefreshShop" type="Button" parent="ExpeditionColumn/ExpeditionChoice" unique_id=1606314592]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "EXPEDITION_REFRESH_SHOP"
 
-[node name="ExpeditionChoiceAbandon" type="Button" parent="ExpeditionColumn/ExpeditionChoice"]
+[node name="ExpeditionChoiceAbandon" type="Button" parent="ExpeditionColumn/ExpeditionChoice" unique_id=255187408]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "EXPEDITION_ABANDON"
 
-[node name="ExpeditionComplete" type="VBoxContainer" parent="ExpeditionColumn"]
+[node name="ExpeditionComplete" type="VBoxContainer" parent="ExpeditionColumn" unique_id=749784607]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -338,14 +338,14 @@ size_flags_vertical = 3
 theme_override_constants/separation = 16
 alignment = 1
 
-[node name="ExpeditionCompleteTitle" type="Label" parent="ExpeditionColumn/ExpeditionComplete"]
+[node name="ExpeditionCompleteTitle" type="Label" parent="ExpeditionColumn/ExpeditionComplete" unique_id=794021594]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PageTitleLabel"
 text = "EXPEDITION_COMPLETE_TITLE"
 horizontal_alignment = 1
 
-[node name="ExpeditionCompleteBody" type="Label" parent="ExpeditionColumn/ExpeditionComplete"]
+[node name="ExpeditionCompleteBody" type="Label" parent="ExpeditionColumn/ExpeditionComplete" unique_id=1609350969]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
@@ -353,18 +353,12 @@ text = "EXPEDITION_COMPLETE_BODY"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ExpeditionCompleteBack" type="Button" parent="ExpeditionColumn/ExpeditionComplete"]
+[node name="ExpeditionCompleteBack" type="Button" parent="ExpeditionColumn/ExpeditionComplete" unique_id=424724646]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 theme_type_variation = &"PrimaryButton"
 text = "EXPEDITION_RETURN_CHAPTERS"
 
-[node name="ExpeditionCombat" parent="." instance=ExtResource("2_combat")]
-unique_name_in_owner = true
+[node name="ExpeditionCombat" parent="." unique_id=508123088 instance=ExtResource("2_combat")]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2

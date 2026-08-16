@@ -92,6 +92,14 @@ Chapter permanen dan terbuka berurutan. First clear membuka chapter berikutnya.
 Published content version immutable; run mengunci `chapter_id` dan
 `content_version` agar publish baru tidak mengubah perjalanan yang sedang aktif.
 
+Client menggambar map itu sebagai route tree bercabang, bukan grid dua kolom.
+Battle, Cache, Recovery, Mystery, Shop, dan Boss punya ikon berbeda; edge yang
+sudah dilalui, jalur pratinjau, dan cabang terkunci dibedakan tanpa bergantung
+pada warna saja. Node memakai target sentuh minimal 96 px. Tap pertama hanya
+memilih node dan menyorot turunannya; RPC `enter_node` baru dikirim setelah
+pemain menekan **Enter Node**. `visited_node_ids` disimpan authoritative per
+attempt dan dikosongkan saat zona di-reset.
+
 ### Tim, snapshot, dan checkpoint
 
 Expedition Team berisi tepat 4 Anima dan terpisah dari Team Battle. **Begin
@@ -146,7 +154,16 @@ Tiga encounter pertama per hari sipil lokal memberi progression EXP:
 hidup, dan 0 untuk yang KO. Layar hasil menampilkan
 EXP tiap anggota dan siapa yang naik Level. Tokens tetap diberikan
 setelah cap karena merupakan resource run, bukan mata uang permanen. Encounter
-biasa tidak mencetak Bits. First clear memberi reward satu kali dan Trophy.
+biasa tidak mencetak Bits.
+
+Selesai zona mencetak Bits permanen sesuai `zones[].bits_reward` pada manifest.
+The Sugarworks v5 menjadwalkan 10/20/30 Bits untuk Zone 1/2/3, sehingga cap
+hariannya 60 Bits per stable chapter untuk seluruh run dan content version akun
+itu. Hari memakai batas sipil lokal profile yang sama dengan Battle. Receipt
+unik `(run_id, zone)` dan ledger `expedition_zone` membuat replay idempoten;
+profile row lock membuat dua run paralel tidak dapat melewati sisa cap. Manifest
+lama tanpa field itu memberi nol reward berulang. First clear 25 Bits dan Trophy
+tetap satu kali serta berada di luar cap Zone Bits.
 
 ## 4. Boss Seeker dan dialog
 
@@ -270,7 +287,7 @@ Manifest v1 memuat:
 
 - identity, sequence, content version, minimum client build,
 - localized chapter/zone/copy data,
-- node pools dan legal directed connections,
+- node pools, legal directed connections, dan `bits_reward` per zona,
 - Regular/Elite/Boss snapshots,
 - Boss Seeker pose regions dan dialogue map,
 - Trophy metadata,

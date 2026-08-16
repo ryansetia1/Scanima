@@ -71,6 +71,11 @@ berisi Battle, Elite, Recovery, Cache, Shop, atau Mystery sebelum melawan Boss
 Seeker.
 
 - Pemilih tim memakai art dan status kesiapan yang sama dengan Team Battle.
+- Peta zona berupa jalur bercabang. Ikon menunjukkan jenis node: pedang untuk
+  Battle, pedang berkilau untuk Elite, peti untuk Cache, hati untuk Recovery,
+  tanda tanya untuk Mystery, dan pedang bersilang untuk Boss. Ketuk node yang
+  bisa dijangkau untuk melihat pratinjau jalurnya; perjalanan baru dikunci
+  setelah menekan **Enter Node**.
 - **Begin Expedition** membutuhkan **30 Energy dari setiap anggota** dan
   memotongnya satu kali saat run dibuat. Setelah itu **Start Zone** untuk zona
   1–3 dan Boss tidak memerlukan atau memotong Energy lagi, termasuk ketika
@@ -99,7 +104,12 @@ Seeker.
 - Tiga encounter pertama per hari memberi EXP: **+2** untuk Anima yang
   pernah aktif dan masih hidup, **+1** untuk bench yang masih hidup. Yang KO
   tidak mendapat EXP. Tokens tetap dapat diperoleh.
-- First clear Boss memberi **Sugarfold Core** untuk koleksi Trophy Seeker.
+- Menyelesaikan zona The Sugarworks memberi Bits permanen: **10** dari Zone 1,
+  **20** dari Zone 2, dan **30** dari Zone 3. Totalnya dibatasi **60 Bits per
+  chapter per hari** untuk seluruh run akun itu dan reset tengah malam waktu
+  setempat. Chapter berikutnya dapat memakai jadwal berbeda.
+- First clear Boss memberi bonus **25 Bits** di luar cap harian itu, serta
+  **Sugarfold Core** untuk koleksi Trophy Seeker.
 - Boss menampilkan **The Confectioner** dulu, tanpa Anima lawan. Ia berbicara
   tanpa overlay gelap. **Tap to continue** menutup baris itu, lalu The
   Confectioner memanggil Anima-nya ke arena dan fight baru dimulai. Selama

@@ -2718,11 +2718,11 @@ console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture 
   assert.ok(faunaV16.includes("MANDATORY MONSTER IDENTITY LAYER"));
   assert.ok(chapterAnimaPrompt.includes("both pupils focus on the same canvas-left target"));
   assert.ok(
-    chapterZonePrompt.includes("Expedition combat arena"),
+    /Expedition\s+combat arena/.test(chapterZonePrompt),
     "prompt zona Replicate wajib memakai backdrop Battle, bukan peta node"
   );
   assert.ok(
-    chapterZonePrompt.includes("lower 30–35% is one continuous solid floor"),
+    chapterZonePrompt.includes("lower 22–26% is one continuous solid floor"),
     "prompt zona wajib mengunci pita lantai tempur"
   );
   assert.ok(
@@ -2741,7 +2741,7 @@ console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture 
     "template zona manual wajib memakai backdrop Battle"
   );
   assert.ok(
-    manualZoneTemplate.includes("lower 30–35% is one continuous solid floor"),
+    manualZoneTemplate.includes("lower 22–26% is one continuous solid floor"),
     "template zona manual wajib mengunci pita lantai"
   );
   assert.doesNotMatch(
@@ -2752,15 +2752,15 @@ console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture 
   const manualSugarworksZones =
     manualChapterGuide.match(/### 10\. Zone 1[\s\S]*?(?=### 13\. Boss Seeker)/)?.[0] ?? "";
   assert.ok(
-    manualSugarworksZones.includes("wide, flat, solid floor"),
+    manualSugarworksZones.includes("continuous solid floor"),
     "Gumdrop Yard wajib punya lantai padat"
   );
   assert.ok(
-    manualSugarworksZones.includes("refractory foundry work floor"),
+    manualSugarworksZones.includes("caramel-slab work floor"),
     "Caramel Foundry wajib punya lantai kerja padat"
   );
   assert.ok(
-    manualSugarworksZones.includes("broad solid peppermint-stone"),
+    manualSugarworksZones.includes("broad peppermint-stone"),
     "Peppermint Furnace wajib punya forecourt padat"
   );
   assert.doesNotMatch(

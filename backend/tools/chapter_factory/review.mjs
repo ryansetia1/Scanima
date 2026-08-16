@@ -196,7 +196,9 @@ export async function buildReviewPage({ manifest, chapterDir, ctx }) {
   <section>
     <h2>Map Previews</h2>
     ${maps.map((map, index) => `<div class="card" style="margin-bottom:16px">
-      <h3>Zone ${index + 1}</h3>
+      <h3>Zone ${index + 1}${manifest.zones?.[index]?.bits_reward === undefined
+        ? ""
+        : ` · ${Number(manifest.zones[index].bits_reward)} Bits`}</h3>
       ${renderMapPreview(map)}
     </div>`).join("")}
   </section>

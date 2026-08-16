@@ -351,6 +351,17 @@ function validateZone(zone, zoneNumber, opponentIds) {
   if (!isObject(zone) || !isObject(zone.node_pools)) {
     throw chapterError("INVALID_CHAPTER_ZONES");
   }
+  if (
+    zone.bits_reward !== undefined
+    && (
+      typeof zone.bits_reward !== "number"
+      || !Number.isInteger(zone.bits_reward)
+      || zone.bits_reward < 0
+      || zone.bits_reward > 200
+    )
+  ) {
+    throw chapterError("INVALID_CHAPTER_ZONE_BITS");
+  }
   for (const kind of EXPEDITION_NODE_KINDS) {
     if (kind === "boss") continue;
     const pool = zone.node_pools[kind];

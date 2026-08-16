@@ -2283,7 +2283,7 @@ func _test_team_battle_view() -> void:
 		"action": "strike",
 		"target_hp": 40,
 		"element_multiplier": 1.0,
-	}], boss_session, seeker_art)
+	}], giant_session, seeker_art)
 	_check(not dialog.is_open(), "first opponent Attack speaks once then closes")
 	await view.play_events([{
 		"type": "attack",
@@ -2292,9 +2292,9 @@ func _test_team_battle_view() -> void:
 		"action": "strike",
 		"target_hp": 30,
 		"element_multiplier": 1.0,
-	}], boss_session, seeker_art)
+	}], giant_session, seeker_art)
 	_check(not dialog.is_open(), "replayed opponent Attack does not repeat first_attack")
-	var ace_session := boss_session.duplicate(true)
+	var ace_session := giant_session.duplicate(true)
 	ace_session["state"]["opponent"]["active_slot"] = 3
 	var ace_member: Dictionary = ace_session["state"]["opponent"]["roster"][3]
 	_dismiss_when_open(dialog)
@@ -2482,13 +2482,17 @@ func _test_expedition_view() -> void:
 		str(view.call("_location_text", {})) == tr("EXPEDITION_ARENA_LOCATION") % ["Sugartrail", "1"],
 		"regular Expedition arena shows the chapter title and zone"
 	)
-	var node_grid := view.find_child("ExpeditionNodeGrid", true, false) as GridContainer
-	var start_zone := view.find_child("ExpeditionStartZone", true, false) as Button
+	var route_map := view.find_child("ExpeditionRouteMap", true, false) as Control
+	var map_primary := view.find_child("ExpeditionMapPrimary", true, false) as Button
+	var enabled_route_nodes := 0
+	for child in route_map.get_children():
+		if child is Button and not (child as Button).disabled:
+			enabled_route_nodes += 1
 	_check(
-		node_grid.get_child_count() == 2
-		and not (node_grid.get_child(0) as Button).disabled
-		and (node_grid.get_child(1) as Button).disabled,
-		"Expedition map enables only server-authorized next nodes"
+		int(route_map.call("node_count")) == 2
+		and enabled_route_nodes == 1
+		and map_primary.disabled,
+		"Expedition map enables only server-authorized previews before Enter Node"
 	)
 	var checkpoint := run.duplicate(true)
 	checkpoint["status"] = "checkpoint"
@@ -2496,8 +2500,9 @@ func _test_expedition_view() -> void:
 	view.set_team({})
 	view.set_run(checkpoint)
 	_check(
-		start_zone.visible
-		and not start_zone.disabled
+		not route_map.visible
+		and map_primary.visible
+		and not map_primary.disabled
 		and view.call("_team_id") == "expedition-team",
 		"checkpoint Start Zone stays tappable using the run team"
 	)

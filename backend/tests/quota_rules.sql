@@ -278,6 +278,8 @@ begin
   ----------------------------------------------------------------------------
   -- 2. claim_genesis: satu key = satu Core = satu Anima
   ----------------------------------------------------------------------------
+  -- Isolate this legacy rollback path from the current four-Core starter grant.
+  update public.profiles set genesis_cores = 3 where id = u1;
   v_j := public.claim_genesis(u1, 'key-a', 'Uji A', 'mouse_plastic', 'gray', 1::smallint,
                               'tech', 3, v_stats, v_care, v_visi, 'v3', 'openai/gpt-image-2',
                               0.07, 'u1/foto.jpg');
@@ -2380,7 +2382,11 @@ begin
       jsonb_build_object(
         'schema_version', 1,
         'summary', jsonb_build_object('title', 'Test Sugarworks'),
-        'zones', '[]'::jsonb,
+        'zones', jsonb_build_array(
+          jsonb_build_object('bits_reward', 10),
+          jsonb_build_object('bits_reward', 20),
+          jsonb_build_object('bits_reward', 30)
+        ),
         'opponents', '[]'::jsonb,
         'boss', '{}'::jsonb
       ),
@@ -2451,7 +2457,9 @@ begin
          with ordinality roster(member, ordinality);
     update public.animas
        set care = jsonb_set(care, '{energy}', '100'::jsonb),
-           care_synced_at = now()
+           care_synced_at = now(),
+           sleep_started_at = null,
+           sleep_energy_at_start = null
      where id = any(v_team_ids);
 
     update public.animas
@@ -2474,7 +2482,9 @@ begin
            'biaya masuk Expedition harus gagal atomik jika satu anggota di bawah 30 Energy';
     update public.animas
        set care = jsonb_set(care, '{energy}', '100'::jsonb),
-           care_synced_at = now()
+           care_synced_at = now(),
+           sleep_started_at = null,
+           sleep_energy_at_start = null
      where id = any(v_team_ids);
 
     v_j := public.start_expedition_run(
@@ -2539,8 +2549,9 @@ begin
       'test-choose-recovery'
     );
     assert (v_j->>'supplies')::integer = 2
-           and (v_j->>'nodes_completed')::integer = 1,
-           'node non-combat harus commit Supplies dan progress satu kali';
+           and (v_j->>'nodes_completed')::integer = 1
+           and v_j->'visited_node_ids' ? 'recovery-1',
+           'node non-combat harus commit Supplies, progress, dan riwayat rute satu kali';
     v_j2 := public.commit_expedition_choice(
       u1, v_expedition_run, 3, 'recovery-1', 'heal',
       v_expedition_party, 2, '[]'::jsonb, '["next-1"]'::jsonb, false,
@@ -2694,6 +2705,7 @@ begin
     assert (v_j->'run'->>'status') = 'active'
            and (v_j->'run'->>'supplies')::integer = 0
            and (v_j->'run'->>'zone_attempt')::integer = 2
+           and jsonb_array_length(v_j->'run'->'visited_node_ids') = 0
            and (select bits from public.profiles where id = u1)
                  = v_bits_before_battle
            and exists (
@@ -2702,6 +2714,111 @@ begin
            ),
            'forfeit harus memulihkan checkpoint dan refund refresh Shop sekali';
     v := (v_j->'run'->>'version')::integer;
+
+    v_expedition_map := '{
+      "entry":["zone-1-exit"],
+      "nodes":[{
+        "id":"zone-1-exit","kind":"recovery","depth":4,"next":[],
+        "options":[{"id":"continue","effect":{"type":"supplies","value":0}}]
+      }]
+    }'::jsonb;
+    update public.expedition_runs set
+      nodes_completed = 3,
+      zone_map = v_expedition_map,
+      available_node_ids = v_expedition_map->'entry',
+      current_node_id = null,
+      pending_node = null
+    where id = v_expedition_run;
+    v_j := public.enter_expedition_node(
+      u1, v_expedition_run, v,
+      v_expedition_map->'nodes'->0, 'test-enter-zone-1-exit'
+    );
+    v := (v_j->>'version')::integer;
+    v_j := public.commit_expedition_choice(
+      u1, v_expedition_run, v, 'zone-1-exit', 'continue',
+      v_expedition_party, 0, '[]'::jsonb, '[]'::jsonb, true,
+      'test-clear-zone-1'
+    );
+    assert (v_j->>'status') = 'checkpoint'
+           and (v_j->>'zone')::integer = 2
+           and (v_j->'last_zone_reward'->>'bits')::integer = 10
+           and (v_j->'daily_bits'->>'bits_earned')::integer = 10
+           and (v_j->'daily_bits'->>'bits_limit')::integer = 60,
+           'checkpoint RPC Zone 1 harus memberi 10 Bits dari manifest';
+    v_j2 := public.commit_expedition_choice(
+      u1, v_expedition_run, v, 'zone-1-exit', 'continue',
+      v_expedition_party, 0, '[]'::jsonb, '[]'::jsonb, true,
+      'test-clear-zone-1'
+    );
+    assert (v_j2->>'replayed')::boolean
+           and (select count(*) from public.expedition_zone_rewards
+                 where run_id = v_expedition_run and zone = 1) = 1,
+           'replay checkpoint Zone 1 tidak boleh mint kedua kali';
+    v := (v_j->>'version')::integer;
+
+    v_expedition_map := '{
+      "entry":["zone-2-exit"],
+      "nodes":[{
+        "id":"zone-2-exit","kind":"recovery","depth":4,"next":[],
+        "options":[{"id":"continue","effect":{"type":"supplies","value":0}}]
+      }]
+    }'::jsonb;
+    v_j := public.start_expedition_zone(
+      u1, v_expedition_run, v, v_team_id, 'test-zone-2-seed',
+      v_expedition_party, v_expedition_map, 'test-zone-2-start'
+    );
+    v := (v_j->>'version')::integer;
+    update public.expedition_runs set nodes_completed = 3
+    where id = v_expedition_run;
+    v_j := public.enter_expedition_node(
+      u1, v_expedition_run, v,
+      v_expedition_map->'nodes'->0, 'test-enter-zone-2-exit'
+    );
+    v := (v_j->>'version')::integer;
+    v_j := public.commit_expedition_choice(
+      u1, v_expedition_run, v, 'zone-2-exit', 'continue',
+      v_expedition_party, 0, '[]'::jsonb, '[]'::jsonb, true,
+      'test-clear-zone-2'
+    );
+    assert (v_j->>'status') = 'checkpoint'
+           and (v_j->>'zone')::integer = 3
+           and (v_j->'last_zone_reward'->>'bits')::integer = 20
+           and (v_j->'daily_bits'->>'bits_earned')::integer = 30,
+           'checkpoint RPC Zone 2 harus memberi 20 Bits dari manifest';
+
+    -- Represent 20 Bits earned by another completed run in this stable chapter.
+    -- The live Boss clear below must clip its scheduled 30 Bits to the 10 left.
+    insert into public.expedition_runs (
+      owner_id, chapter_version_id, team_id, status, zone, seed,
+      nodes_completed, party_state, completed_at
+    ) values (
+      u1, v_expedition_version, v_team_id, 'complete', 3,
+      'partial-cap-prior-run', 4, v_expedition_party, now()
+    ) returning id into v_id;
+    insert into public.expedition_zone_rewards (
+      run_id, owner_id, chapter_id, chapter_version_id,
+      zone, scheduled_bits, bits
+    ) values (
+      v_id, u1, v_expedition_chapter, v_expedition_version,
+      2, 20, 20
+    ) returning id into v_refund;
+    update public.profiles set bits = bits + 20 where id = u1;
+    insert into public.quota_ledger (
+      owner_id, currency, delta, reason, ref_id
+    ) values (u1, 'bits', 20, 'expedition_zone', v_refund);
+    assert (
+      public.expedition_daily_bits_status(
+        u1, v_expedition_version
+      )->>'bits_earned'
+    )::integer = 50,
+    'cap Expedition harus menjumlahkan reward lintas run dalam stable chapter';
+
+    v := (v_j->>'version')::integer;
+    v_j := public.start_expedition_zone(
+      u1, v_expedition_run, v, v_team_id, 'test-zone-3-seed',
+      v_expedition_party, v_expedition_map, 'test-zone-3-start'
+    );
+    v := (v_j->>'version')::integer;
 
     v_expedition_map := '{
       "entry":["boss-1"],
@@ -2814,16 +2931,22 @@ begin
            and (v_j->'reward'->>'clear_bits')::integer = 25
            and not (v_j->'reward'->>'progression')::boolean
            and (v_j->'reward'->>'supplies')::integer = 8
+           and (v_j->'run'->'last_zone_reward'->>'scheduled_bits')::integer = 30
+           and (v_j->'run'->'last_zone_reward'->>'bits')::integer = 10
+           and (v_j->'run'->'last_zone_reward'->>'capped')::boolean
+           and (v_j->'run'->'daily_bits'->>'bits_earned')::integer = 60
+           and (v_j->'run'->'daily_bits'->>'bits_remaining')::integer = 0
+           and v_j->'run'->'visited_node_ids' ? 'boss-1'
            and (select sum(care_score)::integer from public.animas
                  where id = any(v_team_ids)) = v_score_before_battle,
-           'Boss pertama harus menyelesaikan run dan memberi first-clear reward';
+           'Boss pertama harus menyelesaikan run dan memberi reward Zone 3';
     assert exists (
              select 1 from public.seeker_trophies
               where owner_id = u1 and trophy_id = v_expedition_trophy
            )
            and (select bits from public.profiles where id = u1)
-                 = v_bits_before_battle + 25,
-           'first clear harus memberi Trophy unik dan Bits atomik';
+                 = v_bits_before_battle + 35,
+           'Zone 3 harus terpotong ke sisa cap dan first clear tetap di luar cap';
     v_j2 := public.commit_expedition_turn(
       u1, v_expedition_encounter, 1, 1, 'test-boss-turn', 'strike',
       null, null, v_expedition_state,
@@ -2835,8 +2958,43 @@ begin
            and (select count(*) from public.seeker_trophies
                  where owner_id = u1 and trophy_id = v_expedition_trophy) = 1
            and (select count(*) from public.quota_ledger
-                 where reason = 'expedition_clear' and ref_id = v_expedition_run) = 1,
-           'replay Boss tidak boleh menggandakan Trophy atau first-clear Bits';
+                 where reason = 'expedition_clear' and ref_id = v_expedition_run) = 1
+           and (select count(*) from public.quota_ledger
+                 where reason = 'expedition_zone'
+                   and owner_id = u1) = 4
+           and (select count(*) from public.quota_ledger
+                 where reason = 'expedition_zone'
+                   and ref_id in (
+                     select id from public.expedition_zone_rewards
+                      where run_id = v_expedition_run
+                   )) = 3,
+           'replay Boss tidak boleh menggandakan Trophy, first-clear, atau Zone Bits';
+
+    v_bits_before_battle := (select bits from public.profiles where id = u1);
+    insert into public.expedition_runs (
+      owner_id, chapter_version_id, team_id, status, zone, seed,
+      zone_map, available_node_ids, current_node_id, nodes_completed,
+      party_state, pending_node
+    ) values (
+      u1, v_expedition_version, v_team_id, 'active', 3, 'cap-repeat-seed',
+      '{"entry":["boss-repeat"],"nodes":[{"id":"boss-repeat","kind":"boss","next":[]}]}'::jsonb,
+      '[]'::jsonb, 'boss-repeat', 4, v_expedition_party,
+      '{"id":"boss-repeat","kind":"boss","next":[]}'::jsonb
+    ) returning id into v_id;
+    update public.expedition_runs set
+      status = 'complete',
+      current_node_id = null,
+      pending_node = null,
+      completed_at = now()
+    where id = v_id;
+    assert (select bits from public.expedition_zone_rewards
+             where run_id = v_id and zone = 3) = 0
+           and (select bits from public.profiles where id = u1)
+                 = v_bits_before_battle
+           and (public.expedition_daily_bits_status(
+             u1, v_expedition_version
+           )->>'bits_earned')::integer = 60,
+           'run kedua pada hari yang sama harus mentok cap 60 Bits per chapter';
 
     insert into public.expedition_chapter_versions (
       chapter_id, content_version, manifest, manifest_hash, asset_prefix,
@@ -2857,6 +3015,12 @@ begin
       now(),
       false
     ) returning id into v_expedition_version_next;
+    assert (
+      public.expedition_daily_bits_status(
+        u1, v_expedition_version_next
+      )->>'bits_limit'
+    )::integer = 0,
+    'manifest lama tanpa bits_reward tidak boleh mint repeatable Bits';
     v_j := public.activate_expedition_chapter_version(
       v_expedition_chapter, 2
     );
@@ -2971,6 +3135,25 @@ begin
   exception when insufficient_privilege then ok := true;
   end;
   assert ok, 'expedition_runs tidak boleh dibaca langsung oleh client';
+  begin
+    perform 1 from public.expedition_zone_rewards;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'receipt Zone Bits Expedition tidak boleh dibaca langsung oleh client';
+  assert not pg_catalog.has_function_privilege(
+    'authenticated',
+    'public.award_expedition_zone_bits(public.expedition_runs,smallint)',
+    'EXECUTE'
+  ), 'client tidak boleh memanggil award_expedition_zone_bits';
+  begin
+    perform public.expedition_daily_bits_status(
+      u1, '00000000-0000-4000-8000-000000000099'
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'client tidak boleh menghitung status Zone Bits langsung';
   begin
     perform public.expedition_chapter_catalog(u1);
     ok := false;

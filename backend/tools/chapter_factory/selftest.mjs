@@ -145,6 +145,7 @@ function syntheticDesign() {
       {
         id: "zone-1",
         index: 1,
+        bits_reward: 10,
         title_key: "CLOCKWORK_ZONE_1",
         title: "Sprout Atrium — starter paths",
         battle_opponent_id: "garden-regular-1",
@@ -155,6 +156,7 @@ function syntheticDesign() {
       {
         id: "zone-2",
         index: 2,
+        bits_reward: 20,
         title_key: "CLOCKWORK_ZONE_2",
         title: "Gear Greenhouse — mid pressure",
         battle_opponent_id: "garden-elite-1",
@@ -165,6 +167,7 @@ function syntheticDesign() {
       {
         id: "zone-3",
         index: 3,
+        bits_reward: 30,
         title_key: "CLOCKWORK_ZONE_3",
         title: "Brass Canopy — boss gate",
         battle_opponent_id: "garden-elite-2",
@@ -481,6 +484,13 @@ export async function runChapterFactorySelftest(repoRoot) {
     }, ctx.brief, ctx),
     /Istilah IP terlarang/,
   );
+  const invalidZoneReward = structuredClone(ctx.design);
+  invalidZoneReward.zones[0].bits_reward = 201;
+  const invalidZoneContext = createContext(ctx.chapterDir, ctx.brief, invalidZoneReward);
+  assert.throws(
+    () => validateDesign(invalidZoneReward, ctx.brief, invalidZoneContext),
+    /INVALID_CHAPTER_ZONE_BITS/,
+  );
 
   await assert.rejects(
     () => approveChapter({
@@ -696,7 +706,14 @@ export async function runChapterFactorySelftest(repoRoot) {
     const syntheticCtx = createContext(syntheticDir, brief, design);
     validateDesign(design, brief, syntheticCtx);
     const built = await buildCompleteManifest({ chapterDir: syntheticDir, ctx: syntheticCtx });
+    assert.deepEqual(built.manifest.zones.map((zone) => zone.bits_reward), [10, 20, 30]);
     validateChapterDraft(built.manifest, syntheticCtx);
+    const stringRewardManifest = structuredClone(built.manifest);
+    stringRewardManifest.zones[0].bits_reward = "10";
+    assert.throws(
+      () => validateChapterDraft(stringRewardManifest, syntheticCtx),
+      /INVALID_CHAPTER_ZONE_BITS/,
+    );
     await writeChapterOutputs(syntheticDir, built, syntheticCtx);
     await mkdir(join(syntheticDir, "manual_inbox", "zones"), { recursive: true });
     await writeFile(

@@ -146,6 +146,7 @@ export function buildGameplayManifest(ctx) {
   const zones = design.zones.map((zone) => ({
     id: zone.id,
     title_key: zone.title_key,
+    ...(zone.bits_reward === undefined ? {} : { bits_reward: Number(zone.bits_reward) }),
     background_path: ctx.zoneStoragePath(zone.index),
     node_pools: {
       battle: [{ opponent_id: zone.battle_opponent_id, supplies_reward: zone.battle_supplies }],

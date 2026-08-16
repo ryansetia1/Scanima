@@ -44,8 +44,8 @@ const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
 @onready var _map: VBoxContainer = %ExpeditionMap
 @onready var _map_meta: Label = %ExpeditionMapMeta
 @onready var _party_meta: Label = %ExpeditionPartyMeta
-@onready var _node_grid: GridContainer = %ExpeditionNodeGrid
-@onready var _start_zone: Button = %ExpeditionStartZone
+@onready var _route_map: ExpeditionRouteMap = %ExpeditionRouteMap
+@onready var _map_primary: Button = %ExpeditionMapPrimary
 @onready var _abandon: Button = %ExpeditionAbandon
 @onready var _choice: VBoxContainer = %ExpeditionChoice
 @onready var _choice_title: Label = %ExpeditionChoiceTitle
@@ -67,6 +67,7 @@ var _chapter: Dictionary = {}
 var _run: Dictionary = {}
 var _selected_version := ""
 var _pending_option: Dictionary = {}
+var _selected_route_node: Dictionary = {}
 var _busy := false
 var _thumbnail_provider: Callable
 var _seeker_dialog: BOSS_SEEKER_DIALOG
@@ -90,8 +91,11 @@ func _ready() -> void:
 	_detail_team.pressed.connect(_open_builder)
 	_roster_list.connect("selection_changed", _update_builder)
 	_save_team.pressed.connect(_request_save_team)
-	_start_zone.pressed.connect(_request_start_zone)
+	_map_primary.pressed.connect(_request_map_primary)
+	_route_map.node_previewed.connect(_preview_route_node)
 	_abandon.pressed.connect(abandon_requested.emit)
+	_map_primary.focus_neighbor_bottom = _abandon.get_path()
+	_abandon.focus_neighbor_top = _map_primary.get_path()
 	_target_confirm.pressed.connect(_confirm_target)
 	_target_list.item_selected.connect(func(_index: int) -> void:
 		_target_confirm.disabled = _busy
@@ -193,7 +197,8 @@ func set_busy(busy: bool) -> void:
 	_detail_team.disabled = busy
 	_start_run.disabled = busy or _selected_version.is_empty() or _team_id().is_empty()
 	_save_team.disabled = busy or _selected_roster_ids().size() != 4
-	_start_zone.disabled = busy or _team_id().is_empty()
+	_sync_map_primary()
+	_route_map.set_busy(busy)
 	_abandon.disabled = busy
 	_choice_abandon.disabled = busy
 	_target_confirm.disabled = busy or _target_list.get_selected_items().is_empty()
@@ -304,7 +309,7 @@ func set_run(
 	_busy = false
 	if str(_run.get("status", "")) == "complete":
 		_complete_title.text = tr("EXPEDITION_COMPLETE_TITLE")
-		_complete_body.text = tr("EXPEDITION_COMPLETE_BODY")
+		_complete_body.text = _completion_text()
 		_show_only(_complete)
 		return
 	if not encounter.is_empty():
@@ -387,51 +392,136 @@ func _request_save_team() -> void:
 		save_team_requested.emit(ids)
 
 
-func _request_start_zone() -> void:
-	if not _busy and not _team_id().is_empty():
-		start_zone_requested.emit(str(_run.get("id", "")), _team_id())
+func _request_map_primary() -> void:
+	if _busy:
+		return
+	if str(_run.get("status", "")) == "checkpoint":
+		if not _team_id().is_empty():
+			start_zone_requested.emit(str(_run.get("id", "")), _team_id())
+		return
+	var node_id := str(_selected_route_node.get("id", ""))
+	if not node_id.is_empty():
+		enter_node_requested.emit(node_id)
 
 
 func _render_map() -> void:
-	for child in _node_grid.get_children():
-		child.free()
+	_selected_route_node = {}
 	var zone := int(_run.get("zone", 1))
-	_map_meta.text = tr("EXPEDITION_MAP_STATUS") % [
-		LocaleManager.format_integer(zone),
-		LocaleManager.format_integer(int(_run.get("supplies", 0))),
-	]
-	_party_meta.text = _party_text(_as_array(_run.get("party_state")))
-	var map := GameState.as_dict(_run.get("zone_map"))
-	var nodes := _as_array(map.get("nodes"))
-	nodes.sort_custom(func(left: Variant, right: Variant) -> bool:
-		var a := GameState.as_dict(left)
-		var b := GameState.as_dict(right)
-		var a_depth := int(a.get("depth", 0))
-		var b_depth := int(b.get("depth", 0))
-		return (
-			a_depth < b_depth
-			or (a_depth == b_depth and str(a.get("id", "")) < str(b.get("id", "")))
-		)
-	)
-	var available := _string_array(_run.get("available_node_ids"))
-	for value in nodes:
-		var node := GameState.as_dict(value)
-		var button := Button.new()
-		button.custom_minimum_size = Vector2(0, 96)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.text = tr("EXPEDITION_NODE_ROW") % [
-			tr(_node_kind_key(str(node.get("kind", "")))),
-			tr("EXPEDITION_DEPTH") % LocaleManager.format_integer(int(node.get("depth", 0))),
+	var daily := GameState.as_dict(_run.get("daily_bits"))
+	var limit := int(daily.get("bits_limit", 0))
+	_map_meta.text = (
+		tr("EXPEDITION_MAP_STATUS_BITS") % [
+			LocaleManager.format_integer(zone),
+			LocaleManager.format_integer(int(_run.get("supplies", 0))),
+			LocaleManager.format_integer(int(daily.get("bits_earned", 0))),
+			LocaleManager.format_integer(limit),
 		]
-		var node_id := str(node.get("id", ""))
-		button.disabled = not node_id in available
-		button.pressed.connect(func() -> void: enter_node_requested.emit(node_id))
-		_node_grid.add_child(button)
+		if limit > 0 else tr("EXPEDITION_MAP_STATUS") % [
+			LocaleManager.format_integer(zone),
+			LocaleManager.format_integer(int(_run.get("supplies", 0))),
+		]
+	)
 	var checkpoint := str(_run.get("status", "")) == "checkpoint"
-	_start_zone.visible = checkpoint
-	_node_grid.visible = not checkpoint
-	_party_meta.visible = not checkpoint
-	_start_zone.disabled = _busy or _team_id().is_empty()
+	_route_map.visible = not checkpoint
+	_map_primary.text = tr("EXPEDITION_START_ZONE" if checkpoint else "EXPEDITION_ENTER_NODE")
+	if checkpoint:
+		_route_map.clear_preview()
+		_abandon.focus_neighbor_top = _map_primary.get_path()
+		_party_meta.text = _checkpoint_text()
+	else:
+		_route_map.set_route(
+			GameState.as_dict(_run.get("zone_map")),
+			_string_array(_run.get("available_node_ids")),
+			_string_array(_run.get("visited_node_ids"))
+		)
+		_wire_route_exit_focus()
+		_party_meta.text = tr("EXPEDITION_TWO_LINES") % [
+			_party_text(_as_array(_run.get("party_state"))),
+			tr("EXPEDITION_ROUTE_HINT"),
+		]
+	_party_meta.visible = true
+	_map_primary.visible = true
+	_sync_map_primary()
+
+
+func _preview_route_node(node: Dictionary) -> void:
+	_selected_route_node = node.duplicate(true)
+	_party_meta.text = tr("EXPEDITION_THREE_LINES") % [
+		_party_text(_as_array(_run.get("party_state"))),
+		_route_preview_text(node),
+		tr("EXPEDITION_ROUTE_CONFIRM_HINT"),
+	]
+	_sync_map_primary()
+	var selected := _route_map.node_button(str(node.get("id", "")))
+	if selected != null:
+		selected.focus_neighbor_bottom = _map_primary.get_path()
+		_map_primary.focus_neighbor_top = selected.get_path()
+	_abandon.focus_neighbor_top = _map_primary.get_path()
+
+
+func _wire_route_exit_focus() -> void:
+	var first: Button
+	for node_id: String in _string_array(_run.get("available_node_ids")):
+		var button := _route_map.node_button(node_id)
+		if button == null:
+			continue
+		button.focus_neighbor_bottom = _abandon.get_path()
+		if first == null:
+			first = button
+	if first != null:
+		_abandon.focus_neighbor_top = first.get_path()
+
+
+func _sync_map_primary() -> void:
+	if not is_instance_valid(_map_primary):
+		return
+	var checkpoint := str(_run.get("status", "")) == "checkpoint"
+	_map_primary.disabled = _busy or (
+		_team_id().is_empty() if checkpoint else _selected_route_node.is_empty()
+	)
+
+
+func _route_preview_text(node: Dictionary) -> String:
+	var kind := str(node.get("kind", ""))
+	var detail_key := str({
+		"battle": "EXPEDITION_ROUTE_BATTLE_DETAIL",
+		"elite": "EXPEDITION_ROUTE_ELITE_DETAIL",
+		"recovery": "EXPEDITION_ROUTE_RECOVERY_DETAIL",
+		"cache": "EXPEDITION_ROUTE_CACHE_DETAIL",
+		"shop": "EXPEDITION_ROUTE_SHOP_DETAIL",
+		"mystery": "EXPEDITION_ROUTE_MYSTERY_DETAIL",
+		"boss": "EXPEDITION_ROUTE_BOSS_DETAIL",
+	}.get(kind, "EXPEDITION_ROUTE_UNKNOWN_DETAIL"))
+	return tr("EXPEDITION_ROUTE_PREVIEW") % [
+		tr(_node_kind_key(kind)),
+		tr(detail_key),
+	]
+
+
+func _checkpoint_text() -> String:
+	var reward := GameState.as_dict(_run.get("last_zone_reward"))
+	if reward.is_empty():
+		return tr("EXPEDITION_CHECKPOINT_READY")
+	return tr("EXPEDITION_TWO_LINES") % [
+		tr("EXPEDITION_ZONE_REWARD") % [
+			LocaleManager.format_integer(int(reward.get("zone", 0))),
+			LocaleManager.format_integer(int(reward.get("bits", 0))),
+		],
+		tr("EXPEDITION_CHECKPOINT_READY"),
+	]
+
+
+func _completion_text() -> String:
+	var reward := GameState.as_dict(_run.get("last_zone_reward"))
+	if reward.is_empty():
+		return tr("EXPEDITION_COMPLETE_BODY")
+	return tr("EXPEDITION_TWO_LINES") % [
+		tr("EXPEDITION_COMPLETE_BODY"),
+		tr("EXPEDITION_ZONE_REWARD") % [
+			LocaleManager.format_integer(int(reward.get("zone", 0))),
+			LocaleManager.format_integer(int(reward.get("bits", 0))),
+		],
+	]
 
 
 func _show_choice(node: Dictionary) -> void:

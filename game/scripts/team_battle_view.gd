@@ -1148,10 +1148,22 @@ func _total_reward_exp(reward: Dictionary) -> int:
 
 func _win_reward_text(reward: Dictionary, exp_lines: PackedStringArray) -> String:
 	if _expedition_mode:
-		var tokens := tr("EXPEDITION_ENCOUNTER_WIN_TOKENS") % LocaleManager.format_integer(
-			int(reward.get("supplies", 0))
-		)
-		return tokens if exp_lines.is_empty() else "%s\n%s" % [tokens, "\n".join(exp_lines)]
+		var lines := PackedStringArray([
+			tr("EXPEDITION_ENCOUNTER_WIN_TOKENS") % LocaleManager.format_integer(
+				int(reward.get("supplies", 0))
+			),
+		])
+		if reward.has("zone_bits"):
+			lines.append(tr("EXPEDITION_ZONE_BITS_RESULT") % [
+				LocaleManager.format_integer(int(reward.get("zone_bits", 0))),
+				LocaleManager.format_integer(int(reward.get("zone_scheduled_bits", 0))),
+			])
+		if int(reward.get("clear_bits", 0)) > 0:
+			lines.append(tr("EXPEDITION_FIRST_CLEAR_BITS_RESULT") % LocaleManager.format_integer(
+				int(reward.get("clear_bits", 0))
+			))
+		lines.append_array(exp_lines)
+		return "\n".join(lines)
 	var bits := LocaleManager.format_integer(int(reward.get("bits", 0)))
 	if exp_lines.is_empty():
 		if reward.has("anima_exp"):

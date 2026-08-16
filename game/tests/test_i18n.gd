@@ -70,6 +70,7 @@ const REQUIRED_KEYS := [
 	"FORMAT_RATIO",
 	"FORMAT_PERCENT",
 	"VALUE_UNAVAILABLE",
+	"EXPEDITION_NODE_UNKNOWN",
 ]
 const PLAYER_UI_FILES := [
 	"res://scripts/scan_flow.gd",
@@ -79,6 +80,7 @@ const PLAYER_UI_FILES := [
 	"res://scripts/battle_view.gd",
 	"res://scripts/team_battle_view.gd",
 	"res://scripts/expedition_view.gd",
+	"res://scripts/expedition_route_map.gd",
 	"res://scripts/expedition_controller.gd",
 	"res://scripts/anima_details_view.gd",
 	"res://scripts/shop_sheet.gd",
