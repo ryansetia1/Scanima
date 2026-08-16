@@ -8,11 +8,11 @@ Dipakai untuk **Scan** — setiap foto yang lolos pemeriksaan dan menjadi Anima
 memakai **1 Core**. Setiap Anima mendapat art unik yang privat secara default.
 
 - Guest baru mulai dengan **1 Core**.
-- **Sign in with Google** memberi **2 Core tambahan sekali**, sehingga grant
-  starter lifetime berjumlah 3. Kalau Core pertama sudah dipakai, saldo sesudah
-  link bisa 2—bukan di-reset menjadi 3.
-- Pemain lama sebelum sistem guest tetap memiliki grant starter 3 Core dan tidak
-  mendapat bonus kedua.
+- **Sign in with Google** memberi **3 Core tambahan sekali**, sehingga grant
+  starter lifetime berjumlah 4. Kalau Core pertama sudah dipakai, saldo sesudah
+  link bisa 3—bukan di-reset menjadi 4.
+- Pemain lama yang sudah linked dengan starter 3 mendapat **+1 Core sekali**.
+  Grant starter legacy 3 juga dilengkapi menjadi 4, sekali.
 - Akun yang sudah terhubung ke Google otomatis mendapat **1 Core setiap 7 hari
   server** selama saldo gratisnya di bawah 3. Tidak ada tombol Claim dan minggu
   yang terlewat tidak dirapel. Kalau saldo sudah 3, jadwalnya menunggu sampai

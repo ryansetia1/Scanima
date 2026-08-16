@@ -2449,6 +2449,10 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
   assert.equal(BATTLE_BITS_CAP, 100);
   assert.equal(CATALOG_ITEMS.length, 18);
   assert.equal(CATALOG_ITEMS.filter((item) => item.use_type === "food").length, 9);
+  assert.deepEqual(
+    CATALOG_ITEMS.filter((item) => item.use_type === "food").map((item) => item.price),
+    [1, 2, 2, 3, 4, 5, 6, 8, 10]
+  );
   assert.equal(CATALOG_ITEMS.filter((item) => item.use_type === "energy").length, 2);
   assert.equal(CATALOG_ITEMS.filter((item) => item.use_type === "battle").length, 7);
   assert.equal(rewardTierFromRatio(0.94), "favorable");

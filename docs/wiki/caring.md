@@ -7,7 +7,7 @@ Kalau gerakan terasa terlalu ramai, aktifkan **Reduced Motion** dari menu
 
 | Kebutuhan | Artinya | Turun kira-kira | Dipulihkan oleh |
 | --- | --- | --- | --- |
-| **Hunger** | Lapar | Habis dalam ~10 jam | **Feed** |
+| **Hunger** | Lapar | Habis dalam ~25 jam di Home | **Feed** |
 | **Energy** | Stamina | Habis dalam ~14 jam kalau bangun | **Sleep**, atau item Energy di Bag |
 | **Hygiene** | Kebersihan | Habis dalam ~24 jam | **Clean** |
 
@@ -22,7 +22,7 @@ Shop hanya untuk beli. Isi tas dibuka dari **Bag**. Beli makanan dan item
 run masih berjalan, **Shop** redup dan menolak pembelian; **Bag** tetap bisa
 memakai makanan dan Energy yang sudah ada.
 
-- Shop tab **Food**: sembilan makanan, dari Byte Berry (10 Hunger / 2 Bits) sampai Nova Feast (penuh / 20 Bits).
+- Shop tab **Food**: sembilan makanan, dari Byte Berry (10 Hunger / 1 Bit) sampai Nova Feast (penuh / 10 Bits).
 - Shop tab **Items**: Pulse Cell dan Reactor Pack mengisi Energy; tujuh item lain hanya untuk Battle.
 - **Bag** tab **Food**: makanan yang kamu punya. Tap **Feed** untuk memberi makan.
 - **Bag** tab **Items**: Pulse Cell / Reactor Pack punya tombol **Use**. Item Battle tidak — itu dipakai dari tombol **Item** di arena.
@@ -57,17 +57,17 @@ Anima tidur untuk mengisi Energy.
 - Companion di Home: penuh dalam **6 jam**, lalu bangun sendiri dan dapat **+5 EXP**.
 - Anima di Collection (tidak di-Summon): penuh lebih cepat, **3 jam**, **tanpa** +5 EXP, dan tetap tidur di server supaya Energy tidak langsung luruh lagi.
 
-Hunger dan Hygiene **tetap turun** selama tidur. Bangun pagi tetap perlu makan.
+Hunger dan Hygiene **tetap turun** selama tidur di Home. Anima di Collection turun jauh lebih pelan dan tidak sampai lapar atau kotor — mereka istirahat aman sampai di-Summon. Bangun pagi di Home tetap perlu makan.
 
 Kalau kamu bangunin sebelum penuh, Energy yang sudah pulih tetap ada, tapi bonus +5 EXP tidak didapat.
 
 **Pulse Cell** (+20) dan **Reactor Pack** (+50) mengisi Energy dari **Bag** (tab Items) tanpa menunggu tidur. Beli dulu di Shop. Meter yang sudah penuh menolaknya, dan keduanya **tidak** memberi EXP.
 
-Di Collection, kartu memakai pose-nya: Sleep selama Energy pulih, Hungry atau Dirty kalau lapar/kotor, Idle kalau siap Summon — tanpa perlu tap dulu.
+Di Collection, kartu memakai pose-nya: Sleep selama Energy pulih, Idle kalau siap Summon, Damaged kalau sudah Dormant sebelum istirahat. Yang sudah lapar atau kotor sebelum di-Summon tetap kelihatan begitu; companion yang istirahat sehat tidak sampai lapar atau kotor. Tidak perlu tap dulu.
 
 ## Dormant
 
-Kalau Hunger dan Hygiene habis cukup lama (paling lama dihitung ~2 hari), Anima masuk **Dormant**: meringkuk, kelihatan lemah, tidak bisa Battle.
+Kalau companion di Home dibiarkan Hunger dan Hygiene habis cukup lama (paling lama dihitung ~2 hari), ia masuk **Dormant**: meringkuk, kelihatan lemah, tidak bisa Battle. Anima di Collection tidak masuk Dormant baru; yang sudah Dormant sebelum istirahat tetap perlu makan dan dibersihkan sesudah di-Summon.
 
 Ia **tidak hilang** dan **EXP-nya tidak direset**. Feed (makanan dari tas) dan Clean sampai kedua meter mencapai 50, ia pulih.
 

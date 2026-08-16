@@ -72,7 +72,7 @@ Contoh: 25 EXP → Level 6.
 | Menang Duel berhadiah | +4 | Training = 0 |
 | Menang Team Battle berhadiah | +2 aktif / +1 bench | Dua kemenangan pertama per hari; KO = 0 |
 | Menang encounter Expedition | +2 aktif / +1 bench | Tiga encounter pertama per hari; KO = 0 |
-| Bonus terawat (ketiga kebutuhan &gt; 70) | +8 | Sekali per hari, reset tengah malam waktu setempat |
+| Bonus terawat (ketiga kebutuhan &gt; 70) | +8 | Hanya companion di Home, sekali per hari, reset tengah malam waktu setempat |
 
 Dormant **tidak** menghapus EXP.
 
@@ -83,7 +83,7 @@ Tap kartu membuka sheet, bukan langsung pindah companion.
 - **View Profile** — lihat traits dan attributes, ganti nama, atau Delete.
 - **Summon** — Anima ini pindah ke Home. Yang tadi di Home tidur.
 
-Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Kartu Collection memakai pose-nya: Sleep selama Energy pulih, Hungry atau Dirty kalau lapar/kotor, Idle kalau siap, Damaged kalau Dormant. Tidak perlu tap dulu supaya kelihatan.
+Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Hunger dan Hygiene di Collection turun pelan dan berhenti sebelum lapar atau kotor, jadi merawat tim tidak berarti memberi makan semua orang setiap hari. Yang sudah lapar, kotor, atau Dormant sebelum istirahat tetap begitu sampai di-Summon lalu diurus di Home. Kartu Collection memakai pose-nya: Sleep selama Energy pulih, Idle kalau siap, Damaged kalau Dormant. Tidak perlu tap dulu supaya kelihatan.
 
 **Delete** ada di profil sebagai teks kecil, bukan tombol besar. Menghapus itu
 permanen: tidak ada refund Core atau Bits. Ini hanya menghapus satu Anima.

@@ -12,10 +12,16 @@ const DEFAULT_CARE := {
 	"bond": 0.0,
 }
 const DECAY_PER_HOUR := {
-	"hunger": 10.0,
+	"hunger": 4.0,
 	"energy": 7.1,
 	"hygiene": 4.2,
 }
+const BENCH_DECAY_PER_HOUR := {
+	"hunger": 1.0,
+	"hygiene": 1.05,
+}
+const BENCH_HUNGER_FLOOR := 40.0
+const BENCH_HYGIENE_FLOOR := 50.0
 const MAX_DECAY_HOURS := 48.0
 const CARE_RESTORE := 35.0
 const PLAY_ENERGY_COST := 5.0
@@ -47,18 +53,33 @@ static func effective_decay_hours(synced_at: float, now: float) -> float:
 	return minf(MAX_DECAY_HOURS, elapsed)
 
 
+# Hold at floor only when already at/above it. Never raise a neglected bench.
+static func _decayed_need(current: float, rate: float, hours: float, hold_floor: float) -> float:
+	var next := current - rate * hours
+	if current >= hold_floor:
+		return clampf(next, hold_floor, 100.0)
+	return clampf(next, 0.0, 100.0)
+
+
 static func apply_decay(
 	care_value: Variant,
 	synced_at: float,
 	now: float,
 	sleep_started_at: float = 0.0,
 	sleep_energy_at_start: float = -1.0,
-	sleep_full_hours: float = -1.0
+	sleep_full_hours: float = -1.0,
+	benched: bool = false
 ) -> Dictionary:
 	var care := normalized_care(care_value)
 	var hours := effective_decay_hours(synced_at, now)
-	care["hunger"] = clampf(care["hunger"] - DECAY_PER_HOUR.hunger * hours, 0.0, 100.0)
-	care["hygiene"] = clampf(care["hygiene"] - DECAY_PER_HOUR.hygiene * hours, 0.0, 100.0)
+	var hunger_rate: float = BENCH_DECAY_PER_HOUR.hunger if benched else DECAY_PER_HOUR.hunger
+	var hygiene_rate: float = BENCH_DECAY_PER_HOUR.hygiene if benched else DECAY_PER_HOUR.hygiene
+	care["hunger"] = _decayed_need(
+		float(care["hunger"]), hunger_rate, hours, BENCH_HUNGER_FLOOR if benched else 0.0
+	)
+	care["hygiene"] = _decayed_need(
+		float(care["hygiene"]), hygiene_rate, hours, BENCH_HYGIENE_FLOOR if benched else 0.0
+	)
 
 	if sleep_started_at > 0.0:
 		var start_energy: float = (
@@ -97,7 +118,13 @@ static func need_is_full(care_value: Variant, need: String) -> bool:
 	return float(care.get(need, 0.0)) >= NEED_FULL_AT
 
 
-static func enters_dormant(care_value: Variant, effective_hours: float) -> bool:
+static func enters_dormant(
+	care_value: Variant,
+	effective_hours: float,
+	benched: bool = false
+) -> bool:
+	if benched:
+		return false
 	var care := normalized_care(care_value)
 	return (
 		effective_hours >= MAX_DECAY_HOURS
@@ -129,14 +156,17 @@ static func projected_care(row: Dictionary, active_id: String = "", now: float =
 	var synced := timestamp_seconds(row.get("care_synced_at"))
 	if synced <= 0.0:
 		return normalized_care(row.get("care"))
+	var is_benched := not active_id.is_empty() and str(row.get("id", "")) != active_id
 	var sleep_started := timestamp_seconds(row.get("sleep_started_at"))
 	if sleep_started <= 0.0:
-		return apply_decay(row.get("care"), synced, clock)
+		return apply_decay(row.get("care"), synced, clock, 0.0, -1.0, -1.0, is_benched)
 	var start_energy := float(row.get("sleep_energy_at_start", -1.0))
 	var hours_to_full := (
 		SLEEP_FULL_HOURS if str(row.get("id", "")) == active_id else BENCH_SLEEP_FULL_HOURS
 	)
-	return apply_decay(row.get("care"), synced, clock, sleep_started, start_energy, hours_to_full)
+	return apply_decay(
+		row.get("care"), synced, clock, sleep_started, start_energy, hours_to_full, is_benched
+	)
 
 
 static func collection_pose(row: Dictionary, active_id: String, now: float = -1.0) -> String:

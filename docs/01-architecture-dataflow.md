@@ -617,9 +617,10 @@ Endpoint JWT-protected ini menjadi satu boundary untuk operasi `profile`,
 `complete`, `rename`, `upgrade`, dan `delete_account`. Owner selalu diambil dari
 klaim JWT. Nama Seeker wajib unik case-insensitive; rename memiliki cooldown 30
 hari. `upgrade` hanya berhasil sesudah user non-anonim memiliki identity Google,
-lalu melengkapi grant starter lifetime dari 1 menjadi 3 Core dengan ledger unik
-(`starter_guest` + `starter_google`). Akun lama diberi marker `starter_legacy`
-tanpa mengubah saldo agar tidak menerima bonus kedua.
+lalu melengkapi grant starter lifetime dari 1 menjadi 4 Core dengan ledger unik
+(`starter_guest` + `starter_google`, plus `starter_team` untuk Core keempat pada
+akun yang sudah sempat di-grant ke 3). Akun lama `starter_legacy` mendapat +1
+sekali lewat alasan yang sama.
 
 Client menautkan Google melalui PKCE dan `scanima://auth/callback`. Link wajib
 mempertahankan UID guest. Bila Google sudah dimiliki akun lain, pemain melihat
@@ -705,7 +706,7 @@ diterima.
 Endpoint JWT-protected, tanpa model call:
 
 ```jsonc
-{ "item_id": "byte_berry", "expected_price": 2, "idempotency_key": "..." }
+{ "item_id": "byte_berry", "expected_price": 1, "idempotency_key": "..." }
 ```
 
 RPC `purchase_catalog_item()` mengunci profil, menolak harga basi

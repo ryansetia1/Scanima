@@ -47,9 +47,9 @@ akun.
 ## Google: link atau restore
 
 Kalau Google itu belum punya Seeker Scanima, **link** mempertahankan semua progres
-guest: Anima, Bits, tas, EXP, dan kemenangan. Akun mendapat **2 Core tambahan
-sekali**, sehingga grant starter lifetime menjadi 3 Core. Ini bukan reset saldo:
-kalau Core guest sudah dipakai untuk Genesis, saldo sesudah link biasanya 2.
+guest: Anima, Bits, tas, EXP, dan kemenangan. Akun mendapat **3 Core tambahan
+sekali**, sehingga grant starter lifetime menjadi 4 Core. Ini bukan reset saldo:
+kalau Core guest sudah dipakai untuk Genesis, saldo sesudah link biasanya 3.
 
 Kalau Google itu sudah punya Seeker, game menampilkan peringatan **Restore
 Existing Seeker**. Restore membuka progres akun Google tersebut dan **tidak

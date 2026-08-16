@@ -553,7 +553,7 @@ func _test_shared_components() -> void:
 			"kind": "food",
 			"use_type": "food",
 			"name_key": "CATALOG_BYTE_BERRY",
-			"price": 2,
+			"price": 1,
 			"effect": "hunger",
 			"effect_value": 10,
 			"sprite_sheet": "food",

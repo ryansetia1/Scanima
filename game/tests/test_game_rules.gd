@@ -23,11 +23,13 @@ func _initialize() -> void:
 	print("2. decay berjalan sejak sync terakhir, cap 48 jam")
 	var full := {"hunger": 100.0, "energy": 100.0, "hygiene": 100.0, "bond": 50.0}
 	var after_2h := CareRules.apply_decay(full, 0.0, 2.0 * 3600.0)
-	_check_eq(after_2h["hunger"], 80.0, "dua jam harus memotong Hunger 20")
+	_check_eq(after_2h["hunger"], 92.0, "dua jam aktif harus memotong Hunger 8")
 	var after_8h := CareRules.apply_decay(full, 0.0, 8.0 * 3600.0)
-	_check_eq(after_8h["hunger"], 20.0, "delapan jam harus memotong Hunger 80")
+	_check_eq(after_8h["hunger"], 68.0, "delapan jam aktif harus memotong Hunger 32")
 	var after_18h := CareRules.apply_decay(full, 0.0, 18.0 * 3600.0)
-	_check_eq(after_18h["hunger"], 0.0, "Hunger habis dalam 10 jam")
+	_check_eq(after_18h["hunger"], 28.0, "delapan belas jam aktif memotong Hunger 72")
+	var after_25h := CareRules.apply_decay(full, 0.0, 25.0 * 3600.0)
+	_check_eq(after_25h["hunger"], 0.0, "Hunger aktif habis dalam 25 jam")
 	_check_eq(after_18h["energy"], 0.0, "Energy habis sebelum 18 jam bangun")
 	_check(is_equal_approx(after_18h["hygiene"], 24.4), "Hygiene turun 4.2 per jam")
 	var after_56h := CareRules.apply_decay(full, 0.0, 56.0 * 3600.0)
@@ -35,6 +37,34 @@ func _initialize() -> void:
 	_check_eq(after_56h, after_week, "48 jam efektif harus menjadi cap")
 	for need in CareRules.DEFAULT_CARE:
 		_check(after_week[need] >= 0.0 and after_week[need] <= 100.0, "%s tetap 0–100" % need)
+	var bench_8h := CareRules.apply_decay(full, 0.0, 8.0 * 3600.0, 0.0, -1.0, -1.0, true)
+	_check_eq(bench_8h["hunger"], 92.0, "delapan jam bangku memotong Hunger 8")
+	_check(is_equal_approx(bench_8h["hygiene"], 91.6), "Hygiene bangku turun 1.05 per jam")
+	var bench_48h := CareRules.apply_decay(full, 0.0, 48.0 * 3600.0, 0.0, -1.0, -1.0, true)
+	_check_eq(bench_48h["hunger"], 52.0, "48 jam bangku menahan Hunger di atas 40")
+	_check_eq(bench_48h["hygiene"], 50.0, "Hygiene bangku tidak turun di bawah 50")
+	var bench_starved := CareRules.apply_decay(
+		{"hunger": 10.0, "energy": 100.0, "hygiene": 10.0, "bond": 0.0},
+		0.0,
+		2.0 * 3600.0,
+		0.0,
+		-1.0,
+		-1.0,
+		true
+	)
+	_check_eq(bench_starved["hunger"], 8.0, "bangku tidak mengangkat Hunger yang sudah di bawah 40")
+	_check(is_equal_approx(bench_starved["hygiene"], 7.9), "bangku tidak mengangkat Hygiene yang sudah di bawah 50")
+	var bench_at_floor := CareRules.apply_decay(
+		{"hunger": 40.0, "energy": 100.0, "hygiene": 50.0, "bond": 0.0},
+		0.0,
+		8.0 * 3600.0,
+		0.0,
+		-1.0,
+		-1.0,
+		true
+	)
+	_check_eq(bench_at_floor["hunger"], 40.0, "Hunger yang sudah di floor bangku tertahan")
+	_check_eq(bench_at_floor["hygiene"], 50.0, "Hygiene yang sudah di floor bangku tertahan")
 
 	print("3. EXP menentukan Level, Bond tidak luntur")
 	var hunger_only := CareRules.apply_decay(
@@ -128,6 +158,21 @@ func _initialize() -> void:
 		not CareRules.enters_dormant({"hunger": 0, "hygiene": 0}, 47.9),
 		"sebelum cap belum Dormant"
 	)
+	_check(
+		not CareRules.enters_dormant({"hunger": 0, "hygiene": 0}, 48.0, true),
+		"Anima bangku tidak masuk Dormant baru"
+	)
+	var bench_row := {
+		"id": "bench-1",
+		"care": {"hunger": 100.0, "energy": 100.0, "hygiene": 100.0, "bond": 0.0},
+		"care_synced_at": "2026-01-01T00:00:00Z",
+	}
+	var bench_synced := CareRules.timestamp_seconds(bench_row["care_synced_at"])
+	var bench_projected := CareRules.projected_care(
+		bench_row, "active-1", bench_synced + 48.0 * 3600.0
+	)
+	_check_eq(bench_projected["hunger"], 52.0, "projected_care bangku memakai decay 1/jam")
+	_check_eq(bench_projected["hygiene"], 50.0, "projected_care bangku menghormati floor Hygiene")
 	_check(
 		not CareRules.can_recover_from_dormant({"hunger": 70, "hygiene": 35}),
 		"satu kebutuhan saja belum memulihkan Dormant"

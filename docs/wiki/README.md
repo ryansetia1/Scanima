@@ -38,5 +38,5 @@ membuka profil, Google, Reduced Motion, bantuan, dan hapus akun.
 - **Cores** untuk setiap Scan yang berhasil. Akun Google mendapat 1 Core otomatis
   tiap 7 hari saat saldo gratis di bawah 3. **Bits** untuk Shop. Clean gratis.
 - Guest mulai dengan **1 Core** dan satu Scan. Sesudah itu, **Sign in with
-  Google** untuk Scan lagi; link memberi 2 Core tambahan sekali. Toko Core,
-  iklan, dan kunci sendiri belum ada.
+  Google** untuk Scan lagi; link memberi 3 Core tambahan sekali (total starter
+  4). Toko Core, iklan, dan kunci sendiri belum ada.

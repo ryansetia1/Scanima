@@ -171,16 +171,19 @@ Ini dapat bekerja bagi pemain yang sudah terikat pada Anima atau menyukai
 Battle. Namun pemain yang datang karena fantasi Scan tidak mempunyai jalur aktif
 menuju penemuan berikutnya.
 
-Ada dua penguat risiko lain:
+Ada dua penguat risiko lain; yang kedua sudah ditangani di balancing live:
 
 1. Pertumbuhan Level belum mempunyai perubahan visual, sehingga payoff jangka
    panjang masih didominasi angka.
-2. Mode tim dipromosikan sebagai bagian penting, tetapi pemain baru belum dapat
-   mengisi roster empat Anima hanya dari kesempatan starter.
+2. **Sudah ditangani:** starter lifetime Google sekarang 4 Scan, jadi roster
+   Team Battle / Expedition dapat diisi tanpa menunggu grant mingguan. Hunger
+   aktif 4/jam, Collection memakai 25% decay dengan floor di atas ambang
+   Hungry/Dirty, dan harga Food diturunkan — maintenance linear empat Anima
+   bukan lagi pajak harian yang memaksa grind Bits.
 
-Ini adalah hipotesis desain, bukan bukti perilaku pemain. Playtest perlu
-mengamati apakah pemain merasa sedang **membangun companion** atau hanya
-**memelihara akses untuk kembali bertarung**.
+Hipotesis yang tersisa: playtest perlu mengamati apakah pemain merasa sedang
+**membangun companion** atau hanya **memelihara akses untuk kembali bertarung**.
+Celah Scan harian (aktivitas tidak menghasilkan Core) masih terbuka.
 
 ## Pilihan arah produk
 
@@ -215,7 +218,10 @@ aspirasi tim kemudian harus menanggung retensi utama.
 - **Hook terkuat:** Scan dan kejutan hasilnya.
 - **Loop paling lengkap:** Care → Battle → EXP/Bits → persiapan berikutnya.
 - **Jembatan emosional:** ownership dan attachment terhadap Anima personal.
-- **Celah terbesar:** permainan aktif belum mengarah kembali ke discovery.
+- **Celah terbesar yang tersisa:** permainan aktif belum mengarah kembali ke
+  discovery (Battle tidak menghasilkan Core).
+- **Sudah dikalibrasi:** starter 4 Scan menutup roster tim; Care Collection
+  tidak lagi menghukum pemain yang merawat lebih dari satu Anima.
 - **Payoff jangka panjang yang belum penuh:** pertumbuhan visual Anima.
 
 Versi paling ringkas dari perjalanan yang ingin dirasakan pemain adalah:

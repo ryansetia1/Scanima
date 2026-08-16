@@ -491,11 +491,11 @@ func _test_kunci_expedition() -> void:
 
 func _test_kunci_purchase() -> void:
 	print("7. pembelian Shop bertahan sampai server mengonfirmasi")
-	var pending: Dictionary = GameState.begin_purchase("byte_berry", 2)
+	var pending: Dictionary = GameState.begin_purchase("byte_berry", 1)
 	var key := str(pending.get("idempotency_key", ""))
 	_check(not key.is_empty(), "pembelian harus punya idempotency key")
 	_check_eq(pending.get("item_id"), "byte_berry", "pembelian harus membawa item_id")
-	_check_eq(int(pending.get("expected_price")), 2, "pembelian harus membawa harga yang dilihat pemain")
+	_check_eq(int(pending.get("expected_price")), 1, "pembelian harus membawa harga yang dilihat pemain")
 	var kedua: Dictionary = GameState.begin_purchase("pulse_cell", 8)
 	_check_eq(kedua.get("idempotency_key"), key, "tap Buy kedua tidak boleh menimpa pending purchase")
 	_check_eq(kedua.get("item_id"), "byte_berry", "item pending harus tetap yang pertama")

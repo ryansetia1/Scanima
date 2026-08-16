@@ -68,7 +68,7 @@ Tiga mata uang, dan yang menentukan pembagiannya adalah biaya nyata yang mereka 
 | **Genesis Core** | **Setiap capture diterima** — generation privat ~$0.07 | Starter guest/link, **grant mingguan linked**, IAP/langganan |
 | **Bits** | Makanan dan item di Shop | 50 saat onboarding, Shop, hadiah battle (cap 100/hari lokal) |
 
-> **Grant Core mingguan (live):** akun **linked** (bukan guest anonim) menerima **+1 Genesis Core otomatis setiap 7 hari kalender server** sejak grant terakhir. **Tidak ada catch-up** — offline 30 hari tetap +1 saat jatuh tempo, bukan +4. **Cap saldo gratis: 3 Core** — grant tidak menumpuk di atas 3; pembelian IAP di luar cap. Grant server-authoritative + ledger-backed. Starter tetap 1 Core guest, +2 sekali saat link Google → maks 3 lifetime starter.
+> **Grant Core mingguan (live):** akun **linked** (bukan guest anonim) menerima **+1 Genesis Core otomatis setiap 7 hari kalender server** sejak grant terakhir. **Tidak ada catch-up** — offline 30 hari tetap +1 saat jatuh tempo, bukan +4. **Cap saldo gratis: 3 Core** — grant tidak menumpuk di atas 3; pembelian IAP di luar cap. Grant server-authoritative + ledger-backed. Starter tetap 1 Core guest, +3 sekali saat link Google → maks 4 lifetime starter. Akun Google lama dengan lifetime 3 mendapat +1 sekali (`starter_team`).
 
 #### Starter dan grant — keadaan historis (build saat ini)
 
@@ -211,7 +211,7 @@ Tiga kebutuhan, masing-masing 0-100. Bond bukan meter pemain: progres memakai **
 
 | Kebutuhan | Turun penuh dalam | Dipulihkan oleh | Efek saat 0 |
 | --- | --- | --- | --- |
-| **Hunger** | 10 jam | Makanan (Bits) | ATK -30%, tidak mau bertarung |
+| **Hunger** | 25 jam (aktif) | Makanan (Bits) | ATK turun; Battle tetap boleh |
 | **Energy** | 14 jam bangun | Tidur (waktu nyata) | SPD -40%, sering gagal aksi |
 | **Hygiene** | 24 jam | Sabun (Bits) | DEF -20% |
 
@@ -220,7 +220,7 @@ Tiga kebutuhan, masing-masing 0-100. Bond bukan meter pemain: progres memakai **
 Tidak ada cron, tidak ada background service, tidak ada timer yang harus tetap hidup. Semua kebutuhan adalah fungsi dari waktu yang berlalu sejak `care_synced_at`. Satu perhitungan saat Anima dibuka, dan hasilnya identik entah aplikasi ditutup 5 menit atau 5 hari.
 
 ```gdscript
-const DECAY_PER_HOUR := { "hunger": 10.0, "energy": 7.1, "hygiene": 4.2 }
+const DECAY_PER_HOUR := { "hunger": 4.0, "energy": 7.1, "hygiene": 4.2 }
 const MAX_DECAY_HOURS := 48.0
 
 static func apply_decay(care: Dictionary, synced_at: float, now: float) -> Dictionary:
@@ -233,7 +233,7 @@ static func apply_decay(care: Dictionary, synced_at: float, now: float) -> Dicti
 
 Tiga keputusan di fungsi itu perlu dijelaskan karena semuanya menolak desain Tamagotchi klasik dengan sengaja.
 
-**Decay dihitung sejak sync terakhir, tanpa grace.** Versi awal memotong 8 jam dari setiap interval, lalu menuliskan ulang `care_synced_at`. Pemain yang membuka app lebih sering dari itu tidak pernah kehilangan Hunger atau Hygiene, jadi Feed/Clean jadi kosmetik. Sekarang dua jam offline memotong Hunger 20 dan Hygiene 8,4 — satu Feed (+35) menutupi kira-kira 3,5 jam, satu Clean (+35) kira-kira 8 jam. Tidur Anima tetap memulihkan Energy; Hunger dan Hygiene terus turun, jadi pagi hari tetap perlu makan.
+**Decay dihitung sejak sync terakhir, tanpa grace.** Versi awal memotong 8 jam dari setiap interval, lalu menuliskan ulang `care_synced_at`. Pemain yang membuka app lebih sering dari itu tidak pernah kehilangan Hunger atau Hygiene, jadi Feed/Clean jadi kosmetik. Sekarang dua jam offline di Home memotong Hunger 8 dan Hygiene 8,4 — satu Feed (+35) menutupi kira-kira 8,75 jam aktif, satu Clean (+35) kira-kira 8 jam. Anima yang tidak di-Summon memakai 25% laju itu (Hunger 1/jam, Hygiene 1,05/jam) dan tidak turun di bawah Hunger 40 / Hygiene 50, serta tidak masuk Dormant baru. Floor itu menahan decay, bukan mengangkat meter yang sudah di bawah ambang; Dormant yang sudah ada dan bonus terawat +8 hanya berubah pada companion aktif. Tidur Anima tetap memulihkan Energy; Hunger dan Hygiene companion aktif terus turun, jadi pagi hari di Home tetap perlu makan.
 
 **Plafon decay 48 jam** membuat pergi seminggu tidak lebih buruk daripada pergi dua hari. Tanpa plafon, pemain yang kembali setelah liburan menemukan koleksinya hancur total, dan reaksi paling umum untuk itu bukan bertobat, tapi menghapus aplikasi.
 
@@ -260,7 +260,7 @@ Bonus "terawat" +8 adalah pendorong terbesar dan itu memang tujuannya: yang ingi
 
 Nilai aksi yang live di Phase 2:
 
-- **Feed:** wajib `food_id` dari inventory; Hunger + nilai makanan (Byte Berry 10 … Nova Feast 100). Tidak mendebit Bits. EXP +3 hanya jika Hunger sebelum aksi <40 **dan** sesudah restore ≥40. Ditolak `NEED_FULL` kalau Hunger setelah decay >= 99.5, `NO_ITEM` kalau tas kosong, `INVALID_ITEM` kalau bukan makanan. Client meredupkan tombol dan toast tanpa request — Godot menelan `pressed` kalau `disabled`.
+- **Feed:** wajib `food_id` dari inventory; Hunger + nilai makanan (Byte Berry 10 … Nova Feast 100). Harga Food live: 1, 2, 2, 3, 4, 5, 6, 8, 10 Bits. Tidak mendebit Bits. EXP +3 hanya jika Hunger sebelum aksi <40 **dan** sesudah restore ≥40. Ditolak `NEED_FULL` kalau Hunger setelah decay >= 99.5, `NO_ITEM` kalau tas kosong, `INVALID_ITEM` kalau bukan makanan. Client meredupkan tombol dan toast tanpa request — Godot menelan `pressed` kalau `disabled`.
 - **Clean:** gratis, Hygiene +35; EXP +3 hanya jika Hygiene sebelum aksi <50. Gerbang penuh yang sama.
 - **Energy item (`use_item`):** Pulse Cell +20 / Reactor Pack +50, dijepit 100, tanpa EXP. `NEED_FULL` pada Energy >= 99.5.
 - **Play:** gratis, Energy -5; EXP +1 maksimal lima kali per hari sipil lokal. Tidak ada cap Bond; anti-farm-nya Energy dan counter harian. Client menahan tap sesudah cap (toast, tanpa request).

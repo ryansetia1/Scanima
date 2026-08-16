@@ -98,14 +98,32 @@ begin
   values
     ('uji-google-u1', u1, jsonb_build_object('sub', 'uji-google-u1'), 'google');
   v_j := public.upgrade_seeker_account(u1);
-  assert (v_j->>'genesis_cores')::int = 3
-         and (v_j->>'account_upgraded_at') is not null,
-         'upgrade Google harus melengkapi starter lifetime dari 1 menjadi 3';
+  assert (v_j->>'genesis_cores')::int = 4
+         and (v_j->>'account_upgraded_at') is not null
+         and (select delta from public.quota_ledger
+               where owner_id = u1 and reason = 'starter_google') = 3,
+         'upgrade Google harus melengkapi starter lifetime dari 1 menjadi 4';
   v_j2 := public.upgrade_seeker_account(u1);
-  assert (v_j2->>'genesis_cores')::int = 3
+  assert (v_j2->>'genesis_cores')::int = 4
          and (select count(*) from public.quota_ledger
                where owner_id = u1 and reason = 'starter_google') = 1,
-         'retry upgrade tidak boleh menggandakan +2 Core';
+         'retry upgrade tidak boleh menggandakan +3 Core';
+  delete from public.quota_ledger where owner_id = u1 and reason = 'starter_google';
+  update public.profiles
+     set genesis_cores = 3
+   where id = u1;
+  insert into public.quota_ledger (owner_id, currency, delta, reason)
+  values (u1, 'genesis_cores', 2, 'starter_google');
+  v_j := public.upgrade_seeker_account(u1);
+  assert (v_j->>'genesis_cores')::int = 4
+         and (select delta from public.quota_ledger
+               where owner_id = u1 and reason = 'starter_team') = 1,
+         'akun Google lama dengan lifetime 3 mendapat +1 starter_team';
+  v_j2 := public.upgrade_seeker_account(u1);
+  assert (v_j2->>'genesis_cores')::int = 4
+         and (select count(*) from public.quota_ledger
+               where owner_id = u1 and reason = 'starter_team') = 1,
+         'retry top-up tidak boleh menggandakan Core keempat';
   begin
     perform public.upgrade_seeker_account(u2);
     ok := false;
@@ -123,12 +141,19 @@ begin
   values
     ('uji-google-u4', u4, jsonb_build_object('sub', 'uji-google-u4'), 'google');
   v_j := public.upgrade_seeker_account(u4);
-  assert (v_j->>'genesis_cores')::int = 9
+  assert (v_j->>'genesis_cores')::int = 10
          and not exists (
            select 1 from public.quota_ledger
             where owner_id = u4 and reason = 'starter_google'
-         ),
-         'akun legacy dengan lifetime starter 3 tidak boleh menerima Core tambahan';
+         )
+         and (select delta from public.quota_ledger
+               where owner_id = u4 and reason = 'starter_team') = 1,
+         'akun legacy dengan lifetime starter 3 mendapat tepat +1 Core keempat';
+  v_j2 := public.upgrade_seeker_account(u4);
+  assert (v_j2->>'genesis_cores')::int = 10
+         and (select count(*) from public.quota_ledger
+               where owner_id = u4 and reason = 'starter_team') = 1,
+         'retry legacy tidak boleh menggandakan starter_team';
 
   v_j := public.complete_seeker_profile(u1, 'TestSeeker', 2000, null);
   assert v_j->>'seeker_name' = 'TestSeeker', 'profil Seeker harus tersimpan';
@@ -873,7 +898,7 @@ begin
          'bonus terawat +8 hanya boleh sekali per hari';
 
   -- Decay sejak sync terakhir, tanpa grace. Dua jam sudah memotong Hunger;
-  -- 10 jam menghabiskannya. Cap 48 jam tetap memasukkan Dormant.
+  -- 25 jam menghabiskannya. Cap 48 jam tetap memasukkan Dormant.
   update public.animas
      set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
          care_score = 0,
@@ -881,24 +906,24 @@ begin
          well_cared_on = public.local_civil_date(now(), 420)
    where id = v_care_anima;
   perform public.apply_care(u1, v_care_anima, 'sync', null);
-  assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 80,
-         'dua jam harus memotong Hunger 20 supaya Feed terasa';
+  assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 92,
+         'dua jam aktif harus memotong Hunger 8 supaya Feed terasa';
 
   update public.animas
      set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
          care_synced_at = now() - interval '8 hours'
    where id = v_care_anima;
   perform public.apply_care(u1, v_care_anima, 'sync', null);
-  assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 20,
-         'delapan jam harus memotong Hunger 80';
+  assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 68,
+         'delapan jam aktif harus memotong Hunger 32';
 
   update public.animas
      set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
-         care_synced_at = now() - interval '18 hours'
+         care_synced_at = now() - interval '25 hours'
    where id = v_care_anima;
   perform public.apply_care(u1, v_care_anima, 'sync', null);
   assert (select (care->>'hunger')::numeric from public.animas where id = v_care_anima) = 0,
-         'Hunger habis dalam 10 jam';
+         'Hunger aktif habis dalam 25 jam';
 
   -- Cap 48 jam memasukkan Dormant. EXP tetap. Dua Feed + dua Clean dari nol
   -- melewati ambang recovery 50 tanpa mengubah generation status=ready.
@@ -970,6 +995,80 @@ begin
   assert (select active_anima_id from public.profiles where id = u1) = v_bench_anima,
          'Summon menulis companion aktif di server';
   perform public.apply_care(u1, v_care_anima, 'summon', 'care-summon-back');
+
+  -- Collection memakai 25% decay aktif dan floor di atas ambang Hungry/Dirty.
+  update public.animas
+     set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
+         care_synced_at = now() - interval '8 hours',
+         dormant_since = null
+   where id = v_bench_anima;
+  v_j := public.apply_care(u1, v_bench_anima, 'sync', null);
+  assert (v_j #>> '{anima,care,hunger}')::numeric = 92,
+         'delapan jam bangku harus memotong Hunger 8';
+  assert (v_j #>> '{anima,care,hygiene}')::numeric = 91.6,
+         'Hygiene bangku turun 1.05 per jam';
+
+  update public.animas
+     set care = '{"hunger":10,"energy":100,"hygiene":10,"bond":0}'::jsonb,
+         care_synced_at = now() - interval '2 hours',
+         care_score = 0,
+         well_cared_on = null,
+         dormant_since = null
+   where id = v_bench_anima;
+  v_j := public.apply_care(u1, v_bench_anima, 'sync', null);
+  assert (v_j #>> '{anima,care,hunger}')::numeric = 8,
+         'bangku tidak mengangkat Hunger yang sudah di bawah 40';
+  assert (v_j #>> '{anima,care,hygiene}')::numeric = 7.9,
+         'bangku tidak mengangkat Hygiene yang sudah di bawah 50';
+
+  update public.animas
+     set care = '{"hunger":80,"energy":80,"hygiene":80,"bond":0}'::jsonb,
+         care_synced_at = now(),
+         care_score = 0,
+         well_cared_on = null,
+         dormant_since = null
+   where id = v_bench_anima;
+  v_j := public.apply_care(u1, v_bench_anima, 'sync', null);
+  assert (v_j #>> '{anima,care_score}')::int = 0
+         and (v_j #>> '{anima,well_cared_on}') is null,
+         'sync Collection tidak boleh memberi bonus terawat +8';
+
+  update public.animas
+     set care = '{"hunger":60,"energy":100,"hygiene":10,"bond":0}'::jsonb,
+         care_synced_at = now() - interval '2 hours',
+         care_score = 0,
+         dormant_since = now() - interval '1 day'
+   where id = v_bench_anima;
+  v_j := public.apply_care(u1, v_bench_anima, 'sync', null);
+  assert (v_j #>> '{anima,dormant_since}') is not null,
+         'Dormant bangku tidak pulih hanya karena floor Hygiene';
+  assert (v_j #>> '{anima,care,hunger}')::numeric = 58,
+         'Hunger bangku yang sudah di-Feed tetap turun 1/jam';
+  assert (v_j #>> '{anima,care,hygiene}')::numeric = 7.9,
+         'Hygiene Dormant bangku tidak diangkat ke 50';
+
+  update public.animas
+     set care = '{"hunger":60,"energy":100,"hygiene":60,"bond":0}'::jsonb,
+         care_synced_at = now(),
+         dormant_since = now() - interval '1 day'
+   where id = v_bench_anima;
+  v_j := public.apply_care(u1, v_bench_anima, 'summon', 'care-summon-dormant-ready');
+  assert (v_j #>> '{anima,dormant_since}') is null,
+         'Summon Anima yang sudah 50/50 boleh memulihkan Dormant';
+  perform public.apply_care(u1, v_care_anima, 'summon', 'care-summon-after-dormant');
+
+  update public.animas
+     set care = '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb,
+         care_synced_at = now() - interval '56 hours',
+         dormant_since = null
+   where id = v_bench_anima;
+  v_j := public.apply_care(u1, v_bench_anima, 'sync', null);
+  assert (v_j #>> '{anima,dormant_since}') is null,
+         'Anima bangku tidak masuk Dormant baru';
+  assert (v_j #>> '{anima,care,hunger}')::numeric = 52,
+         '48 jam bangku menahan Hunger di 52';
+  assert (v_j #>> '{anima,care,hygiene}')::numeric = 50,
+         '48 jam bangku menahan Hygiene di floor 50';
 
   ----------------------------------------------------------------------------
   -- 11. Battle: eligibility, satu session, turn idempoten, dan reward atomik
@@ -1335,15 +1434,15 @@ begin
   ----------------------------------------------------------------------------
   update public.profiles set bits = 50 where id = u1;
   delete from public.player_inventory where owner_id = u1 and item_id = 'byte_berry';
-  v_j := public.purchase_catalog_item(u1, 'byte_berry', 2, 'buy-byte-1');
-  assert (v_j->>'bits')::int = 48 and (v_j->>'quantity')::int = 1
+  v_j := public.purchase_catalog_item(u1, 'byte_berry', 1, 'buy-byte-1');
+  assert (v_j->>'bits')::int = 49 and (v_j->>'quantity')::int = 1
          and not (v_j->>'replayed')::bool,
          'pembelian harus mendebit harga katalog dan menambah inventory';
   assert (select count(*) from public.quota_ledger
-           where owner_id = u1 and reason = 'shop_buy' and delta = -2) = 1,
+           where owner_id = u1 and reason = 'shop_buy' and delta = -1) = 1,
          'pembelian harus punya satu baris ledger';
-  v_j2 := public.purchase_catalog_item(u1, 'byte_berry', 2, 'buy-byte-1');
-  assert (v_j2->>'replayed')::bool and (v_j2->>'bits')::int = 48
+  v_j2 := public.purchase_catalog_item(u1, 'byte_berry', 1, 'buy-byte-1');
+  assert (v_j2->>'replayed')::bool and (v_j2->>'bits')::int = 49
          and (v_j2->>'quantity')::int = 1,
          'replay pembelian tidak boleh mendebit dua kali';
   begin
@@ -1352,20 +1451,20 @@ begin
   exception when others then ok := (sqlerrm = 'PRICE_CHANGED');
   end;
   assert ok, 'harga yang tidak cocok harus ditolak';
-  assert (select bits from public.profiles where id = u1) = 48,
+  assert (select bits from public.profiles where id = u1) = 49,
          'PRICE_CHANGED tidak boleh mendebit';
   insert into public.player_inventory (owner_id, item_id, quantity)
   values (u1, 'moon_biscuit', 999)
   on conflict (owner_id, item_id) do update set quantity = 999;
   begin
-    perform public.purchase_catalog_item(u1, 'moon_biscuit', 3, 'buy-stack');
+    perform public.purchase_catalog_item(u1, 'moon_biscuit', 2, 'buy-stack');
     ok := false;
   exception when others then ok := (sqlerrm = 'STACK_FULL');
   end;
   assert ok, 'stack 999 harus menolak pembelian baru';
   update public.profiles set bits = 1 where id = u1;
   begin
-    perform public.purchase_catalog_item(u1, 'nova_feast', 20, 'buy-poor');
+    perform public.purchase_catalog_item(u1, 'nova_feast', 10, 'buy-poor');
     ok := false;
   exception when others then ok := (sqlerrm = 'NO_BITS');
   end;
@@ -1468,7 +1567,7 @@ begin
     json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);
   perform set_config('role', 'authenticated', true);
   begin
-    perform public.purchase_catalog_item(u1, 'byte_berry', 2, 'buy-client');
+    perform public.purchase_catalog_item(u1, 'byte_berry', 1, 'buy-client');
     ok := false;
   exception when insufficient_privilege then ok := true;
   end;

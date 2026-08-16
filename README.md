@@ -109,7 +109,7 @@ mendapat 1 Core dan satu Scan sukses; Genesis maupun cache hit memakai kesempata
 guest itu. Sesudahnya CTA Scan menjadi `Sign in to Scan Again`, sementara Care,
 Battle, Shop, dan Collection tetap berjalan. Link Google memakai PKCE dan deep
 link `scanima://auth/callback`, mempertahankan UID/progres, lalu melengkapi grant
-starter menjadi 3 Core lifetime (+2 sekali). Kalau identity Google sudah dimiliki
+starter menjadi 4 Core lifetime (+3 sekali). Kalau identity Google sudah dimiliki
 akun lain, restore mengganti guest lokal tanpa merge setelah peringatan. Supabase
 Auth memakai Site URL `scanima://auth/callback` dan allow-list
 `scanima://auth/callback**` karena callback membawa query `state` acak; exact URL
