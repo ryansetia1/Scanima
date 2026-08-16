@@ -116,6 +116,7 @@ var _intro_pending_summon := false
 var _command_dialogue_used := false
 var _final_ace_pending := false
 var _switch_overlay: Control
+var _switch_sheet: PanelContainer
 
 
 func _ready() -> void:
@@ -586,30 +587,48 @@ func _mount_switch_overlay() -> void:
 	var overlay := Control.new()
 	overlay.name = "SwitchOverlay"
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.clip_contents = true
 	overlay.z_index = 10
 	overlay.visible = false
-	_switch_panel.reparent(overlay)
-	_switch_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_switch_panel.anchor_left = 0.0
-	_switch_panel.anchor_right = 1.0
-	_switch_panel.anchor_top = 1.0
-	_switch_panel.anchor_bottom = 1.0
-	_switch_panel.offset_left = 16.0
-	_switch_panel.offset_right = -16.0
-	_switch_panel.offset_bottom = -12.0
-	_switch_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_switch_panel.size_flags_vertical = Control.SIZE_SHRINK_END
+	var sheet := PanelContainer.new()
+	sheet.name = "SwitchSheet"
+	sheet.theme_type_variation = &"BottomSheetPanel"
+	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	sheet.anchor_left = 0.0
+	sheet.anchor_right = 1.0
+	sheet.anchor_top = 1.0
+	sheet.anchor_bottom = 1.0
+	sheet.offset_left = 0.0
+	sheet.offset_right = 0.0
+	sheet.offset_bottom = 0.0
+	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	sheet.mouse_filter = Control.MOUSE_FILTER_STOP
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	var handle_row := CenterContainer.new()
+	handle_row.custom_minimum_size.y = 24.0
+	handle_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var handle := ColorRect.new()
+	handle.custom_minimum_size = Vector2(84, 7)
+	handle.color = Color(0.4, 0.5, 0.68, 0.72)
+	handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	handle_row.add_child(handle)
+	column.add_child(handle_row)
+	_switch_panel.reparent(column)
+	sheet.add_child(column)
+	overlay.add_child(sheet)
 	add_child(overlay)
 	_switch_overlay = overlay
+	_switch_sheet = sheet
 
 
 func _layout_switch_panel() -> void:
-	if not is_instance_valid(_switch_panel):
+	if not is_instance_valid(_switch_sheet):
 		return
-	var height := maxf(_switch_panel.get_combined_minimum_size().y, 280.0)
-	_switch_panel.offset_top = -height
+	var height := _switch_sheet.get_combined_minimum_size().y
+	_switch_sheet.offset_top = -height
+	_switch_sheet.offset_bottom = 0.0
 
 
 func _hide_switch_overlay() -> void:

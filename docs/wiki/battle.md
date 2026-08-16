@@ -32,7 +32,8 @@ menampilkan satu fighter aktif dari setiap tim.
   **Retreat**. HUD menaruh pip tim di atas nama Anima, lalu HP. Di Expedition,
   label chapter dan zona duduk di atas pelat HP.
 - **Switch** sukarela memakai satu turn. Tombol aksi tetap di tempatnya
-  supaya arena tidak bergeser. Picker menampilkan art, nama plus
+  supaya arena tidak bergeser. Picker naik sebagai lembar dari bawah layar
+  dan menampilkan art, nama plus
   Level, status **In battle** / **Ready** / **KO**, dan sisa HP tiap anggota.
   **Cancel** menutup picker dan mengembalikan tombol aksi. Setelah Anima KO, pose Defeated tampil
   sebentar, lalu picker pengganti terbuka tanpa memakai turn berikutnya — di

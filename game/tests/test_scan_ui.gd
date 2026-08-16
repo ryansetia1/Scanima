@@ -1931,17 +1931,21 @@ func _test_team_battle_view() -> void:
 	_check(switch_panel.visible and actions.visible, "Switch opens the picker without hiding the action dock")
 	await process_frame
 	var overlay := view.find_child("SwitchOverlay", true, false) as Control
+	var sheet := view.find_child("SwitchSheet", true, false) as PanelContainer
 	_check(
 		overlay != null
 		and overlay.get_parent() == view
 		and overlay.clip_contents
 		and overlay.z_index > 2
 		and overlay.visible
-		and overlay.find_children("*", "ColorRect", true, false).is_empty()
+		and overlay.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and sheet != null
+		and sheet.theme_type_variation == &"BottomSheetPanel"
 		and overlay.size.y >= view.size.y - 1.0
+		and is_equal_approx(sheet.get_global_rect().position.x, view.get_global_rect().position.x)
 		and switch_panel.get_global_rect().size.y >= 128.0
-		and switch_panel.get_global_rect().end.y <= view.get_global_rect().end.y + 1.0,
-		"Switch picker covers the view root so VBox cannot zero its height"
+		and sheet.get_global_rect().end.y <= view.get_global_rect().end.y + 1.0,
+		"Switch picker sits in a full-width bottom sheet without a dim scrim"
 	)
 	var switch_cancel := view.find_child("TeamSwitchCancel", true, false) as Button
 	_check(
