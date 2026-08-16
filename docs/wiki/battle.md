@@ -10,6 +10,14 @@ Layar Battle menampilkan **Duel**, **Team Battle**, dan **Expedition** sejak
 tab dibuka. Tombol mode langsung bisa ditekan; hanya dimatikan kalau server
 memang menutup mode itu.
 
+Menutup app saat fight atau Expedition masih berjalan tidak membuang progress.
+Saat app dibuka lagi, kamu tetap masuk ke **Home**. Buka tab **Battle**, lalu
+pilih **Continue Battle**, **Continue Team Battle**, atau **Continue Expedition**
+untuk melanjutkan mode yang tersimpan. Mode Battle lain diredupkan sampai mode
+itu selesai atau kamu Retreat. Turn yang sempat terkirim dipulihkan dengan aman
+dan biaya Energy tidak dipotong lagi. Duel yang dibiarkan lebih dari 30 menit
+tetap dapat kedaluwarsa.
+
 ## Team Battle
 
 Pilih tepat **4 Anima** untuk melawan tim lain berisi 1–4 Anima. Arena tetap

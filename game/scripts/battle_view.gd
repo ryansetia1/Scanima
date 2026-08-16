@@ -83,6 +83,11 @@ var _lobby_row: Dictionary = {}
 var _lobby_daily_reward: Dictionary = {}
 var _session: Dictionary = {}
 var _busy := false
+var _team_available := true
+var _expedition_available := true
+var _duel_pending := false
+var _team_pending := false
+var _expedition_pending := false
 var _effectiveness_tween: Tween
 var _queued_action := ""
 var _last_reward: Dictionary = {}
@@ -120,24 +125,52 @@ func _ready() -> void:
 	_bot_sprite.z_index = 2
 	set_team_available(GameState.team_battle_available())
 	set_expedition_available(GameState.expedition_available())
-	set_expedition_pending(not GameState.pending_expedition.is_empty())
 	set_lobby({})
 
 
 func set_team_available(available: bool) -> void:
-	_team_button.visible = true
-	_team_button.disabled = not available
+	_team_available = available
+	_refresh_pending_entries()
 
 
 func set_expedition_available(available: bool) -> void:
-	_expedition_button.visible = true
-	_expedition_button.disabled = not available
+	_expedition_available = available
+	_refresh_pending_entries()
+
+
+func set_duel_pending(pending: bool) -> void:
+	_duel_pending = pending
+	_refresh_pending_entries()
+
+
+func set_team_pending(pending: bool) -> void:
+	_team_pending = pending
+	_refresh_pending_entries()
 
 
 func set_expedition_pending(pending: bool) -> void:
-	_expedition_button.text = tr(
-		"EXPEDITION_CONTINUE" if pending else "EXPEDITION_OPEN"
+	_expedition_pending = pending
+	_refresh_pending_entries()
+
+
+func _refresh_pending_entries() -> void:
+	var has_pending := _duel_pending or _team_pending or _expedition_pending
+	_team_button.visible = true
+	_team_button.text = tr("TEAM_CONTINUE" if _team_pending else "TEAM_OPEN")
+	_team_button.disabled = (
+		(not _team_available and not _team_pending)
+		or (has_pending and not _team_pending)
 	)
+	_expedition_button.visible = true
+	_expedition_button.text = tr(
+		"EXPEDITION_CONTINUE" if _expedition_pending else "EXPEDITION_OPEN"
+	)
+	_expedition_button.disabled = (
+		(not _expedition_available and not _expedition_pending)
+		or (has_pending and not _expedition_pending)
+	)
+	if _session.is_empty() and _lobby_panel.visible:
+		_apply_lobby()
 
 
 func set_expedition_new(has_new: bool) -> void:
@@ -178,12 +211,15 @@ func set_lobby(row: Dictionary) -> void:
 	_clear_action_commit()
 	_lobby_row = row.duplicate(true)
 	_session = {}
+	_duel_pending = not GameState.pending_battle.is_empty()
+	_team_pending = not GameState.pending_team_battle.is_empty()
+	_expedition_pending = not GameState.pending_expedition.is_empty()
 	_header.visible = true
 	_lobby_panel.visible = true
 	_battle_content.visible = false
 	_result_panel.visible = false
 	_start_button.visible = true
-	_apply_lobby()
+	_refresh_pending_entries()
 
 
 func set_daily_reward(daily_reward: Dictionary) -> void:
@@ -217,7 +253,18 @@ func _apply_lobby() -> void:
 	var unavailable_key := _lobby_unavailable_key()
 	var training := _is_training(_lobby_daily_reward)
 	var bits_capped := _is_bits_capped(_lobby_daily_reward)
-	if not unavailable_key.is_empty():
+	var other_pending_key := ""
+	if _team_pending:
+		other_pending_key = "BATTLE_PENDING_TEAM"
+	elif _expedition_pending:
+		other_pending_key = "BATTLE_PENDING_EXPEDITION"
+	if _duel_pending:
+		_lobby_name.text = LocaleManager.display_name(_lobby_row)
+		_lobby_meta.text = tr("BATTLE_PENDING")
+	elif not other_pending_key.is_empty():
+		_lobby_name.text = LocaleManager.display_name(_lobby_row)
+		_lobby_meta.text = tr(other_pending_key)
+	elif not unavailable_key.is_empty():
 		_lobby_name.text = tr(_lobby_title_key(unavailable_key))
 		_lobby_meta.text = tr(unavailable_key)
 	elif training and bits_capped:
@@ -238,16 +285,19 @@ func _apply_lobby() -> void:
 			LocaleManager.element_compact(_lobby_row),
 			LocaleManager.level_label(CareRules.level_from_exp(int(_lobby_row.get("care_score", 0)))),
 		]
-	if unavailable_key.is_empty():
+	if unavailable_key.is_empty() and not _duel_pending and other_pending_key.is_empty():
 		var care: Variant = _lobby_row.get("care")
 		if CareRules.is_hungry(care):
 			_lobby_meta.text = _lobby_meta.text + "\n" + tr("BATTLE_HUNGRY_PENALTY")
 		if CareRules.need_is_low(care, "hygiene"):
 			_lobby_meta.text = _lobby_meta.text + "\n" + tr("BATTLE_DIRTY_PENALTY")
-		_start_button.text = tr("BATTLE_TRAIN") if training else tr("BATTLE_START")
-	else:
+	if _duel_pending:
+		_start_button.text = tr("BATTLE_CONTINUE")
+	elif not unavailable_key.is_empty():
 		_start_button.text = tr("BATTLE_CHOOSE_ANIMA")
-	_start_button.disabled = _busy
+	else:
+		_start_button.text = tr("BATTLE_TRAIN") if training else tr("BATTLE_START")
+	_start_button.disabled = _busy or not other_pending_key.is_empty()
 	_schedule_daily_reward_reset(_lobby_daily_reward)
 
 
@@ -318,7 +368,10 @@ func set_busy(busy: bool) -> void:
 	_busy = busy
 	if not busy:
 		_clear_action_commit()
-	_start_button.disabled = busy
+	if _session.is_empty():
+		_apply_lobby()
+	else:
+		_start_button.disabled = busy
 	_update_action_state()
 
 
@@ -327,7 +380,10 @@ func is_training_lobby() -> bool:
 
 
 func _on_start_pressed() -> void:
-	if _busy:
+	if _busy or _team_pending or _expedition_pending:
+		return
+	if _duel_pending:
+		resume_requested.emit()
 		return
 	if _lobby_unavailable_key().is_empty():
 		start_requested.emit()

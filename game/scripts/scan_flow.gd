@@ -449,17 +449,8 @@ func _boot() -> void:
 		_anima.sprite_frames = null
 		_set_home_shell_state(&"empty")
 		_say(tr("STATUS_FIRST_SCAN"))
-	if not GameState.pending_expedition.is_empty() and GameState.pending_scan.is_empty():
-		_switch_destination(BottomNav.BATTLE)
-		_battle_view.show_expedition_mode()
-		await _expedition_controller.resume_pending()
-	elif not GameState.pending_team_battle.is_empty() and GameState.pending_scan.is_empty():
-		_switch_destination(BottomNav.BATTLE)
-		_battle_view.show_team_mode()
-		await _resume_team_battle()
-	elif not GameState.pending_battle.is_empty() and GameState.pending_scan.is_empty():
-		_switch_destination(BottomNav.BATTLE)
-		await _resume_battle()
+	# Battle yang tersimpan tetap menjadi bookmark sampai pemain memilih Continue.
+	# Boot tidak mengambil alih Home atau me-replay intent jaringan secara otomatis.
 	if GameState.pending_scan.is_empty():
 		call_deferred("_maybe_prompt_seeker_onboarding")
 
@@ -1719,6 +1710,8 @@ func _forfeit_battle() -> void:
 func _apply_cached_mode_availability() -> void:
 	_battle_view.set_team_available(GameState.team_battle_available())
 	_battle_view.set_expedition_available(GameState.expedition_available())
+	_battle_view.set_duel_pending(not GameState.pending_battle.is_empty())
+	_battle_view.set_team_pending(not GameState.pending_team_battle.is_empty())
 	_battle_view.set_expedition_pending(not GameState.pending_expedition.is_empty())
 
 
@@ -2802,7 +2795,7 @@ func _refresh_stats() -> void:
 		_thumbnail_for(details_row) if not details_row.is_empty() else null
 	)
 	_home_view.set_anima(_current_anima, _busy)
-	if _battle_view.session_data().is_empty() and GameState.pending_battle.is_empty():
+	if _battle_view.session_data().is_empty():
 		_battle_view.set_lobby(_current_anima)
 	_first_anima_effect.set_active(_home_view.shell_state() == &"empty")
 	_bottom_nav.set_busy(_busy, _details_available())
@@ -2825,7 +2818,7 @@ func _refresh_care() -> void:
 	var sleeping := _is_sleeping(_current_anima)
 	var dormant := _has_timestamp(_current_anima.get("dormant_since"))
 	_home_view.update_care(_current_anima, _busy)
-	if _battle_view.session_data().is_empty() and GameState.pending_battle.is_empty():
+	if _battle_view.session_data().is_empty():
 		_battle_view.set_lobby(_current_anima)
 	if _profile_anima.is_empty():
 		_details_view.set_anima(_current_anima, _thumbnail_for(_current_anima))
@@ -2975,15 +2968,18 @@ func _switch_destination(
 			_scan_view.set_status(tr("STATUS_SCAN_READY"))
 	if (
 		destination == BottomNav.BATTLE
-		and GameState.pending_battle.is_empty()
-		and GameState.pending_team_battle.is_empty()
-		and GameState.pending_expedition.is_empty()
+		and _battle_view.session_data().is_empty()
 		and not _battle_view.is_team_mode()
 		and not _battle_view.is_expedition_mode()
-		and refresh_battle_reward
 	):
 		_battle_view.set_lobby(_current_anima)
-		_refresh_battle_reward_status()
+		if (
+			GameState.pending_battle.is_empty()
+			and GameState.pending_team_battle.is_empty()
+			and GameState.pending_expedition.is_empty()
+			and refresh_battle_reward
+		):
+			_refresh_battle_reward_status()
 
 	var stage_destination := destination == BottomNav.HOME or (
 		destination == BottomNav.SCAN and _incubator.is_active()

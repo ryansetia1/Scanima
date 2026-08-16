@@ -1146,6 +1146,12 @@ func _test_seeker_ui() -> void:
 
 func _test_battle_view() -> void:
 	UiMotion.set_reduced_motion(true)
+	# The view reads durable pending bookmarks at ready time; isolate this UI test
+	# from whichever Battle the developer currently has saved in user://.
+	var game_state := get_root().get_node("GameState")
+	game_state.set(&"pending_battle", {})
+	game_state.set(&"pending_team_battle", {})
+	game_state.set(&"pending_expedition", {})
 	var packed := load("res://scenes/ui/battle_view.tscn") as PackedScene
 	var view := packed.instantiate()
 	root.add_child(view)
@@ -1212,10 +1218,22 @@ func _test_battle_view() -> void:
 	_check(
 		expedition_button.visible
 		and not expedition_button.disabled
-		and expedition_button.text == tr("EXPEDITION_CONTINUE"),
-		"an open run stays discoverable as Continue Expedition from the Duel lobby"
+		and expedition_button.text == tr("EXPEDITION_CONTINUE")
+		and team_button.disabled
+		and start.disabled,
+		"an open run exposes only Continue Expedition from the Battle lobby"
 	)
 	view.set_expedition_pending(false)
+	view.set_team_pending(true)
+	_check(
+		team_button.visible
+		and not team_button.disabled
+		and team_button.text == tr("TEAM_CONTINUE")
+		and expedition_button.disabled
+		and start.disabled,
+		"an unfinished Team Battle exposes one explicit continuation entry"
+	)
+	view.set_team_pending(false)
 	view.set_expedition_new(true)
 	_check(expedition_badge.visible, "unopened chapter marks the Expedition entry as New")
 	view.set_expedition_new(false)
@@ -1231,6 +1249,20 @@ func _test_battle_view() -> void:
 	view.set_lobby(anima)
 	_check(lobby.visible and not content.visible and not result.visible, "Battle opens in its lobby")
 	_check(header.visible, "Battle lobby keeps its page title and explanation")
+	var resume_requests := [0]
+	view.resume_requested.connect(func() -> void: resume_requests[0] += 1)
+	view.set_duel_pending(true)
+	_check(
+		start.text == tr("BATTLE_CONTINUE")
+		and lobby_meta.text == tr("BATTLE_PENDING")
+		and not start.disabled
+		and team_button.disabled
+		and expedition_button.disabled,
+		"an unfinished Duel waits behind an explicit Continue Battle action"
+	)
+	start.pressed.emit()
+	_check_eq(resume_requests[0], 1, "Continue Battle emits one safe resume request")
+	view.set_duel_pending(false)
 	_check(
 		page_title != null and page_title.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT
 		and page_subtitle != null and page_subtitle.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT,
@@ -2540,10 +2572,17 @@ func _test_expedition_view() -> void:
 	)
 	var flow_script := load("res://scripts/scan_flow.gd") as GDScript
 	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var boot_start := flow_source.find("func _boot")
+	var boot_end := flow_source.find("\n\nfunc _reload_roster", boot_start)
+	var boot_body := flow_source.substr(
+		boot_start, boot_end - boot_start
+	) if boot_start >= 0 and boot_end > boot_start else ""
 	_check(
-		flow_source.find("await _expedition_controller.resume_pending()") >= 0
-		and flow_source.find("GameState.pending_expedition.is_empty()") >= 0,
-		"shell boot resumes a persisted Expedition before opening another Battle mode"
+		boot_body.find("_resume_battle()") < 0
+		and boot_body.find("_resume_team_battle()") < 0
+		and boot_body.find("_expedition_controller.resume_pending()") < 0
+		and boot_body.find("_switch_destination(BottomNav.BATTLE)") < 0,
+		"shell boot leaves persisted Battle modes waiting while Home stays selected"
 	)
 	var level_ups: Array = flow_script.expedition_level_rewards({
 		"anima_exp": [

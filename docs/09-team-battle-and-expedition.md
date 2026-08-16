@@ -22,6 +22,16 @@ menjelaskan Duel saja.
 5. **Tidak ada model call saat pemain bermain.** Semua art dan copy chapter
    dibuat developer lebih dulu, direview, lalu dipublish.
 
+### Lifecycle client dan resume
+
+Boot client selalu berakhir di Home walau ada Duel, Team Battle, atau Expedition
+yang tersimpan. Pending session/operation tetap dipersist beserta idempotency key,
+tetapi tidak di-resume atau di-replay saat boot. Lobby Battle menampilkan tepat
+satu entry **Continue** untuk mode yang sedang berjalan dan meredupkan mode Battle
+lain. Request resume serta replay intent yang belum terkonfirmasi baru dilakukan
+setelah pemain menekan entry itu. Duel tetap mengikuti TTL session 30 menit;
+server boleh menjawab expired dan client membersihkan bookmark lokal.
+
 ## 2. Team Battle
 
 ### Tim dan lawan
