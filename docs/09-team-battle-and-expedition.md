@@ -93,12 +93,12 @@ Published content version immutable; run mengunci `chapter_id` dan
 `content_version` agar publish baru tidak mengubah perjalanan yang sedang aktif.
 
 Client menggambar map itu sebagai route tree bercabang, bukan grid dua kolom.
-Battle, Cache, Recovery, Mystery, Shop, dan Boss punya ikon berbeda; edge yang
-sudah dilalui, jalur pratinjau, dan cabang terkunci dibedakan lewat garis,
-brightness, focus border, serta state input tanpa label `Reachable`/`Locked`
-berulang. Node memakai target sentuh minimal 96 px. Tap pertama hanya memilih
-node dan menyorot turunannya; RPC `enter_node` baru dikirim setelah pemain
-menekan **Enter Node**. Peta memakai surface gelap opak supaya ambient ring dari
+Battle, Cache, Recovery, Mystery, Shop, dan Boss punya ikon berbeda. Edge yang
+sudah dilalui dan cabang terkunci sama-sama redup; hanya jalur pratinjau ke
+depan yang disorot. Brightness, focus border, dan state input menggantikan label
+`Reachable`/`Locked` berulang. Node memakai target sentuh minimal 96 px. Tap
+pertama hanya memilih node dan menyorot turunannya; RPC `enter_node` baru
+dikirim setelah pemain menekan **Enter Node**. Peta memakai surface gelap opak supaya ambient ring dari
 shell tidak bersaing dengan node. Status run dipadatkan menjadi satu baris;
 rincian empat HP disembunyikan saat penuh dan diganti ringkasan tim hanya bila
 ada anggota terluka. `visited_node_ids` disimpan authoritative per attempt dan
@@ -144,14 +144,16 @@ attempt yang masih berhak.
 | Elite | Team lebih kuat; Tokens dan pilihan boost lebih baik |
 | Recovery | Pilih heal roster atau revive satu Anima |
 | Cache | Pilih satu dari maksimal tiga boost |
-| Shop | Tiga offer memakai Tokens; satu refresh boleh memakai Bits |
+| Shop | Tiga offer memakai Tokens; satu refresh boleh memakai Bits; `shop-skip` melanjutkan tanpa pembelian |
 | Mystery | Dua pilihan singkat dari effect allowlist |
 | Boss | Boss Seeker + 3 Anima reguler + 1 ace `special` yang ditahan sampai akhir |
 
 Effect v1 dibatasi ke heal, revive, Tokens (wire `supplies`), max HP, Attack,
 Special, Guard, Speed, start PP, dan Shop discount. Manifest tidak boleh
 mengarang effect baru. Copy pemain memakai Tokens; kolom dan effect type tetap
-`supplies`.
+`supplies`. `shop-skip` adalah choice wire yang dicadangkan runtime, bukan
+effect atau option manifest. RPC hanya menerimanya pada pending node `shop` dan
+menuntut `party_state`, Tokens, serta boost identik dengan state authoritative.
 
 Tiga encounter pertama per hari sipil lokal memberi progression EXP:
 +2 untuk fighter yang pernah aktif dan masih hidup, +1 untuk bench yang masih

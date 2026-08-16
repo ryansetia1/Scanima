@@ -11,9 +11,15 @@ const EDGE_WIDTH := 5.0
 const EDGE_FUTURE := Color(0.38, 0.48, 0.68, 0.42)
 const EDGE_LOCKED := Color(0.25, 0.3, 0.43, 0.2)
 const EDGE_PREVIEW := Color(0.278, 0.902, 1.0, 0.95)
-const EDGE_VISITED := Color(1.0, 0.82, 0.4, 0.92)
 const BACKGROUND_STYLE := &"ModalPanel"
 const MOBILE_THEME := preload("res://themes/mobile_theme.tres")
+const SELECTED_ICON_COLORS := {
+	"icon_normal_color": "font_color",
+	"icon_hover_color": "font_hover_color",
+	"icon_pressed_color": "font_pressed_color",
+	"icon_focus_color": "font_focus_color",
+	"icon_disabled_color": "font_disabled_color",
+}
 const ICONS := {
 	"battle": preload("res://assets/icons/sword.svg"),
 	"elite": preload("res://assets/icons/elite-sword.svg"),
@@ -145,8 +151,8 @@ func _draw() -> void:
 
 func _draw_edge(from: Vector2, to: Vector2, state: String) -> void:
 	match state:
-		"visited":
-			draw_line(from, to, EDGE_VISITED, EDGE_WIDTH, true)
+		"past":
+			draw_dashed_line(from, to, EDGE_LOCKED, 3.0, 10.0, true, true)
 		"preview":
 			draw_line(from, to, EDGE_PREVIEW, EDGE_WIDTH, true)
 		"future":
@@ -157,10 +163,11 @@ func _draw_edge(from: Vector2, to: Vector2, state: String) -> void:
 
 func _edge_state(from_id: String, to_id: String) -> String:
 	if from_id in _visited and to_id in _visited:
-		return "visited"
-	if not _selected_id.is_empty() and (
-		to_id == _selected_id
-		or (from_id in _descendants and to_id in _descendants)
+		return "past"
+	if (
+		not _selected_id.is_empty()
+		and from_id in _descendants
+		and to_id in _descendants
 	):
 		return "preview"
 	if _selected_id.is_empty() or from_id in _available or to_id in _available:
@@ -220,6 +227,17 @@ func _apply_button_state(button: Button, node: Dictionary) -> void:
 	}.get(state, "Button"))
 	button.text = tr(_kind_key(str(node.get("kind", ""))))
 	button.tooltip_text = button.text
+	_sync_selected_icon_contrast(button, state == "selected")
+
+
+func _sync_selected_icon_contrast(button: Button, selected: bool) -> void:
+	for icon_color: String in SELECTED_ICON_COLORS:
+		button.remove_theme_color_override(icon_color)
+		if selected:
+			button.add_theme_color_override(
+				icon_color,
+				MOBILE_THEME.get_color(SELECTED_ICON_COLORS[icon_color], "PrimaryButton")
+			)
 
 
 func _layout_nodes() -> void:

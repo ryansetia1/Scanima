@@ -1,6 +1,7 @@
 import { seededRandom } from "./battle.mjs";
 
 export const EXPEDITION_SCHEMA_VERSION = 1;
+export const EXPEDITION_SHOP_SKIP_OPTION_ID = "shop-skip";
 export const EXPEDITION_NODE_KINDS = Object.freeze([
   "battle",
   "elite",
@@ -303,6 +304,14 @@ export function applyNodeOption({
   if (!isObject(node) || !Array.isArray(node.options)) {
     throw chapterError("INVALID_EXPEDITION_CHOICE");
   }
+  if (node.kind === "shop" && optionId === EXPEDITION_SHOP_SKIP_OPTION_ID) {
+    return {
+      party_state: structuredClone(partyState),
+      supplies: boundedInteger(supplies, 0, 999999, 0),
+      boosts: structuredClone(Array.isArray(boosts) ? boosts : []).slice(0, 20),
+      option: { id: EXPEDITION_SHOP_SKIP_OPTION_ID, skipped: true },
+    };
+  }
   const option = node.options.find((candidate) => isObject(candidate) && candidate.id === optionId);
   if (!option || !isObject(option.effect)) throw chapterError("INVALID_EXPEDITION_CHOICE");
   const discount = (Array.isArray(boosts) ? boosts : [])
@@ -383,7 +392,12 @@ function validateNodeTemplate(template, kind, zoneNumber, opponentIds) {
   }
   const optionIds = new Set();
   for (const option of template.options) {
-    if (!isObject(option) || !validId(option.id) || optionIds.has(option.id)) {
+    if (
+      !isObject(option)
+      || !validId(option.id)
+      || option.id === EXPEDITION_SHOP_SKIP_OPTION_ID
+      || optionIds.has(option.id)
+    ) {
       throw chapterError("INVALID_CHAPTER_OPTIONS");
     }
     optionIds.add(option.id);

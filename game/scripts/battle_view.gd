@@ -47,10 +47,6 @@ signal reward_status_refresh_requested
 @onready var _daily_reward_label: Label = %BattleDailyReward
 @onready var _player_name: Label = %BattlePlayerName
 @onready var _bot_name: Label = %BattleBotName
-@onready var _player_element_icon: TextureRect = %BattlePlayerElementIcon
-@onready var _bot_element_icon: TextureRect = %BattleBotElementIcon
-@onready var _player_element: Label = %BattlePlayerElement
-@onready var _bot_element: Label = %BattleBotElement
 @onready var _player_hp: ProgressBar = %BattlePlayerHp
 @onready var _bot_hp: ProgressBar = %BattleBotHp
 @onready var _player_hp_value: Label = %BattlePlayerHpValue
@@ -296,8 +292,6 @@ func set_session(
 	var bot_snapshot := _as_dict(_session.get("bot_snapshot"))
 	_player_name.text = _fighter_title(player_snapshot)
 	_bot_name.text = _fighter_title(bot_snapshot, tr("BATTLE_BOT_NAME"))
-	_apply_element_row(_player_element_icon, _player_element, player_snapshot)
-	_apply_element_row(_bot_element_icon, _bot_element, bot_snapshot)
 	_position_fighters()
 	_apply_state()
 
@@ -721,19 +715,8 @@ func _apply_state() -> void:
 	)
 	_turn_label.visible = false
 	var daily_reward := _as_dict(_session.get("daily_reward"))
-	_daily_reward_label.visible = not daily_reward.is_empty()
-	if _daily_reward_label.visible:
-		var counter := _daily_counter_text(daily_reward)
-		var tier := str(_session.get("reward_tier", ""))
-		if not tier.is_empty():
-			counter = "%s · %s" % [
-				counter,
-				tr("BATTLE_REWARD_PAYOUT") % [
-					_tier_label(tier),
-					LocaleManager.format_integer(int(_session.get("reward_bits", 0))),
-				],
-			]
-		_daily_reward_label.text = counter
+	# Reward limits explain the lobby/result, not the turn decision inside the arena.
+	_daily_reward_label.visible = false
 	var status := str(_session.get("status", state.get("status", "active")))
 	_result_panel.visible = status != "active"
 	_actions.visible = status == "active"
@@ -841,11 +824,6 @@ func _update_action_state() -> void:
 		Color(1, 1, 1, 0.42) if item_used and not committed else Color.WHITE
 	)
 	_forfeit_button.disabled = _busy or not active
-
-
-func _apply_element_row(icon: TextureRect, label: Label, row: Dictionary) -> void:
-	ElementCatalog.apply_icon(icon, str(row.get("element", "stone")))
-	label.text = LocaleManager.element_compact(row)
 
 
 func _position_fighters() -> void:

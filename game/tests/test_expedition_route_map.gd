@@ -17,7 +17,9 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	await process_frame
 	var route_script: GDScript = load("res://scripts/expedition_route_map.gd")
-	var icons := route_script.get_script_constant_map().get("ICONS", {}) as Dictionary
+	var constants := route_script.get_script_constant_map()
+	var icons := constants.get("ICONS", {}) as Dictionary
+	var mobile_theme := constants.get("MOBILE_THEME") as Theme
 	_check(icons.get("battle") != icons.get("elite"), "Elite and Battle use distinct icons")
 	var route := route_script.new() as Control
 	root.add_child(route)
@@ -68,10 +70,31 @@ func _run() -> void:
 	_check(route.node_state("n1") == "visited", "cleared node is marked visited")
 	_check((route.node_button("n1") as Button).disabled, "visited node cannot be entered again")
 	_check(route.node_state("n3") == "reachable", "server-authorized next node becomes reachable")
+	(route.node_button("n3") as Button).pressed.emit()
+	_check(
+		str(route.call("_edge_state", "n1", "n3")) != "preview",
+		"preview does not highlight the incoming path behind a selected node"
+	)
+	_check(
+		str(route.call("_edge_state", "n3", "boss")) == "preview",
+		"preview still highlights paths forward from the selected node"
+	)
+	route.set_route(
+		_map_fixture(),
+		PackedStringArray(["boss"]),
+		PackedStringArray(["n1", "n3"])
+	)
+	await process_frame
+	await process_frame
+	_check(
+		str(route.call("_edge_state", "n1", "n3")) == "past",
+		"completed path uses the dim past-edge style instead of a highlight"
+	)
 	route.visible = false
 
 	var view_scene: PackedScene = load("res://scenes/ui/expedition_view.tscn")
 	var view := view_scene.instantiate() as Control
+	view.theme = mobile_theme
 	root.add_child(view)
 	view.visible = true
 	var entered := {"id": ""}
@@ -97,14 +120,34 @@ func _run() -> void:
 	var map_primary := view.get_node("%ExpeditionMapPrimary") as Button
 	var abandon := view.get_node("%ExpeditionAbandon") as Button
 	var party_meta := view.get_node("%ExpeditionPartyMeta") as Label
-	_check(not party_meta.visible, "full-health party details stay hidden on the route map")
+	var map_scroll := view_route.get_parent() as ScrollContainer
+	var route_size_before: Vector2 = view_route.size
+	var node_position_before: Vector2 = selected_button.position
+	var scroll_before: int = map_scroll.scroll_vertical
+	_check(
+		party_meta.visible and party_meta.text.is_empty(),
+		"full-health party reserves an empty preview row without clutter"
+	)
 	_check(not (view.get_node("%Subtitle") as Label).visible, "active map hides redundant subtitle copy")
 	_check(
 		selected_button.focus_neighbor_bottom == abandon.get_path(),
 		"controller can reach Abandon before previewing a route"
 	)
 	selected_button.pressed.emit()
+	await process_frame
+	await process_frame
 	_check(str(entered["id"]).is_empty(), "node preview does not commit server entry")
+	_check(
+		view_route.size.is_equal_approx(route_size_before)
+		and selected_button.position.is_equal_approx(node_position_before)
+		and map_scroll.scroll_vertical == scroll_before,
+		"selecting a node keeps route geometry and scroll fixed"
+	)
+	_check(
+		selected_button.get_theme_color("icon_normal_color")
+		== mobile_theme.get_color("font_color", "PrimaryButton"),
+		"selected icon uses canonical dark on-primary contrast"
+	)
 	_check(
 		selected_button.focus_neighbor_bottom == map_primary.get_path(),
 		"controller can move from the previewed node to Enter Node"
@@ -149,7 +192,48 @@ func _run() -> void:
 		map_meta.autowrap_mode != TextServer.AUTOWRAP_OFF,
 		"long Expedition Bits status wraps on narrow screens"
 	)
+	var advanced := _run_fixture()
+	advanced["available_node_ids"] = ["boss"]
+	advanced["visited_node_ids"] = ["n1", "n3"]
+	advanced["nodes_completed"] = 2
+	view.set_run(advanced)
+	await process_frame
+	await process_frame
 	await _save_screenshot_if_requested()
+
+	var shop_run := _run_fixture()
+	shop_run["current_node_id"] = "shop-1"
+	shop_run["pending_node"] = {
+		"id": "shop-1",
+		"kind": "shop",
+		"next": ["boss"],
+		"options": [{
+			"id": "buy-token",
+			"cost_supplies": 2,
+			"effect": {"type": "supplies", "value": 1},
+		}],
+	}
+	var chosen := {"id": "", "slot": -2}
+	view.choice_requested.connect(func(option_id: String, target_slot: int) -> void:
+		chosen["id"] = option_id
+		chosen["slot"] = target_slot
+	)
+	view.set_run(shop_run)
+	await process_frame
+	await process_frame
+	var choice_buttons := view.get_node("%ExpeditionChoiceButtons") as VBoxContainer
+	var skip_button := choice_buttons.get_child(choice_buttons.get_child_count() - 1) as Button
+	_check(skip_button.text == tr("EXPEDITION_SKIP_SHOP"), "Trail Shop exposes a localized skip action")
+	_check(skip_button.custom_minimum_size.y >= 96.0, "Skip Shop has a touch-safe target")
+	await _save_screenshot_if_requested("--shop-screenshot=")
+	view.set_busy(true)
+	_check(skip_button.disabled, "busy Trail Shop locks Skip Shop")
+	view.set_busy(false)
+	skip_button.pressed.emit()
+	_check(
+		str(chosen["id"]) == "shop-skip" and int(chosen["slot"]) == -1,
+		"Skip Shop emits the reserved no-purchase choice"
+	)
 
 	var legacy := _run_fixture()
 	legacy.erase("daily_bits")
@@ -177,8 +261,7 @@ func _run() -> void:
 	quit()
 
 
-func _save_screenshot_if_requested() -> void:
-	var prefix := "--screenshot="
+func _save_screenshot_if_requested(prefix: String = "--screenshot=") -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if not argument.begins_with(prefix):
 			continue

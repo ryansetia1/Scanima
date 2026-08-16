@@ -80,6 +80,7 @@ import {
   applyEncounterBoosts,
   applyNodeOption,
   attachBossSeeker,
+  EXPEDITION_SHOP_SKIP_OPTION_ID,
   findExpeditionNode,
   generateZoneMap,
   nextNodeIds,
@@ -1754,6 +1755,19 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     /UNSUPPORTED_CHAPTER_EFFECT/,
     "manifest tidak boleh mengarang effect runtime baru",
   );
+  assert.throws(
+    () => validateChapterManifest({
+      ...manifest,
+      zones: [{ ...zone(1), node_pools: { ...zone(1).node_pools, shop: [{
+        options: [{
+          id: EXPEDITION_SHOP_SKIP_OPTION_ID,
+          effect: { type: "supplies", value: 1 },
+        }],
+      }] } }, zone(2), zone(3)],
+    }),
+    /INVALID_CHAPTER_OPTIONS/,
+    "manifest tidak boleh memakai ID wire yang dicadangkan untuk Skip Shop",
+  );
   const map = generateZoneMap(manifest, 3, 1, "sugar-seed");
   assert.deepEqual(
     map,
@@ -1917,6 +1931,29 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
   });
   assert.equal(healed.supplies, 1, "Shop Expedition memakai Supplies");
   assert.ok(healed.party_state[1].hp > 17, "Recovery/Shop mengubah HP persisten");
+  const skipBoosts = [{ type: "shop_discount", value: 0.25 }];
+  const skippedShop = applyNodeOption({
+    partyState: healed.party_state,
+    supplies: healed.supplies,
+    boosts: skipBoosts,
+    node: { ...optionPools.shop[0], kind: "shop" },
+    optionId: EXPEDITION_SHOP_SKIP_OPTION_ID,
+  });
+  assert.deepEqual(skippedShop.party_state, healed.party_state, "skip Shop menjaga HP");
+  assert.equal(skippedShop.supplies, healed.supplies, "skip Shop tidak memakai Tokens");
+  assert.deepEqual(skippedShop.boosts, skipBoosts, "skip Shop menjaga boost");
+  assert.equal(skippedShop.option.skipped, true, "skip Shop dicatat sebagai no-purchase choice");
+  assert.throws(
+    () => applyNodeOption({
+      partyState: healed.party_state,
+      supplies: healed.supplies,
+      boosts: skipBoosts,
+      node: { ...optionPools.shop[0], kind: "recovery" },
+      optionId: EXPEDITION_SHOP_SKIP_OPTION_ID,
+    }),
+    /INVALID_EXPEDITION_CHOICE/,
+    "choice skip hanya sah di node Shop",
+  );
   const boosted = applyNodeOption({
     partyState: healed.party_state,
     supplies: 5,

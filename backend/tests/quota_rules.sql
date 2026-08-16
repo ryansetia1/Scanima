@@ -2594,6 +2594,27 @@ begin
            and (select bits from public.profiles where id = u1)
                  = v_bits_before_battle - 3,
            'retry refresh Shop tidak boleh mendebit Bits kedua kali';
+    begin
+      perform public.commit_expedition_choice(
+        u1, v_expedition_run, 6, 'shop-1', 'shop-skip',
+        v_expedition_party, 3, '[]'::jsonb, '["battle-1"]'::jsonb, false,
+        'test-skip-shop-tamper'
+      );
+      ok := false;
+    exception when others then ok := sqlerrm = 'INVALID_EXPEDITION_STATE';
+    end;
+    assert ok, 'skip Shop tidak boleh dipakai untuk mengubah Tokens';
+    v_j := public.commit_expedition_choice(
+      u1, v_expedition_run, 6, 'shop-1', 'shop-skip',
+      v_expedition_party, 2, '[]'::jsonb, '["battle-1"]'::jsonb, false,
+      'test-skip-shop'
+    );
+    assert (v_j->>'supplies')::integer = 2
+           and (v_j->>'nodes_completed')::integer = 2
+           and v_j->'visited_node_ids' ? 'shop-1'
+           and (select bits from public.profiles where id = u1)
+                 = v_bits_before_battle - 3,
+           'skip Shop harus maju tanpa item, Token, boost, atau refund refresh';
 
     v_expedition_map := '{
       "entry":["battle-1"],
@@ -2642,7 +2663,7 @@ begin
     where id = v_team_session;
     begin
       perform public.start_expedition_encounter(
-        u1, v_expedition_run, 6, v_expedition_map->'nodes'->0,
+        u1, v_expedition_run, 7, v_expedition_map->'nodes'->0,
         v_team_snapshot, v_opponent_snapshot, v_expedition_state,
         'test-reset-seed', 2, 'test-cross-mode-expedition'
       );
@@ -2668,7 +2689,7 @@ begin
              with ordinality roster(member, ordinality)
       );
       v_j := public.start_expedition_encounter(
-        u1, v_expedition_run, 6, v_expedition_map->'nodes'->0,
+        u1, v_expedition_run, 7, v_expedition_map->'nodes'->0,
         v_team_snapshot, v_j2,
         jsonb_set(v_expedition_state, '{opponent,roster}', (
           select jsonb_agg(
@@ -2692,7 +2713,7 @@ begin
       null;
     end;
     v_j := public.start_expedition_encounter(
-      u1, v_expedition_run, 6, v_expedition_map->'nodes'->0,
+      u1, v_expedition_run, 7, v_expedition_map->'nodes'->0,
       v_team_snapshot, v_opponent_snapshot, v_expedition_state,
       'test-reset-seed', 2, 'test-enter-reset-battle'
     );
@@ -3146,6 +3167,11 @@ begin
     'public.award_expedition_zone_bits(public.expedition_runs,smallint)',
     'EXECUTE'
   ), 'client tidak boleh memanggil award_expedition_zone_bits';
+  assert not pg_catalog.has_function_privilege(
+    'authenticated',
+    'public.commit_expedition_choice(uuid,uuid,integer,text,text,jsonb,integer,jsonb,jsonb,boolean,text)',
+    'EXECUTE'
+  ), 'client tidak boleh melewati Edge Function untuk choice atau skip Expedition';
   begin
     perform public.expedition_daily_bits_status(
       u1, '00000000-0000-4000-8000-000000000099'

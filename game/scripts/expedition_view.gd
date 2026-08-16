@@ -18,6 +18,7 @@ signal complete_requested
 signal combat_open_changed(open: bool)
 
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
+const SHOP_SKIP_OPTION_ID := "shop-skip"
 const BOSS_SEEKER_DIALOG := preload("res://scripts/boss_seeker_dialog.gd")
 const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
 
@@ -439,7 +440,9 @@ func _render_map() -> void:
 		)
 		_wire_route_exit_focus()
 		_party_meta.text = _injured_party_text(_as_array(_run.get("party_state")))
-		_party_meta.visible = not _party_meta.text.is_empty()
+		# ponytail: keep one empty preview row mounted so selection cannot resize
+		# the route. If localized copy needs multiple lines, move it to an overlay.
+		_party_meta.visible = true
 	_map_primary.visible = true
 	_sync_map_primary()
 
@@ -522,6 +525,7 @@ func _completion_text() -> String:
 
 
 func _show_choice(node: Dictionary) -> void:
+	var shop := str(node.get("kind", "")) == "shop"
 	_choice_title.text = tr(_node_kind_key(str(node.get("kind", ""))))
 	for child in _choice_buttons.get_children():
 		child.free()
@@ -563,11 +567,18 @@ func _show_choice(node: Dictionary) -> void:
 			button.disabled = _busy or bool(button.get_meta("locked"))
 			button.pressed.connect(_choose_option.bind(option))
 			_choice_buttons.add_child(button)
+	if shop:
+		var skip_button := Button.new()
+		skip_button.custom_minimum_size = Vector2(0, 96)
+		skip_button.text = tr("EXPEDITION_SKIP_SHOP")
+		skip_button.pressed.connect(
+			choice_requested.emit.bind(SHOP_SKIP_OPTION_ID, -1)
+		)
+		_choice_buttons.add_child(skip_button)
 	_choice_meta.visible = not _choice_meta.text.is_empty()
 	_target_list.visible = false
 	_target_confirm.visible = false
 	_pending_option = {}
-	var shop := str(node.get("kind", "")) == "shop"
 	_refresh_shop.visible = shop and not bool(_run.get("shop_refreshed", false))
 	_refresh_shop.disabled = _busy
 	_show_only(_choice)

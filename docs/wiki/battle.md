@@ -75,8 +75,9 @@ Seeker.
   Battle, pedang berkilau untuk Elite, peti untuk Cache, hati untuk Recovery,
   tanda tanya untuk Mystery, dan pedang bersilang untuk Boss. Ketuk node yang
   bisa dijangkau untuk melihat pratinjau jalurnya; perjalanan baru dikunci
-  setelah menekan **Enter Node**. Node terang bisa dipilih, sedangkan jalur yang
-  belum terbuka tampil redup tanpa label status tambahan.
+  setelah menekan **Enter Node**. Node terang bisa dipilih. Jalur yang sudah
+  dilewati dan yang belum terbuka sama-sama meredup; hanya pratinjau ke depan
+  yang disorot, tanpa label status tambahan.
 - Rincian HP empat anggota tidak memenuhi peta saat semuanya sehat. Ringkasan
   **Team HP** baru muncul ketika ada anggota yang terluka; pilihan pemulihan
   tetap menampilkan target dan HP lengkap saat dibutuhkan.
@@ -97,6 +98,8 @@ Seeker.
   di fight berikutnya di zona yang sama.
 - **Tokens** adalah mata uang run, bukan Bits. Dipakai di **Trail Shop**. Saldo
   **You have 6 Tokens to spend** hanya tampil saat ada yang bisa dibeli.
+  Tekan **Skip Shop** untuk melanjutkan tanpa membeli jika tidak menginginkan
+  offer yang tersedia; HP, Tokens, dan boost tidak berubah.
   Cache, Mystery, dan Recovery yang cuma satu hadiah gratis menampilkan
   efeknya — misalnya **Raise Attack · +12%** atau **Collect 3 Tokens** — lalu
   **Continue** kembali ke peta. Tokens hilang saat run selesai.
@@ -171,7 +174,11 @@ Tiga kemenangan pertama per hari (reset **tengah malam waktu setempat**) adalah 
 - **+4 EXP**
 - +1 kemenangan progression pada Anima
 
-Layar lobby menulis tier lawan (Favorable / Even / Tough / Formidable) dan Bits yang akan didapat, plus **Progress x/3** dan **Bits x/100**.
+Di Duel, lawan dan tingkat kesulitannya dipilih server; tidak ada pengaturan
+tier manual. Arena hanya menampilkan nama, Level, HP, dan perintah yang berguna
+untuk turn saat ini. Hadiah Bits yang benar-benar didapat baru ditulis di kartu
+hasil. Saat jatah tiga kemenangan berhadiah habis, lobby mengubah tombol menjadi
+**Train** dan menjelaskan apakah Bits harian masih tersedia.
 
 Sesudah 3/3, tombol yang sama jadi **Train**. Duelnya sama; EXP dan kemenangan
 progression Anima berhenti, tetapi **Bits masih dibayar** sampai cap **100 Bits
@@ -179,8 +186,8 @@ per hari**. Sesudah 100/100, Training nol hadiah. Core tidak pernah didapat dari
 sini.
 
 Stat **Enemies Defeated** di [Seeker Profile](seeker.md) menghitung semua duel
-menang, termasuk Train. Itu berbeda dari **Progress x/3**, yang hanya menentukan
-hadiah EXP harian.
+menang, termasuk Train. Jatah tiga kemenangan pertama hanya menentukan hadiah
+EXP dan progression harian.
 
 Kalah atau **Retreat** juga nol hadiah. **Retreat** membuka konfirmasi dulu;
 Cancel kembali ke arena. Di Expedition, konfirmasi itu menjelaskan bahwa zona

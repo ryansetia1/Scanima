@@ -1178,6 +1178,10 @@ func _test_battle_view() -> void:
 	var player_hp_value := view.find_child("BattlePlayerHpValue", true, false) as Label
 	var bot_hp_value := view.find_child("BattleBotHpValue", true, false) as Label
 	var daily_reward := view.find_child("BattleDailyReward", true, false) as Label
+	var player_element_icon := view.find_child("BattlePlayerElementIcon", true, false) as Control
+	var player_element := view.find_child("BattlePlayerElement", true, false) as Control
+	var bot_element_icon := view.find_child("BattleBotElementIcon", true, false) as Control
+	var bot_element := view.find_child("BattleBotElement", true, false) as Control
 	var feedback := view.find_child("BattleFeedback", true, false) as Label
 	var effectiveness := view.find_child("BattleEffectiveness", true, false) as Control
 	var event_plate := view.find_child("BattleEventPlate", true, false) as PanelContainer
@@ -1415,20 +1419,27 @@ func _test_battle_view() -> void:
 		is_equal_approx(active_ground_y, active_arena_height * BATTLE_SCALE.GROUND_Y_RATIO),
 		"Battle fighters stand near the arena floor"
 	)
-	_check(result.get_parent() == footer, "Battle result overlays the fixed footer")
+	_check(
+		result.get_parent() == footer and result.z_index > player_anchor.z_index,
+		"Battle result overlays the fixed footer above both fighters"
+	)
 	_check_eq(player_hp.value, 220.0, "Battle HUD displays authoritative HP")
 	_check(
 		player_hp_value.text == "220 / 220"
 		and bot_hp_value.text == "205 / 205"
-		and player_hp_value.get_parent() != player_hp
-		and bot_hp_value.get_parent() != bot_hp,
-		"fighter HUD shows exact current and maximum HP above each bar"
+		and player_hp_value.get_parent() == player_hp.get_parent()
+		and bot_hp_value.get_parent() == bot_hp.get_parent(),
+		"Duel overlays exact HP inside each bar like Team Battle and Expedition"
 	)
 	_check(
 		not turn.visible
-		and view.find_child("TurnSpacer", true, false) != null
-		and daily_reward.get_parent() != forfeit.get_parent(),
-		"Duel hides Turn; Retreat stays on the status row and Progress sits below"
+		and not daily_reward.visible
+		and not player_element_icon.visible
+		and not player_element.visible
+		and not bot_element_icon.visible
+		and not bot_element.visible
+		and view.find_child("TurnSpacer", true, false) != null,
+		"Duel keeps the action arena free of reward counters and element labels"
 	)
 	_check(
 		view.find_child("PlayerCard", true, false) == null
@@ -1518,12 +1529,8 @@ func _test_battle_view() -> void:
 		"Special button shows the generated name plus PP"
 	)
 	_check(
-		daily_reward.visible
-		and daily_reward.text == "%s · %s" % [
-			tr("BATTLE_DAILY_PROGRESS") % ["2", "3"],
-			tr("BATTLE_DAILY_BITS") % ["16", "100"],
-		],
-		"Battle HUD shows authoritative daily rewarded wins"
+		not daily_reward.visible,
+		"active Duel keeps daily caps out of the turn-by-turn arena"
 	)
 	_check(
 		view.find_child("BattleMomentum", true, false) == null,
@@ -1590,8 +1597,8 @@ func _test_battle_view() -> void:
 	training_active["daily_reward"] = training_daily_reward.duplicate(true)
 	view.set_session(training_active, loaded, loaded)
 	_check(
-		not feedback.visible and daily_reward.visible,
-		"Training still shows Progress and Bits while Bits remain"
+		not feedback.visible and not daily_reward.visible,
+		"Training also keeps daily counters outside the action arena"
 	)
 	view.begin_action("strike")
 	_check(
@@ -1638,13 +1645,10 @@ func _test_battle_view() -> void:
 		"terminal Battle HUD keeps the exact defeated HP visible"
 	)
 	_check(
-		daily_reward.text == "%s · %s" % [
-			tr("BATTLE_DAILY_PROGRESS") % ["3", "3"],
-			tr("BATTLE_DAILY_BITS") % ["24", "100"],
-		]
+		not daily_reward.visible
 		and result_title.text == tr("BATTLE_WIN_TITLE")
 		and result_body.text == tr("BATTLE_WIN_BODY") % "8",
-		"third rewarded win remains Battle even though it closes the daily cap"
+		"third rewarded win explains its actual reward only in the result card"
 	)
 	var ready_again: Dictionary = anima.duplicate(true)
 	ready_again.erase("dormant_since")
@@ -1668,11 +1672,11 @@ func _test_battle_view() -> void:
 	training_win["last_reward"] = {"bits": 8, "care_score": 0, "battle_wins": 0}
 	view.set_session(training_win, loaded, loaded)
 	_check(
-		daily_reward.visible
+		not daily_reward.visible
 		and result_title.text == tr("BATTLE_TRAINING_TITLE")
 		and result_body.text == tr("BATTLE_TRAINING_BITS_BODY") % "8"
 		and retry.text == tr("BATTLE_TRAIN_AGAIN"),
-		"wins after the progression cap still pay Bits until the daily Bits cap"
+		"Training wins explain earned Bits in the result without arena counters"
 	)
 
 	var lost: Dictionary = session.duplicate(true)
