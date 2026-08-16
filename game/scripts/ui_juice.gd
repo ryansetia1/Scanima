@@ -121,31 +121,34 @@ static func hide_overlay(overlay: Control, panel: Control) -> void:
 
 
 # ponytail: hidden full-rect hosts can still report size 0 before their first
-# layout. Rest Y uses the viewport as fallback; UiBottomSheet.open() separately
-# waits one frame for dynamic Container rows before starting the tween.
-# Plafon: a nested sheet that is not full-rect still needs its host laid out.
+# layout. Rest Y uses parent then viewport; never leave a visible 0-size overlay
+# at (0,0) — that pins the sheet to the top-left on Android. Plafon: a nested
+# sheet that is not full-rect still needs its host laid out.
+static func sheet_host_size(overlay: Control, panel: Control) -> Vector2:
+	var host := panel.get_parent() as Control
+	var size := host.size if host != null else overlay.size
+	if size.x < 1.0 or size.y < 1.0:
+		size = overlay.size
+	if (size.x < 1.0 or size.y < 1.0) and overlay.get_parent() is Control:
+		size = (overlay.get_parent() as Control).size
+	if (size.x < 1.0 or size.y < 1.0) and overlay.is_inside_tree():
+		size = overlay.get_viewport_rect().size
+	return size
+
+
 static func sheet_rest_position(overlay: Control, panel: Control) -> Vector2:
 	var height := maxf(panel.get_combined_minimum_size().y, 1.0)
-	var host := panel.get_parent() as Control
-	var host_h := host.size.y if host != null else overlay.size.y
-	if host_h < 1.0:
-		host_h = overlay.size.y
-	if host_h < 1.0 and overlay.is_inside_tree():
-		host_h = overlay.get_viewport_rect().size.y
-	return Vector2(panel.position.x, host_h - height)
+	return Vector2(0.0, sheet_host_size(overlay, panel).y - height)
 
 
 static func show_bottom_sheet(overlay: Control, panel: Control) -> void:
 	_kill_tween(overlay)
 	overlay.visible = true
 	var height := maxf(panel.get_combined_minimum_size().y, 1.0)
+	panel.offset_left = 0.0
+	panel.offset_right = 0.0
 	panel.offset_top = -height
 	panel.offset_bottom = 0.0
-	var host_h := overlay.size.y
-	if host_h < 1.0:
-		overlay.modulate = Color.WHITE
-		panel.modulate = Color.WHITE
-		return
 	var target := sheet_rest_position(overlay, panel)
 	panel.set_meta(META_SHEET_POSITION, target)
 	if UiMotion.reduced_motion:

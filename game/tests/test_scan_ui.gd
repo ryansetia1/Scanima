@@ -440,6 +440,7 @@ func _initialize() -> void:
 	await _test_expedition_view()
 	await _test_battle_pick_sheet()
 	await _test_collection_bottom_sheet()
+	await _test_gallery_detail_sheet()
 	await _test_profile_info_rows()
 	await _test_anima_delete_action()
 	await _test_home_care_actions()
@@ -2720,6 +2721,48 @@ func _test_collection_bottom_sheet() -> void:
 		"care response is ignored after its sheet revision closes"
 	)
 	collection.queue_free()
+	await process_frame
+	UiMotion.set_reduced_motion(false)
+
+
+func _test_gallery_detail_sheet() -> void:
+	UiMotion.set_reduced_motion(true)
+	var packed := load("res://scenes/ui/gallery_view.tscn") as PackedScene
+	var view := packed.instantiate() as Control
+	root.add_child(view)
+	view.visible = true
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await process_frame
+	var sheet := view.find_child("GalleryDetailSheet", true, false) as Control
+	_check(
+		sheet != null
+		and is_equal_approx(sheet.anchor_right, 1.0)
+		and is_equal_approx(sheet.anchor_bottom, 1.0),
+		"Gallery detail sheet is a full-rect child of GalleryView"
+	)
+	await sheet.open()
+	await process_frame
+	var panel := (sheet as UiBottomSheet).panel() if sheet is UiBottomSheet else null
+	_check(
+		sheet.visible
+		and sheet.size.x >= view.size.x - 1.0
+		and sheet.size.y >= view.size.y - 1.0
+		and is_equal_approx(sheet.position.x, 0.0)
+		and is_equal_approx(sheet.position.y, 0.0)
+		and panel != null
+		and is_equal_approx(panel.offset_bottom, 0.0)
+		and panel.offset_top < 0.0
+		and is_equal_approx(panel.position.x, 0.0),
+		"Gallery detail sheet fills its host and sits on the bottom edge"
+	)
+	var juice_source := FileAccess.get_file_as_string("res://scripts/ui_juice.gd")
+	_check(
+		juice_source.find("func sheet_host_size") >= 0
+		and juice_source.find("never leave a visible 0-size overlay") >= 0
+		and juice_source.find("if host_h < 1.0:") < 0,
+		"bottom-sheet rest position never parks a zero-size overlay at the top-left"
+	)
+	view.queue_free()
 	await process_frame
 	UiMotion.set_reduced_motion(false)
 

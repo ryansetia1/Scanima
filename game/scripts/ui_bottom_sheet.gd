@@ -30,6 +30,7 @@ var _safe_bottom: Control
 
 
 func _ready() -> void:
+	_pin_full_rect()
 	_dismiss_button.pressed.connect(close)
 	UiJuice.install_button(_dismiss_button)
 	_column = _panel.find_child("Column", true, false) as VBoxContainer
@@ -55,17 +56,34 @@ func open() -> void:
 	_open_token += 1
 	var token := _open_token
 	visible = true
+	_pin_full_rect()
 	modulate.a = 0.0
 	# Dynamic rows and queue_free() settle at frame end. Starting the tween
 	# sooner captures yesterday's panel height; its deferred relayout then moves
 	# the anchors under the running tween, leaving the first open floating.
+	# Hidden instances also report size 0 until laid out; Android can need a
+	# second frame before FULL_RECT fills the host.
 	if is_inside_tree():
 		await get_tree().process_frame
 		if token != _open_token or not is_instance_valid(self) or not visible:
 			return
+		_pin_full_rect()
+		if size.x < 1.0 or size.y < 1.0:
+			await get_tree().process_frame
+			if token != _open_token or not is_instance_valid(self) or not visible:
+				return
+			_pin_full_rect()
 	fit_to_content()
 	UiJuice.show_bottom_sheet(self, _panel)
 	opened.emit()
+
+
+func _pin_full_rect() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	offset_left = 0.0
+	offset_top = 0.0
+	offset_right = 0.0
+	offset_bottom = 0.0
 
 
 func close() -> void:
@@ -81,17 +99,17 @@ func fit_to_content() -> void:
 	if not is_instance_valid(_panel):
 		return
 	_refresh_safe_bottom()
-	var host := _panel.get_parent() as Control
-	var host_h := host.size.y if host != null else size.y
-	if host_h < 1.0:
-		host_h = get_viewport_rect().size.y if is_inside_tree() else 0.0
+	var host_size := UiJuice.sheet_host_size(self, _panel)
+	var host_h := host_size.y
 	if host_h < 1.0:
 		return
 	_fit_scroll_to_host(host_h)
 	var height := _panel.get_combined_minimum_size().y
+	_panel.offset_left = 0.0
+	_panel.offset_right = 0.0
 	_panel.offset_top = -height
 	_panel.offset_bottom = 0.0
-	var rest := Vector2(_panel.position.x, host_h - height)
+	var rest := Vector2(0.0, host_h - height)
 	_panel.set_meta(UiJuice.META_SHEET_POSITION, rest)
 	var tween: Variant = get_meta(UiJuice.META_TWEEN) if has_meta(UiJuice.META_TWEEN) else null
 	if tween is Tween and is_instance_valid(tween) and (tween as Tween).is_running():
