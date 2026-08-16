@@ -319,6 +319,20 @@ First clear memberi satu Trophy unik per chapter. Seeker Profile menampilkan
 tiga Featured Trophy; koleksi lengkap tetap dapat dibuka terpisah. Trophy tidak
 dicabut ketika chapter direvisi atau di-unpublish.
 
+Trophy diumumkan **tepat sesudah baris terakhir Boss Seeker di-tap** dan sebelum
+ringkasan hadiah, memakai dialog tap-to-continue yang sama dengan dialog Seeker:
+nama Core sebagai judul, art Core sebagai portrait. Urutan penuhnya
+`victory` → reveal Trophy → ringkasan hadiah → antrean Level Up → Return to Map.
+Karena reward authoritative yang membawa `trophy`, turn penutup encounter Boss
+sengaja **tidak** diprediksi lokal; `play_events()` juga menahan reward dan
+antrean Level Up sampai kedua dialog itu benar-benar habis. Reveal tercatat per
+session, jadi replay maupun resume tidak mengumumkannya dua kali.
+
+Operasi `trophies` membaca Featured lewat embed PostgREST
+`seeker_featured_trophies → expedition_trophies`. Relasi itu wajib berupa
+foreign key langsung: composite key ke `seeker_trophies` saja dijawab 400, dan
+seluruh operasi jatuh 500 sehingga Trophy Showcase tidak pernah tampil.
+
 Secara visual semua Trophy memakai sistem dua lapis **Chapter Core v3**. Chapter
 menyediakan satu Inner Core dengan perimeter, internal construction, dan palet
 empat–lima warna yang khas; motif membentuk Core secara utuh, bukan emblem acak

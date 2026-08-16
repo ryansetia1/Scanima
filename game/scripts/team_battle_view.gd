@@ -12,6 +12,11 @@ signal forfeit_requested
 signal retry_requested
 signal arena_open_changed(open: bool)
 
+## Baris terakhir Boss Seeker dan reveal Trophy menunggu tap pemain, sementara
+## `_apply_session_state()` bukan coroutine. Sinyal ini yang membiarkan
+## `play_events()` menahan reward/level-up sampai dialognya benar-benar habis.
+signal _boss_result_settled
+
 const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
 const SEEKER_SHOT_X := 0.83
@@ -128,6 +133,7 @@ var _intro_started := false
 var _intro_pending_summon := false
 var _command_dialogue_used := false
 var _final_ace_pending := false
+var _boss_result_pending := false
 var _switch_overlay: Control
 var _switch_sheet: PanelContainer
 
@@ -476,6 +482,8 @@ func play_events(
 		_final_ace_pending = false
 		_restore_seeker_idle()
 	set_session(next_session)
+	if _boss_result_pending:
+		await _boss_result_settled
 	set_busy(false)
 
 
@@ -745,7 +753,11 @@ func _apply_session_state() -> void:
 		if _is_boss_encounter() and status in ["won", "lost", "draw"]:
 			_result.visible = false
 			_retry.visible = false
-			_present_boss_result(status)
+			# Presenter yang sedang menunggu tap sudah memegang urutannya; memanggil
+			# yang kedua membuat reveal Trophy menutup baris terakhir Seeker.
+			if not _boss_result_pending:
+				_boss_result_pending = true
+				_present_boss_result(status)
 		else:
 			_show_result(status)
 	_update_arena_actions()
@@ -1932,6 +1944,7 @@ func _reset_spoken_if_needed() -> void:
 	_intro_pending_summon = false
 	_command_dialogue_used = false
 	_final_ace_pending = false
+	_boss_result_pending = false
 
 
 func _present_seeker() -> void:
@@ -2082,11 +2095,34 @@ func _speak_seeker(
 func _present_boss_result(status: String) -> void:
 	if status == "won":
 		await _speak_seeker("victory", "defeat", false, false)
+		await _present_trophy()
 	else:
 		await _speak_seeker("defeat", "victory", false, false)
 	_show_result(status)
 	_result.visible = true
 	_retry.visible = true
+	_boss_result_pending = false
+	_boss_result_settled.emit()
+
+
+## Trophy first-clear diumumkan tepat sesudah baris terakhir Seeker dan sebelum
+## ringkasan hadiah, memakai dialog tap-to-continue yang sama. Reward tanpa
+## trophy melewatinya, dan replay tidak mengulang pengumumannya.
+func _present_trophy() -> void:
+	var trophy := GameState.as_dict(
+		GameState.as_dict(_session.get("last_reward")).get("trophy")
+	)
+	var trophy_name := str(trophy.get("display_name", "")).strip_edges()
+	if trophy_name.is_empty() or bool(_spoken.get("trophy", false)):
+		return
+	_spoken["trophy"] = true
+	if not is_instance_valid(_seeker_dialog):
+		return
+	await _seeker_dialog.present(
+		trophy_name,
+		tr("EXPEDITION_TROPHY_AWARDED") % trophy_name,
+		_art_cache.get("trophy") as Texture2D
+	)
 
 
 static func _as_array(value: Variant) -> Array:

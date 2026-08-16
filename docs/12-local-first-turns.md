@@ -85,6 +85,11 @@ ulang, karena `set_session` tetap memasang row authoritative.
 - **`final_ace` Boss.** Ini bukan soal art. Pelat dan dialog `last_anima`-nya
   tampil sekali per run, jadi memancarkannya dari tebakan berarti mempertaruhkan
   beat naratif yang tidak bisa ditarik kembali. Sekali per run, satu round trip.
+- **Turn yang menutup encounter Boss.** Ia membawa baris `victory`/`defeat`,
+  ringkasan hadiah, dan reveal Trophy first-clear sekaligus, dan ketiganya dibaca
+  dari reward authoritative. Menebaknya berarti menampilkan angka turn sebelumnya
+  lalu memperbaikinya di depan pemain. Satu round trip di detik terakhir run,
+  ketika pemain memang berhenti menekan tombol.
 - **Item Expedition.** `ExpeditionController` tidak memegang katalog Shop, jadi
   `TeamSim` menolak aksinya dan prediksinya kosong. Upgrade-nya mengoper katalog
   dari `scan_flow`.

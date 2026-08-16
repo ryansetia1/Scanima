@@ -2600,12 +2600,44 @@ func _test_team_battle_view() -> void:
 	var won := ace_session.duplicate(true)
 	won["status"] = "won"
 	won["state"]["status"] = "won"
-	view.set_session(won, seeker_art)
+	won["last_reward"] = {
+		"supplies": 3,
+		"first_clear": true,
+		"clear_bits": 25,
+		"trophy": {"display_name": "Sugarfold Core"},
+	}
+	var trophy_image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	var trophy_art := seeker_art.duplicate()
+	trophy_art["trophy"] = ImageTexture.create_from_image(trophy_image)
+	var result_panel := view.find_child("TeamResult", true, false) as Control
+	view.set_session(won, trophy_art)
 	await process_frame
 	_check(dialog.is_open(), "player win opens the Seeker victory line")
 	_check(seeker.animation == "defeat", "player win uses the Seeker defeat pose")
 	dialog.dismiss()
 	await process_frame
+	var trophy_line := dialog.find_child("SeekerLine", true, false) as Label
+	var trophy_speaker := dialog.find_child("SeekerName", true, false) as Label
+	_check(
+		dialog.is_open()
+		and trophy_speaker.text == "Sugarfold Core"
+		and trophy_line.text.contains("Sugarfold Core")
+		and (dialog.get("_portrait") as TextureRect).texture != null
+		and not result_panel.visible,
+		"first clear reveals the Trophy right after the Seeker's last line, before the summary"
+	)
+	dialog.dismiss()
+	await process_frame
+	_check(
+		result_panel.visible and not dialog.is_open(),
+		"the reward summary follows the Trophy reveal"
+	)
+	view.set_session(won, trophy_art)
+	await process_frame
+	_check(
+		not dialog.is_open(),
+		"a replayed terminal session never announces the same Trophy twice"
+	)
 	view.queue_free()
 	await process_frame
 	UiMotion.set_reduced_motion(false)

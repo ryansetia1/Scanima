@@ -349,6 +349,26 @@ func _check_turn_prediction() -> void:
 		and int(switched["encounter"]["state"]["player"]["active_slot"]) == 1,
 		"a Switch into a cached sheet animates without waiting for the server"
 	)
+
+	var finisher := {"expected_turn": 1, "action": "strike", "idempotency_key": "key-d"}
+	var last_hit: Dictionary = {
+		"id": "predict-finisher",
+		"turn_number": 1,
+		"status": "active",
+		"state": TeamSim.create_team_state([member], [member], "predict-finisher-seed")["state"],
+	}
+	last_hit["state"]["opponent"]["roster"][0]["hp"] = 1
+	controller.set("_encounter", last_hit)
+	_check(
+		not (controller.call("_predict_turn", finisher) as Dictionary).is_empty(),
+		"a regular encounter still animates the turn that wins it"
+	)
+	last_hit["kind"] = "boss"
+	controller.set("_encounter", last_hit)
+	_check(
+		(controller.call("_predict_turn", finisher) as Dictionary).is_empty(),
+		"the turn that finishes a Boss waits for the reward that carries the Trophy"
+	)
 	controller.free()
 
 

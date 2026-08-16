@@ -330,7 +330,8 @@ func _leave_complete() -> void:
 
 ## Simulasi turn dari state encounter authoritative yang sudah ada di client.
 ## Kosong kalau state-nya belum lengkap, aksinya ditolak aturan, Switch-nya
-## memanggil anggota yang sheet-nya belum ada di arena, atau Boss membuka ace-nya.
+## memanggil anggota yang sheet-nya belum ada di arena, Boss membuka ace-nya,
+## atau turn itu menutup encounter Boss.
 # ponytail: Item dan Boss ace selalu menunggu server. Item ikut lewat karena
 # controller ini tidak memegang katalog Shop; upgrade dengan mengoper katalog
 # dari scan_flow kalau item Expedition terasa lambat.
@@ -349,17 +350,26 @@ func _predict_turn(pending: Dictionary) -> Dictionary:
 	)
 	if not bool(outcome.get("ok", false)):
 		return {}
+	var next_state := GameState.as_dict(outcome["state"])
+	# Turn penutup Boss membawa baris terakhir Seeker, ringkasan hadiah, dan
+	# reveal Trophy first-clear. Ketiganya dibaca dari reward authoritative, jadi
+	# menebaknya hanya menampilkan angka lama sebelum server memperbaikinya.
+	if (
+		str(_encounter.get("kind", "")) == "boss"
+		and str(next_state.get("status", "active")) != "active"
+	):
+		return {}
 	var events: Array = outcome["events"]
 	for value in events:
 		if str(GameState.as_dict(value).get("type", "")) == "final_ace":
 			return {}
-	for anima_id in TeamSim.switch_targets(events, GameState.as_dict(outcome["state"])):
+	for anima_id in TeamSim.switch_targets(events, next_state):
 		if not _art_cache.has(anima_id):
 			return {}
 	var encounter := _encounter.duplicate(true)
 	encounter["state"] = outcome["state"]
-	encounter["turn_number"] = int(outcome["state"].get("turn", encounter.get("turn_number", 1)))
-	encounter["status"] = str(outcome["state"].get("status", "active"))
+	encounter["turn_number"] = int(next_state.get("turn", encounter.get("turn_number", 1)))
+	encounter["status"] = str(next_state.get("status", "active"))
 	return {"encounter": encounter, "events": events}
 
 
@@ -470,6 +480,7 @@ func _submit_pending(pending: Dictionary) -> void:
 					art = await _prepare_active_art(next_encounter, false)
 					break
 			art = await _attach_seeker_art(art)
+			art = await _attach_trophy_art(turn_reward, str(data.get("asset_base_url", "")), art)
 			await _view.play_combat_events(events, next_encounter, art)
 	_run = next_run
 	_encounter = next_encounter
@@ -566,6 +577,40 @@ func _attach_seeker_art(art: Dictionary) -> Dictionary:
 	if bool(loaded.get("ok", false)):
 		_art_cache["boss_seeker"] = loaded
 		art["boss_seeker"] = loaded
+	return art
+
+
+## Art Trophy hanya ikut pada reward first-clear, jadi ia diunduh sekali saat
+## reward-nya tiba — bukan disiapkan bersama roster setiap encounter.
+func _attach_trophy_art(
+	reward: Dictionary,
+	asset_base_url: String,
+	art: Dictionary
+) -> Dictionary:
+	var trophy := GameState.as_dict(reward.get("trophy"))
+	if trophy.is_empty():
+		return art
+	if _art_cache.get("trophy") is Texture2D:
+		art["trophy"] = _art_cache["trophy"]
+		return art
+	var base := asset_base_url
+	if base.is_empty():
+		base = str(_run.get("asset_base_url", ""))
+	var url := str(trophy.get("art_url", "")).strip_edges()
+	if url.is_empty():
+		var path := str(trophy.get("art_path", "")).strip_edges()
+		if base.is_empty() or path.is_empty() or path.contains(".."):
+			return art
+		url = "%s/%s" % [base.rstrip("/"), path]
+	var download := await Backend.download_url(url)
+	if not download.ok:
+		return art
+	var image := Image.new()
+	if image.load_png_from_buffer(download.bytes) != OK:
+		return art
+	var texture := ImageTexture.create_from_image(image)
+	_art_cache["trophy"] = texture
+	art["trophy"] = texture
 	return art
 
 

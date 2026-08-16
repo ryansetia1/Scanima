@@ -167,7 +167,11 @@ Seeker.
   chapter per hari** untuk seluruh run akun itu dan reset tengah malam waktu
   setempat. Chapter berikutnya dapat memakai jadwal berbeda.
 - First clear Boss memberi bonus **25 Bits** di luar cap harian itu, serta
-  **Sugarfold Core** untuk koleksi Trophy Seeker.
+  **Sugarfold Core** untuk koleksi Trophy Seeker. Begitu baris terakhir The
+  Confectioner ditutup, gambar Core-nya muncul beserta pengumuman bahwa Core itu
+  sudah menjadi milikmu; **tap to continue** membawamu ke ringkasan hadiah.
+  Core-nya tersimpan permanen di **Trophy Showcase** pada profil Seeker, dan di
+  sana kamu memilih maksimal tiga Core yang ingin dipamerkan.
 - Boss menampilkan **The Confectioner** dulu, tanpa Anima lawan. Ia berbicara
   tanpa overlay gelap. **Tap to continue** menutup baris itu, lalu The
   Confectioner memanggil Anima-nya ke arena dan fight baru dimulai. Selama
