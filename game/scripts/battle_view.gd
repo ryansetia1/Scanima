@@ -9,8 +9,7 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 # menyalakan Special yang lalu ditolak server sebagai NO_MOMENTUM.
 const MOMENTUM_MAX := 3
 const SURGE_COST := 1
-const ACTION_CUE_SEC := 1.0
-const RESULT_HOLD_SEC := 0.72
+const ACTION_CUE_SEC := 1.4
 const CUE_COLOR := Color(0.92, 0.97, 1.0, 1.0)
 const DAMAGE_COLOR := Color(1.0, 0.35, 0.48, 1.0)
 const EFFECTIVE_COLOR := Color(1.0, 0.82, 0.4, 1.0)
@@ -64,7 +63,6 @@ signal reward_status_refresh_requested
 @onready var _feedback: Label = %BattleFeedback
 @onready var _damage: Label = %BattleDamage
 @onready var _effectiveness: Control = %BattleEffectiveness
-@onready var _effectiveness_badge: CenterContainer = %BattleEffectivenessBadge
 @onready var _effectiveness_label: Label = %BattleEffectivenessLabel
 @onready var _actions: HBoxContainer = %Actions
 @onready var _strike_button: Button = %BattleStrikeButton
@@ -106,6 +104,8 @@ func _ready() -> void:
 	_retry_button.pressed.connect(resume_requested.emit)
 	_arena.resized.connect(_position_fighters)
 	_reward_reset_timer.timeout.connect(reward_status_refresh_requested.emit)
+	_feedback.visible = false
+	_turn_label.visible = false
 	_position_fighters.call_deferred()
 	_player_sprite.set_facing(1.0)
 	_bot_sprite.set_facing(-1.0)
@@ -250,7 +250,6 @@ func set_loading(message_key: String = "BATTLE_CONNECTING") -> void:
 		_header.visible = false
 		_lobby_panel.visible = false
 		_battle_content.visible = true
-		_feedback.text = tr(message_key)
 		_actions.visible = false
 		_forfeit_button.visible = false
 		return
@@ -333,7 +332,6 @@ func _request_item() -> void:
 	if _busy:
 		return
 	if _item_already_used():
-		_feedback.text = tr("BATTLE_ITEM_USED")
 		return
 	item_picker_requested.emit()
 
@@ -425,7 +423,6 @@ func set_error(error_code: String) -> void:
 	_result_body.text = _error_copy(error_code)
 	_retry_button.visible = true
 	_retry_button.text = tr("ACTION_RETRY")
-	_feedback.text = _error_copy(error_code)
 	_actions.visible = false
 	_forfeit_button.visible = false
 	_update_action_state()
@@ -441,11 +438,11 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 			continue
 		match str(event.get("type", "")):
 			"guard":
-				_feedback.text = tr("BATTLE_EVENT_GUARD") % _actor_name(
-					str(event.get("actor", ""))
+				await _present_banner(
+					tr("BATTLE_EVENT_GUARD") % _actor_name(str(event.get("actor", ""))),
+					CUE_COLOR,
+					false
 				)
-				_show_banner(_feedback.text, CUE_COLOR, false)
-				await _readability_pause()
 				await _hide_effectiveness()
 			"item":
 				await _play_item(event)
@@ -453,22 +450,20 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 				await _play_attack(event)
 			"knockout":
 				var defeated_side := str(event.get("actor", ""))
-				_feedback.text = tr("BATTLE_EVENT_KO") % _actor_name(defeated_side)
-				_show_banner(_feedback.text, DAMAGE_COLOR, true)
-				await _readability_pause()
+				await _present_banner(
+					tr("BATTLE_EVENT_KO") % _actor_name(defeated_side),
+					DAMAGE_COLOR,
+					true
+				)
 				var defeated := _sprite_for(defeated_side)
 				if is_instance_valid(defeated):
 					defeated.set_pose("defeated")
 				await _hide_effectiveness()
 			"timeout":
-				_feedback.text = tr("BATTLE_EVENT_TIMEOUT")
-				_show_banner(_feedback.text, DAMAGE_COLOR, false)
-				await _readability_pause()
+				await _present_banner(tr("BATTLE_EVENT_TIMEOUT"), DAMAGE_COLOR, false)
 				await _hide_effectiveness()
 			"finished":
-				_feedback.text = tr("BATTLE_EVENT_FINISHED")
-				_show_banner(_feedback.text, DAMAGE_COLOR, false)
-				await _readability_pause()
+				await _present_banner(tr("BATTLE_EVENT_FINISHED"), DAMAGE_COLOR, false)
 				await _hide_effectiveness()
 	set_session(next_session)
 	set_busy(false)
@@ -476,9 +471,11 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 
 func _play_item(event: Dictionary) -> void:
 	var actor_name := str(event.get("actor", ""))
-	_feedback.text = tr("BATTLE_EVENT_ITEM") % _actor_name(actor_name)
-	_show_banner(_feedback.text, CUE_COLOR, false)
-	await _readability_pause()
+	await _present_banner(
+		tr("BATTLE_EVENT_ITEM") % _actor_name(actor_name),
+		CUE_COLOR,
+		false
+	)
 	var actor := _sprite_for(actor_name)
 	if is_instance_valid(actor):
 		actor.care_feedback("item")
@@ -487,8 +484,7 @@ func _play_item(event: Dictionary) -> void:
 		_player_hp_value.text = LocaleManager.format_ratio(
 			int(event.get("hp", _player_hp.value)), int(_player_hp.max_value)
 		)
-	_show_banner(item_banner_text(event), EFFECTIVE_COLOR, true)
-	await _readability_pause(RESULT_HOLD_SEC)
+	await _present_banner(item_banner_text(event), EFFECTIVE_COLOR, true)
 	await _hide_effectiveness()
 
 
@@ -502,11 +498,12 @@ func _play_attack(event: Dictionary) -> void:
 	)
 	var action_label := _move_label(str(event.get("action", "")), actor_snapshot)
 	var element_multiplier := float(event.get("element_multiplier", 1.0))
-	var attack_element := str(event.get("attack_element", "")).strip_edges()
 	var effect_key := effectiveness_key(element_multiplier)
-	_feedback.text = tr("BATTLE_EVENT_ATTACK") % [_actor_name(actor_name), action_label]
-	_show_banner(_feedback.text, CUE_COLOR, false)
-	await _readability_pause()
+	await _present_banner(
+		tr("BATTLE_EVENT_ATTACK") % [_actor_name(actor_name), action_label],
+		CUE_COLOR,
+		false
+	)
 	if is_instance_valid(attacker):
 		attacker.set_pose("attack")
 		var fx_pose := "fx_surge" if str(event.get("action", "")) == "surge" else "fx_strike"
@@ -530,14 +527,6 @@ func _play_attack(event: Dictionary) -> void:
 			var flash := create_tween()
 			flash.tween_property(target, "modulate", Color.WHITE, 0.28)
 			Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
-	if not effect_key.is_empty():
-		var element_note := ""
-		if not attack_element.is_empty():
-			element_note = tr("BATTLE_ATTACK_ELEMENT") % LocaleManager.element_name(attack_element)
-		_feedback.text = tr("BATTLE_EVENT_ATTACK_EFFECTIVE") % [
-			_actor_name(actor_name), action_label, tr(effect_key) + element_note,
-		]
-		_show_effectiveness(element_multiplier)
 	if not UiMotion.reduced_motion:
 		_damage.modulate = Color.WHITE
 		_damage.pivot_offset = _damage.size * 0.5
@@ -559,10 +548,21 @@ func _play_attack(event: Dictionary) -> void:
 		_damage.modulate = Color.WHITE
 	_damage.visible = false
 	if not effect_key.is_empty():
-		await _readability_pause(RESULT_HOLD_SEC)
+		await _present_banner(
+			tr(effect_key),
+			EFFECTIVE_COLOR if effect_key == "BATTLE_EFFECTIVE" else RESISTED_COLOR,
+			effect_key == "BATTLE_EFFECTIVE"
+		)
 	await _hide_effectiveness()
 	if is_instance_valid(attacker):
 		attacker.set_pose("idle")
+
+
+func _present_banner(text: String, color: Color, big: bool = true) -> void:
+	_show_banner(text, color, big)
+	if is_instance_valid(_effectiveness_tween):
+		await _effectiveness_tween.finished
+	await _readability_pause()
 
 
 func _show_effectiveness(multiplier: float) -> void:
@@ -576,15 +576,15 @@ func _show_effectiveness(multiplier: float) -> void:
 
 
 func _show_banner(text: String, color: Color, big: bool = true) -> void:
+	if is_instance_valid(_effectiveness_tween):
+		_effectiveness_tween.kill()
 	_effectiveness.visible = not text.is_empty()
 	if not _effectiveness.visible:
 		_damage.add_theme_color_override("font_color", color)
 		return
-	if is_instance_valid(_effectiveness_tween):
-		_effectiveness_tween.kill()
 	_effectiveness.modulate = Color.WHITE
 	_effectiveness.scale = Vector2.ONE
-	_effectiveness_badge.rotation = 0.0
+	_effectiveness.pivot_offset = _effectiveness.size * 0.5
 	_effectiveness_label.text = text
 	_effectiveness_label.add_theme_color_override("font_color", color)
 	_effectiveness_label.add_theme_color_override(
@@ -596,13 +596,10 @@ func _show_banner(text: String, color: Color, big: bool = true) -> void:
 		return
 	_effectiveness.modulate.a = 0.0
 	_effectiveness.scale = Vector2(0.70, 0.70)
-	_effectiveness_badge.rotation = deg_to_rad(-3.5 if big else 3.5)
 	_effectiveness_tween = create_tween().set_parallel(true)
 	_effectiveness_tween.tween_property(_effectiveness, "modulate:a", 1.0, 0.08)
 	_effectiveness_tween.tween_property(_effectiveness, "scale", Vector2(1.08, 1.08), 0.16) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_effectiveness_tween.tween_property(_effectiveness_badge, "rotation", 0.0, 0.14) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_effectiveness_tween.chain().tween_property(
 		_effectiveness, "scale", Vector2.ONE, 0.08
 	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -693,22 +690,7 @@ func _announce_initiative(events: Array) -> void:
 		if str(event.get("type", "")) != "attack":
 			continue
 		var actor := str(event.get("actor", ""))
-		var target := str(event.get("target", ""))
-		var state := _as_dict(_session.get("state"))
-		var actor_state := _as_dict(state.get(actor))
-		var target_state := _as_dict(state.get(target))
-		var actor_speed := int(actor_state.get("spd", 0))
-		var target_speed := int(target_state.get("spd", 0))
-		if actor_speed == target_speed:
-			_feedback.text = tr("BATTLE_INITIATIVE_TIE") % _actor_name(actor)
-		else:
-			_feedback.text = tr("BATTLE_INITIATIVE") % [
-				_actor_name(actor),
-				LocaleManager.format_integer(actor_speed),
-				LocaleManager.format_integer(target_speed),
-			]
-		_show_banner(_feedback.text, CUE_COLOR, false)
-		await _readability_pause()
+		await _present_banner(tr("BATTLE_INITIATIVE") % _actor_name(actor), CUE_COLOR, false)
 		await _hide_effectiveness()
 		return
 
@@ -727,11 +709,8 @@ func _apply_state() -> void:
 	_bot_hp_value.text = LocaleManager.format_ratio(
 		int(bot.get("hp", 0)), int(bot.get("max_hp", 1))
 	)
-	_turn_label.text = tr("BATTLE_TURN") % LocaleManager.format_integer(
-		int(_session.get("turn_number", state.get("turn", 1)))
-	)
+	_turn_label.visible = false
 	var daily_reward := _as_dict(_session.get("daily_reward"))
-	var training := _is_training(daily_reward)
 	_daily_reward_label.visible = not daily_reward.is_empty()
 	if _daily_reward_label.visible:
 		var counter := _daily_counter_text(daily_reward)
@@ -749,14 +728,7 @@ func _apply_state() -> void:
 	_result_panel.visible = status != "active"
 	_actions.visible = status == "active"
 	_forfeit_button.visible = status == "active"
-	if status == "active":
-		if training and _is_bits_capped(daily_reward):
-			_feedback.text = tr("BATTLE_TRAINING_HINT")
-		elif training:
-			_feedback.text = tr("BATTLE_TRAINING_BITS_HINT")
-		else:
-			_feedback.text = tr("BATTLE_CHOOSE_ACTION")
-	else:
+	if status != "active":
 		_show_result(status)
 	_update_action_state()
 	_schedule_daily_reward_reset(daily_reward)
@@ -900,7 +872,13 @@ func _fighter_title(snapshot: Dictionary, fallback_name: String = "") -> String:
 
 
 func _actor_name(actor: String) -> String:
-	return _player_name.text if actor == "player" else _bot_name.text
+	var snapshot := _as_dict(
+		_session.get("player_snapshot" if actor == "player" else "bot_snapshot")
+	)
+	var anima_name := str(snapshot.get("name", "")).strip_edges()
+	if anima_name.is_empty():
+		return tr("ANIMA_FALLBACK_NAME") if actor == "player" else tr("BATTLE_BOT_NAME")
+	return anima_name
 
 
 func _move_label(action: String, snapshot: Dictionary) -> String:

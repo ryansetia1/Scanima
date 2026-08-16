@@ -183,7 +183,7 @@ func _check_scene_copy(keys: Dictionary) -> void:
 	for name in [
 		"Subtitle", "AnimaMeta", "ScanStatus", "ScanPhaseHint",
 		"CollectionStatus", "DetailsEmpty", "DetailsMeta",
-		"BattleSubtitle", "BattleLobbyMeta", "BattleFeedback", "BattleResultBody",
+		"BattleSubtitle", "BattleLobbyMeta", "BattleResultBody",
 		"LevelUpTitle", "LevelUpLabel",
 	]:
 		var label := scene.find_child(name, true, false) as Label

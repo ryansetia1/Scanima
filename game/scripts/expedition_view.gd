@@ -310,7 +310,7 @@ func set_run(
 	if not encounter.is_empty():
 		_column.visible = false
 		_combat.visible = true
-		_combat.set_arena_location(_location_text())
+		_combat.set_arena_location(_location_text(encounter))
 		_combat.set_session(encounter, art_cache)
 		_emit_combat_open()
 		return
@@ -574,7 +574,15 @@ func _team_id() -> String:
 	return str(_run.get("team_id", ""))
 
 
-func _location_text() -> String:
+func _location_text(encounter: Dictionary = {}) -> String:
+	if str(encounter.get("kind", "")) == "boss":
+		var seeker := GameState.as_dict(encounter.get("boss_seeker"))
+		if seeker.is_empty():
+			seeker = GameState.as_dict(_run.get("boss_seeker"))
+		var seeker_name := str(seeker.get("display_name", "")).strip_edges()
+		if seeker_name.is_empty():
+			seeker_name = tr("EXPEDITION_CHAPTER")
+		return tr("EXPEDITION_ARENA_BOSS") % seeker_name
 	return tr("EXPEDITION_ARENA_LOCATION") % [
 		_chapter_title(),
 		LocaleManager.format_integer(int(_run.get("zone", 1))),
@@ -582,16 +590,30 @@ func _location_text() -> String:
 
 
 func _chapter_title() -> String:
-	var summary := GameState.as_dict(GameState.as_dict(_chapter.get("manifest")).get("summary"))
-	var title := str(summary.get("title", "")).strip_edges()
+	var title := str(
+		GameState.as_dict(GameState.as_dict(_chapter.get("manifest")).get("summary")).get("title", "")
+	).strip_edges()
+	if title.is_empty():
+		title = str(GameState.as_dict(_chapter.get("summary")).get("title", "")).strip_edges()
 	if not title.is_empty():
 		return title
 	var version_id := str(_run.get("chapter_version_id", _selected_version))
 	for value in _chapters:
 		var chapter := GameState.as_dict(value)
-		if str(chapter.get("version_id", "")) != version_id:
+		if (
+			str(chapter.get("version_id", "")) != version_id
+			and str(chapter.get("id", "")) != version_id
+		):
 			continue
 		title = str(GameState.as_dict(chapter.get("summary")).get("title", "")).strip_edges()
+		if title.is_empty():
+			title = str(
+				GameState.as_dict(GameState.as_dict(chapter.get("manifest")).get("summary")).get(
+					"title", ""
+				)
+			).strip_edges()
+		if title.is_empty():
+			title = str(chapter.get("slug", "")).strip_edges()
 		if not title.is_empty():
 			return title
 	return tr("EXPEDITION_CHAPTER")

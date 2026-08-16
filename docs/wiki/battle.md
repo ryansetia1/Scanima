@@ -30,7 +30,8 @@ menampilkan satu fighter aktif dari setiap tim.
   adalah **Retreat** di paling kanan baris bawah. Tombol aksi dua baris
   seimbang: **Attack** / **Special** / **Guard**, lalu **Item** / **Switch** /
   **Retreat**. HUD menaruh pip tim di atas nama Anima, lalu HP. Di Expedition,
-  label chapter dan zona duduk di atas pelat HP.
+  label `{judul chapter} — Zone {n}` duduk di atas pelat HP; Final Battle
+  menulis `{nama Seeker} · Final Battle`.
 - **Switch** sukarela memakai satu turn. Tombol aksi tetap di tempatnya
   supaya arena tidak bergeser. Picker naik sebagai lembar dari bawah layar
   dan menampilkan art, nama plus
@@ -43,10 +44,12 @@ menampilkan satu fighter aktif dari setiap tim.
   misalnya **Soundhund Lv. 5**.
 - Ketuk Attack, Special, Guard, Item, atau Switch langsung mengunci tombol
   itu (garis di bawahnya). Tidak ada teks “locked in” atau “Resolving”.
-  Setelah hasil turn kembali dari server, nama jurus, Guard, item, Switch,
-  dan KO tampil sekitar satu detik di pelat gelap arena sebelum animasinya
-  mulai. **Super effective!** dan hasil item memakai pelat yang sama, jadi
-  teks tetap terbaca di atas art zona yang terang.
+  Setelah hasil turn kembali dari server, pelat gelap menulis
+  **{nama} uses {move}.**, **{nama} braces for impact.**, item, Switch, atau
+  KO, lalu diam sekitar 1,4 detik sebelum animasinya mulai. **Super
+  effective!**, **Not very effective.**, dan hasil item memakai pelat yang
+  sama, jadi teks tetap terbaca di atas art zona yang terang. Angka damage
+  muncul di atas Anima yang kena, sama seperti Duel.
 - Satu item Battle berlaku untuk seluruh encounter, bukan satu per anggota.
   **Item** membuka Bag; tombol **Shop** tidak muncul di tengah battle.
 - Dua kemenangan progression pertama per hari memberi EXP: **+2** untuk anggota
@@ -157,9 +160,9 @@ Kalah atau **Retreat** juga nol hadiah. **Retreat** membuka konfirmasi dulu;
 Cancel kembali ke arena. Di Expedition, konfirmasi itu menjelaskan bahwa zona
 saat ini dimulai ulang dari awal. Sesudah kamu konfirmasi, arena menampilkan
 **Retreating** di pelat event yang sama dengan Super effective sampai fight
-berakhir. Di Duel, **Retreat** ada di baris Turn di atas arena.
-Di Team Battle dan Expedition, **Retreat** ada di paling kanan baris Item /
-Switch. Shop dan Bag hanya ada di Home, jadi arena tetap bersih. Beli item di
+berakhir. Di Duel, **Retreat** rata kanan di baris atas arena (tanpa nomor
+Turn). Di Team Battle dan Expedition, **Retreat** ada di paling kanan baris
+Item / Switch. Shop dan Bag hanya ada di Home, jadi arena tetap bersih. Beli item di
 **Shop** sebelum memulai Duel, Team Battle, atau Expedition — tombol Shop
 redup selama battle atau run masih berjalan.
 
@@ -186,7 +189,8 @@ Item Battle dibeli di Shop. Picker hanya menampilkan tujuh item tempur (bukan ma
 
 Special terasa “tembus” karena memotong Defense, bukan karena angka Special di profil selalu lebih besar.
 
-Siapa yang gerak dulu mengikuti **Speed**. Angka Speed kedua petarung diumumkan sebelum animasi, jadi giliran bot duluan bukan bug.
+Siapa yang gerak dulu mengikuti **Speed**. Pelat menulis **{nama} moves first.**
+sebelum animasi, jadi giliran bot duluan bukan bug.
 
 ## PP
 
@@ -240,4 +244,7 @@ membatalkan menjadi normal. Dua weakness tidak ditumpuk lebih tinggi dari ×1.5,
 dan dua resistance tidak ditumpuk lebih rendah dari ×0.67.
 
 Saat kena, layar bisa menulis **Super effective!** atau **Not very effective.**
-Nama jurus netral, Guard, dan KO memakai pita teks yang sama di arena.
+Nama jurus netral, Guard, item, Switch, dan KO memakai pelat yang sama di
+arena: **{nama} uses {move}.**, **{nama} braces for impact.**, **{nama} uses
+an item.**, **{nama} enters the arena.**, **{nama} is knocked out.** Setiap
+label diam sekitar 1,4 detik sebelum aksi atau pelat hilang.

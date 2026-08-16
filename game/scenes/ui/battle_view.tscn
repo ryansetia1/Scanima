@@ -188,8 +188,14 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_override_constants/separation = 12
 
+[node name="TurnSpacer" type="Control" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay/StatusRow" unique_id=1700662627]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
 [node name="BattleTurn" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay/StatusRow" unique_id=1404385428]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"SectionLabel"
@@ -369,6 +375,7 @@ offset_right = 100.0
 offset_bottom = 40.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 theme_type_variation = &"AnimaNameLabel"
 theme_override_colors/font_color = Color(1, 0.35, 0.48, 1)
 text = "BATTLE_DAMAGE"
@@ -380,40 +387,35 @@ unique_name_in_owner = true
 visible = false
 z_index = 4
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -230.0
-offset_top = -118.0
-offset_right = 230.0
-offset_bottom = -36.0
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 256.0
+offset_right = -16.0
+offset_bottom = 338.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(230, 41)
 mouse_filter = 2
 
-[node name="BattleEffectivenessBadge" type="CenterContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleEffectiveness" unique_id=690096790]
+[node name="BattleEventPlate" type="PanelContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleEffectiveness" unique_id=1929355368]
 unique_name_in_owner = true
+z_index = -1
+clip_contents = true
+custom_minimum_size = Vector2(0, 76)
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -185.0
-offset_top = -34.0
-offset_right = 185.0
-offset_bottom = 34.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(185, 34)
 mouse_filter = 2
+theme_type_variation = &"BattleEventPlate"
 
-[node name="BattleEffectivenessLabel" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleEffectiveness/BattleEffectivenessBadge" unique_id=1728447602]
+[node name="BattleEffectivenessLabel" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleEffectiveness/BattleEventPlate" unique_id=1728447602]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_colors/font_shadow_color = Color(1, 0.82, 0.4, 0.48)
 theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
 theme_override_constants/shadow_offset_x = 0
@@ -425,27 +427,12 @@ theme_override_font_sizes/font_size = 36
 text = "BATTLE_EFFECTIVE"
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[node name="BattleEventPlate" type="PanelContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleEffectiveness" unique_id=1929355368]
-z_index = -1
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -205.0
-offset_top = -38.0
-offset_right = 205.0
-offset_bottom = 38.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_type_variation = &"BattleEventPlate"
+autowrap_mode = 3
+max_lines_visible = 2
 
 [node name="BattleFooter" type="Control" parent="Column/BattleContent" unique_id=1382603803]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 148)
+custom_minimum_size = Vector2(0, 104)
 layout_mode = 2
 
 [node name="ActionFooter" type="VBoxContainer" parent="Column/BattleContent/BattleFooter" unique_id=546138790]
@@ -459,6 +446,7 @@ theme_override_constants/separation = 8
 
 [node name="BattleFeedback" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter" unique_id=1749762184]
 unique_name_in_owner = true
+visible = false
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 theme_type_variation = &"SectionLabel"

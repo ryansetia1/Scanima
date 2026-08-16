@@ -13,9 +13,8 @@ signal retry_requested
 signal arena_open_changed(open: bool)
 
 const SURGE_COST := 1
-const ACTION_CUE_SEC := 1.0
+const ACTION_CUE_SEC := 1.4
 const SEEKER_EDGE_PAD := 12.0
-const RESULT_HOLD_SEC := 0.72
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
@@ -61,8 +60,8 @@ const COMMIT_COLORS := {
 @onready var _battle_stage: Control = %TeamBattleStage
 @onready var _arena_background: TextureRect = %TeamArenaBackground
 @onready var _effectiveness: Control = %TeamEffectiveness
-@onready var _effectiveness_badge: CenterContainer = %TeamEffectivenessBadge
 @onready var _effectiveness_label: Label = %TeamEffectivenessLabel
+@onready var _damage: Label = %TeamDamage
 @onready var _player_anchor: Node2D = %TeamPlayerAnchor
 @onready var _opponent_anchor: Node2D = %TeamOpponentAnchor
 @onready var _player_sprite: AnimaPresenter = %TeamPlayerSprite
@@ -159,6 +158,7 @@ func _ready() -> void:
 	for button in _switch_buttons:
 		_switch_meters.append(_make_switch_meter(button))
 	_mount_switch_overlay()
+	_feedback.visible = false
 	_player_portal = _make_portal(_player_anchor)
 	_opponent_portal = _make_portal(_opponent_anchor)
 	_player_shadow = _make_ground_shadow(_player_anchor)
@@ -302,7 +302,7 @@ func set_lobby(
 
 
 func show_retreat_banner() -> void:
-	_announce(tr("BATTLE_RETREATING"), BattleView.CUE_COLOR, false)
+	_show_banner(tr("BATTLE_RETREATING"), BattleView.CUE_COLOR, false)
 
 
 func set_error(error_code: String) -> void:
@@ -364,7 +364,6 @@ func begin_action(action: String) -> void:
 	if _busy and _queued_action == action:
 		return
 	_busy = true
-	_set_feedback("")
 	_show_action_commit(action)
 	if not UiMotion.reduced_motion:
 		Input.vibrate_handheld(18)
@@ -385,28 +384,29 @@ func play_events(
 				var guard_actor := str(event.get("actor", ""))
 				if guard_actor == "opponent":
 					await _cue_seeker_pose("concern_hit")
-				_announce(
-					tr("TEAM_EVENT_GUARD") % _actor_name(guard_actor),
+				await _present_banner(
+					tr("BATTLE_EVENT_GUARD") % _actor_name(guard_actor),
 					BattleView.CUE_COLOR,
 					false
 				)
-				await _readability_pause()
 				await _hide_effectiveness()
 				if guard_actor == "opponent":
 					_restore_seeker_idle()
 			"item":
 				var item_actor := str(event.get("actor", "player"))
-				_announce(tr("TEAM_EVENT_ITEM"), BattleView.CUE_COLOR, false)
-				await _readability_pause()
+				await _present_banner(
+					tr("BATTLE_EVENT_ITEM") % _actor_name(item_actor),
+					BattleView.CUE_COLOR,
+					false
+				)
 				var item_sprite := _sprite_for(item_actor)
 				if is_instance_valid(item_sprite):
 					item_sprite.care_feedback("item")
-				_announce(
+				await _present_banner(
 					BattleView.item_banner_text(event),
 					BattleView.EFFECTIVE_COLOR,
 					true
 				)
-				await _readability_pause(RESULT_HOLD_SEC)
 				await _hide_effectiveness()
 			"final_ace":
 				await _cue_final_ace()
@@ -436,19 +436,17 @@ func play_events(
 					await _react_seeker_attack(event)
 			"knockout":
 				var side := str(event.get("actor", ""))
-				_announce(
-					tr("TEAM_EVENT_KO") % _actor_name(side),
+				await _present_banner(
+					tr("BATTLE_EVENT_KO") % _actor_name(side),
 					BattleView.DAMAGE_COLOR,
 					true
 				)
-				await _readability_pause()
 				_sprite_for(side).set_pose("defeated")
 				# Hold the faint so a KO is readable before the replacement picker.
 				await _event_pause(1.2)
 				await _hide_effectiveness()
 			"timeout":
-				_announce(tr("TEAM_EVENT_TIMEOUT"), BattleView.DAMAGE_COLOR, false)
-				await _readability_pause()
+				await _present_banner(tr("BATTLE_EVENT_TIMEOUT"), BattleView.DAMAGE_COLOR, false)
 				await _hide_effectiveness()
 	if _final_ace_pending:
 		_final_ace_pending = false
@@ -686,7 +684,6 @@ func _open_switch_picker(forced: bool) -> void:
 		_switch_overlay.visible = true
 	_layout_switch_panel.call_deferred()
 	_actions.visible = true
-	_set_feedback("")
 
 
 func _close_switch_picker() -> bool:
@@ -694,7 +691,6 @@ func _close_switch_picker() -> bool:
 		return false
 	_hide_switch_overlay()
 	_actions.visible = true
-	_set_idle_feedback()
 	return true
 
 
@@ -714,12 +710,10 @@ func _apply_session_state() -> void:
 	_back.disabled = status == "active" or _busy
 	if status == "active":
 		if _forced_switch():
-			_set_feedback("")
 			_actions.visible = true
 			if not _busy:
 				_open_switch_picker(true)
 		else:
-			_set_idle_feedback()
 			_hide_switch_overlay()
 			_actions.visible = true
 	else:
@@ -778,12 +772,11 @@ func _apply_side(
 func _play_switch(event: Dictionary, next_session: Dictionary) -> void:
 	var side := str(event.get("actor", ""))
 	var slot := int(event.get("to_slot", 0))
-	_announce(
+	await _present_banner(
 		tr("TEAM_EVENT_SWITCH") % _member_name(next_session, side, slot),
 		BattleView.CUE_COLOR,
 		false
 	)
-	await _readability_pause()
 	var sprite := _sprite_for(side)
 	var portal := _portal_for(side)
 	if UiMotion.reduced_motion or not is_instance_valid(sprite):
@@ -809,12 +802,14 @@ func _play_attack(event: Dictionary) -> void:
 	var target_side := str(event.get("target", ""))
 	var actor := _sprite_for(actor_side)
 	var target := _sprite_for(target_side)
-	_announce(
-		_move_name(actor_side, str(event.get("action", ""))),
+	await _present_banner(
+		tr("BATTLE_EVENT_ATTACK") % [
+			_actor_name(actor_side),
+			_move_name(actor_side, str(event.get("action", ""))),
+		],
 		BattleView.CUE_COLOR,
 		false
 	)
-	await _readability_pause()
 	actor.set_pose("attack")
 	if is_instance_valid(target):
 		var fx := "fx_surge" if str(event.get("action", "")) == "surge" else "fx_strike"
@@ -838,16 +833,22 @@ func _play_attack(event: Dictionary) -> void:
 			var flash := create_tween()
 			flash.tween_property(target, "modulate", Color.WHITE, 0.28)
 			Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
+	await _play_damage(int(event.get("damage", 0)), element_multiplier)
 	if not effect_key.is_empty():
-		_show_effectiveness(element_multiplier)
-		await _readability_pause(RESULT_HOLD_SEC)
+		await _present_banner(
+			tr(effect_key),
+			BattleView.EFFECTIVE_COLOR if effect_key == "BATTLE_EFFECTIVE" else BattleView.RESISTED_COLOR,
+			effect_key == "BATTLE_EFFECTIVE"
+		)
 	await _hide_effectiveness()
 	actor.set_pose("idle")
 
 
-func _announce(text: String, color: Color, big: bool) -> void:
-	_set_feedback("")
+func _present_banner(text: String, color: Color, big: bool = true) -> void:
 	_show_banner(text, color, big)
+	if is_instance_valid(_effectiveness_tween):
+		await _effectiveness_tween.finished
+	await _readability_pause()
 
 
 func _show_effectiveness(multiplier: float) -> void:
@@ -861,15 +862,14 @@ func _show_effectiveness(multiplier: float) -> void:
 
 
 func _show_banner(text: String, color: Color, big: bool = true) -> void:
+	if is_instance_valid(_effectiveness_tween):
+		_effectiveness_tween.kill()
 	_effectiveness.visible = not text.is_empty()
 	if not _effectiveness.visible:
 		return
-	if is_instance_valid(_effectiveness_tween):
-		_effectiveness_tween.kill()
 	_effectiveness.modulate = Color.WHITE
 	_effectiveness.scale = Vector2.ONE
 	_effectiveness.pivot_offset = _effectiveness.size * 0.5
-	_effectiveness_badge.rotation = 0.0
 	_effectiveness_label.text = text
 	_effectiveness_label.add_theme_color_override("font_color", color)
 	_effectiveness_label.add_theme_color_override(
@@ -880,13 +880,10 @@ func _show_banner(text: String, color: Color, big: bool = true) -> void:
 		return
 	_effectiveness.modulate.a = 0.0
 	_effectiveness.scale = Vector2(0.70, 0.70)
-	_effectiveness_badge.rotation = deg_to_rad(-3.5 if big else 3.5)
 	_effectiveness_tween = create_tween().set_parallel(true)
 	_effectiveness_tween.tween_property(_effectiveness, "modulate:a", 1.0, 0.08)
 	_effectiveness_tween.tween_property(_effectiveness, "scale", Vector2(1.08, 1.08), 0.16) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_effectiveness_tween.tween_property(_effectiveness_badge, "rotation", 0.0, 0.14) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_effectiveness_tween.chain().tween_property(
 		_effectiveness, "scale", Vector2.ONE, 0.08
 	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -1075,7 +1072,8 @@ func _move_name(side: String, action: String) -> String:
 
 
 func _actor_name(side: String) -> String:
-	return _player_name.text if side == "player" else _opponent_name.text
+	var anima_name := str(_active_member(side).get("name", "")).strip_edges()
+	return anima_name if not anima_name.is_empty() else tr("ANIMA_FALLBACK_NAME")
 
 
 func _sprite_for(side: String) -> AnimaPresenter:
@@ -1325,15 +1323,6 @@ func _make_switch_meter(button: Button) -> ProgressBar:
 	return meter
 
 
-func _set_idle_feedback() -> void:
-	_set_feedback("")
-
-
-func _set_feedback(text: String) -> void:
-	_feedback.text = text
-	_feedback.visible = not text.is_empty() and text != tr("TEAM_CHOOSE_ACTION")
-
-
 func _emit_arena_open() -> void:
 	arena_open_changed.emit(is_arena_open())
 
@@ -1471,6 +1460,41 @@ func _position_seeker() -> void:
 	_seeker.set_layout(Vector2(x, y), seeker_scale)
 
 
+func _play_damage(amount: int, multiplier: float) -> void:
+	if not is_instance_valid(_damage):
+		return
+	var color := BattleView.DAMAGE_COLOR
+	if multiplier > 1.0:
+		color = BattleView.EFFECTIVE_COLOR
+	elif multiplier < 1.0:
+		color = BattleView.RESISTED_COLOR
+	_damage.text = tr("BATTLE_DAMAGE") % LocaleManager.format_integer(amount)
+	_damage.add_theme_color_override("font_color", color)
+	_damage.visible = true
+	if UiMotion.reduced_motion:
+		_damage.visible = false
+		return
+	_damage.modulate = Color.WHITE
+	_damage.pivot_offset = _damage.size * 0.5
+	_damage.scale = Vector2(0.72, 0.72)
+	var damage_start_y := _damage.position.y
+	var float_damage := create_tween()
+	float_damage.tween_property(_damage, "scale", Vector2(1.22, 1.22), 0.10) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	float_damage.parallel().tween_property(_damage, "position:y", damage_start_y - 10.0, 0.10)
+	float_damage.tween_property(_damage, "scale", Vector2.ONE, 0.12) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	float_damage.parallel().tween_property(_damage, "position:y", damage_start_y - 20.0, 0.12)
+	float_damage.tween_interval(0.06)
+	float_damage.tween_property(_damage, "modulate:a", 0.0, 0.16)
+	float_damage.parallel().tween_property(_damage, "position:y", damage_start_y - 42.0, 0.16)
+	await float_damage.finished
+	_damage.position.y = damage_start_y
+	_damage.scale = Vector2.ONE
+	_damage.modulate = Color.WHITE
+	_damage.visible = false
+
+
 func _readability_pause(seconds: float = ACTION_CUE_SEC) -> void:
 	await get_tree().create_timer(seconds).timeout
 
@@ -1601,8 +1625,7 @@ func _play_ace_passive(event: Dictionary) -> void:
 	var text := str(event.get("copy", "")).strip_edges()
 	if text.is_empty():
 		text = tr("TEAM_ACE_PASSIVE") % str(event.get("passive_name", ""))
-	_announce(text, BattleView.EFFECTIVE_COLOR, true)
-	await _readability_pause(RESULT_HOLD_SEC)
+	await _present_banner(text, BattleView.EFFECTIVE_COLOR, true)
 	await _hide_effectiveness()
 
 

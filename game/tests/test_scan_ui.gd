@@ -1179,9 +1179,6 @@ func _test_battle_view() -> void:
 	var daily_reward := view.find_child("BattleDailyReward", true, false) as Label
 	var feedback := view.find_child("BattleFeedback", true, false) as Label
 	var effectiveness := view.find_child("BattleEffectiveness", true, false) as Control
-	var effectiveness_badge := view.find_child(
-		"BattleEffectivenessBadge", true, false
-	) as Control
 	var event_plate := view.find_child("BattleEventPlate", true, false) as PanelContainer
 	var effectiveness_label := view.find_child(
 		"BattleEffectivenessLabel", true, false
@@ -1408,8 +1405,9 @@ func _test_battle_view() -> void:
 		"active Battle uses a quiet Forfeit action with a full touch target inside its HUD"
 	)
 	_check(
-		is_equal_approx(footer.custom_minimum_size.y, 148.0),
-		"Battle command footer keeps feedback and the four primary actions"
+		not feedback.visible
+		and is_equal_approx(footer.custom_minimum_size.y, 104.0),
+		"Battle command footer keeps the four primary actions without idle copy"
 	)
 	_check(player_sprite.flip_h and not bot_sprite.flip_h, "Battle fighters face each other")
 	_check(
@@ -1426,9 +1424,10 @@ func _test_battle_view() -> void:
 		"fighter HUD shows exact current and maximum HP above each bar"
 	)
 	_check(
-		turn.get_parent() == forfeit.get_parent()
+		not turn.visible
+		and view.find_child("TurnSpacer", true, false) != null
 		and daily_reward.get_parent() != forfeit.get_parent(),
-		"Turn and Forfeit share one row; Progress sits on the line below"
+		"Duel hides Turn; Retreat stays on the status row and Progress sits below"
 	)
 	_check(
 		view.find_child("PlayerCard", true, false) == null
@@ -1451,22 +1450,29 @@ func _test_battle_view() -> void:
 		"Retreat processing uses the same arena event plate as Super effective"
 	)
 	_check(
-		is_equal_approx(effectiveness.offset_top, -118.0)
-		and is_equal_approx(effectiveness.offset_bottom, -36.0),
-		"Duel event copy keeps its clear arena-relative band below the HUD"
+		effectiveness.offset_left >= 15.0
+		and effectiveness.offset_right <= -15.0,
+		"Duel event copy keeps a full-width band below the HUD"
 	)
 	_check(
-		effectiveness_badge is CenterContainer
-		and event_plate != null
+		event_plate != null
+		and event_plate.clip_contents
 		and event_plate.theme_type_variation == &"BattleEventPlate"
-		and event_plate.z_index < effectiveness_badge.z_index,
-		"Duel event copy has a dark bordered plate behind its text"
+		and effectiveness_label.get_parent() == event_plate
+		and effectiveness_label.autowrap_mode != TextServer.AUTOWRAP_OFF
+		and effectiveness_label.max_lines_visible == 2,
+		"Duel event copy stays inside a clipped wrapping plate"
 	)
 	_check(
-		float(view.get_script().get_script_constant_map().get("ACTION_CUE_SEC", 0.0)) >= 1.0
+		float(view.get_script().get_script_constant_map().get("ACTION_CUE_SEC", 0.0)) >= 1.4
 		and effectiveness_label.get_theme_font("font") is FontVariation
-		and effectiveness_label.get_theme_font_size("font_size") >= 36,
-		"Duel event copy remains readable for one second before animation"
+		and effectiveness_label.get_theme_font_size("font_size") >= 32,
+		"Duel event copy holds after the plate is visible before animation"
+	)
+	_check(
+		str(view.call("_actor_name", "player")) == "Velumi"
+		and not str(view.call("_actor_name", "player")).contains(tr("LEVEL_SHORT")),
+		"Duel event plate names omit Level"
 	)
 	view.call("_show_effectiveness", 0.67)
 	_check(
@@ -1479,8 +1485,26 @@ func _test_battle_view() -> void:
 	_check(
 		battle_source.find("func item_banner_text") >= 0
 		and battle_source.find("care_feedback(\"item\")") >= 0
-		and battle_source.find("_show_banner(item_banner_text(event)") >= 0,
+		and battle_source.find("_present_banner(item_banner_text(event)") >= 0
+		and battle_source.find("func _present_banner") >= 0,
 		"Item banners name the effect and shine the Anima"
+	)
+	var guard_copy := battle_source.find("BATTLE_EVENT_GUARD")
+	var initiative_at := battle_source.find("func _announce_initiative")
+	var initiative_present := battle_source.find("_present_banner", initiative_at)
+	var initiative_hide := battle_source.find("_hide_effectiveness", initiative_present)
+	_check(
+		guard_copy >= 0
+		and battle_source.find("_hide_effectiveness", guard_copy) > guard_copy
+		and initiative_present > initiative_at
+		and initiative_hide > initiative_present
+		and initiative_hide < battle_source.find("func _apply_state"),
+		"Guard and initiative hold the plate before hiding it"
+	)
+	_check(
+		battle_source.find("_effectiveness.pivot_offset") >= 0
+		and battle_source.find("_effectiveness_badge") < 0,
+		"Duel banner scales from the band center without tilting the plate"
 	)
 	view.call("_show_banner", "Attack +35%!", Color(1.0, 0.82, 0.4, 1.0), true)
 	_check(
@@ -1536,7 +1560,7 @@ func _test_battle_view() -> void:
 
 	view.set_loading("BATTLE_RESUMING")
 	_check(
-		not lobby.visible and content.visible and feedback.text == tr("BATTLE_RESUMING"),
+		not lobby.visible and content.visible and not feedback.visible,
 		"active Battle retry keeps one arena state instead of overlapping the lobby"
 	)
 	view.set_error("AUTH_EXPIRED")
@@ -1565,7 +1589,7 @@ func _test_battle_view() -> void:
 	training_active["daily_reward"] = training_daily_reward.duplicate(true)
 	view.set_session(training_active, loaded, loaded)
 	_check(
-		feedback.text == tr("BATTLE_TRAINING_BITS_HINT") and daily_reward.visible,
+		not feedback.visible and daily_reward.visible,
 		"Training still shows Progress and Bits while Bits remain"
 	)
 	view.begin_action("strike")
@@ -1580,7 +1604,7 @@ func _test_battle_view() -> void:
 	_check(
 		strike_commit.visible and not surge_commit.visible and not guard_commit.visible
 		and not item_commit.visible
-		and feedback.text == tr("BATTLE_TRAINING_BITS_HINT")
+		and not feedback.visible
 		and surge.self_modulate.a < strike.self_modulate.a,
 		"selected Battle action locks on the button without Resolving copy"
 	)
@@ -1876,9 +1900,13 @@ func _test_team_battle_view() -> void:
 	)
 	_check(
 		event_plate != null
+		and event_plate.clip_contents
 		and event_plate.theme_type_variation == &"BattleEventPlate"
-		and float(view.get_script().get_script_constant_map().get("ACTION_CUE_SEC", 0.0)) >= 1.0,
-		"Team Battle and Expedition share the readable one-second event plate"
+		and effectiveness_label.get_parent() == event_plate
+		and effectiveness_label.autowrap_mode != TextServer.AUTOWRAP_OFF
+		and effectiveness_label.max_lines_visible == 2
+		and float(view.get_script().get_script_constant_map().get("ACTION_CUE_SEC", 0.0)) >= 1.4,
+		"Team Battle and Expedition share the readable event plate"
 	)
 	view.call("_show_effectiveness", 0.67)
 	_check(
@@ -1924,6 +1952,32 @@ func _test_team_battle_view() -> void:
 	_check(
 		not feedback.visible and not player_slots.text.contains("Team 1"),
 		"idle arena hides the choose-action prompt and keeps party pips nameless"
+	)
+	_check(
+		str(view.call("_actor_name", "player")) == "Team 1"
+		and not str(view.call("_actor_name", "player")).contains(tr("LEVEL_SHORT")),
+		"event plate names omit Level"
+	)
+	var damage := view.find_child("TeamDamage", true, false) as Label
+	_check(
+		damage != null
+		and damage.unique_name_in_owner
+		and damage.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+		"Team and Expedition show floating damage"
+	)
+	var team_source := FileAccess.get_file_as_string("res://scripts/team_battle_view.gd")
+	var attack_fn := team_source.substr(team_source.find("func _play_attack"), 500)
+	_check(
+		team_source.find("BATTLE_EVENT_ITEM") >= 0
+		and team_source.find("BATTLE_EVENT_ATTACK") >= 0
+		and team_source.find("BATTLE_EVENT_TIMEOUT") >= 0,
+		"Team event copy reuses the Duel plate strings"
+	)
+	_check(
+		attack_fn.find("_present_banner") >= 0
+		and attack_fn.find("_present_banner") < attack_fn.find("set_pose(\"attack\")")
+		and team_source.find("_effectiveness_badge") < 0,
+		"Team attack holds the plate before the Attack pose"
 	)
 	view.open_mode()
 	view.call("_open_switch_picker", false)
@@ -2378,6 +2432,7 @@ func _test_expedition_view() -> void:
 		"zone": 1,
 		"supplies": 7,
 		"team_id": "expedition-team",
+		"chapter_version_id": "chapter-v1",
 		"available_node_ids": ["battle-1"],
 		"party_state": [
 			{"name": "Trail 1", "hp": 0, "max_hp": 50},
@@ -2390,6 +2445,10 @@ func _test_expedition_view() -> void:
 	}
 	view.set_busy(true)
 	view.set_run(run)
+	_check(
+		str(view.call("_location_text", {})) == tr("EXPEDITION_ARENA_LOCATION") % ["Sugartrail", "1"],
+		"regular Expedition arena shows the chapter title and zone"
+	)
 	var node_grid := view.find_child("ExpeditionNodeGrid", true, false) as GridContainer
 	var start_zone := view.find_child("ExpeditionStartZone", true, false) as Button
 	_check(
@@ -2524,6 +2583,34 @@ func _test_expedition_view() -> void:
 	view.set_run(intro_run)
 	await process_frame
 	_check(not chapter_dialog.is_open(), "resumed same-run map skips chapter intro")
+	_check(
+		str(view.call("_location_text", {
+			"kind": "boss",
+			"boss_seeker": {"display_name": "The Confectioner"},
+		})) == tr("EXPEDITION_ARENA_BOSS") % "The Confectioner",
+		"boss arena names the Seeker and Final Battle"
+	)
+	view.set_catalog([{
+		"id": "chapter-by-id",
+		"unlocked": true,
+		"first_cleared_at": null,
+		"summary": {"title": "ById Trail"},
+	}])
+	view.set_run({
+		"id": "expedition-run-id",
+		"status": "checkpoint",
+		"zone": 2,
+		"chapter_version_id": "chapter-by-id",
+		"team_id": "expedition-team",
+		"available_node_ids": [],
+		"party_state": [],
+		"zone_map": {"nodes": []},
+	})
+	_check(
+		str(view.call("_location_text", {}))
+		== tr("EXPEDITION_ARENA_LOCATION") % ["ById Trail", "2"],
+		"Expedition chapter title matches catalog id"
+	)
 	view.queue_free()
 	await process_frame
 

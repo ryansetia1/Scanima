@@ -488,8 +488,11 @@ offset_bottom = 266.0
 grow_horizontal = 2
 mouse_filter = 2
 
-[node name="TeamEffectivenessBadge" type="CenterContainer" parent="Column/TeamArena/TeamBattleStage/TeamEffectiveness" unique_id=1881379518]
+[node name="TeamEventPlate" type="PanelContainer" parent="Column/TeamArena/TeamBattleStage/TeamEffectiveness" unique_id=1116362150]
 unique_name_in_owner = true
+z_index = -1
+clip_contents = true
+custom_minimum_size = Vector2(0, 76)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -497,10 +500,13 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_type_variation = &"BattleEventPlate"
 
-[node name="TeamEffectivenessLabel" type="Label" parent="Column/TeamArena/TeamBattleStage/TeamEffectiveness/TeamEffectivenessBadge" unique_id=158627219]
+[node name="TeamEffectivenessLabel" type="Label" parent="Column/TeamArena/TeamBattleStage/TeamEffectiveness/TeamEventPlate" unique_id=158627219]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_colors/font_shadow_color = Color(1, 0.82, 0.4, 0.48)
 theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
 theme_override_constants/shadow_offset_x = 0
@@ -512,23 +518,8 @@ theme_override_font_sizes/font_size = 36
 text = "BATTLE_EFFECTIVE"
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[node name="TeamEventPlate" type="PanelContainer" parent="Column/TeamArena/TeamBattleStage/TeamEffectiveness" unique_id=1116362150]
-z_index = -1
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -280.0
-offset_top = -38.0
-offset_right = 280.0
-offset_bottom = 38.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_type_variation = &"BattleEventPlate"
+autowrap_mode = 3
+max_lines_visible = 2
 
 [node name="TeamPlayerAnchor" type="Node2D" parent="Column/TeamArena/TeamBattleStage" unique_id=493831421]
 unique_name_in_owner = true
@@ -548,6 +539,28 @@ unique_name_in_owner = true
 visible = false
 flip_h = true
 script = ExtResource("2_presenter")
+
+[node name="TeamDamage" type="Label" parent="Column/TeamArena/TeamBattleStage" unique_id=1648293751]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -40.0
+offset_right = 100.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"AnimaNameLabel"
+theme_override_colors/font_color = Color(1, 0.35, 0.48, 1)
+text = "BATTLE_DAMAGE"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="TeamDock" type="PanelContainer" parent="Column/TeamArena" unique_id=428670625]
 layout_mode = 2
