@@ -75,7 +75,11 @@ Seeker.
   Battle, pedang berkilau untuk Elite, peti untuk Cache, hati untuk Recovery,
   tanda tanya untuk Mystery, dan pedang bersilang untuk Boss. Ketuk node yang
   bisa dijangkau untuk melihat pratinjau jalurnya; perjalanan baru dikunci
-  setelah menekan **Enter Node**.
+  setelah menekan **Enter Node**. Node terang bisa dipilih, sedangkan jalur yang
+  belum terbuka tampil redup tanpa label status tambahan.
+- Rincian HP empat anggota tidak memenuhi peta saat semuanya sehat. Ringkasan
+  **Team HP** baru muncul ketika ada anggota yang terluka; pilihan pemulihan
+  tetap menampilkan target dan HP lengkap saat dibutuhkan.
 - **Begin Expedition** membutuhkan **30 Energy dari setiap anggota** dan
   memotongnya satu kali saat run dibuat. Setelah itu **Start Zone** untuk zona
   1–3 dan Boss tidak memerlukan atau memotong Energy lagi, termasuk ketika

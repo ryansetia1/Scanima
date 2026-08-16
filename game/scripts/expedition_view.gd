@@ -23,6 +23,7 @@ const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
 
 @onready var _column: VBoxContainer = %ExpeditionColumn
 @onready var _back: Button = %ExpeditionBack
+@onready var _subtitle: Label = %Subtitle
 @onready var _loading: VBoxContainer = %ExpeditionLoading
 @onready var _loading_label: Label = %ExpeditionLoadingLabel
 @onready var _catalog: VBoxContainer = %ExpeditionCatalog
@@ -355,6 +356,7 @@ func _show_only(panel: Control) -> void:
 	_emit_combat_open()
 	for child in [_loading, _catalog, _detail, _builder, _map, _choice, _complete]:
 		(child as Control).visible = child == panel
+	_subtitle.visible = panel != _map
 	_sync_back_chrome()
 
 
@@ -428,6 +430,7 @@ func _render_map() -> void:
 		_route_map.clear_preview()
 		_abandon.focus_neighbor_top = _map_primary.get_path()
 		_party_meta.text = _checkpoint_text()
+		_party_meta.visible = true
 	else:
 		_route_map.set_route(
 			GameState.as_dict(_run.get("zone_map")),
@@ -435,22 +438,16 @@ func _render_map() -> void:
 			_string_array(_run.get("visited_node_ids"))
 		)
 		_wire_route_exit_focus()
-		_party_meta.text = tr("EXPEDITION_TWO_LINES") % [
-			_party_text(_as_array(_run.get("party_state"))),
-			tr("EXPEDITION_ROUTE_HINT"),
-		]
-	_party_meta.visible = true
+		_party_meta.text = _injured_party_text(_as_array(_run.get("party_state")))
+		_party_meta.visible = not _party_meta.text.is_empty()
 	_map_primary.visible = true
 	_sync_map_primary()
 
 
 func _preview_route_node(node: Dictionary) -> void:
 	_selected_route_node = node.duplicate(true)
-	_party_meta.text = tr("EXPEDITION_THREE_LINES") % [
-		_party_text(_as_array(_run.get("party_state"))),
-		_route_preview_text(node),
-		tr("EXPEDITION_ROUTE_CONFIRM_HINT"),
-	]
+	_party_meta.text = _route_preview_text(node)
+	_party_meta.visible = true
 	_sync_map_primary()
 	var selected := _route_map.node_button(str(node.get("id", "")))
 	if selected != null:
@@ -709,16 +706,24 @@ func _chapter_title() -> String:
 	return tr("EXPEDITION_CHAPTER")
 
 
-func _party_text(party: Array) -> String:
-	var labels: PackedStringArray = []
+func _injured_party_text(party: Array) -> String:
+	var current_hp := 0
+	var maximum_hp := 0
+	var hurt_members := 0
 	for value in party:
 		var member := GameState.as_dict(value)
-		labels.append("%s %s/%s" % [
-			str(member.get("name", tr("ANIMA_FALLBACK_NAME"))),
-			LocaleManager.format_integer(int(member.get("hp", 0))),
-			LocaleManager.format_integer(int(member.get("max_hp", 0))),
-		])
-	return " · ".join(labels)
+		var maximum := maxi(1, int(member.get("max_hp", 1)))
+		var current := clampi(int(member.get("hp", 0)), 0, maximum)
+		current_hp += current
+		maximum_hp += maximum
+		if current < maximum:
+			hurt_members += 1
+	if hurt_members == 0 or maximum_hp == 0:
+		return ""
+	return tr("EXPEDITION_TEAM_HP_STATUS") % [
+		LocaleManager.format_percent(float(current_hp) / float(maximum_hp) * 100.0),
+		LocaleManager.format_integer(hurt_members),
+	]
 
 
 func _discounted_cost(base_cost: int) -> int:

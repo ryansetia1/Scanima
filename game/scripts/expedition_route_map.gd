@@ -12,6 +12,8 @@ const EDGE_FUTURE := Color(0.38, 0.48, 0.68, 0.42)
 const EDGE_LOCKED := Color(0.25, 0.3, 0.43, 0.2)
 const EDGE_PREVIEW := Color(0.278, 0.902, 1.0, 0.95)
 const EDGE_VISITED := Color(1.0, 0.82, 0.4, 0.92)
+const BACKGROUND_STYLE := &"ModalPanel"
+const MOBILE_THEME := preload("res://themes/mobile_theme.tres")
 const ICONS := {
 	"battle": preload("res://assets/icons/sword.svg"),
 	"elite": preload("res://assets/icons/elite-sword.svg"),
@@ -118,6 +120,13 @@ func node_button(node_id: String) -> Button:
 
 
 func _draw() -> void:
+	var background_style := MOBILE_THEME.get_stylebox("panel", BACKGROUND_STYLE)
+	if background_style is StyleBoxFlat:
+		var background_color := (background_style as StyleBoxFlat).bg_color
+		background_color.a = 1.0
+		draw_rect(Rect2(Vector2.ZERO, size), background_color)
+	else:
+		draw_style_box(background_style, Rect2(Vector2.ZERO, size))
 	for node: Dictionary in _nodes:
 		var from_id := str(node.get("id", ""))
 		var from_button := node_button(from_id)
@@ -209,14 +218,8 @@ func _apply_button_state(button: Button, node: Dictionary) -> void:
 		"reachable": "Button",
 		"locked": "NavButton",
 	}.get(state, "Button"))
-	button.text = tr("EXPEDITION_TWO_LINES") % [
-		tr(_kind_key(str(node.get("kind", "")))),
-		tr(_state_key(state)),
-	]
-	button.tooltip_text = tr("EXPEDITION_ROUTE_TOOLTIP") % [
-		tr(_kind_key(str(node.get("kind", "")))),
-		tr(_state_key(state)),
-	]
+	button.text = tr(_kind_key(str(node.get("kind", ""))))
+	button.tooltip_text = button.text
 
 
 func _layout_nodes() -> void:
@@ -355,15 +358,6 @@ static func _kind_key(kind: String) -> String:
 		"mystery": "EXPEDITION_NODE_MYSTERY",
 		"boss": "EXPEDITION_NODE_BOSS",
 	}.get(kind, "EXPEDITION_NODE_UNKNOWN"))
-
-
-static func _state_key(state: String) -> String:
-	return str({
-		"selected": "EXPEDITION_ROUTE_SELECTED",
-		"visited": "EXPEDITION_ROUTE_VISITED",
-		"reachable": "EXPEDITION_ROUTE_REACHABLE",
-		"locked": "EXPEDITION_ROUTE_LOCKED",
-	}.get(state, "EXPEDITION_ROUTE_LOCKED"))
 
 
 static func _as_dict(value: Variant) -> Dictionary:

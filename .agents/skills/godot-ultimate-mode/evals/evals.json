@@ -1,0 +1,78 @@
+{
+  "skill_name": "godot-ultimate-mode",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use Godot ultimate mode to add a responsive dash to an existing CharacterBody2D.",
+      "expected_output": "The agent inspects existing input and movement ownership, implements the smallest compatible dash, validates physics timing, adds a narrow regression check, exercises interruption and boundary states, and performs the final implementation review.",
+      "files": [],
+      "expectations": [
+        "Existing project conventions and InputMap actions are inspected before implementation.",
+        "The dash is integrated with the existing physics owner instead of creating an unjustified global system.",
+        "Verification covers repeated input, collision, interruption, and relevant frame timing.",
+        "A final review is performed and high-confidence in-scope findings are fixed before completion."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Bikin inventory UI Godot untuk mobile dan controller, lengkap dengan animasi dan suara.",
+      "expected_output": "The agent activates UI, accessibility, animation, and audio gates while preserving project themes and state ownership. It validates responsive layout, touch size, focus/back navigation, reduced motion, sound buses, and runtime behavior.",
+      "files": [],
+      "expectations": [
+        "The UI uses existing Containers, Themes, localization, and project components where available.",
+        "Touch, controller focus, back navigation, safe areas, loading/empty/error states, and color-independent meaning are considered.",
+        "Animation has one property authority and a reduced-motion path.",
+        "UI audio is routed through the correct bus and is not the sole feedback channel.",
+        "Visual/runtime verification and the mandatory final review are reported."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Optimize this Godot bullet-hell scene; it drops from 60 FPS to 25 FPS.",
+      "expected_output": "The agent profiles before changing architecture, classifies the measured bottleneck, applies one targeted optimization, measures the same workload again, verifies gameplay equivalence, and reviews the final change.",
+      "files": [],
+      "expectations": [
+        "No pooling, MultiMesh, shader, or Server API rewrite is proposed as a default without profiler evidence.",
+        "Before and after measurements use a release-like build and representative workload.",
+        "Correctness and cleanup are verified alongside performance.",
+        "The final response does not claim improvement without evidence."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Synchronize a sword hit animation with damage, particles, hit sound, and camera feedback in Godot 4.",
+      "expected_output": "The agent identifies the existing gameplay authority, chooses one animation timeline owner, synchronizes explicit events, keeps damage authoritative, routes audio and VFX correctly, tests interruption, and performs final review.",
+      "files": [],
+      "expectations": [
+        "Animation does not become accidental authority for persistent damage unless the project explicitly owns damage there.",
+        "Damage, VFX, audio, and camera feedback are synchronized by explicit tested events rather than unrelated timers.",
+        "Tween, particle, audio, and node lifecycles are safe when the action is interrupted or freed.",
+        "The result includes runtime verification and review remediation."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Debug why taps on the Anima stop working after adding a transparent Control overlay.",
+      "expected_output": "The agent reproduces the input failure, traces the GUI input chain and mouse filters, fixes the shared root cause, checks sibling overlays, adds the smallest regression verification, and reviews the change.",
+      "files": [],
+      "expectations": [
+        "The response gathers runtime evidence instead of guessing.",
+        "The Control input chain and mouse_filter ownership are inspected.",
+        "The shared cause is fixed without disabling required button input.",
+        "A regression check demonstrates that taps reach the intended target."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Review and finish this Godot implementation. Fix anything clearly wrong and verify it.",
+      "expected_output": "The agent reviews spec, lifecycle, architecture, UI/UX, feedback systems, persistence/security, performance, and verification; auto-fixes only high-confidence in-scope issues; reruns checks; and gives a concise verdict.",
+      "files": [],
+      "expectations": [
+        "Findings are filtered to high-confidence issues caused or exposed by the change.",
+        "Safe in-scope findings at 80 percent confidence or higher are fixed automatically.",
+        "Broad refactors, destructive work, and product decisions are not performed silently.",
+        "Affected checks are rerun and the final verdict names any remaining hardware or user-input blocker."
+      ]
+    }
+  ]
+}

@@ -94,11 +94,15 @@ Published content version immutable; run mengunci `chapter_id` dan
 
 Client menggambar map itu sebagai route tree bercabang, bukan grid dua kolom.
 Battle, Cache, Recovery, Mystery, Shop, dan Boss punya ikon berbeda; edge yang
-sudah dilalui, jalur pratinjau, dan cabang terkunci dibedakan tanpa bergantung
-pada warna saja. Node memakai target sentuh minimal 96 px. Tap pertama hanya
-memilih node dan menyorot turunannya; RPC `enter_node` baru dikirim setelah
-pemain menekan **Enter Node**. `visited_node_ids` disimpan authoritative per
-attempt dan dikosongkan saat zona di-reset.
+sudah dilalui, jalur pratinjau, dan cabang terkunci dibedakan lewat garis,
+brightness, focus border, serta state input tanpa label `Reachable`/`Locked`
+berulang. Node memakai target sentuh minimal 96 px. Tap pertama hanya memilih
+node dan menyorot turunannya; RPC `enter_node` baru dikirim setelah pemain
+menekan **Enter Node**. Peta memakai surface gelap opak supaya ambient ring dari
+shell tidak bersaing dengan node. Status run dipadatkan menjadi satu baris;
+rincian empat HP disembunyikan saat penuh dan diganti ringkasan tim hanya bila
+ada anggota terluka. `visited_node_ids` disimpan authoritative per attempt dan
+dikosongkan saat zona di-reset.
 
 ### Tim, snapshot, dan checkpoint
 
