@@ -347,6 +347,10 @@ func begin_combat_action(action: String) -> void:
 	_combat.begin_action(action)
 
 
+func set_level_up_sequence_busy(busy: bool) -> void:
+	_combat.set_result_continue_enabled(not busy)
+
+
 func play_combat_events(
 	events: Array,
 	next_encounter: Dictionary,

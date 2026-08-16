@@ -244,6 +244,18 @@ func _test_presenter() -> void:
 		and absf(planted.end.y + presenter.position.y) < 1.0,
 		"kaki opak duduk di origin, bukan dasar sel kotak"
 	)
+	var shadow_host := Node2D.new()
+	root.add_child(shadow_host)
+	var shadow := Sprite2D.new()
+	shadow.centered = true
+	shadow_host.add_child(shadow)
+	presenter.sync_ground_shadow(shadow)
+	var feet_global := presenter.to_global(Vector2(planted.get_center().x, planted.end.y))
+	_check(
+		shadow.position.distance_to(shadow_host.to_local(feet_global)) < 0.01,
+		"titik opak terbawah Anima harus tepat di pusat vertikal shadow"
+	)
+	shadow_host.free()
 	var body_center: Vector2 = presenter.body_center_global()
 	var frame_center: Vector2 = presenter.to_global(presenter.offset)
 	_check(
@@ -414,7 +426,7 @@ func _test_presenter() -> void:
 func _test_boss_seeker_sheet() -> void:
 	print("8. Boss Seeker sheet memakai pose command, bukan pose Anima")
 	var image := Image.create_empty(1024, 1024, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0, 1, 0, 1))
+	image.fill(Color(0, 1, 0, 0))
 	var names := [
 		"intro_idle", "attack_command", "special_command",
 		"switch_command", "concern_hit", "last_anima",
@@ -426,7 +438,11 @@ func _test_boss_seeker_sheet() -> void:
 		var row := index / 3
 		var x := col * 341
 		var y := row * 341
-		image.fill_rect(Rect2i(x, y, 300, 300), Color(0.2, 0.3, 0.8, 1))
+		var opaque_bottom := 260 if names[index] == "victory" else 300
+		image.fill_rect(
+			Rect2i(x + 70, y + 20, 160, opaque_bottom - 20),
+			Color(0.2, 0.3, 0.8, 1)
+		)
 		poses[names[index]] = {"region": [x, y, 300, 300]}
 	var loaded := BossSeekerSheet.build(
 		ImageTexture.create_from_image(image),
@@ -437,6 +453,33 @@ func _test_boss_seeker_sheet() -> void:
 	_check(frames != null and frames.has_animation("intro_idle"), "seeker wajib punya intro_idle")
 	_check(frames.has_animation("profile") and not frames.has_animation("idle"), "seeker tidak memakai pose Anima")
 	_check(BossSeekerSheet.portrait(loaded, "profile") != null, "portrait seeker turun dari sheet yang sama")
+	var pose_offsets: Dictionary = loaded.get("pose_ground_offsets", {})
+	_check_eq(
+		pose_offsets.get("intro_idle"),
+		Vector2(0.0, 341.0 * 0.5 - 300.0),
+		"intro Seeker menaruh kaki opak di anchor"
+	)
+	_check_eq(
+		pose_offsets.get("victory"),
+		Vector2(0.0, 341.0 * 0.5 - 260.0),
+		"pose victory yang lebih pendek turun sampai kaki menyentuh anchor"
+	)
+	var seeker := BossSeekerPresenter.new()
+	root.add_child(seeker)
+	seeker.apply(loaded)
+	seeker.set_pose("victory")
+	_check_eq(
+		seeker.offset,
+		pose_offsets.get("victory"),
+		"presenter memakai baseline victory, bukan baseline intro_idle"
+	)
+	seeker.set_pose("intro_idle")
+	_check_eq(
+		seeker.offset,
+		pose_offsets.get("intro_idle"),
+		"presenter mengembalikan baseline pose saat kembali Idle"
+	)
+	seeker.free()
 	_check(
 		not bool(BossSeekerSheet.build(ImageTexture.create_from_image(image), {
 			"version": 1,

@@ -34,9 +34,12 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 	var sheet_size := sheet.get_size()
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
+	var sheet_image := sheet.get_image()
 	var loaded: PackedStringArray = []
 	var display_size := frame_size
-	var idle_region := Rect2i()
+	var idle_display_size := frame_size
+	var idle_used := Rect2i()
+	var pose_ground_offsets: Dictionary = {}
 	for pose in KNOWN_POSES:
 		if not poses.has(pose):
 			continue
@@ -55,6 +58,11 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 			or region.end.y > int(sheet_size.y)
 		):
 			return _fail("region seeker %s keluar dari sheet" % pose)
+		var used := _opaque_bounds(sheet_image, region)
+		if used.size.x > 0 and used.size.y > 0:
+			pose_ground_offsets[pose] = Vector2(
+				0.0, float(region.size.y) * 0.5 - float(used.end.y)
+			)
 		var atlas := AtlasTexture.new()
 		atlas.atlas = sheet
 		atlas.region = Rect2(region)
@@ -64,28 +72,29 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 		frames.add_frame(pose, atlas)
 		loaded.append(pose)
 		if pose == DEFAULT_POSE:
-			idle_region = region
+			idle_display_size = region.size
+			idle_used = used
 	if not frames.has_animation(DEFAULT_POSE):
 		return _fail("pose wajib intro_idle tidak ada")
 	var metrics_value: Variant = manifest.get("render_metrics", {})
 	var metrics: Dictionary = metrics_value if typeof(metrics_value) == TYPE_DICTIONARY else {}
-	var used := _opaque_bounds(sheet, idle_region)
+	var used := idle_used
 	if used.size.x > 0 and used.size.y > 0:
 		metrics = {
 			"reference_width_px": used.size.x,
 			"reference_height_px": used.size.y,
 			"reference_min_x_px": used.position.x,
 		}
-	var display_h := float(display_size.y)
-	var opaque_bottom := (
-		float(used.position.y + used.size.y) if used.size.y > 0 else display_h
-	)
+	var display_h := float(idle_display_size.y)
+	var opaque_bottom := float(used.end.y) if used.size.y > 0 else display_h
+	var ground_offset := Vector2(0.0, display_h * 0.5 - opaque_bottom)
 	return {
 		"ok": true,
 		"error": "",
 		"frames": frames,
 		"frame_size": display_size,
-		"ground_offset": Vector2(0.0, display_h * 0.5 - opaque_bottom),
+		"ground_offset": ground_offset,
+		"pose_ground_offsets": pose_ground_offsets,
 		"poses": loaded,
 		"render_metrics": metrics,
 	}
@@ -119,11 +128,8 @@ static func _full_grid_cell(region: Rect2i, sheet_size: Vector2, frame_size: Vec
 	return Rect2i(col * cell, row * cell, width, height)
 
 
-static func _opaque_bounds(sheet: Texture2D, region: Rect2i) -> Rect2i:
-	if region.size.x <= 0 or region.size.y <= 0:
-		return Rect2i()
-	var image := sheet.get_image()
-	if image == null or image.is_empty():
+static func _opaque_bounds(image: Image, region: Rect2i) -> Rect2i:
+	if region.size.x <= 0 or region.size.y <= 0 or image == null or image.is_empty():
 		return Rect2i()
 	return image.get_region(region).get_used_rect()
 

@@ -34,9 +34,10 @@ menampilkan satu fighter aktif dari setiap tim.
   seimbang: **Attack** / **Special** / **Guard**, lalu **Item** / **Switch** /
   **Retreat**. HUD menaruh pip tim di atas nama Anima, lalu HP. Di Expedition,
   label `{judul chapter} — Zone {n}` duduk di atas pelat HP; Final Battle
-  menulis `{nama Seeker} · Final Battle`. Warna HP berubah bertahap dari biru
-  saat penuh ke merah saat habis. Bayangan kaki dibuat lembut agar tidak
-  mengalahkan art karakter.
+  menulis `{nama Seeker} · Final Battle`. Bar HP berwarna biru di atas 50%,
+  langsung berubah oranye pada 50% ke bawah, lalu merah pada 20% ke bawah.
+  Angka HP tetap terlihat. Saat berpijak, kaki Anima dan Boss Seeker bertemu
+  tepat di tengah bayangan lembut agar karakter tidak terlihat melayang.
 - **Switch** sukarela memakai satu turn. Tombol aksi tetap di tempatnya
   supaya arena tidak bergeser. Picker naik sebagai lembar dari bawah layar
   dan menampilkan art, nama plus
@@ -105,7 +106,10 @@ Seeker.
   encounter berikutnya.
 - Sesudah menang Battle, Elite, atau Boss, layar hasil menampilkan Tokens,
   EXP tiap anggota, dan siapa yang naik Level. Stats dari Level baru dipakai
-  di fight berikutnya di zona yang sama.
+  di fight berikutnya di zona yang sama. Jika beberapa Anima naik Level,
+  setelah ringkasan hadiah kamu melihat banner dan perbandingan stat
+  **lama → baru** untuk satu Anima terlebih dahulu. Ketuk **Continue** untuk
+  melihat Anima berikutnya; **Return to Map** baru aktif setelah semuanya selesai.
 - Anima special milik Boss Seeker tidak pernah muncul di node Battle atau Elite.
   Jika roster node memakai tim Boss, slot special diganti Anima reguler dari
   zona itu. Special baru dapat masuk sebagai Anima terakhir di Final Battle.

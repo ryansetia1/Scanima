@@ -203,6 +203,14 @@ EXP tiap anggota dan siapa yang naik Level. Tokens tetap diberikan
 setelah cap karena merupakan resource run, bukan mata uang permanen. Encounter
 biasa tidak mencetak Bits.
 
+Sesudah result summary terbentuk, client membuat queue dari seluruh row
+`anima_exp` yang melintasi batas Level dengan memakai `care_score` snapshot
+encounter sebagai nilai sebelum reward. Setiap anggota dipresentasikan berurutan:
+banner bernama → modal lima stat grown lama/baru → **Continue** untuk anggota
+berikutnya. Tombol Return to Map dikunci sampai queue habis; Android back pada
+modal diperlakukan sebagai lanjut supaya flow tidak bisa tersangkut. Refresh
+roster authoritative tetap dilakukan sekali sebelum modal pertama.
+
 Selesai zona mencetak Bits permanen sesuai `zones[].bits_reward` pada manifest.
 The Sugarworks v5 menjadwalkan 10/20/30 Bits untuk Zone 1/2/3, sehingga cap
 hariannya 60 Bits per stable chapter untuk seluruh run dan content version akun
@@ -218,9 +226,12 @@ Setiap boss mempunyai Seeker original yang selalu terlihat bersama Anima
 lawan sesuai perbandingan tinggi. Pose idle dipakai saat menunggu; event
 authoritative dapat mengganti ke
 Attack Command, Special Command, Switch Command, Concern/Hit, Last Anima,
-Victory, atau Defeat. Semua pose tetap pada anchor tubuh yang sama; pose lebih
-lebar boleh tercrop viewport tetapi tidak menggeser Seeker maju. Reduced Motion
-mengganti pose tanpa tween.
+Victory, atau Defeat. Semua pose tetap pada anchor horizontal yang sama, sementara
+client menghitung baseline dari batas opak bawah setiap pose. Titik piksel opak
+paling bawah Anima maupun Boss Seeker tepat berimpit dengan pusat vertikal ground
+shadow yang centered; tidak ada nudge Y tambahan. Pose lebih lebar boleh tercrop
+viewport tetapi tidak menggeser Seeker maju. Reduced Motion mengganti pose tanpa
+tween.
 
 Dialog memakai budget per encounter: opening (`boss_intro` atau `rematch`),
 maksimal satu line command dari Attack/Special/Switch pertama yang terjadi,

@@ -1427,24 +1427,30 @@ func _test_battle_view() -> void:
 	var battle_script_resource := view.get_script() as GDScript
 	var battle_constants := battle_script_resource.get_script_constant_map()
 	var hp_full_color: Color = battle_constants.get("HP_FULL_COLOR", Color.CYAN)
+	var hp_warning_color: Color = battle_constants.get("HP_WARNING_COLOR", Color.ORANGE)
 	var hp_empty_color: Color = battle_constants.get("HP_EMPTY_COLOR", Color.RED)
 	var full_hp_fill := player_hp.get_theme_stylebox("fill") as StyleBoxFlat
 	_check(
 		full_hp_fill != null and full_hp_fill.bg_color.is_equal_approx(hp_full_color),
-		"full HP uses the blue end of the progressive Battle gradient"
+		"full HP uses the blue Battle state"
 	)
 	battle_script_resource.call("apply_hp_bar_state", player_hp, 110.0, 220.0)
 	var half_hp_fill := player_hp.get_theme_stylebox("fill") as StyleBoxFlat
 	_check(
-		half_hp_fill != null
-		and half_hp_fill.bg_color.is_equal_approx(hp_empty_color.lerp(hp_full_color, 0.5)),
-		"half HP blends continuously between red and blue"
+		half_hp_fill != null and half_hp_fill.bg_color.is_equal_approx(hp_warning_color),
+		"HP changes directly to orange at 50 percent"
+	)
+	battle_script_resource.call("apply_hp_bar_state", player_hp, 44.0, 220.0)
+	var critical_hp_fill := player_hp.get_theme_stylebox("fill") as StyleBoxFlat
+	_check(
+		critical_hp_fill != null and critical_hp_fill.bg_color.is_equal_approx(hp_empty_color),
+		"HP changes directly to red at 20 percent"
 	)
 	battle_script_resource.call("apply_hp_bar_state", player_hp, 0.0, 220.0)
 	var empty_hp_fill := player_hp.get_theme_stylebox("fill") as StyleBoxFlat
 	_check(
 		empty_hp_fill != null and empty_hp_fill.bg_color.is_equal_approx(hp_empty_color),
-		"empty HP reaches the red end of the Battle gradient"
+		"empty HP remains red"
 	)
 	battle_script_resource.call("apply_hp_bar_state", player_hp, 220.0, 220.0)
 	_check(
@@ -1743,6 +1749,19 @@ func _test_team_battle_view() -> void:
 	var view := packed.instantiate()
 	root.add_child(view)
 	await process_frame
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var resume_start := flow_source.find("func _resume_team_battle")
+	var resume_end := flow_source.find("\n\nfunc _retry_team_battle", resume_start)
+	var resume_body := flow_source.substr(
+		resume_start, resume_end - resume_start
+	) if resume_start >= 0 and resume_end > resume_start else ""
+	_check(
+		resume_body.find('res.error in ["TEAM_BATTLE_NOT_FOUND", "INVALID_SESSION_ID"]') >= 0
+		and resume_body.find("GameState.finish_team_battle()") >= 0
+		and flow_source.find("if _busy or _team_battle_demo_active:") >= 0
+		and flow_source.find("_team_battle_demo_active = true") >= 0,
+		"invalid or demo Team Battle sessions cannot trap the persisted hub state"
+	)
 	var back := view.find_child("TeamBackButton", true, false) as Button
 	var back_icon := view.find_child("TeamBackIcon", true, false) as TextureRect
 	_check(
@@ -2020,6 +2039,16 @@ func _test_team_battle_view() -> void:
 		"Team and Expedition show floating damage"
 	)
 	var team_source := FileAccess.get_file_as_string("res://scripts/team_battle_view.gd")
+	_check(
+		team_source.find("shadow.centered = true") >= 0
+		and team_source.find("shadow.position = Vector2.ZERO") >= 0,
+		"all generated Battle shadows use their node position as the visual center"
+	)
+	_check(
+		team_source.find("_seeker_shadow.position = _seeker.position") >= 0
+		and team_source.find("_seeker.position + Vector2(0.0, 4.0)") < 0,
+		"Boss Seeker lowest opaque pixel meets the vertical center of its shadow"
+	)
 	var attack_fn := team_source.substr(team_source.find("func _play_attack"), 3600)
 	_check(
 		team_source.find("BATTLE_EVENT_ITEM") >= 0
@@ -2509,11 +2538,53 @@ func _test_expedition_view() -> void:
 		and not controller_script.should_resume_error("NO_SUPPLIES"),
 		"only stale or terminal encounter errors enter the bounded resume path"
 	)
+	var flow_script := load("res://scripts/scan_flow.gd") as GDScript
 	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
 		flow_source.find("await _expedition_controller.resume_pending()") >= 0
 		and flow_source.find("GameState.pending_expedition.is_empty()") >= 0,
 		"shell boot resumes a persisted Expedition before opening another Battle mode"
+	)
+	var level_ups: Array = flow_script.expedition_level_rewards({
+		"anima_exp": [
+			{"anima_id": "level-a", "exp": 2},
+			{"anima_id": "level-b", "exp": 1},
+			{"anima_id": "steady", "exp": 1},
+		]
+	}, [
+		{"anima_id": "level-a", "name": "Level A", "care_score": 4},
+		{"anima_id": "level-b", "name": "Level B", "care_score": 9},
+		{"anima_id": "steady", "name": "Steady", "care_score": 0},
+	])
+	_check_eq(level_ups.size(), 2, "Expedition queues every member that crossed a Level")
+	if level_ups.size() == 2:
+		_check_eq(level_ups[0].anima_id, "level-a", "Level Up queue keeps roster order")
+		_check_eq(level_ups[0].level, 2, "first Expedition Level Up has its new Level")
+		_check_eq(level_ups[1].level, 3, "second Expedition Level Up has its new Level")
+	var controller_source := FileAccess.get_file_as_string(
+		"res://scripts/expedition_controller.gd"
+	)
+	var submit_pending := controller_source.substr(
+		controller_source.find("func _submit_pending"), 6500
+	)
+	_check(
+		submit_pending.find("await _view.play_combat_events") >= 0
+		and submit_pending.find("await _view.play_combat_events")
+		< submit_pending.find("reward_presented.emit(turn_reward, next_encounter)"),
+		"Expedition shows the reward summary before starting Level Up presentation"
+	)
+	_check(
+		flow_source.find("_expedition_level_queue.pop_front()") >= 0
+		and flow_source.count("&\"expedition_level_up\":") == 2
+		and flow_source.find("set_level_up_sequence_busy(true)") >= 0
+		and flow_source.find("set_level_up_sequence_busy(false)") >= 0,
+		"Expedition advances one Level Up dialog per button or back action before Return Map"
+	)
+	_check(
+		flow_source.find("EXPEDITION_LEVEL_UP_STATS_TITLE") >= 0
+		and flow_source.find("CARE_RULES.grown_stat(stats.get(key, 0), previous_score)") >= 0
+		and flow_source.find("CARE_RULES.grown_stat(stats.get(key, 0), new_score)") >= 0,
+		"each queued Expedition Anima receives Duel-style stat comparison"
 	)
 	_check(
 		flow_source.find("abandon_requested.connect(_confirm_expedition_abandon)") >= 0

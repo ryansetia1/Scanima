@@ -154,9 +154,9 @@ func sync_ground_shadow(shadow: Sprite2D) -> void:
 	# Feet are sprite-local; the blob lives on the arena anchor so hop/flip
 	# do not leave it beside the body.
 	if parent != null:
-		shadow.position = parent.to_local(to_global(feet + Vector2(0.0, 2.0)))
+		shadow.position = parent.to_local(to_global(feet))
 	else:
-		shadow.position = feet + Vector2(0.0, 2.0)
+		shadow.position = feet
 	shadow.scale = Vector2(clampf(width / 180.0, 0.5, 2.0), 0.7)
 
 

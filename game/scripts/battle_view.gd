@@ -13,6 +13,7 @@ const ACTION_CUE_SEC := 1.4
 const CUE_COLOR := Color(0.92, 0.97, 1.0, 1.0)
 const DAMAGE_COLOR := Color(1.0, 0.35, 0.48, 1.0)
 const HP_FULL_COLOR := Color(0.28, 0.90, 1.0, 1.0)
+const HP_WARNING_COLOR := Color(1.0, 0.58, 0.20, 1.0)
 const HP_EMPTY_COLOR := DAMAGE_COLOR
 const EFFECTIVE_COLOR := Color(1.0, 0.82, 0.4, 1.0)
 const RESISTED_COLOR := Color(0.55, 0.68, 0.9, 1.0)
@@ -698,7 +699,13 @@ static func apply_hp_bar_state(meter: ProgressBar, current: float, maximum: floa
 	var fill_style := meter.get_theme_stylebox("fill")
 	if fill_style is StyleBoxFlat:
 		var fill := fill_style.duplicate() as StyleBoxFlat
-		fill.bg_color = HP_EMPTY_COLOR.lerp(HP_FULL_COLOR, meter.value / safe_maximum)
+		var ratio := meter.value / safe_maximum
+		if ratio <= 0.2:
+			fill.bg_color = HP_EMPTY_COLOR
+		elif ratio <= 0.5:
+			fill.bg_color = HP_WARNING_COLOR
+		else:
+			fill.bg_color = HP_FULL_COLOR
 		meter.add_theme_stylebox_override("fill", fill)
 
 

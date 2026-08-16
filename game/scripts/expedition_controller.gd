@@ -4,6 +4,7 @@ extends Node
 signal item_picker_requested
 signal inventory_refresh_requested
 signal authority_refresh_requested
+signal reward_presented(reward: Dictionary, encounter: Dictionary)
 signal announcements_changed(announcements: Dictionary)
 
 const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
@@ -342,12 +343,13 @@ func _submit_pending(pending: Dictionary) -> void:
 	var next_run := GameState.as_dict(data.get("run"))
 	var next_encounter := GameState.as_dict(data.get("encounter"))
 	var zone_reward_changed := _zone_reward_changed(_run, next_run)
+	var turn_reward: Dictionary = {}
 	if next_run.is_empty():
 		_view.set_error("EXPEDITION_RUN_NOT_FOUND")
 		_set_busy(false)
 		return
 	if operation == "turn":
-		var turn_reward := GameState.as_dict(data.get("reward"))
+		turn_reward = GameState.as_dict(data.get("reward"))
 		if zone_reward_changed:
 			var zone_reward := GameState.as_dict(next_run.get("last_zone_reward"))
 			turn_reward["zone_bits"] = int(zone_reward.get("bits", 0))
@@ -382,7 +384,9 @@ func _submit_pending(pending: Dictionary) -> void:
 	var zone_bits_awarded := zone_reward_changed and int(
 		GameState.as_dict(next_run.get("last_zone_reward")).get("bits", 0)
 	) > 0
-	if encounter_rewarded or zone_bits_awarded:
+	if encounter_rewarded:
+		reward_presented.emit(turn_reward, next_encounter)
+	elif zone_bits_awarded:
 		authority_refresh_requested.emit()
 	_battle_view.set_expedition_pending(not GameState.pending_expedition.is_empty())
 	_set_busy(false)

@@ -102,12 +102,15 @@ var _destination: StringName = BottomNav.HOME
 var _toast_revision := 0
 var _level_up_revision := 0
 var _level_up_tween: Tween
+var _expedition_level_queue: Array[Dictionary] = []
+var _expedition_level_sequence_active := false
 var _last_care_delta := 0
 var _battle_reward_revision := 0
 var _team_battle_team: Dictionary = {}
 var _team_battle_candidates: Array = []
 var _team_battle_daily: Dictionary = {}
 var _team_defense_published := false
+var _team_battle_demo_active := false
 var _team_art_cache: Dictionary = {}
 var _trophy_icon_cache: Dictionary = {}
 var _expedition_controller: ExpeditionController
@@ -180,6 +183,7 @@ func _ready() -> void:
 	_expedition_controller.item_picker_requested.connect(_open_battle_item_picker)
 	_expedition_controller.inventory_refresh_requested.connect(_refresh_inventory)
 	_expedition_controller.authority_refresh_requested.connect(_refresh_team_battle_authority)
+	_expedition_controller.reward_presented.connect(_apply_expedition_reward)
 	_expedition_controller.announcements_changed.connect(_apply_chapter_announcements)
 	_home_view.care_requested.connect(_perform_care)
 	_home_view.care_blocked.connect(_on_care_blocked)
@@ -808,6 +812,8 @@ func _modal_confirmed(text: String) -> void:
 		&"expedition_abandon":
 			if is_instance_valid(_expedition_controller):
 				_expedition_controller.abandon()
+		&"expedition_level_up":
+			_show_next_expedition_level_up()
 
 
 func _modal_canceled() -> void:
@@ -827,6 +833,8 @@ func _modal_canceled() -> void:
 		_ack_chapter_popup(false)
 	elif context == &"retreat":
 		_pending_retreat = ""
+	elif context == &"expedition_level_up":
+		_show_next_expedition_level_up()
 
 
 func _show_details_help(title: String, body: String) -> void:
@@ -1888,7 +1896,7 @@ func _resume_team_battle() -> void:
 	_set_busy(true)
 	_team_battle_view.set_loading("TEAM_RESUMING")
 	var res := await Backend.team_battle("resume", {"session_id": session_id})
-	if not res.ok and res.error == "TEAM_BATTLE_NOT_FOUND":
+	if not res.ok and res.error in ["TEAM_BATTLE_NOT_FOUND", "INVALID_SESSION_ID"]:
 		GameState.finish_team_battle()
 		_set_busy(false)
 		await _load_team_battle_hub()
@@ -1925,7 +1933,7 @@ func _retry_team_battle() -> void:
 
 
 func _team_battle_action_requested(action: String, switch_to_slot: int) -> void:
-	if _busy:
+	if _busy or _team_battle_demo_active:
 		_team_battle_view.set_busy(false)
 		return
 	var session := _team_battle_view.session_data()
@@ -2079,6 +2087,81 @@ func _apply_team_battle_reward(reward: Dictionary) -> void:
 	if int(reward.get("bits", 0)) <= 0 and exp_rows.is_empty():
 		return
 	await _refresh_team_battle_authority()
+
+
+func _apply_expedition_reward(reward: Dictionary, encounter: Dictionary) -> void:
+	var level_ups := expedition_level_rewards(
+		reward, _variant_array(encounter.get("player_snapshot"))
+	)
+	await _refresh_team_battle_authority()
+	if level_ups.is_empty():
+		return
+	var ready: Array[Dictionary] = []
+	for item in level_ups:
+		var anima_id := str(item.get("anima_id", ""))
+		var anima := _roster_row(anima_id)
+		if anima.is_empty():
+			anima = GameState.as_dict(item.get("anima"))
+		if anima.is_empty():
+			continue
+		item["anima"] = anima.duplicate(true)
+		ready.append(item)
+	if ready.is_empty():
+		return
+	_expedition_level_queue.append_array(ready)
+	if _expedition_level_sequence_active:
+		return
+	_expedition_level_sequence_active = true
+	_expedition_view.set_level_up_sequence_busy(true)
+	_show_next_expedition_level_up()
+
+
+static func expedition_level_rewards(
+	reward: Dictionary,
+	snapshots: Array
+) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for value in _variant_array(reward.get("anima_exp")):
+		var row := GameState.as_dict(value)
+		var exp := int(row.get("exp", 0))
+		var anima_id := str(row.get("anima_id", ""))
+		if exp <= 0 or anima_id.is_empty():
+			continue
+		var snapshot := _snapshot_for_anima(snapshots, anima_id)
+		var previous_score := int(row.get("care_score_before", -1))
+		if previous_score < 0:
+			previous_score = int(snapshot.get("care_score", -1))
+		if previous_score < 0:
+			continue
+		var new_score := previous_score + exp
+		var level := int(CARE_RULES.leveled_up(previous_score, new_score))
+		if level <= 0:
+			continue
+		result.append({
+			"anima_id": anima_id,
+			"anima": snapshot,
+			"level": level,
+			"previous_level": CARE_RULES.level_from_exp(previous_score),
+			"previous_score": previous_score,
+			"new_score": new_score,
+		})
+	return result
+
+
+func _show_next_expedition_level_up() -> void:
+	if _expedition_level_queue.is_empty():
+		_expedition_level_sequence_active = false
+		_expedition_view.set_level_up_sequence_busy(false)
+		return
+	var item: Dictionary = GameState.as_dict(_expedition_level_queue.pop_front())
+	_celebrate_level_up(
+		int(item.get("level", 1)),
+		int(item.get("previous_level", 1)),
+		int(item.get("previous_score", -1)),
+		int(item.get("new_score", -1)),
+		GameState.as_dict(item.get("anima")),
+		&"expedition_level_up"
+	)
 
 
 func _refresh_team_battle_authority() -> void:
@@ -3204,13 +3287,28 @@ func _celebrate_level_up(
 	level: int,
 	previous_level: int,
 	previous_score: int = -1,
-	new_score: int = -1
+	new_score: int = -1,
+	target_anima: Dictionary = {},
+	modal_context: StringName = &"level_up"
 ) -> void:
 	if not is_instance_valid(_level_up_banner):
 		return
 	_status_panel.visible = false
 	_level_up_title.text = tr("LEVEL_UP")
-	if CARE_RULES.form_key(level) != CARE_RULES.form_key(previous_level):
+	if not target_anima.is_empty():
+		var anima_name := LocaleManager.display_name(target_anima)
+		if CARE_RULES.form_key(level) != CARE_RULES.form_key(previous_level):
+			_level_up_label.text = tr("EXPEDITION_LEVEL_UP_FORM") % [
+				anima_name,
+				LocaleManager.level_label(level),
+				LocaleManager.form_name(level),
+			]
+		else:
+			_level_up_label.text = tr("EXPEDITION_LEVEL_UP_TO") % [
+				anima_name,
+				LocaleManager.format_integer(level),
+			]
+	elif CARE_RULES.form_key(level) != CARE_RULES.form_key(previous_level):
 		_level_up_label.text = tr("LEVEL_UP_FORM") % [
 			LocaleManager.level_label(level),
 			LocaleManager.form_name(level),
@@ -3219,7 +3317,8 @@ func _celebrate_level_up(
 		_level_up_label.text = tr("LEVEL_UP_TO") % LocaleManager.format_integer(level)
 	_level_up_banner.visible = true
 	_level_up_banner.pivot_offset = _level_up_banner.size * 0.5
-	_home_view.pulse_progress()
+	if target_anima.is_empty():
+		_home_view.pulse_progress()
 	if is_instance_valid(_anima) and _anima.visible:
 		_anima.celebrate_level_up()
 	Input.vibrate_handheld(70)
@@ -3239,10 +3338,18 @@ func _celebrate_level_up(
 		_level_up_tween.chain().tween_property(_level_up_banner, "scale", Vector2.ONE, 0.12)
 	_level_up_revision += 1
 	var revision := _level_up_revision
-	_hide_level_up_later(revision, previous_score, new_score)
+	_hide_level_up_later(
+		revision, previous_score, new_score, target_anima, modal_context
+	)
 
 
-func _hide_level_up_later(revision: int, previous_score: int, new_score: int) -> void:
+func _hide_level_up_later(
+	revision: int,
+	previous_score: int,
+	new_score: int,
+	target_anima: Dictionary = {},
+	modal_context: StringName = &"level_up"
+) -> void:
 	await get_tree().create_timer(1.8).timeout
 	if revision != _level_up_revision or not is_instance_valid(_level_up_banner):
 		return
@@ -3259,15 +3366,21 @@ func _hide_level_up_later(revision: int, previous_score: int, new_score: int) ->
 		_level_up_banner.visible = false
 		_level_up_banner.modulate = Color.WHITE
 		_level_up_banner.scale = Vector2.ONE
-	_show_level_up_stats(previous_score, new_score)
+	_show_level_up_stats(previous_score, new_score, target_anima, modal_context)
 
 
-func _show_level_up_stats(previous_score: int, new_score: int) -> void:
-	if previous_score < 0 or new_score < 0 or _current_anima.is_empty():
+func _show_level_up_stats(
+	previous_score: int,
+	new_score: int,
+	target_anima: Dictionary = {},
+	modal_context: StringName = &"level_up"
+) -> void:
+	var anima := target_anima if not target_anima.is_empty() else _current_anima
+	if previous_score < 0 or new_score < 0 or anima.is_empty():
 		return
 	if is_instance_valid(_shell_modal) and _shell_modal.visible:
 		return
-	var stats := GameState.as_dict(_current_anima.get("base_stats"))
+	var stats := GameState.as_dict(anima.get("base_stats"))
 	var lines: PackedStringArray = []
 	for key in STAT_ORDER:
 		lines.append(
@@ -3278,8 +3391,16 @@ func _show_level_up_stats(previous_score: int, new_score: int) -> void:
 				LocaleManager.format_integer(CARE_RULES.grown_stat(stats.get(key, 0), new_score)),
 			]
 		)
-	_modal_context = &"level_up"
-	_shell_modal.open_info(tr("LEVEL_UP_STATS_TITLE"), "\n".join(lines), tr("CORE_INFO_CLOSE"))
+	_modal_context = modal_context
+	var title := (
+		tr("EXPEDITION_LEVEL_UP_STATS_TITLE") % LocaleManager.display_name(anima)
+		if modal_context == &"expedition_level_up" else tr("LEVEL_UP_STATS_TITLE")
+	)
+	var action := (
+		tr("EXPEDITION_CHOICE_CONTINUE")
+		if modal_context == &"expedition_level_up" else tr("CORE_INFO_CLOSE")
+	)
+	_shell_modal.open_info(title, "\n".join(lines), action)
 
 
 func _say(text: String, transient: bool = false) -> void:
@@ -3736,6 +3857,7 @@ func _run_battle_demo(
 
 
 func _run_team_battle_demo(boss: bool = false) -> Dictionary:
+	_team_battle_demo_active = true
 	var placeholder := PlaceholderSheet.build()
 	var loaded := AnimaLoader.build(
 		ImageTexture.create_from_image(placeholder["image"]),

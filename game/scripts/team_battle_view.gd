@@ -353,6 +353,10 @@ func set_busy(busy: bool) -> void:
 		_open_switch_picker(true)
 
 
+func set_result_continue_enabled(enabled: bool) -> void:
+	_retry.disabled = not enabled
+
+
 func set_session(session: Dictionary, art_cache: Dictionary = {}) -> void:
 	_session = session.duplicate(true)
 	_art_cache.merge(art_cache, true)
@@ -1512,7 +1516,7 @@ func _sync_seeker_shadow() -> void:
 	var width := maxf(1.0, float(metrics.get("reference_width_px", 158.0))) * absf(_seeker.scale.x)
 	_seeker_shadow.visible = true
 	_seeker_shadow.z_index = _seeker.z_index
-	_seeker_shadow.position = _seeker.position + Vector2(0.0, 4.0)
+	_seeker_shadow.position = _seeker.position
 	_seeker_shadow.scale = Vector2(clampf(width / 130.0, 0.9, 3.0), 1.15)
 
 
@@ -1538,9 +1542,10 @@ func _make_ground_shadow(anchor: Node2D) -> Sprite2D:
 	texture.fill_to = Vector2(1.0, 0.5)
 	var shadow := Sprite2D.new()
 	shadow.name = "GroundShadow"
+	shadow.centered = true
 	shadow.texture = texture
 	shadow.z_index = 0
-	shadow.position = Vector2(0.0, 2.0)
+	shadow.position = Vector2.ZERO
 	shadow.scale = Vector2(1.35, 0.7)
 	anchor.add_child(shadow)
 	anchor.move_child(shadow, 0)

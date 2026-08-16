@@ -491,9 +491,13 @@ berikutnya. Damage tetap tidak diprediksi client. Boss Seeker tidak memakai
 dengan `target.hit_react()`, lalu kembali Idle setelah animasi damage selesai
 dan sebelum effectiveness copy ditampilkan.
 
-Semua HP bar memakai interpolasi kontinu `red.lerp(blue_cyan, hp / max_hp)`.
-Angka `current / max` tetap ditampilkan untuk aksesibilitas. Ground shadow
-Team/Expedition/Boss memakai alpha pusat 0,45, setengah dari nilai lama 0,90.
+Semua HP bar memakai tiga warna diskret dari rasio `hp / max_hp`: merah saat
+rasio `<= 0.20`, oranye saat `<= 0.50`, dan biru/cyan di atasnya. Tidak ada
+interpolasi antarwarna. Angka `current / max` tetap ditampilkan untuk
+aksesibilitas. Ground shadow Team/Expedition/Boss memakai alpha pusat 0,45,
+setengah dari nilai lama 0,90. Sprite shadow selalu centered; titik opak
+terbawah Anima atau Boss Seeker dipasang tepat pada pusat vertikal shadow tanpa
+offset Y tambahan.
 
 Battle dan Training memakai entry gate yang sama: Anima harus memiliki **minimal 20 Energy**, dan **start session baru memotong 20 Energy**. Hunger **bukan** gerbang masuk — Bits didapat dari duel dan makanan dibeli pakai Bits, jadi mengunci faucet di belakang sink-nya membuat 0 Bits + tas kosong jadi soft-lock. Pose Hungry dan EXP Feed tetap memakai ambang 40. `start_battle()` menjalankan `apply_care(..., 'sync')` sebelum memeriksa Energy authoritative, sehingga client tidak bisa memakai snapshot Energy lama untuk masuk. Client juga menonaktifkan CTA lebih awal ketika row roster sudah menunjukkan Energy di bawah 20, tetapi keputusan akhir tetap di transaksi server. Resume session aktif tidak memotong Energy kedua kali, dan duel yang sudah berjalan tidak dibatalkan di tengah.
 
@@ -572,6 +576,11 @@ di `app_config` dan wajib dituning dari telemetry sebelum rollout luas.
 Result memfilter `anima_exp` ke row `exp > 0`, menampilkan nama penerima serta
 Level Up, dan payload terminal Team memulihkan array itu dari receipt JSON turn
 saat resume/replay.
+
+Pada Expedition, setiap row yang melintasi batas Level juga masuk queue presentasi
+client sesudah summary hadiah: banner bernama lalu perbandingan lima stat grown
+lama → baru. Continue memajukan satu anggota dan Return to Map terkunci sampai
+seluruh anggota yang naik Level selesai ditampilkan.
 
 Expedition tidak menjadi faucet Bits berulang. **Begin Expedition** mendebit
 30 Energy dari masing-masing empat anggota satu kali; seluruh Start Zone dan
