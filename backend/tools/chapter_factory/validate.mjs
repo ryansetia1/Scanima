@@ -18,6 +18,10 @@ const STAT_KEYS = ["hp", "atk", "def", "spd", "special"];
 const EFFECT_SET = new Set(EXPEDITION_EFFECT_TYPES);
 const MOVE_NAME = /^[A-Z][a-z]+ [A-Z][a-z]+$/;
 const SAFE_FILENAME = /^[a-z0-9][a-z0-9_-]{0,62}\.png$/;
+const BODY_HEIGHT_MIN_CM = 20;
+const BODY_HEIGHT_MAX_CM = 2000;
+const ACE_PASSIVE_TYPES = new Set(["bonus_pp", "stat_boost", "one_hit_shield"]);
+const ACE_PASSIVE_STATS = new Set(["atk", "def", "spd", "special"]);
 
 export function scanIpTerms(value, path = "root") {
   const hits = [];
@@ -57,6 +61,52 @@ function assertMoveName(value, label) {
   if (typeof value !== "string" || !MOVE_NAME.test(value.trim())) {
     throw validationError("INVALID_MOVE_NAME", `${label}: strike/surge harus dua kata Title Case`);
   }
+}
+
+function assertBodyHeight(value, label) {
+  const height = Number(value);
+  if (!Number.isInteger(height) || height < BODY_HEIGHT_MIN_CM || height > BODY_HEIGHT_MAX_CM) {
+    throw validationError(
+      "INVALID_BODY_HEIGHT",
+      `${label}: body_height_cm harus integer ${BODY_HEIGHT_MIN_CM}-${BODY_HEIGHT_MAX_CM}`,
+    );
+  }
+}
+
+function assertAcePassive(value, label) {
+  if (!value || typeof value !== "object" || !ACE_PASSIVE_TYPES.has(value.type)) {
+    throw validationError("INVALID_ACE_PASSIVE", `${label}: ace_passive type tidak didukung`);
+  }
+  if (
+    typeof value.name !== "string"
+    || value.name.trim().length < 2
+    || typeof value.copy !== "string"
+    || value.copy.trim().length < 2
+  ) {
+    throw validationError("INVALID_ACE_PASSIVE", `${label}: name/copy ace_passive wajib`);
+  }
+  if (
+    value.type === "bonus_pp"
+    && (!Number.isInteger(Number(value.value)) || Number(value.value) < 1 || Number(value.value) > 2)
+  ) {
+    throw validationError("INVALID_ACE_PASSIVE", `${label}: bonus_pp harus 1-2`);
+  }
+  if (
+    value.type === "stat_boost"
+    && (
+      !ACE_PASSIVE_STATS.has(value.stat)
+      || !Number.isInteger(Number(value.value))
+      || Number(value.value) < 1
+      || Number(value.value) > 25
+    )
+  ) {
+    throw validationError("INVALID_ACE_PASSIVE", `${label}: stat_boost harus stat valid dan 1-25%`);
+  }
+}
+
+function castPower(member) {
+  const stats = normalizeBaseStats(member?.base_stats);
+  return STAT_KEYS.reduce((sum, key) => sum + Number(stats[key] ?? 0), 0);
 }
 
 export function validateBrief(brief) {
@@ -113,6 +163,7 @@ export function validateDesign(design, brief, ctx = null) {
     throw validationError("INVALID_DESIGN_CAST", "cast harus tepat 9 Anima");
   }
   const castIds = new Set();
+  const requireBodyHeight = Number(brief.content_version) >= 2;
   for (const [index, member] of design.cast.entries()) {
     assertSafeId(member?.id, `cast[${index}].id`);
     if (castIds.has(member.id)) {
@@ -140,6 +191,7 @@ export function validateDesign(design, brief, ctx = null) {
         throw validationError("INVALID_DESIGN_CAST", `${member.id}: stat ${key} di luar batas`);
       }
     }
+    if (requireBodyHeight) assertBodyHeight(member.body_height_cm, member.id);
   }
   const specialCount = design.cast.filter((entry) => entry.special === true).length;
   if (specialCount !== 1) {
@@ -203,6 +255,14 @@ export function validateDesign(design, brief, ctx = null) {
   if (bossRegulars.length !== 3) {
     throw validationError("INVALID_DESIGN_BOSS", "boss roster harus punya tepat 3 Anima reguler");
   }
+  const ace = design.cast.find((entry) => entry.id === bossSpecials[0]);
+  const regularPower = Math.max(
+    ...bossRegulars.map((id) => castPower(design.cast.find((entry) => entry.id === id))),
+  );
+  if (castPower(ace) < regularPower) {
+    throw validationError("INVALID_DESIGN_BOSS", "Anima special tidak boleh lebih lemah dari reguler");
+  }
+  if (Number(brief.content_version) >= 2) assertAcePassive(design.boss.ace_passive, "boss");
   for (const zone of design.zones) {
     if (!opponentIds.has(zone.battle_opponent_id) || !opponentIds.has(zone.elite_opponent_id)) {
       throw validationError("INVALID_DESIGN_ZONES", `${zone.id}: opponent zone tidak valid`);
@@ -239,6 +299,7 @@ export function validateDesign(design, brief, ctx = null) {
   if (!SAFE_FILENAME.test(seeker.sheet_filename ?? "")) {
     throw validationError("INVALID_DESIGN_BOSS_SEEKER", "boss_seeker.sheet_filename tidak aman");
   }
+  if (requireBodyHeight) assertBodyHeight(seeker.body_height_cm, "boss_seeker");
   if (!BOSS_SEEKER_POSES.includes(seeker.portrait_pose)) {
     throw validationError("INVALID_DESIGN_BOSS_SEEKER", "portrait_pose harus pose Boss Seeker valid");
   }
@@ -354,6 +415,13 @@ export function validateAnimaManifest(manifest, label) {
   if (frame.some((value) => !Number.isInteger(value) || value <= 0)) {
     throw validationError("INVALID_ANIMA_MANIFEST", `${label}: frame size invalid`);
   }
+  if (
+    manifest.render_metrics != null
+    && (!Number.isInteger(Number(manifest.render_metrics.reference_height_px))
+      || Number(manifest.render_metrics.reference_height_px) <= 0)
+  ) {
+    throw validationError("INVALID_ANIMA_MANIFEST", `${label}: render_metrics.reference_height_px invalid`);
+  }
   for (const required of LAYOUT_3X3.poses) {
     const region = poses[required].region;
     if (region[2] !== frame[0] || region[3] !== frame[1]) {
@@ -374,6 +442,13 @@ export function validateBossSeekerManifest(manifest) {
     if (!Array.isArray(region) || region.length !== 4) {
       throw validationError("INVALID_BOSS_MANIFEST", `pose ${pose} region invalid`);
     }
+  }
+  if (
+    manifest.render_metrics != null
+    && (!Number.isInteger(Number(manifest.render_metrics.reference_height_px))
+      || Number(manifest.render_metrics.reference_height_px) <= 0)
+  ) {
+    throw validationError("INVALID_BOSS_MANIFEST", "boss seeker reference_height_px invalid");
   }
 }
 
@@ -436,6 +511,13 @@ export function validateChapterDraft(manifest, ctx) {
     throw validationError("INVALID_BOSS_SEEKER", "boss_seeker.sheet_path wajib");
   }
   validateBossSeekerManifest(manifest.boss_seeker.manifest);
+  const requireBodyHeight = Number(manifest.content_version) >= 2;
+  if (requireBodyHeight) {
+    assertBodyHeight(manifest.boss_seeker.body_height_cm, "boss_seeker");
+    if (!manifest.boss_seeker.manifest?.render_metrics?.reference_height_px) {
+      throw validationError("INVALID_BOSS_MANIFEST", "boss seeker render_metrics wajib");
+    }
+  }
   const dialogue = manifest.boss_seeker.dialogue;
   if (!dialogue || typeof dialogue !== "object") {
     throw validationError("INVALID_BOSS_DIALOGUE", "boss_seeker.dialogue wajib");
@@ -451,6 +533,12 @@ export function validateChapterDraft(manifest, ctx) {
   for (const opponent of manifest.opponents) {
     for (const [index, member] of opponent.roster.entries()) {
       validateRosterMember(member, `${opponent.id}[${index}]`);
+      if (requireBodyHeight) {
+        assertBodyHeight(member.body_height_cm, `${opponent.id}[${index}]`);
+        if (!member.manifest?.render_metrics?.reference_height_px) {
+          throw validationError("INVALID_ANIMA_MANIFEST", `${opponent.id}[${index}]: render_metrics wajib`);
+        }
+      }
     }
   }
   const boss = manifest.opponents.find((entry) => entry.id === manifest.boss.opponent_id);
@@ -461,6 +549,11 @@ export function validateChapterDraft(manifest, ctx) {
   if (specials.length !== 1) {
     throw validationError("INVALID_BOSS_ROSTER", "boss roster harus punya tepat 1 Anima special");
   }
+  const regulars = boss.roster.filter((member) => member.special !== true);
+  if (castPower(specials[0]) < Math.max(...regulars.map(castPower))) {
+    throw validationError("INVALID_BOSS_ROSTER", "Anima special tidak boleh lebih lemah dari reguler");
+  }
+  if (requireBodyHeight) assertAcePassive(manifest.boss.ace_passive, "boss");
   for (const zone of manifest.zones) {
     if (!zone.background_path?.startsWith(ctx.assetPrefix)) {
       throw validationError("INVALID_ZONE_ART", `${zone.id} background_path tidak cocok prefix`);

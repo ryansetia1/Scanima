@@ -493,6 +493,7 @@ async function main() {
           useV13,
           useV13,
           useV13,
+          promptMajor(args.promptVersion) >= 17,
         );
         row.vision = checked.vision;
         row.issues = [...(row.issues ?? []), ...checked.issues];

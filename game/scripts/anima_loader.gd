@@ -145,6 +145,7 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 		"fx_motion": fx_motion,
 		"species_key": str(manifest.get("species_key", "")),
 		"stage": int(manifest.get("stage", 1)),
+		"render_metrics": manifest.get("render_metrics", {}),
 		"qa": manifest.get("qa", {}),
 	}
 

@@ -186,7 +186,7 @@ type VersionRow = {
 const TEAM_FIELDS =
   "id, owner_id, kind, anima_team_members(slot, animas!inner("
   + "id, owner_id, nickname, species_key, color_bucket, stage, element, secondary_element, "
-  + "base_stats, care_score, care, sleep_started_at, dormant_since, status, "
+  + "base_stats, body_height_cm, care_score, care, sleep_started_at, dormant_since, status, "
   + "strike_name, surge_name, sheet_path, manifest))";
 
 const db = adminClient();
@@ -460,6 +460,8 @@ async function startEncounter(
       player: playerSnapshot,
       opponent: opponentSnapshot,
       seed,
+      encounterKind: String(node.kind),
+      acePassive: node.kind === "boss" ? manifest.boss.ace_passive : null,
     }),
     run.boosts,
   );

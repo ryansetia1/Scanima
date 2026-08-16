@@ -377,7 +377,22 @@ func _initialize() -> void:
 		70,
 		"Vision stats still normalize for the profile"
 	)
-	for size in [Vector2(720, 1280), Vector2(360, 640), Vector2(412, 915), Vector2(1080, 1920)]:
+	_check_eq(
+		int(ProjectSettings.get_setting("display/window/size/viewport_width")),
+		720,
+		"viewport tetap 720 supaya tombol 96 px tidak mengecil"
+	)
+	_check_eq(
+		int(ProjectSettings.get_setting("display/window/size/viewport_height")),
+		1602,
+		"viewport tinggi mengikuti Xiaomi 14 20:9"
+	)
+	_check_eq(
+		str(ProjectSettings.get_setting("display/window/stretch/aspect")),
+		"keep",
+		"stretch keep mengunci crop background saat window di-resize"
+	)
+	for size in [Vector2(720, 1280), Vector2(720, 1602), Vector2(360, 640), Vector2(412, 915), Vector2(1080, 1920)]:
 		var pos: Vector2 = script.stage_position_for(size, Vector4.ZERO)
 		_check(is_equal_approx(pos.x, size.x * 0.5), "Stage stays horizontally centered at %s" % size)
 		_check(pos.y > 0.0 and pos.y < size.y, "Stage stays inside %s" % size)
@@ -2126,17 +2141,31 @@ func _test_team_battle_view() -> void:
 		"element_multiplier": 1.0,
 	}], boss_session, seeker_art)
 	_check(not dialog.is_open(), "replayed opponent Attack does not repeat first_attack")
-	var last_page := boss_session.duplicate(true)
-	last_page["state"]["player"]["roster"][0]["hp"] = 0
-	last_page["state"]["player"]["roster"][1]["hp"] = 0
-	last_page["state"]["player"]["roster"][2]["hp"] = 0
+	var ace_session := boss_session.duplicate(true)
+	ace_session["state"]["opponent"]["active_slot"] = 3
+	var ace_member: Dictionary = ace_session["state"]["opponent"]["roster"][3]
 	_dismiss_when_open(dialog)
 	await view.play_events([{
-		"type": "knockout",
-		"actor": "player",
-	}], last_page, seeker_art)
-	_check(not dialog.is_open(), "last living Anima speaks once")
-	var won := last_page.duplicate(true)
+		"type": "final_ace",
+		"actor": "opponent",
+		"to_slot": 3,
+		"anima_id": ace_member.get("anima_id", ""),
+		"name": ace_member.get("name", ""),
+	}, {
+		"type": "switch",
+		"actor": "opponent",
+		"to_slot": 3,
+		"forced": true,
+		"name": ace_member.get("name", ""),
+	}, {
+		"type": "ace_passive",
+		"actor": "opponent",
+		"passive_name": "Final Confection",
+		"copy": "Cotton enters with +1 PP.",
+	}], ace_session, seeker_art)
+	_check(not dialog.is_open(), "final ace line closes before Summon and passive finish")
+	_check(seeker.animation == "intro_idle", "final ace sequence restores the Seeker idle pose")
+	var won := ace_session.duplicate(true)
 	won["status"] = "won"
 	won["state"]["status"] = "won"
 	view.set_session(won, seeker_art)

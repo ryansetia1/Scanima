@@ -302,3 +302,35 @@ export async function reprocessTrophy({ chapterDir, ctx, apply = false }) {
     manifest_hash: rebuilt.manifest.manifest_hash,
   };
 }
+
+export async function reprocessBossSeeker({ chapterDir, ctx, apply = false }) {
+  validateDesign(ctx.design, ctx.brief, ctx);
+  const raw = await readFile(join(chapterDir, "raw", "boss_seeker.png"));
+  const asset = await postprocessChromaGridSheet(raw, {
+    poses: BOSS_SEEKER_POSES,
+    meta: { seeker_id: ctx.design.boss_seeker.id },
+  });
+  if (!apply) {
+    return { ok: true, mode: "preview", slot: "boss_seeker", hash: asset.hash };
+  }
+  const bundle = await loadOrCreateAssetBundle(chapterDir, ctx);
+  applySlotToBundle(bundle, "boss_seeker", asset);
+  const sources = await readAssetSources(chapterDir);
+  const nextSources = withReprocessedAssetSource(sources, "boss_seeker", asset.hash);
+  const rebuilt = await rebuildFromAssets(
+    chapterDir,
+    bundle,
+    ctx,
+    assetMode(ctx, nextSources),
+  );
+  validateChapterDraft(rebuilt.manifest, ctx);
+  await writeChapterOutputs(chapterDir, rebuilt, ctx);
+  await writeAssetSources(chapterDir, nextSources);
+  return {
+    ok: true,
+    mode: "apply",
+    slot: "boss_seeker",
+    hash: asset.hash,
+    manifest_hash: rebuilt.manifest.manifest_hash,
+  };
+}

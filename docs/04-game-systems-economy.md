@@ -319,6 +319,20 @@ static func to_battle_stats(base: Dictionary, level: int) -> Dictionary:
 
 HP dikali 4 supaya battle berlangsung 6-10 turn. Lebih pendek terasa dangkal, lebih panjang membosankan di sesi mobile.
 
+`body_height_cm` bukan stat tempur dan tidak masuk combat power. Ia adalah tinggi
+vertikal stance Battle 20–2000 cm yang ditentukan Vision v18 atau author chapter.
+Vision memakai skala nyata sebagai anchor, membesarkan benda genggam kecil ke
+floor playable 70–120 cm, dan hanya memakai exaggeration besar bila transformed
+silhouette memang menuntutnya. Snapshot Battle meneruskannya bersama
+`render_metrics` sheet; client memakai kurva non-linear dari kartu desain
+720×800 yang di-contain ke arena, termasuk Boss Seeker. Anima 120 cm mengisi
+sekitar setengah kartu itu; lebar layar tidak mengubah skala, dan ruang
+vertikal ekstra tidak membesarkan tubuh. Perbedaan kecil/normal/raksasa
+tetap terbaca tanpa memberi damage/HP gratis, tanpa satu sprite lebar
+terkompres sendiri, tanpa trainer tinggal di skala penuh, dan tanpa menutup
+HUD. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px) di client; capture
+300 px memotong kaki tubuh yang lebih tinggi dari jendela itu.
+
 `createFighter` memotong stat tempur pemain sesudah pertumbuhan level kalau care rendah. Hunger < 40 interpolasi linear ke ×0.6 di 0; Hygiene < 50 interpolasi ke ×0.7 di 0; keduanya dikalikan lalu dijepit minimal ×0.5. Ambang sama dengan pose Hungry/Dirty. Bot tidak dipotong. `battleRewardPreview` memakai stat tanpa penalti supaya care rendah tidak menaikkan tier Bits. Hunger dan Hygiene bukan gerbang masuk.
 
 ### Element wheel — target (18 elemen)
@@ -509,7 +523,7 @@ Lawan Battle:
 Detail publish/unpublish Galeri: [08](08-private-art-and-gallery.md). PvP
 real-time, ranked, dan item drop tetap ditunda.
 
-### Target berikutnya: Team Battle dan Expedition
+### Team Battle dan Expedition
 
 Team Battle tidak mengubah economy Duel. Ia mempunyai cap account-wide sendiri:
 baseline **2 rewarded wins** dan **40 Bits per hari sipil lokal**. Empat anggota
@@ -531,6 +545,21 @@ HP persisten hanya di dalam zona, PP reset tiap encounter, dan growth dari EXP
 baru dipakai di encounter Battle berikutnya di zona yang sama. Aturan roster, switch, node,
 checkpoint, Trophy, dan Chapter Factory ada di
 [`09-team-battle-and-expedition.md`](09-team-battle-and-expedition.md).
+
+Boss chapter menandai tepat satu anggota lawan sebagai `special`/ace. Resolver
+server menahan ace selama masih ada anggota reguler hidup, termasuk untuk
+starter dan forced switch. Saat ace akhirnya masuk, ordered event log selalu
+`final_ace → switch → ace_passive`; state menyimpan bahwa passive sudah dipakai
+agar retry/replay tidak menggandakannya. Sugarworks memakai **Final
+Confection**, bonus +1 max/current PP untuk Cotton tepat sekali. Allowlist live
+juga mendukung bounded stat boost dan one-hit shield untuk chapter berikutnya.
+
+Dua bentuk mekanik ace sengaja belum live. **Ace-exclusive move** memerlukan
+action wire baru, resolver dan validasi target, VFX/pose manifest, copy, AI, dan
+replay tests; menumpangkannya pada `surge` akan membuat client lama salah
+menganimasikan event. **Full Boss phase** memerlukan schema phase, transition
+state, HP/passive reset policy, reward tuning, dan UI checkpoint khusus. Keduanya
+dicatat sebagai arah lanjut, bukan perilaku build sekarang.
 
 ## 6. Loop harian yang diharapkan
 

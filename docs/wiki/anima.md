@@ -4,6 +4,15 @@ Setiap Anima lahir dari foto satu benda atau hewan non-manusia. Bentuk, jurus,
 dan stats-nya mengikuti subjek itu, lalu tumbuh pelan lewat Level. Art setiap
 Anima unik dan privat kecuali kamu memilih memublikasikannya ke Gallery.
 
+Setiap Anima juga lahir dengan ukuran tubuh khas. Ukurannya berangkat dari
+subjek asli, tetapi transformasi bisa membesarkan benda genggam kecil menjadi
+companion yang tetap terbaca atau membuat monster tertentu jauh lebih besar.
+Ukuran ini dipakai untuk proporsi di Battle: ada Anima yang mungil, normal, atau
+sangat besar. Tingginya mengikuti kartu arena HP, jadi tetap terbaca sama di layar
+tinggi maupun lebar dan tidak memenuhi seluruh layar tinggi. Angkanya belum ditampilkan di Profile dan tidak menambah
+Health atau damage; ia murni mengatur skala visual yang tetap dibatasi agar HUD
+terbaca.
+
 Sesudah Anima pertama menetas, game menawarkan **Create Your Seeker**. Nama
 Seeker adalah identitas pemain dan berbeda dari nickname Anima. Sheet boleh
 ditutup dan dilanjutkan nanti.

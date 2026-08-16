@@ -105,6 +105,7 @@ export function publicBossSeeker(manifestInput) {
     id: typeof seeker.id === "string" ? seeker.id : "",
     display_name: typeof seeker.display_name === "string" ? seeker.display_name : "",
     title_key: typeof seeker.title_key === "string" ? seeker.title_key : "",
+    body_height_cm: Math.min(2000, Math.max(20, Math.trunc(Number(seeker.body_height_cm) || 170))),
     portrait_pose: typeof seeker.portrait_pose === "string" ? seeker.portrait_pose : "profile",
     dialogue,
     poses,

@@ -33,7 +33,11 @@ chroma green tidak dapat diperbaiki aman hanya dengan resize.
 
 ## Alur singkat
 
-1. Pastikan `brief.json` dan `design.json` chapter sudah final.
+1. Pastikan `brief.json` dan `design.json` chapter sudah final. Untuk content
+   version 2+, setiap cast member dan Boss Seeker wajib memiliki
+   `body_height_cm` 20–2000; Boss roster tepat satu `special`, ace tidak boleh
+   lebih lemah dari reguler terkuat, dan `boss.ace_passive` harus memakai
+   allowlist.
 2. Buka satu conversation ChatGPT baru untuk satu chapter.
 3. Tempel **Prompt 0 — Style and layout lock** sekali.
 4. Kirim prompt slot satu per satu. Satu prompt menghasilkan satu gambar.
@@ -834,7 +838,9 @@ Untuk Boss Seeker:
 - sembilan pose tepat dan urut;
 - wajah, pakaian, prop, dan proporsi konsisten;
 - gesture command terbaca dan Profile cocok sebagai portrait;
-- background serta seam mengikuti aturan sheet.
+- background serta seam mengikuti aturan sheet;
+- manifest hasil proses memiliki `render_metrics.reference_height_px` dan
+  `reference_width_px` dari bbox opak Intro/Idle, bukan ukuran frame.
 
 Untuk zona:
 
@@ -891,6 +897,10 @@ node backend/tools/chapter_factory.mjs \
 # tulis hanya setelah seluruh slot yang dipilih lolos
 node backend/tools/chapter_factory.mjs \
   --chapter-dir=backend/chapters/the-sugarworks/v1 ingest-manual --apply
+
+# bangun ulang sheet/manifest Boss dari raw yang sudah dibayar, tanpa model call
+node backend/tools/chapter_factory.mjs \
+  --chapter-dir=backend/chapters/<slug>/v<version> reprocess-boss --apply
 ```
 
 Gunakan `--slots=anima:<id>,zone:1,...` untuk ingest parsial setelah preview

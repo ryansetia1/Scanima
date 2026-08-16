@@ -10,6 +10,7 @@ import { approveChapter } from "./chapter_factory/approval.mjs";
 import {
   paidCostPreview,
   paidExecutionGate,
+  reprocessBossSeeker,
   reprocessTrophy,
   runPaidGeneration,
 } from "./chapter_factory/paid.mjs";
@@ -50,6 +51,7 @@ Usage:
   node backend/tools/chapter_factory.mjs [--chapter-dir=path] notify [--apply] --confirm-push='...'
   node backend/tools/chapter_factory.mjs [--chapter-dir=path] generate [--paid] [--apply] --ack-cost='...' [--slots=...]
   node backend/tools/chapter_factory.mjs [--chapter-dir=path] ingest-manual [--apply] [--slots=...] [--cleanup-seams=...]
+  node backend/tools/chapter_factory.mjs [--chapter-dir=path] reprocess-boss [--apply]
   node backend/tools/chapter_factory.mjs [--chapter-dir=path] reprocess-trophy [--apply]
   node backend/tools/chapter_factory.mjs --selftest
 
@@ -289,6 +291,12 @@ async function commandReprocessTrophy(chapterDir, apply) {
   process.stdout.write(stableStringify({ command: "reprocess-trophy", ...result }));
 }
 
+async function commandReprocessBoss(chapterDir, apply) {
+  const ctx = await loadChapterContext(chapterDir);
+  const result = await reprocessBossSeeker({ chapterDir, ctx, apply });
+  process.stdout.write(stableStringify({ command: "reprocess-boss", ...result }));
+}
+
 async function commandIngestManual(chapterDir, args) {
   const ctx = await loadChapterContext(chapterDir);
   const result = await runManualIngest({
@@ -346,6 +354,9 @@ async function main() {
       break;
     case "reprocess-trophy":
       await commandReprocessTrophy(chapterDir, args.apply);
+      break;
+    case "reprocess-boss":
+      await commandReprocessBoss(chapterDir, args.apply);
       break;
     default:
       throw new Error(`Perintah tidak dikenal: ${args.command}`);

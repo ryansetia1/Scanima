@@ -96,10 +96,22 @@ Seeker.
   tidak mendapat EXP. Tokens tetap dapat diperoleh.
 - First clear Boss memberi **Sugarfold Core** untuk koleksi Trophy Seeker.
 - Boss menampilkan **The Confectioner** di belakang Anima lawan selama fight.
-  Ia berbicara di awal chapter, saat Boss dimulai (atau **rematch** jika zona
-  itu diulang), pada Attack / Special / Switch pertamanya, ketika satu Anima
-  pemain tersisa, lalu saat menang atau kalah. **Tap to continue** menutup
-  setiap baris; baris yang sama tidak diulang dalam satu fight.
+  Ia berbicara saat Boss dimulai (atau **rematch**), paling banyak sekali lagi
+  saat memberi perintah di tengah fight, ketika ace terakhirnya masuk, lalu saat
+  menang atau kalah. Pose The Confectioner tampil lebih dulu, baru teks dan aksi
+  Anima, jadi Summon atau serangan tidak bertumpuk dengan dialog. **Tap to
+  continue** menutup setiap baris.
+- Cotton adalah ace The Confectioner dan selalu disimpan sampai semua Anima
+  regulernya KO. Saat Cotton masuk, **Final Confection** aktif sekali dan
+  memberinya +1 PP untuk encounter itu.
+- Ukuran Anima dan The Confectioner di arena mengikuti tinggi tubuh mereka.
+  Anima setinggi manusia mengisi sekitar setengah arena pada layar HP. Tinggi
+  Anima dan The Confectioner dikunci bersama, jadi lebar atau tinggi layar
+  tidak membuat salah satu tiba-tiba lebih besar. Proporsi Anima dan The Confectioner dijaga
+  bersama, jadi Anima yang lebih tinggi tidak tampak lebih pendek hanya karena
+  tubuh lawannya lebih lebar, dan trainer tidak tiba-tiba lebih besar dari
+  petarungnya. Monster besar tetap terasa besar, tetapi semuanya dijaga agar
+  tidak menutup HUD. The Confectioner tampil full body.
 
 Chapter baru menampilkan popup sekali di Home dan badge **New** sampai chapter
 dibuka. Push perangkat bersifat opsional; popup dan badge di dalam game tetap

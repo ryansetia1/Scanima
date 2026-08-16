@@ -128,6 +128,7 @@ export function rosterMember(ctx, animaId) {
     color_bucket: source.color_bucket,
     stage: 2,
     level: 12,
+    ...(ctx.contentVersion >= 2 ? { body_height_cm: Number(source.body_height_cm || 120) } : {}),
     element: normalizeElement(source.element),
     secondary_element: normalizeElement(source.secondary_element, ""),
     base_stats: stats,
@@ -171,6 +172,9 @@ export function buildGameplayManifest(ctx) {
       display_name: design.boss_seeker.display_name,
       title_key: design.boss_seeker.title_key,
       sheet_path: ctx.bossStoragePath(),
+      ...(ctx.contentVersion >= 2
+        ? { body_height_cm: Number(design.boss_seeker.body_height_cm || 170) }
+        : {}),
       portrait_pose: design.boss_seeker.portrait_pose ?? "profile",
       poses: BOSS_SEEKER_POSES,
       dialogue: design.boss_seeker.dialogue,

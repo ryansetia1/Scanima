@@ -117,6 +117,7 @@ export function validateVision(
   requireTypingV13 = false,
   allowAnimals = false,
   skipSpeciesDedup = false,
+  requireBodyHeight = false,
 ) {
   const issues = [];
 
@@ -191,6 +192,14 @@ export function validateVision(
     }
   } else {
     issues.push("stats kosong");
+  }
+
+  if (requireBodyHeight) {
+    const height = Number(v.body_height_cm);
+    if (!Number.isInteger(height) || height < 20 || height > 2000) {
+      throw new Error(`body_height_cm tidak sah: ${JSON.stringify(v.body_height_cm)}`);
+    }
+    v.body_height_cm = height;
   }
 
   const vague = /^(unique|interesting|nice|cool|various|some)\b|qualities$|texture$/i;

@@ -1,0 +1,132 @@
+{
+  "attempt": 1,
+  "background_path": "expeditions/the-sugarworks/v2/zones/zone-3.png",
+  "entry": [
+    "z3-a1-d1-1",
+    "z3-a1-d1-2"
+  ],
+  "nodes": [
+    {
+      "depth": 1,
+      "id": "z3-a1-d1-1",
+      "kind": "battle",
+      "next": [
+        "z3-a1-d2-1",
+        "z3-a1-d2-2"
+      ],
+      "opponent_id": "sugarworks-elite-2",
+      "supplies_reward": 5
+    },
+    {
+      "depth": 1,
+      "id": "z3-a1-d1-2",
+      "kind": "battle",
+      "next": [
+        "z3-a1-d2-1",
+        "z3-a1-d2-2"
+      ],
+      "opponent_id": "sugarworks-elite-2",
+      "supplies_reward": 5
+    },
+    {
+      "depth": 2,
+      "id": "z3-a1-d2-1",
+      "kind": "recovery",
+      "next": [
+        "z3-a1-d3-1",
+        "z3-a1-d3-2"
+      ],
+      "options": [
+        {
+          "effect": {
+            "ratio": 0.25,
+            "type": "heal_party"
+          },
+          "id": "heal-party"
+        }
+      ],
+      "title_key": "EXPEDITION_RECOVERY"
+    },
+    {
+      "depth": 2,
+      "id": "z3-a1-d2-2",
+      "kind": "cache",
+      "next": [
+        "z3-a1-d3-1",
+        "z3-a1-d3-2"
+      ],
+      "options": [
+        {
+          "effect": {
+            "stat": "atk",
+            "type": "stat_boost",
+            "value": 0.15
+          },
+          "id": "power-up"
+        }
+      ],
+      "title_key": "EXPEDITION_CACHE"
+    },
+    {
+      "depth": 3,
+      "id": "z3-a1-d3-1",
+      "kind": "battle",
+      "next": [
+        "z3-a1-d4-1"
+      ],
+      "opponent_id": "sugarworks-elite-2",
+      "supplies_reward": 5
+    },
+    {
+      "depth": 3,
+      "id": "z3-a1-d3-2",
+      "kind": "elite",
+      "next": [
+        "z3-a1-d4-1",
+        "z3-a1-d4-2"
+      ],
+      "opponent_id": "sugarworks-boss",
+      "supplies_reward": 7
+    },
+    {
+      "depth": 4,
+      "id": "z3-a1-d4-1",
+      "kind": "battle",
+      "next": [
+        "z3-a1-boss"
+      ],
+      "opponent_id": "sugarworks-elite-2",
+      "supplies_reward": 5
+    },
+    {
+      "depth": 4,
+      "id": "z3-a1-d4-2",
+      "kind": "recovery",
+      "next": [
+        "z3-a1-boss"
+      ],
+      "options": [
+        {
+          "effect": {
+            "ratio": 0.25,
+            "type": "heal_party"
+          },
+          "id": "heal-party"
+        }
+      ],
+      "title_key": "EXPEDITION_RECOVERY"
+    },
+    {
+      "depth": 5,
+      "id": "z3-a1-boss",
+      "kind": "boss",
+      "next": [],
+      "opponent_id": "sugarworks-boss",
+      "supplies_reward": 8,
+      "title_key": "SUGARWORKS_BOSS"
+    }
+  ],
+  "schema_version": 1,
+  "seed": "the-sugarworks-v2",
+  "zone": 3
+}

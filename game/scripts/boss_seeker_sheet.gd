@@ -35,6 +35,8 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
 	var loaded: PackedStringArray = []
+	var display_size := frame_size
+	var idle_region := Rect2i()
 	for pose in KNOWN_POSES:
 		if not poses.has(pose):
 			continue
@@ -44,11 +46,13 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 		var region := _to_rect2i(entry.get("region"))
 		if region.size != frame_size:
 			return _fail("region seeker %s harus sama dengan frame_size" % pose)
+		region = _full_grid_cell(region, sheet_size, frame_size)
+		display_size = region.size
 		if (
 			region.position.x < 0
 			or region.position.y < 0
-			or region.end.x > sheet_size.x
-			or region.end.y > sheet_size.y
+			or region.end.x > int(sheet_size.x)
+			or region.end.y > int(sheet_size.y)
 		):
 			return _fail("region seeker %s keluar dari sheet" % pose)
 		var atlas := AtlasTexture.new()
@@ -59,15 +63,26 @@ static func build(sheet: Texture2D, manifest: Dictionary) -> Dictionary:
 		frames.set_animation_loop(pose, false)
 		frames.add_frame(pose, atlas)
 		loaded.append(pose)
+		if pose == DEFAULT_POSE:
+			idle_region = region
 	if not frames.has_animation(DEFAULT_POSE):
 		return _fail("pose wajib intro_idle tidak ada")
+	var metrics_value: Variant = manifest.get("render_metrics", {})
+	var metrics: Dictionary = metrics_value if typeof(metrics_value) == TYPE_DICTIONARY else {}
+	var measured := _opaque_size(sheet, idle_region)
+	if measured.x > 0 and measured.y > 0:
+		metrics = {
+			"reference_width_px": measured.x,
+			"reference_height_px": measured.y,
+		}
 	return {
 		"ok": true,
 		"error": "",
 		"frames": frames,
-		"frame_size": frame_size,
-		"ground_offset": Vector2(0.0, -frame_size.y / 2.0),
+		"frame_size": display_size,
+		"ground_offset": Vector2(0.0, -display_size.y / 2.0),
 		"poses": loaded,
+		"render_metrics": metrics,
 	}
 
 
@@ -83,6 +98,30 @@ static func portrait(loaded: Dictionary, pose: String = "profile") -> Texture2D:
 	if sheet.has_animation(DEFAULT_POSE):
 		return sheet.get_frame_texture(DEFAULT_POSE, 0)
 	return null
+
+
+## 300px captures on a 1024 sheet drop the bottom 41px of each cell. Standing
+## Seekers are taller than 300px, so that window cuts their feet. The PNG still
+## has the full cell; open it at runtime.
+static func _full_grid_cell(region: Rect2i, sheet_size: Vector2, frame_size: Vector2i) -> Rect2i:
+	if int(sheet_size.x) != 1024 or int(sheet_size.y) != 1024 or frame_size != Vector2i(300, 300):
+		return region
+	var cell := 341
+	var col := region.position.x / cell
+	var row := region.position.y / cell
+	var width := mini(cell, int(sheet_size.x) - col * cell)
+	var height := mini(cell, int(sheet_size.y) - row * cell)
+	return Rect2i(col * cell, row * cell, width, height)
+
+
+static func _opaque_size(sheet: Texture2D, region: Rect2i) -> Vector2i:
+	if region.size.x <= 0 or region.size.y <= 0:
+		return Vector2i.ZERO
+	var image := sheet.get_image()
+	if image == null or image.is_empty():
+		return Vector2i.ZERO
+	var used := image.get_region(region).get_used_rect()
+	return used.size
 
 
 static func _fail(message: String) -> Dictionary:

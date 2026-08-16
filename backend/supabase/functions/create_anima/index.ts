@@ -54,6 +54,7 @@ type Vision = {
   subject_kind?: string;
   rarity: number;
   stats: Record<string, number>;
+  body_height_cm?: number;
   suggested_name?: string;
   strike_name?: string;
   surge_name?: string;
@@ -238,6 +239,7 @@ Deno.serve(async (req) => {
         useV13,
         allowAnimals,
         useUniqueCapture,
+        promptMajor(versiPrompt) >= 17,
       );
     } catch (e) {
       await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "vision_unparseable" });

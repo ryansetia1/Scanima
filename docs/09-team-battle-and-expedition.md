@@ -128,7 +128,7 @@ attempt yang masih berhak.
 | Cache | Pilih satu dari maksimal tiga boost |
 | Shop | Tiga offer memakai Tokens; satu refresh boleh memakai Bits |
 | Mystery | Dua pilihan singkat dari effect allowlist |
-| Boss | Boss Seeker + 3 Anima reguler + 1 Anima spesial |
+| Boss | Boss Seeker + 3 Anima reguler + 1 ace `special` yang ditahan sampai akhir |
 
 Effect v1 dibatasi ke heal, revive, Tokens (wire `supplies`), max HP, Attack,
 Special, Guard, Speed, start PP, dan Shop discount. Manifest tidak boleh
@@ -150,6 +150,22 @@ Attack Command, Special Command, Switch Command, Concern/Hit, Last Anima,
 Victory, atau Defeat. Pada momen command, pose boleh maju sebagai cut-in singkat.
 Reduced Motion mengganti pose tanpa tween.
 
+Dialog memakai budget per encounter: opening (`boss_intro` atau `rematch`),
+maksimal satu line command dari Attack/Special/Switch pertama yang terjadi,
+`last_anima` wajib ketika ace Boss masuk, lalu line terminal victory/defeat.
+`chapter_intro` tetap sekali per run. Pose command tetap dimainkan pada setiap
+aksi lawan meski budget dialog sudah habis. Urutannya selalu pose Seeker →
+dialog opsional → event plate → animasi Anima → kembali ke Intro/Idle, sehingga
+copy, Summon, dan serangan tidak saling menimpa.
+
+Boss roster tepat empat dan tepat satu cast member bertanda `special`. Hanya
+encounter `kind = boss` yang mengaktifkan reserve: starter dan switch AI memakai
+anggota reguler selama salah satunya masih hidup. Switch ace mengeluarkan
+`final_ace`, lalu `switch`, lalu `ace_passive` secara authoritative dan
+deterministik. Passive allowlist live adalah bonus PP, bounded stat boost, atau
+one-hit shield; flag applied di state mencegah efek kedua saat replay. Sugarworks
+v2 memakai **Final Confection**: Cotton mendapat +1 max/current PP ketika masuk.
+
 Satu sheet 3×3 memuat:
 
 1. Intro/Idle
@@ -162,13 +178,23 @@ Satu sheet 3×3 memuat:
 8. Defeat
 9. Profile
 
-Portrait, profile image, dan cut-in diturunkan dari sheet yang sama. Dialog
-dibatasi ke trigger `chapter_intro`, `boss_intro`, `first_attack`,
+Portrait, profile image, dan cut-in diturunkan dari sheet yang sama. Map dialog
+menyediakan trigger `chapter_intro`, `boss_intro`, `first_attack`,
 `first_special`, `first_switch`, `last_anima`, `victory`, `defeat`, dan
-`rematch`. Setiap line hanya boleh tampil sekali per session state; replay event
-tidak mengulang dialog. Runtime menempel `boss_seeker` plus `sheet_url` pada
+`rematch`; director memilihnya sesuai budget di atas. Setiap line hanya boleh
+tampil sekali per session state; replay event tidak mengulang dialog. Runtime menempel `boss_seeker` plus `sheet_url` pada
 run/encounter; client memuat sheet 3×3, menaruh Seeker di belakang Anima lawan,
 memainkan cut-in pada command, dan menampilkan dialog tap-to-continue.
+
+Semua cast dan Boss Seeker content v2+ wajib mempunyai `body_height_cm`.
+Post-process menyimpan bbox opak pose Idle/Intro Idle sebagai
+`render_metrics.reference_height_px` dan `reference_width_px`. Godot menghitung
+skala non-linear dari dua kontrak itu lewat satu `shared_scales()` untuk
+seluruh tubuh di arena, termasuk Seeker di back lane. Anima 120 cm mengisi
+sekitar setengah kartu desain 720×800; lebar layar tidak mengubah skala, dan
+ruang vertikal ekstra tidak membesarkan karakter. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px)
+di client supaya kaki Seeker tidak terpotong oleh capture 300 px. Tinggi
+visual tidak mengubah combat power.
 
 Referensi monster-handler hanya menjadi bahasa genre: anime ekspresif, siluet
 kuat, outfit dan prop bertema, serta gesture command yang jelas. Prompt dan
@@ -240,6 +266,11 @@ Manifest v1 memuat:
 - immutable asset paths + hashes,
 - prompt/model version dan QA summary.
 
+Content version 2 menambah `body_height_cm` pada seluruh cast dan Boss Seeker,
+`render_metrics` pada manifest sheet, serta `boss.ace_passive`. Ini content
+version, bukan schema/effect bebas: run yang sudah dimulai tetap terkunci pada
+version lamanya dan v1 tidak pernah ditimpa.
+
 Client menolak schema version atau effect type yang tidak dikenalnya. Publisher
 menulis draft inactive, memverifikasi seluruh hash/asset/schema, lalu
 mengaktifkan version secara atomik.
@@ -284,8 +315,13 @@ hashes disimpan di Git; binary immutable disimpan di Storage.
 
 ## 9. Rollout dan definition of done
 
-**The Sugarworks v1** sudah menjadi rollout Expedition pertama:
-`feature_expedition` dan `feature_chapter_push` aktif. Team Battle juga aktif
+**The Sugarworks v3** adalah version aktif; v1/v2 tetap immutable untuk run lama.
+V3 mengkalibrasi ulang tinggi sembilan Anima berdasarkan stance vertikal, bukan
+panjang atau luas silhouette, serta membetulkan bbox opak The Confectioner.
+Fudge Fang sekarang 135 cm, Cotton 130 cm, dan The Confectioner 156 cm dengan
+reference metrics 158×282 px. Dialog kontekstual, Cotton sebagai ace terakhir,
+dan Final Confection dari v2 tetap dipertahankan. Seluruh asset berasal dari raw
+yang sudah disetujui dan direprocess tanpa model call. `feature_expedition` dan `feature_chapter_push` aktif. Team Battle juga aktif
 dengan `feature_team_battle=true` untuk device playtest Godot. Jalur announcement
 in-app sudah aktif; push OS pertama masih menunggu konfigurasi FCM sehingga
 belum terkirim.

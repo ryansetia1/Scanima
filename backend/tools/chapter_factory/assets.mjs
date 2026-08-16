@@ -71,6 +71,8 @@ export function buildGridManifest({
   frameSize,
   poses,
   meta = {},
+  referenceHeightPx = null,
+  referenceWidthPx = null,
 }) {
   const regions = {};
   const grid = 3;
@@ -90,10 +92,33 @@ export function buildGridManifest({
     frame_size: [frameSize, frameSize],
     ...meta,
     poses: regions,
+    ...(Number(referenceHeightPx) > 0
+      ? {
+        render_metrics: {
+          reference_height_px: Math.round(Number(referenceHeightPx)),
+          reference_width_px: Math.round(Number(referenceWidthPx) || frameSize),
+        },
+      }
+      : {}),
     qa: {
       mode: "procedural",
       cells_detected: poses.length,
     },
+  };
+}
+
+function capturedBBoxSize(bbox, poseIndex, sheetSize, frameSize) {
+  if (!bbox || poseIndex < 0) return null;
+  const cellSize = Math.floor(sheetSize / 3);
+  const captureX = (poseIndex % 3) * cellSize;
+  const captureY = Math.floor(poseIndex / 3) * cellSize;
+  const x0 = Math.max(bbox.x, captureX);
+  const y0 = Math.max(bbox.y, captureY);
+  const x1 = Math.min(bbox.x + bbox.w, captureX + frameSize);
+  const y1 = Math.min(bbox.y + bbox.h, captureY + frameSize);
+  return {
+    w: Math.max(0, x1 - x0),
+    h: Math.max(0, y1 - y0),
   };
 }
 
@@ -201,11 +226,20 @@ export async function postprocessChromaGridSheet(rawPng, {
     throw new Error(`GRID_SEAM_VIOLATION:${summary}`);
   }
   const png = encodeRgbaPng(work);
+  const referencePose = segmented.bboxes.intro_idle ? "intro_idle" : "idle";
+  const referenceSize = capturedBBoxSize(
+    segmented.bboxes[referencePose],
+    poses.indexOf(referencePose),
+    work.width,
+    frameSize,
+  );
   const manifest = buildGridManifest({
     sheetSize: 1024,
     frameSize,
     poses,
     meta: { prompt_version: promptVersion, ...meta },
+    referenceHeightPx: referenceSize?.h,
+    referenceWidthPx: referenceSize?.w,
   });
   manifest.qa.mode = "chroma_grid";
   manifest.qa.capture_overlap = seamAudit;

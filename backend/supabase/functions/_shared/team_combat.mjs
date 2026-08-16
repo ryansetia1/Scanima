@@ -24,14 +24,26 @@ import { defenseElements, dualDefenderMultiplier } from "./elements.mjs";
 
 export const TEAM_ACTIONS = Object.freeze([...BATTLE_ACTIONS, "switch"]);
 export const TEAM_MAX_TURNS = 60;
+const ACE_PASSIVE_TYPES = new Set(["bonus_pp", "stat_boost", "one_hit_shield"]);
+const ACE_STAT_TYPES = new Set(["atk", "def", "spd", "special"]);
 
-export function createTeamBattleState({ player, opponent, seed }) {
+export function createTeamBattleState({
+  player,
+  opponent,
+  seed,
+  encounterKind = "",
+  acePassive = null,
+}) {
+  const reserveAce = encounterKind === "boss";
   return {
     status: "active",
     turn: 1,
     seed: String(seed ?? ""),
     player: createTeamParty(player, true),
-    opponent: createTeamParty(opponent, false),
+    opponent: createTeamParty(opponent, false, {
+      reserveAce,
+      acePassive: reserveAce ? normalizeAcePassive(acePassive) : null,
+    }),
   };
 }
 
@@ -128,7 +140,7 @@ export function resolveTeamTurn(
       if (!hasLivingMember(targetParty)) {
         state.status = targetSide === "opponent" ? "won" : "lost";
       } else if (targetSide === "opponent") {
-        switchParty(targetParty, firstLivingBenchSlot(targetParty), "opponent", events, true);
+        switchParty(targetParty, firstLivingOpponentBenchSlot(targetParty), "opponent", events, true);
       } else {
         targetParty.forced_switch = true;
       }
@@ -146,7 +158,7 @@ export function resolveTeamTurn(
   };
 }
 
-export function createTeamParty(roster, player = false) {
+export function createTeamParty(roster, player = false, options = {}) {
   if (!Array.isArray(roster) || roster.length < 1 || roster.length > 4) {
     throw battleError("INVALID_TEAM_ROSTER");
   }
@@ -172,17 +184,27 @@ export function createTeamParty(roster, player = false) {
       name: String(member?.name ?? ""),
       strike_name: String(member?.strike_name ?? ""),
       surge_name: String(member?.surge_name ?? ""),
+      body_height_cm: Math.min(2000, Math.max(20, Math.trunc(Number(member?.body_height_cm) || 120))),
+      is_ace: member?.special === true,
+      ace_passive_applied: false,
       slot,
       participated: false,
     };
   });
-  const activeSlot = fighters.findIndex((fighter) => fighter.hp > 0);
+  const reserveAce = !player && options?.reserveAce === true;
+  const regularSlot = fighters.findIndex((fighter) => fighter.hp > 0 && !fighter.is_ace);
+  const activeSlot = reserveAce && regularSlot >= 0
+    ? regularSlot
+    : fighters.findIndex((fighter) => fighter.hp > 0);
   if (activeSlot < 0) throw battleError("INVALID_TEAM_ROSTER");
   if (player) fighters[activeSlot].participated = true;
   return {
     active_slot: activeSlot,
     forced_switch: false,
     item_used: false,
+    reserve_ace: reserveAce,
+    final_ace_announced: false,
+    ace_passive: reserveAce ? normalizeAcePassive(options?.acePassive) : null,
     roster: fighters,
   };
 }
@@ -199,7 +221,7 @@ function validatePlayerIntent(party, action, itemId, switchToSlot) {
 
 function chooseOpponentIntent(party, random) {
   const fighter = activeFighter(party);
-  const bench = livingBenchSlots(party);
+  const bench = livingOpponentBenchSlots(party);
   if (bench.length > 0 && fighter.hp / Math.max(1, fighter.max_hp) <= 0.3 && random() < 0.35) {
     return { action: "switch", switch_to_slot: bench[Math.floor(random() * bench.length)] };
   }
@@ -209,6 +231,23 @@ function chooseOpponentIntent(party, random) {
 function switchParty(party, slot, side, events, forced) {
   validateSwitchSlot(party, slot);
   const previous = party.active_slot;
+  const incoming = party.roster[slot];
+  const finalAce = (
+    side === "opponent"
+    && party.reserve_ace === true
+    && incoming.is_ace === true
+    && party.final_ace_announced !== true
+  );
+  if (finalAce) {
+    party.final_ace_announced = true;
+    events.push({
+      type: "final_ace",
+      actor: side,
+      to_slot: slot,
+      anima_id: incoming.anima_id,
+      name: incoming.name,
+    });
+  }
   party.active_slot = slot;
   party.forced_switch = false;
   activeFighter(party).participated = true;
@@ -219,6 +258,7 @@ function switchParty(party, slot, side, events, forced) {
     to_slot: slot,
     forced,
   });
+  if (finalAce) applyAcePassive(party, incoming, events);
 }
 
 function validateSwitchSlot(party, slot) {
@@ -226,6 +266,9 @@ function validateSwitchSlot(party, slot) {
     throw battleError("INVALID_SWITCH_SLOT");
   }
   if (slot === party.active_slot || party.roster[slot].hp <= 0) {
+    throw battleError("INVALID_SWITCH_SLOT");
+  }
+  if (party.reserve_ace === true && party.roster[slot].is_ace === true && hasLivingRegular(party)) {
     throw battleError("INVALID_SWITCH_SLOT");
   }
 }
@@ -312,8 +355,66 @@ function livingBenchSlots(party) {
     .map((fighter) => fighter.slot);
 }
 
-function firstLivingBenchSlot(party) {
-  return livingBenchSlots(party)[0] ?? -1;
+function livingOpponentBenchSlots(party) {
+  const bench = livingBenchSlots(party);
+  if (party.reserve_ace !== true) return bench;
+  const regular = bench.filter((slot) => party.roster[slot].is_ace !== true);
+  return regular.length > 0 ? regular : bench;
+}
+
+function firstLivingOpponentBenchSlot(party) {
+  return livingOpponentBenchSlots(party)[0] ?? -1;
+}
+
+function hasLivingRegular(party) {
+  return party.roster.some((fighter) => fighter.hp > 0 && fighter.is_ace !== true);
+}
+
+function normalizeAcePassive(value) {
+  if (!value || typeof value !== "object" || !ACE_PASSIVE_TYPES.has(value.type)) return null;
+  const passive = {
+    type: value.type,
+    name: String(value.name ?? "").slice(0, 48),
+    copy: String(value.copy ?? "").slice(0, 160),
+  };
+  if (passive.type === "bonus_pp") {
+    passive.value = Math.min(2, Math.max(1, Math.trunc(Number(value.value) || 1)));
+  } else if (passive.type === "stat_boost") {
+    if (!ACE_STAT_TYPES.has(value.stat)) return null;
+    passive.stat = value.stat;
+    passive.value = Math.min(25, Math.max(1, Math.trunc(Number(value.value) || 10)));
+  }
+  return passive;
+}
+
+function applyAcePassive(party, fighter, events) {
+  const passive = normalizeAcePassive(party.ace_passive);
+  if (!passive || fighter.ace_passive_applied === true) return;
+  fighter.ace_passive_applied = true;
+  if (passive.type === "bonus_pp") {
+    fighter.momentum_max = Math.min(5, fighter.momentum_max + passive.value);
+    fighter.momentum = Math.min(fighter.momentum_max, fighter.momentum + passive.value);
+  } else if (passive.type === "stat_boost") {
+    fighter[passive.stat] = Math.max(
+      1,
+      Math.trunc(fighter[passive.stat] * (1 + passive.value / 100)),
+    );
+  } else if (passive.type === "one_hit_shield") {
+    fighter.shield_charges = Math.max(1, fighter.shield_charges);
+  }
+  events.push({
+    type: "ace_passive",
+    actor: "opponent",
+    actor_slot: party.active_slot,
+    passive_type: passive.type,
+    passive_name: passive.name,
+    copy: passive.copy,
+    value: passive.value ?? 1,
+    stat: passive.stat ?? "",
+    momentum: fighter.momentum,
+    momentum_max: fighter.momentum_max,
+    shield_charges: fighter.shield_charges,
+  });
 }
 
 function hasLivingMember(party) {

@@ -1,11 +1,12 @@
 class_name BossSeekerPresenter
 extends AnimatedSprite2D
 
-const REST_OFFSET := Vector2(58.0, -78.0)
-const CUT_IN_OFFSET := Vector2(18.0, -52.0)
-const BODY_SCALE := 0.92
+const CUT_IN_TRAVEL := Vector2(-40.0, 26.0)
 
 var _cut_in: Tween
+var _rest_position := Vector2.ZERO
+var _cut_in_position := CUT_IN_TRAVEL
+var _body_scale := 1.0
 
 
 func apply(loaded: Dictionary) -> void:
@@ -14,8 +15,8 @@ func apply(loaded: Dictionary) -> void:
 		return
 	sprite_frames = loaded.get("frames")
 	offset = loaded.get("ground_offset", Vector2(0.0, -150.0))
-	scale = Vector2(BODY_SCALE, BODY_SCALE)
-	position = REST_OFFSET
+	scale = Vector2(_body_scale, _body_scale)
+	position = _rest_position
 	visible = sprite_frames != null
 	z_index = 1
 	set_pose("intro_idle")
@@ -39,14 +40,22 @@ func set_pose(pose: String) -> void:
 	play(pose)
 
 
+func set_layout(rest_position: Vector2, body_scale: float) -> void:
+	_rest_position = rest_position
+	_cut_in_position = rest_position + CUT_IN_TRAVEL
+	_body_scale = maxf(body_scale, 0.01)
+	position = _rest_position
+	scale = Vector2(_body_scale, _body_scale)
+
+
 func play_cut_in() -> void:
-	position = REST_OFFSET
+	position = _rest_position
 	if UiMotion.reduced_motion:
 		return
 	if is_instance_valid(_cut_in):
 		_cut_in.kill()
 	_cut_in = create_tween()
-	_cut_in.tween_property(self, "position", CUT_IN_OFFSET, 0.16) \
+	_cut_in.tween_property(self, "position", _cut_in_position, 0.16) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_cut_in.tween_property(self, "position", REST_OFFSET, 0.22) \
+	_cut_in.tween_property(self, "position", _rest_position, 0.22) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)

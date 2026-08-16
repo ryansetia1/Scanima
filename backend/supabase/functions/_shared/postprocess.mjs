@@ -845,6 +845,10 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
     stage: meta.stage ?? 1,
     prompt_version: meta.promptVersion ?? null,
     poses,
+    render_metrics: {
+      reference_height_px: metrics.heights.idle ?? metrics.heights.intro_idle ?? 1,
+      reference_width_px: bboxes.idle?.w ?? bboxes.intro_idle?.w ?? plan.frameW,
+    },
     qa: {
       cells_detected: detected.length,
       cells_rejected: rejected,

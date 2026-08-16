@@ -125,7 +125,7 @@ ikon Lucide memakai ISC dan lisensinya disimpan bersama asset. Panel kebutuhan
 Home memakai `NeedChipLow` (bingkai merah Danger) pada ambang pose/Battle yang
 sama, tanpa warna meter baru.
 
-Target minimum touch adalah 96 unit pada basis 720×1280. Layout memakai
+Target minimum touch adalah 96 unit pada basis 720×1602 (Xiaomi 14 20:9). Layout memakai
 Container/anchor dan safe-area conversion milik `scan_flow.gd`; jangan mengunci
 lebar berdasarkan panjang copy English. Care actions otomatis berubah dari
 empat menjadi dua kolom jika label locale tidak lagi muat.

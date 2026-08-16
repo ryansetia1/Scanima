@@ -87,6 +87,7 @@ type AnimaRow = {
   element: string;
   secondary_element?: string | null;
   base_stats: Record<string, number>;
+  body_height_cm?: number;
   care_score?: number;
   care?: { hunger?: number; energy?: number; hygiene?: number };
   sleep_started_at?: string | null;
@@ -125,7 +126,7 @@ const TEAM_FIELDS =
   "id, owner_id, kind, published, snapshot, updated_at, published_at, "
   + "anima_team_members(slot, animas!inner("
   + "id, owner_id, nickname, species_key, color_bucket, stage, element, secondary_element, "
-  + "base_stats, care_score, care, sleep_started_at, dormant_since, status, "
+  + "base_stats, body_height_cm, care_score, care, sleep_started_at, dormant_since, status, "
   + "strike_name, surge_name, sheet_path, manifest))";
 const db = adminClient();
 let featureCache = false;
@@ -508,6 +509,7 @@ function publicTeam(team: TeamRow): Record<string, unknown> {
       element: member.animas.element,
       secondary_element: member.animas.secondary_element ?? null,
       base_stats: member.animas.base_stats,
+      body_height_cm: member.animas.body_height_cm ?? 120,
       care_score: member.animas.care_score ?? 0,
       care: member.animas.care ?? {},
       sleep_started_at: member.animas.sleep_started_at ?? null,

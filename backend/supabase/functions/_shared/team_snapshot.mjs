@@ -25,6 +25,7 @@ export function snapshotAnima(row, includeName = true) {
     level: levelFromExp(row.care_score),
     element: normalizeElement(row.element),
     base_stats: normalizeBaseStats(row.base_stats),
+    body_height_cm: Math.min(2000, Math.max(20, Math.trunc(Number(row.body_height_cm) || 120))),
     hunger: Number(row.care?.hunger ?? row.hunger ?? 100),
     hygiene: Number(row.care?.hygiene ?? row.hygiene ?? 100),
     strike_name: String(row.strike_name ?? ""),

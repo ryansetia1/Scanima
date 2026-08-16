@@ -303,6 +303,12 @@ func _ready() -> void:
 			await _run_summon_demo()
 		if arg == "--battle-demo":
 			_run_battle_demo()
+		if arg == "--battle-small-demo":
+			_run_battle_demo("active", false, 0.0, 20.0, 120.0)
+		if arg == "--battle-normal-demo":
+			_run_battle_demo("active", false, 0.0, 120.0, 120.0)
+		if arg == "--battle-giant-demo":
+			_run_battle_demo("active", false, 0.0, 120.0, 2000.0)
 		if arg == "--battle-pending-demo":
 			_run_battle_demo()
 			_battle_view.begin_action("surge")
@@ -318,6 +324,10 @@ func _ready() -> void:
 			_run_battle_training_demo()
 		if arg == "--team-battle-demo":
 			_run_team_battle_demo()
+		if arg == "--boss-ace-demo":
+			await _run_boss_ace_demo()
+		if arg == "--boss-scale-demo":
+			_run_boss_scale_demo()
 		if arg == "--expedition-demo":
 			_run_expedition_demo()
 		if arg == "--expedition-builder-demo":
@@ -3584,11 +3594,19 @@ func _run_summon_demo() -> void:
 
 
 func _run_battle_demo(
-	status: String = "active", training: bool = false, effectiveness: float = 0.0
+	status: String = "active",
+	training: bool = false,
+	effectiveness: float = 0.0,
+	player_height_cm: float = BattleScale.BODY_HEIGHT_REFERENCE_CM,
+	bot_height_cm: float = BattleScale.BODY_HEIGHT_REFERENCE_CM
 ) -> void:
 	var placeholder := PlaceholderSheet.build()
 	var texture := ImageTexture.create_from_image(placeholder["image"])
 	var loaded := AnimaLoader.build(texture, placeholder["manifest"])
+	loaded["render_metrics"] = {
+		"reference_height_px": 300,
+		"reference_width_px": 220,
+	}
 	var session := {
 		"id": "battle-demo",
 		"status": status,
@@ -3599,11 +3617,13 @@ func _run_battle_demo(
 			"name": str(_current_anima.get("nickname", tr("ANIMA_FALLBACK_NAME"))),
 			"element": "spark",
 			"stage": 1,
+			"body_height_cm": player_height_cm,
 		},
 		"bot_snapshot": {
 			"anima_id": "battle-demo-bot",
 			"element": "flow",
 			"stage": 1,
+			"body_height_cm": bot_height_cm,
 		},
 		"daily_reward": {
 			"earned": 7 if training else (3 if status == "won" else 2),
@@ -3628,13 +3648,14 @@ func _run_battle_demo(
 		},
 	}
 	_switch_destination(BottomNav.BATTLE, {}, false)
+	_battle_view.show_duel_mode()
 	_battle_view.set_session(session, loaded, loaded)
 	_sync_shop_chrome()
 	if not is_zero_approx(effectiveness):
 		_battle_view.call("_show_effectiveness", effectiveness)
 
 
-func _run_team_battle_demo() -> void:
+func _run_team_battle_demo(boss: bool = false) -> Dictionary:
 	var placeholder := PlaceholderSheet.build()
 	var loaded := AnimaLoader.build(
 		ImageTexture.create_from_image(placeholder["image"]),
@@ -3645,6 +3666,9 @@ func _run_team_battle_demo() -> void:
 	var player_snapshots: Array[Dictionary] = []
 	var opponent_snapshots: Array[Dictionary] = []
 	var art: Dictionary = {}
+	var player_heights: Array[int] = [175, 90, 100, 75]
+	var boss_names: Array[String] = ["Fudge Fang", "Syrup Sentry", "Gumdrop Grunt", "Cotton"]
+	var boss_heights: Array[int] = [135, 170, 95, 130]
 	for slot in 4:
 		var player_id := "team-demo-player-%d" % slot
 		var opponent_id := "team-demo-opponent-%d" % slot
@@ -3656,17 +3680,24 @@ func _run_team_battle_demo() -> void:
 			"max_hp": 180,
 			"momentum": 2,
 			"momentum_max": 3,
+			"body_height_cm": player_heights[slot],
 			"strike_name": "Prism Jab",
 			"surge_name": "Neon Burst",
 		})
 		opponent_roster.append({
 			"anima_id": opponent_id,
-			"name": ["Byte Scout", "Moss Guard", "Pebble Dash", "Paper Kite"][slot],
+			"name": (
+				boss_names[slot]
+				if boss
+				else ["Byte Scout", "Moss Guard", "Pebble Dash", "Paper Kite"][slot]
+			),
 			"slot": slot,
 			"hp": 154 - slot * 6,
 			"max_hp": 172,
 			"momentum": 3,
 			"momentum_max": 3,
+			"body_height_cm": boss_heights[slot] if boss else 110 + slot * 20,
+			"is_ace": boss and slot == 3,
 			"strike_name": "Pixel Jab",
 			"surge_name": "Static Arc",
 		})
@@ -3674,8 +3705,25 @@ func _run_team_battle_demo() -> void:
 		opponent_snapshots.append({"anima_id": opponent_id})
 		art[player_id] = loaded
 		art[opponent_id] = loaded
+	if boss:
+		var frames: SpriteFrames = loaded.get("frames")
+		var seeker_texture := frames.get_frame_texture("idle", 0)
+		var seeker_size := Vector2i(seeker_texture.get_size())
+		var seeker_poses: Dictionary = {}
+		for pose in BossSeekerSheet.KNOWN_POSES:
+			seeker_poses[pose] = {"region": [0, 0, seeker_size.x, seeker_size.y]}
+		art["boss_seeker"] = BossSeekerSheet.build(seeker_texture, {
+			"version": 1,
+			"frame_size": [seeker_size.x, seeker_size.y],
+			"poses": seeker_poses,
+			"render_metrics": {
+				"reference_height_px": 300,
+				"reference_width_px": 180,
+			},
+		})
 	var session := {
-		"id": "team-demo",
+		"id": "boss-demo" if boss else "team-demo",
+		"kind": "boss" if boss else "team",
 		"status": "active",
 		"turn_number": 4,
 		"version": 3,
@@ -3699,10 +3747,129 @@ func _run_team_battle_demo() -> void:
 			},
 		},
 	}
+	if boss:
+		session["zone_attempt"] = 1
+		session["boss_seeker"] = {
+			"display_name": "The Confectioner",
+			"body_height_cm": 156,
+			"portrait_pose": "profile",
+			"dialogue": {
+				"boss_intro": "Show me what belongs in the archive.",
+				"last_anima": "Cotton, preserve what the others could not.",
+				"victory": "Your improvisation belongs in the record.",
+				"defeat": "The archive stands.",
+			},
+		}
 	_switch_destination(BottomNav.BATTLE, {}, false)
 	_battle_view.show_team_mode()
 	_team_battle_view.set_session(session, art)
 	_sync_shop_chrome()
+	return {"session": session, "art": art}
+
+
+func _run_boss_scale_demo() -> void:
+	var chapter := _sugarworks_asset_dir()
+	var player := _demo_player_sheet()
+	var fudge := _load_local_anima_sheet(chapter, "animas/sugarworks-fudge")
+	var seeker := _load_local_seeker_sheet(chapter)
+	var zone := AnimaLoader.load_sheet_texture(chapter.path_join("zones/zone-3.png"))
+	if not bool(player.get("ok", false)) or not bool(fudge.get("ok", false)) or not bool(seeker.get("ok", false)):
+		push_error("boss-scale-demo: aset Sugarworks v3 tidak ketemu di %s" % chapter)
+		return
+	var demo := _run_team_battle_demo(true)
+	var session: Dictionary = demo.get("session", {})
+	var art: Dictionary = {}
+	var player_id := str(session["state"]["player"]["roster"][0].get("anima_id", ""))
+	var fudge_id := str(session["state"]["opponent"]["roster"][0].get("anima_id", ""))
+	art[player_id] = player
+	art[fudge_id] = fudge
+	art["boss_seeker"] = seeker
+	if zone != null:
+		art["arena_background"] = zone
+	session["state"]["player"]["roster"][0]["name"] = str(player.get("demo_name", "Licorice"))
+	session["state"]["player"]["roster"][0]["body_height_cm"] = int(player.get("demo_height_cm", 170))
+	session["turn_number"] = 2
+	session["state"]["turn"] = 2
+	_team_battle_view.set_session(session, art)
+	_team_battle_view.set_arena_location(tr("EXPEDITION_ARENA_LOCATION") % ["The Sugarworks", 3])
+
+
+func _sugarworks_asset_dir() -> String:
+	var game_dir := ProjectSettings.globalize_path("res://").trim_suffix("/")
+	return game_dir.get_base_dir().path_join("backend/chapters/the-sugarworks/v3/assets")
+
+
+func _demo_player_sheet() -> Dictionary:
+	var anima_id := str(_current_anima.get("id", ""))
+	if not anima_id.is_empty() and GameState.has_sprite_for_anima(anima_id):
+		var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id))
+		if bool(loaded.get("ok", false)):
+			loaded["demo_name"] = str(_current_anima.get("nickname", "Veridian"))
+			loaded["demo_height_cm"] = 150
+			return loaded
+	var fallback := _load_local_anima_sheet(_sugarworks_asset_dir(), "animas/sugarworks-licorice")
+	if bool(fallback.get("ok", false)):
+		fallback["demo_name"] = "Licorice Lash"
+		fallback["demo_height_cm"] = 170
+	return fallback
+
+
+func _load_local_anima_sheet(chapter_dir: String, slug: String) -> Dictionary:
+	var manifest_path := chapter_dir.path_join("%s/manifest.json" % slug)
+	var sheet_path := chapter_dir.path_join("%s/sheet.png" % slug)
+	if not FileAccess.file_exists(manifest_path) or not FileAccess.file_exists(sheet_path):
+		return {}
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(manifest_path))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return {}
+	var texture := AnimaLoader.load_sheet_texture(sheet_path)
+	if texture == null:
+		return {}
+	return AnimaLoader.build(texture, parsed)
+
+
+func _load_local_seeker_sheet(chapter_dir: String) -> Dictionary:
+	var manifest_path := chapter_dir.path_join("boss/manifest.json")
+	var sheet_path := chapter_dir.path_join("boss/confectioner-seeker.png")
+	if not FileAccess.file_exists(manifest_path) or not FileAccess.file_exists(sheet_path):
+		return {}
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(manifest_path))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return {}
+	var texture := AnimaLoader.load_sheet_texture(sheet_path)
+	if texture == null:
+		return {}
+	return BossSeekerSheet.build(texture, parsed)
+
+
+func _run_boss_ace_demo() -> void:
+	var demo := _run_team_battle_demo(true)
+	await get_tree().process_frame
+	if _team_battle_view.handle_back():
+		await get_tree().process_frame
+	var session: Dictionary = demo.get("session", {}).duplicate(true)
+	var art: Dictionary = demo.get("art", {})
+	session["state"]["opponent"]["active_slot"] = 3
+	var ace: Dictionary = session["state"]["opponent"]["roster"][3]
+	_team_battle_view.play_events([{
+		"type": "final_ace",
+		"actor": "opponent",
+		"to_slot": 3,
+		"anima_id": ace.get("anima_id", ""),
+		"name": ace.get("name", ""),
+	}, {
+		"type": "switch",
+		"actor": "opponent",
+		"to_slot": 3,
+		"forced": true,
+		"name": ace.get("name", ""),
+	}, {
+		"type": "ace_passive",
+		"actor": "opponent",
+		"passive_name": "Final Confection",
+		"copy": "Final Confection: Cotton enters with +1 PP.",
+	}], session, art)
+	await get_tree().process_frame
 
 
 func _run_expedition_demo() -> void:

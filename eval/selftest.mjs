@@ -1588,6 +1588,54 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
     "satu item berlaku untuk seluruh encounter, bukan per fighter",
   );
 
+  const bossOpponent = [
+    { ...member("ace", { hp: 30, atk: 65, special: 70 }), special: true },
+    member("regular-1", { hp: 10, def: 10, spd: 10 }),
+    member("regular-2", { hp: 10, def: 10, spd: 10 }),
+    member("regular-3", { hp: 10, def: 10, spd: 10 }),
+  ];
+  const bossState = createTeamBattleState({
+    player,
+    opponent: bossOpponent,
+    seed: "boss-ace",
+    encounterKind: "boss",
+    acePassive: {
+      type: "bonus_pp",
+      value: 1,
+      name: "Final Confection",
+      copy: "Cotton enters with +1 PP.",
+    },
+  });
+  assert.equal(bossState.opponent.active_slot, 1, "ace tidak boleh menjadi starter Boss");
+  const firstRegular = resolveTeamTurn(bossState, "strike", "ace-ko-1");
+  const secondRegular = resolveTeamTurn(firstRegular.state, "strike", "ace-ko-2");
+  assert.notEqual(firstRegular.state.opponent.active_slot, 0, "ace tetap di-reserve saat reguler hidup");
+  assert.notEqual(secondRegular.state.opponent.active_slot, 0, "ace tetap di-reserve sampai reguler terakhir");
+  const finalAce = resolveTeamTurn(secondRegular.state, "strike", "ace-ko-3");
+  assert.equal(finalAce.state.opponent.active_slot, 0, "switch terakhir wajib memilih ace");
+  assert.deepEqual(
+    finalAce.events.map((event) => event.type).filter((type) =>
+      ["final_ace", "switch", "ace_passive"].includes(type)
+    ),
+    ["final_ace", "switch", "ace_passive"],
+    "event final ace harus pose cue, switch, lalu passive",
+  );
+  assert.equal(finalAce.state.opponent.roster[0].momentum, 4);
+  assert.equal(finalAce.state.opponent.roster[0].momentum_max, 4);
+  assert.equal(finalAce.state.opponent.roster[0].ace_passive_applied, true);
+  assert.deepEqual(
+    resolveTeamTurn(secondRegular.state, "strike", "ace-ko-3"),
+    finalAce,
+    "final ace dan passive harus deterministik saat replay",
+  );
+  const ordinaryTeam = createTeamBattleState({
+    player,
+    opponent: bossOpponent,
+    seed: "ordinary-special",
+  });
+  assert.equal(ordinaryTeam.opponent.active_slot, 0, "Team Battle biasa tidak memakai reserve ace");
+  assert.equal(ordinaryTeam.opponent.reserve_ace, false);
+
   const { readFile } = await import("node:fs/promises");
   const teamEdge = await readFile(
     new URL("../backend/supabase/functions/team_battle/index.ts", import.meta.url),

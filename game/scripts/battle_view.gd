@@ -90,6 +90,8 @@ var _effectiveness_tween: Tween
 var _queued_action := ""
 var _last_reward: Dictionary = {}
 var _command_tween: Tween
+var _player_loaded: Dictionary = {}
+var _bot_loaded: Dictionary = {}
 
 
 func _ready() -> void:
@@ -273,8 +275,10 @@ func set_session(
 	_lobby_panel.visible = false
 	_battle_content.visible = true
 	if bool(player_loaded.get("ok", false)):
+		_player_loaded = player_loaded.duplicate(true)
 		_player_sprite.apply(player_loaded)
 	if bool(bot_loaded.get("ok", false)):
+		_bot_loaded = bot_loaded.duplicate(true)
 		_bot_sprite.apply(bot_loaded)
 	_player_sprite.visible = _player_sprite.sprite_frames != null
 	_bot_sprite.visible = _bot_sprite.sprite_frames != null
@@ -285,6 +289,7 @@ func set_session(
 	_bot_name.text = _fighter_title(bot_snapshot, tr("BATTLE_BOT_NAME"))
 	_apply_element_row(_player_element_icon, _player_element, player_snapshot)
 	_apply_element_row(_bot_element_icon, _bot_element, bot_snapshot)
+	_position_fighters()
 	_apply_state()
 
 
@@ -862,6 +867,17 @@ func _position_fighters() -> void:
 	var ground_y := _arena.size.y * 0.88
 	_player_anchor.position = Vector2(_arena.size.x * 0.27, ground_y)
 	_bot_anchor.position = Vector2(_arena.size.x * 0.73, ground_y)
+	var player_snapshot := _as_dict(_session.get("player_snapshot"))
+	var bot_snapshot := _as_dict(_session.get("bot_snapshot"))
+	var scales := BattleScale.fighter_pair_scales(
+		float(player_snapshot.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)),
+		_player_loaded,
+		float(bot_snapshot.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)),
+		_bot_loaded,
+		_arena.size
+	)
+	_player_anchor.scale = Vector2(scales.x, scales.x)
+	_bot_anchor.scale = Vector2(scales.y, scales.y)
 
 
 func _sprite_for(actor: String) -> AnimaPresenter:

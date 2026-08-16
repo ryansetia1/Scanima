@@ -40,6 +40,7 @@ import {
 import {
   activateChapter,
   assertActivationHash,
+  isMissingPublicAssetError,
   publishChapter,
 } from "./publish.mjs";
 import { buildReviewPage } from "./review.mjs";
@@ -266,15 +267,39 @@ export async function runChapterFactorySelftest(repoRoot) {
   assert.match(trophyPrompt, /never stamp a random\s+emblem or letter/i);
   assert.match(trophyPrompt, /No glass shell, orb, crystal container, outer frame/i);
   assert.doesNotMatch(trophyPrompt, /whisk|furnace|sprinkle/i);
-  await assert.doesNotReject(async () =>
-    postprocessChromaGridSheet(await manualGridFixture(), { poses: BOSS_SEEKER_POSES })
+  const processedBoss = await postprocessChromaGridSheet(
+    await manualGridFixture(),
+    { poses: BOSS_SEEKER_POSES },
   );
+  assert.deepEqual(processedBoss.manifest.frame_size, [300, 300]);
+  assert.deepEqual(processedBoss.manifest.render_metrics, {
+    reference_height_px: 120,
+    reference_width_px: 120,
+  });
   await assert.rejects(
     async () => postprocessChromaGridSheet(
       await manualGridFixture({ bossCrossing: true }),
       { poses: BOSS_SEEKER_POSES },
     ),
     /GRID_SEAM_VIOLATION/,
+  );
+  const missingPath = "expeditions/example/v2/animas/example/sheet.png";
+  assert.equal(
+    isMissingPublicAssetError(
+      new Error(`VERIFY_DOWNLOAD_FAILED:${missingPath}:404`),
+      missingPath,
+    ),
+    true,
+  );
+  assert.equal(
+    isMissingPublicAssetError(
+      new Error(
+        `VERIFY_DOWNLOAD_FAILED:${missingPath}:400:`
+        + '{"statusCode":"404","error":"not_found","code":"NoSuchKey"}',
+      ),
+      missingPath,
+    ),
+    true,
   );
   await assert.rejects(
     async () => postprocessChapterAnima(

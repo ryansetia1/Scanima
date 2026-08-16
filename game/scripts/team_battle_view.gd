@@ -107,9 +107,12 @@ var _player_shadow: Sprite2D
 var _opponent_shadow: Sprite2D
 var _seeker: BOSS_SEEKER_PRESENTER
 var _seeker_dialog: BOSS_SEEKER_DIALOG
+var _seeker_loaded: Dictionary = {}
 var _spoken: Dictionary = {}
 var _spoken_session := ""
 var _intro_started := false
+var _command_dialogue_used := false
+var _final_ace_pending := false
 
 
 func _ready() -> void:
@@ -157,8 +160,7 @@ func _ready() -> void:
 	_opponent_shadow = _make_ground_shadow(_opponent_anchor)
 	_seeker = BOSS_SEEKER_PRESENTER.new()
 	_seeker.name = "BossSeeker"
-	_opponent_anchor.add_child(_seeker)
-	_opponent_anchor.move_child(_seeker, 0)
+	_battle_stage.add_child(_seeker)
 	_seeker_dialog = BOSS_SEEKER_DIALOG.new()
 	_seeker_dialog.name = "BossSeekerDialog"
 	add_child(_seeker_dialog)
@@ -339,6 +341,8 @@ func _apply_arena_background(art_cache: Dictionary) -> void:
 	var texture: Variant = art_cache.get("arena_background", _art_cache.get("arena_background"))
 	var ready := texture is Texture2D
 	if ready:
+		_arena_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_arena_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		_arena_background.texture = texture
 	else:
 		_arena_background.texture = null
@@ -367,13 +371,18 @@ func play_events(
 		var event := GameState.as_dict(value)
 		match str(event.get("type", "")):
 			"guard":
+				var guard_actor := str(event.get("actor", ""))
+				if guard_actor == "opponent":
+					await _cue_seeker_pose("concern_hit")
 				_announce(
-					tr("TEAM_EVENT_GUARD") % _actor_name(str(event.get("actor", ""))),
+					tr("TEAM_EVENT_GUARD") % _actor_name(guard_actor),
 					BattleView.CUE_COLOR,
 					false
 				)
 				await _readability_pause()
 				await _hide_effectiveness()
+				if guard_actor == "opponent":
+					_restore_seeker_idle()
 			"item":
 				var item_actor := str(event.get("actor", "player"))
 				_announce(tr("TEAM_EVENT_ITEM"), BattleView.CUE_COLOR, false)
@@ -388,13 +397,32 @@ func play_events(
 				)
 				await _readability_pause(RESULT_HOLD_SEC)
 				await _hide_effectiveness()
+			"final_ace":
+				await _cue_final_ace()
 			"switch":
+				var switch_actor := str(event.get("actor", ""))
+				if switch_actor == "opponent" and not _final_ace_pending:
+					await _cue_seeker_command("first_switch", "switch_command")
 				await _play_switch(event, next_session)
-				if str(event.get("actor", "")) == "opponent":
-					await _speak_seeker("first_switch", "switch_command", true)
+				if switch_actor == "opponent" and not _final_ace_pending:
+					_restore_seeker_idle()
+			"ace_passive":
+				await _play_ace_passive(event)
+				_final_ace_pending = false
+				_restore_seeker_idle()
 			"attack":
+				var attack_actor := str(event.get("actor", ""))
+				if attack_actor == "opponent":
+					var action := str(event.get("action", ""))
+					await _cue_seeker_command(
+						"first_special" if action == "surge" else "first_attack",
+						"special_command" if action == "surge" else "attack_command"
+					)
 				await _play_attack(event)
-				await _react_seeker_attack(event)
+				if attack_actor == "opponent":
+					_restore_seeker_idle()
+				else:
+					await _react_seeker_attack(event)
 			"knockout":
 				var side := str(event.get("actor", ""))
 				_announce(
@@ -407,12 +435,13 @@ func play_events(
 				# Hold the faint so a KO is readable before the replacement picker.
 				await _event_pause(1.2)
 				await _hide_effectiveness()
-				if side == "player" and _living_count(next_session, "player") == 1:
-					await _speak_seeker("last_anima", "last_anima", false, false)
 			"timeout":
 				_announce(tr("TEAM_EVENT_TIMEOUT"), BattleView.DAMAGE_COLOR, false)
 				await _readability_pause()
 				await _hide_effectiveness()
+	if _final_ace_pending:
+		_final_ace_pending = false
+		_restore_seeker_idle()
 	set_session(next_session)
 	set_busy(false)
 
@@ -606,6 +635,7 @@ func _apply_session_state() -> void:
 	_effectiveness.visible = false
 	_apply_side(_session, "player", true)
 	_apply_side(_session, "opponent", true)
+	_position_seeker()
 	_player_slots.text = _slots_text("player")
 	_opponent_slots.text = _slots_text("opponent")
 	_forfeit.visible = status == "active"
@@ -657,6 +687,7 @@ func _apply_side(
 		sprite.visible = show_sprite
 		if show_sprite:
 			sprite.set_pose("defeated" if int(member.get("hp", 0)) <= 0 else "idle")
+	_apply_fighter_scales(session)
 	_sync_shadow(side)
 	if update_hp:
 		var hp := _player_hp if side == "player" else _opponent_hp
@@ -1293,6 +1324,81 @@ func _position_fighters() -> void:
 	var ground_y := _battle_stage.size.y * 0.88
 	_player_anchor.position = Vector2(_battle_stage.size.x * 0.27, ground_y)
 	_opponent_anchor.position = Vector2(_battle_stage.size.x * 0.73, ground_y)
+	_apply_fighter_scales(_session)
+	_position_seeker()
+
+
+func _apply_fighter_scales(session: Dictionary) -> PackedFloat32Array:
+	var scales := _arena_scales(session)
+	if scales.size() >= 2:
+		_player_anchor.scale = Vector2(scales[0], scales[0])
+		_opponent_anchor.scale = Vector2(scales[1], scales[1])
+	return scales
+
+
+func _arena_scales(session: Dictionary) -> PackedFloat32Array:
+	var state := GameState.as_dict(session.get("state"))
+	var player_party := GameState.as_dict(state.get("player"))
+	var opponent_party := GameState.as_dict(state.get("opponent"))
+	var player_roster := _as_array(player_party.get("roster"))
+	var opponent_roster := _as_array(opponent_party.get("roster"))
+	var player_slot := int(player_party.get("active_slot", -1))
+	var opponent_slot := int(opponent_party.get("active_slot", -1))
+	if (
+		player_slot < 0 or player_slot >= player_roster.size()
+		or opponent_slot < 0 or opponent_slot >= opponent_roster.size()
+	):
+		return PackedFloat32Array()
+	var player_member := GameState.as_dict(player_roster[player_slot])
+	var opponent_member := GameState.as_dict(opponent_roster[opponent_slot])
+	var heights: Array = [
+		float(player_member.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)),
+		float(opponent_member.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)),
+	]
+	var loadeds: Array = [
+		GameState.as_dict(_art_cache.get(str(player_member.get("anima_id", "")))),
+		GameState.as_dict(_art_cache.get(str(opponent_member.get("anima_id", "")))),
+	]
+	if (
+		is_instance_valid(_seeker)
+		and _seeker.has_sheet()
+		and not GameState.as_dict(session.get("boss_seeker")).is_empty()
+	):
+		var seeker := GameState.as_dict(session.get("boss_seeker"))
+		heights.append(
+			float(seeker.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM))
+		)
+		loadeds.append(_seeker_loaded)
+	return BattleScale.shared_scales(heights, loadeds, _battle_stage.size)
+
+
+func _position_seeker() -> void:
+	if not is_instance_valid(_seeker) or not _seeker.has_sheet():
+		return
+	var scales := _apply_fighter_scales(_session)
+	if scales.size() < 3:
+		return
+	var seeker_scale := scales[2]
+	var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
+	var seeker_width := float(metrics.get("reference_width_px", 240.0)) * seeker_scale
+	var opponent_width := 180.0
+	var state := GameState.as_dict(_session.get("state"))
+	var party := GameState.as_dict(state.get("opponent"))
+	var roster := _as_array(party.get("roster"))
+	var active_slot := int(party.get("active_slot", -1))
+	if active_slot >= 0 and active_slot < roster.size():
+		var member := GameState.as_dict(roster[active_slot])
+		var loaded := GameState.as_dict(_art_cache.get(str(member.get("anima_id", ""))))
+		var opponent_metrics := GameState.as_dict(loaded.get("render_metrics"))
+		opponent_width = float(opponent_metrics.get("reference_width_px", 240.0)) * scales[1]
+	var separation := maxf(48.0, (opponent_width + seeker_width) * 0.24)
+	var x := clampf(
+		_opponent_anchor.position.x + separation,
+		seeker_width * 0.36,
+		_battle_stage.size.x - seeker_width * 0.36
+	)
+	var y := _opponent_anchor.position.y - _battle_stage.size.y * 0.055
+	_seeker.set_layout(Vector2(x, y), seeker_scale)
 
 
 func _readability_pause(seconds: float = ACTION_CUE_SEC) -> void:
@@ -1318,6 +1424,8 @@ func _reset_spoken_if_needed() -> void:
 	_spoken_session = session_id
 	_spoken = {}
 	_intro_started = false
+	_command_dialogue_used = false
+	_final_ace_pending = false
 
 
 func _present_seeker() -> void:
@@ -1328,8 +1436,11 @@ func _present_seeker() -> void:
 		return
 	var loaded := GameState.as_dict(_art_cache.get("boss_seeker"))
 	if bool(loaded.get("ok", false)):
+		_seeker_loaded = loaded.duplicate(true)
 		_seeker.apply(loaded)
+		_position_seeker()
 	else:
+		_seeker_loaded = {}
 		_seeker.clear()
 
 
@@ -1355,16 +1466,47 @@ func _begin_boss_intro() -> void:
 func _react_seeker_attack(event: Dictionary) -> void:
 	if not _is_boss_encounter() or not is_instance_valid(_seeker):
 		return
-	var actor := str(event.get("actor", ""))
-	if actor == "opponent":
-		if str(event.get("action", "")) == "surge":
-			await _speak_seeker("first_special", "special_command", true)
-		else:
-			await _speak_seeker("first_attack", "attack_command", true)
-		return
 	if str(event.get("target", "")) == "opponent":
-		_seeker.set_pose("concern_hit")
-		await _event_pause(0.28)
+		await _cue_seeker_pose("concern_hit")
+		_restore_seeker_idle()
+
+
+func _cue_seeker_command(trigger: String, pose: String) -> void:
+	if not _is_boss_encounter() or not is_instance_valid(_seeker):
+		return
+	if not _command_dialogue_used:
+		var shown := await _speak_seeker(trigger, pose, true, false)
+		if shown:
+			_command_dialogue_used = true
+			return
+	await _cue_seeker_pose(pose, true)
+
+
+func _cue_seeker_pose(pose: String, cut_in: bool = false) -> void:
+	if not _is_boss_encounter() or not is_instance_valid(_seeker):
+		return
+	_seeker.set_pose(pose)
+	if cut_in:
+		_seeker.play_cut_in()
+	await _event_pause(0.42 if cut_in else 0.28)
+
+
+func _cue_final_ace() -> void:
+	_final_ace_pending = true
+	await _speak_seeker("last_anima", "last_anima", true, false)
+
+
+func _play_ace_passive(event: Dictionary) -> void:
+	var text := str(event.get("copy", "")).strip_edges()
+	if text.is_empty():
+		text = tr("TEAM_ACE_PASSIVE") % str(event.get("passive_name", ""))
+	_announce(text, BattleView.EFFECTIVE_COLOR, true)
+	await _readability_pause(RESULT_HOLD_SEC)
+	await _hide_effectiveness()
+
+
+func _restore_seeker_idle() -> void:
+	if is_instance_valid(_seeker) and str(_session.get("status", "")) == "active":
 		_seeker.set_pose("intro_idle")
 
 
@@ -1373,13 +1515,13 @@ func _speak_seeker(
 	pose: String,
 	cut_in: bool,
 	restore_idle: bool = true
-) -> void:
+) -> bool:
 	if bool(_spoken.get(trigger, false)) or not _is_boss_encounter():
-		return
+		return false
 	var seeker := GameState.as_dict(_session.get("boss_seeker"))
 	var line := str(GameState.as_dict(seeker.get("dialogue")).get(trigger, "")).strip_edges()
 	if line.is_empty():
-		return
+		return false
 	_spoken[trigger] = true
 	if is_instance_valid(_seeker):
 		_seeker.set_pose(pose)
@@ -1396,6 +1538,7 @@ func _speak_seeker(
 		)
 	if restore_idle and is_instance_valid(_seeker) and str(_session.get("status", "")) == "active":
 		_seeker.set_pose("intro_idle")
+	return true
 
 
 func _present_boss_result(status: String) -> void:
@@ -1406,15 +1549,6 @@ func _present_boss_result(status: String) -> void:
 	_show_result(status)
 	_result.visible = true
 	_retry.visible = true
-
-
-func _living_count(session: Dictionary, side: String) -> int:
-	var count := 0
-	var party := GameState.as_dict(GameState.as_dict(session.get("state")).get(side))
-	for value in _as_array(party.get("roster")):
-		if int(GameState.as_dict(value).get("hp", 0)) > 0:
-			count += 1
-	return count
 
 
 static func _as_array(value: Variant) -> Array:

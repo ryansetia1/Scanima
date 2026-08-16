@@ -2,7 +2,7 @@
 
 Dokumen ini menjelaskan apa yang terjadi di dalam Godot: bagaimana sprite sheet diunduh, dipecah jadi pose, dipasang ke `AnimatedSprite2D`, di-cache, dan dibuat terasa hidup meski hanya berisi gambar statis.
 
-Prinsip yang mengatur seluruh bab ini: **Godot tidak memproses piksel.** Semua keying, slicing, dan trimming sudah selesai di backend. Godot menerima satu PNG RGBA plus satu manifest JSON, lalu memasang `AtlasTexture` yang menunjuk region berbeda pada satu tekstur yang sama. Nol copy piksel, nol dekode ulang, nol beban CPU di device low-end. Sheet production v15 adalah 9 pose (Idle/Battle/Sleep/Happy/Hungry/Dirty/Damaged plus overlay `fx_strike`/`fx_surge`). Loader hanya mewajibkan Idle, jadi cache 2×2 lama tetap tampil.
+Prinsip yang mengatur seluruh bab ini: **Godot tidak memproses piksel.** Semua keying, slicing, dan trimming sudah selesai di backend. Godot menerima satu PNG RGBA plus satu manifest JSON, lalu memasang `AtlasTexture` yang menunjuk region berbeda pada satu tekstur yang sama. Nol copy piksel, nol dekode ulang, nol beban CPU di device low-end. Sheet production v18 memakai art prompt v15 yang identik: 9 pose (Idle/Battle/Sleep/Happy/Hungry/Dirty/Damaged plus overlay `fx_strike`/`fx_surge`). Loader hanya mewajibkan Idle, jadi cache 2×2 lama tetap tampil.
 
 ## Kontrak private art v13
 
@@ -35,6 +35,10 @@ Manifest adalah satu-satunya hal yang menghubungkan backend dan Godot soal geome
     "sleep":    { "region": [  0, 460, 420, 460] },
     "defeated": { "region": [420, 460, 420, 460] }
   },
+  "render_metrics": {
+    "reference_height_px": 448,
+    "reference_width_px": 312
+  },
   "qa": {
     "green_residue_ratio": 0.0004,
     "standing_height_variance": 0.04,
@@ -56,6 +60,37 @@ Jangkarnya bbox, bukan kuadran, dan itu penting: keempat pose jadi berdiri di ga
 Key manifest `defeated` dipertahankan untuk kompatibilitas Godot, tetapi prompt v2 dan UI memperlakukannya sebagai keadaan visual **Damaged**: karakter yang sama dengan kerusakan kecil spesifik objek, bukan tubuh yang dihancurkan.
 
 Kenapa ukuran seragam itu penting: `AnimatedSprite2D` hanya punya satu properti `offset` untuk seluruh animasi, bukan per-frame. Kalau setiap pose punya ukuran region berbeda, sprite akan tersentak berpindah posisi setiap ganti frame, dan tidak ada cara memperbaikinya di client tanpa menambah node pembungkus per frame. Menormalisasi di backend menghapus masalahnya seluruhnya. `AnimaLoader` menolak manifest yang region-nya tidak seukuran `frame_size`, jadi pelanggaran kontrak ini gagal keras di client, bukan muncul sebagai getaran halus yang sulit dilacak.
+
+`render_metrics` berbeda dari QA: game memang membacanya. Tinggi dan lebar itu
+adalah bbox opak pose `idle` (atau `intro_idle` untuk Boss Seeker), bukan ukuran
+frame transparan. Bersama `body_height_cm` dari snapshot authoritative, metrik
+ini memungkinkan Duel, Team Battle, dan Expedition menampilkan monster kecil,
+normal, dan raksasa dengan proporsi yang konsisten meski padding sheet berbeda.
+Chapter Factory dan post-process capture menghasilkan blok yang sama.
+
+Background zona memakai `KEEP_ASPECT_COVERED` di dalam stage, dan project
+stretch `keep` pada viewport 720×1602 (Xiaomi 14 20:9, native 1200×2670).
+Resize window tidak boleh memakai `expand` — itu mengubah crop latar setiap
+kali aspek bergeser.
+
+`BattleScale.shared_scales()` memakai satu kurva tinggi untuk setiap tubuh di
+shot yang sama, termasuk Boss Seeker. Tinggi dikunci ke kartu desain 720×800
+tanpa memandang lebar layar: Anima 120 cm mengisi sekitar setengah kartu itu.
+Ruang vertikal ekstra menjadi latar; arena yang lebih pendek dari kartu itu
+adalah satu-satunya yang mengecilkan semua tubuh bersama. Cap 1.40 pada Boss
+Seeker sudah dihapus supaya trainer tidak tertinggal saat Anima membesar. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px) di client, karena
+capture 300 px memotong kaki tubuh yang lebih tinggi dari jendela itu. Duel
+memakai wrapper dua tubuh `fighter_pair_scales()`. Sprite lebar tidak dikecilkan
+sendiri sampai monster yang lebih tinggi tampak lebih pendek, dan trainer
+manusia tidak tinggal di skala penuh sementara Anima menyusut. Skala tubuh
+dipasang pada anchor di luar `AnimaPresenter`; tween napas/lunge tetap bebas
+menulis transform presenter tanpa menghapus skala kanonis. Boss Seeker hanya
+pindah ke back lane; dunia skalanya sama.
+
+Vision production v18 memilih `body_height_cm` sebagai tinggi vertikal stance
+Battle. Skala nyata adalah anchor; benda genggam kecil boleh dibesarkan menjadi
+companion 70–120 cm, sedangkan exaggeration besar hanya untuk silhouette yang
+memang towering atau massive. Angka ini hanya presentasi, bukan combat stat.
 
 Blok `qa` tidak dipakai game, tapi ikut disimpan agar sheet yang buruk bisa ditemukan lewat query alih-alih laporan pemain. `pose_ownership.cross_boundary_pixels` mengukur bagian pose yang melewati center seam pada PNG mentah tetapi berhasil dipertahankan oleh segmentasi; nilainya bukan error selama sel tetap terpisah.
 

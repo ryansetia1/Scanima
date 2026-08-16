@@ -46,8 +46,9 @@ async function restFetch(baseUrl, path, serviceKey, init = {}) {
     // keep text
   }
   if (!response.ok) {
+    const renderedBody = typeof body === "string" ? body : JSON.stringify(body);
     const error = new Error(
-      `REST ${init.method ?? "GET"} ${path} → ${response.status}: ${String(body).slice(0, 400)}`,
+      `REST ${init.method ?? "GET"} ${path} → ${response.status}: ${renderedBody.slice(0, 400)}`,
     );
     error.httpStatus = response.status;
     throw error;
@@ -68,17 +69,29 @@ async function uploadImmutableAsset(baseUrl, serviceKey, path, bytes) {
 }
 
 async function deleteUploadedAsset(baseUrl, serviceKey, path) {
-  const encoded = path.split("/").map(encodeURIComponent).join("/");
-  await restFetch(baseUrl, `/storage/v1/object/${BUCKET}/${encoded}`, serviceKey, {
+  await restFetch(baseUrl, `/storage/v1/object/${BUCKET}`, serviceKey, {
     method: "DELETE",
+    body: JSON.stringify({ prefixes: [path] }),
   });
 }
 
 async function downloadPublicAsset(baseUrl, path) {
   const encoded = path.split("/").map(encodeURIComponent).join("/");
   const response = await fetch(`${baseUrl}/storage/v1/object/public/${BUCKET}/${encoded}`);
-  if (!response.ok) throw new Error(`VERIFY_DOWNLOAD_FAILED:${path}:${response.status}`);
+  if (!response.ok) {
+    throw new Error(`VERIFY_DOWNLOAD_FAILED:${path}:${response.status}:${await response.text()}`);
+  }
   return new Uint8Array(await response.arrayBuffer());
+}
+
+export function isMissingPublicAssetError(error, path) {
+  const message = String(error);
+  return message.includes(`VERIFY_DOWNLOAD_FAILED:${path}:`)
+    && (
+      message.includes(`VERIFY_DOWNLOAD_FAILED:${path}:404`)
+      || message.includes('"statusCode":"404"')
+      || message.includes('"code":"NoSuchKey"')
+    );
 }
 
 async function findChapterRow(baseUrl, serviceKey, slug) {
@@ -203,9 +216,16 @@ export async function publishChapter({
   try {
     for (const entry of manifest.assets.entries) {
       const bytes = await loadLocalAssetBytes(chapterDir, entry.path, ctx);
-      await uploadImmutableAsset(env.baseUrl, env.serviceKey, entry.path, bytes);
-      createdPaths.push(entry.path);
-      const remoteBytes = await downloadPublicAsset(env.baseUrl, entry.path);
+      let remoteBytes;
+      try {
+        remoteBytes = await downloadPublicAsset(env.baseUrl, entry.path);
+        verifyFileHash(remoteBytes, entry.sha256, entry.path);
+      } catch (error) {
+        if (!isMissingPublicAssetError(error, entry.path)) throw error;
+        await uploadImmutableAsset(env.baseUrl, env.serviceKey, entry.path, bytes);
+        createdPaths.push(entry.path);
+        remoteBytes = await downloadPublicAsset(env.baseUrl, entry.path);
+      }
       verifyFileHash(remoteBytes, entry.sha256, entry.path);
       uploads.push({ path: entry.path, sha256: entry.sha256 });
       publishLedger.uploads = [...uploads];

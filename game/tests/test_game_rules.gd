@@ -6,6 +6,7 @@ extends SceneTree
 ##     --script res://tests/test_game_rules.gd
 
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
+const BATTLE_SCALE := preload("res://scripts/battle_scale.gd")
 
 var _checks := 0
 var _failures: PackedStringArray = []
@@ -321,7 +322,100 @@ func _initialize() -> void:
 	_check_eq(Catalog.quantity_of(Catalog.with_quantity(bag, "power_chip", 0), "power_chip"), 0, "nol menghapus baris")
 	_check_eq(Catalog.quantity_of(Catalog.with_quantity([], "vital_patch", 1), "vital_patch"), 1, "item baru masuk tas")
 
-	print("13. gallery transport")
+	print("13. canonical-height Battle scale")
+	var render := {"render_metrics": {"reference_height_px": 300, "reference_width_px": 220}}
+	var design_arena := BATTLE_SCALE.DESIGN_ARENA
+	var small_scale := BATTLE_SCALE.fighter_scale(20.0, render, design_arena)
+	var normal_scale := BATTLE_SCALE.fighter_scale(120.0, render, design_arena)
+	var giant_scale := BATTLE_SCALE.fighter_scale(2000.0, render, design_arena)
+	_check(small_scale < normal_scale, "Anima 20 cm tampil lebih kecil dari Anima 120 cm")
+	_check(normal_scale < giant_scale, "Anima 2000 cm tetap terasa lebih besar")
+	_check(
+		300.0 * giant_scale <= BATTLE_SCALE.usable_height(design_arena) * 0.88 + 0.01,
+		"tinggi raksasa tidak menutup HUD"
+	)
+	_check(small_scale >= 0.20, "Anima terkecil tetap terlihat")
+	var roomy_arena := Vector2(720.0, 800.0)
+	var roomy_pair := BATTLE_SCALE.fighter_pair_scales(
+		120.0, render, 120.0, render, roomy_arena
+	)
+	_check(
+		absf(300.0 * roomy_pair.x - roomy_arena.y * BATTLE_SCALE.ARENA_REFERENCE_HEIGHT_RATIO) < 1.0,
+		"Anima 120 cm mengisi sekitar setengah kartu desain"
+	)
+	var arena_size := Vector2(550.0, 680.0)
+	var veridian_render := {"render_metrics": {"reference_height_px": 327, "reference_width_px": 274}}
+	var fudge_render := {"render_metrics": {"reference_height_px": 235, "reference_width_px": 326}}
+	var pair_scales := BATTLE_SCALE.fighter_pair_scales(
+		175.0, veridian_render, 135.0, fudge_render, arena_size
+	)
+	var rendered_veridian_height := 327.0 * pair_scales.x
+	var rendered_fudge_height := 235.0 * pair_scales.y
+	var expected_height_ratio: float = pow(175.0 / 135.0, BATTLE_SCALE.BODY_HEIGHT_CURVE)
+	_check(
+		absf(rendered_veridian_height / rendered_fudge_height - expected_height_ratio) < 0.001,
+		"rasio tinggi kanonis tetap meski Fudge lebih lebar"
+	)
+	var seeker_render := {"render_metrics": {"reference_height_px": 282, "reference_width_px": 158}}
+	var phone_arena := Vector2(720.0, 800.0)
+	var wide_arena := Vector2(1100.0, 800.0)
+	var tall_arena := Vector2(720.0, 1600.0)
+	var narrow_arena := Vector2(400.0, 1600.0)
+	var phone_pair := BATTLE_SCALE.fighter_pair_scales(
+		175.0, veridian_render, 135.0, fudge_render, phone_arena
+	)
+	var wide_pair := BATTLE_SCALE.fighter_pair_scales(
+		175.0, veridian_render, 135.0, fudge_render, wide_arena
+	)
+	var tall_pair := BATTLE_SCALE.fighter_pair_scales(
+		175.0, veridian_render, 135.0, fudge_render, tall_arena
+	)
+	var narrow_pair := BATTLE_SCALE.fighter_pair_scales(
+		175.0, veridian_render, 135.0, fudge_render, narrow_arena
+	)
+	_check(
+		is_equal_approx(phone_pair.x, wide_pair.x) and is_equal_approx(phone_pair.y, wide_pair.y),
+		"lebar ekstra tidak mengubah skala"
+	)
+	_check(
+		is_equal_approx(phone_pair.x, tall_pair.x) and is_equal_approx(phone_pair.y, tall_pair.y),
+		"tinggi ekstra tidak mengubah skala"
+	)
+	_check(
+		is_equal_approx(phone_pair.x, narrow_pair.x) and is_equal_approx(phone_pair.y, narrow_pair.y),
+		"lebar layar tidak mengubah skala Anima maupun Seeker"
+	)
+	var short_arena := Vector2(400.0, 500.0)
+	var short_pair := BATTLE_SCALE.fighter_pair_scales(
+		175.0, veridian_render, 135.0, fudge_render, short_arena
+	)
+	_check(
+		short_pair.x < phone_pair.x - 0.01,
+		"arena yang lebih pendek dari kartu desain mengecilkan semua tubuh bersama"
+	)
+	var trio := BATTLE_SCALE.shared_scales(
+		[175.0, 135.0, 156.0],
+		[veridian_render, fudge_render, seeker_render],
+		narrow_arena
+	)
+	_check(trio.size() == 3, "shared_scales menerima Seeker sebagai tubuh ketiga")
+	_check(
+		is_equal_approx(trio[0], narrow_pair.x) and is_equal_approx(trio[1], narrow_pair.y),
+		"Seeker memakai kurva tinggi yang sama, bukan slot sendiri"
+	)
+	var rendered_seeker_height := 282.0 * trio[2]
+	var rendered_trio_fudge := 235.0 * trio[1]
+	_check(
+		absf(rendered_seeker_height / rendered_trio_fudge - pow(156.0 / 135.0, BATTLE_SCALE.BODY_HEIGHT_CURVE)) < 0.001,
+		"rasio tinggi Seeker vs Fudge tetap kanonis"
+	)
+	var solo_seeker := BATTLE_SCALE.fighter_scale(156.0, seeker_render, narrow_arena)
+	_check(
+		is_equal_approx(trio[2], solo_seeker),
+		"skala Seeker di grup sama dengan skala tingginya sendiri"
+	)
+
+	print("14. gallery transport")
 	var backend_text := FileAccess.get_file_as_string("res://scripts/backend.gd")
 	_check(backend_text.find("func gallery(") >= 0, "Backend exposes gallery edge transport")
 	_check(backend_text.find("gallery_thumb_cache_path") >= 0, "gallery thumbs cache bounded per entry id")

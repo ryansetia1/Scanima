@@ -30,7 +30,10 @@ aktif untuk device playtest dengan `feature_team_battle=true`. Tidak ada model
 call saat pemain bermain. Begin Expedition mendebit 30 Energy dari masing-masing
 empat anggota satu kali; zona dan Boss berikutnya tidak memakai Energy lagi,
 dan roster terkunci sampai run selesai atau di-Abandon. Boss menampilkan Seeker
-chapter di belakang Anima lawan beserta dialog event. Spesifikasi ada di
+chapter di belakang Anima lawan. Dialog sekarang berbudget, pose mendahului
+teks/aksi, dan ace `special` Boss ditahan sampai akhir lalu memicu passive masuk
+authoritative. Tinggi kanonis Anima dan Boss Seeker menentukan proporsi arena
+tanpa mengubah stat tempur. Spesifikasi ada di
 [`docs/09-team-battle-and-expedition.md`](docs/09-team-battle-and-expedition.md).
 
 Probe production berbayar setelah cutover memakai foto Golden Retriever
@@ -43,8 +46,11 @@ satu eval masih terbaca sebagai anjing anime biasa sehingga ditolak. Kandidat
 v15 memperkeras identitas monster lewat proportion break, landmark evolution,
 dan organic motif terintegrasi tanpa mengubah Vision atau prompt objek. Eval
 Golden Retriever v15 lulus visual 9/9 sel dalam 55 detik dan terbaca sebagai
-monster pada ukuran game. Bundle v15 sudah dideploy sebagai `create_anima`
-version 13 dan kini menjadi prompt production; v13 tetap rollback langsung.
+monster pada ukuran game. Production sekarang v18: sprite prompt tetap identik
+v15, sedangkan Vision menentukan `body_height_cm` 20–2000 dengan skala nyata
+sebagai anchor, floor playable untuk benda kecil, dan exaggeration hanya saat
+silhouette memang menuntutnya. `create_anima` version 15 sudah live; v17 adalah
+rollback kebijakan tinggi, v15 rollback art, dan v13 rollback kontrak capture.
 
 **Phase 1 — pipeline art. Terbukti end-to-end pada 12 Agustus 2026.** Foto sungguhan sudah masuk lewat seluruh rantai — Vision, prompt, generation, chroma key, slicing, manifest — dan Godot merender Anima hasilnya. "True to Object" terverifikasi dengan mata: foto mouse komputer menghasilkan kreatur yang dua tombol kliknya jadi mata, scroll wheel jadi hidung, dan kabelnya jadi ekor bersegmen.
 
@@ -54,7 +60,7 @@ Eksperimen model berikutnya menetapkan **`openai/gpt-image-2` quality `medium`**
 
 Run itu memunculkan satu risiko yang bukan soal kualitas art: sheet sepatu mereproduksi logo merek dari fotonya di keempat pose. Larangan tekstual sudah ada di v2 dan tidak cukup, karena logonya datang dari foto referensi. **Prompt v3 kini jadi default**: ia memerintahkan model mengganti mark merek dengan permukaan polos atau marking geometris ciptaan sendiri. Uji satu foto sepatu (~$0.073) memberi 4/4 sel, residu 0,014%, logo hilang, dan `species_key` tidak bergeser. Mouse dan mug belum diulang di v3.
 
-**Prompt v7 kini default production.** V7 membawa seluruh pagar v6 (facing lock kiri, karakter, body plan, damage material, tanpa emblem), lalu mengubah sheet menjadi 3×3: tujuh pose karakter plus dua sel VFX battle (`fx_strike` / `fx_surge`) tanpa tubuh, dan Vision menulis nama Attack/Special unik per Anima. `species_key` tidak berubah, jadi cache 2×2 lama tetap kena. Eval visual Retroid Pocket Classic lulus 9/9 sel. v3–v6 tetap di git untuk rollback. **v8 adalah candidate**: Vision tidak berubah; facing lock ditambah anti-inward pada Idle/Happy/Damaged setelah sheet Playtron v7 memutar dua sel kolom kiri ke kanan.
+**Prompt v7 menetapkan baseline layout production.** V7 membawa seluruh pagar v6 (facing lock kiri, karakter, body plan, damage material, tanpa emblem), lalu mengubah sheet menjadi 3×3: tujuh pose karakter plus dua sel VFX battle (`fx_strike` / `fx_surge`) tanpa tubuh, dan Vision menulis nama Attack/Special unik per Anima. `species_key` tidak berubah, jadi cache 2×2 lama tetap kena. Eval visual Retroid Pocket Classic lulus 9/9 sel. v3–v6 tetap di git untuk rollback. **v8 adalah candidate historis**: Vision tidak berubah; facing lock ditambah anti-inward pada Idle/Happy/Damaged setelah sheet Playtron v7 memutar dua sel kolom kiri ke kanan.
 
 **`google/nano-banana-2-lite` sudah mendapat satu A/B berbayar dengan mouse + prompt v5 dan ditolak.** Billing run tampil $0.03 dan generation selesai dalam 7 detik dengan 4/4 pose, tetapi model ikut menggambar label kuadran serta garis pembagi. Akibatnya bbox Sleep memenuhi tinggi sheet, cross-boundary mencapai 21.361 piksel, dan residu hijau 2,04% versus target <0,1%. Kecepatan dan harga tidak menutup kegagalan kepatuhan layout, jadi GPT Image 2 medium tetap dipakai.
 
@@ -192,7 +198,7 @@ npm run selftest                 # 27 skenario + 12 uji tanda tangan webhook, ta
 # Demo art: Anima placeholder yang bisa berganti pose dan memantul
 /Applications/Godot.app/Contents/MacOS/Godot --path game res://scenes/anima_demo.tscn
 
-# Preview Battle 720×1280 tanpa model call
+# Preview Battle 720×1602 (Xiaomi 14) tanpa model call
 /Applications/Godot.app/Contents/MacOS/Godot --path game -- \
     --battle-demo --screenshot=/tmp/battle.png
 ```
@@ -285,7 +291,7 @@ scanima/
 │   │   ├── anima_presenter.gd    # pose + gerak prosedural via Tween
 │   │   ├── placeholder_sheet.gd  # sheet buatan, untuk demo & test
 │   │   └── anima_demo.gd
-│   ├── themes/mobile_theme.tres  # palette, cards, CTA, modal, basis 720×1280
+│   ├── themes/mobile_theme.tres  # palette, cards, CTA, modal, basis 720×1602
 │   ├── shaders/chroma_key.gdshader   # cadangan, jalur BYOK saja
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis

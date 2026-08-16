@@ -2,11 +2,18 @@
 
 Ini adalah dokumen paling menentukan kualitas Scanima. Kalau prompt-nya benar, sebuah mouse komputer jadi Anima yang jelas-jelas berasal dari mouse itu. Kalau salah, semua Anima terlihat seperti monster generik yang kebetulan diberi warna berbeda, dan seluruh premis game runtuh.
 
-## Kontrak capture v13, production v15, dan candidate v16
+## Kontrak capture v13, production v18, dan candidate art v16
 
-Sumber prompt production berada di `backend/prompts/v15/`; v13 tetap dibundel
-sebagai rollback langsung. Vision/schema v15 identik dengan kontrak v13 yang
-menambah:
+Sumber prompt production berada di `backend/prompts/v18/`; v17 menjadi rollback
+kebijakan tinggi, v15 rollback art langsung, dan v13 rollback kontrak capture.
+V18 mempertahankan seluruh sprite prompt v15 tanpa perubahan gambar serta output
+Vision `body_height_cm` 20–2000 dari v17. Perubahannya ada pada keputusan skala:
+Vision mulai dari tinggi biologis/objek normal, menjaga hewan dekat anatomi nyata,
+membesarkan benda genggam kecil ke floor playable 70–120 cm, dan memakai skala
+di atas 220 cm hanya saat transformed silhouette memang towering atau massive.
+Yang dilaporkan selalu tinggi vertikal stance Battle, bukan panjang tubuh,
+ukuran pada foto, atau tinggi piksel sprite.
+Kontrak dasar Vision v15 tetap berasal dari v13 yang menambah:
 
 - `subject_kind`: `object` atau `animal`;
 - primary element dari roster tertutup 18 nilai dan `secondary_element` nullable
@@ -38,10 +45,13 @@ Eval Golden Retriever v15 kemudian lulus 9/9 sel dalam 55 detik: kepala/mata,
 mane, kaki, ekor, massa tubuh, dan ekspresi sudah terbaca sebagai monster pada
 ukuran game. Residu hijau terukur 0,526% tetapi tidak mengganggu pada render
 ukuran game; tetap dipantau pada fauna berwarna non-hijau berikutnya.
-`create_anima` version 13 membawa bundle tersebut dan
-`app_config.prompt_version = "v15"` sudah live; rollback-nya v13.
+`create_anima` version 15 membawa bundle sampai v18. V18 dipromosikan lewat
+dry-run template tanpa image generation karena prompt sprite byte-identik v15;
+rollback kebijakan tinggi adalah v17, rollback art v15, dan rollback kontrak
+capture langsung v13.
 
-V16 adalah candidate pertama sesudah v15. Ia tidak mengubah Vision, schema,
+V16 adalah candidate art sesudah v15, tetapi bukan leluhur v17. Ia tidak
+mengubah Vision, schema,
 typing, body-plan input, layout, VFX contract, atau post-process. Perubahannya
 hanya memperkeras arah sumber untuk object, fauna, dan evolve setelah uji manual
 Gumdrop menunjukkan sebagian pose berbalik dan pupil menatap target berbeda.
@@ -327,7 +337,10 @@ Konfigurasi panggilan: `temperature: 0.4` (cukup rendah agar `species_key` stabi
 
 ### Validasi setelah LLM
 
-Schema menjamin bentuk, bukan kewajaran isi. Empat pemeriksaan tambahan di kode sebelum lanjut ke Replicate:
+Schema menjamin bentuk, bukan kewajaran isi. Pemeriksaan tambahan di kode
+berjalan sebelum lanjut ke Replicate. Mulai v17, termasuk v18, hasil aman wajib membawa
+`body_height_cm` integer 20–2000; nilai hilang, pecahan, atau di luar rentang
+gagal tertutup sebelum Core diklaim untuk generation gambar.
 
 Jumlah stat dinormalisasi ke rentang 200-350 kalau LLM meleset, dengan penskalaan proporsional agar karakter relatif objeknya tetap terjaga. `species_key` dicocokkan ke daftar yang sudah ada di `species_library` dengan Levenshtein distance ≤ 2; kalau mirip, pakai yang lama — ini yang mencegah `mug_ceramic_handled` dan `mug_ceramic_handle` jadi dua entri cache berbeda. `signature_features` yang kosong atau berisi frasa kabur seperti "unique texture" memicu satu kali retry, karena fitur kabur adalah penyebab utama art yang tidak "True to Object". `suggested_name` generated yang masih berakhiran `mon` dinormalisasi sebelum ditulis ke Anima; nickname yang diketik pemain tidak ikut diubah.
 

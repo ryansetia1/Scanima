@@ -71,6 +71,7 @@ type AnimaRow = {
   element: string;
   secondary_element?: string | null;
   base_stats: Record<string, number>;
+  body_height_cm?: number;
   care_score?: number;
   care?: { hunger?: number; hygiene?: number };
   strike_name?: string;
@@ -99,7 +100,7 @@ type GalleryBotRow = {
 
 const SECONDARY_ELEMENT_FIELD = ", secondary_element";
 const ANIMA_BATTLE_FIELDS =
-  `id, owner_id, nickname, species_key, color_bucket, stage, element${SECONDARY_ELEMENT_FIELD}, base_stats, care_score, care, strike_name, surge_name`;
+  `id, owner_id, nickname, species_key, color_bucket, stage, element${SECONDARY_ELEMENT_FIELD}, base_stats, body_height_cm, care_score, care, strike_name, surge_name`;
 const normalizeStats = normalizeBaseStats as unknown as (
   baseStats: unknown,
   targetTotal?: number | null,
@@ -369,6 +370,7 @@ function snapshot(
     level: levelFromExp(row.care_score),
     element: normalizeElement(row.element),
     base_stats: normalizeStats(row.base_stats),
+    body_height_cm: Math.min(2000, Math.max(20, Math.trunc(Number(row.body_height_cm) || 120))),
     manifest: art?.manifest ?? {},
     strike_name: row.strike_name ?? "",
     surge_name: row.surge_name ?? "",
