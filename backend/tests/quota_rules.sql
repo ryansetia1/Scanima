@@ -3558,9 +3558,10 @@ begin
   );
   assert (v_j->>'stage')::int = 2
          and (select status from public.animas where id = v_evolution_anima) = 'ready'
+         and (select nickname from public.animas where id = v_evolution_anima) = 'evolution-main'
          and (select strike_effect_id from public.animas where id = v_evolution_anima) = 'armor_pierce'
          and (select surge_effect_id from public.animas where id = v_evolution_anima) = 'barrier',
-         'commit evolution harus mengaktifkan art, form, move, dan dua efek sekaligus';
+         'commit evolution harus mengaktifkan art, form, move, dan dua efek sekaligus tanpa menimpa nickname';
   assert exists (
            select 1 from public.anima_forms
             where anima_id = v_evolution_anima

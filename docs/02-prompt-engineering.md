@@ -641,7 +641,7 @@ Adult bridge atau Evolved culmination, tinggi dalam band stage, dua nama
 move/VFX, dan dua effect ID dari allowlist. Image model boleh mengubah body plan
 secara besar, tetapi ketiga anchor itu wajib bertahan di tujuh sel karakter.
 Validator—bukan model—menentukan legalitas effect, successor Evolved, band
-tinggi, dan format nama. Bundle prompt/model v29 live; `feature_evolution=true`.
+tinggi, dan format nama. Bundle prompt/model v30 live; `feature_evolution=true`.
 
 Eval berbayar pertama membuktikan kontrak v21 terlalu konservatif: teknis 9/9
 sel, tetapi siluet Adult tetap sama dengan Hatchling. V22 menggantinya dengan
@@ -814,17 +814,19 @@ backend/prompts/
     ├── vision_evolve_system.md
     ├── vision_evolve_schema.json
     └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
-└── v29/                   <- candidate: kind lock + contour delta
+└── v29/                   <- predecessor: kind lock + contour delta
+    ├── vision_evolve_system.md
+    ├── vision_evolve_schema.json
+    └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
+└── v30/                   <- production: name lineage
     ├── vision_evolve_system.md
     ├── vision_evolve_schema.json
     └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
 ```
 
-V29 adalah v28 minus exile gait kaki, plus kind lock. Evolved boleh tetap
-walker jika outline 96 px baru dan kategori subjek (anjing, galon, tank,
-gedung) tidak berganti ular/worm. Adult Sunhound v28 dan Adult Veridian v26
-tetap terkunci; Evolved diiterasi dari Idle itu. Kualitas visual Evolved
-belum boleh diklaim.
+V30 adalah v29 plus `suggested_name` di Evolution Plan. Nama spesies baru
+mengikuti akar bunyi form sebelumnya; `commit_evolution` tidak menimpa
+`nickname`. Sheet terkunci membawa usulan nama operator. Capture tetap v20.
 
 Eval Vision-only v20 pada 17 Agustus 2026 menolak karakter franchise sebagai
 `known_character`, menerima ilustrasi naga public-domain sebagai Fauna, dan

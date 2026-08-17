@@ -610,13 +610,20 @@ func begin_evolution(
 	return pending_evolution
 
 
-func note_evolution_started(generation_id: String, target_stage: int = 0) -> void:
+func note_evolution_started(
+	generation_id: String,
+	target_stage: int = 0,
+	suggested_name: String = ""
+) -> void:
 	if pending_evolution.is_empty():
 		return
 	if not generation_id.is_empty():
 		pending_evolution["generation_id"] = generation_id
 	if target_stage > 0:
 		pending_evolution["target_stage"] = target_stage
+	var name := suggested_name.strip_edges()
+	if not name.is_empty():
+		pending_evolution["suggested_name"] = name
 	save()
 
 

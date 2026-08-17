@@ -48,11 +48,13 @@ kosong tetap salah dibaca sebagai panel beton pada v19 maupun v20.
 
 ## Status deploy Evolution art (player-live, 18 Agustus 2026)
 
-**`feature_evolution=true`**, `evolution_prompt_version = "v29"`, default
+**`feature_evolution=true`**, `evolution_prompt_version = "v30"`, default
 `evolution_version=1` (backfill row lama). Capture tetap `prompt_version = "v20"`.
 Ritual Evolve gratis; sheet terkunci di `anima_evolution_locks` melewati Replicate.
+Plan v30 mengusulkan `suggested_name`; `commit_evolution` tidak menimpa `nickname`.
+Sesudah sukses, client membuka Rename terisi nama itu; Cancel mempertahankan nama lama.
 
-- Migrasi `20260817095700_evolution_art_pipeline` + `20260817200110_evolution_go_live`.
+- Migrasi `20260817095700_evolution_art_pipeline` + `20260817200110_evolution_go_live` + `20260817201340_evolution_name_lineage_v30`.
 - Edge Function `evolve_anima`: Vision Plan (~$0.003) + satu generation (~$0.07)
   **tanpa Core**, atau commit lock 0 USD. Kegagalan memanggil `fail_evolution`.
 - **`RULES_VERSION = 3`**: committed form ×1.06/×1.18 + move effects saat
@@ -187,14 +189,14 @@ selamanya. Cold start lintas device yang kehilangan intent lokal memakai
 lease Vision, history/reference cleanup, dan revoke RPC; seluruh suite lulus
 terhadap production setelah migrasi.
 
-Migration `20260817095700_evolution_art_pipeline` + `20260817200110_evolution_go_live` tercatat remote. Edge Function
-`evolve_anima` version 2, `create_anima` version 19, `replicate_webhook` version
+Migration `20260817095700_evolution_art_pipeline` + `20260817200110_evolution_go_live` + `20260817201340_evolution_name_lineage_v30` tercatat remote. Edge Function
+`evolve_anima` version 3, `create_anima` version 19, `replicate_webhook` version
 9, `battle_anima` version 26, `team_battle` version 8, `expedition` version 16,
 dan `seeker` version 5 ACTIVE; semua selain webhook memakai `verify_jwt=true`.
 Smoke tanpa JWT/signature mengembalikan 401, dan RPC evolusi tidak executable
 oleh `anon`/`authenticated`.
 
-**Client evolution ritual (live):** `GameState.pending_evolution`, stage-aware sprite cache `v6_<anima_id>_<stage>`, Profile **Evolve** CTA, Collection **Ready to Evolve**, `IncubatorEffect.start_evolution()` chamber, resume/poll di `scan_flow.gd`, pelat status/efek Battle. Butuh `feature_evolution` + `evolution_version>=1`. Wiki pemain di `docs/wiki/anima.md`.
+**Client evolution ritual (live):** `GameState.pending_evolution`, stage-aware sprite cache `v6_<anima_id>_<stage>`, Profile **Evolve** CTA, Collection **Ready to Evolve**, `IncubatorEffect.start_evolution()` chamber, resume/poll di `scan_flow.gd`, modal Rename terisi `suggested_name` sesudah sukses, pelat status/efek Battle. Butuh `feature_evolution` + `evolution_version>=1`. Wiki pemain di `docs/wiki/anima.md`.
 
 Wiki pemain ikut ritual Evolve. APK baru perlu diinstal supaya tombolnya ada di device yang masih memegang build lama.
 
@@ -458,15 +460,20 @@ backend/prompts/
     ├── vision_evolve_system.md   # v27 + silhouette_break_contract
     ├── vision_evolve_schema.json # v27 + prior/forbidden/new contour
     └── sprite_sheet_evolve.md    # capture diwarisi dari v20 saat bundling
-└── v29/                          # production evolution: kind lock + contour delta
+└── v29/                          # predecessor: kind lock + contour delta
     ├── vision_evolve_system.md   # v28 minus gait exile, plus kind_noun
     ├── vision_evolve_schema.json # v28 + source/continued kind
     └── sprite_sheet_evolve.md    # capture diwarisi dari v20 saat bundling
+└── v30/                          # production evolution: name lineage
+    ├── vision_evolve_system.md   # v29 + suggested_name lineage
+    ├── vision_evolve_schema.json # v29 + suggested_name
+    └── sprite_sheet_evolve.md    # capture diwarisi dari v20 saat bundling
 ```
 
-V29 adalah production evolution: siluet pecah tanpa memaksa coil. Adult Veridian
-v26, Adult Sunhound v28, Evolved Sunhound v29, serta Adult+Evolved Playtron v29
-terkunci per Anima. Capture tetap v20.
+V30 adalah production evolution: siluet pecah tanpa memaksa coil, plus nama
+spesies baru di Plan. Adult Veridian v26, Adult Sunhound v28, Evolved Sunhound
+v29, serta Adult+Evolved Playtron v29 terkunci per Anima; lock Plan membawa
+`suggested_name` operator. Capture tetap v20.
 
 **Prompt tidak bisa dibaca sebagai file di Edge Function.** `Deno.readTextFile()` gagal untuk file pendamping yang dideploy lewat MCP, jadi `backend/tools/bundle_prompts.mjs` membundel semua versi menjadi `functions/_shared/prompts.generated.ts` yang diimpor sebagai modul. Sumbernya tetap file `.md` di git; artefaknya turunan. Setelah mengubah prompt: `node backend/tools/bundle_prompts.mjs`. Skenario 17 di `npm run selftest` gagal kalau bundelnya basi, jadi kelupaan ketangkap gratis, bukan saat art produksi ternyata berbeda dari art yang sudah disetujui.
 

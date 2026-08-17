@@ -625,8 +625,13 @@ func _test_pending_evolution() -> void:
 		GameState.begin_evolution("anima-other", 1).is_empty(),
 		"Anima lain tidak boleh memakai kunci evolusi yang sedang pending"
 	)
-	GameState.note_evolution_started("gen-1", 2)
+	GameState.note_evolution_started("gen-1", 2, "Verdara")
 	_check_eq(str(GameState.pending_evolution.get("generation_id", "")), "gen-1", "generation tercatat")
+	_check_eq(
+		str(GameState.pending_evolution.get("suggested_name", "")),
+		"Verdara",
+		"nama usulan evolusi ikut persist"
+	)
 	GameState.finish_evolution()
 	_check(GameState.pending_evolution.is_empty(), "finish membersihkan pending")
 	var adopted: Dictionary = GameState.begin_evolution("anima-evolve", 1, true)

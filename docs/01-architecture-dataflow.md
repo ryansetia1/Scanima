@@ -740,9 +740,10 @@ mobility anatomy-agnostic; paid Adult v26 disetujui operator.
 Candidate v27 menambah face-age craniofacial contract. Paid Evolved v27 masih
 Candidate v28 mengunci silhouette break. Paid Evolved Sunhound v28 visual
 reject (ular). Candidate v29 (kind lock + contour delta) adalah production evolution.
-Pengalaman pemain **`feature_evolution=true`**, `evolution_prompt_version=v29`,
+Pengalaman pemain **`feature_evolution=true`**, `evolution_prompt_version=v30`,
 dan `evolution_version` default 1. Sheet Adult/Evolved yang sudah disetujui
-operator masuk `anima_evolution_locks` dan melewati Replicate.
+operator masuk `anima_evolution_locks` dan melewati Replicate. Plan v30
+mengusulkan nama spesies baru; nickname pemain hanya berubah lewat Rename.
 Satu evolusi aktif per owner: `begin_evolution` mengunci baris `profiles`, partial
 unique index `animas(owner_id) WHERE status='evolving'`, dan idempotency key sama
 tetap replay tanpa EVOLUTION_ALREADY_ACTIVE.

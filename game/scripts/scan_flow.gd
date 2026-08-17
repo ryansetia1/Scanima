@@ -910,7 +910,11 @@ func _start_evolution_ritual(row: Dictionary) -> void:
 	if typeof(res.data) != TYPE_DICTIONARY:
 		body = {}
 	var target_stage := int(body.get("target_stage", pending.get("target_stage", prior_stage + 1)))
-	GameState.note_evolution_started(str(body.get("generation_id", "")), target_stage)
+	GameState.note_evolution_started(
+		str(body.get("generation_id", "")),
+		target_stage,
+		str(body.get("suggested_name", ""))
+	)
 	await _wait_for_evolution(anima_id, prior_stage, target_stage)
 
 
@@ -958,7 +962,8 @@ func _resume_pending_evolution(restore_navigation: bool = true) -> void:
 		var body: Dictionary = res.data
 		GameState.note_evolution_started(
 			str(body.get("generation_id", pending.get("generation_id", ""))),
-			int(body.get("target_stage", target_stage))
+			int(body.get("target_stage", target_stage)),
+			str(body.get("suggested_name", ""))
 		)
 		target_stage = int(GameState.pending_evolution.get("target_stage", target_stage))
 	elif not res.ok:
@@ -1083,6 +1088,7 @@ func _complete_evolution(
 		if chamber_active:
 			_apply_evolution_chamber_for_row(row, _destination == BottomNav.HOME)
 		return false
+	var suggested := await _evolution_suggested_name(anima_id)
 	GameState.finish_evolution()
 	_evolution_art_error_reported = false
 	_sync_evolution_row(row)
@@ -1101,7 +1107,23 @@ func _complete_evolution(
 	if restore_navigation and was_active:
 		_switch_destination(BottomNav.HOME)
 	_say(_evolution_success_copy(row), true)
+	if not suggested.is_empty():
+		call_deferred("_show_rename", anima_id, suggested)
 	return true
+
+
+func _evolution_suggested_name(anima_id: String) -> String:
+	var pending := GameState.pending_evolution
+	var name := str(pending.get("suggested_name", "")).strip_edges()
+	if not name.is_empty():
+		return name
+	var key := str(pending.get("idempotency_key", ""))
+	if anima_id.is_empty() or key.is_empty():
+		return ""
+	var res := await Backend.evolve_anima(anima_id, key, false)
+	if not res.ok or typeof(res.data) != TYPE_DICTIONARY:
+		return ""
+	return str(res.data.get("suggested_name", "")).strip_edges()
 
 
 func _fail_evolution(row: Dictionary, restore_navigation: bool) -> void:
@@ -1246,14 +1268,21 @@ func _evolution_enabled() -> bool:
 	return bool(GameState.client_config.get("feature_evolution", false))
 
 
-func _show_rename(anima_id: String) -> void:
+func _show_rename(anima_id: String, draft: String = "") -> void:
 	var target := _current_anima
 	if anima_id == str(_profile_anima.get("id", "")):
 		target = _profile_anima
+	elif anima_id != str(_current_anima.get("id", "")):
+		target = _roster_row(anima_id)
+		if not target.is_empty():
+			_profile_anima = target
 	if _busy or anima_id.is_empty() or anima_id != str(target.get("id", "")):
 		return
 	_pending_rename_id = anima_id
-	_pending_rename_text = str(target.get("nickname", "")).strip_edges()
+	var text := draft.strip_edges()
+	_pending_rename_text = (
+		text if not text.is_empty() else str(target.get("nickname", "")).strip_edges()
+	)
 	_popup_rename()
 
 

@@ -167,7 +167,7 @@ Foto dikecilkan ke 1280 px di device sebelum diunggah.
 
 Evolusi Lv16 Adult dan Lv36 Evolved live sebagai ritual **Evolve** eksplisit,
 generation privat tanpa debit Core, serta power/effect Battle yang aktif setelah
-art commit. Prompt evolution production **v29**. Sheet Adult/Evolved yang sudah
+art commit. Prompt evolution production **v30**. Sheet Adult/Evolved yang sudah
 disetujui operator untuk Anima tertentu (Veridian Adult, Sunhound, Playtron)
 terkunci dan tidak di-generate ulang. Capture tetap v20.
 

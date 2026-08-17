@@ -3512,8 +3512,9 @@ func _test_hatch_offers_rename() -> void:
 		rename_start, rename_end - rename_start
 	) if rename_start >= 0 and rename_end > rename_start else ""
 	_check(
-		rename_body.find("_profile_anima") >= 0,
-		"rename accepts the Anima currently shown in Profile"
+		rename_body.find("_profile_anima") >= 0
+		and rename_body.find("draft: String = \"\"") >= 0,
+		"rename accepts the Anima currently shown in Profile and a generated draft"
 	)
 	var confirm_start := source.find("func _rename_confirmed")
 	var confirm_end := source.find("\n\nfunc _modal_confirmed", confirm_start)
@@ -3877,6 +3878,12 @@ func _test_evolve_profile_cta() -> void:
 	_check(not incubator.is_processing(), "reduced motion stops idle chamber frame processing")
 	UiMotion.reduced_motion = false
 	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		flow_source.find("call_deferred(\"_show_rename\", anima_id, suggested)") >= 0
+		and flow_source.find("func _evolution_suggested_name") >= 0
+		and flow_source.find("str(body.get(\"suggested_name\", \"\"))") >= 0,
+		"ritual Evolve menawarkan Rename terisi nama usulan model"
+	)
 	_check(
 		flow_source.find("if await _complete_evolution(row, restore_navigation):") >= 0,
 		"art evolution yang gagal dimuat tetap dipoll dalam sesi yang sama"

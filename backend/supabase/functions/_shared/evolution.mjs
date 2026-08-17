@@ -4,6 +4,7 @@
 import { Image } from "imagescript";
 import {
   normalizeMoveName,
+  normalizeSuggestedName,
   normalizeVfxPlan,
   VFX_FORMS,
   VFX_MOTIONS,
@@ -925,6 +926,19 @@ function validateV29SilhouetteBreakPlan(plan, opts, issues) {
   plan.silhouette_break_contract = silhouetteBreak;
 }
 
+function validateV30NamePlan(plan, opts, issues) {
+  const name = normalizeSuggestedName(plan.suggested_name, "");
+  if (!name) {
+    issues.push("suggested_name wajib untuk form evolusi");
+    return;
+  }
+  const prior = normalizeSuggestedName(opts.priorSuggestedName, "").toLowerCase();
+  if (prior && name.toLowerCase() === prior) {
+    issues.push("suggested_name harus baru untuk form ini");
+  }
+  plan.suggested_name = name;
+}
+
 function validateV22SilhouettePlan(plan, opts, issues) {
   const anchors = (Array.isArray(plan.lineage_anchors) ? plan.lineage_anchors : [])
     .map((raw) => {
@@ -1075,10 +1089,11 @@ export async function buildEvolutionIdleReference(pngBuffer, manifest) {
  * @param {string} [opts.priorSurgeEffectId]
  * @param {number} [opts.contractVersion] 21=legacy, 22=Silhouette Delta,
  * 23=Identity, 24=Maturity, 25=Clarity, 26=Mobility, 27=Face age,
- * 28=walker exile, 29=kind lock + contour delta.
+ * 28=walker exile, 29=kind lock + contour delta, 30=name lineage.
  * @param {string} [opts.priorTransformationArchetype]
  * @param {unknown[]} [opts.priorIdentityInvariants]
  * @param {object} [opts.priorShapeBudgetContract]
+ * @param {string} [opts.priorSuggestedName]
  */
 export function validateEvolutionPlan(raw, opts) {
   const issues = [];
@@ -1176,6 +1191,7 @@ export function validateEvolutionPlan(raw, opts) {
   if (contractVersion >= 27) validateV27FaceAgePlan(plan, opts, issues);
   if (contractVersion === 28) validateV28SilhouetteBreakPlan(plan, opts, issues);
   if (contractVersion >= 29) validateV29SilhouetteBreakPlan(plan, opts, issues);
+  if (contractVersion >= 30) validateV30NamePlan(plan, opts, issues);
 
   const strikeEffect = String(plan.strike_effect_id ?? "").trim();
   const surgeEffect = String(plan.surge_effect_id ?? "").trim();

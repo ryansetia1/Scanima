@@ -192,7 +192,7 @@ yang disembunyikan.
 #### 5. Evolution vertical slice
 
 - **Player-live 18 Agustus 2026:** `feature_evolution=true`,
-  `evolution_prompt_version=v29`, `evolution_version` default 1.
+  `evolution_prompt_version=v30`, `evolution_version` default 1.
 - Gerbang syarat authoritative di server (Level 16/36, combat lock, satu evolusi aktif).
 - `evolve_anima` memakai crop Idle privat dari form saat ini sebagai `image_input`
   (bukan foto asli/full sheet), dengan lease Vision/dispatch idempoten.

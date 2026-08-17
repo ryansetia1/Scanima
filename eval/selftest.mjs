@@ -4051,7 +4051,7 @@ console.log("35. halaman referensi elemen tidak basi terhadap roster production"
   }
 }
 
-console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€“v29");
+console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€“v30");
 {
   const {
     validateEvolutionPlan,
@@ -4168,6 +4168,9 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
       && bundel.v29?.vision_evolve_schema?.required?.includes("silhouette_break_contract"),
     "v29 Evolution Plan harus membawa kind_noun",
   );
+  assert.equal(bundel.v30?.vision_system, bundel.v20?.vision_system, "v30 capture Vision mewarisi v20");
+  assert.deepEqual(bundel.v30?.vision_schema, bundel.v20?.vision_schema, "v30 capture schema mewarisi v20");
+  assert.equal(bundel.v30?.sprite_sheet, bundel.v20?.sprite_sheet, "v30 capture sprite_sheet mewarisi v20");
   assert.ok(
     bundel.v22?.vision_evolve_system?.includes("SILHOUETTE DELTA CONTRACT"),
     "v22 Vision harus silhouette-first",
@@ -5401,6 +5404,46 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     ),
     "prompt evolve v29 tidak boleh membawa nama franchise",
   );
+  const v30Raw = structuredClone(v29Raw);
+  v30Raw.suggested_name = "Sunhundor";
+  const adultV30 = validateEvolutionPlan(v30Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 30,
+    priorSuggestedName: "Sunhound",
+  });
+  assert.equal(adultV30.plan.suggested_name, "Sunhundor");
+  assert.equal(bundel.v30?.vision_system, bundel.v20?.vision_system, "v30 capture Vision mewarisi v20");
+  assert.ok(
+    bundel.v30?.vision_evolve_schema?.required?.includes("suggested_name")
+      && bundel.v30?.vision_evolve_system?.includes("NAME LINEAGE"),
+    "v30 Evolution Plan harus membawa suggested_name",
+  );
+  assert.ok(
+    !/Pok[eÃ©]mon|Digimon/i.test(
+      `${bundel.v30.vision_evolve_system}\n${bundel.v30.sprite_sheet_evolve}`,
+    ),
+    "prompt evolve v30 tidak boleh membawa nama franchise",
+  );
+  assert.throws(
+    () => validateEvolutionPlan(structuredClone(v29Raw), {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 30,
+    }),
+    /suggested_name/,
+  );
+  const copiedName = structuredClone(v30Raw);
+  copiedName.suggested_name = "Sunhound";
+  assert.throws(
+    () => validateEvolutionPlan(copiedName, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 30,
+      priorSuggestedName: "Sunhound",
+    }),
+    /suggested_name harus baru/,
+  );
   const evolvedWalkKeep = structuredClone(evolvedV25Raw);
   evolvedWalkKeep.face_age_contract = {
     ...v27Face,
@@ -5530,6 +5573,16 @@ console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-activ
       && goLiveSrc.includes("function public.apply_evolution_lock"),
     "go-live migration harus menyalakan v29, default version 1, dan tabel lock",
   );
+  const nameLineageSrc = await readFile(
+    "backend/supabase/migrations/20260817201340_evolution_name_lineage_v30.sql",
+    "utf8",
+  );
+  assert.ok(
+    nameLineageSrc.includes('"v30"')
+      && nameLineageSrc.includes("suggested_name")
+      && nameLineageSrc.includes("Veridara"),
+    "migrasi v30 harus mempromosikan prompt dan mengisi nama lock",
+  );
   const {
     evolutionWebhookUrl,
     evolutionFinalizeRetryable,
@@ -5603,6 +5656,14 @@ console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-activ
       && quotaSrc.includes("evolution-lock")
       && quotaSrc.includes("apply_evolution_lock replay harus idempoten"),
     "sheet terkunci harus commit sebelum Vision berbayar",
+  );
+  assert.ok(
+    evolveSrc.includes("suggestedNameOf")
+      && evolveSrc.includes("withSuggestedName")
+      && evolveSrc.includes("priorSuggestedName")
+      && evolveSrc.includes("Write suggested_name as a new 2-to-4 syllable")
+      && quotaSrc.includes("tanpa menimpa nickname"),
+    "Evolve v30 harus mengusulkan nama tanpa menimpa nickname di commit",
   );
   assert.ok(
     evolveSrc.includes("validateEvolutionPlan(storedPlan, planValidationOptions)")

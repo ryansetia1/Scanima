@@ -79,7 +79,10 @@ ke chamber. Ritual ini **gratis** — tidak memakai Core — dan Anima tidak bis
 Battle atau dirawat sampai selesai. Kalau gagal, bentuk lama tetap dipakai.
 
 Sesudah sukses, art-nya berganti, nama Attack/Special bisa berubah, dan jurus
-bisa mendapat efek tambahan di Battle. Hatchling menjadi Adult di Level 16;
+bisa mendapat efek tambahan di Battle. Game juga mengusulkan **nama baru**
+untuk form itu, lalu membuka **Rename** seperti sesudah Scan. **Save Name**
+memakai usulan itu atau suntinganmu. **Cancel** mempertahankan nama lama.
+Hatchling menjadi Adult di Level 16;
 Adult menjadi Evolved di Level 36. Satu ritual per tahap, berurutan.
 
 | Aksi | EXP | Catatan |

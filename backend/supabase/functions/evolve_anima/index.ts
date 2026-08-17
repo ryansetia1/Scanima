@@ -4,7 +4,7 @@
 // without Replicate; otherwise Vision + one image; webhook commits.
 
 import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
-import { extractJson } from "../_shared/vision.mjs";
+import { extractJson, normalizeSuggestedName } from "../_shared/vision.mjs";
 import {
   assembleEvolvePrompt,
   buildEvolvePromptContext,
@@ -36,6 +36,23 @@ function configString(value: unknown, fallback: string): string {
     if (s) return s;
   }
   return fallback;
+}
+
+function suggestedNameOf(plan: unknown): string {
+  if (!plan || typeof plan !== "object") return "";
+  return normalizeSuggestedName(
+    (plan as Record<string, unknown>).suggested_name,
+    "",
+  );
+}
+
+function withSuggestedName(
+  payload: Record<string, unknown>,
+  plan: unknown,
+): Record<string, unknown> {
+  const name = suggestedNameOf(plan);
+  if (name) payload.suggested_name = name;
+  return payload;
 }
 
 type BeginResult = {
@@ -194,13 +211,13 @@ Deno.serve(async (req) => {
   }
 
   if (genRow?.status === "succeeded") {
-    return json(200, {
+    return json(200, withSuggestedName({
       idempoten: true,
       generation_id: genId,
       anima_id: begin.anima_id,
       status: "succeeded",
       target_stage: targetStage,
-    });
+    }, genRow.vision_result));
   }
 
   if (genRow?.prediction_id) {
@@ -217,13 +234,13 @@ Deno.serve(async (req) => {
       return json(409, { error: "GENERATION_COMPLETION_TIMEOUT", generation_id: genId });
     }
     if (completion.status === "succeeded") {
-      return json(200, {
+      return json(200, withSuggestedName({
         idempoten: true,
         generation_id: genId,
         anima_id: begin.anima_id,
         status: "succeeded",
         target_stage: targetStage,
-      });
+      }, genRow.vision_result));
     }
     return json(200, {
       idempoten: true,
@@ -268,13 +285,18 @@ Deno.serve(async (req) => {
     }
     const lockResult = (lockRaw ?? {}) as Record<string, unknown>;
     if (lockResult.locked === true) {
-      return json(200, {
+      const { data: lockedGen } = await db
+        .from("generations")
+        .select("vision_result")
+        .eq("id", genId)
+        .maybeSingle();
+      return json(200, withSuggestedName({
         generation_id: genId,
         anima_id: begin.anima_id,
         status: "succeeded",
         target_stage: targetStage,
         locked: true,
-      });
+      }, lockedGen?.vision_result ?? lockResult.evolution_plan));
     }
   }
 
@@ -308,6 +330,18 @@ Deno.serve(async (req) => {
   const priorPlan = targetStage === 3
     ? await fetchPriorEvolutionPlan(begin.anima_id, begin.prior_stage)
     : null;
+  const captureVision = await fetchCaptureVision(begin.anima_id);
+  const { data: animaLive } = await db
+    .from("animas")
+    .select("nickname")
+    .eq("id", begin.anima_id)
+    .maybeSingle();
+  const priorSuggestedName = String(
+    (targetStage === 3 ? priorPlan?.suggested_name : null)
+      ?? captureVision?.suggested_name
+      ?? animaLive?.nickname
+      ?? "",
+  );
   const priorIdentityInvariants = Array.isArray(priorPlan?.identity_invariants)
     ? priorPlan.identity_invariants
     : [];
@@ -400,6 +434,7 @@ Deno.serve(async (req) => {
     priorSurgeName: String(meta.surge_name ?? ""),
     priorStrikeEffectId: String(meta.strike_effect_id ?? ""),
     priorSurgeEffectId: String(meta.surge_effect_id ?? ""),
+    priorSuggestedName,
   };
 
   let plan: Record<string, unknown>;
@@ -451,6 +486,8 @@ Deno.serve(async (req) => {
       : "none (Hatchling source or legacy Adult without a structured Plan)";
     const visionPrompt =
       `Target stage: ${targetStage} (${targetStage === 2 ? "Adult bridge" : "Evolved culmination"}).\n` +
+      `Current displayed name: ${animaLive?.nickname ?? "unknown"}.\n` +
+      `Lineage name to evolve: ${priorSuggestedName || "unknown"}.\n` +
       `Current height cm: ${meta.body_height_cm ?? "unknown"}.\n` +
       `Current moves: ${meta.strike_name ?? ""} / ${meta.surge_name ?? ""}.\n` +
       `Current effects: ${meta.strike_effect_id ?? ""} / ${meta.surge_effect_id ?? ""}.\n` +
@@ -469,7 +506,10 @@ Deno.serve(async (req) => {
             : "Do not copy Adult limb count or walker silhouette. If Adult walks on legs, Evolved must coil, tether, roll, or change topology.\n")
         : "") +
       "Respond with compact JSON only. No markdown fences. Keep each string value under 160 characters. " +
-      "Do not copy Adult paragraphs. Finish every required key including surge_vfx, vfx_palette, strike_effect_id, and surge_effect_id. " +
+      "Do not copy Adult paragraphs. Finish every required key including suggested_name, surge_vfx, vfx_palette, strike_effect_id, and surge_effect_id. " +
+      (contractVersion >= 30
+        ? "Write suggested_name as a new 2-to-4 syllable creature name that keeps a recognizable root from the lineage name. Never end in mon. Do not copy the current name. "
+        : "") +
       "Analyse the attached current Idle reference and respond with the Evolution Plan JSON only.";
 
     let mentah: unknown;
@@ -522,7 +562,6 @@ Deno.serve(async (req) => {
   }
 
   plan.target_stage = targetStage;
-  const captureVision = await fetchCaptureVision(begin.anima_id);
   const ctx = buildEvolvePromptContext(captureVision, begin.capture_metadata ?? {});
 
   const prompt = assembleEvolvePrompt(prompts.sprite_sheet_evolve, plan, ctx);

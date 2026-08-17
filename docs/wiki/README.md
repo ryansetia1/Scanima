@@ -17,7 +17,7 @@ membuka profil, Google, Reduced Motion, bantuan, dan hapus akun.
 3. **Collection** — lihat semua Anima. Tap kartu, lalu **Summon** untuk membawanya ke Home.
 4. **Battle** — mainkan Duel, Team Battle dengan 4 Anima, atau Expedition **The
    Sugarworks**. Lapar atau kotor tidak mengunci battle, tapi stats turun.
-5. **Anima** — profil: traits, attributes, ganti nama, Delete.
+5. **Anima** — profil: traits, attributes, ganti nama, Evolve, Delete.
 6. **Gallery** — buka dari menu Seeker untuk melihat atau memublikasikan art.
 
 ## Isi wiki

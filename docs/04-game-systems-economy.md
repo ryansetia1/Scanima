@@ -288,8 +288,10 @@ yang lebih mahal sebagai preflight; transaksi server tetap pagar akhirnya.
 
 ## 4. Evo-tree
 
-Tiga form copy; **evolusi art live** (`evolve_anima`, prompt v29,
+Tiga form copy; **evolusi art live** (`evolve_anima`, prompt v30,
 `feature_evolution=true`, `evolution_version` default 1).
+Plan membawa `suggested_name`; `commit_evolution` tidak menulis `nickname`.
+Client membuka Rename sesudah sukses; Cancel mempertahankan nama lama.
 Arsip form di `anima_forms(stage=N)` menyimpan sheet dan generation yang **asli**
 membuat stage N, Evolution Plan pembentuknya untuk Adult/Evolved, serta crop Idle
 privat yang menjadi reference form berikutnya. Plan aktif tetap di generation

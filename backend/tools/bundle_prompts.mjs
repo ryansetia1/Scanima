@@ -45,7 +45,7 @@ const CAPTURE_KEYS = new Set([
   "sprite_sheet",
   "sprite_sheet_fauna",
 ]);
-// ponytail: v24–v29 hanya mengubah evolusi; reuse source capture v20 daripada
+// ponytail: v24–v30 hanya mengubah evolusi; reuse source capture v20 daripada
 // menambah empat salinan byte-identik. Tambahkan versi ke map hanya jika seluruh
 // capture contract memang tetap v20.
 const CAPTURE_PARENT = new Map([
@@ -55,6 +55,7 @@ const CAPTURE_PARENT = new Map([
   ["v27", "v20"],
   ["v28", "v20"],
   ["v29", "v20"],
+  ["v30", "v20"],
 ]);
 
 export async function buildBundle() {
