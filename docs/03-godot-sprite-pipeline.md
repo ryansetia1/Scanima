@@ -14,9 +14,10 @@ permanen tidak disimpan client. Cache lokal berada di
 memiliki art unik. Manifest ditulis terakhir supaya download terputus tidak
 terbaca sebagai cache valid.
 
-Suffix stage diperlukan oleh pipeline evolusi yang sudah ada di repo tetapi
-belum live. Adult/Evolved memakai `anima_id` yang sama dengan Hatchling; tanpa
-stage pada key, reveal bisa memuat manifest form lama. `anima_forms` menyimpan
+Suffix stage diperlukan oleh pipeline evolusi yang backend-nya sudah live tetapi
+gate pemainnya masih off. Adult/Evolved memakai `anima_id` yang sama dengan
+Hatchling; tanpa stage pada key, reveal bisa memuat manifest form lama.
+`anima_forms` menyimpan
 sheet lama secara privat untuk history/rollback, tetapi UI hanya membaca form
 committed terbaru. Pending ritual disimpan di `GameState.pending_evolution`, dan
 art baru baru menggantikan presenter setelah server mengembalikan stage baru dan

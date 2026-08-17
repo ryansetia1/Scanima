@@ -3,8 +3,8 @@
 > **Status, 17 Agustus 2026:** dokumen ini membaca pengalaman yang sudah hidup
 > di build saat ini. Ini adalah diagnosis produk, bukan keputusan redesign atau
 > janji fitur. Hipotesis tentang perasaan pemain tetap perlu dibuktikan lewat
-> playtest. Pipeline ritual Adult/Evolved sudah ada di repo tetapi belum live,
-> jadi belum dihitung sebagai payoff pemain di diagnosis ini.
+> playtest. Backend pipeline ritual Adult/Evolved sudah live, tetapi gate pemain
+> masih off, jadi belum dihitung sebagai payoff pemain di diagnosis ini.
 
 ## Inti fantasi
 

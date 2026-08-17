@@ -34,7 +34,7 @@ diskusi arah produk, **bukan** keputusan redesign atau fitur yang sudah dijanjik
 
 ## Status deploy gate IP 17 Agustus 2026
 
-Gate karakter franchise sudah live. `create_anima` version 18 dan `gallery`
+Gate karakter franchise sudah live. `create_anima` version 19 dan `gallery`
 version 2 ACTIVE dengan `verify_jwt=true`; smoke tanpa JWT keduanya menjawab 401.
 `app_config.prompt_version = "v20"`. V20 menerima ilustrasi non-manusia
 orisinal/generik, menolak karakter franchise yang dapat disebut namanya sebelum
@@ -46,10 +46,11 @@ Eval Vision-only menolak fixture karakter franchise, menerima naga
 public-domain sebagai Fauna, dan memakai nol image generation; fixture dinding
 kosong tetap salah dibaca sebagai panel beton pada v19 maupun v20.
 
-## Status implementasi Evolution art (belum live, Agustus 2026)
+## Status deploy Evolution art (backend live, flag off, Agustus 2026)
 
-Backend schema + pipeline art evolusi sudah ada di repo; **belum di-deploy** dan
-**`feature_evolution=false`**. Capture tetap `prompt_version = "v20"`; evolusi
+Backend schema + pipeline art evolusi sudah di-deploy; pengalaman pemain tetap
+**belum live** karena **`feature_evolution=false`** dan tujuh Anima production
+masih `evolution_version=0`. Capture tetap `prompt_version = "v20"`; evolusi
 memakai `app_config.evolution_prompt_version = "v21"` terpisah.
 
 - Migrasi `20260817095700_evolution_art_pipeline`: `animas.status` + `evolving`,
@@ -63,7 +64,7 @@ memakai `app_config.evolution_prompt_version = "v21"` terpisah.
   history form saat sukses, dan masuk cleanup queue saat fail/timeout/delete.
 - Prompt v21: file capture byte-identik v20 + `vision_evolve_*` + `sprite_sheet_evolve` Adult/Evolved.
 - Validasi Plan di `_shared/evolution.mjs`; katalog efek + combat v3 di `_shared/move_effects.mjs` (refactor evolution import); selftest skenario 36–38.
-- **`RULES_VERSION = 3`** + port GDScript (`move_effects.gd`) sudah di repo; snapshot `evolution_version=0` tetap growth legacy — aman deploy shared code selama `feature_evolution=false`.
+- **`RULES_VERSION = 3`** + port GDScript (`move_effects.gd`) sudah live; snapshot `evolution_version=0` tetap growth legacy — aman selama `feature_evolution=false`.
 
 Vision memakai lease atomik supaya dua isolate tidak membayar Plan dua kali.
 Dispatch ambigu tidak diulang; HTTP 4xx/token lokal gagal cepat, sedangkan job
@@ -72,21 +73,28 @@ intent stale sebelum one-active gate, sehingga install ulang tidak memblokir aku
 selamanya. Cold start lintas device yang kehilangan intent lokal memakai
 `resume_evolution`: ia hanya menempel ke generation aktif, memulihkan status
 `evolving` yatim, dan tidak pernah membuat generation/spend baru.
-`quota_rules.sql` sekarang mencakup no-Core, urutan Adult→Evolved,
-idempotency, rollback, lease Vision, history/reference cleanup, dan revoke RPC;
-jalankan hanya setelah migrasi staging/remote diterapkan.
+`quota_rules.sql` mencakup no-Core, urutan Adult→Evolved, idempotency, rollback,
+lease Vision, history/reference cleanup, dan revoke RPC; seluruh suite lulus
+terhadap production setelah migrasi.
 
-**Client evolution ritual (repo, NOT LIVE):** `GameState.pending_evolution`, stage-aware sprite cache `v6_<anima_id>_<stage>`, Profile Evolve CTA, Collection cues, `IncubatorEffect.start_evolution()` chamber, resume/poll orchestration in `scan_flow.gd`, localized battle status/effect plates. Requires `feature_evolution` + `evolution_version>=1` on Anima rows.
+Migration `20260817095700_evolution_art_pipeline` tercatat remote. Edge Function
+`evolve_anima` version 1, `create_anima` version 19, `replicate_webhook` version
+9, `battle_anima` version 26, `team_battle` version 8, `expedition` version 16,
+dan `seeker` version 5 ACTIVE; semua selain webhook memakai `verify_jwt=true`.
+Smoke tanpa JWT/signature mengembalikan 401, dan RPC evolusi tidak executable
+oleh `anon`/`authenticated`.
 
-Belum live: deploy migrasi/function/combat bundle, eval visual Adult→Evolved
-berbayar, client minimum rollout, backfill `evolution_version=1`, dan aktivasi
-flag. Wiki pemain sengaja belum berubah sampai semua gate itu lolos.
+**Client evolution ritual (repo, NOT PLAYER-LIVE):** `GameState.pending_evolution`, stage-aware sprite cache `v6_<anima_id>_<stage>`, Profile Evolve CTA, Collection cues, `IncubatorEffect.start_evolution()` chamber, resume/poll orchestration in `scan_flow.gd`, localized battle status/effect plates. Requires `feature_evolution` + `evolution_version>=1` on Anima rows.
+
+Belum player-live: eval visual Adult→Evolved berbayar, client minimum rollout,
+backfill + default `evolution_version=1`, dan aktivasi flag. Wiki pemain sengaja
+belum berubah sampai semua gate itu lolos.
 
 ## Status deploy Battle polish + Tiered EXP 17 Agustus 2026
 
 Tier hadiah Duel terukur dan lawan Duel sistem sudah live: migration
 `20260817072847_system_duel_opponents` tercatat remote dan `battle_anima`
-version 25 ACTIVE. Probe production memberi Hydron Level 11 lawan
+version 26 ACTIVE. Probe production memberi Hydron Level 11 lawan
 `system-duel-fledgling` Level 11 dengan `bot_anima_id` null, bentuk stat cermin
 persis pada 1,121× (HP 90 vs 80, Special 56 vs 50), tier `even`, dan 7–8 Bits —
 sama dengan rasio yang dihitung `balancedRatio()` di selftest, jadi pencarian
@@ -97,9 +105,11 @@ production.
 Backend Battle polish dan Tiered EXP sudah live: migration
 `20260816171515_battle_exp_reward_payloads` serta
 `20260816200507_tiered_exp_and_battle_rewards` tercatat remote. Edge Function
-`battle_anima` version 25, `team_battle` version 7, dan `expedition` version 15
-ACTIVE dengan `verify_jwt=true`; ketiganya membawa `RULES_VERSION = 2` yang
-membuang `idempotency_key` dari seed RNG turn, plus cache signed URL roster. Probe production mengonfirmasi threshold
+`battle_anima` version 26, `team_battle` version 8, dan `expedition` version 16
+ACTIVE dengan `verify_jwt=true`; ketiganya membawa `RULES_VERSION = 3`.
+Snapshot `evolution_version=0` mempertahankan growth + event legacy, sementara
+aturan v2 tetap membuang `idempotency_key` dari seed RNG turn. Cache signed URL
+roster tetap aktif. Probe production mengonfirmasi threshold
 150/700/860, budget Expedition 30, semua 7 Anima tetap pada citra rebase Level
 lama, EXP 0–860, tiga kolom baru live, dan helper progression tidak executable
 oleh `anon`/`authenticated`. Runtime Expedition

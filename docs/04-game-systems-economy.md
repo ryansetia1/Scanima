@@ -253,7 +253,7 @@ EXP Level 40 = 860
 ```
 
 Level adalah inverse threshold itu dan di-cap 40; `care_score` dijepit 0–860.
-Form copy (sprite tetap stage 1 sampai `evolve_anima` ada): Hatchling 1–15,
+Form copy (sprite tetap stage 1 selama gate evolusi belum aktif): Hatchling 1–15,
 Adult 16–35, Evolved 36–40. Migrasi dari kurva flat mempertahankan Level lama
 serta fraksi progress bar, dengan trigger mirror Seeker EXP dimatikan hanya
 selama rebase administratif.
@@ -289,12 +289,13 @@ yang lebih mahal sebagai preflight; transaksi server tetap pagar akhirnya.
 ## 4. Evo-tree
 
 Tiga form copy; **backend evolusi art** (`evolve_anima`, prompt v21, tabel
-`anima_forms`) sudah diimplementasi di repo tetapi **belum live** (`feature_evolution=false`).
+`anima_forms`) sudah live, tetapi pengalaman pemain tetap off
+(`feature_evolution=false`, `evolution_version=0`).
 Arsip form di `anima_forms(stage=N)` menyimpan sheet dan generation yang **asli**
 membuat stage N, Evolution Plan pembentuknya untuk Adult/Evolved, serta crop Idle
 privat yang menjadi reference form berikutnya. Plan aktif tetap di generation
 `evolve` yang sedang berjalan dan row `animas` canonical.
-Build production masih menampilkan stage legacy. **Target live:** art evolusi (~$0.07 Vision+sheet)
+Build production masih menampilkan stage legacy. **Target aktivasi:** art evolusi (~$0.07 Vision+sheet)
 **privat per Anima** — tidak reuse sheet antar pemain. **Historis:** cache
 `(species_key, color_bucket, stage)` ke pustaka bersama; pemain pertama trigger
 generation, lainnya hit.

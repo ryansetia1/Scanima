@@ -641,7 +641,8 @@ Adult bridge atau Evolved culmination, tinggi dalam band stage, dua nama
 move/VFX, dan dua effect ID dari allowlist. Image model boleh mengubah body plan
 secara besar, tetapi ketiga anchor itu wajib bertahan di tujuh sel karakter.
 Validator—bukan model—menentukan legalitas effect, successor Evolved, band
-tinggi, dan format nama. Prompt/model ini masih gated dan belum live.
+tinggi, dan format nama. Bundle prompt/model sudah live di backend tetapi tetap
+gated oleh `feature_evolution=false`, jadi belum dipakai pemain.
 
 ## 6. Kegagalan yang sudah diketahui dan penanganannya
 
@@ -749,7 +750,7 @@ backend/prompts/
 │   ├── sprite_sheet.md    # identik byte-for-byte dengan v19
 │   ├── sprite_sheet_fauna.md
 │   └── sprite_sheet_evolve.md
-└── v21/                   <- evolution-only (belum live; capture identik v20)
+└── v21/                   <- evolution-only (backend live, player gate off; capture identik v20)
     ├── vision_evolve_system.md
     ├── vision_evolve_schema.json
     └── sprite_sheet*.md   # capture/fauna identik v20; evolve + brief Adult/Evolved

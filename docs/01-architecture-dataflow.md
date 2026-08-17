@@ -724,11 +724,13 @@ SELECT; client tidak menulis inventory.
 
 Server memverifikasi syarat evolusi (Level ≥16/36 dari `care_score`, stage
 1→2→3, tidak sedang Duel/Team/Expedition) — client tidak dipercaya.
-**Implementasi backend ada** (`evolve_anima`, RPC `begin/resume/reserve/commit/fail_evolution`,
-`claim_evolution_dispatch`, `attach_evolution_prediction`, `anima_forms`, prompt v21)
-tetapi **`feature_evolution=false` dan belum di-deploy**;
+**Implementasi backend sudah live** (`evolve_anima`, RPC
+`begin/resume/reserve/commit/fail_evolution`, `claim_evolution_dispatch`,
+`attach_evolution_prediction`, `anima_forms`, prompt v21), tetapi
+**`feature_evolution=false`**;
 ritual client, cache stage-aware, chamber, status Battle, dan resume intent sudah
-ada di repo tetapi belum menjadi pengalaman pemain.
+ada di repo tetapi belum menjadi pengalaman pemain. Tujuh Anima production tetap
+`evolution_version=0`, sehingga combat v3 mempertahankan growth legacy.
 Satu evolusi aktif per owner: `begin_evolution` mengunci baris `profiles`, partial
 unique index `animas(owner_id) WHERE status='evolving'`, dan idempotency key sama
 tetap replay tanpa EVOLUTION_ALREADY_ACTIVE.

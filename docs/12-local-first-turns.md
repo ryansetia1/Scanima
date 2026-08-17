@@ -21,8 +21,10 @@ Sebelum ini benar, `resolveTurn` menyeed RNG-nya dengan
 `seed:turn:idempotency_key`, dan `idempotency_key` dipilih client. Itu berarti
 client bisa mengocok ulang seed sampai mendapat crit. `RULES_VERSION = 2`
 membuang key itu dari seed; state lama tetap memakai formula lamanya supaya
-replay-nya cocok. **Rules v3** (Agustus 2026, **NOT LIVE**) menambah move effects
-dan committed form multiplier; sesi `rules_version < 3` replay tanpa efek.
+replay-nya cocok. **Rules v3** (Agustus 2026) sudah live di backend dan menambah
+move effects serta committed form multiplier; semua Anima production masih
+`evolution_version=0`, jadi jalur pemain tetap memakai hasil legacy. Sesi
+`rules_version < 3` replay tanpa efek.
 Skenario 31 dan 38 di `npm run selftest` menjaga keduanya.
 
 ## Di mana aturannya hidup
@@ -33,7 +35,7 @@ Skenario 31 dan 38 di `npm run selftest` menjaga keduanya.
 | Server | `backend/supabase/functions/_shared/team_combat.mjs` | Team + Expedition |
 | Client | `game/scripts/sim/deterministic_rng.gd` | PRNG |
 | Client | `game/scripts/sim/element_rules.gd` | Roster, alias, matchup 18 elemen |
-| Server | `backend/supabase/functions/_shared/move_effects.mjs` | Katalog efek + helper (v3, NOT LIVE) |
+| Server | `backend/supabase/functions/_shared/move_effects.mjs` | Katalog efek + helper v3 (aktif hanya untuk form committed) |
 | Client | `game/scripts/sim/move_effects.gd` | Port katalog efek |
 | Client | `game/scripts/sim/battle_sim.gd` | Duel |
 | Client | `game/scripts/sim/team_sim.gd` | Team + Expedition |
