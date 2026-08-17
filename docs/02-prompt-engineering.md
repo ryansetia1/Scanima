@@ -2,11 +2,15 @@
 
 Ini adalah dokumen paling menentukan kualitas Scanima. Kalau prompt-nya benar, sebuah mouse komputer jadi Anima yang jelas-jelas berasal dari mouse itu. Kalau salah, semua Anima terlihat seperti monster generik yang kebetulan diberi warna berbeda, dan seluruh premis game runtuh.
 
-## Kontrak capture v13, production v19, dan candidate art v16
+## Kontrak capture v13, production v20, dan candidate art v16
 
-Sumber prompt production berada di `backend/prompts/v19/`; v18 menjadi rollback
-kebijakan tinggi handheld, v17 rollback kebijakan tinggi awal, v15 rollback art
-langsung, dan v13 rollback kontrak capture.
+Sumber prompt production berada di `backend/prompts/v20/`; v19 menjadi rollback
+gate, v18 rollback kebijakan tinggi handheld, v17 rollback kebijakan tinggi
+awal, v15 rollback art langsung, dan v13 rollback kontrak capture.
+V20 menerima ilustrasi non-manusia orisinal atau generik sebagai subjek Scan,
+tetapi menolak karakter, maskot, atau desain makhluk dari franchise komersial
+yang dapat disebut namanya. Tiga prompt sprite-nya identik byte-for-byte dengan
+v19, jadi perubahan ini hanya menyentuh Vision gate dan tidak mengubah art.
 V18 mempertahankan seluruh sprite prompt v15 tanpa perubahan gambar serta output
 Vision `body_height_cm` 20–2000 dari v17. Perubahannya ada pada keputusan skala:
 Vision mulai dari tinggi biologis/objek normal, menjaga hewan dekat anatomi nyata,
@@ -701,7 +705,7 @@ backend/prompts/
 │   ├── vision_schema.json # identik v5; species cache key tetap
 │   ├── sprite_sheet.md    # v5 + facing lock ke canvas-left
 │   └── sprite_sheet_evolve.md
-├── v7/                    <- default production: 3x3 + nama move + VFX
+├── v7/                    <- rollback layout: 3x3 + nama move + VFX
 │   ├── vision_system.md   # v6 + strike_name / surge_name dua kata
 │   ├── vision_schema.json
 │   ├── sprite_sheet.md    # sembilan sel
@@ -726,12 +730,36 @@ backend/prompts/
 │   ├── vision_schema.json # identik v7
 │   ├── sprite_sheet.md    # v10 tanpa white keyline, termasuk VFX
 │   └── sprite_sheet_evolve.md
-└── v12/                   <- production: safe seam + VFX per-Anima
-    ├── vision_system.md   # form/motion/brief unik untuk dua move
-    ├── vision_schema.json # strike_vfx + surge_vfx; species_key tetap
-    ├── sprite_sheet.md    # aksen Battle dalam safe envelope 12%
+├── v12/                   <- rollback: safe seam + VFX per-Anima
+│   ├── vision_system.md   # form/motion/brief unik untuk dua move
+│   ├── vision_schema.json # strike_vfx + surge_vfx; species_key tetap
+│   ├── sprite_sheet.md    # aksen Battle dalam safe envelope 12%
+│   └── sprite_sheet_evolve.md
+├── v13/                   <- rollback capture: fauna + 18 elemen + art privat
+│   ├── vision_system.md   # object/animal gate + dual typing
+│   ├── vision_schema.json # subject_kind + secondary_element
+│   ├── sprite_sheet.md
+│   ├── sprite_sheet_fauna.md
+│   └── sprite_sheet_evolve.md
+├── v14/                   <- rejected: fauna masih tampak seperti hewan anime
+├── v15/                   <- rollback art: monster identity fauna
+├── v16/                   <- candidate art: facing/gaze lock
+├── v17/                   <- rollback tinggi kanonis awal
+├── v18/                   <- rollback tinggi handheld 70–120 cm
+├── v19/                   <- rollback gate: floor boneka gendong ~50 cm
+└── v20/                   <- production: ilustrasi orisinal + gate franchise
+    ├── vision_system.md   # known_character + klasifikasi subjek ilustrasi
+    ├── vision_schema.json # reason known_character
+    ├── sprite_sheet.md    # identik byte-for-byte dengan v19
+    ├── sprite_sheet_fauna.md
     └── sprite_sheet_evolve.md
 ```
+
+Eval Vision-only v20 pada 17 Agustus 2026 menolak karakter franchise sebagai
+`known_character`, menerima ilustrasi naga public-domain sebagai Fauna, dan
+mempertahankan hasil tiga foto objek Smoke Set. Fixture dinding kosong tetap
+dibaca sebagai panel beton oleh v19 maupun v20; itu noise baseline model, bukan
+regresi gate IP. Tidak ada image generation yang dipanggil untuk eval ini.
 
 Uji tunggal v11 pada Monstera menghasilkan 9/9 sel dalam 53 detik. Fenestrasi
 tidak lagi menjadi slot putih dan dark contour terbaca bersih pada screenshot

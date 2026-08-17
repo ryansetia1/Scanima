@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Riset ukuran karakter Pokémon — Scanima</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", sans-serif; background:#0b1020; color:#eef3ff; }
+    body { margin: 24px; line-height: 1.45; max-width: 1080px; }
+    h1,h2,h3 { font-family: Georgia, serif; color:#ffd978; }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    h2 { font-size: 20px; margin: 0 0 10px; }
+    h3 { font-size: 15px; margin: 0 0 4px; }
+    section { margin: 28px 0; padding: 20px; border: 1px solid #2a3558; border-radius: 12px; background:#121a31; }
+    table { width:100%; border-collapse: collapse; font-size: 14px; }
+    th, td { border-bottom: 1px solid #2a3558; padding: 8px 10px; text-align:left; vertical-align: top; }
+    th { color:#9fd6ff; }
+    tbody tr:nth-child(even) { background:#0d1428; }
+    code { background:#060912; padding: 2px 6px; border-radius: 6px; font-size: 13px; }
+    a { color:#9fd6ff; }
+    .muted { color:#9fb0d0; font-size: 13px; }
+    .callout { border:1px solid #314068; border-left: 3px solid #9fd6ff; border-radius: 8px;
+      background:#0d1428; padding: 12px 14px; margin: 0 0 16px; }
+    .callout.good { border-left-color:#8fe3b0; }
+    .callout.warn { border-left-color:#ffd978; }
+    .callout b { display:block; margin-bottom: 4px; color:#eef3ff; }
+    .split { display:grid; grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr); gap: 20px; align-items:start; }
+    .two { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items:start; }
+    @media (max-width: 760px) { .split { grid-template-columns: minmax(0, 1fr); } }
+    .card { border:1px solid #314068; border-radius: 10px; background:#0d1428; padding: 14px; }
+    .principle { display:grid; grid-template-columns: 26px minmax(0, 1fr); gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid #2a3558; }
+    .principle:last-child { border-bottom: 0; }
+    .principle span.n { width: 22px; height: 22px; border-radius: 9999px; background:#1b2440;
+      display:grid; place-items:center; font-size: 12px; font-weight: 600; color:#9fd6ff; }
+    .bar { height: 18px; border-radius: 4px; background:#26314f; min-width: 28px; }
+    .bar.accent { background:#ffd978; }
+    .bar-label { color:#9fb0d0; font-size: 12px; margin: 10px 0 4px; }
+    hr { border: 0; border-top: 1px solid #2a3558; margin: 16px 0; }
+    ul { margin: 8px 0 0; padding-left: 20px; }
+    li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Bagaimana Pokémon menangani ukuran karakter</h1>
+  <p class="muted">
+    Riset komposisi battle, judul 2019–2025 · konteks: keputusan skala Scanima yang hidup di
+    <code>BattleScale</code> dan bagian tinggi kanonis di <code>CLAUDE.md</code>.
+  </p>
+  <p>
+    Temuan utamanya: Pokémon modern menjaga hierarki ukuran, tetapi tidak memakai rasio fisik literal
+    sebagai satu-satunya aturan framing.
+  </p>
+
+  <div class="callout">
+    <b>Kesimpulan paling penting</b>
+    Pisahkan tinggi kanonis, skala visual battle, dan framing kamera. Eksperimen 20 m linear gagal
+    bukan karena datanya salah, tetapi karena satu angka dipaksa mengerjakan tiga pekerjaan.
+  </div>
+
+  <section>
+    <div class="split">
+      <div>
+        <h2>Pola lintas game</h2>
+        <div class="principle">
+          <span class="n">1</span>
+          <div>
+            <h3>Ukuran normal dibatasi</h3>
+            <p class="muted" style="margin:0">
+              Variasi individu pada Arceus dan Scarlet/Violet hanya sekitar 0,8×–1,2× tinggi spesies.
+              Perbedaan terasa tanpa merusak komposisi.
+            </p>
+          </div>
+        </div>
+        <div class="principle">
+          <span class="n">2</span>
+          <div>
+            <h3>Ekstrem adalah kelas khusus</h3>
+            <p class="muted" style="margin:0">
+              Alpha, Titan, Dynamax, dan Rogue Mega diperlakukan sebagai encounter atau state
+              khusus — bukan hasil bebas dari rumus linear biasa.
+            </p>
+          </div>
+        </div>
+        <div class="principle">
+          <span class="n">3</span>
+          <div>
+            <h3>Pengecualian dituning per spesies</h3>
+            <p class="muted" style="margin:0">
+              Arceus memberi Alpha multiplier tambahan yang berbeda per spesies; beberapa hanya
+              sedikit lebih besar, sebagian lebih dari 4×.
+            </p>
+          </div>
+        </div>
+        <div class="principle">
+          <span class="n">4</span>
+          <div>
+            <h3>Kamera ikut menanggung skala</h3>
+            <p class="muted" style="margin:0">
+              Game terbaru memakai ruang 3D, kamera yang bisa diputar/reset, target lock, atau arena
+              khusus. Model tidak harus selalu mengecil agar semua masuk satu shot.
+            </p>
+          </div>
+        </div>
+        <div class="principle">
+          <span class="n">5</span>
+          <div>
+            <h3>Keterbacaan mengalahkan fisika</h3>
+            <p class="muted" style="margin:0">
+              Scarlet/Violet menunjukkan sisi buruk skala literal: Pokémon mungil sulit terlihat dan
+              mudah tertabrak. Akurasi ukuran bukan otomatis UX yang baik.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Mengapa eksperimen 20 m pecah</h3>
+        <p class="muted">
+          Veridian 2.000 cm terhadap Seeker 165 cm memang 12,1× secara fisik. Mempertahankan rasio itu
+          dalam shot taktis vertikal membuat HUD dan lawan kehilangan fungsi.
+        </p>
+        <hr>
+        <p style="margin:0; font-size:13px; font-weight:600">Rasio fisik literal · konseptual</p>
+        <p class="bar-label">Seeker · 165 cm</p>
+        <div class="bar" style="width:8%"></div>
+        <p class="bar-label">Giant Anima · 2.000 cm</p>
+        <div class="bar accent" style="width:100%"></div>
+        <hr>
+        <p style="margin:0; font-size:13px; font-weight:600">Rasio layar terkompresi · arah yang benar</p>
+        <p class="bar-label">Seeker · referensi manusia tetap terbaca</p>
+        <div class="bar" style="width:44%"></div>
+        <p class="bar-label">Colossal · dominan, bukan 12× layar</p>
+        <div class="bar accent" style="width:78%"></div>
+        <p class="muted" style="margin:14px 0 0">
+          Diagram kedua adalah rekomendasi desain, bukan angka yang diklaim berasal dari Pokémon.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Evolusi pendekatan Pokémon</h2>
+    <table>
+      <thead><tr><th>Game</th><th>Aturan ukuran</th><th>Framing</th><th>Pelajaran</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Sword / Shield (2019)</td>
+          <td>Ukuran besar dipakai selektif: Wailord raksasa menjadi set-piece di overworld, tetapi battle biasa tetap menormalisasi ukuran.</td>
+          <td>Wild Area memberi kamera bebas; battle standar lebih terikat. Dynamax memakai stadium dan presentasi khusus.</td>
+          <td>Giant bukan sekadar scalar bebas — ia mendapat konteks yang dirancang khusus.</td>
+        </tr>
+        <tr>
+          <td>Legends: Arceus (2022)</td>
+          <td>Spesimen normal bervariasi ±20% dari tinggi dasar. Alpha memakai nilai maksimum lalu multiplier tambahan per spesies.</td>
+          <td>Pertarungan terjadi di ruang dunia 3D; trainer dan lingkungan menjadi pembanding skala.</td>
+          <td>Pengecualian ekstrem dituning per spesies, bukan satu rumus universal.</td>
+        </tr>
+        <tr>
+          <td>Scarlet / Violet (2022)</td>
+          <td>Nilai 0–255 memetakan variasi tinggi ±20%; perbedaan tampak di overworld dan battle.</td>
+          <td>Battle mempertahankan sudut dunia, kamera bisa diputar dan di-reset ke classic view.</td>
+          <td>Skala fisik meningkatkan imersi, tetapi Pokémon sangat kecil menjadi masalah keterbacaan.</td>
+        </tr>
+        <tr>
+          <td>Legends: Z-A (2025)</td>
+          <td>Ukuran diringkas menjadi XS–XL; Alpha tetap lebih besar daripada non-Alpha XL.</td>
+          <td>Battle real-time memakai posisi, target lock, area serangan, dan arena yang lapang.</td>
+          <td>Saat ukuran ekstrem memengaruhi gameplay, sistem kamera dan arena ikut berubah.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="two">
+      <div>
+        <h2>Arah yang cocok untuk Scanima</h2>
+        <div class="callout good">
+          <b>Pertahankan</b>
+          <code>body_height_cm</code> tetap server-authoritative dan kurva non-linear tetap menjadi
+          dasar. Secara konsep, ini lebih dekat ke Pokémon modern daripada skala linear.
+        </div>
+        <h3>Shot taktis default</h3>
+        <p class="muted">
+          Dua Anima, HUD, kaki, dan identitas harus terbaca. Gunakan readability floor untuk tubuh
+          kecil, soft compression untuk tubuh besar, dan hard safety cap sebelum HUD.
+        </p>
+        <h3>Beat spektakel sementara</h3>
+        <p class="muted">
+          Summon, intro boss, Attack, atau Special boleh zoom/crop untuk menjual rasa raksasa. Setelah
+          beat selesai, kamera kembali ke shot taktis.
+        </p>
+        <h3>Colossal sebagai kategori presentasi</h3>
+        <p class="muted">
+          Tinggi ekstrem tetap tersimpan apa adanya, tetapi memilih preset framing khusus. Jangan
+          menjadikannya multiplier layar tanpa batas.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>Prototype berikutnya</h3>
+        <p style="margin:0 0 8px">Satu tes kecil, tanpa mengubah mekanik:</p>
+        <p class="muted">
+          Render anchor 50, 150, 300, 800, dan 2.000 cm pada tiga rasio layar. Untuk tiap anchor, cek
+          dua shot: tactical full-silhouette dan spectacle crop.
+        </p>
+        <hr>
+        <p class="muted">
+          Lulus jika HUD tidak tertutup, kaki tetap menapak, Seeker tidak ikut mengecil, karakter
+          kecil masih terbaca, dan 2.000 cm terasa jauh lebih besar tanpa menghilangkan lawan.
+        </p>
+        <div class="callout warn" style="margin:0">
+          <b>Jangan diteruskan</b>
+          Mode linear overflow 20 m adalah jalur uji yang sudah memberi jawaban: rasio fisik murni
+          tidak cocok untuk arena vertikal Scanima.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sumber dan tingkat bukti</h2>
+    <table>
+      <thead><tr><th>Sumber</th><th>Yang didukung</th><th>Jenis bukti</th><th>Tautan</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Nintendo / Pokémon</td>
+          <td>Legends: Z-A: Alpha lebih besar; trainer dan Pokémon bergerak real-time; luas area serangan adalah pertimbangan battle.</td>
+          <td>Primer</td>
+          <td><a href="https://www.nintendo.com/sg/news/article/4wR1lUAWtA9eRPT3IPqiVF">Buka sumber</a></td>
+        </tr>
+        <tr>
+          <td>Shigeru Ohmori interview</td>
+          <td>Switch dipakai untuk menampilkan perbedaan ukuran; Wild Area dan kamera bebas mendukung sense of scale.</td>
+          <td>Primer, dikutip</td>
+          <td><a href="https://nintendoeverything.com/game-freak-on-taking-advantage-of-switchs-power-post-game-increasing-pokemons-scale-future/">Buka sumber</a></td>
+        </tr>
+        <tr>
+          <td>Bulbapedia</td>
+          <td>Arceus dan Scarlet/Violet: formula scalar, rentang ±20%, serta multiplier Alpha per spesies.</td>
+          <td>Teknis komunitas</td>
+          <td><a href="https://bulbapedia.bulbagarden.net/wiki/Size_and_weight_variation">Buka sumber</a></td>
+        </tr>
+        <tr>
+          <td>Serebii</td>
+          <td>Scarlet/Violet: nilai 0–255 dan sembilan kelompok ukuran; Z-A: kategori XS–XL.</td>
+          <td>Referensi komunitas</td>
+          <td><a href="https://serebii.net/scarletviolet/size.shtml">Buka sumber</a></td>
+        </tr>
+        <tr>
+          <td>Access-Ability</td>
+          <td>Skala kecil tanpa cue tambahan menurunkan keterlihatan dan aksesibilitas di Scarlet/Violet.</td>
+          <td>Analisis aksesibilitas</td>
+          <td><a href="https://access-ability.uk/2022/11/25/shiny-huntings-accessibility-downgrade-in-pokemon-scarlet-and-violet/">Buka sumber</a></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="muted">
+      Formula dan kategori berasal dari dokumentasi teknis komunitas yang telah lama dipakai untuk
+      data game; arah desain Z-A dan tujuan sense-of-scale didukung sumber resmi atau kutipan
+      direktur.
+    </p>
+  </section>
+</body>
+</html>

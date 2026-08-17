@@ -10,7 +10,7 @@ Cek dulu tanpa biaya apa pun bahwa semua foto sudah ada:
 node eval/run.mjs --set smoke --dry-run
 ```
 
-## Smoke set — 5 foto, ~$0.225
+## Smoke set — 6 foto, ~$0.228
 
 | Nama file | Isi |
 | --- | --- |
@@ -19,6 +19,7 @@ node eval/run.mjs --set smoke --dry-run
 | `sepatu.jpg` | Sepatu atau bantal, apa pun yang materialnya lunak |
 | `wajah.jpg` | Foto berisi wajah manusia. **Harus ditolak gate**, tidak ada generation |
 | `dinding.jpg` | Dinding kosong tanpa objek. **Harus ditolak gate**, tidak ada generation |
+| `known-character.png` | Satu karakter franchise yang mudah dikenali. **Harus ditolak gate**, tidak ada generation |
 
 ## Cara mengambil fotonya
 
@@ -33,6 +34,6 @@ buruk menghasilkan Anima yang buruk, dan biaya generation-nya tetap terbayar.
 - Fokus tajam. Foto blur akan kena `too_unclear` dan menghabiskan Scan Charge
   tanpa hasil.
 
-Dua foto terakhir sengaja dipilih karena harus DITOLAK. Keduanya menguji apakah
-gate keamanan bekerja, dan biayanya hanya satu panggilan Vision (~$0.003)
+Tiga foto terakhir sengaja dipilih karena harus DITOLAK. Ketiganya menguji apakah
+gate keamanan dan IP bekerja, dan biayanya hanya satu panggilan Vision (~$0.003)
 karena tidak ada gambar yang digenerate.

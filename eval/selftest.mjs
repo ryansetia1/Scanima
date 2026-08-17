@@ -841,6 +841,21 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
     bundel.v19?.vision_system.includes("hug-and-carry doll"),
     "v19 memakai floor boneka gendong untuk benda genggam kecil"
   );
+  assert.equal(bundel.v20?.sprite_sheet, bundel.v19?.sprite_sheet, "v20 tidak mengubah prompt object");
+  assert.equal(bundel.v20?.sprite_sheet_fauna, bundel.v19?.sprite_sheet_fauna, "v20 tidak mengubah prompt fauna");
+  assert.equal(bundel.v20?.sprite_sheet_evolve, bundel.v19?.sprite_sheet_evolve, "v20 tidak mengubah prompt evolve");
+  assert.ok(
+    bundel.v20?.vision_schema?.properties?.reject_reason?.enum?.includes("known_character"),
+    "v20 membundel reason karakter franchise"
+  );
+  assert.ok(
+    bundel.v20?.vision_system.includes("Classify what the artwork depicts"),
+    "v20 menerima ilustrasi orisinal dan mengklasifikasi subjek yang digambar"
+  );
+  assert.ok(
+    bundel.v20?.vision_system.includes("original or generic anthropomorphic non-human creature"),
+    "v20 memberi subject_kind valid pada ilustrasi antropomorfik non-franchise"
+  );
 }
 
 console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
@@ -2354,11 +2369,20 @@ console.log("23c. gallery edge function kontrak");
     new URL("../backend/supabase/functions/gallery/index.ts", import.meta.url),
     "utf8",
   );
+  const galleryModeration = await readFile(
+    new URL("../backend/supabase/functions/_shared/gallery_moderation.mjs", import.meta.url),
+    "utf8",
+  );
   for (const op of ["list", "publish", "unpublish", "report", "hide", "my_status"]) {
     assert.ok(galleryEdge.includes(`"${op}"`), `gallery operation ${op} harus ada`);
   }
   assert.match(galleryEdge, /feature_gallery/, "gallery harus menghormati feature flag");
   assert.match(galleryEdge, /GOOGLE_IDENTITY_REQUIRED|requireLinkedGoogle/, "publish gallery harus linked Google");
+  assert.match(
+    galleryModeration,
+    /specific nameable character[\s\S]+commercial franchise/,
+    "moderasi Gallery harus menolak karakter franchise yang bisa disebut namanya",
+  );
   assert.match(
     galleryEdge,
     /select\("id, display_name/,
@@ -3975,6 +3999,45 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
     duelWinRate(tended, snap("Deckon"), 32),
     "duelWinRate ikut membaca care, jadi tier bergeser mengikuti isi meter"
   );
+}
+
+console.log("35. halaman referensi elemen tidak basi terhadap roster production");
+{
+  // `docs/element-matchups.html` dibuka langsung dari disk, jadi ia tidak bisa
+  // mengimpor `elements.mjs`: ES module lewat file:// ditolak CORS. Datanya
+  // karena itu disalin ke dalam halaman, dan salinan yang basi lebih
+  // menyesatkan daripada tidak ada halaman sama sekali.
+  const { readFile } = await import("node:fs/promises");
+  const page = await readFile(new URL("../docs/element-matchups.html", import.meta.url), "utf8");
+
+  const block = page.match(/const STRENGTHS = (\{[\s\S]*?\n  \});/);
+  assert.ok(block, "blok STRENGTHS tidak ditemukan di docs/element-matchups.html");
+  assert.deepEqual(
+    JSON.parse(block[1]),
+    ELEMENT_STRENGTHS,
+    "docs/element-matchups.html memuat roster matchup yang berbeda dari elements.mjs"
+  );
+
+  const roster = page.match(/const ELEMENTS = (\[[\s\S]*?\]);/);
+  assert.ok(roster, "blok ELEMENTS tidak ditemukan di docs/element-matchups.html");
+  assert.deepEqual(JSON.parse(roster[1]), ELEMENT_ROSTER, "urutan roster halaman berbeda");
+
+  // Alias ditulis sebagai teks agar terbaca manusia, jadi yang dijaga hanya
+  // kelengkapannya: setiap alias production harus muncul di halaman.
+  for (const [alias, target] of Object.entries(ELEMENT_ALIASES)) {
+    assert.ok(
+      new RegExp(`"${target}",\\s*"[^"]*\\b${alias}\\b`).test(page),
+      `alias ${alias} → ${target} belum tercatat di docs/element-matchups.html`
+    );
+  }
+
+  for (const value of [MATCHUP_STRONG, MATCHUP_WEAK]) {
+    const localized = value.toString().replace(".", ",");
+    assert.ok(
+      page.includes(`${localized}×`),
+      `pengali ${localized}× tidak disebut di docs/element-matchups.html`
+    );
+  }
 }
 
 const emitIdx = process.argv.indexOf("--emit");

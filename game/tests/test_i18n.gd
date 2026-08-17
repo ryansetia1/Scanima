@@ -73,6 +73,18 @@ const REQUIRED_KEYS := [
 	"VALUE_UNAVAILABLE",
 	"EXPEDITION_NODE_UNKNOWN",
 ]
+const GATE_REASON_CODES := [
+	"human_face",
+	"human_body",
+	"unsafe_content",
+	"personal_info",
+	"too_unclear",
+	"no_object",
+	"animal_distress",
+	"animal_abuse",
+	"dangerous_situation",
+	"known_character",
+]
 const PLAYER_UI_FILES := [
 	"res://scripts/scan_flow.gd",
 	"res://scripts/home_view.gd",
@@ -133,6 +145,9 @@ func _initialize() -> void:
 
 	for key in REQUIRED_KEYS:
 		_check(keys.has(key), "%s must exist" % key)
+	for code in GATE_REASON_CODES:
+		var key := "GATE_%s" % code.to_upper()
+		_check(keys.has(key), "%s must exist for server gate code" % key)
 	_check_referenced_keys(keys)
 
 	var locale_manager := root.get_node("LocaleManager")
@@ -150,10 +165,12 @@ func _initialize() -> void:
 			locale_manager.call("move_name", {}, "surge") == TranslationServer.translate("BATTLE_ACTION_SURGE"),
 			"unnamed Special falls back to the catalog"
 		)
-		_check(
-			locale_manager.call("gate_reason", "human_face") != "human_face",
-			"server gate codes must map to player copy"
-		)
+		for code in GATE_REASON_CODES:
+			var key := "GATE_%s" % code.to_upper()
+			_check(
+				locale_manager.call("gate_reason", code) == TranslationServer.translate(key),
+				"%s must map to its player copy" % code
+			)
 	_check_scene_copy(keys)
 	_finish()
 

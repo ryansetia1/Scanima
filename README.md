@@ -1,8 +1,8 @@
 # Scanima
 
-> Foto benda atau hewan non-manusia di sekitarmu. Subjek itu jadi monster peliharaan.
+> Foto benda, hewan non-manusia yang aman, atau ilustrasi non-manusia orisinal/generik. Subjek itu jadi monster peliharaan.
 
-Scanima adalah game mobile virtual pet (gaya Tamagotchi/Digimon) di mana setiap monster — disebut **Anima** — diciptakan dari foto objek nyata atau hewan non-manusia yang aman, lewat kamera atau satu foto dari perangkat. Sebuah mouse komputer jadi Anima berkaki dengan dua tombol sebagai mata. Sebuah cangkir jadi Anima bulat dengan gagang sebagai ekor. Struktur monster harus **True to Subject**: merepresentasikan bentuk dan fitur unik subjek aslinya, bukan monster generik yang ditempeli warna.
+Scanima adalah game mobile virtual pet (gaya Tamagotchi/Digimon) di mana setiap monster — disebut **Anima** — diciptakan dari foto objek nyata, hewan non-manusia yang aman, atau ilustrasi non-manusia orisinal/generik, lewat kamera atau satu foto dari perangkat. Karakter franchise yang dapat disebut namanya ditolak sebelum Core dan image generation dipakai. Sebuah mouse komputer jadi Anima berkaki dengan dua tombol sebagai mata. Sebuah cangkir jadi Anima bulat dengan gagang sebagai ekor. Struktur monster harus **True to Subject**: merepresentasikan bentuk dan fitur unik subjek aslinya, bukan monster generik yang ditempeli warna.
 
 Genre: Virtual Pet + Creature Collector + Basic Tactical Battle.
 Art style: 2D anime creature cel-shading — clean bold linework, flat colors, crisp 2–3 level shadows, cute-but-fierce techno-organic design, dan sudut pandang 3/4 terkunci.

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peta matchup elemen — Scanima</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", sans-serif; background:#0b1020; color:#eef3ff; }
+    body { margin: 24px; line-height: 1.45; max-width: 1080px; }
+    h1,h2,h3 { font-family: Georgia, serif; color:#ffd978; }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    h2 { font-size: 20px; margin: 0 0 10px; }
+    section { margin: 28px 0; padding: 20px; border: 1px solid #2a3558; border-radius: 12px; background:#121a31; }
+    table { width:100%; border-collapse: collapse; font-size: 14px; }
+    th, td { border-bottom: 1px solid #2a3558; padding: 8px 10px; text-align:left; vertical-align: top; }
+    th { color:#9fd6ff; }
+    tbody tr:nth-child(even) { background:#0d1428; }
+    code { background:#060912; padding: 2px 6px; border-radius: 6px; font-size: 13px; }
+    .muted { color:#9fb0d0; font-size: 13px; }
+    .stats { display:flex; gap: 32px; flex-wrap: wrap; margin: 18px 0 0; }
+    .stat b { display:block; font-family: Georgia, serif; font-size: 22px; color:#eef3ff; font-weight: normal; }
+    .stat span { color:#9fb0d0; font-size: 12px; }
+    .picker { display:flex; gap: 6px; flex-wrap: wrap; margin: 0 0 16px; }
+    button.el { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 9999px;
+      border: 1px solid #314068; background:#0d1428; color:#c9d6ef; cursor: pointer; }
+    button.el:hover { border-color:#9fd6ff; color:#eef3ff; }
+    button.el[aria-pressed="true"] { background:#ffd978; border-color:#ffd978; color:#12172a; font-weight: 600; }
+    .graph { display:grid; grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr); gap: 20px; align-items:start; }
+    @media (max-width: 760px) { .graph { grid-template-columns: minmax(0, 1fr); } }
+    svg { width:100%; height:auto; display:block; }
+    svg circle { cursor: pointer; }
+    svg text { cursor: pointer; user-select: none; }
+    .legend { display:flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color:#9fb0d0; }
+    .legend i { display:inline-block; width: 18px; vertical-align: middle; margin-right: 6px; }
+    .panel { border:1px solid #314068; border-radius: 10px; background:#0d1428; }
+    .panel header { padding: 8px 12px; border-bottom: 1px solid #2a3558; font-size: 12px; color:#9fb0d0;
+      display:flex; justify-content:space-between; align-items:center; }
+    .panel header b { color:#ffd978; font-family: Georgia, serif; font-size: 15px; }
+    .panel .body { padding: 12px; }
+    .panel h3 { margin: 0 0 6px; font-size: 13px; font-family: "Segoe UI", sans-serif; }
+    .panel hr { border: 0; border-top: 1px solid #2a3558; margin: 14px 0; }
+    .strong { color:#9fd6ff; }
+    .weak { color:#ff9b9b; }
+    .chain { display:flex; gap: 8px; align-items:center; flex-wrap: wrap; }
+    .chains { display:flex; gap: 32px; flex-wrap: wrap; margin-top: 12px; }
+    .arrow { color:#5c6c92; }
+  </style>
+</head>
+<body>
+  <h1>Peta matchup elemen Battle</h1>
+  <p class="muted">
+    Sumber: <code>backend/supabase/functions/_shared/elements.mjs</code> ·
+    port client identik di <code>game/scripts/sim/element_rules.gd</code> ·
+    data di halaman ini dijaga skenario 35 <code>npm run selftest</code>, jadi ia gagal kalau roster
+    berubah tanpa halaman ini ikut diperbarui.
+  </p>
+
+  <div class="stats">
+    <div class="stat"><b>18</b><span>Elemen di roster</span></div>
+    <div class="stat"><b>36</b><span>Relasi kuat (berarah)</span></div>
+    <div class="stat"><b>1,5× / 0,67×</b><span>Pengali kuat / lemah</span></div>
+  </div>
+
+  <section>
+    <h2>Graf lengkap, satu elemen disorot</h2>
+    <p class="muted" style="margin-top:0">
+      Tiap elemen kuat melawan tepat dua elemen lain. Pilih satu untuk melihat dua yang ia kalahkan
+      (panah biru keluar) dan dua yang mengalahkan dia (panah merah masuk). Node, label, dan pill di
+      panel kanan sama-sama bisa diklik.
+    </p>
+
+    <div class="picker" id="picker"></div>
+
+    <div class="graph">
+      <div>
+        <svg id="graph" viewBox="0 0 600 600" role="img" aria-label="Graf matchup 18 elemen"></svg>
+        <div class="legend">
+          <span><i style="border-top:2px solid #9fd6ff"></i><span id="legendStrong"></span></span>
+          <span><i style="border-top:2px solid #ff9b9b"></i><span id="legendWeak"></span></span>
+          <span><i style="border-top:1px solid #2a3558"></i>32 relasi lain</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <header>Terpilih <b id="panelName"></b></header>
+        <div class="body">
+          <h3 class="strong">Kuat melawan · 1,5×</h3>
+          <div class="picker" id="panelBeats" style="margin-bottom:0"></div>
+          <hr>
+          <h3 class="weak">Lemah terhadap · 0,67×</h3>
+          <div class="picker" id="panelWeak" style="margin-bottom:0"></div>
+          <hr>
+          <p class="muted" style="margin:0 0 8px" id="panelNeutral"></p>
+          <p class="muted" style="margin:0">
+            Elemen ini dipakai <strong>Attack</strong> kalau ia primary Anima, dan dipakai
+            <strong>Special</strong> kalau ia secondary.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Bentuknya regular sempurna, dan itu disengaja</h2>
+    <p>
+      Setiap elemen mengalahkan tepat 2 dan dikalahkan tepat 2 — tidak ada satu pun yang lebih aman
+      atau lebih rentan hanya karena posisinya di graf. Tidak ada pasangan yang saling kuat, dan
+      tidak ada elemen yang kuat melawan dirinya sendiri, jadi keunggulan elemen selalu satu arah dan
+      tidak pernah membatalkan diri sendiri.
+    </p>
+    <p>
+      Hanya ada <strong>dua</strong> segitiga batu-kertas-gunting di seluruh graf. Sisanya butuh
+      empat hop atau lebih untuk kembali ke titik awal, jadi bentuknya jaring, bukan lingkaran
+      seperti roster enam elemen yang lama.
+    </p>
+    <div class="chains" id="chains"></div>
+  </section>
+
+  <section>
+    <h2>Aturannya di dalam rumus damage</h2>
+    <p>
+      Elemen masuk sebagai satu pengali di antara mitigasi DEF dan crit:
+      <code>attack × (power/50) × mitigasi × elemen × crit × variance × guard</code>, lalu dibulatkan
+      ke bawah dengan lantai 1 damage. Ia tidak menyentuh urutan gerak (itu SPD), peluang crit, atau
+      HP.
+    </p>
+    <ul>
+      <li>
+        <strong>Attack memakai elemen primary, Special memakai secondary</strong> dan jatuh ke
+        primary kalau Anima itu bertipe tunggal. Jadi Anima bertipe ganda punya dua sudut serang, dan
+        Special bisa super effective sementara Attack biasa saja terhadap lawan yang sama.
+      </li>
+      <li>
+        <strong>Tipe ganda membatalkan, tidak menumpuk.</strong> Kuat terhadap satu tipe lawan tetapi
+        lemah terhadap tipe lainnya menghasilkan netral 1,0×. Kuat terhadap kedua tipenya pun tetap
+        1,5×, bukan 2,25×.
+      </li>
+      <li>
+        <strong>Bot ikut memakainya.</strong> Saat memilih aksi, bot menghitung damage Attack dan
+        Special lewat rumus yang sama termasuk elemen, lalu memilih yang lebih besar.
+      </li>
+      <li>
+        <strong>Lawan Duel bikinan sistem sengaja netral dua arah.</strong> Kekuatannya sudah
+        dikalibrasi lewat pencarian rasio stat, jadi undian elemen tidak boleh menggeser kesulitan
+        yang sudah diukur itu.
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Tabel lengkap 18 elemen</h2>
+    <table>
+      <thead>
+        <tr><th>Elemen</th><th>Kuat melawan (1,5×)</th><th>Lemah terhadap (0,67×)</th></tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Nama lain yang dinormalkan sebelum masuk graf</h2>
+    <p class="muted" style="margin-top:0">
+      Vision boleh menjawab dengan nama umum; <code>normalizeElement()</code> memetakannya ke roster
+      sebelum matchup dihitung. Nama di luar roster dan di luar daftar ini jatuh ke <code>stone</code>.
+    </p>
+    <table>
+      <thead><tr><th>Elemen roster</th><th>Diterima juga sebagai</th></tr></thead>
+      <tbody id="aliasBody"></tbody>
+    </table>
+  </section>
+
+<script>
+  const ELEMENTS = ["metal","wood","stone","ceramic","glass","plastic","cloth","paper","plant","food","fauna","flow","spark","flame","frost","air","toxin","sound"];
+
+  // scanima:element-strengths — salinan ELEMENT_STRENGTHS. Dijaga eval/selftest.mjs skenario 35;
+  // jangan sunting tangan tanpa menjalankan selftest, karena halaman basi lebih menyesatkan
+  // daripada tidak ada halaman.
+  const STRENGTHS = {
+    "metal": ["plant", "wood"],
+    "wood": ["spark", "sound"],
+    "stone": ["metal", "ceramic"],
+    "ceramic": ["toxin", "flame"],
+    "glass": ["toxin", "air"],
+    "plastic": ["flow", "glass"],
+    "cloth": ["stone", "sound"],
+    "paper": ["food", "stone"],
+    "plant": ["flow", "air"],
+    "food": ["fauna", "frost"],
+    "fauna": ["plant", "cloth"],
+    "flow": ["spark", "paper"],
+    "spark": ["cloth", "metal"],
+    "flame": ["wood", "frost"],
+    "frost": ["fauna", "plastic"],
+    "air": ["flame", "paper"],
+    "toxin": ["food", "plastic"],
+    "sound": ["glass", "ceramic"]
+  };
+
+  const ALIASES = [
+    ["spark", "tech, electric, electricity"],
+    ["flow", "water"],
+    ["stone", "earth"],
+    ["plant", "nature"],
+    ["flame", "fire"],
+    ["frost", "ice"],
+    ["air", "wind"],
+    ["toxin", "poison"],
+    ["food", "organic"],
+    ["fauna", "animal, beast"],
+    ["cloth", "fabric, textile"],
+  ];
+
+  const TRIANGLES = [["metal", "wood", "spark"], ["glass", "toxin", "plastic"]];
+
+  const WEAK_TO = {};
+  for (const element of ELEMENTS) WEAK_TO[element] = [];
+  for (const attacker of ELEMENTS) {
+    for (const defender of STRENGTHS[attacker]) WEAK_TO[defender].push(attacker);
+  }
+
+  const EDGES = [];
+  ELEMENTS.forEach((element, index) => {
+    for (const target of STRENGTHS[element]) EDGES.push([index, ELEMENTS.indexOf(target)]);
+  });
+
+  const CENTER = 300, RING = 202, LABEL_RING = 240;
+  const STRONG = "#9fd6ff", WEAK = "#ff9b9b", SELF = "#ffd978";
+  const FAINT = "#2a3558", NODE = "#1b2440", NODE_EDGE = "#3a4a72";
+
+  const angleAt = (i) => (i / ELEMENTS.length) * Math.PI * 2 - Math.PI / 2;
+  const nodeAt = (i) => ({ x: CENTER + Math.cos(angleAt(i)) * RING, y: CENTER + Math.sin(angleAt(i)) * RING });
+
+  function pull(point, target, distance) {
+    const dx = target.x - point.x, dy = target.y - point.y;
+    const length = Math.hypot(dx, dy) || 1;
+    return { x: point.x + (dx / length) * distance, y: point.y + (dy / length) * distance };
+  }
+
+  /** Chord bowed toward the centre so parallel edges stay distinguishable. */
+  function edgePath(fromIndex, toIndex) {
+    const from = nodeAt(fromIndex), to = nodeAt(toIndex);
+    const control = {
+      x: CENTER + ((from.x + to.x) / 2 - CENTER) * 0.3,
+      y: CENTER + ((from.y + to.y) / 2 - CENTER) * 0.3,
+    };
+    const start = pull(from, control, 11), end = pull(to, control, 15);
+    return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} Q ${control.x.toFixed(1)} ${control.y.toFixed(1)} ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+  }
+
+  function labelAnchor(index) {
+    const cos = Math.cos(angleAt(index));
+    if (cos > 0.2) return "start";
+    if (cos < -0.2) return "end";
+    return "middle";
+  }
+
+  function marker(id, color, size) {
+    return `<marker id="${id}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="${size}" markerHeight="${size}" markerUnits="userSpaceOnUse" orient="auto"><path d="M 0 1 L 7 4 L 0 7 z" fill="${color}"/></marker>`;
+  }
+
+  let selected = "metal";
+
+  function pill(element, pressed) {
+    return `<button class="el" type="button" data-el="${element}" aria-pressed="${pressed ? "true" : "false"}">${element}</button>`;
+  }
+
+  function renderGraph() {
+    const beats = STRENGTHS[selected], beatenBy = WEAK_TO[selected];
+    const parts = [
+      `<defs>${marker("arrowFaint", FAINT, 8)}${marker("arrowStrong", STRONG, 11)}${marker("arrowWeak", WEAK, 11)}</defs>`,
+    ];
+
+    for (const [from, to] of EDGES) {
+      if (ELEMENTS[from] === selected || ELEMENTS[to] === selected) continue;
+      parts.push(`<path d="${edgePath(from, to)}" fill="none" stroke="${FAINT}" stroke-width="1" marker-end="url(#arrowFaint)"/>`);
+    }
+    for (const [from, to] of EDGES) {
+      if (ELEMENTS[to] !== selected) continue;
+      parts.push(`<path d="${edgePath(from, to)}" fill="none" stroke="${WEAK}" stroke-width="2.4" marker-end="url(#arrowWeak)"/>`);
+    }
+    for (const [from, to] of EDGES) {
+      if (ELEMENTS[from] !== selected) continue;
+      parts.push(`<path d="${edgePath(from, to)}" fill="none" stroke="${STRONG}" stroke-width="2.4" marker-end="url(#arrowStrong)"/>`);
+    }
+
+    ELEMENTS.forEach((element, index) => {
+      const position = nodeAt(index);
+      const isSelf = element === selected;
+      const fill = isSelf ? SELF : beats.includes(element) ? STRONG : beatenBy.includes(element) ? WEAK : NODE;
+      const plain = fill === NODE;
+      parts.push(`<circle data-el="${element}" cx="${position.x.toFixed(1)}" cy="${position.y.toFixed(1)}" r="${isSelf ? 10 : 7}" fill="${fill}" stroke="${plain ? NODE_EDGE : "#0b1020"}" stroke-width="${plain ? 1 : 2}"/>`);
+    });
+
+    ELEMENTS.forEach((element, index) => {
+      const angle = angleAt(index);
+      const isSelf = element === selected;
+      const color = isSelf ? "#eef3ff" : beats.includes(element) ? STRONG : beatenBy.includes(element) ? WEAK : "#7d8cb0";
+      parts.push(`<text data-el="${element}" x="${(CENTER + Math.cos(angle) * LABEL_RING).toFixed(1)}" y="${(CENTER + Math.sin(angle) * LABEL_RING).toFixed(1)}" text-anchor="${labelAnchor(index)}" dominant-baseline="middle" font-size="12" font-weight="${isSelf ? 600 : 400}" fill="${color}">${element}</text>`);
+    });
+
+    document.getElementById("graph").innerHTML = parts.join("");
+    document.getElementById("picker").innerHTML = ELEMENTS.map((e) => pill(e, e === selected)).join("");
+    document.getElementById("panelName").textContent = selected;
+    document.getElementById("panelBeats").innerHTML = beats.map((e) => pill(e, false)).join("");
+    document.getElementById("panelWeak").innerHTML = beatenBy.map((e) => pill(e, false)).join("");
+    document.getElementById("panelNeutral").textContent =
+      `Terhadap ${ELEMENTS.length - 1 - beats.length - beatenBy.length} elemen sisanya ${selected} netral, 1,0×.`;
+    document.getElementById("legendStrong").textContent = `${selected} mengalahkan — damage 1,5×`;
+    document.getElementById("legendWeak").textContent = `mengalahkan ${selected} — damage 0,67×`;
+  }
+
+  document.getElementById("tableBody").innerHTML = ELEMENTS.map((element) =>
+    `<tr><td>${element}</td><td>${STRENGTHS[element].join(", ")}</td><td>${WEAK_TO[element].join(", ")}</td></tr>`
+  ).join("");
+
+  document.getElementById("aliasBody").innerHTML = ALIASES.map(([element, aliases]) =>
+    `<tr><td>${element}</td><td>${aliases}</td></tr>`
+  ).join("");
+
+  document.getElementById("chains").innerHTML = TRIANGLES.map((cycle) => {
+    const chain = [...cycle, cycle[0]];
+    return `<div class="chain">${chain
+      .map((element, position) => pill(element, false) + (position < chain.length - 1 ? '<span class="arrow">→</span>' : ""))
+      .join("")}</div>`;
+  }).join("");
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-el]");
+    if (!target) return;
+    selected = target.dataset.el;
+    renderGraph();
+  });
+
+  renderGraph();
+</script>
+</body>
+</html>

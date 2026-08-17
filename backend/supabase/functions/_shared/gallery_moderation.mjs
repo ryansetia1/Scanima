@@ -24,6 +24,8 @@ Set safe:false if ANY of these appear in the sprite art:
 - Nudity, sexual content, gore, blood, or open wounds
 - Hate symbols, drug paraphernalia, or realistic weapons aimed at people
 - Text slurs or explicit language
+- A specific nameable character, mascot, or creature design from an existing
+  commercial franchise, game, anime, or film
 
 Cartoon monsters derived from safe everyday objects or non-human animals are safe.
 No prose outside JSON.`;
