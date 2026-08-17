@@ -43,14 +43,18 @@ autoload `LocaleManager` dan gagal dikompilasi di mode `--script`.
 ## Dua pagar yang menjaga parity
 
 1. **Golden vectors.** `node backend/tools/emit_sim_vectors.mjs` menjalankan
-   resolver JavaScript pada PRNG, fungsi skalar, `createFighter`, reward preview,
+   resolver JavaScript pada PRNG, fungsi skalar, `createFighter`, EXP yield,
    serta skenario Duel dan Team penuh — termasuk jalur Boss `final_ace` — lalu
    menuliskan input dan output-nya. `tests/test_battle_sim_parity.gd` memutar
    ulang vektor itu di GDScript. Input fighter ikut diemit; test tidak boleh
    punya tabelnya sendiri, karena tabel kembar itulah yang dulu menyimpang.
 2. **Pemindai konstanta.** Skenario 32 di `npm run selftest` membaca konstanta di
    `game/scripts/sim/*.gd` dan membandingkannya dengan pasangannya di `_shared`.
-   Konstanta yang diubah di satu sisi gagal di CI, bukan di tangan pemain.
+   Konstanta yang diubah di satu sisi gagal di CI, bukan di tangan pemain. Ia
+   juga menjaga arah sebaliknya: tier dan Bits hadiah **tidak boleh** kembali ke
+   `battle_sim.gd`. Keduanya hasil mensimulasikan matchup di server dan client
+   tidak pernah menampilkan hadiah sebelum server menjawab, jadi port-nya hanya
+   permukaan yang bisa menyimpang tanpa satu pun pemanggil.
 
 ## Alur satu turn
 

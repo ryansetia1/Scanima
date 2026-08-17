@@ -100,12 +100,21 @@ func _run() -> bool:
 		or bot.has("owner_id")
 		or bot.has("nickname")
 		or bot.has("sheet_path")
-		or str(bot.get("sheet_url", "")).is_empty()
 	):
 		return _fail("session atau anonimitas bot tidak sah: %s" % str(bot.keys()))
-	var bot_art: Dictionary = await Backend.download_url(str(bot.get("sheet_url", "")))
-	if not bot_art.ok or bot_art.bytes.is_empty():
-		return _fail("signed art bot tidak dapat diunduh: %s" % bot_art.error)
+	# Lawan sistem tidak punya baris `animas` dan karena itu tidak punya sheet di
+	# Storage sama sekali; client menggambarnya dari PlaceholderSheet. Menuntut
+	# signed URL di sini akan menggagalkan justru jalur yang sedang diuji.
+	if str(bot.get("system_asset", "")) == "placeholder":
+		print("  lawan sistem %s" % str(bot.get("anima_id", "")))
+		if not str(bot.get("sheet_url", "")).is_empty():
+			return _fail("lawan sistem tidak boleh membawa signed art")
+	else:
+		if str(bot.get("sheet_url", "")).is_empty():
+			return _fail("bot Gallery/legacy wajib membawa signed art")
+		var bot_art: Dictionary = await Backend.download_url(str(bot.get("sheet_url", "")))
+		if not bot_art.ok or bot_art.bytes.is_empty():
+			return _fail("signed art bot tidak dapat diunduh: %s" % bot_art.error)
 	GameState.remember_battle(
 		session_id,
 		int(session.get("turn_number", 1)),
@@ -177,11 +186,19 @@ func _run() -> bool:
 		if not forfeited.ok or str(GameState.as_dict(forfeited.data).get("status", "")) != "forfeited":
 			return _fail("forfeit gagal")
 	GameState.finish_battle()
+	# Lawan sistem memakai slug (`system-duel-fledgling`), bukan UUID, jadi ia
+	# tidak bisa lagi dipakai sebagai "Anima milik orang lain". UID pemain sendiri
+	# adalah UUID sah yang pasti bukan baris `animas`, dan ia menempuh pagar yang
+	# sama: fetch Anima memakai owner_id, jadi yang bukan milik pemain ditolak
+	# ANIMA_NOT_FOUND. Cross-owner yang pemiliknya benar-benar ada dijaga
+	# `backend/tests/quota_rules.sql`.
 	var foreign_id := str(bot.get("anima_id", ""))
+	if foreign_id.length() != 36 or str(bot.get("system_asset", "")) == "placeholder":
+		foreign_id = GameState.uid()
 	if not foreign_id.is_empty():
 		var foreign: Dictionary = await Backend.battle_anima("start", {"anima_id": foreign_id})
 		if foreign.ok or foreign.error != "ANIMA_NOT_FOUND":
-			return _fail("cross-owner start tidak ditolak")
+			return _fail("start memakai Anima yang bukan milik pemain tidak ditolak: %s" % str(foreign))
 
 	var final_profile: Dictionary = await Backend.fetch_profile()
 	if not final_profile.ok or int(GameState.profile.get("genesis_cores", -2)) != cores_before:

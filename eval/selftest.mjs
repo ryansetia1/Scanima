@@ -60,8 +60,10 @@ import {
   baseStatTotal,
   battleExpYield,
   battleRewardPreview,
+  bestDuelAction,
   computeDamage,
   createBattleState,
+  duelWinRate,
   critChance,
   elementMultiplier,
   normalizeBaseStats,
@@ -92,7 +94,17 @@ import {
   bitsForTier,
   catalogItem,
   rewardTierFromRatio,
+  tierFromWinRate,
 } from "../backend/supabase/functions/_shared/catalog.mjs";
+import {
+  BOT_RATIO_MAX,
+  BOT_RATIO_MIN,
+  SYSTEM_DUEL_BOTS,
+  estimateDuelBalance,
+  isFairRealOpponent,
+  neutralBotElements,
+  systemDuelBot,
+} from "../backend/supabase/functions/_shared/duel_bot.mjs";
 import {
   TEAM_MAX_TURNS,
   createTeamBattleState,
@@ -1508,8 +1520,23 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   );
   assert.match(
     battleEdge,
-    /pickLegacyBot/,
+    /legacyCandidates\s*[\s\S]{0,40}\.filter/,
     "bot Battle harus fallback legacy species_library saat gallery kosong"
+  );
+  assert.match(
+    battleEdge,
+    /isFairRealOpponent/,
+    "lawan Duel sungguhan harus lewat gate keseimbangan, bukan hanya pool ±15%"
+  );
+  assert.match(
+    battleEdge,
+    /systemDuelBot\(playerSnapshot, seed\)/,
+    "Duel harus punya lawan sistem saat tidak ada lawan sungguhan yang seimbang"
+  );
+  assert.match(
+    battleEdge,
+    /system_asset === "placeholder"\) return value/,
+    "withFreshBotArt harus melewati lawan sistem; ia tidak punya baris animas"
   );
   assert.match(
     battleEdge,
@@ -1552,7 +1579,7 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   );
   assert.match(
     battleEdge,
-    /artByKey\.has\(artKey\(candidate\)\) && candidate\.sheet_path && candidate\.manifest/,
+    /artByKey\.has\(artKey\(row\)\) && row\.sheet_path && row\.manifest/,
     "fallback legacy hanya boleh memakai kandidat yang sudah punya salinan art privat"
   );
 }
@@ -2675,6 +2702,32 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
   assert.equal(bitsForTier("even", 0), 8);
   assert.equal(bitsForTier("tough", 1), 12);
   assert.equal(bitsForTier("formidable", 1), 16);
+  assert.equal(tierFromWinRate(1), "favorable");
+  assert.equal(tierFromWinRate(0.8), "favorable");
+  assert.equal(tierFromWinRate(0.79), "even");
+  assert.equal(tierFromWinRate(0.55), "even");
+  assert.equal(tierFromWinRate(0.54), "tough");
+  assert.equal(tierFromWinRate(0.4), "tough");
+  assert.equal(tierFromWinRate(0.39), "formidable");
+  assert.equal(tierFromWinRate(0), "formidable");
+  assert.equal(tierFromWinRate(Number.NaN), "even");
+  // Tangganya wajib naik searah kesulitan pada dua ukuran sekaligus: Bits makin
+  // besar, dan ambang win rate makin rendah. Nilai harapannya diperiksa di
+  // skenario 34, terhadap matchup yang benar-benar bisa muncul.
+  const ladder = ["favorable", "even", "tough", "formidable"].map((tier) => ({
+    tier,
+    ...REWARD_TIERS[tier],
+  }));
+  for (let index = 1; index < ladder.length; index += 1) {
+    assert.ok(
+      ladder[index].bits > ladder[index - 1].bits,
+      `Bits tier ${ladder[index].tier} harus di atas ${ladder[index - 1].tier}`
+    );
+    assert.ok(
+      ladder[index].minWinRate < ladder[index - 1].minWinRate,
+      `ambang win rate ${ladder[index].tier} harus di bawah ${ladder[index - 1].tier}`
+    );
+  }
 
   const twin = {
     species_key: "twin",
@@ -3462,19 +3515,15 @@ console.log("32. konstanta simulasi client tidak boleh menyimpang dari _shared")
     "STRENGTHS GDScript berbeda dari ELEMENT_STRENGTHS"
   );
 
-  const rewardBits = Object.fromEntries(
-    [
-      ...battleSim
-        .slice(battleSim.indexOf("const REWARD_TIER_BITS"))
-        .split("\n")[0]
-        .matchAll(/"(\w+)":\s*(\d+)/g),
-    ].map((match) => [match[1], Number(match[2])])
-  );
-  assert.deepEqual(
-    rewardBits,
-    Object.fromEntries(Object.entries(REWARD_TIERS).map(([tier, spec]) => [tier, spec.bits])),
-    "REWARD_TIER_BITS GDScript berbeda dari REWARD_TIERS"
-  );
+  // Tier dan Bits sengaja tidak diport ke GDScript: keduanya hasil simulasi
+  // matchup di server dan client tidak pernah menampilkan hadiah sebelum server
+  // menjawab, jadi port-nya hanya permukaan yang bisa menyimpang tanpa pemanggil.
+  for (const symbol of ["REWARD_TIER_BITS", "battle_reward_preview", "combat_power"]) {
+    assert.ok(
+      !battleSim.includes(symbol),
+      `${symbol} kembali ke battle_sim.gd tanpa pemanggil; hadiah tetap milik server`
+    );
+  }
 }
 
 console.log("33. encoder PNG kanonis lossless, deterministik, dan tidak pernah lebih besar");
@@ -3585,6 +3634,347 @@ console.log("33. encoder PNG kanonis lossless, deterministik, dan tidak pernah l
     "postprocessSheet masih mengenkode lewat ImageScript"
   );
   assert.ok((await Image.decode(sheet.png)).width > 0, "postprocessSheet memberi PNG tidak sah");
+}
+
+console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditolak");
+{
+  // Matchmaking Duel hanya menyaring stage dan total base stat ±15%. Pada roster
+  // production itu meloloskan duel 7% sekaligus duel 100%, sebab Level, bentuk
+  // distribusi stat, dan elemen tidak pernah dilihat. Dua hal dijaga di sini:
+  // lawan sistem tidak pernah timpang, dan gate penerimaan lawan sungguhan
+  // benar-benar memisahkan yang adil dari yang hasilnya sudah ditentukan.
+  //
+  // Jangkarnya win rate hasil resolver production, bukan angka hafalan. Kalau
+  // rumus combat bergeser, kalibrasi band-nya ikut gagal di sini alih-alih
+  // diam-diam berubah di tangan pemain.
+  const ROSTER = {
+    klasik: { hp: 40, atk: 30, def: 50, spd: 70, special: 80, element: "plastic", secondary: "spark", care: 30 },
+    Deckon: { hp: 70, atk: 40, def: 65, spd: 60, special: 85, element: "plastic", secondary: "spark", care: 30 },
+    Hydron: { hp: 80, atk: 25, def: 65, spd: 20, special: 50, element: "flow", care: 89 },
+    Veridian: { hp: 65, atk: 30, def: 55, spd: 25, special: 70, element: "plant", care: 84 },
+    Playtron: { hp: 40, atk: 45, def: 50, spd: 65, special: 85, element: "spark", care: 63 },
+    Mugshots: { hp: 55, atk: 25, def: 65, spd: 40, special: 15, element: "ceramic", secondary: "flow", care: 51 },
+    Sunhound: { hp: 65, atk: 55, def: 50, spd: 70, special: 60, element: "fauna", care: 43 },
+  };
+  const snap = (name) => {
+    const row = ROSTER[name];
+    const built = {
+      anima_id: name,
+      base_stats: { hp: row.hp, atk: row.atk, def: row.def, spd: row.spd, special: row.special },
+      stage: 1,
+      level: levelFromExp(row.care),
+      element: row.element,
+    };
+    if (row.secondary) built.secondary_element = row.secondary;
+    return built;
+  };
+
+  // Kebijakan pemainnya `bestDuelAction` milik production, bukan salinan: itu
+  // yang menentukan tier hadiah, jadi kalibrasi di bawah harus mengukur dia.
+  // Bedanya dengan `duelWinRate` hanya satu: care di sini sengaja TIDAK
+  // dinetralkan, sebab yang diuji justru apakah cerminnya tetap berlaku saat
+  // meter pemain kosong.
+  const winRate = (player, bot, runs) => {
+    let wins = 0;
+    for (let index = 0; index < runs; index += 1) {
+      let state = createBattleState({ player, bot, seed: `duel-fair-${index}` });
+      while (state.status === "active") {
+        state = resolveTurn(state, bestDuelAction(state), `t-${state.turn}`).state;
+      }
+      if (state.status === "won") wins += 1;
+    }
+    return wins / runs;
+  };
+
+  const ratios = new Map();
+  for (const name of Object.keys(ROSTER)) {
+    const player = snap(name);
+    const shapes = new Set();
+    for (const seed of ["a", "b", "c", "d", "e", "f", "g", "h"]) {
+      const bot = systemDuelBot(player, seed);
+      assert.equal(bot.level, player.level, `${name}: Level lawan sistem tidak dicerminkan`);
+      assert.equal(bot.system_asset, "placeholder", `${name}: lawan sistem tanpa penanda art`);
+      assert.equal(
+        bot.anima_id,
+        SYSTEM_DUEL_BOTS[formFromLevel(player.level)].anima_id,
+        `${name}: tier lawan sistem tidak mengikuti formFromLevel`
+      );
+
+      // Elemen netral dua arah. Pengali elemen tidak masuk perhitungan tier,
+      // jadi satu-satunya pilihan jujur adalah tidak ada pengali sama sekali.
+      assert.equal(
+        dualDefenderMultiplier(bot.element, player.element, player.secondary_element),
+        MATCHUP_NEUTRAL,
+        `${name}: lawan sistem unggul/lemah saat menyerang`
+      );
+      for (const attack of [player.element, player.secondary_element].filter(Boolean)) {
+        assert.equal(
+          dualDefenderMultiplier(attack, bot.element),
+          MATCHUP_NEUTRAL,
+          `${name}: pemain punya pengali elemen terhadap lawan sistem`
+        );
+      }
+
+      // Rasio hasil pencarian harus tetap di dalam bound; di luar itu berarti
+      // bisection lari, bukan menemukan. normalizeBaseStats menjepit tiap stat
+      // ke 10..95 dan membulatkan, jadi total yang tercapai boleh menyimpang.
+      const ratio = baseStatTotal(bot.base_stats) / baseStatTotal(player.base_stats);
+      ratios.set(name, ratio);
+      assert.ok(
+        ratio >= BOT_RATIO_MIN - 0.06 && ratio <= BOT_RATIO_MAX + 0.02,
+        `${name}: rasio lawan sistem ${ratio.toFixed(3)} di luar bound pencarian`
+      );
+      // Inilah kontraknya: kekuatan bot dicari sampai duelnya terukur imbang,
+      // jadi tier-nya wajib `even`. `favorable` berarti pencariannya mendarat di
+      // walkover dan pemain dibayar 6 Bits untuk duel yang tidak pernah kalah;
+      // `formidable` berarti lawan sistem berhenti menjadi jalan keluar dan
+      // menjadi dinding. Kalau ini gagal untuk satu bentuk stat baru, yang perlu
+      // diperiksa adalah bound dan target di duel_bot.mjs, bukan assert ini.
+      const systemPreview = battleRewardPreview(player, bot, seed);
+      assert.equal(
+        systemPreview.tier,
+        "even",
+        `${name}: duel lawan sistem dimenangkan `
+          + `${(systemPreview.win_rate * 100).toFixed(0)}% sehingga dibayar `
+          + `${systemPreview.tier}; pencarian kekuatan di duel_bot.mjs tidak mendarat di band imbang`
+      );
+
+      // Deterministik terhadap seed, kalau tidak resume dan replay akan bertemu
+      // lawan yang berbeda dari yang sudah tersimpan.
+      assert.deepEqual(systemDuelBot(player, seed), bot, `${name}: lawan sistem tidak deterministik`);
+      shapes.add(`${bot.element}:${baseStatTotal(bot.base_stats)}`);
+    }
+    assert.ok(shapes.size > 1, `${name}: lawan sistem sama terus di semua seed`);
+    assert.ok(
+      neutralBotElements(player.element, player.secondary_element ?? "").length >= 8,
+      `${name}: pilihan elemen netral terlalu sempit`
+    );
+  }
+
+  // Alasan pencarian per-Anima ada: satu konstanta tidak bisa melayani seluruh
+  // roster. Kalau semua Anima berakhir pada rasio yang sama, kekuatan bot
+  // diam-diam kembali dipatok dan Anima tangguh mendapat walkover lagi.
+  // Terukur: 0,990 untuk yang paling rapuh sampai 1,121 untuk yang paling tebal.
+  const spread = Math.max(...ratios.values()) - Math.min(...ratios.values());
+  assert.ok(
+    spread > 0.05,
+    `rasio lawan sistem cuma menyebar ${spread.toFixed(3)} antar-Anima; `
+      + "pencarian kekuatan tidak lagi menyesuaikan diri terhadap bentuk stat"
+  );
+
+  // Bentuk stat hiper-spesialis tidak punya titik imbang sama sekali: duel
+  // cerminnya fungsi tangga, bukan lereng. Ketiga bentuk di bawah ditemukan
+  // dengan menyapu 400 bentuk acak, dan tanpa pagar `preferBot` jarak-ke-target
+  // memilih sisi tangga yang KALAH — 47%, 47%, dan 52%. Duel gampang cuma
+  // dibayar 6 Bits; duel yang tidak bisa dimenangkan tidak dibayar sama sekali,
+  // jadi lawan sistem wajib tetap bisa dimenangkan. Sekitar 2% bentuk acak
+  // menyentuh pagar ini, jadi ia bukan cabang hipotetis.
+  const CLIFF_SHAPES = [
+    { level: 14, base_stats: { hp: 10, atk: 92, def: 35, spd: 54, special: 62 } },
+    { level: 23, base_stats: { hp: 23, atk: 94, def: 85, spd: 40, special: 42 } },
+    { level: 2, base_stats: { hp: 11, atk: 59, def: 94, spd: 83, special: 36 } },
+  ];
+  for (const shape of CLIFF_SHAPES) {
+    const player = {
+      anima_id: "cliff",
+      stage: 1,
+      element: "metal",
+      hunger: 100,
+      hygiene: 100,
+      ...shape,
+    };
+    const preview = battleRewardPreview(player, systemDuelBot(player, "cliff"), "cliff");
+    assert.ok(
+      preview.win_rate >= REWARD_TIERS.even.minWinRate,
+      `bentuk tangga Lv${shape.level}: lawan sistem hanya dimenangkan `
+        + `${(preview.win_rate * 100).toFixed(0)}%; pencarian memilih sisi tangga yang kalah `
+        + "dan lawan sistem berubah dari jalan keluar menjadi dinding"
+    );
+  }
+
+  // Bentuk stat bot adalah cermin pemain, dan itu terukur lebih adil daripada
+  // mencampurnya ke arah distribusi rata: bot berbentuk rata menghabisi Anima
+  // yang serangannya lemah jauh lebih cepat daripada Anima itu bisa membalas.
+  const fragile = snap("Mugshots");
+  const mirrored = systemDuelBot(fragile, "shape");
+  const flatTotal = baseStatTotal(mirrored.base_stats);
+  const flat = {
+    ...mirrored,
+    base_stats: normalizeBaseStats(
+      { hp: 1, atk: 1, def: 1, spd: 1, special: 1 },
+      flatTotal
+    ),
+  };
+  assert.ok(
+    winRate(fragile, mirrored, 240) - winRate(fragile, flat, 240) > 0.2,
+    "cermin stat tidak lagi lebih adil daripada distribusi rata untuk Anima ber-Special rendah"
+  );
+
+  // Gerbang Hunger dibuang supaya pemain tanpa Bits dan tanpa makanan punya
+  // jalan keluar lewat Duel. Itu hanya benar kalau lawannya ikut terpotong:
+  // melawan lawan yang tidak tersentuh, Anima lapar terukur menang 0%..22% dan
+  // lapar+kotor 0%..2%, jadi jalan keluarnya cuma bergeser dari "diblokir"
+  // menjadi "kalah saja". Anima paling rapuh di roster yang menjaga ambang ini.
+  const tendedBot = systemDuelBot({ ...snap("Mugshots"), hunger: 100, hygiene: 100 }, "neglect");
+  for (const [hunger, hygiene] of [[100, 100], [10, 100], [100, 10], [10, 10], [0, 0]]) {
+    const neglected = { ...snap("Mugshots"), hunger, hygiene };
+    const bot = systemDuelBot(neglected, "neglect");
+    assert.equal(
+      bot.hunger,
+      hunger,
+      "lawan sistem tidak ikut menanggung potongan lapar, jadi cerminnya tidak lagi persis"
+    );
+    assert.equal(bot.hygiene, hygiene, "lawan sistem tidak ikut menanggung potongan kotor");
+    // Pencarian kekuatan wajib care-neutral. Bot yang ikut melemah saat meter
+    // pemain kosong akan membuat menelantarkan Anima menjadi cara mendapat duel
+    // gampang dengan bayaran yang sama, sebab tier juga dihitung care-neutral.
+    assert.deepEqual(
+      bot.base_stats,
+      tendedBot.base_stats,
+      `stat lawan sistem berubah pada care ${hunger}/${hygiene}; `
+        + "menelantarkan Anima menjadi cara mendapat lawan yang lebih lemah"
+    );
+    const measured = winRate(neglected, bot, 300);
+    assert.ok(
+      measured >= 0.4,
+      `Anima terlantar (${hunger}/${hygiene}) hanya menang ${(measured * 100).toFixed(0)}% `
+        + "melawan lawan sistem; Duel berhenti menjadi jalan keluar dari kehabisan Bits"
+    );
+  }
+
+  // Gate lawan sungguhan. `fair` di sini berarti duelnya masih pertandingan;
+  // walkover 98%+ dan duel 8% dua-duanya ditolak.
+  const matchmakerStats = (bot, player) => {
+    const playerTotal = baseStatTotal(player.base_stats);
+    if (Math.abs(baseStatTotal(bot.base_stats) - playerTotal) <= playerTotal * 0.15) return bot;
+    return { ...bot, base_stats: normalizeBaseStats(bot.base_stats, playerTotal) };
+  };
+  const PAIRS = [
+    { player: "klasik", bot: "Hydron", win: 0.07, fair: false },
+    { player: "Mugshots", bot: "Deckon", win: 0.08, fair: false },
+    { player: "Hydron", bot: "Deckon", win: 1.0, fair: false },
+    { player: "klasik", bot: "Veridian", win: 0.42, fair: true },
+    { player: "Sunhound", bot: "Deckon", win: 0.46, fair: true },
+  ];
+  for (const pair of PAIRS) {
+    const player = snap(pair.player);
+    const bot = matchmakerStats(snap(pair.bot), player);
+    const label = `${pair.player} vs ${pair.bot}`;
+    const measured = winRate(player, bot, 300);
+    assert.ok(
+      Math.abs(measured - pair.win) <= 0.12,
+      `${label}: win rate resolver bergeser ke ${(measured * 100).toFixed(0)}%, `
+        + `kalibrasi band di duel_bot.mjs perlu diukur ulang`
+    );
+    assert.equal(
+      isFairRealOpponent(player, bot),
+      pair.fair,
+      `${label}: gate salah menilai duel ${(measured * 100).toFixed(0)}% `
+        + `(balance ${estimateDuelBalance(player, bot).toFixed(2)})`
+    );
+  }
+
+  // Pool ±15% yang lama meloloskan semuanya. Kalau gate ini ikut meloloskan
+  // semuanya, ia tidak mengerjakan apa pun.
+  assert.ok(
+    PAIRS.some((pair) => !pair.fair) && PAIRS.some((pair) => pair.fair),
+    "fixture gate tidak memuat kedua sisi"
+  );
+
+  // Tier hadiah diukur dari matchup-nya, bukan ditaksir dari combat power.
+  // Patokan yang menangkap kemunduran: combat power melabeli klasik vs Playtron
+  // `formidable` 15 Bits padahal duel itu dimenangkan sekitar tiga dari empat
+  // kali, sementara Veridian vs Sunhound yang benar-benar seimbang dilabeli
+  // `favorable` 6 Bits. Keduanya sekarang harus terbalik urutannya.
+  const TIER_RANK = { favorable: 0, even: 1, tough: 2, formidable: 3 };
+  const walkover = { player: snap("klasik"), bot: matchmakerStats(snap("Playtron"), snap("klasik")) };
+  const coinFlip = { player: snap("Veridian"), bot: matchmakerStats(snap("Sunhound"), snap("Veridian")) };
+  const walkoverPreview = battleRewardPreview(walkover.player, walkover.bot, "measured");
+  const coinFlipPreview = battleRewardPreview(coinFlip.player, coinFlip.bot, "measured");
+  assert.ok(
+    walkoverPreview.win_rate > coinFlipPreview.win_rate,
+    "fixture salah: klasik vs Playtron seharusnya lebih mudah daripada Veridian vs Sunhound"
+  );
+  assert.ok(
+    TIER_RANK[coinFlipPreview.tier] > TIER_RANK[walkoverPreview.tier],
+    `duel ${(coinFlipPreview.win_rate * 100).toFixed(0)}% dibayar ${coinFlipPreview.tier} `
+      + `sementara duel ${(walkoverPreview.win_rate * 100).toFixed(0)}% dibayar `
+      + `${walkoverPreview.tier}; tier kembali memakai proxy combat power`
+  );
+
+  // Invariant umumnya: duel yang lebih mudah tidak boleh pernah membayar tier
+  // lebih tinggi. Ini yang gagal kalau ambang, urutan, atau sumber tier bergeser.
+  // Hanya lawan yang benar-benar bisa disajikan: lawan sungguhan wajib lolos
+  // gate keseimbangan lebih dulu, dan lawan sistem selalu tersedia.
+  const graded = [];
+  for (const name of Object.keys(ROSTER)) {
+    const player = snap(name);
+    graded.push({ label: `${name} vs sistem`, player, bot: systemDuelBot(player, "grade") });
+    for (const other of Object.keys(ROSTER)) {
+      if (other === name) continue;
+      const bot = matchmakerStats(snap(other), player);
+      if (!isFairRealOpponent(player, bot)) continue;
+      graded.push({ label: `${name} vs ${other}`, player, bot });
+    }
+  }
+  for (const row of graded) {
+    row.preview = battleRewardPreview(row.player, row.bot, "grade");
+  }
+  graded.sort((left, right) => right.preview.win_rate - left.preview.win_rate);
+  for (let index = 1; index < graded.length; index += 1) {
+    const easier = graded[index - 1];
+    const harder = graded[index];
+    assert.ok(
+      TIER_RANK[easier.preview.tier] <= TIER_RANK[harder.preview.tier],
+      `${easier.label} (${(easier.preview.win_rate * 100).toFixed(0)}% menang) dibayar `
+        + `${easier.preview.tier} sementara ${harder.label} yang lebih berat `
+        + `(${(harder.preview.win_rate * 100).toFixed(0)}%) hanya ${harder.preview.tier}`
+    );
+  }
+  assert.ok(
+    new Set(graded.map((row) => row.preview.tier)).size >= 3,
+    "fixture tier tidak lagi menjangkau beberapa tingkat kesulitan"
+  );
+
+  // Dan tangganya tidak boleh menjadi perangkap: Bits harapan per duel harus
+  // rata antar-tier, diukur dari matchup yang benar-benar bisa muncul dan bukan
+  // dari band teoretis (gate keseimbangan tidak pernah menyajikan duel 5%).
+  // Tier lama terukur 8,5 Bits harapan pada duel mudah versus 3,5 pada duel
+  // berat, jadi mengejar lawan kuat justru merugikan.
+  const evByTier = new Map();
+  for (const row of graded) {
+    const bucket = evByTier.get(row.preview.tier) ?? [];
+    bucket.push(REWARD_TIERS[row.preview.tier].bits * row.preview.win_rate);
+    evByTier.set(row.preview.tier, bucket);
+  }
+  const evMeans = [...evByTier.entries()].map(([tier, list]) => ({
+    tier,
+    ev: list.reduce((sum, value) => sum + value, 0) / list.length,
+  }));
+  const evSpread = Math.max(...evMeans.map((row) => row.ev))
+    - Math.min(...evMeans.map((row) => row.ev));
+  assert.ok(
+    evSpread <= 2,
+    "Bits harapan per duel melebar " + evSpread.toFixed(2) + " antar-tier ("
+      + evMeans.map((row) => `${row.tier} ${row.ev.toFixed(1)}`).join(", ")
+      + "); tangga Bits atau ambang win rate harus disetel ulang"
+  );
+
+  // Care tidak boleh menaikkan tier. Tanpa penetralan, Anima lapar+kotor terukur
+  // menang 0% dan naik ke `formidable` 15 Bits, jadi menelantarkan Anima menjadi
+  // cara menaikkan Bits per kemenangan.
+  const tended = snap("Sunhound");
+  const starved = { ...tended, hunger: 0, hygiene: 0 };
+  assert.deepEqual(
+    battleRewardPreview(starved, systemDuelBot(starved, "care"), "care"),
+    battleRewardPreview(tended, systemDuelBot(tended, "care"), "care"),
+    "care rendah mengubah hadiah Duel; simulasi tier harus menetralkan care di dua sisi"
+  );
+  assert.equal(
+    duelWinRate(starved, snap("Deckon"), 32),
+    duelWinRate(tended, snap("Deckon"), 32),
+    "duelWinRate ikut membaca care, jadi tier bergeser mengikuti isi meter"
+  );
 }
 
 const emitIdx = process.argv.indexOf("--emit");

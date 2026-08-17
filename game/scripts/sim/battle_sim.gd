@@ -33,11 +33,6 @@ const VARIANCE_SPAN := 0.16
 const SHIELD_MULTIPLIER := 0.2
 const STAT_KEYS: PackedStringArray = ["hp", "atk", "def", "spd", "special"]
 
-## Sama dengan REWARD_TIERS di `_shared/catalog.mjs`.
-const REWARD_TIER_ORDER: PackedStringArray = ["favorable", "even", "tough", "formidable"]
-const REWARD_TIER_MAX_RATIO := {"favorable": 0.95, "even": 1.05, "tough": 1.1}
-const REWARD_TIER_BITS := {"favorable": 6, "even": 8, "tough": 11, "formidable": 15}
-
 
 # --- Aritmetika yang meniru JavaScript -------------------------------------
 #
@@ -471,65 +466,12 @@ static func resolve_turn(
 	return {"ok": true, "error": "", "state": state, "events": events, "bot_action": bot_action}
 
 
-# --- Reward preview ---------------------------------------------------------
-
-
-static func combat_power(stats: Dictionary) -> float:
-	return (
-		js_number_or_zero(stats.get("max_hp", 0)) / 4.0
-		+ js_number_or_zero(stats.get("atk", 0))
-		+ js_number_or_zero(stats.get("special", 0))
-		+ js_number_or_zero(stats.get("def", 0))
-		+ js_number_or_zero(stats.get("spd", 0))
-	)
-
-
-static func reward_tier_from_ratio(ratio: float) -> String:
-	if not is_finite(ratio) or ratio < float(REWARD_TIER_MAX_RATIO["favorable"]):
-		return "favorable"
-	if ratio < float(REWARD_TIER_MAX_RATIO["even"]):
-		return "even"
-	if ratio < float(REWARD_TIER_MAX_RATIO["tough"]):
-		return "tough"
-	return "formidable"
-
-
-static func reward_roll_from_seed(seed_text: String) -> int:
-	var unit := float(DeterministicRng.hash_seed("%s:reward" % seed_text)) / 4294967296.0
-	if unit < 1.0 / 3.0:
-		return -1
-	if unit < 2.0 / 3.0:
-		return 0
-	return 1
-
-
-static func bits_for_tier(tier: String, roll: int = 0) -> int:
-	var base := int(REWARD_TIER_BITS.get(tier, REWARD_TIER_BITS["even"]))
-	return maxi(5, base + clampi(roll, -1, 1))
-
-
-## Nilai yang sama dengan `battle_sessions.reward_tier/roll/bits` yang sudah
-## diisi server saat start, jadi hasil offline bisa menampilkan Bits yang benar.
-static func battle_reward_preview(player: Variant, bot: Variant, seed_text: String) -> Dictionary:
-	var player_source: Dictionary = player if typeof(player) == TYPE_DICTIONARY else {}
-	var bot_source: Dictionary = bot if typeof(bot) == TYPE_DICTIONARY else {}
-	var player_stats := to_battle_stats(
-		player_source.get("base_stats", null), _field(player_source, "level")
-	)
-	var bot_stats := to_battle_stats(
-		bot_source.get("base_stats", null), _field(bot_source, "level")
-	)
-	var ratio := combat_power(bot_stats) / maxf(1.0, combat_power(player_stats))
-	var tier := reward_tier_from_ratio(ratio)
-	var roll := reward_roll_from_seed(seed_text)
-	return {
-		"tier": tier,
-		"roll": roll,
-		"bits": bits_for_tier(tier, roll),
-		"bits_min": bits_for_tier(tier, -1),
-		"bits_max": bits_for_tier(tier, 1),
-		"ratio": ratio,
-	}
+# --- Reward ------------------------------------------------------------------
+#
+# Tier dan Bits sengaja tidak ada di sini. Keduanya server-authoritative, hasil
+# mensimulasikan matchup 64 kali di `_shared/battle.mjs`, dan client tidak pernah
+# menampilkan hadiah sebelum server menjawab — jadi port-nya cuma permukaan yang
+# bisa menyimpang tanpa satu pun pemanggil.
 
 
 static func battle_exp_yield(

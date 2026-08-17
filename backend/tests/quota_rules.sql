@@ -36,6 +36,7 @@ declare
   v_battle_session uuid;
   v_battle_player_snapshot jsonb;
   v_battle_bot_snapshot jsonb;
+  v_system_bot_snapshot jsonb;
   v_battle_state jsonb;
   v_team_ids uuid[];
   v_defense_ids uuid[];
@@ -1255,6 +1256,65 @@ begin
   exception when others then ok := false;
   end;
   assert ok, 'Anima lapar tetap boleh Battle supaya Bits tidak terkunci';
+  update public.battle_sessions
+     set status = 'forfeited', finished_at = now(), updated_at = now()
+   where owner_id = u1 and status = 'active';
+  update public.animas
+     set care = '{"hunger":40,"energy":20,"hygiene":100,"bond":0}'::jsonb,
+         care_synced_at = now()
+   where id = v_battle_player;
+
+  -- Lawan Duel sistem dipakai ketika tidak ada Anima pemain lain yang duelnya
+  -- masih seimbang. Ia sengaja tidak punya baris `animas`, jadi verifikasi lawan
+  -- tidak bisa memakai tabel; yang diperiksa adalah penanda snapshot-nya sendiri.
+  -- Tanpa dua penolakan di bawah, `bot_anima_id` null berarti client boleh
+  -- mengarang lawan apa pun — termasuk lawan berstat sengaja lemah.
+  v_system_bot_snapshot := jsonb_build_object(
+    'anima_id', 'system-duel-fledgling',
+    'name', 'Echo Fledgling',
+    'species_key', 'system-duel-fledgling',
+    'color_bucket', 'system',
+    'stage', 1,
+    'level', 1,
+    'element', 'metal',
+    'base_stats', '{"hp":50,"atk":50,"def":50,"spd":50,"special":50}'::jsonb,
+    'system_asset', 'placeholder'
+  );
+  begin
+    perform public.start_battle(
+      u1, v_battle_player, null,
+      v_battle_player_snapshot,
+      v_system_bot_snapshot - 'system_asset',
+      v_battle_state, 'system-unmarked'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'BOT_NOT_FOUND');
+  end;
+  assert ok, 'bot_anima_id null tanpa penanda placeholder harus ditolak';
+
+  begin
+    perform public.start_battle(
+      u1, v_battle_player, null,
+      v_battle_player_snapshot,
+      v_system_bot_snapshot || '{"anima_id":""}'::jsonb,
+      v_battle_state, 'system-no-slug'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'SNAPSHOT_MISMATCH');
+  end;
+  assert ok, 'lawan sistem tanpa slug identitas harus ditolak';
+
+  v_j := public.start_battle(
+    u1, v_battle_player, null,
+    v_battle_player_snapshot, v_system_bot_snapshot, v_battle_state, 'system-bot'
+  );
+  assert coalesce(v_j->>'id', '') <> '',
+         'lawan sistem bertanda placeholder harus diterima';
+  assert (select bot_anima_id is null
+            from public.battle_sessions where id = (v_j->>'id')::uuid),
+         'session lawan sistem tidak boleh menunjuk baris animas';
+  assert (select (care->>'energy')::numeric from public.animas where id = v_battle_player) = 0,
+         'Duel lawan sistem tetap membayar 20 Energy';
   update public.battle_sessions
      set status = 'forfeited', finished_at = now(), updated_at = now()
    where owner_id = u1 and status = 'active';

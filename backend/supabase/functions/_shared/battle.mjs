@@ -1,9 +1,8 @@
 import {
   catalogItem,
   isBattleItem,
-  combatPower,
-  rewardTierFromRatio,
   rewardRollFromSeed,
+  tierFromWinRate,
   bitsForTier,
 } from "./catalog.mjs";
 import {
@@ -209,30 +208,79 @@ export function turnSeed(state, idempotencyKey = "") {
   return `${state?.seed}:${state?.turn}:${idempotencyKey}`;
 }
 
+// Care dinetralkan di dua sisi supaya tier mengukur matchup-nya, bukan isi
+// meter saat ini. Tanpa ini Anima lapar+kotor terukur menang 0%, jatuh ke tier
+// `formidable`, dan menelantarkan care menjadi cara menaikkan Bits.
+function withFullCare(snapshot) {
+  return { ...(snapshot ?? {}), hunger: 100, hygiene: 100 };
+}
+
+// Patokan tier adalah pemain yang kompeten: ia menekan Special ketika Special
+// memang lebih besar terhadap pertahanan lawan ini. `chooseBotAction` bukan
+// pengganti yang sah — memakainya untuk kedua sisi terukur menggeser tier di 30
+// dari 38 matchup, sebab bot memilih Special 68% acak tanpa melihat elemen.
+export function bestDuelAction(state) {
+  const me = state.player;
+  const foe = state.bot;
+  if (me.momentum < SURGE_COST) {
+    return me.hp / Math.max(1, me.max_hp) <= 0.35 ? "guard" : "strike";
+  }
+  const strike = computeDamage({
+    attack: me.atk * (me.atk_mult || 1),
+    defense: foe.def,
+    power: 50,
+    element: dualDefenderMultiplier(me.element, foe.element, foe.secondary_element),
+  });
+  const surge = computeDamage({
+    attack: me.special * (me.special_mult || 1),
+    defense: Math.trunc(foe.def * 0.5),
+    power: 75,
+    element: dualDefenderMultiplier(
+      me.secondary_element || me.element,
+      foe.element,
+      foe.secondary_element,
+    ),
+  });
+  return surge > strike ? "surge" : "strike";
+}
+
+// Kesulitan Duel diukur, bukan ditaksir. Combat power hanya menjumlahkan stat
+// sementara hasil duel adalah damage dikali daya tahan, jadi tier lama memberi
+// satu `even` yang isinya 38%–99% peluang menang dan membayar `formidable` 15
+// Bits untuk duel yang dimenangkan 76%. Seed-nya konstan supaya matchup yang
+// sama selalu mendapat tier yang sama, dan terukur lebih akurat daripada seed
+// per-matchup (salah 6/38 versus 8/38 terhadap patokan 800 duel).
+// ponytail: 64 duel = ~2 ms dan tidak pernah salah lebih dari satu tingkat;
+// selisih win rate maksimum 11%, jadi matchup tepat di ambang bisa jatuh ke
+// tetangganya. Naikkan runs kalau ambangnya nanti dipersempit.
+export const DUEL_DIFFICULTY_RUNS = 64;
+
+export function duelWinRate(player, bot, runs = DUEL_DIFFICULTY_RUNS) {
+  const fighters = { player: withFullCare(player), bot: withFullCare(bot) };
+  const total = Math.max(1, Math.trunc(runs));
+  let wins = 0;
+  for (let index = 0; index < total; index += 1) {
+    const seed = `duel-difficulty:${index}`;
+    let state = createBattleState({ ...fighters, seed });
+    while (state.status === "active") {
+      state = resolveTurn(state, bestDuelAction(state), `${seed}:${state.turn}`).state;
+    }
+    if (state.status === "won") wins += 1;
+  }
+  return wins / total;
+}
+
 export function battleRewardPreview(player, bot, seed) {
-  const playerStats = toBattleStats(
-    player?.base_stats,
-    player?.stage,
-    player?.evolution_branch,
-    player?.level,
-  );
-  const botStats = toBattleStats(
-    bot?.base_stats,
-    bot?.stage,
-    bot?.evolution_branch,
-    bot?.level,
-  );
-  const ratio = combatPower(botStats) / Math.max(1, combatPower(playerStats));
-  const tier = rewardTierFromRatio(ratio);
+  const winRate = duelWinRate(player, bot);
+  const tier = tierFromWinRate(winRate);
   const roll = rewardRollFromSeed(seed);
-  const bits = bitsForTier(tier, roll);
   return {
     tier,
     roll,
-    bits,
+    bits: bitsForTier(tier, roll),
     bits_min: bitsForTier(tier, -1),
     bits_max: bitsForTier(tier, 1),
-    ratio,
+    win_rate: winRate,
   };
 }
 

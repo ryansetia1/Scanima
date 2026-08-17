@@ -1,8 +1,9 @@
 # Battle
 
 Duel singkat lawan Anima yang sudah dipublikasikan pemain lain (tanpa identitas
-pemilik) atau lawan sistem. Kamu mengirim perintah; server yang menghitung
-hasilnya.
+pemilik) atau lawan sistem, dipilih supaya duelnya seimbang — lihat
+[Siapa lawanmu di Duel](#siapa-lawanmu-di-duel). Kamu mengirim perintah; server
+yang menghitung hasilnya.
 
 Arena tidak menunggu jaringan sebelum bergerak. Begitu kamu menekan sebuah
 aksi, turn-nya langsung dimainkan memakai aturan yang sama persis dengan yang
@@ -213,6 +214,45 @@ Chapter baru menampilkan popup sekali di Home dan badge **New** sampai chapter
 dibuka. Push perangkat bersifat opsional; popup dan badge di dalam game tetap
 menjadi pemberitahuan utama.
 
+## Siapa lawanmu di Duel
+
+Server memilihkan lawan; tidak ada daftar lawan dan tidak ada pengaturan tingkat
+kesulitan.
+
+Yang diutamakan tetap **Anima milik pemain lain** yang sudah dipublikasikan ke
+Gallery (tanpa identitas pemiliknya). Tapi Anima itu hanya dipakai kalau duelnya
+masih terasa seperti pertandingan. Server menaksir dulu berapa lama masing-masing
+sisi butuh untuk menjatuhkan yang lain, dengan menghitung Level, sebaran stat, dan
+elemen sekaligus. Lawan yang jelas akan menghabisimu, atau yang jelas akan kamu
+habisi tanpa perlawanan, tidak dipakai.
+
+Kalau tidak ada Anima pemain yang cocok — dan selama pemain masih sedikit itu
+sering terjadi — kamu bertemu **lawan sistem**: **Echo Fledgling**, **Echo
+Warden**, atau **Echo Paragon**, mengikuti bentuk Anima-mu sendiri.
+
+Lawan sistem dirakit supaya adil:
+
+- **Level-nya sama** dengan Level Anima-mu, jadi tidak pernah ada lawan yang
+  bertumbuh belasan Level di atasmu
+- **Kekuatannya disetel untuk Anima-mu sendiri.** Server memainkan duel itu
+  berkali-kali dan menyesuaikan lawannya sampai duelnya jadi pertandingan
+  sungguhan: kamu unggul, tapi bermain sembarangan bisa membuatmu kalah
+- **Elemennya netral**: tidak unggul terhadapmu, dan kamu juga tidak unggul
+  terhadapnya. Yang menentukan hasil adalah pilihan Attack/Special/Guard dan
+  giliranmu, bukan undian elemen
+- **Gaya stat-nya mengikuti Anima-mu**, jadi Anima bertahan menghadapi duel
+  bertahan yang panjang dan Anima cepat menghadapi duel yang cepat
+
+Tiga nama itu hanya membedakan penampilan menurut tahap Anima-mu; kekuatannya
+selalu dari Level Anima-mu, bukan dari namanya. Art-nya masih placeholder untuk
+sekarang. Lawan sistem tetap membayar Bits dan EXP seperti duel biasa, dan tetap
+menghitung kemenangan progression.
+
+Bayarannya dinilai dengan cara yang sama seperti lawan sungguhan. Karena
+kekuatannya disetel sampai duelnya seimbang, lawan sistem hampir selalu masuk
+**Even** dan membayar 8 Bits. Ia tidak pernah menjadi dinding, dan tidak pernah
+menjadi latihan sasaran.
+
 ## Syarat masuk Duel
 
 Companion harus:
@@ -221,7 +261,15 @@ Companion harus:
 - tidak Dormant
 - **Energy minimal 20**
 
-Lapar atau kotor tidak mengunci Battle, tapi Anima jadi **lebih lemah** di duel itu. Makin lapar atau makin kotor, potongannya makin dalam (HP, Attack, Special, Guard, Speed). Keduanya sekaligus lebih parah, tapi tidak sampai membuat duel mustahil. Bits tetap dari kekuatan lawan, bukan dari seberapa lemah kamu. Feed dan Clean mengembalikan stats.
+Lapar atau kotor tidak mengunci Battle, tapi Anima jadi **lebih lemah** di duel itu. Makin lapar atau makin kotor, potongannya makin dalam (HP, Attack, Special, Guard, Speed). Keduanya sekaligus lebih parah. Feed dan Clean mengembalikan stats.
+
+Duel tetap bisa dimenangkan walau Anima-mu terlantar, dan itu memang disengaja:
+kalau Bits habis dan tas kosong, Duel adalah cara mendapatkan Bits untuk beli
+makanan, jadi ia tidak boleh berubah menjadi jalan buntu. Lawan sistem ikut
+menanggung potongan yang sama besar, sehingga duelnya tetap seimbang. Bits tetap
+dari kekuatan lawan, bukan dari seberapa lemah kamu. Yang benar-benar hilang saat
+terlantar ada di luar arena: EXP dari Feed, risiko **Dormant**, dan Energy yang
+tidak pulih tanpa Sleep.
 
 Tiap duel baru memotong **20 Energy**. Duel yang sudah jalan tidak dipotong lagi kalau app sempat tertutup. Energy pulih lewat **Sleep** (gratis).
 
@@ -231,9 +279,21 @@ Kalau companion aktif tidak memenuhi syarat, tombolnya jadi **Choose Anima**. Ta
 
 Tiga kemenangan pertama per hari (reset **tengah malam waktu setempat**) adalah Battle berhadiah:
 
-- Bits menurut kekuatan lawan (kira-kira 5–16)
+- Bits menurut seberapa berat duelnya (kira-kira 5–16)
 - EXP yang mengikuti Level lawan, selisih Level, dan tier Tough/Formidable
 - +1 kemenangan progression pada Anima
+
+Yang menentukan Bits adalah **kesulitan duelnya, bukan angka stat lawan**. Server
+memainkan duel itu sampai selesai berkali-kali sebelum kamu menekan apa pun, lalu
+memberi label dari seberapa sering Anima-mu menang: **Favorable** (hampir selalu)
+6 Bits, **Even** 8, **Tough** (mendekati lempar koin) 11, **Formidable** 15.
+Karena label itu jujur, mengejar lawan berat tidak dirancang lebih untung
+maupun lebih rugi — Bits per kemenangan naik, peluang menang turun, dan
+rata-rata hasilnya kira-kira sama. Pilih yang kamu nikmati.
+
+Menelantarkan Anima **tidak** menaikkan Bits. Duel yang sama dinilai seolah
+Hunger dan Hygiene penuh, jadi Anima kelaparan tidak dihitung sebagai lawan
+berat.
 
 Lawan Level tinggi memberi lebih banyak EXP, terutama jika Level Anima-mu lebih
 rendah. Nilainya dikunci dari snapshot awal duel, jadi kenaikan Level di hasil
@@ -241,7 +301,8 @@ tidak mengubah reward yang baru saja diperoleh. Kartu hasil menyebut nama dan
 jumlah EXP aktual. Training tidak
 menampilkan klaim EXP karena memang tidak memberikannya.
 
-Di Duel, lawan dan tingkat kesulitannya dipilih server; tidak ada pengaturan
+Di Duel, lawan dan tingkat kesulitannya dipilih server (lihat
+[Siapa lawanmu di Duel](#siapa-lawanmu-di-duel)); tidak ada pengaturan
 tier manual. Arena hanya menampilkan nama, Level, HP, dan perintah yang berguna
 untuk turn saat ini. Hadiah Bits yang benar-benar didapat baru ditulis di kartu
 hasil. Saat jatah tiga kemenangan berhadiah habis, lobby mengubah tombol menjadi

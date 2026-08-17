@@ -7,11 +7,16 @@ export const BATTLE_BITS_CAP = 100;
 export const BATTLE_PROGRESSION_WINS = 3;
 export const CARE_SCORE_WIN = 4;
 
+// `maxRatio` dipakai Team Battle, yang membandingkan dua roster empat Anima
+// lewat combat power. `minWinRate` dipakai Duel, yang mengukur kesulitannya
+// dengan mensimulasikan matchup-nya. Tangga Bits-nya sama untuk keduanya dan
+// terukur hampir rata secara nilai harapan pada band win rate di bawah: 5,55 /
+// 5,66 / 5,06 Bits per duel, jadi tier atas adalah pilihan gaya, bukan pajak.
 export const REWARD_TIERS = Object.freeze({
-  favorable: { maxRatio: 0.95, bits: 6 },
-  even: { maxRatio: 1.05, bits: 8 },
-  tough: { maxRatio: 1.1, bits: 11 },
-  formidable: { maxRatio: Infinity, bits: 15 },
+  favorable: { maxRatio: 0.95, minWinRate: 0.8, bits: 6 },
+  even: { maxRatio: 1.05, minWinRate: 0.55, bits: 8 },
+  tough: { maxRatio: 1.1, minWinRate: 0.4, bits: 11 },
+  formidable: { maxRatio: Infinity, minWinRate: 0, bits: 15 },
 });
 
 export const CATALOG_ITEMS = Object.freeze([
@@ -70,6 +75,15 @@ export function rewardTierFromRatio(ratio) {
   if (!Number.isFinite(value) || value < REWARD_TIERS.favorable.maxRatio) return "favorable";
   if (value < REWARD_TIERS.even.maxRatio) return "even";
   if (value < REWARD_TIERS.tough.maxRatio) return "tough";
+  return "formidable";
+}
+
+export function tierFromWinRate(winRate) {
+  const value = Number(winRate);
+  if (!Number.isFinite(value)) return "even";
+  if (value >= REWARD_TIERS.favorable.minWinRate) return "favorable";
+  if (value >= REWARD_TIERS.even.minWinRate) return "even";
+  if (value >= REWARD_TIERS.tough.minWinRate) return "tough";
   return "formidable";
 }
 

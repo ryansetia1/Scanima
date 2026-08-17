@@ -53,7 +53,7 @@ func _initialize() -> void:
 		_diff_check(uints, case["uints"], "rng[%s].uints" % seed_text)
 		_diff_check(floats, case["floats"], "rng[%s].floats" % seed_text)
 
-	print("2. stat, care multiplier, elemen, dan reward preview")
+	print("2. stat, care multiplier, EXP, dan elemen")
 	var scalars: Dictionary = vectors.get("scalars", {})
 	for value in scalars.get("to_battle_stats", []):
 		var case: Dictionary = value
@@ -116,20 +116,7 @@ func _initialize() -> void:
 			"create_fighter(%s)" % str(key)
 		)
 
-	print("4. reward preview memakai hash yang sama")
-	for value in scalars.get("reward_preview", []):
-		var case: Dictionary = value
-		_diff_check(
-			BattleSim.battle_reward_preview(
-				inputs.get(str(case["player_key"]), {}),
-				inputs.get(str(case["bot_key"]), {}),
-				str(case["seed"])
-			),
-			case["value"],
-			"battle_reward_preview(%s)" % str(case["seed"])
-		)
-
-	print("5. resolveTurn Duel turn demi turn")
+	print("4. resolveTurn Duel turn demi turn")
 	var duel_turns := 0
 	for value in vectors.get("duel", []):
 		var case: Dictionary = value
@@ -170,7 +157,7 @@ func _initialize() -> void:
 			duel_turns += 1
 	_check(duel_turns >= 40, "vektor Duel harus mencakup banyak turn, dapat %d" % duel_turns)
 
-	print("6. resolveTeamTurn party, switch, forced switch, dan reserve ace")
+	print("5. resolveTeamTurn party, switch, forced switch, dan reserve ace")
 	var team_turns := 0
 	var saw_final_ace := false
 	var saw_forced := false
@@ -218,7 +205,7 @@ func _initialize() -> void:
 	_check(saw_final_ace, "vektor Team harus melewati jalur final_ace Boss")
 	_check(saw_forced, "vektor Team harus melewati jalur forced switch sesudah KO")
 
-	print("7. state lama tanpa rules_version tetap memakai seed lamanya")
+	print("6. state lama tanpa rules_version tetap memakai seed lamanya")
 	var legacy := {"seed": "abc", "turn": 4}
 	_check_eq(BattleSim.turn_seed(legacy, "k"), "abc:4:k", "state lama memakai idempotency key")
 	var modern := {"seed": "abc", "turn": 4, "rules_version": BattleSim.RULES_VERSION}

@@ -369,7 +369,7 @@ memberi damage/HP gratis dan tanpa menutup HUD. Sheet Boss 3×3 1024 dibuka
 per sel penuh (341 px) di client; capture 300 px memotong kaki tubuh yang
 lebih tinggi dari jendela itu.
 
-`createFighter` memotong stat tempur pemain sesudah pertumbuhan level kalau care rendah. Hunger < 40 interpolasi linear ke ×0.6 di 0; Hygiene < 50 interpolasi ke ×0.7 di 0; keduanya dikalikan lalu dijepit minimal ×0.5. Ambang sama dengan pose Hungry/Dirty. Bot tidak dipotong. `battleRewardPreview` memakai stat tanpa penalti supaya care rendah tidak menaikkan tier Bits. Hunger dan Hygiene bukan gerbang masuk.
+`createFighter` memotong stat tempur pemain sesudah pertumbuhan level kalau care rendah. Hunger < 40 interpolasi linear ke ×0.6 di 0; Hygiene < 50 interpolasi ke ×0.7 di 0; keduanya dikalikan lalu dijepit minimal ×0.5. Ambang sama dengan pose Hungry/Dirty. Bot Gallery/legacy tidak dipotong; **lawan sistem Duel dipotong sama besar** karena snapshot-nya membawa Hunger/Hygiene pemain (lihat [Resep lawan sistem](#resep-lawan-sistem)). Simulasi tier `battleRewardPreview` menetralkan care di kedua sisi supaya care rendah tidak menaikkan Bits — tanpa itu Anima lapar+kotor menang 0% dan naik ke Formidable 15 Bits. Hunger dan Hygiene bukan gerbang masuk.
 
 ### Element wheel — target (18 elemen)
 
@@ -530,19 +530,42 @@ Itu tujuan seluruh sistem ini.
 
 ### Hadiah dan tempat battle dalam loop
 
-Combat power = `MaxHP / 4 + Attack + Special + Defense + Speed`. Rasio bot/pemain
-memilih tier saat session dibuat, lalu roll deterministik ±1 dari seed session
-(bukan dari turn) supaya replay tidak mengubah payout:
+Tier Duel **diukur, bukan ditaksir**. `duelWinRate()` menjalankan
+`DUEL_DIFFICULTY_RUNS = 64` duel penuh lewat `resolveTurn` yang sama dengan
+production saat session dibuat, lalu `tierFromWinRate()` memetakan hasilnya:
 
-| Tier | Rasio bot/pemain | Bits dasar |
-| --- | --- | --- |
-| Favorable | < 0.95 | 6 |
-| Even | < 1.05 | 8 |
-| Tough | < 1.10 | 11 |
-| Formidable | sisanya | 15 |
+| Tier | Peluang menang terukur | Bits dasar | Bits harapan per duel |
+| --- | --- | --- | --- |
+| Favorable | ≥ 80% | 6 | 5,8 |
+| Even | ≥ 55% | 8 | 5,6 |
+| Tough | ≥ 40% | 11 | 5,4 |
+| Formidable | sisanya | 15 | — |
 
-Payout disimpan di `battle_sessions.reward_tier/roll/bits`. EXP Duel dihitung
-dari snapshot immutable:
+Kolom terakhir adalah alasan tangganya berhenti di angka itu: diukur pada
+matchup yang benar-benar lolos [gate keseimbangan](#gate-keseimbangan-duel),
+nilai harapannya rata, jadi lawan berat adalah pilihan gaya dan bukan pajak.
+Roll deterministik ±1 tetap datang dari seed session (bukan dari turn) supaya
+replay tidak mengubah payout, dan payout disimpan di
+`battle_sessions.reward_tier/roll/bits`.
+
+Tiga hal yang menentukan simulasinya, dan semuanya diukur:
+
+- **Kebijakan pemainnya `bestDuelAction()`** — menekan Special ketika Special
+  memang lebih besar terhadap pertahanan lawan itu. `chooseBotAction` bukan
+  pengganti yang sah: memakainya untuk kedua sisi menggeser tier di 30 dari 38
+  matchup, sebab bot memilih Special 68% acak tanpa melihat elemen.
+- **Care dinetralkan di dua sisi.** Tanpa itu Anima lapar+kotor menang 0%, naik
+  ke Formidable, dan menelantarkan Anima menjadi cara menaikkan Bits.
+- **Seed simulasinya konstan**, jadi matchup yang sama selalu mendapat tier yang
+  sama; itu juga terukur lebih akurat daripada seed per-matchup (salah 6/38
+  versus 8/38 terhadap patokan 800 duel).
+
+Biayanya ~2 ms sekali per session, dan tier tidak pernah salah lebih dari satu
+tingkat dibanding patokan 800 duel. Team Battle tetap memakai
+`rewardTierFromRatio` atas combat power dua roster: arenanya membandingkan
+delapan Anima dengan switch, jadi satu simulasi 1v1 tidak mewakilinya.
+
+EXP Duel dihitung dari snapshot immutable:
 
 ```text
 base = 1 + ceil(opponent_level / 10)
@@ -579,15 +602,131 @@ berhadiah (`Progress 3/3`); mode Training baru berlaku session berikutnya.
 
 Lawan Battle:
 
-| | Target | Historis (build saat ini) |
+| | Aturan live | Sebelum 17 Agustus 2026 |
 | --- | --- | --- |
-| Sumber | Snapshot Anima **published Galeri** saja | Semua `species_library` |
+| Sumber | Gallery published, lalu legacy privat, lalu bot sistem | Gallery published lalu legacy |
 | Identitas | Tidak pernah `owner_id` / nickname | Sama |
-| Kosong pool | **Bot sistem** fallback | Normalisasi stat ke power pemain |
-| Matching | ±15% base stat, prioritas stage sama | Sama |
+| Matching | ±15% base stat + **gate keseimbangan**; stage sama diutamakan | ±15% base stat saja |
+| Pool kosong / tidak ada yang seimbang | **Bot sistem** dari `_shared/duel_bot.mjs` | Error `NO_BATTLE_OPPONENT` |
 
 Detail publish/unpublish Galeri: [08](08-private-art-and-gallery.md). PvP
 real-time, ranked, dan item drop tetap ditunda.
+
+#### Gate keseimbangan Duel
+
+**Pool ±15% total base stat tidak pernah cukup, dan itu terukur.** Ia tidak
+melihat Level, bentuk sebaran stat, maupun elemen. Pada tujuh Anima production,
+duel ber-label `even` berkisar **8% sampai 100%** peluang menang; satu duel
+ber-label `formidable` justru dimenangkan 71%, sedangkan satu ber-label `even`
+dimenangkan 7%. Combat power tidak bisa dipakai sebagai gate karena ia
+menjumlahkan stat sementara hasil duel adalah damage **dikali** daya tahan — dua
+Anima ber-combat power identik terukur menang 100% dan 0,3%.
+
+`estimateDuelBalance()` menaksir rasio turn-to-kill kedua sisi: berapa turn
+pemain butuh untuk menjatuhkan lawan dibagi sebaliknya, memakai `computeDamage`
+yang sama, pengali elemen dua arah, pengali care, plus setengah turn untuk sisi
+yang lebih cepat. Di bawah 1 berarti pemain lebih cepat. Kalibrasi terhadap win
+rate hasil resolver:
+
+| Rasio taksiran | Win rate terukur | Keputusan |
+| --- | --- | --- |
+| 0,39 – 0,50 | 98% – 100% | ditolak, walkover |
+| **0,53 – 1,00** | **42% – 71%** | **diterima** |
+| 1,22 – 1,34 | 7% – 8% | ditolak, mustahil |
+
+Kandidat yang lolos diurutkan `stableRank(seed:id)` seperti sebelumnya, jadi
+lawannya tetap bervariasi. Taksiran ini **tidak** dipakai menghitung hadiah:
+gate berjalan atas semua kandidat, jadi ia harus murah, sedangkan tier hanya
+dihitung sekali untuk lawan yang benar-benar dipilih dan karena itu boleh
+disimulasikan penuh (lihat [Hadiah](#hadiah-dan-tempat-battle-dalam-loop)).
+
+#### Resep lawan sistem
+
+`systemDuelBot(playerSnapshot, seed)` deterministik terhadap seed, jadi resume
+dan replay bertemu lawan yang sama tanpa menyimpan resepnya. Tiga identitas
+(`system-duel-fledgling` / `-warden` / `-paragon`) dipilih lewat
+`formFromLevel()`; keduanya hanya menentukan nama dan art, bukan kekuatan.
+
+| Bagian | Aturan | Alasan terukur |
+| --- | --- | --- |
+| Level | dicerminkan persis | selisih Level adalah tuas terbesar; Lv1 vs Lv16 berstat identik menang 0,3% |
+| Total base stat | **dicari** sampai peluang menang terukur ≈ 65%, bisection 7 langkah di `0,90 – 1,25 ×` | band tetap tidak bisa melayani dua ujung roster: angka yang aman untuk Anima ber-Special 15 adalah walkover 89%–100% bagi enam Anima lainnya |
+| Bentuk sebaran stat | cermin persis | mencampur ke arah rata melebarkan sebaran win rate antar-roster dari 23 poin menjadi 71 poin (70/30) dan 88 poin (50/50) |
+| Elemen | netral **dua arah**, tunggal | pada stat identik, elemen unggul memberi 0% dan lemah memberi 100%, sedangkan netral 77%; pengali elemen tidak masuk perhitungan tier |
+| Hunger / Hygiene | disamakan dengan pemain | tanpa ini Anima lapar menang 0%–22% dan lapar+kotor 0%–2% |
+| `bot_anima_id` | `null` | ia snapshot murni, tidak ada baris `animas` dan tidak ada pemilik |
+| Art | `system_asset: "placeholder"` | client sudah punya `PlaceholderSheet`; nol perubahan client |
+
+**Kekuatan bot dicari, bukan dipatok, dan itu koreksi terhadap versi pertama.**
+Band tetap `0,96 – 1,00` sudah dipakai lebih dulu dan gagal: satu konstanta harus
+melayani dua ujung roster sekaligus, batas atasnya ditentukan Anima paling rapuh,
+dan angka aman untuk Anima itu ternyata walkover bagi enam Anima production
+lainnya. Karena tier sekarang diukur, walkover itu jujur dilabeli Favorable dan
+dibayar 6 Bits — jadi resep yang terlalu lembek langsung memotong penghasilan
+pemain. `balancedRatio()` menggantinya dengan bisection 7 langkah atas
+`duelWinRate()`, resolver yang sama yang menentukan tier.
+
+Rasio bukan tuas linear, dan itu justru alasan pencarian per-Anima diperlukan.
+Pada langkah 0,005 peluang menang runtuh di sekitar titik cermin: klasik 100% di
+0,990, 70% di 0,995, lalu 38% di 1,020. Sweep 0,90–1,58 pada tujuh Anima tidak
+punya satu pun titik yang naik kembali, jadi bisection sah.
+
+| Anima | Rasio hasil pencarian | Win rate 800 duel |
+| --- | --- | --- |
+| Mugshots (Special 15) | 0,990 | 66,5% |
+| klasik | 1,000 | 73,5% |
+| Playtron | 1,000 | 72,0% |
+| Sunhound | 1,000 | 77,3% |
+| Deckon | 1,047 | 65,4% |
+| Veridian | 1,053 | 68,0% |
+| Hydron (HP 80) | 1,121 | 55,9% |
+
+Ketujuhnya mendarat di band Even, jadi Bits harapan per duel kembali **8,00**
+seperti patok lama — bedanya sekarang angka itu dibayar untuk duel 56%–77%, bukan
+untuk walkover 81%–100%. Sampel 64 duel punya derau sampai 10 poin, dan target
+65% dipilih di tengah band 25 poin justru supaya derau itu tidak menggeser tier.
+Selftest menuntut tier lawan sistem **tepat** `even`, dan menuntut rasio
+antar-Anima menyebar > 0,05 supaya kekuatannya tidak diam-diam kembali dipatok.
+
+**Bentuk stat hiper-spesialis tidak punya titik imbang, dan pencarian tidak boleh
+memilih sisi yang kalah.** Pada bentuk seperti `95/95/95/10/10`, duel cermin
+adalah fungsi tangga: 98% pada rasio 1,007 lalu langsung ~30% sesudahnya, tanpa
+satu pun titik di antaranya. Itu sifat mencerminkan bentuk ekstrem, bukan
+kegagalan pencarian. Jarak-ke-target sendirian bisa memilih sisi 30% karena ia
+kebetulan lebih dekat ke 65% daripada 98%, dan itu mengubah lawan sistem dari
+jalan keluar menjadi dinding. `preferBot()` memberi prioritas mutlak kepada
+kandidat yang masih dimenangkan ≥ 55%; baru sesudah itu jarak ke target
+menentukan. Disapu atas 400 bentuk stat acak, **8 di antaranya (2%)** tanpa pagar
+ini berakhir di duel 47%–52%, jadi cabangnya bukan hipotetis. Konsekuensi yang
+diterima: bentuk seperti itu mendapat duel gampang berbayar 6 Bits — duel yang
+mudah masih menghasilkan, duel yang tidak bisa dimenangkan tidak menghasilkan
+apa pun.
+
+Pencarian ini wajib care-neutral, dan itu gratis karena `duelWinRate()` memang
+menetralkannya. Bot yang ikut melemah saat meter pemain kosong akan membuat
+menelantarkan Anima menjadi cara mendapat duel gampang dengan bayaran yang sama,
+sebab tier juga care-neutral. Selftest memeriksanya dengan membandingkan
+`base_stats` bot pada lima kondisi care.
+
+**Menyamakan Hunger/Hygiene adalah satu-satunya cara yang bekerja.** Gerbang
+Hunger dibuang (`20260814101323_allow_hungry_battle`) supaya pemain tanpa Bits
+dan tanpa makanan tidak kehabisan jalan, tetapi tanpa lawan yang ikut terpotong
+jalan keluarnya cuma bergeser menjadi "kalah saja". Menyesuaikan total base stat
+bot dengan pengali care juga sudah diuji dan **gagal**: suku HP tetap `+20` di
+`toBattleStats()` dan lantai 10 per stat di `normalizeBaseStats()` dua-duanya
+tidak menyusut, sehingga bot berakhir lebih tebal daripada pemain — HP efektif
+pemain 143 versus bot 152 — dan Anima ber-Special rendah tetap 0% pada setiap
+lantai yang dicoba (1,00 sampai 0,50). Menyamakan care membatalkan kedua
+distorsi sekaligus, tanpa aritmetika baru.
+
+Konsekuensinya: **perawatan terlantar tidak lagi menentukan hasil Duel.** Biaya
+neglect hidup di luar arena — EXP dari Feed, risiko Dormant, Energy yang hanya
+pulih lewat Sleep. Itu disengaja; Duel adalah jalan keluar dari kehabisan Bits,
+jadi ia tidak boleh menjadi jalan buntu.
+
+Skenario 34 di `npm run selftest` menjaga seluruh angka di atas dengan
+menjalankan resolver production, bukan membandingkannya ke angka hafalan: kalau
+rumus combat bergeser, kalibrasinya gagal di sana.
 
 ### Team Battle dan Expedition
 

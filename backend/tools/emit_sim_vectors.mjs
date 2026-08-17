@@ -18,7 +18,6 @@ import {
   seededRandom,
   toBattleStats,
   battleExpYield,
-  battleRewardPreview,
   careCombatMultiplier,
   critChance,
   turnSeed,
@@ -307,12 +306,6 @@ function scalarVectors() {
       opponent,
       difficulty,
       value: battleExpYield(recipient, opponent, difficulty),
-    })),
-    reward_preview: ["reward-a", "reward-b", "reward-c", "reward-d"].map((seed) => ({
-      seed,
-      player_key: "balanced",
-      bot_key: "tanky",
-      value: battleRewardPreview(FIGHTERS.balanced, FIGHTERS.tanky, seed),
     })),
     element_normalize: [
       "metal", "METAL", " metal ", "water", "tech", "", "unknown", null,

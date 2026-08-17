@@ -15,6 +15,7 @@ import {
   normalizeElement,
   resolveTurn,
 } from "../_shared/battle.mjs";
+import { isFairRealOpponent, systemDuelBot } from "../_shared/duel_bot.mjs";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIONS = new Set(BATTLE_ACTIONS);
@@ -206,54 +207,68 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
   const artCandidates = (artRows ?? []) as unknown as ArtRow[];
   const artByKey = new Map(artCandidates.map((art) => [artKey(art), art]));
   const seed = crypto.randomUUID();
-  const playerTotal = baseStatTotal(playerRow.base_stats);
   const galleryCandidates = ((galleryRows ?? []) as unknown as GalleryBotRow[])
     .filter((row) => row.animas?.sheet_path && row.animas?.manifest);
 
-  let botSnapshot: Record<string, unknown>;
-  let botAnimaId: string;
-
-  if (galleryCandidates.length > 0) {
-    const close = galleryCandidates.filter((candidate) =>
-      candidate.stage === playerRow.stage &&
-      Math.abs(baseStatTotal(candidate.animas.base_stats) - playerTotal) <= playerTotal * 0.15
-    );
-    const pool = close.length > 0 ? close : galleryCandidates;
-    pool.sort((left, right) => stableRank(`${seed}:${left.id}`) - stableRank(`${seed}:${right.id}`));
-    const picked = pool[0];
-    const botRow = picked.animas;
-    const botBaseStats = close.length > 0
-      ? normalizeStats(botRow.base_stats)
-      : normalizeStats(botRow.base_stats, playerTotal);
-    botAnimaId = picked.anima_id;
-    try {
-      botSnapshot = await gallerySnapshot(
-        picked,
-        { ...botRow, base_stats: botBaseStats },
-      );
-    } catch (error) {
-      console.error("signed art bot Gallery gagal; memakai fallback legacy", error);
-      const legacy = pickLegacyBot(
-        seed,
-        playerRow,
-        playerTotal,
-        legacyCandidates,
-        artByKey,
-      );
-      if (!legacy) throw new Error("NO_BATTLE_OPPONENT");
-      botAnimaId = legacy.bot.id;
-      botSnapshot = legacy.snapshot;
-    }
-  } else {
-    // ponytail: species_library hanya menandai bot legacy; bytes memakai salinan privat hasil migrasi.
-    const legacy = pickLegacyBot(seed, playerRow, playerTotal, legacyCandidates, artByKey);
-    if (!legacy) throw new Error("NO_BATTLE_OPPONENT");
-    botAnimaId = legacy.bot.id;
-    botSnapshot = legacy.snapshot;
-  }
-
   const playerArt = playerArtSource(playerRow, artCandidates);
   const playerSnapshot = snapshot(playerRow, playerArt, true);
+
+  // Lawan sungguhan tetap diutamakan, tetapi hanya yang taksiran duelnya masih
+  // seimbang. Pool ±15% total base stat saja tidak cukup: ia tidak melihat
+  // Level, bentuk distribusi stat, maupun elemen, dan pada roster production
+  // meloloskan duel 8% sekaligus duel 100%.
+  let botSnapshot: Record<string, unknown> | null = null;
+  let botAnimaId: string | null = null;
+
+  const galleryPick = pickFairCandidate(
+    seed,
+    playerSnapshot,
+    playerRow,
+    galleryCandidates.map((entry) => ({ key: entry.id, animaId: entry.anima_id, row: entry.animas, entry })),
+  );
+  if (galleryPick) {
+    try {
+      botSnapshot = await gallerySnapshot(
+        galleryPick.entry!,
+        { ...galleryPick.row, base_stats: galleryPick.baseStats },
+      );
+      botAnimaId = galleryPick.animaId;
+    } catch (error) {
+      console.error("signed art bot Gallery gagal; mencoba legacy", error);
+    }
+  }
+
+  if (!botSnapshot) {
+    // ponytail: species_library hanya menandai bot legacy; bytes memakai salinan privat hasil migrasi.
+    const legacyPick = pickFairCandidate(
+      seed,
+      playerSnapshot,
+      playerRow,
+      legacyCandidates
+        .filter((row) => artByKey.has(artKey(row)) && row.sheet_path && row.manifest)
+        .map((row) => ({ key: row.id, animaId: row.id, row })),
+    );
+    if (legacyPick) {
+      botSnapshot = snapshot(
+        { ...legacyPick.row, base_stats: legacyPick.baseStats },
+        {
+          species_key: legacyPick.row.species_key,
+          color_bucket: legacyPick.row.color_bucket,
+          stage: legacyPick.row.stage,
+          sheet_path: legacyPick.row.sheet_path!,
+          manifest: legacyPick.row.manifest,
+        },
+        false,
+      );
+      botAnimaId = legacyPick.animaId;
+    }
+  }
+
+  if (!botSnapshot) {
+    botSnapshot = systemDuelBot(playerSnapshot, seed) as Record<string, unknown>;
+    botAnimaId = null;
+  }
+
   const initialState = createBattleState({
     player: playerSnapshot,
     bot: botSnapshot,
@@ -419,6 +434,9 @@ async function withFreshBotArt(value: unknown): Promise<unknown> {
   const botSnapshot = session.bot_snapshot && typeof session.bot_snapshot === "object"
     ? { ...(session.bot_snapshot as Record<string, unknown>) }
     : {};
+  // Lawan sistem tidak punya baris `animas`, dan art-nya digambar client dari
+  // PlaceholderSheet. Menandatangani ulang di sini akan mencari UUID dari slug.
+  if (botSnapshot.system_asset === "placeholder") return value;
   const botId = typeof session.bot_anima_id === "string"
     ? session.bot_anima_id
     : typeof botSnapshot.anima_id === "string"
@@ -465,38 +483,50 @@ function playerArtSource(
   return artByKey.get(artKey(row)) ?? null;
 }
 
-function pickLegacyBot(
+type RealCandidate = {
+  key: string;
+  animaId: string;
+  row: AnimaRow & { sheet_path?: string; manifest?: unknown };
+  entry?: GalleryBotRow;
+};
+
+/**
+ * Buang kandidat yang taksiran duelnya sudah miring, lalu pilih acak di antara
+ * yang tersisa supaya lawannya tetap bervariasi antar-duel. Kesegaran stat
+ * ditentukan dulu (pakai stat sendiri kalau total-nya dekat, kalau tidak
+ * diskalakan ke total pemain), sebab yang dinilai harus stat yang benar-benar
+ * dipakai di arena. Signed URL art hanya diambil untuk yang terpilih.
+ */
+function pickFairCandidate(
   seed: string,
+  playerSnapshot: Record<string, unknown>,
   player: AnimaRow,
-  playerTotal: number,
-  candidates: AnimaRow[],
-  artByKey: Map<string, ArtRow>,
-): { bot: AnimaRow; snapshot: Record<string, unknown> } | null {
-  const eligible = candidates.filter((candidate) =>
-    artByKey.has(artKey(candidate)) && candidate.sheet_path && candidate.manifest
-  );
-  if (eligible.length === 0) return null;
-  const close = eligible.filter((candidate) =>
-    candidate.stage === player.stage &&
-    Math.abs(baseStatTotal(candidate.base_stats) - playerTotal) <= playerTotal * 0.15
-  );
-  const pool = close.length > 0 ? close : eligible;
-  pool.sort((left, right) => stableRank(`${seed}:${left.id}`) - stableRank(`${seed}:${right.id}`));
-  const bot = pool[0];
-  const botBaseStats = close.length > 0
-    ? normalizeStats(bot.base_stats)
-    : normalizeStats(bot.base_stats, playerTotal);
-  const art = {
-    species_key: bot.species_key,
-    color_bucket: bot.color_bucket,
-    stage: bot.stage,
-    sheet_path: bot.sheet_path!,
-    manifest: bot.manifest,
-  };
-  return {
-    bot,
-    snapshot: snapshot({ ...bot, base_stats: botBaseStats }, art, false),
-  };
+  candidates: RealCandidate[],
+): (RealCandidate & { baseStats: Record<string, number> }) | null {
+  const playerTotal = baseStatTotal(player.base_stats);
+  const fair = candidates
+    .map((candidate) => {
+      const close = candidate.row.stage === player.stage &&
+        Math.abs(baseStatTotal(candidate.row.base_stats) - playerTotal) <= playerTotal * 0.15;
+      return {
+        ...candidate,
+        baseStats: close
+          ? normalizeStats(candidate.row.base_stats)
+          : normalizeStats(candidate.row.base_stats, playerTotal),
+      };
+    })
+    .filter((candidate) =>
+      isFairRealOpponent(playerSnapshot, {
+        base_stats: candidate.baseStats,
+        stage: candidate.row.stage,
+        level: levelFromExp(candidate.row.care_score),
+        element: normalizeElement(candidate.row.element),
+        secondary_element: readSecondaryElement(candidate.row) ?? "",
+      })
+    );
+  if (fair.length === 0) return null;
+  fair.sort((left, right) => stableRank(`${seed}:${left.key}`) - stableRank(`${seed}:${right.key}`));
+  return fair[0];
 }
 
 function readSecondaryElement(row: AnimaRow): string | null {
