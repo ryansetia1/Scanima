@@ -2,8 +2,8 @@ class_name ElementRules
 extends RefCounted
 
 ## Port matchup dari `backend/supabase/functions/_shared/elements.mjs`.
-## `ElementCatalog` memakai ulang ROSTER dan ALIASES di sini untuk ikon dan
-## label; arahnya sengaja begitu, karena presentasi boleh bergantung pada aturan
+## `ElementCatalog` memakai ulang ROSTER dan ALIASES di sini untuk labelnya;
+## arahnya sengaja begitu, karena presentasi boleh bergantung pada aturan
 ## tetapi aturan tidak boleh menyeret autoload. `ElementCatalog` menyentuh
 ## `LocaleManager`, dan nama autoload belum terdaftar saat skrip `--script`
 ## dikompilasi, sehingga test headless akan gagal memuat seluruh simulasi.

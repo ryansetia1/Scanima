@@ -1,6 +1,7 @@
 // Bagian gallery yang aman di Node eval dan Edge Deno (tanpa Replicate).
 import { Image } from "imagescript";
 import { extractJson } from "./vision.mjs";
+import { encodeImage } from "./png.mjs";
 
 export const GALLERY_REPORT_AUTO_HIDE = 3;
 export const THUMB_SIGNED_TTL = 300;
@@ -22,7 +23,7 @@ export async function cropIdleThumb(pngBuffer, manifest) {
   h = Math.min(h, decoded.height - y);
   if (w < 8 || h < 8) throw new Error("THUMB_REGION_INVALID");
   const cropped = decoded.crop(x, y, w, h);
-  return await cropped.encode(1);
+  return await encodeImage(cropped);
 }
 
 export function parseModeration(raw) {

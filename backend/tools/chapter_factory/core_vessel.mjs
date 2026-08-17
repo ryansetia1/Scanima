@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { deflateSync } from "node:zlib";
 import { Image } from "imagescript";
+import { encodeOptimizedPng } from "../../supabase/functions/_shared/png.mjs";
 
 export const CHAPTER_CORE_CHASSIS = "chapter_core_v3";
 export const CHAPTER_CORE_VESSEL = "point_hex_vessel_v1";
@@ -9,7 +9,6 @@ export const CHAPTER_CORE_SIZE = 512;
 const VESSEL_URL = new URL("./static/point-hex-vessel.png", import.meta.url);
 const RENDER_SCALE = 2;
 const CENTER = CHAPTER_CORE_SIZE / 2;
-const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 const OUTER_POINTS = [
   [256, 24],
@@ -161,56 +160,14 @@ function alphaComposite(destination, source, offsetX, offsetY) {
   }
 }
 
-const CRC_TABLE = (() => {
-  const table = new Uint32Array(256);
-  for (let index = 0; index < 256; index += 1) {
-    let value = index;
-    for (let bit = 0; bit < 8; bit += 1) {
-      value = (value & 1) ? (0xedb88320 ^ (value >>> 1)) : (value >>> 1);
-    }
-    table[index] = value >>> 0;
-  }
-  return table;
-})();
-
-function crc32(bytes) {
-  let value = 0xffffffff;
-  for (const byte of bytes) value = CRC_TABLE[(value ^ byte) & 0xff] ^ (value >>> 8);
-  return (value ^ 0xffffffff) >>> 0;
-}
-
-function pngChunk(type, data) {
-  const typeBytes = Buffer.from(type, "ascii");
-  const body = Buffer.from(data);
-  const chunk = Buffer.alloc(12 + body.length);
-  chunk.writeUInt32BE(body.length, 0);
-  typeBytes.copy(chunk, 4);
-  body.copy(chunk, 8);
-  chunk.writeUInt32BE(crc32(Buffer.concat([typeBytes, body])), 8 + body.length);
-  return chunk;
-}
-
-export function encodeRgbaPng(image) {
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(image.width, 0);
-  ihdr.writeUInt32BE(image.height, 4);
-  ihdr.set([8, 6, 0, 0, 0], 8);
-  const stride = image.width * 4;
-  const raw = Buffer.alloc((stride + 1) * image.height);
-  for (let y = 0; y < image.height; y += 1) {
-    const destinationOffset = y * (stride + 1);
-    raw[destinationOffset] = 0;
-    raw.set(
-      image.bitmap.subarray(y * stride, (y + 1) * stride),
-      destinationOffset + 1,
-    );
-  }
-  return Buffer.concat([
-    PNG_SIGNATURE,
-    pngChunk("IHDR", ihdr),
-    pngChunk("IDAT", deflateSync(raw, { level: 9 })),
-    pngChunk("IEND", Buffer.alloc(0)),
-  ]);
+/**
+ * Encoder RGBA lossless untuk aset chapter. Perakitan chunk-nya sendiri sudah
+ * dihapus: `_shared/png.mjs` melakukan hal yang sama plus adaptive row filtering,
+ * dan encoder yang sama itu juga dipakai post-process production, jadi aset
+ * chapter dan sheet Anima tidak lagi punya dua definisi "PNG optimal".
+ */
+export async function encodeRgbaPng(image) {
+  return Buffer.from(await encodeOptimizedPng(image.bitmap, image.width, image.height));
 }
 
 export async function renderPointHexVesselOverlay() {

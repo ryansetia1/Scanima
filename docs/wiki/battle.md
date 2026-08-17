@@ -348,3 +348,9 @@ Nama jurus netral, Guard, item, Switch, dan KO memakai pelat yang sama di
 arena: **{nama} uses {move}.**, **{nama} braces for impact.**, **{nama} uses
 an item.**, **{nama} enters the arena.**, **{nama} is knocked out.** Setiap
 label diam sekitar 1,4 detik sebelum aksi atau pelat hilang.
+
+Guard punya penandanya sendiri: begitu pelatnya muncul, badan Anima yang bertahan
+disapu kilau sekali, jadi kamu bisa melihat siapa yang mengeras tanpa membaca
+teksnya. Dan setelah kamu menang, Anima-mu berpose senang lalu melompat-lompat
+selama layar hasil masih terbuka. Kalau **Reduced Motion** menyala, kilaunya
+tinggal nyala singkat dan Anima berpose senang tanpa melompat.

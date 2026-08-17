@@ -32,6 +32,14 @@ import {
 } from "../backend/supabase/functions/_shared/vision.mjs";
 import { biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
 import {
+  assemblePng,
+  clearTransparentRgb,
+  deflateBytes,
+  encodeOptimizedPng,
+  filterScanlines,
+} from "../backend/supabase/functions/_shared/png.mjs";
+import { COMMITTED_PNG_TARGETS, optimizePngFile } from "../backend/tools/optimize_png.mjs";
+import {
   ELEMENT_ALIASES,
   ELEMENT_CYCLE,
   ELEMENT_ROSTER,
@@ -3467,6 +3475,116 @@ console.log("32. konstanta simulasi client tidak boleh menyimpang dari _shared")
     Object.fromEntries(Object.entries(REWARD_TIERS).map(([tier, spec]) => [tier, spec.bits])),
     "REWARD_TIER_BITS GDScript berbeda dari REWARD_TIERS"
   );
+}
+
+console.log("33. encoder PNG kanonis lossless, deterministik, dan tidak pernah lebih besar");
+{
+  // Encoder ini menyentuh setiap sheet yang pemain unduh dan setiap byte yang
+  // dibayar di Storage, jadi pagar-nya bukan opsional. Yang dijaga: piksel yang
+  // terlihat tidak berubah, byte-nya deterministik (karena `sheet_path` adalah
+  // SHA-256 dari byte terenkode), hasilnya tidak pernah lebih besar daripada
+  // encoder lama, dan aset yang sudah ter-commit tetap dalam bentuk optimal.
+  const source = await buildSheet(blobs);
+  const decoded = await Image.decode(source);
+  const before = Uint8Array.from(decoded.bitmap);
+
+  const optimized = await encodeOptimizedPng(decoded.bitmap, decoded.width, decoded.height);
+  const roundTrip = await Image.decode(optimized);
+  assert.equal(roundTrip.width, decoded.width, "lebar berubah setelah encode ulang");
+  assert.equal(roundTrip.height, decoded.height, "tinggi berubah setelah encode ulang");
+
+  let visibleDrift = 0;
+  for (let i = 0; i < before.length; i += 4) {
+    if (before[i + 3] !== roundTrip.bitmap[i + 3]) {
+      visibleDrift += 1;
+      continue;
+    }
+    // RGB di bawah alpha 0 memang dinolkan; itu tidak pernah tergambar.
+    if (before[i + 3] === 0) continue;
+    if (
+      before[i] !== roundTrip.bitmap[i] ||
+      before[i + 1] !== roundTrip.bitmap[i + 1] ||
+      before[i + 2] !== roundTrip.bitmap[i + 2]
+    ) {
+      visibleDrift += 1;
+    }
+  }
+  assert.equal(visibleDrift, 0, "encoder PNG mengubah piksel yang terlihat");
+
+  const legacy = await (await Image.decode(source)).encode();
+  assert.ok(
+    optimized.length < legacy.length,
+    `encoder kanonis (${optimized.length}) tidak lebih kecil dari ImageScript (${legacy.length})`
+  );
+
+  // Dua pass filter: hasil akhir tidak boleh kalah dari filter 0 rata, karena
+  // pada gambar dengan banyak baris identik adaptive filtering justru merugikan.
+  const flatOnly = assemblePng(
+    decoded.width,
+    decoded.height,
+    await deflateBytes(
+      filterScanlines(roundTrip.bitmap, decoded.width, decoded.height, { adaptive: false })
+    )
+  );
+  assert.ok(
+    optimized.length <= flatOnly.length,
+    `pilihan filter kalah dari filter 0 rata (${optimized.length} > ${flatOnly.length})`
+  );
+
+  const adaptive = filterScanlines(roundTrip.bitmap, decoded.width, decoded.height);
+  const stride = decoded.width * 4;
+  const filtersUsed = new Set();
+  for (let y = 0; y < decoded.height; y += 1) filtersUsed.add(adaptive[y * (stride + 1)]);
+  assert.ok(
+    [...filtersUsed].some((type) => type !== 0),
+    "adaptive filtering tidak memilih satu pun filter selain 0"
+  );
+
+  // Deterministik: piksel yang sama harus memberi byte yang sama, kalau tidak
+  // dedup `sheet_path` berbasis hash pecah dan satu gambar dibayar dua kali.
+  const repeat = await Image.decode(source);
+  const again = await encodeOptimizedPng(repeat.bitmap, repeat.width, repeat.height);
+  assert.deepEqual(
+    Buffer.from(again),
+    Buffer.from(optimized),
+    "encode kedua menghasilkan byte berbeda dari yang pertama"
+  );
+  assert.ok(
+    !Buffer.from(optimized).includes(Buffer.from("tEXt", "ascii")),
+    "chunk tEXt masih ditulis, jadi byte-nya bergantung pada waktu"
+  );
+
+  const painted = new Uint8Array([9, 200, 30, 0, 5, 5, 5, 255]);
+  assert.equal(clearTransparentRgb(painted), 1, "RGB di bawah alpha 0 tidak dibersihkan");
+  assert.deepEqual(
+    [...painted],
+    [0, 0, 0, 0, 5, 5, 5, 255],
+    "clearTransparentRgb menyentuh piksel yang terlihat"
+  );
+
+  // Aset yang ter-commit harus sudah dalam bentuk optimal, kalau tidak repo dan
+  // Storage membawa byte yang tidak menghasilkan apa pun.
+  for (const relative of COMMITTED_PNG_TARGETS) {
+    const result = await optimizePngFile(
+      new URL(`../${relative}`, import.meta.url).pathname
+    );
+    assert.equal(result.drift, 0, `${relative} tidak lossless lewat encoder kanonis`);
+    assert.equal(
+      result.saved,
+      0,
+      `${relative} masih bisa dikecilkan ${result.saved} byte; jalankan ` +
+        "`node backend/tools/optimize_png.mjs --apply`"
+    );
+  }
+
+  // Jalur production benar-benar memakai encoder ini, bukan ImageScript: tanpa
+  // chunk tEXt adalah sidik jari yang membedakan keduanya.
+  const sheet = await postprocessSheet(source, {});
+  assert.ok(
+    !Buffer.from(sheet.png).includes(Buffer.from("tEXt", "ascii")),
+    "postprocessSheet masih mengenkode lewat ImageScript"
+  );
+  assert.ok((await Image.decode(sheet.png)).width > 0, "postprocessSheet memberi PNG tidak sah");
 }
 
 const emitIdx = process.argv.indexOf("--emit");

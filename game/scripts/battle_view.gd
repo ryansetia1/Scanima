@@ -28,13 +28,6 @@ signal resume_requested
 signal forfeit_requested
 signal reward_status_refresh_requested
 
-@export var metal_icon: Texture2D
-@export var plant_icon: Texture2D
-@export var flow_icon: Texture2D
-@export var spark_icon: Texture2D
-@export var cloth_icon: Texture2D
-@export var stone_icon: Texture2D
-
 @onready var _header: Control = %Header
 @onready var _duel_column: VBoxContainer = %Column
 @onready var _lobby_panel: PanelContainer = %BattleLobbyPanel
@@ -501,8 +494,12 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 			continue
 		match str(event.get("type", "")):
 			"guard":
+				var guard_side := str(event.get("actor", ""))
+				var bracing := _sprite_for(guard_side)
+				if is_instance_valid(bracing):
+					bracing.guard_shimmer()
 				await _present_banner(
-					tr("BATTLE_EVENT_GUARD") % _actor_name(str(event.get("actor", ""))),
+					tr("BATTLE_EVENT_GUARD") % _actor_name(guard_side),
 					CUE_COLOR,
 					false
 				)
@@ -822,8 +819,7 @@ func _show_result(status: String) -> void:
 				"BATTLE_TRAINING_TITLE" if training else "BATTLE_WIN_TITLE"
 			)
 			_result_body.text = _win_body(reward)
-			if is_instance_valid(_player_sprite):
-				_player_sprite.set_pose("happy")
+			_player_sprite.victory_celebration()
 		"lost":
 			_result_title.text = tr("BATTLE_LOSS_TITLE")
 			_result_body.text = tr("BATTLE_LOSS_BODY")

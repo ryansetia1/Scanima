@@ -2,12 +2,6 @@
 
 [ext_resource type="Script" uid="uid://dquyxueho54ee" path="res://scripts/battle_view.gd" id="1_battle"]
 [ext_resource type="Script" uid="uid://ctfolp0b4kusd" path="res://scripts/anima_presenter.gd" id="2_presenter"]
-[ext_resource type="Texture2D" uid="uid://dwh6crb36dm0f" path="res://assets/icons/element-metal.svg" id="3_metal"]
-[ext_resource type="Texture2D" uid="uid://dn8mqa18j1ye0" path="res://assets/icons/element-plant.svg" id="4_plant"]
-[ext_resource type="Texture2D" uid="uid://p0envtj53dtf" path="res://assets/icons/element-flow.svg" id="5_flow"]
-[ext_resource type="Texture2D" uid="uid://cqovxt8jylutf" path="res://assets/icons/element-spark.svg" id="6_spark"]
-[ext_resource type="Texture2D" uid="uid://dti48fmarua00" path="res://assets/icons/element-cloth.svg" id="7_cloth"]
-[ext_resource type="Texture2D" uid="uid://ccw7y1fri0dk0" path="res://assets/icons/element-stone.svg" id="8_stone"]
 [ext_resource type="FontFile" uid="uid://b0ugtjpmyt7ix" path="res://assets/fonts/Oxanium-Variable.ttf" id="9_display"]
 [ext_resource type="PackedScene" uid="uid://vuy5pib6yib6" path="res://scenes/ui/team_battle_view.tscn" id="10_team"]
 [ext_resource type="PackedScene" uid="uid://kl1jxjl2p56i" path="res://scenes/ui/expedition_view.tscn" id="11_expedition"]
@@ -42,12 +36,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_battle")
-metal_icon = ExtResource("3_metal")
-plant_icon = ExtResource("4_plant")
-flow_icon = ExtResource("5_flow")
-spark_icon = ExtResource("6_spark")
-cloth_icon = ExtResource("7_cloth")
-stone_icon = ExtResource("8_stone")
 
 [node name="Column" type="VBoxContainer" parent="." unique_id=1153150612]
 unique_name_in_owner = true
@@ -252,14 +240,6 @@ theme_type_variation = &"SectionLabel"
 text = "ANIMA_FALLBACK_NAME"
 text_overrun_behavior = 3
 
-[node name="BattlePlayerElementIcon" type="TextureRect" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud/PlayerSide/PlayerIdentity" unique_id=1844361801]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(26, 26)
-layout_mode = 2
-expand_mode = 1
-stretch_mode = 5
-
 [node name="BattlePlayerElement" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud/PlayerSide/PlayerIdentity" unique_id=111358055]
 unique_name_in_owner = true
 visible = false
@@ -324,14 +304,6 @@ layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 22
 text = "ELEMENT_UNKNOWN"
-
-[node name="BattleBotElementIcon" type="TextureRect" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud/BotSide/BotIdentity" unique_id=1161223575]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(26, 26)
-layout_mode = 2
-expand_mode = 1
-stretch_mode = 5
 
 [node name="BattleBotName" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHud/BotSide/BotIdentity" unique_id=150219310]
 unique_name_in_owner = true

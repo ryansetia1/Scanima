@@ -419,6 +419,9 @@ func play_events(
 		match str(event.get("type", "")):
 			"guard":
 				var guard_actor := str(event.get("actor", ""))
+				var bracing := _sprite_for(guard_actor)
+				if is_instance_valid(bracing):
+					bracing.guard_shimmer()
 				await _present_banner(
 					tr("BATTLE_EVENT_GUARD") % _actor_name(guard_actor),
 					BattleView.CUE_COLOR,
@@ -1091,7 +1094,7 @@ func _show_result(status: String) -> void:
 			_result_body.text = _win_reward_text(reward, exp_lines)
 			if not exp_lines.is_empty():
 				_result_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			_player_sprite.set_pose("happy")
+			_player_sprite.victory_celebration()
 		"lost":
 			_result_title.text = tr(
 				"EXPEDITION_WIPE_TITLE" if _expedition_mode else "TEAM_LOSS_TITLE"

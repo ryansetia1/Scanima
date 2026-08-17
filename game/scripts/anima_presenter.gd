@@ -12,25 +12,34 @@ extends AnimatedSprite2D
 signal pose_changed(pose: String)
 
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
+const GUARD_SHIMMER_SHADER: Shader = preload("res://shaders/guard_shimmer.gdshader")
 const BREATH_IDLE_SEC := 1.6
 const BREATH_SLEEP_SEC := 2.8
 const BREATH_DAMAGED_SEC := 1.1
 const HOP_HEIGHT_PX := 10.0
 const PLAY_BOUNCE_HEIGHT_PX := 14.0
 const PLAY_BOUNCE_COUNT := 6
+const VICTORY_BOUNCE_HEIGHT_PX := 18.0
 const TAP_HIT_PADDING_PX := 28.0
 const FX_TRAVEL_SEC := 0.36
 const OPAQUE_ALPHA_MIN := 0.12
+## Sekali sapuan penuh, dipasang lebih pendek daripada tahan pelat Guard
+## (BattleView.ACTION_CUE_SEC) supaya kilaunya selesai sementara copy-nya masih
+## terbaca, bukan tertinggal sampai animasi turn berikutnya.
+const GUARD_SHIMMER_SEC := 1.05
 
 var _motion: Tween
 var _feedback: Tween
 var _fx_tween: Tween
+var _shimmer: Tween
+var _shimmer_material: ShaderMaterial
 var _fx: Sprite2D
 var _fx_motion: Dictionary = {}
 var _queued_care: Dictionary = {}
 var _base_position: Vector2 = Vector2.ZERO
 var _current_pose: String = ""
 var _facing_direction := -1.0
+var _victory_loop := false
 var _opaque_local_by_pose: Dictionary = {}
 
 
@@ -57,6 +66,15 @@ func apply(loaded: Dictionary) -> bool:
 func set_pose(pose: String) -> bool:
 	if sprite_frames == null or not sprite_frames.has_animation(pose):
 		return false
+
+	# Loop kemenangan tidak punya akhir sendiri, jadi ia harus dilepas di sini:
+	# _start_motion() hanya membunuh _motion, dan _feedback yang selamat akan
+	# menahan plant_on_anchor() sekaligus memantulkan pose berikutnya.
+	if _victory_loop:
+		_victory_loop = false
+		if _feedback != null and _feedback.is_valid():
+			_feedback.kill()
+		_feedback = null
 
 	animation = pose
 	# Tiap pose satu frame, jadi play() hanya menampilkannya; yang bergerak Tween.
@@ -451,6 +469,56 @@ func play_bounce() -> void:
 	_feedback.finished.connect(_resume_pose_motion, CONNECT_ONE_SHOT)
 
 
+## Kemenangan Battle: pose Happy plus lompatan tanpa akhir sampai pemain
+## meninggalkan hasilnya. Berbeda dari play_bounce() yang dihitung enam kali,
+## loop ini sengaja tidak menyambung _resume_pose_motion karena tidak selesai
+## sendiri; set_pose() yang melepasnya saat session berikutnya dipasang.
+func victory_celebration() -> void:
+	if sprite_frames == null:
+		return
+	if _feedback != null and _feedback.is_valid():
+		_feedback.kill()
+	_feedback = null
+	_victory_loop = false
+	set_pose("happy")
+	if UiMotion.reduced_motion:
+		return
+	_victory_loop = true
+	_feedback = _bounce(0, VICTORY_BOUNCE_HEIGHT_PX)
+
+
+## Guard: kilau menyapu badan sekali, seperti Harden. Dipanggil pada frame pelat
+## Guard muncul, bukan setelah await-nya, supaya kilau dan copy-nya sejalan.
+func guard_shimmer() -> void:
+	if sprite_frames == null or not visible:
+		return
+	if _shimmer != null and _shimmer.is_valid():
+		_shimmer.kill()
+	if _shimmer_material == null:
+		_shimmer_material = ShaderMaterial.new()
+		_shimmer_material.shader = GUARD_SHIMMER_SHADER
+	material = _shimmer_material
+	_shimmer = create_tween()
+	if UiMotion.reduced_motion:
+		# Sapuan dibuang, tetapi badannya tetap menyala sebentar: kalau Guard
+		# tidak meninggalkan jejak apa pun, satu-satunya penanda tinggal pelat.
+		_shimmer_material.set_shader_parameter("progress", 0.5)
+		_shimmer.tween_interval(0.45)
+		_shimmer.tween_callback(_clear_shimmer)
+		return
+	_shimmer_material.set_shader_parameter("progress", 0.0)
+	_shimmer.tween_property(
+		_shimmer_material, "shader_parameter/progress", 1.0, GUARD_SHIMMER_SEC
+	).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_LINEAR)
+	_shimmer.tween_callback(_clear_shimmer)
+
+
+func _clear_shimmer() -> void:
+	material = null
+	if _shimmer_material != null:
+		_shimmer_material.set_shader_parameter("progress", 0.0)
+
+
 func _bounce(loops: int, height: float) -> Tween:
 	var tween := create_tween().set_loops(loops)
 	tween.tween_property(self, "position", _base_position - Vector2(0.0, height), 0.16) \
@@ -636,6 +704,9 @@ func _hide_fx() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_VISIBILITY_CHANGED and not is_visible_in_tree():
 		_hide_fx()
+		if _shimmer != null and _shimmer.is_valid():
+			_shimmer.kill()
+		_clear_shimmer()
 
 
 func _exit_tree() -> void:

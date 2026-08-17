@@ -170,7 +170,7 @@ export async function postprocessChapterAnima(rawPng, cast, {
     stage: 2,
     promptVersion: "v12",
   }, cleanupIdleSeamLeaks ? { ...DEFAULTS, removeIdleSeamLeaks: true } : DEFAULTS);
-  const png = encodeRgbaPng(await Image.decode(processed.png));
+  const png = await encodeRgbaPng(await Image.decode(processed.png));
   const { manifest } = processed;
   const layout = layoutForPrompt("v12");
   const detected = Object.keys(manifest.poses ?? {});
@@ -225,7 +225,7 @@ export async function postprocessChromaGridSheet(rawPng, {
       .join(", ");
     throw new Error(`GRID_SEAM_VIOLATION:${summary}`);
   }
-  const png = encodeRgbaPng(work);
+  const png = await encodeRgbaPng(work);
   const referencePose = segmented.bboxes.intro_idle ? "intro_idle" : "idle";
   const referenceSize = capturedBBoxSize(
     segmented.bboxes[referencePose],
@@ -271,7 +271,7 @@ export async function postprocessChapterZone(rawPng) {
   const work = cropped.width > maxWidth
     ? cropped.resize(maxWidth, Math.round(maxWidth / targetRatio))
     : cropped;
-  const png = encodeRgbaPng(work);
+  const png = await encodeRgbaPng(work);
   return { png, hash: hashFile(png), manifest: null };
 }
 

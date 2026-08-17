@@ -12,6 +12,7 @@
 
 import { Image } from "imagescript";
 import { promptMajor } from "./vision.mjs";
+import { encodeImage } from "./png.mjs";
 
 export const LAYOUT_2X2 = {
   grid: 2,
@@ -361,7 +362,7 @@ export async function stripWhiteKeylineFromRgba(pngBuffer, opts = DEFAULTS) {
   );
   if (pixelsStripped > 0) softenAlphaEdges(image.bitmap, image.width, image.height, opts);
   return {
-    png: await image.encode(),
+    png: await encodeImage(image),
     pixelsStripped,
     size: [image.width, image.height],
   };
@@ -871,7 +872,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
     },
   };
 
-  return { png: await out.encode(), manifest };
+  return { png: await encodeImage(out), manifest };
 }
 
 /**

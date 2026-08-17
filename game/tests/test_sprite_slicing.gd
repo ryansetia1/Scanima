@@ -327,6 +327,58 @@ func _test_presenter() -> void:
 	_check_eq(presenter.current_pose(), "dirty", "Hygiene rendah harus memakai pose Dirty")
 	presenter.celebrate_level_up()
 	_check_eq(presenter.current_pose(), "happy", "naik level memakai pose Happy")
+
+	presenter.victory_celebration()
+	_check_eq(presenter.current_pose(), "happy", "menang Battle memakai pose Happy")
+	var victory := presenter.get("_feedback") as Tween
+	_check(
+		victory != null and victory.get_loops_left() == -1,
+		"kemenangan harus melompat terus, bukan sekali seperti naik level"
+	)
+	presenter.set_pose("idle")
+	_check(
+		not victory.is_valid() or not victory.is_running(),
+		"pose berikutnya harus melepas loop kemenangan, bukan ikut terpantul"
+	)
+	_check_eq(
+		presenter.position,
+		presenter.get("_base_position"),
+		"loop kemenangan yang dilepas harus mengembalikan kaki ke anchor"
+	)
+
+	presenter.guard_shimmer()
+	var shimmer := presenter.material as ShaderMaterial
+	_check(
+		shimmer != null and shimmer.shader == AnimaPresenter.GUARD_SHIMMER_SHADER,
+		"Guard harus memasang shader kilau di badan Anima"
+	)
+	_check_eq(
+		float(shimmer.get_shader_parameter("progress")),
+		0.0,
+		"sapuan Guard harus mulai dari nol supaya tween yang memiliki waktunya"
+	)
+	presenter.call("_clear_shimmer")
+	_check(presenter.material == null, "kilau Guard harus melepas materialnya sendiri")
+
+	UiMotion.set_reduced_motion(true)
+	presenter.victory_celebration()
+	_check_eq(
+		presenter.current_pose(), "happy", "Reduced Motion tetap memakai pose Happy saat menang"
+	)
+	var quiet_victory := presenter.get("_feedback") as Tween
+	_check(
+		quiet_victory == null or quiet_victory.get_loops_left() != -1,
+		"Reduced Motion tidak boleh melompat terus"
+	)
+	presenter.guard_shimmer()
+	_check(
+		float((presenter.material as ShaderMaterial).get_shader_parameter("progress")) > 0.0,
+		"Reduced Motion tetap menyalakan badan Guard, hanya tanpa sapuan"
+	)
+	presenter.call("_clear_shimmer")
+	UiMotion.set_reduced_motion(false)
+	presenter.set_pose("idle")
+
 	presenter.set_facing(1.0)
 	var rest := presenter.position
 	UiMotion.set_reduced_motion(true)

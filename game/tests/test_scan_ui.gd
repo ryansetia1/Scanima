@@ -1288,9 +1288,7 @@ func _test_battle_view() -> void:
 	var player_hp_value := view.find_child("BattlePlayerHpValue", true, false) as Label
 	var bot_hp_value := view.find_child("BattleBotHpValue", true, false) as Label
 	var daily_reward := view.find_child("BattleDailyReward", true, false) as Label
-	var player_element_icon := view.find_child("BattlePlayerElementIcon", true, false) as Control
 	var player_element := view.find_child("BattlePlayerElement", true, false) as Control
-	var bot_element_icon := view.find_child("BattleBotElementIcon", true, false) as Control
 	var bot_element := view.find_child("BattleBotElement", true, false) as Control
 	var feedback := view.find_child("BattleFeedback", true, false) as Label
 	var effectiveness := view.find_child("BattleEffectiveness", true, false) as Control
@@ -1599,12 +1597,20 @@ func _test_battle_view() -> void:
 	_check(
 		not turn.visible
 		and not daily_reward.visible
-		and not player_element_icon.visible
 		and not player_element.visible
-		and not bot_element_icon.visible
 		and not bot_element.visible
 		and view.find_child("TurnSpacer", true, false) != null,
 		"Duel keeps the action arena free of reward counters and element labels"
+	)
+	var element_icons_left := 0
+	for file in DirAccess.get_files_at("res://assets/icons"):
+		if file.begins_with("element-"):
+			element_icons_left += 1
+	_check(
+		element_icons_left == 0
+		and view.find_child("BattlePlayerElementIcon", true, false) == null
+		and view.find_child("BattleBotElementIcon", true, false) == null,
+		"elements stay label-only: no element icon node and no element icon asset"
 	)
 	_check(
 		view.find_child("PlayerCard", true, false) == null
@@ -1696,6 +1702,11 @@ func _test_battle_view() -> void:
 		and initiative_hide > initiative_present
 		and initiative_hide < battle_source.find("func _apply_state"),
 		"Guard and initiative hold the plate before hiding it"
+	)
+	_check(
+		battle_source.find("bracing.guard_shimmer()") >= 0
+		and battle_source.find("bracing.guard_shimmer()") < guard_copy,
+		"Duel shimmers the bracing body on the frame the Guard plate appears"
 	)
 	_check(
 		battle_source.find("_effectiveness.pivot_offset") >= 0
@@ -1822,6 +1833,15 @@ func _test_battle_view() -> void:
 	_check(
 		player_sprite.current_pose() == "happy",
 		"menang Battle memakai pose Happy"
+	)
+	_check(
+		battle_source.find("_player_sprite.victory_celebration()") >= 0,
+		"Duel win hands the player sprite the looping victory hop"
+	)
+	var victory_hop := player_sprite.get("_feedback") as Tween
+	_check(
+		victory_hop == null or victory_hop.get_loops_left() != -1,
+		"Reduced Motion menang tanpa lompatan tak berujung"
 	)
 	_check(result.size.y >= 236.0, "Battle result grows upward and stays clear of bottom navigation")
 	_check(
@@ -2209,10 +2229,19 @@ func _test_team_battle_view() -> void:
 		< attack_fn.find("if not effect_key.is_empty()"),
 		"Team and Expedition return Attack to Idle on impact before effectiveness copy"
 	)
-	var guard_fn := team_source.substr(team_source.find("\"guard\":"), 500)
+	# Anchor on play_events: the first "guard": in the file is a COMMIT_COLORS
+	# entry, and a window opened there checks nothing about the event handler.
+	var guard_fn := team_source.substr(
+		team_source.find("\"guard\":", team_source.find("func play_events")), 500
+	)
 	_check(
 		guard_fn.find("concern_hit") < 0,
 		"Boss Seeker does not look damaged when her Anima Guards"
+	)
+	_check(
+		guard_fn.find("bracing.guard_shimmer()") >= 0
+		and guard_fn.find("bracing.guard_shimmer()") < guard_fn.find("BATTLE_EVENT_GUARD"),
+		"Team and Expedition shimmer the bracing body with the Guard plate"
 	)
 	_check(
 		attack_fn.find("_react_seeker_attack(event)") >= 0

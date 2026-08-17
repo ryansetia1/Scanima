@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { Image } from "imagescript";
 import { CATALOG_ITEMS } from "../backend/supabase/functions/_shared/catalog.mjs";
 import { isCatalogKeyVapor, isKeyColor, softenAlphaEdges } from "../backend/supabase/functions/_shared/postprocess.mjs";
+import { encodeImage } from "../backend/supabase/functions/_shared/png.mjs";
 import { biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -77,7 +78,7 @@ async function generatePaidSheets() {
       throw new Error(`${name} ukuran ${img.width}×${img.height}, bukan 1024×1024`);
     }
     keyGreen(img);
-    await writeFile(join(OUT_DIR, name), await img.encode());
+    await writeFile(join(OUT_DIR, name), await encodeImage(img));
     console.log("wrote", name);
   }
 }
@@ -137,7 +138,7 @@ async function writeSheet(path, entries, palette, kind) {
     paintIcon(img, cx, cy, color, kind, entry.sprite_index);
   }
   keyGreen(img);
-  await writeFile(path, await img.encode());
+  await writeFile(path, await encodeImage(img));
 }
 
 function paintIcon(img, cx, cy, color, kind, index) {
@@ -192,7 +193,7 @@ async function rekeyExisting() {
       throw new Error(`${name} ukuran ${img.width}×${img.height}, bukan 1024×1024`);
     }
     keyGreen(img);
-    await writeFile(path, await img.encode());
+    await writeFile(path, await encodeImage(img));
     console.log("rekeyed", name);
   }
 }

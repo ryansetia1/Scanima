@@ -338,6 +338,9 @@ func _ready() -> void:
 			_battle_view.begin_action("surge")
 		if arg == "--battle-effective-demo":
 			_run_battle_demo("active", false, 1.5)
+		if arg == "--battle-guard-demo":
+			_run_battle_demo()
+			_loop_guard_shimmer_demo()
 		if arg == "--battle-result-demo":
 			_run_battle_demo("forfeited")
 		if arg == "--battle-win-demo":
@@ -4062,6 +4065,20 @@ func _try_home_anima_tap(event: InputEvent) -> void:
 	if _anima.hit_test(press_position):
 		_anima.react_to_tap()
 		get_viewport().set_input_as_handled()
+
+
+## Kilau Guard hidup sekitar satu detik sementara --screenshot menunggu tiga,
+## jadi demo mengulanginya supaya capture selalu jatuh di tengah sapuan.
+func _loop_guard_shimmer_demo() -> void:
+	var sprite := _battle_view.find_child("BattlePlayerSprite", true, false) as AnimaPresenter
+	if not is_instance_valid(sprite):
+		return
+	var loop := Timer.new()
+	loop.wait_time = AnimaPresenter.GUARD_SHIMMER_SEC * 0.6
+	loop.autostart = true
+	add_child(loop)
+	loop.timeout.connect(sprite.guard_shimmer)
+	sprite.guard_shimmer()
 
 
 func _capture_and_quit(path: String) -> void:
