@@ -402,6 +402,10 @@ func session_data() -> Dictionary:
 	return _session.duplicate(true)
 
 
+func session_kind() -> String:
+	return str(_session.get("kind", ""))
+
+
 func _apply_arena_background(art_cache: Dictionary) -> void:
 	var texture: Variant = art_cache.get("arena_background", _art_cache.get("arena_background"))
 	var ready := texture is Texture2D
@@ -1010,7 +1014,7 @@ func _play_attack(event: Dictionary) -> void:
 		_opponent_hp_value.text = LocaleManager.format_ratio(hp, int(_opponent_hp.max_value))
 	if is_instance_valid(target):
 		_react_seeker_attack(event)
-		target.hit_react()
+		target.hit_react(element_multiplier)
 		if UiMotion.reduced_motion:
 			target.modulate = Color.WHITE
 		else:

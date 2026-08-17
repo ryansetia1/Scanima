@@ -70,6 +70,7 @@ func align_visual_center(global_point: Vector2) -> void:
 func start_portal() -> void:
 	if _fx_tween != null and _fx_tween.is_valid():
 		_fx_tween.kill()
+	Sfx.play(Sfx.CUE_PORTAL)
 	_phase = 0.0
 	_charge = 1.0
 	_burst = 0.0

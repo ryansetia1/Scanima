@@ -1,0 +1,15 @@
+Interface Sounds (1.0) by Kenney (www.kenney.nl)
+License: Creative Commons Zero (CC0)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Free for personal, educational, and commercial use.
+Credit "Kenney" or "www.kenney.nl" is appreciated, not required.
+
+Files kept here, renamed for Scanima cues:
+
+- ui_tap.ogg      ← glass_002.ogg
+- ui_care.ogg     ← pluck_001.ogg
+- ui_confirm.ogg  ← confirmation_001.ogg
+- ui_back.ogg     ← back_001.ogg
+
+Source: https://kenney.nl/assets/interface-sounds

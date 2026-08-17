@@ -9,6 +9,30 @@ const META_INSTALLED := &"_scanima_juice_installed"
 const META_TWEEN := &"_scanima_juice_tween"
 const META_METER_TWEEN := &"_scanima_meter_tween"
 const META_SHEET_POSITION := &"_scanima_sheet_position"
+const PLAYER_NAME := &"UiClickPlayer"
+const CUE_TAP := &"tap"
+const CUE_CARE := &"care"
+const CUE_CONFIRM := &"confirm"
+const CUE_BACK := &"back"
+const VOLUME_DB := -18.0
+
+const _STREAM_PATHS := {
+	"tap": "res://assets/audio/ui/ui_tap.ogg",
+	"care": "res://assets/audio/ui/ui_care.ogg",
+	"confirm": "res://assets/audio/ui/ui_confirm.ogg",
+	"back": "res://assets/audio/ui/ui_back.ogg",
+}
+
+## `ui_confirm` measures -11,3 dB RMS against -21,2 dB on `ui_back`, so without
+## a trim confirming anything is nearly ten times the energy of dismissing it.
+const CUE_TRIM_DB := {
+	"tap": -1.1,
+	"care": 0.0,
+	"confirm": -8.7,
+	"back": 0.0,
+}
+
+static var _streams: Dictionary = {}
 
 
 static func install_buttons(root: Node) -> void:
@@ -27,6 +51,28 @@ static func install_button(button: Button) -> void:
 	button.focus_entered.connect(_button_hover.bind(button, true))
 	button.focus_exited.connect(_button_hover.bind(button, false))
 	_center_pivot(button)
+
+
+static func play_button(button: Button) -> void:
+	_play_click(button)
+
+
+static func button_cue(button: Button) -> StringName:
+	var variation := button.theme_type_variation
+	if variation == &"PrimaryButton":
+		return CUE_CONFIRM
+	if variation.begins_with("Care"):
+		return CUE_CARE
+	var node_name := String(button.name)
+	if (
+		variation == &"DangerButton"
+		or node_name.contains("Cancel")
+		or node_name.contains("Back")
+		or node_name.contains("Dismiss")
+		or node_name.contains("Leave")
+	):
+		return CUE_BACK
+	return CUE_TAP
 
 
 static func reveal(control: Control, delay: float = 0.0) -> void:
@@ -225,6 +271,7 @@ static func _center_pivot(button: Button) -> void:
 static func _button_down(button: Button) -> void:
 	if not is_instance_valid(button) or button.disabled:
 		return
+	_play_click(button)
 	_kill_tween(button)
 	button.pivot_offset = button.size * 0.5
 	if UiMotion.reduced_motion:
@@ -280,6 +327,41 @@ static func _button_hover(button: Button, hovered: bool) -> void:
 		0.16
 	)
 	button.set_meta(META_TWEEN, tween)
+
+
+# ponytail: one shared player on the tree root, no AudioManager. A second tap
+# cuts the first; add a 2-voice pool + UI bus when settings exist.
+static func _play_click(button: Button) -> void:
+	if not button.is_inside_tree():
+		return
+	var tree := button.get_tree()
+	if tree == null:
+		return
+	var cue := button_cue(button)
+	var stream := _stream_for(cue)
+	if stream == null:
+		return
+	var player := tree.root.get_node_or_null(NodePath(PLAYER_NAME)) as AudioStreamPlayer
+	if player == null:
+		player = AudioStreamPlayer.new()
+		player.name = String(PLAYER_NAME)
+		tree.root.add_child(player)
+	player.stream = stream
+	player.volume_db = VOLUME_DB + float(CUE_TRIM_DB.get(String(cue), 0.0))
+	player.pitch_scale = randf_range(0.96, 1.04)
+	player.play()
+
+
+static func _stream_for(cue: StringName) -> AudioStream:
+	if _streams.has(cue):
+		return _streams[cue] as AudioStream
+	var path := String(_STREAM_PATHS.get(String(cue), ""))
+	if path.is_empty() or not ResourceLoader.exists(path):
+		return null
+	var stream := load(path) as AudioStream
+	if stream != null:
+		_streams[cue] = stream
+	return stream
 
 
 static func _kill_tween(control: Control) -> void:

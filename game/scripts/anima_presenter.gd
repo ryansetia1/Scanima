@@ -266,9 +266,10 @@ func react_to_tap() -> void:
 	_feedback.finished.connect(_resume_pose_motion)
 
 
-func hit_react() -> void:
+func hit_react(element_multiplier: float = 1.0) -> void:
 	if sprite_frames == null:
 		return
+	Sfx.play_effectiveness(element_multiplier)
 	_stop_tap_motion()
 	if UiMotion.reduced_motion:
 		_start_motion(_current_pose)
@@ -509,6 +510,7 @@ func victory_celebration(level: int = 1) -> void:
 func guard_shimmer() -> void:
 	if sprite_frames == null or not visible:
 		return
+	Sfx.play(Sfx.CUE_GUARD)
 	if _shimmer != null and _shimmer.is_valid():
 		_shimmer.kill()
 	if _shimmer_material == null:
@@ -554,6 +556,10 @@ func _bounce(
 
 
 func care_feedback(action: String) -> void:
+	if action == "feed":
+		Sfx.play(Sfx.CUE_FEED)
+	elif action == "item":
+		Sfx.play(Sfx.CUE_ITEM)
 	if _feedback != null and _feedback.is_valid():
 		_feedback.kill()
 	_feedback = null
@@ -627,6 +633,7 @@ func apply_care_state(sleeping: bool, dormant: bool, care: Variant = {}) -> void
 func play_fx(pose: String, impact_global: Vector2 = Vector2.INF) -> void:
 	if sprite_frames == null or not sprite_frames.has_animation(pose):
 		return
+	Sfx.play(Sfx.CUE_SURGE if pose == "fx_surge" else Sfx.CUE_STRIKE)
 	var host := get_parent() if get_parent() != null else self
 	if _fx == null or not is_instance_valid(_fx):
 		_fx = Sprite2D.new()

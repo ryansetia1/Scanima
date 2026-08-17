@@ -1,0 +1,21 @@
+---
+description: Keep Scanima SFX wired to presentation helpers, not buttons
+globs: game/scripts/**/*.gd
+alwaysApply: false
+---
+
+# SFX stays on presentation helpers
+
+Player-facing sounds live in `Sfx.play()` / `Sfx.play_effectiveness()`. Call them from the helper that already owns the visual, never from a `Button.pressed` handler or a one-off screen script.
+
+Canonical hooks (do not bypass):
+
+- Attack / Special → `AnimaPresenter.play_fx()`
+- Guard → `AnimaPresenter.guard_shimmer()`
+- Feed / battle item → `AnimaPresenter.care_feedback()`
+- Super effective / not very effective → `AnimaPresenter.hit_react(multiplier)`
+- Summon + Switch portal → `IncubatorEffect.start_portal()`
+- Level Up → `scan_flow._celebrate_level_up()`
+- Chrome taps → `UiJuice` (`button_down`)
+
+If you restyle a button or move a dock, leave these helpers in the play path. `test_scan_ui.gd` source-scans the hooks; a missing `Sfx.play` is a failed check, not a later TODO.

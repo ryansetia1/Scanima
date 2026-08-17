@@ -358,6 +358,110 @@ func _initialize() -> void:
 	UiMotion.set_reduced_motion(false)
 	juice_probe.free()
 
+	for cue_path in [
+		"res://assets/audio/ui/ui_tap.ogg",
+		"res://assets/audio/ui/ui_care.ogg",
+		"res://assets/audio/ui/ui_confirm.ogg",
+		"res://assets/audio/ui/ui_back.ogg",
+	]:
+		_check(ResourceLoader.exists(cue_path), "%s is imported" % cue_path.get_file())
+	var nav_probe := Button.new()
+	nav_probe.name = "HomeNavButton"
+	nav_probe.theme_type_variation = &"NavTabButton"
+	var care_probe := Button.new()
+	care_probe.theme_type_variation = &"CareFeedButton"
+	var confirm_probe := Button.new()
+	confirm_probe.theme_type_variation = &"PrimaryButton"
+	var back_probe := Button.new()
+	back_probe.name = "CancelButton"
+	_check_eq(UiJuice.button_cue(nav_probe), &"tap", "nav uses the glass tap")
+	_check_eq(UiJuice.button_cue(care_probe), &"care", "Care Dock uses the pluck")
+	_check_eq(UiJuice.button_cue(confirm_probe), &"confirm", "PrimaryButton uses confirm")
+	_check_eq(UiJuice.button_cue(back_probe), &"back", "Cancel uses the back click")
+	root.add_child(nav_probe)
+	await process_frame
+	UiJuice.install_button(nav_probe)
+	UiJuice.play_button(nav_probe)
+	var click_player := root.get_node_or_null("UiClickPlayer") as AudioStreamPlayer
+	_check(click_player != null, "first in-tree tap mounts a shared UI player")
+	if click_player != null:
+		_check(click_player.playing, "nav tap starts the shared player")
+		# The mix is tuned by ear, so pin the ordering rather than the numbers:
+		# chrome under gameplay, gameplay over the music bed.
+		_check(
+			UiJuice.VOLUME_DB < Sfx.VOLUME_DB,
+			"UI clicks stay quieter than gameplay one-shots"
+		)
+		_check(
+			click_player.volume_db <= UiJuice.VOLUME_DB,
+			"a per-cue trim only ever pulls a click down"
+		)
+		var loudest_ui: float = UiJuice.CUE_TRIM_DB.values().max()
+		var loudest_sfx: float = Sfx.CUE_TRIM_DB.values().max()
+		_check(
+			loudest_ui <= 0.0 and UiJuice.VOLUME_DB + loudest_ui < AudioServer.get_bus_volume_db(0),
+			"no UI trim pushes a peak-normalised click into clipping"
+		)
+		_check(
+			Sfx.VOLUME_DB + loudest_sfx
+				> AudioServer.get_bus_volume_db(AudioServer.get_bus_index("Music")),
+			"gameplay one-shots sit above the music bed"
+		)
+	nav_probe.free()
+	care_probe.free()
+	confirm_probe.free()
+	back_probe.free()
+
+	for sfx_path in [
+		"res://assets/audio/sfx/sfx_strike.ogg",
+		"res://assets/audio/sfx/sfx_surge.ogg",
+		"res://assets/audio/sfx/sfx_guard.ogg",
+		"res://assets/audio/sfx/sfx_item.ogg",
+		"res://assets/audio/sfx/sfx_feed.ogg",
+		"res://assets/audio/sfx/sfx_hit_super.ogg",
+		"res://assets/audio/sfx/sfx_hit_resist.ogg",
+		"res://assets/audio/sfx/sfx_portal.ogg",
+		"res://assets/audio/sfx/sfx_level_up.ogg",
+	]:
+		_check(ResourceLoader.exists(sfx_path), "%s is imported" % sfx_path.get_file())
+	var presenter_source := FileAccess.get_file_as_string("res://scripts/anima_presenter.gd")
+	var incubator_source := FileAccess.get_file_as_string("res://scripts/incubator_effect.gd")
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		presenter_source.find("func play_fx") >= 0
+		and presenter_source.find("Sfx.play(Sfx.CUE_SURGE") > presenter_source.find("func play_fx"),
+		"Attack/Special SFX stays on play_fx, not on the Attack button"
+	)
+	_check(
+		presenter_source.find("func guard_shimmer") >= 0
+		and presenter_source.find("Sfx.play(Sfx.CUE_GUARD)") > presenter_source.find("func guard_shimmer"),
+		"Guard SFX stays on guard_shimmer"
+	)
+	_check(
+		presenter_source.find("func care_feedback") >= 0
+		and presenter_source.find("Sfx.play(Sfx.CUE_FEED)") > presenter_source.find("func care_feedback")
+		and presenter_source.find("Sfx.play(Sfx.CUE_ITEM)") > presenter_source.find("func care_feedback"),
+		"Feed and item SFX stay on care_feedback"
+	)
+	_check(
+		presenter_source.find("func hit_react") >= 0
+		and presenter_source.find("Sfx.play_effectiveness") > presenter_source.find("func hit_react"),
+		"effectiveness SFX stays on hit_react"
+	)
+	_check(
+		incubator_source.find("func start_portal") >= 0
+		and incubator_source.find("Sfx.play(Sfx.CUE_PORTAL)") > incubator_source.find("func start_portal"),
+		"portal SFX stays on start_portal for Summon and Switch"
+	)
+	_check(
+		flow_source.find("func _celebrate_level_up") >= 0
+		and flow_source.find("Sfx.play(Sfx.CUE_LEVEL_UP)") > flow_source.find("func _celebrate_level_up"),
+		"Level Up SFX stays on the shell banner, not a restyled button"
+	)
+	Sfx.play(Sfx.CUE_STRIKE)
+	var sfx_host := root.get_node_or_null("SfxHost")
+	_check(sfx_host != null, "first gameplay cue mounts the shared SFX host")
+
 	var care_dock := scene.find_child("CareDock", true, false) as PanelContainer
 	_check(care_dock != null, "CareDock must exist")
 	if care_dock != null:
@@ -433,6 +537,8 @@ func _initialize() -> void:
 	_test_battle_art_has_no_global_toast()
 	_test_battle_turn_prediction(scene)
 	_test_home_tap_interaction(scene)
+
+	await _check_music(scene)
 
 	scene.free()
 	await _test_anima_tap_reactions()
@@ -1210,11 +1316,19 @@ func _test_seeker_ui() -> void:
 		and delete_account.theme_type_variation == &"DangerButton",
 		"Seeker menu scrolls safely and separates the destructive account action"
 	)
-	menu.show_menu({"seeker_name": null}, true, false)
+	_check(
+		(menu.find_child("MusicEnabled", true, false) as CheckButton).button_pressed,
+		"music plays by default and can be turned off from Settings"
+	)
+	menu.show_menu({"seeker_name": null}, true, false, false, false, false)
 	_check(
 		(menu.find_child("SeekerMenuTitle", true, false) as Label).text
 			== tr("SEEKER_MENU_TITLE"),
 		"guest menu never renders a null wire value"
+	)
+	_check(
+		not (menu.find_child("MusicEnabled", true, false) as CheckButton).button_pressed,
+		"a muted player reopens Settings with music still off"
 	)
 
 	var profile = (load("res://scenes/ui/seeker_profile_view.tscn") as PackedScene).instantiate()
@@ -2329,8 +2443,8 @@ func _test_team_battle_view() -> void:
 	)
 	_check(
 		attack_fn.find("_react_seeker_attack(event)") >= 0
-		and attack_fn.find("_react_seeker_attack(event)") < attack_fn.find("target.hit_react()")
-		and attack_fn.find("target.hit_react()") < attack_fn.find("_play_damage")
+		and attack_fn.find("_react_seeker_attack(event)") < attack_fn.find("target.hit_react(element_multiplier)")
+		and attack_fn.find("target.hit_react(element_multiplier)") < attack_fn.find("_play_damage")
 		and attack_fn.find("_play_damage") < attack_fn.find("_restore_seeker_idle()")
 		and attack_fn.find("_restore_seeker_idle()")
 		< attack_fn.find("if not effect_key.is_empty()"),
@@ -4285,6 +4399,54 @@ func _tap_roster_item(list: ItemList, index: int) -> void:
 		list.select(index, true)
 		list.multi_selected.emit(index, true)
 	list.item_clicked.emit(index, Vector2.ZERO, MOUSE_BUTTON_LEFT)
+
+
+func _check_music(scene: Node) -> void:
+	_check(AudioServer.get_bus_index("Music") > 0, "music rides a bus of its own")
+	var missing := ""
+	for cue: StringName in MusicDirector.TRACKS:
+		var path := str(MusicDirector.TRACKS[cue])
+		if not ResourceLoader.exists(path):
+			missing = path
+	_check(missing.is_empty(), "every music cue resolves to an imported track: %s" % missing)
+
+	# The shell picks the cue; the director only obeys. Off-tree the battle views
+	# are null, which is exactly the state a boot before the first frame is in.
+	_check_eq(scene.call("_music_cue"), &"lobby", "a shell outside Battle asks for lobby music")
+
+	var music := MusicDirector.new()
+	root.add_child(music)
+	await process_frame
+	music.play(&"lobby")
+	_check(
+		music.current_cue() == &"lobby" and music.is_sounding(),
+		"the lobby cue starts sounding"
+	)
+	# set() stays silent when a property is missing, so a stream type that renames
+	# its loop flag would only surface as music dying after one pass.
+	var players: Array = music.get("_players")
+	var playing: AudioStreamPlayer = players[music.get("_active")]
+	_check(
+		playing.stream != null and bool(playing.stream.get(&"loop")),
+		"the cue stream loops instead of falling silent after one pass"
+	)
+	await create_timer(0.6).timeout
+	var lobby_left_at := music.playback_position()
+	_check(lobby_left_at > 0.0, "the lobby track advances while it plays")
+	music.play(&"battle")
+	_check(music.current_cue() == &"battle", "entering a fight swaps the cue")
+	music.play(&"lobby")
+	_check(
+		music.playback_position() >= lobby_left_at,
+		"returning to the lobby resumes instead of restarting the seven-minute track"
+	)
+
+	music.set_enabled(false)
+	await create_timer(MusicDirector.FADE_SEC + 0.3).timeout
+	_check(not music.is_sounding(), "muting fades the track out and stops it")
+	music.set_enabled(true)
+	_check(music.is_sounding(), "unmuting brings the same cue back")
+	music.queue_free()
 
 
 func _check_full_rect(node: Control, label: String) -> void:

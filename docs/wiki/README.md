@@ -7,7 +7,7 @@ Collection, lalu ajak Battle.
 Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). Angka dan rumus untuk developer ada di [docs/04](../04-game-systems-economy.md).
 
 Game langsung berjalan sebagai **guest Seeker** tanpa login. Ikon menu di HUD
-membuka profil, Google, Reduced Motion, bantuan, dan hapus akun.
+membuka profil, Google, Reduced Motion, Music, bantuan, dan hapus akun.
 
 ## Mulai dari mana
 

@@ -366,6 +366,10 @@ func session_data() -> Dictionary:
 	return _session.duplicate(true)
 
 
+func has_session() -> bool:
+	return not _session.is_empty()
+
+
 func begin_action(action: String) -> void:
 	if _busy or action not in ["strike", "surge", "guard", "item"]:
 		return
@@ -631,7 +635,7 @@ func _play_attack(event: Dictionary) -> void:
 	else:
 		apply_hp_bar_state(_bot_hp, float(event.get("target_hp", 0)), _bot_hp.max_value)
 	if is_instance_valid(target):
-		target.hit_react()
+		target.hit_react(element_multiplier)
 		if UiMotion.reduced_motion:
 			target.modulate = Color.WHITE
 		else:

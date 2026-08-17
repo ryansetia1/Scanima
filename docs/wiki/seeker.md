@@ -38,11 +38,18 @@ Tap ikon menu 96px di baris HUD atas.
 | **Seeker Profile** | Lihat Level, EXP, koleksi, kemenangan, dan tanggal bergabung |
 | **Sign in with Google** | Hubungkan guest atau pulihkan Seeker lama |
 | **Reduced Motion** | Kurangi gerakan UI, Care, Battle, dan inkubator |
+| **Music** | Nyalakan atau matikan lagu latar. Default menyala |
 | **Help** | Penjelasan singkat Seeker |
 | **Delete Account** | Hapus seluruh akun secara permanen |
 
-Reduced Motion adalah setting perangkat. Ia tetap tersimpan saat kamu berganti
-akun.
+Reduced Motion dan Music adalah setting perangkat. Keduanya tetap tersimpan saat
+kamu berganti akun.
+
+Lagu latar berganti sendiri mengikuti layar: satu lagu tenang untuk Home, Scan,
+Collection, dan lobby Battle, satu lagu cepat begitu Duel, Team Battle, atau
+node Expedition dimulai, dan satu lagu terpisah untuk Boss Seeker. Perpindahan
+memakai crossfade, dan lagu Home melanjutkan dari posisi terakhir sesudah battle
+selesai, bukan mengulang dari awal.
 
 ## Google: link atau restore
 

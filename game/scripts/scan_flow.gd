@@ -133,6 +133,7 @@ var _team_battle_demo_active := false
 var _team_art_cache: Dictionary = {}
 var _trophy_icon_cache: Dictionary = {}
 var _expedition_controller: ExpeditionController
+var _music: MusicDirector
 var _gallery_status_revision := 0
 var _sleep_completion_timer: Timer = null
 var _sleep_sync_in_flight := false
@@ -246,6 +247,7 @@ func _ready() -> void:
 	_seeker_menu_sheet.help_requested.connect(_show_seeker_help)
 	_seeker_menu_sheet.delete_account_requested.connect(_show_delete_account_confirmation)
 	_seeker_menu_sheet.reduced_motion_changed.connect(_set_reduced_motion)
+	_seeker_menu_sheet.music_changed.connect(_set_music_enabled)
 	_seeker_menu_sheet.chapter_push_changed.connect(_set_chapter_push)
 	_seeker_onboarding_sheet.submit_requested.connect(_complete_seeker_profile)
 	_seeker_profile_view.back_requested.connect(func() -> void: _switch_destination(BottomNav.HOME))
@@ -258,6 +260,11 @@ func _ready() -> void:
 	AuthFlow.existing_account_required.connect(_show_existing_account_warning)
 	LocaleManager.locale_changed.connect(_refresh_localized_ui)
 	UiMotion.set_reduced_motion(GameState.reduced_motion())
+	_music = MusicDirector.new()
+	_music.name = "MusicDirector"
+	add_child(_music)
+	_music.set_enabled(GameState.music_enabled())
+	_music.cue_source = _music_cue
 	_configure_resource_chips()
 	_dialog.file_selected.connect(_scan_file)
 	get_viewport().size_changed.connect(_layout_for_viewport)
@@ -1609,7 +1616,8 @@ func _open_seeker_menu() -> void:
 		GameState.is_anonymous(),
 		GameState.reduced_motion(),
 		ChapterPush.available(),
-		GameState.chapter_push_enabled()
+		GameState.chapter_push_enabled(),
+		GameState.music_enabled()
 	)
 
 
@@ -1857,6 +1865,12 @@ func _show_seeker_help() -> void:
 func _set_reduced_motion(enabled: bool) -> void:
 	GameState.set_reduced_motion(enabled)
 	UiMotion.set_reduced_motion(enabled)
+
+
+func _set_music_enabled(enabled: bool) -> void:
+	GameState.set_music_enabled(enabled)
+	if is_instance_valid(_music):
+		_music.set_enabled(enabled)
 
 
 func _set_chapter_push(enabled: bool) -> void:
@@ -4304,6 +4318,7 @@ func _celebrate_level_up(
 		_level_up_label.text = tr("LEVEL_UP_TO") % LocaleManager.format_integer(level)
 	_level_up_banner.visible = true
 	_level_up_banner.pivot_offset = _level_up_banner.size * 0.5
+	Sfx.play(Sfx.CUE_LEVEL_UP)
 	if target_anima.is_empty():
 		_home_view.pulse_progress()
 	if is_instance_valid(_anima) and _anima.visible:
@@ -4575,6 +4590,22 @@ func _is_immersive_arena() -> bool:
 		and _team_battle_view.visible
 		and _team_battle_view.is_arena_open()
 	)
+
+
+func _music_cue() -> StringName:
+	if _destination != BottomNav.BATTLE:
+		return &"lobby"
+	if (
+		is_instance_valid(_expedition_view)
+		and _expedition_view.is_combat_open()
+		and is_instance_valid(_expedition_controller)
+	):
+		return &"boss" if _expedition_controller.encounter_kind() == "boss" else &"battle"
+	if is_instance_valid(_team_battle_view) and _team_battle_view.is_arena_open():
+		return &"boss" if _team_battle_view.session_kind() == "boss" else &"battle"
+	if is_instance_valid(_battle_view) and _battle_view.has_session():
+		return &"battle"
+	return &"lobby"
 
 
 func _on_immersive_arena_changed(_open: bool) -> void:

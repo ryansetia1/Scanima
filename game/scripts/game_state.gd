@@ -302,6 +302,15 @@ func reduced_motion() -> bool:
 	return bool(preferences.get("reduced_motion", false))
 
 
+func set_music_enabled(enabled: bool) -> void:
+	preferences["music_enabled"] = enabled
+	save()
+
+
+func music_enabled() -> bool:
+	return bool(preferences.get("music_enabled", true))
+
+
 func set_chapter_push_enabled(enabled: bool) -> void:
 	preferences["chapter_push_enabled"] = enabled
 	save()

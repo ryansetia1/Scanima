@@ -99,6 +99,10 @@ func has_active_encounter() -> bool:
 	return _view != null and _view.has_active_encounter()
 
 
+func encounter_kind() -> String:
+	return str(_encounter.get("kind", ""))
+
+
 func use_item(item_id: String) -> bool:
 	if _busy or _encounter.is_empty() or str(_encounter.get("status", "")) != "active":
 		return false

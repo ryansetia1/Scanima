@@ -1,0 +1,18 @@
+Kenney audio (CC0) — www.kenney.nl
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Sci-fi Sounds (1.0):
+- sfx_strike.ogg      ← laserSmall_000.ogg
+- sfx_surge.ogg       ← laserLarge_000.ogg
+- sfx_guard.ogg       ← forceField_000.ogg
+- sfx_hit_resist.ogg  ← impactMetal_004.ogg
+- sfx_portal.ogg      ← doorOpen_000.ogg
+
+Interface Sounds (1.0):
+- sfx_item.ogg        ← confirmation_003.ogg
+- sfx_feed.ogg        ← glass_001.ogg
+- sfx_hit_super.ogg   ← maximize_007.ogg
+- sfx_level_up.ogg    ← confirmation_002.ogg
+
+https://kenney.nl/assets/sci-fi-sounds
+https://kenney.nl/assets/interface-sounds
