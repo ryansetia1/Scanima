@@ -695,6 +695,8 @@ func _team_member_ids() -> Array[String]:
 
 
 func _member_unavailable(row: Dictionary) -> String:
+	if CareRules.is_evolving(row):
+		return "TEAM_MEMBER_EVOLVING_COPY"
 	if str(row.get("status", "")) != "ready":
 		return "TEAM_MEMBER_NOT_READY_COPY"
 	if row.get("dormant_since") != null and not str(row.get("dormant_since", "")).is_empty():
@@ -712,6 +714,8 @@ static func _member_status_key(unavailable: String) -> String:
 			return "BATTLE_PICK_DORMANT"
 		"TEAM_MEMBER_LOW_ENERGY_COPY":
 			return "BATTLE_PICK_LOW_ENERGY"
+		"TEAM_MEMBER_EVOLVING_COPY":
+			return "BATTLE_PICK_EVOLVING"
 		_:
 			return "TEAM_ROSTER_READY"
 

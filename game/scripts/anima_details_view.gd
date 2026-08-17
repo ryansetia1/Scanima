@@ -4,6 +4,7 @@ extends Control
 signal delete_requested(anima_id: String)
 signal rename_requested(anima_id: String)
 signal gallery_publish_requested(anima_id: String, publish: bool)
+signal evolve_requested(row: Dictionary)
 signal help_requested(title: String, body: String)
 
 @onready var _empty_state: Label = %DetailsEmpty
@@ -26,18 +27,23 @@ signal help_requested(title: String, body: String)
 @onready var _combat_help: Button = %CombatHelp
 @onready var _rename_button: Button = %EditAnimaNameButton
 @onready var _gallery_button: Button = %GalleryPublishButton
+@onready var _evolve_button: Button = %EvolveAnimaButton
+@onready var _evolution_status: Label = %EvolutionStatusLabel
 @onready var _delete_button: Button = %DeleteAnimaButton
 
 var _anima_id := ""
 var _element_code := ""
+var _row: Dictionary = {}
 var _busy := false
 var _gallery_published := false
 var _gallery_available := false
+var _evolution_enabled := false
 
 
 func _ready() -> void:
 	_rename_button.pressed.connect(_request_rename)
 	_gallery_button.pressed.connect(_request_gallery_toggle)
+	_evolve_button.pressed.connect(_request_evolve)
 	_delete_button.pressed.connect(_request_delete)
 	_about_help.pressed.connect(_show_about_help)
 	_combat_help.pressed.connect(_show_combat_help)
@@ -45,6 +51,7 @@ func _ready() -> void:
 
 
 func set_anima(row: Dictionary, portrait: Texture2D) -> void:
+	_row = row.duplicate(true) if not row.is_empty() else {}
 	if row.is_empty():
 		_anima_id = ""
 		_element_code = ""
@@ -52,6 +59,8 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_content.visible = false
 		_rename_button.disabled = true
 		_gallery_button.disabled = true
+		_evolve_button.visible = false
+		_evolution_status.visible = false
 		_delete_button.disabled = true
 		return
 
@@ -59,40 +68,50 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 	_element_code = str(row.get("element", ""))
 	_empty_state.visible = false
 	_content.visible = true
-	_rename_button.disabled = _busy or _anima_id.is_empty()
-	_gallery_button.disabled = _busy or _anima_id.is_empty() or not _gallery_available
-	_delete_button.disabled = _busy or _anima_id.is_empty()
+	var evolving := CareRules.is_evolving(row)
+	_rename_button.disabled = _busy or _anima_id.is_empty() or evolving
+	_gallery_button.disabled = _busy or _anima_id.is_empty() or not _gallery_available or evolving
+	_delete_button.disabled = _busy or _anima_id.is_empty() or evolving
 	_portrait.texture = portrait
 	_name.text = LocaleManager.display_name(row)
+	var level := CareRules.level_from_exp(int(row.get("care_score", 0)))
 	_meta.text = tr("HOME_IDENTITY_META") % [
-		LocaleManager.level_label(CareRules.level_from_exp(int(row.get("care_score", 0)))),
+		LocaleManager.level_label(level),
 		LocaleManager.element_compact(row),
 	]
 	_trait_element.text = LocaleManager.element_compact(row)
 	_trait_rarity.text = LocaleManager.format_ratio(int(row.get("rarity", 1)), 5)
-	var level := CareRules.level_from_exp(int(row.get("care_score", 0)))
 	_trait_stage.text = tr("HOME_IDENTITY_META") % [
 		LocaleManager.level_label(level),
-		LocaleManager.form_name(level),
+		LocaleManager.form_name_for_row(row),
 	]
 	_trait_exp.text = LocaleManager.format_integer(int(row.get("care_score", 0)))
-	_trait_strike.text = LocaleManager.move_name(row, "strike")
-	_trait_surge.text = LocaleManager.move_name(row, "surge")
+	_trait_strike.text = _move_line(row, "strike")
+	_trait_surge.text = _move_line(row, "surge")
 
 	var stats := GameState.as_dict(row.get("base_stats"))
-	var exp := int(row.get("care_score", 0))
-	_stat_hp.text = _stat(stats, "hp", exp)
-	_stat_atk.text = _stat(stats, "atk", exp)
-	_stat_def.text = _stat(stats, "def", exp)
-	_stat_spd.text = _stat(stats, "spd", exp)
-	_stat_special.text = _stat(stats, "special", exp)
+	_stat_hp.text = _stat_for_row(stats, "hp", row)
+	_stat_atk.text = _stat_for_row(stats, "atk", row)
+	_stat_def.text = _stat_for_row(stats, "def", row)
+	_stat_spd.text = _stat_for_row(stats, "spd", row)
+	_stat_special.text = _stat_for_row(stats, "special", row)
+	_apply_evolution_ui(row)
 
 
 func set_busy(busy: bool) -> void:
 	_busy = busy
-	_rename_button.disabled = _busy or _anima_id.is_empty()
-	_gallery_button.disabled = _busy or _anima_id.is_empty() or not _gallery_available
-	_delete_button.disabled = _busy or _anima_id.is_empty()
+	var evolving := CareRules.is_evolving(_row)
+	_rename_button.disabled = _busy or _anima_id.is_empty() or evolving
+	_gallery_button.disabled = _busy or _anima_id.is_empty() or not _gallery_available or evolving
+	_delete_button.disabled = _busy or _anima_id.is_empty() or evolving
+	if not _row.is_empty():
+		_apply_evolution_ui(_row)
+
+
+func set_evolution_enabled(enabled: bool) -> void:
+	_evolution_enabled = enabled
+	if not _row.is_empty():
+		_apply_evolution_ui(_row)
 
 
 func set_gallery_status(status: Dictionary) -> void:
@@ -103,7 +122,40 @@ func set_gallery_status(status: Dictionary) -> void:
 		return
 	_gallery_button.visible = true
 	_gallery_button.text = tr("GALLERY_UNPUBLISH") if _gallery_published else tr("GALLERY_PUBLISH")
-	_gallery_button.disabled = _busy or _anima_id.is_empty()
+	_gallery_button.disabled = (
+		_busy or _anima_id.is_empty() or CareRules.is_evolving(_row)
+	)
+
+
+func _apply_evolution_ui(row: Dictionary) -> void:
+	var evolving := CareRules.is_evolving(row)
+	var evolution_ready := _evolution_enabled and CareRules.evolution_ready(row)
+	var stage3 := CareRules.committed_stage(row) >= 3
+	_evolve_button.visible = evolution_ready and not stage3 and not evolving
+	_evolve_button.disabled = _busy or not evolution_ready
+	_evolution_status.visible = evolving
+	if evolving:
+		_evolution_status.text = tr("EVOLUTION_CHAMBER_STATUS")
+	elif evolution_ready and not stage3:
+		_evolve_button.text = tr("EVOLVE_ACTION")
+
+
+func _move_line(row: Dictionary, action: String) -> String:
+	var move := LocaleManager.move_name(row, action)
+	if CareRules.evolution_version(row) < 1:
+		return move
+	var effect_id := str(
+		row.get("surge_effect_id" if action == "surge" else "strike_effect_id", "")
+	).strip_edges()
+	if effect_id.is_empty():
+		return move
+	return tr("DETAILS_MOVE_EFFECT") % [move, LocaleManager.effect_name(effect_id)]
+
+
+func _request_evolve() -> void:
+	if _row.is_empty() or not CareRules.evolution_ready(_row):
+		return
+	evolve_requested.emit(_row.duplicate(true))
 
 
 func _request_rename() -> void:
@@ -125,6 +177,9 @@ func _request_delete() -> void:
 func refresh_localized_ui() -> void:
 	_about_help.tooltip_text = tr("DETAILS_TRAITS")
 	_combat_help.tooltip_text = tr("DETAILS_ATTRIBUTES")
+	_evolve_button.text = tr("EVOLVE_ACTION")
+	if not _row.is_empty():
+		set_anima(_row, _portrait.texture)
 
 
 func _show_about_help() -> void:
@@ -154,9 +209,9 @@ func _show_combat_help() -> void:
 	)
 
 
-func _stat(stats: Dictionary, key: String, exp: int) -> String:
+func _stat_for_row(stats: Dictionary, key: String, row: Dictionary) -> String:
 	return (
-		LocaleManager.format_integer(CareRules.grown_stat(stats[key], exp))
+		LocaleManager.format_integer(CareRules.grown_stat_for_row(stats[key], row))
 		if stats.has(key)
 		else tr("VALUE_UNAVAILABLE")
 	)

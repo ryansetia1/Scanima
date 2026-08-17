@@ -4040,6 +4040,398 @@ console.log("35. halaman referensi elemen tidak basi terhadap roster production"
   }
 }
 
+console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21");
+{
+  const {
+    validateEvolutionPlan,
+    assembleEvolvePrompt,
+    buildEvolutionIdleReference,
+    _evolutionSelfCheck,
+    EVOLUTION_EFFECT_IDS,
+  } = await import("../backend/supabase/functions/_shared/evolution.mjs");
+
+  _evolutionSelfCheck();
+
+  const adult = validateEvolutionPlan(
+    {
+      lineage_anchors: ["wide ceramic belly", "loop handle arc", "glaze chip rim"],
+      stage_brief: "Taller adult bridge with reinforced handle crest.",
+      body_height_cm: 130,
+      strike_name: "Glaze Fang",
+      surge_name: "Steam Crown",
+      strike_vfx: { form: "arc", motion: "sweep", brief: "a ceramic contact arc" },
+      surge_vfx: { form: "eruption", motion: "bloom", brief: "a radial steam bloom" },
+      strike_effect_id: "armor_pierce",
+      surge_effect_id: "barrier",
+    },
+    { targetStage: 2, priorHeightCm: 110 },
+  );
+  assert.equal(adult.plan.body_height_cm, 130);
+  assert.ok(EVOLUTION_EFFECT_IDS.includes(adult.plan.strike_effect_id));
+
+  assert.throws(
+    () => validateEvolutionPlan(
+      {
+        lineage_anchors: ["a", "a", "b"],
+        stage_brief: "x",
+        body_height_cm: 90,
+        strike_name: "A B",
+        surge_name: "C D",
+        strike_vfx: { form: "arc", motion: "sweep", brief: "x" },
+        surge_vfx: { form: "ring", motion: "bloom", brief: "y" },
+        strike_effect_id: "poison",
+        surge_effect_id: "barrier",
+      },
+      { targetStage: 2, priorHeightCm: 100 },
+    ),
+    /lineage_anchors|berbeda/,
+  );
+
+  const { buildBundle } = await import("../backend/tools/bundle_prompts.mjs");
+  const bundel = await buildBundle();
+  assert.ok(bundel.v21?.vision_evolve_system?.includes("Evolution Director"), "v21 vision_evolve_system terbundel");
+  assert.ok(bundel.v21?.vision_evolve_schema?.properties?.lineage_anchors, "v21 vision_evolve_schema terparse");
+  assert.equal(bundel.v21?.sprite_sheet, bundel.v20?.sprite_sheet, "v21 capture sprite_sheet identik v20");
+
+  adult.plan.target_stage = 2;
+  const prompt = assembleEvolvePrompt(bundel.v21.sprite_sheet_evolve, adult.plan, {
+    species_key: "mug_ceramic",
+    color_bucket: "warm_red",
+  });
+  assert.ok(!/\{\{[a-z_]+\}\}/.test(prompt), "sprite_sheet_evolve v21 masih punya placeholder");
+  assert.ok(prompt.includes("Glaze Fang"), "nama move Plan masuk ke prompt evolve");
+
+  const source = new Image(12, 12);
+  source.bitmap.fill(0);
+  const bodyOffset = (6 * source.width + 6) * 4;
+  source.bitmap.set([220, 40, 30, 255], bodyOffset);
+  const reference = await buildEvolutionIdleReference(
+    await source.encode(),
+    { poses: { idle: { region: [2, 2, 8, 8] } } },
+  );
+  const decodedReference = await Image.decode(reference);
+  assert.deepEqual(
+    [decodedReference.width, decodedReference.height],
+    [8, 8],
+    "reference evolusi harus crop Idle, bukan seluruh sheet",
+  );
+  assert.deepEqual(
+    [...decodedReference.bitmap.slice(0, 4)],
+    [0, 255, 0, 255],
+    "ruang transparan reference evolusi harus exact chroma green",
+  );
+  assert.deepEqual(
+    [...decodedReference.bitmap.slice((4 * decodedReference.width + 4) * 4, (4 * decodedReference.width + 4) * 4 + 4)],
+    [220, 40, 30, 255],
+    "piksel tubuh Idle harus bertahan saat reference diratakan",
+  );
+}
+
+console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-active, no refund");
+{
+  const { readFile } = await import("node:fs/promises");
+  const evolveSrc = await readFile("backend/supabase/functions/evolve_anima/index.ts", "utf8");
+  const webhookSrc = await readFile("backend/supabase/functions/replicate_webhook/index.ts", "utf8");
+  const quotaSrc = await readFile("backend/tests/quota_rules.sql", "utf8");
+  const migSrc = await readFile(
+    "backend/supabase/migrations/20260817095700_evolution_art_pipeline.sql",
+    "utf8",
+  );
+  const {
+    evolutionWebhookUrl,
+    evolutionFinalizeRetryable,
+    buildEvolvePromptContext,
+  } = await import("../backend/supabase/functions/_shared/evolution.mjs");
+  const { dispatchDefinitelyNotStarted } = await import(
+    "../backend/supabase/functions/_shared/replicate.ts"
+  );
+
+  const visionIdx = evolveSrc.indexOf("await jalankanPrediksi");
+  const preReserveIdx = evolveSrc.indexOf("p_plan: null");
+  assert.ok(preReserveIdx > -1 && preReserveIdx < visionIdx, "pre-reserve harus sebelum Vision");
+  assert.ok(
+    evolveSrc.includes("if (!pre.planning_claimed)")
+      && migSrc.includes("'planning_claimed', false"),
+    "lease Vision harus atomik lintas edge isolate",
+  );
+  assert.ok(
+    evolveSrc.includes("body.resume_only === true")
+      && evolveSrc.includes('db.rpc("resume_evolution"')
+      && migSrc.includes("function public.resume_evolution")
+      && migSrc.includes("revoke all on function public.resume_evolution")
+      && quotaSrc.includes("resume lintas device harus menempel"),
+    "resume tanpa state lokal harus menempel ke generation aktif tanpa membuka spend baru",
+  );
+
+  const claimIdx = evolveSrc.indexOf("claim_evolution_dispatch");
+  const mulaiIdx = evolveSrc.indexOf("await mulaiGeneration");
+  assert.ok(claimIdx > -1 && claimIdx < mulaiIdx, "claim dispatch harus sebelum mulaiGeneration");
+
+  assert.ok(webhookSrc.includes("generation_id"), "webhook baca generation_id callback");
+  assert.ok(
+    evolutionWebhookUrl("https://example.com/functions/v1/replicate_webhook", "abc-123")
+      .includes("generation_id=abc-123"),
+    "evolutionWebhookUrl menempel generation_id",
+  );
+
+  assert.ok(migSrc.includes("animas_one_evolving_per_owner_idx"), "partial unique one-evolving index");
+  assert.ok(migSrc.includes("anima_team_members"), "combat gate pakai anima_team_members");
+  assert.ok(migSrc.includes("dispatch_started_at"), "dispatch_started_at kolom ada");
+  assert.ok(
+    evolveSrc.includes("buildEvolutionIdleReference") && evolveSrc.includes("evolution_refs"),
+    "evolution wajib mengirim crop Idle privat, bukan full sheet",
+  );
+  assert.ok(
+    migSrc.includes("evolution_completion_timeout")
+      && migSrc.includes("evolution_dispatch_timeout")
+      && migSrc.includes("evolution_plan, reference_path, generation_id"),
+    "reference privat harus dipertahankan saat sukses dan dibersihkan saat timeout",
+  );
+  assert.ok(
+    quotaSrc.includes("evolution-fail")
+      && quotaSrc.includes("evolution-success")
+      && quotaSrc.includes("evolution-stage-three")
+      && quotaSrc.includes("EVOLUTION_PLAN_EFFECT_NOT_UPGRADE")
+      && quotaSrc.includes("client tidak boleh memanggil RPC evolusi"),
+    "quota_rules harus menguji rollback, commit, urutan stage, dan revoke evolusi",
+  );
+
+  const evolveBranches = [...webhookSrc.matchAll(/if \(isEvolve\) \{([\s\S]*?\n    \})/g)];
+  assert.ok(evolveBranches.length >= 2, "webhook punya cabang isEvolve");
+  for (const [, body] of evolveBranches) {
+    assert.ok(!body.includes("refund_generation"), "evolve tidak refund");
+  }
+
+  assert.ok(evolutionFinalizeRetryable("unggah anima sheet gagal: timeout"));
+  assert.ok(evolutionFinalizeRetryable("commit evolution gagal: db down"));
+  assert.ok(
+    !evolutionFinalizeRetryable("commit evolution gagal: EVOLUTION_MANIFEST_MISMATCH"),
+    "commit evolution permanen harus fail, bukan mengulang webhook",
+  );
+  assert.ok(!evolutionFinalizeRetryable("QA: sel ditolak"));
+  assert.ok(dispatchDefinitelyNotStarted(new Error("openai/gpt-image-2 create 401: bad token")));
+  assert.ok(!dispatchDefinitelyNotStarted(new Error("fetch failed")));
+
+  const ctx = buildEvolvePromptContext(
+    {
+      creature_brief: "ceramic mug",
+      signature_features: ["loop handle"],
+      surface_finish: "glazed ceramic",
+      character_direction: "sturdy",
+      dominant_colors: ["warm red"],
+      damage_hints: ["glaze chip"],
+    },
+    { species_key: "mug", color_bucket: "warm_red" },
+  );
+  assert.equal(ctx.creature_brief, "ceramic mug");
+  assert.ok(ctx.signature_features_as_bullets.includes("loop handle"));
+}
+
+console.log("38. move effects catalog, growth v3, and evolution calibration");
+{
+  const {
+    _moveEffectsSelfCheck,
+    ADULT_FORM_MULT,
+    EVOLVED_FORM_MULT,
+    hasEvolutionEffects,
+    normalizeEffectId,
+  } = await import("../backend/supabase/functions/_shared/move_effects.mjs");
+  const {
+    chooseBotAction,
+    duelWinRate,
+    growthMultiplier,
+    createFighter,
+    resolveTurn,
+  } = await import("../backend/supabase/functions/_shared/battle.mjs");
+
+  _moveEffectsSelfCheck();
+  assert.equal(normalizeEffectId("nope"), "");
+  assert.equal(ADULT_FORM_MULT, 1.06);
+  assert.equal(EVOLVED_FORM_MULT, 1.18);
+  assert.ok(!hasEvolutionEffects(3, { evolution_version: 1 }));
+  assert.ok(hasEvolutionEffects(3, {
+    evolution_version: 1,
+    strike_effect_id: "poison",
+  }));
+
+  const base = { hp: 50, atk: 50, def: 50, spd: 50, special: 50 };
+  const legacyLv16 = growthMultiplier(16, { rulesVersion: 3, evolutionVersion: 0 });
+  assert.ok(Math.abs(legacyLv16 - 1.45) < 1e-9, "evolution_version=0 keeps legacy +0.15");
+  const adultCommitted = growthMultiplier(16, { rulesVersion: 3, evolutionVersion: 1, stage: 2 });
+  assert.ok(
+    Math.abs(adultCommitted - (1 + 0.02 * 15) * ADULT_FORM_MULT) < 1e-9,
+    "committed Adult uses form multiplier",
+  );
+
+  const adult = {
+    ...base,
+    level: 16,
+    stage: 2,
+    evolution_version: 1,
+    element: "metal",
+    strike_effect_id: "armor_pierce",
+    surge_effect_id: "barrier",
+  };
+  const hatchling = {
+    ...base,
+    level: 11,
+    stage: 1,
+    evolution_version: 1,
+    element: "metal",
+  };
+  assert.equal(
+    chooseBotAction(
+      createFighter({
+        ...hatchling,
+        base_stats: { hp: 50, atk: 100, def: 50, spd: 50, special: 10 },
+      }, 3),
+      () => 0.5,
+      createFighter(hatchling, 3),
+      3,
+    ),
+    "surge",
+    "ritual-enabled Hatchling tanpa efek harus mempertahankan picker bot legacy",
+  );
+  const neutralWin = duelWinRate(adult, hatchling, 1024);
+  assert.ok(
+    neutralWin >= 0.75 && neutralWin < 1.0,
+    `Adult armor_pierce/barrier vs Hatchling must be favored but not certain at 1024 runs, got ${neutralWin}`,
+  );
+
+  const favored = { ...hatchling, element: "spark" };
+  const underdogWin = duelWinRate(favored, adult, 1024);
+  assert.ok(underdogWin > 0, `favorable hatchling needs nonzero path, got ${underdogWin}`);
+
+  let legacyState = {
+    status: "active",
+    turn: 1,
+    seed: "legacy-fx",
+    rules_version: 2,
+    player: createFighter(adult, 2),
+    bot: createFighter(hatchling, 2),
+  };
+  const legacyTurn = resolveTurn(legacyState, "strike", "legacy-key");
+  assert.ok(
+    !legacyTurn.events.some((event) => event.type === "move_effect"),
+    "rules_version 2 must not emit move_effect",
+  );
+
+  let barrierState = {
+    status: "active",
+    turn: 1,
+    seed: "barrier-turns",
+    rules_version: 3,
+    player: createFighter(adult, 3),
+    bot: createFighter(hatchling, 3),
+  };
+  const barrierTurn = resolveTurn(barrierState, "surge", "barrier-key");
+  const barrierFx = barrierTurn.events.find((event) => event.type === "move_effect" && event.effect_id === "barrier");
+  assert.ok(barrierFx, "surge barrier must emit move_effect");
+  assert.equal(barrierFx.remaining_turns, 2, "Adult barrier advertises 2 owner turns");
+  const attackIdx = barrierTurn.events.findIndex((event) => event.type === "attack");
+  const fxIdx = barrierTurn.events.findIndex((event) => event.type === "move_effect");
+  assert.ok(attackIdx >= 0 && fxIdx > attackIdx, "attack must precede move_effect events");
+
+  let poisonState = {
+    status: "active",
+    turn: 1,
+    seed: "refresh-stack",
+    rules_version: 3,
+    player: createFighter({
+      ...base,
+      level: 16,
+      stage: 2,
+      evolution_version: 1,
+      strike_effect_id: "poison",
+      surge_effect_id: "barrier",
+    }, 3),
+    bot: createFighter({
+      ...base,
+      base_stats: { hp: 200, atk: 50, def: 50, spd: 50, special: 50 },
+      level: 11,
+      stage: 1,
+      evolution_version: 1,
+      element: "metal",
+    }, 3),
+  };
+  const firstPoison = resolveTurn(poisonState, "strike", "refresh-key");
+  assert.ok(firstPoison.state.bot.statuses?.poison, "poison must land on bot after strike");
+  const turnsAfterFirst = firstPoison.state.bot.statuses.poison.remaining_turns;
+  const strikeIdx = firstPoison.events.findIndex((event) => event.type === "attack");
+  const poisonFxIdx = firstPoison.events.findIndex(
+    (event) => event.type === "move_effect" && event.effect_id === "poison",
+  );
+  assert.ok(strikeIdx >= 0 && poisonFxIdx > strikeIdx, "attack must precede poison move_effect");
+
+  const secondPoison = resolveTurn(firstPoison.state, "strike", "refresh-key-2");
+  assert.equal(
+    secondPoison.state.bot.statuses?.poison?.remaining_turns ?? 0,
+    turnsAfterFirst,
+    "poison refresh must not stack duration",
+  );
+
+  let tickState = structuredClone(firstPoison.state);
+  tickState.seed = "poison-tick-expire";
+  let sawTick = false;
+  let sawExpiry = false;
+  for (let i = 0; i < 8 && tickState.status === "active"; i += 1) {
+    const turn = resolveTurn(tickState, "guard", `tick-key-${i}`);
+    if (turn.events.some((event) => event.type === "status_tick" && event.effect_id === "poison")) {
+      sawTick = true;
+    }
+    if (turn.events.some((event) => event.type === "status_expired" && event.effect_id === "poison")) {
+      sawExpiry = true;
+    }
+    tickState = turn.state;
+  }
+  assert.ok(sawTick, "poison must emit status_tick on active rounds");
+  assert.ok(sawExpiry, "poison must emit status_expired when duration ends");
+
+  const { resolveTeamTurn, createTeamBattleState } = await import(
+    "../backend/supabase/functions/_shared/team_combat.mjs"
+  );
+  const teamPoison = createTeamBattleState({
+    seed: "team-status-ko-fixed",
+    player: [{
+      ...base,
+      base_stats: { hp: 50, atk: 50, def: 50, spd: 99, special: 50 },
+      level: 16,
+      stage: 2,
+      evolution_version: 1,
+      element: "toxin",
+      strike_effect_id: "poison",
+      anima_id: "poison-active",
+      name: "Poison",
+    }],
+    opponent: [{
+      base_stats: { hp: 40, atk: 10, def: 10, spd: 10, special: 10 },
+      element: "metal",
+      level: 5,
+      current_hp: 35,
+      anima_id: "victim-0",
+      name: "Victim",
+    }, {
+      ...base,
+      base_stats: { hp: 50, atk: 10, def: 10, spd: 10, special: 10 },
+      anima_id: "victim-1",
+      name: "Bench",
+    }],
+  });
+  const teamStrike = resolveTeamTurn(teamPoison, "strike", "team-poison-key");
+  assert.ok(
+    teamStrike.events.some((event) => event.type === "status_tick" && event.effect_id === "poison"),
+    "team poison must tick active opponent",
+  );
+  assert.ok(
+    teamStrike.events.some((event) => event.type === "knockout"),
+    "team poison tick KO must emit knockout",
+  );
+  assert.ok(
+    teamStrike.events.some((event) => event.type === "switch" && event.actor === "opponent"),
+    "team status KO must auto-switch opponent bench",
+  );
+}
+
 const emitIdx = process.argv.indexOf("--emit");
 if (emitIdx > -1 && process.argv[emitIdx + 1]) {
   const { mkdir, writeFile } = await import("node:fs/promises");

@@ -1,0 +1,65 @@
+{
+  "type": "object",
+  "properties": {
+    "lineage_anchors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "stage_brief": { "type": "string" },
+    "metamorphosis_notes": { "type": "string", "nullable": true },
+    "body_height_cm": { "type": "integer" },
+    "strike_name": { "type": "string" },
+    "surge_name": { "type": "string" },
+    "strike_vfx": {
+      "type": "object",
+      "properties": {
+        "form": {
+          "type": "string",
+          "enum": ["arc", "beam", "trail", "wave", "eruption", "ring", "scatter", "tether", "stamp", "cloud", "shatter", "growth"]
+        },
+        "motion": {
+          "type": "string",
+          "enum": ["projectile", "sweep", "impact", "bloom"]
+        },
+        "brief": { "type": "string" }
+      },
+      "required": ["form", "motion", "brief"]
+    },
+    "surge_vfx": {
+      "type": "object",
+      "properties": {
+        "form": {
+          "type": "string",
+          "enum": ["arc", "beam", "trail", "wave", "eruption", "ring", "scatter", "tether", "stamp", "cloud", "shatter", "growth"]
+        },
+        "motion": {
+          "type": "string",
+          "enum": ["projectile", "sweep", "impact", "bloom"]
+        },
+        "brief": { "type": "string" }
+      },
+      "required": ["form", "motion", "brief"]
+    },
+    "strike_effect_id": {
+      "type": "string",
+      "enum": ["armor_pierce", "guard_break", "drain", "poison", "burn", "slow", "armor_break"]
+    },
+    "surge_effect_id": {
+      "type": "string",
+      "enum": ["barrier", "guard_break", "drain", "burn", "slow", "armor_break"]
+    }
+  },
+  "required": [
+    "lineage_anchors",
+    "stage_brief",
+    "body_height_cm",
+    "strike_name",
+    "surge_name",
+    "strike_vfx",
+    "surge_vfx",
+    "strike_effect_id",
+    "surge_effect_id"
+  ]
+}

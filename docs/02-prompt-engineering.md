@@ -619,33 +619,29 @@ sudah dimiliki harness.
 
 ### Payload evolusi
 
-Bedanya hanya isi `input_images`, dan bedanya penting: yang dikirim adalah **sprite Idle Anima itu sendiri**, bukan foto asli. Model gambar unggul dalam editing, jadi memberinya sprite stage sebelumnya membuat identitas visual bertahan antar stage — mata yang sama, palet yang sama, fitur khas yang sama, hanya lebih besar dan lebih garang.
+Evolution v21 tidak memakai foto asli maupun full sheet. Edge Function memotong
+region Idle dari sheet privat yang committed, meratakannya ke `#00FF00`,
+menyimpan derivative itu secara privat, lalu memberi signed URL yang sama ke
+Vision Evolution Director dan image model. Ini mencegah pose/VFX sel lain
+terbaca sebagai bagian tubuh sambil mempertahankan lineage.
 
 ```jsonc
 {
   "input": {
-    "prompt": "<template evolusi, lihat di bawah>",
-    "input_images": ["https://.../sheets/<hash>_idle.png"],
+    "prompt": "<sprite_sheet_evolve v21 + Evolution Plan tervalidasi>",
+    "input_images": ["https://.../anima_sheets/<owner>/<anima>/evolution_refs/<generation>.png"],
     "aspect_ratio": "1024x1024", "quality": "medium",
     "number_of_images": 1, "background": "opaque", "output_format": "png"
   }
 }
 ```
 
-Tambahan prompt evolusi, disisipkan setelah blok `THE CREATURE`:
-
-```markdown
-EVOLUTION
-The reference image is this creature's earlier form. Keep its identity clearly
-intact: the same colour palette, the same eye design, and all of the signature
-features listed above must still be recognisable.
-
-Now evolve it into a more powerful adult stage. It is larger and taller, its
-proportions are more athletic and less rounded, it gains one or two new
-armoured or elaborate details growing out of existing parts, and its
-expression is more confident. A player must look at the two forms side by side
-and say "that is the same creature, grown up".
-```
+Vision lebih dulu memilih tepat tiga anchor struktural, body plan/metamorphosis
+Adult bridge atau Evolved culmination, tinggi dalam band stage, dua nama
+move/VFX, dan dua effect ID dari allowlist. Image model boleh mengubah body plan
+secara besar, tetapi ketiga anchor itu wajib bertahan di tujuh sel karakter.
+Validator—bukan model—menentukan legalitas effect, successor Evolved, band
+tinggi, dan format nama. Prompt/model ini masih gated dan belum live.
 
 ## 6. Kegagalan yang sudah diketahui dan penanganannya
 
@@ -747,12 +743,16 @@ backend/prompts/
 ├── v17/                   <- rollback tinggi kanonis awal
 ├── v18/                   <- rollback tinggi handheld 70–120 cm
 ├── v19/                   <- rollback gate: floor boneka gendong ~50 cm
-└── v20/                   <- production: ilustrasi orisinal + gate franchise
-    ├── vision_system.md   # known_character + klasifikasi subjek ilustrasi
-    ├── vision_schema.json # reason known_character
-    ├── sprite_sheet.md    # identik byte-for-byte dengan v19
-    ├── sprite_sheet_fauna.md
-    └── sprite_sheet_evolve.md
+├── v20/                   <- production capture: ilustrasi orisinal + gate franchise
+│   ├── vision_system.md
+│   ├── vision_schema.json
+│   ├── sprite_sheet.md    # identik byte-for-byte dengan v19
+│   ├── sprite_sheet_fauna.md
+│   └── sprite_sheet_evolve.md
+└── v21/                   <- evolution-only (belum live; capture identik v20)
+    ├── vision_evolve_system.md
+    ├── vision_evolve_schema.json
+    └── sprite_sheet*.md   # capture/fauna identik v20; evolve + brief Adult/Evolved
 ```
 
 Eval Vision-only v20 pada 17 Agustus 2026 menolak karakter franchise sebagai

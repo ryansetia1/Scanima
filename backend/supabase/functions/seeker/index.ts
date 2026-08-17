@@ -50,7 +50,25 @@ Deno.serve(async (req) => {
 
   try {
     if (operation === "profile") {
-      return await rpc("seeker_profile_summary", { p_owner: ownerId });
+      const { data, error } = await db.rpc("seeker_profile_summary", { p_owner: ownerId });
+      if (error) throw error;
+      const summary = data && typeof data === "object"
+        ? data as Record<string, unknown>
+        : {};
+      const currentConfig = summary.client_config && typeof summary.client_config === "object"
+        ? summary.client_config as Record<string, unknown>
+        : {};
+      const { data: evolutionFlag, error: flagError } = await db
+        .from("app_config")
+        .select("value")
+        .eq("key", "feature_evolution")
+        .maybeSingle();
+      if (flagError) throw flagError;
+      summary.client_config = {
+        ...currentConfig,
+        feature_evolution: evolutionFlag?.value === true,
+      };
+      return json(200, summary);
     }
     if (operation === "complete") {
       const seekerName = typeof body.seeker_name === "string" ? body.seeker_name : "";

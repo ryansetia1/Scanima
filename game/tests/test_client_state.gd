@@ -58,6 +58,7 @@ func _initialize() -> void:
 	_test_state_rusak()
 	_test_cache_art()
 	_test_cache_anima_id()
+	_test_pending_evolution()
 	_test_cache_setengah()
 	_test_client_version()
 	_test_cache_boot()
@@ -585,22 +586,54 @@ func _test_cache_art() -> void:
 
 
 func _test_cache_anima_id() -> void:
-	print("10. cache per anima_id v5")
+	print("10. cache per anima_id v6 stage-aware")
 	_check(
-		GameState.sprite_dir_for_anima("anima-123").get_file().begins_with("v5_"),
-		"cache anima baru harus memakai prefix v5"
+		GameState.sprite_dir_for_anima("anima-123", 2).get_file().begins_with("v6_"),
+		"cache anima baru harus memakai prefix v6 dan stage"
+	)
+	_check(
+		GameState.sprite_dir_for_anima("anima-123", 2).ends_with("_2"),
+		"folder cache harus menyertakan stage committed"
 	)
 	var built := PlaceholderSheet.build()
 	var manifest: Dictionary = built["manifest"]
 	var png: PackedByteArray = (built["image"] as Image).save_png_to_buffer()
 	var anima_id := "anima-123"
 
-	_check(not GameState.has_sprite_for_anima(anima_id), "cache anima harus kosong sebelum disimpan")
-	var simpan: Dictionary = GameState.store_sprite_for_anima(anima_id, manifest, png)
+	_check(not GameState.has_sprite_for_anima(anima_id, 1), "cache anima harus kosong sebelum disimpan")
+	var simpan: Dictionary = GameState.store_sprite_for_anima(anima_id, manifest, png, 1)
 	_check(simpan.get("ok", false), "store_sprite_for_anima harus berhasil")
-	_check(GameState.has_sprite_for_anima(anima_id), "cache anima harus terbaca lengkap")
-	var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id))
+	_check(GameState.has_sprite_for_anima(anima_id, 1), "cache anima harus terbaca lengkap")
+	_check(not GameState.has_sprite_for_anima(anima_id, 2), "stage lain tidak boleh terbaca")
+	var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id, 1))
 	_check(loaded.get("ok", false), "AnimaLoader harus memuat cache anima_id")
+
+
+func _test_pending_evolution() -> void:
+	print("15. pending evolution persist satu kunci")
+	GameState.clear_account_state()
+	var pending: Dictionary = GameState.begin_evolution("anima-evolve", 1)
+	_check(str(pending.get("idempotency_key", "")).length() > 0, "ritual harus punya kunci")
+	_check_eq(int(pending.get("prior_stage", 0)), 1, "prior stage tersimpan")
+	var again: Dictionary = GameState.begin_evolution("anima-evolve", 1)
+	_check_eq(
+		str(again.get("idempotency_key", "")),
+		str(pending.get("idempotency_key", "")),
+		"kunci pending tidak boleh diganti"
+	)
+	_check(
+		GameState.begin_evolution("anima-other", 1).is_empty(),
+		"Anima lain tidak boleh memakai kunci evolusi yang sedang pending"
+	)
+	GameState.note_evolution_started("gen-1", 2)
+	_check_eq(str(GameState.pending_evolution.get("generation_id", "")), "gen-1", "generation tercatat")
+	GameState.finish_evolution()
+	_check(GameState.pending_evolution.is_empty(), "finish membersihkan pending")
+	var adopted: Dictionary = GameState.begin_evolution("anima-evolve", 1, true)
+	_check(bool(adopted.get("resume_only", false)), "intent server hanya boleh melanjutkan generation yang ada")
+	_muat_ulang()
+	_check(bool(GameState.pending_evolution.get("resume_only", false)), "resume-only persist setelah restart")
+	GameState.finish_evolution()
 
 
 func _test_client_version() -> void:

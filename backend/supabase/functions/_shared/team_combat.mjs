@@ -2,17 +2,17 @@ import {
   BATTLE_ACTIONS,
   RULES_VERSION,
   SURGE_COST,
-  applyIncomingModifiers,
   applyIntent,
   assertAffordable,
   battleError,
   chooseBotAction,
-  computeDamage,
   createFighter,
-  critChance,
+  finishEffectTurn,
   guardEvent,
   itemEvent,
+  resolveCombatAttack,
   seededRandom,
+  tickBarrierOwnerTurn,
   turnOrder,
   turnSeed,
 } from "./battle.mjs";
@@ -22,7 +22,9 @@ import {
   rewardRollFromSeed,
   rewardTierFromRatio,
 } from "./catalog.mjs";
-import { defenseElements, dualDefenderMultiplier } from "./elements.mjs";
+import {
+  effectPowerBonus,
+} from "./move_effects.mjs";
 
 export const TEAM_ACTIONS = Object.freeze([...BATTLE_ACTIONS, "switch"]);
 export const TEAM_MAX_TURNS = 60;
@@ -35,28 +37,34 @@ export function createTeamBattleState({
   seed,
   encounterKind = "",
   acePassive = null,
+  rules_version,
 }) {
+  const version = Math.trunc(Number(rules_version ?? RULES_VERSION));
   const reserveAce = encounterKind === "boss";
   return {
     status: "active",
     turn: 1,
     seed: String(seed ?? ""),
-    rules_version: RULES_VERSION,
-    player: createTeamParty(player, true),
+    rules_version: version,
+    player: createTeamParty(player, true, {}, version),
     opponent: createTeamParty(opponent, false, {
       reserveAce,
       acePassive: reserveAce ? normalizeAcePassive(acePassive) : null,
-    }),
+    }, version),
   };
 }
 
-export function teamCombatPower(roster) {
+export function teamCombatPower(roster, rulesVersion = RULES_VERSION) {
   if (!Array.isArray(roster) || roster.length === 0) return 0;
-  return roster.reduce((sum, member) => sum + combatPower(createFighter(member)), 0);
+  return roster.reduce((sum, member) => {
+    const fighter = createFighter(member, rulesVersion);
+    return sum + combatPower(fighter) * (1 + effectPowerBonus(fighter, rulesVersion));
+  }, 0);
 }
 
-export function teamRewardPreview(player, opponent, seed) {
-  const ratio = teamCombatPower(opponent) / Math.max(1, teamCombatPower(player));
+export function teamRewardPreview(player, opponent, seed, rulesVersion = RULES_VERSION) {
+  const ratio = teamCombatPower(opponent, rulesVersion)
+    / Math.max(1, teamCombatPower(player, rulesVersion));
   const tier = rewardTierFromRatio(ratio);
   const roll = rewardRollFromSeed(seed);
   return {
@@ -91,7 +99,8 @@ export function resolveTeamTurn(
   }
 
   validatePlayerIntent(state.player, playerAction, itemId, switchToSlot);
-  const botIntent = chooseOpponentIntent(state.opponent, random);
+  const rulesVersion = Math.trunc(Number(state.rules_version) || RULES_VERSION);
+  const botIntent = chooseOpponentIntent(state.opponent, state.player, random, rulesVersion);
 
   const playerFighter = activeFighter(state.player);
   const opponentFighter = activeFighter(state.opponent);
@@ -124,8 +133,9 @@ export function resolveTeamTurn(
   }
 
   const actions = { player: playerAction, opponent: botIntent.action };
-  const order = turnOrder(playerActive, opponentActive, random)
+  const order = turnOrder(playerActive, opponentActive, random, rulesVersion)
     .map((side) => side === "bot" ? "opponent" : side);
+  const actedSides = new Set();
   for (const side of order) {
     const targetSide = side === "player" ? "opponent" : "player";
     const party = state[side];
@@ -137,23 +147,27 @@ export function resolveTeamTurn(
       continue;
     }
 
-    events.push(resolveAttack(side, targetSide, party, targetParty, action, random));
+    resolveCombatAttack({
+      actor,
+      target,
+      action,
+      random,
+      rulesVersion,
+      actorSide: side,
+      targetSide,
+      events,
+      actorSlot: party.active_slot,
+      targetSlot: targetParty.active_slot,
+    });
+    actedSides.add(`${side}:${party.active_slot}`);
+    tickBarrierOwnerTurn(actor, rulesVersion, events, side, party.active_slot);
     if (target.hp === 0) {
-      events.push({ type: "knockout", actor: targetSide, actor_slot: targetParty.active_slot });
-      if (!hasLivingMember(targetParty)) {
-        state.status = targetSide === "opponent" ? "won" : "lost";
-      } else if (targetSide === "opponent") {
-        switchParty(targetParty, firstLivingOpponentBenchSlot(targetParty), "opponent", events, true);
-      } else {
-        targetParty.forced_switch = true;
-      }
-      // Replacement enters safely; the fighter that was knocked out cannot
-      // donate its remaining initiative to the new active member.
+      handleTargetKnockout(state, targetSide, targetParty, events);
       break;
     }
   }
 
-  finishTurn(state, events);
+  finishTurn(state, events, actedSides);
   return {
     state,
     events,
@@ -161,12 +175,12 @@ export function resolveTeamTurn(
   };
 }
 
-export function createTeamParty(roster, player = false, options = {}) {
+export function createTeamParty(roster, player = false, options = {}, rulesVersion = RULES_VERSION) {
   if (!Array.isArray(roster) || roster.length < 1 || roster.length > 4) {
     throw battleError("INVALID_TEAM_ROSTER");
   }
   const fighters = roster.map((member, slot) => {
-    const fighter = createFighter(member);
+    const fighter = createFighter(member, rulesVersion);
     const savedHp = Number(member?.current_hp ?? member?.hp);
     if (Number.isFinite(savedHp)) {
       const previousMax = Number(member?.max_hp);
@@ -222,13 +236,29 @@ function validatePlayerIntent(party, action, itemId, switchToSlot) {
   if (action === "switch") validateSwitchSlot(party, switchToSlot);
 }
 
-function chooseOpponentIntent(party, random) {
+function chooseOpponentIntent(party, playerParty, random, rulesVersion = RULES_VERSION) {
   const fighter = activeFighter(party);
+  const foe = activeFighter(playerParty);
   const bench = livingOpponentBenchSlots(party);
   if (bench.length > 0 && fighter.hp / Math.max(1, fighter.max_hp) <= 0.3 && random() < 0.35) {
     return { action: "switch", switch_to_slot: bench[Math.floor(random() * bench.length)] };
   }
-  return { action: chooseBotAction(fighter, random), switch_to_slot: null };
+  return { action: chooseBotAction(fighter, random, foe, rulesVersion), switch_to_slot: null };
+}
+
+/** Apply knockout party policy for direct hits and status ticks. */
+function handleTargetKnockout(state, targetSide, targetParty, events, koSlot = null) {
+  const slot = koSlot ?? targetParty.active_slot;
+  events.push({ type: "knockout", actor: targetSide, actor_slot: slot });
+  if (!hasLivingMember(targetParty)) {
+    state.status = targetSide === "opponent" ? "won" : "lost";
+    return;
+  }
+  if (targetSide === "opponent") {
+    switchParty(targetParty, firstLivingOpponentBenchSlot(targetParty), "opponent", events, true);
+  } else {
+    targetParty.forced_switch = true;
+  }
 }
 
 function switchParty(party, slot, side, events, forced) {
@@ -276,53 +306,16 @@ function validateSwitchSlot(party, slot) {
   }
 }
 
-function resolveAttack(actorSide, targetSide, party, targetParty, action, random) {
-  const actor = activeFighter(party);
-  const target = activeFighter(targetParty);
-  const crit = random() < critChance(actor.spd);
-  const attackElement = action === "surge"
-    ? (actor.secondary_element || actor.element)
-    : actor.element;
-  const targetDefenses = defenseElements(target.element, target.secondary_element);
-  const element = dualDefenderMultiplier(
-    attackElement,
-    target.element,
-    target.secondary_element,
-  );
-  const attack = action === "surge"
-    ? actor.special * (actor.special_mult || 1)
-    : actor.atk * (actor.atk_mult || 1);
-  const defense = action === "surge" ? Math.trunc(target.def * 0.5) : target.def;
-  let damage = computeDamage({
-    attack,
-    defense,
-    power: action === "surge" ? 75 : 50,
-    element,
-    crit,
-    variance: 0.92 + random() * 0.16,
-    guarding: target.guarding,
-  });
-  damage = applyIncomingModifiers(target, damage);
-  target.hp = Math.max(0, target.hp - damage);
-  return {
-    type: "attack",
-    actor: actorSide,
-    target: targetSide,
-    actor_slot: party.active_slot,
-    target_slot: targetParty.active_slot,
-    action,
-    damage,
-    crit,
-    attack_element: attackElement,
-    defense_elements: targetDefenses,
-    element_multiplier: element,
-    target_hp: target.hp,
-  };
-}
-
-function finishTurn(state, events) {
+function finishTurn(state, events, actedSides = new Set()) {
+  const rulesVersion = Math.trunc(Number(state.rules_version) || RULES_VERSION);
   for (const party of [state.player, state.opponent]) {
     for (const fighter of party.roster) fighter.guarding = false;
+  }
+  const { kos } = finishEffectTurn(state, events, rulesVersion, actedSides, true);
+  // Resolve opponent first so a simultaneous full-party wipe is a player loss,
+  // matching Duel's no-draw terminal policy.
+  for (const ko of [...kos].reverse()) {
+    handleTargetKnockout(state, ko.side, state[ko.side], events, ko.slot);
   }
   state.turn += 1;
 

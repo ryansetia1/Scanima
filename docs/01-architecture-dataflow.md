@@ -151,7 +151,7 @@ sequenceDiagram
 | `shop` | Verifikasi JWT, debit Bits, upsert inventory, replay receipt | Dipanggil lewat RPC `purchase_catalog_item` dari client |
 | `seeker` | Profil Seeker, grant upgrade Google, dan hapus akun | Menerima `owner_id` dari body atau menggabungkan dua akun |
 | `SecureStore` + `AuthFlow` | Token Keystore/Keychain, backup guest, link/restore OAuth | Menulis refresh token ke `state.json` atau mengganti sesi sebelum exchange valid |
-| `evolve_anima` | Generation stage berikutnya pakai sprite lama sebagai input | Dipanggil tanpa cek syarat evolusi di server |
+| `evolve_anima` | Generation stage berikutnya pakai sheet privat saat ini sebagai input | Dipanggil tanpa cek syarat evolusi di server |
 | Postgres | Sumber kebenaran untuk kuota, stat, kepemilikan | Menyimpan foto mentah |
 | Storage | Foto sementara, sheet RGBA, manifest | Menyimpan foto lebih dari 24 jam |
 
@@ -722,7 +722,37 @@ SELECT; client tidak menulis inventory.
 { "anima_id": "b3d1...", "idempotency_key": "..." }
 ```
 
-Server memverifikasi syarat evolusi (level/form, bukan umur dinding) — client tidak dipercaya soal ini. `evolve_anima` belum live; slice sekarang hanya lompatan stat + copy di Lv 16/36 dengan sprite stage 1. Nanti `input_images` diisi **sprite pose Idle milik Anima itu sendiri**, bukan foto asli, supaya identitas visual terjaga antar stage. Alur sisanya identik dengan `create_anima`.
+Server memverifikasi syarat evolusi (Level ≥16/36 dari `care_score`, stage
+1→2→3, tidak sedang Duel/Team/Expedition) — client tidak dipercaya.
+**Implementasi backend ada** (`evolve_anima`, RPC `begin/resume/reserve/commit/fail_evolution`,
+`claim_evolution_dispatch`, `attach_evolution_prediction`, `anima_forms`, prompt v21)
+tetapi **`feature_evolution=false` dan belum di-deploy**;
+ritual client, cache stage-aware, chamber, status Battle, dan resume intent sudah
+ada di repo tetapi belum menjadi pengalaman pemain.
+Satu evolusi aktif per owner: `begin_evolution` mengunci baris `profiles`, partial
+unique index `animas(owner_id) WHERE status='evolving'`, dan idempotency key sama
+tetap replay tanpa EVOLUTION_ALREADY_ACTIVE.
+Gate combat membaca `anima_team_members` pada `team_battle_sessions.player_team_id`
+dan `expedition_runs.team_id`, plus snapshot lawan, bukan hanya `party_state`.
+Spend cap dicek **sebelum** Vision lewat `reserve_evolution(p_plan=null)`; lease
+baris yang sama memastikan hanya satu Edge isolate memanggil Vision, lalu
+panggilan kedua menyimpan Plan tanpa double-count.
+Dispatch Replicate: `claim_evolution_dispatch` menandai `dispatch_started_at` sebelum
+POST; webhook membawa `?generation_id=` bila `prediction_id` belum tersimpan; POST gagal
+ambigu setelah dispatch → 202 `dispatching`; 4xx/token lokal gagal langsung;
+>10m tanpa prediction atau >20m tanpa completion dipulihkan tanpa Core. Begin
+baru juga membersihkan intent stale supaya state lokal yang hilang tidak
+memblokir owner selamanya.
+Kalau device lain melihat row `evolving` tanpa `pending_evolution` lokal,
+`resume_evolution` hanya menempel ke generation aktif; ia tidak boleh membuat
+generation atau spend baru, dan status yatim tanpa generation dipulihkan ke
+`ready`.
+`input_images` memakai **crop Idle privat** yang diratakan ke chroma green dari
+sheet saat ini, disimpan di `anima_sheets`, dan ditandatangani singkat—bukan
+full sheet dan bukan foto asli.
+Prompt gambar menggabungkan Plan + `vision_result` generation `create` sukses (bukan foto).
+Alur generation identik capture kecuali nol Core; webhook QA/postprocess →
+`fail_evolution`, upload/commit transient → 503 retry; tidak ada `refund_generation`.
 
 ### `POST /grant_reward`
 

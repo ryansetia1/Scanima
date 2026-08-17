@@ -356,8 +356,8 @@ func set_session(
 
 	var player_snapshot := _as_dict(_session.get("player_snapshot"))
 	var bot_snapshot := _as_dict(_session.get("bot_snapshot"))
-	_player_name.text = _fighter_title(player_snapshot)
-	_bot_name.text = _fighter_title(bot_snapshot, tr("BATTLE_BOT_NAME"))
+	_player_name.text = _fighter_hud_title(player_snapshot)
+	_bot_name.text = _fighter_hud_title(bot_snapshot, tr("BATTLE_BOT_NAME"))
 	_position_fighters()
 	_apply_state()
 
@@ -553,8 +553,27 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 			"finished":
 				await _present_banner(tr("BATTLE_EVENT_FINISHED"), DAMAGE_COLOR, false)
 				await _hide_effectiveness()
+			"move_effect", "status_tick", "status_expired":
+				_apply_effect_hp_event(event)
+				var plate := BATTLE_EVENT.plate_text(event)
+				if not plate.is_empty():
+					await _present_banner(plate, CUE_COLOR, false)
+					await _hide_effectiveness()
 	set_session(next_session)
 	set_busy(false)
+
+
+func _apply_effect_hp_event(event: Dictionary) -> void:
+	if not event.has("target_hp"):
+		return
+	var target := str(event.get("target", event.get("actor", "")))
+	var hp := int(event.get("target_hp", 0))
+	if target == "player":
+		apply_hp_bar_state(_player_hp, float(hp), _player_hp.max_value)
+		_player_hp_value.text = LocaleManager.format_ratio(hp, int(_player_hp.max_value))
+	elif target == "bot":
+		apply_hp_bar_state(_bot_hp, float(hp), _bot_hp.max_value)
+		_bot_hp_value.text = LocaleManager.format_ratio(hp, int(_bot_hp.max_value))
 
 
 func _play_item(event: Dictionary) -> void:
@@ -821,6 +840,10 @@ func _apply_state() -> void:
 	_bot_hp_value.text = LocaleManager.format_ratio(
 		int(bot.get("hp", 0)), int(bot.get("max_hp", 1))
 	)
+	_player_name.text = _fighter_hud_title(_as_dict(_session.get("player_snapshot")), "", player)
+	_bot_name.text = _fighter_hud_title(
+		_as_dict(_session.get("bot_snapshot")), tr("BATTLE_BOT_NAME"), bot
+	)
 	_turn_label.visible = false
 	var daily_reward := _as_dict(_session.get("daily_reward"))
 	# Reward limits explain the lobby/result, not the turn decision inside the arena.
@@ -1052,6 +1075,19 @@ func _fighter_title(snapshot: Dictionary, fallback_name: String = "") -> String:
 	if level <= 0:
 		level = CareRules.level_from_exp(int(snapshot.get("care_score", 0)))
 	return "%s %s" % [anima_name, LocaleManager.level_label(maxi(1, level))]
+
+
+func _fighter_hud_title(
+	snapshot: Dictionary,
+	fallback_name: String = "",
+	state_fighter: Dictionary = {}
+) -> String:
+	var title := _fighter_title(snapshot, fallback_name)
+	var fighter := state_fighter if not state_fighter.is_empty() else snapshot
+	var summary := CareRules.fighter_status_summary(fighter)
+	if summary.is_empty():
+		return title
+	return "%s · %s" % [title, summary]
 
 
 func _actor_name(actor: String) -> String:

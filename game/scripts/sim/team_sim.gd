@@ -7,6 +7,8 @@ extends RefCounted
 ## `BattleSim`; di sini hanya lapisan roster, switch, forced switch, party wipe,
 ## dan reserve ace milik Boss.
 
+const MoveEffects = preload("res://scripts/sim/move_effects.gd")
+
 const ACTIONS: PackedStringArray = ["strike", "surge", "guard", "item", "switch"]
 const TEAM_MAX_TURNS := 60
 const ACE_PASSIVE_TYPES: PackedStringArray = ["bonus_pp", "stat_boost", "one_hit_shield"]
@@ -31,11 +33,12 @@ static func create_team_state(
 	ace_passive: Variant = null
 ) -> Dictionary:
 	var reserve_ace := encounter_kind == "boss"
-	var player_party := create_team_party(player, true)
+	var player_party := create_team_party(player, true, false, null, BattleSim.RULES_VERSION)
 	if player_party.is_empty():
 		return _error("INVALID_TEAM_ROSTER")
 	var opponent_party := create_team_party(
-		opponent, false, reserve_ace, normalize_ace_passive(ace_passive) if reserve_ace else null
+		opponent, false, reserve_ace, normalize_ace_passive(ace_passive) if reserve_ace else null,
+		BattleSim.RULES_VERSION
 	)
 	if opponent_party.is_empty():
 		return _error("INVALID_TEAM_ROSTER")
@@ -59,14 +62,15 @@ static func create_team_party(
 	roster: Array,
 	player: bool = false,
 	reserve_ace_option: bool = false,
-	ace_passive: Variant = null
+	ace_passive: Variant = null,
+	rules_version: int = BattleSim.RULES_VERSION
 ) -> Dictionary:
 	if roster.size() < ROSTER_MIN or roster.size() > ROSTER_MAX:
 		return {}
 	var fighters: Array = []
 	for slot in roster.size():
 		var member: Dictionary = roster[slot] if typeof(roster[slot]) == TYPE_DICTIONARY else {}
-		var fighter := BattleSim.create_fighter(member)
+		var fighter := BattleSim.create_fighter(member, rules_version)
 		var saved_source: Variant = member["current_hp"] if (
 			member.has("current_hp") and member["current_hp"] != null
 		) else (member["hp"] if member.has("hp") else NAN)
@@ -138,6 +142,7 @@ static func resolve_team_turn(
 	var events: Array = []
 	var player: Dictionary = state["player"]
 	var opponent: Dictionary = state["opponent"]
+	var rules_version := int(BattleSim.js_number_or_zero(state.get("rules_version", BattleSim.RULES_VERSION)))
 
 	if bool(player.get("forced_switch", false)):
 		if player_action != "switch":
@@ -145,7 +150,7 @@ static func resolve_team_turn(
 		var forced_error := _switch_party(player, switch_to_slot, "player", events, true)
 		if not forced_error.is_empty():
 			return _error(forced_error)
-		_finish_turn(state, events)
+		_finish_turn(state, events, rules_version)
 		return {"ok": true, "error": "", "state": state, "events": events, "bot_action": null}
 
 	var intent_error := _validate_player_intent(player, player_action, item_id, switch_to_slot)
@@ -154,7 +159,7 @@ static func resolve_team_turn(
 	if player_action == "item" and not BattleSim.is_battle_item(item_id, catalog):
 		return _error("INVALID_ITEM")
 
-	var bot_intent := _choose_opponent_intent(opponent, rng)
+	var bot_intent := _choose_opponent_intent(opponent, player, rng, rules_version)
 	if player_action == "surge" and int(_active(player)["momentum"]) < BattleSim.SURGE_COST:
 		return _error("NO_MOMENTUM")
 	if str(bot_intent["action"]) == "surge" and int(_active(opponent)["momentum"]) < BattleSim.SURGE_COST:
@@ -194,8 +199,9 @@ static func resolve_team_turn(
 		events.append(bot_guard)
 
 	var actions := {"player": player_action, "opponent": str(bot_intent["action"])}
+	var acted_sides := {}
 	var order: Array = []
-	for side in BattleSim.turn_order(player_active, opponent_active, rng):
+	for side in BattleSim.turn_order(player_active, opponent_active, rng, rules_version):
 		order.append("opponent" if side == "bot" else side)
 
 	for side in order:
@@ -214,29 +220,27 @@ static func resolve_team_turn(
 		):
 			continue
 
-		events.append(_resolve_attack(side, target_side, party, target_party, action, rng))
+		BattleSim.resolve_combat_attack(
+			actor,
+			target,
+			action,
+			rng,
+			rules_version,
+			side,
+			target_side,
+			events,
+			int(party["active_slot"]),
+			int(target_party["active_slot"])
+		)
+		acted_sides["%s:%d" % [side, int(party["active_slot"])]] = true
+		MoveEffects.tick_barrier_owner_turn(
+			actor, rules_version, events, side, int(party["active_slot"])
+		)
 		if int(target["hp"]) == 0:
-			events.append({
-				"type": "knockout",
-				"actor": target_side,
-				"actor_slot": int(target_party["active_slot"]),
-			})
-			if not _has_living_member(target_party):
-				state["status"] = "won" if target_side == "opponent" else "lost"
-			elif target_side == "opponent":
-				var replacement: Variant = _first_living_opponent_bench_slot(target_party)
-				var replace_error := _switch_party(
-					target_party, replacement, "opponent", events, true
-				)
-				if not replace_error.is_empty():
-					return _error(replace_error)
-			else:
-				target_party["forced_switch"] = true
-			# Pengganti masuk dengan aman: petarung yang KO tidak boleh
-			# menyumbangkan sisa inisiatifnya ke anggota baru.
+			_handle_target_knockout(state, target_side, target_party, events)
 			break
 
-	_finish_turn(state, events)
+	_finish_turn(state, events, rules_version, acted_sides)
 	return {"ok": true, "error": "", "state": state, "events": events, "bot_action": bot_intent}
 
 
@@ -255,8 +259,11 @@ static func _validate_player_intent(
 	return ""
 
 
-static func _choose_opponent_intent(party: Dictionary, rng: DeterministicRng) -> Dictionary:
+static func _choose_opponent_intent(
+	party: Dictionary, player_party: Dictionary, rng: DeterministicRng, rules_version: int = BattleSim.RULES_VERSION
+) -> Dictionary:
 	var fighter := _active(party)
+	var foe := _active(player_party)
 	var bench := _living_opponent_bench_slots(party)
 	if (
 		bench.size() > 0
@@ -267,7 +274,29 @@ static func _choose_opponent_intent(party: Dictionary, rng: DeterministicRng) ->
 			"action": "switch",
 			"switch_to_slot": bench[int(rng.next_float() * float(bench.size()))],
 		}
-	return {"action": BattleSim.choose_bot_action(fighter, rng), "switch_to_slot": null}
+	return {
+		"action": BattleSim.choose_bot_action(fighter, rng, foe, rules_version),
+		"switch_to_slot": null,
+	}
+
+
+static func _handle_target_knockout(
+	state: Dictionary,
+	target_side: String,
+	target_party: Dictionary,
+	events: Array,
+	ko_slot: Variant = null
+) -> void:
+	var slot := int(ko_slot if ko_slot != null else target_party["active_slot"])
+	events.append({"type": "knockout", "actor": target_side, "actor_slot": slot})
+	if not _has_living_member(target_party):
+		state["status"] = "won" if target_side == "opponent" else "lost"
+		return
+	if target_side == "opponent":
+		var replacement: Variant = _first_living_opponent_bench_slot(target_party)
+		_switch_party(target_party, replacement, "opponent", events, true)
+	else:
+		target_party["forced_switch"] = true
 
 
 static func _switch_party(
@@ -342,68 +371,26 @@ static func _validate_switch_slot(party: Dictionary, slot: Variant) -> String:
 	return ""
 
 
-static func _resolve_attack(
-	actor_side: String,
-	target_side: String,
-	party: Dictionary,
-	target_party: Dictionary,
-	action: String,
-	rng: DeterministicRng
-) -> Dictionary:
-	var actor := _active(party)
-	var target := _active(target_party)
-	var crit := rng.next_float() < BattleSim.crit_chance(actor["spd"])
-	var secondary := str(actor["secondary_element"])
-	var attack_element := (
-		(secondary if not secondary.is_empty() else str(actor["element"]))
-		if action == "surge"
-		else str(actor["element"])
-	)
-	var target_defenses := ElementRules.defense_elements(
-		target["element"], target["secondary_element"]
-	)
-	var element := ElementRules.dual_defender_multiplier(
-		attack_element, target["element"], target["secondary_element"]
-	)
-	var attack := (
-		float(actor["special"]) * BattleSim.js_number_or_zero(actor.get("special_mult", 1))
-		if action == "surge"
-		else float(actor["atk"]) * BattleSim.js_number_or_zero(actor.get("atk_mult", 1))
-	)
-	var defense := (
-		float(int(float(target["def"]) * 0.5)) if action == "surge" else float(target["def"])
-	)
-	var damage := BattleSim.compute_damage(
-		attack,
-		defense,
-		BattleSim.SURGE_POWER if action == "surge" else BattleSim.STRIKE_POWER,
-		element,
-		crit,
-		BattleSim.VARIANCE_MIN + rng.next_float() * BattleSim.VARIANCE_SPAN,
-		bool(target["guarding"])
-	)
-	damage = BattleSim.apply_incoming_modifiers(target, damage)
-	target["hp"] = maxi(0, int(target["hp"]) - damage)
-	return {
-		"type": "attack",
-		"actor": actor_side,
-		"target": target_side,
-		"actor_slot": int(party["active_slot"]),
-		"target_slot": int(target_party["active_slot"]),
-		"action": action,
-		"damage": damage,
-		"crit": crit,
-		"attack_element": attack_element,
-		"defense_elements": target_defenses,
-		"element_multiplier": element,
-		"target_hp": int(target["hp"]),
-	}
-
-
-static func _finish_turn(state: Dictionary, events: Array) -> void:
+static func _finish_turn(
+	state: Dictionary,
+	events: Array,
+	rules_version: int = BattleSim.RULES_VERSION,
+	acted_sides: Dictionary = {}
+) -> void:
 	for party_key in ["player", "opponent"]:
 		for fighter in state[party_key]["roster"]:
 			fighter["guarding"] = false
+	var effect_ko: Dictionary = BattleSim.finish_effect_turn(
+		state, events, rules_version, acted_sides, true
+	)
+	var kos: Array = effect_ko.get("kos", []).duplicate(true)
+	kos.reverse()
+	for ko_value in kos:
+		var ko: Dictionary = ko_value
+		var ko_side := str(ko.get("side", ""))
+		var ko_party: Dictionary = state[ko_side]
+		var ko_slot: Variant = ko.get("slot", int(ko_party.get("active_slot", 0)))
+		_handle_target_knockout(state, ko_side, ko_party, events, ko_slot)
 	state["turn"] = int(state["turn"]) + 1
 
 	if str(state["status"]) == "active" and int(state["turn"]) > TEAM_MAX_TURNS:

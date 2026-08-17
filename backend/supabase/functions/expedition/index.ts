@@ -194,7 +194,7 @@ const TEAM_FIELDS =
   "id, owner_id, kind, anima_team_members(slot, animas!inner("
   + "id, owner_id, nickname, species_key, color_bucket, stage, element, secondary_element, "
   + "base_stats, body_height_cm, care_score, care, sleep_started_at, dormant_since, status, "
-  + "strike_name, surge_name, sheet_path, manifest))";
+  + "strike_name, surge_name, evolution_version, strike_effect_id, surge_effect_id, sheet_path, manifest))";
 
 const db = adminClient();
 let featureCache = false;

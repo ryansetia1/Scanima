@@ -30,6 +30,9 @@ signal _summon_settled
 
 const POLL_INTERVAL_SEC := 2.0
 const POLL_TIMEOUT_SEC := 180.0
+const EVOLUTION_POLL_INTERVAL_SEC := 5.0
+const EVOLUTION_POLL_TIMEOUT_SEC := 10.0 * 60.0
+const EVOLUTION_POLL_RETRY_SEC := 15.0
 const MAX_FOTO_BYTE := 6 * 1024 * 1024
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
@@ -136,6 +139,11 @@ var _sleep_sync_in_flight := false
 var _pending_delete_id := ""
 var _pending_rename_id := ""
 var _pending_rename_text := ""
+var _pending_evolve_row: Dictionary = {}
+var _evolution_chamber_active := false
+var _evolution_resume_in_flight := false
+var _evolution_poll_in_flight := false
+var _evolution_art_error_reported := false
 var _pending_retreat := ""
 var _modal_context := &""
 var _last_anima_press_ms := -1000
@@ -215,6 +223,7 @@ func _ready() -> void:
 	_details_view.delete_requested.connect(_show_delete_confirmation)
 	_details_view.help_requested.connect(_show_details_help)
 	_details_view.gallery_publish_requested.connect(_toggle_gallery_publish)
+	_details_view.evolve_requested.connect(_show_evolve_confirmation)
 	_bottom_nav.destination_selected.connect(_switch_destination)
 	_shell_modal.confirmed.connect(_modal_confirmed)
 	_shell_modal.canceled.connect(_modal_canceled)
@@ -301,6 +310,10 @@ func _ready() -> void:
 			_say(tr("STATUS_INCUBATOR_DEMO"))
 		if arg == "--hatch-demo":
 			await _run_hatch_demo()
+		if arg == "--evolve-demo":
+			await _run_evolve_demo()
+		if arg == "--evolve-chamber-demo":
+			await _run_evolve_chamber_demo()
 		if arg == "--collection-sheet-demo":
 			_run_collection_sheet_demo()
 		if arg == "--collection-sheet-loading-demo":
@@ -394,6 +407,18 @@ func _notification(what: int) -> void:
 		call_deferred("_sync_sleep_completion")
 	if _destination == BottomNav.BATTLE:
 		call_deferred("_refresh_battle_reward_status")
+	if (
+		not GameState.pending_evolution.is_empty()
+		and not _evolution_resume_in_flight
+		and not _evolution_poll_in_flight
+	):
+		call_deferred("_resume_pending_evolution", false)
+	elif (
+		GameState.pending_evolution.is_empty()
+		and not _evolution_poll_in_flight
+		and not _evolving_roster_row().is_empty()
+	):
+		_resume_server_evolution(_evolving_roster_row(), false)
 	call_deferred("_refresh_chapter_announcements")
 
 
@@ -470,18 +495,32 @@ func _boot() -> void:
 		var active := _active_row()
 		if active.is_empty():
 			active = _roster[0]
-		# Selalu present row aktif, bahkan kalau art-nya sudah cached. Boot sempat
-		# menampilkan last_anima sebelum jaringan selesai; kalau row itu sudah tidak
-		# ada di roster, melewati present di sini membuat sprite A memakai stats B.
-		_set_busy(true)
-		await _present_row(active)
-		_set_busy(false)
+		var pending_evolution_here := _pending_evolution_matches(str(active.get("id", "")))
+		if CareRules.is_evolving(active) or pending_evolution_here:
+			if pending_evolution_here:
+				active["status"] = "evolving"
+			_sync_evolution_row(active)
+			_apply_evolution_chamber_for_row(active, _destination == BottomNav.HOME)
+			_refresh_stats()
+			_refresh_care()
+			_populate_collection()
+			_set_home_shell_state(&"ready")
+		else:
+			_set_busy(true)
+			await _present_row(active)
+			_set_busy(false)
 	else:
 		_current_anima = {}
 		GameState.remember_anima({})
 		_anima.sprite_frames = null
 		_set_home_shell_state(&"empty")
 		_say(tr("STATUS_FIRST_SCAN"))
+	if not GameState.pending_evolution.is_empty():
+		call_deferred("_resume_pending_evolution", false)
+	else:
+		var evolving := _evolving_roster_row()
+		if not evolving.is_empty():
+			_resume_server_evolution(evolving, false)
 	# Battle yang tersimpan tetap menjadi bookmark sampai pemain memilih Continue.
 	# Boot tidak mengambil alih Home atau me-replay intent jaringan secara otomatis.
 	if GameState.pending_scan.is_empty():
@@ -500,7 +539,7 @@ func _reload_roster() -> bool:
 	for value in rows:
 		var row := GameState.as_dict(value)
 		if not str(row.get("id", "")).is_empty():
-			ready.append(row)
+			ready.append(_overlay_pending_evolution(row))
 	_roster = ready
 	if is_instance_valid(_expedition_controller):
 		_expedition_controller.set_roster(_roster)
@@ -531,6 +570,10 @@ func _active_row() -> Dictionary:
 		if str(row.get("id", "")) == wanted:
 			return row
 	return {}
+
+
+func _sprite_stage_for_row(row: Dictionary) -> int:
+	return CareRules.committed_stage(row)
 
 
 func _sync_collection_preview(row: Dictionary, revision: int) -> void:
@@ -564,6 +607,9 @@ func _summon_collection_anima(row: Dictionary, care_synced: bool) -> void:
 
 func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> bool:
 	if row.is_empty() or _busy:
+		return false
+	if not GameState.pending_evolution.is_empty():
+		_say(tr("EVOLUTION_ALREADY_ACTIVE"), true)
 		return false
 	if not GameState.pending_care.is_empty():
 		_say(tr("ERROR_CARE_PENDING"), true)
@@ -633,6 +679,7 @@ func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> b
 ## Companion baru sudah disetujui server: `synced` adalah row hasil `care_anima`
 ## kalau roster sempat menerimanya, `fallback` row yang dipilih pemain.
 func _adopt_companion(synced: Dictionary, fallback: Dictionary) -> void:
+	_stop_evolution_chamber()
 	_current_anima = normalize_anima_data(fallback if synced.is_empty() else synced)
 	_profile_anima = {}
 	GameState.remember_anima({
@@ -771,6 +818,434 @@ func _delete_confirmed() -> void:
 	_say(tr("ANIMA_DELETE_SUCCESS") % deleted_name, true)
 
 
+func _show_evolve_confirmation(row: Dictionary) -> void:
+	if (
+		_busy
+		or row.is_empty()
+		or not _evolution_enabled()
+		or not CareRules.evolution_ready(row)
+	):
+		return
+	if not GameState.pending_evolution.is_empty():
+		_say(tr("EVOLUTION_ALREADY_ACTIVE"), true)
+		return
+	_pending_evolve_row = row.duplicate(true)
+	_modal_context = &"evolve"
+	_shell_modal.open_confirm(
+		tr("EVOLVE_CONFIRM_TITLE"),
+		tr("EVOLVE_CONFIRM_BODY") % LocaleManager.display_name(row),
+		tr("EVOLVE_CONFIRM_ACTION"),
+		tr("ACTION_CANCEL")
+	)
+
+
+func _evolve_confirmed() -> void:
+	var row := _pending_evolve_row
+	_pending_evolve_row = {}
+	if row.is_empty() or not _evolution_enabled() or not CareRules.evolution_ready(row):
+		return
+	if not GameState.pending_evolution.is_empty():
+		_say(tr("EVOLUTION_ALREADY_ACTIVE"), true)
+		return
+	await _start_evolution_ritual(row)
+
+
+func _start_evolution_ritual(row: Dictionary) -> void:
+	var anima_id := str(row.get("id", ""))
+	if anima_id.is_empty():
+		return
+	var prior_stage := CareRules.committed_stage(row)
+	var pending := GameState.begin_evolution(anima_id, prior_stage)
+	if pending.is_empty():
+		_say(tr("EVOLUTION_ALREADY_ACTIVE"), true)
+		return
+	_evolution_art_error_reported = false
+	row["status"] = "evolving"
+	_sync_evolution_row(row)
+	if anima_id == str(_current_anima.get("id", "")) and _anima.visible:
+		await _anima.summon_dissolve()
+	_apply_evolution_chamber_for_row(
+		row,
+		anima_id == str(_current_anima.get("id", "")) and _destination == BottomNav.HOME
+	)
+	_refresh_stats()
+	_populate_collection()
+	_say(tr("EVOLUTION_STARTED") % LocaleManager.display_name(row), true)
+
+	var res := await Backend.evolve_anima(anima_id, str(pending.get("idempotency_key", "")))
+	if not res.ok:
+		var code := str(GameState.as_dict(res.data).get("error", res.error))
+		if code == "FEATURE_DISABLED":
+			GameState.finish_evolution()
+			_stop_evolution_chamber()
+			_say(tr("EVOLUTION_FEATURE_DISABLED"), true)
+			await _restore_evolution_after_abort(anima_id)
+			return
+		var confirmed := await _fetch_evolution_row(anima_id)
+		if not confirmed.is_empty():
+			_sync_evolution_row(confirmed)
+			var confirmed_stage := CareRules.committed_stage(confirmed)
+			if str(confirmed.get("status", "")) == "ready" and confirmed_stage > prior_stage:
+				if not await _complete_evolution(confirmed, true):
+					await _wait_for_evolution(
+						anima_id, prior_stage, confirmed_stage, true
+					)
+				return
+			if not CareRules.is_evolving(confirmed):
+				GameState.finish_evolution()
+				_stop_evolution_chamber()
+				_say(tr("EVOLUTION_START_ERROR"), true)
+				await _restore_evolution_after_abort(anima_id)
+				return
+		# Transport/5xx can arrive after begin_evolution committed. Keep the same
+		# key and poll authoritative state instead of risking a second paid job.
+		await _wait_for_evolution(
+			anima_id,
+			prior_stage,
+			int(pending.get("target_stage", prior_stage + 1))
+		)
+		return
+
+	var body := GameState.as_dict(res.data)
+	if typeof(res.data) != TYPE_DICTIONARY:
+		body = {}
+	var target_stage := int(body.get("target_stage", pending.get("target_stage", prior_stage + 1)))
+	GameState.note_evolution_started(str(body.get("generation_id", "")), target_stage)
+	await _wait_for_evolution(anima_id, prior_stage, target_stage)
+
+
+func _resume_pending_evolution(restore_navigation: bool = true) -> void:
+	if _evolution_resume_in_flight or _evolution_poll_in_flight:
+		return
+	var pending := GameState.pending_evolution
+	if pending.is_empty():
+		return
+	_evolution_resume_in_flight = true
+	var anima_id := str(pending.get("anima_id", ""))
+	if anima_id.is_empty():
+		GameState.finish_evolution()
+		_evolution_resume_in_flight = false
+		return
+	var row := _roster_row(anima_id)
+	if row.is_empty():
+		row = await _fetch_evolution_row(anima_id)
+	if row.is_empty():
+		_evolution_resume_in_flight = false
+		_say(tr("EVOLUTION_PENDING"), true)
+		return
+	_sync_evolution_row(row)
+	var prior_stage := int(pending.get("prior_stage", CareRules.committed_stage(row)))
+	var target_stage := int(pending.get("target_stage", prior_stage + 1))
+	var stage := CareRules.committed_stage(row)
+	if str(row.get("status", "")) == "ready" and stage > prior_stage:
+		_evolution_resume_in_flight = false
+		if not await _complete_evolution(row, restore_navigation):
+			await _wait_for_evolution(
+				anima_id, prior_stage, target_stage, restore_navigation
+			)
+		return
+	if CareRules.is_evolving(row):
+		_apply_evolution_chamber_for_row(
+			row,
+			anima_id == str(_current_anima.get("id", "")) and _destination == BottomNav.HOME
+		)
+	var res := await Backend.evolve_anima(
+		anima_id,
+		str(pending.get("idempotency_key", "")),
+		bool(pending.get("resume_only", false))
+	)
+	if res.ok and typeof(res.data) == TYPE_DICTIONARY:
+		var body: Dictionary = res.data
+		GameState.note_evolution_started(
+			str(body.get("generation_id", pending.get("generation_id", ""))),
+			int(body.get("target_stage", target_stage))
+		)
+		target_stage = int(GameState.pending_evolution.get("target_stage", target_stage))
+	elif not res.ok:
+		var code := str(GameState.as_dict(res.data).get("error", res.error))
+		if code == "FEATURE_DISABLED":
+			_evolution_resume_in_flight = false
+			GameState.finish_evolution()
+			_stop_evolution_chamber()
+			_say(tr("EVOLUTION_FEATURE_DISABLED"), true)
+			await _restore_evolution_after_abort(anima_id)
+			return
+		if code == "EVOLUTION_NOT_FOUND":
+			_evolution_resume_in_flight = false
+			var latest := await _fetch_evolution_row(anima_id)
+			if latest.is_empty():
+				await _wait_for_evolution(
+					anima_id, prior_stage, target_stage, restore_navigation
+				)
+				return
+			if (
+				str(latest.get("status", "")) == "ready"
+				and CareRules.committed_stage(latest) > prior_stage
+			):
+				if not await _complete_evolution(latest, restore_navigation):
+					await _wait_for_evolution(
+						anima_id, prior_stage, target_stage, restore_navigation
+					)
+				return
+			if CareRules.is_evolving(latest):
+				await _wait_for_evolution(
+					anima_id, prior_stage, target_stage, restore_navigation
+				)
+				return
+			await _fail_evolution(latest, restore_navigation)
+			return
+		if code in [
+			"EVOLUTION_FAILED",
+			"GENERATION_COMPLETION_TIMEOUT",
+			"GENERATION_DISPATCH_TIMEOUT",
+		]:
+			_evolution_resume_in_flight = false
+			await _fail_evolution(row, restore_navigation)
+			return
+	_evolution_resume_in_flight = false
+	await _wait_for_evolution(anima_id, prior_stage, target_stage, restore_navigation)
+
+
+func _wait_for_evolution(
+	anima_id: String,
+	prior_stage: int,
+	target_stage: int,
+	restore_navigation: bool = true
+) -> void:
+	if _evolution_poll_in_flight:
+		return
+	_evolution_poll_in_flight = true
+	_say(tr("EVOLUTION_SYNTHESIZING"))
+	var remaining_poll_sec := EVOLUTION_POLL_TIMEOUT_SEC
+	while remaining_poll_sec > 0.0:
+		await get_tree().create_timer(EVOLUTION_POLL_INTERVAL_SEC).timeout
+		remaining_poll_sec -= EVOLUTION_POLL_INTERVAL_SEC
+		var res := await Backend.fetch_anima(anima_id)
+		if not res.ok or typeof(res.data) != TYPE_ARRAY:
+			continue
+		var rows: Array = res.data
+		if rows.is_empty():
+			continue
+		var row := normalize_anima_data(GameState.as_dict(rows[0]))
+		var status := str(row.get("status", ""))
+		var stage := CareRules.committed_stage(row)
+		if status == "evolving":
+			_sync_evolution_row(row)
+			continue
+		if status == "ready" and stage >= target_stage:
+			if await _complete_evolution(row, restore_navigation):
+				_evolution_poll_in_flight = false
+				return
+			continue
+		if status == "failed" or (status == "ready" and stage <= prior_stage):
+			_evolution_poll_in_flight = false
+			await _fail_evolution(row, restore_navigation)
+			return
+
+	_evolution_poll_in_flight = false
+	_say(tr("EVOLUTION_PENDING"))
+	if anima_id == str(_current_anima.get("id", "")):
+		_apply_evolution_chamber_for_row(
+			_roster_row(anima_id), _destination == BottomNav.HOME
+		)
+	await get_tree().create_timer(EVOLUTION_POLL_RETRY_SEC).timeout
+	if (
+		_pending_evolution_matches(anima_id)
+		and not _evolution_resume_in_flight
+		and not _evolution_poll_in_flight
+	):
+		call_deferred("_resume_pending_evolution", restore_navigation)
+
+
+func _complete_evolution(
+	row: Dictionary,
+	restore_navigation: bool
+) -> bool:
+	var anima_id := str(row.get("id", ""))
+	var was_active := anima_id == str(_current_anima.get("id", ""))
+	var chamber_active := _evolution_chamber_active and was_active
+	_sync_evolution_row(row)
+	var art_stage := CareRules.committed_stage(row)
+	var loaded := await _prepare_anima_art(
+		str(row.get("species_key", "")),
+		str(row.get("color_bucket", "")),
+		art_stage,
+		str(row.get("sheet_path", "")),
+		GameState.as_dict(row.get("manifest")),
+		false,
+		anima_id,
+		art_stage
+	)
+	if not bool(loaded.get("ok", false)):
+		if not _evolution_art_error_reported:
+			_say(tr("STATUS_ART_DOWNLOAD_ERROR"), true)
+			_evolution_art_error_reported = true
+		if chamber_active:
+			_apply_evolution_chamber_for_row(row, _destination == BottomNav.HOME)
+		return false
+	GameState.finish_evolution()
+	_evolution_art_error_reported = false
+	_sync_evolution_row(row)
+	GameState.remember_boot_cache({"roster": _roster, "profile": GameState.profile})
+	if was_active and bool(loaded.get("ok", false)):
+		_anima.apply(loaded)
+		if chamber_active:
+			await _incubator.burst()
+			await _anima.hatch_reveal()
+		else:
+			_anima.visible = true
+	_stop_evolution_chamber()
+	_refresh_stats()
+	_refresh_care()
+	_populate_collection()
+	if restore_navigation and was_active:
+		_switch_destination(BottomNav.HOME)
+	_say(_evolution_success_copy(row), true)
+	return true
+
+
+func _fail_evolution(row: Dictionary, restore_navigation: bool) -> void:
+	GameState.finish_evolution()
+	_evolution_art_error_reported = false
+	var anima_id := str(row.get("id", ""))
+	var was_active := anima_id == str(_current_anima.get("id", ""))
+	_stop_evolution_chamber()
+	await _reload_roster()
+	if was_active:
+		var refreshed := _roster_row(anima_id)
+		if not refreshed.is_empty():
+			await _present_row(refreshed)
+	elif restore_navigation:
+		_refresh_stats()
+		_populate_collection()
+	_say(tr("EVOLUTION_FAILED") % LocaleManager.display_name(row), true)
+
+
+func _evolution_success_copy(row: Dictionary) -> String:
+	var parts: PackedStringArray = [
+		tr("EVOLUTION_SUCCESS") % [
+			LocaleManager.display_name(row),
+			LocaleManager.form_name_for_row(row),
+		]
+	]
+	var strike := LocaleManager.move_name(row, "strike")
+	var surge := LocaleManager.move_name(row, "surge")
+	var strike_fx := str(row.get("strike_effect_id", "")).strip_edges()
+	var surge_fx := str(row.get("surge_effect_id", "")).strip_edges()
+	if not strike_fx.is_empty() or not surge_fx.is_empty():
+		parts.append(
+			tr("EVOLUTION_SUCCESS_MOVES") % [
+				strike,
+				surge,
+				LocaleManager.effect_name(strike_fx) if not strike_fx.is_empty() else tr("VALUE_UNAVAILABLE"),
+				LocaleManager.effect_name(surge_fx) if not surge_fx.is_empty() else tr("VALUE_UNAVAILABLE"),
+			]
+		)
+	return "\n".join(parts)
+
+
+func _apply_evolution_chamber_for_row(row: Dictionary, on_home: bool) -> void:
+	var anima_id := str(row.get("id", ""))
+	if (
+		not on_home
+		or row.is_empty()
+		or (
+			not CareRules.is_evolving(row)
+			and not _pending_evolution_matches(anima_id)
+		)
+	):
+		_stop_evolution_chamber()
+		return
+	_evolution_chamber_active = true
+	_first_anima_effect.set_active(false)
+	_anima.visible = false
+	_stage.visible = _destination == BottomNav.HOME
+	_incubator.align_visual_center(_anima.body_center_global())
+	_incubator.start_evolution()
+	_set_home_shell_state(&"ready")
+
+
+func _stop_evolution_chamber() -> void:
+	if not _evolution_chamber_active:
+		return
+	_evolution_chamber_active = false
+	_incubator.stop()
+	if _destination == BottomNav.HOME and _anima.sprite_frames != null:
+		_anima.visible = true
+
+
+func _fetch_evolution_row(anima_id: String) -> Dictionary:
+	var fetched := await Backend.fetch_anima(anima_id)
+	if (
+		not fetched.ok
+		or typeof(fetched.data) != TYPE_ARRAY
+		or (fetched.data as Array).is_empty()
+	):
+		return {}
+	return normalize_anima_data(GameState.as_dict((fetched.data as Array)[0]))
+
+
+func _restore_evolution_after_abort(anima_id: String) -> void:
+	_evolution_art_error_reported = false
+	await _reload_roster()
+	var restored := _roster_row(anima_id)
+	if anima_id == str(_current_anima.get("id", "")) and not restored.is_empty():
+		await _present_row(restored)
+	else:
+		if anima_id == str(_profile_anima.get("id", "")) and not restored.is_empty():
+			_profile_anima = restored.duplicate(true)
+		_refresh_stats()
+		_refresh_care()
+		_populate_collection()
+
+
+func _sync_evolution_row(row: Dictionary) -> void:
+	var anima_id := str(row.get("id", ""))
+	if anima_id.is_empty():
+		return
+	var normalized := _overlay_pending_evolution(normalize_anima_data(row))
+	_upsert_roster(normalized)
+	if anima_id == str(_current_anima.get("id", "")):
+		_current_anima = normalized.duplicate(true)
+	if anima_id == str(_profile_anima.get("id", "")):
+		_profile_anima = normalized.duplicate(true)
+
+
+func _evolving_roster_row() -> Dictionary:
+	for row in _roster:
+		if CareRules.is_evolving(row):
+			return row
+	return {}
+
+
+func _resume_server_evolution(row: Dictionary, restore_navigation: bool) -> void:
+	var anima_id := str(row.get("id", ""))
+	if anima_id.is_empty():
+		return
+	if GameState.pending_evolution.is_empty():
+		GameState.begin_evolution(anima_id, CareRules.committed_stage(row), true)
+	call_deferred("_resume_pending_evolution", restore_navigation)
+
+
+func _pending_evolution_matches(anima_id: String) -> bool:
+	return (
+		not anima_id.is_empty()
+		and not GameState.pending_evolution.is_empty()
+		and str(GameState.pending_evolution.get("anima_id", "")) == anima_id
+	)
+
+
+func _overlay_pending_evolution(row: Dictionary) -> Dictionary:
+	var overlaid := row.duplicate(true)
+	if _pending_evolution_matches(str(overlaid.get("id", ""))):
+		overlaid["status"] = "evolving"
+	return overlaid
+
+
+func _evolution_enabled() -> bool:
+	return bool(GameState.client_config.get("feature_evolution", false))
+
+
 func _show_rename(anima_id: String) -> void:
 	var target := _current_anima
 	if anima_id == str(_profile_anima.get("id", "")):
@@ -845,6 +1320,8 @@ func _modal_confirmed(text: String) -> void:
 	match context:
 		&"delete":
 			_delete_confirmed()
+		&"evolve":
+			_evolve_confirmed()
 		&"rename":
 			_rename_confirmed(text)
 		&"core_info":
@@ -875,6 +1352,8 @@ func _modal_canceled() -> void:
 	_modal_context = &""
 	if context == &"delete":
 		_pending_delete_id = ""
+	elif context == &"evolve":
+		_pending_evolve_row = {}
 	elif context == &"rename":
 		_pending_rename_id = ""
 		_pending_rename_text = ""
@@ -1396,6 +1875,9 @@ func _on_care_blocked(message: String) -> void:
 func _perform_care(action: String) -> void:
 	if _busy or _current_anima.is_empty():
 		return
+	if CareRules.is_evolving(_current_anima):
+		_say(tr("EVOLUTION_CARE_BLOCKED"), true)
+		return
 	if not GameState.pending_care.is_empty():
 		_say(tr("ERROR_CARE_PENDING"), true)
 		return
@@ -1413,6 +1895,9 @@ func _perform_care(action: String) -> void:
 func _commit_care(action: String, item_id: String = "") -> void:
 	var anima_id := str(_current_anima.get("id", ""))
 	if anima_id.is_empty():
+		return
+	if CareRules.is_evolving(_current_anima):
+		_say(tr("EVOLUTION_CARE_BLOCKED"), true)
 		return
 	if not GameState.pending_care.is_empty():
 		_say(tr("ERROR_CARE_PENDING"), true)
@@ -2647,6 +3132,9 @@ func _setup_picker() -> void:
 func _on_pick_pressed() -> void:
 	if _busy or _update_required:
 		return
+	if not GameState.pending_evolution.is_empty():
+		_say(tr("EVOLUTION_ALREADY_ACTIVE"), true)
+		return
 	if _guest_scan_locked():
 		_show_sign_in_confirmation()
 		return
@@ -2882,16 +3370,16 @@ func _present(
 	anima_data: Dictionary = {},
 	complete_scan: bool = true
 ) -> void:
-	var hatching := _incubator.is_active()
+	var hatching := _incubator.is_active() and not _evolution_chamber_active
 	var loaded := await _prepare_anima_art(
-		species_key, color_bucket, stage, sheet_path, manifest, complete_scan, anima_id
+		species_key, color_bucket, stage, sheet_path, manifest, complete_scan, anima_id, stage
 	)
 	if not bool(loaded.get("ok", false)):
 		if complete_scan:
 			_restore_previous_anima()
 		return
 	_anima.apply(loaded)
-	_anima.visible = not hatching
+	_anima.visible = not hatching and not _evolution_chamber_active
 
 	# create_anima mengembalikan bentuk Vision (`stats`), sedangkan row Postgres
 	# memakai `base_stats`. Normalisasi sekali sebelum Stats dan roster lokal
@@ -2947,7 +3435,8 @@ func _prepare_anima_art(
 	sheet_path: String = "",
 	manifest: Dictionary = {},
 	report_status: bool = true,
-	anima_id: String = ""
+	anima_id: String = "",
+	cache_stage: int = -1
 ) -> Dictionary:
 	if species_key.is_empty() or color_bucket.is_empty():
 		if report_status:
@@ -2955,8 +3444,9 @@ func _prepare_anima_art(
 		return {"ok": false}
 
 	var use_anima_cache := not anima_id.is_empty()
-	if use_anima_cache and GameState.has_sprite_for_anima(anima_id):
-		return AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id))
+	var art_stage := cache_stage if cache_stage > 0 else stage
+	if use_anima_cache and GameState.has_sprite_for_anima(anima_id, art_stage):
+		return AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id, art_stage))
 	if not use_anima_cache and GameState.has_sprite(species_key, color_bucket, stage):
 		return AnimaLoader.load_from_manifest(
 			GameState.manifest_path(species_key, color_bucket, stage)
@@ -2993,8 +3483,8 @@ func _prepare_anima_art(
 	var stored: Dictionary
 	var manifest_path := ""
 	if use_anima_cache:
-		stored = GameState.store_sprite_for_anima(anima_id, manifest, download.bytes)
-		manifest_path = GameState.manifest_path_for_anima(anima_id)
+		stored = GameState.store_sprite_for_anima(anima_id, manifest, download.bytes, art_stage)
+		manifest_path = GameState.manifest_path_for_anima(anima_id, art_stage)
 	else:
 		stored = GameState.store_sprite(
 			species_key, color_bucket, stage, manifest, download.bytes
@@ -3078,9 +3568,24 @@ func _show_cached_anima() -> void:
 	# yang sedang tidur berkedip bangun. Art hanya boleh terlihat kalau row-nya
 	# membawa care sungguhan — dari cache boot atau dari _present().
 	var anima_id := str(_current_anima.get("id", ""))
-	if painted and not anima_id.is_empty() and GameState.has_sprite_for_anima(anima_id):
+	var art_stage := _sprite_stage_for_row(_current_anima)
+	var pending_evolution_here := _pending_evolution_matches(anima_id)
+	if pending_evolution_here:
+		_current_anima["status"] = "evolving"
+		_upsert_roster(_current_anima)
+		_apply_evolution_chamber_for_row(
+			_current_anima, _destination == BottomNav.HOME
+		)
+	if (
+		painted
+		and not anima_id.is_empty()
+		and GameState.has_sprite_for_anima(anima_id, art_stage)
+		and not CareRules.is_evolving(_current_anima)
+		and not pending_evolution_here
+		and not _evolution_chamber_active
+	):
 		var loaded := AnimaLoader.load_from_manifest(
-			GameState.manifest_path_for_anima(anima_id)
+			GameState.manifest_path_for_anima(anima_id, art_stage)
 		)
 		if bool(loaded.get("ok", false)):
 			_anima.apply(loaded)
@@ -3111,6 +3616,7 @@ func _populate_collection() -> void:
 	_refresh_anima_count()
 	if not is_instance_valid(_collection_view):
 		return
+	_collection_view.set_evolution_enabled(_evolution_enabled())
 	# ponytail: pass pertama membuat thumbnail cached secara sinkron. Plafon
 	# sekitar 100 Anima lokal; kalau roster nyata melewatinya, simpan thumbnail
 	# 128px terpisah saat sheet diunduh dan virtualisasikan daftar.
@@ -3124,18 +3630,20 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 	var sheet_path := str(row.get("sheet_path", ""))
 	var species := str(row.get("species_key", ""))
 	var color := str(row.get("color_bucket", ""))
-	var stage := int(row.get("stage", 1))
+	var stage := _sprite_stage_for_row(row)
 	var pose := CareRules.collection_pose(row, _summoned_id())
 	var use_anima := not anima_id.is_empty() and not sheet_path.is_empty()
 	var cache_key := (
-		"%s|%s" % [anima_id, pose] if use_anima else "%s|%s|%d|%s" % [species, color, stage, pose]
+		"%s|%d|%s" % [anima_id, stage, pose]
+		if use_anima
+		else "%s|%s|%d|%s" % [species, color, stage, pose]
 	)
 	if _thumbnail_cache.has(cache_key):
 		return _thumbnail_cache[cache_key] as Texture2D
 
 	var manifest_path := ""
-	if use_anima and GameState.has_sprite_for_anima(anima_id):
-		manifest_path = GameState.manifest_path_for_anima(anima_id)
+	if use_anima and GameState.has_sprite_for_anima(anima_id, stage):
+		manifest_path = GameState.manifest_path_for_anima(anima_id, stage)
 	elif GameState.has_sprite(species, color, stage):
 		manifest_path = GameState.manifest_path(species, color, stage)
 
@@ -3167,6 +3675,7 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 
 func _refresh_stats() -> void:
 	var details_row := _profile_anima if not _profile_anima.is_empty() else _current_anima
+	_details_view.set_evolution_enabled(_evolution_enabled())
 	_details_view.set_anima(
 		details_row,
 		_thumbnail_for(details_row) if not details_row.is_empty() else null
@@ -3319,6 +3828,8 @@ func _switch_destination(
 	if destination == BottomNav.ANIMA and not _details_available():
 		destination = BottomNav.HOME
 	var previous := _destination
+	if previous == BottomNav.HOME and destination != BottomNav.HOME:
+		_stop_evolution_chamber()
 	if previous == BottomNav.COLLECTION and destination != BottomNav.COLLECTION:
 		_collection_view.close_sheet()
 	if previous == BottomNav.BATTLE and destination != BottomNav.BATTLE:
@@ -3367,7 +3878,16 @@ func _switch_destination(
 	)
 	_stage.visible = stage_destination
 	if destination == BottomNav.HOME:
-		_anima.visible = _anima.sprite_frames != null and not _incubator.is_active()
+		if (
+			(
+				CareRules.is_evolving(_current_anima)
+				or _pending_evolution_matches(str(_current_anima.get("id", "")))
+			)
+			and GameState.pending_scan.is_empty()
+		):
+			_apply_evolution_chamber_for_row(_current_anima, true)
+		else:
+			_anima.visible = _anima.sprite_frames != null and not _incubator.is_active()
 	elif destination != BottomNav.SCAN:
 		_anima.visible = false
 
@@ -3657,6 +4177,7 @@ func _show_preview(bytes: PackedByteArray, is_png: bool) -> void:
 
 
 func _start_incubation() -> void:
+	_stop_evolution_chamber()
 	_scan_view.clear_preview()
 	_scan_view.set_phase(&"synthesizing")
 	_first_anima_effect.set_active(false)
@@ -3670,7 +4191,12 @@ func _restore_previous_anima() -> void:
 	_scan_view.clear_preview()
 	_scan_view.set_phase(&"idle")
 	_stage.visible = _destination == BottomNav.HOME
-	_anima.visible = _destination == BottomNav.HOME and _anima.sprite_frames != null
+	if CareRules.is_evolving(_current_anima):
+		_apply_evolution_chamber_for_row(
+			_current_anima, _destination == BottomNav.HOME
+		)
+	else:
+		_anima.visible = _destination == BottomNav.HOME and _anima.sprite_frames != null
 	if _current_anima.is_empty():
 		_set_home_shell_state(&"empty")
 
@@ -3689,8 +4215,7 @@ func _maybe_celebrate_level(previous_score: int, new_score: int) -> void:
 
 
 # ponytail: one shell banner, not a per-screen fanfare. Plafon: no particles;
-# reuse Super Effective typography. Upgrade to Incubator-style burst if form
-# jumps (16/36) later get evolve art.
+# committed form changes own the evolution chamber instead of Level-up copy.
 func _celebrate_level_up(
 	level: int,
 	previous_level: int,
@@ -3701,11 +4226,20 @@ func _celebrate_level_up(
 ) -> void:
 	if not is_instance_valid(_level_up_banner):
 		return
+	var form_row := target_anima if not target_anima.is_empty() else _current_anima
+	var uses_evolution_ritual: bool = (
+		_evolution_enabled()
+		and CareRules.evolution_version(form_row) >= 1
+	)
+	var crossed_legacy_form: bool = (
+		not uses_evolution_ritual
+		and CARE_RULES.form_key(level) != CARE_RULES.form_key(previous_level)
+	)
 	_status_panel.visible = false
 	_level_up_title.text = tr("LEVEL_UP")
 	if not target_anima.is_empty():
 		var anima_name := LocaleManager.display_name(target_anima)
-		if CARE_RULES.form_key(level) != CARE_RULES.form_key(previous_level):
+		if crossed_legacy_form:
 			_level_up_label.text = tr("EXPEDITION_LEVEL_UP_FORM") % [
 				anima_name,
 				LocaleManager.level_label(level),
@@ -3716,7 +4250,7 @@ func _celebrate_level_up(
 				anima_name,
 				LocaleManager.format_integer(level),
 			]
-	elif CARE_RULES.form_key(level) != CARE_RULES.form_key(previous_level):
+	elif crossed_legacy_form:
 		_level_up_label.text = tr("LEVEL_UP_FORM") % [
 			LocaleManager.level_label(level),
 			LocaleManager.form_name(level),
@@ -4145,6 +4679,46 @@ func _run_hatch_demo() -> void:
 	_say(tr("STATUS_HATCH_DEMO_DONE"), true)
 
 
+func _run_evolve_chamber_demo() -> void:
+	_switch_destination(BottomNav.HOME)
+	_set_home_shell_state(&"ready")
+	_evolution_chamber_active = true
+	_anima.visible = false
+	_stage.visible = true
+	_incubator.align_visual_center(_stage.global_position + Vector2(0.0, -80.0))
+	_incubator.start_evolution()
+	_say(tr("EVOLUTION_CHAMBER_STATUS"), true)
+
+
+func _run_evolve_demo() -> void:
+	var demo := _current_anima.duplicate(true) if not _current_anima.is_empty() else {
+		"id": "evolve-demo",
+		"nickname": "Velumi",
+		"status": "ready",
+		"stage": 1,
+		"evolution_version": 1,
+		"care_score": 150,
+		"species_key": "demo",
+		"color_bucket": "cyan",
+		"element": "spark",
+		"rarity": 3,
+		"base_stats": {"hp": 74, "atk": 62, "def": 58, "spd": 81, "special": 77},
+		"strike_name": "Spark Tap",
+		"surge_name": "Voltage Rush",
+		"strike_effect_id": "burn",
+		"surge_effect_id": "barrier",
+	}
+	demo["evolution_version"] = 1
+	demo["care_score"] = 150
+	demo["stage"] = 1
+	demo["status"] = "ready"
+	_profile_anima = demo.duplicate(true)
+	_switch_destination(BottomNav.ANIMA)
+	_details_view.set_evolution_enabled(true)
+	_details_view.set_anima(demo, _thumbnail_for(demo))
+	_say(tr("COLLECTION_READY_EVOLVE"), true)
+
+
 func _run_collection_sheet_demo(show_loading: bool = false) -> void:
 	var demo := _current_anima.duplicate(true)
 	if demo.is_empty():
@@ -4543,8 +5117,9 @@ func _sugarworks_asset_dir() -> String:
 
 func _demo_player_sheet() -> Dictionary:
 	var anima_id := str(_current_anima.get("id", ""))
-	if not anima_id.is_empty() and GameState.has_sprite_for_anima(anima_id):
-		var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id))
+	var stage := CareRules.committed_stage(_current_anima)
+	if not anima_id.is_empty() and GameState.has_sprite_for_anima(anima_id, stage):
+		var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id, stage))
 		if bool(loaded.get("ok", false)):
 			loaded["demo_name"] = str(_current_anima.get("nickname", "Veridian"))
 			loaded["demo_height_cm"] = 150

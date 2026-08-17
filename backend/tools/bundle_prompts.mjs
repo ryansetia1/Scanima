@@ -31,12 +31,14 @@ const KELUARAN = join(REPO, "backend/supabase/functions/_shared/prompts.generate
 const BERKAS = {
   vision_system: "vision_system.md",
   vision_schema: "vision_schema.json",
+  vision_evolve_system: "vision_evolve_system.md",
+  vision_evolve_schema: "vision_evolve_schema.json",
   sprite_sheet: "sprite_sheet.md",
   sprite_sheet_evolve: "sprite_sheet_evolve.md",
   sprite_sheet_fauna: "sprite_sheet_fauna.md",
 };
 
-const OPSIONAL = new Set(["sprite_sheet_fauna"]);
+const OPSIONAL = new Set(["sprite_sheet_fauna", "vision_evolve_system", "vision_evolve_schema"]);
 
 export async function buildBundle() {
   const versi = (await readdir(DIR_PROMPT, { withFileTypes: true }))

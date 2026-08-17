@@ -191,14 +191,20 @@ yang disembunyikan.
 
 #### 5. Evolution vertical slice
 
-- Gerbang syarat authoritative di server.
-- `evolve_anima` memakai sprite Idle saat ini sebagai `image_input`.
-- Ritual evolusi di client, resume aman, dan tidak mendebit Genesis Core.
+- **Vertical slice lengkap sudah di repo** (`feature_evolution=false`, belum deploy):
+  migrasi `20260817095700`, `evolve_anima`, prompt v21, RPC, ritual/resume Godot,
+  cache stage-aware, serta event/status Battle.
+- Gerbang syarat authoritative di server (Level 16/36, combat lock, satu evolusi aktif).
+- `evolve_anima` memakai crop Idle privat dari form saat ini sebagai `image_input`
+  (bukan foto asli/full sheet), dengan lease Vision/dispatch idempoten.
+- Ritual evolusi di client dapat resume dan tidak mendebit Genesis Core.
 - Pertahankan identitas, orientation lock, traits, move, dan art privat.
+- Combat move effects + stage stat multipliers sudah parity JS/GDScript rules v3.
 - Guardian/Ravager baru dikerjakan setelah satu jalur evolusi linear terbukti.
 
-**Selesai jika:** loop foto → rawat → naik Level → evolusi art dapat dimainkan
-tanpa jalan buntu dan retry tidak membuat dua generation.
+**Gate tersisa:** paid lineage eval object/fauna/plant/illustration, deploy + SQL
+remote check, client minimum rollout, aktivasi `evolution_version=1` dan flag,
+serta satu smoke ritual nyata di semua mode Battle.
 
 #### 6. Tutorial first-session
 

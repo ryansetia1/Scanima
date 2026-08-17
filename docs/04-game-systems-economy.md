@@ -288,7 +288,16 @@ yang lebih mahal sebagai preflight; transaksi server tetap pagar akhirnya.
 
 ## 4. Evo-tree
 
-Tiga form copy, sprite masih stage 1. **Target:** art evolusi (`evolve_anima`, ~$0.07) **privat per Anima** — tidak reuse sheet antar pemain. **Historis:** cache `(species_key, color_bucket, stage)` ke pustaka bersama; pemain pertama trigger generation, lainnya hit.
+Tiga form copy; **backend evolusi art** (`evolve_anima`, prompt v21, tabel
+`anima_forms`) sudah diimplementasi di repo tetapi **belum live** (`feature_evolution=false`).
+Arsip form di `anima_forms(stage=N)` menyimpan sheet dan generation yang **asli**
+membuat stage N, Evolution Plan pembentuknya untuk Adult/Evolved, serta crop Idle
+privat yang menjadi reference form berikutnya. Plan aktif tetap di generation
+`evolve` yang sedang berjalan dan row `animas` canonical.
+Build production masih menampilkan stage legacy. **Target live:** art evolusi (~$0.07 Vision+sheet)
+**privat per Anima** — tidak reuse sheet antar pemain. **Historis:** cache
+`(species_key, color_bucket, stage)` ke pustaka bersama; pemain pertama trigger
+generation, lainnya hit.
 
 ```mermaid
 graph LR
@@ -299,12 +308,36 @@ graph LR
 | Form | Syarat | Efek stat |
 | --- | --- | --- |
 | Hatchling | — | `1 + 0.02 * (level - 1)` |
-| Adult | Level ≥ 16 (150 EXP) | multiplier +0.15 |
-| Evolved | Level ≥ 36 (700 EXP) | multiplier +0.20 lagi |
+| Adult | Level ≥ 16 (150 EXP) | multiplier +0.15 **legacy**; committed Adult **×1.06** when `evolution_version ≥ 1` (rules v3, **NOT LIVE**) |
+| Evolved | Level ≥ 36 (700 EXP) | multiplier +0.20 lagi **legacy**; committed Evolved **×1.18** when `evolution_version ≥ 1` (rules v3, **NOT LIVE**) |
 
-`animas.stage` tetap 1 supaya loader art tidak mencari sheet stage 2 yang belum ada. Stats Battle memakai `growthMultiplier(level)`, bukan `stageMultipliers`, sampai art evolusi live.
+Row production tetap pada jalur legacy sampai aktivasi. Client kandidat menyimpan
+cache `v6_<anima_id>_<stage>` dan hanya memakai stage 2/3 sesudah commit art.
+Stats Battle memakai `growthMultiplier(level)` dengan `evolution_version=0`
+(live) atau committed form multiplier + move effects saat `feature_evolution`
+live (`RULES_VERSION = 3`).
 
-Cabang Guardian/Ravager tetap rencana Phase 3. Evolusi tidak mendebit Core tambahan di kontrak target (generation sudah dibayar saat evolusi trigger); slice ini lompatan stat + copy Adult/Evolved.
+### Move effects (rules v3, NOT LIVE)
+
+Katalog kanonis: `backend/supabase/functions/_shared/move_effects.mjs`. Satu efek per move (`strike_effect_id` / `surge_effect_id`); aktivasi deterministik saat move mengenai; refresh, tidak stack; tidak ada proc chance.
+
+| Efek | Attack | Special | Adult | Evolved |
+| --- | --- | --- | --- | --- |
+| armor_pierce | ✓ | | abaikan 20% DEF | 30% |
+| guard_break | ✓ | ✓ | bypass Guard, konsumsi | 30% |
+| drain | ✓ | ✓ | heal 20% damage dealt | 30% |
+| barrier | | ✓ | −20% hit berikutnya, 2 owner turn | 30%, 3 turn |
+| poison | ✓ | | 4% max HP/turn, 3 turn | 6%, 3 turn |
+| burn | ✓ | ✓ | 6% max HP/turn, 2 turn | 8%, 3 turn |
+| slow | ✓ | ✓ | −20% SPD, 3 turn | −30%, 3 turn |
+| armor_break | ✓ | ✓ | −20% DEF, 3 turn | −30%, 3 turn |
+
+Event log menambah `move_effect`, `status_tick`, `status_expired` (side/target/effect_id/amount/remaining_turns/target_hp). Sesi `rules_version < 3` replay byte-identik tanpa efek. Snapshot `evolution_version=0` memakai growth legacy meski rules v3 sudah deploy — aman selama `feature_evolution=false`.
+
+Cabang Guardian/Ravager tetap future improvement. Evolusi linear tidak mendebit
+Core; operator membayar satu Vision Plan + satu generation per ritual. Form,
+sheet, nama move/VFX, multiplier, dan kedua effect ID aktif atomik hanya setelah
+QA teknis berhasil.
 
 ## 5. Basic battle mechanics
 

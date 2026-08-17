@@ -35,7 +35,7 @@ const TURN_RETRIES := 2
 const ANIMA_FIELDS := (
 	"id,status,nickname,species_key,color_bucket,stage,subject_kind,element,secondary_element,"
 	+ "typing_version,sheet_path,manifest,rarity,base_stats,body_height_cm,"
-	+ "strike_name,surge_name,"
+	+ "strike_name,surge_name,evolution_version,strike_effect_id,surge_effect_id,"
 	+ "care,care_score,care_synced_at,sleep_started_at,sleep_energy_at_start,"
 	+ "well_cared_on,play_score_on,play_score_today,dormant_since,battle_wins"
 )
@@ -171,9 +171,27 @@ func fetch_animas() -> Dictionary:
 	# owner_id sengaja tidak ikut query. RLS-lah yang membatasi koleksi ke pemain
 	# aktif; menduplikasi uid di URL hanya menciptakan pagar kedua yang bisa drift.
 	return await get_rest(
-		"animas?status=eq.ready"
+		"animas?status=in.(ready,evolving)"
 		+ "&select=" + ANIMA_FIELDS
 		+ "&order=born_at.desc"
+	)
+
+
+func evolve_anima(
+	anima_id: String,
+	idempotency_key: String,
+	resume_only: bool = false
+) -> Dictionary:
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/functions/v1/evolve_anima",
+		_headers(true, ["content-type: application/json"]),
+		JSON.stringify({
+			"anima_id": anima_id,
+			"idempotency_key": idempotency_key,
+			"resume_only": resume_only,
+		}).to_utf8_buffer(),
+		TIMEOUT_FUNGSI_SEC
 	)
 
 

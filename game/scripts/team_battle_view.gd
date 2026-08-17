@@ -499,6 +499,13 @@ func play_events(
 			"timeout":
 				await _present_banner(tr("BATTLE_EVENT_TIMEOUT"), BattleView.DAMAGE_COLOR, false)
 				await _hide_effectiveness()
+			"move_effect", "status_tick", "status_expired":
+				var normalized := BATTLE_EVENT.normalized(event)
+				_apply_effect_hp_event(normalized)
+				var plate := BATTLE_EVENT.plate_text(normalized)
+				if not plate.is_empty():
+					await _present_banner(plate, BattleView.CUE_COLOR, false)
+					await _hide_effectiveness()
 	if _final_ace_pending:
 		_final_ace_pending = false
 		_restore_seeker_idle()
@@ -506,6 +513,26 @@ func play_events(
 	if _boss_result_pending:
 		await _boss_result_settled
 	set_busy(false)
+
+
+func _apply_effect_hp_event(event: Dictionary) -> void:
+	if not event.has("target_hp"):
+		return
+	var side := str(event.get("target", event.get("actor", "")))
+	if side == "bot":
+		side = "opponent"
+	if side not in ["player", "opponent"]:
+		return
+	var party := _party(side)
+	var active_slot := int(party.get("active_slot", 0))
+	var event_slot := int(event.get("target_slot", event.get("actor_slot", active_slot)))
+	if event_slot != active_slot:
+		return
+	var hp := int(event.get("target_hp", 0))
+	var bar := _player_hp if side == "player" else _opponent_hp
+	var value := _player_hp_value if side == "player" else _opponent_hp_value
+	BattleView.apply_hp_bar_state(bar, float(hp), bar.max_value)
+	value.text = LocaleManager.format_ratio(hp, int(bar.max_value))
 
 
 func _show_only(panel: Control) -> void:
@@ -802,7 +829,7 @@ func _apply_side(
 		return
 	var member := GameState.as_dict(roster[slot])
 	var name_label := _player_name if side == "player" else _opponent_name
-	name_label.text = _fighter_title(member)
+	name_label.text = _fighter_hud_title(member)
 	var anima_id := str(member.get("anima_id", ""))
 	var loaded := GameState.as_dict(_art_cache.get(anima_id))
 	var sprite := _sprite_for(side)
@@ -1227,6 +1254,8 @@ func _daily_reward_text(daily: Dictionary) -> String:
 
 
 func _team_member_unavailable(row: Dictionary) -> String:
+	if CareRules.is_evolving(row):
+		return "TEAM_MEMBER_EVOLVING_COPY"
 	if str(row.get("status", "")) != "ready":
 		return "TEAM_MEMBER_NOT_READY_COPY"
 	if row.get("dormant_since") != null and not str(row.get("dormant_since", "")).is_empty():
@@ -1245,6 +1274,8 @@ static func _team_member_status_key(unavailable: String) -> String:
 			return "BATTLE_PICK_DORMANT"
 		"TEAM_MEMBER_LOW_ENERGY_COPY":
 			return "BATTLE_PICK_LOW_ENERGY"
+		"TEAM_MEMBER_EVOLVING_COPY":
+			return "BATTLE_PICK_EVOLVING"
 		_:
 			return "TEAM_ROSTER_READY"
 
@@ -1300,6 +1331,14 @@ func _fighter_title(member: Dictionary) -> String:
 	if level <= 0:
 		level = CARE_RULES.level_from_exp(int(member.get("care_score", 0)))
 	return "%s %s" % [anima_name, LocaleManager.level_label(maxi(1, level))]
+
+
+func _fighter_hud_title(member: Dictionary) -> String:
+	var title := _fighter_title(member)
+	var summary := CareRules.fighter_status_summary(member)
+	if summary.is_empty():
+		return title
+	return "%s · %s" % [title, summary]
 
 
 func _living_switch_slots() -> Array[int]:

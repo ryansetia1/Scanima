@@ -21,7 +21,9 @@ Sebelum ini benar, `resolveTurn` menyeed RNG-nya dengan
 `seed:turn:idempotency_key`, dan `idempotency_key` dipilih client. Itu berarti
 client bisa mengocok ulang seed sampai mendapat crit. `RULES_VERSION = 2`
 membuang key itu dari seed; state lama tetap memakai formula lamanya supaya
-replay-nya cocok. Skenario 31 di `npm run selftest` menjaga keduanya.
+replay-nya cocok. **Rules v3** (Agustus 2026, **NOT LIVE**) menambah move effects
+dan committed form multiplier; sesi `rules_version < 3` replay tanpa efek.
+Skenario 31 dan 38 di `npm run selftest` menjaga keduanya.
 
 ## Di mana aturannya hidup
 
@@ -31,6 +33,8 @@ replay-nya cocok. Skenario 31 di `npm run selftest` menjaga keduanya.
 | Server | `backend/supabase/functions/_shared/team_combat.mjs` | Team + Expedition |
 | Client | `game/scripts/sim/deterministic_rng.gd` | PRNG |
 | Client | `game/scripts/sim/element_rules.gd` | Roster, alias, matchup 18 elemen |
+| Server | `backend/supabase/functions/_shared/move_effects.mjs` | Katalog efek + helper (v3, NOT LIVE) |
+| Client | `game/scripts/sim/move_effects.gd` | Port katalog efek |
 | Client | `game/scripts/sim/battle_sim.gd` | Duel |
 | Client | `game/scripts/sim/team_sim.gd` | Team + Expedition |
 
@@ -99,6 +103,14 @@ ulang, karena `set_session` tetap memasang row authoritative.
   dari `scan_flow`.
 - **Seluruh mata uang.** Bits, Cores, EXP, `battle_wins`, dan inventory tetap
   hanya berubah dari response server. Prediksi tidak pernah menulis saldo.
+- **Commit evolusi.** Client boleh langsung menampilkan chamber dan menyimpan
+  `pending_evolution`, tetapi tidak menebak stage, art, move, VFX, atau effect.
+  Kelimanya baru tampil setelah generation privat lolos QA, RPC commit atomik,
+  row authoritative menunjukkan stage berikutnya, dan cache stage baru selesai
+  diunduh. Kegagalan download mempertahankan pending lalu mencoba lagi; ia tidak
+  mengembalikan sprite lama sebagai form yang seolah sudah committed.
+  Device yang menemukan row `evolving` tanpa intent lokal memakai resume-only:
+  ia menempel ke generation server yang sudah ada dan tidak membuka spend baru.
 
 ## Care
 

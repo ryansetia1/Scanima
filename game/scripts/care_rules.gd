@@ -191,6 +191,8 @@ static func battle_unavailable_key(
 ) -> String:
 	if row.is_empty():
 		return "BATTLE_NO_ANIMA"
+	if is_evolving(row):
+		return "BATTLE_ANIMA_EVOLVING"
 	if str(row.get("status", "")) != "ready":
 		return "BATTLE_ANIMA_NOT_READY"
 	if has_timestamp(row.get("dormant_since")):
@@ -225,6 +227,8 @@ static func battle_pick_reason_key(unavailable_key: String) -> String:
 			return "BATTLE_PICK_DORMANT"
 		"BATTLE_ANIMA_NOT_READY":
 			return "BATTLE_PICK_NOT_READY"
+		"BATTLE_ANIMA_EVOLVING":
+			return "BATTLE_PICK_EVOLVING"
 		_:
 			return unavailable_key
 
@@ -303,6 +307,100 @@ static func form_key(level: int) -> String:
 	if lv >= ADULT_LEVEL:
 		return "adult"
 	return "hatchling"
+
+
+static func evolution_version(row: Dictionary) -> int:
+	return maxi(0, int(row.get("evolution_version", 0)))
+
+
+static func committed_stage(row: Dictionary) -> int:
+	return clampi(int(row.get("stage", 1)), 1, 3)
+
+
+static func is_evolving(row: Dictionary) -> bool:
+	return str(row.get("status", "")) == "evolving"
+
+
+static func next_evolution_stage(row: Dictionary) -> int:
+	if evolution_version(row) < 1:
+		return 0
+	if str(row.get("status", "")) not in ["ready", "evolving"]:
+		return 0
+	var stage := committed_stage(row)
+	if stage >= 3:
+		return 0
+	var level := level_from_exp(int(row.get("care_score", 0)))
+	if stage == 1 and level >= ADULT_LEVEL:
+		return 2
+	if stage == 2 and level >= EVOLVED_LEVEL:
+		return 3
+	return 0
+
+
+static func evolution_ready(row: Dictionary) -> bool:
+	return next_evolution_stage(row) > 0 and str(row.get("status", "")) == "ready"
+
+
+static func form_key_for_row(row: Dictionary) -> String:
+	if evolution_version(row) >= 1:
+		match committed_stage(row):
+			3:
+				return "evolved"
+			2:
+				return "adult"
+			_:
+				return "hatchling"
+	return form_key(level_from_exp(int(row.get("care_score", 0))))
+
+
+static func growth_multiplier_for_row(row: Dictionary) -> float:
+	var level := level_from_exp(int(row.get("care_score", 0)))
+	var mult := 1.0 + 0.02 * float(clampi(level, 1, LEVEL_CAP) - 1)
+	if evolution_version(row) >= 1:
+		match committed_stage(row):
+			3:
+				mult *= 1.18
+			2:
+				mult *= 1.06
+	else:
+		if level >= ADULT_LEVEL:
+			mult += 0.15
+		if level >= EVOLVED_LEVEL:
+			mult += 0.20
+	return mult
+
+
+static func grown_stat_for_row(base_value: Variant, row: Dictionary) -> int:
+	return int(float(base_value) * growth_multiplier_for_row(row))
+
+
+static func effect_label_key(effect_id: String) -> String:
+	var id := str(effect_id).strip_edges()
+	return "EFFECT_%s" % id.to_upper() if not id.is_empty() else ""
+
+
+static func fighter_status_summary(fighter: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	var statuses: Dictionary = fighter.get("statuses", {})
+	if typeof(statuses) == TYPE_DICTIONARY:
+		for effect_id in statuses.keys():
+			var status: Dictionary = statuses[effect_id]
+			var turns := int(status.get("remaining_turns", 0))
+			if turns <= 0:
+				continue
+			var key := "STATUS_EFFECT_SHORT_%s" % str(effect_id).to_upper()
+			var copy := TranslationServer.translate(key)
+			parts.append(copy % str(turns) if copy.find("%s") >= 0 else copy)
+	var barrier: Variant = fighter.get("barrier", null)
+	if typeof(barrier) == TYPE_DICTIONARY:
+		var barrier_dict: Dictionary = barrier
+		var uses := int(barrier_dict.get("uses_remaining", 0))
+		var owner_turns := int(barrier_dict.get("owner_turns_remaining", 0))
+		if uses > 0 or owner_turns > 0:
+			var turns := owner_turns if owner_turns > 0 else uses
+			var copy := TranslationServer.translate("STATUS_EFFECT_SHORT_BARRIER")
+			parts.append(copy % str(turns) if copy.find("%s") >= 0 else copy)
+	return " · ".join(parts)
 
 
 static func growth_multiplier(level: int) -> float:

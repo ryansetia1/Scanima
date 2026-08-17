@@ -14,7 +14,7 @@ extends Node
 ## Bukan const supaya uji bisa menunjuk folder sementara, bukan state pemain.
 var path_state: String = "user://state.json"
 var dir_animas: String = "user://animas"
-const SPRITE_CACHE_VERSION := 5
+const SPRITE_CACHE_VERSION := 6
 const LEGACY_SPRITE_CACHE_VERSION := 4
 
 ## Runtime saja: {access_token, refresh_token, expires_at, uid, is_anonymous}.
@@ -44,6 +44,10 @@ var pending_expedition: Dictionary = {}
 
 ## {idempotency_key, item_id, expected_price}. Satu pembelian menggantung.
 var pending_purchase: Dictionary = {}
+
+## {idempotency_key, anima_id, prior_stage, target_stage, generation_id, resume_only, started_at}.
+## Satu ritual evolusi aktif per akun; kunci tidak pernah diganti sampai selesai.
+var pending_evolution: Dictionary = {}
 
 ## {mode, state, code_verifier, started_at}. Sesi guest tetap aktif sampai
 ## exchange berhasil, dan backup token disimpan terpisah di SecureStore.
@@ -101,6 +105,7 @@ func load_state() -> void:
 	pending_team_battle = as_dict(data.get("pending_team_battle"))
 	pending_expedition = as_dict(data.get("pending_expedition"))
 	pending_purchase = as_dict(data.get("pending_purchase"))
+	pending_evolution = as_dict(data.get("pending_evolution"))
 	pending_oauth = as_dict(data.get("pending_oauth"))
 	preferences.merge(as_dict(data.get("preferences")), true)
 	last_anima = as_dict(data.get("last_anima"))
@@ -168,6 +173,7 @@ func save() -> void:
 		"pending_team_battle": pending_team_battle,
 		"pending_expedition": pending_expedition,
 		"pending_purchase": pending_purchase,
+		"pending_evolution": pending_evolution,
 		"pending_oauth": pending_oauth,
 		"preferences": preferences,
 		"last_anima": last_anima,
@@ -257,6 +263,7 @@ func clear_account_state() -> void:
 	pending_team_battle = {}
 	pending_expedition = {}
 	pending_purchase = {}
+	pending_evolution = {}
 	pending_oauth = {}
 	last_anima = {}
 	profile = {}
@@ -278,6 +285,7 @@ func discard_guest_local_state() -> void:
 	pending_team_battle = {}
 	pending_expedition = {}
 	pending_purchase = {}
+	pending_evolution = {}
 	last_anima = {}
 	profile = {}
 	client_config = {}
@@ -576,18 +584,64 @@ func finish_purchase() -> void:
 	save()
 
 
-## Folder cache per Anima (production baru). sheet_path server penuh; manifest.sheet
-## hanya basename relatif terhadap folder cache ini.
-func sprite_dir_for_anima(anima_id: String) -> String:
-	return dir_animas.path_join("v%d_%s" % [SPRITE_CACHE_VERSION, anima_id])
+func begin_evolution(
+	anima_id: String,
+	prior_stage: int,
+	resume_only: bool = false
+) -> Dictionary:
+	if not pending_evolution.is_empty():
+		return (
+			pending_evolution
+			if str(pending_evolution.get("anima_id", "")) == anima_id
+			else {}
+		)
+	var target := prior_stage + 1
+	var key := "%d-%08x%08x" % [int(Time.get_unix_time_from_system()), randi(), randi()]
+	pending_evolution = {
+		"idempotency_key": key,
+		"anima_id": anima_id,
+		"prior_stage": prior_stage,
+		"target_stage": target,
+		"generation_id": "",
+		"resume_only": resume_only,
+		"started_at": int(Time.get_unix_time_from_system()),
+	}
+	save()
+	return pending_evolution
 
 
-func manifest_path_for_anima(anima_id: String) -> String:
-	return sprite_dir_for_anima(anima_id).path_join("manifest.json")
+func note_evolution_started(generation_id: String, target_stage: int = 0) -> void:
+	if pending_evolution.is_empty():
+		return
+	if not generation_id.is_empty():
+		pending_evolution["generation_id"] = generation_id
+	if target_stage > 0:
+		pending_evolution["target_stage"] = target_stage
+	save()
 
 
-func has_sprite_for_anima(anima_id: String) -> bool:
-	return _has_sprite_at(manifest_path_for_anima(anima_id), sprite_dir_for_anima(anima_id))
+func finish_evolution() -> void:
+	pending_evolution = {}
+	save()
+
+
+## Folder cache per Anima + stage committed (v6). Sheet lama v5_<id> sengaja
+## dibiarkan di disk; lookup baru selalu stage-aware.
+func sprite_dir_for_anima(anima_id: String, stage: int = 1) -> String:
+	return dir_animas.path_join(
+		"v%d_%s_%d" % [SPRITE_CACHE_VERSION, anima_id, clampi(stage, 1, 3)]
+	)
+
+
+func manifest_path_for_anima(anima_id: String, stage: int = 1) -> String:
+	return sprite_dir_for_anima(anima_id, stage).path_join("manifest.json")
+
+
+func has_sprite_for_anima(anima_id: String, stage: int = 1) -> bool:
+	return _has_sprite_at(
+		manifest_path_for_anima(anima_id, stage),
+		sprite_dir_for_anima(anima_id, stage)
+	)
 
 
 ## Folder cache legacy per varian species (pustaka publik / art lama).
@@ -626,9 +680,11 @@ static func _has_sprite_at(manifest_file: String, dir: String) -> bool:
 func store_sprite_for_anima(
 	anima_id: String,
 	manifest: Dictionary,
-	sheet: PackedByteArray
+	sheet: PackedByteArray,
+	stage: int = 1
 ) -> Dictionary:
-	return _store_sprite_bundle(sprite_dir_for_anima(anima_id), manifest_path_for_anima(anima_id), manifest, sheet)
+	var dir := sprite_dir_for_anima(anima_id, stage)
+	return _store_sprite_bundle(dir, manifest_path_for_anima(anima_id, stage), manifest, sheet)
 
 
 func store_sprite(

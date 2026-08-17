@@ -376,6 +376,60 @@ func _initialize() -> void:
 		"alasan picker memakai label pendek"
 	)
 
+	print("7b. evolusi rollout display dan eligibility")
+	var legacy := {
+		"status": "ready",
+		"evolution_version": 0,
+		"stage": 1,
+		"care_score": 150,
+		"base_stats": {"hp": 50},
+	}
+	var rollout := legacy.duplicate(true)
+	rollout["evolution_version"] = 1
+	_check(not CareRules.evolution_ready(legacy), "evolution_version 0 tidak menampilkan ritual")
+	_check(CareRules.evolution_ready(rollout), "Lv16 stage1 rollout siap Adult")
+	_check_eq(CareRules.next_evolution_stage(rollout), 2, "stage berikutnya Adult")
+	_check_eq(CareRules.form_key_for_row(rollout), "hatchling", "stage1 tetap Hatchling sampai ritual")
+	rollout["stage"] = 2
+	rollout["care_score"] = 700
+	_check(CareRules.evolution_ready(rollout), "Lv36 stage2 rollout siap Evolved")
+	_check_eq(CareRules.next_evolution_stage(rollout), 3, "stage berikutnya Evolved")
+	rollout["stage"] = 3
+	_check(not CareRules.evolution_ready(rollout), "stage3 tidak punya ritual lagi")
+	_check_eq(CareRules.form_key_for_row(rollout), "evolved", "committed Evolved copy")
+	_check(
+		is_equal_approx(CareRules.growth_multiplier_for_row(legacy), CareRules.growth_multiplier(16)),
+		"legacy v0 tetap growth lama"
+	)
+	var adult_committed := {
+		"status": "ready",
+		"evolution_version": 1,
+		"stage": 2,
+		"care_score": 150,
+		"base_stats": {"hp": 100},
+	}
+	_check_eq(
+		CareRules.grown_stat_for_row(100, adult_committed),
+		int(100.0 * (1.0 + 0.02 * 15.0) * 1.06),
+		"committed Adult memakai multiplier 1.06"
+	)
+	_check_eq(
+		CareRules.battle_unavailable_key({"status": "evolving", "evolution_version": 1}),
+		"BATTLE_ANIMA_EVOLVING",
+		"evolving ditolak Battle"
+	)
+	var move_fx := BATTLE_EVENT.plate_text({
+		"type": "move_effect",
+		"actor": "player",
+		"target": "bot",
+		"effect_id": "burn",
+	})
+	_check(not move_fx.is_empty(), "plate move_effect burn terlokalisasi")
+	var status_line := CareRules.fighter_status_summary({
+		"statuses": {"poison": {"remaining_turns": 2, "strength": 0.2}},
+	})
+	_check(status_line.find("2") >= 0, "ringkasan status HUD membawa sisa turn")
+
 	print("12. tas Shop menulis ulang quantity dari respons")
 	var bag: Array = [{"item_id": "power_chip", "quantity": 1}]
 	_check_eq(Catalog.quantity_of(Catalog.with_quantity(bag, "power_chip", 3), "power_chip"), 3, "beli menambah tumpukan")

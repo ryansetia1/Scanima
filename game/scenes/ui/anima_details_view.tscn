@@ -437,6 +437,22 @@ custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "GALLERY_PUBLISH"
 
+[node name="EvolveAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "EVOLVE_ACTION"
+
+[node name="EvolutionStatusLabel" type="Label" parent="Column/DetailsScroll/DetailsContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "EVOLUTION_CHAMBER_STATUS"
+horizontal_alignment = 1
+autowrap_mode = 2
+visible = false
+
 [node name="DeleteAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent/DeleteRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(160, 96)

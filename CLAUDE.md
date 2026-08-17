@@ -46,6 +46,42 @@ Eval Vision-only menolak fixture karakter franchise, menerima naga
 public-domain sebagai Fauna, dan memakai nol image generation; fixture dinding
 kosong tetap salah dibaca sebagai panel beton pada v19 maupun v20.
 
+## Status implementasi Evolution art (belum live, Agustus 2026)
+
+Backend schema + pipeline art evolusi sudah ada di repo; **belum di-deploy** dan
+**`feature_evolution=false`**. Capture tetap `prompt_version = "v20"`; evolusi
+memakai `app_config.evolution_prompt_version = "v21"` terpisah.
+
+- Migrasi `20260817095700_evolution_art_pipeline`: `animas.status` + `evolving`,
+  `evolution_version`, `strike_effect_id`/`surge_effect_id`, `generations.target_stage`,
+  tabel internal `anima_forms`, RPC `begin/reserve/commit/fail_evolution` (service-role only).
+- Edge Function `evolve_anima` + cabang `replicate_webhook`/`finalize_sheet` untuk
+  `kind=evolve`: Vision Plan (~$0.003) + satu generation (~$0.07), **tanpa Core**;
+  kegagalan memanggil `fail_evolution` saja (bukan `refund_generation`).
+- Input model evolusi adalah crop Idle privat di atas chroma green, bukan seluruh
+  sheet. Reference disimpan di `anima_sheets`, ditandatangani singkat, ikut
+  history form saat sukses, dan masuk cleanup queue saat fail/timeout/delete.
+- Prompt v21: file capture byte-identik v20 + `vision_evolve_*` + `sprite_sheet_evolve` Adult/Evolved.
+- Validasi Plan di `_shared/evolution.mjs`; katalog efek + combat v3 di `_shared/move_effects.mjs` (refactor evolution import); selftest skenario 36–38.
+- **`RULES_VERSION = 3`** + port GDScript (`move_effects.gd`) sudah di repo; snapshot `evolution_version=0` tetap growth legacy — aman deploy shared code selama `feature_evolution=false`.
+
+Vision memakai lease atomik supaya dua isolate tidak membayar Plan dua kali.
+Dispatch ambigu tidak diulang; HTTP 4xx/token lokal gagal cepat, sedangkan job
+tanpa callback dipulihkan oleh lease 10/20 menit. `begin_evolution` membersihkan
+intent stale sebelum one-active gate, sehingga install ulang tidak memblokir akun
+selamanya. Cold start lintas device yang kehilangan intent lokal memakai
+`resume_evolution`: ia hanya menempel ke generation aktif, memulihkan status
+`evolving` yatim, dan tidak pernah membuat generation/spend baru.
+`quota_rules.sql` sekarang mencakup no-Core, urutan Adult→Evolved,
+idempotency, rollback, lease Vision, history/reference cleanup, dan revoke RPC;
+jalankan hanya setelah migrasi staging/remote diterapkan.
+
+**Client evolution ritual (repo, NOT LIVE):** `GameState.pending_evolution`, stage-aware sprite cache `v6_<anima_id>_<stage>`, Profile Evolve CTA, Collection cues, `IncubatorEffect.start_evolution()` chamber, resume/poll orchestration in `scan_flow.gd`, localized battle status/effect plates. Requires `feature_evolution` + `evolution_version>=1` on Anima rows.
+
+Belum live: deploy migrasi/function/combat bundle, eval visual Adult→Evolved
+berbayar, client minimum rollout, backfill `evolution_version=1`, dan aktivasi
+flag. Wiki pemain sengaja belum berubah sampai semua gate itu lolos.
+
 ## Status deploy Battle polish + Tiered EXP 17 Agustus 2026
 
 Tier hadiah Duel terukur dan lawan Duel sistem sudah live: migration
@@ -254,12 +290,20 @@ backend/prompts/
 │   ├── sprite_sheet.md           # identik v18/v15; nol perubahan art
 │   ├── sprite_sheet_fauna.md     # identik v18/v15; nol perubahan art
 │   └── sprite_sheet_evolve.md    # identik v18/v15
-└── v20/                          # DEFAULT: ilustrasi orisinal + gate franchise
-    ├── vision_system.md          # known_character + klasifikasi subjek ilustrasi
-    ├── vision_schema.json        # reason known_character
-    ├── sprite_sheet.md           # identik byte-for-byte dengan v19
-    ├── sprite_sheet_fauna.md     # identik byte-for-byte dengan v19
-    └── sprite_sheet_evolve.md    # identik byte-for-byte dengan v19
+├── v20/                          # DEFAULT capture: ilustrasi orisinal + gate franchise
+│   ├── vision_system.md          # known_character + klasifikasi subjek ilustrasi
+│   ├── vision_schema.json        # reason known_character
+│   ├── sprite_sheet.md           # identik byte-for-byte dengan v19
+│   ├── sprite_sheet_fauna.md     # identik byte-for-byte dengan v19
+│   └── sprite_sheet_evolve.md    # identik byte-for-byte dengan v19
+└── v21/                          # CANDIDATE evolution, feature flag off
+    ├── vision_system.md          # capture tetap identik v20
+    ├── vision_schema.json        # capture tetap identik v20
+    ├── vision_evolve_system.md   # Evolution Director + lineage/effect contract
+    ├── vision_evolve_schema.json # Evolution Plan terstruktur
+    ├── sprite_sheet.md           # identik byte-for-byte dengan v20
+    ├── sprite_sheet_fauna.md     # identik byte-for-byte dengan v20
+    └── sprite_sheet_evolve.md    # Adult bridge / Evolved culmination dari Idle
 ```
 
 **Prompt tidak bisa dibaca sebagai file di Edge Function.** `Deno.readTextFile()` gagal untuk file pendamping yang dideploy lewat MCP, jadi `backend/tools/bundle_prompts.mjs` membundel semua versi menjadi `functions/_shared/prompts.generated.ts` yang diimpor sebagai modul. Sumbernya tetap file `.md` di git; artefaknya turunan. Setelah mengubah prompt: `node backend/tools/bundle_prompts.mjs`. Skenario 17 di `npm run selftest` gagal kalau bundelnya basi, jadi kelupaan ketangkap gratis, bukan saat art produksi ternyata berbeda dari art yang sudah disetujui.
@@ -403,15 +447,15 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 34 skenario + 12 uji tanda tangan webhook
+npm run selftest                       # 38 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd # 182 check manifest, loader, presenter, Boss Seeker
-godot --headless --path game --script res://tests/test_client_state.gd  # 141 check sesi, refresh, pending scan/care/Battle/Shop, cache art, cache boot, retry transport
-godot --headless --path game --script res://tests/test_scan_ui.gd       # 752 check shell + Battle + Shop + Bag + komponen + tap + touch + reduced motion + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase
-godot --headless --path game --script res://tests/test_i18n.gd          # 3792 check katalog + key + formatter + wrapping
-godot --headless --path game --script res://tests/test_game_rules.gd    # 168 check care + EXP/Level + kontrak event Battle
+godot --headless --path game --script res://tests/test_client_state.gd  # 151 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, retry transport
+godot --headless --path game --script res://tests/test_scan_ui.gd       # 768 check shell + Battle + Shop + Bag + komponen + tap + touch + reduced motion + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution
+godot --headless --path game --script res://tests/test_i18n.gd          # 4075 check katalog + key + formatter + wrapping
+godot --headless --path game --script res://tests/test_game_rules.gd    # 181 check care + EXP/Level/evolution + kontrak event Battle
 godot --headless --path game --script res://tests/test_expedition_route_map.gd # 79 check route tree + preview/Enter Node + Skip Shop + prediksi turn/Switch/penutup Boss
 node backend/tools/emit_sim_vectors.mjs                                 # regen golden vector JS -> GDScript, nol panggilan API
-godot --headless --path game --script res://tests/test_battle_sim_parity.gd # 508 check parity simulasi client vs _shared
+godot --headless --path game --script res://tests/test_battle_sim_parity.gd # 590 check parity simulasi client vs _shared
 node eval/run.mjs --set smoke --dry-run # cek foto + template tanpa API
 
 # regenerasi golden vector kalau formula combat berubah; nol panggilan API

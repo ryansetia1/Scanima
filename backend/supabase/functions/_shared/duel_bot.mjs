@@ -157,6 +157,9 @@ export function systemDuelBot(player, seed) {
     body_height_cm: clampHeight(player?.body_height_cm),
     strike_name: identity.strike_name,
     surge_name: identity.surge_name,
+    evolution_version: 0,
+    strike_effect_id: "",
+    surge_effect_id: "",
     system_asset: "placeholder",
     manifest: {},
   });
@@ -255,6 +258,7 @@ function estimateFighter(snapshot) {
     snapshot?.stage,
     snapshot?.evolution_branch,
     snapshot?.level,
+    { evolutionVersion: Math.trunc(Number(snapshot?.evolution_version) || 0) },
   );
   const mult = careCombatMultiplier(
     snapshot?.hunger ?? snapshot?.care?.hunger,

@@ -45,6 +45,10 @@ import_map = "./functions/import_map.json"
 verify_jwt = true
 import_map = "./functions/import_map.json"
 
+[functions.evolve_anima]
+verify_jwt = true
+import_map = "./functions/import_map.json"
+
 [functions.replicate_webhook]
 verify_jwt = false
 import_map = "./functions/import_map.json"

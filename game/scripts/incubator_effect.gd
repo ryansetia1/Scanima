@@ -22,6 +22,7 @@ var _burst := 0.0
 var _redraw_accumulator := 0.0
 var _active := false
 var _portal_only := false
+var _evolution_mode := false
 var _fx_tween: Tween = null
 
 
@@ -39,6 +40,7 @@ func start() -> void:
 	_redraw_accumulator = 0.0
 	_active = true
 	_portal_only = false
+	_evolution_mode = false
 	visible = true
 	scale = Vector2(0.94, 0.94)
 	modulate = Color(1.0, 1.0, 1.0, 0.0)
@@ -47,6 +49,7 @@ func start() -> void:
 	if UiMotion.reduced_motion:
 		scale = BASE_SCALE
 		modulate = Color.WHITE
+		set_process(false)
 		return
 
 	_fx_tween = create_tween().set_parallel(true)
@@ -73,6 +76,7 @@ func start_portal() -> void:
 	_redraw_accumulator = 0.0
 	_active = true
 	_portal_only = true
+	_evolution_mode = false
 	visible = true
 	scale = Vector2(0.72, 0.72)
 	modulate = Color(1.0, 1.0, 1.0, 0.0)
@@ -92,6 +96,34 @@ func start_portal() -> void:
 	_fx_tween.tween_property(self, "modulate:a", 1.0, 0.18) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	await get_tree().create_timer(0.18).timeout
+
+
+func start_evolution() -> void:
+	if _fx_tween != null and _fx_tween.is_valid():
+		_fx_tween.kill()
+	_phase = 0.0
+	_charge = 0.55
+	_burst = 0.0
+	_redraw_accumulator = 0.0
+	_active = true
+	_portal_only = false
+	_evolution_mode = true
+	visible = true
+	scale = Vector2(0.88, 0.88)
+	modulate = Color(1.0, 1.0, 1.0, 0.0)
+	set_process(true)
+	queue_redraw()
+	if UiMotion.reduced_motion:
+		scale = BASE_SCALE
+		modulate = Color.WHITE
+		set_process(false)
+		return
+
+	_fx_tween = create_tween().set_parallel(true)
+	_fx_tween.tween_property(self, "scale", BASE_SCALE, 0.36) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	_fx_tween.tween_property(self, "modulate:a", 1.0, 0.22) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 
 
 ## Mengembang dan memutihkan ring, lalu mengembalikan kontrol tepat saat flash
@@ -124,6 +156,7 @@ func stop() -> void:
 	_fx_tween = null
 	_active = false
 	_portal_only = false
+	_evolution_mode = false
 	visible = false
 	set_process(false)
 	scale = Vector2.ONE
@@ -139,6 +172,7 @@ func _finish_burst() -> void:
 	_fx_tween = null
 	_active = false
 	_portal_only = false
+	_evolution_mode = false
 	visible = false
 	set_process(false)
 	scale = Vector2.ONE
@@ -224,6 +258,8 @@ func _draw() -> void:
 			true
 		)
 		draw_circle(center, 18.0 + sin(_phase * 6.0) * 3.0, _alpha(GOLD, 0.72))
+	elif _evolution_mode:
+		_draw_evolution_chamber(center, pulse, energy)
 	else:
 		# Telur energi: bagian atas lebih ramping, bagian bawah lebih penuh.
 		var egg := _egg_points(center, 76.0 * pulse, 108.0 * pulse, 72)
@@ -289,6 +325,32 @@ func _draw() -> void:
 		draw_circle(center, 42.0 + _burst * 138.0, _alpha(Color.WHITE, fade * 0.34))
 		draw_arc(center, 88.0 + _burst * 190.0, 0.0, TAU, 72, _alpha(CYAN, fade), 7.0, true)
 		draw_arc(center, 64.0 + _burst * 240.0, 0.0, TAU, 72, _alpha(GOLD, fade * 0.82), 3.0, true)
+
+
+func _draw_evolution_chamber(center: Vector2, pulse: float, energy: float) -> void:
+	# Faceted cocoon: hexagonal prism silhouette, bukan telur scan.
+	var radius := 92.0 * pulse
+	var hex := _hex_points(center, radius, 6)
+	draw_colored_polygon(hex, _alpha(CORE_DARK, 0.94))
+	draw_polyline(_closed(hex), _alpha(CYAN, 0.88 * energy), 4.0, true)
+	for facet in 6:
+		var inner := center + Vector2(
+			cos(TAU * float(facet) / 6.0 + _phase * 0.18) * radius * 0.55,
+			sin(TAU * float(facet) / 6.0 + _phase * 0.18) * radius * 0.42
+		)
+		var facet_color := GOLD if facet % 3 == 0 else (VIOLET if facet % 2 == 0 else CYAN)
+		draw_line(center, inner, _alpha(facet_color, 0.42 * energy), 2.5, true)
+		draw_circle(inner, 6.0 + sin(_phase * 4.0 + facet) * 2.0, _alpha(facet_color, 0.72))
+	draw_arc(center, 48.0 + sin(_phase * 3.6) * 6.0, 0.0, TAU, 48, _alpha(GOLD, 0.82), 5.0, true)
+	draw_circle(center, 14.0 + sin(_phase * 5.0) * 3.0, _alpha(CYAN, 0.95))
+
+
+func _hex_points(center: Vector2, radius: float, segments: int) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in segments:
+		var angle := TAU * float(i) / float(segments) - PI / 2.0
+		points.append(center + Vector2(cos(angle), sin(angle)) * radius)
+	return points
 
 
 func _draw_orbit_arc(

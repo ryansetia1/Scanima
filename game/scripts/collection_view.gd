@@ -44,6 +44,7 @@ var _busy := false
 var _condition_loading := false
 var _condition_synced := false
 var _empty_mode := &"scan"
+var _evolution_enabled := false
 
 
 func _ready() -> void:
@@ -62,6 +63,10 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 	for row in rows:
 		var id := str(row.get("id", ""))
 		var name := LocaleManager.display_name(row)
+		if CareRules.is_evolving(row):
+			name += " · " + tr("COLLECTION_EVOLVING")
+		elif _evolution_enabled and CareRules.evolution_ready(row):
+			name += " · " + tr("COLLECTION_READY_EVOLVE")
 		var label := tr("COLLECTION_ITEM_META") % [
 			name,
 			LocaleManager.element_compact(row),
@@ -117,6 +122,10 @@ func set_busy(busy: bool) -> void:
 	_update_action_state()
 
 
+func set_evolution_enabled(enabled: bool) -> void:
+	_evolution_enabled = enabled
+
+
 func begin_visit() -> void:
 	_care_cache.clear()
 	close_sheet()
@@ -140,7 +149,9 @@ func show_preview(row: Dictionary, request_sync: bool = true) -> void:
 	_update_active_state()
 
 	var anima_id := str(_selected_row.get("id", ""))
-	if _care_cache.has(anima_id):
+	if CareRules.is_evolving(_selected_row):
+		_apply_condition(_selected_row, true)
+	elif _care_cache.has(anima_id):
 		_selected_row = GameState.as_dict(_care_cache[anima_id])
 		_fill_identity()
 		_fill_base_stats()
@@ -214,14 +225,27 @@ func _fill_identity() -> void:
 		if _thumbnail_provider.is_valid()
 		else null
 	)
+	_update_evolution_cue()
+
+
+func _update_evolution_cue() -> void:
+	if CareRules.is_evolving(_selected_row):
+		_condition_status.text = tr("COLLECTION_EVOLVING")
+		_condition_status.visible = true
+	elif _evolution_enabled and CareRules.evolution_ready(_selected_row):
+		_condition_status.text = tr("COLLECTION_READY_EVOLVE")
+		_condition_status.visible = true
+	else:
+		_condition_status.visible = false
 
 
 func _fill_base_stats() -> void:
 	var stats := GameState.as_dict(_selected_row.get("base_stats"))
-	var exp := int(_selected_row.get("care_score", 0))
 	for key in _base_values:
 		var value := _base_values[key] as Label
-		value.text = LocaleManager.format_integer(CareRules.grown_stat(stats.get(key, 0), exp))
+		value.text = LocaleManager.format_integer(
+			CareRules.grown_stat_for_row(stats.get(key, 0), _selected_row)
+		)
 
 
 func _set_condition_loading() -> void:
@@ -242,7 +266,7 @@ func _set_condition_loading() -> void:
 func _apply_condition(row: Dictionary, synced: bool) -> void:
 	var care := CareRules.normalized_care(row.get("care"))
 	_condition_skeleton.set_loading(false)
-	_care_rows.visible = true
+	_care_rows.visible = not CareRules.is_evolving(row)
 	for key in _care_meters:
 		var meter := _care_meters[key] as ProgressBar
 		meter.modulate = Color.WHITE
@@ -252,7 +276,11 @@ func _apply_condition(row: Dictionary, synced: bool) -> void:
 			UiJuice.tween_meter(meter, float(care[key]))
 	_condition_loading = false
 	_condition_synced = synced
-	_condition_status.visible = not synced
+	if not synced:
+		_condition_status.text = tr("COLLECTION_CONDITION_ERROR")
+		_condition_status.visible = true
+	else:
+		_update_evolution_cue()
 	_update_action_state()
 	_sheet.fit_to_content()
 
@@ -267,8 +295,11 @@ func _update_active_state() -> void:
 func _update_action_state() -> void:
 	var has_selection := not _selected_row.is_empty()
 	var active := has_selection and str(_selected_row.get("id", "")) == _active_id
+	var evolving := has_selection and CareRules.is_evolving(_selected_row)
 	_profile_button.disabled = _busy or not has_selection
-	_summon_button.disabled = _busy or _condition_loading or not has_selection or active
+	_summon_button.disabled = (
+		_busy or _condition_loading or not has_selection or active or evolving
+	)
 
 
 func _view_profile() -> void:

@@ -77,6 +77,9 @@ type AnimaRow = {
   care?: { hunger?: number; hygiene?: number };
   strike_name?: string;
   surge_name?: string;
+  evolution_version?: number;
+  strike_effect_id?: string;
+  surge_effect_id?: string;
   sheet_path?: string;
   manifest?: unknown;
 };
@@ -101,7 +104,7 @@ type GalleryBotRow = {
 
 const SECONDARY_ELEMENT_FIELD = ", secondary_element";
 const ANIMA_BATTLE_FIELDS =
-  `id, owner_id, nickname, species_key, color_bucket, stage, element${SECONDARY_ELEMENT_FIELD}, base_stats, body_height_cm, care_score, care, strike_name, surge_name`;
+  `id, owner_id, nickname, species_key, color_bucket, stage, element${SECONDARY_ELEMENT_FIELD}, base_stats, body_height_cm, care_score, care, strike_name, surge_name, evolution_version, strike_effect_id, surge_effect_id`;
 const normalizeStats = normalizeBaseStats as unknown as (
   baseStats: unknown,
   targetTotal?: number | null,
@@ -389,6 +392,9 @@ function snapshot(
     manifest: art?.manifest ?? {},
     strike_name: row.strike_name ?? "",
     surge_name: row.surge_name ?? "",
+    evolution_version: Math.max(0, Math.trunc(Number(row.evolution_version) || 0)),
+    strike_effect_id: String(row.strike_effect_id ?? ""),
+    surge_effect_id: String(row.surge_effect_id ?? ""),
   };
   if (sheetUrl) {
     result.sheet_url = sheetUrl;
@@ -522,6 +528,9 @@ function pickFairCandidate(
         level: levelFromExp(candidate.row.care_score),
         element: normalizeElement(candidate.row.element),
         secondary_element: readSecondaryElement(candidate.row) ?? "",
+        evolution_version: Math.max(0, Math.trunc(Number(candidate.row.evolution_version) || 0)),
+        strike_effect_id: String(candidate.row.strike_effect_id ?? ""),
+        surge_effect_id: String(candidate.row.surge_effect_id ?? ""),
       })
     );
   if (fair.length === 0) return null;

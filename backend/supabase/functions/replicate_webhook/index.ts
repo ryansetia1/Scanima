@@ -9,6 +9,7 @@
 import { adminClient, json } from "../_shared/supa.ts";
 import { verifikasiTandaTangan } from "../_shared/webhook_signature.ts";
 import { finalizeSheet } from "../_shared/finalize_sheet.ts";
+import { evolutionFinalizeRetryable } from "../_shared/evolution.mjs";
 import { rahasiaWebhook } from "../_shared/replicate.ts";
 
 // Payload yang lolos tanda tangan pun tidak boleh menentukan dari mana kita
@@ -32,6 +33,81 @@ function ambilUrlKeluaran(output: unknown): string | null {
     return typeof pertama === "string" ? pertama : null;
   }
   return null;
+}
+
+type GenRow = {
+  id: string;
+  owner_id: string;
+  anima_id: string | null;
+  kind?: string;
+  target_stage?: number | null;
+  status: string;
+  prompt_version: string;
+  photo_path: string | null;
+  vision_result?: unknown;
+  prediction_id?: string | null;
+  animas?: unknown;
+};
+
+async function muatGeneration(
+  db: ReturnType<typeof adminClient>,
+  predictionId: string,
+  generationIdCallback: string | null,
+): Promise<{ gen: GenRow | null; mismatch?: boolean }> {
+  const { data: byPred, error: errPred } = await db
+    .from("generations")
+    .select(
+      "id, owner_id, anima_id, kind, target_stage, status, prompt_version, photo_path, " +
+        "vision_result, prediction_id, " +
+        "animas(id, species_key, color_bucket, stage, sheet_path, typing_version)",
+    )
+    .eq("prediction_id", predictionId)
+    .maybeSingle();
+  if (errPred) throw new Error(errPred.message);
+  if (byPred) return { gen: byPred as GenRow };
+
+  if (!generationIdCallback) return { gen: null };
+
+  const { data: byCallback, error: errCb } = await db
+    .from("generations")
+    .select(
+      "id, owner_id, anima_id, kind, target_stage, status, prompt_version, photo_path, " +
+        "vision_result, prediction_id, " +
+        "animas(id, species_key, color_bucket, stage, sheet_path, typing_version)",
+    )
+    .eq("id", generationIdCallback)
+    .maybeSingle();
+  if (errCb) throw new Error(errCb.message);
+  if (!byCallback) return { gen: null };
+
+  const row = byCallback as GenRow;
+  if (row.kind !== "evolve") return { gen: null };
+  if (row.prediction_id && row.prediction_id !== predictionId) {
+    return { gen: null, mismatch: true };
+  }
+
+  const { error: errAttach } = await db.rpc("attach_evolution_prediction", {
+    p_gen_id: row.id,
+    p_prediction_id: predictionId,
+  });
+  if (errAttach) {
+    if (errAttach.message.includes("PREDICTION_MISMATCH")) {
+      return { gen: null, mismatch: true };
+    }
+    throw new Error(errAttach.message);
+  }
+
+  const { data: refreshed, error: errRefresh } = await db
+    .from("generations")
+    .select(
+      "id, owner_id, anima_id, kind, target_stage, status, prompt_version, photo_path, " +
+        "vision_result, prediction_id, " +
+        "animas(id, species_key, color_bucket, stage, sheet_path, typing_version)",
+    )
+    .eq("id", row.id)
+    .maybeSingle();
+  if (errRefresh) throw new Error(errRefresh.message);
+  return { gen: refreshed as GenRow | null };
 }
 
 Deno.serve(async (req) => {
@@ -66,21 +142,25 @@ Deno.serve(async (req) => {
   const predictionId = payload.id;
   if (!predictionId) return json(400, { error: "payload tanpa id prediksi" });
 
+  const generationIdCallback = new URL(req.url).searchParams.get("generation_id");
+
   const db = adminClient();
-  const { data: gen, error: errCari } = await db
-    .from("generations")
-    .select(
-      "id, owner_id, anima_id, status, prompt_version, photo_path, vision_result, " +
-        "animas(id, species_key, color_bucket, stage, typing_version)",
-    )
-    .eq("prediction_id", predictionId)
-    .maybeSingle();
-  if (errCari) return json(500, { error: errCari.message });
+  let gen: GenRow | null;
+  try {
+    const loaded = await muatGeneration(db, predictionId, generationIdCallback);
+    if (loaded.mismatch) {
+      return json(409, { error: "PREDICTION_MISMATCH", prediction: predictionId });
+    }
+    gen = loaded.gen;
+  } catch (e) {
+    return json(500, { error: e instanceof Error ? e.message : String(e) });
+  }
 
   if (!gen) {
-    // Balapan yang nyata: webhook bisa tiba sebelum create_anima selesai menulis
-    // prediction_id. Untuk status terminal, 503 meminta Replicate mencoba lagi;
-    // 200 akan membuang kejadiannya dan meninggalkan Anima menetas selamanya.
+    // Balapan yang nyata: webhook bisa tiba sebelum create_anima / evolve_anima
+    // selesai menulis prediction_id. Untuk status terminal, 503 meminta Replicate
+    // mencoba lagi; 200 akan membuang kejadiannya dan meninggalkan Anima menetas
+    // selamanya.
     const terminal = ["succeeded", "failed", "canceled"].includes(payload.status ?? "");
     return json(terminal ? 503 : 200, { ditunda: terminal, prediction: predictionId });
   }
@@ -95,6 +175,7 @@ Deno.serve(async (req) => {
   }
 
   const anima = Array.isArray(gen.animas) ? gen.animas[0] : gen.animas;
+  const isEvolve = gen.kind === "evolve";
   const urlKeluaran = payload.status === "succeeded" ? ambilUrlKeluaran(payload.output) : null;
 
   const alasanGagal = payload.status !== "succeeded"
@@ -106,6 +187,14 @@ Deno.serve(async (req) => {
     : null;
 
   if (alasanGagal) {
+    if (isEvolve) {
+      const { error } = await db.rpc("fail_evolution", {
+        p_gen_id: gen.id,
+        p_reason: alasanGagal.slice(0, 500),
+      });
+      if (error) return json(503, { error: error.message });
+      return json(200, { evolution_gagal: true, alasan: alasanGagal });
+    }
     const { error } = await db.rpc("refund_generation", {
       p_gen_id: gen.id,
       p_reason: alasanGagal.slice(0, 500),
@@ -133,11 +222,18 @@ Deno.serve(async (req) => {
       ms_postprocess: hasil.msPostprocess,
     });
   } catch (e) {
-    // Post-processing yang gagal berarti sheet-nya tidak bisa dipakai, jadi Core-nya
-    // dikembalikan. Ini juga jalur yang menangkap "background bukan hijau" dari
-    // postprocessSheet, yang lebih baik gagal keras daripada menyimpan sheet sampah
-    // ke pustaka bersama.
     const alasan = e instanceof Error ? e.message : String(e);
+    if (isEvolve) {
+      if (evolutionFinalizeRetryable(alasan)) {
+        return json(503, { error: alasan, transient: true });
+      }
+      const { error } = await db.rpc("fail_evolution", {
+        p_gen_id: gen.id,
+        p_reason: alasan.slice(0, 500),
+      });
+      if (error) return json(503, { error: error.message });
+      return json(200, { evolution_gagal: true, alasan });
+    }
     await db.rpc("refund_generation", { p_gen_id: gen.id, p_reason: alasan.slice(0, 500) });
     if (gen.anima_id) {
       await db.from("animas").update({ status: "failed" }).eq("id", gen.anima_id);

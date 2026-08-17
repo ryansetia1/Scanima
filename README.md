@@ -119,7 +119,7 @@ ulang, dan link baru diumumkan sukses setelah grant Core tersimpan.
 
 **Collection sekarang memisahkan inspect dari Summon.** Tap kartu membuka bottom sheet dengan portrait, lima base stat yang tumbuh menurut Level, tiga kebutuhan, dan bar EXP yang disinkronkan server. `View Profile` membuka stats/delete tanpa mengganti companion aktif; `Summon` baru memindahkan pilihan ke Home melalui dissolve, portal cyan-violet, dan reveal, tanpa biaya atau model call. Roster yang benar-benar kosong menampilkan scanner procedural serta CTA first scan di Home dan Collection; loading atau error jaringan tidak lagi menyamar sebagai pemain baru. Setiap hatch tetap menawarkan rename opsional. Delete owner-only sudah live di production dan tetap tanpa refund.
 
-**Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; Feed memberi satu hop, Play memberi enam bounce selama sekitar 2,5 detik, dan pose Damaged melakukan heavy breathing loop selama Dormant. Meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. Pemain melihat **EXP dan Level** dengan biaya naik yang bertambah tiap lima Level: Adult pada 150 EXP, Evolved pada 700, dan cap Level 40 pada 860. Kolom wire tetap `care_score`, Bond hilang dari UI, dan Dormant tidak mereset EXP. Sleep penuh tetap memulihkan Energy tiap siklus, tetapi +5 EXP hanya sekali per Anima per hari. `evolve_anima` tetap Phase 3 — slice ini hanya lompatan stat plus copy, tanpa art baru. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
+**Aksi care sekarang merespons pada frame tap, bukan setelah jaringan.** Anima langsung memberi feedback dan hanya tombol care yang dikunci selama request; Feed memberi satu hop, Play memberi enam bounce selama sekitar 2,5 detik, dan pose Damaged melakukan heavy breathing loop selama Dormant. Meter, Bits, sleep, serta `care_score` tetap menunggu hasil server-authoritative. Pemain melihat **EXP dan Level** dengan biaya naik yang bertambah tiap lima Level: Adult pada 150 EXP, Evolved pada 700, dan cap Level 40 pada 860. Kolom wire tetap `care_score`, Bond hilang dari UI, dan Dormant tidak mereset EXP. Sleep penuh tetap memulihkan Energy tiap siklus, tetapi +5 EXP hanya sekali per Anima per hari. Pipeline art `evolve_anima` sudah ada di repo tetapi flag masih off; stage, power, move, dan effect baru hanya aktif setelah art privat lolos QA dan commit atomik. `care_anima` juga memverifikasi JWT ES256 lewat `getClaims()` dengan cache JWKS, sehingga tidak lagi melakukan round-trip Auth `getUser()` pada setiap aksi.
 
 **Battle vertical slice Phase 3 sudah live.** Anima aktif yang `ready`, bangun,
 tidak Dormant, dan memiliki minimal 20 Energy (tiap duel baru memotong 20 Energy)
@@ -162,32 +162,38 @@ Foto dikecilkan ke 1280 px di device sebelum diunggah.
 | 0 | Arsitektur, prompt spec, desain sistem | Selesai |
 | 1 | MVP: buktikan pipeline art end-to-end | Terbukti — Smoke Set v2 3/3 sheet 4/4 pose, gate 2/2 |
 | 2 | Backend Supabase + core game loop | Selesai — scan, hatch, Koleksi, Stats, Care, dan visual shell sudah hidup |
-| 3 | Battle, evolusi, onboarding, audio, monetisasi | Berjalan — Battle dan onboarding Seeker live |
+| 3 | Battle, evolusi, onboarding, audio, monetisasi | Berjalan — Battle/onboarding live; evolusi dua tahap sudah di repo tetapi flag masih off |
 | 4 | Soft launch itch.io lalu Play Store | Belum mulai |
+
+Evolusi Lv16 Adult dan Lv36 Evolved sudah diimplementasikan sebagai ritual
+eksplisit, generation privat tanpa debit Core, serta power/effect Battle yang
+baru aktif setelah art lolos QA dan commit atomik. Fitur ini **belum live**:
+deploy, eval visual berbayar, rollout client minimum, dan aktivasi
+`feature_evolution` masih menjadi gate.
 
 Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 27 skenario + 12 uji tanda tangan webhook, tanpa API
+npm run selftest                 # 38 skenario + 12 uji tanda tangan webhook, tanpa API
 
-# Godot: 144 pemeriksaan slicing/presenter, tanpa jendela
+# Godot: 182 pemeriksaan slicing/presenter, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_sprite_slicing.gd
 
-# Godot: 77 pemeriksaan sesi, secure token, pending intent, dan cache art
+# Godot: 151 pemeriksaan sesi, secure token, pending intent, dan cache art
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 468 pemeriksaan shell, touch, Battle, Seeker, roster, reduced motion
+# Godot: 768 pemeriksaan shell, touch, Battle, Seeker, roster, reduced motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
 
-# Godot: 2290 pemeriksaan katalog English, referensi key, formatter, dan layout
+# Godot: 4075 pemeriksaan katalog English, referensi key, formatter, dan layout
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_i18n.gd
 
-# Godot: 94 pemeriksaan care serta kontrak event Battle
+# Godot: 181 pemeriksaan care, evolusi, serta kontrak event Battle
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_game_rules.gd
 

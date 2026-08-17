@@ -9,6 +9,7 @@ const BATTLE_SCALE := preload("res://scripts/battle_scale.gd")
 var _checks := 0
 var _failures: PackedStringArray = []
 var _requested_delete_id := ""
+var _requested_evolve_row: Dictionary = {}
 var _requested_rename_id := ""
 var _requested_profile_id := ""
 var _requested_summon_id := ""
@@ -75,7 +76,7 @@ func _initialize() -> void:
 		"ScanButton", "HomeNavButton", "ScanNavButton", "BattleNavButton",
 		"CollectionNavButton", "AnimaNavButton",
 		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "EditAnimaNameButton",
-		"DeleteAnimaButton", "GalleryPublishButton", "GalleryBack", "GalleryLoadMore",
+		"DeleteAnimaButton", "GalleryPublishButton", "EvolveAnimaButton", "GalleryBack", "GalleryLoadMore",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
 		"CollectionSummonButton", "BattlePickProfileButton", "BattlePickBattleButton",
 		"BattleStartButton", "BattleTeamButton", "BattleExpeditionButton", "BattleStrikeButton",
@@ -446,6 +447,7 @@ func _initialize() -> void:
 	await _test_gallery_detail_sheet()
 	await _test_profile_info_rows()
 	await _test_anima_delete_action()
+	await _test_evolve_profile_cta()
 	await _test_home_care_actions()
 	await _test_bottom_nav_busy()
 	await _test_incubator_effect()
@@ -3821,6 +3823,97 @@ func _test_anima_delete_action() -> void:
 	_check(button != null and button.disabled, "network work disables destructive action")
 	details.queue_free()
 	await process_frame
+
+
+func _test_evolve_profile_cta() -> void:
+	var packed := load("res://scenes/ui/anima_details_view.tscn") as PackedScene
+	var details := packed.instantiate()
+	root.add_child(details)
+	await process_frame
+	var evolve := details.find_child("EvolveAnimaButton", true, false) as Button
+	var status := details.find_child("EvolutionStatusLabel", true, false) as Label
+	_requested_evolve_row = {}
+	details.evolve_requested.connect(_capture_evolve_request)
+	var ready_row := {
+		"id": "anima-evolve-test",
+		"nickname": "Velumi",
+		"status": "ready",
+		"evolution_version": 1,
+		"stage": 1,
+		"care_score": 150,
+		"element": "spark",
+		"rarity": 3,
+		"base_stats": {"hp": 1, "atk": 1, "def": 1, "spd": 1, "special": 1},
+		"strike_name": "Spark Tap",
+		"surge_name": "Voltage Rush",
+		"strike_effect_id": "burn",
+		"surge_effect_id": "barrier",
+	}
+	details.set_anima(ready_row, null)
+	_check(evolve != null and not evolve.visible, "feature flag off hides Evolve CTA")
+	details.set_evolution_enabled(true)
+	_check(evolve != null and evolve.visible, "ready Lv16 rollout shows Evolve CTA")
+	_check(
+		evolve != null and evolve.custom_minimum_size.y >= TOUCH_MIN,
+		"Evolve CTA meets touch target"
+	)
+	if evolve != null:
+		evolve.pressed.emit()
+	_check_eq(str(_requested_evolve_row.get("id", "")), "anima-evolve-test", "Evolve emits row")
+	var evolving_row := ready_row.duplicate(true)
+	evolving_row["status"] = "evolving"
+	details.set_anima(evolving_row, null)
+	_check(evolve != null and not evolve.visible, "evolving hides Evolve CTA")
+	_check(status != null and status.visible, "evolving shows chamber copy")
+	var incubator := IncubatorEffect.new()
+	root.add_child(incubator)
+	incubator.start_evolution()
+	await process_frame
+	_check(incubator.is_active(), "evolution chamber mode activates")
+	UiMotion.reduced_motion = true
+	incubator.start_evolution()
+	await process_frame
+	_check(incubator.is_active(), "reduced motion keeps evolution chamber visible")
+	_check(not incubator.is_processing(), "reduced motion stops idle chamber frame processing")
+	UiMotion.reduced_motion = false
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		flow_source.find("if await _complete_evolution(row, restore_navigation):") >= 0,
+		"art evolution yang gagal dimuat tetap dipoll dalam sesi yang sama"
+	)
+	_check(
+		flow_source.find("pending_evolution_here") >= 0
+		and flow_source.find("CareRules.is_evolving(active) or pending_evolution_here") >= 0
+		and flow_source.find(
+			"_anima.visible = not hatching and not _evolution_chamber_active"
+		) >= 0,
+		"pending evolution lokal mencegah flash form lama saat cold boot"
+	)
+	_check(
+		flow_source.find("not uses_evolution_ritual") >= 0,
+		"Level 16/36 rollout tidak mengumumkan form sebelum ritual committed"
+	)
+	_check(
+		flow_source.find("_evolution_art_error_reported") >= 0,
+		"retry download art evolution tidak menumpuk toast setiap poll"
+	)
+	_check(
+		flow_source.find("if code == \"FEATURE_DISABLED\":") >= 0
+		and flow_source.find("_resume_server_evolution") >= 0
+		and flow_source.find("bool(pending.get(\"resume_only\", false))") >= 0
+		and flow_source.find("var latest := await _fetch_evolution_row(anima_id)") >= 0
+		and flow_source.find(
+			"status == \"ready\" and stage <= prior_stage"
+		) >= 0,
+		"cold-start evolution resumes existing work and detects authoritative rollback"
+	)
+	incubator.queue_free()
+	details.queue_free()
+	await process_frame
+
+
+func _capture_evolve_request(row: Dictionary) -> void:
+	_requested_evolve_row = row.duplicate(true)
 
 
 func _capture_delete_request(anima_id: String) -> void:

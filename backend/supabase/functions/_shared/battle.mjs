@@ -12,10 +12,34 @@ import {
   elementMultiplier,
   normalizeElement,
 } from "./elements.mjs";
+import {
+  ADULT_FORM_MULT,
+  EVOLVED_FORM_MULT,
+  applyBarrierToDamage,
+  applyPostMoveEffects,
+  attachEffectFields,
+  effectiveDef,
+  effectiveSpd,
+  effectsCombatActive,
+  formMultiplier,
+  hasEvolutionEffects,
+  preDamageModifiers,
+  scoreActionValue,
+  tickBarrierOwnerTurn,
+  tickFighterStatuses,
+  usesEvolutionCombat,
+} from "./move_effects.mjs";
 
+export {
+  ADULT_FORM_MULT,
+  EVOLVED_FORM_MULT,
+  formMultiplier,
+  tickBarrierOwnerTurn,
+  usesEvolutionCombat,
+} from "./move_effects.mjs";
 export { ELEMENT_CYCLE, elementMultiplier, normalizeElement };
 export const BATTLE_ACTIONS = Object.freeze(["strike", "surge", "guard", "item"]);
-export const RULES_VERSION = 2;
+export const RULES_VERSION = 3;
 export const MOMENTUM_MAX = 3;
 export const MOMENTUM_START = 3;
 export const SURGE_COST = 1;
@@ -72,11 +96,18 @@ export function formFromLevel(level) {
   return "hatchling";
 }
 
-export function growthMultiplier(level) {
+export function growthMultiplier(level, opts = {}) {
+  const rulesVersion = Math.trunc(Number(opts.rulesVersion ?? RULES_VERSION));
+  const evolutionVersion = Math.trunc(Number(opts.evolutionVersion ?? 0));
+  const stage = Math.trunc(Number(opts.stage ?? 1));
   const lv = clampInt(level, 1, LEVEL_CAP);
   let mult = 1 + 0.02 * (lv - 1);
-  if (lv >= ADULT_LEVEL) mult += 0.15;
-  if (lv >= EVOLVED_LEVEL) mult += 0.20;
+  if (usesEvolutionCombat(rulesVersion, evolutionVersion)) {
+    mult *= formMultiplier(stage);
+  } else {
+    if (lv >= ADULT_LEVEL) mult += 0.15;
+    if (lv >= EVOLVED_LEVEL) mult += 0.20;
+  }
   return mult;
 }
 
@@ -125,10 +156,13 @@ function scaleCombatStats(stats, mult) {
   };
 }
 
-export function toBattleStats(baseStats, stage = 1, branch = "", level = 1) {
+export function toBattleStats(baseStats, stage = 1, branch = "", level = 1, opts = {}) {
   const base = normalizeBaseStats(baseStats);
-  // ponytail: stage multipliers idle until evolve art ships; level is the live growth path.
-  const g = growthMultiplier(level);
+  const g = growthMultiplier(level, {
+    rulesVersion: opts.rulesVersion ?? RULES_VERSION,
+    evolutionVersion: opts.evolutionVersion ?? 0,
+    stage,
+  });
   return {
     max_hp: Math.trunc(base.hp * 4 * g) + 20,
     atk: Math.trunc(base.atk * g),
@@ -186,14 +220,15 @@ export function computeDamage({
   return Math.max(1, Math.trunc(raw));
 }
 
-export function createBattleState({ player, bot, seed }) {
+export function createBattleState({ player, bot, seed, rules_version }) {
+  const version = Math.trunc(Number(rules_version ?? RULES_VERSION));
   return {
     status: "active",
     turn: 1,
     seed: String(seed ?? ""),
-    rules_version: RULES_VERSION,
-    player: createFighter(player),
-    bot: createFighter(bot),
+    rules_version: version,
+    player: createFighter(player, version),
+    bot: createFighter(bot, version),
   };
 }
 
@@ -222,26 +257,50 @@ function withFullCare(snapshot) {
 export function bestDuelAction(state) {
   const me = state.player;
   const foe = state.bot;
+  const rulesVersion = Math.trunc(Number(state.rules_version) || RULES_VERSION);
   if (me.momentum < SURGE_COST) {
     return me.hp / Math.max(1, me.max_hp) <= 0.35 ? "guard" : "strike";
   }
-  const strike = computeDamage({
-    attack: me.atk * (me.atk_mult || 1),
-    defense: foe.def,
-    power: 50,
-    element: dualDefenderMultiplier(me.element, foe.element, foe.secondary_element),
+  const effectAware = hasEvolutionEffects(rulesVersion, me)
+    || hasEvolutionEffects(rulesVersion, foe);
+  if (!effectAware) {
+    const strike = computeDamage({
+      attack: me.atk * (me.atk_mult || 1),
+      defense: effectiveDef(foe),
+      power: 50,
+      element: dualDefenderMultiplier(me.element, foe.element, foe.secondary_element),
+    });
+    const surge = computeDamage({
+      attack: me.special * (me.special_mult || 1),
+      defense: Math.trunc(effectiveDef(foe) * 0.5),
+      power: 75,
+      element: dualDefenderMultiplier(
+        me.secondary_element || me.element,
+        foe.element,
+        foe.secondary_element,
+      ),
+    });
+    return surge > strike ? "surge" : "strike";
+  }
+  const strikeScore = scoreActionValue({
+    actor: me,
+    target: foe,
+    action: "strike",
+    rulesVersion,
+    computeDamage,
+    applyIncomingModifiers,
+    dualDefenderMultiplier,
   });
-  const surge = computeDamage({
-    attack: me.special * (me.special_mult || 1),
-    defense: Math.trunc(foe.def * 0.5),
-    power: 75,
-    element: dualDefenderMultiplier(
-      me.secondary_element || me.element,
-      foe.element,
-      foe.secondary_element,
-    ),
+  const surgeScore = scoreActionValue({
+    actor: me,
+    target: foe,
+    action: "surge",
+    rulesVersion,
+    computeDamage,
+    applyIncomingModifiers,
+    dualDefenderMultiplier,
   });
-  return surge > strike ? "surge" : "strike";
+  return surgeScore > strikeScore ? "surge" : "strike";
 }
 
 // Kesulitan Duel diukur, bukan ditaksir. Combat power hanya menjumlahkan stat
@@ -284,11 +343,37 @@ export function battleRewardPreview(player, bot, seed) {
   };
 }
 
-export function chooseBotAction(fighter, random) {
+export function chooseBotAction(fighter, random, foe = null, rulesVersion = RULES_VERSION) {
   const roll = random();
   const hpRatio = fighter.hp / Math.max(1, fighter.max_hp);
   if (hpRatio <= 0.4 && roll < 0.45) return "guard";
-  if (fighter.momentum >= SURGE_COST && roll < 0.68) return "surge";
+  if (fighter.momentum >= SURGE_COST) {
+    const effectAware = foe && (
+      hasEvolutionEffects(rulesVersion, fighter) || hasEvolutionEffects(rulesVersion, foe)
+    );
+    if (effectAware) {
+      const strikeScore = scoreActionValue({
+        actor: fighter,
+        target: foe,
+        action: "strike",
+        rulesVersion,
+        computeDamage,
+        applyIncomingModifiers,
+        dualDefenderMultiplier,
+      });
+      const surgeScore = scoreActionValue({
+        actor: fighter,
+        target: foe,
+        action: "surge",
+        rulesVersion,
+        computeDamage,
+        applyIncomingModifiers,
+        dualDefenderMultiplier,
+      });
+      return surgeScore > strikeScore ? "surge" : "strike";
+    }
+    if (roll < 0.68) return "surge";
+  }
   return "strike";
 }
 
@@ -302,7 +387,8 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "", it
 
   const state = structuredClone(previousState);
   const random = seededRandom(turnSeed(state, idempotencyKey));
-  const botAction = chooseBotAction(state.bot, random);
+  const rulesVersion = Math.trunc(Number(state.rules_version) || RULES_VERSION);
+  const botAction = chooseBotAction(state.bot, random, state.player, rulesVersion);
   assertAffordable(state.player, playerAction);
   assertAffordable(state.bot, botAction);
 
@@ -314,7 +400,8 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "", it
   if (playerAction === "item") events.push(itemEvent("player", state.player, itemId));
   if (botAction === "guard") events.push(guardEvent("bot", state.bot));
 
-  const order = turnOrder(state.player, state.bot, random);
+  const order = turnOrder(state.player, state.bot, random, rulesVersion);
+  const actedSides = new Set();
   for (const actorName of order) {
     const targetName = actorName === "player" ? "bot" : "player";
     const actor = state[actorName];
@@ -322,50 +409,28 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "", it
     const action = actions[actorName];
     if (actor.hp <= 0 || target.hp <= 0 || action === "guard" || action === "item") continue;
 
-    const crit = random() < critChance(actor.spd);
-    const attackElement = action === "surge"
-      ? (actor.secondary_element || actor.element)
-      : actor.element;
-    const targetDefenses = defenseElements(target.element, target.secondary_element);
-    const elem = dualDefenderMultiplier(
-      attackElement,
-      target.element,
-      target.secondary_element,
-    );
-    const attack = action === "surge"
-      ? actor.special * (actor.special_mult || 1)
-      : actor.atk * (actor.atk_mult || 1);
-    const defense = action === "surge" ? Math.trunc(target.def * 0.5) : target.def;
-    let damage = computeDamage({
-      attack,
-      defense,
-      power: action === "surge" ? 75 : 50,
-      element: elem,
-      crit,
-      variance: 0.92 + random() * 0.16,
-      guarding: target.guarding,
-    });
-    damage = applyIncomingModifiers(target, damage);
-    target.hp = Math.max(0, target.hp - damage);
-    events.push({
-      type: "attack",
-      actor: actorName,
-      target: targetName,
+    resolveCombatAttack({
+      actor,
+      target,
       action,
-      damage,
-      crit,
-      attack_element: attackElement,
-      defense_elements: targetDefenses,
-      element_multiplier: elem,
-      target_hp: target.hp,
+      random,
+      rulesVersion,
+      actorSide: actorName,
+      targetSide: targetName,
+      events,
     });
+    actedSides.add(actorName);
+    tickBarrierOwnerTurn(actor, rulesVersion, events, actorName);
     if (target.hp === 0) events.push({ type: "knockout", actor: targetName });
   }
 
+  const { kos } = finishEffectTurn(state, events, rulesVersion, actedSides);
+  for (const ko of kos) events.push({ type: "knockout", actor: ko.side });
+
   state.player.guarding = false;
   state.bot.guarding = false;
-  if (state.bot.hp === 0) state.status = "won";
-  else if (state.player.hp === 0) state.status = "lost";
+  if (state.player.hp === 0) state.status = "lost";
+  else if (state.bot.hp === 0) state.status = "won";
 
   // PP sengaja tidak pulih per turn. Battle terukur selesai sekitar empat turn,
   // jadi regen +1/turn membuat PP membeku di angka awalnya dan Special selalu
@@ -385,17 +450,21 @@ export function resolveTurn(previousState, playerAction, idempotencyKey = "", it
   return { state, events, bot_action: botAction };
 }
 
-export function createFighter(input) {
+export function createFighter(input, rulesVersion = RULES_VERSION) {
+  const version = Math.trunc(Number(rulesVersion) || RULES_VERSION);
+  const evolutionVersion = Math.trunc(Number(input?.evolution_version) || 0);
+  const stage = clampInt(input?.stage, 1, 3, 1);
   const grown = toBattleStats(
     input?.base_stats,
-    input?.stage,
+    stage,
     input?.evolution_branch,
     input?.level,
+    { rulesVersion: version, evolutionVersion },
   );
   const hunger = input?.hunger ?? input?.care?.hunger;
   const hygiene = input?.hygiene ?? input?.care?.hygiene;
   const stats = scaleCombatStats(grown, careCombatMultiplier(hunger, hygiene));
-  return {
+  const fighter = {
     ...stats,
     hp: stats.max_hp,
     momentum: MOMENTUM_START,
@@ -413,10 +482,16 @@ export function createFighter(input) {
       : "",
     species_key: String(input?.species_key ?? ""),
     color_bucket: String(input?.color_bucket ?? ""),
-    stage: clampInt(input?.stage, 1, 3, 1),
+    stage,
     level: clampInt(input?.level, 1, LEVEL_CAP, 1),
     evolution_branch: String(input?.evolution_branch ?? ""),
+    strike_effect_id: String(input?.strike_effect_id ?? ""),
+    surge_effect_id: String(input?.surge_effect_id ?? ""),
+    evolution_version: evolutionVersion,
+    statuses: {},
+    barrier: null,
   };
+  return attachEffectFields(fighter, input, version);
 }
 
 export function applyIntent(fighter, action, itemId = "") {
@@ -470,10 +545,136 @@ export function assertAffordable(fighter, action) {
   }
 }
 
-export function turnOrder(player, bot, random) {
-  if (player.spd > bot.spd) return ["player", "bot"];
-  if (bot.spd > player.spd) return ["bot", "player"];
+export function turnOrder(player, bot, random, rulesVersion = RULES_VERSION) {
+  const playerSpd = effectsCombatActive(rulesVersion) ? effectiveSpd(player) : player.spd;
+  const botSpd = effectsCombatActive(rulesVersion) ? effectiveSpd(bot) : bot.spd;
+  if (playerSpd > botSpd) return ["player", "bot"];
+  if (botSpd > playerSpd) return ["bot", "player"];
   return random() < 0.5 ? ["player", "bot"] : ["bot", "player"];
+}
+
+export function resolveCombatAttack({
+  actor,
+  target,
+  action,
+  random,
+  rulesVersion,
+  actorSide,
+  targetSide,
+  events,
+  actorSlot = null,
+  targetSlot = null,
+}) {
+  const effectEvents = [];
+  const crit = random() < critChance(effectiveSpd(actor));
+  const attackElement = action === "surge"
+    ? (actor.secondary_element || actor.element)
+    : actor.element;
+  const targetDefenses = defenseElements(target.element, target.secondary_element);
+  const elem = dualDefenderMultiplier(
+    attackElement,
+    target.element,
+    target.secondary_element,
+  );
+  const attack = action === "surge"
+    ? actor.special * (actor.special_mult || 1)
+    : actor.atk * (actor.atk_mult || 1);
+  const { defense, guarding } = preDamageModifiers({
+    actor,
+    target,
+    action,
+    rulesVersion,
+    effectEvents,
+    actorSide,
+    targetSide,
+    actorSlot,
+    targetSlot,
+  });
+  let damage = computeDamage({
+    attack,
+    defense,
+    power: action === "surge" ? 75 : 50,
+    element: elem,
+    crit,
+    variance: 0.92 + random() * 0.16,
+    guarding,
+  });
+  damage = applyBarrierToDamage(target, damage, rulesVersion, effectEvents, targetSide, targetSlot);
+  damage = applyIncomingModifiers(target, damage);
+  target.hp = Math.max(0, target.hp - damage);
+  applyPostMoveEffects({
+    actor,
+    target,
+    action,
+    damage,
+    rulesVersion,
+    effectEvents,
+    actorSide,
+    targetSide,
+    actorSlot,
+    targetSlot,
+  });
+  const attackEvent = {
+    type: "attack",
+    actor: actorSide,
+    target: targetSide,
+    action,
+    damage,
+    crit,
+    attack_element: attackElement,
+    defense_elements: targetDefenses,
+    element_multiplier: elem,
+    target_hp: target.hp,
+  };
+  if (actorSlot !== null && actorSlot !== undefined) attackEvent.actor_slot = actorSlot;
+  if (targetSlot !== null && targetSlot !== undefined) attackEvent.target_slot = targetSlot;
+  if (Array.isArray(events)) {
+    events.push(attackEvent);
+    events.push(...effectEvents);
+  }
+  return attackEvent;
+}
+
+export function finishEffectTurn(state, events, rulesVersion, actedSides = new Set(), teamMode = false) {
+  if (Math.trunc(Number(rulesVersion) || 0) < 3) {
+    return { koSide: null, koSlot: null, kos: [] };
+  }
+  if (teamMode) {
+    let koSide = null;
+    let koSlot = null;
+    const kos = [];
+    for (const side of ["player", "opponent"]) {
+      const party = state[side];
+      if (!party?.roster) continue;
+      const slot = party.active_slot;
+      const fighter = party.roster[slot];
+      if (!fighter || fighter.hp <= 0) continue;
+      const actedKey = `${side}:${slot}`;
+      if (!actedSides.has(actedKey)) {
+        tickBarrierOwnerTurn(fighter, rulesVersion, events, side, slot);
+      }
+      if (tickFighterStatuses(fighter, rulesVersion, events, side, slot)) {
+        koSide = side;
+        koSlot = slot;
+        kos.push({ side, slot });
+      }
+    }
+    return { koSide, koSlot, kos };
+  }
+  let koSide = null;
+  const kos = [];
+  for (const side of ["player", "bot"]) {
+    const fighter = state[side];
+    if (!fighter || fighter.hp <= 0) continue;
+    if (!actedSides.has(side)) {
+      tickBarrierOwnerTurn(fighter, rulesVersion, events, side);
+    }
+    if (tickFighterStatuses(fighter, rulesVersion, events, side)) {
+      koSide = side;
+      kos.push({ side, slot: null });
+    }
+  }
+  return { koSide, koSlot: null, kos };
 }
 
 export function guardEvent(actor, fighter) {

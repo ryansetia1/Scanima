@@ -57,6 +57,11 @@ declare
   v_expedition_map jsonb;
   v_expedition_party jsonb;
   v_expedition_state jsonb;
+  v_evolution_anima uuid;
+  v_evolution_other uuid;
+  v_evolution_gen uuid;
+  v_evolution_success_gen uuid;
+  v_evolution_cores int;
   v_bits_before_battle int;
   v_score_before_battle int;
   v_wins_before_battle int;
@@ -3442,6 +3447,216 @@ begin
   end;
   assert ok, 'client tidak boleh menulis receipt announcement langsung';
   perform set_config('role', 'none', true);
+
+  ----------------------------------------------------------------------------
+  -- Evolusi: berurutan, idempoten, gratis untuk pemain, rollback aman, privat.
+  ----------------------------------------------------------------------------
+  update public.app_config set value = 'true'::jsonb where key = 'feature_evolution';
+  insert into public.animas (
+    owner_id, nickname, species_key, color_bucket, element, rarity,
+    base_stats, care, care_score, status, stage, evolution_version,
+    body_height_cm, sheet_path, manifest, strike_name, surge_name
+  ) values (
+    u1, 'evolution-main', 'evolution_species', 'blue', 'metal', 2,
+    v_stats, v_care, 700, 'ready', 1, 1,
+    100, u1::text || '/evolution-main/hatchling.png',
+    '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb,
+    'Tin Tap', 'Metal Bloom'
+  ) returning id into v_evolution_anima;
+  insert into public.animas (
+    owner_id, nickname, species_key, color_bucket, element, rarity,
+    base_stats, care, care_score, status, stage, evolution_version,
+    body_height_cm, sheet_path, manifest
+  ) values (
+    u1, 'evolution-other', 'evolution_other', 'red', 'flame', 2,
+    v_stats, v_care, 700, 'ready', 1, 1,
+    100, u1::text || '/evolution-other/hatchling.png',
+    '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+  ) returning id into v_evolution_other;
+  select genesis_cores into v_evolution_cores from public.profiles where id = u1;
+
+  v_j := public.begin_evolution(u1, v_evolution_anima, 'evolution-fail');
+  v_evolution_gen := (v_j->>'generation_id')::uuid;
+  assert (v_j->>'target_stage')::int = 2
+         and (select status from public.animas where id = v_evolution_anima) = 'evolving',
+         'Lv36 stage1 tetap wajib memulai dari ritual Adult';
+  v_j2 := public.begin_evolution(u1, v_evolution_anima, 'evolution-fail');
+  assert (v_j2->>'generation_id')::uuid = v_evolution_gen
+         and (v_j2->>'replayed')::boolean,
+         'begin_evolution replay harus mengembalikan generation yang sama';
+  begin
+    perform public.begin_evolution(u1, v_evolution_other, 'evolution-overlap');
+    ok := false;
+  exception when others then ok := sqlerrm = 'EVOLUTION_ALREADY_ACTIVE';
+  end;
+  assert ok, 'satu akun tidak boleh membayar dua evolusi bersamaan';
+  assert (select genesis_cores from public.profiles where id = u1) = v_evolution_cores,
+         'begin evolution tidak boleh mendebit Core';
+
+  v_j := public.fail_evolution(v_evolution_gen, 'uji rollback');
+  assert (v_j->>'status') = 'failed'
+         and (select status from public.animas where id = v_evolution_anima) = 'ready'
+         and (select stage from public.animas where id = v_evolution_anima) = 1,
+         'evolusi gagal harus mengembalikan form lama tanpa progression loss';
+  v_j2 := public.fail_evolution(v_evolution_gen, 'uji replay rollback');
+  assert (v_j2->>'replayed')::boolean
+         and (select genesis_cores from public.profiles where id = u1) = v_evolution_cores,
+         'fail_evolution replay harus idempoten dan tidak merefund Core';
+  update public.animas set status = 'evolving' where id = v_evolution_anima;
+  v_j2 := public.resume_evolution(u1, v_evolution_anima);
+  assert (v_j2->>'not_found')::boolean
+         and (select status from public.animas where id = v_evolution_anima) = 'ready'
+         and not exists (
+           select 1 from public.generations
+            where anima_id = v_evolution_anima
+              and kind = 'evolve'
+              and status in ('pending', 'running')
+         ),
+         'resume orphan harus pulih tanpa membuka spend baru';
+
+  v_j := public.begin_evolution(u1, v_evolution_anima, 'evolution-success');
+  v_evolution_gen := (v_j->>'generation_id')::uuid;
+  v_evolution_success_gen := v_evolution_gen;
+  v_j2 := public.resume_evolution(u1, v_evolution_anima);
+  assert (v_j2->>'generation_id')::uuid = v_evolution_gen
+         and (v_j2->>'replayed')::boolean,
+         'resume lintas device harus menempel ke generation aktif tanpa membuat spend baru';
+  v_j := public.reserve_evolution(
+    u1, v_evolution_gen, null, 'v21', 'uji', 0.001
+  );
+  assert (v_j->>'planning_claimed')::boolean,
+         'request pertama harus memegang lease Vision';
+  v_j2 := public.reserve_evolution(
+    u1, v_evolution_gen, null, 'v21', 'uji', 0.001
+  );
+  assert not (v_j2->>'planning_claimed')::boolean
+         and (v_j2->>'planning')::boolean,
+         'request bersamaan tidak boleh memanggil Vision kedua';
+  v_j := public.reserve_evolution(
+    u1,
+    v_evolution_gen,
+    '{
+      "lineage_anchors":["round body","loop handle","blue glaze"],
+      "stage_brief":"Adult bridge",
+      "body_height_cm":125,
+      "strike_name":"Glaze Fang",
+      "surge_name":"Steam Crown",
+      "strike_effect_id":"armor_pierce",
+      "surge_effect_id":"barrier"
+    }'::jsonb,
+    'v21',
+    'uji',
+    0.001
+  );
+  v_j := public.commit_evolution(
+    v_evolution_gen,
+    u1::text || '/evolution-main/adult.png',
+    '{"stage":2,"prompt_version":"v21","poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+  );
+  assert (v_j->>'stage')::int = 2
+         and (select status from public.animas where id = v_evolution_anima) = 'ready'
+         and (select strike_effect_id from public.animas where id = v_evolution_anima) = 'armor_pierce'
+         and (select surge_effect_id from public.animas where id = v_evolution_anima) = 'barrier',
+         'commit evolution harus mengaktifkan art, form, move, dan dua efek sekaligus';
+  assert exists (
+           select 1 from public.anima_forms
+            where anima_id = v_evolution_anima
+              and stage = 1
+              and sheet_path = u1::text || '/evolution-main/hatchling.png'
+              and reference_path =
+                u1::text || '/' || v_evolution_anima::text
+                || '/evolution_refs/' || v_evolution_success_gen::text || '.png'
+         ),
+         'form lama dan reference Idle privat harus tersimpan untuk rollback';
+  v_j2 := public.commit_evolution(
+    v_evolution_gen,
+    u1::text || '/evolution-main/adult.png',
+    '{"stage":2,"prompt_version":"v21"}'::jsonb
+  );
+  assert (v_j2->>'replayed')::boolean
+         and (select genesis_cores from public.profiles where id = u1) = v_evolution_cores,
+         'commit evolution replay tidak boleh menggandakan stage atau menyentuh Core';
+
+  v_j := public.begin_evolution(u1, v_evolution_anima, 'evolution-stage-three');
+  assert (v_j->>'target_stage')::int = 3,
+         'Lv36 baru boleh meminta Evolved sesudah Adult committed';
+  v_evolution_gen := (v_j->>'generation_id')::uuid;
+  perform public.reserve_evolution(
+    u1,
+    v_evolution_gen,
+    '{
+      "lineage_anchors":["round body","loop handle","blue glaze"],
+      "stage_brief":"Evolved culmination",
+      "body_height_cm":160,
+      "strike_name":"Toxic Crown",
+      "surge_name":"Steam Bastion",
+      "strike_effect_id":"poison",
+      "surge_effect_id":"barrier"
+    }'::jsonb,
+    'v21',
+    'uji',
+    0.001
+  );
+  begin
+    perform public.commit_evolution(
+      v_evolution_gen,
+      u1::text || '/evolution-main/evolved-invalid.png',
+      '{"stage":3,"prompt_version":"v21"}'::jsonb
+    );
+    ok := false;
+  exception when others then ok := sqlerrm = 'EVOLUTION_PLAN_EFFECT_NOT_UPGRADE';
+  end;
+  assert ok, 'Evolved hanya boleh mempertahankan atau meng-upgrade family efek Adult';
+  perform public.fail_evolution(v_evolution_gen, 'uji sequential rollback');
+
+  v_j := public.begin_evolution(u1, v_evolution_anima, 'evolution-stale-old');
+  v_evolution_gen := (v_j->>'generation_id')::uuid;
+  update public.generations
+     set vision_started_at = now() - interval '4 minutes'
+   where id = v_evolution_gen;
+  v_j2 := public.begin_evolution(u1, v_evolution_other, 'evolution-stale-new');
+  assert (v_j2->>'target_stage')::int = 2
+         and (select status from public.generations where id = v_evolution_gen) = 'failed'
+         and (select status from public.animas where id = v_evolution_anima) = 'ready',
+         'intent lokal yang hilang harus self-heal sebelum memblokir evolusi berikutnya';
+  perform public.fail_evolution(
+    (v_j2->>'generation_id')::uuid, 'uji stale recovery cleanup'
+  );
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform public.begin_evolution(u1, v_evolution_anima, 'evolution-client-forbidden');
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  begin
+    perform public.resume_evolution(u1, v_evolution_anima);
+    ok := false;
+  exception when insufficient_privilege then null;
+  end;
+  perform set_config('role', 'none', true);
+  assert ok, 'client tidak boleh memanggil RPC evolusi service-role langsung';
+
+  delete from public.animas where id = v_evolution_anima;
+  assert exists (
+           select 1 from public.storage_cleanup_queue
+            where bucket_id = 'anima_sheets'
+              and object_path = u1::text || '/evolution-main/hatchling.png'
+              and reason = 'anima_form_deleted'
+         )
+         and exists (
+           select 1 from public.storage_cleanup_queue
+            where bucket_id = 'anima_sheets'
+              and object_path =
+                u1::text || '/' || v_evolution_anima::text
+                || '/evolution_refs/' || v_evolution_success_gen::text || '.png'
+              and reason = 'anima_form_reference_deleted'
+         ),
+         'delete Anima harus mengantrekan cleanup seluruh history evolusi';
+  delete from public.animas where id = v_evolution_other;
+  update public.app_config set value = 'false'::jsonb where key = 'feature_evolution';
 
   delete from public.animas where owner_id = u1 and nickname = 'v2 ok';
   assert exists (

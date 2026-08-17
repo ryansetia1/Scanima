@@ -102,6 +102,37 @@ const FIGHTERS = {
     secondary_element: "definitely-not-real",
     level: 5,
   },
+  adultEvolved: {
+    base_stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+    element: "metal",
+    level: 16,
+    stage: 2,
+    evolution_version: 1,
+    strike_effect_id: "armor_pierce",
+    surge_effect_id: "barrier",
+  },
+  hatchlingPlain: {
+    base_stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+    element: "metal",
+    level: 11,
+    stage: 1,
+    evolution_version: 1,
+  },
+  poisonTickVictim: {
+    base_stats: { hp: 30, atk: 10, def: 10, spd: 10, special: 10 },
+    element: "metal",
+    level: 5,
+    current_hp: 8,
+  },
+  poisonAdult: {
+    base_stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+    element: "toxin",
+    level: 16,
+    stage: 2,
+    evolution_version: 1,
+    strike_effect_id: "poison",
+    surge_effect_id: "barrier",
+  },
 };
 
 const DUEL_CASES = [
@@ -129,6 +160,14 @@ const DUEL_CASES = [
     steps: [["nonsense"]] },
   { name: "surge-without-pp", player: "balanced", bot: "balanced", seed: "duel-nopp",
     steps: [["surge"], ["surge"], ["surge"], ["surge"]] },
+  { name: "effect-armor-pierce", player: "adultEvolved", bot: "tanky", seed: "duel-pierce",
+    steps: [["strike"], ["strike"], ["strike"]] },
+  { name: "effect-poison-tick", player: "poisonAdult", bot: "balanced", seed: "duel-poison",
+    steps: [["strike"], ["guard"], ["strike"], ["guard"], ["strike"]] },
+  { name: "effect-barrier", player: "adultEvolved", bot: "glassy", seed: "duel-barrier",
+    steps: [["surge"], ["strike"], ["surge"]] },
+  { name: "legacy-no-effects", player: "adultEvolved", bot: "hatchlingPlain", seed: "duel-legacy-fx",
+    steps: [["strike"], ["strike"], ["strike"]] },
 ];
 
 // Satu case per efek item Battle: masing-masing menyentuh cabang yang berbeda.
@@ -147,8 +186,14 @@ function runDuel(testCase, rulesVersion) {
     player: FIGHTERS[testCase.player],
     bot: FIGHTERS[testCase.bot],
     seed: testCase.seed,
+    rules_version: rulesVersion,
   });
   if (rulesVersion === 1) delete state.rules_version;
+  if (rulesVersion === 2) {
+    state.rules_version = 2;
+    state.player = createFighter(FIGHTERS[testCase.player], 2);
+    state.bot = createFighter(FIGHTERS[testCase.bot], 2);
+  }
 
   const initial = structuredClone(state);
   const steps = [];
@@ -228,12 +273,50 @@ const TEAM_CASES = [
     kind: "boss",
     acePassive: { type: "one_hit_shield", name: "Bulwark", copy: "Absorbs a hit." },
     steps: Array.from({ length: 30 }, () => ["strike"]) },
+  { name: "team-effect-poison", player: "squad", opponent: "rivals", seed: "team-poison",
+    playerRoster: "poisonSquad",
+    steps: [["strike"], ["strike"], ["guard"], ["strike"], ["strike"]] },
+  { name: "team-status-ko", player: "squad", opponent: "rivals", seed: "team-status-ko-fixed",
+    playerRoster: "poisonSquad",
+    opponentRoster: "poisonVictims",
+    steps: [["strike"]] },
 ];
+
+const TEAM_ROSTER_ALIASES = {
+  poisonSquad: [{
+    ...FIGHTERS.poisonAdult,
+    base_stats: { hp: 50, atk: 50, def: 50, spd: 99, special: 50 },
+    element: "toxin",
+    anima_id: "poison-0",
+    name: "Poison 0",
+    body_height_cm: 100,
+  }, ...["balanced", "swift", "tanky"].map((key, slot) => ({
+    ...FIGHTERS[key],
+    anima_id: `poison-${slot + 1}`,
+    name: `Poison ${slot + 1}`,
+    body_height_cm: 110 + slot * 10,
+  }))],
+  poisonVictims: [{
+    base_stats: { hp: 40, atk: 10, def: 10, spd: 10, special: 10 },
+    element: "metal",
+    level: 5,
+    current_hp: 35,
+    anima_id: "victim-0",
+    name: "Victim",
+    body_height_cm: 90,
+  }, {
+    ...FIGHTERS.balanced,
+    base_stats: { hp: 50, atk: 10, def: 10, spd: 10, special: 10 },
+    anima_id: "victim-1",
+    name: "Bench",
+    body_height_cm: 100,
+  }],
+};
 
 function runTeam(testCase) {
   let state = createTeamBattleState({
-    player: TEAM_ROSTERS[testCase.player],
-    opponent: TEAM_ROSTERS[testCase.opponent],
+    player: TEAM_ROSTER_ALIASES[testCase.playerRoster] ?? TEAM_ROSTERS[testCase.player],
+    opponent: TEAM_ROSTER_ALIASES[testCase.opponentRoster] ?? TEAM_ROSTERS[testCase.opponent],
     seed: testCase.seed,
     encounterKind: testCase.kind ?? "",
     acePassive: testCase.acePassive ?? null,
@@ -342,6 +425,7 @@ const vectors = {
     ...DUEL_CASES.map((testCase) => runDuel(testCase, RULES_VERSION)),
     runDuel(DUEL_CASES[0], 1),
     runDuel(DUEL_CASES[2], 1),
+    runDuel(DUEL_CASES.find((item) => item.name === "legacy-no-effects"), 2),
   ],
   team: TEAM_CASES.map(runTeam),
 };

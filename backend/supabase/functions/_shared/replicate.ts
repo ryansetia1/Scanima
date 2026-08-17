@@ -14,6 +14,13 @@ export function tokenReplicate(): string {
   return t;
 }
 
+/** A local secret/4xx rejection proves no image prediction was accepted. */
+export function dispatchDefinitelyNotStarted(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("REPLICATE_API_TOKEN belum dipasang")
+    || /\bcreate 4\d\d:/.test(message);
+}
+
 function header(): HeadersInit {
   return { authorization: `Bearer ${tokenReplicate()}`, "content-type": "application/json" };
 }
@@ -25,9 +32,15 @@ type Prediksi = {
   error?: unknown;
 };
 
-async function buat(model: string, body: Record<string, unknown>, prefer?: string): Promise<Prediksi> {
+async function buat(
+  model: string,
+  body: Record<string, unknown>,
+  prefer?: string,
+  cancelAfter?: string,
+): Promise<Prediksi> {
   const headers = new Headers(header());
   if (prefer) headers.set("prefer", prefer);
+  if (cancelAfter) headers.set("Cancel-After", cancelAfter);
 
   const res = await fetch(`${BASE}/models/${model}/predictions`, {
     method: "POST",
@@ -74,16 +87,23 @@ export async function jalankanPrediksi(
  * dan setiap event membangunkan fungsi yang harus memverifikasi tanda tangan
  * lalu memutuskan mengabaikannya.
  */
+export type GenerationDispatchOpts = {
+  cancelAfter?: string;
+};
+
 export async function mulaiGeneration(
   model: string,
   input: Record<string, unknown>,
   webhook: string,
+  opts?: GenerationDispatchOpts,
 ): Promise<string> {
-  const pred = await buat(model, {
+  const body: Record<string, unknown> = {
     input,
     webhook,
     webhook_events_filter: ["completed"],
-  });
+  };
+
+  const pred = await buat(model, body, undefined, opts?.cancelAfter);
   if (!pred.id) throw new Error(`${model} tidak mengembalikan id prediksi`);
   return pred.id;
 }

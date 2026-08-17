@@ -9,10 +9,18 @@ Prinsip yang mengatur seluruh bab ini: **Godot tidak memproses piksel.** Semua k
 Capture baru menyimpan manifest langsung di row Anima dan sheet di bucket privat
 `anima_sheets`. `Backend.download_anima_sheet()` memakai sesi pemain; URL privat
 permanen tidak disimpan client. Cache lokal berada di
-`user://animas/v5_<anima_id>/`, bukan lagi
+`user://animas/v6_<anima_id>_<stage>/`, bukan lagi
 `species_key + color_bucket + stage`, karena dua capture subjek serupa tetap
 memiliki art unik. Manifest ditulis terakhir supaya download terputus tidak
 terbaca sebagai cache valid.
+
+Suffix stage diperlukan oleh pipeline evolusi yang sudah ada di repo tetapi
+belum live. Adult/Evolved memakai `anima_id` yang sama dengan Hatchling; tanpa
+stage pada key, reveal bisa memuat manifest form lama. `anima_forms` menyimpan
+sheet lama secara privat untuk history/rollback, tetapi UI hanya membaca form
+committed terbaru. Pending ritual disimpan di `GameState.pending_evolution`, dan
+art baru baru menggantikan presenter setelah server mengembalikan stage baru dan
+bundle stage itu selesai diunduh.
 
 Battle opponent adalah pengecualian sempit: server memberi signed URL singkat
 hanya untuk thumbnail/sheet lawan Gallery approved atau fallback sistem. Gallery

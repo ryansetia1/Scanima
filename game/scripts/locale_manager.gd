@@ -79,6 +79,22 @@ func form_name(level: int) -> String:
 	return translated if translated != key else level_label(level)
 
 
+func form_name_for_row(row: Dictionary) -> String:
+	var key := "FORM_%s" % CARE_RULES.form_key_for_row(row).to_upper()
+	var translated := tr(key)
+	return translated if translated != key else level_label(
+		CARE_RULES.level_from_exp(int(row.get("care_score", 0)))
+	)
+
+
+func effect_name(effect_id: String) -> String:
+	var key := CareRules.effect_label_key(effect_id)
+	if key.is_empty():
+		return tr("VALUE_UNAVAILABLE")
+	var translated := tr(key)
+	return translated if translated != key else effect_id
+
+
 func gate_reason(code: String) -> String:
 	var key := "GATE_%s" % code.to_upper()
 	var translated := tr(key)

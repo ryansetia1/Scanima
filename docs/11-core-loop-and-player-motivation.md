@@ -1,9 +1,10 @@
 # 11 — Core Loop dan Motivasi Pemain
 
-> **Status, 16 Agustus 2026:** dokumen ini membaca pengalaman yang sudah hidup
+> **Status, 17 Agustus 2026:** dokumen ini membaca pengalaman yang sudah hidup
 > di build saat ini. Ini adalah diagnosis produk, bukan keputusan redesign atau
 > janji fitur. Hipotesis tentang perasaan pemain tetap perlu dibuktikan lewat
-> playtest.
+> playtest. Pipeline ritual Adult/Evolved sudah ada di repo tetapi belum live,
+> jadi belum dihitung sebagai payoff pemain di diagnosis ini.
 
 ## Inti fantasi
 
@@ -134,6 +135,12 @@ EXP, Level, stats, dan kemenangan membuktikan bahwa waktu pemain menghasilkan
 kemajuan. Saat ini payoff tersebut terutama berupa angka: label Adult dan
 Evolved belum mengubah wajah atau bentuk Anima. Karena itu pertumbuhan belum
 sepenuhnya memenuhi fantasi monster yang benar-benar berkembang.
+
+Implementasi kandidat menutup celah ini lewat ritual eksplisit Lv16/Lv36, art
+privat baru, nama move/VFX baru, dan efek Battle yang commit bersama form. Namun
+kesimpulan produk di atas baru boleh diubah setelah eval lineage berbayar,
+rollout client, aktivasi flag, dan playtest membuktikan bahwa hasilnya tetap
+terbaca sebagai companion yang sama.
 
 #### Mastery
 
