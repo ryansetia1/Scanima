@@ -2302,11 +2302,48 @@ begin
          and (select count(*) from public.quota_ledger
                where ref_id = v_id and delta = -1 and reason = 'genesis') = 1,
          'retry claim_capture harus replay tanpa debit atau row kedua';
+  assert (select capture_vibe from public.generations where id = v_id) = 'natural',
+         'claim_capture tanpa vibe harus default natural';
+  begin
+    update public.generations set capture_vibe = 'spicy' where id = v_id;
+    ok := false;
+  exception when check_violation then ok := true;
+  end;
+  assert ok, 'capture_vibe di luar allowlist harus ditolak constraint';
   perform public.refund_generation(v_id, 'uji private capture refund');
   assert (select genesis_cores from public.profiles where id = u1) = 3
          and (select count(*) from public.quota_ledger
                where ref_id = v_id and reason = 'refund') = 1,
          'refund capture privat harus mengembalikan Core tepat sekali';
+  v_j := public.claim_capture(
+    u1, 'uji-capture-vibe', 'vibe capture', 'mug_ceramic_handled', 'gray',
+    1::smallint, 'ceramic', 'flow', 'object', 2, v_stats, v_care,
+    v_visi, 'v31', 'test-model', 0.07, u1::text || '/uji-capture-vibe.png', 'cute'
+  );
+  assert (select capture_vibe from public.generations
+           where id = (v_j->>'generation_id')::uuid) = 'cute',
+         'claim_capture harus menyimpan vibe permintaan pertama';
+  v_j2 := public.claim_capture(
+    u1, 'uji-capture-vibe', 'ignored retry', 'ignored_species', 'gray',
+    1::smallint, 'metal', null, 'object', 1, v_stats, v_care, v_visi,
+    'v31', 'test-model', 0.07, u1::text || '/ignored-vibe.png', 'sinister'
+  );
+  assert v_j2 = v_j
+         and (select capture_vibe from public.generations
+               where id = (v_j->>'generation_id')::uuid) = 'cute',
+         'retry claim_capture tidak boleh mengganti capture_vibe';
+  begin
+    perform public.claim_capture(
+      u1, 'uji-capture-vibe-bad', 'bad vibe', 'mug_ceramic_handled', 'gray',
+      1::smallint, 'ceramic', 'flow', 'object', 2, v_stats, v_care,
+      v_visi, 'v31', 'test-model', 0.07, u1::text || '/bad-vibe.png', 'spicy'
+    );
+    ok := false;
+  exception when others then
+    ok := sqlerrm like '%INVALID_VIBE%';
+  end;
+  assert ok, 'claim_capture harus menolak vibe di luar allowlist';
+  perform public.refund_generation((v_j->>'generation_id')::uuid, 'uji capture vibe refund');
 
   delete from public.quota_ledger
    where owner_id = u1 and reason = 'weekly_core';

@@ -20,7 +20,7 @@ const LEGACY_SPRITE_CACHE_VERSION := 4
 ## Runtime saja: {access_token, refresh_token, expires_at, uid, is_anonymous}.
 var session: Dictionary = {}
 
-## {idempotency_key, photo_path, generation_id, anima_id}. Lihat begin_scan().
+## {idempotency_key, photo_path, generation_id, anima_id, capture_vibe}. Lihat begin_scan().
 var pending_scan: Dictionary = {}
 
 ## {idempotency_key, anima_id, action, item_id}. Dipertahankan sampai server mengonfirmasi
@@ -351,13 +351,14 @@ func _secure_store() -> Node:
 ##
 ## Nama file fotonya sengaja diturunkan dari kunci itu, jadi scan yang dilanjutkan
 ## otomatis menunjuk objek yang sama tanpa perlu menyimpan dua hal.
-func begin_scan(extension: String) -> Dictionary:
+func begin_scan(extension: String, capture_vibe: String = "") -> Dictionary:
 	var key := "%d-%08x%08x" % [int(Time.get_unix_time_from_system()), randi(), randi()]
 	pending_scan = {
 		"idempotency_key": key,
 		"photo_path": "%s/%s.%s" % [uid(), key, extension],
 		"generation_id": "",
 		"anima_id": "",
+		"capture_vibe": ScanView.normalize_vibe(capture_vibe),
 	}
 	save()
 	return pending_scan

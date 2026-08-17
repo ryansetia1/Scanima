@@ -488,15 +488,16 @@ itu tidak disalin ulang di dokumen ini. Arsitekturnya mengikuti blok stabil:
 Assembler mengisi semua placeholder dari hasil Vision yang sudah lolos gate:
 
 ```ts
-const prompt = assemblePrompt(template, vision);
+const prompt = assemblePrompt(template, vision, captureVibe, vibeDirections);
 // {{object_name}}                    <- object_label / species_key
 // {{creature_brief}}                 <- Vision
 // {{signature_features_as_bullets}}  <- Vision array menjadi bullet list
 // {{color_palette}}                  <- dominant_colors / color_bucket
-// {{personality}}                    <- stat tertinggi
+// {{personality}}                    <- stat tertinggi; Vibe non-Natural menggantinya
 // {{surface_finish}}                 <- material/finish yang terlihat
 // {{damage_hints_as_bullets}}        <- damage material; hint teknis disaring
 // {{character_direction}}            <- cue visual objek; netral bila ambigu
+// {{vibe_direction}}                 <- v31: Natural = object-led; selain itu lock pemain
 // {{strike_name}} / {{surge_name}}   <- nama move unik (v7)
 // {{strike_vfx_*}} / {{surge_vfx_*}} <- form, motion, brief per-Anima (v12)
 ```
@@ -818,15 +819,34 @@ backend/prompts/
     ├── vision_evolve_system.md
     ├── vision_evolve_schema.json
     └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
-└── v30/                   <- production: name lineage
+└── v30/                   <- production evolution: name lineage
     ├── vision_evolve_system.md
     ├── vision_evolve_schema.json
     └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
+└── v31/                   <- capture vibe: Cute/Brave/Wild/Sinister
+    ├── vision_system.md   # identik v20
+    ├── vision_schema.json # identik v20
+    ├── sprite_sheet.md    # v20 + {{vibe_direction}}
+    ├── sprite_sheet_fauna.md
+    └── vibe_directions.json
 ```
 
 V30 adalah v29 plus `suggested_name` di Evolution Plan. Nama spesies baru
 mengikuti akar bunyi form sebelumnya; `commit_evolution` tidak menimpa
-`nickname`. Sheet terkunci membawa usulan nama operator. Capture tetap v20.
+`nickname`. Sheet terkunci membawa usulan nama operator. Capture production
+**v31**; evolution tetap v30. Rollback capture: `prompt_version` kembali v20.
+
+V31 menambah pilihan pemain **Vibe** pada Scan. Vision, stats, element, height,
+dan gate tidak berubah. `Natural` merekonstruksi wording v20; Cute/Brave/Wild/
+Sinister mengganti personality berbasis stat dan mengisi `{{vibe_direction}}`.
+Ciri objek/hewan, material, dan body plan selalu menang dari Vibe.
+
+Eval Monstera v31 18 Agustus 2026 memakai satu Vision lalu tiga generation
+eksplisit Cute/Brave/Sinister tanpa retry. Ketiganya tetap potted Monstera
+tanpa logo florist. Gagal pertama adalah pagar crop: Cute/Sinister kena seam
+Idle, Brave kena detached-character v26 yang salah diwarisi capture. Capture
+v31 sekarang membuang bocoran Idle deterministik dan tidak memakai audit tubuh
+terlepas milik evolusi. Visual operator sudah menyetujui ketiga raw.
 
 Eval Vision-only v20 pada 17 Agustus 2026 menolak karakter franchise sebagai
 `known_character`, menerima ilustrasi naga public-domain sebagai Fauna, dan

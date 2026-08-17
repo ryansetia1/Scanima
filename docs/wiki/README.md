@@ -11,8 +11,9 @@ membuka profil, Google, Reduced Motion, bantuan, dan hapus akun.
 
 ## Mulai dari mana
 
-1. **Scan** — pakai kamera atau pilih satu foto. Setiap hasil yang diterima
-   memakai 1 Core dan membuat art privat yang unik.
+1. **Scan** — pilih Vibe kalau mau (default **Natural**), lalu pakai kamera atau
+   satu foto. Setiap hasil yang diterima memakai 1 Core dan membuat art privat
+   yang unik.
 2. **Home** — rawat companion yang sedang di-Summon.
 3. **Collection** — lihat semua Anima. Tap kartu, lalu **Summon** untuk membawanya ke Home.
 4. **Battle** — mainkan Duel, Team Battle dengan 4 Anima, atau Expedition **The

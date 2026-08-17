@@ -36,14 +36,25 @@ const BERKAS = {
   sprite_sheet: "sprite_sheet.md",
   sprite_sheet_evolve: "sprite_sheet_evolve.md",
   sprite_sheet_fauna: "sprite_sheet_fauna.md",
+  vibe_directions: "vibe_directions.json",
 };
 
-const OPSIONAL = new Set(["sprite_sheet_fauna", "vision_evolve_system", "vision_evolve_schema"]);
+const OPSIONAL = new Set([
+  "sprite_sheet_fauna",
+  "vision_evolve_system",
+  "vision_evolve_schema",
+  "vibe_directions",
+]);
 const CAPTURE_KEYS = new Set([
   "vision_system",
   "vision_schema",
   "sprite_sheet",
   "sprite_sheet_fauna",
+]);
+const EVOLVE_KEYS = new Set([
+  "vision_evolve_system",
+  "vision_evolve_schema",
+  "sprite_sheet_evolve",
 ]);
 // ponytail: v24–v30 hanya mengubah evolusi; reuse source capture v20 daripada
 // menambah empat salinan byte-identik. Tambahkan versi ke map hanya jika seluruh
@@ -57,6 +68,8 @@ const CAPTURE_PARENT = new Map([
   ["v29", "v20"],
   ["v30", "v20"],
 ]);
+// v31 mengubah capture saja; evolve production tetap v30.
+const EVOLVE_PARENT = new Map([["v31", "v30"]]);
 
 export async function buildBundle() {
   const versi = (await readdir(DIR_PROMPT, { withFileTypes: true }))
@@ -68,7 +81,11 @@ export async function buildBundle() {
   for (const v of versi) {
     bundel[v] = {};
     for (const [kunci, berkas] of Object.entries(BERKAS)) {
-      const parent = CAPTURE_KEYS.has(kunci) ? CAPTURE_PARENT.get(v) : null;
+      const parent = CAPTURE_KEYS.has(kunci)
+        ? CAPTURE_PARENT.get(v)
+        : EVOLVE_KEYS.has(kunci)
+          ? EVOLVE_PARENT.get(v)
+          : null;
       const jalur = join(DIR_PROMPT, parent ?? v, berkas);
       let isi;
       try {

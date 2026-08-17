@@ -243,6 +243,14 @@ func _test_kunci_scan() -> void:
 	_muat_ulang()
 	_check_eq(GameState.pending_scan.get("idempotency_key"), kunci, "kunci harus bertahan di disk")
 	_check_eq(GameState.pending_scan.get("photo_path"), scan["photo_path"], "jalur foto harus bertahan")
+	_check_eq(GameState.pending_scan.get("capture_vibe"), "natural", "vibe default Natural harus bertahan")
+
+	var cute: Dictionary = GameState.begin_scan("jpg", "cute")
+	_muat_ulang()
+	_check_eq(GameState.pending_scan.get("capture_vibe"), "cute", "vibe pilihan harus bertahan di disk")
+	_check_eq(ScanView.normalize_vibe(GameState.pending_scan.get("missing", "")), "natural", "state lama tanpa vibe jatuh ke Natural")
+	_check_eq(ScanView.normalize_vibe("spicy"), "natural", "vibe di luar allowlist jatuh ke Natural")
+	_check_eq(cute.get("capture_vibe"), "cute", "begin_scan menyimpan slug vibe")
 
 	var lain: Dictionary = GameState.begin_scan("png")
 	_check(str(lain["idempotency_key"]) != kunci, "scan berbeda harus punya kunci berbeda")

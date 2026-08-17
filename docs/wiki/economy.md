@@ -55,13 +55,19 @@ Tab **Scan** bisa membuka kamera atau memilih **satu foto** dari perangkat.
 
 1. Guest perlu masih punya kesempatan Scan; semua pemain perlu minimal **1 Core**
    untuk membuka pilihan foto.
-2. Foto satu subjek yang jelas. Benda, hewan non-manusia yang aman, serta
+2. Di tab **Scan**, **Vibe** sudah terpilih **Natural**. Boleh langsung Scan, atau
+   ganti ke **Cute**, **Brave**, **Wild**, atau **Sinister** supaya wajah, postur,
+   dan energi visualnya berbeda. Ciri objek atau hewan aslinya tetap harus
+   terbaca. Vibe tidak mengubah kekuatan, elemen, atau biaya, dan tidak muncul
+   lagi di profil sesudah Anima menetas. Build lama tanpa chip Vibe tetap Scan
+   sebagai **Natural**.
+3. Foto satu subjek yang jelas. Benda, hewan non-manusia yang aman, serta
    ilustrasi non-manusia buatan sendiri atau generik boleh dipakai. Manusia,
    informasi pribadi, kekerasan terhadap hewan, gore, situasi berbahaya, dan
    karakter yang dikenali dari game, anime, atau film lain akan ditolak.
-3. Setelah analisis lolos, 1 Core dipakai dan telur inkubator muncul. Pembuatan
+4. Setelah analisis lolos, 1 Core dipakai dan telur inkubator muncul. Pembuatan
    art unik biasanya memerlukan sekitar satu menit.
-4. Sesudah menetas, kamu pindah ke Home. Bisa ganti namanya atau biarkan nama
+5. Sesudah menetas, kamu pindah ke Home. Bisa ganti namanya atau biarkan nama
    dari Scan.
 
 Foto serupa tetap menghasilkan art masing-masing. Art lengkap hanya dapat dilihat

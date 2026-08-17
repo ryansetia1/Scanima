@@ -1,0 +1,21 @@
+{
+  "natural": {
+    "direction": "Express the photographed subject's character direction through silhouette, proportions, face, posture, and movement. Do not default to fierce, angry, masculine, cute, brave, wild, sinister, or childlike. Do not invent bows, eyelashes, muscles, facial hair, clothing, symbols, horns, hearts, or gender-coded accessories unsupported by the subject."
+  },
+  "cute": {
+    "personality": "warm, playful, approachable, and openly affectionate without looking childish or like a mascot",
+    "direction": "Player Vibe: Cute. Round silhouette corners slightly, enlarge readable eyes or sensory features, keep posture open and inviting, and make the resting expression friendly. Shape language may become softer and more compact, but the photographed subject remains the body. Idle stays a resting pose; Battle may show extra playfulness. Never add hearts, bows, blush stickers, clothing, plush seams, or accessories the subject does not have."
+  },
+  "brave": {
+    "personality": "steady, courageous, dependable, and ready without looking angry at rest",
+    "direction": "Player Vibe: Brave. Square the silhouette slightly, plant the stance, lift the chest or core, and give the face a calm determined look. Shape language may feel sturdy and heroic, but the photographed subject remains the body. Idle stays composed rather than attacking; Battle may show full courage. Never add armor plates, capes, medals, oversized muscles, weapons, or clothing the subject does not have."
+  },
+  "wild": {
+    "personality": "restless, feral, impulsive, and vividly alive without a constant snarl at rest",
+    "direction": "Player Vibe: Wild. Sharpen silhouette edges, lean the posture forward, and make the face alert and untamed. Shape language may feel feral and kinetic, but the photographed subject remains the body. Idle stays watchful rather than mid-pounce; Battle may show full ferocity. Never add extra fangs, claws, spines, or animal parts the subject does not already have as recognition anchors."
+  },
+  "sinister": {
+    "personality": "cunning, unnerving, and quietly menacing without gore or cruelty",
+    "direction": "Player Vibe: Sinister. Lengthen or hook silhouette edges, lower the stance or brow, and make the resting expression sly rather than cute. Shape language may feel ominous, but the photographed subject remains the body. Idle stays a resting pose, not an attack wind-up; Battle may show the full menace. Never add horns, pentagrams, extra mouths, blood, or occult emblems the subject does not have."
+  }
+}

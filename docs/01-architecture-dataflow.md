@@ -89,7 +89,7 @@ sequenceDiagram
     G->>G: Cek cache Scan Charge lokal (UX cepat, bukan otoritas)
     G->>G: Resize foto ke 1024px sisi terpanjang, JPEG q80
     G->>S: Upload langsung ke bucket photos/<uid>/... (anon key + policy Storage)
-    G->>EF: POST /create_anima { photo_path, idempotency_key }
+    G->>EF: POST /create_anima { photo_path, idempotency_key, capture_vibe? }
 
     EF->>S: Debit 1 Scan Charge (pagar murah sebelum Vision)
     alt Scan Charge habis

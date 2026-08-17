@@ -270,8 +270,17 @@ func download_anima_sheet(sheet_path: String) -> Dictionary:
 
 # ------------------------------------------------------------------ fungsi
 
-func create_anima(photo_path: String, idempotency_key: String, nickname := "") -> Dictionary:
-	var body := {"photo_path": photo_path, "idempotency_key": idempotency_key}
+func create_anima(
+	photo_path: String,
+	idempotency_key: String,
+	nickname := "",
+	capture_vibe := ""
+) -> Dictionary:
+	var body := {
+		"photo_path": photo_path,
+		"idempotency_key": idempotency_key,
+		"capture_vibe": ScanView.normalize_vibe(capture_vibe),
+	}
 	if not nickname.is_empty():
 		body["nickname"] = nickname
 	return await _send(

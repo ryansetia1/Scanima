@@ -1,4 +1,4 @@
-// POST /create_anima  { photo_path, idempotency_key, nickname? }
+// POST /create_anima  { photo_path, idempotency_key, nickname?, capture_vibe? }
 //
 // Satu-satunya endpoint yang bisa membelanjakan uang, jadi urutannya bukan
 // selera: yang murah dan bisa membatalkan berjalan lebih dulu, dan yang mahal
@@ -23,6 +23,7 @@ import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
 import {
   assemblePrompt,
   extractJson,
+  normalizeCaptureVibe,
   normalizeSuggestedName,
   promptMajor,
   spriteSheetTemplate,
@@ -81,7 +82,12 @@ Deno.serve(async (req) => {
   const uid = auth?.claims?.sub;
   if (errAuth || typeof uid !== "string") return json(401, { error: "token tidak sah" });
 
-  let body: { photo_path?: string; idempotency_key?: string; nickname?: string };
+  let body: {
+    photo_path?: string;
+    idempotency_key?: string;
+    nickname?: string;
+    capture_vibe?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -91,6 +97,8 @@ Deno.serve(async (req) => {
   const photoPath = body.photo_path ?? "";
   const kunci = body.idempotency_key ?? "";
   if (!kunci || kunci.length > 128) return json(400, { error: "idempotency_key wajib, maks 128 char" });
+  const requestedVibe = normalizeCaptureVibe(body.capture_vibe);
+  if (requestedVibe == null) return json(400, { error: "INVALID_VIBE" });
 
   // Batas kepercayaan. Tanpa ini, pemain bisa menunjuk foto pemain lain, dan
   // signed URL yang kita terbitkan dengan service role akan menurutinya.
@@ -132,6 +140,7 @@ Deno.serve(async (req) => {
       sprite_sheet_fauna?: string;
       vision_system: string;
       vision_schema: unknown;
+      vibe_directions?: Record<string, { personality?: string; direction?: string }>;
     }
   >;
   let prompts = promptBundle[versiPrompt];
@@ -140,7 +149,7 @@ Deno.serve(async (req) => {
   // ------------------------------------------------------------ idempotency
   const { data: lama } = await db
     .from("generations")
-    .select("id, status, anima_id, prediction_id, vision_result, prompt_version, model")
+    .select("id, status, anima_id, prediction_id, vision_result, prompt_version, model, capture_vibe")
     .eq("owner_id", uid)
     .eq("idempotency_key", kunci)
     .maybeSingle();
@@ -165,6 +174,10 @@ Deno.serve(async (req) => {
   // sebelum debit, yaitu satu tulisan tambahan di setiap request untuk melindungi
   // sepertigapuluh sen. Naikkan kalau log menunjukkan ini sering terjadi.
   const lanjutkan = Boolean(lama && !lama.prediction_id && lama.vision_result);
+  let captureVibe = requestedVibe;
+  if (lama) {
+    captureVibe = normalizeCaptureVibe(lama.capture_vibe) ?? "natural";
+  }
   if (lanjutkan) {
     // Request yang sudah mendebit Core harus dilanjutkan dengan kontrak model
     // dan prompt yang tercatat, walau operator mematikan flag untuk request baru.
@@ -177,6 +190,9 @@ Deno.serve(async (req) => {
     useV13 = promptMajor(versiPrompt) >= 13;
     allowAnimals = useV13;
     useUniqueCapture = useV13;
+  }
+  if (captureVibe !== "natural" && promptMajor(versiPrompt) < 31) {
+    return json(409, { error: "VIBE_UNAVAILABLE" });
   }
 
   // ------------------------------------------------------------ signed URL
@@ -337,6 +353,7 @@ Deno.serve(async (req) => {
         ...claimParams,
         p_secondary_element: vision.secondary_element ?? null,
         p_subject_kind: vision.subject_kind ?? "object",
+        p_capture_vibe: captureVibe,
       })
       : await db.rpc("claim_genesis", claimParams);
 
@@ -374,6 +391,8 @@ Deno.serve(async (req) => {
   const prompt = assemblePrompt(
     spriteSheetTemplate(prompts, vision.subject_kind ?? "object"),
     vision,
+    captureVibe,
+    prompts.vibe_directions ?? null,
   );
   const input = modelGambar === "openai/gpt-image-2"
     ? {

@@ -25,6 +25,7 @@ import {
   validateVision,
   assemblePrompt,
   extractJson,
+  normalizeCaptureVibe,
   normalizeSuggestedName,
   normalizeMoveName,
   promptMajor,
@@ -867,6 +868,68 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
     bundel.v20?.vision_system.includes("original or generic anthropomorphic non-human creature"),
     "v20 memberi subject_kind valid pada ilustrasi antropomorfik non-franchise"
   );
+}
+
+console.log("17b. capture vibe hanya mengubah arah visual, bukan Vision");
+{
+  const bundel = await (await import("../backend/tools/bundle_prompts.mjs")).buildBundle();
+  const { readFile } = await import("node:fs/promises");
+  const createAnima = await readFile(
+    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
+    "utf8"
+  );
+  assert.equal(bundel.v31?.vision_system, bundel.v20?.vision_system, "v31 tidak mengubah Vision");
+  assert.deepEqual(bundel.v31?.vision_schema, bundel.v20?.vision_schema, "v31 tidak mengubah schema Vision");
+  assert.equal(
+    bundel.v31?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v31 mewarisi evolve v30"
+  );
+  assert.notEqual(bundel.v31?.sprite_sheet, bundel.v20?.sprite_sheet, "v31 mengubah prompt object");
+  assert.ok(bundel.v31?.sprite_sheet?.includes("{{vibe_direction}}"), "v31 object punya placeholder vibe");
+  assert.ok(bundel.v31?.sprite_sheet_fauna?.includes("{{vibe_direction}}"), "v31 fauna punya placeholder vibe");
+  assert.ok(bundel.v31?.vibe_directions?.cute?.direction?.includes("Player Vibe: Cute"));
+  assert.ok(bundel.v31?.vibe_directions?.brave?.personality);
+  assert.ok(bundel.v31?.vibe_directions?.sinister?.direction?.includes("Never add horns"));
+  assert.equal(normalizeCaptureVibe(""), "natural");
+  assert.equal(normalizeCaptureVibe(undefined), "natural");
+  assert.equal(normalizeCaptureVibe("CUTE"), "cute");
+  assert.equal(normalizeCaptureVibe("spicy"), null);
+  assert.ok(createAnima.includes("INVALID_VIBE"));
+  assert.ok(createAnima.includes("VIBE_UNAVAILABLE"));
+  assert.ok(createAnima.includes("p_capture_vibe: captureVibe"));
+  assert.ok(createAnima.includes("normalizeCaptureVibe(lama.capture_vibe)"));
+  assert.ok(
+    !/rpc\("claim_genesis", claimParams[\s\S]*p_capture_vibe/.test(createAnima),
+    "jalur rollback claim_genesis tidak boleh mengirim capture_vibe"
+  );
+
+  const sample = {
+    object_label: "monstera in a ceramic pot",
+    creature_brief: "a leafy plant creature whose split leaves stay the body",
+    character_direction: "upright, leafy, and object-led",
+    signature_features: ["fenestrated leaves remain the torso", "black pot stays the base"],
+    surface_finish: "glossy green leaf and matte black ceramic",
+    damage_hints: ["one torn leaf edge", "one small chip on the pot rim"],
+    dominant_colors: ["#2f7a3a", "#1a1a1a"],
+    stats: { hp: 40, atk: 80, def: 35, spd: 50, special: 55 },
+    strike_name: "Leaf Snap",
+    surge_name: "Canopy Burst",
+  };
+  const directions = bundel.v31.vibe_directions;
+  const natural = assemblePrompt(bundel.v31.sprite_sheet, sample, "natural", directions);
+  const cute = assemblePrompt(bundel.v31.sprite_sheet, sample, "cute", directions);
+  const faunaCute = assemblePrompt(bundel.v31.sprite_sheet_fauna, sample, "cute", directions);
+  assert.ok(natural.includes("bold, spirited"), "Natural memakai personality dari stat");
+  assert.ok(!natural.includes("Player Vibe: Cute"));
+  assert.ok(cute.includes("warm, playful"), "Cute mengganti personality stat");
+  assert.ok(!cute.includes("bold, spirited"), "personality ATK tidak boleh menang dari Cute");
+  assert.ok(cute.includes("Player Vibe: Cute"));
+  assert.ok(cute.includes(sample.character_direction), "arah objek Vision tetap dipakai");
+  assert.ok(cute.includes("fenestrated leaves remain the torso"), "anchor objek tidak boleh hilang");
+  assert.ok(!cute.includes("{{"), "placeholder v31 object harus terisi");
+  assert.ok(!faunaCute.includes("{{"), "placeholder v31 fauna harus terisi");
+  assert.ok(!assemblePrompt(bundel.v20.sprite_sheet, sample, "cute", directions).includes("{{vibe_direction}}"));
 }
 
 console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
@@ -2468,6 +2531,43 @@ console.log("24. sheet v7 3x3 sembilan sel");
     }),
     /safe margin v12.*idle:detached_idle_seam_fragment/,
     "fragmen Attack yang jatuh ke margin Idle wajib menolak sheet v12"
+  );
+
+  const cleaned = await postprocessSheet(leakedPng, {
+    speciesKey: "selftest_v31_idle_leak",
+    promptVersion: "v31",
+    kind: "create",
+  });
+  assert.equal(
+    cleaned.manifest.qa.cells_detected,
+    9,
+    "capture v31 harus membuang bocoran Idle, bukan menolak sheet"
+  );
+  assert.ok(
+    cleaned.manifest.qa.seam_cleanup?.components >= 1,
+    "v31 capture harus mencatat idle seam cleanup"
+  );
+
+  const sparkly = await Image.decode(await buildSheet(blobs3, LAYOUT_3X3));
+  drawBlob(sparkly.bitmap, 280, cell + 12, 22, 22, FILLS.happy);
+  const sparklyPng = await sparkly.encode();
+  await assert.rejects(
+    () => postprocessSheet(sparklyPng, {
+      speciesKey: "selftest_v26_sparkle",
+      promptVersion: "v26",
+    }),
+    /detached character components/,
+    "evolusi v26 tetap menolak sparkle Happy terlepas"
+  );
+  const captureSparkle = await postprocessSheet(sparklyPng, {
+    speciesKey: "selftest_v31_sparkle",
+    promptVersion: "v31",
+    kind: "create",
+  });
+  assert.equal(
+    captureSparkle.manifest.qa.cells_detected,
+    9,
+    "capture v31 boleh punya aksen Happy terlepas"
   );
 }
 

@@ -319,7 +319,17 @@ export function validateVision(
   return { gate: "passed", reason: null, issues, vision: v };
 }
 
-export function assemblePrompt(template, vision) {
+export const CAPTURE_VIBES = Object.freeze(["natural", "cute", "brave", "wild", "sinister"]);
+
+/** Client lama / field kosong = Natural. Nilai di luar allowlist = null. */
+export function normalizeCaptureVibe(value) {
+  if (value == null || value === "") return "natural";
+  if (typeof value !== "string") return null;
+  const slug = value.trim().toLowerCase();
+  return CAPTURE_VIBES.includes(slug) ? slug : null;
+}
+
+export function assemblePrompt(template, vision, vibe = "natural", vibeDirections = null) {
   const features = vision.signature_features ?? [];
   const bullets = features.map((f) => `- ${f}`).join("\n");
   const technicalTokens = new Set([
@@ -363,9 +373,18 @@ export function assemblePrompt(template, vision) {
       ? "clever, strange, mischievous, and charged with hidden functional energy"
       : "clever, strange, mischievous, and charged with hidden technical energy",
   };
-  const personality = personalities[dominantStat] ?? "curious, expressive, and slightly mischievous";
+  const captureVibe = normalizeCaptureVibe(vibe) ?? "natural";
+  const vibeLock = vibeDirections?.[captureVibe] ?? vibeDirections?.natural ?? null;
+  const personality = (
+    captureVibe !== "natural"
+    && typeof vibeLock?.personality === "string"
+    && vibeLock.personality.trim()
+      ? vibeLock.personality.trim()
+      : personalities[dominantStat] ?? "curious, expressive, and slightly mischievous"
+  );
   const characterDirection = vision.character_direction?.trim()
     || "visually neutral and object-led, without forced gender coding";
+  const vibeDirection = typeof vibeLock?.direction === "string" ? vibeLock.direction.trim() : "";
   const colors = (vision.dominant_colors ?? []).join(", ") || vision.color_bucket || "object-derived palette";
   const out = template
     .replaceAll("{{creature_brief}}", vision.creature_brief ?? "")
@@ -375,6 +394,7 @@ export function assemblePrompt(template, vision) {
     .replaceAll("{{personality}}", personality)
     .replaceAll("{{surface_finish}}", surface)
     .replaceAll("{{character_direction}}", characterDirection)
+    .replaceAll("{{vibe_direction}}", vibeDirection)
     .replaceAll("{{damage_hints_as_bullets}}", damageBullets)
     .replaceAll("{{strike_name}}", vision.strike_name?.trim() || "a close-range strike")
     .replaceAll("{{surge_name}}", vision.surge_name?.trim() || "a charged special burst")

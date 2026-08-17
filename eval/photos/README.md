@@ -37,3 +37,14 @@ buruk menghasilkan Anima yang buruk, dan biaya generation-nya tetap terbayar.
 Tiga foto terakhir sengaja dipilih karena harus DITOLAK. Ketiganya menguji apakah
 gate keamanan dan IP bekerja, dan biayanya hanya satu panggilan Vision (~$0.003)
 karena tidak ada gambar yang digenerate.
+
+## Vibe (lokal, tidak di-commit)
+
+Foto `monsterra.png` dipakai eval capture Vibe v31. Satu Vision, lalu tiga
+generation eksplisit tanpa retry:
+
+```bash
+node eval/run.mjs --photo eval/photos/monsterra.png --prompt-version v31 --vision-only
+node eval/run.mjs --photo eval/photos/monsterra.png --prompt-version v31 \
+  --vision-file eval/results/v31/single/monsterra.vision.json --vibe cute
+```

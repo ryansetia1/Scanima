@@ -50,6 +50,7 @@ export async function finalizeSheet(
     colorBucket: anima.color_bucket,
     stage: postStage,
     promptVersion: gen.prompt_version,
+    kind: gen.kind ?? "create",
     vfxMotion: {
       fx_strike: gen.vision_result?.strike_vfx?.motion,
       fx_surge: gen.vision_result?.surge_vfx?.motion,

@@ -29,6 +29,7 @@ import { postprocessSheet, layoutForPrompt } from "../backend/supabase/functions
 import {
   assemblePrompt,
   extractJson,
+  normalizeCaptureVibe,
   promptMajor,
   spriteSheetTemplate,
   validateVision,
@@ -61,6 +62,8 @@ function parseArgs(argv) {
     set: null,
     photo: null,
     promptVersion: "v7",
+    vibe: "natural",
+    visionFile: null,
     dryRun: false,
     visionOnly: false,
     reprocess: false,
@@ -70,6 +73,8 @@ function parseArgs(argv) {
     if (a === "--set") args.set = argv[++i];
     else if (a === "--photo") args.photo = argv[++i];
     else if (a === "--prompt-version") args.promptVersion = argv[++i];
+    else if (a === "--vibe") args.vibe = argv[++i];
+    else if (a === "--vision-file") args.visionFile = argv[++i];
     else if (a === "--dry-run") args.dryRun = true;
     else if (a === "--vision-only") args.visionOnly = true;
     else if (a === "--reprocess") args.reprocess = true;
@@ -77,6 +82,9 @@ function parseArgs(argv) {
     else throw new Error(`argumen tidak dikenal: ${a}`);
   }
   if (!args.set && !args.photo) args.set = "smoke"; // default aman, bukan full
+  const vibe = normalizeCaptureVibe(args.vibe);
+  if (vibe == null) throw new Error(`vibe tidak sah: ${args.vibe}`);
+  args.vibe = vibe;
   return args;
 }
 
@@ -344,6 +352,8 @@ async function main() {
   --set smoke|full        set foto (default: smoke)
   --photo <path>          jalankan satu foto saja
   --prompt-version v7     versi prompt di backend/prompts/ (default: v7)
+  --vibe natural          capture vibe: natural|cute|brave|wild|sinister
+  --vision-file <path>    pakai hasil Vision tersimpan, tanpa panggilan Vision baru
   --dry-run               tidak memanggil API sama sekali
   --vision-only           panggil Vision saja, tanpa image generation
   --reprocess             susun ulang sheet dari raw.png hasil run sebelumnya,
@@ -361,6 +371,11 @@ async function main() {
       throw error;
     }),
   ]);
+  const vibeDirectionsRaw = await readFile(join(pdir, "vibe_directions.json"), "utf8").catch((error) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  const vibeDirections = vibeDirectionsRaw ? JSON.parse(vibeDirectionsRaw) : null;
   const schema = JSON.parse(schemaRaw);
   const prompts = { sprite_sheet: template, sprite_sheet_fauna: faunaTemplate };
   const useV13 = promptMajor(args.promptVersion) >= 13;
@@ -391,14 +406,16 @@ async function main() {
   }
 
   const willGenerate = args.visionOnly || args.reprocess ? 0 : items.filter((it) => !it.expect_reject).length;
-  const estimate = args.reprocess ? 0 : willGenerate * COST_PER_IMAGE_USD + items.length * COST_PER_VISION_USD;
+  const willVision = args.reprocess || args.visionFile ? 0 : items.length;
+  const estimate = willGenerate * COST_PER_IMAGE_USD + willVision * COST_PER_VISION_USD;
 
   console.log(`set        : ${args.set ?? "single"} (${items.length} foto)`);
   console.log(`prompt     : ${args.promptVersion}`);
+  console.log(`vibe       : ${args.vibe}`);
   console.log(`vision     : ${VISION_MODEL} (via Replicate)`);
   console.log(`image      : ${IMAGE_MODEL}`);
   console.log(
-    `perkiraan  : ${args.reprocess ? 0 : items.length} vision + ${willGenerate} generation, ` +
+    `perkiraan  : ${willVision} vision + ${willGenerate} generation, ` +
       `~$${estimate.toFixed(3)}`
   );
   if (args.dryRun) console.log("mode       : DRY RUN, tidak ada API dipanggil");
@@ -415,8 +432,8 @@ async function main() {
       strike_name: "Click Snap",
       surge_name: "Cable Lash",
     };
-    assemblePrompt(template, fake);
-    if (faunaTemplate) assemblePrompt(faunaTemplate, fake);
+    assemblePrompt(template, fake, args.vibe, vibeDirections);
+    if (faunaTemplate) assemblePrompt(faunaTemplate, fake, args.vibe, vibeDirections);
     console.log(
       `template ${args.promptVersion}${faunaTemplate ? " object + fauna" : ""} terisi tanpa placeholder sisa`
     );
@@ -441,26 +458,39 @@ async function main() {
   };
 
   for (const [i, item] of items.entries()) {
-    const name = slug(item.file);
-    const label = `[${i + 1}/${items.length}] ${item.file}`;
-    const row = { file: item.file, tests: item.tests, status: "error", photoFile: `${name}.photo.jpg` };
+    const base = slug(item.file);
+    const name = args.vibe === "natural" ? base : `${base}-${args.vibe}`;
+    const label = `[${i + 1}/${items.length}] ${item.file}${args.vibe === "natural" ? "" : ` (${args.vibe})`}`;
+    const row = {
+      file: item.file,
+      tests: item.tests,
+      vibe: args.vibe,
+      status: "error",
+      photoFile: `${base}.photo.jpg`,
+    };
     rows.push(row);
 
     try {
       let photo = null;
       let checked;
 
-      if (args.reprocess) {
+      if (args.visionFile) {
+        const stored = JSON.parse(await readFile(args.visionFile, "utf8"));
+        checked = stored.vision ? stored : { gate: "passed", vision: stored, issues: [] };
+        row.vision = checked.vision;
+        row.issues = checked.issues ?? [];
+        photo = await loadPhoto(item.path);
+      } else if (args.reprocess) {
         // Vision dan gambarnya sudah dibayar di run sebelumnya, jadi yang diuji
         // ulang di sini hanya post-processing. vision.json dan prompt.txt asli
         // sengaja tidak ditimpa: keduanya adalah catatan run yang menghasilkan
         // raw.png ini, bukan catatan run hari ini.
-        checked = JSON.parse(await readFile(join(outDir, `${name}.vision.json`), "utf8"));
+        checked = JSON.parse(await readFile(join(outDir, `${base}.vision.json`), "utf8"));
         row.vision = checked.vision;
         row.issues = checked.issues ?? [];
       } else {
         photo = await loadPhoto(item.path);
-        await writeFile(join(outDir, `${name}.photo.jpg`), Buffer.from(photo.base64, "base64"));
+        await writeFile(join(outDir, `${base}.photo.jpg`), Buffer.from(photo.base64, "base64"));
 
         process.stdout.write(`${label} vision... `);
         let seen;
@@ -497,7 +527,7 @@ async function main() {
         );
         row.vision = checked.vision;
         row.issues = [...(row.issues ?? []), ...checked.issues];
-        await writeFile(join(outDir, `${name}.vision.json`), JSON.stringify(checked, null, 2));
+        await writeFile(join(outDir, `${base}.vision.json`), JSON.stringify(checked, null, 2));
       }
 
       if (item.expect_reject) {
@@ -537,7 +567,9 @@ async function main() {
       } else {
         const prompt = assemblePrompt(
           spriteSheetTemplate(prompts, checked.vision.subject_kind),
-          checked.vision
+          checked.vision,
+          args.vibe,
+          vibeDirections,
         );
         await writeFile(join(outDir, `${name}.prompt.txt`), prompt);
 
@@ -553,6 +585,7 @@ async function main() {
         speciesKey: checked.vision.species_key,
         colorBucket: checked.vision.color_bucket,
         promptVersion: args.promptVersion,
+        kind: "create",
         sheetName: `${name}.png`,
         vfxMotion: {
           fx_strike: checked.vision.strike_vfx?.motion,

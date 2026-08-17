@@ -1047,6 +1047,38 @@ func _test_scan_phase_visuals() -> void:
 		and hint.text == tr("SCAN_CAMERA_HINT"),
 		"a remaining Core restores the Scan CTA"
 	)
+	var vibe_block := view.find_child("VibeBlock", true, false) as Control
+	_check(vibe_block != null and vibe_block.visible, "idle Scan shows the optional Vibe selector")
+	_check_eq(view.vibe(), "natural", "fresh Scan defaults to Natural")
+	view.set_status(tr("STATUS_SCAN_READY"))
+	_check_eq(
+		(view.find_child("ScanStatus", true, false) as Label).text,
+		tr("STATUS_SCAN_READY"),
+		"Scan still writes in-page status"
+	)
+	for slug in ["natural", "cute", "brave", "wild", "sinister"]:
+		var vibe_button := view.find_child("Vibe%s" % slug.capitalize(), true, false) as Button
+		_check(
+			vibe_button != null
+			and vibe_button.custom_minimum_size.y >= TOUCH_MIN
+			and vibe_button.focus_mode == Control.FOCUS_ALL
+			and not vibe_button.text.is_empty(),
+			"%s Vibe stays a 96px labelled focus target" % slug
+		)
+	view.set_vibe("cute")
+	var cute_button := view.find_child("VibeCute", true, false) as Button
+	_check(
+		view.vibe() == "cute"
+		and cute_button != null
+		and cute_button.theme_type_variation == &"PrimaryButton",
+		"choosing Cute marks that chip without requiring another Scan tap"
+	)
+	view.set_phase(&"analyzing")
+	_check(not vibe_block.visible, "analysis hides Vibe so the choice cannot change mid-scan")
+	view.set_phase(&"idle")
+	_check(vibe_block.visible and view.vibe() == "cute", "returning idle keeps the chosen Vibe")
+	view.reset_vibe()
+	_check_eq(view.vibe(), "natural", "a finished Scan returns the selector to Natural")
 	var sign_in_requests: Array[String] = []
 	view.sign_in_requested.connect(func() -> void: sign_in_requests.append("sign_in"))
 	view.set_sign_in_required(true)

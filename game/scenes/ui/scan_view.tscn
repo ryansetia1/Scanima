@@ -1,9 +1,11 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/scan_view.gd" id="1_scan"]
 [ext_resource type="Texture2D" path="res://assets/icons/camera.svg" id="2_camera"]
 [ext_resource type="Texture2D" path="res://assets/icons/scan-line.svg" id="3_scan_icon"]
 [ext_resource type="Script" path="res://scripts/scan_overlay.gd" id="4_overlay"]
+
+[sub_resource type="ButtonGroup" id="VibeGroup"]
 
 [node name="ScanView" type="Control"]
 unique_name_in_owner = true
@@ -116,6 +118,81 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 text = "SCAN_CAMERA_HINT"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="VibeBlock" type="VBoxContainer" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="VibeTitle" type="Label" parent="Column/VibeBlock"]
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "SCAN_VIBE_TITLE"
+horizontal_alignment = 1
+
+[node name="VibeRow" type="HBoxContainer" parent="Column/VibeBlock"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="VibeNatural" type="Button" parent="Column/VibeBlock/VibeRow"]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("VibeGroup")
+theme_type_variation = &"PrimaryButton"
+theme_override_font_sizes/font_size = 22
+text = "SCAN_VIBE_NATURAL"
+metadata/vibe = "natural"
+
+[node name="VibeCute" type="Button" parent="Column/VibeBlock/VibeRow"]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_group = SubResource("VibeGroup")
+theme_override_font_sizes/font_size = 22
+text = "SCAN_VIBE_CUTE"
+metadata/vibe = "cute"
+
+[node name="VibeBrave" type="Button" parent="Column/VibeBlock/VibeRow"]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_group = SubResource("VibeGroup")
+theme_override_font_sizes/font_size = 22
+text = "SCAN_VIBE_BRAVE"
+metadata/vibe = "brave"
+
+[node name="VibeWild" type="Button" parent="Column/VibeBlock/VibeRow"]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_group = SubResource("VibeGroup")
+theme_override_font_sizes/font_size = 22
+text = "SCAN_VIBE_WILD"
+metadata/vibe = "wild"
+
+[node name="VibeSinister" type="Button" parent="Column/VibeBlock/VibeRow"]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_group = SubResource("VibeGroup")
+theme_override_font_sizes/font_size = 22
+text = "SCAN_VIBE_SINISTER"
+metadata/vibe = "sinister"
+
+[node name="VibeHint" type="Label" parent="Column/VibeBlock"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "SCAN_VIBE_HINT_NATURAL"
 horizontal_alignment = 1
 autowrap_mode = 2
 

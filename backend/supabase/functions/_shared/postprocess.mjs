@@ -709,11 +709,24 @@ function blitOwned(srcBitmap, srcW, src, owners, owner, dstBitmap, dstW, destX, 
   }
 }
 
+function shouldAuditDetachedCharacters(meta) {
+  if (meta.kind === "create") return false;
+  if (meta.kind === "evolve") return true;
+  const major = promptMajor(meta.promptVersion);
+  return major >= 26 && major < 31;
+}
+
+function shouldRemoveIdleSeamLeaks(meta, opts) {
+  if (opts.removeIdleSeamLeaks === true) return true;
+  if (opts.removeIdleSeamLeaks === false) return false;
+  return meta.kind !== "evolve" && promptMajor(meta.promptVersion) >= 31;
+}
+
 /**
  * Pipeline penuh: PNG mentah dari Replicate -> PNG RGBA rapi + manifest.
  *
  * @param {Uint8Array} pngBuffer PNG mentah, background hijau, opak
- * @param {object} meta { speciesKey, colorBucket, stage, promptVersion, vfxMotion }
+ * @param {object} meta { speciesKey, colorBucket, stage, promptVersion, vfxMotion, kind }
  * @returns {Promise<{ png: Uint8Array, manifest: object }>}
  */
 export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
@@ -761,7 +774,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
     ? auditSourceGridSeams(segmented.components, width, height, layout, opts)
     : null;
   let seamCleanup = null;
-  if (seamAudit && !seamAudit.passed && opts.removeIdleSeamLeaks === true) {
+  if (seamAudit && !seamAudit.passed && shouldRemoveIdleSeamLeaks(meta, opts)) {
     let pixels = 0;
     for (const violation of seamAudit.violations) {
       pixels += clearAlphaComponent(
@@ -786,7 +799,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       .join(", ");
     throw new Error(`sheet melanggar safe margin v12: ${summary}`);
   }
-  const detachedCharacterAudit = promptMajor(meta.promptVersion) >= 26
+  const detachedCharacterAudit = shouldAuditDetachedCharacters(meta)
     ? auditDetachedCharacterComponents(segmented.components, opts)
     : null;
   if (detachedCharacterAudit && !detachedCharacterAudit.passed) {

@@ -288,6 +288,8 @@ func _ready() -> void:
 			_switch_destination(BottomNav.SCAN)
 			_show_preview(FileAccess.get_file_as_bytes(jalur), jalur.get_extension().to_lower() == "png")
 			_scan_view.set_phase(&"analyzing")
+		if arg == "--scan-vibe-demo":
+			_switch_destination(BottomNav.SCAN)
 		if arg == "--collection":
 			_switch_destination(BottomNav.COLLECTION)
 		if arg == "--stats":
@@ -3118,7 +3120,10 @@ func _resume_without_anima() -> void:
 	_set_busy(true)
 	var pending := GameState.pending_scan
 	var res := await Backend.create_anima(
-		str(pending.get("photo_path", "")), str(pending.get("idempotency_key", ""))
+		str(pending.get("photo_path", "")),
+		str(pending.get("idempotency_key", "")),
+		"",
+		ScanView.normalize_vibe(pending.get("capture_vibe", ""))
 	)
 	await _handle_create_result(res)
 	_set_busy(false)
@@ -3247,7 +3252,7 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 
 	var is_png := extension == "png"
 	_show_preview(bytes, is_png)
-	var scan := GameState.begin_scan("png" if is_png else "jpg")
+	var scan := GameState.begin_scan("png" if is_png else "jpg", _scan_view.vibe())
 
 	_scan_view.set_phase(&"analyzing")
 	_say(tr("STATUS_UPLOADING"))
@@ -3265,7 +3270,12 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 	# Fase satu. Belasan detik tanpa apa pun di layar sudah terasa seperti macet,
 	# padahal ini bagian yang paling cepat.
 	_say(tr("STATUS_ANALYZING"))
-	var res := await Backend.create_anima(str(scan["photo_path"]), str(scan["idempotency_key"]))
+	var res := await Backend.create_anima(
+		str(scan["photo_path"]),
+		str(scan["idempotency_key"]),
+		"",
+		str(scan.get("capture_vibe", ""))
+	)
 	await _handle_create_result(res)
 	_set_busy(false)
 
@@ -3287,6 +3297,10 @@ func _handle_create_result(res: Dictionary) -> void:
 				_say(tr("STATUS_NO_CORE"))
 			"SPEND_CAP":
 				_say(tr("STATUS_SPEND_CAP"))
+			"VIBE_UNAVAILABLE":
+				_say(tr("STATUS_VIBE_UNAVAILABLE"), true)
+			"INVALID_VIBE":
+				_say(tr("STATUS_VIBE_UNAVAILABLE"), true)
 			_:
 				print("create_anima error: %s" % res.error)
 				_say(tr("STATUS_SCAN_ERROR"))
@@ -3434,6 +3448,7 @@ func _present(
 	_populate_collection()
 	if complete_scan:
 		GameState.finish_scan()
+		_scan_view.reset_vibe()
 	# Fotonya sudah selesai tugasnya begitu Anima-nya ada; membiarkannya di layar
 	# hanya menutupi hasil yang justru ingin dilihat pemain.
 	_scan_view.clear_preview()
@@ -3969,6 +3984,7 @@ func _refresh_localized_ui(_locale: String = "") -> void:
 	_configure_resource_chips()
 	_details_view.refresh_localized_ui()
 	_gallery_view.refresh_localized_ui()
+	_scan_view.refresh_localized_ui()
 	_refresh_header()
 	_refresh_stats()
 	_refresh_care()
