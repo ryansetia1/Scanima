@@ -20,6 +20,8 @@ const HOP_HEIGHT_PX := 10.0
 const PLAY_BOUNCE_HEIGHT_PX := 14.0
 const PLAY_BOUNCE_COUNT := 6
 const VICTORY_BOUNCE_HEIGHT_PX := 18.0
+const VICTORY_FLOURISH_HEIGHT_PX := 8.0
+const VICTORY_FLOURISH_COUNT := 2
 const TAP_HIT_PADDING_PX := 28.0
 const FX_TRAVEL_SEC := 0.36
 const OPAQUE_ALPHA_MIN := 0.12
@@ -473,7 +475,11 @@ func play_bounce() -> void:
 ## meninggalkan hasilnya. Berbeda dari play_bounce() yang dihitung enam kali,
 ## loop ini sengaja tidak menyambung _resume_pose_motion karena tidak selesai
 ## sendiri; set_pose() yang melepasnya saat session berikutnya dipasang.
-func victory_celebration() -> void:
+##
+## Lompatan itu hanya untuk Hatchling. Adult (Lv.16) dan Evolved (Lv.36) punya
+## badan yang lebih besar dan berat, jadi mereka mendapat flourish membumi: dua
+## angkatan pelan 8px yang selesai sendiri, tanpa pendaratan memantul.
+func victory_celebration(level: int = 1) -> void:
 	if sprite_frames == null:
 		return
 	if _feedback != null and _feedback.is_valid():
@@ -483,8 +489,19 @@ func victory_celebration() -> void:
 	set_pose("happy")
 	if UiMotion.reduced_motion:
 		return
-	_victory_loop = true
-	_feedback = _bounce(0, VICTORY_BOUNCE_HEIGHT_PX)
+	if CareRules.form_key(level) == "hatchling":
+		_victory_loop = true
+		_feedback = _bounce(0, VICTORY_BOUNCE_HEIGHT_PX)
+		return
+	_feedback = _bounce(
+		VICTORY_FLOURISH_COUNT,
+		VICTORY_FLOURISH_HEIGHT_PX,
+		0.34,
+		0.42,
+		0.16,
+		Tween.TRANS_SINE
+	)
+	_feedback.finished.connect(_resume_pose_motion, CONNECT_ONE_SHOT)
 
 
 ## Guard: kilau menyapu badan sekali, seperti Harden. Dipanggil pada frame pelat
@@ -519,13 +536,20 @@ func _clear_shimmer() -> void:
 		_shimmer_material.set_shader_parameter("progress", 0.0)
 
 
-func _bounce(loops: int, height: float) -> Tween:
+func _bounce(
+	loops: int,
+	height: float,
+	rise_sec := 0.16,
+	fall_sec := 0.18,
+	hold_sec := 0.08,
+	fall_trans := Tween.TRANS_BOUNCE
+) -> Tween:
 	var tween := create_tween().set_loops(loops)
-	tween.tween_property(self, "position", _base_position - Vector2(0.0, height), 0.16) \
+	tween.tween_property(self, "position", _base_position - Vector2(0.0, height), rise_sec) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(self, "position", _base_position, 0.18) \
-		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_BOUNCE)
-	tween.tween_interval(0.08)
+	tween.tween_property(self, "position", _base_position, fall_sec) \
+		.set_ease(Tween.EASE_IN).set_trans(fall_trans)
+	tween.tween_interval(hold_sec)
 	return tween
 
 

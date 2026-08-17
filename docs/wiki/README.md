@@ -28,7 +28,7 @@ membuka profil, Google, Reduced Motion, bantuan, dan hapus akun.
 | [Ekonomi](economy.md) | Genesis Cores, Bits, Shop, Scan, menunggu telur |
 | [Seeker](seeker.md) | Guest, Google, profil, onboarding, Reduced Motion, hapus akun |
 | [Anima](anima.md) | Traits, attributes, EXP, Level, Collection, Summon |
-| [Battle](battle.md) | Duel, Team Battle, Expedition The Sugarworks, Boss Seeker, perintah, PP, hadiah |
+| [Battle](battle.md) | Duel, Team Battle, Expedition The Sugarworks, Boss Seeker, perintah, PP, hadiah, kartu hasil |
 | [Gallery](gallery.md) | Publish, moderation, Report, Hide, dan privasi |
 
 ## Yang perlu diingat

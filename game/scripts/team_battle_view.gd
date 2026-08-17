@@ -97,8 +97,12 @@ const COMMIT_COLORS := {
 @onready var _result_title: Label = %TeamResultTitle
 @onready var _result_body: Label = %TeamResultBody
 @onready var _retry: Button = %TeamRetryButton
+@onready var _result_actions: HBoxContainer = %TeamResultActions
+@onready var _leave: Button = %TeamLeaveButton
 
 var _roster: Array = []
+var _result_body_base := ""
+var _retry_edits_team := false
 var _team: Dictionary = {}
 var _candidates: Array = []
 var _daily_reward: Dictionary = {}
@@ -158,7 +162,8 @@ func _ready() -> void:
 	_switch_button.pressed.connect(_open_switch_picker.bind(false))
 	_switch_cancel.pressed.connect(_close_switch_picker)
 	_forfeit.pressed.connect(forfeit_requested.emit)
-	_retry.pressed.connect(retry_requested.emit)
+	_retry.pressed.connect(_on_retry_pressed)
+	_leave.pressed.connect(back_requested.emit)
 	for slot in _switch_buttons.size():
 		_switch_buttons[slot].pressed.connect(_request_switch.bind(slot))
 	_battle_stage.resized.connect(_position_fighters)
@@ -231,9 +236,18 @@ func set_thumbnail_provider(provider: Callable) -> void:
 	_thumbnail_provider = provider
 
 
+## Roster authoritative terbaru, supaya result CTA tahu siapa yang kehabisan
+## Energy tanpa membuka builder lebih dulu.
+func set_roster(roster: Array) -> void:
+	_roster = roster.duplicate(true)
+	if _result_actions.visible and not _session.is_empty():
+		_apply_result_actions()
+
+
 func set_expedition_mode(enabled: bool) -> void:
 	_expedition_mode = enabled
 	_retry.text = tr("EXPEDITION_RETURN_MAP") if enabled else tr("TEAM_RETRY")
+	_leave.visible = _result_actions.visible and not enabled
 	_sync_header()
 	_sync_location_chrome()
 
@@ -310,6 +324,9 @@ func set_lobby(
 	_selected_candidate = ""
 	_lineup.text = _team_lineup_text(_team)
 	_reward_status.text = _daily_reward_text(_daily_reward)
+	var blocked := _team_blocked_key()
+	if not blocked.is_empty():
+		_reward_status.text += "\n" + tr(blocked)
 	_rival_list.clear()
 	for value in _candidates:
 		var candidate := GameState.as_dict(value)
@@ -341,7 +358,8 @@ func set_error(error_code: String) -> void:
 	_clear_action_commit()
 	_show_only(_loading)
 	_loading_label.text = _error_copy(error_code)
-	_retry.visible = true
+	_set_result_actions_visible(true)
+	_retry_edits_team = false
 	_back.disabled = false
 
 
@@ -494,7 +512,7 @@ func _show_only(panel: Control) -> void:
 	for child in [_loading, _builder, _lobby, _arena]:
 		(child as Control).visible = child == panel
 	_result.visible = false
-	_retry.visible = false
+	_set_result_actions_visible(false)
 	_sync_header()
 	_emit_arena_open()
 
@@ -583,7 +601,11 @@ func _update_lobby_actions() -> void:
 	_edit_button.disabled = _busy
 	_defense_button.disabled = _busy or not has_team
 	_refresh_button.disabled = _busy or not has_team
-	_start_button.disabled = _busy or _selected_candidate.is_empty()
+	_start_button.disabled = (
+		_busy
+		or _selected_candidate.is_empty()
+		or not _team_blocked_key().is_empty()
+	)
 
 
 func _start_candidate() -> void:
@@ -740,7 +762,7 @@ func _apply_session_state() -> void:
 	_opponent_slots.text = _slots_text("opponent")
 	_forfeit.visible = status == "active"
 	_result.visible = status != "active"
-	_retry.visible = status != "active"
+	_set_result_actions_visible(status != "active")
 	_back.disabled = status == "active" or _busy
 	if status == "active":
 		if _forced_switch():
@@ -755,7 +777,7 @@ func _apply_session_state() -> void:
 		_hide_switch_overlay()
 		if _is_boss_encounter() and status in ["won", "lost", "draw"]:
 			_result.visible = false
-			_retry.visible = false
+			_set_result_actions_visible(false)
 			# Presenter yang sedang menunggu tap sudah memegang urutannya; memanggil
 			# yang kedua membuat reveal Trophy menutup baris terakhir Seeker.
 			if not _boss_result_pending:
@@ -1091,27 +1113,79 @@ func _show_result(status: String) -> void:
 				"EXPEDITION_ENCOUNTER_WIN_TITLE" if _expedition_mode else "TEAM_WIN_TITLE"
 			)
 			var exp_lines := _exp_reward_lines(reward)
-			_result_body.text = _win_reward_text(reward, exp_lines)
+			_result_body_base = _win_reward_text(reward, exp_lines)
 			if not exp_lines.is_empty():
 				_result_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			_player_sprite.victory_celebration()
+			_player_sprite.victory_celebration(_active_player_level())
 		"lost":
 			_result_title.text = tr(
 				"EXPEDITION_WIPE_TITLE" if _expedition_mode else "TEAM_LOSS_TITLE"
 			)
-			_result_body.text = tr(
+			_result_body_base = tr(
 				"EXPEDITION_WIPE_BODY" if _expedition_mode else "TEAM_LOSS_BODY"
 			)
 		"draw":
 			_result_title.text = tr(
 				"EXPEDITION_WIPE_TITLE" if _expedition_mode else "TEAM_DRAW_TITLE"
 			)
-			_result_body.text = tr(
+			_result_body_base = tr(
 				"EXPEDITION_WIPE_BODY" if _expedition_mode else "TEAM_DRAW_BODY"
 			)
 		_:
 			_result_title.text = tr("BATTLE_FORFEIT_TITLE")
-			_result_body.text = tr("BATTLE_FORFEIT_BODY")
+			_result_body_base = tr("BATTLE_FORFEIT_BODY")
+	_apply_result_actions()
+
+
+## Rematch butuh empat anggota yang masih bisa bertarung. Kalau tidak, CTA-nya
+## menjadi Edit Team plus alasannya. Expedition keluar lewat Return to Map.
+func _apply_result_actions() -> void:
+	var blocked := "" if _expedition_mode else _team_blocked_key()
+	_retry_edits_team = not blocked.is_empty()
+	if _retry_edits_team:
+		# Chip pendek: CTA-nya sudah bilang Edit Team, dan panel result tumbuh ke
+		# atas menutupi arena kalau alasannya ditulis sebagai kalimat penuh.
+		var reason := tr("BATTLE_RESULT_BLOCKED") % tr(_team_member_status_key(blocked))
+		_result_body.text = _result_body_base + "\n" + reason
+		_retry.text = tr("TEAM_EDIT")
+		return
+	_result_body.text = _result_body_base
+	if not _expedition_mode:
+		_retry.text = tr("TEAM_RETRY")
+
+
+func _set_result_actions_visible(shown: bool) -> void:
+	_result_actions.visible = shown
+	_retry.visible = shown
+	_leave.visible = shown and not _expedition_mode
+
+
+func _on_retry_pressed() -> void:
+	if _retry_edits_team:
+		_edit_team()
+		return
+	retry_requested.emit()
+
+
+func _active_player_level() -> int:
+	return int(_active_member("player").get("level", 1))
+
+
+## Fail open: roster yang belum ter-refresh tidak boleh mengunci tombol, sebab
+## server tetap pagar terakhirnya.
+func _team_blocked_key() -> String:
+	if _roster.is_empty():
+		return ""
+	for anima_id in _team_member_ids(_team):
+		for value in _roster:
+			var row := GameState.as_dict(value)
+			if str(row.get("id", "")) != anima_id:
+				continue
+			var unavailable := _team_member_unavailable(row)
+			if not unavailable.is_empty():
+				return unavailable
+			break
+	return ""
 
 
 func _slots_text(side: String) -> String:
@@ -2103,7 +2177,7 @@ func _present_boss_result(status: String) -> void:
 		await _speak_seeker("defeat", "victory", false, false)
 	_show_result(status)
 	_result.visible = true
-	_retry.visible = true
+	_set_result_actions_visible(true)
 	_boss_result_pending = false
 	_boss_result_settled.emit()
 

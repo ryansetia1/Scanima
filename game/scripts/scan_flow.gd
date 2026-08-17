@@ -177,6 +177,7 @@ func _ready() -> void:
 	_battle_view.action_requested.connect(_battle_action_requested)
 	_battle_view.item_picker_requested.connect(_open_battle_item_picker)
 	_battle_view.resume_requested.connect(_retry_battle)
+	_battle_view.exit_requested.connect(_leave_battle)
 	_battle_view.forfeit_requested.connect(_confirm_retreat.bind("duel"))
 	_battle_view.reward_status_refresh_requested.connect(_refresh_battle_reward_status)
 	_team_battle_view.back_requested.connect(_close_team_battle_mode)
@@ -345,12 +346,16 @@ func _ready() -> void:
 			_run_battle_demo("forfeited")
 		if arg == "--battle-win-demo":
 			_run_battle_demo("won")
+		if arg == "--battle-blocked-demo":
+			_run_battle_blocked_demo()
 		if arg == "--battle-training-active-demo":
 			_run_battle_demo("active", true)
 		if arg == "--battle-training-demo":
 			_run_battle_training_demo()
 		if arg == "--team-battle-demo":
 			_run_team_battle_demo()
+		if arg == "--team-result-demo":
+			_run_team_result_demo()
 		if arg == "--boss-ace-demo":
 			await _run_boss_ace_demo()
 		if arg == "--boss-scale-demo":
@@ -499,6 +504,7 @@ func _reload_roster() -> bool:
 	_roster = ready
 	if is_instance_valid(_expedition_controller):
 		_expedition_controller.set_roster(_roster)
+	_team_battle_view.set_roster(_roster)
 	_roster_error = ""
 	_populate_collection()
 	GameState.remember_boot_cache({"roster": _roster, "profile": GameState.profile})
@@ -1710,6 +1716,15 @@ func _retry_battle() -> void:
 		await _start_battle()
 	else:
 		await _resume_battle()
+
+
+## Result terminal butuh jalan keluar eksplisit. Tanpa ini session mati tetap
+## terpasang di arena dan tap berikutnya mengirim turn yang sudah lewat.
+func _leave_battle() -> void:
+	if _busy:
+		return
+	_battle_view.set_lobby(_current_anima)
+	_refresh_battle_reward_status()
 
 
 func _battle_action_requested(action: String) -> void:
@@ -3159,6 +3174,8 @@ func _refresh_stats() -> void:
 	_home_view.set_anima(_current_anima, _busy)
 	if _battle_view.session_data().is_empty():
 		_battle_view.set_lobby(_current_anima)
+	else:
+		_battle_view.set_companion(_current_anima)
 	_first_anima_effect.set_active(_home_view.shell_state() == &"empty")
 	_bottom_nav.set_busy(_busy, _details_available())
 
@@ -3182,6 +3199,8 @@ func _refresh_care() -> void:
 	_home_view.update_care(_current_anima, _busy)
 	if _battle_view.session_data().is_empty():
 		_battle_view.set_lobby(_current_anima)
+	else:
+		_battle_view.set_companion(_current_anima)
 	if _profile_anima.is_empty():
 		_details_view.set_anima(_current_anima, _thumbnail_for(_current_anima))
 	if _anima.sprite_frames != null:
@@ -3926,6 +3945,14 @@ func _handle_back(allow_quit: bool) -> bool:
 		and _team_battle_view.handle_back()
 	):
 		return true
+	if (
+		_destination == BottomNav.BATTLE
+		and not _battle_view.is_team_mode()
+		and not _battle_view.is_expedition_mode()
+		and _battle_view.can_leave_result()
+	):
+		_leave_battle()
+		return true
 	if _collection_view.is_sheet_open():
 		_collection_view.close_sheet()
 		return true
@@ -4282,6 +4309,46 @@ func _run_battle_demo(
 	_sync_shop_chrome()
 	if not is_zero_approx(effectiveness):
 		_battle_view.call("_show_effectiveness", effectiveness)
+
+
+## Visual gate untuk CTA result yang terpagari Energy: menang, lalu companion-nya
+## kehabisan Energy, jadi Choose Anima plus alasannya bisa diperiksa gratis.
+func _run_battle_blocked_demo() -> void:
+	_run_battle_demo("won")
+	var drained := _current_anima.duplicate(true)
+	drained["care"] = {"hunger": 70.0, "energy": 8.0, "hygiene": 70.0}
+	_battle_view.set_companion(drained)
+
+
+## Visual gate untuk result Team: dua tombol dalam satu baris, lalu anggota yang
+## kehabisan Energy menukar Try Again menjadi Edit Team.
+func _run_team_result_demo() -> void:
+	var demo := _run_team_battle_demo()
+	var roster: Array[Dictionary] = []
+	var members: Array[Dictionary] = []
+	var player_roster := GameState.as_dict(
+		GameState.as_dict(demo["session"].get("state")).get("player")
+	).get("roster") as Array
+	for slot in player_roster.size():
+		var fighter := GameState.as_dict(player_roster[slot])
+		var anima_id := str(fighter.get("anima_id", ""))
+		members.append({"slot": slot, "anima_id": anima_id})
+		roster.append({
+			"id": anima_id,
+			"nickname": str(fighter.get("name", "")),
+			"status": "ready",
+			"care": {"hunger": 70.0, "energy": 4.0 if slot == 1 else 60.0, "hygiene": 70.0},
+		})
+	_team_battle_view.set_lobby({"id": "team-demo-team", "members": members}, {}, [], false)
+	var session: Dictionary = demo["session"]
+	session["status"] = "won"
+	session["state"]["status"] = "won"
+	session["last_reward"] = {
+		"bits": 8,
+		"anima_exp": [{"anima_id": members[0].get("anima_id"), "exp": 3}],
+	}
+	_team_battle_view.set_session(session, demo["art"])
+	_team_battle_view.set_roster(roster)
 
 
 func _run_team_battle_demo(boss: bool = false) -> Dictionary:

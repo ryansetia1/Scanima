@@ -80,11 +80,12 @@ func _initialize() -> void:
 		"CollectionSummonButton", "BattlePickProfileButton", "BattlePickBattleButton",
 		"BattleStartButton", "BattleTeamButton", "BattleExpeditionButton", "BattleStrikeButton",
 		"BattleSurgeButton", "BattleGuardButton", "BattleItemButton", "BattleForfeitButton", "BattleRetryButton",
+		"BattleLeaveButton",
 		"TeamBackButton", "TeamSaveButton", "TeamEditButton", "TeamDefenseButton",
 		"TeamRefreshButton", "TeamStartButton", "TeamAttackButton", "TeamSpecialButton",
 		"TeamGuardButton", "TeamItemButton", "TeamSwitchButton", "TeamForfeitButton",
 		"TeamSwitchSlot0", "TeamSwitchSlot1", "TeamSwitchSlot2", "TeamSwitchSlot3",
-		"TeamRetryButton",
+		"TeamRetryButton", "TeamLeaveButton",
 		"ExpeditionChoiceAbandon",
 		"SeekerMenuButton", "OnboardingSubmit", "SeekerProfileBack", "RenameSeeker",
 		"ChapterPush",
@@ -1835,8 +1836,8 @@ func _test_battle_view() -> void:
 		"menang Battle memakai pose Happy"
 	)
 	_check(
-		battle_source.find("_player_sprite.victory_celebration()") >= 0,
-		"Duel win hands the player sprite the looping victory hop"
+		battle_source.find("_player_sprite.victory_celebration(_companion_level())") >= 0,
+		"Duel win hands the player sprite a celebration sized to its evolution stage"
 	)
 	var victory_hop := player_sprite.get("_feedback") as Tween
 	_check(
@@ -1854,12 +1855,61 @@ func _test_battle_view() -> void:
 		and result_body.text == tr("BATTLE_WIN_BODY") % ["8", "Velumi", "4"],
 		"rewarded Duel names the Anima that received EXP"
 	)
+	var leave := view.find_child("BattleLeaveButton", true, false) as Button
+	var exits := [0]
+	view.exit_requested.connect(func() -> void: exits[0] += 1)
+	_check(
+		leave != null and leave.visible
+		and tr(leave.text) == tr("BATTLE_RETURN_LOBBY")
+		and view.can_leave_result(),
+		"terminal Duel offers an explicit way out of its result"
+	)
+	leave.pressed.emit()
+	_check(exits[0] == 1, "Duel leave button asks the shell to close the session")
+	_check(
+		retry.text == tr("BATTLE_AGAIN") and result_body.text.find("\n") < 0,
+		"a rested companion keeps the plain rematch CTA"
+	)
+	var spent: Dictionary = anima.duplicate(true)
+	spent["care"]["energy"] = CareRules.BATTLE_ENERGY_COST - 1.0
+	view.set_companion(spent)
+	var low_energy_line := tr("BATTLE_RESULT_BLOCKED") % tr("BATTLE_PICK_LOW_ENERGY")
+	_check(
+		retry.text == tr("BATTLE_CHOOSE_ANIMA")
+		and result_body.text == tr("BATTLE_WIN_BODY") % ["8", "Velumi", "4"]
+			+ "\n" + low_energy_line
+		and low_energy_line.length() < 40,
+		"a drained companion swaps the rematch CTA for Choose Anima plus one short reason"
+	)
+	var picks := [0]
+	var resumes_before: int = resume_requests[0]
+	view.choose_anima_requested.connect(func() -> void: picks[0] += 1)
+	retry.pressed.emit()
+	_check(
+		picks[0] == 1 and resume_requests[0] == resumes_before,
+		"the blocked CTA opens the picker instead of a rematch the server would refuse"
+	)
+	view.set_companion(anima)
+	_check(
+		retry.text == tr("BATTLE_AGAIN"),
+		"feeding the companion restores the rematch CTA without leaving the result"
+	)
+	retry.pressed.emit()
+	_check(
+		picks[0] == 1 and resume_requests[0] == resumes_before + 1,
+		"an eligible CTA still starts a rematch"
+	)
+
 	var ready_again: Dictionary = anima.duplicate(true)
 	ready_again.erase("dormant_since")
 	view.set_lobby(ready_again)
 	_check(
 		start.text == tr("BATTLE_TRAIN"),
 		"returning after the third reward immediately offers Training"
+	)
+	_check(
+		not view.can_leave_result(),
+		"the lobby has nothing to leave, so Android back stays with the shell"
 	)
 	view.set_session(won, loaded, loaded)
 	_check_eq(arena.size.y, active_arena_height, "result overlay must not resize the arena")
@@ -2448,7 +2498,55 @@ func _test_team_battle_view() -> void:
 		"6" in result_body.text and result_body.text.contains("Team 1"),
 		"resumed Team win restores its per-Anima EXP receipt"
 	)
+	var team_retry := view.find_child("TeamRetryButton", true, false) as Button
+	var team_leave := view.find_child("TeamLeaveButton", true, false) as Button
+	var team_builder := view.find_child("TeamBuilder", true, false) as VBoxContainer
+	var team_exits := [0]
+	var team_retries := [0]
+	view.back_requested.connect(func() -> void: team_exits[0] += 1)
+	view.retry_requested.connect(func() -> void: team_retries[0] += 1)
+	_check(
+		team_leave != null and team_leave.visible
+		and tr(team_leave.text) == tr("BATTLE_RETURN_LOBBY")
+		and team_retry.text == tr("TEAM_RETRY"),
+		"terminal Team result offers both a rematch and a way out"
+	)
+	team_leave.pressed.emit()
+	_check(team_exits[0] == 1, "Team leave button closes the mode")
+	team_retry.pressed.emit()
+	_check(team_retries[0] == 1, "a rested team keeps the plain rematch CTA")
+	var drained: Array[Dictionary] = roster.duplicate(true)
+	drained[1]["care"]["energy"] = 5.0
+	view.set_roster(drained)
+	var team_blocked_line := tr("BATTLE_RESULT_BLOCKED") % tr("BATTLE_PICK_LOW_ENERGY")
+	_check(
+		team_retry.text == tr("TEAM_EDIT")
+		and result_body.text.ends_with(team_blocked_line),
+		"a drained member swaps the Team rematch CTA for Edit Team plus the reason"
+	)
+	team_retry.pressed.emit()
+	_check(
+		team_retries[0] == 1 and team_builder.visible and not result.visible,
+		"the blocked Team CTA opens the builder instead of a rematch"
+	)
+	view.set_session(session, art_cache)
+	view.set_roster(roster)
+	_check(
+		team_retry.text == tr("TEAM_RETRY")
+		and not result_body.text.ends_with(team_blocked_line),
+		"swapping the drained member back restores the Team rematch CTA"
+	)
 	view.set_expedition_mode(true)
+	_check(
+		not team_leave.visible and team_retry.text == tr("EXPEDITION_RETURN_MAP"),
+		"Expedition already leaves through Return to Map, so it grows no second exit"
+	)
+	view.set_roster(drained)
+	_check(
+		team_retry.text == tr("EXPEDITION_RETURN_MAP"),
+		"Expedition never rewrites Return to Map into a Team builder CTA"
+	)
+	view.set_roster(roster)
 	session["last_reward"] = {
 		"supplies": 4,
 		"anima_exp": [{"anima_id": members[0].anima_id, "exp": 2}],

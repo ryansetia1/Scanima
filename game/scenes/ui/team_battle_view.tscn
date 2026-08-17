@@ -743,10 +743,28 @@ text = "TEAM_WIN_BODY"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="TeamRetryButton" type="Button" parent="Column" unique_id=1423113171]
+[node name="TeamResultActions" type="HBoxContainer" parent="Column" unique_id=751945528]
 unique_name_in_owner = true
 visible = false
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TeamLeaveButton" type="Button" parent="Column/TeamResultActions" unique_id=85100780]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(148, 96)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.8, 0.92, 0.88)
+theme_override_colors/font_focus_color = Color(0.88, 0.94, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.82, 0.4, 1)
+theme_override_colors/font_hover_color = Color(0.88, 0.94, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "BATTLE_RETURN_LOBBY"
+flat = true
+
+[node name="TeamRetryButton" type="Button" parent="Column/TeamResultActions" unique_id=1423113171]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"PrimaryButton"
 text = "TEAM_FIND_RIVALS"

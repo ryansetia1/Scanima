@@ -266,6 +266,33 @@ Item / Switch. Shop dan Bag hanya ada di Home, jadi arena tetap bersih. Beli ite
 **Shop** sebelum memulai Duel, Team Battle, atau Expedition — tombol Shop
 redup selama battle atau run masih berjalan.
 
+## Sesudah battle selesai
+
+Kartu hasil punya dua tombol. Yang besar mengulang battle-nya (**Battle Again**
+di Duel, **Train Again** setelah 3/3, **Try Again** di Team Battle). Yang di
+sebelahnya, **Return to Lobby**, keluar dari battle itu: Duel kembali ke lobby
+Battle, Team Battle kembali ke hub-nya. Tombol Android back melakukan hal yang
+sama. Di Expedition tidak ada tombol kedua, karena **Return to Map** sudah jalan
+keluarnya.
+
+Kalau Anima yang baru bertarung tidak bisa langsung bertarung lagi, tombol besar
+itu berubah, bukan diam-diam ditolak:
+
+- **Duel** — tombolnya jadi **Choose Anima** dan kartu hasil menambah satu baris
+  alasan (misalnya *Cannot battle again · Low Energy*). Tap membuka daftar Anima
+  seperti biasa. Feed, Clean, atau Sleep dulu, lalu kembali; begitu Anima-mu
+  memenuhi syarat, tombolnya kembali jadi **Battle Again** sendiri.
+- **Team Battle** — tombolnya jadi **Edit Team** dengan alasan yang sama. Tap
+  membuka builder supaya kamu bisa menukar anggota yang kehabisan Energy. Selama
+  ada anggota yang belum siap, tombol **Start** di lobby Team juga tetap redup dan
+  menjelaskan alasannya.
+
+Setelah menang, Anima-mu berpose senang. Anima yang belum berevolusi
+(Level 1–15) melompat-lompat selama layar hasil masih terbuka. Mulai **Level 16**
+badannya lebih besar dan lebih berat, jadi ia mengangkat badan dua kali dengan
+tenang lalu kembali diam, bukan melompat. Kalau **Reduced Motion** menyala,
+keduanya cukup berpose senang tanpa bergerak.
+
 ## Empat perintah
 
 | Tombol | Yang terjadi |
@@ -351,6 +378,5 @@ label diam sekitar 1,4 detik sebelum aksi atau pelat hilang.
 
 Guard punya penandanya sendiri: begitu pelatnya muncul, badan Anima yang bertahan
 disapu kilau sekali, jadi kamu bisa melihat siapa yang mengeras tanpa membaca
-teksnya. Dan setelah kamu menang, Anima-mu berpose senang lalu melompat-lompat
-selama layar hasil masih terbuka. Kalau **Reduced Motion** menyala, kilaunya
-tinggal nyala singkat dan Anima berpose senang tanpa melompat.
+teksnya. Kalau **Reduced Motion** menyala, kilaunya tinggal nyala singkat.
+Perayaan kemenangan dijelaskan di [Sesudah battle selesai](#sesudah-battle-selesai).

@@ -346,6 +346,32 @@ func _test_presenter() -> void:
 		"loop kemenangan yang dilepas harus mengembalikan kaki ke anchor"
 	)
 
+	# Hop tanpa akhir hanya cocok untuk badan Hatchling. Adult dan Evolved
+	# mendapat flourish membumi yang selesai sendiri.
+	presenter.victory_celebration(CareRules.ADULT_LEVEL)
+	_check_eq(presenter.current_pose(), "happy", "Adult tetap memakai pose Happy saat menang")
+	var flourish := presenter.get("_feedback") as Tween
+	_check(
+		flourish != null and flourish.get_loops_left() == AnimaPresenter.VICTORY_FLOURISH_COUNT,
+		"Adult harus mendapat flourish yang selesai sendiri, bukan lompatan tanpa akhir"
+	)
+	_check(
+		not bool(presenter.get("_victory_loop")),
+		"flourish yang selesai sendiri tidak butuh kill guard loop kemenangan"
+	)
+	presenter.victory_celebration(CareRules.EVOLVED_LEVEL)
+	_check(
+		(presenter.get("_feedback") as Tween).get_loops_left()
+			== AnimaPresenter.VICTORY_FLOURISH_COUNT,
+		"Evolved memakai flourish yang sama dengan Adult"
+	)
+	presenter.victory_celebration(CareRules.ADULT_LEVEL - 1)
+	_check(
+		(presenter.get("_feedback") as Tween).get_loops_left() == -1,
+		"Level tepat di bawah Adult masih melompat terus"
+	)
+	presenter.set_pose("idle")
+
 	presenter.guard_shimmer()
 	var shimmer := presenter.material as ShaderMaterial
 	_check(

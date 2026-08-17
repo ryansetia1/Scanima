@@ -27,6 +27,7 @@ signal item_picker_requested
 signal resume_requested
 signal forfeit_requested
 signal reward_status_refresh_requested
+signal exit_requested
 
 @onready var _header: Control = %Header
 @onready var _duel_column: VBoxContainer = %Column
@@ -70,9 +71,12 @@ signal reward_status_refresh_requested
 @onready var _result_title: Label = %BattleResultTitle
 @onready var _result_body: Label = %BattleResultBody
 @onready var _retry_button: Button = %BattleRetryButton
+@onready var _leave_button: Button = %BattleLeaveButton
 @onready var _reward_reset_timer: Timer = %BattleRewardResetTimer
 
 var _lobby_row: Dictionary = {}
+var _result_body_base := ""
+var _retry_picks_anima := false
 var _lobby_daily_reward: Dictionary = {}
 var _session: Dictionary = {}
 var _busy := false
@@ -99,7 +103,8 @@ func _ready() -> void:
 	_guard_button.pressed.connect(_request_action.bind("guard"))
 	_item_button.pressed.connect(_request_item)
 	_forfeit_button.pressed.connect(forfeit_requested.emit)
-	_retry_button.pressed.connect(resume_requested.emit)
+	_retry_button.pressed.connect(_on_retry_pressed)
+	_leave_button.pressed.connect(exit_requested.emit)
 	_arena.resized.connect(_position_fighters)
 	_reward_reset_timer.timeout.connect(reward_status_refresh_requested.emit)
 	_feedback.visible = false
@@ -213,6 +218,21 @@ func set_lobby(row: Dictionary) -> void:
 	_result_panel.visible = false
 	_start_button.visible = true
 	_refresh_pending_entries()
+
+
+## Result CTA harus membaca Energy sesudah battle, bukan row lobby sebelum start.
+func set_companion(row: Dictionary) -> void:
+	_lobby_row = row.duplicate(true)
+	if not can_leave_result():
+		return
+	_apply_result_actions(_is_training(_as_dict(_session.get("daily_reward"))))
+
+
+func can_leave_result() -> bool:
+	return (
+		not _session.is_empty()
+		and str(_session.get("status", "active")) != "active"
+	)
 
 
 func set_daily_reward(daily_reward: Dictionary) -> void:
@@ -384,6 +404,13 @@ func _on_start_pressed() -> void:
 	choose_anima_requested.emit()
 
 
+func _on_retry_pressed() -> void:
+	if _retry_picks_anima:
+		choose_anima_requested.emit()
+		return
+	resume_requested.emit()
+
+
 func _request_item() -> void:
 	if _busy:
 		return
@@ -479,6 +506,7 @@ func set_error(error_code: String) -> void:
 	_result_body.text = _error_copy(error_code)
 	_retry_button.visible = true
 	_retry_button.text = tr("ACTION_RETRY")
+	_retry_picks_anima = false
 	_actions.visible = false
 	_forfeit_button.visible = false
 	_update_action_state()
@@ -818,15 +846,41 @@ func _show_result(status: String) -> void:
 			_result_title.text = tr(
 				"BATTLE_TRAINING_TITLE" if training else "BATTLE_WIN_TITLE"
 			)
-			_result_body.text = _win_body(reward)
-			_player_sprite.victory_celebration()
+			_result_body_base = _win_body(reward)
+			_player_sprite.victory_celebration(_companion_level())
 		"lost":
 			_result_title.text = tr("BATTLE_LOSS_TITLE")
-			_result_body.text = tr("BATTLE_LOSS_BODY")
+			_result_body_base = tr("BATTLE_LOSS_BODY")
 		_:
 			_result_title.text = tr("BATTLE_FORFEIT_TITLE")
-			_result_body.text = tr("BATTLE_FORFEIT_BODY")
+			_result_body_base = tr("BATTLE_FORFEIT_BODY")
+	_apply_result_actions(training)
+
+
+## Anima yang Energy-nya habis tidak bisa rematch, jadi CTA-nya menjadi Choose
+## Anima plus alasannya — bukan tombol yang baru saja ditolak server.
+func _apply_result_actions(training: bool) -> void:
+	var blocked := _lobby_unavailable_key()
+	_retry_picks_anima = not blocked.is_empty()
+	if _retry_picks_anima:
+		# Chip pendek, bukan kalimat penuh: CTA-nya sudah bilang Choose Anima, dan
+		# panel result tumbuh ke atas menutupi arena kalau alasannya empat baris.
+		var reason := tr("BATTLE_RESULT_BLOCKED") % tr(
+			CareRules.battle_pick_reason_key(blocked)
+		)
+		_result_body.text = _result_body_base + "\n" + reason
+		_retry_button.text = tr("BATTLE_CHOOSE_ANIMA")
+		return
+	_result_body.text = _result_body_base
 	_retry_button.text = tr("BATTLE_TRAIN_AGAIN" if training else "BATTLE_AGAIN")
+
+
+func _companion_level() -> int:
+	var player := _as_dict(_as_dict(_session.get("state")).get("player"))
+	var level := int(player.get("level", 0))
+	if level > 0:
+		return level
+	return CareRules.level_from_exp(int(_lobby_row.get("care_score", 0)))
 
 
 func _win_body(reward: Dictionary) -> String:
