@@ -288,9 +288,8 @@ yang lebih mahal sebagai preflight; transaksi server tetap pagar akhirnya.
 
 ## 4. Evo-tree
 
-Tiga form copy; **backend evolusi art** (`evolve_anima`, prompt v21, tabel
-`anima_forms`) sudah live, tetapi pengalaman pemain tetap off
-(`feature_evolution=false`, `evolution_version=0`).
+Tiga form copy; **evolusi art live** (`evolve_anima`, prompt v29,
+`feature_evolution=true`, `evolution_version` default 1).
 Arsip form di `anima_forms(stage=N)` menyimpan sheet dan generation yang **asli**
 membuat stage N, Evolution Plan pembentuknya untuk Adult/Evolved, serta crop Idle
 privat yang menjadi reference form berikutnya. Plan aktif tetap di generation
@@ -309,16 +308,17 @@ graph LR
 | Form | Syarat | Efek stat |
 | --- | --- | --- |
 | Hatchling | — | `1 + 0.02 * (level - 1)` |
-| Adult | Level ≥ 16 (150 EXP) | multiplier +0.15 **legacy**; committed Adult **×1.06** when `evolution_version ≥ 1` (rules v3, **NOT LIVE**) |
-| Evolved | Level ≥ 36 (700 EXP) | multiplier +0.20 lagi **legacy**; committed Evolved **×1.18** when `evolution_version ≥ 1` (rules v3, **NOT LIVE**) |
+| Adult | Level ≥ 16 (150 EXP) **lalu ritual Evolve** | committed Adult **×1.06** when `evolution_version ≥ 1` (rules v3) |
+| Evolved | Level ≥ 36 (700 EXP) **lalu ritual Evolve** | committed Evolved **×1.18** when `evolution_version ≥ 1` (rules v3) |
 
-Row production tetap pada jalur legacy sampai aktivasi. Client kandidat menyimpan
+Row production memakai jalur committed form. Client menyimpan
 cache `v6_<anima_id>_<stage>` dan hanya memakai stage 2/3 sesudah commit art.
-Stats Battle memakai `growthMultiplier(level)` dengan `evolution_version=0`
-(live) atau committed form multiplier + move effects saat `feature_evolution`
-live (`RULES_VERSION = 3`).
+Stats Battle memakai committed form multiplier + move effects saat
+`evolution_version ≥ 1` (`RULES_VERSION = 3`). Sheet Adult/Evolved yang sudah
+disetujui operator untuk Anima tertentu hidup di `anima_evolution_locks` dan
+melewati Replicate.
 
-### Move effects (rules v3, NOT LIVE)
+### Move effects (rules v3, live)
 
 Katalog kanonis: `backend/supabase/functions/_shared/move_effects.mjs`. Satu efek per move (`strike_effect_id` / `surge_effect_id`); aktivasi deterministik saat move mengenai; refresh, tidak stack; tidak ada proc chance.
 
@@ -333,7 +333,7 @@ Katalog kanonis: `backend/supabase/functions/_shared/move_effects.mjs`. Satu efe
 | slow | ✓ | ✓ | −20% SPD, 3 turn | −30%, 3 turn |
 | armor_break | ✓ | ✓ | −20% DEF, 3 turn | −30%, 3 turn |
 
-Event log menambah `move_effect`, `status_tick`, `status_expired` (side/target/effect_id/amount/remaining_turns/target_hp). Sesi `rules_version < 3` replay byte-identik tanpa efek. Snapshot `evolution_version=0` memakai growth legacy meski rules v3 sudah deploy — aman selama `feature_evolution=false`.
+Event log menambah `move_effect`, `status_tick`, `status_expired` (side/target/effect_id/amount/remaining_turns/target_hp). Sesi `rules_version < 3` replay byte-identik tanpa efek. Snapshot `evolution_version=0` memakai growth legacy.
 
 Cabang Guardian/Ravager tetap future improvement. Evolusi linear tidak mendebit
 Core; operator membayar satu Vision Plan + satu generation per ritual. Form,

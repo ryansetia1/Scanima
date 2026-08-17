@@ -619,7 +619,7 @@ sudah dimiliki harness.
 
 ### Payload evolusi
 
-Evolution v21 tidak memakai foto asli maupun full sheet. Edge Function memotong
+Evolution v21/v22 tidak memakai foto asli maupun full sheet. Edge Function memotong
 region Idle dari sheet privat yang committed, meratakannya ke `#00FF00`,
 menyimpan derivative itu secara privat, lalu memberi signed URL yang sama ke
 Vision Evolution Director dan image model. Ini mencegah pose/VFX sel lain
@@ -628,7 +628,7 @@ terbaca sebagai bagian tubuh sambil mempertahankan lineage.
 ```jsonc
 {
   "input": {
-    "prompt": "<sprite_sheet_evolve v21 + Evolution Plan tervalidasi>",
+    "prompt": "<sprite_sheet_evolve versi aktif + Evolution Plan tervalidasi>",
     "input_images": ["https://.../anima_sheets/<owner>/<anima>/evolution_refs/<generation>.png"],
     "aspect_ratio": "1024x1024", "quality": "medium",
     "number_of_images": 1, "background": "opaque", "output_format": "png"
@@ -641,8 +641,40 @@ Adult bridge atau Evolved culmination, tinggi dalam band stage, dua nama
 move/VFX, dan dua effect ID dari allowlist. Image model boleh mengubah body plan
 secara besar, tetapi ketiga anchor itu wajib bertahan di tujuh sel karakter.
 Validator—bukan model—menentukan legalitas effect, successor Evolved, band
-tinggi, dan format nama. Bundle prompt/model sudah live di backend tetapi tetap
-gated oleh `feature_evolution=false`, jadi belum dipakai pemain.
+tinggi, dan format nama. Bundle prompt/model v29 live; `feature_evolution=true`.
+
+Eval berbayar pertama membuktikan kontrak v21 terlalu konservatif: teknis 9/9
+sel, tetapi siluet Adult tetap sama dengan Hatchling. V22 menggantinya dengan
+structured transformed anchors, archetype, dan Silhouette Delta Contract. Eval
+Adult Monstera v22 kembali lulus 9/9 sel, kali ini mengubah form upright 0,838
+aspect menjadi crawler 1,445 aspect yang terbaca jelas di Godot. V22 masih
+kandidat lokal. Operator menerima Adult; Evolved `unfolding` pertama juga
+distinct tetapi technical reject karena luminous foreground green meninggalkan
+3,2287% cincin alpha bright-chroma sekaligus kehilangan identity read dua mata.
+V23 menambah Identity Invariants; eval berikutnya mempertahankan dua mata,
+senyum, daun, dan siluet distinct, tetapi ditolak karena wajah/tubuh belum
+terasa matang/megah sebagai payoff Lv36 serta 1,5519% alpha-edge masih
+bright-chroma. Root cause teknisnya ada di Vision Plan yang meminta
+`shimmering green toxin`, bukan hanya kepatuhan template gambar.
+
+Desain v24 menambah maturation path serta Structured Maturity + Apex Presence
+Contract dan memindahkan larangan green aura/VFX ke Plan yang dapat divalidasi.
+V24 sudah diimplementasikan dan test gratis lulus. Adult/Evolved lebih matang
+dan kuat, tetapi visual clarity ditolak: detail terakumulasi, wajah Evolved
+masih terlalu dekat dengan Adult, dan tiga fragmen aura Idle melanggar seam.
+
+V25 mengganti detail-as-presence dengan Structured Shape Budget:
+2–3 primary shapes, satu dominant read, anatomy-agnostic focal maturity,
+simplification actions, maksimal satu detail zone Adult, dan detail Evolved
+tidak boleh melebihi Adult. `Primary` berarti prioritas baca, bukan ukuran
+tubuh. Vision bebas memilih body archetype melalui open `apex_thesis` dan tepat
+dua presence channels generik; Evolved boleh 0,75×–1,50× tinggi Adult dengan
+alasan konkret. Aura/glow dihapus dari seluruh character cells; power
+supernatural hanya hidup di `fx_strike`/`fx_surge`. Schema, prompt, validator,
+runtime prior-plan handoff, bundle, dan selftest gratis v25 sudah tersedia
+lokal. Belum ada eval gambar atau promosi; production tetap v21/flag off. Detail serta prediction
+provenance ada di
+[13 — Evolution Silhouette Language](13-evolution-silhouette-design.md).
 
 ## 6. Kegagalan yang sudah diketahui dan penanganannya
 
@@ -750,11 +782,49 @@ backend/prompts/
 │   ├── sprite_sheet.md    # identik byte-for-byte dengan v19
 │   ├── sprite_sheet_fauna.md
 │   └── sprite_sheet_evolve.md
-└── v21/                   <- evolution-only (backend live, player gate off; capture identik v20)
+├── v21/                   <- rollback evolution live; terlalu konservatif
+│   ├── vision_evolve_system.md
+│   ├── vision_evolve_schema.json
+│   └── sprite_sheet*.md   # capture/fauna identik v20
+├── v22/                   <- predecessor silhouette-first
+│   ├── vision_evolve_system.md
+│   ├── vision_evolve_schema.json
+│   └── sprite_sheet*.md   # capture/fauna identik v20; evolve body-plan delta
+├── v23/                   <- predecessor: soul pass, apex/technical reject
     ├── vision_evolve_system.md
     ├── vision_evolve_schema.json
-    └── sprite_sheet*.md   # capture/fauna identik v20; evolve + brief Adult/Evolved
+    └── sprite_sheet*.md   # v22 + Identity Invariants + green safety
+├── v24/                   <- predecessor: maturity pass, clarity/technical reject
+    ├── vision_evolve_system.md
+    ├── vision_evolve_schema.json
+    └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
+└── v25/                   <- predecessor: clarity pass, mobility reject
+    ├── vision_evolve_system.md
+    ├── vision_evolve_schema.json
+    └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
+└── v26/                   <- predecessor: mobility pass
+    ├── vision_evolve_system.md
+    ├── vision_evolve_schema.json
+    └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
+└── v27/                   <- predecessor: face-age craniofacial contract
+    ├── vision_evolve_system.md
+    ├── vision_evolve_schema.json
+    └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
+└── v28/                   <- predecessor: silhouette break vs Adult walker
+    ├── vision_evolve_system.md
+    ├── vision_evolve_schema.json
+    └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
+└── v29/                   <- candidate: kind lock + contour delta
+    ├── vision_evolve_system.md
+    ├── vision_evolve_schema.json
+    └── sprite_sheet_evolve.md # capture v20 diwarisi saat bundling
 ```
+
+V29 adalah v28 minus exile gait kaki, plus kind lock. Evolved boleh tetap
+walker jika outline 96 px baru dan kategori subjek (anjing, galon, tank,
+gedung) tidak berganti ular/worm. Adult Sunhound v28 dan Adult Veridian v26
+tetap terkunci; Evolved diiterasi dari Idle itu. Kualitas visual Evolved
+belum boleh diklaim.
 
 Eval Vision-only v20 pada 17 Agustus 2026 menolak karakter franchise sebagai
 `known_character`, menerima ilustrasi naga public-domain sebagai Fauna, dan

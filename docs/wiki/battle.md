@@ -377,6 +377,10 @@ Item Battle dibeli di Shop. Picker hanya menampilkan tujuh item tempur (bukan ma
 
 Special terasa “tembus” karena memotong Defense, bukan karena angka Special di profil selalu lebih besar.
 
+Sesudah **Evolve**, Attack dan Special bisa mendapat efek tambahan — misalnya
+menusuk armor, menembus Guard, meracuni, atau memasang barrier. Efek itu milik
+jurus Anima itu, tampil di pelat event, dan tidak menumpuk.
+
 Siapa yang gerak dulu mengikuti **Speed**. Pelat menulis **{nama} moves first.**
 sebelum animasi, jadi giliran bot duluan bukan bug.
 

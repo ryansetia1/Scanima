@@ -751,6 +751,17 @@ console.log("16. extractJson menggantikan jaminan response_schema yang tidak ada
   const nested = { safe: true, stats: { hp: 50, atk: 30 } };
   assert.deepEqual(extractJson(`blah ${JSON.stringify(nested)} blah`), nested, "object bersarang");
 
+  assert.deepEqual(
+    extractJson("```json\n{\"safe\":true,\"note\":\"keep, } literal\",\"nested\":{\"hp\":50,},\"rows\":[1,2,],}\n```"),
+    { safe: true, note: "keep, } literal", nested: { hp: 50 }, rows: [1, 2] },
+    "trailing comma model diperbaiki tanpa mengubah isi string",
+  );
+  assert.deepEqual(
+    extractJson('{"mouth":"rather " + "than a speck"}'),
+    { mouth: "rather than a speck" },
+    "concat string JS di JSON Vision diperbaiki",
+  );
+
   for (const bad of ["", "   ", "maaf, saya tidak bisa membantu", "{ ini bukan json }", null]) {
     assert.throws(() => extractJson(bad), /tidak mengembalikan JSON/, `harus menolak: ${JSON.stringify(bad)}`);
   }
@@ -4040,12 +4051,13 @@ console.log("35. halaman referensi elemen tidak basi terhadap roster production"
   }
 }
 
-console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21");
+console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21–v29");
 {
   const {
     validateEvolutionPlan,
     assembleEvolvePrompt,
     buildEvolutionIdleReference,
+    compactPriorEvolutionDesign,
     _evolutionSelfCheck,
     EVOLUTION_EFFECT_IDS,
   } = await import("../backend/supabase/functions/_shared/evolution.mjs");
@@ -4092,6 +4104,80 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21")
   assert.ok(bundel.v21?.vision_evolve_system?.includes("Evolution Director"), "v21 vision_evolve_system terbundel");
   assert.ok(bundel.v21?.vision_evolve_schema?.properties?.lineage_anchors, "v21 vision_evolve_schema terparse");
   assert.equal(bundel.v21?.sprite_sheet, bundel.v20?.sprite_sheet, "v21 capture sprite_sheet identik v20");
+  assert.equal(bundel.v22?.vision_system, bundel.v20?.vision_system, "v22 capture Vision identik v20");
+  assert.deepEqual(bundel.v22?.vision_schema, bundel.v20?.vision_schema, "v22 capture schema identik v20");
+  assert.equal(bundel.v22?.sprite_sheet, bundel.v20?.sprite_sheet, "v22 capture sprite_sheet identik v20");
+  assert.equal(bundel.v22?.sprite_sheet_fauna, bundel.v20?.sprite_sheet_fauna, "v22 fauna identik v20");
+  assert.equal(bundel.v23?.vision_system, bundel.v20?.vision_system, "v23 capture Vision identik v20");
+  assert.deepEqual(bundel.v23?.vision_schema, bundel.v20?.vision_schema, "v23 capture schema identik v20");
+  assert.equal(bundel.v23?.sprite_sheet, bundel.v20?.sprite_sheet, "v23 capture sprite_sheet identik v20");
+  assert.equal(bundel.v23?.sprite_sheet_fauna, bundel.v20?.sprite_sheet_fauna, "v23 fauna identik v20");
+  assert.equal(bundel.v24?.vision_system, bundel.v20?.vision_system, "v24 capture Vision mewarisi v20");
+  assert.deepEqual(bundel.v24?.vision_schema, bundel.v20?.vision_schema, "v24 capture schema mewarisi v20");
+  assert.equal(bundel.v24?.sprite_sheet, bundel.v20?.sprite_sheet, "v24 capture sprite_sheet mewarisi v20");
+  assert.equal(bundel.v24?.sprite_sheet_fauna, bundel.v20?.sprite_sheet_fauna, "v24 fauna mewarisi v20");
+  assert.equal(bundel.v25?.vision_system, bundel.v20?.vision_system, "v25 capture Vision mewarisi v20");
+  assert.deepEqual(bundel.v25?.vision_schema, bundel.v20?.vision_schema, "v25 capture schema mewarisi v20");
+  assert.equal(bundel.v25?.sprite_sheet, bundel.v20?.sprite_sheet, "v25 capture sprite_sheet mewarisi v20");
+  assert.equal(bundel.v25?.sprite_sheet_fauna, bundel.v20?.sprite_sheet_fauna, "v25 fauna mewarisi v20");
+  assert.equal(bundel.v26?.vision_system, bundel.v20?.vision_system, "v26 capture Vision mewarisi v20");
+  assert.deepEqual(bundel.v26?.vision_schema, bundel.v20?.vision_schema, "v26 capture schema mewarisi v20");
+  assert.equal(bundel.v26?.sprite_sheet, bundel.v20?.sprite_sheet, "v26 capture sprite_sheet mewarisi v20");
+  assert.equal(bundel.v26?.sprite_sheet_fauna, bundel.v20?.sprite_sheet_fauna, "v26 fauna mewarisi v20");
+  assert.ok(
+    bundel.v23?.vision_evolve_schema?.properties?.identity_invariants,
+    "v23 Evolution Plan harus membawa Identity Invariants",
+  );
+  assert.ok(
+    bundel.v24?.vision_evolve_schema?.properties?.maturity_contract
+      && bundel.v24?.vision_evolve_schema?.properties?.presence_contract,
+    "v24 Evolution Plan harus membawa Maturity + Apex Presence Contract",
+  );
+  assert.ok(
+    bundel.v25?.vision_evolve_schema?.properties?.shape_budget_contract
+      && bundel.v25?.vision_evolve_schema?.properties?.vfx_palette,
+    "v25 Evolution Plan harus membawa Shape Budget dan VFX-only palette",
+  );
+  assert.ok(
+    bundel.v26?.vision_evolve_schema?.properties?.mobility_contract
+      && bundel.v26?.vision_evolve_schema?.required?.includes("mobility_contract"),
+    "v26 Evolution Plan harus membawa mobility_contract",
+  );
+  assert.equal(bundel.v27?.vision_system, bundel.v20?.vision_system, "v27 capture Vision mewarisi v20");
+  assert.deepEqual(bundel.v27?.vision_schema, bundel.v20?.vision_schema, "v27 capture schema mewarisi v20");
+  assert.equal(bundel.v27?.sprite_sheet, bundel.v20?.sprite_sheet, "v27 capture sprite_sheet mewarisi v20");
+  assert.ok(
+    bundel.v27?.vision_evolve_schema?.properties?.face_age_contract
+      && bundel.v27?.vision_evolve_schema?.required?.includes("face_age_contract"),
+    "v27 Evolution Plan harus membawa face_age_contract",
+  );
+  assert.equal(bundel.v28?.vision_system, bundel.v20?.vision_system, "v28 capture Vision mewarisi v20");
+  assert.deepEqual(bundel.v28?.vision_schema, bundel.v20?.vision_schema, "v28 capture schema mewarisi v20");
+  assert.equal(bundel.v28?.sprite_sheet, bundel.v20?.sprite_sheet, "v28 capture sprite_sheet mewarisi v20");
+  assert.ok(
+    bundel.v28?.vision_evolve_schema?.properties?.silhouette_break_contract
+      && bundel.v28?.vision_evolve_schema?.required?.includes("silhouette_break_contract"),
+    "v28 Evolution Plan harus membawa silhouette_break_contract",
+  );
+  assert.equal(bundel.v29?.vision_system, bundel.v20?.vision_system, "v29 capture Vision mewarisi v20");
+  assert.deepEqual(bundel.v29?.vision_schema, bundel.v20?.vision_schema, "v29 capture schema mewarisi v20");
+  assert.equal(bundel.v29?.sprite_sheet, bundel.v20?.sprite_sheet, "v29 capture sprite_sheet mewarisi v20");
+  assert.ok(
+    bundel.v29?.vision_evolve_schema?.properties?.silhouette_break_contract
+      ?.properties?.kind_noun
+      && bundel.v29?.vision_evolve_schema?.required?.includes("silhouette_break_contract"),
+    "v29 Evolution Plan harus membawa kind_noun",
+  );
+  assert.ok(
+    bundel.v22?.vision_evolve_system?.includes("SILHOUETTE DELTA CONTRACT"),
+    "v22 Vision harus silhouette-first",
+  );
+  assert.ok(
+    !/Pok[eé]mon|Digimon/i.test(
+      `${bundel.v22?.vision_evolve_system}\n${bundel.v22?.sprite_sheet_evolve}`,
+    ),
+    "prompt evolve v22 tidak boleh membawa nama franchise",
+  );
 
   adult.plan.target_stage = 2;
   const prompt = assembleEvolvePrompt(bundel.v21.sprite_sheet_evolve, adult.plan, {
@@ -4100,6 +4186,1301 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21")
   });
   assert.ok(!/\{\{[a-z_]+\}\}/.test(prompt), "sprite_sheet_evolve v21 masih punya placeholder");
   assert.ok(prompt.includes("Glaze Fang"), "nama move Plan masuk ke prompt evolve");
+
+  const v22Raw = {
+    lineage_anchors: [
+      {
+        source_feature: "fenestrated leaf openings",
+        next_expression: "split canopy windows along a long rear crest",
+        mode: "retain",
+      },
+      {
+        source_feature: "round ceramic pot",
+        next_expression: "segmented ceramic torso core",
+        mode: "transform",
+      },
+      {
+        source_feature: "fibrous roots",
+        next_expression: "four weight-bearing root limbs",
+        mode: "transform",
+      },
+    ],
+    transformation_archetype: "rooted_to_mobile",
+    metamorphosis_thesis: "A stationary potted sprout becomes a mobile canopy guardian.",
+    stage_brief: "A low mobile ceramic torso drives forward under one long split canopy.",
+    metamorphosis_notes: "Keep leaf holes literal and ceramic plainly unbranded.",
+    changed_dimensions: ["dominant_mass", "outer_contour", "locomotion_or_body_plan"],
+    dominant_mass_shift: "radial top-heavy crown becomes a forward ceramic core with rear canopy",
+    posture_change: "stationary upright squat becomes a low four-point stalking stance",
+    outer_contour_change: "round radial crown becomes a long asymmetric wedge",
+    locomotion_or_body_plan_change: "loose roots become four load-bearing mobile limbs",
+    derived_anatomy: [
+      {
+        new_part: "root limbs",
+        derived_from: "fibrous roots",
+        source_anchor_index: 3,
+      },
+    ],
+    body_height_cm: 185,
+    strike_name: "Verdant Swipe",
+    surge_name: "Root Snare",
+    strike_vfx: { form: "arc", motion: "sweep", brief: "a fenestrated leaf arc" },
+    surge_vfx: { form: "growth", motion: "bloom", brief: "branching root enclosure" },
+    strike_effect_id: "armor_pierce",
+    surge_effect_id: "slow",
+  };
+  const adultV22 = validateEvolutionPlan(v22Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 22,
+  });
+  adultV22.plan.target_stage = 2;
+  assert.equal(adultV22.plan.lineage_anchors[1].mode, "transform");
+  const titleCaseMode = structuredClone(v22Raw);
+  titleCaseMode.lineage_anchors[1].mode = "Transform";
+  assert.equal(
+    validateEvolutionPlan(titleCaseMode, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 22,
+    }).plan.lineage_anchors[1].mode,
+    "transform",
+  );
+  const noNewAnatomy = structuredClone(v22Raw);
+  noNewAnatomy.derived_anatomy = [];
+  assert.equal(
+    validateEvolutionPlan(noNewAnatomy, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 22,
+    }).plan.derived_anatomy.length,
+    0,
+  );
+  const promptV22 = assembleEvolvePrompt(
+    bundel.v22.sprite_sheet_evolve,
+    adultV22.plan,
+    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+  );
+  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV22), "sprite_sheet_evolve v22 masih punya placeholder");
+  assert.ok(promptV22.includes("round ceramic pot → segmented ceramic torso core"));
+  assert.ok(promptV22.includes("black outer contour FIRST"));
+  assert.ok(
+    !promptV22.includes("FOREGROUND GREEN SAFETY"),
+    "v22 harus tetap reproducible sesuai dua eval sebelum green-safety hardening",
+  );
+
+  const oneTransform = structuredClone(v22Raw);
+  oneTransform.lineage_anchors[1].mode = "retain";
+  assert.throws(
+    () => validateEvolutionPlan(oneTransform, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 22,
+    }),
+    /minimal 2 mode transform/,
+  );
+
+  const oneDimension = structuredClone(v22Raw);
+  oneDimension.changed_dimensions = ["outer_contour"];
+  assert.throws(
+    () => validateEvolutionPlan(oneDimension, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 22,
+    }),
+    /changed_dimensions/,
+  );
+
+  const untracedAnatomy = structuredClone(v22Raw);
+  untracedAnatomy.derived_anatomy[0].derived_from = "unrelated generic energy";
+  assert.throws(
+    () => validateEvolutionPlan(untracedAnatomy, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 22,
+    }),
+    /derived_anatomy/,
+  );
+
+  const punctuationOnlyAnatomy = structuredClone(v22Raw);
+  punctuationOnlyAnatomy.lineage_anchors[2].source_feature = "fibrous roots.";
+  assert.doesNotThrow(() => validateEvolutionPlan(punctuationOnlyAnatomy, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 22,
+  }));
+
+  const abbreviatedAnatomy = structuredClone(v22Raw);
+  abbreviatedAnatomy.lineage_anchors[2].source_feature = "multiple cylindrical green stems";
+  abbreviatedAnatomy.derived_anatomy[0].derived_from = "multiple stems";
+  assert.doesNotThrow(() => validateEvolutionPlan(abbreviatedAnatomy, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 22,
+  }));
+
+  const unchangedAnchor = structuredClone(v22Raw);
+  unchangedAnchor.lineage_anchors[1].next_expression = "round ceramic pot";
+  assert.throws(
+    () => validateEvolutionPlan(unchangedAnchor, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 22,
+    }),
+    /next_expression/,
+  );
+
+  const invalidDimension = structuredClone(v22Raw);
+  invalidDimension.changed_dimensions = ["outer_contour", "more_detail"];
+  assert.throws(
+    () => validateEvolutionPlan(invalidDimension, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 22,
+    }),
+    /changed_dimensions/,
+  );
+
+  assert.throws(
+    () => validateEvolutionPlan(v22Raw, {
+      targetStage: 3,
+      priorHeightCm: 150,
+      contractVersion: 22,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /tidak boleh mengulang archetype Adult/,
+  );
+
+  const v23Raw = {
+    ...structuredClone(v22Raw),
+    identity_invariants: [
+      {
+        identity_id: "paired_expressive_eyes",
+        domain: "face_expression",
+        source_truth: "Exactly two separate visible eyes form the primary face.",
+        identity_role: "A gentle alert companion-like gaze.",
+        current_expression: "Two warm almond eyes sit beneath the leading leaf.",
+        evolved_policy: "preserve",
+        realization_mode: "preserve",
+        visible_lineage_evidence: "Both eyes remain separate visible and warmly expressive.",
+      },
+      {
+        identity_id: "fenestrated_leaf_windows",
+        domain: "surface_signature",
+        source_truth: "Large literal openings divide the broad Monstera leaves.",
+        identity_role: "The botanical pattern that makes the lineage recognizable.",
+        current_expression: "The leaf carapace repeats the same literal openings.",
+        evolved_policy: "preserve",
+        realization_mode: "preserve",
+        visible_lineage_evidence: "Open leaf windows remain visible across the canopy.",
+      },
+      {
+        identity_id: "root_support_language",
+        domain: "structural_motif",
+        source_truth: "Dark fibrous roots visibly support the ceramic body.",
+        identity_role: "A grounded living-plant stance rather than generic legs.",
+        current_expression: "Four root bundles become weight-bearing supports.",
+        evolved_policy: "may_transfigure",
+        realization_mode: "preserve",
+        visible_lineage_evidence: "Each support still branches like the original roots.",
+      },
+    ],
+  };
+  const adultV23 = validateEvolutionPlan(v23Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 23,
+  });
+  adultV23.plan.target_stage = 2;
+  assert.equal(adultV23.plan.identity_invariants.length, 3);
+
+  const promptV23 = assembleEvolvePrompt(
+    bundel.v23.sprite_sheet_evolve,
+    adultV23.plan,
+    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+  );
+  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV23), "sprite_sheet_evolve v23 masih punya placeholder");
+  assert.ok(promptV23.includes("[preserve] paired_expressive_eyes"));
+  assert.ok(promptV23.includes("Exactly two separate visible eyes"));
+  assert.ok(promptV23.includes("FOREGROUND GREEN SAFETY"));
+  assert.ok(
+    !/Pok[eé]mon|Digimon/i.test(
+      `${bundel.v23.vision_evolve_system}\n${bundel.v23.sprite_sheet_evolve}`,
+    ),
+    "prompt evolve v23 tidak boleh membawa nama franchise",
+  );
+
+  const evolvedV23Raw = structuredClone(v23Raw);
+  evolvedV23Raw.transformation_archetype = "unfolding";
+  evolvedV23Raw.metamorphosis_thesis =
+    "A low leaf carapace unfolds into a tall fan-backed root guardian.";
+  evolvedV23Raw.stage_brief =
+    "A tall asymmetrical root guardian carries a broad rear fan behind its paired warm eyes.";
+  evolvedV23Raw.body_height_cm = 250;
+  evolvedV23Raw.strike_name = "Canopy Cleave";
+  evolvedV23Raw.surge_name = "Root Bastion";
+  evolvedV23Raw.strike_effect_id = "guard_break";
+  evolvedV23Raw.surge_effect_id = "armor_break";
+  evolvedV23Raw.identity_invariants = [
+    {
+      ...structuredClone(v23Raw.identity_invariants[2]),
+      current_expression: "Root supports unfold into a wide branching lower frame.",
+      realization_mode: "transfigure",
+      visible_lineage_evidence: "Branching dark root forks visibly form every lower frame segment.",
+    },
+    {
+      ...structuredClone(v23Raw.identity_invariants[0]),
+      current_expression: "Two larger warm eyes remain separate beneath the fan.",
+      visible_lineage_evidence: "Both eyes are separate and keep the gentle alert gaze.",
+    },
+    {
+      ...structuredClone(v23Raw.identity_invariants[1]),
+      current_expression: "Literal leaf windows repeat across the tall rear fan.",
+      visible_lineage_evidence: "Every canopy blade carries recognizable open windows.",
+    },
+  ];
+  const evolvedV23 = validateEvolutionPlan(evolvedV23Raw, {
+    targetStage: 3,
+    priorHeightCm: 185,
+    contractVersion: 23,
+    priorTransformationArchetype: "rooted_to_mobile",
+    priorIdentityInvariants: adultV23.plan.identity_invariants,
+    priorStrikeEffectId: "armor_pierce",
+    priorSurgeEffectId: "slow",
+  });
+  assert.deepEqual(
+    evolvedV23.plan.identity_invariants.map((item) => item.identity_id),
+    v23Raw.identity_invariants.map((item) => item.identity_id),
+    "Evolved harus dikanonisasi ke urutan Identity Invariants Adult",
+  );
+  assert.equal(evolvedV23.plan.identity_invariants[2].realization_mode, "transfigure");
+
+  const tooFewForFlexible = structuredClone(v23Raw);
+  tooFewForFlexible.identity_invariants = tooFewForFlexible.identity_invariants.slice(0, 2);
+  tooFewForFlexible.identity_invariants[1].evolved_policy = "may_transfigure";
+  assert.throws(
+    () => validateEvolutionPlan(tooFewForFlexible, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 23,
+    }),
+    /minimal tiga Identity Invariants/,
+  );
+
+  const adultTransfigure = structuredClone(v23Raw);
+  adultTransfigure.identity_invariants[2].realization_mode = "transfigure";
+  assert.throws(
+    () => validateEvolutionPlan(adultTransfigure, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 23,
+    }),
+    /Adult harus preserve/,
+  );
+
+  assert.throws(
+    () => validateEvolutionPlan(evolvedV23Raw, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 23,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /prior Identity Invariants Adult/,
+  );
+
+  const identityDrift = structuredClone(evolvedV23Raw);
+  identityDrift.identity_invariants[1].source_truth = "One central eye replaces the old pair.";
+  assert.throws(
+    () => validateEvolutionPlan(identityDrift, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 23,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV23.plan.identity_invariants,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /terkunci berubah/,
+  );
+
+  const hiddenDescendant = structuredClone(evolvedV23Raw);
+  hiddenDescendant.identity_invariants[0].visible_lineage_evidence =
+    "The old root relationship is hidden beneath the new frame.";
+  assert.throws(
+    () => validateEvolutionPlan(hiddenDescendant, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 23,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV23.plan.identity_invariants,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /turunan visual/,
+  );
+
+  const hiddenCurrentExpression = structuredClone(evolvedV23Raw);
+  hiddenCurrentExpression.identity_invariants[0].current_expression =
+    "The root supports are hidden beneath an unrelated smooth frame.";
+  assert.throws(
+    () => validateEvolutionPlan(hiddenCurrentExpression, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 23,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV23.plan.identity_invariants,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /turunan visual/,
+  );
+
+  const explicitlyVisibleDescendant = structuredClone(evolvedV23Raw);
+  explicitlyVisibleDescendant.identity_invariants[0].visible_lineage_evidence =
+    "The branching root descendant is not hidden and remains clearly visible.";
+  assert.doesNotThrow(() => validateEvolutionPlan(explicitlyVisibleDescendant, {
+    targetStage: 3,
+    priorHeightCm: 185,
+    contractVersion: 23,
+    priorTransformationArchetype: "rooted_to_mobile",
+    priorIdentityInvariants: adultV23.plan.identity_invariants,
+    priorStrikeEffectId: "armor_pierce",
+    priorSurgeEffectId: "slow",
+  }));
+
+  const punctuationOnlyDrift = structuredClone(evolvedV23Raw);
+  punctuationOnlyDrift.identity_invariants[1].source_truth =
+    "Exactly two separate visible eyes form the primary face";
+  assert.doesNotThrow(() => validateEvolutionPlan(punctuationOnlyDrift, {
+    targetStage: 3,
+    priorHeightCm: 185,
+    contractVersion: 23,
+    priorTransformationArchetype: "rooted_to_mobile",
+    priorIdentityInvariants: adultV23.plan.identity_invariants,
+    priorStrikeEffectId: "armor_pierce",
+    priorSurgeEffectId: "slow",
+  }));
+
+  const twoTransfigured = structuredClone(evolvedV23Raw);
+  twoTransfigured.identity_invariants[1].realization_mode = "transfigure";
+  assert.throws(
+    () => validateEvolutionPlan(twoTransfigured, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 23,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV23.plan.identity_invariants,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /maksimal mentransfigurasi satu/,
+  );
+
+  const transfigurePreservePolicy = structuredClone(evolvedV23Raw);
+  transfigurePreservePolicy.identity_invariants[0].realization_mode = "preserve";
+  transfigurePreservePolicy.identity_invariants[2].realization_mode = "transfigure";
+  assert.throws(
+    () => validateEvolutionPlan(transfigurePreservePolicy, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 23,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV23.plan.identity_invariants,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /transfigure hanya sah/,
+  );
+
+  const faceFlexibleAdultRaw = structuredClone(v23Raw);
+  faceFlexibleAdultRaw.identity_invariants[0].evolved_policy = "may_transfigure";
+  faceFlexibleAdultRaw.identity_invariants[2].evolved_policy = "preserve";
+  const faceFlexibleAdult = validateEvolutionPlan(faceFlexibleAdultRaw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 23,
+  });
+  const lostFaceRead = structuredClone(evolvedV23Raw);
+  lostFaceRead.identity_invariants = structuredClone(faceFlexibleAdult.plan.identity_invariants);
+  lostFaceRead.identity_invariants[0].realization_mode = "transfigure";
+  lostFaceRead.identity_invariants[0].current_expression =
+    "The paired gaze becomes a branching sensory crown.";
+  lostFaceRead.identity_invariants[0].visible_lineage_evidence =
+    "Two eye-derived branches remain visibly paired in the sensory crown.";
+  assert.throws(
+    () => validateEvolutionPlan(lostFaceRead, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 23,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: faceFlexibleAdult.plan.identity_invariants,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /identity read wajah atau sensory/,
+  );
+
+  const v24Raw = structuredClone(v23Raw);
+  v24Raw.identity_invariants = v24Raw.identity_invariants.map((item) => ({
+    ...item,
+    maturation_path: item.identity_id === "paired_expressive_eyes"
+      ? "The paired eyes may lengthen and gain a composed brow while count separation warmth and alert gaze remain."
+      : item.identity_id === "fenestrated_leaf_windows"
+        ? "Leaf plates may broaden harden and reorganize while their literal open windows remain recognizable."
+        : "Root bundles may thicken branch or change support role while their living fibrous origin stays visible.",
+  }));
+  v24Raw.maturity_contract = {
+    target_read: "adult",
+    facial_maturation: "The paired eyes lengthen beneath a stronger brow on a less juvenile face.",
+    body_maturation: "A larger ceramic-root torso replaces the tiny pot-centered body and carries real weight.",
+    posture_maturation: "Four developed root supports hold a calm low mobile stance without tentative wobble.",
+    preserved_personality: "The gentle alert companion-like confidence remains immediately readable.",
+    stage_delta: "Baby face ratio and stationary potted posture become an adult mobile guardian structure.",
+  };
+  v24Raw.presence_contract = {
+    presence_tier: "developing",
+    power_center: "A dense amber-lit ceramic-root heart sits visibly at the center of the torso.",
+    mass_hierarchy: "The broad torso remains dominant while leaf carapace and root supports frame it.",
+    authority_pose: "A planted low stance distributes weight evenly through four controlled supports.",
+    aura_architecture: "A compact amber orbit follows the rear edge of the ceramic-root heart.",
+    aura_palette: ["amber", "violet"],
+    grandeur_cues: [
+      "overlapping source-derived leaf plates form one deliberate mantle",
+      "the ceramic core develops broad load-bearing facets",
+    ],
+    reliability_cue: "Four thick branching root supports visibly carry and stabilize the full body.",
+  };
+  v24Raw.strike_vfx.brief = "an amber fenestrated leaf arc with a dark material contour";
+  v24Raw.surge_vfx.brief = "a violet branching root enclosure with a distinct radial topology";
+
+  const adultV24 = validateEvolutionPlan(v24Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 24,
+  });
+  adultV24.plan.target_stage = 2;
+  assert.equal(adultV24.plan.maturity_contract.target_read, "adult");
+  assert.equal(adultV24.plan.presence_contract.presence_tier, "developing");
+  assert.equal(adultV24.plan.identity_invariants[0].maturation_path.includes("paired eyes"), true);
+
+  const promptV24 = assembleEvolvePrompt(
+    bundel.v24.sprite_sheet_evolve,
+    adultV24.plan,
+    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+  );
+  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV24), "sprite_sheet_evolve v24 masih punya placeholder");
+  assert.ok(promptV24.includes("MATURITY CONTRACT — adult"));
+  assert.ok(promptV24.includes("PRESENCE CONTRACT — developing"));
+  assert.ok(promptV24.includes("Maturation path:"));
+  assert.ok(promptV24.includes("AURA AND VFX COLOR SAFETY"));
+  assert.ok(
+    !/Pok[eé]mon|Digimon/i.test(
+      `${bundel.v24.vision_evolve_system}\n${bundel.v24.sprite_sheet_evolve}`,
+    ),
+    "prompt evolve v24 tidak boleh membawa nama franchise",
+  );
+
+  const missingMaturationPath = structuredClone(v24Raw);
+  delete missingMaturationPath.identity_invariants[0].maturation_path;
+  assert.throws(
+    () => validateEvolutionPlan(missingMaturationPath, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 24,
+    }),
+    /maturation_path/,
+  );
+
+  const wrongAdultTier = structuredClone(v24Raw);
+  wrongAdultTier.presence_contract.presence_tier = "apex";
+  assert.throws(
+    () => validateEvolutionPlan(wrongAdultTier, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 24,
+    }),
+    /presence_tier/,
+  );
+
+  const greenAura = structuredClone(v24Raw);
+  greenAura.presence_contract.aura_palette = ["emerald"];
+  assert.throws(
+    () => validateEvolutionPlan(greenAura, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 24,
+    }),
+    /aura_palette/,
+  );
+
+  const greenVfx = structuredClone(v24Raw);
+  greenVfx.strike_vfx.brief = "a luminous green fenestrated leaf arc";
+  assert.throws(
+    () => validateEvolutionPlan(greenVfx, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 24,
+    }),
+    /strike_vfx\.brief/,
+  );
+
+  const uncoloredVfx = structuredClone(v24Raw);
+  uncoloredVfx.surge_vfx.brief = "a branching root enclosure with a distinct radial topology";
+  assert.throws(
+    () => validateEvolutionPlan(uncoloredVfx, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 24,
+    }),
+    /surge_vfx\.brief harus menyebut warna/,
+  );
+
+  const evolvedV24Raw = structuredClone(evolvedV23Raw);
+  evolvedV24Raw.identity_invariants = adultV24.plan.identity_invariants.map((item) => ({
+    ...structuredClone(item),
+    current_expression: item.identity_id === "paired_expressive_eyes"
+      ? "Two longer composed eyes remain separate beneath a mature leaf-framed brow."
+      : item.identity_id === "fenestrated_leaf_windows"
+        ? "Monumental mantle plates preserve literal windows around the central body."
+        : "Root supports unfold into thick ceremonial anchor branches beneath the core.",
+    realization_mode: item.identity_id === "root_support_language" ? "transfigure" : "preserve",
+    visible_lineage_evidence: item.identity_id === "paired_expressive_eyes"
+      ? "Both eyes remain separate warm alert and immediately visible."
+      : item.identity_id === "fenestrated_leaf_windows"
+        ? "Every broad mantle plate carries recognizable literal open windows."
+        : "Thick branching anchor roots visibly descend from the prior support bundles.",
+  }));
+  evolvedV24Raw.maturity_contract = {
+    target_read: "apex",
+    facial_maturation: "The paired gaze becomes longer calmer and fully composed within strong mature facial planes.",
+    body_maturation: "The adult crawler reorganizes into a monumental central core with complete material integration.",
+    posture_maturation: "A controlled ascending stance centers every appendage around one stable vertical axis.",
+    preserved_personality: "Warm intelligent confidence remains beneath the final form's calm authority.",
+    stage_delta: "Intermediate crawler proportions become a complete apex body with no juvenile face or tentative supports.",
+  };
+  evolvedV24Raw.presence_contract = {
+    presence_tier: "apex",
+    power_center: "A large gold-lit ceramic-root heart dominates the center of the mature torso.",
+    mass_hierarchy: "The torso and face remain larger and clearer than mantle plates anchor roots and aura.",
+    authority_pose: "The body ascends in a calm balanced posture with heavy anchors held under control.",
+    aura_architecture: "A structured violet corona rises behind the core in broad source-derived layers.",
+    aura_palette: ["gold", "violet"],
+    grandeur_cues: [
+      "monumental fenestrated mantle layers frame the central body",
+      "obsidian ceramic facets converge on one large power center",
+      "thick anchor roots hang with controlled load-bearing weight",
+    ],
+    reliability_cue: "Heavy roots and a broad integrated torso visibly stabilize the hovering apex form.",
+  };
+  evolvedV24Raw.strike_vfx.brief = "a gold fenestrated mantle sweep with a dark leaf contour";
+  evolvedV24Raw.surge_vfx.brief = "a violet anchor-root impact that closes in thick branching segments";
+  const evolvedV24 = validateEvolutionPlan(evolvedV24Raw, {
+    targetStage: 3,
+    priorHeightCm: 185,
+    contractVersion: 24,
+    priorTransformationArchetype: "rooted_to_mobile",
+    priorIdentityInvariants: adultV24.plan.identity_invariants,
+    priorStrikeEffectId: "armor_pierce",
+    priorSurgeEffectId: "slow",
+  });
+  assert.equal(evolvedV24.plan.maturity_contract.target_read, "apex");
+  assert.equal(evolvedV24.plan.presence_contract.presence_tier, "apex");
+  assert.equal(evolvedV24.plan.identity_invariants[2].realization_mode, "transfigure");
+
+  const maturationDrift = structuredClone(evolvedV24Raw);
+  maturationDrift.identity_invariants[0].maturation_path =
+    "Replace the paired eyes with one abstract aperture.";
+  assert.throws(
+    () => validateEvolutionPlan(maturationDrift, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 24,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV24.plan.identity_invariants,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /terkunci berubah/,
+  );
+
+  const v25Raw = structuredClone(v24Raw);
+  v25Raw.shape_budget_contract = {
+    primary_shapes: [
+      {
+        shape_id: "slender_leaf_flow",
+        source_basis: "the current long fenestrated leaf direction",
+        stage_expression: "one clean slender S-curve carries the first silhouette read",
+        visual_role: "dominant",
+      },
+      {
+        shape_id: "root_counter_arc",
+        source_basis: "the current grouped root support structure",
+        stage_expression: "one compact counter-arc supports the long upper flow",
+        visual_role: "counterbalance",
+      },
+    ],
+    dominant_motif: {
+      source_basis: "the literal fenestrated openings in the source leaves",
+      stage_expression: "three broad windows punctuate one continuous leaf mantle",
+    },
+    identity_focal_structure: {
+      source_read: "the paired expressive eyes and warm forward-facing gaze",
+      preserved_semantics: "two separate eyes preserve the gentle alert companion identity",
+      proportion_maturation: "eye height becomes one fifth of the focal plane instead of one third",
+      stage_expression: "two composed eyes sit farther within one longer calm focal plane",
+    },
+    simplification_actions: [
+      {
+        source_detail: "many separate leaf clusters",
+        action: "merge",
+        result: "one continuous leaf mantle with three broad openings",
+      },
+      {
+        source_detail: "small pebble joints along every root",
+        action: "omit",
+        result: "two clean uninterrupted root support arcs",
+      },
+    ],
+    detail_zones: [],
+    quiet_zones: [
+      "the long outer leaf mantle plane",
+      "the uninterrupted root support arcs",
+    ],
+    repetition_policy: "broad_grouped_pattern",
+  };
+  v25Raw.maturity_contract = {
+    target_read: "adult",
+    identity_focal_maturation: "The paired focal gaze lengthens and settles into a calmer mature plane.",
+    proportion_delta: "Eye height shifts from one third to one fifth of the focal plane while spacing remains paired.",
+    body_maturation: "The stationary source reorganizes into a capable slender mobile structure without added bulk.",
+    posture_maturation: "The long silhouette holds a deliberate balanced curve over two controlled supports.",
+    preserved_personality: "The gentle alert companion-like confidence remains immediately readable.",
+    stage_delta: "Tentative juvenile clustering becomes one composed adult line with stable support.",
+  };
+  v25Raw.presence_contract = {
+    presence_tier: "developing",
+    apex_thesis: "A poised living botanical guardian whose authority comes from elegant control rather than physical bulk.",
+    presence_channels: ["silhouette_line", "posture"],
+    channel_evidence: [
+      {
+        channel: "silhouette_line",
+        drawable_evidence: "One uninterrupted S-curve leads from the focal plane through the mantle.",
+      },
+      {
+        channel: "posture",
+        drawable_evidence: "Two supports hold a calm elevated balance without a crouch or frantic spread.",
+      },
+    ],
+    shape_hierarchy: "The slender mantle reads first, paired focal structure second, and root counter-arc third.",
+    authority_pose: "A calm elevated curve holds every support under visible control.",
+    reliability_cue: "Two clean source-derived supports visibly balance the full elongated body.",
+  };
+  delete v25Raw.presence_contract.power_center;
+  delete v25Raw.presence_contract.mass_hierarchy;
+  delete v25Raw.presence_contract.aura_architecture;
+  delete v25Raw.presence_contract.aura_palette;
+  delete v25Raw.presence_contract.grandeur_cues;
+  v25Raw.vfx_palette = ["amber", "violet"];
+  v25Raw.height_change_rationale =
+    "Adult grows taller because the stationary source unfolds into a slender mobile line.";
+  v25Raw.strike_vfx.brief = "an amber fenestrated leaf arc with a dark material contour";
+  v25Raw.surge_vfx.brief = "a violet branching root enclosure with a distinct radial topology";
+
+  const adultV25 = validateEvolutionPlan(v25Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 25,
+  });
+  adultV25.plan.target_stage = 2;
+  assert.equal(adultV25.plan.shape_budget_contract.primary_shapes.length, 2);
+  assert.equal(
+    adultV25.plan.shape_budget_contract.primary_shapes[0].visual_role,
+    "dominant",
+    "dominant adalah visual read, bukan size rank",
+  );
+  assert.deepEqual(
+    adultV25.plan.presence_contract.presence_channels,
+    ["silhouette_line", "posture"],
+  );
+
+  const promptV25 = assembleEvolvePrompt(
+    bundel.v25.sprite_sheet_evolve,
+    adultV25.plan,
+    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+  );
+  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV25), "sprite_sheet_evolve v25 masih punya placeholder");
+  assert.ok(promptV25.includes("SHAPE BUDGET — TWO OR THREE FIRST READS"));
+  assert.ok(promptV25.includes("OPEN APEX PRESENCE — developing"));
+  assert.ok(promptV25.includes("CHARACTER CELLS HAVE NO AURA"));
+  assert.ok(!promptV25.includes("Aura architecture:"), "v25 tidak boleh menghidupkan kontrak aura v24");
+  assert.ok(
+    !/Pok[eé]mon|Digimon/i.test(
+      `${bundel.v25.vision_evolve_system}\n${bundel.v25.sprite_sheet_evolve}`,
+    ),
+    "prompt evolve v25 tidak boleh membawa nama franchise",
+  );
+  assert.ok(
+    !/(?:size_rank|mass_hierarchy|aura_architecture)/.test(
+      JSON.stringify(bundel.v25.vision_evolve_schema),
+    ),
+    "schema v25 tidak boleh membawa bias bulky atau aura v24",
+  );
+
+  const evolvedV25Raw = structuredClone(evolvedV24Raw);
+  evolvedV25Raw.identity_invariants = adultV25.plan.identity_invariants.map((item) => ({
+    ...structuredClone(item),
+    current_expression: item.identity_id === "paired_expressive_eyes"
+      ? "Two smaller composed eyes remain separate along an elongated mature focal plane."
+      : item.identity_id === "fenestrated_leaf_windows"
+        ? "Three broad literal windows remain within one long ceremonial leaf line."
+        : "The prior root bundles become two clean balancing arcs under the compact form.",
+    realization_mode: item.identity_id === "root_support_language" ? "transfigure" : "preserve",
+    visible_lineage_evidence: item.identity_id === "paired_expressive_eyes"
+      ? "Both eyes remain separate warm alert and immediately visible."
+      : item.identity_id === "fenestrated_leaf_windows"
+        ? "Three broad literal openings remain visibly cut through the dominant motif."
+        : "Two support arcs visibly descend from the earlier fibrous root bundles.",
+  }));
+  evolvedV25Raw.shape_budget_contract = {
+    primary_shapes: [
+      {
+        shape_id: "ascending_ribbon_body",
+        source_basis: "the Adult slender mantle and focal line",
+        stage_expression: "one tall clean ribbon curve defines the complete apex silhouette",
+        visual_role: "dominant",
+      },
+      {
+        shape_id: "balanced_root_crescent",
+        source_basis: "the Adult paired root counter-arcs",
+        stage_expression: "one low crescent counterbalances the ascending body line",
+        visual_role: "counterbalance",
+      },
+    ],
+    dominant_motif: {
+      source_basis: "the Adult mantle with literal fenestrated openings",
+      stage_expression: "one elongated mantle carries three oversized negative-space windows",
+    },
+    identity_focal_structure: {
+      source_read: "the Adult paired eyes and calm companion gaze",
+      preserved_semantics: "two separate eyes preserve warmth intelligence and alert companionship",
+      proportion_maturation: "the eyes become one sixth of the longer focal plane while remaining paired",
+      stage_expression: "two small composed eyes anchor the upper turn of the ribbon silhouette",
+    },
+    simplification_actions: [
+      {
+        source_detail: "overlapping Adult mantle plate edges",
+        action: "merge",
+        result: "one continuous elongated mantle contour",
+      },
+      {
+        source_detail: "minor root fibers on both support arcs",
+        action: "omit",
+        result: "one uninterrupted counterbalancing crescent",
+      },
+    ],
+    detail_zones: [],
+    quiet_zones: [
+      "the long central ribbon plane",
+      "the low root crescent plane",
+    ],
+    repetition_policy: "broad_grouped_pattern",
+  };
+  evolvedV25Raw.maturity_contract = {
+    target_read: "apex",
+    identity_focal_maturation: "The paired gaze becomes smaller relative to a longer fully composed focal plane.",
+    proportion_delta: "Eye height shifts from one fifth to one sixth while the body changes from low curve to tall ribbon.",
+    body_maturation: "The Adult crawler reorganizes into a slender complete apex line without added physical bulk.",
+    posture_maturation: "A still ascending curve replaces the Adult forward lean with effortless vertical control.",
+    preserved_personality: "Warm intelligent confidence remains within the calm final authority.",
+    stage_delta: "The intermediate mobile curve becomes one complete controlled silhouette with final proportions.",
+  };
+  evolvedV25Raw.presence_contract = {
+    presence_tier: "apex",
+    apex_thesis: "An elegant dependable nature sovereign whose final power reads through restraint and perfect control.",
+    presence_channels: ["silhouette_line", "negative_space"],
+    channel_evidence: [
+      {
+        channel: "silhouette_line",
+        drawable_evidence: "One tall uninterrupted ribbon curve carries the entire first read.",
+      },
+      {
+        channel: "negative_space",
+        drawable_evidence: "Three oversized source-derived windows create a calm ceremonial rhythm.",
+      },
+    ],
+    shape_hierarchy: "The tall ribbon reads first, three windows second, and paired focal gaze third.",
+    authority_pose: "The slender body rises in one still controlled curve without spread limbs or bulk.",
+    reliability_cue: "A low source-derived crescent visibly counterbalances the tall compact body.",
+  };
+  evolvedV25Raw.vfx_palette = ["gold", "violet"];
+  evolvedV25Raw.body_height_cm = 150;
+  evolvedV25Raw.height_change_rationale =
+    "The final body becomes shorter than Adult because its wide crawler mass compacts into a slender upright ribbon.";
+  evolvedV25Raw.strike_vfx.brief = "a gold fenestrated mantle sweep with a dark leaf contour";
+  evolvedV25Raw.surge_vfx.brief = "a violet root-crescent impact that closes in two clean segments";
+
+  const evolvedV25 = validateEvolutionPlan(evolvedV25Raw, {
+    targetStage: 3,
+    priorHeightCm: 185,
+    contractVersion: 25,
+    priorTransformationArchetype: "rooted_to_mobile",
+    priorIdentityInvariants: adultV25.plan.identity_invariants,
+    priorShapeBudgetContract: adultV25.plan.shape_budget_contract,
+    priorStrikeEffectId: "armor_pierce",
+    priorSurgeEffectId: "slow",
+  });
+  assert.equal(evolvedV25.plan.body_height_cm, 150, "Evolved v25 boleh lebih pendek secara bounded");
+  assert.equal(evolvedV25.plan.presence_contract.presence_tier, "apex");
+
+  assert.throws(
+    () => validateEvolutionPlan(evolvedV25Raw, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 25,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV25.plan.identity_invariants,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /prior Shape Budget/,
+  );
+
+  const detailGrowth = structuredClone(evolvedV25Raw);
+  detailGrowth.shape_budget_contract.detail_zones = [{
+    zone: "focal eye plane",
+    purpose: "one compact identity accent around the paired gaze",
+  }];
+  assert.throws(
+    () => validateEvolutionPlan(detailGrowth, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 25,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV25.plan.identity_invariants,
+      priorShapeBudgetContract: adultV25.plan.shape_budget_contract,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /tidak boleh menambah detail zone/,
+  );
+
+  const duplicateChannels = structuredClone(v25Raw);
+  duplicateChannels.presence_contract.presence_channels = ["posture", "posture"];
+  duplicateChannels.presence_contract.channel_evidence[0].channel = "posture";
+  duplicateChannels.presence_contract.channel_evidence[1].channel = "posture";
+  assert.throws(
+    () => validateEvolutionPlan(duplicateChannels, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 25,
+    }),
+    /presence_channels/,
+  );
+
+  const auraLeak = structuredClone(v25Raw);
+  auraLeak.presence_contract.aura_architecture = "a violet halo around every pose";
+  assert.throws(
+    () => validateEvolutionPlan(auraLeak, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 25,
+    }),
+    /melarang aura/,
+  );
+
+  const auraInBrief = structuredClone(v25Raw);
+  auraInBrief.stage_brief += " A violet aura surrounds the body.";
+  assert.throws(
+    () => validateEvolutionPlan(auraInBrief, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 25,
+    }),
+    /character cells/,
+  );
+  const explicitNoAura = structuredClone(v25Raw);
+  explicitNoAura.stage_brief += " The character has no aura and no glow.";
+  assert.doesNotThrow(() => validateEvolutionPlan(explicitNoAura, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 25,
+  }));
+
+  const characterGlow = structuredClone(v25Raw);
+  characterGlow.outer_contour_change += " The entire contour glows violet.";
+  assert.throws(
+    () => validateEvolutionPlan(characterGlow, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 25,
+    }),
+    /aura\/glow\/particles/,
+  );
+
+  const overDetailed = structuredClone(v25Raw);
+  overDetailed.outer_contour_change += " Add a highly detailed fringe around every edge.";
+  assert.throws(
+    () => validateEvolutionPlan(overDetailed, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 25,
+    }),
+    /over-detail/,
+  );
+
+  const tooShort = structuredClone(evolvedV25Raw);
+  tooShort.body_height_cm = 130;
+  assert.throws(
+    () => validateEvolutionPlan(tooShort, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 25,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV25.plan.identity_invariants,
+      priorShapeBudgetContract: adultV25.plan.shape_budget_contract,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+    /di luar band/,
+  );
+
+  const v26Raw = structuredClone(v25Raw);
+  v26Raw.mobility_contract = {
+    locomotion_mode: "four-point walking gait using transformed source supports",
+    source_derivation: "the original clustered base becomes four discrete load-bearing supports",
+    support_geometry: "four short separated supports with visible negative space between them",
+    movement_read: "a viewer can point to four limbs that clearly lift and step",
+    idle_stability: "the body rests on those four points without fusing into a base",
+    battle_mobility: "it advances, pivots, and dodges by stepping those same supports",
+  };
+  const adultV26 = validateEvolutionPlan(v26Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 26,
+  });
+  adultV26.plan.target_stage = 2;
+  assert.equal(adultV26.plan.mobility_contract.locomotion_mode.split(" ")[0], "four-point");
+  const shortMode = structuredClone(v26Raw);
+  shortMode.mobility_contract.locomotion_mode = "rooted_walk";
+  assert.equal(
+    validateEvolutionPlan(shortMode, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 26,
+    }).plan.mobility_contract.locomotion_mode,
+    "rooted_walk",
+  );
+
+  const compactPrior = compactPriorEvolutionDesign(adultV26.plan);
+  assert.ok(compactPrior.identity_invariants.every((item) =>
+    item.identity_id && item.source_truth && item.maturation_path));
+  assert.equal(compactPrior.mobility_contract.locomotion_mode.split(" ")[0], "four-point");
+  assert.ok("maturity_contract" in compactPrior && "presence_contract" in compactPrior);
+  assert.ok(!JSON.stringify(compactPrior).includes("current_expression"));
+  assert.ok(!JSON.stringify(compactPrior).includes("visible_lineage_evidence"));
+
+  const promptV26 = assembleEvolvePrompt(
+    bundel.v26.sprite_sheet_evolve,
+    adultV26.plan,
+    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+  );
+  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV26), "sprite_sheet_evolve v26 masih punya placeholder");
+  assert.ok(promptV26.includes("MOBILITY CONTRACT — MUST BE VISIBLE"));
+  assert.ok(promptV26.includes("four-point walking gait"));
+  assert.ok(promptV26.includes("SHAPE BUDGET — TWO OR THREE FIRST READS"));
+  assert.ok(
+    !/Pok[eé]mon|Digimon/i.test(
+      `${bundel.v26.vision_evolve_system}\n${bundel.v26.sprite_sheet_evolve}`,
+    ),
+    "prompt evolve v26 tidak boleh membawa nama franchise",
+  );
+  assert.equal(
+    bundel.v26.vision_evolve_schema.properties.shape_budget_contract.properties.primary_shapes.maxItems,
+    3,
+    "v26 tetap memakai Shape Budget 2–3, bukan mengunci dua shape",
+  );
+
+  const planted = structuredClone(v26Raw);
+  planted.mobility_contract.locomotion_mode = "subtle shifts while remaining planted";
+  planted.mobility_contract.idle_stability = "fused to a root mound and a stone pedestal";
+  assert.throws(
+    () => validateEvolutionPlan(planted, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 26,
+    }),
+    /terpatri|immobile/,
+  );
+  const neverFused = structuredClone(v26Raw);
+  neverFused.mobility_contract.idle_stability =
+    "Stands firmly on four broad pads, with visible negative space, never fused to the ground.";
+  assert.doesNotThrow(() => validateEvolutionPlan(neverFused, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 26,
+  }));
+
+  const rootMass = structuredClone(v26Raw);
+  rootMass.mobility_contract.locomotion_mode = "root_mass_glide";
+  rootMass.mobility_contract.support_geometry =
+    "a single broad root-mass that makes continuous ground contact";
+  assert.throws(
+    () => validateEvolutionPlan(rootMass, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 26,
+    }),
+    /terpatri|immobile/,
+  );
+
+  const v27Face = {
+    age_read: "adolescent",
+    eye_to_face_ratio: "eyes recede to occupy less of the face than the hatchling leaf-face",
+    eye_construction: "longer lids and a clearer brow instead of the hatchling eye sticker",
+    craniofacial_mass: "more cheek and brow plate around the same paired gaze",
+    mouth_to_eye_relationship: "mouth grows from a speck into a readable feature below the eyes",
+    prior_copy_forbidden: "do not paste the hatchling oversized almonds onto the adult body",
+  };
+  const v27Raw = structuredClone(v26Raw);
+  v27Raw.face_age_contract = v27Face;
+  const adultV27 = validateEvolutionPlan(v27Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 27,
+  });
+  assert.equal(adultV27.plan.face_age_contract.age_read, "adolescent");
+  const promptV27 = assembleEvolvePrompt(
+    bundel.v27.sprite_sheet_evolve,
+    adultV27.plan,
+    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+  );
+  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV27), "sprite_sheet_evolve v27 masih punya placeholder");
+  assert.ok(promptV27.includes("FACE AGE CONTRACT — MUST BE VISIBLE"));
+  assert.ok(promptV27.includes("eyes recede to occupy less"));
+  assert.ok(
+    !/Pok[eé]mon|Digimon/i.test(
+      `${bundel.v27.vision_evolve_system}\n${bundel.v27.sprite_sheet_evolve}`,
+    ),
+    "prompt evolve v27 tidak boleh membawa nama franchise",
+  );
+  assert.throws(
+    () => validateEvolutionPlan(v26Raw, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 27,
+    }),
+    /face_age_contract/,
+  );
+  const wrongAge = structuredClone(v27Raw);
+  wrongAge.face_age_contract.age_read = "mature";
+  assert.throws(
+    () => validateEvolutionPlan(wrongAge, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 27,
+    }),
+    /age_read/,
+  );
+  const copiedEyes = structuredClone(v27Raw);
+  copiedEyes.face_age_contract.eye_to_face_ratio = "same large eyes as the hatchling";
+  assert.throws(
+    () => validateEvolutionPlan(copiedEyes, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 27,
+    }),
+    /grafis mata/,
+  );
+
+  const v28Break = {
+    prior_silhouette_read: "upright four-leg canopy walker with mass in the leaf crown",
+    forbidden_copy: "the adult four-leg canopy walker stance and limb count",
+    new_contour_read: "a long coiled stem body with the canopy as a trailing mantle",
+    topology_change: "vertical stalk and walking legs become one coiling tethered body axis",
+  };
+  const v28Raw = structuredClone(v27Raw);
+  v28Raw.silhouette_break_contract = v28Break;
+  const adultV28 = validateEvolutionPlan(v28Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 28,
+  });
+  assert.ok(adultV28.plan.silhouette_break_contract.topology_change.includes("coiling"));
+  const promptV28 = assembleEvolvePrompt(
+    bundel.v28.sprite_sheet_evolve,
+    adultV28.plan,
+    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+  );
+  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV28), "sprite_sheet_evolve v28 masih punya placeholder");
+  assert.ok(promptV28.includes("SILHOUETTE BREAK — MUST BE VISIBLE AT 96 PX"));
+  assert.ok(promptV28.includes("long coiled stem body"));
+  assert.ok(
+    !/Pok[eé]mon|Digimon/i.test(
+      `${bundel.v28.vision_evolve_system}\n${bundel.v28.sprite_sheet_evolve}`,
+    ),
+    "prompt evolve v28 tidak boleh membawa nama franchise",
+  );
+  assert.throws(
+    () => validateEvolutionPlan(v27Raw, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 28,
+    }),
+    /silhouette_break_contract/,
+  );
+  const copiedWalker = structuredClone(v28Raw);
+  copiedWalker.silhouette_break_contract.new_contour_read =
+    "keep the adult walker stance with a thicker trunk";
+  assert.throws(
+    () => validateEvolutionPlan(copiedWalker, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 28,
+    }),
+    /menyalin siluet walker/,
+  );
+  const evolvedWalkCopy = structuredClone(v28Raw);
+  evolvedWalkCopy.face_age_contract.age_read = "mature";
+  evolvedWalkCopy.mobility_contract.locomotion_mode = "pillar_stride";
+  evolvedWalkCopy.mobility_contract.support_geometry =
+    "two thick pillar-legs with broad foot-pads and negative space between them";
+  evolvedWalkCopy.transformation_archetype = "unfolding";
+  evolvedWalkCopy.strike_name = "Canopy Crush";
+  evolvedWalkCopy.surge_name = "Verdant Coil";
+  evolvedWalkCopy.strike_effect_id = "armor_break";
+  evolvedWalkCopy.surge_effect_id = "drain";
+  evolvedWalkCopy.body_height_cm = 220;
+  assert.throws(
+    () => validateEvolutionPlan(evolvedWalkCopy, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 28,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorLocomotionMode: "rooted_walk",
+      priorIdentityInvariants: adultV28.plan.identity_invariants,
+      priorShapeBudgetContract: adultV28.plan.shape_budget_contract,
+      priorStrikeName: adultV28.plan.strike_name,
+      priorSurgeName: adultV28.plan.surge_name,
+      priorStrikeEffectId: adultV28.plan.strike_effect_id,
+      priorSurgeEffectId: adultV28.plan.surge_effect_id,
+    }),
+    /gait kaki Adult/,
+  );
+
+  const v29Break = {
+    kind_noun: "canine",
+    source_kind_read: "a golden canine companion with a compact four-leg stance",
+    continued_kind_read: "a majestic canine guardian with a heavier mane and longer body",
+    prior_silhouette_read: "compact fluffy quadruped with mass in the chest ruff",
+    forbidden_copy: "the squat puppy outline with short legs and a round torso",
+    new_contour_read: "a longer athletic quadruped with a cape-like mane and sweeping tail",
+    topology_change: "mass shifts from round puppy core to elongated guardian body; same support class",
+  };
+  const v29Raw = structuredClone(v28Raw);
+  v29Raw.silhouette_break_contract = v29Break;
+  const adultV29 = validateEvolutionPlan(v29Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 29,
+  });
+  assert.equal(adultV29.plan.silhouette_break_contract.kind_noun, "canine");
+  const promptV29 = assembleEvolvePrompt(
+    bundel.v29.sprite_sheet_evolve,
+    adultV29.plan,
+    { species_key: "dog_canine_retriever_standing", color_bucket: "warm_yellow" },
+  );
+  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV29), "sprite_sheet_evolve v29 masih punya placeholder");
+  assert.ok(promptV29.includes("Kind noun (keep this category of thing): canine"));
+  assert.ok(
+    !/Pok[eé]mon|Digimon/i.test(
+      `${bundel.v29.vision_evolve_system}\n${bundel.v29.sprite_sheet_evolve}`,
+    ),
+    "prompt evolve v29 tidak boleh membawa nama franchise",
+  );
+  const evolvedWalkKeep = structuredClone(evolvedV25Raw);
+  evolvedWalkKeep.face_age_contract = {
+    ...v27Face,
+    age_read: "mature",
+    prior_copy_forbidden: "the adult adolescent eye graphic and proportion",
+  };
+  evolvedWalkKeep.silhouette_break_contract = v29Break;
+  evolvedWalkKeep.mobility_contract = {
+    ...v26Raw.mobility_contract,
+    locomotion_mode: "Four-legged stride",
+    support_geometry:
+      "four longer muscular legs with broad paw-pads and negative space between them",
+  };
+  evolvedWalkKeep.strike_name = "Canopy Crush";
+  evolvedWalkKeep.surge_name = "Verdant Coil";
+  assert.doesNotThrow(
+    () => validateEvolutionPlan(evolvedWalkKeep, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 29,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorLocomotionMode: "Four-legged stride",
+      priorIdentityInvariants: adultV25.plan.identity_invariants,
+      priorShapeBudgetContract: adultV25.plan.shape_budget_contract,
+      priorStrikeName: adultV25.plan.strike_name,
+      priorSurgeName: adultV25.plan.surge_name,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    }),
+  );
+  const snakeSwap = structuredClone(v29Raw);
+  snakeSwap.silhouette_break_contract.continued_kind_read =
+    "an undulating serpentine glider with a canine head";
+  snakeSwap.silhouette_break_contract.new_contour_read =
+    "a limbless coil with a trailing fan tail";
+  assert.throws(
+    () => validateEvolutionPlan(snakeSwap, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 29,
+    }),
+    /ganti kategori/,
+  );
+  const copiedOutline = structuredClone(v29Raw);
+  copiedOutline.silhouette_break_contract.new_contour_read =
+    "keep the current outline with a thicker mane";
+  assert.throws(
+    () => validateEvolutionPlan(copiedOutline, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 29,
+    }),
+    /outline 96 px/,
+  );
+  const vesselSwap = structuredClone(v29Raw);
+  vesselSwap.silhouette_break_contract.kind_noun = "vessel";
+  vesselSwap.silhouette_break_contract.source_kind_read =
+    "a handled plastic water vessel with a compact jug body";
+  vesselSwap.silhouette_break_contract.continued_kind_read =
+    "a long serpentine water spirit with no jug read";
+  vesselSwap.silhouette_break_contract.new_contour_read =
+    "a snake-like coil replacing the jug silhouette";
+  assert.throws(
+    () => validateEvolutionPlan(vesselSwap, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 29,
+    }),
+    /ganti kategori|kind_noun/,
+  );
+
+  const missingMobility = structuredClone(v25Raw);
+  assert.throws(
+    () => validateEvolutionPlan(missingMobility, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 26,
+    }),
+    /mobility_contract/,
+  );
 
   const source = new Image(12, 12);
   source.bitmap.fill(0);
@@ -4137,6 +5518,18 @@ console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-activ
     "backend/supabase/migrations/20260817095700_evolution_art_pipeline.sql",
     "utf8",
   );
+  const goLiveSrc = await readFile(
+    "backend/supabase/migrations/20260817200110_evolution_go_live.sql",
+    "utf8",
+  );
+  assert.ok(
+    goLiveSrc.includes("anima_evolution_locks")
+      && goLiveSrc.includes('"v29"')
+      && goLiveSrc.includes("feature_evolution")
+      && goLiveSrc.includes("evolution_version set default 1")
+      && goLiveSrc.includes("function public.apply_evolution_lock"),
+    "go-live migration harus menyalakan v29, default version 1, dan tabel lock",
+  );
   const {
     evolutionWebhookUrl,
     evolutionFinalizeRetryable,
@@ -4161,6 +5554,65 @@ console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-activ
       && migSrc.includes("revoke all on function public.resume_evolution")
       && quotaSrc.includes("resume lintas device harus menempel"),
     "resume tanpa state lokal harus menempel ke generation aktif tanpa membuka spend baru",
+  );
+  assert.ok(
+    evolveSrc.includes("fetchPriorEvolutionPlan")
+      && evolveSrc.includes('.eq("target_stage", priorStage)')
+      && evolveSrc.includes("priorTransformationArchetype: priorArchetype"),
+    "Evolved harus membaca Plan Adult dan menolak archetype yang berulang",
+  );
+  assert.ok(
+    evolveSrc.includes("activePromptVersion")
+      && evolveSrc.includes("genRow?.prompt_version")
+      && evolveSrc.includes("hasStoredPlan || genRow?.vision_started_at")
+      && evolveSrc.includes("const contractVersion = Number.parseInt(activePromptVersion")
+      && evolveSrc.includes("contractVersion,"),
+    "resume Plan harus memakai kontrak prompt yang tersimpan, bukan config terbaru",
+  );
+  assert.ok(
+    evolveSrc.includes("priorIdentityInvariants")
+      && evolveSrc.includes("EVOLUTION_PRIOR_IDENTITY_MISSING")
+      && evolveSrc.indexOf("EVOLUTION_PRIOR_IDENTITY_MISSING") < visionIdx,
+    "Evolved v23 harus menolak prior identity yang hilang sebelum Vision berbayar",
+  );
+  assert.ok(
+    evolveSrc.includes("compactPriorEvolutionDesign"),
+    "Evolved v24 harus memberi Vision kontrak Adult lewat compact prior Design",
+  );
+  assert.ok(
+    evolveSrc.includes("priorShapeBudgetContract")
+      && evolveSrc.includes("EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING")
+      && evolveSrc.includes("shape_budget_contract: priorShapeBudgetContract")
+      && evolveSrc.indexOf("EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING") < visionIdx,
+    "Evolved v25 harus menolak Shape Budget Adult hilang dan mengirimkannya ke Vision",
+  );
+  assert.ok(
+    evolveSrc.includes("compactPriorEvolutionDesign")
+      && evolveSrc.includes("Copy source_truth, identity_role, and maturation_path exactly")
+      && evolveSrc.includes("Respond with compact JSON only")
+      && evolveSrc.includes("Finish every required key")
+      && evolveSrc.includes("age_read must be mature")
+      && evolveSrc.includes("If Adult walks on legs, Evolved must coil")
+      && evolveSrc.includes("contractVersion >= 29")
+      && evolveSrc.includes("Keep the photographed kind_noun"),
+    "Evolved v26 coil exile tetap ada; v29 menggantinya dengan kind lock",
+  );
+  assert.ok(
+    evolveSrc.includes('db.rpc("apply_evolution_lock"')
+      && evolveSrc.indexOf("apply_evolution_lock") < visionIdx
+      && quotaSrc.includes("evolution-lock")
+      && quotaSrc.includes("apply_evolution_lock replay harus idempoten"),
+    "sheet terkunci harus commit sebelum Vision berbayar",
+  );
+  assert.ok(
+    evolveSrc.includes("validateEvolutionPlan(storedPlan, planValidationOptions)")
+      && evolveSrc.includes("EVOLUTION_STORED_PLAN_INVALID"),
+    "stored Plan harus divalidasi ulang sebelum image generation",
+  );
+  assert.ok(
+    evolveSrc.indexOf("validateEvolutionPlan(storedPlan, planValidationOptions)")
+      < evolveSrc.indexOf("await mulaiGeneration"),
+    "stored Plan harus divalidasi sebelum image generation dimulai",
   );
 
   const claimIdx = evolveSrc.indexOf("claim_evolution_dispatch");

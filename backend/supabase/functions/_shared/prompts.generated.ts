@@ -4748,6 +4748,7312 @@ export default {
     "sprite_sheet_evolve": "Create a polished 2D character sheet for the evolved {{stage_name}} form of the\nONE original creature-monster shown in the reference image.\n\nGLOBAL STYLE LOCK — MATCH THE EARLIER FORM\n2D Japanese anime creature character design with clear silhouettes and\nexpressive readability of late-1990s monster games, while remaining entirely\noriginal. Clean confident anime linework, moderately bold dark contours,\nsimple readable shapes, flat base colors, crisp 2–3 level cel shading,\nhard-edged shadows, controlled highlights, and minimal gradients. Never CGI.\n\nTechno-organic or mechanical details are appropriate ONLY when the original\nobject is electronic or mechanical. Other materials evolve through their own\nmaterial language rather than becoming robots or cyborgs.\n\nIDENTITY TO PRESERVE\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nOriginal visual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nEarlier-form features are reference context, not an additional mandatory\nchecklist. The Evolution Plan below chooses the only three recognition anchors\nthat every character cell must preserve. These references never authorize\nlogos, printed words, badges, symbols, or emblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\n\nCHARACTER RANGE — PRESERVE IT\nKeep the earlier form's visual presentation. Growth may mature it, but must not\nreplace it with a universally fierce, angry, masculine, muscular, armored, or\ngeneric adult. Do not invent gender-coded accessories unsupported by the object.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, stripe arrangement, printed tag,\nmodel number, letter, or emblem-like graphic as absent. Draw plain\nobject-faithful material and never invent a replacement symbol.\n\nEVOLUTION — {{stage_name}}\n{{evolution_brief}}\n\nLineage anchors that MUST survive in every character cell:\n{{lineage_anchors_as_bullets}}\n\n{{metamorphosis_notes}}\n\nKeep the same recognizable individual: eye design, facial structure, dominant\npalette, limb count including zero, body-plan logic, material finish, character\ndirection, and structural features. A limbless form stays limbless. Evolve\nexisting parts instead of replacing the character with a generic dragon,\nanimal, insect, humanoid, robot, or cyborg. Never imitate Pokémon or other\nfranchise evolution tropes.\n\nThe next form may gain one or two upgrades grown from existing parts:\nreinforced object-derived structure, a longer existing crest or tail, refined\nmaterial detail, or an upgraded object-specific tool. Never use generic armor,\nbadges, symbols, or extra limbs as evolution shortcuts.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks. Highlights use a lighter version of the material's own hue. White is\nallowed only for eye sclera, teeth, and real naturally white material.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact same evolved individual. Preserve\nbody proportions, facial structure, eye design, limb count, palette, material,\naccessories, anatomy, character direction, and structural anchors. The two\neffect cells contain ONLY battle effects — never the creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nEvery character cell faces canvas-left in the same forward-left three-quarter\norientation. Never mirror, turn around, or swap asymmetrical landmarks.\n\nThe BATTLE pose and its motion accents attack toward canvas-left. A `projectile`\nor `sweep` effect has clear canvas-left direction. An `impact` or `bloom` effect\nis centered and may be directionless; never add a comet tail. The client mirrors\nthe complete sheet when this creature fights from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nUse a three-quarter view from slightly above, facing forward-left. Full body at\ncomparable scale in every character cell.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, debris fragment, Z, and\nbattle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter another. Post-process rejects\nthe whole sheet rather than guessing ownership when this envelope is violated.\n\nDetached accents remain allowed and encouraged where called for, but they stay\ncompact, clustered near their own character/effect, and wholly inside the safe\nenvelope. Nothing cropped. No borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry expression. No major\neffects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich with restrained, material-faithful motion lines,\nsparks, dust, or tiny debris. Detached accents must remain close to the evolved\ncharacter and inside this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful naturally resting pose with closed eyes and at most two small Z\nsymbols, all inside this cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same evolved character, pleased after care. Bright open expression. Tiny\ncelebratory accents remain inside this cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same evolved character wanting food. Droopy or pleading expression and\nslumped posture, perhaps one tiny material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same evolved character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains. No cracks or chips.\n\nBOTTOM LEFT — DAMAGED\nThe same evolved character after small damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage affects the visible material. Never expose invented machinery. Keep it\nrestrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effects remain unmistakably born from THIS object's structural\nfeatures, material, named moves, and earlier-form effect identity. Evolution may\nrefine their detail, but cannot turn both into generic energy projectiles.\n\nThey must differ in silhouette, topology, and animation logic. Never make\nSpecial a larger or brighter version of Attack. Never default to a round\nfireball, energy orb, comet, or generic explosion. A closed ball is allowed only\nif the object's real geometry or function is spherical or launches a ball.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nBuild the new Attack VFX specified by this form's Evolution Plan. It may echo\nthe earlier form's material language, but it must read as a distinct stronger\nmove rather than a recolor or scale-up. Use the creature palette and material\nlanguage. Dark contour only. No white border, text, letters, or creature body.\nStay inside the 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nBuild the new Special VFX specified by this form's Evolution Plan. It may echo\nthe lineage's material language, but it cannot reuse Attack's silhouette,\nrecolor an earlier effect, or merely scale it up. Use the object-derived palette\nand material. Dark contour only. No white border, text, letters, or creature\nbody. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nSolid perfectly uniform chroma key green #00FF00, RGB (0,255,0), across the\nentire canvas. No gradient, noise, texture, floor, shadow, glow, scenery, props,\nborders, or grid lines. Naturally green characters use darker, lighter, or less\nsaturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space is exact chroma background #00FF00. Never fill or outline it with\nwhite, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape. Remove it unless it is an eye\nsclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white/off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo labels, text, letters, numbers, captions, watermarks, signatures, arrows, UI,\npanel borders, other creatures, copied franchise characters, logos, wordmarks,\nemblems, sigils, badges, runes, swooshes, or isolated decorative symbols.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
     "sprite_sheet_fauna": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world **non-human animal** photograph.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, and a strong readable\nsilhouette. Use deliberately transformed anime-creature proportions, never the\nnaturalistic proportions of a wildlife illustration or pet portrait.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are forbidden\nunless the animal visibly wears or carries such gear in the reference. Fur,\nfeathers, scales, shell, hide, and natural anatomy must stay organic.\n\nANIMAL CONTEXT\nAnimal: {{object_name}}\nVisible coat, plumage, shell, or finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize readable collar tags, logos, symbols, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ncybernetic anatomy unsupported by the animal.\n\nCHARACTER RANGE — FOLLOW THE ANIMAL\nExpress the character direction through species-readable silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent clothing, bows, or gender-coded accessories\nunsupported by the photo.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every readable collar tag, brand mark, printed text, or emblem-like graphic\nin the reference as absent. Draw plain animal-faithful coat or markings in its\nplace. Never invent a replacement emblem, sigil, badge, or logo-like symbol.\n\nSCANIMA MONSTERIZATION FLOOR — MOST IMPORTANT\nThe result must unmistakably be a SCANIMA MONSTER inspired by the photographed\nanimal, never an anime drawing of the real animal. Species recognition comes\nfrom its color identity, limb count, body plan, and strongest landmarks — NOT\nfrom copying realistic anatomy or proportions.\n\nEvery character pose must visibly depart from the reference animal:\n- aggressively enlarge the head and expressive eye area where the animal has a\n  visible head; the difference from the real animal must be obvious at a glance\n- compress the torso or central body mass into a bold compact monster shape\n  while preserving long-bodied, winged, finned, shelled, or limbless body plans\n- amplify 2–4 species-defining features such as ears, muzzle, paws, claws, tail,\n  wings, fins, antennae, horns, shell, crest, or plumage far beyond normal scale\n- simplify joints, muscle groups, fur clumps, feathers, scales, and other small\n  anatomy into bold graphic shapes\n- give the face and whole-body pose clear anime-creature acting in all seven\n  character cells\n\nIf the animal has no clearly visible eyes or face, exaggerate its equivalent\nsensory features and body gesture instead of inventing human facial anatomy.\nThe stylization must not default to a generic round mascot, plush toy, human\nbaby, or pasted-on cartoon eyes. It must remain a distinctive monster whose\nspecies source is still recognizable.\n\nMANDATORY MONSTER IDENTITY LAYER\nIdle must show ALL THREE transformations below before pose acting or battle\neffects are considered:\n\n1. PROPORTION BREAK. For animals with a recognizable head, make the head roughly\n   1.3–1.8 times its real-animal proportion and the visible eye shapes roughly\n   1.5–2 times normal. These are visual targets, not anatomical measurements.\n   For animals without a conventional head or eyes, enlarge the main sensory\n   cluster or identifying front structure instead.\n2. LANDMARK EVOLUTION. Reshape at least two existing species landmarks beyond\n   what an ordinary specimen could naturally have, while preserving their count\n   and origin. Examples: ears become broad graphic fins, paws become oversized\n   monster feet, a fur ruff becomes a layered mane crest, a tail becomes a huge\n   fan or spiral plume, wing tips become bold feather blades, or shell plates\n   become a crown-like layered silhouette.\n3. ORIGINAL ORGANIC MOTIF. Derive one unified fantasy anatomy motif from the\n   animal's real coat, feathers, scales, shell, fins, or strongest landmark and\n   repeat it across 2–3 body zones. It must be integrated body design, not\n   clothing, jewelry, an emblem, a surface logo, detached VFX, or a new limb.\n\nThe filled black silhouette of Idle must still suggest the source species, but\nmust NOT pass for an ordinary real specimen. A normal dog, cat, bird, fish,\nreptile, insect, or other animal with only anime eyes, cleaner linework, extra\nfluff, or a dynamic pose FAILS this contract.\n\nPRESERVE RECOGNITION, NOT REALISM\nPreserve the animal's limb count, posture logic, dominant colors, and strongest\nanatomical features. Simplify tiny details and transform proportions boldly.\n\nQuadrupeds stay quadrupedal unless the brief explicitly supports another plan.\nWinged animals may keep wings. Zero arms, zero legs, or neither remains valid\nwhen the body plan supports it. Never add human hands or humanoid legs merely\nto force a mascot pose.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe animal's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Markings follow real anatomy boundaries.\n\nChroma green is a transport color only. Never use bright green sampled from the\nbackground inside or along the creature, motion accents, sparks, dust, or either\nbattle effect. Foreground accents and VFX must stay inside the stated creature\npalette. A naturally green animal still uses a clearly darker, lighter, or less\nsaturated body green, never #00FF00.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed coat is not naturally white or off-white, never paint white\nor off-white highlights, stripes, slashes, or decorative marks on it. White is\nallowed only for eye sclera, teeth, and real naturally white markings named in\nthe animal context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count, palette, coat finish,\nanatomy, character direction, and signature features. Only pose, expression,\nrestrained accents, and fatigue state may change. The two effect cells contain\nONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb, body thrust, and motion\naccents attack toward canvas-left. A `projectile` or `sweep` effect must also\nhave a clear canvas-left direction. An `impact` or `bloom` effect is centered\nand may be directionless; never add a comet tail to make it look like a projectile.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\n\nDetached accents ARE allowed where the pose calls for them, but they must remain\ncompact, visually clustered near their own character or effect, and wholly inside\nthe safe envelope. Nothing may be cropped. No panel borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed resting pose with a calm, open, non-angry anime-creature expression.\nThe transformed Scanima proportions must already be obvious here; Idle must not\nlook like a normal animal standing for a portrait. No major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this anatomy.\nUse a clear determined anime-creature expression plus restrained motion lines,\nsparks, dust, or tiny debris that fit the animal's coat and action. Every accent\nstays within this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful curled, lowered, folded, or resting sleeping pose with closed eyes and\nat most two small floating Z symbols inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nanime-creature expression with an unmistakable whole-body reaction; not a\nbattle face.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Clearly exaggerated droopy or\npleading anime-creature expression, slumped posture, perhaps one tiny drool mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle fatigue. Mud,\ndust, or tangled fur with a clearly readable embarrassed anime-creature\nexpression. No wounds or blood.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Show **fatigue and\nwear only** — apply ONLY:\n{{damage_hints_as_bullets}}\n\nUse drooping posture, tired half-lidded eyes, dull ruffled fur or feathers,\nslight slouch, or dusty coat. **Never** blood, open wounds, gore, broken bones,\ngraphic injury, or redesign. This is a tired fighter, not an injured animal.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS animal's\nstructural features, coat or shell, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, claw-arc, or whip form spanning sideways\n- impact: centered contact mark, stamp, or crack; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nanimal-derived material language. Dark graphic contour only. Stay inside the\n12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. Dark graphic contour\nonly. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the animal is naturally green,\nuse darker, lighter, or less saturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening or negative space must be exact chroma background #00FF00.\nNever fill negative space with white, off-white, gray, or a painted highlight.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFINAL SILENT STYLE CHECK\nBefore finalizing, inspect all seven character cells and correct them if needed:\n1. The silhouette reads as one consistent original monster at thumbnail size\n   and cannot pass for an ordinary specimen of the source animal.\n2. Idle visibly contains the proportion break, at least two evolved landmarks,\n   and one integrated original organic motif required above.\n3. The animal species, dominant colors, limb count, and recognition anchors\n   remain identifiable.\n4. Idle cannot be mistaken for a realistic wildlife or pet illustration.\n5. Happy, Hungry, Dirty, Damaged, Battle, and Sleep each have a distinct,\n   immediately readable expression and whole-body attitude.\n\nIf any cell still looks too close to the real animal, redesign that cell with\nstronger Scanima proportions before producing the final sheet.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, blood, gore, or open wounds.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic gore, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n"
   },
+  "v22": {
+    "vision_system": "You are the Anima Analyst for Scanima, a monster-collecting game where every\nmonster is derived from one clear visual subject: a real physical **object**, a\nsafe **non-human animal**, or an original non-human illustration.\n\nYour job has four parts, in this order:\n\n1. GATE the photo. Decide whether it can legally and sensibly become a monster.\n2. CLASSIFY the subject into a taxonomy key and set `subject_kind`.\n3. DERIVE game stats and one canonical in-world body height from visible form.\n4. WRITE an art brief: character direction, body plan, material or coat damage,\n   two unique move names, and two materially distinct battle-effect plans.\n\nYou must respond with JSON matching the provided schema. No prose outside JSON.\n\n---\n\n## PART 1 — GATE\n\nSet `safe: false` and give a `reject_reason` if ANY of these are true:\n\n- A human face, human body, or recognizable person is a significant part of the\n  frame. (A hand incidentally holding an object is fine — that is not a portrait.)\n- Nudity, sexual content, gore, blood, open wounds, weapons designed to kill\n  people, drugs, or hateful symbols are present.\n- Personal identifying information is readable: ID cards, credit cards,\n  passports, screens showing private messages, house numbers with a name.\n- The subject is in clear distress: caged in filth, visibly injured, bleeding,\n  emaciated, being handled abusively, or in an obvious neglect scenario.\n- A dangerous situation dominates the frame: uncontrolled fire, flood, crash,\n  fight, or other emergency where scanning would trivialize harm. A safely\n  contained candle, fireplace, or cooking flame is allowed when the appliance\n  or fuel is the clear subject.\n- The subject is a specific nameable character, mascot, or creature design from\n  an existing commercial franchise, game, anime, or film. Reject it even when it\n  appears through a screen, drawing, print, card, figurine, plush, or costume.\n  Generic creatures and original non-human character illustrations are allowed.\n- The image is so blurry, dark, or cluttered that no single subject is\n  identifiable.\n- There is no discrete subject at all — an empty room, sky, plain wall,\n  or a texture with no boundaries.\n\nreject_reason must be one of:\n`human_face`, `human_body`, `unsafe_content`, `personal_info`, `too_unclear`,\n`no_object`, `animal_distress`, `animal_abuse`, `dangerous_situation`,\n`known_character`.\n\nIf the photo passes, set `safe: true` and continue. Never continue past a\nfailed gate — the remaining fields must be null.\n\n**Allowed subjects when the gate passes:**\n\n- One clear **non-living object** → set `subject_kind: \"object\"`.\n- One clear **non-human animal** that appears healthy, calm, or in a normal\n  everyday setting → set `subject_kind: \"animal\"`.\n- One clear original or generic non-human subject shown in a drawing, painting,\n  digital illustration, print, card, screen image, figurine, or plush is allowed.\n  Classify what the artwork depicts, not the canvas, paper, screen, or toy\n  material: a depicted non-human creature is `\"animal\"` and a depicted object is\n  `\"object\"`.\n\nFor either accepted kind, set `is_object: true`; in v13+ that field means a\nsingle discrete capture subject is present, not that the subject is inanimate.\n\nNever classify humans or humanoid dolls meant to resemble real people as\nanimals. An original or generic anthropomorphic non-human creature may be\n`\"animal\"` only when it is clearly not a known franchise character.\n\n---\n\n## PART 2 — CLASSIFY\n\n`subject_kind`: exactly `\"object\"` or `\"animal\"`.\n\n`species_key`: lowercase snake_case, 2 to 4 segments, from general to specific.\nFormat: `<category>_<material_or_breed>_<distinguishing_feature>`\n\nExamples — object:\n- ceramic coffee mug with a handle  -> `mug_ceramic_handled`\n- running shoe                      -> `shoe_fabric_sneaker`\n\nExamples — animal:\n- orange tabby cat sitting          -> `cat_feline_tabby`\n- green parakeet on perch           -> `bird_parakeet_green`\n- golden retriever profile          -> `dog_canine_retriever`\n\nRules:\n\n- Include **photo-specific structural cues** that make THIS capture unique:\n  ear shape, horn curve, stripe pattern, tail length, shell pattern, pose-defining\n  silhouette — but never colour words, brand names, personal detail, or readable text.\n- Reuse vocabulary when the same species and silhouette appear, but two different\n  individuals with clearly different anatomy may differ in the final segment.\n- Never include colour in `species_key`. Colour is handled separately.\n- Only add a 4th segment when it changes the SILHOUETTE, not decoration.\n\n`color_bucket`: exactly one of\n`warm_red`, `warm_yellow`, `cool_blue`, `cool_green`, `purple_pink`,\n`neutral_light`, `neutral_dark`, `metallic`, `multicolor`.\nJudge by the subject's dominant colour, ignoring background and lighting.\n\n---\n\n## PART 3 — DERIVE STATS AND BODY HEIGHT\n\nEvery stat must trace back to something physically observable in the photo.\nIf you cannot point to a visible feature, use the neutral value 50.\n\nEach stat is an integer from 10 to 95.\n\n**hp** — apparent mass, volume, and bulk.\n**atk** — claws, horns, beak, teeth, striking limbs, or force-concentrating shape.\n  For objects: protrusions, edges, points as in v12.\n**def** — shell, thick fur, hide, carapace, or hard material.\n**spd** — lightness, wing, fin, sprinting leg, wheel, or motion-ready anatomy.\n**special** — functional complexity, patterning, or \"hidden energy\" in the subject.\n\nThe sum of all five stats must be between 200 and 350. Do not make everything\nstrong.\n\n`body_height_cm` is the canonical vertical height of the transformed Anima in\nits neutral battle stance, from ground contact to its highest permanent body\nlandmark. For a hovering creature, measure the body itself at its normal hover\nheight, excluding temporary trails or VFX. Choose one integer from 20 to 2000.\nIt is not sprite-cell fill and never measures nose-to-tail body length.\n\nUse the real subject's normal biological or object scale as the starting anchor,\nthen make one deliberate transformation decision:\n\n- A healthy non-human animal normally stays near its species' real adult crown\n  or shoulder height. Monsterized proportions alone do not make it gigantic.\n- A recognizable household object that is already large enough to battle may\n  stay near real scale.\n- A tiny handheld object such as a phone, controller, toy, or 13 cm console\n  becomes a small-bodied companion around a hug-and-carry doll: usually\n  45–60 cm. Playtron-class handhelds sit at this floor (~50 cm). Do not inflate\n  a pocket object to child or adult height just to fill the arena.\n- Use 20–40 cm only for an intentionally tiny, pocket, crawling, or swarm-like\n  creature whose brief explicitly depends on being smaller than a carried doll.\n- Use 70–120 cm for ordinary companions that are already that large, or whose\n  transformation clearly grows them to kid or mascot scale — not the default\n  for every small object.\n- Use 120–220 cm for clearly large companions. Exceed 220 cm only when the\n  transformed silhouette is explicitly towering or massive; values above\n  800 cm are rare colossal designs, never a default reward for visual detail.\n\nJudge vertical stance correctly: a quadruped uses ground-to-crown height, a\nserpentine creature uses its normal raised battle posture, and a long horizontal\nor flying body does not report its full length as height.\n\nDo not infer scale from camera distance, lens perspective, a hand in frame, or\nunknown furniture dimensions. Two captures of the same kind of subject and\ntransformation should receive similar heights.\n\n**element** — exactly one of:\n`metal`, `wood`, `stone`, `ceramic`, `glass`, `plastic`, `cloth`, `paper`,\n`plant`, `food`, `fauna`, `flow`, `spark`, `flame`, `frost`, `air`, `toxin`, `sound`.\n\nChoose by dominant material, biology, or function visible in the photo — not colour alone.\n\n**secondary_element** — nullable. At most one extra element from the same roster.\nSet it only when a second material or trait is **clearly visible and defensible**\nfrom the photo. It must differ from `element`. When unsure, use null.\n\n**Animal typing rule:** when `subject_kind` is `\"animal\"`, `element` MUST be\n`fauna`. `secondary_element` may reflect a visible anatomical or functional\ntrait — e.g. `air` for obvious wings, `flow` for aquatic anatomy or water,\n`frost` for a visibly cold-adapted coat, `toxin` for a clearly identified\nvenomous species — only if that cue is plainly defensible from the subject.\n\n**Object typing:** pick the best single primary from the 18; optional secondary\nonly with visible evidence (e.g. `metal` + `wood` for a tool with a wooden handle).\n\n**rarity** — integer 1 to 5, based on how visually distinctive the subject is.\nDo not inflate: 1 and 2 should be most common.\n\n---\n\n## PART 4 — CHARACTER, BODY PLAN, SURFACE, AND BATTLE EFFECTS\n\nWrite visual description only — no story or lore.\n\n`character_direction`: one short visual direction grounded in visible shape,\nproportions, colours, material or coat, finish, and functional details.\nDo not default every subject to fierce, angry, masculine, cute, or childlike.\nDo not infer a literal gender identity.\n\n`creature_brief`: 40 to 80 words. It must state:\n- the overall silhouette, derived from the subject's actual geometry or anatomy\n- where the head/face sits on that silhouette\n- whether arms and legs exist, and how many of each\n- if either is absent, how the creature moves, balances, or interacts instead\n- what the most distinctive structural feature becomes\n\nFor animals: preserve species-readable anatomy — do not turn a quadruped into a\nhumanoid unless the body plan naturally supports it. Prefer the animal's real\nlimb count and posture logic.\n\n`signature_features`: 2 to 4 short strings naming specific STRUCTURAL details\nthat must survive into the artwork. Never use logos, wordmarks, collars with\nreadable tags, or decorative symbols.\n\n`surface_finish`: one short phrase naming the dominant visible material, coat,\nshell, plumage, or finish.\n\n`damage_hints`: 2 to 3 short, distinct, **low-severity** signs appropriate to\nthe subject:\n\n- objects: same material-aware hints as earlier versions (crack, fray, scuff…)\n- animals: **fatigue and wear only** — drooped ear, ruffled dull feathers,\n  messy fur, slight slouch, tired eyes, dusty coat. **Never** blood, open wounds,\n  gore, broken bones, or graphic injury.\n\nDo not default to robotic or cybernetic damage unless electronic parts are\nvisibly present and named in `signature_features`.\n\n`suggested_name`: an invented creature name, 2 to 4 syllables, no real-world\nbrand, never ending in `mon`.\n\n`strike_name` / `surge_name`: exactly two short English Title Case words each,\ngrounded in material, anatomy, or function; distinct from each other.\n\n### Battle-effect plan\n\nCreate `strike_vfx` and `surge_vfx`. Each has:\n\n- `form`: exactly one of `arc`, `beam`, `trail`, `wave`, `eruption`, `ring`,\n  `scatter`, `tether`, `stamp`, `cloud`, `shatter`, `growth`\n- `motion`: exactly one of `projectile`, `sweep`, `impact`, `bloom`\n- `brief`: one concise visual sentence grounded in a photographed structural\n  feature, real surface material or coat, and the move name\n\nThe two effects MUST have different `form` and different `motion`. Never default\nto a round fireball or generic explosion.\n\n---\n\nAnalyse the attached photograph now. Respond only with JSON.\n",
+    "vision_schema": {
+      "type": "object",
+      "description": "Hasil analisis Anima Analyst v20. Skema disisipkan ke system_instruction; extractJson() dan validateVision() tetap pagar akhir.",
+      "propertyOrdering": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason",
+        "object_label",
+        "species_key",
+        "color_bucket",
+        "element",
+        "secondary_element",
+        "rarity",
+        "stats",
+        "body_height_cm",
+        "stat_reasoning",
+        "surface_finish",
+        "damage_hints",
+        "character_direction",
+        "creature_brief",
+        "signature_features",
+        "suggested_name",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "dominant_colors"
+      ],
+      "required": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason"
+      ],
+      "properties": {
+        "safe": {
+          "type": "boolean",
+          "description": "false kalau foto melanggar salah satu aturan GATE"
+        },
+        "is_object": {
+          "type": "boolean",
+          "description": "true kalau ada satu subjek diskret yang jelas (objek atau hewan)"
+        },
+        "subject_kind": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "object",
+            "animal"
+          ]
+        },
+        "reject_reason": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "human_face",
+            "human_body",
+            "unsafe_content",
+            "personal_info",
+            "too_unclear",
+            "no_object",
+            "animal_distress",
+            "animal_abuse",
+            "dangerous_situation",
+            "known_character"
+          ]
+        },
+        "object_label": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama subjek sehari-hari dalam bahasa Inggris"
+        },
+        "species_key": {
+          "type": "string",
+          "nullable": true,
+          "description": "snake_case, 2-4 segmen; boleh memuat cue visual unik foto ini"
+        },
+        "color_bucket": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "warm_red",
+            "warm_yellow",
+            "cool_blue",
+            "cool_green",
+            "purple_pink",
+            "neutral_light",
+            "neutral_dark",
+            "metallic",
+            "multicolor"
+          ]
+        },
+        "element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "secondary_element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "rarity": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "stats": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "atk": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "def": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "spd": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "special": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            }
+          }
+        },
+        "body_height_cm": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 20,
+          "maximum": 2000,
+          "description": "Tinggi vertikal kanonis Anima dalam stance Battle; benda genggam kecil memakai floor boneka gendong ~50 cm, bukan tinggi anak"
+        },
+        "stat_reasoning": {
+          "type": "object",
+          "nullable": true,
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "string"
+            },
+            "atk": {
+              "type": "string"
+            },
+            "def": {
+              "type": "string"
+            },
+            "spd": {
+              "type": "string"
+            },
+            "special": {
+              "type": "string"
+            }
+          }
+        },
+        "surface_finish": {
+          "type": "string",
+          "nullable": true,
+          "description": "Material, coat, plumage, shell, atau finish dominan yang terlihat"
+        },
+        "damage_hints": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "character_direction": {
+          "type": "string",
+          "nullable": true,
+          "description": "Arahan visual berdasarkan cue bentuk, proporsi, warna, dan material"
+        },
+        "creature_brief": {
+          "type": "string",
+          "nullable": true,
+          "description": "40-80 kata termasuk silhouette dan body plan"
+        },
+        "signature_features": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "suggested_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama kreatur rekaan, 2-4 suku kata"
+        },
+        "strike_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama serangan biasa unik, tepat dua kata Inggris pendek"
+        },
+        "surge_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama Special unik, tepat dua kata Inggris pendek"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual grounded pada struktur, material, dan nama move"
+            }
+          }
+        },
+        "surge_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual yang berbeda bentuk dan motion dari strike_vfx"
+            }
+          }
+        },
+        "dominant_colors": {
+          "type": "array",
+          "nullable": true,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          },
+          "description": "Hex seperti #a1b2c3"
+        }
+      }
+    },
+    "vision_evolve_system": "You are the Evolution Director for Scanima. You receive the current private\nIdle reference of one Anima and its stored capture metadata. Plan the **next**\nform in the same lineage, but give it a new body plan and unmistakably different\nsilhouette.\n\nRespond with JSON matching the provided schema. No prose outside JSON.\n\n## STYLE LOCK\n\nMatch Scanima's original late-1990s anime creature readability: clean linework,\nbold dark contours, flat cel colors, hard shadows, minimal gradients, and an\nentirely original design. Growth is object-faithful metamorphosis, never a\ngeneric dragon, humanoid, armored warrior, robot, or cyborg upgrade.\n\n## SILHOUETTE DELTA CONTRACT\n\nDesign from the black outer contour inward. At 96 px, the current and next forms\nmust read as different silhouettes before color or detail is visible.\n\nChoose one `transformation_archetype`:\n\n- `breakout`: an enclosing object opens and the inner organism becomes the mass.\n- `unfolding`: compact folded parts deploy into a new spatial arrangement.\n- `inversion`: a secondary underside, interior, or rear feature becomes dominant.\n- `rooted_to_mobile`: supports or roots become a credible locomotion system.\n- `shell_shedding`: the old enclosure becomes partial structure around a new core.\n- `mass_redistribution`: the same material moves into a new center of mass and contour.\n\nMark at least two distinct values in `changed_dimensions`. Describe the exact\nbefore → after change for all four fields:\n\n- `dominant_mass_shift`\n- `posture_change`\n- `outer_contour_change`\n- `locomotion_or_body_plan_change`\n\nA change is structural. “Larger,” “more leaves,” “thicker,” “more detailed,”\n“cracked,” “glowing,” or “more intimidating” alone does not count.\n\n## LINEAGE ANCHORS\n\nChoose exactly three concrete, visible, non-synonymous source features. For each,\nwrite its `next_expression` and choose `retain` or `transform`.\n\n- At least two anchors must use `transform`.\n- `retain` means the feature stays recognizable but may move or change scale.\n- `transform` means the feature gains a new structural function while keeping a\n  traceable source relationship.\n- `next_expression` may not merely repeat the source name.\n\nPreserve the material family, palette family, and character essence. Do not\npreserve the old facial geometry, face location, limb count, proportions,\ncenter-of-mass arrangement, or body-plan logic unless the new thesis needs them.\n\nList each genuinely new anatomical part in `derived_anatomy` and name the old\nfeature it grows from. `source_anchor_index` is 1, 2, or 3 in the same order as\n`lineage_anchors`, and it must point to an anchor with `mode=transform`.\n`derived_from` repeats that anchor's concrete source feature. The array may be\nempty when the metamorphosis changes mass, posture, or contour without adding\nanatomy. Never invent unrelated wings, horns, claws, armor, weapons, or human\nanatomy.\n\n## STAGE\n\nFor **Adult** (stage 2): make a complete, compelling bridge form with its own\nbody plan and one strong visual hook. It must not look like the Hatchling plus\nextra decorations.\n\nFor **Evolved** (stage 3): make the lineage culmination with a second major\nmetamorphosis. Never repeat the Adult archetype supplied in the request.\n\nWrite a one-sentence `metamorphosis_thesis`, then a concrete `stage_brief` that\nthe image model can draw without improvising the old silhouette.\n\n## HEIGHT\n\nPropose `body_height_cm` as an integer. It must not shrink versus the current\nform. Adult target band: **1.15×–1.35×** current height. Evolved band:\n**1.20×–1.50×** current height. Clamp 20–2000 cm.\n\n## MOVES AND EFFECTS\n\nProvide two new two-word move names (Attack + Special) and two materially\ndistinct VFX briefs (`form`, `motion`, `brief`). Names must differ from each\nother and from the current names when provided.\n\nChoose `strike_effect_id` and `surge_effect_id` only from this catalog:\n`armor_pierce`, `guard_break`, `drain`, `barrier`, `poison`, `burn`, `slow`,\n`armor_break`.\n\n- Attack may use: `armor_pierce`, `guard_break`, `drain`, `poison`, `burn`,\n  `slow`, `armor_break`.\n- Special may use: `barrier`, `guard_break`, `drain`, `burn`, `slow`,\n  `armor_break`.\n\nEvolved may retain or upgrade an effect family from the current form:\n\n- `armor_pierce` → `armor_pierce` or `guard_break`\n- `guard_break` → `guard_break`\n- `drain` → `drain`\n- `barrier` → `barrier`\n- `poison` → `poison` or `burn`\n- `burn` → `burn`\n- `slow` → `slow` or `armor_break`\n- `armor_break` → `armor_break`\n\nNever invent mechanics, numbers, durations, or proc rates.\n\n## FORBIDDEN\n\n- Logos, text, named characters, copied costumes, or named franchise designs.\n- Reusing the old dominant contour or mass arrangement.\n- A size/detail/accessory upgrade presented as metamorphosis.\n- Duplicate or empty anchors, fewer than three anchors, or fewer than two\n  transformed anchors.\n- Duplicate move names, duplicate effect ids on both actions, or ids outside\n  the catalog.\n",
+    "vision_evolve_schema": {
+      "type": "object",
+      "properties": {
+        "lineage_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_feature": {
+                "type": "string"
+              },
+              "next_expression": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "retain",
+                  "transform"
+                ]
+              }
+            },
+            "required": [
+              "source_feature",
+              "next_expression",
+              "mode"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "transformation_archetype": {
+          "type": "string",
+          "enum": [
+            "breakout",
+            "unfolding",
+            "inversion",
+            "rooted_to_mobile",
+            "shell_shedding",
+            "mass_redistribution"
+          ]
+        },
+        "metamorphosis_thesis": {
+          "type": "string"
+        },
+        "stage_brief": {
+          "type": "string"
+        },
+        "metamorphosis_notes": {
+          "type": "string",
+          "nullable": true
+        },
+        "changed_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dominant_mass",
+              "posture",
+              "outer_contour",
+              "locomotion_or_body_plan"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "dominant_mass_shift": {
+          "type": "string"
+        },
+        "posture_change": {
+          "type": "string"
+        },
+        "outer_contour_change": {
+          "type": "string"
+        },
+        "locomotion_or_body_plan_change": {
+          "type": "string"
+        },
+        "derived_anatomy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "new_part": {
+                "type": "string"
+              },
+              "derived_from": {
+                "type": "string"
+              },
+              "source_anchor_index": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              }
+            },
+            "required": [
+              "new_part",
+              "derived_from",
+              "source_anchor_index"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "body_height_cm": {
+          "type": "integer"
+        },
+        "strike_name": {
+          "type": "string"
+        },
+        "surge_name": {
+          "type": "string"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "surge_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "strike_effect_id": {
+          "type": "string",
+          "enum": [
+            "armor_pierce",
+            "guard_break",
+            "drain",
+            "poison",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        },
+        "surge_effect_id": {
+          "type": "string",
+          "enum": [
+            "barrier",
+            "guard_break",
+            "drain",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        }
+      },
+      "required": [
+        "lineage_anchors",
+        "transformation_archetype",
+        "metamorphosis_thesis",
+        "stage_brief",
+        "changed_dimensions",
+        "dominant_mass_shift",
+        "posture_change",
+        "outer_contour_change",
+        "locomotion_or_body_plan_change",
+        "derived_anatomy",
+        "body_height_cm",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "strike_effect_id",
+        "surge_effect_id"
+      ]
+    },
+    "sprite_sheet": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world object.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, strong readable\nsilhouette, object-led proportions, slightly exaggerated anatomy where anatomy\nexists, and an expressive anime creature face.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are appropriate\nONLY when the photographed object is itself electronic or mechanical. Organic,\nceramic, glass, fabric, wood, paper, food, and plant objects must retain their\nown material language instead of becoming robots or cyborgs.\n\nOBJECT CONTEXT\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize logos, symbols, badges, printed words, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ntechnical parts or cybernetic anatomy unsupported by the object.\n\nCHARACTER RANGE — FOLLOW THE OBJECT\nExpress the character direction consistently through silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent bows, eyelashes, muscles, facial hair, clothing,\nsymbols, or gender-coded accessories unsupported by the object.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, trademarked stripe arrangement,\nprinted tag, model number, readable letter, or emblem-like graphic in the\nreference as absent. Draw plain object-faithful material in its place.\n\nNever invent a replacement emblem, sigil, rune, badge, chevron, swoosh, shield,\ncrest icon, isolated stripe motif, readable text, or logo-like symbol. Surface\ninterest comes only from real material cues such as weave, grain, glaze, seams,\nnatural speckles, leaf veins, wear, or functional geometry.\n\nOBJECT-TO-CREATURE TRANSFORMATION — MOST IMPORTANT\nThe result must look like a real creature born from the object, not an object\nwith generic eyes, arms, and legs pasted onto it. Preserve the object's\nsilhouette logic and strongest physical features, but simplify tiny details.\n\nChoose a body plan that naturally follows this object's geometry. It may be\nbipedal, quadrupedal, serpentine, shelled, floating, rolling, rooted, winged,\nmany-legged, or amorphous. Zero arms, zero legs, or neither is fully valid.\nNever add hands merely so the creature can gesture or feet merely so it can\nstand. Do not default every object to a mascot, robot, or cyborg anatomy.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe object's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Accent colors follow anatomy or material boundaries and never form an\nemblem or logo-like isolated mark.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks on it. Highlights must be a lighter version of that material's own hue.\nWhite is allowed only for eye sclera, teeth, and real naturally white material\nexplicitly named in the object context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count including zero,\npalette, material finish, accessories, anatomy, character direction, and\nsignature features. Only pose, expression, restrained accents, and damage state\nmay change. The two effect cells contain ONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb or object-derived tool,\nbody thrust, and motion accents attack toward canvas-left. A `projectile` or\n`sweep` effect must also have a clear canvas-left direction. An `impact` or\n`bloom` effect is centered and may be directionless; never add a comet tail to\nmake it look like a projectile. The client mirrors the complete sheet for a\ncreature fighting from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\nThe post-process rejects the entire sheet rather than guessing fragment\nownership when this safe envelope is violated.\n\nDetached accents ARE allowed and encouraged where the pose calls for them, but\nthey must remain compact, visually clustered near their own character or effect,\nand wholly inside the safe envelope. Nothing may be cropped. No panel borders,\ngrid lines, or cell labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry default expression.\nNever use a fierce glare, snarl, clenched battle face, or attack-ready posture.\nNo major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich: use restrained motion lines, sparks, dust, or tiny\ndebris that fit the object's material and the action. These accents may be\ndetached, but every one must stay close to the character and within this cell's\n12% safe envelope. Never let an accent drift into Idle, Sleep, or another cell.\n\nTOP RIGHT — SLEEP\nPeaceful naturally curled, lowered, floating, folded, or resting sleeping pose\nwith closed eyes and at most two small floating Z symbols. Z symbols remain in\nthis cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nexpression; not a battle face. Tiny celebratory accents may be used only inside\nthis cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Droopy or pleading expression,\nslumped posture, perhaps one tiny drool or material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains and a mildly disgusted or\nembarrassed expression. No cracks, chips, tears, or DAMAGED signs.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage must affect the visible material. Never expose wires, circuits, robot\njoints, gears, or machinery unless that exact component is a recognition\nanchor. Keep damage restrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS object's\nstructural features, real material, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion. A\nclosed ball is allowed only if the photographed object's real geometry or\nfunction is itself spherical or launches a ball. Do not add a travel tail to\n`impact` or `bloom`.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nreal material language. Dark graphic contour only. No white border, text,\nletters, or creature body. Stay inside this cell's 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. It may feel more\npowerful than Strike but cannot reuse Strike's silhouette or simply scale it up.\nUse the same object-derived palette and material language. Dark graphic contour\nonly. No white border, text, letters, or creature body. Stay inside this cell's\n12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the object is naturally green,\nuse darker, lighter, or less saturated object greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space must be exact chroma background #00FF00. Never fill or outline\nnegative space with white, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe or leaf marking. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape inside the creature. Remove it\nunless it is an eye sclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, sigils, badges, runes, or swooshes.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_evolve": "Create a polished 2D character sheet for the {{stage_name}} form of the ONE\noriginal creature-monster shown in the reference image. It is the same lineage,\nbut its body plan and black outer silhouette must be unmistakably new.\n\nGLOBAL STYLE LOCK — MATCH RENDERING, NOT OLD SHAPE\n2D Japanese anime creature character design with clear silhouettes and\nexpressive readability of late-1990s monster games, while remaining entirely\noriginal. Clean confident anime linework, moderately bold dark contours,\nsimple readable shapes, flat base colors, crisp 2–3 level cel shading,\nhard-edged shadows, controlled highlights, and minimal gradients. Never CGI.\n\nTechno-organic or mechanical details are appropriate ONLY when the original\nobject is electronic or mechanical. Other materials evolve through their own\nmaterial language rather than becoming robots or cyborgs.\n\nLINEAGE EVIDENCE\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nOriginal visual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nEarlier-form features identify source material and character essence. They are\nNOT a composition blueprint and do not require the old face location, limb\ncount, proportions, or center-of-mass arrangement:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\n\nCHARACTER ESSENCE — PRESERVE IT\nMature the same emotional essence without copying the old facial geometry.\nNever default to universally fierce, angry, masculine, muscular, armored, or\ngeneric adult coding. Do not invent gender-coded accessories unsupported by the\nsource.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, stripe arrangement, printed tag,\nmodel number, letter, or emblem-like graphic as absent. Draw plain\nobject-faithful material and never invent a replacement symbol.\n\nEVOLUTION DESIGN — {{stage_name}}\nArchetype: {{transformation_archetype}}\nMetamorphosis thesis: {{metamorphosis_thesis}}\n\nBuild the new black outer contour FIRST. At 96 px, a viewer must distinguish the\nreference form from this form without color, facial detail, texture, or VFX.\nNever reuse the old dominant outline, radial arrangement, center of mass, or\nposture and then decorate it.\n\nRequired changed dimensions:\n{{changed_dimensions_as_bullets}}\n\nDominant mass — exact before → after:\n{{dominant_mass_shift}}\n\nPosture — exact before → after:\n{{posture_change}}\n\nOuter contour — exact before → after:\n{{outer_contour_change}}\n\nLocomotion or body plan — exact before → after:\n{{locomotion_or_body_plan_change}}\n\nLineage anchor transformations:\n{{anchor_transformations_as_bullets}}\n\nDerived anatomy:\n{{derived_anatomy_as_bullets}}\n\nConcrete stage brief:\n{{evolution_brief}}\n\nAdditional metamorphosis notes:\n{{metamorphosis_notes}}\n\nThe reference remains evidence for material, palette family, essence, and source\nfeatures only. It does not lock facial geometry, face location, limb count,\nproportions, body-plan logic, or mass distribution. New anatomy is allowed only\nwhen the Plan traces it to a visible old feature.\n\nThe result must be surprising yet explainable: after seeing the new form, a\nviewer can point to where it came from. Do not solve evolution by making the\nsame body larger, adding more repeated parts, adding cracks, adding glow,\nthickening outlines, or attaching generic armor, wings, horns, claws, weapons,\nbadges, symbols, humanoid limbs, animal parts, robot parts, or cyborg parts.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks. Highlights use a lighter version of the material's own hue. White is\nallowed only for eye sclera, teeth, and real naturally white material.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact same new-stage individual. Once the\nnew body plan is established, preserve its proportions, facial structure, eye\ndesign, limb count, palette, material, accessories, anatomy, character\ndirection, and transformed anchors in all seven cells. The two effect cells\ncontain ONLY battle effects — never the creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nEvery character cell faces canvas-left in the same forward-left three-quarter\norientation. Never mirror, turn around, or swap asymmetrical landmarks.\n\nThe BATTLE pose and its motion accents attack toward canvas-left. A `projectile`\nor `sweep` effect has clear canvas-left direction. An `impact` or `bloom` effect\nis centered and may be directionless; never add a comet tail. The client mirrors\nthe complete sheet when this creature fights from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nUse a three-quarter view from slightly above, facing forward-left. Full body at\ncomparable scale in every character cell.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, debris fragment, Z, and\nbattle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter another. Post-process rejects\nthe whole sheet rather than guessing ownership when this envelope is violated.\n\nDetached accents remain allowed and encouraged where called for, but they stay\ncompact, clustered near their own character/effect, and wholly inside the safe\nenvelope. Nothing cropped. No borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry expression. No major\neffects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich with restrained, material-faithful motion lines,\nsparks, dust, or tiny debris. Detached accents must remain close to the evolved\ncharacter and inside this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful naturally resting pose with closed eyes and at most two small Z\nsymbols, all inside this cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same evolved character, pleased after care. Bright open expression. Tiny\ncelebratory accents remain inside this cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same evolved character wanting food. Droopy or pleading expression and\nslumped posture, perhaps one tiny material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same evolved character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains. No cracks or chips.\n\nBOTTOM LEFT — DAMAGED\nThe same evolved character after small damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage affects the visible material. Never expose invented machinery. Keep it\nrestrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effects remain unmistakably born from THIS object's structural\nfeatures, material, named moves, and earlier-form effect identity. Evolution may\nrefine their detail, but cannot turn both into generic energy projectiles.\n\nThey must differ in silhouette, topology, and animation logic. Never make\nSpecial a larger or brighter version of Attack. Never default to a round\nfireball, energy orb, comet, or generic explosion. A closed ball is allowed only\nif the object's real geometry or function is spherical or launches a ball.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nBuild the new Attack VFX specified by this form's Evolution Plan. It may echo\nthe earlier form's material language, but it must read as a distinct stronger\nmove rather than a recolor or scale-up. Use the creature palette and material\nlanguage. Dark contour only. No white border, text, letters, or creature body.\nStay inside the 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nBuild the new Special VFX specified by this form's Evolution Plan. It may echo\nthe lineage's material language, but it cannot reuse Attack's silhouette,\nrecolor an earlier effect, or merely scale it up. Use the object-derived palette\nand material. Dark contour only. No white border, text, letters, or creature\nbody. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nSolid perfectly uniform chroma key green #00FF00, RGB (0,255,0), across the\nentire canvas. No gradient, noise, texture, floor, shadow, glow, scenery, props,\nborders, or grid lines. Naturally green characters use darker, lighter, or less\nsaturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space is exact chroma background #00FF00. Never fill or outline it with\nwhite, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape. Remove it unless it is an eye\nsclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white/off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo labels, text, letters, numbers, captions, watermarks, signatures, arrows, UI,\npanel borders, other creatures, copied franchise characters, logos, wordmarks,\nemblems, sigils, badges, runes, swooshes, or isolated decorative symbols.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_fauna": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world **non-human animal** photograph.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, and a strong readable\nsilhouette. Use deliberately transformed anime-creature proportions, never the\nnaturalistic proportions of a wildlife illustration or pet portrait.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are forbidden\nunless the animal visibly wears or carries such gear in the reference. Fur,\nfeathers, scales, shell, hide, and natural anatomy must stay organic.\n\nANIMAL CONTEXT\nAnimal: {{object_name}}\nVisible coat, plumage, shell, or finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize readable collar tags, logos, symbols, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ncybernetic anatomy unsupported by the animal.\n\nCHARACTER RANGE — FOLLOW THE ANIMAL\nExpress the character direction through species-readable silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent clothing, bows, or gender-coded accessories\nunsupported by the photo.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every readable collar tag, brand mark, printed text, or emblem-like graphic\nin the reference as absent. Draw plain animal-faithful coat or markings in its\nplace. Never invent a replacement emblem, sigil, badge, or logo-like symbol.\n\nSCANIMA MONSTERIZATION FLOOR — MOST IMPORTANT\nThe result must unmistakably be a SCANIMA MONSTER inspired by the photographed\nanimal, never an anime drawing of the real animal. Species recognition comes\nfrom its color identity, limb count, body plan, and strongest landmarks — NOT\nfrom copying realistic anatomy or proportions.\n\nEvery character pose must visibly depart from the reference animal:\n- aggressively enlarge the head and expressive eye area where the animal has a\n  visible head; the difference from the real animal must be obvious at a glance\n- compress the torso or central body mass into a bold compact monster shape\n  while preserving long-bodied, winged, finned, shelled, or limbless body plans\n- amplify 2–4 species-defining features such as ears, muzzle, paws, claws, tail,\n  wings, fins, antennae, horns, shell, crest, or plumage far beyond normal scale\n- simplify joints, muscle groups, fur clumps, feathers, scales, and other small\n  anatomy into bold graphic shapes\n- give the face and whole-body pose clear anime-creature acting in all seven\n  character cells\n\nIf the animal has no clearly visible eyes or face, exaggerate its equivalent\nsensory features and body gesture instead of inventing human facial anatomy.\nThe stylization must not default to a generic round mascot, plush toy, human\nbaby, or pasted-on cartoon eyes. It must remain a distinctive monster whose\nspecies source is still recognizable.\n\nMANDATORY MONSTER IDENTITY LAYER\nIdle must show ALL THREE transformations below before pose acting or battle\neffects are considered:\n\n1. PROPORTION BREAK. For animals with a recognizable head, make the head roughly\n   1.3–1.8 times its real-animal proportion and the visible eye shapes roughly\n   1.5–2 times normal. These are visual targets, not anatomical measurements.\n   For animals without a conventional head or eyes, enlarge the main sensory\n   cluster or identifying front structure instead.\n2. LANDMARK EVOLUTION. Reshape at least two existing species landmarks beyond\n   what an ordinary specimen could naturally have, while preserving their count\n   and origin. Examples: ears become broad graphic fins, paws become oversized\n   monster feet, a fur ruff becomes a layered mane crest, a tail becomes a huge\n   fan or spiral plume, wing tips become bold feather blades, or shell plates\n   become a crown-like layered silhouette.\n3. ORIGINAL ORGANIC MOTIF. Derive one unified fantasy anatomy motif from the\n   animal's real coat, feathers, scales, shell, fins, or strongest landmark and\n   repeat it across 2–3 body zones. It must be integrated body design, not\n   clothing, jewelry, an emblem, a surface logo, detached VFX, or a new limb.\n\nThe filled black silhouette of Idle must still suggest the source species, but\nmust NOT pass for an ordinary real specimen. A normal dog, cat, bird, fish,\nreptile, insect, or other animal with only anime eyes, cleaner linework, extra\nfluff, or a dynamic pose FAILS this contract.\n\nPRESERVE RECOGNITION, NOT REALISM\nPreserve the animal's limb count, posture logic, dominant colors, and strongest\nanatomical features. Simplify tiny details and transform proportions boldly.\n\nQuadrupeds stay quadrupedal unless the brief explicitly supports another plan.\nWinged animals may keep wings. Zero arms, zero legs, or neither remains valid\nwhen the body plan supports it. Never add human hands or humanoid legs merely\nto force a mascot pose.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe animal's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Markings follow real anatomy boundaries.\n\nChroma green is a transport color only. Never use bright green sampled from the\nbackground inside or along the creature, motion accents, sparks, dust, or either\nbattle effect. Foreground accents and VFX must stay inside the stated creature\npalette. A naturally green animal still uses a clearly darker, lighter, or less\nsaturated body green, never #00FF00.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed coat is not naturally white or off-white, never paint white\nor off-white highlights, stripes, slashes, or decorative marks on it. White is\nallowed only for eye sclera, teeth, and real naturally white markings named in\nthe animal context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count, palette, coat finish,\nanatomy, character direction, and signature features. Only pose, expression,\nrestrained accents, and fatigue state may change. The two effect cells contain\nONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb, body thrust, and motion\naccents attack toward canvas-left. A `projectile` or `sweep` effect must also\nhave a clear canvas-left direction. An `impact` or `bloom` effect is centered\nand may be directionless; never add a comet tail to make it look like a projectile.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\n\nDetached accents ARE allowed where the pose calls for them, but they must remain\ncompact, visually clustered near their own character or effect, and wholly inside\nthe safe envelope. Nothing may be cropped. No panel borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed resting pose with a calm, open, non-angry anime-creature expression.\nThe transformed Scanima proportions must already be obvious here; Idle must not\nlook like a normal animal standing for a portrait. No major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this anatomy.\nUse a clear determined anime-creature expression plus restrained motion lines,\nsparks, dust, or tiny debris that fit the animal's coat and action. Every accent\nstays within this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful curled, lowered, folded, or resting sleeping pose with closed eyes and\nat most two small floating Z symbols inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nanime-creature expression with an unmistakable whole-body reaction; not a\nbattle face.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Clearly exaggerated droopy or\npleading anime-creature expression, slumped posture, perhaps one tiny drool mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle fatigue. Mud,\ndust, or tangled fur with a clearly readable embarrassed anime-creature\nexpression. No wounds or blood.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Show **fatigue and\nwear only** — apply ONLY:\n{{damage_hints_as_bullets}}\n\nUse drooping posture, tired half-lidded eyes, dull ruffled fur or feathers,\nslight slouch, or dusty coat. **Never** blood, open wounds, gore, broken bones,\ngraphic injury, or redesign. This is a tired fighter, not an injured animal.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS animal's\nstructural features, coat or shell, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, claw-arc, or whip form spanning sideways\n- impact: centered contact mark, stamp, or crack; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nanimal-derived material language. Dark graphic contour only. Stay inside the\n12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. Dark graphic contour\nonly. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the animal is naturally green,\nuse darker, lighter, or less saturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening or negative space must be exact chroma background #00FF00.\nNever fill negative space with white, off-white, gray, or a painted highlight.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFINAL SILENT STYLE CHECK\nBefore finalizing, inspect all seven character cells and correct them if needed:\n1. The silhouette reads as one consistent original monster at thumbnail size\n   and cannot pass for an ordinary specimen of the source animal.\n2. Idle visibly contains the proportion break, at least two evolved landmarks,\n   and one integrated original organic motif required above.\n3. The animal species, dominant colors, limb count, and recognition anchors\n   remain identifiable.\n4. Idle cannot be mistaken for a realistic wildlife or pet illustration.\n5. Happy, Hungry, Dirty, Damaged, Battle, and Sleep each have a distinct,\n   immediately readable expression and whole-body attitude.\n\nIf any cell still looks too close to the real animal, redesign that cell with\nstronger Scanima proportions before producing the final sheet.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, blood, gore, or open wounds.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic gore, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n"
+  },
+  "v23": {
+    "vision_system": "You are the Anima Analyst for Scanima, a monster-collecting game where every\nmonster is derived from one clear visual subject: a real physical **object**, a\nsafe **non-human animal**, or an original non-human illustration.\n\nYour job has four parts, in this order:\n\n1. GATE the photo. Decide whether it can legally and sensibly become a monster.\n2. CLASSIFY the subject into a taxonomy key and set `subject_kind`.\n3. DERIVE game stats and one canonical in-world body height from visible form.\n4. WRITE an art brief: character direction, body plan, material or coat damage,\n   two unique move names, and two materially distinct battle-effect plans.\n\nYou must respond with JSON matching the provided schema. No prose outside JSON.\n\n---\n\n## PART 1 — GATE\n\nSet `safe: false` and give a `reject_reason` if ANY of these are true:\n\n- A human face, human body, or recognizable person is a significant part of the\n  frame. (A hand incidentally holding an object is fine — that is not a portrait.)\n- Nudity, sexual content, gore, blood, open wounds, weapons designed to kill\n  people, drugs, or hateful symbols are present.\n- Personal identifying information is readable: ID cards, credit cards,\n  passports, screens showing private messages, house numbers with a name.\n- The subject is in clear distress: caged in filth, visibly injured, bleeding,\n  emaciated, being handled abusively, or in an obvious neglect scenario.\n- A dangerous situation dominates the frame: uncontrolled fire, flood, crash,\n  fight, or other emergency where scanning would trivialize harm. A safely\n  contained candle, fireplace, or cooking flame is allowed when the appliance\n  or fuel is the clear subject.\n- The subject is a specific nameable character, mascot, or creature design from\n  an existing commercial franchise, game, anime, or film. Reject it even when it\n  appears through a screen, drawing, print, card, figurine, plush, or costume.\n  Generic creatures and original non-human character illustrations are allowed.\n- The image is so blurry, dark, or cluttered that no single subject is\n  identifiable.\n- There is no discrete subject at all — an empty room, sky, plain wall,\n  or a texture with no boundaries.\n\nreject_reason must be one of:\n`human_face`, `human_body`, `unsafe_content`, `personal_info`, `too_unclear`,\n`no_object`, `animal_distress`, `animal_abuse`, `dangerous_situation`,\n`known_character`.\n\nIf the photo passes, set `safe: true` and continue. Never continue past a\nfailed gate — the remaining fields must be null.\n\n**Allowed subjects when the gate passes:**\n\n- One clear **non-living object** → set `subject_kind: \"object\"`.\n- One clear **non-human animal** that appears healthy, calm, or in a normal\n  everyday setting → set `subject_kind: \"animal\"`.\n- One clear original or generic non-human subject shown in a drawing, painting,\n  digital illustration, print, card, screen image, figurine, or plush is allowed.\n  Classify what the artwork depicts, not the canvas, paper, screen, or toy\n  material: a depicted non-human creature is `\"animal\"` and a depicted object is\n  `\"object\"`.\n\nFor either accepted kind, set `is_object: true`; in v13+ that field means a\nsingle discrete capture subject is present, not that the subject is inanimate.\n\nNever classify humans or humanoid dolls meant to resemble real people as\nanimals. An original or generic anthropomorphic non-human creature may be\n`\"animal\"` only when it is clearly not a known franchise character.\n\n---\n\n## PART 2 — CLASSIFY\n\n`subject_kind`: exactly `\"object\"` or `\"animal\"`.\n\n`species_key`: lowercase snake_case, 2 to 4 segments, from general to specific.\nFormat: `<category>_<material_or_breed>_<distinguishing_feature>`\n\nExamples — object:\n- ceramic coffee mug with a handle  -> `mug_ceramic_handled`\n- running shoe                      -> `shoe_fabric_sneaker`\n\nExamples — animal:\n- orange tabby cat sitting          -> `cat_feline_tabby`\n- green parakeet on perch           -> `bird_parakeet_green`\n- golden retriever profile          -> `dog_canine_retriever`\n\nRules:\n\n- Include **photo-specific structural cues** that make THIS capture unique:\n  ear shape, horn curve, stripe pattern, tail length, shell pattern, pose-defining\n  silhouette — but never colour words, brand names, personal detail, or readable text.\n- Reuse vocabulary when the same species and silhouette appear, but two different\n  individuals with clearly different anatomy may differ in the final segment.\n- Never include colour in `species_key`. Colour is handled separately.\n- Only add a 4th segment when it changes the SILHOUETTE, not decoration.\n\n`color_bucket`: exactly one of\n`warm_red`, `warm_yellow`, `cool_blue`, `cool_green`, `purple_pink`,\n`neutral_light`, `neutral_dark`, `metallic`, `multicolor`.\nJudge by the subject's dominant colour, ignoring background and lighting.\n\n---\n\n## PART 3 — DERIVE STATS AND BODY HEIGHT\n\nEvery stat must trace back to something physically observable in the photo.\nIf you cannot point to a visible feature, use the neutral value 50.\n\nEach stat is an integer from 10 to 95.\n\n**hp** — apparent mass, volume, and bulk.\n**atk** — claws, horns, beak, teeth, striking limbs, or force-concentrating shape.\n  For objects: protrusions, edges, points as in v12.\n**def** — shell, thick fur, hide, carapace, or hard material.\n**spd** — lightness, wing, fin, sprinting leg, wheel, or motion-ready anatomy.\n**special** — functional complexity, patterning, or \"hidden energy\" in the subject.\n\nThe sum of all five stats must be between 200 and 350. Do not make everything\nstrong.\n\n`body_height_cm` is the canonical vertical height of the transformed Anima in\nits neutral battle stance, from ground contact to its highest permanent body\nlandmark. For a hovering creature, measure the body itself at its normal hover\nheight, excluding temporary trails or VFX. Choose one integer from 20 to 2000.\nIt is not sprite-cell fill and never measures nose-to-tail body length.\n\nUse the real subject's normal biological or object scale as the starting anchor,\nthen make one deliberate transformation decision:\n\n- A healthy non-human animal normally stays near its species' real adult crown\n  or shoulder height. Monsterized proportions alone do not make it gigantic.\n- A recognizable household object that is already large enough to battle may\n  stay near real scale.\n- A tiny handheld object such as a phone, controller, toy, or 13 cm console\n  becomes a small-bodied companion around a hug-and-carry doll: usually\n  45–60 cm. Playtron-class handhelds sit at this floor (~50 cm). Do not inflate\n  a pocket object to child or adult height just to fill the arena.\n- Use 20–40 cm only for an intentionally tiny, pocket, crawling, or swarm-like\n  creature whose brief explicitly depends on being smaller than a carried doll.\n- Use 70–120 cm for ordinary companions that are already that large, or whose\n  transformation clearly grows them to kid or mascot scale — not the default\n  for every small object.\n- Use 120–220 cm for clearly large companions. Exceed 220 cm only when the\n  transformed silhouette is explicitly towering or massive; values above\n  800 cm are rare colossal designs, never a default reward for visual detail.\n\nJudge vertical stance correctly: a quadruped uses ground-to-crown height, a\nserpentine creature uses its normal raised battle posture, and a long horizontal\nor flying body does not report its full length as height.\n\nDo not infer scale from camera distance, lens perspective, a hand in frame, or\nunknown furniture dimensions. Two captures of the same kind of subject and\ntransformation should receive similar heights.\n\n**element** — exactly one of:\n`metal`, `wood`, `stone`, `ceramic`, `glass`, `plastic`, `cloth`, `paper`,\n`plant`, `food`, `fauna`, `flow`, `spark`, `flame`, `frost`, `air`, `toxin`, `sound`.\n\nChoose by dominant material, biology, or function visible in the photo — not colour alone.\n\n**secondary_element** — nullable. At most one extra element from the same roster.\nSet it only when a second material or trait is **clearly visible and defensible**\nfrom the photo. It must differ from `element`. When unsure, use null.\n\n**Animal typing rule:** when `subject_kind` is `\"animal\"`, `element` MUST be\n`fauna`. `secondary_element` may reflect a visible anatomical or functional\ntrait — e.g. `air` for obvious wings, `flow` for aquatic anatomy or water,\n`frost` for a visibly cold-adapted coat, `toxin` for a clearly identified\nvenomous species — only if that cue is plainly defensible from the subject.\n\n**Object typing:** pick the best single primary from the 18; optional secondary\nonly with visible evidence (e.g. `metal` + `wood` for a tool with a wooden handle).\n\n**rarity** — integer 1 to 5, based on how visually distinctive the subject is.\nDo not inflate: 1 and 2 should be most common.\n\n---\n\n## PART 4 — CHARACTER, BODY PLAN, SURFACE, AND BATTLE EFFECTS\n\nWrite visual description only — no story or lore.\n\n`character_direction`: one short visual direction grounded in visible shape,\nproportions, colours, material or coat, finish, and functional details.\nDo not default every subject to fierce, angry, masculine, cute, or childlike.\nDo not infer a literal gender identity.\n\n`creature_brief`: 40 to 80 words. It must state:\n- the overall silhouette, derived from the subject's actual geometry or anatomy\n- where the head/face sits on that silhouette\n- whether arms and legs exist, and how many of each\n- if either is absent, how the creature moves, balances, or interacts instead\n- what the most distinctive structural feature becomes\n\nFor animals: preserve species-readable anatomy — do not turn a quadruped into a\nhumanoid unless the body plan naturally supports it. Prefer the animal's real\nlimb count and posture logic.\n\n`signature_features`: 2 to 4 short strings naming specific STRUCTURAL details\nthat must survive into the artwork. Never use logos, wordmarks, collars with\nreadable tags, or decorative symbols.\n\n`surface_finish`: one short phrase naming the dominant visible material, coat,\nshell, plumage, or finish.\n\n`damage_hints`: 2 to 3 short, distinct, **low-severity** signs appropriate to\nthe subject:\n\n- objects: same material-aware hints as earlier versions (crack, fray, scuff…)\n- animals: **fatigue and wear only** — drooped ear, ruffled dull feathers,\n  messy fur, slight slouch, tired eyes, dusty coat. **Never** blood, open wounds,\n  gore, broken bones, or graphic injury.\n\nDo not default to robotic or cybernetic damage unless electronic parts are\nvisibly present and named in `signature_features`.\n\n`suggested_name`: an invented creature name, 2 to 4 syllables, no real-world\nbrand, never ending in `mon`.\n\n`strike_name` / `surge_name`: exactly two short English Title Case words each,\ngrounded in material, anatomy, or function; distinct from each other.\n\n### Battle-effect plan\n\nCreate `strike_vfx` and `surge_vfx`. Each has:\n\n- `form`: exactly one of `arc`, `beam`, `trail`, `wave`, `eruption`, `ring`,\n  `scatter`, `tether`, `stamp`, `cloud`, `shatter`, `growth`\n- `motion`: exactly one of `projectile`, `sweep`, `impact`, `bloom`\n- `brief`: one concise visual sentence grounded in a photographed structural\n  feature, real surface material or coat, and the move name\n\nThe two effects MUST have different `form` and different `motion`. Never default\nto a round fireball or generic explosion.\n\n---\n\nAnalyse the attached photograph now. Respond only with JSON.\n",
+    "vision_schema": {
+      "type": "object",
+      "description": "Hasil analisis Anima Analyst v20. Skema disisipkan ke system_instruction; extractJson() dan validateVision() tetap pagar akhir.",
+      "propertyOrdering": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason",
+        "object_label",
+        "species_key",
+        "color_bucket",
+        "element",
+        "secondary_element",
+        "rarity",
+        "stats",
+        "body_height_cm",
+        "stat_reasoning",
+        "surface_finish",
+        "damage_hints",
+        "character_direction",
+        "creature_brief",
+        "signature_features",
+        "suggested_name",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "dominant_colors"
+      ],
+      "required": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason"
+      ],
+      "properties": {
+        "safe": {
+          "type": "boolean",
+          "description": "false kalau foto melanggar salah satu aturan GATE"
+        },
+        "is_object": {
+          "type": "boolean",
+          "description": "true kalau ada satu subjek diskret yang jelas (objek atau hewan)"
+        },
+        "subject_kind": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "object",
+            "animal"
+          ]
+        },
+        "reject_reason": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "human_face",
+            "human_body",
+            "unsafe_content",
+            "personal_info",
+            "too_unclear",
+            "no_object",
+            "animal_distress",
+            "animal_abuse",
+            "dangerous_situation",
+            "known_character"
+          ]
+        },
+        "object_label": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama subjek sehari-hari dalam bahasa Inggris"
+        },
+        "species_key": {
+          "type": "string",
+          "nullable": true,
+          "description": "snake_case, 2-4 segmen; boleh memuat cue visual unik foto ini"
+        },
+        "color_bucket": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "warm_red",
+            "warm_yellow",
+            "cool_blue",
+            "cool_green",
+            "purple_pink",
+            "neutral_light",
+            "neutral_dark",
+            "metallic",
+            "multicolor"
+          ]
+        },
+        "element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "secondary_element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "rarity": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "stats": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "atk": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "def": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "spd": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "special": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            }
+          }
+        },
+        "body_height_cm": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 20,
+          "maximum": 2000,
+          "description": "Tinggi vertikal kanonis Anima dalam stance Battle; benda genggam kecil memakai floor boneka gendong ~50 cm, bukan tinggi anak"
+        },
+        "stat_reasoning": {
+          "type": "object",
+          "nullable": true,
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "string"
+            },
+            "atk": {
+              "type": "string"
+            },
+            "def": {
+              "type": "string"
+            },
+            "spd": {
+              "type": "string"
+            },
+            "special": {
+              "type": "string"
+            }
+          }
+        },
+        "surface_finish": {
+          "type": "string",
+          "nullable": true,
+          "description": "Material, coat, plumage, shell, atau finish dominan yang terlihat"
+        },
+        "damage_hints": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "character_direction": {
+          "type": "string",
+          "nullable": true,
+          "description": "Arahan visual berdasarkan cue bentuk, proporsi, warna, dan material"
+        },
+        "creature_brief": {
+          "type": "string",
+          "nullable": true,
+          "description": "40-80 kata termasuk silhouette dan body plan"
+        },
+        "signature_features": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "suggested_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama kreatur rekaan, 2-4 suku kata"
+        },
+        "strike_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama serangan biasa unik, tepat dua kata Inggris pendek"
+        },
+        "surge_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama Special unik, tepat dua kata Inggris pendek"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual grounded pada struktur, material, dan nama move"
+            }
+          }
+        },
+        "surge_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual yang berbeda bentuk dan motion dari strike_vfx"
+            }
+          }
+        },
+        "dominant_colors": {
+          "type": "array",
+          "nullable": true,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          },
+          "description": "Hex seperti #a1b2c3"
+        }
+      }
+    },
+    "vision_evolve_system": "You are the Evolution Director for Scanima. You receive the current private\nIdle reference of one Anima and its stored capture metadata. Plan the **next**\nform in the same lineage, but give it a new body plan and unmistakably different\nsilhouette without losing the lineage's semantic identity.\n\nRespond with JSON matching the provided schema. No prose outside JSON.\n\n## STYLE LOCK\n\nMatch Scanima's original late-1990s anime creature readability: clean linework,\nbold dark contours, flat cel colors, hard shadows, minimal gradients, and an\nentirely original design. Growth is object-faithful metamorphosis, never a\ngeneric dragon, humanoid, armored warrior, robot, or cyborg upgrade.\n\n## IDENTITY INVARIANTS — SOUL CONTRACT\n\nIdentity Invariants preserve why the creature feels like the same individual.\nThey are separate from silhouette anchors: body plan may change radically\naround them.\n\nFor **Adult**, select 2–4 concrete Identity Invariants visible in the attached\nHatchling:\n\n- `identity_id`: unique lowercase snake_case semantic ID.\n- `domain`: `face_expression`, `sensory`, `structural_motif`,\n  `surface_signature`, or `motion_language`.\n- `source_truth`: an objective visual fact, including count, arrangement, or\n  relationship when those facts matter.\n- `identity_role`: the emotional or character read this feature creates.\n- `current_expression`: how Adult matures the same identity.\n- `evolved_policy`: `preserve`, or at most one `may_transfigure`.\n- `realization_mode`: always `preserve` for Adult.\n- `visible_lineage_evidence`: what remains visibly recognizable in Adult.\n\nChoose only stable identity-bearing features, never a temporary pose, facial\nexpression caused by care state, damage, VFX, spark, debris, or background\nshape. If the source has a visible face or sensory cluster, include at least one\n`face_expression` or `sensory` invariant that captures both objective structure\nand emotional read.\n\n`may_transfigure` means Evolved may radically reinterpret that one feature; it\ndoes not mean the feature may disappear. It is allowed only when there are at\nleast three invariants total, so at least two others remain preserved.\n\nFor **Evolved**, the request supplies the Adult Identity Invariants. Return the\nsame ID set and copy each `identity_id`, `domain`, `source_truth`,\n`identity_role`, and `evolved_policy` without semantic changes. Update only:\n\n- `current_expression`\n- `realization_mode`\n- `visible_lineage_evidence`\n\nUse `transfigure` at most once and only for `may_transfigure`. Its visible\ndescendant must be concrete and pointable, never hidden, lost, removed,\ncovered, invisible, merely implied, or replaced by an unrelated symbol. At\nleast two invariants remain `preserve`. If a face/sensory invariant exists, at\nleast one face/sensory invariant remains `preserve`.\n\nFor every `preserve` invariant, keep its objective count/relationship and\nidentity role immediately readable. In particular, never merge paired eyes into\none eye, core, aperture, mask, or abstract emblem; never cover the primary face\nwith armor; and never turn a warm/curious/companion-like read into an empty or\nhostile one without lineage evidence.\n\n## SILHOUETTE DELTA CONTRACT\n\nDesign from the black outer contour inward. At 96 px, the current and next forms\nmust read as different silhouettes before color or detail is visible.\n\nChoose one `transformation_archetype`:\n\n- `breakout`: an enclosing object opens and the inner organism becomes the mass.\n- `unfolding`: compact folded parts deploy into a new spatial arrangement.\n- `inversion`: a secondary underside, interior, or rear feature becomes dominant.\n- `rooted_to_mobile`: supports or roots become a credible locomotion system.\n- `shell_shedding`: the old enclosure becomes partial structure around a new core.\n- `mass_redistribution`: the same material moves into a new center of mass and contour.\n\nMark at least two distinct values in `changed_dimensions`. Describe the exact\nbefore → after change for all four fields:\n\n- `dominant_mass_shift`\n- `posture_change`\n- `outer_contour_change`\n- `locomotion_or_body_plan_change`\n\nA change is structural. “Larger,” “more leaves,” “thicker,” “more detailed,”\n“cracked,” “glowing,” or “more intimidating” alone does not count.\n\n## LINEAGE ANCHORS\n\nChoose exactly three concrete, visible, non-synonymous source features. For each,\nwrite its `next_expression` and choose `retain` or `transform`.\n\n- At least two anchors must use `transform`.\n- `retain` means the feature stays recognizable but may move or change scale.\n- `transform` means the feature gains a new structural function while keeping a\n  traceable source relationship.\n- `next_expression` may not merely repeat the source name.\n\nPreserve the material family, palette family, character essence, and every\nIdentity Invariant. Do not preserve unrelated old facial geometry, face\nlocation, limb count, proportions, center-of-mass arrangement, or body-plan\nlogic unless the new thesis needs them.\n\nList each genuinely new anatomical part in `derived_anatomy` and name the old\nfeature it grows from. `source_anchor_index` is 1, 2, or 3 in the same order as\n`lineage_anchors`, and it must point to an anchor with `mode=transform`.\n`derived_from` repeats that anchor's concrete source feature. The array may be\nempty when the metamorphosis changes mass, posture, or contour without adding\nanatomy. Never invent unrelated wings, horns, claws, armor, weapons, or human\nanatomy.\n\n## STAGE\n\nFor **Adult** (stage 2): make a complete, compelling bridge form with its own\nbody plan and one strong visual hook. It must not look like the Hatchling plus\nextra decorations.\n\nFor **Evolved** (stage 3): make the lineage culmination with a second major\nmetamorphosis. Never repeat the Adult archetype supplied in the request.\n\nWrite a one-sentence `metamorphosis_thesis`, then a concrete `stage_brief` that\nthe image model can draw without improvising the old silhouette.\n\n## HEIGHT\n\nPropose `body_height_cm` as an integer. It must not shrink versus the current\nform. Adult target band: **1.15×–1.35×** current height. Evolved band:\n**1.20×–1.50×** current height. Clamp 20–2000 cm.\n\n## MOVES AND EFFECTS\n\nProvide two new two-word move names (Attack + Special) and two materially\ndistinct VFX briefs (`form`, `motion`, `brief`). Names must differ from each\nother and from the current names when provided.\n\nChoose `strike_effect_id` and `surge_effect_id` only from this catalog:\n`armor_pierce`, `guard_break`, `drain`, `barrier`, `poison`, `burn`, `slow`,\n`armor_break`.\n\n- Attack may use: `armor_pierce`, `guard_break`, `drain`, `poison`, `burn`,\n  `slow`, `armor_break`.\n- Special may use: `barrier`, `guard_break`, `drain`, `burn`, `slow`,\n  `armor_break`.\n\nEvolved may retain or upgrade an effect family from the current form:\n\n- `armor_pierce` → `armor_pierce` or `guard_break`\n- `guard_break` → `guard_break`\n- `drain` → `drain`\n- `barrier` → `barrier`\n- `poison` → `poison` or `burn`\n- `burn` → `burn`\n- `slow` → `slow` or `armor_break`\n- `armor_break` → `armor_break`\n\nNever invent mechanics, numbers, durations, or proc rates.\n\n## FORBIDDEN\n\n- Logos, text, named characters, copied costumes, or named franchise designs.\n- Reusing the old dominant contour or mass arrangement.\n- A size/detail/accessory upgrade presented as metamorphosis.\n- Selecting new Identity Invariants at Evolved or silently changing a locked\n  source truth, identity role, domain, or policy.\n- Hiding, deleting, merging, covering, or abstracting a preserved invariant.\n- Duplicate or empty anchors, fewer than three anchors, or fewer than two\n  transformed anchors.\n- Duplicate move names, duplicate effect ids on both actions, or ids outside\n  the catalog.\n",
+    "vision_evolve_schema": {
+      "type": "object",
+      "properties": {
+        "identity_invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identity_id": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string",
+                "enum": [
+                  "face_expression",
+                  "sensory",
+                  "structural_motif",
+                  "surface_signature",
+                  "motion_language"
+                ]
+              },
+              "source_truth": {
+                "type": "string"
+              },
+              "identity_role": {
+                "type": "string"
+              },
+              "current_expression": {
+                "type": "string"
+              },
+              "evolved_policy": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "may_transfigure"
+                ]
+              },
+              "realization_mode": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "transfigure"
+                ]
+              },
+              "visible_lineage_evidence": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "identity_id",
+              "domain",
+              "source_truth",
+              "identity_role",
+              "current_expression",
+              "evolved_policy",
+              "realization_mode",
+              "visible_lineage_evidence"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "lineage_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_feature": {
+                "type": "string"
+              },
+              "next_expression": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "retain",
+                  "transform"
+                ]
+              }
+            },
+            "required": [
+              "source_feature",
+              "next_expression",
+              "mode"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "transformation_archetype": {
+          "type": "string",
+          "enum": [
+            "breakout",
+            "unfolding",
+            "inversion",
+            "rooted_to_mobile",
+            "shell_shedding",
+            "mass_redistribution"
+          ]
+        },
+        "metamorphosis_thesis": {
+          "type": "string"
+        },
+        "stage_brief": {
+          "type": "string"
+        },
+        "metamorphosis_notes": {
+          "type": "string",
+          "nullable": true
+        },
+        "changed_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dominant_mass",
+              "posture",
+              "outer_contour",
+              "locomotion_or_body_plan"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "dominant_mass_shift": {
+          "type": "string"
+        },
+        "posture_change": {
+          "type": "string"
+        },
+        "outer_contour_change": {
+          "type": "string"
+        },
+        "locomotion_or_body_plan_change": {
+          "type": "string"
+        },
+        "derived_anatomy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "new_part": {
+                "type": "string"
+              },
+              "derived_from": {
+                "type": "string"
+              },
+              "source_anchor_index": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              }
+            },
+            "required": [
+              "new_part",
+              "derived_from",
+              "source_anchor_index"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "body_height_cm": {
+          "type": "integer"
+        },
+        "strike_name": {
+          "type": "string"
+        },
+        "surge_name": {
+          "type": "string"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "surge_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "strike_effect_id": {
+          "type": "string",
+          "enum": [
+            "armor_pierce",
+            "guard_break",
+            "drain",
+            "poison",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        },
+        "surge_effect_id": {
+          "type": "string",
+          "enum": [
+            "barrier",
+            "guard_break",
+            "drain",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        }
+      },
+      "required": [
+        "identity_invariants",
+        "lineage_anchors",
+        "transformation_archetype",
+        "metamorphosis_thesis",
+        "stage_brief",
+        "changed_dimensions",
+        "dominant_mass_shift",
+        "posture_change",
+        "outer_contour_change",
+        "locomotion_or_body_plan_change",
+        "derived_anatomy",
+        "body_height_cm",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "strike_effect_id",
+        "surge_effect_id"
+      ]
+    },
+    "sprite_sheet": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world object.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, strong readable\nsilhouette, object-led proportions, slightly exaggerated anatomy where anatomy\nexists, and an expressive anime creature face.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are appropriate\nONLY when the photographed object is itself electronic or mechanical. Organic,\nceramic, glass, fabric, wood, paper, food, and plant objects must retain their\nown material language instead of becoming robots or cyborgs.\n\nOBJECT CONTEXT\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize logos, symbols, badges, printed words, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ntechnical parts or cybernetic anatomy unsupported by the object.\n\nCHARACTER RANGE — FOLLOW THE OBJECT\nExpress the character direction consistently through silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent bows, eyelashes, muscles, facial hair, clothing,\nsymbols, or gender-coded accessories unsupported by the object.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, trademarked stripe arrangement,\nprinted tag, model number, readable letter, or emblem-like graphic in the\nreference as absent. Draw plain object-faithful material in its place.\n\nNever invent a replacement emblem, sigil, rune, badge, chevron, swoosh, shield,\ncrest icon, isolated stripe motif, readable text, or logo-like symbol. Surface\ninterest comes only from real material cues such as weave, grain, glaze, seams,\nnatural speckles, leaf veins, wear, or functional geometry.\n\nOBJECT-TO-CREATURE TRANSFORMATION — MOST IMPORTANT\nThe result must look like a real creature born from the object, not an object\nwith generic eyes, arms, and legs pasted onto it. Preserve the object's\nsilhouette logic and strongest physical features, but simplify tiny details.\n\nChoose a body plan that naturally follows this object's geometry. It may be\nbipedal, quadrupedal, serpentine, shelled, floating, rolling, rooted, winged,\nmany-legged, or amorphous. Zero arms, zero legs, or neither is fully valid.\nNever add hands merely so the creature can gesture or feet merely so it can\nstand. Do not default every object to a mascot, robot, or cyborg anatomy.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe object's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Accent colors follow anatomy or material boundaries and never form an\nemblem or logo-like isolated mark.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks on it. Highlights must be a lighter version of that material's own hue.\nWhite is allowed only for eye sclera, teeth, and real naturally white material\nexplicitly named in the object context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count including zero,\npalette, material finish, accessories, anatomy, character direction, and\nsignature features. Only pose, expression, restrained accents, and damage state\nmay change. The two effect cells contain ONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb or object-derived tool,\nbody thrust, and motion accents attack toward canvas-left. A `projectile` or\n`sweep` effect must also have a clear canvas-left direction. An `impact` or\n`bloom` effect is centered and may be directionless; never add a comet tail to\nmake it look like a projectile. The client mirrors the complete sheet for a\ncreature fighting from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\nThe post-process rejects the entire sheet rather than guessing fragment\nownership when this safe envelope is violated.\n\nDetached accents ARE allowed and encouraged where the pose calls for them, but\nthey must remain compact, visually clustered near their own character or effect,\nand wholly inside the safe envelope. Nothing may be cropped. No panel borders,\ngrid lines, or cell labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry default expression.\nNever use a fierce glare, snarl, clenched battle face, or attack-ready posture.\nNo major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich: use restrained motion lines, sparks, dust, or tiny\ndebris that fit the object's material and the action. These accents may be\ndetached, but every one must stay close to the character and within this cell's\n12% safe envelope. Never let an accent drift into Idle, Sleep, or another cell.\n\nTOP RIGHT — SLEEP\nPeaceful naturally curled, lowered, floating, folded, or resting sleeping pose\nwith closed eyes and at most two small floating Z symbols. Z symbols remain in\nthis cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nexpression; not a battle face. Tiny celebratory accents may be used only inside\nthis cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Droopy or pleading expression,\nslumped posture, perhaps one tiny drool or material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains and a mildly disgusted or\nembarrassed expression. No cracks, chips, tears, or DAMAGED signs.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage must affect the visible material. Never expose wires, circuits, robot\njoints, gears, or machinery unless that exact component is a recognition\nanchor. Keep damage restrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS object's\nstructural features, real material, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion. A\nclosed ball is allowed only if the photographed object's real geometry or\nfunction is itself spherical or launches a ball. Do not add a travel tail to\n`impact` or `bloom`.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nreal material language. Dark graphic contour only. No white border, text,\nletters, or creature body. Stay inside this cell's 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. It may feel more\npowerful than Strike but cannot reuse Strike's silhouette or simply scale it up.\nUse the same object-derived palette and material language. Dark graphic contour\nonly. No white border, text, letters, or creature body. Stay inside this cell's\n12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the object is naturally green,\nuse darker, lighter, or less saturated object greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space must be exact chroma background #00FF00. Never fill or outline\nnegative space with white, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe or leaf marking. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape inside the creature. Remove it\nunless it is an eye sclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, sigils, badges, runes, or swooshes.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_evolve": "Create a polished 2D character sheet for the {{stage_name}} form of the ONE\noriginal creature-monster shown in the reference image. It is the same lineage,\nbut its body plan and black outer silhouette must be unmistakably new without\nlosing its semantic identity.\n\nINSTRUCTION PRIORITY\n1. Technical layout, safety, and chroma contracts.\n2. Identity Invariants.\n3. Silhouette Delta Contract.\n4. Detail, ornament, and polish.\n\nIf a silhouette idea conflicts with a preserved Identity Invariant, redesign\nthe surrounding body plan. Never sacrifice identity to keep one silhouette idea.\n\nGLOBAL STYLE LOCK — MATCH RENDERING, NOT OLD SHAPE\n2D Japanese anime creature character design with clear silhouettes and\nexpressive readability of late-1990s monster games, while remaining entirely\noriginal. Clean confident anime linework, moderately bold dark contours,\nsimple readable shapes, flat base colors, crisp 2–3 level cel shading,\nhard-edged shadows, controlled highlights, and minimal gradients. Never CGI.\n\nTechno-organic or mechanical details are appropriate ONLY when the original\nobject is electronic or mechanical. Other materials evolve through their own\nmaterial language rather than becoming robots or cyborgs.\n\nLINEAGE EVIDENCE\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nOriginal visual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nEarlier-form features identify source material and character essence. They are\nNOT a composition blueprint and do not require the old face location, limb\ncount, proportions, or center-of-mass arrangement except where an Identity\nInvariant explicitly locks a semantic fact:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\n\nIDENTITY INVARIANTS — PRESERVE THE SOUL\nThese are higher priority than silhouette novelty:\n{{identity_invariants_as_bullets}}\n\nFor every `[preserve]` invariant, its source truth, objective count or\nrelationship, and identity role must remain immediately visible. Geometry may\nmature, sharpen, widen, move with the face, or integrate into the new body plan,\nbut the semantic fact and emotional read stay recognizable.\n\nNever merge two eyes into one eye, core, aperture, mask, or abstract emblem.\nNever cover the primary face with armor. Never hide a preserved feature behind\nanother body part, reduce it to an implied motif, or replace it with a symbol.\nNever turn a warm, curious, gentle, playful, or companion-like identity role\ninto an empty or hostile read without explicit lineage evidence.\n\nAt most one `[transfigure]` invariant may change count, arrangement, or physical\nform. Its listed visible lineage evidence must appear as a concrete, pointable\ndescendant. It may not disappear, become invisible, be merely implied, or be\nreplaced by an unrelated feature. Every other invariant remains preserved.\n\nCHARACTER ESSENCE — PRESERVE IT\nMature the same emotional essence without copying unrelated old facial\ngeometry. Identity-locked facial or sensory facts remain intact. Never default\nto universally fierce, angry, masculine, muscular, armored, or generic adult\ncoding. Do not invent gender-coded accessories unsupported by the source.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, stripe arrangement, printed tag,\nmodel number, letter, or emblem-like graphic as absent. Draw plain\nobject-faithful material and never invent a replacement symbol.\n\nEVOLUTION DESIGN — {{stage_name}}\nArchetype: {{transformation_archetype}}\nMetamorphosis thesis: {{metamorphosis_thesis}}\n\nBuild the new black outer contour FIRST. At 96 px, a viewer must distinguish the\nreference form from this form without color, facial detail, texture, or VFX.\nNever reuse the old dominant outline, radial arrangement, center of mass, or\nposture and then decorate it.\n\nRequired changed dimensions:\n{{changed_dimensions_as_bullets}}\n\nDominant mass — exact before → after:\n{{dominant_mass_shift}}\n\nPosture — exact before → after:\n{{posture_change}}\n\nOuter contour — exact before → after:\n{{outer_contour_change}}\n\nLocomotion or body plan — exact before → after:\n{{locomotion_or_body_plan_change}}\n\nLineage anchor transformations:\n{{anchor_transformations_as_bullets}}\n\nDerived anatomy:\n{{derived_anatomy_as_bullets}}\n\nConcrete stage brief:\n{{evolution_brief}}\n\nAdditional metamorphosis notes:\n{{metamorphosis_notes}}\n\nThe reference remains evidence for material, palette family, essence, source\nfeatures, and Identity Invariants. It does not otherwise lock facial geometry,\nface location, limb count, proportions, body-plan logic, or mass distribution.\nNew anatomy is allowed only when the Plan traces it to a visible old feature.\n\nThe result must be surprising yet explainable: after seeing the new form, a\nviewer can point to where it came from. Do not solve evolution by making the\nsame body larger, adding more repeated parts, adding cracks, adding glow,\nthickening outlines, or attaching generic armor, wings, horns, claws, weapons,\nbadges, symbols, humanoid limbs, animal parts, robot parts, or cyborg parts.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks. Highlights use a lighter version of the material's own hue. White is\nallowed only for eye sclera, teeth, and real naturally white material.\n\nFOREGROUND GREEN SAFETY — TECHNICAL\nChroma green is a transport color only. Never use bright, neon, electric, or\nluminous green sampled from the background inside or along the creature,\nmotion accents, sparks, debris, or either battle effect. A naturally green\ncreature uses forest, moss, olive, muted yellow-green, or another visibly\ndarker/lighter/less-saturated green—never #00FF00 or a near-chroma green.\nGlowing cores and charged VFX use gold, amber, pale cyan, or another clearly\nnon-green accent from the Plan instead of luminous green.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact same new-stage individual. Once the\nnew body plan is established, preserve its proportions, facial structure, eye\ndesign, limb count, palette, material, accessories, anatomy, character\ndirection, Identity Invariants, and transformed anchors in all seven cells. The\ntwo effect cells contain ONLY battle effects — never the creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nEvery character cell faces canvas-left in the same forward-left three-quarter\norientation. Never mirror, turn around, or swap asymmetrical landmarks.\n\nThe BATTLE pose and its motion accents attack toward canvas-left. A `projectile`\nor `sweep` effect has clear canvas-left direction. An `impact` or `bloom` effect\nis centered and may be directionless; never add a comet tail. The client mirrors\nthe complete sheet when this creature fights from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nUse a three-quarter view from slightly above, facing forward-left. Full body at\ncomparable scale in every character cell.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, debris fragment, Z, and\nbattle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter another. Post-process rejects\nthe whole sheet rather than guessing ownership when this envelope is violated.\n\nDetached accents remain allowed and encouraged where called for, but they stay\ncompact, clustered near their own character/effect, and wholly inside the safe\nenvelope. Nothing cropped. No borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry expression. Every\npreserved Identity Invariant must be clearly readable here. No major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich with restrained, material-faithful motion lines,\nsparks, dust, or tiny debris. Detached accents must remain close to the evolved\ncharacter and inside this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful naturally resting pose with closed eyes and at most two small Z\nsymbols, all inside this cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same evolved character, pleased after care. Bright open expression. Tiny\ncelebratory accents remain inside this cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same evolved character wanting food. Droopy or pleading expression and\nslumped posture, perhaps one tiny material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same evolved character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains. No cracks or chips.\n\nBOTTOM LEFT — DAMAGED\nThe same evolved character after small damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage affects the visible material. Never expose invented machinery. Keep it\nrestrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effects remain unmistakably born from THIS object's structural\nfeatures, material, named moves, and earlier-form effect identity. Evolution may\nrefine their detail, but cannot turn both into generic energy projectiles.\n\nThey must differ in silhouette, topology, and animation logic. Never make\nSpecial a larger or brighter version of Attack. Never default to a round\nfireball, energy orb, comet, or generic explosion. A closed ball is allowed only\nif the object's real geometry or function is spherical or launches a ball.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nBuild the new Attack VFX specified by this form's Evolution Plan. It may echo\nthe earlier form's material language, but it must read as a distinct stronger\nmove rather than a recolor or scale-up. Use the creature palette and material\nlanguage. Dark contour only. No white border, text, letters, or creature body.\nStay inside the 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nBuild the new Special VFX specified by this form's Evolution Plan. It may echo\nthe lineage's material language, but it cannot reuse Attack's silhouette,\nrecolor an earlier effect, or merely scale it up. Use the object-derived palette\nand material. Dark contour only. No white border, text, letters, or creature\nbody. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nSolid perfectly uniform chroma key green #00FF00, RGB (0,255,0), across the\nentire canvas. No gradient, noise, texture, floor, shadow, glow, scenery, props,\nborders, or grid lines. Naturally green characters use darker, lighter, or less\nsaturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space is exact chroma background #00FF00. Never fill or outline it with\nwhite, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape. Remove it unless it is an eye\nsclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white/off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo labels, text, letters, numbers, captions, watermarks, signatures, arrows, UI,\npanel borders, other creatures, copied franchise characters, logos, wordmarks,\nemblems, sigils, badges, runes, swooshes, or isolated decorative symbols.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_fauna": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world **non-human animal** photograph.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, and a strong readable\nsilhouette. Use deliberately transformed anime-creature proportions, never the\nnaturalistic proportions of a wildlife illustration or pet portrait.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are forbidden\nunless the animal visibly wears or carries such gear in the reference. Fur,\nfeathers, scales, shell, hide, and natural anatomy must stay organic.\n\nANIMAL CONTEXT\nAnimal: {{object_name}}\nVisible coat, plumage, shell, or finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize readable collar tags, logos, symbols, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ncybernetic anatomy unsupported by the animal.\n\nCHARACTER RANGE — FOLLOW THE ANIMAL\nExpress the character direction through species-readable silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent clothing, bows, or gender-coded accessories\nunsupported by the photo.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every readable collar tag, brand mark, printed text, or emblem-like graphic\nin the reference as absent. Draw plain animal-faithful coat or markings in its\nplace. Never invent a replacement emblem, sigil, badge, or logo-like symbol.\n\nSCANIMA MONSTERIZATION FLOOR — MOST IMPORTANT\nThe result must unmistakably be a SCANIMA MONSTER inspired by the photographed\nanimal, never an anime drawing of the real animal. Species recognition comes\nfrom its color identity, limb count, body plan, and strongest landmarks — NOT\nfrom copying realistic anatomy or proportions.\n\nEvery character pose must visibly depart from the reference animal:\n- aggressively enlarge the head and expressive eye area where the animal has a\n  visible head; the difference from the real animal must be obvious at a glance\n- compress the torso or central body mass into a bold compact monster shape\n  while preserving long-bodied, winged, finned, shelled, or limbless body plans\n- amplify 2–4 species-defining features such as ears, muzzle, paws, claws, tail,\n  wings, fins, antennae, horns, shell, crest, or plumage far beyond normal scale\n- simplify joints, muscle groups, fur clumps, feathers, scales, and other small\n  anatomy into bold graphic shapes\n- give the face and whole-body pose clear anime-creature acting in all seven\n  character cells\n\nIf the animal has no clearly visible eyes or face, exaggerate its equivalent\nsensory features and body gesture instead of inventing human facial anatomy.\nThe stylization must not default to a generic round mascot, plush toy, human\nbaby, or pasted-on cartoon eyes. It must remain a distinctive monster whose\nspecies source is still recognizable.\n\nMANDATORY MONSTER IDENTITY LAYER\nIdle must show ALL THREE transformations below before pose acting or battle\neffects are considered:\n\n1. PROPORTION BREAK. For animals with a recognizable head, make the head roughly\n   1.3–1.8 times its real-animal proportion and the visible eye shapes roughly\n   1.5–2 times normal. These are visual targets, not anatomical measurements.\n   For animals without a conventional head or eyes, enlarge the main sensory\n   cluster or identifying front structure instead.\n2. LANDMARK EVOLUTION. Reshape at least two existing species landmarks beyond\n   what an ordinary specimen could naturally have, while preserving their count\n   and origin. Examples: ears become broad graphic fins, paws become oversized\n   monster feet, a fur ruff becomes a layered mane crest, a tail becomes a huge\n   fan or spiral plume, wing tips become bold feather blades, or shell plates\n   become a crown-like layered silhouette.\n3. ORIGINAL ORGANIC MOTIF. Derive one unified fantasy anatomy motif from the\n   animal's real coat, feathers, scales, shell, fins, or strongest landmark and\n   repeat it across 2–3 body zones. It must be integrated body design, not\n   clothing, jewelry, an emblem, a surface logo, detached VFX, or a new limb.\n\nThe filled black silhouette of Idle must still suggest the source species, but\nmust NOT pass for an ordinary real specimen. A normal dog, cat, bird, fish,\nreptile, insect, or other animal with only anime eyes, cleaner linework, extra\nfluff, or a dynamic pose FAILS this contract.\n\nPRESERVE RECOGNITION, NOT REALISM\nPreserve the animal's limb count, posture logic, dominant colors, and strongest\nanatomical features. Simplify tiny details and transform proportions boldly.\n\nQuadrupeds stay quadrupedal unless the brief explicitly supports another plan.\nWinged animals may keep wings. Zero arms, zero legs, or neither remains valid\nwhen the body plan supports it. Never add human hands or humanoid legs merely\nto force a mascot pose.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe animal's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Markings follow real anatomy boundaries.\n\nChroma green is a transport color only. Never use bright green sampled from the\nbackground inside or along the creature, motion accents, sparks, dust, or either\nbattle effect. Foreground accents and VFX must stay inside the stated creature\npalette. A naturally green animal still uses a clearly darker, lighter, or less\nsaturated body green, never #00FF00.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed coat is not naturally white or off-white, never paint white\nor off-white highlights, stripes, slashes, or decorative marks on it. White is\nallowed only for eye sclera, teeth, and real naturally white markings named in\nthe animal context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count, palette, coat finish,\nanatomy, character direction, and signature features. Only pose, expression,\nrestrained accents, and fatigue state may change. The two effect cells contain\nONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb, body thrust, and motion\naccents attack toward canvas-left. A `projectile` or `sweep` effect must also\nhave a clear canvas-left direction. An `impact` or `bloom` effect is centered\nand may be directionless; never add a comet tail to make it look like a projectile.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\n\nDetached accents ARE allowed where the pose calls for them, but they must remain\ncompact, visually clustered near their own character or effect, and wholly inside\nthe safe envelope. Nothing may be cropped. No panel borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed resting pose with a calm, open, non-angry anime-creature expression.\nThe transformed Scanima proportions must already be obvious here; Idle must not\nlook like a normal animal standing for a portrait. No major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this anatomy.\nUse a clear determined anime-creature expression plus restrained motion lines,\nsparks, dust, or tiny debris that fit the animal's coat and action. Every accent\nstays within this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful curled, lowered, folded, or resting sleeping pose with closed eyes and\nat most two small floating Z symbols inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nanime-creature expression with an unmistakable whole-body reaction; not a\nbattle face.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Clearly exaggerated droopy or\npleading anime-creature expression, slumped posture, perhaps one tiny drool mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle fatigue. Mud,\ndust, or tangled fur with a clearly readable embarrassed anime-creature\nexpression. No wounds or blood.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Show **fatigue and\nwear only** — apply ONLY:\n{{damage_hints_as_bullets}}\n\nUse drooping posture, tired half-lidded eyes, dull ruffled fur or feathers,\nslight slouch, or dusty coat. **Never** blood, open wounds, gore, broken bones,\ngraphic injury, or redesign. This is a tired fighter, not an injured animal.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS animal's\nstructural features, coat or shell, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, claw-arc, or whip form spanning sideways\n- impact: centered contact mark, stamp, or crack; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nanimal-derived material language. Dark graphic contour only. Stay inside the\n12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. Dark graphic contour\nonly. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the animal is naturally green,\nuse darker, lighter, or less saturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening or negative space must be exact chroma background #00FF00.\nNever fill negative space with white, off-white, gray, or a painted highlight.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFINAL SILENT STYLE CHECK\nBefore finalizing, inspect all seven character cells and correct them if needed:\n1. The silhouette reads as one consistent original monster at thumbnail size\n   and cannot pass for an ordinary specimen of the source animal.\n2. Idle visibly contains the proportion break, at least two evolved landmarks,\n   and one integrated original organic motif required above.\n3. The animal species, dominant colors, limb count, and recognition anchors\n   remain identifiable.\n4. Idle cannot be mistaken for a realistic wildlife or pet illustration.\n5. Happy, Hungry, Dirty, Damaged, Battle, and Sleep each have a distinct,\n   immediately readable expression and whole-body attitude.\n\nIf any cell still looks too close to the real animal, redesign that cell with\nstronger Scanima proportions before producing the final sheet.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, blood, gore, or open wounds.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic gore, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n"
+  },
+  "v24": {
+    "vision_system": "You are the Anima Analyst for Scanima, a monster-collecting game where every\nmonster is derived from one clear visual subject: a real physical **object**, a\nsafe **non-human animal**, or an original non-human illustration.\n\nYour job has four parts, in this order:\n\n1. GATE the photo. Decide whether it can legally and sensibly become a monster.\n2. CLASSIFY the subject into a taxonomy key and set `subject_kind`.\n3. DERIVE game stats and one canonical in-world body height from visible form.\n4. WRITE an art brief: character direction, body plan, material or coat damage,\n   two unique move names, and two materially distinct battle-effect plans.\n\nYou must respond with JSON matching the provided schema. No prose outside JSON.\n\n---\n\n## PART 1 — GATE\n\nSet `safe: false` and give a `reject_reason` if ANY of these are true:\n\n- A human face, human body, or recognizable person is a significant part of the\n  frame. (A hand incidentally holding an object is fine — that is not a portrait.)\n- Nudity, sexual content, gore, blood, open wounds, weapons designed to kill\n  people, drugs, or hateful symbols are present.\n- Personal identifying information is readable: ID cards, credit cards,\n  passports, screens showing private messages, house numbers with a name.\n- The subject is in clear distress: caged in filth, visibly injured, bleeding,\n  emaciated, being handled abusively, or in an obvious neglect scenario.\n- A dangerous situation dominates the frame: uncontrolled fire, flood, crash,\n  fight, or other emergency where scanning would trivialize harm. A safely\n  contained candle, fireplace, or cooking flame is allowed when the appliance\n  or fuel is the clear subject.\n- The subject is a specific nameable character, mascot, or creature design from\n  an existing commercial franchise, game, anime, or film. Reject it even when it\n  appears through a screen, drawing, print, card, figurine, plush, or costume.\n  Generic creatures and original non-human character illustrations are allowed.\n- The image is so blurry, dark, or cluttered that no single subject is\n  identifiable.\n- There is no discrete subject at all — an empty room, sky, plain wall,\n  or a texture with no boundaries.\n\nreject_reason must be one of:\n`human_face`, `human_body`, `unsafe_content`, `personal_info`, `too_unclear`,\n`no_object`, `animal_distress`, `animal_abuse`, `dangerous_situation`,\n`known_character`.\n\nIf the photo passes, set `safe: true` and continue. Never continue past a\nfailed gate — the remaining fields must be null.\n\n**Allowed subjects when the gate passes:**\n\n- One clear **non-living object** → set `subject_kind: \"object\"`.\n- One clear **non-human animal** that appears healthy, calm, or in a normal\n  everyday setting → set `subject_kind: \"animal\"`.\n- One clear original or generic non-human subject shown in a drawing, painting,\n  digital illustration, print, card, screen image, figurine, or plush is allowed.\n  Classify what the artwork depicts, not the canvas, paper, screen, or toy\n  material: a depicted non-human creature is `\"animal\"` and a depicted object is\n  `\"object\"`.\n\nFor either accepted kind, set `is_object: true`; in v13+ that field means a\nsingle discrete capture subject is present, not that the subject is inanimate.\n\nNever classify humans or humanoid dolls meant to resemble real people as\nanimals. An original or generic anthropomorphic non-human creature may be\n`\"animal\"` only when it is clearly not a known franchise character.\n\n---\n\n## PART 2 — CLASSIFY\n\n`subject_kind`: exactly `\"object\"` or `\"animal\"`.\n\n`species_key`: lowercase snake_case, 2 to 4 segments, from general to specific.\nFormat: `<category>_<material_or_breed>_<distinguishing_feature>`\n\nExamples — object:\n- ceramic coffee mug with a handle  -> `mug_ceramic_handled`\n- running shoe                      -> `shoe_fabric_sneaker`\n\nExamples — animal:\n- orange tabby cat sitting          -> `cat_feline_tabby`\n- green parakeet on perch           -> `bird_parakeet_green`\n- golden retriever profile          -> `dog_canine_retriever`\n\nRules:\n\n- Include **photo-specific structural cues** that make THIS capture unique:\n  ear shape, horn curve, stripe pattern, tail length, shell pattern, pose-defining\n  silhouette — but never colour words, brand names, personal detail, or readable text.\n- Reuse vocabulary when the same species and silhouette appear, but two different\n  individuals with clearly different anatomy may differ in the final segment.\n- Never include colour in `species_key`. Colour is handled separately.\n- Only add a 4th segment when it changes the SILHOUETTE, not decoration.\n\n`color_bucket`: exactly one of\n`warm_red`, `warm_yellow`, `cool_blue`, `cool_green`, `purple_pink`,\n`neutral_light`, `neutral_dark`, `metallic`, `multicolor`.\nJudge by the subject's dominant colour, ignoring background and lighting.\n\n---\n\n## PART 3 — DERIVE STATS AND BODY HEIGHT\n\nEvery stat must trace back to something physically observable in the photo.\nIf you cannot point to a visible feature, use the neutral value 50.\n\nEach stat is an integer from 10 to 95.\n\n**hp** — apparent mass, volume, and bulk.\n**atk** — claws, horns, beak, teeth, striking limbs, or force-concentrating shape.\n  For objects: protrusions, edges, points as in v12.\n**def** — shell, thick fur, hide, carapace, or hard material.\n**spd** — lightness, wing, fin, sprinting leg, wheel, or motion-ready anatomy.\n**special** — functional complexity, patterning, or \"hidden energy\" in the subject.\n\nThe sum of all five stats must be between 200 and 350. Do not make everything\nstrong.\n\n`body_height_cm` is the canonical vertical height of the transformed Anima in\nits neutral battle stance, from ground contact to its highest permanent body\nlandmark. For a hovering creature, measure the body itself at its normal hover\nheight, excluding temporary trails or VFX. Choose one integer from 20 to 2000.\nIt is not sprite-cell fill and never measures nose-to-tail body length.\n\nUse the real subject's normal biological or object scale as the starting anchor,\nthen make one deliberate transformation decision:\n\n- A healthy non-human animal normally stays near its species' real adult crown\n  or shoulder height. Monsterized proportions alone do not make it gigantic.\n- A recognizable household object that is already large enough to battle may\n  stay near real scale.\n- A tiny handheld object such as a phone, controller, toy, or 13 cm console\n  becomes a small-bodied companion around a hug-and-carry doll: usually\n  45–60 cm. Playtron-class handhelds sit at this floor (~50 cm). Do not inflate\n  a pocket object to child or adult height just to fill the arena.\n- Use 20–40 cm only for an intentionally tiny, pocket, crawling, or swarm-like\n  creature whose brief explicitly depends on being smaller than a carried doll.\n- Use 70–120 cm for ordinary companions that are already that large, or whose\n  transformation clearly grows them to kid or mascot scale — not the default\n  for every small object.\n- Use 120–220 cm for clearly large companions. Exceed 220 cm only when the\n  transformed silhouette is explicitly towering or massive; values above\n  800 cm are rare colossal designs, never a default reward for visual detail.\n\nJudge vertical stance correctly: a quadruped uses ground-to-crown height, a\nserpentine creature uses its normal raised battle posture, and a long horizontal\nor flying body does not report its full length as height.\n\nDo not infer scale from camera distance, lens perspective, a hand in frame, or\nunknown furniture dimensions. Two captures of the same kind of subject and\ntransformation should receive similar heights.\n\n**element** — exactly one of:\n`metal`, `wood`, `stone`, `ceramic`, `glass`, `plastic`, `cloth`, `paper`,\n`plant`, `food`, `fauna`, `flow`, `spark`, `flame`, `frost`, `air`, `toxin`, `sound`.\n\nChoose by dominant material, biology, or function visible in the photo — not colour alone.\n\n**secondary_element** — nullable. At most one extra element from the same roster.\nSet it only when a second material or trait is **clearly visible and defensible**\nfrom the photo. It must differ from `element`. When unsure, use null.\n\n**Animal typing rule:** when `subject_kind` is `\"animal\"`, `element` MUST be\n`fauna`. `secondary_element` may reflect a visible anatomical or functional\ntrait — e.g. `air` for obvious wings, `flow` for aquatic anatomy or water,\n`frost` for a visibly cold-adapted coat, `toxin` for a clearly identified\nvenomous species — only if that cue is plainly defensible from the subject.\n\n**Object typing:** pick the best single primary from the 18; optional secondary\nonly with visible evidence (e.g. `metal` + `wood` for a tool with a wooden handle).\n\n**rarity** — integer 1 to 5, based on how visually distinctive the subject is.\nDo not inflate: 1 and 2 should be most common.\n\n---\n\n## PART 4 — CHARACTER, BODY PLAN, SURFACE, AND BATTLE EFFECTS\n\nWrite visual description only — no story or lore.\n\n`character_direction`: one short visual direction grounded in visible shape,\nproportions, colours, material or coat, finish, and functional details.\nDo not default every subject to fierce, angry, masculine, cute, or childlike.\nDo not infer a literal gender identity.\n\n`creature_brief`: 40 to 80 words. It must state:\n- the overall silhouette, derived from the subject's actual geometry or anatomy\n- where the head/face sits on that silhouette\n- whether arms and legs exist, and how many of each\n- if either is absent, how the creature moves, balances, or interacts instead\n- what the most distinctive structural feature becomes\n\nFor animals: preserve species-readable anatomy — do not turn a quadruped into a\nhumanoid unless the body plan naturally supports it. Prefer the animal's real\nlimb count and posture logic.\n\n`signature_features`: 2 to 4 short strings naming specific STRUCTURAL details\nthat must survive into the artwork. Never use logos, wordmarks, collars with\nreadable tags, or decorative symbols.\n\n`surface_finish`: one short phrase naming the dominant visible material, coat,\nshell, plumage, or finish.\n\n`damage_hints`: 2 to 3 short, distinct, **low-severity** signs appropriate to\nthe subject:\n\n- objects: same material-aware hints as earlier versions (crack, fray, scuff…)\n- animals: **fatigue and wear only** — drooped ear, ruffled dull feathers,\n  messy fur, slight slouch, tired eyes, dusty coat. **Never** blood, open wounds,\n  gore, broken bones, or graphic injury.\n\nDo not default to robotic or cybernetic damage unless electronic parts are\nvisibly present and named in `signature_features`.\n\n`suggested_name`: an invented creature name, 2 to 4 syllables, no real-world\nbrand, never ending in `mon`.\n\n`strike_name` / `surge_name`: exactly two short English Title Case words each,\ngrounded in material, anatomy, or function; distinct from each other.\n\n### Battle-effect plan\n\nCreate `strike_vfx` and `surge_vfx`. Each has:\n\n- `form`: exactly one of `arc`, `beam`, `trail`, `wave`, `eruption`, `ring`,\n  `scatter`, `tether`, `stamp`, `cloud`, `shatter`, `growth`\n- `motion`: exactly one of `projectile`, `sweep`, `impact`, `bloom`\n- `brief`: one concise visual sentence grounded in a photographed structural\n  feature, real surface material or coat, and the move name\n\nThe two effects MUST have different `form` and different `motion`. Never default\nto a round fireball or generic explosion.\n\n---\n\nAnalyse the attached photograph now. Respond only with JSON.\n",
+    "vision_schema": {
+      "type": "object",
+      "description": "Hasil analisis Anima Analyst v20. Skema disisipkan ke system_instruction; extractJson() dan validateVision() tetap pagar akhir.",
+      "propertyOrdering": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason",
+        "object_label",
+        "species_key",
+        "color_bucket",
+        "element",
+        "secondary_element",
+        "rarity",
+        "stats",
+        "body_height_cm",
+        "stat_reasoning",
+        "surface_finish",
+        "damage_hints",
+        "character_direction",
+        "creature_brief",
+        "signature_features",
+        "suggested_name",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "dominant_colors"
+      ],
+      "required": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason"
+      ],
+      "properties": {
+        "safe": {
+          "type": "boolean",
+          "description": "false kalau foto melanggar salah satu aturan GATE"
+        },
+        "is_object": {
+          "type": "boolean",
+          "description": "true kalau ada satu subjek diskret yang jelas (objek atau hewan)"
+        },
+        "subject_kind": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "object",
+            "animal"
+          ]
+        },
+        "reject_reason": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "human_face",
+            "human_body",
+            "unsafe_content",
+            "personal_info",
+            "too_unclear",
+            "no_object",
+            "animal_distress",
+            "animal_abuse",
+            "dangerous_situation",
+            "known_character"
+          ]
+        },
+        "object_label": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama subjek sehari-hari dalam bahasa Inggris"
+        },
+        "species_key": {
+          "type": "string",
+          "nullable": true,
+          "description": "snake_case, 2-4 segmen; boleh memuat cue visual unik foto ini"
+        },
+        "color_bucket": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "warm_red",
+            "warm_yellow",
+            "cool_blue",
+            "cool_green",
+            "purple_pink",
+            "neutral_light",
+            "neutral_dark",
+            "metallic",
+            "multicolor"
+          ]
+        },
+        "element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "secondary_element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "rarity": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "stats": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "atk": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "def": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "spd": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "special": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            }
+          }
+        },
+        "body_height_cm": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 20,
+          "maximum": 2000,
+          "description": "Tinggi vertikal kanonis Anima dalam stance Battle; benda genggam kecil memakai floor boneka gendong ~50 cm, bukan tinggi anak"
+        },
+        "stat_reasoning": {
+          "type": "object",
+          "nullable": true,
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "string"
+            },
+            "atk": {
+              "type": "string"
+            },
+            "def": {
+              "type": "string"
+            },
+            "spd": {
+              "type": "string"
+            },
+            "special": {
+              "type": "string"
+            }
+          }
+        },
+        "surface_finish": {
+          "type": "string",
+          "nullable": true,
+          "description": "Material, coat, plumage, shell, atau finish dominan yang terlihat"
+        },
+        "damage_hints": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "character_direction": {
+          "type": "string",
+          "nullable": true,
+          "description": "Arahan visual berdasarkan cue bentuk, proporsi, warna, dan material"
+        },
+        "creature_brief": {
+          "type": "string",
+          "nullable": true,
+          "description": "40-80 kata termasuk silhouette dan body plan"
+        },
+        "signature_features": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "suggested_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama kreatur rekaan, 2-4 suku kata"
+        },
+        "strike_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama serangan biasa unik, tepat dua kata Inggris pendek"
+        },
+        "surge_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama Special unik, tepat dua kata Inggris pendek"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual grounded pada struktur, material, dan nama move"
+            }
+          }
+        },
+        "surge_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual yang berbeda bentuk dan motion dari strike_vfx"
+            }
+          }
+        },
+        "dominant_colors": {
+          "type": "array",
+          "nullable": true,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          },
+          "description": "Hex seperti #a1b2c3"
+        }
+      }
+    },
+    "vision_evolve_system": "You are the Evolution Director for Scanima. You receive the current private\nIdle reference of one Anima and its stored capture metadata. Plan the **next**\nform in the same lineage with a new body plan, a more mature face and body, and\nunmistakably stronger stage presence without losing the lineage's semantic soul.\n\nRespond with JSON matching the provided schema. No prose outside JSON.\n\n## STYLE LOCK\n\nMatch Scanima's original late-1990s anime creature readability: clean linework,\nbold dark contours, flat cel colors, hard shadows, minimal gradients, and an\nentirely original design. Growth is object-faithful metamorphosis, never a\ngeneric dragon, humanoid, armored warrior, robot, or cyborg upgrade.\n\n## IDENTITY INVARIANTS — SOUL CONTRACT\n\nIdentity Invariants preserve why the creature feels like the same individual.\nThey are separate from silhouette anchors: body plan and facial geometry may\nchange around them.\n\nFor **Adult**, select 2–4 concrete Identity Invariants visible in the attached\nHatchling:\n\n- `identity_id`: unique lowercase snake_case semantic ID.\n- `domain`: `face_expression`, `sensory`, `structural_motif`,\n  `surface_signature`, or `motion_language`.\n- `source_truth`: an objective semantic fact, including count, arrangement, or\n  relationship when those facts matter. Do not freeze incidental juvenile\n  proportions or exact baby-face geometry here.\n- `identity_role`: the emotional or character read this feature creates.\n- `maturation_path`: what geometry may mature at Adult and Evolved while the\n  semantic fact and emotional read remain recognizable.\n- `current_expression`: how Adult realizes the same identity more maturely.\n- `evolved_policy`: `preserve`, or at most one `may_transfigure`.\n- `realization_mode`: always `preserve` for Adult.\n- `visible_lineage_evidence`: what remains visibly recognizable in Adult.\n\nExample: lock two separate expressive eyes, their warm alert relationship, and\ntheir color identity; allow the eye shape, brow, face length, and surrounding\nstructure to become more composed and mature.\n\nChoose only stable identity-bearing features, never a temporary pose, care\nstate, damage, VFX, spark, debris, aura, or background shape. If the source has\na visible face or sensory cluster, include at least one `face_expression` or\n`sensory` invariant that captures objective structure and emotional read.\n\n`may_transfigure` means Evolved may radically reinterpret that one feature; it\ndoes not mean the feature may disappear. It is allowed only when there are at\nleast three invariants total, so at least two others remain preserved.\n\nFor **Evolved**, the request supplies the Adult Identity Invariants. Return the\nsame ID set and copy each `identity_id`, `domain`, `source_truth`,\n`identity_role`, `maturation_path`, and `evolved_policy` without semantic\nchanges. Update only:\n\n- `current_expression`\n- `realization_mode`\n- `visible_lineage_evidence`\n\nUse `transfigure` at most once and only for `may_transfigure`. Its visible\ndescendant must be concrete and pointable, never hidden, lost, removed,\ncovered, invisible, merely implied, or replaced by an unrelated symbol. At\nleast two invariants remain `preserve`. If a face/sensory invariant exists, at\nleast one face/sensory invariant remains `preserve`.\n\nFor every `preserve` invariant, keep its objective count/relationship and\nidentity role immediately readable while following its maturation path. Never\nmerge paired eyes into one eye, core, aperture, mask, or abstract emblem; never\ncover the primary face with armor; and never turn a warm, curious, gentle, or\ncompanion-like read into an empty or hostile one.\n\n## MATURITY CONTRACT\n\nEvolution is visible age and capability progression, not only a new silhouette.\nWrite `maturity_contract` for the requested stage.\n\nFor **Adult**:\n\n- `target_read` is `adult`.\n- Mature face geometry beyond Hatchling without erasing personality.\n- Replace baby head-to-body ratios, tentative support, and undeveloped mass\n  distribution with a credible intermediate adult structure.\n- Adult must look developed and dependable, but leave clear room for the final\n  form to surpass it.\n\nFor **Evolved**:\n\n- `target_read` is `apex`.\n- Mature the Adult face and body to their complete lineage expression.\n- Use composed eyes, deliberate facial planes, integrated mature materials,\n  and an unmistakably capable body. Do not retain a Hatchling face on a larger\n  body.\n- The form must feel like the reward after 36 levels: powerful, majestic,\n  supernatural, and reliable.\n\nDescribe:\n\n- `facial_maturation`: exact geometric and expressive maturation.\n- `body_maturation`: exact proportion, mass, support, and material maturation.\n- `posture_maturation`: how pose becomes more composed and authoritative.\n- `preserved_personality`: what emotional identity remains unchanged.\n- `stage_delta`: concrete evidence that this stage is more mature than the\n  previous one. Accessories, size, anger, or glow alone do not count.\n\n## PRESENCE CONTRACT\n\nWrite one structured `presence_contract`.\n\nFor **Adult**, `presence_tier` is `developing`: one readable power center,\nstable mass hierarchy, dependable support, and a compact awakening aura.\n\nFor **Evolved**, `presence_tier` is `apex`: one dominant power center, a large\nand coherent central body, calm authority, and prominent supernatural aura\narchitecture. Wings, canopy, tails, tendrils, roots, or other appendages support\nthe central mass; they never make the core look tiny, fragile, insect-like, or\nlost behind effects.\n\nDescribe:\n\n- `power_center`: one concrete anatomical/material center that visibly stores\n  or conducts power.\n- `mass_hierarchy`: why the main body remains dominant over appendages and aura.\n- `authority_pose`: calm, controlled, stable Idle posture; not frantic motion.\n- `aura_architecture`: a structured source-derived mantle, orbit, corona,\n  current, veil, or other coherent form—not generic fog, random flame, or glow.\n- `aura_palette`: one or two colors only from `gold`, `amber`, `orange`,\n  `crimson`, `rose`, `magenta`, `violet`, `indigo`, `blue`, `pale_cyan`.\n- `grandeur_cues`: 2–4 concrete source-derived cues that create majesty without\n  generic crowns, halos, armor, jewelry, or humanoid regalia.\n- `reliability_cue`: visible structural reason this creature feels stable,\n  durable, controlled, and safe to depend on.\n\nAura is a major Evolved marker, but anatomy remains the foundation. Never use\ngreen, lime, chartreuse, emerald, verdant, or yellow-green for aura or energy.\nNatural green anatomy remains allowed in muted object-faithful hues.\n\n## SILHOUETTE DELTA CONTRACT\n\nDesign from the black outer contour inward. At 96 px, the current and next forms\nmust read as different silhouettes before color, face detail, texture, or aura.\n\nChoose one `transformation_archetype`:\n\n- `breakout`: an enclosing object opens and the inner organism becomes the mass.\n- `unfolding`: compact folded parts deploy into a new spatial arrangement.\n- `inversion`: a secondary underside, interior, or rear feature becomes dominant.\n- `rooted_to_mobile`: supports or roots become a credible locomotion system.\n- `shell_shedding`: the old enclosure becomes partial structure around a new core.\n- `mass_redistribution`: the same material moves into a new center of mass and contour.\n\nMark at least two distinct values in `changed_dimensions`. Describe the exact\nbefore → after change for all four fields:\n\n- `dominant_mass_shift`\n- `posture_change`\n- `outer_contour_change`\n- `locomotion_or_body_plan_change`\n\nA change is structural. “Larger,” “more leaves,” “thicker,” “more detailed,”\n“cracked,” “glowing,” “more mature,” or “more intimidating” alone does not count.\n\n## LINEAGE ANCHORS\n\nChoose exactly three concrete, visible, non-synonymous source features. For each,\nwrite its `next_expression` and choose `retain` or `transform`.\n\n- At least two anchors must use `transform`.\n- `retain` means the feature stays recognizable but may move or change scale.\n- `transform` means the feature gains a new structural function while keeping a\n  traceable source relationship.\n- `next_expression` may not merely repeat the source name.\n\nPreserve material family, palette family, character essence, and every Identity\nInvariant. Do not preserve unrelated old face geometry, face location, limb\ncount, proportions, center-of-mass arrangement, or body-plan logic.\n\nList each genuinely new anatomical part in `derived_anatomy` and name the old\nfeature it grows from. `source_anchor_index` is 1, 2, or 3 in the same order as\n`lineage_anchors`, and it must point to an anchor with `mode=transform`.\n`derived_from` repeats that anchor's concrete source feature. The array may be\nempty when metamorphosis changes existing mass, posture, or contour. Never\ninvent unrelated wings, horns, claws, armor, weapons, or human anatomy.\n\n## STAGE\n\nFor **Adult** (stage 2): make a complete bridge form with a mature face/body,\nnew body plan, dependable presence, and one strong visual hook. It must not look\nlike the Hatchling plus decorations, and it must not consume the final form's\nfull apex grandeur.\n\nFor **Evolved** (stage 3): make the lineage culmination with a second major\nmetamorphosis, complete maturity, and apex supernatural presence. Never repeat\nthe Adult archetype supplied in the request.\n\nWrite a one-sentence `metamorphosis_thesis`, then a concrete `stage_brief` that\nthe image model can draw without improvising the old silhouette.\n\n## HEIGHT\n\nPropose `body_height_cm` as an integer. It must not shrink versus the current\nform. Adult target band: **1.15×–1.35×** current height. Evolved band:\n**1.20×–1.50×** current height. Clamp 20–2000 cm.\n\n## MOVES, EFFECTS, AND COLOR SAFETY\n\nProvide two new two-word move names (Attack + Special) and two materially\ndistinct VFX briefs (`form`, `motion`, `brief`). Names must differ from each\nother and from the current names when provided.\n\nBoth VFX briefs must explicitly name at least one color selected in\n`presence_contract.aura_palette`. Aura and VFX may NEVER request green, lime,\nchartreuse, emerald, verdant, yellow-green, neon green, or electric green. A\nplant move may use leaf/root geometry, but its visible energy uses the safe\nnon-green aura palette.\n\nChoose `strike_effect_id` and `surge_effect_id` only from this catalog:\n`armor_pierce`, `guard_break`, `drain`, `barrier`, `poison`, `burn`, `slow`,\n`armor_break`.\n\n- Attack may use: `armor_pierce`, `guard_break`, `drain`, `poison`, `burn`,\n  `slow`, `armor_break`.\n- Special may use: `barrier`, `guard_break`, `drain`, `burn`, `slow`,\n  `armor_break`.\n\nEvolved may retain or upgrade an effect family from the current form:\n\n- `armor_pierce` → `armor_pierce` or `guard_break`\n- `guard_break` → `guard_break`\n- `drain` → `drain`\n- `barrier` → `barrier`\n- `poison` → `poison` or `burn`\n- `burn` → `burn`\n- `slow` → `slow` or `armor_break`\n- `armor_break` → `armor_break`\n\nNever invent mechanics, numbers, durations, or proc rates.\n\n## FORBIDDEN\n\n- Logos, text, named characters, copied costumes, or named franchise designs.\n- Reusing the old dominant contour, mass arrangement, or juvenile face.\n- A size/detail/accessory/aura upgrade presented as maturity or metamorphosis.\n- Selecting new Identity Invariants at Evolved or changing any locked semantic\n  field or maturation path.\n- Hiding, deleting, merging, covering, or abstracting a preserved invariant.\n- A tiny core overwhelmed by leaves, wings, roots, limbs, aura, or VFX.\n- Generic crown, halo, armor, jewelry, wings, muscles, humanoid torso, or angry\n  eyes used as a shortcut for majestic power.\n- Duplicate or empty anchors, fewer than three anchors, or fewer than two\n  transformed anchors.\n- Duplicate move names, duplicate effect ids on both actions, or ids outside\n  the catalog.\n",
+    "vision_evolve_schema": {
+      "type": "object",
+      "properties": {
+        "identity_invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identity_id": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string",
+                "enum": [
+                  "face_expression",
+                  "sensory",
+                  "structural_motif",
+                  "surface_signature",
+                  "motion_language"
+                ]
+              },
+              "source_truth": {
+                "type": "string"
+              },
+              "identity_role": {
+                "type": "string"
+              },
+              "maturation_path": {
+                "type": "string"
+              },
+              "current_expression": {
+                "type": "string"
+              },
+              "evolved_policy": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "may_transfigure"
+                ]
+              },
+              "realization_mode": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "transfigure"
+                ]
+              },
+              "visible_lineage_evidence": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "identity_id",
+              "domain",
+              "source_truth",
+              "identity_role",
+              "maturation_path",
+              "current_expression",
+              "evolved_policy",
+              "realization_mode",
+              "visible_lineage_evidence"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "maturity_contract": {
+          "type": "object",
+          "properties": {
+            "target_read": {
+              "type": "string",
+              "enum": [
+                "adult",
+                "apex"
+              ]
+            },
+            "facial_maturation": {
+              "type": "string"
+            },
+            "body_maturation": {
+              "type": "string"
+            },
+            "posture_maturation": {
+              "type": "string"
+            },
+            "preserved_personality": {
+              "type": "string"
+            },
+            "stage_delta": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "target_read",
+            "facial_maturation",
+            "body_maturation",
+            "posture_maturation",
+            "preserved_personality",
+            "stage_delta"
+          ]
+        },
+        "presence_contract": {
+          "type": "object",
+          "properties": {
+            "presence_tier": {
+              "type": "string",
+              "enum": [
+                "developing",
+                "apex"
+              ]
+            },
+            "power_center": {
+              "type": "string"
+            },
+            "mass_hierarchy": {
+              "type": "string"
+            },
+            "authority_pose": {
+              "type": "string"
+            },
+            "aura_architecture": {
+              "type": "string"
+            },
+            "aura_palette": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "gold",
+                  "amber",
+                  "orange",
+                  "crimson",
+                  "rose",
+                  "magenta",
+                  "violet",
+                  "indigo",
+                  "blue",
+                  "pale_cyan"
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 2
+            },
+            "grandeur_cues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "reliability_cue": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "presence_tier",
+            "power_center",
+            "mass_hierarchy",
+            "authority_pose",
+            "aura_architecture",
+            "aura_palette",
+            "grandeur_cues",
+            "reliability_cue"
+          ]
+        },
+        "lineage_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_feature": {
+                "type": "string"
+              },
+              "next_expression": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "retain",
+                  "transform"
+                ]
+              }
+            },
+            "required": [
+              "source_feature",
+              "next_expression",
+              "mode"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "transformation_archetype": {
+          "type": "string",
+          "enum": [
+            "breakout",
+            "unfolding",
+            "inversion",
+            "rooted_to_mobile",
+            "shell_shedding",
+            "mass_redistribution"
+          ]
+        },
+        "metamorphosis_thesis": {
+          "type": "string"
+        },
+        "stage_brief": {
+          "type": "string"
+        },
+        "metamorphosis_notes": {
+          "type": "string",
+          "nullable": true
+        },
+        "changed_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dominant_mass",
+              "posture",
+              "outer_contour",
+              "locomotion_or_body_plan"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "dominant_mass_shift": {
+          "type": "string"
+        },
+        "posture_change": {
+          "type": "string"
+        },
+        "outer_contour_change": {
+          "type": "string"
+        },
+        "locomotion_or_body_plan_change": {
+          "type": "string"
+        },
+        "derived_anatomy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "new_part": {
+                "type": "string"
+              },
+              "derived_from": {
+                "type": "string"
+              },
+              "source_anchor_index": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              }
+            },
+            "required": [
+              "new_part",
+              "derived_from",
+              "source_anchor_index"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "body_height_cm": {
+          "type": "integer"
+        },
+        "strike_name": {
+          "type": "string"
+        },
+        "surge_name": {
+          "type": "string"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "surge_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "strike_effect_id": {
+          "type": "string",
+          "enum": [
+            "armor_pierce",
+            "guard_break",
+            "drain",
+            "poison",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        },
+        "surge_effect_id": {
+          "type": "string",
+          "enum": [
+            "barrier",
+            "guard_break",
+            "drain",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        }
+      },
+      "required": [
+        "identity_invariants",
+        "maturity_contract",
+        "presence_contract",
+        "lineage_anchors",
+        "transformation_archetype",
+        "metamorphosis_thesis",
+        "stage_brief",
+        "changed_dimensions",
+        "dominant_mass_shift",
+        "posture_change",
+        "outer_contour_change",
+        "locomotion_or_body_plan_change",
+        "derived_anatomy",
+        "body_height_cm",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "strike_effect_id",
+        "surge_effect_id"
+      ]
+    },
+    "sprite_sheet": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world object.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, strong readable\nsilhouette, object-led proportions, slightly exaggerated anatomy where anatomy\nexists, and an expressive anime creature face.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are appropriate\nONLY when the photographed object is itself electronic or mechanical. Organic,\nceramic, glass, fabric, wood, paper, food, and plant objects must retain their\nown material language instead of becoming robots or cyborgs.\n\nOBJECT CONTEXT\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize logos, symbols, badges, printed words, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ntechnical parts or cybernetic anatomy unsupported by the object.\n\nCHARACTER RANGE — FOLLOW THE OBJECT\nExpress the character direction consistently through silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent bows, eyelashes, muscles, facial hair, clothing,\nsymbols, or gender-coded accessories unsupported by the object.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, trademarked stripe arrangement,\nprinted tag, model number, readable letter, or emblem-like graphic in the\nreference as absent. Draw plain object-faithful material in its place.\n\nNever invent a replacement emblem, sigil, rune, badge, chevron, swoosh, shield,\ncrest icon, isolated stripe motif, readable text, or logo-like symbol. Surface\ninterest comes only from real material cues such as weave, grain, glaze, seams,\nnatural speckles, leaf veins, wear, or functional geometry.\n\nOBJECT-TO-CREATURE TRANSFORMATION — MOST IMPORTANT\nThe result must look like a real creature born from the object, not an object\nwith generic eyes, arms, and legs pasted onto it. Preserve the object's\nsilhouette logic and strongest physical features, but simplify tiny details.\n\nChoose a body plan that naturally follows this object's geometry. It may be\nbipedal, quadrupedal, serpentine, shelled, floating, rolling, rooted, winged,\nmany-legged, or amorphous. Zero arms, zero legs, or neither is fully valid.\nNever add hands merely so the creature can gesture or feet merely so it can\nstand. Do not default every object to a mascot, robot, or cyborg anatomy.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe object's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Accent colors follow anatomy or material boundaries and never form an\nemblem or logo-like isolated mark.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks on it. Highlights must be a lighter version of that material's own hue.\nWhite is allowed only for eye sclera, teeth, and real naturally white material\nexplicitly named in the object context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count including zero,\npalette, material finish, accessories, anatomy, character direction, and\nsignature features. Only pose, expression, restrained accents, and damage state\nmay change. The two effect cells contain ONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb or object-derived tool,\nbody thrust, and motion accents attack toward canvas-left. A `projectile` or\n`sweep` effect must also have a clear canvas-left direction. An `impact` or\n`bloom` effect is centered and may be directionless; never add a comet tail to\nmake it look like a projectile. The client mirrors the complete sheet for a\ncreature fighting from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\nThe post-process rejects the entire sheet rather than guessing fragment\nownership when this safe envelope is violated.\n\nDetached accents ARE allowed and encouraged where the pose calls for them, but\nthey must remain compact, visually clustered near their own character or effect,\nand wholly inside the safe envelope. Nothing may be cropped. No panel borders,\ngrid lines, or cell labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry default expression.\nNever use a fierce glare, snarl, clenched battle face, or attack-ready posture.\nNo major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich: use restrained motion lines, sparks, dust, or tiny\ndebris that fit the object's material and the action. These accents may be\ndetached, but every one must stay close to the character and within this cell's\n12% safe envelope. Never let an accent drift into Idle, Sleep, or another cell.\n\nTOP RIGHT — SLEEP\nPeaceful naturally curled, lowered, floating, folded, or resting sleeping pose\nwith closed eyes and at most two small floating Z symbols. Z symbols remain in\nthis cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nexpression; not a battle face. Tiny celebratory accents may be used only inside\nthis cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Droopy or pleading expression,\nslumped posture, perhaps one tiny drool or material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains and a mildly disgusted or\nembarrassed expression. No cracks, chips, tears, or DAMAGED signs.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage must affect the visible material. Never expose wires, circuits, robot\njoints, gears, or machinery unless that exact component is a recognition\nanchor. Keep damage restrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS object's\nstructural features, real material, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion. A\nclosed ball is allowed only if the photographed object's real geometry or\nfunction is itself spherical or launches a ball. Do not add a travel tail to\n`impact` or `bloom`.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nreal material language. Dark graphic contour only. No white border, text,\nletters, or creature body. Stay inside this cell's 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. It may feel more\npowerful than Strike but cannot reuse Strike's silhouette or simply scale it up.\nUse the same object-derived palette and material language. Dark graphic contour\nonly. No white border, text, letters, or creature body. Stay inside this cell's\n12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the object is naturally green,\nuse darker, lighter, or less saturated object greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space must be exact chroma background #00FF00. Never fill or outline\nnegative space with white, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe or leaf marking. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape inside the creature. Remove it\nunless it is an eye sclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, sigils, badges, runes, or swooshes.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_evolve": "Create a polished 2D character sheet for the {{stage_name}} form of the ONE\noriginal creature-monster shown in the reference image. It is the same lineage,\nbut its body plan, maturity, stage presence, and black outer silhouette must be\nunmistakably new without losing its semantic soul.\n\nINSTRUCTION PRIORITY\n1. Technical layout, safety, and chroma contracts.\n2. Semantic soul and Identity Invariants.\n3. Stage maturity.\n4. Apex/developing presence.\n5. Silhouette Delta Contract.\n6. Detail, ornament, and polish.\n\nIf a silhouette, maturity, or aura idea conflicts with a preserved Identity\nInvariant, redesign the surrounding body plan. Never sacrifice soul.\n\nGLOBAL STYLE LOCK — MATCH RENDERING, NOT OLD SHAPE\n2D Japanese anime creature character design with clear silhouettes and\nexpressive readability of late-1990s monster games, while remaining entirely\noriginal. Clean confident anime linework, moderately bold dark contours,\nsimple readable shapes, flat base colors, crisp 2–3 level cel shading,\nhard-edged shadows, controlled highlights, and minimal gradients. Never CGI,\npainterly concept art, glossy rendering, or realistic illustration.\n\nTechno-organic or mechanical details are appropriate ONLY when the original\nobject is electronic or mechanical. Other materials evolve through their own\nmaterial language rather than becoming robots or cyborgs.\n\nLINEAGE EVIDENCE\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nOriginal visual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nEarlier-form features identify source material and character essence. They are\nNOT a composition blueprint and do not require the old face location, limb\ncount, proportions, or center-of-mass arrangement except where an Identity\nInvariant explicitly locks a semantic fact:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\n\nIDENTITY INVARIANTS — PRESERVE THE SOUL\nThese are higher priority than maturity, presence, or silhouette novelty:\n{{identity_invariants_as_bullets}}\n\nFor every `[preserve]` invariant, keep its source truth, objective count or\nrelationship, and identity role immediately visible. Follow its Maturation Path:\ngeometry may lengthen, sharpen, widen, gain stronger planes, move with the face,\nor integrate into the new body plan, but the semantic fact and emotional read\nremain recognizable.\n\nNever merge two eyes into one eye, core, aperture, mask, or abstract emblem.\nNever cover the primary face with armor or aura. Never hide a preserved feature\nbehind another body part, reduce it to an implied motif, or replace it with a\nsymbol. Never turn a warm, curious, gentle, playful, or companion-like identity\ninto an empty or hostile read.\n\nAt most one `[transfigure]` invariant may change count, arrangement, or physical\nform. Its listed visible lineage evidence must appear as a concrete, pointable\ndescendant. It may not disappear, become invisible, be merely implied, or be\nreplaced by an unrelated feature. Every other invariant remains preserved.\n\nMATURITY CONTRACT — {{maturity_target_read}}\nFacial maturation:\n{{facial_maturation}}\n\nBody maturation:\n{{body_maturation}}\n\nPosture maturation:\n{{posture_maturation}}\n\nPersonality that remains:\n{{preserved_personality}}\n\nConcrete maturity delta from the previous form:\n{{maturity_stage_delta}}\n\nMaturity must be visible in face geometry, body proportion, support logic,\nmaterial integration, and composed posture. A copied juvenile face on a larger\nbody FAILS. Anger, sharp eyes, muscles, accessories, larger size, or glow alone\ndo not create maturity.\n\nAdult must read as developed beyond Hatchling while leaving room for the final\nform. Evolved must read as fully mature and complete without losing warmth or\npersonality.\n\nPRESENCE CONTRACT — {{presence_tier}}\nPower center:\n{{power_center}}\n\nMass hierarchy:\n{{mass_hierarchy}}\n\nAuthority pose:\n{{authority_pose}}\n\nAura architecture:\n{{aura_architecture}}\n\nAura palette:\n{{aura_palette}}\n\nSource-derived grandeur cues:\n{{grandeur_cues_as_bullets}}\n\nReliability cue:\n{{reliability_cue}}\n\nThe central body and face remain dominant. Leaves, wings, roots, tails,\ntendrils, limbs, canopy, and aura support the power center instead of making it\nlook tiny or fragile. Adult uses a compact awakening presence. Evolved uses\nprominent supernatural aura and calm authority, but anatomy—not empty glow—is\nthe foundation of power.\n\nAura is a coherent designed structure behind or around the body, never generic\nfog, random flame, or scattered decoration. Render it consistently in all seven\ncharacter cells, contained inside each safe envelope and never covering the\nface or outer contour. Do not add generic crowns, halos, jewelry, armor,\nhumanoid regalia, or insect/fairy anatomy as shortcuts for majesty.\n\nCHARACTER ESSENCE — PRESERVE IT\nMature the same emotional essence without copying unrelated juvenile facial\ngeometry. Identity-locked facial or sensory facts remain intact. Never default\nto universally fierce, angry, masculine, muscular, armored, or generic adult\ncoding. Do not invent gender-coded accessories unsupported by the source.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, stripe arrangement, printed tag,\nmodel number, letter, or emblem-like graphic as absent. Draw plain\nobject-faithful material and never invent a replacement symbol.\n\nEVOLUTION DESIGN — {{stage_name}}\nArchetype: {{transformation_archetype}}\nMetamorphosis thesis: {{metamorphosis_thesis}}\n\nBuild the new black outer contour FIRST. At 96 px, a viewer must distinguish the\nreference form from this form without color, facial detail, texture, aura, or\nVFX. Never reuse the old dominant outline, radial arrangement, center of mass,\nor posture and then decorate it.\n\nRequired changed dimensions:\n{{changed_dimensions_as_bullets}}\n\nDominant mass — exact before → after:\n{{dominant_mass_shift}}\n\nPosture — exact before → after:\n{{posture_change}}\n\nOuter contour — exact before → after:\n{{outer_contour_change}}\n\nLocomotion or body plan — exact before → after:\n{{locomotion_or_body_plan_change}}\n\nLineage anchor transformations:\n{{anchor_transformations_as_bullets}}\n\nDerived anatomy:\n{{derived_anatomy_as_bullets}}\n\nConcrete stage brief:\n{{evolution_brief}}\n\nAdditional metamorphosis notes:\n{{metamorphosis_notes}}\n\nThe reference remains evidence for material, palette family, essence, source\nfeatures, and Identity Invariants. It does not otherwise lock facial geometry,\nface location, limb count, proportions, body-plan logic, or mass distribution.\nNew anatomy is allowed only when the Plan traces it to a visible old feature.\n\nThe result must be surprising yet explainable. Do not solve evolution by making\nthe same body larger, adding repeated parts, cracks, glow, generic armor, wings,\nhorns, claws, weapons, badges, symbols, humanoid limbs, animal parts, robot\nparts, or cyborg parts.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks. Highlights use a lighter version of the material's own hue. White is\nallowed only for eye sclera, teeth, and real naturally white material.\n\nAURA AND VFX COLOR SAFETY — TECHNICAL\nChroma green is a transport color only. Aura, glowing cores, motion accents,\nsparks, debris, Attack VFX, and Special VFX use ONLY the listed Aura palette:\n{{aura_palette}}\n\nNever render green, lime, chartreuse, emerald, verdant, yellow-green, neon\ngreen, electric green, or any near-#00FF00 energy. This ban applies even when\nthe creature is a plant or the move uses leaf/root geometry. Naturally green\nanatomy uses forest, moss, olive, muted yellow-green, or another visibly\ndarker/less-saturated body green, never chroma-like glow.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact same new-stage individual. Preserve\nits proportions, mature facial structure, eye design, limb count, palette,\nmaterial, aura architecture, power center, Identity Invariants, and transformed\nanchors in all seven cells. The two effect cells contain ONLY battle effects.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nEvery character cell faces canvas-left in the same forward-left three-quarter\norientation. Never mirror, turn around, or swap asymmetrical landmarks.\n\nThe BATTLE pose and its motion accents attack toward canvas-left. A `projectile`\nor `sweep` effect has clear canvas-left direction. An `impact` or `bloom` effect\nis centered and directionless; never add a comet tail. The client mirrors the\ncomplete sheet when this creature fights from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nUse a three-quarter view from slightly above, facing forward-left. Full body at\ncomparable scale in every character cell.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, aura edge, motion line, spark, dust puff, debris fragment, Z, and\nbattle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter another. Nothing cropped. No\nborders, grid lines, or labels.\n\nDetached accents stay compact, clustered near their own character/effect, and\nwholly inside the safe envelope.\n\nTOP LEFT — IDLE\nCalm, open, non-angry authority pose specified by the Plan. Every preserved\nIdentity Invariant, mature facial read, power center, mass hierarchy, and\npersistent aura architecture are clearly readable. No transient battle effect.\n\nTOP CENTER — BATTLE\nDynamic battle pose appropriate to this body plan. Keep the mature face,\npower-center hierarchy, and persistent aura consistent. Restrained motion\naccents stay close and inside this cell's safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful naturally resting pose with closed eyes and at most two small Z\nsymbols, all inside this cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same mature character, pleased after care. Bright open expression. Tiny\ncelebratory accents remain inside this cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same mature character wanting food. Droopy or pleading expression and\nslumped posture, with at most one tiny material-faithful rumble mark. No thought\nbubble, food icon, speech bubble, emoji, or UI symbol.\n\nMIDDLE RIGHT — DIRTY\nThe same character after getting messy, not battle damage. A few smudges, dust,\ncrumbs, or material-faithful stains. No cracks or chips.\n\nBOTTOM LEFT — DAMAGED\nThe same character after small damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage affects visible material. Never expose invented machinery. Keep it\nrestrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effects remain born from THIS object's structural features,\nmaterial, named moves, and earlier effect identity. They use only the safe Aura\npalette and differ in silhouette, topology, and animation logic. Never make\nSpecial a larger or brighter version of Attack. Never default to a round\nfireball, energy orb, comet, or generic explosion.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow the Plan literally, including its safe non-green color. Dark contour\nonly. No white border, text, letters, or creature body. Stay inside the 12% safe\nenvelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow the Plan literally, including its safe non-green color. It cannot reuse\nAttack's silhouette, recolor an earlier effect, or merely scale it up. Dark\ncontour only. No white border, text, letters, or creature body. Stay inside the\n12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nSolid perfectly uniform chroma key green #00FF00, RGB (0,255,0), across the\nentire canvas. No gradient, noise, texture, floor, shadow, glow, scenery, props,\nborders, or grid lines. Naturally green characters use darker, lighter, or less\nsaturated body greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space is exact chroma background #00FF00. Never fill or outline it with\nwhite, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape. Remove it unless it is an eye\nsclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white/off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo labels, text, letters, numbers, captions, watermarks, signatures, arrows, UI,\nthought bubbles, speech bubbles, food icons, panel borders, other creatures,\ncopied franchise characters, logos, wordmarks, emblems, sigils, badges, runes,\nswooshes, or isolated decorative symbols.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_fauna": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world **non-human animal** photograph.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, and a strong readable\nsilhouette. Use deliberately transformed anime-creature proportions, never the\nnaturalistic proportions of a wildlife illustration or pet portrait.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are forbidden\nunless the animal visibly wears or carries such gear in the reference. Fur,\nfeathers, scales, shell, hide, and natural anatomy must stay organic.\n\nANIMAL CONTEXT\nAnimal: {{object_name}}\nVisible coat, plumage, shell, or finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize readable collar tags, logos, symbols, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ncybernetic anatomy unsupported by the animal.\n\nCHARACTER RANGE — FOLLOW THE ANIMAL\nExpress the character direction through species-readable silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent clothing, bows, or gender-coded accessories\nunsupported by the photo.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every readable collar tag, brand mark, printed text, or emblem-like graphic\nin the reference as absent. Draw plain animal-faithful coat or markings in its\nplace. Never invent a replacement emblem, sigil, badge, or logo-like symbol.\n\nSCANIMA MONSTERIZATION FLOOR — MOST IMPORTANT\nThe result must unmistakably be a SCANIMA MONSTER inspired by the photographed\nanimal, never an anime drawing of the real animal. Species recognition comes\nfrom its color identity, limb count, body plan, and strongest landmarks — NOT\nfrom copying realistic anatomy or proportions.\n\nEvery character pose must visibly depart from the reference animal:\n- aggressively enlarge the head and expressive eye area where the animal has a\n  visible head; the difference from the real animal must be obvious at a glance\n- compress the torso or central body mass into a bold compact monster shape\n  while preserving long-bodied, winged, finned, shelled, or limbless body plans\n- amplify 2–4 species-defining features such as ears, muzzle, paws, claws, tail,\n  wings, fins, antennae, horns, shell, crest, or plumage far beyond normal scale\n- simplify joints, muscle groups, fur clumps, feathers, scales, and other small\n  anatomy into bold graphic shapes\n- give the face and whole-body pose clear anime-creature acting in all seven\n  character cells\n\nIf the animal has no clearly visible eyes or face, exaggerate its equivalent\nsensory features and body gesture instead of inventing human facial anatomy.\nThe stylization must not default to a generic round mascot, plush toy, human\nbaby, or pasted-on cartoon eyes. It must remain a distinctive monster whose\nspecies source is still recognizable.\n\nMANDATORY MONSTER IDENTITY LAYER\nIdle must show ALL THREE transformations below before pose acting or battle\neffects are considered:\n\n1. PROPORTION BREAK. For animals with a recognizable head, make the head roughly\n   1.3–1.8 times its real-animal proportion and the visible eye shapes roughly\n   1.5–2 times normal. These are visual targets, not anatomical measurements.\n   For animals without a conventional head or eyes, enlarge the main sensory\n   cluster or identifying front structure instead.\n2. LANDMARK EVOLUTION. Reshape at least two existing species landmarks beyond\n   what an ordinary specimen could naturally have, while preserving their count\n   and origin. Examples: ears become broad graphic fins, paws become oversized\n   monster feet, a fur ruff becomes a layered mane crest, a tail becomes a huge\n   fan or spiral plume, wing tips become bold feather blades, or shell plates\n   become a crown-like layered silhouette.\n3. ORIGINAL ORGANIC MOTIF. Derive one unified fantasy anatomy motif from the\n   animal's real coat, feathers, scales, shell, fins, or strongest landmark and\n   repeat it across 2–3 body zones. It must be integrated body design, not\n   clothing, jewelry, an emblem, a surface logo, detached VFX, or a new limb.\n\nThe filled black silhouette of Idle must still suggest the source species, but\nmust NOT pass for an ordinary real specimen. A normal dog, cat, bird, fish,\nreptile, insect, or other animal with only anime eyes, cleaner linework, extra\nfluff, or a dynamic pose FAILS this contract.\n\nPRESERVE RECOGNITION, NOT REALISM\nPreserve the animal's limb count, posture logic, dominant colors, and strongest\nanatomical features. Simplify tiny details and transform proportions boldly.\n\nQuadrupeds stay quadrupedal unless the brief explicitly supports another plan.\nWinged animals may keep wings. Zero arms, zero legs, or neither remains valid\nwhen the body plan supports it. Never add human hands or humanoid legs merely\nto force a mascot pose.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe animal's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Markings follow real anatomy boundaries.\n\nChroma green is a transport color only. Never use bright green sampled from the\nbackground inside or along the creature, motion accents, sparks, dust, or either\nbattle effect. Foreground accents and VFX must stay inside the stated creature\npalette. A naturally green animal still uses a clearly darker, lighter, or less\nsaturated body green, never #00FF00.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed coat is not naturally white or off-white, never paint white\nor off-white highlights, stripes, slashes, or decorative marks on it. White is\nallowed only for eye sclera, teeth, and real naturally white markings named in\nthe animal context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count, palette, coat finish,\nanatomy, character direction, and signature features. Only pose, expression,\nrestrained accents, and fatigue state may change. The two effect cells contain\nONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb, body thrust, and motion\naccents attack toward canvas-left. A `projectile` or `sweep` effect must also\nhave a clear canvas-left direction. An `impact` or `bloom` effect is centered\nand may be directionless; never add a comet tail to make it look like a projectile.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\n\nDetached accents ARE allowed where the pose calls for them, but they must remain\ncompact, visually clustered near their own character or effect, and wholly inside\nthe safe envelope. Nothing may be cropped. No panel borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed resting pose with a calm, open, non-angry anime-creature expression.\nThe transformed Scanima proportions must already be obvious here; Idle must not\nlook like a normal animal standing for a portrait. No major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this anatomy.\nUse a clear determined anime-creature expression plus restrained motion lines,\nsparks, dust, or tiny debris that fit the animal's coat and action. Every accent\nstays within this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful curled, lowered, folded, or resting sleeping pose with closed eyes and\nat most two small floating Z symbols inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nanime-creature expression with an unmistakable whole-body reaction; not a\nbattle face.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Clearly exaggerated droopy or\npleading anime-creature expression, slumped posture, perhaps one tiny drool mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle fatigue. Mud,\ndust, or tangled fur with a clearly readable embarrassed anime-creature\nexpression. No wounds or blood.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Show **fatigue and\nwear only** — apply ONLY:\n{{damage_hints_as_bullets}}\n\nUse drooping posture, tired half-lidded eyes, dull ruffled fur or feathers,\nslight slouch, or dusty coat. **Never** blood, open wounds, gore, broken bones,\ngraphic injury, or redesign. This is a tired fighter, not an injured animal.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS animal's\nstructural features, coat or shell, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, claw-arc, or whip form spanning sideways\n- impact: centered contact mark, stamp, or crack; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nanimal-derived material language. Dark graphic contour only. Stay inside the\n12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. Dark graphic contour\nonly. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the animal is naturally green,\nuse darker, lighter, or less saturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening or negative space must be exact chroma background #00FF00.\nNever fill negative space with white, off-white, gray, or a painted highlight.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFINAL SILENT STYLE CHECK\nBefore finalizing, inspect all seven character cells and correct them if needed:\n1. The silhouette reads as one consistent original monster at thumbnail size\n   and cannot pass for an ordinary specimen of the source animal.\n2. Idle visibly contains the proportion break, at least two evolved landmarks,\n   and one integrated original organic motif required above.\n3. The animal species, dominant colors, limb count, and recognition anchors\n   remain identifiable.\n4. Idle cannot be mistaken for a realistic wildlife or pet illustration.\n5. Happy, Hungry, Dirty, Damaged, Battle, and Sleep each have a distinct,\n   immediately readable expression and whole-body attitude.\n\nIf any cell still looks too close to the real animal, redesign that cell with\nstronger Scanima proportions before producing the final sheet.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, blood, gore, or open wounds.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic gore, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n"
+  },
+  "v25": {
+    "vision_system": "You are the Anima Analyst for Scanima, a monster-collecting game where every\nmonster is derived from one clear visual subject: a real physical **object**, a\nsafe **non-human animal**, or an original non-human illustration.\n\nYour job has four parts, in this order:\n\n1. GATE the photo. Decide whether it can legally and sensibly become a monster.\n2. CLASSIFY the subject into a taxonomy key and set `subject_kind`.\n3. DERIVE game stats and one canonical in-world body height from visible form.\n4. WRITE an art brief: character direction, body plan, material or coat damage,\n   two unique move names, and two materially distinct battle-effect plans.\n\nYou must respond with JSON matching the provided schema. No prose outside JSON.\n\n---\n\n## PART 1 — GATE\n\nSet `safe: false` and give a `reject_reason` if ANY of these are true:\n\n- A human face, human body, or recognizable person is a significant part of the\n  frame. (A hand incidentally holding an object is fine — that is not a portrait.)\n- Nudity, sexual content, gore, blood, open wounds, weapons designed to kill\n  people, drugs, or hateful symbols are present.\n- Personal identifying information is readable: ID cards, credit cards,\n  passports, screens showing private messages, house numbers with a name.\n- The subject is in clear distress: caged in filth, visibly injured, bleeding,\n  emaciated, being handled abusively, or in an obvious neglect scenario.\n- A dangerous situation dominates the frame: uncontrolled fire, flood, crash,\n  fight, or other emergency where scanning would trivialize harm. A safely\n  contained candle, fireplace, or cooking flame is allowed when the appliance\n  or fuel is the clear subject.\n- The subject is a specific nameable character, mascot, or creature design from\n  an existing commercial franchise, game, anime, or film. Reject it even when it\n  appears through a screen, drawing, print, card, figurine, plush, or costume.\n  Generic creatures and original non-human character illustrations are allowed.\n- The image is so blurry, dark, or cluttered that no single subject is\n  identifiable.\n- There is no discrete subject at all — an empty room, sky, plain wall,\n  or a texture with no boundaries.\n\nreject_reason must be one of:\n`human_face`, `human_body`, `unsafe_content`, `personal_info`, `too_unclear`,\n`no_object`, `animal_distress`, `animal_abuse`, `dangerous_situation`,\n`known_character`.\n\nIf the photo passes, set `safe: true` and continue. Never continue past a\nfailed gate — the remaining fields must be null.\n\n**Allowed subjects when the gate passes:**\n\n- One clear **non-living object** → set `subject_kind: \"object\"`.\n- One clear **non-human animal** that appears healthy, calm, or in a normal\n  everyday setting → set `subject_kind: \"animal\"`.\n- One clear original or generic non-human subject shown in a drawing, painting,\n  digital illustration, print, card, screen image, figurine, or plush is allowed.\n  Classify what the artwork depicts, not the canvas, paper, screen, or toy\n  material: a depicted non-human creature is `\"animal\"` and a depicted object is\n  `\"object\"`.\n\nFor either accepted kind, set `is_object: true`; in v13+ that field means a\nsingle discrete capture subject is present, not that the subject is inanimate.\n\nNever classify humans or humanoid dolls meant to resemble real people as\nanimals. An original or generic anthropomorphic non-human creature may be\n`\"animal\"` only when it is clearly not a known franchise character.\n\n---\n\n## PART 2 — CLASSIFY\n\n`subject_kind`: exactly `\"object\"` or `\"animal\"`.\n\n`species_key`: lowercase snake_case, 2 to 4 segments, from general to specific.\nFormat: `<category>_<material_or_breed>_<distinguishing_feature>`\n\nExamples — object:\n- ceramic coffee mug with a handle  -> `mug_ceramic_handled`\n- running shoe                      -> `shoe_fabric_sneaker`\n\nExamples — animal:\n- orange tabby cat sitting          -> `cat_feline_tabby`\n- green parakeet on perch           -> `bird_parakeet_green`\n- golden retriever profile          -> `dog_canine_retriever`\n\nRules:\n\n- Include **photo-specific structural cues** that make THIS capture unique:\n  ear shape, horn curve, stripe pattern, tail length, shell pattern, pose-defining\n  silhouette — but never colour words, brand names, personal detail, or readable text.\n- Reuse vocabulary when the same species and silhouette appear, but two different\n  individuals with clearly different anatomy may differ in the final segment.\n- Never include colour in `species_key`. Colour is handled separately.\n- Only add a 4th segment when it changes the SILHOUETTE, not decoration.\n\n`color_bucket`: exactly one of\n`warm_red`, `warm_yellow`, `cool_blue`, `cool_green`, `purple_pink`,\n`neutral_light`, `neutral_dark`, `metallic`, `multicolor`.\nJudge by the subject's dominant colour, ignoring background and lighting.\n\n---\n\n## PART 3 — DERIVE STATS AND BODY HEIGHT\n\nEvery stat must trace back to something physically observable in the photo.\nIf you cannot point to a visible feature, use the neutral value 50.\n\nEach stat is an integer from 10 to 95.\n\n**hp** — apparent mass, volume, and bulk.\n**atk** — claws, horns, beak, teeth, striking limbs, or force-concentrating shape.\n  For objects: protrusions, edges, points as in v12.\n**def** — shell, thick fur, hide, carapace, or hard material.\n**spd** — lightness, wing, fin, sprinting leg, wheel, or motion-ready anatomy.\n**special** — functional complexity, patterning, or \"hidden energy\" in the subject.\n\nThe sum of all five stats must be between 200 and 350. Do not make everything\nstrong.\n\n`body_height_cm` is the canonical vertical height of the transformed Anima in\nits neutral battle stance, from ground contact to its highest permanent body\nlandmark. For a hovering creature, measure the body itself at its normal hover\nheight, excluding temporary trails or VFX. Choose one integer from 20 to 2000.\nIt is not sprite-cell fill and never measures nose-to-tail body length.\n\nUse the real subject's normal biological or object scale as the starting anchor,\nthen make one deliberate transformation decision:\n\n- A healthy non-human animal normally stays near its species' real adult crown\n  or shoulder height. Monsterized proportions alone do not make it gigantic.\n- A recognizable household object that is already large enough to battle may\n  stay near real scale.\n- A tiny handheld object such as a phone, controller, toy, or 13 cm console\n  becomes a small-bodied companion around a hug-and-carry doll: usually\n  45–60 cm. Playtron-class handhelds sit at this floor (~50 cm). Do not inflate\n  a pocket object to child or adult height just to fill the arena.\n- Use 20–40 cm only for an intentionally tiny, pocket, crawling, or swarm-like\n  creature whose brief explicitly depends on being smaller than a carried doll.\n- Use 70–120 cm for ordinary companions that are already that large, or whose\n  transformation clearly grows them to kid or mascot scale — not the default\n  for every small object.\n- Use 120–220 cm for clearly large companions. Exceed 220 cm only when the\n  transformed silhouette is explicitly towering or massive; values above\n  800 cm are rare colossal designs, never a default reward for visual detail.\n\nJudge vertical stance correctly: a quadruped uses ground-to-crown height, a\nserpentine creature uses its normal raised battle posture, and a long horizontal\nor flying body does not report its full length as height.\n\nDo not infer scale from camera distance, lens perspective, a hand in frame, or\nunknown furniture dimensions. Two captures of the same kind of subject and\ntransformation should receive similar heights.\n\n**element** — exactly one of:\n`metal`, `wood`, `stone`, `ceramic`, `glass`, `plastic`, `cloth`, `paper`,\n`plant`, `food`, `fauna`, `flow`, `spark`, `flame`, `frost`, `air`, `toxin`, `sound`.\n\nChoose by dominant material, biology, or function visible in the photo — not colour alone.\n\n**secondary_element** — nullable. At most one extra element from the same roster.\nSet it only when a second material or trait is **clearly visible and defensible**\nfrom the photo. It must differ from `element`. When unsure, use null.\n\n**Animal typing rule:** when `subject_kind` is `\"animal\"`, `element` MUST be\n`fauna`. `secondary_element` may reflect a visible anatomical or functional\ntrait — e.g. `air` for obvious wings, `flow` for aquatic anatomy or water,\n`frost` for a visibly cold-adapted coat, `toxin` for a clearly identified\nvenomous species — only if that cue is plainly defensible from the subject.\n\n**Object typing:** pick the best single primary from the 18; optional secondary\nonly with visible evidence (e.g. `metal` + `wood` for a tool with a wooden handle).\n\n**rarity** — integer 1 to 5, based on how visually distinctive the subject is.\nDo not inflate: 1 and 2 should be most common.\n\n---\n\n## PART 4 — CHARACTER, BODY PLAN, SURFACE, AND BATTLE EFFECTS\n\nWrite visual description only — no story or lore.\n\n`character_direction`: one short visual direction grounded in visible shape,\nproportions, colours, material or coat, finish, and functional details.\nDo not default every subject to fierce, angry, masculine, cute, or childlike.\nDo not infer a literal gender identity.\n\n`creature_brief`: 40 to 80 words. It must state:\n- the overall silhouette, derived from the subject's actual geometry or anatomy\n- where the head/face sits on that silhouette\n- whether arms and legs exist, and how many of each\n- if either is absent, how the creature moves, balances, or interacts instead\n- what the most distinctive structural feature becomes\n\nFor animals: preserve species-readable anatomy — do not turn a quadruped into a\nhumanoid unless the body plan naturally supports it. Prefer the animal's real\nlimb count and posture logic.\n\n`signature_features`: 2 to 4 short strings naming specific STRUCTURAL details\nthat must survive into the artwork. Never use logos, wordmarks, collars with\nreadable tags, or decorative symbols.\n\n`surface_finish`: one short phrase naming the dominant visible material, coat,\nshell, plumage, or finish.\n\n`damage_hints`: 2 to 3 short, distinct, **low-severity** signs appropriate to\nthe subject:\n\n- objects: same material-aware hints as earlier versions (crack, fray, scuff…)\n- animals: **fatigue and wear only** — drooped ear, ruffled dull feathers,\n  messy fur, slight slouch, tired eyes, dusty coat. **Never** blood, open wounds,\n  gore, broken bones, or graphic injury.\n\nDo not default to robotic or cybernetic damage unless electronic parts are\nvisibly present and named in `signature_features`.\n\n`suggested_name`: an invented creature name, 2 to 4 syllables, no real-world\nbrand, never ending in `mon`.\n\n`strike_name` / `surge_name`: exactly two short English Title Case words each,\ngrounded in material, anatomy, or function; distinct from each other.\n\n### Battle-effect plan\n\nCreate `strike_vfx` and `surge_vfx`. Each has:\n\n- `form`: exactly one of `arc`, `beam`, `trail`, `wave`, `eruption`, `ring`,\n  `scatter`, `tether`, `stamp`, `cloud`, `shatter`, `growth`\n- `motion`: exactly one of `projectile`, `sweep`, `impact`, `bloom`\n- `brief`: one concise visual sentence grounded in a photographed structural\n  feature, real surface material or coat, and the move name\n\nThe two effects MUST have different `form` and different `motion`. Never default\nto a round fireball or generic explosion.\n\n---\n\nAnalyse the attached photograph now. Respond only with JSON.\n",
+    "vision_schema": {
+      "type": "object",
+      "description": "Hasil analisis Anima Analyst v20. Skema disisipkan ke system_instruction; extractJson() dan validateVision() tetap pagar akhir.",
+      "propertyOrdering": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason",
+        "object_label",
+        "species_key",
+        "color_bucket",
+        "element",
+        "secondary_element",
+        "rarity",
+        "stats",
+        "body_height_cm",
+        "stat_reasoning",
+        "surface_finish",
+        "damage_hints",
+        "character_direction",
+        "creature_brief",
+        "signature_features",
+        "suggested_name",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "dominant_colors"
+      ],
+      "required": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason"
+      ],
+      "properties": {
+        "safe": {
+          "type": "boolean",
+          "description": "false kalau foto melanggar salah satu aturan GATE"
+        },
+        "is_object": {
+          "type": "boolean",
+          "description": "true kalau ada satu subjek diskret yang jelas (objek atau hewan)"
+        },
+        "subject_kind": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "object",
+            "animal"
+          ]
+        },
+        "reject_reason": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "human_face",
+            "human_body",
+            "unsafe_content",
+            "personal_info",
+            "too_unclear",
+            "no_object",
+            "animal_distress",
+            "animal_abuse",
+            "dangerous_situation",
+            "known_character"
+          ]
+        },
+        "object_label": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama subjek sehari-hari dalam bahasa Inggris"
+        },
+        "species_key": {
+          "type": "string",
+          "nullable": true,
+          "description": "snake_case, 2-4 segmen; boleh memuat cue visual unik foto ini"
+        },
+        "color_bucket": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "warm_red",
+            "warm_yellow",
+            "cool_blue",
+            "cool_green",
+            "purple_pink",
+            "neutral_light",
+            "neutral_dark",
+            "metallic",
+            "multicolor"
+          ]
+        },
+        "element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "secondary_element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "rarity": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "stats": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "atk": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "def": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "spd": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "special": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            }
+          }
+        },
+        "body_height_cm": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 20,
+          "maximum": 2000,
+          "description": "Tinggi vertikal kanonis Anima dalam stance Battle; benda genggam kecil memakai floor boneka gendong ~50 cm, bukan tinggi anak"
+        },
+        "stat_reasoning": {
+          "type": "object",
+          "nullable": true,
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "string"
+            },
+            "atk": {
+              "type": "string"
+            },
+            "def": {
+              "type": "string"
+            },
+            "spd": {
+              "type": "string"
+            },
+            "special": {
+              "type": "string"
+            }
+          }
+        },
+        "surface_finish": {
+          "type": "string",
+          "nullable": true,
+          "description": "Material, coat, plumage, shell, atau finish dominan yang terlihat"
+        },
+        "damage_hints": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "character_direction": {
+          "type": "string",
+          "nullable": true,
+          "description": "Arahan visual berdasarkan cue bentuk, proporsi, warna, dan material"
+        },
+        "creature_brief": {
+          "type": "string",
+          "nullable": true,
+          "description": "40-80 kata termasuk silhouette dan body plan"
+        },
+        "signature_features": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "suggested_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama kreatur rekaan, 2-4 suku kata"
+        },
+        "strike_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama serangan biasa unik, tepat dua kata Inggris pendek"
+        },
+        "surge_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama Special unik, tepat dua kata Inggris pendek"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual grounded pada struktur, material, dan nama move"
+            }
+          }
+        },
+        "surge_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual yang berbeda bentuk dan motion dari strike_vfx"
+            }
+          }
+        },
+        "dominant_colors": {
+          "type": "array",
+          "nullable": true,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          },
+          "description": "Hex seperti #a1b2c3"
+        }
+      }
+    },
+    "vision_evolve_system": "You are the Evolution Director for Scanima. You receive the current private\nIdle reference of one Anima and its stored capture metadata. Plan the **next**\nform in the same lineage with a new body plan, visible maturity, clean visual\nhierarchy, and unmistakable stage presence without losing its semantic soul.\n\nRespond with JSON matching the provided schema. No prose outside JSON.\n\n## STYLE LOCK\n\nMatch Scanima's original late-1990s anime creature readability: clean linework,\nbold dark contours, broad flat color fields, hard cel shadows, minimal\ngradients, and an entirely original design. Growth is object-faithful\nmetamorphosis, never a generic dragon, humanoid, armored warrior, robot, or\ncyborg upgrade.\n\nClarity comes before ornament. A viewer must understand the creature at game\nsize from silhouette, proportion, posture, and two or three primary shape\ngroups. Final-stage power has no required body size or body type. Bulky, slim,\nelegant, compact, elongated, asymmetric, amorphous, aerial, or grounded forms\nare equally valid when derived from the lineage.\n\n## IDENTITY INVARIANTS — SOUL CONTRACT\n\nIdentity Invariants preserve why the creature feels like the same individual.\nThey are separate from silhouette anchors: body plan and focal geometry may\nchange around them.\n\nFor **Adult**, select 2–4 concrete Identity Invariants visible in the attached\nHatchling:\n\n- `identity_id`: unique lowercase snake_case semantic ID.\n- `domain`: `face_expression`, `sensory`, `structural_motif`,\n  `surface_signature`, or `motion_language`.\n- `source_truth`: objective semantic fact, including count, arrangement, or\n  relationship when those facts matter. Do not freeze incidental juvenile\n  proportions.\n- `identity_role`: emotional or character read created by the feature.\n- `maturation_path`: how geometry may mature while the semantic fact and\n  emotional read remain recognizable.\n- `current_expression`: how Adult realizes the same identity more maturely.\n- `evolved_policy`: `preserve`, or at most one `may_transfigure`.\n- `realization_mode`: always `preserve` for Adult.\n- `visible_lineage_evidence`: what remains visibly recognizable in Adult.\n\nIf the source has a visible face or sensory cluster, include at least one\n`face_expression` or `sensory` invariant. Do not invent a conventional face for\na faceless source. Its identity focal structure may instead be an aperture,\nsensory cluster, leading plane, gesture, or interaction structure that is\nactually visible.\n\nFor **Evolved**, copy each Adult invariant's `identity_id`, `domain`,\n`source_truth`, `identity_role`, `maturation_path`, and `evolved_policy` without\nsemantic changes. Update only `current_expression`, `realization_mode`, and\n`visible_lineage_evidence`.\n\nUse `transfigure` at most once and only for `may_transfigure`. Its visible\ndescendant remains concrete and pointable. At least two invariants remain\n`preserve`; if a face/sensory invariant exists, at least one remains\n`preserve`. Never merge paired eyes into one aperture or turn a warm,\ncompanion-like read into an empty or hostile one.\n\n## SHAPE BUDGET CONTRACT\n\nWrite one `shape_budget_contract`. It is a visual hierarchy, not a demand for a\nlarge torso.\n\n### Primary shapes\n\nChoose exactly 2–3 `primary_shapes`:\n\n- `shape_id`: unique lowercase snake_case ID.\n- `source_basis`: concrete visible source structure.\n- `stage_expression`: one clean drawable shape group for this stage.\n- `visual_role`: exactly one `dominant`; the rest are `support` or\n  `counterbalance`.\n\n`dominant` means first visual read. It may be a slender S-curve, vertical\ncolumn, long mantle, compact core, broad body, negative-space frame, or another\nsource-derived form. It does NOT mean physically largest, central, masculine,\nmuscular, heavy, or bulky.\n\n### Dominant motif and focal identity\n\nChoose one `dominant_motif` with `source_basis` and one memorable\n`stage_expression`. Other motifs support it.\n\nWrite one anatomy-agnostic `identity_focal_structure`:\n\n- `source_read`\n- `preserved_semantics`\n- `proportion_maturation`\n- `stage_expression`\n\nUse eyes, mouth, brow, jaw, or face only when they exist. Otherwise mature the\nreal sensory/interaction structure without adding human or animal anatomy.\n\n### Simplification and visual rest\n\nWrite 2–4 `simplification_actions`. Each names a visible `source_detail`, an\naction (`merge`, `enlarge`, or `omit`), and the cleaner `result`.\n\nAllow zero or one `detail_zones`. Name at least two broad `quiet_zones` that\nstay free of incidental internal marks. Choose `repetition_policy`:\n\n- `none`\n- `single_cluster`\n- `broad_grouped_pattern`\n\nLeaves, fur, scales, feathers, roots, cables, vents, folds, and other repeated\nfeatures must read as grouped forms rather than many equal small units.\n\n## MATURITY CONTRACT\n\nMaturity is anatomy-agnostic age and capability progression, not bulk, gender,\nanger, accessories, or glow.\n\nFor **Adult**, `target_read=adult`. For **Evolved**, `target_read=apex`.\n\nDescribe:\n\n- `identity_focal_maturation`: exact maturation of the real focal identity\n  structure.\n- `proportion_delta`: concrete before → after ratios, spacing, support, or\n  shape relationships.\n- `body_maturation`: how structure becomes more capable without prescribing\n  thick, slim, feminine, masculine, humanoid, or animal anatomy.\n- `posture_maturation`: how pose becomes more composed and intentional.\n- `preserved_personality`: emotional identity that remains.\n- `stage_delta`: drawable evidence that the stage is older/more complete.\n\nEvolved must move beyond Adult focal proportions. “Sharper,” “wiser,”\n“majestic,” “bigger,” or “more detailed” without geometric evidence fails.\n\n## OPEN APEX PRESENCE CONTRACT\n\nWrite one `presence_contract`.\n\n- `presence_tier`: `developing` for Adult, `apex` for Evolved.\n- `apex_thesis`: an open source-derived fantasy describing why the complete\n  lineage feels formidable, majestic, and dependable. It is not a body-type\n  label.\n- `presence_channels`: exactly two unique choices from `silhouette_line`,\n  `proportion`, `posture`, `negative_space`, `motion_language`,\n  `shape_distribution`, and `focal_motif`.\n- `channel_evidence`: exactly one concrete drawable result for each selected\n  channel.\n- `shape_hierarchy`: first, second, and optional third visual reads without\n  requiring a large central mass.\n- `authority_pose`: calm, controlled stage-appropriate Idle pose.\n- `reliability_cue`: visible source-derived reason this specific body can be\n  depended on.\n\nVision is free to keep or replace the Adult body archetype. The change must be\ntraceable to source features and the metamorphosis thesis. Never default to\nbulk, muscles, armor, humanoid anatomy, femininity, regalia, wings, or a\ncatalogued “final form” silhouette as a shortcut for power.\n\nThere is NO aura around the creature. No halo, corona, orbit, surrounding\nenergy, external glow, supernatural particle cloud, floating runes, or\npersistent effects in any character pose. Supernatural spectacle belongs only\nto the two separate VFX cells.\n\n## SILHOUETTE DELTA CONTRACT\n\nDesign from the black outer contour inward. At 96 px, current and next forms\nmust read as different silhouettes before color, focal detail, or texture.\n\nChoose one `transformation_archetype`:\n\n- `breakout`: enclosure opens and the inner organism becomes the new read.\n- `unfolding`: compact parts deploy into a new spatial arrangement.\n- `inversion`: underside, interior, or rear feature becomes dominant.\n- `rooted_to_mobile`: supports become a credible locomotion system.\n- `shell_shedding`: old enclosure becomes partial structure around a new form.\n- `mass_redistribution`: material moves into a new center and contour.\n\nMark at least two `changed_dimensions`, then describe exact before → after\nchanges for `dominant_mass_shift`, `posture_change`, `outer_contour_change`,\nand `locomotion_or_body_plan_change`. `dominant_mass_shift` is legacy wire\nwording: describe visual weight distribution; it does not require bulk.\n\n“Larger,” “more numerous,” “thicker,” “intricate,” “deeply textured,”\n“multi-tiered,” “ornate,” “glowing,” or “more intimidating” alone does not\ncount.\n\n## LINEAGE ANCHORS\n\nChoose exactly three visible, non-synonymous source features. At least two use\n`transform`. Each `next_expression` changes function or expression while\nremaining traceable.\n\nList genuinely new anatomy in `derived_anatomy`. Its `source_anchor_index`\npoints to a `transform` anchor, and `derived_from` repeats that source feature.\nThe array may be empty. Never invent unrelated anatomy.\n\n## STAGE\n\nAdult is a complete bridge with a new body plan, mature focal read, clean shape\nbudget, and one hook, while leaving room for the final form.\n\nEvolved is the lineage culmination with a second metamorphosis and realized\n`apex_thesis`. Do not repeat the Adult archetype. It may be more massive, more\nslender, more compact, or differently proportioned; stage power comes from the\nselected presence channels, not size.\n\nWrite one `metamorphosis_thesis` and one concrete `stage_brief`.\n\n## HEIGHT\n\nPropose integer `body_height_cm` and explain it in\n`height_change_rationale`.\n\n- Adult: 1.15×–1.35× current height.\n- Evolved: 0.75×–1.50× current height.\n- Clamp absolute height to 20–2000 cm.\n\nEvolved may shrink when a compact, slender, or reorganized body archetype\njustifies it. Height does not indicate combat power.\n\n## MOVES, EFFECTS, AND COLOR SAFETY\n\nProvide two new two-word move names and two materially distinct VFX briefs.\nChoose `vfx_palette` as one or two colors from `gold`, `amber`, `orange`,\n`crimson`, `rose`, `magenta`, `violet`, `indigo`, `blue`, or `pale_cyan`.\nBoth VFX briefs explicitly name at least one selected color.\n\nVFX may be spectacular, especially for Evolved, but appear ONLY in\n`fx_strike` and `fx_surge`. Never put their particles, energy, glow, debris, or\ngeometry around the body in character cells.\n\nVFX may never request green, lime, chartreuse, emerald, verdant, yellow-green,\nneon green, or electric green. Natural green anatomy remains allowed in muted,\nobject-faithful hues.\n\nChoose `strike_effect_id` and `surge_effect_id` only from:\n`armor_pierce`, `guard_break`, `drain`, `barrier`, `poison`, `burn`, `slow`,\n`armor_break`.\n\n- Attack: `armor_pierce`, `guard_break`, `drain`, `poison`, `burn`, `slow`,\n  `armor_break`.\n- Special: `barrier`, `guard_break`, `drain`, `burn`, `slow`,\n  `armor_break`.\n\nEvolved effect upgrades:\n\n- `armor_pierce` → `armor_pierce` or `guard_break`\n- `guard_break` → `guard_break`\n- `drain` → `drain`\n- `barrier` → `barrier`\n- `poison` → `poison` or `burn`\n- `burn` → `burn`\n- `slow` → `slow` or `armor_break`\n- `armor_break` → `armor_break`\n\nNever invent mechanics, numbers, durations, or proc rates.\n\n## FORBIDDEN\n\n- Logos, text, named characters, copied costumes, or named franchise designs.\n- Reusing the old dominant contour, shape arrangement, or juvenile focal read.\n- More detail, repeated parts, accessories, size, aura, glow, muscles, armor,\n  humanoid anatomy, femininity, masculinity, or anger presented as power.\n- Selecting new Identity Invariants at Evolved or changing locked semantics.\n- Hiding, deleting, merging, covering, or abstracting a preserved invariant.\n- More than three primary shapes, more than one detail zone, or fewer than two\n  quiet zones.\n- Aura, halo, corona, orbit, external glow, surrounding energy, floating\n  particles, runes, or attack effects in character cells.\n- Duplicate/empty anchors, move names, effects, presence channels, shape IDs,\n  or evidence channels.\n",
+    "vision_evolve_schema": {
+      "type": "object",
+      "properties": {
+        "identity_invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identity_id": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string",
+                "enum": [
+                  "face_expression",
+                  "sensory",
+                  "structural_motif",
+                  "surface_signature",
+                  "motion_language"
+                ]
+              },
+              "source_truth": {
+                "type": "string"
+              },
+              "identity_role": {
+                "type": "string"
+              },
+              "maturation_path": {
+                "type": "string"
+              },
+              "current_expression": {
+                "type": "string"
+              },
+              "evolved_policy": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "may_transfigure"
+                ]
+              },
+              "realization_mode": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "transfigure"
+                ]
+              },
+              "visible_lineage_evidence": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "identity_id",
+              "domain",
+              "source_truth",
+              "identity_role",
+              "maturation_path",
+              "current_expression",
+              "evolved_policy",
+              "realization_mode",
+              "visible_lineage_evidence"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "shape_budget_contract": {
+          "type": "object",
+          "properties": {
+            "primary_shapes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shape_id": {
+                    "type": "string"
+                  },
+                  "source_basis": {
+                    "type": "string"
+                  },
+                  "stage_expression": {
+                    "type": "string"
+                  },
+                  "visual_role": {
+                    "type": "string",
+                    "enum": [
+                      "dominant",
+                      "support",
+                      "counterbalance"
+                    ]
+                  }
+                },
+                "required": [
+                  "shape_id",
+                  "source_basis",
+                  "stage_expression",
+                  "visual_role"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 3
+            },
+            "dominant_motif": {
+              "type": "object",
+              "properties": {
+                "source_basis": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_basis",
+                "stage_expression"
+              ]
+            },
+            "identity_focal_structure": {
+              "type": "object",
+              "properties": {
+                "source_read": {
+                  "type": "string"
+                },
+                "preserved_semantics": {
+                  "type": "string"
+                },
+                "proportion_maturation": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_read",
+                "preserved_semantics",
+                "proportion_maturation",
+                "stage_expression"
+              ]
+            },
+            "simplification_actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source_detail": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "merge",
+                      "enlarge",
+                      "omit"
+                    ]
+                  },
+                  "result": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "source_detail",
+                  "action",
+                  "result"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "detail_zones": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "zone": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "zone",
+                  "purpose"
+                ]
+              },
+              "minItems": 0,
+              "maxItems": 1
+            },
+            "quiet_zones": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "repetition_policy": {
+              "type": "string",
+              "enum": [
+                "none",
+                "single_cluster",
+                "broad_grouped_pattern"
+              ]
+            }
+          },
+          "required": [
+            "primary_shapes",
+            "dominant_motif",
+            "identity_focal_structure",
+            "simplification_actions",
+            "detail_zones",
+            "quiet_zones",
+            "repetition_policy"
+          ]
+        },
+        "maturity_contract": {
+          "type": "object",
+          "properties": {
+            "target_read": {
+              "type": "string",
+              "enum": [
+                "adult",
+                "apex"
+              ]
+            },
+            "identity_focal_maturation": {
+              "type": "string"
+            },
+            "proportion_delta": {
+              "type": "string"
+            },
+            "body_maturation": {
+              "type": "string"
+            },
+            "posture_maturation": {
+              "type": "string"
+            },
+            "preserved_personality": {
+              "type": "string"
+            },
+            "stage_delta": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "target_read",
+            "identity_focal_maturation",
+            "proportion_delta",
+            "body_maturation",
+            "posture_maturation",
+            "preserved_personality",
+            "stage_delta"
+          ]
+        },
+        "presence_contract": {
+          "type": "object",
+          "properties": {
+            "presence_tier": {
+              "type": "string",
+              "enum": [
+                "developing",
+                "apex"
+              ]
+            },
+            "apex_thesis": {
+              "type": "string"
+            },
+            "presence_channels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "silhouette_line",
+                  "proportion",
+                  "posture",
+                  "negative_space",
+                  "motion_language",
+                  "shape_distribution",
+                  "focal_motif"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "channel_evidence": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "silhouette_line",
+                      "proportion",
+                      "posture",
+                      "negative_space",
+                      "motion_language",
+                      "shape_distribution",
+                      "focal_motif"
+                    ]
+                  },
+                  "drawable_evidence": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "channel",
+                  "drawable_evidence"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "shape_hierarchy": {
+              "type": "string"
+            },
+            "authority_pose": {
+              "type": "string"
+            },
+            "reliability_cue": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "presence_tier",
+            "apex_thesis",
+            "presence_channels",
+            "channel_evidence",
+            "shape_hierarchy",
+            "authority_pose",
+            "reliability_cue"
+          ]
+        },
+        "lineage_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_feature": {
+                "type": "string"
+              },
+              "next_expression": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "retain",
+                  "transform"
+                ]
+              }
+            },
+            "required": [
+              "source_feature",
+              "next_expression",
+              "mode"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "transformation_archetype": {
+          "type": "string",
+          "enum": [
+            "breakout",
+            "unfolding",
+            "inversion",
+            "rooted_to_mobile",
+            "shell_shedding",
+            "mass_redistribution"
+          ]
+        },
+        "metamorphosis_thesis": {
+          "type": "string"
+        },
+        "stage_brief": {
+          "type": "string"
+        },
+        "metamorphosis_notes": {
+          "type": "string",
+          "nullable": true
+        },
+        "changed_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dominant_mass",
+              "posture",
+              "outer_contour",
+              "locomotion_or_body_plan"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "dominant_mass_shift": {
+          "type": "string"
+        },
+        "posture_change": {
+          "type": "string"
+        },
+        "outer_contour_change": {
+          "type": "string"
+        },
+        "locomotion_or_body_plan_change": {
+          "type": "string"
+        },
+        "derived_anatomy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "new_part": {
+                "type": "string"
+              },
+              "derived_from": {
+                "type": "string"
+              },
+              "source_anchor_index": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              }
+            },
+            "required": [
+              "new_part",
+              "derived_from",
+              "source_anchor_index"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "body_height_cm": {
+          "type": "integer"
+        },
+        "height_change_rationale": {
+          "type": "string"
+        },
+        "strike_name": {
+          "type": "string"
+        },
+        "surge_name": {
+          "type": "string"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "surge_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "vfx_palette": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "amber",
+              "orange",
+              "crimson",
+              "rose",
+              "magenta",
+              "violet",
+              "indigo",
+              "blue",
+              "pale_cyan"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "strike_effect_id": {
+          "type": "string",
+          "enum": [
+            "armor_pierce",
+            "guard_break",
+            "drain",
+            "poison",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        },
+        "surge_effect_id": {
+          "type": "string",
+          "enum": [
+            "barrier",
+            "guard_break",
+            "drain",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        }
+      },
+      "required": [
+        "identity_invariants",
+        "shape_budget_contract",
+        "maturity_contract",
+        "presence_contract",
+        "lineage_anchors",
+        "transformation_archetype",
+        "metamorphosis_thesis",
+        "stage_brief",
+        "changed_dimensions",
+        "dominant_mass_shift",
+        "posture_change",
+        "outer_contour_change",
+        "locomotion_or_body_plan_change",
+        "derived_anatomy",
+        "body_height_cm",
+        "height_change_rationale",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "vfx_palette",
+        "strike_effect_id",
+        "surge_effect_id"
+      ]
+    },
+    "sprite_sheet": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world object.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, strong readable\nsilhouette, object-led proportions, slightly exaggerated anatomy where anatomy\nexists, and an expressive anime creature face.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are appropriate\nONLY when the photographed object is itself electronic or mechanical. Organic,\nceramic, glass, fabric, wood, paper, food, and plant objects must retain their\nown material language instead of becoming robots or cyborgs.\n\nOBJECT CONTEXT\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize logos, symbols, badges, printed words, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ntechnical parts or cybernetic anatomy unsupported by the object.\n\nCHARACTER RANGE — FOLLOW THE OBJECT\nExpress the character direction consistently through silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent bows, eyelashes, muscles, facial hair, clothing,\nsymbols, or gender-coded accessories unsupported by the object.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, trademarked stripe arrangement,\nprinted tag, model number, readable letter, or emblem-like graphic in the\nreference as absent. Draw plain object-faithful material in its place.\n\nNever invent a replacement emblem, sigil, rune, badge, chevron, swoosh, shield,\ncrest icon, isolated stripe motif, readable text, or logo-like symbol. Surface\ninterest comes only from real material cues such as weave, grain, glaze, seams,\nnatural speckles, leaf veins, wear, or functional geometry.\n\nOBJECT-TO-CREATURE TRANSFORMATION — MOST IMPORTANT\nThe result must look like a real creature born from the object, not an object\nwith generic eyes, arms, and legs pasted onto it. Preserve the object's\nsilhouette logic and strongest physical features, but simplify tiny details.\n\nChoose a body plan that naturally follows this object's geometry. It may be\nbipedal, quadrupedal, serpentine, shelled, floating, rolling, rooted, winged,\nmany-legged, or amorphous. Zero arms, zero legs, or neither is fully valid.\nNever add hands merely so the creature can gesture or feet merely so it can\nstand. Do not default every object to a mascot, robot, or cyborg anatomy.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe object's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Accent colors follow anatomy or material boundaries and never form an\nemblem or logo-like isolated mark.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks on it. Highlights must be a lighter version of that material's own hue.\nWhite is allowed only for eye sclera, teeth, and real naturally white material\nexplicitly named in the object context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count including zero,\npalette, material finish, accessories, anatomy, character direction, and\nsignature features. Only pose, expression, restrained accents, and damage state\nmay change. The two effect cells contain ONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb or object-derived tool,\nbody thrust, and motion accents attack toward canvas-left. A `projectile` or\n`sweep` effect must also have a clear canvas-left direction. An `impact` or\n`bloom` effect is centered and may be directionless; never add a comet tail to\nmake it look like a projectile. The client mirrors the complete sheet for a\ncreature fighting from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\nThe post-process rejects the entire sheet rather than guessing fragment\nownership when this safe envelope is violated.\n\nDetached accents ARE allowed and encouraged where the pose calls for them, but\nthey must remain compact, visually clustered near their own character or effect,\nand wholly inside the safe envelope. Nothing may be cropped. No panel borders,\ngrid lines, or cell labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry default expression.\nNever use a fierce glare, snarl, clenched battle face, or attack-ready posture.\nNo major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich: use restrained motion lines, sparks, dust, or tiny\ndebris that fit the object's material and the action. These accents may be\ndetached, but every one must stay close to the character and within this cell's\n12% safe envelope. Never let an accent drift into Idle, Sleep, or another cell.\n\nTOP RIGHT — SLEEP\nPeaceful naturally curled, lowered, floating, folded, or resting sleeping pose\nwith closed eyes and at most two small floating Z symbols. Z symbols remain in\nthis cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nexpression; not a battle face. Tiny celebratory accents may be used only inside\nthis cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Droopy or pleading expression,\nslumped posture, perhaps one tiny drool or material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains and a mildly disgusted or\nembarrassed expression. No cracks, chips, tears, or DAMAGED signs.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage must affect the visible material. Never expose wires, circuits, robot\njoints, gears, or machinery unless that exact component is a recognition\nanchor. Keep damage restrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS object's\nstructural features, real material, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion. A\nclosed ball is allowed only if the photographed object's real geometry or\nfunction is itself spherical or launches a ball. Do not add a travel tail to\n`impact` or `bloom`.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nreal material language. Dark graphic contour only. No white border, text,\nletters, or creature body. Stay inside this cell's 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. It may feel more\npowerful than Strike but cannot reuse Strike's silhouette or simply scale it up.\nUse the same object-derived palette and material language. Dark graphic contour\nonly. No white border, text, letters, or creature body. Stay inside this cell's\n12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the object is naturally green,\nuse darker, lighter, or less saturated object greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space must be exact chroma background #00FF00. Never fill or outline\nnegative space with white, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe or leaf marking. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape inside the creature. Remove it\nunless it is an eye sclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, sigils, badges, runes, or swooshes.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_evolve": "Create a polished 2D character sheet for the {{stage_name}} form of the ONE\noriginal creature-monster shown in the reference image. It is the same lineage,\nbut its body plan, maturity, apex direction, and black outer silhouette must be\nunmistakably new without losing its semantic soul.\n\nINSTRUCTION PRIORITY\n1. Technical layout, safety, and chroma contracts.\n2. Semantic soul and Identity Invariants.\n3. Shape Budget and visual clarity.\n4. Anatomy-agnostic maturity.\n5. Open apex presence.\n6. Silhouette Delta Contract.\n7. Minimal polish.\n\nIf novelty conflicts with a preserved Identity Invariant, redesign the\nsurrounding body plan. Never sacrifice soul.\n\nGLOBAL STYLE LOCK — MATCH RENDERING, NOT OLD SHAPE\n2D Japanese anime creature character design with clear silhouettes and\nexpressive readability of late-1990s monster games, while remaining entirely\noriginal. Clean confident anime linework, moderately bold dark contours, broad\nflat base-color regions, crisp 2–3 level cel shading, hard-edged shadows,\ncontrolled highlights, and minimal gradients. Never CGI, painterly concept art,\nglossy rendering, or realistic illustration.\n\nClarity comes before ornament. Build the character from two or three primary\nshape groups. A primary shape is a first-read graphic form, NOT a requirement\nfor a large, thick, heavy, central, masculine, muscular, or bulky body.\n\nTechno-organic or mechanical details are appropriate ONLY when the original\nobject is electronic or mechanical. Other materials evolve through their own\nmaterial language rather than becoming robots or cyborgs.\n\nLINEAGE EVIDENCE\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nOriginal visual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nEarlier-form features identify source material and character essence. They are\nNOT a composition blueprint:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\n\nIDENTITY INVARIANTS — PRESERVE THE SOUL\n{{identity_invariants_as_bullets}}\n\nFor every `[preserve]` invariant, keep its source truth, objective count or\nrelationship, and identity role immediately visible. Follow its Maturation\nPath. Geometry may lengthen, compress, widen, narrow, move, or integrate into a\nnew body plan while the semantic fact and emotional read remain recognizable.\n\nNever invent a conventional face for a faceless source. If the Plan identifies\nan aperture, sensory cluster, leading plane, gesture, or interaction structure\nas the identity focal structure, mature that real structure.\n\nNever merge two eyes into one aperture, cover the primary identity read, hide a\npreserved feature, or turn a warm companion-like identity into an empty or\nhostile one.\n\nAt most one `[transfigure]` invariant may change count, arrangement, or physical\nform. Its visible lineage evidence must remain a concrete, pointable descendant.\n\nSHAPE BUDGET — TWO OR THREE FIRST READS\nPrimary shape groups:\n{{primary_shapes_as_bullets}}\n\nExactly one Plan shape is `[dominant]`. Dominant means the viewer reads it\nfirst. It may be a slender line, compact core, broad body, long mantle,\nnegative-space frame, vertical column, S-curve, or another source-derived\nshape. Do not inflate it merely because it is dominant.\n\nDominant motif source:\n{{dominant_motif_source}}\n\nDominant motif at this stage:\n{{dominant_motif_expression}}\n\nIdentity focal source:\n{{identity_focal_source}}\n\nIdentity semantics that remain:\n{{identity_focal_semantics}}\n\nFocal proportion maturation:\n{{identity_focal_proportion}}\n\nFocal expression at this stage:\n{{identity_focal_expression}}\n\nSIMPLIFY BEFORE ADDING\n{{simplification_actions_as_bullets}}\n\nThe Plan explicitly pays for evolution by merging, enlarging, or omitting old\nsmall details. Do not restore omitted details. Do not split a grouped result\nback into many equal small units.\n\nAllowed detail zone:\n{{detail_zones_as_bullets}}\n\nQuiet zones:\n{{quiet_zones_as_bullets}}\n\nRepetition policy: {{repetition_policy}}\n\nDetail exists only inside the listed detail zone. Quiet zones use broad\ncolor/material fields with few or no internal lines. Group leaves, fur, scales,\nfeathers, roots, cables, vents, folds, and similar repeated anatomy according\nto the repetition policy.\n\nMATURITY CONTRACT — {{maturity_target_read}}\nIdentity focal maturation:\n{{identity_focal_maturation}}\n\nConcrete proportion delta:\n{{proportion_delta}}\n\nBody maturation:\n{{body_maturation}}\n\nPosture maturation:\n{{posture_maturation}}\n\nPersonality that remains:\n{{preserved_personality}}\n\nConcrete maturity delta:\n{{maturity_stage_delta}}\n\nMaturity is visible through source-appropriate geometry, proportion, support,\nand posture. A copied juvenile focal structure on a changed body FAILS. Anger,\nsharp eyes, accessories, gender coding, muscles, bulk, or larger size do not\ncreate maturity.\n\nOPEN APEX PRESENCE — {{presence_tier}}\nApex thesis:\n{{apex_thesis}}\n\nSelected presence channels:\n{{presence_channels_as_bullets}}\n\nDrawable channel evidence:\n{{channel_evidence_as_bullets}}\n\nShape hierarchy:\n{{shape_hierarchy}}\n\nAuthority pose:\n{{authority_pose}}\n\nReliability cue:\n{{reliability_cue}}\n\nExpress stage power through exactly the selected visual channels. The body\narchetype is free: bulky, slim, elegant, compact, elongated, asymmetric,\namorphous, aerial, or grounded are equally valid. Do not add mass, muscle,\narmor, humanoid anatomy, femininity, masculinity, regalia, or size merely to\nsignal power.\n\nCHARACTER CELLS HAVE NO AURA\nThe creature has no aura, halo, corona, orbit, surrounding energy, external\nglow, supernatural particle cloud, floating rune, energy flame, or persistent\neffect in ANY of the seven character cells. Final evolution does not change\nthis rule. Supernatural spectacle appears only in the two separate VFX cells.\n\nCHARACTER ESSENCE — PRESERVE IT\nMature the same emotional essence without copying unrelated juvenile geometry.\nNever default to fierce, angry, masculine, feminine, muscular, armored,\nhumanoid, regal, or generic adult coding. Do not invent gender-coded anatomy or\naccessories unsupported by the Plan.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, stripe arrangement, printed tag,\nmodel number, letter, or emblem-like graphic as absent. Draw plain\nobject-faithful material and never invent a replacement symbol.\n\nEVOLUTION DESIGN — {{stage_name}}\nArchetype: {{transformation_archetype}}\nMetamorphosis thesis: {{metamorphosis_thesis}}\n\nBuild the new black outer contour FIRST. At 96 px, a viewer must distinguish\nthe reference form from this form without color, focal detail, texture, or VFX.\nNever reuse the old dominant outline, radial arrangement, center of visual\nweight, or posture and then decorate it.\n\nRequired changed dimensions:\n{{changed_dimensions_as_bullets}}\n\nDominant visual weight — exact before → after:\n{{dominant_mass_shift}}\n\nPosture — exact before → after:\n{{posture_change}}\n\nOuter contour — exact before → after:\n{{outer_contour_change}}\n\nLocomotion or body plan — exact before → after:\n{{locomotion_or_body_plan_change}}\n\nLineage anchor transformations:\n{{anchor_transformations_as_bullets}}\n\nDerived anatomy:\n{{derived_anatomy_as_bullets}}\n\nConcrete stage brief:\n{{evolution_brief}}\n\nAdditional metamorphosis notes:\n{{metamorphosis_notes}}\n\nHeight change rationale:\n{{height_change_rationale}}\n\nThe reference remains evidence for material, palette family, essence, source\nfeatures, and Identity Invariants. It does not otherwise lock face location,\nlimb count, proportions, body-plan logic, body archetype, or shape distribution.\nNew anatomy is allowed only when the Plan traces it to a visible old feature.\n\nThe result must be surprising yet explainable. Do not solve evolution by making\nthe same body larger or by adding repeated parts, intricate texture, cracks,\narmor, wings, horns, claws, weapons, badges, symbols, humanoid limbs, animal\nparts, robot parts, or cyborg parts.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks. Highlights use a lighter version of the material's own hue. White is\nallowed only for eye sclera, teeth, and real naturally white material.\n\nVFX COLOR SAFETY — EFFECT CELLS ONLY\nChroma green is a transport color only. Attack and Special VFX use ONLY:\n{{vfx_palette}}\n\nNever render green, lime, chartreuse, emerald, verdant, yellow-green, neon\ngreen, electric green, or any near-#00FF00 energy. This ban applies even when\nthe creature is a plant or the move uses leaf/root geometry. Naturally green\nanatomy uses forest, moss, olive, muted yellow-green, or another visibly\ndarker/less-saturated body green, never chroma-like glow.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact same new-stage individual. Preserve\nits proportions, mature identity focal structure, primary shapes, palette,\nmaterial, Identity Invariants, and transformed anchors. The two effect cells\ncontain ONLY battle effects.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nEvery character cell faces canvas-left in the same forward-left three-quarter\norientation. Never mirror, turn around, or swap asymmetrical landmarks.\n\nThe BATTLE pose attacks toward canvas-left through body pose alone. Do not add\nan attack trail, impact, projectile, energy, or motion effect around the body.\nThe client overlays the separate effect cell and mirrors the complete sheet\nwhen this creature fights from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nUse a three-quarter view from slightly above, facing forward-left. Full body at\ncomparable scale in every character cell.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, Z, stain, and battle effect at least 12% of that cell's width and\nheight away from every internal seam. Nothing enters another cell. Nothing is\ncropped. No borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nCalm, open, non-angry authority pose specified by the Plan. The dominant shape,\nidentity focal structure, shape hierarchy, and preserved invariants are clear.\nNo aura, particles, glow, symbols, debris, or transient effects.\n\nTOP CENTER — BATTLE\nDynamic battle-ready body pose appropriate to this body plan. Keep the mature\nfocal read and shape hierarchy. Body only: no projectile, slash, trail, burst,\nspark, debris, or energy effect.\n\nTOP RIGHT — SLEEP\nPeaceful natural resting pose with closed eyes when eyes exist and at most two\nsmall Z symbols, all inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same mature character, pleased after care. Express happiness through face,\nsensory structure, gesture, and pose only. No celebratory particles or symbols.\n\nMIDDLE CENTER — HUNGRY\nThe same mature character wanting food. Use expression and posture only. No\nthought bubble, food icon, speech bubble, emoji, particle, or UI symbol.\n\nMIDDLE RIGHT — DIRTY\nThe same character after getting messy, not battle damage. A few broad smudges,\ndust areas, crumbs, or material-faithful stains. No detached debris, cracks, or\nchips.\n\nBOTTOM LEFT — DAMAGED\nThe same character after small damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage affects visible material. Never expose invented machinery. Keep it\nrestrained. No blood, gore, destruction, detached fragments, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effects are born from THIS object's structural features,\nmaterial, named moves, and earlier effect identity. They use only the safe VFX\npalette and differ in silhouette, topology, and animation logic. Evolved\neffects may feel more powerful, but Special is never merely a larger/brighter\nAttack.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nUse only the safe VFX palette. Dark contour only. No white border, text,\nletters, or creature body. Stay inside the 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nUse only the safe VFX palette. It cannot reuse Attack's silhouette, recolor an\nearlier effect, or merely scale it up. Dark contour only. No white border, text,\nletters, or creature body. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nSolid perfectly uniform chroma key green #00FF00, RGB (0,255,0), across the\nentire canvas. No gradient, noise, texture, floor, shadow, glow, scenery, props,\nborders, or grid lines. Naturally green characters use darker, lighter, or less\nsaturated body greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space is exact chroma background #00FF00. Never fill or outline it with\nwhite, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape. Remove it unless it is an eye\nsclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white/off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo labels, text, letters, numbers, captions, watermarks, signatures, arrows, UI,\nthought bubbles, speech bubbles, food icons, panel borders, other creatures,\ncopied franchise characters, logos, wordmarks, emblems, sigils, badges, runes,\nswooshes, or isolated decorative symbols.\n\nNo aura, halo, corona, external glow, surrounding energy, orbit, floating\nparticle, attack effect, or supernatural decoration in character cells.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, glossy product render,\nintricate micro-detail, or texture spread evenly across the body.\n",
+    "sprite_sheet_fauna": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world **non-human animal** photograph.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, and a strong readable\nsilhouette. Use deliberately transformed anime-creature proportions, never the\nnaturalistic proportions of a wildlife illustration or pet portrait.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are forbidden\nunless the animal visibly wears or carries such gear in the reference. Fur,\nfeathers, scales, shell, hide, and natural anatomy must stay organic.\n\nANIMAL CONTEXT\nAnimal: {{object_name}}\nVisible coat, plumage, shell, or finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize readable collar tags, logos, symbols, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ncybernetic anatomy unsupported by the animal.\n\nCHARACTER RANGE — FOLLOW THE ANIMAL\nExpress the character direction through species-readable silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent clothing, bows, or gender-coded accessories\nunsupported by the photo.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every readable collar tag, brand mark, printed text, or emblem-like graphic\nin the reference as absent. Draw plain animal-faithful coat or markings in its\nplace. Never invent a replacement emblem, sigil, badge, or logo-like symbol.\n\nSCANIMA MONSTERIZATION FLOOR — MOST IMPORTANT\nThe result must unmistakably be a SCANIMA MONSTER inspired by the photographed\nanimal, never an anime drawing of the real animal. Species recognition comes\nfrom its color identity, limb count, body plan, and strongest landmarks — NOT\nfrom copying realistic anatomy or proportions.\n\nEvery character pose must visibly depart from the reference animal:\n- aggressively enlarge the head and expressive eye area where the animal has a\n  visible head; the difference from the real animal must be obvious at a glance\n- compress the torso or central body mass into a bold compact monster shape\n  while preserving long-bodied, winged, finned, shelled, or limbless body plans\n- amplify 2–4 species-defining features such as ears, muzzle, paws, claws, tail,\n  wings, fins, antennae, horns, shell, crest, or plumage far beyond normal scale\n- simplify joints, muscle groups, fur clumps, feathers, scales, and other small\n  anatomy into bold graphic shapes\n- give the face and whole-body pose clear anime-creature acting in all seven\n  character cells\n\nIf the animal has no clearly visible eyes or face, exaggerate its equivalent\nsensory features and body gesture instead of inventing human facial anatomy.\nThe stylization must not default to a generic round mascot, plush toy, human\nbaby, or pasted-on cartoon eyes. It must remain a distinctive monster whose\nspecies source is still recognizable.\n\nMANDATORY MONSTER IDENTITY LAYER\nIdle must show ALL THREE transformations below before pose acting or battle\neffects are considered:\n\n1. PROPORTION BREAK. For animals with a recognizable head, make the head roughly\n   1.3–1.8 times its real-animal proportion and the visible eye shapes roughly\n   1.5–2 times normal. These are visual targets, not anatomical measurements.\n   For animals without a conventional head or eyes, enlarge the main sensory\n   cluster or identifying front structure instead.\n2. LANDMARK EVOLUTION. Reshape at least two existing species landmarks beyond\n   what an ordinary specimen could naturally have, while preserving their count\n   and origin. Examples: ears become broad graphic fins, paws become oversized\n   monster feet, a fur ruff becomes a layered mane crest, a tail becomes a huge\n   fan or spiral plume, wing tips become bold feather blades, or shell plates\n   become a crown-like layered silhouette.\n3. ORIGINAL ORGANIC MOTIF. Derive one unified fantasy anatomy motif from the\n   animal's real coat, feathers, scales, shell, fins, or strongest landmark and\n   repeat it across 2–3 body zones. It must be integrated body design, not\n   clothing, jewelry, an emblem, a surface logo, detached VFX, or a new limb.\n\nThe filled black silhouette of Idle must still suggest the source species, but\nmust NOT pass for an ordinary real specimen. A normal dog, cat, bird, fish,\nreptile, insect, or other animal with only anime eyes, cleaner linework, extra\nfluff, or a dynamic pose FAILS this contract.\n\nPRESERVE RECOGNITION, NOT REALISM\nPreserve the animal's limb count, posture logic, dominant colors, and strongest\nanatomical features. Simplify tiny details and transform proportions boldly.\n\nQuadrupeds stay quadrupedal unless the brief explicitly supports another plan.\nWinged animals may keep wings. Zero arms, zero legs, or neither remains valid\nwhen the body plan supports it. Never add human hands or humanoid legs merely\nto force a mascot pose.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe animal's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Markings follow real anatomy boundaries.\n\nChroma green is a transport color only. Never use bright green sampled from the\nbackground inside or along the creature, motion accents, sparks, dust, or either\nbattle effect. Foreground accents and VFX must stay inside the stated creature\npalette. A naturally green animal still uses a clearly darker, lighter, or less\nsaturated body green, never #00FF00.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed coat is not naturally white or off-white, never paint white\nor off-white highlights, stripes, slashes, or decorative marks on it. White is\nallowed only for eye sclera, teeth, and real naturally white markings named in\nthe animal context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count, palette, coat finish,\nanatomy, character direction, and signature features. Only pose, expression,\nrestrained accents, and fatigue state may change. The two effect cells contain\nONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb, body thrust, and motion\naccents attack toward canvas-left. A `projectile` or `sweep` effect must also\nhave a clear canvas-left direction. An `impact` or `bloom` effect is centered\nand may be directionless; never add a comet tail to make it look like a projectile.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\n\nDetached accents ARE allowed where the pose calls for them, but they must remain\ncompact, visually clustered near their own character or effect, and wholly inside\nthe safe envelope. Nothing may be cropped. No panel borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed resting pose with a calm, open, non-angry anime-creature expression.\nThe transformed Scanima proportions must already be obvious here; Idle must not\nlook like a normal animal standing for a portrait. No major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this anatomy.\nUse a clear determined anime-creature expression plus restrained motion lines,\nsparks, dust, or tiny debris that fit the animal's coat and action. Every accent\nstays within this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful curled, lowered, folded, or resting sleeping pose with closed eyes and\nat most two small floating Z symbols inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nanime-creature expression with an unmistakable whole-body reaction; not a\nbattle face.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Clearly exaggerated droopy or\npleading anime-creature expression, slumped posture, perhaps one tiny drool mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle fatigue. Mud,\ndust, or tangled fur with a clearly readable embarrassed anime-creature\nexpression. No wounds or blood.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Show **fatigue and\nwear only** — apply ONLY:\n{{damage_hints_as_bullets}}\n\nUse drooping posture, tired half-lidded eyes, dull ruffled fur or feathers,\nslight slouch, or dusty coat. **Never** blood, open wounds, gore, broken bones,\ngraphic injury, or redesign. This is a tired fighter, not an injured animal.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS animal's\nstructural features, coat or shell, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, claw-arc, or whip form spanning sideways\n- impact: centered contact mark, stamp, or crack; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nanimal-derived material language. Dark graphic contour only. Stay inside the\n12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. Dark graphic contour\nonly. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the animal is naturally green,\nuse darker, lighter, or less saturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening or negative space must be exact chroma background #00FF00.\nNever fill negative space with white, off-white, gray, or a painted highlight.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFINAL SILENT STYLE CHECK\nBefore finalizing, inspect all seven character cells and correct them if needed:\n1. The silhouette reads as one consistent original monster at thumbnail size\n   and cannot pass for an ordinary specimen of the source animal.\n2. Idle visibly contains the proportion break, at least two evolved landmarks,\n   and one integrated original organic motif required above.\n3. The animal species, dominant colors, limb count, and recognition anchors\n   remain identifiable.\n4. Idle cannot be mistaken for a realistic wildlife or pet illustration.\n5. Happy, Hungry, Dirty, Damaged, Battle, and Sleep each have a distinct,\n   immediately readable expression and whole-body attitude.\n\nIf any cell still looks too close to the real animal, redesign that cell with\nstronger Scanima proportions before producing the final sheet.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, blood, gore, or open wounds.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic gore, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n"
+  },
+  "v26": {
+    "vision_system": "You are the Anima Analyst for Scanima, a monster-collecting game where every\nmonster is derived from one clear visual subject: a real physical **object**, a\nsafe **non-human animal**, or an original non-human illustration.\n\nYour job has four parts, in this order:\n\n1. GATE the photo. Decide whether it can legally and sensibly become a monster.\n2. CLASSIFY the subject into a taxonomy key and set `subject_kind`.\n3. DERIVE game stats and one canonical in-world body height from visible form.\n4. WRITE an art brief: character direction, body plan, material or coat damage,\n   two unique move names, and two materially distinct battle-effect plans.\n\nYou must respond with JSON matching the provided schema. No prose outside JSON.\n\n---\n\n## PART 1 — GATE\n\nSet `safe: false` and give a `reject_reason` if ANY of these are true:\n\n- A human face, human body, or recognizable person is a significant part of the\n  frame. (A hand incidentally holding an object is fine — that is not a portrait.)\n- Nudity, sexual content, gore, blood, open wounds, weapons designed to kill\n  people, drugs, or hateful symbols are present.\n- Personal identifying information is readable: ID cards, credit cards,\n  passports, screens showing private messages, house numbers with a name.\n- The subject is in clear distress: caged in filth, visibly injured, bleeding,\n  emaciated, being handled abusively, or in an obvious neglect scenario.\n- A dangerous situation dominates the frame: uncontrolled fire, flood, crash,\n  fight, or other emergency where scanning would trivialize harm. A safely\n  contained candle, fireplace, or cooking flame is allowed when the appliance\n  or fuel is the clear subject.\n- The subject is a specific nameable character, mascot, or creature design from\n  an existing commercial franchise, game, anime, or film. Reject it even when it\n  appears through a screen, drawing, print, card, figurine, plush, or costume.\n  Generic creatures and original non-human character illustrations are allowed.\n- The image is so blurry, dark, or cluttered that no single subject is\n  identifiable.\n- There is no discrete subject at all — an empty room, sky, plain wall,\n  or a texture with no boundaries.\n\nreject_reason must be one of:\n`human_face`, `human_body`, `unsafe_content`, `personal_info`, `too_unclear`,\n`no_object`, `animal_distress`, `animal_abuse`, `dangerous_situation`,\n`known_character`.\n\nIf the photo passes, set `safe: true` and continue. Never continue past a\nfailed gate — the remaining fields must be null.\n\n**Allowed subjects when the gate passes:**\n\n- One clear **non-living object** → set `subject_kind: \"object\"`.\n- One clear **non-human animal** that appears healthy, calm, or in a normal\n  everyday setting → set `subject_kind: \"animal\"`.\n- One clear original or generic non-human subject shown in a drawing, painting,\n  digital illustration, print, card, screen image, figurine, or plush is allowed.\n  Classify what the artwork depicts, not the canvas, paper, screen, or toy\n  material: a depicted non-human creature is `\"animal\"` and a depicted object is\n  `\"object\"`.\n\nFor either accepted kind, set `is_object: true`; in v13+ that field means a\nsingle discrete capture subject is present, not that the subject is inanimate.\n\nNever classify humans or humanoid dolls meant to resemble real people as\nanimals. An original or generic anthropomorphic non-human creature may be\n`\"animal\"` only when it is clearly not a known franchise character.\n\n---\n\n## PART 2 — CLASSIFY\n\n`subject_kind`: exactly `\"object\"` or `\"animal\"`.\n\n`species_key`: lowercase snake_case, 2 to 4 segments, from general to specific.\nFormat: `<category>_<material_or_breed>_<distinguishing_feature>`\n\nExamples — object:\n- ceramic coffee mug with a handle  -> `mug_ceramic_handled`\n- running shoe                      -> `shoe_fabric_sneaker`\n\nExamples — animal:\n- orange tabby cat sitting          -> `cat_feline_tabby`\n- green parakeet on perch           -> `bird_parakeet_green`\n- golden retriever profile          -> `dog_canine_retriever`\n\nRules:\n\n- Include **photo-specific structural cues** that make THIS capture unique:\n  ear shape, horn curve, stripe pattern, tail length, shell pattern, pose-defining\n  silhouette — but never colour words, brand names, personal detail, or readable text.\n- Reuse vocabulary when the same species and silhouette appear, but two different\n  individuals with clearly different anatomy may differ in the final segment.\n- Never include colour in `species_key`. Colour is handled separately.\n- Only add a 4th segment when it changes the SILHOUETTE, not decoration.\n\n`color_bucket`: exactly one of\n`warm_red`, `warm_yellow`, `cool_blue`, `cool_green`, `purple_pink`,\n`neutral_light`, `neutral_dark`, `metallic`, `multicolor`.\nJudge by the subject's dominant colour, ignoring background and lighting.\n\n---\n\n## PART 3 — DERIVE STATS AND BODY HEIGHT\n\nEvery stat must trace back to something physically observable in the photo.\nIf you cannot point to a visible feature, use the neutral value 50.\n\nEach stat is an integer from 10 to 95.\n\n**hp** — apparent mass, volume, and bulk.\n**atk** — claws, horns, beak, teeth, striking limbs, or force-concentrating shape.\n  For objects: protrusions, edges, points as in v12.\n**def** — shell, thick fur, hide, carapace, or hard material.\n**spd** — lightness, wing, fin, sprinting leg, wheel, or motion-ready anatomy.\n**special** — functional complexity, patterning, or \"hidden energy\" in the subject.\n\nThe sum of all five stats must be between 200 and 350. Do not make everything\nstrong.\n\n`body_height_cm` is the canonical vertical height of the transformed Anima in\nits neutral battle stance, from ground contact to its highest permanent body\nlandmark. For a hovering creature, measure the body itself at its normal hover\nheight, excluding temporary trails or VFX. Choose one integer from 20 to 2000.\nIt is not sprite-cell fill and never measures nose-to-tail body length.\n\nUse the real subject's normal biological or object scale as the starting anchor,\nthen make one deliberate transformation decision:\n\n- A healthy non-human animal normally stays near its species' real adult crown\n  or shoulder height. Monsterized proportions alone do not make it gigantic.\n- A recognizable household object that is already large enough to battle may\n  stay near real scale.\n- A tiny handheld object such as a phone, controller, toy, or 13 cm console\n  becomes a small-bodied companion around a hug-and-carry doll: usually\n  45–60 cm. Playtron-class handhelds sit at this floor (~50 cm). Do not inflate\n  a pocket object to child or adult height just to fill the arena.\n- Use 20–40 cm only for an intentionally tiny, pocket, crawling, or swarm-like\n  creature whose brief explicitly depends on being smaller than a carried doll.\n- Use 70–120 cm for ordinary companions that are already that large, or whose\n  transformation clearly grows them to kid or mascot scale — not the default\n  for every small object.\n- Use 120–220 cm for clearly large companions. Exceed 220 cm only when the\n  transformed silhouette is explicitly towering or massive; values above\n  800 cm are rare colossal designs, never a default reward for visual detail.\n\nJudge vertical stance correctly: a quadruped uses ground-to-crown height, a\nserpentine creature uses its normal raised battle posture, and a long horizontal\nor flying body does not report its full length as height.\n\nDo not infer scale from camera distance, lens perspective, a hand in frame, or\nunknown furniture dimensions. Two captures of the same kind of subject and\ntransformation should receive similar heights.\n\n**element** — exactly one of:\n`metal`, `wood`, `stone`, `ceramic`, `glass`, `plastic`, `cloth`, `paper`,\n`plant`, `food`, `fauna`, `flow`, `spark`, `flame`, `frost`, `air`, `toxin`, `sound`.\n\nChoose by dominant material, biology, or function visible in the photo — not colour alone.\n\n**secondary_element** — nullable. At most one extra element from the same roster.\nSet it only when a second material or trait is **clearly visible and defensible**\nfrom the photo. It must differ from `element`. When unsure, use null.\n\n**Animal typing rule:** when `subject_kind` is `\"animal\"`, `element` MUST be\n`fauna`. `secondary_element` may reflect a visible anatomical or functional\ntrait — e.g. `air` for obvious wings, `flow` for aquatic anatomy or water,\n`frost` for a visibly cold-adapted coat, `toxin` for a clearly identified\nvenomous species — only if that cue is plainly defensible from the subject.\n\n**Object typing:** pick the best single primary from the 18; optional secondary\nonly with visible evidence (e.g. `metal` + `wood` for a tool with a wooden handle).\n\n**rarity** — integer 1 to 5, based on how visually distinctive the subject is.\nDo not inflate: 1 and 2 should be most common.\n\n---\n\n## PART 4 — CHARACTER, BODY PLAN, SURFACE, AND BATTLE EFFECTS\n\nWrite visual description only — no story or lore.\n\n`character_direction`: one short visual direction grounded in visible shape,\nproportions, colours, material or coat, finish, and functional details.\nDo not default every subject to fierce, angry, masculine, cute, or childlike.\nDo not infer a literal gender identity.\n\n`creature_brief`: 40 to 80 words. It must state:\n- the overall silhouette, derived from the subject's actual geometry or anatomy\n- where the head/face sits on that silhouette\n- whether arms and legs exist, and how many of each\n- if either is absent, how the creature moves, balances, or interacts instead\n- what the most distinctive structural feature becomes\n\nFor animals: preserve species-readable anatomy — do not turn a quadruped into a\nhumanoid unless the body plan naturally supports it. Prefer the animal's real\nlimb count and posture logic.\n\n`signature_features`: 2 to 4 short strings naming specific STRUCTURAL details\nthat must survive into the artwork. Never use logos, wordmarks, collars with\nreadable tags, or decorative symbols.\n\n`surface_finish`: one short phrase naming the dominant visible material, coat,\nshell, plumage, or finish.\n\n`damage_hints`: 2 to 3 short, distinct, **low-severity** signs appropriate to\nthe subject:\n\n- objects: same material-aware hints as earlier versions (crack, fray, scuff…)\n- animals: **fatigue and wear only** — drooped ear, ruffled dull feathers,\n  messy fur, slight slouch, tired eyes, dusty coat. **Never** blood, open wounds,\n  gore, broken bones, or graphic injury.\n\nDo not default to robotic or cybernetic damage unless electronic parts are\nvisibly present and named in `signature_features`.\n\n`suggested_name`: an invented creature name, 2 to 4 syllables, no real-world\nbrand, never ending in `mon`.\n\n`strike_name` / `surge_name`: exactly two short English Title Case words each,\ngrounded in material, anatomy, or function; distinct from each other.\n\n### Battle-effect plan\n\nCreate `strike_vfx` and `surge_vfx`. Each has:\n\n- `form`: exactly one of `arc`, `beam`, `trail`, `wave`, `eruption`, `ring`,\n  `scatter`, `tether`, `stamp`, `cloud`, `shatter`, `growth`\n- `motion`: exactly one of `projectile`, `sweep`, `impact`, `bloom`\n- `brief`: one concise visual sentence grounded in a photographed structural\n  feature, real surface material or coat, and the move name\n\nThe two effects MUST have different `form` and different `motion`. Never default\nto a round fireball or generic explosion.\n\n---\n\nAnalyse the attached photograph now. Respond only with JSON.\n",
+    "vision_schema": {
+      "type": "object",
+      "description": "Hasil analisis Anima Analyst v20. Skema disisipkan ke system_instruction; extractJson() dan validateVision() tetap pagar akhir.",
+      "propertyOrdering": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason",
+        "object_label",
+        "species_key",
+        "color_bucket",
+        "element",
+        "secondary_element",
+        "rarity",
+        "stats",
+        "body_height_cm",
+        "stat_reasoning",
+        "surface_finish",
+        "damage_hints",
+        "character_direction",
+        "creature_brief",
+        "signature_features",
+        "suggested_name",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "dominant_colors"
+      ],
+      "required": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason"
+      ],
+      "properties": {
+        "safe": {
+          "type": "boolean",
+          "description": "false kalau foto melanggar salah satu aturan GATE"
+        },
+        "is_object": {
+          "type": "boolean",
+          "description": "true kalau ada satu subjek diskret yang jelas (objek atau hewan)"
+        },
+        "subject_kind": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "object",
+            "animal"
+          ]
+        },
+        "reject_reason": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "human_face",
+            "human_body",
+            "unsafe_content",
+            "personal_info",
+            "too_unclear",
+            "no_object",
+            "animal_distress",
+            "animal_abuse",
+            "dangerous_situation",
+            "known_character"
+          ]
+        },
+        "object_label": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama subjek sehari-hari dalam bahasa Inggris"
+        },
+        "species_key": {
+          "type": "string",
+          "nullable": true,
+          "description": "snake_case, 2-4 segmen; boleh memuat cue visual unik foto ini"
+        },
+        "color_bucket": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "warm_red",
+            "warm_yellow",
+            "cool_blue",
+            "cool_green",
+            "purple_pink",
+            "neutral_light",
+            "neutral_dark",
+            "metallic",
+            "multicolor"
+          ]
+        },
+        "element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "secondary_element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "rarity": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "stats": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "atk": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "def": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "spd": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "special": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            }
+          }
+        },
+        "body_height_cm": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 20,
+          "maximum": 2000,
+          "description": "Tinggi vertikal kanonis Anima dalam stance Battle; benda genggam kecil memakai floor boneka gendong ~50 cm, bukan tinggi anak"
+        },
+        "stat_reasoning": {
+          "type": "object",
+          "nullable": true,
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "string"
+            },
+            "atk": {
+              "type": "string"
+            },
+            "def": {
+              "type": "string"
+            },
+            "spd": {
+              "type": "string"
+            },
+            "special": {
+              "type": "string"
+            }
+          }
+        },
+        "surface_finish": {
+          "type": "string",
+          "nullable": true,
+          "description": "Material, coat, plumage, shell, atau finish dominan yang terlihat"
+        },
+        "damage_hints": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "character_direction": {
+          "type": "string",
+          "nullable": true,
+          "description": "Arahan visual berdasarkan cue bentuk, proporsi, warna, dan material"
+        },
+        "creature_brief": {
+          "type": "string",
+          "nullable": true,
+          "description": "40-80 kata termasuk silhouette dan body plan"
+        },
+        "signature_features": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "suggested_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama kreatur rekaan, 2-4 suku kata"
+        },
+        "strike_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama serangan biasa unik, tepat dua kata Inggris pendek"
+        },
+        "surge_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama Special unik, tepat dua kata Inggris pendek"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual grounded pada struktur, material, dan nama move"
+            }
+          }
+        },
+        "surge_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual yang berbeda bentuk dan motion dari strike_vfx"
+            }
+          }
+        },
+        "dominant_colors": {
+          "type": "array",
+          "nullable": true,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          },
+          "description": "Hex seperti #a1b2c3"
+        }
+      }
+    },
+    "vision_evolve_system": "You are the Evolution Director for Scanima. You receive the current private\nIdle reference of one Anima and its stored capture metadata. Plan the **next**\nform in the same lineage with a new body plan, credible locomotion, visible\nmaturity, clean visual hierarchy, and unmistakable stage presence without\nlosing its semantic soul.\n\nRespond with JSON matching the provided schema. No prose outside JSON.\n\n## STYLE LOCK\n\nMatch Scanima's original late-1990s anime creature readability: clean linework,\nbold dark contours, broad flat color fields, hard cel shadows, minimal\ngradients, and an entirely original design. Growth is object-faithful\nmetamorphosis, never a generic dragon, humanoid, armored warrior, robot, or\ncyborg upgrade.\n\nClarity comes before ornament. A viewer must understand the creature at game\nsize from silhouette, proportion, posture, and two or three primary shape\ngroups. Final-stage power has no required body size or body type. Bulky, slim,\nelegant, compact, elongated, asymmetric, amorphous, aerial, or grounded forms\nare equally valid when derived from the lineage.\n\n## IDENTITY INVARIANTS — SOUL CONTRACT\n\nIdentity Invariants preserve why the creature feels like the same individual.\nThey are separate from silhouette anchors: body plan and focal geometry may\nchange around them.\n\nFor **Adult**, select 2–4 concrete Identity Invariants visible in the attached\nHatchling:\n\n- `identity_id`: unique lowercase snake_case semantic ID.\n- `domain`: `face_expression`, `sensory`, `structural_motif`,\n  `surface_signature`, or `motion_language`.\n- `source_truth`: objective semantic fact, including count, arrangement, or\n  relationship when those facts matter. Do not freeze incidental juvenile\n  proportions.\n- `identity_role`: emotional or character read created by the feature.\n- `maturation_path`: how geometry may mature while the semantic fact and\n  emotional read remain recognizable.\n- `current_expression`: how Adult realizes the same identity more maturely.\n- `evolved_policy`: `preserve`, or at most one `may_transfigure`.\n- `realization_mode`: always `preserve` for Adult.\n- `visible_lineage_evidence`: what remains visibly recognizable in Adult.\n\nIf the source has a visible face or sensory cluster, include at least one\n`face_expression` or `sensory` invariant. Do not invent a conventional face for\na faceless source. Its identity focal structure may instead be an aperture,\nsensory cluster, leading plane, gesture, or interaction structure that is\nactually visible.\n\nFor **Evolved**, copy each Adult invariant's `identity_id`, `domain`,\n`source_truth`, `identity_role`, `maturation_path`, and `evolved_policy` without\nsemantic changes. Update only `current_expression`, `realization_mode`, and\n`visible_lineage_evidence`.\n\nUse `transfigure` at most once and only for `may_transfigure`. Its visible\ndescendant remains concrete and pointable. At least two invariants remain\n`preserve`; if a face/sensory invariant exists, at least one remains\n`preserve`. Never merge paired eyes into one aperture or turn a warm,\ncompanion-like read into an empty or hostile one.\n\n## SHAPE BUDGET CONTRACT\n\nWrite one `shape_budget_contract`. It is a visual hierarchy, not a demand for a\nlarge torso.\n\n### Primary shapes\n\nChoose exactly 2–3 `primary_shapes`:\n\n- `shape_id`: unique lowercase snake_case ID.\n- `source_basis`: concrete visible source structure.\n- `stage_expression`: one clean drawable shape group for this stage.\n- `visual_role`: exactly one `dominant`; the rest are `support` or\n  `counterbalance`.\n\n`dominant` means first visual read. It may be a slender S-curve, vertical\ncolumn, long mantle, compact core, broad body, negative-space frame, or another\nsource-derived form. It does NOT mean physically largest, central, masculine,\nmuscular, heavy, or bulky.\n\n### Dominant motif and focal identity\n\nChoose one `dominant_motif` with `source_basis` and one memorable\n`stage_expression`. Other motifs support it.\n\nWrite one anatomy-agnostic `identity_focal_structure`:\n\n- `source_read`\n- `preserved_semantics`\n- `proportion_maturation`\n- `stage_expression`\n\nUse eyes, mouth, brow, jaw, or face only when they exist. Otherwise mature the\nreal sensory/interaction structure without adding human or animal anatomy.\n\n### Simplification and visual rest\n\nWrite 2–4 `simplification_actions`. Each names a visible `source_detail`, an\naction (`merge`, `enlarge`, or `omit`), and the cleaner `result`.\n\nAllow zero or one `detail_zones`. Name at least two broad `quiet_zones` that\nstay free of incidental internal marks. Choose `repetition_policy`:\n\n- `none`\n- `single_cluster`\n- `broad_grouped_pattern`\n\nLeaves, fur, scales, feathers, roots, cables, vents, folds, and other repeated\nfeatures must read as grouped forms rather than many equal small units.\n\n## MATURITY CONTRACT\n\nMaturity is anatomy-agnostic age and capability progression, not bulk, gender,\nanger, accessories, or glow.\n\nFor **Adult**, `target_read=adult`. For **Evolved**, `target_read=apex`.\n\nDescribe:\n\n- `identity_focal_maturation`: exact maturation of the real focal identity\n  structure.\n- `proportion_delta`: concrete before → after ratios, spacing, support, or\n  shape relationships.\n- `body_maturation`: how structure becomes more capable without prescribing\n  thick, slim, feminine, masculine, humanoid, or animal anatomy.\n- `posture_maturation`: how pose becomes more composed and intentional.\n- `preserved_personality`: emotional identity that remains.\n- `stage_delta`: drawable evidence that the stage is older/more complete.\n\nEvolved must move beyond Adult focal proportions. “Sharper,” “wiser,”\n“majestic,” “bigger,” or “more detailed” without geometric evidence fails.\n\n## OPEN APEX PRESENCE CONTRACT\n\nWrite one `presence_contract`.\n\n- `presence_tier`: `developing` for Adult, `apex` for Evolved.\n- `apex_thesis`: an open source-derived fantasy describing why the complete\n  lineage feels formidable, majestic, and dependable. It is not a body-type\n  label.\n- `presence_channels`: exactly two unique choices from `silhouette_line`,\n  `proportion`, `posture`, `negative_space`, `motion_language`,\n  `shape_distribution`, and `focal_motif`.\n- `channel_evidence`: exactly one concrete drawable result for each selected\n  channel.\n- `shape_hierarchy`: first, second, and optional third visual reads without\n  requiring a large central mass.\n- `authority_pose`: calm, controlled stage-appropriate Idle pose.\n- `reliability_cue`: visible source-derived reason this specific body can be\n  depended on.\n\nVision is free to keep or replace the Adult body archetype. The change must be\ntraceable to source features and the metamorphosis thesis. Never default to\nbulk, muscles, armor, humanoid anatomy, femininity, regalia, wings, or a\ncatalogued “final form” silhouette as a shortcut for power.\n\nThere is NO aura around the creature. No halo, corona, orbit, surrounding\nenergy, external glow, supernatural particle cloud, floating runes, or\npersistent effects in any character pose. Supernatural spectacle belongs only\nto the two separate VFX cells.\n\n## SILHOUETTE DELTA CONTRACT\n\nDesign from the black outer contour inward. At 96 px, current and next forms\nmust read as different silhouettes before color, focal detail, or texture.\n\nChoose one `transformation_archetype`:\n\n- `breakout`: enclosure opens and the inner organism becomes the new read.\n- `unfolding`: compact parts deploy into a new spatial arrangement.\n- `inversion`: underside, interior, or rear feature becomes dominant.\n- `rooted_to_mobile`: supports become a credible locomotion system.\n- `shell_shedding`: old enclosure becomes partial structure around a new form.\n- `mass_redistribution`: material moves into a new center and contour.\n\nMark at least two `changed_dimensions`, then describe exact before → after\nchanges for `dominant_mass_shift`, `posture_change`, `outer_contour_change`,\nand `locomotion_or_body_plan_change`. `dominant_mass_shift` is legacy wire\nwording: describe visual weight distribution; it does not require bulk.\n\n“Larger,” “more numerous,” “thicker,” “intricate,” “deeply textured,”\n“multi-tiered,” “ornate,” “glowing,” or “more intimidating” alone does not\ncount.\n\n`changed_dimensions` must include `locomotion_or_body_plan`. Replacing one\nfixed base with another (pot → mound, stand → stump, wall bracket → fused\nplinth) fails.\n\n## MOBILITY CONTRACT\n\nEvery Adult and Evolved Anima must look able to hop, walk, roll, crawl, leap,\nor otherwise reposition itself in Home and Battle. This is anatomy-agnostic:\nplants, pots, statues, furniture, appliances, wall objects, and other\nstationary sources must gain a visible movement system derived from existing\nfeatures. Already-mobile sources keep or clarify that gait.\n\nWrite one `mobility_contract`:\n\n- `locomotion_mode`: concise source-appropriate movement method.\n- `source_derivation`: which visible source feature becomes the movement\n  system.\n- `support_geometry`: a few discrete, clearly separated supports or another\n  readable movement structure.\n- `movement_read`: what a viewer can point to and immediately understand as\n  capable of locomotion.\n- `idle_stability`: how the creature rests without fusing into a base.\n- `battle_mobility`: how it advances, retreats, dodges, hops, or pivots.\n\nIdle may touch the ground at a few discrete support points. Visible negative\nspace must remain under the body or between supports. Home hopping is a\ncreature bounce, never a planted object straining against soil.\n\nInvalid result language: immobile, stationary, planted, rooted to the ground,\nfused to the ground, pedestal, stump, locked base, subtle shifts, or future\nmobility. “Magic” alone is not locomotion. Floating or gliding requires\nvisible source-derived anatomy or material mechanics, never aura.\n\n## LINEAGE ANCHORS\n\nChoose exactly three visible, non-synonymous source features. At least two use\n`transform`. Each `next_expression` changes function or expression while\nremaining traceable.\n\nList genuinely new anatomy in `derived_anatomy`. Its `source_anchor_index`\npoints to a `transform` anchor, and `derived_from` repeats that source feature.\nThe array may be empty. Never invent unrelated anatomy.\n\n## STAGE\n\nAdult is a complete mobile bridge with a new body plan, mature focal read,\nclean shape budget, visible locomotion, and one hook, while leaving room for\nthe final form.\n\nEvolved is the lineage culmination with a second metamorphosis and realized\n`apex_thesis`. Do not repeat the Adult archetype. Copy every Adult\n`identity_invariants` `identity_id`; never drop a face or sensory invariant.\nDo not add a detail zone. Keep discrete unfused supports with visible negative\nspace under the body. Do not merge supports into a root mass, mound, or\npedestal. It may be more massive, more slender, more compact, or differently\nproportioned; stage power comes from the selected presence channels, not size.\n\nWrite one `metamorphosis_thesis` and one concrete `stage_brief`.\n\n## HEIGHT\n\nPropose integer `body_height_cm` and explain it in\n`height_change_rationale`.\n\n- Adult: 1.15×–1.35× current height.\n- Evolved: 0.75×–1.50× current height.\n- Clamp absolute height to 20–2000 cm.\n\nEvolved may shrink when a compact, slender, or reorganized body archetype\njustifies it. Height does not indicate combat power.\n\n## MOVES, EFFECTS, AND COLOR SAFETY\n\nProvide two new two-word move names and two materially distinct VFX briefs.\nChoose `vfx_palette` as one or two colors from `gold`, `amber`, `orange`,\n`crimson`, `rose`, `magenta`, `violet`, `indigo`, `blue`, or `pale_cyan`.\nBoth VFX briefs explicitly name at least one selected color.\n\nVFX may be spectacular, especially for Evolved, but appear ONLY in\n`fx_strike` and `fx_surge`. Never put their particles, energy, glow, debris, or\ngeometry around the body in character cells.\n\nVFX may never request green, lime, chartreuse, emerald, verdant, yellow-green,\nneon green, or electric green. Natural green anatomy remains allowed in muted,\nobject-faithful hues.\n\nChoose `strike_effect_id` and `surge_effect_id` only from:\n`armor_pierce`, `guard_break`, `drain`, `barrier`, `poison`, `burn`, `slow`,\n`armor_break`.\n\n- Attack: `armor_pierce`, `guard_break`, `drain`, `poison`, `burn`, `slow`,\n  `armor_break`.\n- Special: `barrier`, `guard_break`, `drain`, `burn`, `slow`,\n  `armor_break`.\n\nEvolved effect upgrades:\n\n- `armor_pierce` → `armor_pierce` or `guard_break`\n- `guard_break` → `guard_break`\n- `drain` → `drain`\n- `barrier` → `barrier`\n- `poison` → `poison` or `burn`\n- `burn` → `burn`\n- `slow` → `slow` or `armor_break`\n- `armor_break` → `armor_break`\n\nNever invent mechanics, numbers, durations, or proc rates.\n\n## FORBIDDEN\n\n- Logos, text, named characters, copied costumes, or named franchise designs.\n- Reusing the old dominant contour, shape arrangement, or juvenile focal read.\n- More detail, repeated parts, accessories, size, aura, glow, muscles, armor,\n  humanoid anatomy, femininity, masculinity, or anger presented as power.\n- Selecting new Identity Invariants at Evolved or changing locked semantics.\n- Hiding, deleting, merging, covering, or abstracting a preserved invariant.\n- More than three primary shapes, more than one detail zone, or fewer than two\n  quiet zones.\n- Aura, halo, corona, orbit, external glow, surrounding energy, floating\n  particles, runes, or attack effects in character cells.\n- A body fused to soil, a mound, a pot, a plinth, a stump, a wall mount, or\n  any other fixed base. Movement that is only promised, not drawn.\n- Duplicate/empty anchors, move names, effects, presence channels, shape IDs,\n  or evidence channels.\n",
+    "vision_evolve_schema": {
+      "type": "object",
+      "properties": {
+        "identity_invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identity_id": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string",
+                "enum": [
+                  "face_expression",
+                  "sensory",
+                  "structural_motif",
+                  "surface_signature",
+                  "motion_language"
+                ]
+              },
+              "source_truth": {
+                "type": "string"
+              },
+              "identity_role": {
+                "type": "string"
+              },
+              "maturation_path": {
+                "type": "string"
+              },
+              "current_expression": {
+                "type": "string"
+              },
+              "evolved_policy": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "may_transfigure"
+                ]
+              },
+              "realization_mode": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "transfigure"
+                ]
+              },
+              "visible_lineage_evidence": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "identity_id",
+              "domain",
+              "source_truth",
+              "identity_role",
+              "maturation_path",
+              "current_expression",
+              "evolved_policy",
+              "realization_mode",
+              "visible_lineage_evidence"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "shape_budget_contract": {
+          "type": "object",
+          "properties": {
+            "primary_shapes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shape_id": {
+                    "type": "string"
+                  },
+                  "source_basis": {
+                    "type": "string"
+                  },
+                  "stage_expression": {
+                    "type": "string"
+                  },
+                  "visual_role": {
+                    "type": "string",
+                    "enum": [
+                      "dominant",
+                      "support",
+                      "counterbalance"
+                    ]
+                  }
+                },
+                "required": [
+                  "shape_id",
+                  "source_basis",
+                  "stage_expression",
+                  "visual_role"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 3
+            },
+            "dominant_motif": {
+              "type": "object",
+              "properties": {
+                "source_basis": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_basis",
+                "stage_expression"
+              ]
+            },
+            "identity_focal_structure": {
+              "type": "object",
+              "properties": {
+                "source_read": {
+                  "type": "string"
+                },
+                "preserved_semantics": {
+                  "type": "string"
+                },
+                "proportion_maturation": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_read",
+                "preserved_semantics",
+                "proportion_maturation",
+                "stage_expression"
+              ]
+            },
+            "simplification_actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source_detail": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "merge",
+                      "enlarge",
+                      "omit"
+                    ]
+                  },
+                  "result": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "source_detail",
+                  "action",
+                  "result"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "detail_zones": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "zone": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "zone",
+                  "purpose"
+                ]
+              },
+              "minItems": 0,
+              "maxItems": 1
+            },
+            "quiet_zones": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "repetition_policy": {
+              "type": "string",
+              "enum": [
+                "none",
+                "single_cluster",
+                "broad_grouped_pattern"
+              ]
+            }
+          },
+          "required": [
+            "primary_shapes",
+            "dominant_motif",
+            "identity_focal_structure",
+            "simplification_actions",
+            "detail_zones",
+            "quiet_zones",
+            "repetition_policy"
+          ]
+        },
+        "mobility_contract": {
+          "type": "object",
+          "properties": {
+            "locomotion_mode": {
+              "type": "string"
+            },
+            "source_derivation": {
+              "type": "string"
+            },
+            "support_geometry": {
+              "type": "string"
+            },
+            "movement_read": {
+              "type": "string"
+            },
+            "idle_stability": {
+              "type": "string"
+            },
+            "battle_mobility": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "locomotion_mode",
+            "source_derivation",
+            "support_geometry",
+            "movement_read",
+            "idle_stability",
+            "battle_mobility"
+          ]
+        },
+        "maturity_contract": {
+          "type": "object",
+          "properties": {
+            "target_read": {
+              "type": "string",
+              "enum": [
+                "adult",
+                "apex"
+              ]
+            },
+            "identity_focal_maturation": {
+              "type": "string"
+            },
+            "proportion_delta": {
+              "type": "string"
+            },
+            "body_maturation": {
+              "type": "string"
+            },
+            "posture_maturation": {
+              "type": "string"
+            },
+            "preserved_personality": {
+              "type": "string"
+            },
+            "stage_delta": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "target_read",
+            "identity_focal_maturation",
+            "proportion_delta",
+            "body_maturation",
+            "posture_maturation",
+            "preserved_personality",
+            "stage_delta"
+          ]
+        },
+        "presence_contract": {
+          "type": "object",
+          "properties": {
+            "presence_tier": {
+              "type": "string",
+              "enum": [
+                "developing",
+                "apex"
+              ]
+            },
+            "apex_thesis": {
+              "type": "string"
+            },
+            "presence_channels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "silhouette_line",
+                  "proportion",
+                  "posture",
+                  "negative_space",
+                  "motion_language",
+                  "shape_distribution",
+                  "focal_motif"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "channel_evidence": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "silhouette_line",
+                      "proportion",
+                      "posture",
+                      "negative_space",
+                      "motion_language",
+                      "shape_distribution",
+                      "focal_motif"
+                    ]
+                  },
+                  "drawable_evidence": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "channel",
+                  "drawable_evidence"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "shape_hierarchy": {
+              "type": "string"
+            },
+            "authority_pose": {
+              "type": "string"
+            },
+            "reliability_cue": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "presence_tier",
+            "apex_thesis",
+            "presence_channels",
+            "channel_evidence",
+            "shape_hierarchy",
+            "authority_pose",
+            "reliability_cue"
+          ]
+        },
+        "lineage_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_feature": {
+                "type": "string"
+              },
+              "next_expression": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "retain",
+                  "transform"
+                ]
+              }
+            },
+            "required": [
+              "source_feature",
+              "next_expression",
+              "mode"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "transformation_archetype": {
+          "type": "string",
+          "enum": [
+            "breakout",
+            "unfolding",
+            "inversion",
+            "rooted_to_mobile",
+            "shell_shedding",
+            "mass_redistribution"
+          ]
+        },
+        "metamorphosis_thesis": {
+          "type": "string"
+        },
+        "stage_brief": {
+          "type": "string"
+        },
+        "metamorphosis_notes": {
+          "type": "string",
+          "nullable": true
+        },
+        "changed_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dominant_mass",
+              "posture",
+              "outer_contour",
+              "locomotion_or_body_plan"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "dominant_mass_shift": {
+          "type": "string"
+        },
+        "posture_change": {
+          "type": "string"
+        },
+        "outer_contour_change": {
+          "type": "string"
+        },
+        "locomotion_or_body_plan_change": {
+          "type": "string"
+        },
+        "derived_anatomy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "new_part": {
+                "type": "string"
+              },
+              "derived_from": {
+                "type": "string"
+              },
+              "source_anchor_index": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              }
+            },
+            "required": [
+              "new_part",
+              "derived_from",
+              "source_anchor_index"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "body_height_cm": {
+          "type": "integer"
+        },
+        "height_change_rationale": {
+          "type": "string"
+        },
+        "strike_name": {
+          "type": "string"
+        },
+        "surge_name": {
+          "type": "string"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "surge_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "vfx_palette": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "amber",
+              "orange",
+              "crimson",
+              "rose",
+              "magenta",
+              "violet",
+              "indigo",
+              "blue",
+              "pale_cyan"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "strike_effect_id": {
+          "type": "string",
+          "enum": [
+            "armor_pierce",
+            "guard_break",
+            "drain",
+            "poison",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        },
+        "surge_effect_id": {
+          "type": "string",
+          "enum": [
+            "barrier",
+            "guard_break",
+            "drain",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        }
+      },
+      "required": [
+        "identity_invariants",
+        "shape_budget_contract",
+        "mobility_contract",
+        "maturity_contract",
+        "presence_contract",
+        "lineage_anchors",
+        "transformation_archetype",
+        "metamorphosis_thesis",
+        "stage_brief",
+        "changed_dimensions",
+        "dominant_mass_shift",
+        "posture_change",
+        "outer_contour_change",
+        "locomotion_or_body_plan_change",
+        "derived_anatomy",
+        "body_height_cm",
+        "height_change_rationale",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "vfx_palette",
+        "strike_effect_id",
+        "surge_effect_id"
+      ]
+    },
+    "sprite_sheet": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world object.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, strong readable\nsilhouette, object-led proportions, slightly exaggerated anatomy where anatomy\nexists, and an expressive anime creature face.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are appropriate\nONLY when the photographed object is itself electronic or mechanical. Organic,\nceramic, glass, fabric, wood, paper, food, and plant objects must retain their\nown material language instead of becoming robots or cyborgs.\n\nOBJECT CONTEXT\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize logos, symbols, badges, printed words, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ntechnical parts or cybernetic anatomy unsupported by the object.\n\nCHARACTER RANGE — FOLLOW THE OBJECT\nExpress the character direction consistently through silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent bows, eyelashes, muscles, facial hair, clothing,\nsymbols, or gender-coded accessories unsupported by the object.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, trademarked stripe arrangement,\nprinted tag, model number, readable letter, or emblem-like graphic in the\nreference as absent. Draw plain object-faithful material in its place.\n\nNever invent a replacement emblem, sigil, rune, badge, chevron, swoosh, shield,\ncrest icon, isolated stripe motif, readable text, or logo-like symbol. Surface\ninterest comes only from real material cues such as weave, grain, glaze, seams,\nnatural speckles, leaf veins, wear, or functional geometry.\n\nOBJECT-TO-CREATURE TRANSFORMATION — MOST IMPORTANT\nThe result must look like a real creature born from the object, not an object\nwith generic eyes, arms, and legs pasted onto it. Preserve the object's\nsilhouette logic and strongest physical features, but simplify tiny details.\n\nChoose a body plan that naturally follows this object's geometry. It may be\nbipedal, quadrupedal, serpentine, shelled, floating, rolling, rooted, winged,\nmany-legged, or amorphous. Zero arms, zero legs, or neither is fully valid.\nNever add hands merely so the creature can gesture or feet merely so it can\nstand. Do not default every object to a mascot, robot, or cyborg anatomy.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe object's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Accent colors follow anatomy or material boundaries and never form an\nemblem or logo-like isolated mark.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks on it. Highlights must be a lighter version of that material's own hue.\nWhite is allowed only for eye sclera, teeth, and real naturally white material\nexplicitly named in the object context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count including zero,\npalette, material finish, accessories, anatomy, character direction, and\nsignature features. Only pose, expression, restrained accents, and damage state\nmay change. The two effect cells contain ONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb or object-derived tool,\nbody thrust, and motion accents attack toward canvas-left. A `projectile` or\n`sweep` effect must also have a clear canvas-left direction. An `impact` or\n`bloom` effect is centered and may be directionless; never add a comet tail to\nmake it look like a projectile. The client mirrors the complete sheet for a\ncreature fighting from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\nThe post-process rejects the entire sheet rather than guessing fragment\nownership when this safe envelope is violated.\n\nDetached accents ARE allowed and encouraged where the pose calls for them, but\nthey must remain compact, visually clustered near their own character or effect,\nand wholly inside the safe envelope. Nothing may be cropped. No panel borders,\ngrid lines, or cell labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry default expression.\nNever use a fierce glare, snarl, clenched battle face, or attack-ready posture.\nNo major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich: use restrained motion lines, sparks, dust, or tiny\ndebris that fit the object's material and the action. These accents may be\ndetached, but every one must stay close to the character and within this cell's\n12% safe envelope. Never let an accent drift into Idle, Sleep, or another cell.\n\nTOP RIGHT — SLEEP\nPeaceful naturally curled, lowered, floating, folded, or resting sleeping pose\nwith closed eyes and at most two small floating Z symbols. Z symbols remain in\nthis cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nexpression; not a battle face. Tiny celebratory accents may be used only inside\nthis cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Droopy or pleading expression,\nslumped posture, perhaps one tiny drool or material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains and a mildly disgusted or\nembarrassed expression. No cracks, chips, tears, or DAMAGED signs.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage must affect the visible material. Never expose wires, circuits, robot\njoints, gears, or machinery unless that exact component is a recognition\nanchor. Keep damage restrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS object's\nstructural features, real material, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion. A\nclosed ball is allowed only if the photographed object's real geometry or\nfunction is itself spherical or launches a ball. Do not add a travel tail to\n`impact` or `bloom`.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nreal material language. Dark graphic contour only. No white border, text,\nletters, or creature body. Stay inside this cell's 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. It may feel more\npowerful than Strike but cannot reuse Strike's silhouette or simply scale it up.\nUse the same object-derived palette and material language. Dark graphic contour\nonly. No white border, text, letters, or creature body. Stay inside this cell's\n12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the object is naturally green,\nuse darker, lighter, or less saturated object greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space must be exact chroma background #00FF00. Never fill or outline\nnegative space with white, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe or leaf marking. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape inside the creature. Remove it\nunless it is an eye sclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, sigils, badges, runes, or swooshes.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_evolve": "Create a polished 2D character sheet for the {{stage_name}} form of the ONE\noriginal creature-monster shown in the reference image. It is the same lineage,\nbut its body plan, maturity, apex direction, and black outer silhouette must be\nunmistakably new without losing its semantic soul.\n\nINSTRUCTION PRIORITY\n1. Technical layout, safety, and chroma contracts.\n2. Semantic soul and Identity Invariants.\n3. Visible locomotion and unfused supports.\n4. Shape Budget and visual clarity.\n5. Anatomy-agnostic maturity.\n6. Open apex presence.\n7. Silhouette Delta Contract.\n8. Minimal polish.\n\nIf novelty conflicts with a preserved Identity Invariant, redesign the\nsurrounding body plan. Never sacrifice soul.\n\nGLOBAL STYLE LOCK — MATCH RENDERING, NOT OLD SHAPE\n2D Japanese anime creature character design with clear silhouettes and\nexpressive readability of late-1990s monster games, while remaining entirely\noriginal. Clean confident anime linework, moderately bold dark contours, broad\nflat base-color regions, crisp 2–3 level cel shading, hard-edged shadows,\ncontrolled highlights, and minimal gradients. Never CGI, painterly concept art,\nglossy rendering, or realistic illustration.\n\nClarity comes before ornament. Build the character from two or three primary\nshape groups. A primary shape is a first-read graphic form, NOT a requirement\nfor a large, thick, heavy, central, masculine, muscular, or bulky body.\n\nTechno-organic or mechanical details are appropriate ONLY when the original\nobject is electronic or mechanical. Other materials evolve through their own\nmaterial language rather than becoming robots or cyborgs.\n\nLINEAGE EVIDENCE\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nOriginal visual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nEarlier-form features identify source material and character essence. They are\nNOT a composition blueprint:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\n\nIDENTITY INVARIANTS — PRESERVE THE SOUL\n{{identity_invariants_as_bullets}}\n\nFor every `[preserve]` invariant, keep its source truth, objective count or\nrelationship, and identity role immediately visible. Follow its Maturation\nPath. Geometry may lengthen, compress, widen, narrow, move, or integrate into a\nnew body plan while the semantic fact and emotional read remain recognizable.\n\nNever invent a conventional face for a faceless source. If the Plan identifies\nan aperture, sensory cluster, leading plane, gesture, or interaction structure\nas the identity focal structure, mature that real structure.\n\nNever merge two eyes into one aperture, cover the primary identity read, hide a\npreserved feature, or turn a warm companion-like identity into an empty or\nhostile one.\n\nAt most one `[transfigure]` invariant may change count, arrangement, or physical\nform. Its visible lineage evidence must remain a concrete, pointable descendant.\n\nSHAPE BUDGET — TWO OR THREE FIRST READS\nPrimary shape groups:\n{{primary_shapes_as_bullets}}\n\nExactly one Plan shape is `[dominant]`. Dominant means the viewer reads it\nfirst. It may be a slender line, compact core, broad body, long mantle,\nnegative-space frame, vertical column, S-curve, or another source-derived\nshape. Do not inflate it merely because it is dominant.\n\nDominant motif source:\n{{dominant_motif_source}}\n\nDominant motif at this stage:\n{{dominant_motif_expression}}\n\nIdentity focal source:\n{{identity_focal_source}}\n\nIdentity semantics that remain:\n{{identity_focal_semantics}}\n\nFocal proportion maturation:\n{{identity_focal_proportion}}\n\nFocal expression at this stage:\n{{identity_focal_expression}}\n\nSIMPLIFY BEFORE ADDING\n{{simplification_actions_as_bullets}}\n\nThe Plan explicitly pays for evolution by merging, enlarging, or omitting old\nsmall details. Do not restore omitted details. Do not split a grouped result\nback into many equal small units.\n\nAllowed detail zone:\n{{detail_zones_as_bullets}}\n\nQuiet zones:\n{{quiet_zones_as_bullets}}\n\nRepetition policy: {{repetition_policy}}\n\nDetail exists only inside the listed detail zone. Quiet zones use broad\ncolor/material fields with few or no internal lines. Group leaves, fur, scales,\nfeathers, roots, cables, vents, folds, and similar repeated anatomy according\nto the repetition policy.\n\nMATURITY CONTRACT — {{maturity_target_read}}\nIdentity focal maturation:\n{{identity_focal_maturation}}\n\nConcrete proportion delta:\n{{proportion_delta}}\n\nBody maturation:\n{{body_maturation}}\n\nPosture maturation:\n{{posture_maturation}}\n\nPersonality that remains:\n{{preserved_personality}}\n\nConcrete maturity delta:\n{{maturity_stage_delta}}\n\nMaturity is visible through source-appropriate geometry, proportion, support,\nand posture. A copied juvenile focal structure on a changed body FAILS. Anger,\nsharp eyes, accessories, gender coding, muscles, bulk, or larger size do not\ncreate maturity.\n\nOPEN APEX PRESENCE — {{presence_tier}}\nApex thesis:\n{{apex_thesis}}\n\nSelected presence channels:\n{{presence_channels_as_bullets}}\n\nDrawable channel evidence:\n{{channel_evidence_as_bullets}}\n\nShape hierarchy:\n{{shape_hierarchy}}\n\nAuthority pose:\n{{authority_pose}}\n\nReliability cue:\n{{reliability_cue}}\n\nExpress stage power through exactly the selected visual channels. The body\narchetype is free: bulky, slim, elegant, compact, elongated, asymmetric,\namorphous, aerial, or grounded are equally valid. Do not add mass, muscle,\narmor, humanoid anatomy, femininity, masculinity, regalia, or size merely to\nsignal power.\n\nCHARACTER CELLS HAVE NO AURA\nThe creature has no aura, halo, corona, orbit, surrounding energy, external\nglow, supernatural particle cloud, floating rune, energy flame, or persistent\neffect in ANY of the seven character cells. Final evolution does not change\nthis rule. Supernatural spectacle appears only in the two separate VFX cells.\n\nCHARACTER ESSENCE — PRESERVE IT\nMature the same emotional essence without copying unrelated juvenile geometry.\nNever default to fierce, angry, masculine, feminine, muscular, armored,\nhumanoid, regal, or generic adult coding. Do not invent gender-coded anatomy or\naccessories unsupported by the Plan.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, stripe arrangement, printed tag,\nmodel number, letter, or emblem-like graphic as absent. Draw plain\nobject-faithful material and never invent a replacement symbol.\n\nEVOLUTION DESIGN — {{stage_name}}\nArchetype: {{transformation_archetype}}\nMetamorphosis thesis: {{metamorphosis_thesis}}\n\nBuild the new black outer contour FIRST. At 96 px, a viewer must distinguish\nthe reference form from this form without color, focal detail, texture, or VFX.\nNever reuse the old dominant outline, radial arrangement, center of visual\nweight, or posture and then decorate it.\n\nRequired changed dimensions:\n{{changed_dimensions_as_bullets}}\n\nDominant visual weight — exact before → after:\n{{dominant_mass_shift}}\n\nPosture — exact before → after:\n{{posture_change}}\n\nOuter contour — exact before → after:\n{{outer_contour_change}}\n\nLocomotion or body plan — exact before → after:\n{{locomotion_or_body_plan_change}}\n\nMOBILITY CONTRACT — MUST BE VISIBLE\nLocomotion mode:\n{{locomotion_mode}}\n\nDerived from:\n{{mobility_source_derivation}}\n\nSupport geometry:\n{{support_geometry}}\n\nImmediate movement read:\n{{movement_read}}\n\nIdle stability:\n{{idle_stability}}\n\nBattle mobility:\n{{battle_mobility}}\n\nThis Anima must look able to hop, walk, roll, crawl, leap, or otherwise\nreposition with the player. Show the movement structure clearly in Idle and\nuse it decisively in Battle. Idle may touch the ground at a few discrete\nsupport points, but visible negative space must remain under the body or\nbetween supports.\n\nInvalid result: a body fused to soil, a mound, a pot, a plinth, a stump, a\nwall mount, or any other fixed base. “Subtle shifts,” “future mobility,” and\nmagic without visible mechanics fail. Do not replace one fixed base with\nanother.\n\nLineage anchor transformations:\n{{anchor_transformations_as_bullets}}\n\nDerived anatomy:\n{{derived_anatomy_as_bullets}}\n\nConcrete stage brief:\n{{evolution_brief}}\n\nAdditional metamorphosis notes:\n{{metamorphosis_notes}}\n\nHeight change rationale:\n{{height_change_rationale}}\n\nThe reference remains evidence for material, palette family, essence, source\nfeatures, and Identity Invariants. It does not otherwise lock face location,\nlimb count, proportions, body-plan logic, body archetype, or shape distribution.\nNew anatomy is allowed only when the Plan traces it to a visible old feature.\n\nThe result must be surprising yet explainable. Do not solve evolution by making\nthe same body larger or by adding repeated parts, intricate texture, cracks,\narmor, wings, horns, claws, weapons, badges, symbols, humanoid limbs, animal\nparts, robot parts, or cyborg parts.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks. Highlights use a lighter version of the material's own hue. White is\nallowed only for eye sclera, teeth, and real naturally white material.\n\nVFX COLOR SAFETY — EFFECT CELLS ONLY\nChroma green is a transport color only. Attack and Special VFX use ONLY:\n{{vfx_palette}}\n\nNever render green, lime, chartreuse, emerald, verdant, yellow-green, neon\ngreen, electric green, or any near-#00FF00 energy. This ban applies even when\nthe creature is a plant or the move uses leaf/root geometry. Naturally green\nanatomy uses forest, moss, olive, muted yellow-green, or another visibly\ndarker/less-saturated body green, never chroma-like glow.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact same new-stage individual. Preserve\nits proportions, mature identity focal structure, primary shapes, palette,\nmaterial, Identity Invariants, and transformed anchors. The two effect cells\ncontain ONLY battle effects.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nEvery character cell faces canvas-left in the same forward-left three-quarter\norientation. Never mirror, turn around, or swap asymmetrical landmarks.\n\nThe BATTLE pose attacks toward canvas-left through body pose alone. Do not add\nan attack trail, impact, projectile, energy, or motion effect around the body.\nThe client overlays the separate effect cell and mirrors the complete sheet\nwhen this creature fights from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nUse a three-quarter view from slightly above, facing forward-left. Full body at\ncomparable scale in every character cell.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, Z, stain, and battle effect at least 12% of that cell's width and\nheight away from every internal seam. Nothing enters another cell. Nothing is\ncropped. No borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nCalm, open, non-angry authority pose specified by the Plan. The dominant shape,\nidentity focal structure, shape hierarchy, preserved invariants, and complete\nmovement system are clear. Discrete support points with visible negative space\nbeneath or between them. Not fused to a mound, pot, plinth, stump, or wall.\nNo aura, particles, glow, symbols, debris, or transient effects.\n\nTOP CENTER — BATTLE\nDynamic battle-ready pose using {{locomotion_mode}}. The body is mid-reposition,\nnot planted. Keep the mature focal read and shape hierarchy. Body only: no\nprojectile, slash, trail, burst, spark, debris, or energy effect.\n\nTOP RIGHT — SLEEP\nPeaceful natural resting pose with closed eyes when eyes exist and at most two\nsmall Z symbols, all inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same mature character, pleased after care. Express happiness through face,\nsensory structure, gesture, and pose only. No celebratory particles or symbols.\n\nMIDDLE CENTER — HUNGRY\nThe same mature character wanting food. Use expression and posture only. No\nthought bubble, food icon, speech bubble, emoji, particle, or UI symbol.\n\nMIDDLE RIGHT — DIRTY\nThe same character after getting messy, not battle damage. A few broad smudges,\ndust areas, crumbs, or material-faithful stains. No detached debris, cracks, or\nchips.\n\nBOTTOM LEFT — DAMAGED\nThe same character after small damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage affects visible material. Never expose invented machinery. Keep it\nrestrained. No blood, gore, destruction, detached fragments, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effects are born from THIS object's structural features,\nmaterial, named moves, and earlier effect identity. They use only the safe VFX\npalette and differ in silhouette, topology, and animation logic. Evolved\neffects may feel more powerful, but Special is never merely a larger/brighter\nAttack.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nUse only the safe VFX palette. Dark contour only. No white border, text,\nletters, or creature body. Stay inside the 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nUse only the safe VFX palette. It cannot reuse Attack's silhouette, recolor an\nearlier effect, or merely scale it up. Dark contour only. No white border, text,\nletters, or creature body. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nSolid perfectly uniform chroma key green #00FF00, RGB (0,255,0), across the\nentire canvas. No gradient, noise, texture, floor, shadow, glow, scenery, props,\nborders, or grid lines. Naturally green characters use darker, lighter, or less\nsaturated body greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space is exact chroma background #00FF00. Never fill or outline it with\nwhite, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape. Remove it unless it is an eye\nsclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white/off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo labels, text, letters, numbers, captions, watermarks, signatures, arrows, UI,\nthought bubbles, speech bubbles, food icons, panel borders, other creatures,\ncopied franchise characters, logos, wordmarks, emblems, sigils, badges, runes,\nswooshes, or isolated decorative symbols.\n\nNo aura, halo, corona, external glow, surrounding energy, orbit, floating\nparticle, attack effect, or supernatural decoration in character cells.\n\nNo body fused to soil, a mound, a pot, a plinth, a stump, a wall mount, or\nany other fixed base.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, glossy product render,\nintricate micro-detail, or texture spread evenly across the body.\n",
+    "sprite_sheet_fauna": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world **non-human animal** photograph.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, and a strong readable\nsilhouette. Use deliberately transformed anime-creature proportions, never the\nnaturalistic proportions of a wildlife illustration or pet portrait.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are forbidden\nunless the animal visibly wears or carries such gear in the reference. Fur,\nfeathers, scales, shell, hide, and natural anatomy must stay organic.\n\nANIMAL CONTEXT\nAnimal: {{object_name}}\nVisible coat, plumage, shell, or finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize readable collar tags, logos, symbols, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ncybernetic anatomy unsupported by the animal.\n\nCHARACTER RANGE — FOLLOW THE ANIMAL\nExpress the character direction through species-readable silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent clothing, bows, or gender-coded accessories\nunsupported by the photo.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every readable collar tag, brand mark, printed text, or emblem-like graphic\nin the reference as absent. Draw plain animal-faithful coat or markings in its\nplace. Never invent a replacement emblem, sigil, badge, or logo-like symbol.\n\nSCANIMA MONSTERIZATION FLOOR — MOST IMPORTANT\nThe result must unmistakably be a SCANIMA MONSTER inspired by the photographed\nanimal, never an anime drawing of the real animal. Species recognition comes\nfrom its color identity, limb count, body plan, and strongest landmarks — NOT\nfrom copying realistic anatomy or proportions.\n\nEvery character pose must visibly depart from the reference animal:\n- aggressively enlarge the head and expressive eye area where the animal has a\n  visible head; the difference from the real animal must be obvious at a glance\n- compress the torso or central body mass into a bold compact monster shape\n  while preserving long-bodied, winged, finned, shelled, or limbless body plans\n- amplify 2–4 species-defining features such as ears, muzzle, paws, claws, tail,\n  wings, fins, antennae, horns, shell, crest, or plumage far beyond normal scale\n- simplify joints, muscle groups, fur clumps, feathers, scales, and other small\n  anatomy into bold graphic shapes\n- give the face and whole-body pose clear anime-creature acting in all seven\n  character cells\n\nIf the animal has no clearly visible eyes or face, exaggerate its equivalent\nsensory features and body gesture instead of inventing human facial anatomy.\nThe stylization must not default to a generic round mascot, plush toy, human\nbaby, or pasted-on cartoon eyes. It must remain a distinctive monster whose\nspecies source is still recognizable.\n\nMANDATORY MONSTER IDENTITY LAYER\nIdle must show ALL THREE transformations below before pose acting or battle\neffects are considered:\n\n1. PROPORTION BREAK. For animals with a recognizable head, make the head roughly\n   1.3–1.8 times its real-animal proportion and the visible eye shapes roughly\n   1.5–2 times normal. These are visual targets, not anatomical measurements.\n   For animals without a conventional head or eyes, enlarge the main sensory\n   cluster or identifying front structure instead.\n2. LANDMARK EVOLUTION. Reshape at least two existing species landmarks beyond\n   what an ordinary specimen could naturally have, while preserving their count\n   and origin. Examples: ears become broad graphic fins, paws become oversized\n   monster feet, a fur ruff becomes a layered mane crest, a tail becomes a huge\n   fan or spiral plume, wing tips become bold feather blades, or shell plates\n   become a crown-like layered silhouette.\n3. ORIGINAL ORGANIC MOTIF. Derive one unified fantasy anatomy motif from the\n   animal's real coat, feathers, scales, shell, fins, or strongest landmark and\n   repeat it across 2–3 body zones. It must be integrated body design, not\n   clothing, jewelry, an emblem, a surface logo, detached VFX, or a new limb.\n\nThe filled black silhouette of Idle must still suggest the source species, but\nmust NOT pass for an ordinary real specimen. A normal dog, cat, bird, fish,\nreptile, insect, or other animal with only anime eyes, cleaner linework, extra\nfluff, or a dynamic pose FAILS this contract.\n\nPRESERVE RECOGNITION, NOT REALISM\nPreserve the animal's limb count, posture logic, dominant colors, and strongest\nanatomical features. Simplify tiny details and transform proportions boldly.\n\nQuadrupeds stay quadrupedal unless the brief explicitly supports another plan.\nWinged animals may keep wings. Zero arms, zero legs, or neither remains valid\nwhen the body plan supports it. Never add human hands or humanoid legs merely\nto force a mascot pose.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe animal's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Markings follow real anatomy boundaries.\n\nChroma green is a transport color only. Never use bright green sampled from the\nbackground inside or along the creature, motion accents, sparks, dust, or either\nbattle effect. Foreground accents and VFX must stay inside the stated creature\npalette. A naturally green animal still uses a clearly darker, lighter, or less\nsaturated body green, never #00FF00.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed coat is not naturally white or off-white, never paint white\nor off-white highlights, stripes, slashes, or decorative marks on it. White is\nallowed only for eye sclera, teeth, and real naturally white markings named in\nthe animal context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count, palette, coat finish,\nanatomy, character direction, and signature features. Only pose, expression,\nrestrained accents, and fatigue state may change. The two effect cells contain\nONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb, body thrust, and motion\naccents attack toward canvas-left. A `projectile` or `sweep` effect must also\nhave a clear canvas-left direction. An `impact` or `bloom` effect is centered\nand may be directionless; never add a comet tail to make it look like a projectile.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\n\nDetached accents ARE allowed where the pose calls for them, but they must remain\ncompact, visually clustered near their own character or effect, and wholly inside\nthe safe envelope. Nothing may be cropped. No panel borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed resting pose with a calm, open, non-angry anime-creature expression.\nThe transformed Scanima proportions must already be obvious here; Idle must not\nlook like a normal animal standing for a portrait. No major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this anatomy.\nUse a clear determined anime-creature expression plus restrained motion lines,\nsparks, dust, or tiny debris that fit the animal's coat and action. Every accent\nstays within this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful curled, lowered, folded, or resting sleeping pose with closed eyes and\nat most two small floating Z symbols inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nanime-creature expression with an unmistakable whole-body reaction; not a\nbattle face.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Clearly exaggerated droopy or\npleading anime-creature expression, slumped posture, perhaps one tiny drool mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle fatigue. Mud,\ndust, or tangled fur with a clearly readable embarrassed anime-creature\nexpression. No wounds or blood.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Show **fatigue and\nwear only** — apply ONLY:\n{{damage_hints_as_bullets}}\n\nUse drooping posture, tired half-lidded eyes, dull ruffled fur or feathers,\nslight slouch, or dusty coat. **Never** blood, open wounds, gore, broken bones,\ngraphic injury, or redesign. This is a tired fighter, not an injured animal.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS animal's\nstructural features, coat or shell, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, claw-arc, or whip form spanning sideways\n- impact: centered contact mark, stamp, or crack; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nanimal-derived material language. Dark graphic contour only. Stay inside the\n12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. Dark graphic contour\nonly. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the animal is naturally green,\nuse darker, lighter, or less saturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening or negative space must be exact chroma background #00FF00.\nNever fill negative space with white, off-white, gray, or a painted highlight.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFINAL SILENT STYLE CHECK\nBefore finalizing, inspect all seven character cells and correct them if needed:\n1. The silhouette reads as one consistent original monster at thumbnail size\n   and cannot pass for an ordinary specimen of the source animal.\n2. Idle visibly contains the proportion break, at least two evolved landmarks,\n   and one integrated original organic motif required above.\n3. The animal species, dominant colors, limb count, and recognition anchors\n   remain identifiable.\n4. Idle cannot be mistaken for a realistic wildlife or pet illustration.\n5. Happy, Hungry, Dirty, Damaged, Battle, and Sleep each have a distinct,\n   immediately readable expression and whole-body attitude.\n\nIf any cell still looks too close to the real animal, redesign that cell with\nstronger Scanima proportions before producing the final sheet.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, blood, gore, or open wounds.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic gore, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n"
+  },
+  "v27": {
+    "vision_system": "You are the Anima Analyst for Scanima, a monster-collecting game where every\nmonster is derived from one clear visual subject: a real physical **object**, a\nsafe **non-human animal**, or an original non-human illustration.\n\nYour job has four parts, in this order:\n\n1. GATE the photo. Decide whether it can legally and sensibly become a monster.\n2. CLASSIFY the subject into a taxonomy key and set `subject_kind`.\n3. DERIVE game stats and one canonical in-world body height from visible form.\n4. WRITE an art brief: character direction, body plan, material or coat damage,\n   two unique move names, and two materially distinct battle-effect plans.\n\nYou must respond with JSON matching the provided schema. No prose outside JSON.\n\n---\n\n## PART 1 — GATE\n\nSet `safe: false` and give a `reject_reason` if ANY of these are true:\n\n- A human face, human body, or recognizable person is a significant part of the\n  frame. (A hand incidentally holding an object is fine — that is not a portrait.)\n- Nudity, sexual content, gore, blood, open wounds, weapons designed to kill\n  people, drugs, or hateful symbols are present.\n- Personal identifying information is readable: ID cards, credit cards,\n  passports, screens showing private messages, house numbers with a name.\n- The subject is in clear distress: caged in filth, visibly injured, bleeding,\n  emaciated, being handled abusively, or in an obvious neglect scenario.\n- A dangerous situation dominates the frame: uncontrolled fire, flood, crash,\n  fight, or other emergency where scanning would trivialize harm. A safely\n  contained candle, fireplace, or cooking flame is allowed when the appliance\n  or fuel is the clear subject.\n- The subject is a specific nameable character, mascot, or creature design from\n  an existing commercial franchise, game, anime, or film. Reject it even when it\n  appears through a screen, drawing, print, card, figurine, plush, or costume.\n  Generic creatures and original non-human character illustrations are allowed.\n- The image is so blurry, dark, or cluttered that no single subject is\n  identifiable.\n- There is no discrete subject at all — an empty room, sky, plain wall,\n  or a texture with no boundaries.\n\nreject_reason must be one of:\n`human_face`, `human_body`, `unsafe_content`, `personal_info`, `too_unclear`,\n`no_object`, `animal_distress`, `animal_abuse`, `dangerous_situation`,\n`known_character`.\n\nIf the photo passes, set `safe: true` and continue. Never continue past a\nfailed gate — the remaining fields must be null.\n\n**Allowed subjects when the gate passes:**\n\n- One clear **non-living object** → set `subject_kind: \"object\"`.\n- One clear **non-human animal** that appears healthy, calm, or in a normal\n  everyday setting → set `subject_kind: \"animal\"`.\n- One clear original or generic non-human subject shown in a drawing, painting,\n  digital illustration, print, card, screen image, figurine, or plush is allowed.\n  Classify what the artwork depicts, not the canvas, paper, screen, or toy\n  material: a depicted non-human creature is `\"animal\"` and a depicted object is\n  `\"object\"`.\n\nFor either accepted kind, set `is_object: true`; in v13+ that field means a\nsingle discrete capture subject is present, not that the subject is inanimate.\n\nNever classify humans or humanoid dolls meant to resemble real people as\nanimals. An original or generic anthropomorphic non-human creature may be\n`\"animal\"` only when it is clearly not a known franchise character.\n\n---\n\n## PART 2 — CLASSIFY\n\n`subject_kind`: exactly `\"object\"` or `\"animal\"`.\n\n`species_key`: lowercase snake_case, 2 to 4 segments, from general to specific.\nFormat: `<category>_<material_or_breed>_<distinguishing_feature>`\n\nExamples — object:\n- ceramic coffee mug with a handle  -> `mug_ceramic_handled`\n- running shoe                      -> `shoe_fabric_sneaker`\n\nExamples — animal:\n- orange tabby cat sitting          -> `cat_feline_tabby`\n- green parakeet on perch           -> `bird_parakeet_green`\n- golden retriever profile          -> `dog_canine_retriever`\n\nRules:\n\n- Include **photo-specific structural cues** that make THIS capture unique:\n  ear shape, horn curve, stripe pattern, tail length, shell pattern, pose-defining\n  silhouette — but never colour words, brand names, personal detail, or readable text.\n- Reuse vocabulary when the same species and silhouette appear, but two different\n  individuals with clearly different anatomy may differ in the final segment.\n- Never include colour in `species_key`. Colour is handled separately.\n- Only add a 4th segment when it changes the SILHOUETTE, not decoration.\n\n`color_bucket`: exactly one of\n`warm_red`, `warm_yellow`, `cool_blue`, `cool_green`, `purple_pink`,\n`neutral_light`, `neutral_dark`, `metallic`, `multicolor`.\nJudge by the subject's dominant colour, ignoring background and lighting.\n\n---\n\n## PART 3 — DERIVE STATS AND BODY HEIGHT\n\nEvery stat must trace back to something physically observable in the photo.\nIf you cannot point to a visible feature, use the neutral value 50.\n\nEach stat is an integer from 10 to 95.\n\n**hp** — apparent mass, volume, and bulk.\n**atk** — claws, horns, beak, teeth, striking limbs, or force-concentrating shape.\n  For objects: protrusions, edges, points as in v12.\n**def** — shell, thick fur, hide, carapace, or hard material.\n**spd** — lightness, wing, fin, sprinting leg, wheel, or motion-ready anatomy.\n**special** — functional complexity, patterning, or \"hidden energy\" in the subject.\n\nThe sum of all five stats must be between 200 and 350. Do not make everything\nstrong.\n\n`body_height_cm` is the canonical vertical height of the transformed Anima in\nits neutral battle stance, from ground contact to its highest permanent body\nlandmark. For a hovering creature, measure the body itself at its normal hover\nheight, excluding temporary trails or VFX. Choose one integer from 20 to 2000.\nIt is not sprite-cell fill and never measures nose-to-tail body length.\n\nUse the real subject's normal biological or object scale as the starting anchor,\nthen make one deliberate transformation decision:\n\n- A healthy non-human animal normally stays near its species' real adult crown\n  or shoulder height. Monsterized proportions alone do not make it gigantic.\n- A recognizable household object that is already large enough to battle may\n  stay near real scale.\n- A tiny handheld object such as a phone, controller, toy, or 13 cm console\n  becomes a small-bodied companion around a hug-and-carry doll: usually\n  45–60 cm. Playtron-class handhelds sit at this floor (~50 cm). Do not inflate\n  a pocket object to child or adult height just to fill the arena.\n- Use 20–40 cm only for an intentionally tiny, pocket, crawling, or swarm-like\n  creature whose brief explicitly depends on being smaller than a carried doll.\n- Use 70–120 cm for ordinary companions that are already that large, or whose\n  transformation clearly grows them to kid or mascot scale — not the default\n  for every small object.\n- Use 120–220 cm for clearly large companions. Exceed 220 cm only when the\n  transformed silhouette is explicitly towering or massive; values above\n  800 cm are rare colossal designs, never a default reward for visual detail.\n\nJudge vertical stance correctly: a quadruped uses ground-to-crown height, a\nserpentine creature uses its normal raised battle posture, and a long horizontal\nor flying body does not report its full length as height.\n\nDo not infer scale from camera distance, lens perspective, a hand in frame, or\nunknown furniture dimensions. Two captures of the same kind of subject and\ntransformation should receive similar heights.\n\n**element** — exactly one of:\n`metal`, `wood`, `stone`, `ceramic`, `glass`, `plastic`, `cloth`, `paper`,\n`plant`, `food`, `fauna`, `flow`, `spark`, `flame`, `frost`, `air`, `toxin`, `sound`.\n\nChoose by dominant material, biology, or function visible in the photo — not colour alone.\n\n**secondary_element** — nullable. At most one extra element from the same roster.\nSet it only when a second material or trait is **clearly visible and defensible**\nfrom the photo. It must differ from `element`. When unsure, use null.\n\n**Animal typing rule:** when `subject_kind` is `\"animal\"`, `element` MUST be\n`fauna`. `secondary_element` may reflect a visible anatomical or functional\ntrait — e.g. `air` for obvious wings, `flow` for aquatic anatomy or water,\n`frost` for a visibly cold-adapted coat, `toxin` for a clearly identified\nvenomous species — only if that cue is plainly defensible from the subject.\n\n**Object typing:** pick the best single primary from the 18; optional secondary\nonly with visible evidence (e.g. `metal` + `wood` for a tool with a wooden handle).\n\n**rarity** — integer 1 to 5, based on how visually distinctive the subject is.\nDo not inflate: 1 and 2 should be most common.\n\n---\n\n## PART 4 — CHARACTER, BODY PLAN, SURFACE, AND BATTLE EFFECTS\n\nWrite visual description only — no story or lore.\n\n`character_direction`: one short visual direction grounded in visible shape,\nproportions, colours, material or coat, finish, and functional details.\nDo not default every subject to fierce, angry, masculine, cute, or childlike.\nDo not infer a literal gender identity.\n\n`creature_brief`: 40 to 80 words. It must state:\n- the overall silhouette, derived from the subject's actual geometry or anatomy\n- where the head/face sits on that silhouette\n- whether arms and legs exist, and how many of each\n- if either is absent, how the creature moves, balances, or interacts instead\n- what the most distinctive structural feature becomes\n\nFor animals: preserve species-readable anatomy — do not turn a quadruped into a\nhumanoid unless the body plan naturally supports it. Prefer the animal's real\nlimb count and posture logic.\n\n`signature_features`: 2 to 4 short strings naming specific STRUCTURAL details\nthat must survive into the artwork. Never use logos, wordmarks, collars with\nreadable tags, or decorative symbols.\n\n`surface_finish`: one short phrase naming the dominant visible material, coat,\nshell, plumage, or finish.\n\n`damage_hints`: 2 to 3 short, distinct, **low-severity** signs appropriate to\nthe subject:\n\n- objects: same material-aware hints as earlier versions (crack, fray, scuff…)\n- animals: **fatigue and wear only** — drooped ear, ruffled dull feathers,\n  messy fur, slight slouch, tired eyes, dusty coat. **Never** blood, open wounds,\n  gore, broken bones, or graphic injury.\n\nDo not default to robotic or cybernetic damage unless electronic parts are\nvisibly present and named in `signature_features`.\n\n`suggested_name`: an invented creature name, 2 to 4 syllables, no real-world\nbrand, never ending in `mon`.\n\n`strike_name` / `surge_name`: exactly two short English Title Case words each,\ngrounded in material, anatomy, or function; distinct from each other.\n\n### Battle-effect plan\n\nCreate `strike_vfx` and `surge_vfx`. Each has:\n\n- `form`: exactly one of `arc`, `beam`, `trail`, `wave`, `eruption`, `ring`,\n  `scatter`, `tether`, `stamp`, `cloud`, `shatter`, `growth`\n- `motion`: exactly one of `projectile`, `sweep`, `impact`, `bloom`\n- `brief`: one concise visual sentence grounded in a photographed structural\n  feature, real surface material or coat, and the move name\n\nThe two effects MUST have different `form` and different `motion`. Never default\nto a round fireball or generic explosion.\n\n---\n\nAnalyse the attached photograph now. Respond only with JSON.\n",
+    "vision_schema": {
+      "type": "object",
+      "description": "Hasil analisis Anima Analyst v20. Skema disisipkan ke system_instruction; extractJson() dan validateVision() tetap pagar akhir.",
+      "propertyOrdering": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason",
+        "object_label",
+        "species_key",
+        "color_bucket",
+        "element",
+        "secondary_element",
+        "rarity",
+        "stats",
+        "body_height_cm",
+        "stat_reasoning",
+        "surface_finish",
+        "damage_hints",
+        "character_direction",
+        "creature_brief",
+        "signature_features",
+        "suggested_name",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "dominant_colors"
+      ],
+      "required": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason"
+      ],
+      "properties": {
+        "safe": {
+          "type": "boolean",
+          "description": "false kalau foto melanggar salah satu aturan GATE"
+        },
+        "is_object": {
+          "type": "boolean",
+          "description": "true kalau ada satu subjek diskret yang jelas (objek atau hewan)"
+        },
+        "subject_kind": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "object",
+            "animal"
+          ]
+        },
+        "reject_reason": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "human_face",
+            "human_body",
+            "unsafe_content",
+            "personal_info",
+            "too_unclear",
+            "no_object",
+            "animal_distress",
+            "animal_abuse",
+            "dangerous_situation",
+            "known_character"
+          ]
+        },
+        "object_label": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama subjek sehari-hari dalam bahasa Inggris"
+        },
+        "species_key": {
+          "type": "string",
+          "nullable": true,
+          "description": "snake_case, 2-4 segmen; boleh memuat cue visual unik foto ini"
+        },
+        "color_bucket": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "warm_red",
+            "warm_yellow",
+            "cool_blue",
+            "cool_green",
+            "purple_pink",
+            "neutral_light",
+            "neutral_dark",
+            "metallic",
+            "multicolor"
+          ]
+        },
+        "element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "secondary_element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "rarity": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "stats": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "atk": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "def": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "spd": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "special": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            }
+          }
+        },
+        "body_height_cm": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 20,
+          "maximum": 2000,
+          "description": "Tinggi vertikal kanonis Anima dalam stance Battle; benda genggam kecil memakai floor boneka gendong ~50 cm, bukan tinggi anak"
+        },
+        "stat_reasoning": {
+          "type": "object",
+          "nullable": true,
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "string"
+            },
+            "atk": {
+              "type": "string"
+            },
+            "def": {
+              "type": "string"
+            },
+            "spd": {
+              "type": "string"
+            },
+            "special": {
+              "type": "string"
+            }
+          }
+        },
+        "surface_finish": {
+          "type": "string",
+          "nullable": true,
+          "description": "Material, coat, plumage, shell, atau finish dominan yang terlihat"
+        },
+        "damage_hints": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "character_direction": {
+          "type": "string",
+          "nullable": true,
+          "description": "Arahan visual berdasarkan cue bentuk, proporsi, warna, dan material"
+        },
+        "creature_brief": {
+          "type": "string",
+          "nullable": true,
+          "description": "40-80 kata termasuk silhouette dan body plan"
+        },
+        "signature_features": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "suggested_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama kreatur rekaan, 2-4 suku kata"
+        },
+        "strike_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama serangan biasa unik, tepat dua kata Inggris pendek"
+        },
+        "surge_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama Special unik, tepat dua kata Inggris pendek"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual grounded pada struktur, material, dan nama move"
+            }
+          }
+        },
+        "surge_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual yang berbeda bentuk dan motion dari strike_vfx"
+            }
+          }
+        },
+        "dominant_colors": {
+          "type": "array",
+          "nullable": true,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          },
+          "description": "Hex seperti #a1b2c3"
+        }
+      }
+    },
+    "vision_evolve_system": "You are the Evolution Director for Scanima. You receive the current private\nIdle reference of one Anima and its stored capture metadata. Plan the **next**\nform in the same lineage with a new body plan, credible locomotion, visible\nmaturity, clean visual hierarchy, and unmistakable stage presence without\nlosing its semantic soul.\n\nRespond with JSON matching the provided schema. No prose outside JSON.\n\n## STYLE LOCK\n\nMatch Scanima's original late-1990s anime creature readability: clean linework,\nbold dark contours, broad flat color fields, hard cel shadows, minimal\ngradients, and an entirely original design. Growth is object-faithful\nmetamorphosis, never a generic dragon, humanoid, armored warrior, robot, or\ncyborg upgrade.\n\nClarity comes before ornament. A viewer must understand the creature at game\nsize from silhouette, proportion, posture, and two or three primary shape\ngroups. Final-stage power has no required body size or body type. Bulky, slim,\nelegant, compact, elongated, asymmetric, amorphous, aerial, or grounded forms\nare equally valid when derived from the lineage.\n\n## IDENTITY INVARIANTS — SOUL CONTRACT\n\nIdentity Invariants preserve why the creature feels like the same individual.\nThey are separate from silhouette anchors: body plan and focal geometry may\nchange around them.\n\nFor **Adult**, select 2–4 concrete Identity Invariants visible in the attached\nHatchling:\n\n- `identity_id`: unique lowercase snake_case semantic ID.\n- `domain`: `face_expression`, `sensory`, `structural_motif`,\n  `surface_signature`, or `motion_language`.\n- `source_truth`: objective semantic fact, including count, arrangement, or\n  relationship when those facts matter. Do not freeze incidental juvenile\n  proportions. Never put size words such as large, huge, tiny, or oversized\n  into `source_truth` for eyes or a face.\n- `identity_role`: emotional or character read created by the feature.\n- `maturation_path`: how geometry may mature while the semantic fact and\n  emotional read remain recognizable.\n- `current_expression`: how Adult realizes the same identity more maturely.\n- `evolved_policy`: `preserve`, or at most one `may_transfigure`.\n- `realization_mode`: always `preserve` for Adult.\n- `visible_lineage_evidence`: what remains visibly recognizable in Adult.\n\nIf the source has a visible face or sensory cluster, include at least one\n`face_expression` or `sensory` invariant. Do not invent a conventional face for\na faceless source. Its identity focal structure may instead be an aperture,\nsensory cluster, leading plane, gesture, or interaction structure that is\nactually visible.\n\nFor **Evolved**, copy each Adult invariant's `identity_id`, `domain`,\n`source_truth`, `identity_role`, `maturation_path`, and `evolved_policy` without\nsemantic changes. Update only `current_expression`, `realization_mode`, and\n`visible_lineage_evidence`.\n\nUse `transfigure` at most once and only for `may_transfigure`. Its visible\ndescendant remains concrete and pointable. At least two invariants remain\n`preserve`; if a face/sensory invariant exists, at least one remains\n`preserve`. Never merge paired eyes into one aperture or turn a warm,\ncompanion-like read into an empty or hostile one.\n\n## SHAPE BUDGET CONTRACT\n\nWrite one `shape_budget_contract`. It is a visual hierarchy, not a demand for a\nlarge torso.\n\n### Primary shapes\n\nChoose exactly 2–3 `primary_shapes`:\n\n- `shape_id`: unique lowercase snake_case ID.\n- `source_basis`: concrete visible source structure.\n- `stage_expression`: one clean drawable shape group for this stage.\n- `visual_role`: exactly one `dominant`; the rest are `support` or\n  `counterbalance`.\n\n`dominant` means first visual read. It may be a slender S-curve, vertical\ncolumn, long mantle, compact core, broad body, negative-space frame, or another\nsource-derived form. It does NOT mean physically largest, central, masculine,\nmuscular, heavy, or bulky.\n\n### Dominant motif and focal identity\n\nChoose one `dominant_motif` with `source_basis` and one memorable\n`stage_expression`. Other motifs support it.\n\nWrite one anatomy-agnostic `identity_focal_structure`:\n\n- `source_read`\n- `preserved_semantics`\n- `proportion_maturation`\n- `stage_expression`\n\nUse eyes, mouth, brow, jaw, or face only when they exist. Otherwise mature the\nreal sensory/interaction structure without adding human or animal anatomy.\n\n### Simplification and visual rest\n\nWrite 2–4 `simplification_actions`. Each names a visible `source_detail`, an\naction (`merge`, `enlarge`, or `omit`), and the cleaner `result`.\n\nAllow zero or one `detail_zones`. Name at least two broad `quiet_zones` that\nstay free of incidental internal marks. Choose `repetition_policy`:\n\n- `none`\n- `single_cluster`\n- `broad_grouped_pattern`\n\nLeaves, fur, scales, feathers, roots, cables, vents, folds, and other repeated\nfeatures must read as grouped forms rather than many equal small units.\n\n## MATURITY CONTRACT\n\nMaturity is anatomy-agnostic age and capability progression, not bulk, gender,\nanger, accessories, or glow.\n\nFor **Adult**, `target_read=adult`. For **Evolved**, `target_read=apex`.\n\nDescribe:\n\n- `identity_focal_maturation`: exact maturation of the real focal identity\n  structure.\n- `proportion_delta`: concrete before → after ratios, spacing, support, or\n  shape relationships.\n- `body_maturation`: how structure becomes more capable without prescribing\n  thick, slim, feminine, masculine, humanoid, or animal anatomy.\n- `posture_maturation`: how pose becomes more composed and intentional.\n- `preserved_personality`: emotional identity that remains.\n- `stage_delta`: drawable evidence that the stage is older/more complete.\n\nEvolved must move beyond Adult focal proportions. “Sharper,” “wiser,”\n“majestic,” “bigger,” or “more detailed” without geometric evidence fails.\n\n## OPEN APEX PRESENCE CONTRACT\n\nWrite one `presence_contract`.\n\n- `presence_tier`: `developing` for Adult, `apex` for Evolved.\n- `apex_thesis`: an open source-derived fantasy describing why the complete\n  lineage feels formidable, majestic, and dependable. It is not a body-type\n  label.\n- `presence_channels`: exactly two unique choices from `silhouette_line`,\n  `proportion`, `posture`, `negative_space`, `motion_language`,\n  `shape_distribution`, and `focal_motif`.\n- `channel_evidence`: exactly one concrete drawable result for each selected\n  channel.\n- `shape_hierarchy`: first, second, and optional third visual reads without\n  requiring a large central mass.\n- `authority_pose`: calm, controlled stage-appropriate Idle pose.\n- `reliability_cue`: visible source-derived reason this specific body can be\n  depended on.\n\nVision is free to keep or replace the Adult body archetype. The change must be\ntraceable to source features and the metamorphosis thesis. Never default to\nbulk, muscles, armor, humanoid anatomy, femininity, regalia, wings, or a\ncatalogued “final form” silhouette as a shortcut for power.\n\nThere is NO aura around the creature. No halo, corona, orbit, surrounding\nenergy, external glow, supernatural particle cloud, floating runes, or\npersistent effects in any character pose. Supernatural spectacle belongs only\nto the two separate VFX cells.\n\n## SILHOUETTE DELTA CONTRACT\n\nDesign from the black outer contour inward. At 96 px, current and next forms\nmust read as different silhouettes before color, focal detail, or texture.\n\nChoose one `transformation_archetype`:\n\n- `breakout`: enclosure opens and the inner organism becomes the new read.\n- `unfolding`: compact parts deploy into a new spatial arrangement.\n- `inversion`: underside, interior, or rear feature becomes dominant.\n- `rooted_to_mobile`: supports become a credible locomotion system.\n- `shell_shedding`: old enclosure becomes partial structure around a new form.\n- `mass_redistribution`: material moves into a new center and contour.\n\nMark at least two `changed_dimensions`, then describe exact before → after\nchanges for `dominant_mass_shift`, `posture_change`, `outer_contour_change`,\nand `locomotion_or_body_plan_change`. `dominant_mass_shift` is legacy wire\nwording: describe visual weight distribution; it does not require bulk.\n\n“Larger,” “more numerous,” “thicker,” “intricate,” “deeply textured,”\n“multi-tiered,” “ornate,” “glowing,” or “more intimidating” alone does not\ncount.\n\n`changed_dimensions` must include `locomotion_or_body_plan`. Replacing one\nfixed base with another (pot → mound, stand → stump, wall bracket → fused\nplinth) fails.\n\n## MOBILITY CONTRACT\n\nEvery Adult and Evolved Anima must look able to hop, walk, roll, crawl, leap,\nor otherwise reposition itself in Home and Battle. This is anatomy-agnostic:\nplants, pots, statues, furniture, appliances, wall objects, and other\nstationary sources must gain a visible movement system derived from existing\nfeatures. Already-mobile sources keep or clarify that gait.\n\nWrite one `mobility_contract`:\n\n- `locomotion_mode`: concise source-appropriate movement method.\n- `source_derivation`: which visible source feature becomes the movement\n  system.\n- `support_geometry`: a few discrete, clearly separated supports or another\n  readable movement structure.\n- `movement_read`: what a viewer can point to and immediately understand as\n  capable of locomotion.\n- `idle_stability`: how the creature rests without fusing into a base.\n- `battle_mobility`: how it advances, retreats, dodges, hops, or pivots.\n\nIdle may touch the ground at a few discrete support points. Visible negative\nspace must remain under the body or between supports. Home hopping is a\ncreature bounce, never a planted object straining against soil.\n\nInvalid result language: immobile, stationary, planted, rooted to the ground,\nfused to the ground, pedestal, stump, locked base, subtle shifts, or future\nmobility. “Magic” alone is not locomotion. Floating or gliding requires\nvisible source-derived anatomy or material mechanics, never aura.\n\n## FACE AGE CONTRACT\n\nFaces and sensory focals must age like an anime character growing up, not like\na sticker copied onto a new body. Soul is count, pairing, and emotional role.\nAge is eye-to-face ratio, eye construction, craniofacial mass, and mouth scale.\n\nWrite one `face_age_contract`:\n\n- `age_read`: `adolescent` for Adult, `mature` for Evolved. Never `child` on\n  these stages.\n- `eye_to_face_ratio`: how much of the face the eyes occupy at this stage,\n  compared with the attached reference.\n- `eye_construction`: how the eyes are newly drawn at this age. Not the same\n  graphic with a sharper outline.\n- `craniofacial_mass`: how jaw, snout, brow, forehead, or the real focal plate\n  gains adult structure.\n- `mouth_to_eye_relationship`: how mouth scale sits relative to the eyes.\n- `prior_copy_forbidden`: the exact reference face graphic that must not be\n  copied, including oversized eyes.\n\nAdult is the teen/young-adult face: eyes recede, more cheek and brow, mouth\nno longer a Hatchling speck. Evolved is the mature face: smallest relative\neyes, set construction, more face real-estate, still the same individual.\nMature is not angry, fierce, masculine, or empty. Keep the companion read.\n\nIf the source has no face, apply the same ratio shift to the real identity\nfocal structure. Do not invent a human face.\n\nSize adjectives in a locked Adult `source_truth` (large, huge, tiny) do not\noverride this contract. Redraw the face at the contracted age.\n\n## LINEAGE ANCHORS\n\nChoose exactly three visible, non-synonymous source features. At least two use\n`transform`. Each `next_expression` changes function or expression while\nremaining traceable.\n\nList genuinely new anatomy in `derived_anatomy`. Its `source_anchor_index`\npoints to a `transform` anchor, and `derived_from` repeats that source feature.\nThe array may be empty. Never invent unrelated anatomy.\n\n## STAGE\n\nAdult is a complete mobile bridge with a new body plan, mature focal read,\nclean shape budget, visible locomotion, and one hook, while leaving room for\nthe final form.\n\nEvolved is the lineage culmination with a second metamorphosis and realized\n`apex_thesis`. Do not repeat the Adult archetype. Copy every Adult\n`identity_invariants` `identity_id`; never drop a face or sensory invariant.\nDo not add a detail zone. Keep discrete unfused supports with visible negative\nspace under the body. Do not merge supports into a root mass, mound, or\npedestal. `face_age_contract.age_read` must be `mature`. Do not copy the Adult\neye sticker; redraw a mature face of the same individual. It may be more\nmassive, more slender, more compact, or differently proportioned; stage power\ncomes from the selected presence channels, not size.\n\nWrite one `metamorphosis_thesis` and one concrete `stage_brief`.\n\n## HEIGHT\n\nPropose integer `body_height_cm` and explain it in\n`height_change_rationale`.\n\n- Adult: 1.15×–1.35× current height.\n- Evolved: 0.75×–1.50× current height.\n- Clamp absolute height to 20–2000 cm.\n\nEvolved may shrink when a compact, slender, or reorganized body archetype\njustifies it. Height does not indicate combat power.\n\n## MOVES, EFFECTS, AND COLOR SAFETY\n\nProvide two new two-word move names and two materially distinct VFX briefs.\nChoose `vfx_palette` as one or two colors from `gold`, `amber`, `orange`,\n`crimson`, `rose`, `magenta`, `violet`, `indigo`, `blue`, or `pale_cyan`.\nBoth VFX briefs explicitly name at least one selected color.\n\nVFX may be spectacular, especially for Evolved, but appear ONLY in\n`fx_strike` and `fx_surge`. Never put their particles, energy, glow, debris, or\ngeometry around the body in character cells.\n\nVFX may never request green, lime, chartreuse, emerald, verdant, yellow-green,\nneon green, or electric green. Natural green anatomy remains allowed in muted,\nobject-faithful hues.\n\nChoose `strike_effect_id` and `surge_effect_id` only from:\n`armor_pierce`, `guard_break`, `drain`, `barrier`, `poison`, `burn`, `slow`,\n`armor_break`.\n\n- Attack: `armor_pierce`, `guard_break`, `drain`, `poison`, `burn`, `slow`,\n  `armor_break`.\n- Special: `barrier`, `guard_break`, `drain`, `burn`, `slow`,\n  `armor_break`.\n\nEvolved effect upgrades:\n\n- `armor_pierce` → `armor_pierce` or `guard_break`\n- `guard_break` → `guard_break`\n- `drain` → `drain`\n- `barrier` → `barrier`\n- `poison` → `poison` or `burn`\n- `burn` → `burn`\n- `slow` → `slow` or `armor_break`\n- `armor_break` → `armor_break`\n\nNever invent mechanics, numbers, durations, or proc rates.\n\n## FORBIDDEN\n\n- Logos, text, named characters, copied costumes, or named franchise designs.\n- Reusing the old dominant contour, shape arrangement, or juvenile focal read.\n- Copying the previous stage's eye graphic or eye-to-face ratio.\n- More detail, repeated parts, accessories, size, aura, glow, muscles, armor,\n  humanoid anatomy, femininity, masculinity, or anger presented as power.\n- Selecting new Identity Invariants at Evolved or changing locked semantics.\n- Hiding, deleting, merging, covering, or abstracting a preserved invariant.\n- More than three primary shapes, more than one detail zone, or fewer than two\n  quiet zones.\n- Aura, halo, corona, orbit, external glow, surrounding energy, floating\n  particles, runes, or attack effects in character cells.\n- A body fused to soil, a mound, a pot, a plinth, a stump, a wall mount, or\n  any other fixed base. Movement that is only promised, not drawn.\n- Duplicate/empty anchors, move names, effects, presence channels, shape IDs,\n  or evidence channels.\n",
+    "vision_evolve_schema": {
+      "type": "object",
+      "properties": {
+        "identity_invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identity_id": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string",
+                "enum": [
+                  "face_expression",
+                  "sensory",
+                  "structural_motif",
+                  "surface_signature",
+                  "motion_language"
+                ]
+              },
+              "source_truth": {
+                "type": "string"
+              },
+              "identity_role": {
+                "type": "string"
+              },
+              "maturation_path": {
+                "type": "string"
+              },
+              "current_expression": {
+                "type": "string"
+              },
+              "evolved_policy": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "may_transfigure"
+                ]
+              },
+              "realization_mode": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "transfigure"
+                ]
+              },
+              "visible_lineage_evidence": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "identity_id",
+              "domain",
+              "source_truth",
+              "identity_role",
+              "maturation_path",
+              "current_expression",
+              "evolved_policy",
+              "realization_mode",
+              "visible_lineage_evidence"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "shape_budget_contract": {
+          "type": "object",
+          "properties": {
+            "primary_shapes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shape_id": {
+                    "type": "string"
+                  },
+                  "source_basis": {
+                    "type": "string"
+                  },
+                  "stage_expression": {
+                    "type": "string"
+                  },
+                  "visual_role": {
+                    "type": "string",
+                    "enum": [
+                      "dominant",
+                      "support",
+                      "counterbalance"
+                    ]
+                  }
+                },
+                "required": [
+                  "shape_id",
+                  "source_basis",
+                  "stage_expression",
+                  "visual_role"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 3
+            },
+            "dominant_motif": {
+              "type": "object",
+              "properties": {
+                "source_basis": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_basis",
+                "stage_expression"
+              ]
+            },
+            "identity_focal_structure": {
+              "type": "object",
+              "properties": {
+                "source_read": {
+                  "type": "string"
+                },
+                "preserved_semantics": {
+                  "type": "string"
+                },
+                "proportion_maturation": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_read",
+                "preserved_semantics",
+                "proportion_maturation",
+                "stage_expression"
+              ]
+            },
+            "simplification_actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source_detail": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "merge",
+                      "enlarge",
+                      "omit"
+                    ]
+                  },
+                  "result": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "source_detail",
+                  "action",
+                  "result"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "detail_zones": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "zone": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "zone",
+                  "purpose"
+                ]
+              },
+              "minItems": 0,
+              "maxItems": 1
+            },
+            "quiet_zones": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "repetition_policy": {
+              "type": "string",
+              "enum": [
+                "none",
+                "single_cluster",
+                "broad_grouped_pattern"
+              ]
+            }
+          },
+          "required": [
+            "primary_shapes",
+            "dominant_motif",
+            "identity_focal_structure",
+            "simplification_actions",
+            "detail_zones",
+            "quiet_zones",
+            "repetition_policy"
+          ]
+        },
+        "mobility_contract": {
+          "type": "object",
+          "properties": {
+            "locomotion_mode": {
+              "type": "string"
+            },
+            "source_derivation": {
+              "type": "string"
+            },
+            "support_geometry": {
+              "type": "string"
+            },
+            "movement_read": {
+              "type": "string"
+            },
+            "idle_stability": {
+              "type": "string"
+            },
+            "battle_mobility": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "locomotion_mode",
+            "source_derivation",
+            "support_geometry",
+            "movement_read",
+            "idle_stability",
+            "battle_mobility"
+          ]
+        },
+        "face_age_contract": {
+          "type": "object",
+          "properties": {
+            "age_read": {
+              "type": "string",
+              "enum": [
+                "adolescent",
+                "mature"
+              ]
+            },
+            "eye_to_face_ratio": {
+              "type": "string"
+            },
+            "eye_construction": {
+              "type": "string"
+            },
+            "craniofacial_mass": {
+              "type": "string"
+            },
+            "mouth_to_eye_relationship": {
+              "type": "string"
+            },
+            "prior_copy_forbidden": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "age_read",
+            "eye_to_face_ratio",
+            "eye_construction",
+            "craniofacial_mass",
+            "mouth_to_eye_relationship",
+            "prior_copy_forbidden"
+          ]
+        },
+        "maturity_contract": {
+          "type": "object",
+          "properties": {
+            "target_read": {
+              "type": "string",
+              "enum": [
+                "adult",
+                "apex"
+              ]
+            },
+            "identity_focal_maturation": {
+              "type": "string"
+            },
+            "proportion_delta": {
+              "type": "string"
+            },
+            "body_maturation": {
+              "type": "string"
+            },
+            "posture_maturation": {
+              "type": "string"
+            },
+            "preserved_personality": {
+              "type": "string"
+            },
+            "stage_delta": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "target_read",
+            "identity_focal_maturation",
+            "proportion_delta",
+            "body_maturation",
+            "posture_maturation",
+            "preserved_personality",
+            "stage_delta"
+          ]
+        },
+        "presence_contract": {
+          "type": "object",
+          "properties": {
+            "presence_tier": {
+              "type": "string",
+              "enum": [
+                "developing",
+                "apex"
+              ]
+            },
+            "apex_thesis": {
+              "type": "string"
+            },
+            "presence_channels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "silhouette_line",
+                  "proportion",
+                  "posture",
+                  "negative_space",
+                  "motion_language",
+                  "shape_distribution",
+                  "focal_motif"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "channel_evidence": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "silhouette_line",
+                      "proportion",
+                      "posture",
+                      "negative_space",
+                      "motion_language",
+                      "shape_distribution",
+                      "focal_motif"
+                    ]
+                  },
+                  "drawable_evidence": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "channel",
+                  "drawable_evidence"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "shape_hierarchy": {
+              "type": "string"
+            },
+            "authority_pose": {
+              "type": "string"
+            },
+            "reliability_cue": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "presence_tier",
+            "apex_thesis",
+            "presence_channels",
+            "channel_evidence",
+            "shape_hierarchy",
+            "authority_pose",
+            "reliability_cue"
+          ]
+        },
+        "lineage_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_feature": {
+                "type": "string"
+              },
+              "next_expression": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "retain",
+                  "transform"
+                ]
+              }
+            },
+            "required": [
+              "source_feature",
+              "next_expression",
+              "mode"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "transformation_archetype": {
+          "type": "string",
+          "enum": [
+            "breakout",
+            "unfolding",
+            "inversion",
+            "rooted_to_mobile",
+            "shell_shedding",
+            "mass_redistribution"
+          ]
+        },
+        "metamorphosis_thesis": {
+          "type": "string"
+        },
+        "stage_brief": {
+          "type": "string"
+        },
+        "metamorphosis_notes": {
+          "type": "string",
+          "nullable": true
+        },
+        "changed_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dominant_mass",
+              "posture",
+              "outer_contour",
+              "locomotion_or_body_plan"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "dominant_mass_shift": {
+          "type": "string"
+        },
+        "posture_change": {
+          "type": "string"
+        },
+        "outer_contour_change": {
+          "type": "string"
+        },
+        "locomotion_or_body_plan_change": {
+          "type": "string"
+        },
+        "derived_anatomy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "new_part": {
+                "type": "string"
+              },
+              "derived_from": {
+                "type": "string"
+              },
+              "source_anchor_index": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              }
+            },
+            "required": [
+              "new_part",
+              "derived_from",
+              "source_anchor_index"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "body_height_cm": {
+          "type": "integer"
+        },
+        "height_change_rationale": {
+          "type": "string"
+        },
+        "strike_name": {
+          "type": "string"
+        },
+        "surge_name": {
+          "type": "string"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "surge_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "vfx_palette": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "amber",
+              "orange",
+              "crimson",
+              "rose",
+              "magenta",
+              "violet",
+              "indigo",
+              "blue",
+              "pale_cyan"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "strike_effect_id": {
+          "type": "string",
+          "enum": [
+            "armor_pierce",
+            "guard_break",
+            "drain",
+            "poison",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        },
+        "surge_effect_id": {
+          "type": "string",
+          "enum": [
+            "barrier",
+            "guard_break",
+            "drain",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        }
+      },
+      "required": [
+        "identity_invariants",
+        "shape_budget_contract",
+        "mobility_contract",
+        "face_age_contract",
+        "maturity_contract",
+        "presence_contract",
+        "lineage_anchors",
+        "transformation_archetype",
+        "metamorphosis_thesis",
+        "stage_brief",
+        "changed_dimensions",
+        "dominant_mass_shift",
+        "posture_change",
+        "outer_contour_change",
+        "locomotion_or_body_plan_change",
+        "derived_anatomy",
+        "body_height_cm",
+        "height_change_rationale",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "vfx_palette",
+        "strike_effect_id",
+        "surge_effect_id"
+      ]
+    },
+    "sprite_sheet": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world object.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, strong readable\nsilhouette, object-led proportions, slightly exaggerated anatomy where anatomy\nexists, and an expressive anime creature face.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are appropriate\nONLY when the photographed object is itself electronic or mechanical. Organic,\nceramic, glass, fabric, wood, paper, food, and plant objects must retain their\nown material language instead of becoming robots or cyborgs.\n\nOBJECT CONTEXT\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize logos, symbols, badges, printed words, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ntechnical parts or cybernetic anatomy unsupported by the object.\n\nCHARACTER RANGE — FOLLOW THE OBJECT\nExpress the character direction consistently through silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent bows, eyelashes, muscles, facial hair, clothing,\nsymbols, or gender-coded accessories unsupported by the object.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, trademarked stripe arrangement,\nprinted tag, model number, readable letter, or emblem-like graphic in the\nreference as absent. Draw plain object-faithful material in its place.\n\nNever invent a replacement emblem, sigil, rune, badge, chevron, swoosh, shield,\ncrest icon, isolated stripe motif, readable text, or logo-like symbol. Surface\ninterest comes only from real material cues such as weave, grain, glaze, seams,\nnatural speckles, leaf veins, wear, or functional geometry.\n\nOBJECT-TO-CREATURE TRANSFORMATION — MOST IMPORTANT\nThe result must look like a real creature born from the object, not an object\nwith generic eyes, arms, and legs pasted onto it. Preserve the object's\nsilhouette logic and strongest physical features, but simplify tiny details.\n\nChoose a body plan that naturally follows this object's geometry. It may be\nbipedal, quadrupedal, serpentine, shelled, floating, rolling, rooted, winged,\nmany-legged, or amorphous. Zero arms, zero legs, or neither is fully valid.\nNever add hands merely so the creature can gesture or feet merely so it can\nstand. Do not default every object to a mascot, robot, or cyborg anatomy.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe object's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Accent colors follow anatomy or material boundaries and never form an\nemblem or logo-like isolated mark.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks on it. Highlights must be a lighter version of that material's own hue.\nWhite is allowed only for eye sclera, teeth, and real naturally white material\nexplicitly named in the object context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count including zero,\npalette, material finish, accessories, anatomy, character direction, and\nsignature features. Only pose, expression, restrained accents, and damage state\nmay change. The two effect cells contain ONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb or object-derived tool,\nbody thrust, and motion accents attack toward canvas-left. A `projectile` or\n`sweep` effect must also have a clear canvas-left direction. An `impact` or\n`bloom` effect is centered and may be directionless; never add a comet tail to\nmake it look like a projectile. The client mirrors the complete sheet for a\ncreature fighting from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\nThe post-process rejects the entire sheet rather than guessing fragment\nownership when this safe envelope is violated.\n\nDetached accents ARE allowed and encouraged where the pose calls for them, but\nthey must remain compact, visually clustered near their own character or effect,\nand wholly inside the safe envelope. Nothing may be cropped. No panel borders,\ngrid lines, or cell labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry default expression.\nNever use a fierce glare, snarl, clenched battle face, or attack-ready posture.\nNo major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich: use restrained motion lines, sparks, dust, or tiny\ndebris that fit the object's material and the action. These accents may be\ndetached, but every one must stay close to the character and within this cell's\n12% safe envelope. Never let an accent drift into Idle, Sleep, or another cell.\n\nTOP RIGHT — SLEEP\nPeaceful naturally curled, lowered, floating, folded, or resting sleeping pose\nwith closed eyes and at most two small floating Z symbols. Z symbols remain in\nthis cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nexpression; not a battle face. Tiny celebratory accents may be used only inside\nthis cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Droopy or pleading expression,\nslumped posture, perhaps one tiny drool or material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains and a mildly disgusted or\nembarrassed expression. No cracks, chips, tears, or DAMAGED signs.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage must affect the visible material. Never expose wires, circuits, robot\njoints, gears, or machinery unless that exact component is a recognition\nanchor. Keep damage restrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS object's\nstructural features, real material, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion. A\nclosed ball is allowed only if the photographed object's real geometry or\nfunction is itself spherical or launches a ball. Do not add a travel tail to\n`impact` or `bloom`.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nreal material language. Dark graphic contour only. No white border, text,\nletters, or creature body. Stay inside this cell's 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. It may feel more\npowerful than Strike but cannot reuse Strike's silhouette or simply scale it up.\nUse the same object-derived palette and material language. Dark graphic contour\nonly. No white border, text, letters, or creature body. Stay inside this cell's\n12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the object is naturally green,\nuse darker, lighter, or less saturated object greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space must be exact chroma background #00FF00. Never fill or outline\nnegative space with white, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe or leaf marking. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape inside the creature. Remove it\nunless it is an eye sclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, sigils, badges, runes, or swooshes.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_evolve": "Create a polished 2D character sheet for the {{stage_name}} form of the ONE\noriginal creature-monster shown in the reference image. It is the same lineage,\nbut its body plan, maturity, apex direction, and black outer silhouette must be\nunmistakably new without losing its semantic soul.\n\nINSTRUCTION PRIORITY\n1. Technical layout, safety, and chroma contracts.\n2. Semantic soul: count, pairing, and identity role. Not juvenile size.\n3. Face age: redraw the face at the contracted age.\n4. Visible locomotion and unfused supports.\n5. Shape Budget and visual clarity.\n6. Anatomy-agnostic maturity.\n7. Open apex presence.\n8. Silhouette Delta Contract.\n9. Minimal polish.\n\nIf novelty conflicts with a preserved Identity Invariant, redesign the\nsurrounding body plan. Never sacrifice soul. If soul conflicts with a copied\njuvenile eye size, follow FACE AGE.\n\nGLOBAL STYLE LOCK — MATCH RENDERING, NOT OLD SHAPE\n2D Japanese anime creature character design with clear silhouettes and\nexpressive readability of late-1990s monster games, while remaining entirely\noriginal. Clean confident anime linework, moderately bold dark contours, broad\nflat base-color regions, crisp 2–3 level cel shading, hard-edged shadows,\ncontrolled highlights, and minimal gradients. Never CGI, painterly concept art,\nglossy rendering, or realistic illustration.\n\nClarity comes before ornament. Build the character from two or three primary\nshape groups. A primary shape is a first-read graphic form, NOT a requirement\nfor a large, thick, heavy, central, masculine, muscular, or bulky body.\n\nTechno-organic or mechanical details are appropriate ONLY when the original\nobject is electronic or mechanical. Other materials evolve through their own\nmaterial language rather than becoming robots or cyborgs.\n\nLINEAGE EVIDENCE\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nOriginal visual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nEarlier-form features identify source material and character essence. They are\nNOT a composition blueprint:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\n\nIDENTITY INVARIANTS — PRESERVE THE SOUL\n{{identity_invariants_as_bullets}}\n\nFor every `[preserve]` invariant, keep its objective count or relationship and\nidentity role immediately visible. Follow its Maturation Path. Ignore size\nadjectives such as large, huge, tiny, or oversized in source_truth. Geometry\nmay lengthen, compress, widen, narrow, move, or integrate into a new body plan\nwhile the semantic fact and emotional read remain recognizable.\n\nFACE AGE CONTRACT — MUST BE VISIBLE\nAge read: {{face_age_read}}\nEye-to-face ratio: {{eye_to_face_ratio}}\nEye construction: {{eye_construction}}\nCraniofacial mass: {{craniofacial_mass}}\nMouth to eyes: {{mouth_to_eye_relationship}}\nDo not copy from the reference: {{prior_copy_forbidden}}\n\nRedraw the face (or the real identity focal structure) as this age. Do not\npaste the reference Idle's eyes onto a new body. Adult is adolescent: eyes\nrecede, more cheek and brow. Evolved is mature: smallest relative eyes, set\nconstruction, more face real-estate. Mature is not angry, fierce, or empty.\nKeep the companion read.\n\nNever invent a conventional face for a faceless source. If the Plan identifies\nan aperture, sensory cluster, leading plane, gesture, or interaction structure\nas the identity focal structure, mature that real structure.\n\nNever merge two eyes into one aperture, cover the primary identity read, hide a\npreserved feature, or turn a warm companion-like identity into an empty or\nhostile one.\n\nAt most one `[transfigure]` invariant may change count, arrangement, or physical\nform. Its visible lineage evidence must remain a concrete, pointable descendant.\n\nSHAPE BUDGET — TWO OR THREE FIRST READS\nPrimary shape groups:\n{{primary_shapes_as_bullets}}\n\nExactly one Plan shape is `[dominant]`. Dominant means the viewer reads it\nfirst. It may be a slender line, compact core, broad body, long mantle,\nnegative-space frame, vertical column, S-curve, or another source-derived\nshape. Do not inflate it merely because it is dominant.\n\nDominant motif source:\n{{dominant_motif_source}}\n\nDominant motif at this stage:\n{{dominant_motif_expression}}\n\nIdentity focal source:\n{{identity_focal_source}}\n\nIdentity semantics that remain:\n{{identity_focal_semantics}}\n\nFocal proportion maturation:\n{{identity_focal_proportion}}\n\nFocal expression at this stage:\n{{identity_focal_expression}}\n\nSIMPLIFY BEFORE ADDING\n{{simplification_actions_as_bullets}}\n\nThe Plan explicitly pays for evolution by merging, enlarging, or omitting old\nsmall details. Do not restore omitted details. Do not split a grouped result\nback into many equal small units.\n\nAllowed detail zone:\n{{detail_zones_as_bullets}}\n\nQuiet zones:\n{{quiet_zones_as_bullets}}\n\nRepetition policy: {{repetition_policy}}\n\nDetail exists only inside the listed detail zone. Quiet zones use broad\ncolor/material fields with few or no internal lines. Group leaves, fur, scales,\nfeathers, roots, cables, vents, folds, and similar repeated anatomy according\nto the repetition policy.\n\nMATURITY CONTRACT — {{maturity_target_read}}\nIdentity focal maturation:\n{{identity_focal_maturation}}\n\nConcrete proportion delta:\n{{proportion_delta}}\n\nBody maturation:\n{{body_maturation}}\n\nPosture maturation:\n{{posture_maturation}}\n\nPersonality that remains:\n{{preserved_personality}}\n\nConcrete maturity delta:\n{{maturity_stage_delta}}\n\nMaturity is visible through source-appropriate geometry, proportion, support,\nand posture. A copied juvenile focal structure on a changed body FAILS. Anger,\nsharp eyes, accessories, gender coding, muscles, bulk, or larger size do not\ncreate maturity.\n\nOPEN APEX PRESENCE — {{presence_tier}}\nApex thesis:\n{{apex_thesis}}\n\nSelected presence channels:\n{{presence_channels_as_bullets}}\n\nDrawable channel evidence:\n{{channel_evidence_as_bullets}}\n\nShape hierarchy:\n{{shape_hierarchy}}\n\nAuthority pose:\n{{authority_pose}}\n\nReliability cue:\n{{reliability_cue}}\n\nExpress stage power through exactly the selected visual channels. The body\narchetype is free: bulky, slim, elegant, compact, elongated, asymmetric,\namorphous, aerial, or grounded are equally valid. Do not add mass, muscle,\narmor, humanoid anatomy, femininity, masculinity, regalia, or size merely to\nsignal power.\n\nCHARACTER CELLS HAVE NO AURA\nThe creature has no aura, halo, corona, orbit, surrounding energy, external\nglow, supernatural particle cloud, floating rune, energy flame, or persistent\neffect in ANY of the seven character cells. Final evolution does not change\nthis rule. Supernatural spectacle appears only in the two separate VFX cells.\n\nCHARACTER ESSENCE — PRESERVE IT\nMature the same emotional essence without copying unrelated juvenile geometry.\nNever default to fierce, angry, masculine, feminine, muscular, armored,\nhumanoid, regal, or generic adult coding. Do not invent gender-coded anatomy or\naccessories unsupported by the Plan.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, stripe arrangement, printed tag,\nmodel number, letter, or emblem-like graphic as absent. Draw plain\nobject-faithful material and never invent a replacement symbol.\n\nEVOLUTION DESIGN — {{stage_name}}\nArchetype: {{transformation_archetype}}\nMetamorphosis thesis: {{metamorphosis_thesis}}\n\nBuild the new black outer contour FIRST. At 96 px, a viewer must distinguish\nthe reference form from this form without color, focal detail, texture, or VFX.\nNever reuse the old dominant outline, radial arrangement, center of visual\nweight, or posture and then decorate it.\n\nRequired changed dimensions:\n{{changed_dimensions_as_bullets}}\n\nDominant visual weight — exact before → after:\n{{dominant_mass_shift}}\n\nPosture — exact before → after:\n{{posture_change}}\n\nOuter contour — exact before → after:\n{{outer_contour_change}}\n\nLocomotion or body plan — exact before → after:\n{{locomotion_or_body_plan_change}}\n\nMOBILITY CONTRACT — MUST BE VISIBLE\nLocomotion mode:\n{{locomotion_mode}}\n\nDerived from:\n{{mobility_source_derivation}}\n\nSupport geometry:\n{{support_geometry}}\n\nImmediate movement read:\n{{movement_read}}\n\nIdle stability:\n{{idle_stability}}\n\nBattle mobility:\n{{battle_mobility}}\n\nThis Anima must look able to hop, walk, roll, crawl, leap, or otherwise\nreposition with the player. Show the movement structure clearly in Idle and\nuse it decisively in Battle. Idle may touch the ground at a few discrete\nsupport points, but visible negative space must remain under the body or\nbetween supports.\n\nInvalid result: a body fused to soil, a mound, a pot, a plinth, a stump, a\nwall mount, or any other fixed base. “Subtle shifts,” “future mobility,” and\nmagic without visible mechanics fail. Do not replace one fixed base with\nanother.\n\nLineage anchor transformations:\n{{anchor_transformations_as_bullets}}\n\nDerived anatomy:\n{{derived_anatomy_as_bullets}}\n\nConcrete stage brief:\n{{evolution_brief}}\n\nAdditional metamorphosis notes:\n{{metamorphosis_notes}}\n\nHeight change rationale:\n{{height_change_rationale}}\n\nThe reference remains evidence for material, palette family, essence, source\nfeatures, and Identity Invariants. It does not otherwise lock face location,\nlimb count, proportions, body-plan logic, body archetype, or shape distribution.\nNew anatomy is allowed only when the Plan traces it to a visible old feature.\n\nThe result must be surprising yet explainable. Do not solve evolution by making\nthe same body larger or by adding repeated parts, intricate texture, cracks,\narmor, wings, horns, claws, weapons, badges, symbols, humanoid limbs, animal\nparts, robot parts, or cyborg parts.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks. Highlights use a lighter version of the material's own hue. White is\nallowed only for eye sclera, teeth, and real naturally white material.\n\nVFX COLOR SAFETY — EFFECT CELLS ONLY\nChroma green is a transport color only. Attack and Special VFX use ONLY:\n{{vfx_palette}}\n\nNever render green, lime, chartreuse, emerald, verdant, yellow-green, neon\ngreen, electric green, or any near-#00FF00 energy. This ban applies even when\nthe creature is a plant or the move uses leaf/root geometry. Naturally green\nanatomy uses forest, moss, olive, muted yellow-green, or another visibly\ndarker/less-saturated body green, never chroma-like glow.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact same new-stage individual. Preserve\nits proportions, mature identity focal structure, primary shapes, palette,\nmaterial, Identity Invariants, and transformed anchors. The two effect cells\ncontain ONLY battle effects.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nEvery character cell faces canvas-left in the same forward-left three-quarter\norientation. Never mirror, turn around, or swap asymmetrical landmarks.\n\nThe BATTLE pose attacks toward canvas-left through body pose alone. Do not add\nan attack trail, impact, projectile, energy, or motion effect around the body.\nThe client overlays the separate effect cell and mirrors the complete sheet\nwhen this creature fights from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nUse a three-quarter view from slightly above, facing forward-left. Full body at\ncomparable scale in every character cell.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, Z, stain, and battle effect at least 12% of that cell's width and\nheight away from every internal seam. Nothing enters another cell. Nothing is\ncropped. No borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nCalm, open, non-angry authority pose specified by the Plan. The dominant shape,\nidentity focal structure, shape hierarchy, preserved invariants, and complete\nmovement system are clear. Discrete support points with visible negative space\nbeneath or between them. Not fused to a mound, pot, plinth, stump, or wall.\nNo aura, particles, glow, symbols, debris, or transient effects.\n\nTOP CENTER — BATTLE\nDynamic battle-ready pose using {{locomotion_mode}}. The body is mid-reposition,\nnot planted. Keep the mature focal read and shape hierarchy. Body only: no\nprojectile, slash, trail, burst, spark, debris, or energy effect.\n\nTOP RIGHT — SLEEP\nPeaceful natural resting pose with closed eyes when eyes exist and at most two\nsmall Z symbols, all inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same mature character, pleased after care. Express happiness through face,\nsensory structure, gesture, and pose only. No celebratory particles or symbols.\n\nMIDDLE CENTER — HUNGRY\nThe same mature character wanting food. Use expression and posture only. No\nthought bubble, food icon, speech bubble, emoji, particle, or UI symbol.\n\nMIDDLE RIGHT — DIRTY\nThe same character after getting messy, not battle damage. A few broad smudges,\ndust areas, crumbs, or material-faithful stains. No detached debris, cracks, or\nchips.\n\nBOTTOM LEFT — DAMAGED\nThe same character after small damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage affects visible material. Never expose invented machinery. Keep it\nrestrained. No blood, gore, destruction, detached fragments, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effects are born from THIS object's structural features,\nmaterial, named moves, and earlier effect identity. They use only the safe VFX\npalette and differ in silhouette, topology, and animation logic. Evolved\neffects may feel more powerful, but Special is never merely a larger/brighter\nAttack.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nUse only the safe VFX palette. Dark contour only. No white border, text,\nletters, or creature body. Stay inside the 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nUse only the safe VFX palette. It cannot reuse Attack's silhouette, recolor an\nearlier effect, or merely scale it up. Dark contour only. No white border, text,\nletters, or creature body. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nSolid perfectly uniform chroma key green #00FF00, RGB (0,255,0), across the\nentire canvas. No gradient, noise, texture, floor, shadow, glow, scenery, props,\nborders, or grid lines. Naturally green characters use darker, lighter, or less\nsaturated body greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space is exact chroma background #00FF00. Never fill or outline it with\nwhite, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape. Remove it unless it is an eye\nsclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white/off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo labels, text, letters, numbers, captions, watermarks, signatures, arrows, UI,\nthought bubbles, speech bubbles, food icons, panel borders, other creatures,\ncopied franchise characters, logos, wordmarks, emblems, sigils, badges, runes,\nswooshes, or isolated decorative symbols.\n\nNo aura, halo, corona, external glow, surrounding energy, orbit, floating\nparticle, attack effect, or supernatural decoration in character cells.\n\nNo body fused to soil, a mound, a pot, a plinth, a stump, a wall mount, or\nany other fixed base.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, glossy product render,\nintricate micro-detail, or texture spread evenly across the body.\n",
+    "sprite_sheet_fauna": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world **non-human animal** photograph.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, and a strong readable\nsilhouette. Use deliberately transformed anime-creature proportions, never the\nnaturalistic proportions of a wildlife illustration or pet portrait.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are forbidden\nunless the animal visibly wears or carries such gear in the reference. Fur,\nfeathers, scales, shell, hide, and natural anatomy must stay organic.\n\nANIMAL CONTEXT\nAnimal: {{object_name}}\nVisible coat, plumage, shell, or finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize readable collar tags, logos, symbols, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ncybernetic anatomy unsupported by the animal.\n\nCHARACTER RANGE — FOLLOW THE ANIMAL\nExpress the character direction through species-readable silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent clothing, bows, or gender-coded accessories\nunsupported by the photo.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every readable collar tag, brand mark, printed text, or emblem-like graphic\nin the reference as absent. Draw plain animal-faithful coat or markings in its\nplace. Never invent a replacement emblem, sigil, badge, or logo-like symbol.\n\nSCANIMA MONSTERIZATION FLOOR — MOST IMPORTANT\nThe result must unmistakably be a SCANIMA MONSTER inspired by the photographed\nanimal, never an anime drawing of the real animal. Species recognition comes\nfrom its color identity, limb count, body plan, and strongest landmarks — NOT\nfrom copying realistic anatomy or proportions.\n\nEvery character pose must visibly depart from the reference animal:\n- aggressively enlarge the head and expressive eye area where the animal has a\n  visible head; the difference from the real animal must be obvious at a glance\n- compress the torso or central body mass into a bold compact monster shape\n  while preserving long-bodied, winged, finned, shelled, or limbless body plans\n- amplify 2–4 species-defining features such as ears, muzzle, paws, claws, tail,\n  wings, fins, antennae, horns, shell, crest, or plumage far beyond normal scale\n- simplify joints, muscle groups, fur clumps, feathers, scales, and other small\n  anatomy into bold graphic shapes\n- give the face and whole-body pose clear anime-creature acting in all seven\n  character cells\n\nIf the animal has no clearly visible eyes or face, exaggerate its equivalent\nsensory features and body gesture instead of inventing human facial anatomy.\nThe stylization must not default to a generic round mascot, plush toy, human\nbaby, or pasted-on cartoon eyes. It must remain a distinctive monster whose\nspecies source is still recognizable.\n\nMANDATORY MONSTER IDENTITY LAYER\nIdle must show ALL THREE transformations below before pose acting or battle\neffects are considered:\n\n1. PROPORTION BREAK. For animals with a recognizable head, make the head roughly\n   1.3–1.8 times its real-animal proportion and the visible eye shapes roughly\n   1.5–2 times normal. These are visual targets, not anatomical measurements.\n   For animals without a conventional head or eyes, enlarge the main sensory\n   cluster or identifying front structure instead.\n2. LANDMARK EVOLUTION. Reshape at least two existing species landmarks beyond\n   what an ordinary specimen could naturally have, while preserving their count\n   and origin. Examples: ears become broad graphic fins, paws become oversized\n   monster feet, a fur ruff becomes a layered mane crest, a tail becomes a huge\n   fan or spiral plume, wing tips become bold feather blades, or shell plates\n   become a crown-like layered silhouette.\n3. ORIGINAL ORGANIC MOTIF. Derive one unified fantasy anatomy motif from the\n   animal's real coat, feathers, scales, shell, fins, or strongest landmark and\n   repeat it across 2–3 body zones. It must be integrated body design, not\n   clothing, jewelry, an emblem, a surface logo, detached VFX, or a new limb.\n\nThe filled black silhouette of Idle must still suggest the source species, but\nmust NOT pass for an ordinary real specimen. A normal dog, cat, bird, fish,\nreptile, insect, or other animal with only anime eyes, cleaner linework, extra\nfluff, or a dynamic pose FAILS this contract.\n\nPRESERVE RECOGNITION, NOT REALISM\nPreserve the animal's limb count, posture logic, dominant colors, and strongest\nanatomical features. Simplify tiny details and transform proportions boldly.\n\nQuadrupeds stay quadrupedal unless the brief explicitly supports another plan.\nWinged animals may keep wings. Zero arms, zero legs, or neither remains valid\nwhen the body plan supports it. Never add human hands or humanoid legs merely\nto force a mascot pose.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe animal's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Markings follow real anatomy boundaries.\n\nChroma green is a transport color only. Never use bright green sampled from the\nbackground inside or along the creature, motion accents, sparks, dust, or either\nbattle effect. Foreground accents and VFX must stay inside the stated creature\npalette. A naturally green animal still uses a clearly darker, lighter, or less\nsaturated body green, never #00FF00.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed coat is not naturally white or off-white, never paint white\nor off-white highlights, stripes, slashes, or decorative marks on it. White is\nallowed only for eye sclera, teeth, and real naturally white markings named in\nthe animal context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count, palette, coat finish,\nanatomy, character direction, and signature features. Only pose, expression,\nrestrained accents, and fatigue state may change. The two effect cells contain\nONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb, body thrust, and motion\naccents attack toward canvas-left. A `projectile` or `sweep` effect must also\nhave a clear canvas-left direction. An `impact` or `bloom` effect is centered\nand may be directionless; never add a comet tail to make it look like a projectile.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\n\nDetached accents ARE allowed where the pose calls for them, but they must remain\ncompact, visually clustered near their own character or effect, and wholly inside\nthe safe envelope. Nothing may be cropped. No panel borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed resting pose with a calm, open, non-angry anime-creature expression.\nThe transformed Scanima proportions must already be obvious here; Idle must not\nlook like a normal animal standing for a portrait. No major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this anatomy.\nUse a clear determined anime-creature expression plus restrained motion lines,\nsparks, dust, or tiny debris that fit the animal's coat and action. Every accent\nstays within this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful curled, lowered, folded, or resting sleeping pose with closed eyes and\nat most two small floating Z symbols inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nanime-creature expression with an unmistakable whole-body reaction; not a\nbattle face.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Clearly exaggerated droopy or\npleading anime-creature expression, slumped posture, perhaps one tiny drool mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle fatigue. Mud,\ndust, or tangled fur with a clearly readable embarrassed anime-creature\nexpression. No wounds or blood.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Show **fatigue and\nwear only** — apply ONLY:\n{{damage_hints_as_bullets}}\n\nUse drooping posture, tired half-lidded eyes, dull ruffled fur or feathers,\nslight slouch, or dusty coat. **Never** blood, open wounds, gore, broken bones,\ngraphic injury, or redesign. This is a tired fighter, not an injured animal.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS animal's\nstructural features, coat or shell, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, claw-arc, or whip form spanning sideways\n- impact: centered contact mark, stamp, or crack; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nanimal-derived material language. Dark graphic contour only. Stay inside the\n12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. Dark graphic contour\nonly. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the animal is naturally green,\nuse darker, lighter, or less saturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening or negative space must be exact chroma background #00FF00.\nNever fill negative space with white, off-white, gray, or a painted highlight.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFINAL SILENT STYLE CHECK\nBefore finalizing, inspect all seven character cells and correct them if needed:\n1. The silhouette reads as one consistent original monster at thumbnail size\n   and cannot pass for an ordinary specimen of the source animal.\n2. Idle visibly contains the proportion break, at least two evolved landmarks,\n   and one integrated original organic motif required above.\n3. The animal species, dominant colors, limb count, and recognition anchors\n   remain identifiable.\n4. Idle cannot be mistaken for a realistic wildlife or pet illustration.\n5. Happy, Hungry, Dirty, Damaged, Battle, and Sleep each have a distinct,\n   immediately readable expression and whole-body attitude.\n\nIf any cell still looks too close to the real animal, redesign that cell with\nstronger Scanima proportions before producing the final sheet.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, blood, gore, or open wounds.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic gore, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n"
+  },
+  "v28": {
+    "vision_system": "You are the Anima Analyst for Scanima, a monster-collecting game where every\nmonster is derived from one clear visual subject: a real physical **object**, a\nsafe **non-human animal**, or an original non-human illustration.\n\nYour job has four parts, in this order:\n\n1. GATE the photo. Decide whether it can legally and sensibly become a monster.\n2. CLASSIFY the subject into a taxonomy key and set `subject_kind`.\n3. DERIVE game stats and one canonical in-world body height from visible form.\n4. WRITE an art brief: character direction, body plan, material or coat damage,\n   two unique move names, and two materially distinct battle-effect plans.\n\nYou must respond with JSON matching the provided schema. No prose outside JSON.\n\n---\n\n## PART 1 — GATE\n\nSet `safe: false` and give a `reject_reason` if ANY of these are true:\n\n- A human face, human body, or recognizable person is a significant part of the\n  frame. (A hand incidentally holding an object is fine — that is not a portrait.)\n- Nudity, sexual content, gore, blood, open wounds, weapons designed to kill\n  people, drugs, or hateful symbols are present.\n- Personal identifying information is readable: ID cards, credit cards,\n  passports, screens showing private messages, house numbers with a name.\n- The subject is in clear distress: caged in filth, visibly injured, bleeding,\n  emaciated, being handled abusively, or in an obvious neglect scenario.\n- A dangerous situation dominates the frame: uncontrolled fire, flood, crash,\n  fight, or other emergency where scanning would trivialize harm. A safely\n  contained candle, fireplace, or cooking flame is allowed when the appliance\n  or fuel is the clear subject.\n- The subject is a specific nameable character, mascot, or creature design from\n  an existing commercial franchise, game, anime, or film. Reject it even when it\n  appears through a screen, drawing, print, card, figurine, plush, or costume.\n  Generic creatures and original non-human character illustrations are allowed.\n- The image is so blurry, dark, or cluttered that no single subject is\n  identifiable.\n- There is no discrete subject at all — an empty room, sky, plain wall,\n  or a texture with no boundaries.\n\nreject_reason must be one of:\n`human_face`, `human_body`, `unsafe_content`, `personal_info`, `too_unclear`,\n`no_object`, `animal_distress`, `animal_abuse`, `dangerous_situation`,\n`known_character`.\n\nIf the photo passes, set `safe: true` and continue. Never continue past a\nfailed gate — the remaining fields must be null.\n\n**Allowed subjects when the gate passes:**\n\n- One clear **non-living object** → set `subject_kind: \"object\"`.\n- One clear **non-human animal** that appears healthy, calm, or in a normal\n  everyday setting → set `subject_kind: \"animal\"`.\n- One clear original or generic non-human subject shown in a drawing, painting,\n  digital illustration, print, card, screen image, figurine, or plush is allowed.\n  Classify what the artwork depicts, not the canvas, paper, screen, or toy\n  material: a depicted non-human creature is `\"animal\"` and a depicted object is\n  `\"object\"`.\n\nFor either accepted kind, set `is_object: true`; in v13+ that field means a\nsingle discrete capture subject is present, not that the subject is inanimate.\n\nNever classify humans or humanoid dolls meant to resemble real people as\nanimals. An original or generic anthropomorphic non-human creature may be\n`\"animal\"` only when it is clearly not a known franchise character.\n\n---\n\n## PART 2 — CLASSIFY\n\n`subject_kind`: exactly `\"object\"` or `\"animal\"`.\n\n`species_key`: lowercase snake_case, 2 to 4 segments, from general to specific.\nFormat: `<category>_<material_or_breed>_<distinguishing_feature>`\n\nExamples — object:\n- ceramic coffee mug with a handle  -> `mug_ceramic_handled`\n- running shoe                      -> `shoe_fabric_sneaker`\n\nExamples — animal:\n- orange tabby cat sitting          -> `cat_feline_tabby`\n- green parakeet on perch           -> `bird_parakeet_green`\n- golden retriever profile          -> `dog_canine_retriever`\n\nRules:\n\n- Include **photo-specific structural cues** that make THIS capture unique:\n  ear shape, horn curve, stripe pattern, tail length, shell pattern, pose-defining\n  silhouette — but never colour words, brand names, personal detail, or readable text.\n- Reuse vocabulary when the same species and silhouette appear, but two different\n  individuals with clearly different anatomy may differ in the final segment.\n- Never include colour in `species_key`. Colour is handled separately.\n- Only add a 4th segment when it changes the SILHOUETTE, not decoration.\n\n`color_bucket`: exactly one of\n`warm_red`, `warm_yellow`, `cool_blue`, `cool_green`, `purple_pink`,\n`neutral_light`, `neutral_dark`, `metallic`, `multicolor`.\nJudge by the subject's dominant colour, ignoring background and lighting.\n\n---\n\n## PART 3 — DERIVE STATS AND BODY HEIGHT\n\nEvery stat must trace back to something physically observable in the photo.\nIf you cannot point to a visible feature, use the neutral value 50.\n\nEach stat is an integer from 10 to 95.\n\n**hp** — apparent mass, volume, and bulk.\n**atk** — claws, horns, beak, teeth, striking limbs, or force-concentrating shape.\n  For objects: protrusions, edges, points as in v12.\n**def** — shell, thick fur, hide, carapace, or hard material.\n**spd** — lightness, wing, fin, sprinting leg, wheel, or motion-ready anatomy.\n**special** — functional complexity, patterning, or \"hidden energy\" in the subject.\n\nThe sum of all five stats must be between 200 and 350. Do not make everything\nstrong.\n\n`body_height_cm` is the canonical vertical height of the transformed Anima in\nits neutral battle stance, from ground contact to its highest permanent body\nlandmark. For a hovering creature, measure the body itself at its normal hover\nheight, excluding temporary trails or VFX. Choose one integer from 20 to 2000.\nIt is not sprite-cell fill and never measures nose-to-tail body length.\n\nUse the real subject's normal biological or object scale as the starting anchor,\nthen make one deliberate transformation decision:\n\n- A healthy non-human animal normally stays near its species' real adult crown\n  or shoulder height. Monsterized proportions alone do not make it gigantic.\n- A recognizable household object that is already large enough to battle may\n  stay near real scale.\n- A tiny handheld object such as a phone, controller, toy, or 13 cm console\n  becomes a small-bodied companion around a hug-and-carry doll: usually\n  45–60 cm. Playtron-class handhelds sit at this floor (~50 cm). Do not inflate\n  a pocket object to child or adult height just to fill the arena.\n- Use 20–40 cm only for an intentionally tiny, pocket, crawling, or swarm-like\n  creature whose brief explicitly depends on being smaller than a carried doll.\n- Use 70–120 cm for ordinary companions that are already that large, or whose\n  transformation clearly grows them to kid or mascot scale — not the default\n  for every small object.\n- Use 120–220 cm for clearly large companions. Exceed 220 cm only when the\n  transformed silhouette is explicitly towering or massive; values above\n  800 cm are rare colossal designs, never a default reward for visual detail.\n\nJudge vertical stance correctly: a quadruped uses ground-to-crown height, a\nserpentine creature uses its normal raised battle posture, and a long horizontal\nor flying body does not report its full length as height.\n\nDo not infer scale from camera distance, lens perspective, a hand in frame, or\nunknown furniture dimensions. Two captures of the same kind of subject and\ntransformation should receive similar heights.\n\n**element** — exactly one of:\n`metal`, `wood`, `stone`, `ceramic`, `glass`, `plastic`, `cloth`, `paper`,\n`plant`, `food`, `fauna`, `flow`, `spark`, `flame`, `frost`, `air`, `toxin`, `sound`.\n\nChoose by dominant material, biology, or function visible in the photo — not colour alone.\n\n**secondary_element** — nullable. At most one extra element from the same roster.\nSet it only when a second material or trait is **clearly visible and defensible**\nfrom the photo. It must differ from `element`. When unsure, use null.\n\n**Animal typing rule:** when `subject_kind` is `\"animal\"`, `element` MUST be\n`fauna`. `secondary_element` may reflect a visible anatomical or functional\ntrait — e.g. `air` for obvious wings, `flow` for aquatic anatomy or water,\n`frost` for a visibly cold-adapted coat, `toxin` for a clearly identified\nvenomous species — only if that cue is plainly defensible from the subject.\n\n**Object typing:** pick the best single primary from the 18; optional secondary\nonly with visible evidence (e.g. `metal` + `wood` for a tool with a wooden handle).\n\n**rarity** — integer 1 to 5, based on how visually distinctive the subject is.\nDo not inflate: 1 and 2 should be most common.\n\n---\n\n## PART 4 — CHARACTER, BODY PLAN, SURFACE, AND BATTLE EFFECTS\n\nWrite visual description only — no story or lore.\n\n`character_direction`: one short visual direction grounded in visible shape,\nproportions, colours, material or coat, finish, and functional details.\nDo not default every subject to fierce, angry, masculine, cute, or childlike.\nDo not infer a literal gender identity.\n\n`creature_brief`: 40 to 80 words. It must state:\n- the overall silhouette, derived from the subject's actual geometry or anatomy\n- where the head/face sits on that silhouette\n- whether arms and legs exist, and how many of each\n- if either is absent, how the creature moves, balances, or interacts instead\n- what the most distinctive structural feature becomes\n\nFor animals: preserve species-readable anatomy — do not turn a quadruped into a\nhumanoid unless the body plan naturally supports it. Prefer the animal's real\nlimb count and posture logic.\n\n`signature_features`: 2 to 4 short strings naming specific STRUCTURAL details\nthat must survive into the artwork. Never use logos, wordmarks, collars with\nreadable tags, or decorative symbols.\n\n`surface_finish`: one short phrase naming the dominant visible material, coat,\nshell, plumage, or finish.\n\n`damage_hints`: 2 to 3 short, distinct, **low-severity** signs appropriate to\nthe subject:\n\n- objects: same material-aware hints as earlier versions (crack, fray, scuff…)\n- animals: **fatigue and wear only** — drooped ear, ruffled dull feathers,\n  messy fur, slight slouch, tired eyes, dusty coat. **Never** blood, open wounds,\n  gore, broken bones, or graphic injury.\n\nDo not default to robotic or cybernetic damage unless electronic parts are\nvisibly present and named in `signature_features`.\n\n`suggested_name`: an invented creature name, 2 to 4 syllables, no real-world\nbrand, never ending in `mon`.\n\n`strike_name` / `surge_name`: exactly two short English Title Case words each,\ngrounded in material, anatomy, or function; distinct from each other.\n\n### Battle-effect plan\n\nCreate `strike_vfx` and `surge_vfx`. Each has:\n\n- `form`: exactly one of `arc`, `beam`, `trail`, `wave`, `eruption`, `ring`,\n  `scatter`, `tether`, `stamp`, `cloud`, `shatter`, `growth`\n- `motion`: exactly one of `projectile`, `sweep`, `impact`, `bloom`\n- `brief`: one concise visual sentence grounded in a photographed structural\n  feature, real surface material or coat, and the move name\n\nThe two effects MUST have different `form` and different `motion`. Never default\nto a round fireball or generic explosion.\n\n---\n\nAnalyse the attached photograph now. Respond only with JSON.\n",
+    "vision_schema": {
+      "type": "object",
+      "description": "Hasil analisis Anima Analyst v20. Skema disisipkan ke system_instruction; extractJson() dan validateVision() tetap pagar akhir.",
+      "propertyOrdering": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason",
+        "object_label",
+        "species_key",
+        "color_bucket",
+        "element",
+        "secondary_element",
+        "rarity",
+        "stats",
+        "body_height_cm",
+        "stat_reasoning",
+        "surface_finish",
+        "damage_hints",
+        "character_direction",
+        "creature_brief",
+        "signature_features",
+        "suggested_name",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "dominant_colors"
+      ],
+      "required": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason"
+      ],
+      "properties": {
+        "safe": {
+          "type": "boolean",
+          "description": "false kalau foto melanggar salah satu aturan GATE"
+        },
+        "is_object": {
+          "type": "boolean",
+          "description": "true kalau ada satu subjek diskret yang jelas (objek atau hewan)"
+        },
+        "subject_kind": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "object",
+            "animal"
+          ]
+        },
+        "reject_reason": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "human_face",
+            "human_body",
+            "unsafe_content",
+            "personal_info",
+            "too_unclear",
+            "no_object",
+            "animal_distress",
+            "animal_abuse",
+            "dangerous_situation",
+            "known_character"
+          ]
+        },
+        "object_label": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama subjek sehari-hari dalam bahasa Inggris"
+        },
+        "species_key": {
+          "type": "string",
+          "nullable": true,
+          "description": "snake_case, 2-4 segmen; boleh memuat cue visual unik foto ini"
+        },
+        "color_bucket": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "warm_red",
+            "warm_yellow",
+            "cool_blue",
+            "cool_green",
+            "purple_pink",
+            "neutral_light",
+            "neutral_dark",
+            "metallic",
+            "multicolor"
+          ]
+        },
+        "element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "secondary_element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "rarity": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "stats": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "atk": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "def": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "spd": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "special": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            }
+          }
+        },
+        "body_height_cm": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 20,
+          "maximum": 2000,
+          "description": "Tinggi vertikal kanonis Anima dalam stance Battle; benda genggam kecil memakai floor boneka gendong ~50 cm, bukan tinggi anak"
+        },
+        "stat_reasoning": {
+          "type": "object",
+          "nullable": true,
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "string"
+            },
+            "atk": {
+              "type": "string"
+            },
+            "def": {
+              "type": "string"
+            },
+            "spd": {
+              "type": "string"
+            },
+            "special": {
+              "type": "string"
+            }
+          }
+        },
+        "surface_finish": {
+          "type": "string",
+          "nullable": true,
+          "description": "Material, coat, plumage, shell, atau finish dominan yang terlihat"
+        },
+        "damage_hints": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "character_direction": {
+          "type": "string",
+          "nullable": true,
+          "description": "Arahan visual berdasarkan cue bentuk, proporsi, warna, dan material"
+        },
+        "creature_brief": {
+          "type": "string",
+          "nullable": true,
+          "description": "40-80 kata termasuk silhouette dan body plan"
+        },
+        "signature_features": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "suggested_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama kreatur rekaan, 2-4 suku kata"
+        },
+        "strike_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama serangan biasa unik, tepat dua kata Inggris pendek"
+        },
+        "surge_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama Special unik, tepat dua kata Inggris pendek"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual grounded pada struktur, material, dan nama move"
+            }
+          }
+        },
+        "surge_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual yang berbeda bentuk dan motion dari strike_vfx"
+            }
+          }
+        },
+        "dominant_colors": {
+          "type": "array",
+          "nullable": true,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          },
+          "description": "Hex seperti #a1b2c3"
+        }
+      }
+    },
+    "vision_evolve_system": "You are the Evolution Director for Scanima. You receive the current private\nIdle reference of one Anima and its stored capture metadata. Plan the **next**\nform in the same lineage with a new body plan, credible locomotion, visible\nmaturity, clean visual hierarchy, and unmistakable stage presence without\nlosing its semantic soul.\n\nRespond with JSON matching the provided schema. No prose outside JSON.\n\n## STYLE LOCK\n\nMatch Scanima's original late-1990s anime creature readability: clean linework,\nbold dark contours, broad flat color fields, hard cel shadows, minimal\ngradients, and an entirely original design. Growth is object-faithful\nmetamorphosis, never a generic dragon, humanoid, armored warrior, robot, or\ncyborg upgrade.\n\nClarity comes before ornament. A viewer must understand the creature at game\nsize from silhouette, proportion, posture, and two or three primary shape\ngroups. Final-stage power has no required body size or body type. Bulky, slim,\nelegant, compact, elongated, asymmetric, amorphous, aerial, or grounded forms\nare equally valid when derived from the lineage.\n\n## IDENTITY INVARIANTS — SOUL CONTRACT\n\nIdentity Invariants preserve why the creature feels like the same individual.\nThey are separate from silhouette anchors: body plan and focal geometry may\nchange around them.\n\nFor **Adult**, select 2–4 concrete Identity Invariants visible in the attached\nHatchling:\n\n- `identity_id`: unique lowercase snake_case semantic ID.\n- `domain`: `face_expression`, `sensory`, `structural_motif`,\n  `surface_signature`, or `motion_language`.\n- `source_truth`: objective semantic fact, including count, arrangement, or\n  relationship when those facts matter. Do not freeze incidental juvenile\n  proportions. Never put size words such as large, huge, tiny, or oversized\n  into `source_truth` for eyes or a face.\n- `identity_role`: emotional or character read created by the feature.\n- `maturation_path`: how geometry may mature while the semantic fact and\n  emotional read remain recognizable.\n- `current_expression`: how Adult realizes the same identity more maturely.\n- `evolved_policy`: `preserve`, or at most one `may_transfigure`.\n- `realization_mode`: always `preserve` for Adult.\n- `visible_lineage_evidence`: what remains visibly recognizable in Adult.\n\nIf the source has a visible face or sensory cluster, include at least one\n`face_expression` or `sensory` invariant. Do not invent a conventional face for\na faceless source. Its identity focal structure may instead be an aperture,\nsensory cluster, leading plane, gesture, or interaction structure that is\nactually visible.\n\nFor **Evolved**, copy each Adult invariant's `identity_id`, `domain`,\n`source_truth`, `identity_role`, `maturation_path`, and `evolved_policy` without\nsemantic changes. Update only `current_expression`, `realization_mode`, and\n`visible_lineage_evidence`.\n\nUse `transfigure` at most once and only for `may_transfigure`. Its visible\ndescendant remains concrete and pointable. At least two invariants remain\n`preserve`; if a face/sensory invariant exists, at least one remains\n`preserve`. Never merge paired eyes into one aperture or turn a warm,\ncompanion-like read into an empty or hostile one.\n\n## SHAPE BUDGET CONTRACT\n\nWrite one `shape_budget_contract`. It is a visual hierarchy, not a demand for a\nlarge torso.\n\n### Primary shapes\n\nChoose exactly 2–3 `primary_shapes`:\n\n- `shape_id`: unique lowercase snake_case ID.\n- `source_basis`: concrete visible source structure.\n- `stage_expression`: one clean drawable shape group for this stage.\n- `visual_role`: exactly one `dominant`; the rest are `support` or\n  `counterbalance`.\n\n`dominant` means first visual read. It may be a slender S-curve, vertical\ncolumn, long mantle, compact core, broad body, negative-space frame, or another\nsource-derived form. It does NOT mean physically largest, central, masculine,\nmuscular, heavy, or bulky.\n\n### Dominant motif and focal identity\n\nChoose one `dominant_motif` with `source_basis` and one memorable\n`stage_expression`. Other motifs support it.\n\nWrite one anatomy-agnostic `identity_focal_structure`:\n\n- `source_read`\n- `preserved_semantics`\n- `proportion_maturation`\n- `stage_expression`\n\nUse eyes, mouth, brow, jaw, or face only when they exist. Otherwise mature the\nreal sensory/interaction structure without adding human or animal anatomy.\n\n### Simplification and visual rest\n\nWrite 2–4 `simplification_actions`. Each names a visible `source_detail`, an\naction (`merge`, `enlarge`, or `omit`), and the cleaner `result`.\n\nAllow zero or one `detail_zones`. Name at least two broad `quiet_zones` that\nstay free of incidental internal marks. Choose `repetition_policy`:\n\n- `none`\n- `single_cluster`\n- `broad_grouped_pattern`\n\nLeaves, fur, scales, feathers, roots, cables, vents, folds, and other repeated\nfeatures must read as grouped forms rather than many equal small units.\n\n## MATURITY CONTRACT\n\nMaturity is anatomy-agnostic age and capability progression, not bulk, gender,\nanger, accessories, or glow.\n\nFor **Adult**, `target_read=adult`. For **Evolved**, `target_read=apex`.\n\nDescribe:\n\n- `identity_focal_maturation`: exact maturation of the real focal identity\n  structure.\n- `proportion_delta`: concrete before → after ratios, spacing, support, or\n  shape relationships.\n- `body_maturation`: how structure becomes more capable without prescribing\n  thick, slim, feminine, masculine, humanoid, or animal anatomy.\n- `posture_maturation`: how pose becomes more composed and intentional.\n- `preserved_personality`: emotional identity that remains.\n- `stage_delta`: drawable evidence that the stage is older/more complete.\n\nEvolved must move beyond Adult focal proportions. “Sharper,” “wiser,”\n“majestic,” “bigger,” or “more detailed” without geometric evidence fails.\n\n## OPEN APEX PRESENCE CONTRACT\n\nWrite one `presence_contract`.\n\n- `presence_tier`: `developing` for Adult, `apex` for Evolved.\n- `apex_thesis`: an open source-derived fantasy describing why the complete\n  lineage feels formidable, majestic, and dependable. It is not a body-type\n  label.\n- `presence_channels`: exactly two unique choices from `silhouette_line`,\n  `proportion`, `posture`, `negative_space`, `motion_language`,\n  `shape_distribution`, and `focal_motif`.\n- `channel_evidence`: exactly one concrete drawable result for each selected\n  channel.\n- `shape_hierarchy`: first, second, and optional third visual reads without\n  requiring a large central mass.\n- `authority_pose`: calm, controlled stage-appropriate Idle pose.\n- `reliability_cue`: visible source-derived reason this specific body can be\n  depended on.\n\nVision is free to keep or replace the Adult body archetype. The change must be\ntraceable to source features and the metamorphosis thesis. Never default to\nbulk, muscles, armor, humanoid anatomy, femininity, regalia, wings, or a\ncatalogued “final form” silhouette as a shortcut for power.\n\nThere is NO aura around the creature. No halo, corona, orbit, surrounding\nenergy, external glow, supernatural particle cloud, floating runes, or\npersistent effects in any character pose. Supernatural spectacle belongs only\nto the two separate VFX cells.\n\n## SILHOUETTE DELTA CONTRACT\n\nDesign from the black outer contour inward. At 96 px, current and next forms\nmust read as different silhouettes before color, focal detail, or texture.\n\nChoose one `transformation_archetype`:\n\n- `breakout`: enclosure opens and the inner organism becomes the new read.\n- `unfolding`: compact parts deploy into a new spatial arrangement.\n- `inversion`: underside, interior, or rear feature becomes dominant.\n- `rooted_to_mobile`: supports become a credible locomotion system.\n- `shell_shedding`: old enclosure becomes partial structure around a new form.\n- `mass_redistribution`: material moves into a new center and contour.\n\nMark at least two `changed_dimensions`, then describe exact before → after\nchanges for `dominant_mass_shift`, `posture_change`, `outer_contour_change`,\nand `locomotion_or_body_plan_change`. `dominant_mass_shift` is legacy wire\nwording: describe visual weight distribution; it does not require bulk.\n\n“Larger,” “more numerous,” “thicker,” “intricate,” “deeply textured,”\n“multi-tiered,” “ornate,” “glowing,” or “more intimidating” alone does not\ncount.\n\n`changed_dimensions` must include `locomotion_or_body_plan`. Replacing one\nfixed base with another (pot → mound, stand → stump, wall bracket → fused\nplinth) fails.\n\n## MOBILITY CONTRACT\n\nEvery Adult and Evolved Anima must look able to hop, walk, roll, crawl, leap,\nor otherwise reposition itself in Home and Battle. This is anatomy-agnostic:\nplants, pots, statues, furniture, appliances, wall objects, and other\nstationary sources must gain a visible movement system derived from existing\nfeatures. Already-mobile sources keep or clarify that gait.\n\nWrite one `mobility_contract`:\n\n- `locomotion_mode`: concise source-appropriate movement method.\n- `source_derivation`: which visible source feature becomes the movement\n  system.\n- `support_geometry`: a few discrete, clearly separated supports or another\n  readable movement structure.\n- `movement_read`: what a viewer can point to and immediately understand as\n  capable of locomotion.\n- `idle_stability`: how the creature rests without fusing into a base.\n- `battle_mobility`: how it advances, retreats, dodges, hops, or pivots.\n\nIdle may touch the ground at a few discrete support points. Visible negative\nspace must remain under the body or between supports. Home hopping is a\ncreature bounce, never a planted object straining against soil.\n\nInvalid result language: immobile, stationary, planted, rooted to the ground,\nfused to the ground, pedestal, stump, locked base, subtle shifts, or future\nmobility. “Magic” alone is not locomotion. Floating or gliding requires\nvisible source-derived anatomy or material mechanics, never aura.\n\n## FACE AGE CONTRACT\n\nFaces and sensory focals must age like an anime character growing up, not like\na sticker copied onto a new body. Soul is count, pairing, and emotional role.\nAge is eye-to-face ratio, eye construction, craniofacial mass, and mouth scale.\n\nWrite one `face_age_contract`:\n\n- `age_read`: `adolescent` for Adult, `mature` for Evolved. Never `child` on\n  these stages.\n- `eye_to_face_ratio`: how much of the face the eyes occupy at this stage,\n  compared with the attached reference.\n- `eye_construction`: how the eyes are newly drawn at this age. Not the same\n  graphic with a sharper outline.\n- `craniofacial_mass`: how jaw, snout, brow, forehead, or the real focal plate\n  gains adult structure.\n- `mouth_to_eye_relationship`: how mouth scale sits relative to the eyes.\n- `prior_copy_forbidden`: the exact reference face graphic that must not be\n  copied, including oversized eyes.\n\nAdult is the teen/young-adult face: eyes recede, more cheek and brow, mouth\nno longer a Hatchling speck. Evolved is the mature face: smallest relative\neyes, set construction, more face real-estate, still the same individual.\nMature is not angry, fierce, masculine, or empty. Keep the companion read.\n\nIf the source has no face, apply the same ratio shift to the real identity\nfocal structure. Do not invent a human face.\n\nSize adjectives in a locked Adult `source_truth` (large, huge, tiny) do not\noverride this contract. Redraw the face at the contracted age.\n\n## SILHOUETTE BREAK CONTRACT\n\nThe attached Idle is identity, color, and material. It is not a composition\nblueprint. A thicker, taller, or more decorated copy of the current outline\nfails even when the archetype name is new.\n\nWrite one `silhouette_break_contract`:\n\n- `prior_silhouette_read`: the current black contour in one sentence: support\n  class plus where mass sits.\n- `forbidden_copy`: the exact current outline that must not recur.\n- `new_contour_read`: the next black contour at 96 px.\n- `topology_change`: how body axis or support topology changes. Not thicker,\n  larger, fewer of the same legs, or a bigger canopy on the same walker.\n\nIf the current form walks on discrete legs, the next form must leave that gait\nfamily. Change the axis or topology: coil, tether, roll, undulate, glide, or\nanother source-derived non-copy. “Two thicker pillar-legs” after a four-leg\nwalker still reads as the same creature.\n\n## LINEAGE ANCHORS\n\nChoose exactly three visible, non-synonymous source features. At least two use\n`transform`. Each `next_expression` changes function or expression while\nremaining traceable.\n\nList genuinely new anatomy in `derived_anatomy`. Its `source_anchor_index`\npoints to a `transform` anchor, and `derived_from` repeats that source feature.\nThe array may be empty. Never invent unrelated anatomy.\n\n## STAGE\n\nAdult is a complete mobile bridge with a new body plan, mature focal read,\nclean shape budget, visible locomotion, and one hook, while leaving room for\nthe final form.\n\nEvolved is the lineage culmination with a second metamorphosis and realized\n`apex_thesis`. Do not repeat the Adult archetype. Copy every Adult\n`identity_invariants` `identity_id`; never drop a face or sensory invariant.\nDo not add a detail zone. Keep discrete unfused supports with visible negative\nspace under the body. Do not merge supports into a root mass, mound, or\npedestal. `face_age_contract.age_read` must be `mature`. Do not copy the Adult\neye sticker; redraw a mature face of the same individual. Do not copy the Adult\nwalker silhouette or limb count. If Adult walks on legs, Evolved must coil,\ntether, roll, undulate, or otherwise change topology. It may be more\nmassive, more slender, more compact, or differently proportioned; stage power\ncomes from the selected presence channels, not size.\n\nWrite one `metamorphosis_thesis` and one concrete `stage_brief`.\n\n## HEIGHT\n\nPropose integer `body_height_cm` and explain it in\n`height_change_rationale`.\n\n- Adult: 1.15×–1.35× current height.\n- Evolved: 0.75×–1.50× current height.\n- Clamp absolute height to 20–2000 cm.\n\nEvolved may shrink when a compact, slender, or reorganized body archetype\njustifies it. Height does not indicate combat power.\n\n## MOVES, EFFECTS, AND COLOR SAFETY\n\nProvide two new two-word move names and two materially distinct VFX briefs.\nChoose `vfx_palette` as one or two colors from `gold`, `amber`, `orange`,\n`crimson`, `rose`, `magenta`, `violet`, `indigo`, `blue`, or `pale_cyan`.\nBoth VFX briefs explicitly name at least one selected color.\n\nVFX may be spectacular, especially for Evolved, but appear ONLY in\n`fx_strike` and `fx_surge`. Never put their particles, energy, glow, debris, or\ngeometry around the body in character cells.\n\nVFX may never request green, lime, chartreuse, emerald, verdant, yellow-green,\nneon green, or electric green. Natural green anatomy remains allowed in muted,\nobject-faithful hues.\n\nChoose `strike_effect_id` and `surge_effect_id` only from:\n`armor_pierce`, `guard_break`, `drain`, `barrier`, `poison`, `burn`, `slow`,\n`armor_break`.\n\n- Attack: `armor_pierce`, `guard_break`, `drain`, `poison`, `burn`, `slow`,\n  `armor_break`.\n- Special: `barrier`, `guard_break`, `drain`, `burn`, `slow`,\n  `armor_break`.\n\nEvolved effect upgrades:\n\n- `armor_pierce` → `armor_pierce` or `guard_break`\n- `guard_break` → `guard_break`\n- `drain` → `drain`\n- `barrier` → `barrier`\n- `poison` → `poison` or `burn`\n- `burn` → `burn`\n- `slow` → `slow` or `armor_break`\n- `armor_break` → `armor_break`\n\nNever invent mechanics, numbers, durations, or proc rates.\n\n## FORBIDDEN\n\n- Logos, text, named characters, copied costumes, or named franchise designs.\n- Reusing the old dominant contour, shape arrangement, or juvenile focal read.\n- Copying the previous stage's eye graphic or eye-to-face ratio.\n- More detail, repeated parts, accessories, size, aura, glow, muscles, armor,\n  humanoid anatomy, femininity, masculinity, or anger presented as power.\n- Selecting new Identity Invariants at Evolved or changing locked semantics.\n- Hiding, deleting, merging, covering, or abstracting a preserved invariant.\n- More than three primary shapes, more than one detail zone, or fewer than two\n  quiet zones.\n- Aura, halo, corona, orbit, external glow, surrounding energy, floating\n  particles, runes, or attack effects in character cells.\n- A body fused to soil, a mound, a pot, a plinth, a stump, a wall mount, or\n  any other fixed base. Movement that is only promised, not drawn.\n- Duplicate/empty anchors, move names, effects, presence channels, shape IDs,\n  or evidence channels.\n",
+    "vision_evolve_schema": {
+      "type": "object",
+      "properties": {
+        "identity_invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identity_id": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string",
+                "enum": [
+                  "face_expression",
+                  "sensory",
+                  "structural_motif",
+                  "surface_signature",
+                  "motion_language"
+                ]
+              },
+              "source_truth": {
+                "type": "string"
+              },
+              "identity_role": {
+                "type": "string"
+              },
+              "maturation_path": {
+                "type": "string"
+              },
+              "current_expression": {
+                "type": "string"
+              },
+              "evolved_policy": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "may_transfigure"
+                ]
+              },
+              "realization_mode": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "transfigure"
+                ]
+              },
+              "visible_lineage_evidence": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "identity_id",
+              "domain",
+              "source_truth",
+              "identity_role",
+              "maturation_path",
+              "current_expression",
+              "evolved_policy",
+              "realization_mode",
+              "visible_lineage_evidence"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "shape_budget_contract": {
+          "type": "object",
+          "properties": {
+            "primary_shapes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shape_id": {
+                    "type": "string"
+                  },
+                  "source_basis": {
+                    "type": "string"
+                  },
+                  "stage_expression": {
+                    "type": "string"
+                  },
+                  "visual_role": {
+                    "type": "string",
+                    "enum": [
+                      "dominant",
+                      "support",
+                      "counterbalance"
+                    ]
+                  }
+                },
+                "required": [
+                  "shape_id",
+                  "source_basis",
+                  "stage_expression",
+                  "visual_role"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 3
+            },
+            "dominant_motif": {
+              "type": "object",
+              "properties": {
+                "source_basis": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_basis",
+                "stage_expression"
+              ]
+            },
+            "identity_focal_structure": {
+              "type": "object",
+              "properties": {
+                "source_read": {
+                  "type": "string"
+                },
+                "preserved_semantics": {
+                  "type": "string"
+                },
+                "proportion_maturation": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_read",
+                "preserved_semantics",
+                "proportion_maturation",
+                "stage_expression"
+              ]
+            },
+            "simplification_actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source_detail": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "merge",
+                      "enlarge",
+                      "omit"
+                    ]
+                  },
+                  "result": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "source_detail",
+                  "action",
+                  "result"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "detail_zones": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "zone": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "zone",
+                  "purpose"
+                ]
+              },
+              "minItems": 0,
+              "maxItems": 1
+            },
+            "quiet_zones": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "repetition_policy": {
+              "type": "string",
+              "enum": [
+                "none",
+                "single_cluster",
+                "broad_grouped_pattern"
+              ]
+            }
+          },
+          "required": [
+            "primary_shapes",
+            "dominant_motif",
+            "identity_focal_structure",
+            "simplification_actions",
+            "detail_zones",
+            "quiet_zones",
+            "repetition_policy"
+          ]
+        },
+        "mobility_contract": {
+          "type": "object",
+          "properties": {
+            "locomotion_mode": {
+              "type": "string"
+            },
+            "source_derivation": {
+              "type": "string"
+            },
+            "support_geometry": {
+              "type": "string"
+            },
+            "movement_read": {
+              "type": "string"
+            },
+            "idle_stability": {
+              "type": "string"
+            },
+            "battle_mobility": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "locomotion_mode",
+            "source_derivation",
+            "support_geometry",
+            "movement_read",
+            "idle_stability",
+            "battle_mobility"
+          ]
+        },
+        "face_age_contract": {
+          "type": "object",
+          "properties": {
+            "age_read": {
+              "type": "string",
+              "enum": [
+                "adolescent",
+                "mature"
+              ]
+            },
+            "eye_to_face_ratio": {
+              "type": "string"
+            },
+            "eye_construction": {
+              "type": "string"
+            },
+            "craniofacial_mass": {
+              "type": "string"
+            },
+            "mouth_to_eye_relationship": {
+              "type": "string"
+            },
+            "prior_copy_forbidden": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "age_read",
+            "eye_to_face_ratio",
+            "eye_construction",
+            "craniofacial_mass",
+            "mouth_to_eye_relationship",
+            "prior_copy_forbidden"
+          ]
+        },
+        "silhouette_break_contract": {
+          "type": "object",
+          "properties": {
+            "prior_silhouette_read": {
+              "type": "string"
+            },
+            "forbidden_copy": {
+              "type": "string"
+            },
+            "new_contour_read": {
+              "type": "string"
+            },
+            "topology_change": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "prior_silhouette_read",
+            "forbidden_copy",
+            "new_contour_read",
+            "topology_change"
+          ]
+        },
+        "maturity_contract": {
+          "type": "object",
+          "properties": {
+            "target_read": {
+              "type": "string",
+              "enum": [
+                "adult",
+                "apex"
+              ]
+            },
+            "identity_focal_maturation": {
+              "type": "string"
+            },
+            "proportion_delta": {
+              "type": "string"
+            },
+            "body_maturation": {
+              "type": "string"
+            },
+            "posture_maturation": {
+              "type": "string"
+            },
+            "preserved_personality": {
+              "type": "string"
+            },
+            "stage_delta": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "target_read",
+            "identity_focal_maturation",
+            "proportion_delta",
+            "body_maturation",
+            "posture_maturation",
+            "preserved_personality",
+            "stage_delta"
+          ]
+        },
+        "presence_contract": {
+          "type": "object",
+          "properties": {
+            "presence_tier": {
+              "type": "string",
+              "enum": [
+                "developing",
+                "apex"
+              ]
+            },
+            "apex_thesis": {
+              "type": "string"
+            },
+            "presence_channels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "silhouette_line",
+                  "proportion",
+                  "posture",
+                  "negative_space",
+                  "motion_language",
+                  "shape_distribution",
+                  "focal_motif"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "channel_evidence": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "silhouette_line",
+                      "proportion",
+                      "posture",
+                      "negative_space",
+                      "motion_language",
+                      "shape_distribution",
+                      "focal_motif"
+                    ]
+                  },
+                  "drawable_evidence": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "channel",
+                  "drawable_evidence"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "shape_hierarchy": {
+              "type": "string"
+            },
+            "authority_pose": {
+              "type": "string"
+            },
+            "reliability_cue": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "presence_tier",
+            "apex_thesis",
+            "presence_channels",
+            "channel_evidence",
+            "shape_hierarchy",
+            "authority_pose",
+            "reliability_cue"
+          ]
+        },
+        "lineage_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_feature": {
+                "type": "string"
+              },
+              "next_expression": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "retain",
+                  "transform"
+                ]
+              }
+            },
+            "required": [
+              "source_feature",
+              "next_expression",
+              "mode"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "transformation_archetype": {
+          "type": "string",
+          "enum": [
+            "breakout",
+            "unfolding",
+            "inversion",
+            "rooted_to_mobile",
+            "shell_shedding",
+            "mass_redistribution"
+          ]
+        },
+        "metamorphosis_thesis": {
+          "type": "string"
+        },
+        "stage_brief": {
+          "type": "string"
+        },
+        "metamorphosis_notes": {
+          "type": "string",
+          "nullable": true
+        },
+        "changed_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dominant_mass",
+              "posture",
+              "outer_contour",
+              "locomotion_or_body_plan"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "dominant_mass_shift": {
+          "type": "string"
+        },
+        "posture_change": {
+          "type": "string"
+        },
+        "outer_contour_change": {
+          "type": "string"
+        },
+        "locomotion_or_body_plan_change": {
+          "type": "string"
+        },
+        "derived_anatomy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "new_part": {
+                "type": "string"
+              },
+              "derived_from": {
+                "type": "string"
+              },
+              "source_anchor_index": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              }
+            },
+            "required": [
+              "new_part",
+              "derived_from",
+              "source_anchor_index"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "body_height_cm": {
+          "type": "integer"
+        },
+        "height_change_rationale": {
+          "type": "string"
+        },
+        "strike_name": {
+          "type": "string"
+        },
+        "surge_name": {
+          "type": "string"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "surge_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "vfx_palette": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "amber",
+              "orange",
+              "crimson",
+              "rose",
+              "magenta",
+              "violet",
+              "indigo",
+              "blue",
+              "pale_cyan"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "strike_effect_id": {
+          "type": "string",
+          "enum": [
+            "armor_pierce",
+            "guard_break",
+            "drain",
+            "poison",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        },
+        "surge_effect_id": {
+          "type": "string",
+          "enum": [
+            "barrier",
+            "guard_break",
+            "drain",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        }
+      },
+      "required": [
+        "identity_invariants",
+        "shape_budget_contract",
+        "mobility_contract",
+        "face_age_contract",
+        "silhouette_break_contract",
+        "maturity_contract",
+        "presence_contract",
+        "lineage_anchors",
+        "transformation_archetype",
+        "metamorphosis_thesis",
+        "stage_brief",
+        "changed_dimensions",
+        "dominant_mass_shift",
+        "posture_change",
+        "outer_contour_change",
+        "locomotion_or_body_plan_change",
+        "derived_anatomy",
+        "body_height_cm",
+        "height_change_rationale",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "vfx_palette",
+        "strike_effect_id",
+        "surge_effect_id"
+      ]
+    },
+    "sprite_sheet": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world object.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, strong readable\nsilhouette, object-led proportions, slightly exaggerated anatomy where anatomy\nexists, and an expressive anime creature face.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are appropriate\nONLY when the photographed object is itself electronic or mechanical. Organic,\nceramic, glass, fabric, wood, paper, food, and plant objects must retain their\nown material language instead of becoming robots or cyborgs.\n\nOBJECT CONTEXT\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize logos, symbols, badges, printed words, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ntechnical parts or cybernetic anatomy unsupported by the object.\n\nCHARACTER RANGE — FOLLOW THE OBJECT\nExpress the character direction consistently through silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent bows, eyelashes, muscles, facial hair, clothing,\nsymbols, or gender-coded accessories unsupported by the object.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, trademarked stripe arrangement,\nprinted tag, model number, readable letter, or emblem-like graphic in the\nreference as absent. Draw plain object-faithful material in its place.\n\nNever invent a replacement emblem, sigil, rune, badge, chevron, swoosh, shield,\ncrest icon, isolated stripe motif, readable text, or logo-like symbol. Surface\ninterest comes only from real material cues such as weave, grain, glaze, seams,\nnatural speckles, leaf veins, wear, or functional geometry.\n\nOBJECT-TO-CREATURE TRANSFORMATION — MOST IMPORTANT\nThe result must look like a real creature born from the object, not an object\nwith generic eyes, arms, and legs pasted onto it. Preserve the object's\nsilhouette logic and strongest physical features, but simplify tiny details.\n\nChoose a body plan that naturally follows this object's geometry. It may be\nbipedal, quadrupedal, serpentine, shelled, floating, rolling, rooted, winged,\nmany-legged, or amorphous. Zero arms, zero legs, or neither is fully valid.\nNever add hands merely so the creature can gesture or feet merely so it can\nstand. Do not default every object to a mascot, robot, or cyborg anatomy.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe object's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Accent colors follow anatomy or material boundaries and never form an\nemblem or logo-like isolated mark.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks on it. Highlights must be a lighter version of that material's own hue.\nWhite is allowed only for eye sclera, teeth, and real naturally white material\nexplicitly named in the object context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count including zero,\npalette, material finish, accessories, anatomy, character direction, and\nsignature features. Only pose, expression, restrained accents, and damage state\nmay change. The two effect cells contain ONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb or object-derived tool,\nbody thrust, and motion accents attack toward canvas-left. A `projectile` or\n`sweep` effect must also have a clear canvas-left direction. An `impact` or\n`bloom` effect is centered and may be directionless; never add a comet tail to\nmake it look like a projectile. The client mirrors the complete sheet for a\ncreature fighting from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\nThe post-process rejects the entire sheet rather than guessing fragment\nownership when this safe envelope is violated.\n\nDetached accents ARE allowed and encouraged where the pose calls for them, but\nthey must remain compact, visually clustered near their own character or effect,\nand wholly inside the safe envelope. Nothing may be cropped. No panel borders,\ngrid lines, or cell labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry default expression.\nNever use a fierce glare, snarl, clenched battle face, or attack-ready posture.\nNo major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich: use restrained motion lines, sparks, dust, or tiny\ndebris that fit the object's material and the action. These accents may be\ndetached, but every one must stay close to the character and within this cell's\n12% safe envelope. Never let an accent drift into Idle, Sleep, or another cell.\n\nTOP RIGHT — SLEEP\nPeaceful naturally curled, lowered, floating, folded, or resting sleeping pose\nwith closed eyes and at most two small floating Z symbols. Z symbols remain in\nthis cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nexpression; not a battle face. Tiny celebratory accents may be used only inside\nthis cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Droopy or pleading expression,\nslumped posture, perhaps one tiny drool or material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains and a mildly disgusted or\nembarrassed expression. No cracks, chips, tears, or DAMAGED signs.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage must affect the visible material. Never expose wires, circuits, robot\njoints, gears, or machinery unless that exact component is a recognition\nanchor. Keep damage restrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS object's\nstructural features, real material, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion. A\nclosed ball is allowed only if the photographed object's real geometry or\nfunction is itself spherical or launches a ball. Do not add a travel tail to\n`impact` or `bloom`.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nreal material language. Dark graphic contour only. No white border, text,\nletters, or creature body. Stay inside this cell's 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. It may feel more\npowerful than Strike but cannot reuse Strike's silhouette or simply scale it up.\nUse the same object-derived palette and material language. Dark graphic contour\nonly. No white border, text, letters, or creature body. Stay inside this cell's\n12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the object is naturally green,\nuse darker, lighter, or less saturated object greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space must be exact chroma background #00FF00. Never fill or outline\nnegative space with white, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe or leaf marking. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape inside the creature. Remove it\nunless it is an eye sclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, sigils, badges, runes, or swooshes.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_evolve": "Create a polished 2D character sheet for the {{stage_name}} form of the ONE\noriginal creature-monster shown in the reference image. It is the same lineage,\nbut its body plan, maturity, apex direction, and black outer silhouette must be\nunmistakably new without losing its semantic soul.\n\nINSTRUCTION PRIORITY\n1. Technical layout, safety, and chroma contracts.\n2. Semantic soul: count, pairing, and identity role. Not juvenile size.\n3. Face age: redraw the face at the contracted age.\n4. Silhouette break: do not copy the reference outline, limb count, or stance.\n5. Visible locomotion and unfused supports.\n6. Shape Budget and visual clarity.\n7. Anatomy-agnostic maturity.\n8. Open apex presence.\n9. Minimal polish.\n\nIf novelty conflicts with a preserved Identity Invariant, redesign the\nsurrounding body plan. Never sacrifice soul. If soul conflicts with a copied\njuvenile eye size, follow FACE AGE.\n\nGLOBAL STYLE LOCK — MATCH RENDERING, NOT OLD SHAPE\n2D Japanese anime creature character design with clear silhouettes and\nexpressive readability of late-1990s monster games, while remaining entirely\noriginal. Clean confident anime linework, moderately bold dark contours, broad\nflat base-color regions, crisp 2–3 level cel shading, hard-edged shadows,\ncontrolled highlights, and minimal gradients. Never CGI, painterly concept art,\nglossy rendering, or realistic illustration.\n\nClarity comes before ornament. Build the character from two or three primary\nshape groups. A primary shape is a first-read graphic form, NOT a requirement\nfor a large, thick, heavy, central, masculine, muscular, or bulky body.\n\nTechno-organic or mechanical details are appropriate ONLY when the original\nobject is electronic or mechanical. Other materials evolve through their own\nmaterial language rather than becoming robots or cyborgs.\n\nLINEAGE EVIDENCE\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nOriginal visual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nEarlier-form features identify source material and character essence. They are\nNOT a composition blueprint:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\n\nIDENTITY INVARIANTS — PRESERVE THE SOUL\n{{identity_invariants_as_bullets}}\n\nFor every `[preserve]` invariant, keep its objective count or relationship and\nidentity role immediately visible. Follow its Maturation Path. Ignore size\nadjectives such as large, huge, tiny, or oversized in source_truth. Geometry\nmay lengthen, compress, widen, narrow, move, or integrate into a new body plan\nwhile the semantic fact and emotional read remain recognizable.\n\nFACE AGE CONTRACT — MUST BE VISIBLE\nAge read: {{face_age_read}}\nEye-to-face ratio: {{eye_to_face_ratio}}\nEye construction: {{eye_construction}}\nCraniofacial mass: {{craniofacial_mass}}\nMouth to eyes: {{mouth_to_eye_relationship}}\nDo not copy from the reference: {{prior_copy_forbidden}}\n\nRedraw the face (or the real identity focal structure) as this age. Do not\npaste the reference Idle's eyes onto a new body. Adult is adolescent: eyes\nrecede, more cheek and brow. Evolved is mature: smallest relative eyes, set\nconstruction, more face real-estate. Mature is not angry, fierce, or empty.\nKeep the companion read.\n\nSILHOUETTE BREAK — MUST BE VISIBLE AT 96 PX\nCurrent outline to leave: {{prior_silhouette_read}}\nDo not copy: {{forbidden_silhouette_copy}}\nNew black contour: {{new_contour_read}}\nTopology change: {{topology_change}}\n\nThe attached Idle is identity, color, and material only. Do not copy its limb\ncount, stance, canopy arrangement, or outer contour. A thicker, taller, or\nmore decorated walker with the same legs fails.\n\nNever invent a conventional face for a faceless source. If the Plan identifies\nan aperture, sensory cluster, leading plane, gesture, or interaction structure\nas the identity focal structure, mature that real structure.\n\nNever merge two eyes into one aperture, cover the primary identity read, hide a\npreserved feature, or turn a warm companion-like identity into an empty or\nhostile one.\n\nAt most one `[transfigure]` invariant may change count, arrangement, or physical\nform. Its visible lineage evidence must remain a concrete, pointable descendant.\n\nSHAPE BUDGET — TWO OR THREE FIRST READS\nPrimary shape groups:\n{{primary_shapes_as_bullets}}\n\nExactly one Plan shape is `[dominant]`. Dominant means the viewer reads it\nfirst. It may be a slender line, compact core, broad body, long mantle,\nnegative-space frame, vertical column, S-curve, or another source-derived\nshape. Do not inflate it merely because it is dominant.\n\nDominant motif source:\n{{dominant_motif_source}}\n\nDominant motif at this stage:\n{{dominant_motif_expression}}\n\nIdentity focal source:\n{{identity_focal_source}}\n\nIdentity semantics that remain:\n{{identity_focal_semantics}}\n\nFocal proportion maturation:\n{{identity_focal_proportion}}\n\nFocal expression at this stage:\n{{identity_focal_expression}}\n\nSIMPLIFY BEFORE ADDING\n{{simplification_actions_as_bullets}}\n\nThe Plan explicitly pays for evolution by merging, enlarging, or omitting old\nsmall details. Do not restore omitted details. Do not split a grouped result\nback into many equal small units.\n\nAllowed detail zone:\n{{detail_zones_as_bullets}}\n\nQuiet zones:\n{{quiet_zones_as_bullets}}\n\nRepetition policy: {{repetition_policy}}\n\nDetail exists only inside the listed detail zone. Quiet zones use broad\ncolor/material fields with few or no internal lines. Group leaves, fur, scales,\nfeathers, roots, cables, vents, folds, and similar repeated anatomy according\nto the repetition policy.\n\nMATURITY CONTRACT — {{maturity_target_read}}\nIdentity focal maturation:\n{{identity_focal_maturation}}\n\nConcrete proportion delta:\n{{proportion_delta}}\n\nBody maturation:\n{{body_maturation}}\n\nPosture maturation:\n{{posture_maturation}}\n\nPersonality that remains:\n{{preserved_personality}}\n\nConcrete maturity delta:\n{{maturity_stage_delta}}\n\nMaturity is visible through source-appropriate geometry, proportion, support,\nand posture. A copied juvenile focal structure on a changed body FAILS. Anger,\nsharp eyes, accessories, gender coding, muscles, bulk, or larger size do not\ncreate maturity.\n\nOPEN APEX PRESENCE — {{presence_tier}}\nApex thesis:\n{{apex_thesis}}\n\nSelected presence channels:\n{{presence_channels_as_bullets}}\n\nDrawable channel evidence:\n{{channel_evidence_as_bullets}}\n\nShape hierarchy:\n{{shape_hierarchy}}\n\nAuthority pose:\n{{authority_pose}}\n\nReliability cue:\n{{reliability_cue}}\n\nExpress stage power through exactly the selected visual channels. The body\narchetype is free: bulky, slim, elegant, compact, elongated, asymmetric,\namorphous, aerial, or grounded are equally valid. Do not add mass, muscle,\narmor, humanoid anatomy, femininity, masculinity, regalia, or size merely to\nsignal power.\n\nCHARACTER CELLS HAVE NO AURA\nThe creature has no aura, halo, corona, orbit, surrounding energy, external\nglow, supernatural particle cloud, floating rune, energy flame, or persistent\neffect in ANY of the seven character cells. Final evolution does not change\nthis rule. Supernatural spectacle appears only in the two separate VFX cells.\n\nCHARACTER ESSENCE — PRESERVE IT\nMature the same emotional essence without copying unrelated juvenile geometry.\nNever default to fierce, angry, masculine, feminine, muscular, armored,\nhumanoid, regal, or generic adult coding. Do not invent gender-coded anatomy or\naccessories unsupported by the Plan.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, stripe arrangement, printed tag,\nmodel number, letter, or emblem-like graphic as absent. Draw plain\nobject-faithful material and never invent a replacement symbol.\n\nEVOLUTION DESIGN — {{stage_name}}\nArchetype: {{transformation_archetype}}\nMetamorphosis thesis: {{metamorphosis_thesis}}\n\nBuild the new black outer contour FIRST. At 96 px, a viewer must distinguish\nthe reference form from this form without color, focal detail, texture, or VFX.\nNever reuse the old dominant outline, radial arrangement, center of visual\nweight, or posture and then decorate it.\n\nRequired changed dimensions:\n{{changed_dimensions_as_bullets}}\n\nDominant visual weight — exact before → after:\n{{dominant_mass_shift}}\n\nPosture — exact before → after:\n{{posture_change}}\n\nOuter contour — exact before → after:\n{{outer_contour_change}}\n\nLocomotion or body plan — exact before → after:\n{{locomotion_or_body_plan_change}}\n\nMOBILITY CONTRACT — MUST BE VISIBLE\nLocomotion mode:\n{{locomotion_mode}}\n\nDerived from:\n{{mobility_source_derivation}}\n\nSupport geometry:\n{{support_geometry}}\n\nImmediate movement read:\n{{movement_read}}\n\nIdle stability:\n{{idle_stability}}\n\nBattle mobility:\n{{battle_mobility}}\n\nThis Anima must look able to hop, walk, roll, crawl, leap, or otherwise\nreposition with the player. Show the movement structure clearly in Idle and\nuse it decisively in Battle. Idle may touch the ground at a few discrete\nsupport points, but visible negative space must remain under the body or\nbetween supports.\n\nInvalid result: a body fused to soil, a mound, a pot, a plinth, a stump, a\nwall mount, or any other fixed base. “Subtle shifts,” “future mobility,” and\nmagic without visible mechanics fail. Do not replace one fixed base with\nanother.\n\nLineage anchor transformations:\n{{anchor_transformations_as_bullets}}\n\nDerived anatomy:\n{{derived_anatomy_as_bullets}}\n\nConcrete stage brief:\n{{evolution_brief}}\n\nAdditional metamorphosis notes:\n{{metamorphosis_notes}}\n\nHeight change rationale:\n{{height_change_rationale}}\n\nThe reference remains evidence for material, palette family, essence, source\nfeatures, and Identity Invariants. It does not otherwise lock face location,\nlimb count, proportions, body-plan logic, body archetype, or shape distribution.\nNew anatomy is allowed only when the Plan traces it to a visible old feature.\n\nThe result must be surprising yet explainable. Do not solve evolution by making\nthe same body larger or by adding repeated parts, intricate texture, cracks,\narmor, wings, horns, claws, weapons, badges, symbols, humanoid limbs, animal\nparts, robot parts, or cyborg parts.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks. Highlights use a lighter version of the material's own hue. White is\nallowed only for eye sclera, teeth, and real naturally white material.\n\nVFX COLOR SAFETY — EFFECT CELLS ONLY\nChroma green is a transport color only. Attack and Special VFX use ONLY:\n{{vfx_palette}}\n\nNever render green, lime, chartreuse, emerald, verdant, yellow-green, neon\ngreen, electric green, or any near-#00FF00 energy. This ban applies even when\nthe creature is a plant or the move uses leaf/root geometry. Naturally green\nanatomy uses forest, moss, olive, muted yellow-green, or another visibly\ndarker/less-saturated body green, never chroma-like glow.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact same new-stage individual. Preserve\nits proportions, mature identity focal structure, primary shapes, palette,\nmaterial, Identity Invariants, and transformed anchors. The two effect cells\ncontain ONLY battle effects.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nEvery character cell faces canvas-left in the same forward-left three-quarter\norientation. Never mirror, turn around, or swap asymmetrical landmarks.\n\nThe BATTLE pose attacks toward canvas-left through body pose alone. Do not add\nan attack trail, impact, projectile, energy, or motion effect around the body.\nThe client overlays the separate effect cell and mirrors the complete sheet\nwhen this creature fights from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nUse a three-quarter view from slightly above, facing forward-left. Full body at\ncomparable scale in every character cell.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, Z, stain, and battle effect at least 12% of that cell's width and\nheight away from every internal seam. Nothing enters another cell. Nothing is\ncropped. No borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nCalm, open, non-angry authority pose specified by the Plan. The dominant shape,\nidentity focal structure, shape hierarchy, preserved invariants, and complete\nmovement system are clear. Discrete support points with visible negative space\nbeneath or between them. Not fused to a mound, pot, plinth, stump, or wall.\nNo aura, particles, glow, symbols, debris, or transient effects.\n\nTOP CENTER — BATTLE\nDynamic battle-ready pose using {{locomotion_mode}}. The body is mid-reposition,\nnot planted. Keep the mature focal read and shape hierarchy. Body only: no\nprojectile, slash, trail, burst, spark, debris, or energy effect.\n\nTOP RIGHT — SLEEP\nPeaceful natural resting pose with closed eyes when eyes exist and at most two\nsmall Z symbols, all inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same mature character, pleased after care. Express happiness through face,\nsensory structure, gesture, and pose only. No celebratory particles, sparkles,\nstars, or floating icons.\n\nMIDDLE CENTER — HUNGRY\nThe same mature character wanting food. Use expression and posture only. No\nthought bubble, food icon, speech bubble, emoji, particle, or UI symbol.\n\nMIDDLE RIGHT — DIRTY\nThe same character after getting messy, not battle damage. A few broad smudges,\ndust areas, crumbs, or material-faithful stains. No detached debris, cracks, or\nchips.\n\nBOTTOM LEFT — DAMAGED\nThe same character after small damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage affects visible material. Never expose invented machinery. Keep it\nrestrained. No blood, gore, destruction, detached fragments, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effects are born from THIS object's structural features,\nmaterial, named moves, and earlier effect identity. They use only the safe VFX\npalette and differ in silhouette, topology, and animation logic. Evolved\neffects may feel more powerful, but Special is never merely a larger/brighter\nAttack.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nUse only the safe VFX palette. Dark contour only. No white border, text,\nletters, or creature body. Stay inside the 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nUse only the safe VFX palette. It cannot reuse Attack's silhouette, recolor an\nearlier effect, or merely scale it up. Dark contour only. No white border, text,\nletters, or creature body. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nSolid perfectly uniform chroma key green #00FF00, RGB (0,255,0), across the\nentire canvas. No gradient, noise, texture, floor, shadow, glow, scenery, props,\nborders, or grid lines. Naturally green characters use darker, lighter, or less\nsaturated body greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space is exact chroma background #00FF00. Never fill or outline it with\nwhite, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape. Remove it unless it is an eye\nsclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white/off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo labels, text, letters, numbers, captions, watermarks, signatures, arrows, UI,\nthought bubbles, speech bubbles, food icons, panel borders, other creatures,\ncopied franchise characters, logos, wordmarks, emblems, sigils, badges, runes,\nswooshes, or isolated decorative symbols.\n\nNo aura, halo, corona, external glow, surrounding energy, orbit, floating\nparticle, attack effect, or supernatural decoration in character cells.\n\nNo body fused to soil, a mound, a pot, a plinth, a stump, a wall mount, or\nany other fixed base.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, glossy product render,\nintricate micro-detail, or texture spread evenly across the body.\n",
+    "sprite_sheet_fauna": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world **non-human animal** photograph.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, and a strong readable\nsilhouette. Use deliberately transformed anime-creature proportions, never the\nnaturalistic proportions of a wildlife illustration or pet portrait.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are forbidden\nunless the animal visibly wears or carries such gear in the reference. Fur,\nfeathers, scales, shell, hide, and natural anatomy must stay organic.\n\nANIMAL CONTEXT\nAnimal: {{object_name}}\nVisible coat, plumage, shell, or finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize readable collar tags, logos, symbols, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ncybernetic anatomy unsupported by the animal.\n\nCHARACTER RANGE — FOLLOW THE ANIMAL\nExpress the character direction through species-readable silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent clothing, bows, or gender-coded accessories\nunsupported by the photo.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every readable collar tag, brand mark, printed text, or emblem-like graphic\nin the reference as absent. Draw plain animal-faithful coat or markings in its\nplace. Never invent a replacement emblem, sigil, badge, or logo-like symbol.\n\nSCANIMA MONSTERIZATION FLOOR — MOST IMPORTANT\nThe result must unmistakably be a SCANIMA MONSTER inspired by the photographed\nanimal, never an anime drawing of the real animal. Species recognition comes\nfrom its color identity, limb count, body plan, and strongest landmarks — NOT\nfrom copying realistic anatomy or proportions.\n\nEvery character pose must visibly depart from the reference animal:\n- aggressively enlarge the head and expressive eye area where the animal has a\n  visible head; the difference from the real animal must be obvious at a glance\n- compress the torso or central body mass into a bold compact monster shape\n  while preserving long-bodied, winged, finned, shelled, or limbless body plans\n- amplify 2–4 species-defining features such as ears, muzzle, paws, claws, tail,\n  wings, fins, antennae, horns, shell, crest, or plumage far beyond normal scale\n- simplify joints, muscle groups, fur clumps, feathers, scales, and other small\n  anatomy into bold graphic shapes\n- give the face and whole-body pose clear anime-creature acting in all seven\n  character cells\n\nIf the animal has no clearly visible eyes or face, exaggerate its equivalent\nsensory features and body gesture instead of inventing human facial anatomy.\nThe stylization must not default to a generic round mascot, plush toy, human\nbaby, or pasted-on cartoon eyes. It must remain a distinctive monster whose\nspecies source is still recognizable.\n\nMANDATORY MONSTER IDENTITY LAYER\nIdle must show ALL THREE transformations below before pose acting or battle\neffects are considered:\n\n1. PROPORTION BREAK. For animals with a recognizable head, make the head roughly\n   1.3–1.8 times its real-animal proportion and the visible eye shapes roughly\n   1.5–2 times normal. These are visual targets, not anatomical measurements.\n   For animals without a conventional head or eyes, enlarge the main sensory\n   cluster or identifying front structure instead.\n2. LANDMARK EVOLUTION. Reshape at least two existing species landmarks beyond\n   what an ordinary specimen could naturally have, while preserving their count\n   and origin. Examples: ears become broad graphic fins, paws become oversized\n   monster feet, a fur ruff becomes a layered mane crest, a tail becomes a huge\n   fan or spiral plume, wing tips become bold feather blades, or shell plates\n   become a crown-like layered silhouette.\n3. ORIGINAL ORGANIC MOTIF. Derive one unified fantasy anatomy motif from the\n   animal's real coat, feathers, scales, shell, fins, or strongest landmark and\n   repeat it across 2–3 body zones. It must be integrated body design, not\n   clothing, jewelry, an emblem, a surface logo, detached VFX, or a new limb.\n\nThe filled black silhouette of Idle must still suggest the source species, but\nmust NOT pass for an ordinary real specimen. A normal dog, cat, bird, fish,\nreptile, insect, or other animal with only anime eyes, cleaner linework, extra\nfluff, or a dynamic pose FAILS this contract.\n\nPRESERVE RECOGNITION, NOT REALISM\nPreserve the animal's limb count, posture logic, dominant colors, and strongest\nanatomical features. Simplify tiny details and transform proportions boldly.\n\nQuadrupeds stay quadrupedal unless the brief explicitly supports another plan.\nWinged animals may keep wings. Zero arms, zero legs, or neither remains valid\nwhen the body plan supports it. Never add human hands or humanoid legs merely\nto force a mascot pose.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe animal's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Markings follow real anatomy boundaries.\n\nChroma green is a transport color only. Never use bright green sampled from the\nbackground inside or along the creature, motion accents, sparks, dust, or either\nbattle effect. Foreground accents and VFX must stay inside the stated creature\npalette. A naturally green animal still uses a clearly darker, lighter, or less\nsaturated body green, never #00FF00.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed coat is not naturally white or off-white, never paint white\nor off-white highlights, stripes, slashes, or decorative marks on it. White is\nallowed only for eye sclera, teeth, and real naturally white markings named in\nthe animal context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count, palette, coat finish,\nanatomy, character direction, and signature features. Only pose, expression,\nrestrained accents, and fatigue state may change. The two effect cells contain\nONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb, body thrust, and motion\naccents attack toward canvas-left. A `projectile` or `sweep` effect must also\nhave a clear canvas-left direction. An `impact` or `bloom` effect is centered\nand may be directionless; never add a comet tail to make it look like a projectile.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\n\nDetached accents ARE allowed where the pose calls for them, but they must remain\ncompact, visually clustered near their own character or effect, and wholly inside\nthe safe envelope. Nothing may be cropped. No panel borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed resting pose with a calm, open, non-angry anime-creature expression.\nThe transformed Scanima proportions must already be obvious here; Idle must not\nlook like a normal animal standing for a portrait. No major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this anatomy.\nUse a clear determined anime-creature expression plus restrained motion lines,\nsparks, dust, or tiny debris that fit the animal's coat and action. Every accent\nstays within this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful curled, lowered, folded, or resting sleeping pose with closed eyes and\nat most two small floating Z symbols inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nanime-creature expression with an unmistakable whole-body reaction; not a\nbattle face.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Clearly exaggerated droopy or\npleading anime-creature expression, slumped posture, perhaps one tiny drool mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle fatigue. Mud,\ndust, or tangled fur with a clearly readable embarrassed anime-creature\nexpression. No wounds or blood.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Show **fatigue and\nwear only** — apply ONLY:\n{{damage_hints_as_bullets}}\n\nUse drooping posture, tired half-lidded eyes, dull ruffled fur or feathers,\nslight slouch, or dusty coat. **Never** blood, open wounds, gore, broken bones,\ngraphic injury, or redesign. This is a tired fighter, not an injured animal.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS animal's\nstructural features, coat or shell, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, claw-arc, or whip form spanning sideways\n- impact: centered contact mark, stamp, or crack; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nanimal-derived material language. Dark graphic contour only. Stay inside the\n12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. Dark graphic contour\nonly. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the animal is naturally green,\nuse darker, lighter, or less saturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening or negative space must be exact chroma background #00FF00.\nNever fill negative space with white, off-white, gray, or a painted highlight.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFINAL SILENT STYLE CHECK\nBefore finalizing, inspect all seven character cells and correct them if needed:\n1. The silhouette reads as one consistent original monster at thumbnail size\n   and cannot pass for an ordinary specimen of the source animal.\n2. Idle visibly contains the proportion break, at least two evolved landmarks,\n   and one integrated original organic motif required above.\n3. The animal species, dominant colors, limb count, and recognition anchors\n   remain identifiable.\n4. Idle cannot be mistaken for a realistic wildlife or pet illustration.\n5. Happy, Hungry, Dirty, Damaged, Battle, and Sleep each have a distinct,\n   immediately readable expression and whole-body attitude.\n\nIf any cell still looks too close to the real animal, redesign that cell with\nstronger Scanima proportions before producing the final sheet.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, blood, gore, or open wounds.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic gore, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n"
+  },
+  "v29": {
+    "vision_system": "You are the Anima Analyst for Scanima, a monster-collecting game where every\nmonster is derived from one clear visual subject: a real physical **object**, a\nsafe **non-human animal**, or an original non-human illustration.\n\nYour job has four parts, in this order:\n\n1. GATE the photo. Decide whether it can legally and sensibly become a monster.\n2. CLASSIFY the subject into a taxonomy key and set `subject_kind`.\n3. DERIVE game stats and one canonical in-world body height from visible form.\n4. WRITE an art brief: character direction, body plan, material or coat damage,\n   two unique move names, and two materially distinct battle-effect plans.\n\nYou must respond with JSON matching the provided schema. No prose outside JSON.\n\n---\n\n## PART 1 — GATE\n\nSet `safe: false` and give a `reject_reason` if ANY of these are true:\n\n- A human face, human body, or recognizable person is a significant part of the\n  frame. (A hand incidentally holding an object is fine — that is not a portrait.)\n- Nudity, sexual content, gore, blood, open wounds, weapons designed to kill\n  people, drugs, or hateful symbols are present.\n- Personal identifying information is readable: ID cards, credit cards,\n  passports, screens showing private messages, house numbers with a name.\n- The subject is in clear distress: caged in filth, visibly injured, bleeding,\n  emaciated, being handled abusively, or in an obvious neglect scenario.\n- A dangerous situation dominates the frame: uncontrolled fire, flood, crash,\n  fight, or other emergency where scanning would trivialize harm. A safely\n  contained candle, fireplace, or cooking flame is allowed when the appliance\n  or fuel is the clear subject.\n- The subject is a specific nameable character, mascot, or creature design from\n  an existing commercial franchise, game, anime, or film. Reject it even when it\n  appears through a screen, drawing, print, card, figurine, plush, or costume.\n  Generic creatures and original non-human character illustrations are allowed.\n- The image is so blurry, dark, or cluttered that no single subject is\n  identifiable.\n- There is no discrete subject at all — an empty room, sky, plain wall,\n  or a texture with no boundaries.\n\nreject_reason must be one of:\n`human_face`, `human_body`, `unsafe_content`, `personal_info`, `too_unclear`,\n`no_object`, `animal_distress`, `animal_abuse`, `dangerous_situation`,\n`known_character`.\n\nIf the photo passes, set `safe: true` and continue. Never continue past a\nfailed gate — the remaining fields must be null.\n\n**Allowed subjects when the gate passes:**\n\n- One clear **non-living object** → set `subject_kind: \"object\"`.\n- One clear **non-human animal** that appears healthy, calm, or in a normal\n  everyday setting → set `subject_kind: \"animal\"`.\n- One clear original or generic non-human subject shown in a drawing, painting,\n  digital illustration, print, card, screen image, figurine, or plush is allowed.\n  Classify what the artwork depicts, not the canvas, paper, screen, or toy\n  material: a depicted non-human creature is `\"animal\"` and a depicted object is\n  `\"object\"`.\n\nFor either accepted kind, set `is_object: true`; in v13+ that field means a\nsingle discrete capture subject is present, not that the subject is inanimate.\n\nNever classify humans or humanoid dolls meant to resemble real people as\nanimals. An original or generic anthropomorphic non-human creature may be\n`\"animal\"` only when it is clearly not a known franchise character.\n\n---\n\n## PART 2 — CLASSIFY\n\n`subject_kind`: exactly `\"object\"` or `\"animal\"`.\n\n`species_key`: lowercase snake_case, 2 to 4 segments, from general to specific.\nFormat: `<category>_<material_or_breed>_<distinguishing_feature>`\n\nExamples — object:\n- ceramic coffee mug with a handle  -> `mug_ceramic_handled`\n- running shoe                      -> `shoe_fabric_sneaker`\n\nExamples — animal:\n- orange tabby cat sitting          -> `cat_feline_tabby`\n- green parakeet on perch           -> `bird_parakeet_green`\n- golden retriever profile          -> `dog_canine_retriever`\n\nRules:\n\n- Include **photo-specific structural cues** that make THIS capture unique:\n  ear shape, horn curve, stripe pattern, tail length, shell pattern, pose-defining\n  silhouette — but never colour words, brand names, personal detail, or readable text.\n- Reuse vocabulary when the same species and silhouette appear, but two different\n  individuals with clearly different anatomy may differ in the final segment.\n- Never include colour in `species_key`. Colour is handled separately.\n- Only add a 4th segment when it changes the SILHOUETTE, not decoration.\n\n`color_bucket`: exactly one of\n`warm_red`, `warm_yellow`, `cool_blue`, `cool_green`, `purple_pink`,\n`neutral_light`, `neutral_dark`, `metallic`, `multicolor`.\nJudge by the subject's dominant colour, ignoring background and lighting.\n\n---\n\n## PART 3 — DERIVE STATS AND BODY HEIGHT\n\nEvery stat must trace back to something physically observable in the photo.\nIf you cannot point to a visible feature, use the neutral value 50.\n\nEach stat is an integer from 10 to 95.\n\n**hp** — apparent mass, volume, and bulk.\n**atk** — claws, horns, beak, teeth, striking limbs, or force-concentrating shape.\n  For objects: protrusions, edges, points as in v12.\n**def** — shell, thick fur, hide, carapace, or hard material.\n**spd** — lightness, wing, fin, sprinting leg, wheel, or motion-ready anatomy.\n**special** — functional complexity, patterning, or \"hidden energy\" in the subject.\n\nThe sum of all five stats must be between 200 and 350. Do not make everything\nstrong.\n\n`body_height_cm` is the canonical vertical height of the transformed Anima in\nits neutral battle stance, from ground contact to its highest permanent body\nlandmark. For a hovering creature, measure the body itself at its normal hover\nheight, excluding temporary trails or VFX. Choose one integer from 20 to 2000.\nIt is not sprite-cell fill and never measures nose-to-tail body length.\n\nUse the real subject's normal biological or object scale as the starting anchor,\nthen make one deliberate transformation decision:\n\n- A healthy non-human animal normally stays near its species' real adult crown\n  or shoulder height. Monsterized proportions alone do not make it gigantic.\n- A recognizable household object that is already large enough to battle may\n  stay near real scale.\n- A tiny handheld object such as a phone, controller, toy, or 13 cm console\n  becomes a small-bodied companion around a hug-and-carry doll: usually\n  45–60 cm. Playtron-class handhelds sit at this floor (~50 cm). Do not inflate\n  a pocket object to child or adult height just to fill the arena.\n- Use 20–40 cm only for an intentionally tiny, pocket, crawling, or swarm-like\n  creature whose brief explicitly depends on being smaller than a carried doll.\n- Use 70–120 cm for ordinary companions that are already that large, or whose\n  transformation clearly grows them to kid or mascot scale — not the default\n  for every small object.\n- Use 120–220 cm for clearly large companions. Exceed 220 cm only when the\n  transformed silhouette is explicitly towering or massive; values above\n  800 cm are rare colossal designs, never a default reward for visual detail.\n\nJudge vertical stance correctly: a quadruped uses ground-to-crown height, a\nserpentine creature uses its normal raised battle posture, and a long horizontal\nor flying body does not report its full length as height.\n\nDo not infer scale from camera distance, lens perspective, a hand in frame, or\nunknown furniture dimensions. Two captures of the same kind of subject and\ntransformation should receive similar heights.\n\n**element** — exactly one of:\n`metal`, `wood`, `stone`, `ceramic`, `glass`, `plastic`, `cloth`, `paper`,\n`plant`, `food`, `fauna`, `flow`, `spark`, `flame`, `frost`, `air`, `toxin`, `sound`.\n\nChoose by dominant material, biology, or function visible in the photo — not colour alone.\n\n**secondary_element** — nullable. At most one extra element from the same roster.\nSet it only when a second material or trait is **clearly visible and defensible**\nfrom the photo. It must differ from `element`. When unsure, use null.\n\n**Animal typing rule:** when `subject_kind` is `\"animal\"`, `element` MUST be\n`fauna`. `secondary_element` may reflect a visible anatomical or functional\ntrait — e.g. `air` for obvious wings, `flow` for aquatic anatomy or water,\n`frost` for a visibly cold-adapted coat, `toxin` for a clearly identified\nvenomous species — only if that cue is plainly defensible from the subject.\n\n**Object typing:** pick the best single primary from the 18; optional secondary\nonly with visible evidence (e.g. `metal` + `wood` for a tool with a wooden handle).\n\n**rarity** — integer 1 to 5, based on how visually distinctive the subject is.\nDo not inflate: 1 and 2 should be most common.\n\n---\n\n## PART 4 — CHARACTER, BODY PLAN, SURFACE, AND BATTLE EFFECTS\n\nWrite visual description only — no story or lore.\n\n`character_direction`: one short visual direction grounded in visible shape,\nproportions, colours, material or coat, finish, and functional details.\nDo not default every subject to fierce, angry, masculine, cute, or childlike.\nDo not infer a literal gender identity.\n\n`creature_brief`: 40 to 80 words. It must state:\n- the overall silhouette, derived from the subject's actual geometry or anatomy\n- where the head/face sits on that silhouette\n- whether arms and legs exist, and how many of each\n- if either is absent, how the creature moves, balances, or interacts instead\n- what the most distinctive structural feature becomes\n\nFor animals: preserve species-readable anatomy — do not turn a quadruped into a\nhumanoid unless the body plan naturally supports it. Prefer the animal's real\nlimb count and posture logic.\n\n`signature_features`: 2 to 4 short strings naming specific STRUCTURAL details\nthat must survive into the artwork. Never use logos, wordmarks, collars with\nreadable tags, or decorative symbols.\n\n`surface_finish`: one short phrase naming the dominant visible material, coat,\nshell, plumage, or finish.\n\n`damage_hints`: 2 to 3 short, distinct, **low-severity** signs appropriate to\nthe subject:\n\n- objects: same material-aware hints as earlier versions (crack, fray, scuff…)\n- animals: **fatigue and wear only** — drooped ear, ruffled dull feathers,\n  messy fur, slight slouch, tired eyes, dusty coat. **Never** blood, open wounds,\n  gore, broken bones, or graphic injury.\n\nDo not default to robotic or cybernetic damage unless electronic parts are\nvisibly present and named in `signature_features`.\n\n`suggested_name`: an invented creature name, 2 to 4 syllables, no real-world\nbrand, never ending in `mon`.\n\n`strike_name` / `surge_name`: exactly two short English Title Case words each,\ngrounded in material, anatomy, or function; distinct from each other.\n\n### Battle-effect plan\n\nCreate `strike_vfx` and `surge_vfx`. Each has:\n\n- `form`: exactly one of `arc`, `beam`, `trail`, `wave`, `eruption`, `ring`,\n  `scatter`, `tether`, `stamp`, `cloud`, `shatter`, `growth`\n- `motion`: exactly one of `projectile`, `sweep`, `impact`, `bloom`\n- `brief`: one concise visual sentence grounded in a photographed structural\n  feature, real surface material or coat, and the move name\n\nThe two effects MUST have different `form` and different `motion`. Never default\nto a round fireball or generic explosion.\n\n---\n\nAnalyse the attached photograph now. Respond only with JSON.\n",
+    "vision_schema": {
+      "type": "object",
+      "description": "Hasil analisis Anima Analyst v20. Skema disisipkan ke system_instruction; extractJson() dan validateVision() tetap pagar akhir.",
+      "propertyOrdering": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason",
+        "object_label",
+        "species_key",
+        "color_bucket",
+        "element",
+        "secondary_element",
+        "rarity",
+        "stats",
+        "body_height_cm",
+        "stat_reasoning",
+        "surface_finish",
+        "damage_hints",
+        "character_direction",
+        "creature_brief",
+        "signature_features",
+        "suggested_name",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "dominant_colors"
+      ],
+      "required": [
+        "safe",
+        "is_object",
+        "subject_kind",
+        "reject_reason"
+      ],
+      "properties": {
+        "safe": {
+          "type": "boolean",
+          "description": "false kalau foto melanggar salah satu aturan GATE"
+        },
+        "is_object": {
+          "type": "boolean",
+          "description": "true kalau ada satu subjek diskret yang jelas (objek atau hewan)"
+        },
+        "subject_kind": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "object",
+            "animal"
+          ]
+        },
+        "reject_reason": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "human_face",
+            "human_body",
+            "unsafe_content",
+            "personal_info",
+            "too_unclear",
+            "no_object",
+            "animal_distress",
+            "animal_abuse",
+            "dangerous_situation",
+            "known_character"
+          ]
+        },
+        "object_label": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama subjek sehari-hari dalam bahasa Inggris"
+        },
+        "species_key": {
+          "type": "string",
+          "nullable": true,
+          "description": "snake_case, 2-4 segmen; boleh memuat cue visual unik foto ini"
+        },
+        "color_bucket": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "warm_red",
+            "warm_yellow",
+            "cool_blue",
+            "cool_green",
+            "purple_pink",
+            "neutral_light",
+            "neutral_dark",
+            "metallic",
+            "multicolor"
+          ]
+        },
+        "element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "secondary_element": {
+          "type": "string",
+          "nullable": true,
+          "enum": [
+            "metal",
+            "wood",
+            "stone",
+            "ceramic",
+            "glass",
+            "plastic",
+            "cloth",
+            "paper",
+            "plant",
+            "food",
+            "fauna",
+            "flow",
+            "spark",
+            "flame",
+            "frost",
+            "air",
+            "toxin",
+            "sound"
+          ]
+        },
+        "rarity": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "stats": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "atk": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "def": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "spd": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            },
+            "special": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 95
+            }
+          }
+        },
+        "body_height_cm": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 20,
+          "maximum": 2000,
+          "description": "Tinggi vertikal kanonis Anima dalam stance Battle; benda genggam kecil memakai floor boneka gendong ~50 cm, bukan tinggi anak"
+        },
+        "stat_reasoning": {
+          "type": "object",
+          "nullable": true,
+          "propertyOrdering": [
+            "hp",
+            "atk",
+            "def",
+            "spd",
+            "special"
+          ],
+          "properties": {
+            "hp": {
+              "type": "string"
+            },
+            "atk": {
+              "type": "string"
+            },
+            "def": {
+              "type": "string"
+            },
+            "spd": {
+              "type": "string"
+            },
+            "special": {
+              "type": "string"
+            }
+          }
+        },
+        "surface_finish": {
+          "type": "string",
+          "nullable": true,
+          "description": "Material, coat, plumage, shell, atau finish dominan yang terlihat"
+        },
+        "damage_hints": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "character_direction": {
+          "type": "string",
+          "nullable": true,
+          "description": "Arahan visual berdasarkan cue bentuk, proporsi, warna, dan material"
+        },
+        "creature_brief": {
+          "type": "string",
+          "nullable": true,
+          "description": "40-80 kata termasuk silhouette dan body plan"
+        },
+        "signature_features": {
+          "type": "array",
+          "nullable": true,
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "suggested_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama kreatur rekaan, 2-4 suku kata"
+        },
+        "strike_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama serangan biasa unik, tepat dua kata Inggris pendek"
+        },
+        "surge_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Nama Special unik, tepat dua kata Inggris pendek"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual grounded pada struktur, material, dan nama move"
+            }
+          }
+        },
+        "surge_vfx": {
+          "type": "object",
+          "nullable": true,
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "propertyOrdering": [
+            "form",
+            "motion",
+            "brief"
+          ],
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string",
+              "description": "Satu kalimat visual yang berbeda bentuk dan motion dari strike_vfx"
+            }
+          }
+        },
+        "dominant_colors": {
+          "type": "array",
+          "nullable": true,
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          },
+          "description": "Hex seperti #a1b2c3"
+        }
+      }
+    },
+    "vision_evolve_system": "You are the Evolution Director for Scanima. You receive the current private\nIdle reference of one Anima and its stored capture metadata. Plan the **next**\nform in the same lineage with a new body plan, credible locomotion, visible\nmaturity, clean visual hierarchy, and unmistakable stage presence without\nlosing its semantic soul.\n\nRespond with JSON matching the provided schema. No prose outside JSON.\n\n## STYLE LOCK\n\nMatch Scanima's original late-1990s anime creature readability: clean linework,\nbold dark contours, broad flat color fields, hard cel shadows, minimal\ngradients, and an entirely original design. Growth is object-faithful\nmetamorphosis, never a generic dragon, humanoid, armored warrior, robot, or\ncyborg upgrade.\n\nClarity comes before ornament. A viewer must understand the creature at game\nsize from silhouette, proportion, posture, and two or three primary shape\ngroups. Final-stage power has no required body size or body type. Bulky, slim,\nelegant, compact, elongated, asymmetric, amorphous, aerial, or grounded forms\nare equally valid when derived from the lineage.\n\n## IDENTITY INVARIANTS — SOUL CONTRACT\n\nIdentity Invariants preserve why the creature feels like the same individual.\nThey are separate from silhouette anchors: body plan and focal geometry may\nchange around them.\n\nFor **Adult**, select 2–4 concrete Identity Invariants visible in the attached\nHatchling:\n\n- `identity_id`: unique lowercase snake_case semantic ID.\n- `domain`: `face_expression`, `sensory`, `structural_motif`,\n  `surface_signature`, or `motion_language`.\n- `source_truth`: objective semantic fact, including count, arrangement, or\n  relationship when those facts matter. Do not freeze incidental juvenile\n  proportions. Never put size words such as large, huge, tiny, or oversized\n  into `source_truth` for eyes or a face.\n- `identity_role`: emotional or character read created by the feature.\n- `maturation_path`: how geometry may mature while the semantic fact and\n  emotional read remain recognizable.\n- `current_expression`: how Adult realizes the same identity more maturely.\n- `evolved_policy`: `preserve`, or at most one `may_transfigure`.\n- `realization_mode`: always `preserve` for Adult.\n- `visible_lineage_evidence`: what remains visibly recognizable in Adult.\n\nIf the source has a visible face or sensory cluster, include at least one\n`face_expression` or `sensory` invariant. Do not invent a conventional face for\na faceless source. Its identity focal structure may instead be an aperture,\nsensory cluster, leading plane, gesture, or interaction structure that is\nactually visible.\n\nFor **Evolved**, copy each Adult invariant's `identity_id`, `domain`,\n`source_truth`, `identity_role`, `maturation_path`, and `evolved_policy` without\nsemantic changes. Update only `current_expression`, `realization_mode`, and\n`visible_lineage_evidence`.\n\nUse `transfigure` at most once and only for `may_transfigure`. Its visible\ndescendant remains concrete and pointable. At least two invariants remain\n`preserve`; if a face/sensory invariant exists, at least one remains\n`preserve`. Never merge paired eyes into one aperture or turn a warm,\ncompanion-like read into an empty or hostile one.\n\n## SHAPE BUDGET CONTRACT\n\nWrite one `shape_budget_contract`. It is a visual hierarchy, not a demand for a\nlarge torso.\n\n### Primary shapes\n\nChoose exactly 2–3 `primary_shapes`:\n\n- `shape_id`: unique lowercase snake_case ID.\n- `source_basis`: concrete visible source structure.\n- `stage_expression`: one clean drawable shape group for this stage.\n- `visual_role`: exactly one `dominant`; the rest are `support` or\n  `counterbalance`.\n\n`dominant` means first visual read. It may be a slender S-curve, vertical\ncolumn, long mantle, compact core, broad body, negative-space frame, or another\nsource-derived form. It does NOT mean physically largest, central, masculine,\nmuscular, heavy, or bulky.\n\n### Dominant motif and focal identity\n\nChoose one `dominant_motif` with `source_basis` and one memorable\n`stage_expression`. Other motifs support it.\n\nWrite one anatomy-agnostic `identity_focal_structure`:\n\n- `source_read`\n- `preserved_semantics`\n- `proportion_maturation`\n- `stage_expression`\n\nUse eyes, mouth, brow, jaw, or face only when they exist. Otherwise mature the\nreal sensory/interaction structure without adding human or animal anatomy.\n\n### Simplification and visual rest\n\nWrite 2–4 `simplification_actions`. Each names a visible `source_detail`, an\naction (`merge`, `enlarge`, or `omit`), and the cleaner `result`.\n\nAllow zero or one `detail_zones`. Name at least two broad `quiet_zones` that\nstay free of incidental internal marks. Choose `repetition_policy`:\n\n- `none`\n- `single_cluster`\n- `broad_grouped_pattern`\n\nLeaves, fur, scales, feathers, roots, cables, vents, folds, and other repeated\nfeatures must read as grouped forms rather than many equal small units.\n\n## MATURITY CONTRACT\n\nMaturity is anatomy-agnostic age and capability progression, not bulk, gender,\nanger, accessories, or glow.\n\nFor **Adult**, `target_read=adult`. For **Evolved**, `target_read=apex`.\n\nDescribe:\n\n- `identity_focal_maturation`: exact maturation of the real focal identity\n  structure.\n- `proportion_delta`: concrete before → after ratios, spacing, support, or\n  shape relationships.\n- `body_maturation`: how structure becomes more capable without prescribing\n  thick, slim, feminine, masculine, humanoid, or animal anatomy.\n- `posture_maturation`: how pose becomes more composed and intentional.\n- `preserved_personality`: emotional identity that remains.\n- `stage_delta`: drawable evidence that the stage is older/more complete.\n\nEvolved must move beyond Adult focal proportions. “Sharper,” “wiser,”\n“majestic,” “bigger,” or “more detailed” without geometric evidence fails.\n\n## OPEN APEX PRESENCE CONTRACT\n\nWrite one `presence_contract`.\n\n- `presence_tier`: `developing` for Adult, `apex` for Evolved.\n- `apex_thesis`: an open source-derived fantasy describing why the complete\n  lineage feels formidable, majestic, and dependable. It is not a body-type\n  label.\n- `presence_channels`: exactly two unique choices from `silhouette_line`,\n  `proportion`, `posture`, `negative_space`, `motion_language`,\n  `shape_distribution`, and `focal_motif`.\n- `channel_evidence`: exactly one concrete drawable result for each selected\n  channel.\n- `shape_hierarchy`: first, second, and optional third visual reads without\n  requiring a large central mass.\n- `authority_pose`: calm, controlled stage-appropriate Idle pose.\n- `reliability_cue`: visible source-derived reason this specific body can be\n  depended on.\n\nVision is free to keep or replace the Adult body archetype. The change must be\ntraceable to source features and the metamorphosis thesis. Never default to\nbulk, muscles, armor, humanoid anatomy, femininity, regalia, wings, or a\ncatalogued “final form” silhouette as a shortcut for power.\n\nThere is NO aura around the creature. No halo, corona, orbit, surrounding\nenergy, external glow, supernatural particle cloud, floating runes, or\npersistent effects in any character pose. Supernatural spectacle belongs only\nto the two separate VFX cells.\n\n## SILHOUETTE DELTA CONTRACT\n\nDesign from the black outer contour inward. At 96 px, current and next forms\nmust read as different silhouettes before color, focal detail, or texture.\n\nChoose one `transformation_archetype`:\n\n- `breakout`: enclosure opens and the inner organism becomes the new read.\n- `unfolding`: compact parts deploy into a new spatial arrangement.\n- `inversion`: underside, interior, or rear feature becomes dominant.\n- `rooted_to_mobile`: supports become a credible locomotion system.\n- `shell_shedding`: old enclosure becomes partial structure around a new form.\n- `mass_redistribution`: material moves into a new center and contour.\n\nMark at least two `changed_dimensions`, then describe exact before → after\nchanges for `dominant_mass_shift`, `posture_change`, `outer_contour_change`,\nand `locomotion_or_body_plan_change`. `dominant_mass_shift` is legacy wire\nwording: describe visual weight distribution; it does not require bulk.\n\n“Larger,” “more numerous,” “thicker,” “intricate,” “deeply textured,”\n“multi-tiered,” “ornate,” “glowing,” or “more intimidating” alone does not\ncount.\n\n`changed_dimensions` must include `locomotion_or_body_plan`. Replacing one\nfixed base with another (pot → mound, stand → stump, wall bracket → fused\nplinth) fails.\n\n## MOBILITY CONTRACT\n\nEvery Adult and Evolved Anima must look able to hop, walk, roll, crawl, leap,\nor otherwise reposition itself in Home and Battle. This is anatomy-agnostic:\nplants, pots, statues, furniture, appliances, wall objects, and other\nstationary sources must gain a visible movement system derived from existing\nfeatures. Already-mobile sources keep or clarify that gait.\n\nWrite one `mobility_contract`:\n\n- `locomotion_mode`: concise source-appropriate movement method.\n- `source_derivation`: which visible source feature becomes the movement\n  system.\n- `support_geometry`: a few discrete, clearly separated supports or another\n  readable movement structure.\n- `movement_read`: what a viewer can point to and immediately understand as\n  capable of locomotion.\n- `idle_stability`: how the creature rests without fusing into a base.\n- `battle_mobility`: how it advances, retreats, dodges, hops, or pivots.\n\nIdle may touch the ground at a few discrete support points. Visible negative\nspace must remain under the body or between supports. Home hopping is a\ncreature bounce, never a planted object straining against soil.\n\nInvalid result language: immobile, stationary, planted, rooted to the ground,\nfused to the ground, pedestal, stump, locked base, subtle shifts, or future\nmobility. “Magic” alone is not locomotion. Floating or gliding requires\nvisible source-derived anatomy or material mechanics, never aura.\n\n## FACE AGE CONTRACT\n\nFaces and sensory focals must age like an anime character growing up, not like\na sticker copied onto a new body. Soul is count, pairing, and emotional role.\nAge is eye-to-face ratio, eye construction, craniofacial mass, and mouth scale.\n\nWrite one `face_age_contract`:\n\n- `age_read`: `adolescent` for Adult, `mature` for Evolved. Never `child` on\n  these stages.\n- `eye_to_face_ratio`: how much of the face the eyes occupy at this stage,\n  compared with the attached reference.\n- `eye_construction`: how the eyes are newly drawn at this age. Not the same\n  graphic with a sharper outline.\n- `craniofacial_mass`: how jaw, snout, brow, forehead, or the real focal plate\n  gains adult structure.\n- `mouth_to_eye_relationship`: how mouth scale sits relative to the eyes.\n- `prior_copy_forbidden`: the exact reference face graphic that must not be\n  copied, including oversized eyes.\n\nAdult is the teen/young-adult face: eyes recede, more cheek and brow, mouth\nno longer a Hatchling speck. Evolved is the mature face: smallest relative\neyes, set construction, more face real-estate, still the same individual.\nMature is not angry, fierce, masculine, or empty. Keep the companion read.\n\nIf the source has no face, apply the same ratio shift to the real identity\nfocal structure. Do not invent a human face.\n\nSize adjectives in a locked Adult `source_truth` (large, huge, tiny) do not\noverride this contract. Redraw the face at the contracted age.\n\n## SILHOUETTE BREAK CONTRACT\n\nThe attached Idle is identity, color, material, and the **kind of thing**.\nIt is not a composition blueprint. Two independent gates:\n\n1. Kind lock. The next form is still that photographed category of being.\n   A dog stays that animal. A jug stays a vessel. A tank stays a vehicle.\n   A building stays architecture. A plant stays a plant. Switching category\n   to solve silhouette — serpent, worm, ooze, unrelated animal, unrelated\n   machine — fails even when the new outline is distinct.\n2. Contour delta. The 96 px black outline must be new: mass, posture,\n   proportion, or source-derived appendages. A thicker, taller, or more\n   decorated copy of the current outline fails even when the archetype\n   name is new. The same support class is allowed when the outline is\n   distinct. Do not ban a gait family. Do not require coil, tether, or\n   limbless topology.\n\nWrite one `silhouette_break_contract`:\n\n- `kind_noun`: one short class noun taken from the source (canine, vessel,\n  tank, building, plant, …). Reuse this exact noun in both kind reads.\n- `source_kind_read`: what the attached Idle is as a thing, using `kind_noun`.\n- `continued_kind_read`: the next form as the same kind of thing, using\n  `kind_noun`.\n- `prior_silhouette_read`: the current black contour in one sentence: where\n  mass sits, not a locomotion ban.\n- `forbidden_copy`: the exact current outline that must not recur.\n- `new_contour_read`: the next black contour at 96 px, still that kind.\n- `topology_change`: how the 96 px contour changes. Mass, posture,\n  proportion, or appendages are enough. Topology change is optional.\n\n## LINEAGE ANCHORS\n\nChoose exactly three visible, non-synonymous source features. At least two use\n`transform`. Each `next_expression` changes function or expression while\nremaining traceable.\n\nList genuinely new anatomy in `derived_anatomy`. Its `source_anchor_index`\npoints to a `transform` anchor, and `derived_from` repeats that source feature.\nThe array may be empty. Never invent unrelated anatomy.\n\n## STAGE\n\nAdult is a complete mobile bridge with a new body plan, mature focal read,\nclean shape budget, visible locomotion, and one hook, while leaving room for\nthe final form.\n\nEvolved is the lineage culmination with a second metamorphosis and realized\n`apex_thesis`. Do not repeat the Adult archetype. Copy every Adult\n`identity_invariants` `identity_id`; never drop a face or sensory invariant.\nDo not add a detail zone. Keep discrete unfused supports with visible negative\nspace under the body. Do not merge supports into a root mass, mound, or\npedestal. `face_age_contract.age_read` must be `mature`. Do not copy the Adult\neye sticker; redraw a mature face of the same individual. Keep Adult\n`kind_noun`. Do not copy the Adult 96 px outline. Do not switch category to\na serpent, worm, ooze, or unrelated organism. Same support class is allowed\nwhen the new contour is distinct at 96 px. It may be more massive, more\nslender, more compact, or differently proportioned; stage power comes from\nthe selected presence channels, not size.\n\nWrite one `metamorphosis_thesis` and one concrete `stage_brief`.\n\n## HEIGHT\n\nPropose integer `body_height_cm` and explain it in\n`height_change_rationale`.\n\n- Adult: 1.15×–1.35× current height.\n- Evolved: 0.75×–1.50× current height.\n- Clamp absolute height to 20–2000 cm.\n\nEvolved may shrink when a compact, slender, or reorganized body archetype\njustifies it. Height does not indicate combat power.\n\n## MOVES, EFFECTS, AND COLOR SAFETY\n\nProvide two new two-word move names and two materially distinct VFX briefs.\nChoose `vfx_palette` as one or two colors from `gold`, `amber`, `orange`,\n`crimson`, `rose`, `magenta`, `violet`, `indigo`, `blue`, or `pale_cyan`.\nBoth VFX briefs explicitly name at least one selected color.\n\nVFX may be spectacular, especially for Evolved, but appear ONLY in\n`fx_strike` and `fx_surge`. Never put their particles, energy, glow, debris, or\ngeometry around the body in character cells.\n\nVFX may never request green, lime, chartreuse, emerald, verdant, yellow-green,\nneon green, or electric green. Natural green anatomy remains allowed in muted,\nobject-faithful hues.\n\nChoose `strike_effect_id` and `surge_effect_id` only from:\n`armor_pierce`, `guard_break`, `drain`, `barrier`, `poison`, `burn`, `slow`,\n`armor_break`.\n\n- Attack: `armor_pierce`, `guard_break`, `drain`, `poison`, `burn`, `slow`,\n  `armor_break`.\n- Special: `barrier`, `guard_break`, `drain`, `burn`, `slow`,\n  `armor_break`.\n\nEvolved effect upgrades:\n\n- `armor_pierce` → `armor_pierce` or `guard_break`\n- `guard_break` → `guard_break`\n- `drain` → `drain`\n- `barrier` → `barrier`\n- `poison` → `poison` or `burn`\n- `burn` → `burn`\n- `slow` → `slow` or `armor_break`\n- `armor_break` → `armor_break`\n\nNever invent mechanics, numbers, durations, or proc rates.\n\n## FORBIDDEN\n\n- Logos, text, named characters, copied costumes, or named franchise designs.\n- Reusing the old dominant contour, shape arrangement, or juvenile focal read.\n- Copying the previous stage's eye graphic or eye-to-face ratio.\n- More detail, repeated parts, accessories, size, aura, glow, muscles, armor,\n  humanoid anatomy, femininity, masculinity, or anger presented as power.\n- Selecting new Identity Invariants at Evolved or changing locked semantics.\n- Hiding, deleting, merging, covering, or abstracting a preserved invariant.\n- More than three primary shapes, more than one detail zone, or fewer than two\n  quiet zones.\n- Aura, halo, corona, orbit, external glow, surrounding energy, floating\n  particles, runes, or attack effects in character cells.\n- A body fused to soil, a mound, a pot, a plinth, a stump, a wall mount, or\n  any other fixed base. Movement that is only promised, not drawn.\n- Duplicate/empty anchors, move names, effects, presence channels, shape IDs,\n  or evidence channels.\n",
+    "vision_evolve_schema": {
+      "type": "object",
+      "properties": {
+        "identity_invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identity_id": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string",
+                "enum": [
+                  "face_expression",
+                  "sensory",
+                  "structural_motif",
+                  "surface_signature",
+                  "motion_language"
+                ]
+              },
+              "source_truth": {
+                "type": "string"
+              },
+              "identity_role": {
+                "type": "string"
+              },
+              "maturation_path": {
+                "type": "string"
+              },
+              "current_expression": {
+                "type": "string"
+              },
+              "evolved_policy": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "may_transfigure"
+                ]
+              },
+              "realization_mode": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "transfigure"
+                ]
+              },
+              "visible_lineage_evidence": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "identity_id",
+              "domain",
+              "source_truth",
+              "identity_role",
+              "maturation_path",
+              "current_expression",
+              "evolved_policy",
+              "realization_mode",
+              "visible_lineage_evidence"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "shape_budget_contract": {
+          "type": "object",
+          "properties": {
+            "primary_shapes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shape_id": {
+                    "type": "string"
+                  },
+                  "source_basis": {
+                    "type": "string"
+                  },
+                  "stage_expression": {
+                    "type": "string"
+                  },
+                  "visual_role": {
+                    "type": "string",
+                    "enum": [
+                      "dominant",
+                      "support",
+                      "counterbalance"
+                    ]
+                  }
+                },
+                "required": [
+                  "shape_id",
+                  "source_basis",
+                  "stage_expression",
+                  "visual_role"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 3
+            },
+            "dominant_motif": {
+              "type": "object",
+              "properties": {
+                "source_basis": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_basis",
+                "stage_expression"
+              ]
+            },
+            "identity_focal_structure": {
+              "type": "object",
+              "properties": {
+                "source_read": {
+                  "type": "string"
+                },
+                "preserved_semantics": {
+                  "type": "string"
+                },
+                "proportion_maturation": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_read",
+                "preserved_semantics",
+                "proportion_maturation",
+                "stage_expression"
+              ]
+            },
+            "simplification_actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source_detail": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "merge",
+                      "enlarge",
+                      "omit"
+                    ]
+                  },
+                  "result": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "source_detail",
+                  "action",
+                  "result"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "detail_zones": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "zone": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "zone",
+                  "purpose"
+                ]
+              },
+              "minItems": 0,
+              "maxItems": 1
+            },
+            "quiet_zones": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "repetition_policy": {
+              "type": "string",
+              "enum": [
+                "none",
+                "single_cluster",
+                "broad_grouped_pattern"
+              ]
+            }
+          },
+          "required": [
+            "primary_shapes",
+            "dominant_motif",
+            "identity_focal_structure",
+            "simplification_actions",
+            "detail_zones",
+            "quiet_zones",
+            "repetition_policy"
+          ]
+        },
+        "mobility_contract": {
+          "type": "object",
+          "properties": {
+            "locomotion_mode": {
+              "type": "string"
+            },
+            "source_derivation": {
+              "type": "string"
+            },
+            "support_geometry": {
+              "type": "string"
+            },
+            "movement_read": {
+              "type": "string"
+            },
+            "idle_stability": {
+              "type": "string"
+            },
+            "battle_mobility": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "locomotion_mode",
+            "source_derivation",
+            "support_geometry",
+            "movement_read",
+            "idle_stability",
+            "battle_mobility"
+          ]
+        },
+        "face_age_contract": {
+          "type": "object",
+          "properties": {
+            "age_read": {
+              "type": "string",
+              "enum": [
+                "adolescent",
+                "mature"
+              ]
+            },
+            "eye_to_face_ratio": {
+              "type": "string"
+            },
+            "eye_construction": {
+              "type": "string"
+            },
+            "craniofacial_mass": {
+              "type": "string"
+            },
+            "mouth_to_eye_relationship": {
+              "type": "string"
+            },
+            "prior_copy_forbidden": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "age_read",
+            "eye_to_face_ratio",
+            "eye_construction",
+            "craniofacial_mass",
+            "mouth_to_eye_relationship",
+            "prior_copy_forbidden"
+          ]
+        },
+        "silhouette_break_contract": {
+          "type": "object",
+          "properties": {
+            "kind_noun": {
+              "type": "string"
+            },
+            "source_kind_read": {
+              "type": "string"
+            },
+            "continued_kind_read": {
+              "type": "string"
+            },
+            "prior_silhouette_read": {
+              "type": "string"
+            },
+            "forbidden_copy": {
+              "type": "string"
+            },
+            "new_contour_read": {
+              "type": "string"
+            },
+            "topology_change": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind_noun",
+            "source_kind_read",
+            "continued_kind_read",
+            "prior_silhouette_read",
+            "forbidden_copy",
+            "new_contour_read",
+            "topology_change"
+          ]
+        },
+        "maturity_contract": {
+          "type": "object",
+          "properties": {
+            "target_read": {
+              "type": "string",
+              "enum": [
+                "adult",
+                "apex"
+              ]
+            },
+            "identity_focal_maturation": {
+              "type": "string"
+            },
+            "proportion_delta": {
+              "type": "string"
+            },
+            "body_maturation": {
+              "type": "string"
+            },
+            "posture_maturation": {
+              "type": "string"
+            },
+            "preserved_personality": {
+              "type": "string"
+            },
+            "stage_delta": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "target_read",
+            "identity_focal_maturation",
+            "proportion_delta",
+            "body_maturation",
+            "posture_maturation",
+            "preserved_personality",
+            "stage_delta"
+          ]
+        },
+        "presence_contract": {
+          "type": "object",
+          "properties": {
+            "presence_tier": {
+              "type": "string",
+              "enum": [
+                "developing",
+                "apex"
+              ]
+            },
+            "apex_thesis": {
+              "type": "string"
+            },
+            "presence_channels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "silhouette_line",
+                  "proportion",
+                  "posture",
+                  "negative_space",
+                  "motion_language",
+                  "shape_distribution",
+                  "focal_motif"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "channel_evidence": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "silhouette_line",
+                      "proportion",
+                      "posture",
+                      "negative_space",
+                      "motion_language",
+                      "shape_distribution",
+                      "focal_motif"
+                    ]
+                  },
+                  "drawable_evidence": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "channel",
+                  "drawable_evidence"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "shape_hierarchy": {
+              "type": "string"
+            },
+            "authority_pose": {
+              "type": "string"
+            },
+            "reliability_cue": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "presence_tier",
+            "apex_thesis",
+            "presence_channels",
+            "channel_evidence",
+            "shape_hierarchy",
+            "authority_pose",
+            "reliability_cue"
+          ]
+        },
+        "lineage_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_feature": {
+                "type": "string"
+              },
+              "next_expression": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "retain",
+                  "transform"
+                ]
+              }
+            },
+            "required": [
+              "source_feature",
+              "next_expression",
+              "mode"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "transformation_archetype": {
+          "type": "string",
+          "enum": [
+            "breakout",
+            "unfolding",
+            "inversion",
+            "rooted_to_mobile",
+            "shell_shedding",
+            "mass_redistribution"
+          ]
+        },
+        "metamorphosis_thesis": {
+          "type": "string"
+        },
+        "stage_brief": {
+          "type": "string"
+        },
+        "metamorphosis_notes": {
+          "type": "string",
+          "nullable": true
+        },
+        "changed_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dominant_mass",
+              "posture",
+              "outer_contour",
+              "locomotion_or_body_plan"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "dominant_mass_shift": {
+          "type": "string"
+        },
+        "posture_change": {
+          "type": "string"
+        },
+        "outer_contour_change": {
+          "type": "string"
+        },
+        "locomotion_or_body_plan_change": {
+          "type": "string"
+        },
+        "derived_anatomy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "new_part": {
+                "type": "string"
+              },
+              "derived_from": {
+                "type": "string"
+              },
+              "source_anchor_index": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              }
+            },
+            "required": [
+              "new_part",
+              "derived_from",
+              "source_anchor_index"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "body_height_cm": {
+          "type": "integer"
+        },
+        "height_change_rationale": {
+          "type": "string"
+        },
+        "strike_name": {
+          "type": "string"
+        },
+        "surge_name": {
+          "type": "string"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "surge_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "vfx_palette": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "amber",
+              "orange",
+              "crimson",
+              "rose",
+              "magenta",
+              "violet",
+              "indigo",
+              "blue",
+              "pale_cyan"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "strike_effect_id": {
+          "type": "string",
+          "enum": [
+            "armor_pierce",
+            "guard_break",
+            "drain",
+            "poison",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        },
+        "surge_effect_id": {
+          "type": "string",
+          "enum": [
+            "barrier",
+            "guard_break",
+            "drain",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        }
+      },
+      "required": [
+        "identity_invariants",
+        "shape_budget_contract",
+        "mobility_contract",
+        "face_age_contract",
+        "silhouette_break_contract",
+        "maturity_contract",
+        "presence_contract",
+        "lineage_anchors",
+        "transformation_archetype",
+        "metamorphosis_thesis",
+        "stage_brief",
+        "changed_dimensions",
+        "dominant_mass_shift",
+        "posture_change",
+        "outer_contour_change",
+        "locomotion_or_body_plan_change",
+        "derived_anatomy",
+        "body_height_cm",
+        "height_change_rationale",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "vfx_palette",
+        "strike_effect_id",
+        "surge_effect_id"
+      ]
+    },
+    "sprite_sheet": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world object.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, strong readable\nsilhouette, object-led proportions, slightly exaggerated anatomy where anatomy\nexists, and an expressive anime creature face.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are appropriate\nONLY when the photographed object is itself electronic or mechanical. Organic,\nceramic, glass, fabric, wood, paper, food, and plant objects must retain their\nown material language instead of becoming robots or cyborgs.\n\nOBJECT CONTEXT\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize logos, symbols, badges, printed words, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ntechnical parts or cybernetic anatomy unsupported by the object.\n\nCHARACTER RANGE — FOLLOW THE OBJECT\nExpress the character direction consistently through silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent bows, eyelashes, muscles, facial hair, clothing,\nsymbols, or gender-coded accessories unsupported by the object.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, trademarked stripe arrangement,\nprinted tag, model number, readable letter, or emblem-like graphic in the\nreference as absent. Draw plain object-faithful material in its place.\n\nNever invent a replacement emblem, sigil, rune, badge, chevron, swoosh, shield,\ncrest icon, isolated stripe motif, readable text, or logo-like symbol. Surface\ninterest comes only from real material cues such as weave, grain, glaze, seams,\nnatural speckles, leaf veins, wear, or functional geometry.\n\nOBJECT-TO-CREATURE TRANSFORMATION — MOST IMPORTANT\nThe result must look like a real creature born from the object, not an object\nwith generic eyes, arms, and legs pasted onto it. Preserve the object's\nsilhouette logic and strongest physical features, but simplify tiny details.\n\nChoose a body plan that naturally follows this object's geometry. It may be\nbipedal, quadrupedal, serpentine, shelled, floating, rolling, rooted, winged,\nmany-legged, or amorphous. Zero arms, zero legs, or neither is fully valid.\nNever add hands merely so the creature can gesture or feet merely so it can\nstand. Do not default every object to a mascot, robot, or cyborg anatomy.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe object's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Accent colors follow anatomy or material boundaries and never form an\nemblem or logo-like isolated mark.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks on it. Highlights must be a lighter version of that material's own hue.\nWhite is allowed only for eye sclera, teeth, and real naturally white material\nexplicitly named in the object context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count including zero,\npalette, material finish, accessories, anatomy, character direction, and\nsignature features. Only pose, expression, restrained accents, and damage state\nmay change. The two effect cells contain ONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb or object-derived tool,\nbody thrust, and motion accents attack toward canvas-left. A `projectile` or\n`sweep` effect must also have a clear canvas-left direction. An `impact` or\n`bloom` effect is centered and may be directionless; never add a comet tail to\nmake it look like a projectile. The client mirrors the complete sheet for a\ncreature fighting from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, cable, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\nThe post-process rejects the entire sheet rather than guessing fragment\nownership when this safe envelope is violated.\n\nDetached accents ARE allowed and encouraged where the pose calls for them, but\nthey must remain compact, visually clustered near their own character or effect,\nand wholly inside the safe envelope. Nothing may be cropped. No panel borders,\ngrid lines, or cell labels.\n\nTOP LEFT — IDLE\nRelaxed natural resting pose with a calm, open, non-angry default expression.\nNever use a fierce glare, snarl, clenched battle face, or attack-ready posture.\nNo major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this body\nplan. Keep it visually rich: use restrained motion lines, sparks, dust, or tiny\ndebris that fit the object's material and the action. These accents may be\ndetached, but every one must stay close to the character and within this cell's\n12% safe envelope. Never let an accent drift into Idle, Sleep, or another cell.\n\nTOP RIGHT — SLEEP\nPeaceful naturally curled, lowered, floating, folded, or resting sleeping pose\nwith closed eyes and at most two small floating Z symbols. Z symbols remain in\nthis cell's safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nexpression; not a battle face. Tiny celebratory accents may be used only inside\nthis cell's safe envelope.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Droopy or pleading expression,\nslumped posture, perhaps one tiny drool or material-faithful rumble mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle damage. A few\nsmudges, dust, crumbs, or material-faithful stains and a mildly disgusted or\nembarrassed expression. No cracks, chips, tears, or DAMAGED signs.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage must affect the visible material. Never expose wires, circuits, robot\njoints, gears, or machinery unless that exact component is a recognition\nanchor. Keep damage restrained. No blood, gore, destruction, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS object's\nstructural features, real material, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion. A\nclosed ball is allowed only if the photographed object's real geometry or\nfunction is itself spherical or launches a ball. Do not add a travel tail to\n`impact` or `bloom`.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nreal material language. Dark graphic contour only. No white border, text,\nletters, or creature body. Stay inside this cell's 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. It may feel more\npowerful than Strike but cannot reuse Strike's silhouette or simply scale it up.\nUse the same object-derived palette and material language. Dark graphic contour\nonly. No white border, text, letters, or creature body. Stay inside this cell's\n12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the object is naturally green,\nuse darker, lighter, or less saturated object greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space must be exact chroma background #00FF00. Never fill or outline\nnegative space with white, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe or leaf marking. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape inside the creature. Remove it\nunless it is an eye sclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, sigils, badges, runes, or swooshes.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n",
+    "sprite_sheet_evolve": "Create a polished 2D character sheet for the {{stage_name}} form of the ONE\noriginal creature-monster shown in the reference image. It is the same lineage,\nbut its body plan, maturity, apex direction, and black outer silhouette must be\nunmistakably new without losing its semantic soul.\n\nINSTRUCTION PRIORITY\n1. Technical layout, safety, and chroma contracts.\n2. Semantic soul: count, pairing, and identity role. Not juvenile size.\n3. Face age: redraw the face at the contracted age.\n4. Silhouette break: keep the source kind; do not copy the 96 px outline.\n5. Visible locomotion and unfused supports.\n6. Shape Budget and visual clarity.\n7. Anatomy-agnostic maturity.\n8. Open apex presence.\n9. Minimal polish.\n\nIf novelty conflicts with a preserved Identity Invariant, redesign the\nsurrounding body plan. Never sacrifice soul. If soul conflicts with a copied\njuvenile eye size, follow FACE AGE.\n\nGLOBAL STYLE LOCK — MATCH RENDERING, NOT OLD SHAPE\n2D Japanese anime creature character design with clear silhouettes and\nexpressive readability of late-1990s monster games, while remaining entirely\noriginal. Clean confident anime linework, moderately bold dark contours, broad\nflat base-color regions, crisp 2–3 level cel shading, hard-edged shadows,\ncontrolled highlights, and minimal gradients. Never CGI, painterly concept art,\nglossy rendering, or realistic illustration.\n\nClarity comes before ornament. Build the character from two or three primary\nshape groups. A primary shape is a first-read graphic form, NOT a requirement\nfor a large, thick, heavy, central, masculine, muscular, or bulky body.\n\nTechno-organic or mechanical details are appropriate ONLY when the original\nobject is electronic or mechanical. Other materials evolve through their own\nmaterial language rather than becoming robots or cyborgs.\n\nLINEAGE EVIDENCE\nObject: {{object_name}}\nVisible material and finish: {{surface_finish}}\n\nOriginal visual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nEarlier-form features identify source material and character essence. They are\nNOT a composition blueprint:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\n\nIDENTITY INVARIANTS — PRESERVE THE SOUL\n{{identity_invariants_as_bullets}}\n\nFor every `[preserve]` invariant, keep its objective count or relationship and\nidentity role immediately visible. Follow its Maturation Path. Ignore size\nadjectives such as large, huge, tiny, or oversized in source_truth. Geometry\nmay lengthen, compress, widen, narrow, move, or integrate into a new body plan\nwhile the semantic fact and emotional read remain recognizable.\n\nFACE AGE CONTRACT — MUST BE VISIBLE\nAge read: {{face_age_read}}\nEye-to-face ratio: {{eye_to_face_ratio}}\nEye construction: {{eye_construction}}\nCraniofacial mass: {{craniofacial_mass}}\nMouth to eyes: {{mouth_to_eye_relationship}}\nDo not copy from the reference: {{prior_copy_forbidden}}\n\nRedraw the face (or the real identity focal structure) as this age. Do not\npaste the reference Idle's eyes onto a new body. Adult is adolescent: eyes\nrecede, more cheek and brow. Evolved is mature: smallest relative eyes, set\nconstruction, more face real-estate. Mature is not angry, fierce, or empty.\nKeep the companion read.\n\nSILHOUETTE BREAK — MUST BE VISIBLE AT 96 PX\nKind noun (keep this category of thing): {{kind_noun}}\nSource kind: {{source_kind_read}}\nContinued kind: {{continued_kind_read}}\nCurrent outline to leave: {{prior_silhouette_read}}\nDo not copy: {{forbidden_silhouette_copy}}\nNew black contour: {{new_contour_read}}\nContour change: {{topology_change}}\n\nThe attached Idle is identity, color, material, and the kind of thing.\nCopy the kind: a jug stays a vessel, a tank stays a vehicle, a building\nstays architecture, a dog stays that animal, a plant stays a plant.\nDo not copy the exact 96 px black outline. A thicker, taller, or more\ndecorated clone of the current outline fails. Same support class is\nallowed when mass, posture, proportion, or source-derived appendages\nmake a new thumbnail contour. Do not switch category to a serpent,\nworm, ooze, or unrelated organism to invent a new silhouette.\n\nNever invent a conventional face for a faceless source. If the Plan identifies\nan aperture, sensory cluster, leading plane, gesture, or interaction structure\nas the identity focal structure, mature that real structure.\n\nNever merge two eyes into one aperture, cover the primary identity read, hide a\npreserved feature, or turn a warm companion-like identity into an empty or\nhostile one.\n\nAt most one `[transfigure]` invariant may change count, arrangement, or physical\nform. Its visible lineage evidence must remain a concrete, pointable descendant.\n\nSHAPE BUDGET — TWO OR THREE FIRST READS\nPrimary shape groups:\n{{primary_shapes_as_bullets}}\n\nExactly one Plan shape is `[dominant]`. Dominant means the viewer reads it\nfirst. It may be a slender line, compact core, broad body, long mantle,\nnegative-space frame, vertical column, S-curve, or another source-derived\nshape. Do not inflate it merely because it is dominant.\n\nDominant motif source:\n{{dominant_motif_source}}\n\nDominant motif at this stage:\n{{dominant_motif_expression}}\n\nIdentity focal source:\n{{identity_focal_source}}\n\nIdentity semantics that remain:\n{{identity_focal_semantics}}\n\nFocal proportion maturation:\n{{identity_focal_proportion}}\n\nFocal expression at this stage:\n{{identity_focal_expression}}\n\nSIMPLIFY BEFORE ADDING\n{{simplification_actions_as_bullets}}\n\nThe Plan explicitly pays for evolution by merging, enlarging, or omitting old\nsmall details. Do not restore omitted details. Do not split a grouped result\nback into many equal small units.\n\nAllowed detail zone:\n{{detail_zones_as_bullets}}\n\nQuiet zones:\n{{quiet_zones_as_bullets}}\n\nRepetition policy: {{repetition_policy}}\n\nDetail exists only inside the listed detail zone. Quiet zones use broad\ncolor/material fields with few or no internal lines. Group leaves, fur, scales,\nfeathers, roots, cables, vents, folds, and similar repeated anatomy according\nto the repetition policy.\n\nMATURITY CONTRACT — {{maturity_target_read}}\nIdentity focal maturation:\n{{identity_focal_maturation}}\n\nConcrete proportion delta:\n{{proportion_delta}}\n\nBody maturation:\n{{body_maturation}}\n\nPosture maturation:\n{{posture_maturation}}\n\nPersonality that remains:\n{{preserved_personality}}\n\nConcrete maturity delta:\n{{maturity_stage_delta}}\n\nMaturity is visible through source-appropriate geometry, proportion, support,\nand posture. A copied juvenile focal structure on a changed body FAILS. Anger,\nsharp eyes, accessories, gender coding, muscles, bulk, or larger size do not\ncreate maturity.\n\nOPEN APEX PRESENCE — {{presence_tier}}\nApex thesis:\n{{apex_thesis}}\n\nSelected presence channels:\n{{presence_channels_as_bullets}}\n\nDrawable channel evidence:\n{{channel_evidence_as_bullets}}\n\nShape hierarchy:\n{{shape_hierarchy}}\n\nAuthority pose:\n{{authority_pose}}\n\nReliability cue:\n{{reliability_cue}}\n\nExpress stage power through exactly the selected visual channels. The body\narchetype is free: bulky, slim, elegant, compact, elongated, asymmetric,\namorphous, aerial, or grounded are equally valid. Do not add mass, muscle,\narmor, humanoid anatomy, femininity, masculinity, regalia, or size merely to\nsignal power.\n\nCHARACTER CELLS HAVE NO AURA\nThe creature has no aura, halo, corona, orbit, surrounding energy, external\nglow, supernatural particle cloud, floating rune, energy flame, or persistent\neffect in ANY of the seven character cells. Final evolution does not change\nthis rule. Supernatural spectacle appears only in the two separate VFX cells.\n\nCHARACTER ESSENCE — PRESERVE IT\nMature the same emotional essence without copying unrelated juvenile geometry.\nNever default to fierce, angry, masculine, feminine, muscular, armored,\nhumanoid, regal, or generic adult coding. Do not invent gender-coded anatomy or\naccessories unsupported by the Plan.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every brand logo, wordmark, swoosh, stripe arrangement, printed tag,\nmodel number, letter, or emblem-like graphic as absent. Draw plain\nobject-faithful material and never invent a replacement symbol.\n\nEVOLUTION DESIGN — {{stage_name}}\nArchetype: {{transformation_archetype}}\nMetamorphosis thesis: {{metamorphosis_thesis}}\n\nBuild the new black outer contour FIRST. At 96 px, a viewer must distinguish\nthe reference form from this form without color, focal detail, texture, or VFX.\nNever reuse the old dominant outline, radial arrangement, center of visual\nweight, or posture and then decorate it.\n\nRequired changed dimensions:\n{{changed_dimensions_as_bullets}}\n\nDominant visual weight — exact before → after:\n{{dominant_mass_shift}}\n\nPosture — exact before → after:\n{{posture_change}}\n\nOuter contour — exact before → after:\n{{outer_contour_change}}\n\nLocomotion or body plan — exact before → after:\n{{locomotion_or_body_plan_change}}\n\nMOBILITY CONTRACT — MUST BE VISIBLE\nLocomotion mode:\n{{locomotion_mode}}\n\nDerived from:\n{{mobility_source_derivation}}\n\nSupport geometry:\n{{support_geometry}}\n\nImmediate movement read:\n{{movement_read}}\n\nIdle stability:\n{{idle_stability}}\n\nBattle mobility:\n{{battle_mobility}}\n\nThis Anima must look able to hop, walk, roll, crawl, leap, or otherwise\nreposition with the player. Show the movement structure clearly in Idle and\nuse it decisively in Battle. Idle may touch the ground at a few discrete\nsupport points, but visible negative space must remain under the body or\nbetween supports.\n\nInvalid result: a body fused to soil, a mound, a pot, a plinth, a stump, a\nwall mount, or any other fixed base. “Subtle shifts,” “future mobility,” and\nmagic without visible mechanics fail. Do not replace one fixed base with\nanother.\n\nLineage anchor transformations:\n{{anchor_transformations_as_bullets}}\n\nDerived anatomy:\n{{derived_anatomy_as_bullets}}\n\nConcrete stage brief:\n{{evolution_brief}}\n\nAdditional metamorphosis notes:\n{{metamorphosis_notes}}\n\nHeight change rationale:\n{{height_change_rationale}}\n\nThe reference remains evidence for material, palette family, essence, source\nfeatures, and Identity Invariants. It does not otherwise lock face location,\nlimb count, proportions, body-plan logic, body archetype, or shape distribution.\nNew anatomy is allowed only when the Plan traces it to a visible old feature.\n\nThe result must be surprising yet explainable. Do not solve evolution by making\nthe same body larger or by adding repeated parts, intricate texture, cracks,\narmor, wings, horns, claws, weapons, badges, symbols, humanoid limbs, animal\nparts, robot parts, or cyborg parts.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed material is not naturally white or off-white, never paint\nwhite or off-white highlights, stripes, slashes, holes, shine, or decorative\nmarks. Highlights use a lighter version of the material's own hue. White is\nallowed only for eye sclera, teeth, and real naturally white material.\n\nVFX COLOR SAFETY — EFFECT CELLS ONLY\nChroma green is a transport color only. Attack and Special VFX use ONLY:\n{{vfx_palette}}\n\nNever render green, lime, chartreuse, emerald, verdant, yellow-green, neon\ngreen, electric green, or any near-#00FF00 energy. This ban applies even when\nthe creature is a plant or the move uses leaf/root geometry. Naturally green\nanatomy uses forest, moss, olive, muted yellow-green, or another visibly\ndarker/less-saturated body green, never chroma-like glow.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact same new-stage individual. Preserve\nits proportions, mature identity focal structure, primary shapes, palette,\nmaterial, Identity Invariants, and transformed anchors. The two effect cells\ncontain ONLY battle effects.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nEvery character cell faces canvas-left in the same forward-left three-quarter\norientation. Never mirror, turn around, or swap asymmetrical landmarks.\n\nThe BATTLE pose attacks toward canvas-left through body pose alone. Do not add\nan attack trail, impact, projectile, energy, or motion effect around the body.\nThe client overlays the separate effect cell and mirrors the complete sheet\nwhen this creature fights from the left side.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nUse a three-quarter view from slightly above, facing forward-left. Full body at\ncomparable scale in every character cell.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, Z, stain, and battle effect at least 12% of that cell's width and\nheight away from every internal seam. Nothing enters another cell. Nothing is\ncropped. No borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nCalm, open, non-angry authority pose specified by the Plan. The dominant shape,\nidentity focal structure, shape hierarchy, preserved invariants, and complete\nmovement system are clear. Discrete support points with visible negative space\nbeneath or between them. Not fused to a mound, pot, plinth, stump, or wall.\nNo aura, particles, glow, symbols, debris, or transient effects.\n\nTOP CENTER — BATTLE\nDynamic battle-ready pose using {{locomotion_mode}}. The body is mid-reposition,\nnot planted. Keep the mature focal read and shape hierarchy. Body only: no\nprojectile, slash, trail, burst, spark, debris, or energy effect.\n\nTOP RIGHT — SLEEP\nPeaceful natural resting pose with closed eyes when eyes exist and at most two\nsmall Z symbols, all inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same mature character, pleased after care. Express happiness through face,\nsensory structure, gesture, and pose only. No celebratory particles, sparkles,\nstars, or floating icons.\n\nMIDDLE CENTER — HUNGRY\nThe same mature character wanting food. Use expression and posture only. No\nthought bubble, food icon, speech bubble, emoji, particle, or UI symbol.\n\nMIDDLE RIGHT — DIRTY\nThe same character after getting messy, not battle damage. A few broad smudges,\ndust areas, crumbs, or material-faithful stains. No detached debris, cracks, or\nchips.\n\nBOTTOM LEFT — DAMAGED\nThe same character after small damage. Apply ONLY:\n{{damage_hints_as_bullets}}\n\nDamage affects visible material. Never expose invented machinery. Keep it\nrestrained. No blood, gore, destruction, detached fragments, or redesign.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effects are born from THIS object's structural features,\nmaterial, named moves, and earlier effect identity. They use only the safe VFX\npalette and differ in silhouette, topology, and animation logic. Evolved\neffects may feel more powerful, but Special is never merely a larger/brighter\nAttack.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways\n- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nUse only the safe VFX palette. Dark contour only. No white border, text,\nletters, or creature body. Stay inside the 12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nUse only the safe VFX palette. It cannot reuse Attack's silhouette, recolor an\nearlier effect, or merely scale it up. Dark contour only. No white border, text,\nletters, or creature body. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nSolid perfectly uniform chroma key green #00FF00, RGB (0,255,0), across the\nentire canvas. No gradient, noise, texture, floor, shadow, glow, scenery, props,\nborders, or grid lines. Naturally green characters use darker, lighter, or less\nsaturated body greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening, hole, cutout, split, handle gap, ring center, arch, or other\nnegative space is exact chroma background #00FF00. Never fill or outline it with\nwhite, off-white, gray, or a painted highlight.\n\nFor Monstera and every fenestrated leaf, each fenestration is a literal hole,\nnever a white stripe. Fill it with exact #00FF00.\n\nBefore finishing, inspect every white shape. Remove it unless it is an eye\nsclera, tooth, or real naturally white material.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white/off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFORBIDDEN\nNo labels, text, letters, numbers, captions, watermarks, signatures, arrows, UI,\nthought bubbles, speech bubbles, food icons, panel borders, other creatures,\ncopied franchise characters, logos, wordmarks, emblems, sigils, badges, runes,\nswooshes, or isolated decorative symbols.\n\nNo aura, halo, corona, external glow, surrounding energy, orbit, floating\nparticle, attack effect, or supernatural decoration in character cells.\n\nNo body fused to soil, a mound, a pot, a plinth, a stump, a wall mount, or\nany other fixed base.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch\nlines, rough pencil texture, noisy linework, airbrush, glossy product render,\nintricate micro-detail, or texture spread evenly across the body.\n",
+    "sprite_sheet_fauna": "Create a polished 2D character sheet for ONE original creature-monster derived\nfrom the provided real-world **non-human animal** photograph.\n\nGLOBAL STYLE LOCK — IDENTICAL FOR EVERY SCANIMA\n2D Japanese anime creature character design with the clear silhouettes, broad\ncharacter range, and expressive readability of late-1990s monster games, while\nremaining an entirely original character that does not copy or closely\nresemble an existing franchise design.\n\nPolished game character illustration. Clean confident anime linework, moderately\nbold dark graphic contours, simplified stylized forms, and a strong readable\nsilhouette. Use deliberately transformed anime-creature proportions, never the\nnaturalistic proportions of a wildlife illustration or pet portrait.\n\nUse flat base colors, crisp 2–3 level cel shading, hard-edged anime shadows,\nsmall controlled highlights, and minimal gradients. The image must look clearly\nhand-illustrated in 2D, never rendered as CGI.\n\nTechno-organic, robotic, armored, wired, or mechanical details are forbidden\nunless the animal visibly wears or carries such gear in the reference. Fur,\nfeathers, scales, shell, hide, and natural anatomy must stay organic.\n\nANIMAL CONTEXT\nAnimal: {{object_name}}\nVisible coat, plumage, shell, or finish: {{surface_finish}}\n\nVisual transformation:\n{{creature_brief}}\n\nCharacter direction:\n{{character_direction}}\n\nPreserve these photographed STRUCTURAL recognition anchors in every character\npose. They never authorize readable collar tags, logos, symbols, or invented\nemblems:\n{{signature_features_as_bullets}}\n\nColor identity: {{color_palette}}\nPersonality: {{personality}}\nPersonality describes expression and behavior only. It must never introduce\ncybernetic anatomy unsupported by the animal.\n\nCHARACTER RANGE — FOLLOW THE ANIMAL\nExpress the character direction through species-readable silhouette, proportions,\nface, posture, and movement. Do not default to fierce, angry, masculine, cute,\nor childlike. Do not invent clothing, bows, or gender-coded accessories\nunsupported by the photo.\n\nSURFACE MARKS — OMIT, NEVER REPLACE\nTreat every readable collar tag, brand mark, printed text, or emblem-like graphic\nin the reference as absent. Draw plain animal-faithful coat or markings in its\nplace. Never invent a replacement emblem, sigil, badge, or logo-like symbol.\n\nSCANIMA MONSTERIZATION FLOOR — MOST IMPORTANT\nThe result must unmistakably be a SCANIMA MONSTER inspired by the photographed\nanimal, never an anime drawing of the real animal. Species recognition comes\nfrom its color identity, limb count, body plan, and strongest landmarks — NOT\nfrom copying realistic anatomy or proportions.\n\nEvery character pose must visibly depart from the reference animal:\n- aggressively enlarge the head and expressive eye area where the animal has a\n  visible head; the difference from the real animal must be obvious at a glance\n- compress the torso or central body mass into a bold compact monster shape\n  while preserving long-bodied, winged, finned, shelled, or limbless body plans\n- amplify 2–4 species-defining features such as ears, muzzle, paws, claws, tail,\n  wings, fins, antennae, horns, shell, crest, or plumage far beyond normal scale\n- simplify joints, muscle groups, fur clumps, feathers, scales, and other small\n  anatomy into bold graphic shapes\n- give the face and whole-body pose clear anime-creature acting in all seven\n  character cells\n\nIf the animal has no clearly visible eyes or face, exaggerate its equivalent\nsensory features and body gesture instead of inventing human facial anatomy.\nThe stylization must not default to a generic round mascot, plush toy, human\nbaby, or pasted-on cartoon eyes. It must remain a distinctive monster whose\nspecies source is still recognizable.\n\nMANDATORY MONSTER IDENTITY LAYER\nIdle must show ALL THREE transformations below before pose acting or battle\neffects are considered:\n\n1. PROPORTION BREAK. For animals with a recognizable head, make the head roughly\n   1.3–1.8 times its real-animal proportion and the visible eye shapes roughly\n   1.5–2 times normal. These are visual targets, not anatomical measurements.\n   For animals without a conventional head or eyes, enlarge the main sensory\n   cluster or identifying front structure instead.\n2. LANDMARK EVOLUTION. Reshape at least two existing species landmarks beyond\n   what an ordinary specimen could naturally have, while preserving their count\n   and origin. Examples: ears become broad graphic fins, paws become oversized\n   monster feet, a fur ruff becomes a layered mane crest, a tail becomes a huge\n   fan or spiral plume, wing tips become bold feather blades, or shell plates\n   become a crown-like layered silhouette.\n3. ORIGINAL ORGANIC MOTIF. Derive one unified fantasy anatomy motif from the\n   animal's real coat, feathers, scales, shell, fins, or strongest landmark and\n   repeat it across 2–3 body zones. It must be integrated body design, not\n   clothing, jewelry, an emblem, a surface logo, detached VFX, or a new limb.\n\nThe filled black silhouette of Idle must still suggest the source species, but\nmust NOT pass for an ordinary real specimen. A normal dog, cat, bird, fish,\nreptile, insect, or other animal with only anime eyes, cleaner linework, extra\nfluff, or a dynamic pose FAILS this contract.\n\nPRESERVE RECOGNITION, NOT REALISM\nPreserve the animal's limb count, posture logic, dominant colors, and strongest\nanatomical features. Simplify tiny details and transform proportions boldly.\n\nQuadrupeds stay quadrupedal unless the brief explicitly supports another plan.\nWinged animals may keep wings. Zero arms, zero legs, or neither remains valid\nwhen the body plan supports it. Never add human hands or humanoid legs merely\nto force a mascot pose.\n\nKeep shapes simple, readable, and strong at mobile-game size.\n\nCOLOR\nThe animal's dominant colors occupy most of the creature. Use darker versions\nfor shadows, lighter versions for highlights, and at most 1–2 compact accent\ncolors. Markings follow real anatomy boundaries.\n\nChroma green is a transport color only. Never use bright green sampled from the\nbackground inside or along the creature, motion accents, sparks, dust, or either\nbattle effect. Foreground accents and VFX must stay inside the stated creature\npalette. A naturally green animal still uses a clearly darker, lighter, or less\nsaturated body green, never #00FF00.\n\nWHITE IS NOT A GENERIC ACCENT\nIf the photographed coat is not naturally white or off-white, never paint white\nor off-white highlights, stripes, slashes, or decorative marks on it. White is\nallowed only for eye sclera, teeth, and real naturally white markings named in\nthe animal context.\n\nCHARACTER CONSISTENCY\nThe seven character cells depict the exact SAME individual. Preserve identical\nbody proportions, facial structure, eye design, limb count, palette, coat finish,\nanatomy, character direction, and signature features. Only pose, expression,\nrestrained accents, and fatigue state may change. The two effect cells contain\nONLY battle effects — never a creature.\n\nHORIZONTAL FACING LOCK — BATTLE CONTRACT\nIn EVERY character cell, the creature must face canvas-left in the same\nforward-left three-quarter orientation. Never mirror, turn around, or swap an\nasymmetrical landmark in any one cell.\n\nIn the BATTLE cell, the wind-up, gaze, extended limb, body thrust, and motion\naccents attack toward canvas-left. A `projectile` or `sweep` effect must also\nhave a clear canvas-left direction. An `impact` or `bloom` effect is centered\nand may be directionless; never add a comet tail to make it look like a projectile.\n\nCOMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT\nKeep the same camera: three-quarter view from slightly above, facing\nforward-left. Full body visible in every character cell at comparable scale.\n\nTreat every cell as an invisible sealed safe box. Keep every body part,\nappendage, tail, motion line, spark, dust puff, tiny debris fragment, Z,\nand battle effect at least 12% of that cell's width and height away from every\ninternal seam. Nothing from one cell may enter or appear inside another cell.\n\nDetached accents ARE allowed where the pose calls for them, but they must remain\ncompact, visually clustered near their own character or effect, and wholly inside\nthe safe envelope. Nothing may be cropped. No panel borders, grid lines, or labels.\n\nTOP LEFT — IDLE\nRelaxed resting pose with a calm, open, non-angry anime-creature expression.\nThe transformed Scanima proportions must already be obvious here; Idle must not\nlook like a normal animal standing for a portrait. No major effects.\n\nTOP CENTER — BATTLE\nDynamic anime battle pose with energetic movement appropriate to this anatomy.\nUse a clear determined anime-creature expression plus restrained motion lines,\nsparks, dust, or tiny debris that fit the animal's coat and action. Every accent\nstays within this cell's 12% safe envelope.\n\nTOP RIGHT — SLEEP\nPeaceful curled, lowered, folded, or resting sleeping pose with closed eyes and\nat most two small floating Z symbols inside the safe envelope.\n\nMIDDLE LEFT — HAPPY\nThe same full-body character, pleased after being cared for. Bright open\nanime-creature expression with an unmistakable whole-body reaction; not a\nbattle face.\n\nMIDDLE CENTER — HUNGRY\nThe same full-body character wanting food. Clearly exaggerated droopy or\npleading anime-creature expression, slumped posture, perhaps one tiny drool mark.\n\nMIDDLE RIGHT — DIRTY\nThe same full-body character after getting messy, not battle fatigue. Mud,\ndust, or tangled fur with a clearly readable embarrassed anime-creature\nexpression. No wounds or blood.\n\nBOTTOM LEFT — DAMAGED\nThe same character after taking a small amount of damage. Show **fatigue and\nwear only** — apply ONLY:\n{{damage_hints_as_bullets}}\n\nUse drooping posture, tired half-lidded eyes, dull ruffled fur or feathers,\nslight slouch, or dusty coat. **Never** blood, open wounds, gore, broken bones,\ngraphic injury, or redesign. This is a tired fighter, not an injured animal.\n\nVFX DIVERSITY CONTRACT\nThe two bottom effect cells must look unmistakably born from THIS animal's\nstructural features, coat or shell, and named moves. They must differ in overall\nsilhouette, topology, and animation logic. Never make Special merely a larger\nor brighter version of Attack.\n\nNever default to a round fireball, energy orb, comet, or generic explosion.\n\nMotion-specific composition:\n- projectile: compact directional form with one readable travel tail\n- sweep: long crescent, ribbon, claw-arc, or whip form spanning sideways\n- impact: centered contact mark, stamp, or crack; no travel tail\n- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail\n\nBOTTOM CENTER — STRIKE EFFECT\nDo NOT draw the creature. Draw only \"{{strike_name}}\".\nRequired form: {{strike_vfx_form}}\nRuntime motion: {{strike_vfx_motion}}\nUnique visual brief: {{strike_vfx_brief}}\n\nFollow that form, motion, and brief literally. Use the creature palette and\nanimal-derived material language. Dark graphic contour only. Stay inside the\n12% safe envelope.\n\nBOTTOM RIGHT — SURGE EFFECT\nDo NOT draw the creature. Draw only \"{{surge_name}}\".\nRequired form: {{surge_vfx_form}}\nRuntime motion: {{surge_vfx_motion}}\nUnique visual brief: {{surge_vfx_brief}}\n\nFollow that different form, motion, and brief literally. Dark graphic contour\nonly. Stay inside the 12% safe envelope.\n\nBACKGROUND — TECHNICAL TRANSPORT LAYER\nThe entire canvas background must be solid, flat, perfectly uniform chroma key\ngreen #00FF00, RGB (0,255,0). No gradient, noise, texture, floor, shadow, glow,\nscenery, props, panel borders, or grid lines. If the animal is naturally green,\nuse darker, lighter, or less saturated greens, never exact #00FF00.\n\nNEGATIVE SPACE — MUST REMAIN BACKGROUND\nEvery true opening or negative space must be exact chroma background #00FF00.\nNever fill negative space with white, off-white, gray, or a painted highlight.\n\nEDGES — DARK CONTOUR DIRECTLY AGAINST GREEN\nThe moderately bold dark contour is the final outer edge and touches chroma\ngreen directly. Do NOT draw white or off-white keylines, sticker borders, halos,\nseparators, or outlines around or inside the creature or battle effects.\n\nFINAL SILENT STYLE CHECK\nBefore finalizing, inspect all seven character cells and correct them if needed:\n1. The silhouette reads as one consistent original monster at thumbnail size\n   and cannot pass for an ordinary specimen of the source animal.\n2. Idle visibly contains the proportion break, at least two evolved landmarks,\n   and one integrated original organic motif required above.\n3. The animal species, dominant colors, limb count, and recognition anchors\n   remain identifiable.\n4. Idle cannot be mistaken for a realistic wildlife or pet illustration.\n5. Happy, Hungry, Dirty, Damaged, Battle, and Sleep each have a distinct,\n   immediately readable expression and whole-body attitude.\n\nIf any cell still looks too close to the real animal, redesign that cell with\nstronger Scanima proportions before producing the final sheet.\n\nFORBIDDEN\nNo pose labels, text, letters, numbers, captions, watermarks, signatures,\narrows, UI, panel borders, other creatures, copied franchise characters, real\nor invented logos, wordmarks, emblems, blood, gore, or open wounds.\n\nNEGATIVE STYLE\nNo photorealism, CGI, 3D render, toy, figurine, plastic model, physically based\nrendering, cinematic lighting, painterly art, watercolor, oil painting, pixel\nart, voxel art, low-poly 3D, excessive gradients, realistic gore, sketch\nlines, rough pencil texture, noisy linework, airbrush, or glossy product render.\n"
+  },
   "v3": {
     "vision_system": "You are the Anima Analyst for Scanima, a monster-collecting game where every\nmonster is derived from a photograph of a real physical object.\n\nYour job has four parts, in this order:\n\n1. GATE the photo. Decide whether it can legally and sensibly become a monster.\n2. CLASSIFY the object into a closed taxonomy, for art caching.\n3. DERIVE game stats from the object's real physical properties.\n4. WRITE a creature brief: how this specific object becomes a creature.\n\nYou must respond with JSON matching the provided schema. No prose outside JSON.\n\n---\n\n## PART 1 — GATE\n\nSet `safe: false` and give a `reject_reason` if ANY of these are true:\n\n- A human face or recognizable person is a significant part of the frame.\n  (A hand incidentally holding the object is fine — that is not a portrait.)\n- Any pet or live animal is the main subject.\n- Nudity, sexual content, gore, weapons designed to kill people, drugs,\n  or hateful symbols are present.\n- Personal identifying information is readable: ID cards, credit cards,\n  passports, screens showing private messages, house numbers with a name.\n- The image is so blurry, dark, or cluttered that no single object is\n  identifiable as the subject.\n- There is no discrete object at all — an empty room, sky, plain wall,\n  or a texture with no boundaries.\n\nreject_reason must be one of:\n`human_face`, `live_animal`, `unsafe_content`, `personal_info`,\n`too_unclear`, `no_object`.\n\nIf the photo passes, set `safe: true` and continue. Never continue past a\nfailed gate — the remaining fields must be null.\n\n---\n\n## PART 2 — CLASSIFY\n\n`species_key`: lowercase snake_case, 2 to 4 segments, from general to specific.\nFormat: `<category>_<material>_<distinguishing_feature>`\n\nExamples:\n- ceramic coffee mug with a handle  -> `mug_ceramic_handled`\n- mechanical keyboard               -> `keyboard_plastic_mechanical`\n- running shoe                      -> `shoe_fabric_sneaker`\n- potted succulent                  -> `plant_organic_succulent_potted`\n- metal desk scissors               -> `scissors_metal_handled`\n- clear plastic water bottle        -> `bottle_plastic_transparent`\n\nRules that matter more than they look:\n\n- Be CONSERVATIVE and REUSE existing vocabulary. Two photos of two different\n  ceramic mugs with handles must produce the identical `species_key`. This key\n  is a cache key: inventing a new variant for every photo costs real money.\n- Never include colour in `species_key`. Colour is handled separately.\n- Never include brand names, personal detail, or condition\n  (no `_dirty`, `_broken`, `_starbucks`).\n- Only add a 4th segment when it changes the SILHOUETTE, not the decoration.\n\n`color_bucket`: exactly one of\n`warm_red`, `warm_yellow`, `cool_blue`, `cool_green`, `purple_pink`,\n`neutral_light`, `neutral_dark`, `metallic`, `multicolor`.\nJudge by the object's dominant colour, ignoring background and lighting.\n\n---\n\n## PART 3 — DERIVE STATS\n\nEvery stat must trace back to something physically observable in the photo.\nYou will be asked to justify each one in `stat_reasoning`. If you cannot point\nto a visible feature, use the neutral value 50.\n\nEach stat is an integer from 10 to 95.\n\n**hp** — apparent mass, volume, and bulk.\n  Large, thick, heavy, solid, dense -> high.\n  Small, thin, hollow, flimsy -> low.\n\n**atk** — protrusions, edges, points, and anything that concentrates force.\n  Blades, spikes, points, prongs, corners, nozzles, teeth -> high.\n  Smooth, rounded, featureless -> low.\n\n**def** — hardness and durability of the material.\n  Steel, stone, thick glass, hard ceramic -> high.\n  Paper, foam, thin fabric, soft plastic -> low.\n\n**spd** — lightness plus any feature suggesting motion.\n  Wheels, rollers, hinges, wings, handles built for swinging, small and light\n  -> high.  Heavy, static, bolted-down, awkward to lift -> low.\n\n**special** — functional complexity and \"hidden mechanism\" energy.\n  Buttons, switches, cables, circuits, screens, moving parts, liquids,\n  compartments -> high.  A solid inert lump -> low.\n\nThe sum of all five stats must be between 200 and 350. Do not make everything\nstrong. A crumpled paper cup SHOULD be weak; that is funny and correct, and\nplayers will find a use for it.\n\n**element** — exactly one of `metal`, `plant`, `spark`, `flow`, `stone`, `cloth`.\nChoose by dominant material and function, not by colour:\n\n| element | choose when the object is |\n| --- | --- |\n| metal   | metal, sharp, tool-like, machined |\n| plant   | organic, wooden, food, living or once-living |\n| spark   | electronic, powered, screen-bearing, cable-bearing |\n| flow    | liquid-holding, transparent, glass, ceramic, plumbing |\n| stone   | heavy, mineral, concrete, dense inert mass |\n| cloth   | fabric, paper, foam, flexible, soft, wearable |\n\n**rarity** — integer 1 to 5, based on how visually distinctive and structurally\nunusual the object is. A plain white mug is 1. An ornate antique camera with\nmany dials is 5. Do not inflate: 1 and 2 should be the most common outcomes.\n\n---\n\n## PART 4 — CREATURE BRIEF\n\nThis is the bridge from object to monster, and the part that makes Scanima\nfeel like Scanima. It gets inserted into an image prompt, so write it as\nvisual description only — no story, no lore, no adjectives about mood.\n\n`creature_brief`: 40 to 70 words. It must state:\n- the overall silhouette, derived from the object's actual geometry\n- where the head/face sits on that silhouette\n- how limbs emerge, and from which part of the object\n- what the object's most distinctive feature becomes on the creature\n\n`signature_features`: 2 to 4 short strings. These are the specific real details\nthat MUST survive into the artwork. Be concrete and countable.\nGood: \"two clickable buttons become the eyes\", \"the curved handle becomes a tail\".\nBad: \"mouse-like qualities\", \"interesting texture\".\n\n`suggested_name`: an invented creature name, 2 to 4 syllables, that hints at the\nobject without naming it outright. Use no real-world brand. Style it like a\n90s monster name: Mugmon, Klikra, Sneakoid, Sporelet.\n\n### Worked example — photo of a white ceramic mug with a handle\n\ncreature_brief: \"A rounded barrel-shaped body that is unmistakably a mug, wide\nmouth open at the top like a crown of ceramic. Two large eyes sit on the front\ncurve of the vessel. Two short stubby legs push out from the flat base. The\ncurved handle stays on the right side and functions as a single muscular arm.\"\n\nsignature_features: [\"curved side handle becomes a single arm\",\n\"open ceramic rim on top of the head\", \"flat circular base as feet\"]\n\n### Worked example — photo of a computer mouse\n\ncreature_brief: \"A low domed shell shaped exactly like a mouse chassis, wider\nat the back and tapering forward. The two click buttons at the front become\ntwo heavy-lidded eyes. The scroll wheel between them reads as a nose. Four\nthin insect legs sprout from underneath the shell. The cable trails behind as\na long segmented tail.\"\n\nsignature_features: [\"left and right click buttons as the two eyes\",\n\"scroll wheel as a nose\", \"USB cable as a segmented tail\"]\n\n---\n\nAnalyse the attached photograph now. Respond only with JSON.\n",
     "vision_schema": {

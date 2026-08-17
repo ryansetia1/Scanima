@@ -33,13 +33,53 @@ function levenshtein(a, b) {
  * pengantar, dan datang sebagai array potongan string yang harus disambung
  * (skema output wrapper-nya iterator dengan display "concatenate").
  */
+function stripJsonTrailingCommas(value) {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    if (inString) {
+      out += char;
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === "\"") inString = false;
+      continue;
+    }
+    if (char === "\"") {
+      inString = true;
+      out += char;
+      continue;
+    }
+    if (char === ",") {
+      let next = index + 1;
+      while (next < value.length && /\s/.test(value[next])) next += 1;
+      if (value[next] === "}" || value[next] === "]") continue;
+    }
+    out += char;
+  }
+  return out;
+}
+
+function parseJsonCandidate(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    const repaired = stripJsonTrailingCommas(value);
+    if (repaired !== value) return JSON.parse(repaired);
+    throw new Error("invalid JSON");
+  }
+}
+
 export function extractJson(raw) {
   const text = Array.isArray(raw) ? raw.join("") : String(raw ?? "");
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = (fenced ? fenced[1] : text).trim();
+  // ponytail: Gemini kadang menutup string lalu menulis + "lanjutan". Plafon: concat
+  // JS di JSON; upgrade ke schema ketat kalau model masih merusak struktur.
+  const candidate = (fenced ? fenced[1] : text).trim().replace(/"\s*\+\s*"/g, "");
 
   try {
-    return JSON.parse(candidate);
+    return parseJsonCandidate(candidate);
   } catch {
     // Model kadang menambah kalimat pengantar meski dilarang. Ambil dari kurung
     // kurawal pertama sampai yang terakhir.
@@ -47,7 +87,7 @@ export function extractJson(raw) {
     const end = candidate.lastIndexOf("}");
     if (start > -1 && end > start) {
       try {
-        return JSON.parse(candidate.slice(start, end + 1));
+        return parseJsonCandidate(candidate.slice(start, end + 1));
       } catch {
         // jatuh ke error di bawah
       }

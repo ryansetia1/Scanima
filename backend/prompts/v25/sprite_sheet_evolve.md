@@ -1,0 +1,374 @@
+Create a polished 2D character sheet for the {{stage_name}} form of the ONE
+original creature-monster shown in the reference image. It is the same lineage,
+but its body plan, maturity, apex direction, and black outer silhouette must be
+unmistakably new without losing its semantic soul.
+
+INSTRUCTION PRIORITY
+1. Technical layout, safety, and chroma contracts.
+2. Semantic soul and Identity Invariants.
+3. Shape Budget and visual clarity.
+4. Anatomy-agnostic maturity.
+5. Open apex presence.
+6. Silhouette Delta Contract.
+7. Minimal polish.
+
+If novelty conflicts with a preserved Identity Invariant, redesign the
+surrounding body plan. Never sacrifice soul.
+
+GLOBAL STYLE LOCK — MATCH RENDERING, NOT OLD SHAPE
+2D Japanese anime creature character design with clear silhouettes and
+expressive readability of late-1990s monster games, while remaining entirely
+original. Clean confident anime linework, moderately bold dark contours, broad
+flat base-color regions, crisp 2–3 level cel shading, hard-edged shadows,
+controlled highlights, and minimal gradients. Never CGI, painterly concept art,
+glossy rendering, or realistic illustration.
+
+Clarity comes before ornament. Build the character from two or three primary
+shape groups. A primary shape is a first-read graphic form, NOT a requirement
+for a large, thick, heavy, central, masculine, muscular, or bulky body.
+
+Techno-organic or mechanical details are appropriate ONLY when the original
+object is electronic or mechanical. Other materials evolve through their own
+material language rather than becoming robots or cyborgs.
+
+LINEAGE EVIDENCE
+Object: {{object_name}}
+Visible material and finish: {{surface_finish}}
+
+Original visual transformation:
+{{creature_brief}}
+
+Character direction:
+{{character_direction}}
+
+Earlier-form features identify source material and character essence. They are
+NOT a composition blueprint:
+{{signature_features_as_bullets}}
+
+Color identity: {{color_palette}}
+Personality: {{personality}}
+
+IDENTITY INVARIANTS — PRESERVE THE SOUL
+{{identity_invariants_as_bullets}}
+
+For every `[preserve]` invariant, keep its source truth, objective count or
+relationship, and identity role immediately visible. Follow its Maturation
+Path. Geometry may lengthen, compress, widen, narrow, move, or integrate into a
+new body plan while the semantic fact and emotional read remain recognizable.
+
+Never invent a conventional face for a faceless source. If the Plan identifies
+an aperture, sensory cluster, leading plane, gesture, or interaction structure
+as the identity focal structure, mature that real structure.
+
+Never merge two eyes into one aperture, cover the primary identity read, hide a
+preserved feature, or turn a warm companion-like identity into an empty or
+hostile one.
+
+At most one `[transfigure]` invariant may change count, arrangement, or physical
+form. Its visible lineage evidence must remain a concrete, pointable descendant.
+
+SHAPE BUDGET — TWO OR THREE FIRST READS
+Primary shape groups:
+{{primary_shapes_as_bullets}}
+
+Exactly one Plan shape is `[dominant]`. Dominant means the viewer reads it
+first. It may be a slender line, compact core, broad body, long mantle,
+negative-space frame, vertical column, S-curve, or another source-derived
+shape. Do not inflate it merely because it is dominant.
+
+Dominant motif source:
+{{dominant_motif_source}}
+
+Dominant motif at this stage:
+{{dominant_motif_expression}}
+
+Identity focal source:
+{{identity_focal_source}}
+
+Identity semantics that remain:
+{{identity_focal_semantics}}
+
+Focal proportion maturation:
+{{identity_focal_proportion}}
+
+Focal expression at this stage:
+{{identity_focal_expression}}
+
+SIMPLIFY BEFORE ADDING
+{{simplification_actions_as_bullets}}
+
+The Plan explicitly pays for evolution by merging, enlarging, or omitting old
+small details. Do not restore omitted details. Do not split a grouped result
+back into many equal small units.
+
+Allowed detail zone:
+{{detail_zones_as_bullets}}
+
+Quiet zones:
+{{quiet_zones_as_bullets}}
+
+Repetition policy: {{repetition_policy}}
+
+Detail exists only inside the listed detail zone. Quiet zones use broad
+color/material fields with few or no internal lines. Group leaves, fur, scales,
+feathers, roots, cables, vents, folds, and similar repeated anatomy according
+to the repetition policy.
+
+MATURITY CONTRACT — {{maturity_target_read}}
+Identity focal maturation:
+{{identity_focal_maturation}}
+
+Concrete proportion delta:
+{{proportion_delta}}
+
+Body maturation:
+{{body_maturation}}
+
+Posture maturation:
+{{posture_maturation}}
+
+Personality that remains:
+{{preserved_personality}}
+
+Concrete maturity delta:
+{{maturity_stage_delta}}
+
+Maturity is visible through source-appropriate geometry, proportion, support,
+and posture. A copied juvenile focal structure on a changed body FAILS. Anger,
+sharp eyes, accessories, gender coding, muscles, bulk, or larger size do not
+create maturity.
+
+OPEN APEX PRESENCE — {{presence_tier}}
+Apex thesis:
+{{apex_thesis}}
+
+Selected presence channels:
+{{presence_channels_as_bullets}}
+
+Drawable channel evidence:
+{{channel_evidence_as_bullets}}
+
+Shape hierarchy:
+{{shape_hierarchy}}
+
+Authority pose:
+{{authority_pose}}
+
+Reliability cue:
+{{reliability_cue}}
+
+Express stage power through exactly the selected visual channels. The body
+archetype is free: bulky, slim, elegant, compact, elongated, asymmetric,
+amorphous, aerial, or grounded are equally valid. Do not add mass, muscle,
+armor, humanoid anatomy, femininity, masculinity, regalia, or size merely to
+signal power.
+
+CHARACTER CELLS HAVE NO AURA
+The creature has no aura, halo, corona, orbit, surrounding energy, external
+glow, supernatural particle cloud, floating rune, energy flame, or persistent
+effect in ANY of the seven character cells. Final evolution does not change
+this rule. Supernatural spectacle appears only in the two separate VFX cells.
+
+CHARACTER ESSENCE — PRESERVE IT
+Mature the same emotional essence without copying unrelated juvenile geometry.
+Never default to fierce, angry, masculine, feminine, muscular, armored,
+humanoid, regal, or generic adult coding. Do not invent gender-coded anatomy or
+accessories unsupported by the Plan.
+
+SURFACE MARKS — OMIT, NEVER REPLACE
+Treat every brand logo, wordmark, swoosh, stripe arrangement, printed tag,
+model number, letter, or emblem-like graphic as absent. Draw plain
+object-faithful material and never invent a replacement symbol.
+
+EVOLUTION DESIGN — {{stage_name}}
+Archetype: {{transformation_archetype}}
+Metamorphosis thesis: {{metamorphosis_thesis}}
+
+Build the new black outer contour FIRST. At 96 px, a viewer must distinguish
+the reference form from this form without color, focal detail, texture, or VFX.
+Never reuse the old dominant outline, radial arrangement, center of visual
+weight, or posture and then decorate it.
+
+Required changed dimensions:
+{{changed_dimensions_as_bullets}}
+
+Dominant visual weight — exact before → after:
+{{dominant_mass_shift}}
+
+Posture — exact before → after:
+{{posture_change}}
+
+Outer contour — exact before → after:
+{{outer_contour_change}}
+
+Locomotion or body plan — exact before → after:
+{{locomotion_or_body_plan_change}}
+
+Lineage anchor transformations:
+{{anchor_transformations_as_bullets}}
+
+Derived anatomy:
+{{derived_anatomy_as_bullets}}
+
+Concrete stage brief:
+{{evolution_brief}}
+
+Additional metamorphosis notes:
+{{metamorphosis_notes}}
+
+Height change rationale:
+{{height_change_rationale}}
+
+The reference remains evidence for material, palette family, essence, source
+features, and Identity Invariants. It does not otherwise lock face location,
+limb count, proportions, body-plan logic, body archetype, or shape distribution.
+New anatomy is allowed only when the Plan traces it to a visible old feature.
+
+The result must be surprising yet explainable. Do not solve evolution by making
+the same body larger or by adding repeated parts, intricate texture, cracks,
+armor, wings, horns, claws, weapons, badges, symbols, humanoid limbs, animal
+parts, robot parts, or cyborg parts.
+
+WHITE IS NOT A GENERIC ACCENT
+If the photographed material is not naturally white or off-white, never paint
+white or off-white highlights, stripes, slashes, holes, shine, or decorative
+marks. Highlights use a lighter version of the material's own hue. White is
+allowed only for eye sclera, teeth, and real naturally white material.
+
+VFX COLOR SAFETY — EFFECT CELLS ONLY
+Chroma green is a transport color only. Attack and Special VFX use ONLY:
+{{vfx_palette}}
+
+Never render green, lime, chartreuse, emerald, verdant, yellow-green, neon
+green, electric green, or any near-#00FF00 energy. This ban applies even when
+the creature is a plant or the move uses leaf/root geometry. Naturally green
+anatomy uses forest, moss, olive, muted yellow-green, or another visibly
+darker/less-saturated body green, never chroma-like glow.
+
+CHARACTER CONSISTENCY
+The seven character cells depict the exact same new-stage individual. Preserve
+its proportions, mature identity focal structure, primary shapes, palette,
+material, Identity Invariants, and transformed anchors. The two effect cells
+contain ONLY battle effects.
+
+HORIZONTAL FACING LOCK — BATTLE CONTRACT
+Every character cell faces canvas-left in the same forward-left three-quarter
+orientation. Never mirror, turn around, or swap asymmetrical landmarks.
+
+The BATTLE pose attacks toward canvas-left through body pose alone. Do not add
+an attack trail, impact, projectile, energy, or motion effect around the body.
+The client overlays the separate effect cell and mirrors the complete sheet
+when this creature fights from the left side.
+
+COMPOSITION — EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT
+Use a three-quarter view from slightly above, facing forward-left. Full body at
+comparable scale in every character cell.
+
+Treat every cell as an invisible sealed safe box. Keep every body part,
+appendage, Z, stain, and battle effect at least 12% of that cell's width and
+height away from every internal seam. Nothing enters another cell. Nothing is
+cropped. No borders, grid lines, or labels.
+
+TOP LEFT — IDLE
+Calm, open, non-angry authority pose specified by the Plan. The dominant shape,
+identity focal structure, shape hierarchy, and preserved invariants are clear.
+No aura, particles, glow, symbols, debris, or transient effects.
+
+TOP CENTER — BATTLE
+Dynamic battle-ready body pose appropriate to this body plan. Keep the mature
+focal read and shape hierarchy. Body only: no projectile, slash, trail, burst,
+spark, debris, or energy effect.
+
+TOP RIGHT — SLEEP
+Peaceful natural resting pose with closed eyes when eyes exist and at most two
+small Z symbols, all inside the safe envelope.
+
+MIDDLE LEFT — HAPPY
+The same mature character, pleased after care. Express happiness through face,
+sensory structure, gesture, and pose only. No celebratory particles or symbols.
+
+MIDDLE CENTER — HUNGRY
+The same mature character wanting food. Use expression and posture only. No
+thought bubble, food icon, speech bubble, emoji, particle, or UI symbol.
+
+MIDDLE RIGHT — DIRTY
+The same character after getting messy, not battle damage. A few broad smudges,
+dust areas, crumbs, or material-faithful stains. No detached debris, cracks, or
+chips.
+
+BOTTOM LEFT — DAMAGED
+The same character after small damage. Apply ONLY:
+{{damage_hints_as_bullets}}
+
+Damage affects visible material. Never expose invented machinery. Keep it
+restrained. No blood, gore, destruction, detached fragments, or redesign.
+
+VFX DIVERSITY CONTRACT
+The two bottom effects are born from THIS object's structural features,
+material, named moves, and earlier effect identity. They use only the safe VFX
+palette and differ in silhouette, topology, and animation logic. Evolved
+effects may feel more powerful, but Special is never merely a larger/brighter
+Attack.
+
+Motion-specific composition:
+- projectile: compact directional form with one readable travel tail
+- sweep: long crescent, ribbon, tread, blade, or whip form spanning sideways
+- impact: centered contact mark, stamp, crack, slash, or shatter; no travel tail
+- bloom: centered radial, branching, cloudy, ring-like, or erupting growth; no tail
+
+BOTTOM CENTER — STRIKE EFFECT
+Do NOT draw the creature. Draw only "{{strike_name}}".
+Required form: {{strike_vfx_form}}
+Runtime motion: {{strike_vfx_motion}}
+Unique visual brief: {{strike_vfx_brief}}
+
+Use only the safe VFX palette. Dark contour only. No white border, text,
+letters, or creature body. Stay inside the 12% safe envelope.
+
+BOTTOM RIGHT — SURGE EFFECT
+Do NOT draw the creature. Draw only "{{surge_name}}".
+Required form: {{surge_vfx_form}}
+Runtime motion: {{surge_vfx_motion}}
+Unique visual brief: {{surge_vfx_brief}}
+
+Use only the safe VFX palette. It cannot reuse Attack's silhouette, recolor an
+earlier effect, or merely scale it up. Dark contour only. No white border, text,
+letters, or creature body. Stay inside the 12% safe envelope.
+
+BACKGROUND — TECHNICAL TRANSPORT LAYER
+Solid perfectly uniform chroma key green #00FF00, RGB (0,255,0), across the
+entire canvas. No gradient, noise, texture, floor, shadow, glow, scenery, props,
+borders, or grid lines. Naturally green characters use darker, lighter, or less
+saturated body greens, never exact #00FF00.
+
+NEGATIVE SPACE — MUST REMAIN BACKGROUND
+Every true opening, hole, cutout, split, handle gap, ring center, arch, or other
+negative space is exact chroma background #00FF00. Never fill or outline it with
+white, off-white, gray, or a painted highlight.
+
+For Monstera and every fenestrated leaf, each fenestration is a literal hole,
+never a white stripe. Fill it with exact #00FF00.
+
+Before finishing, inspect every white shape. Remove it unless it is an eye
+sclera, tooth, or real naturally white material.
+
+EDGES — DARK CONTOUR DIRECTLY AGAINST GREEN
+The moderately bold dark contour is the final outer edge and touches chroma
+green directly. Do NOT draw white/off-white keylines, sticker borders, halos,
+separators, or outlines around or inside the creature or battle effects.
+
+FORBIDDEN
+No labels, text, letters, numbers, captions, watermarks, signatures, arrows, UI,
+thought bubbles, speech bubbles, food icons, panel borders, other creatures,
+copied franchise characters, logos, wordmarks, emblems, sigils, badges, runes,
+swooshes, or isolated decorative symbols.
+
+No aura, halo, corona, external glow, surrounding energy, orbit, floating
+particle, attack effect, or supernatural decoration in character cells.
+
+NEGATIVE STYLE
+No photorealism, CGI, 3D render, toy, figurine, plastic model, physically based
+rendering, cinematic lighting, painterly art, watercolor, oil painting, pixel
+art, voxel art, low-poly 3D, excessive gradients, realistic anatomy, sketch
+lines, rough pencil texture, noisy linework, airbrush, glossy product render,
+intricate micro-detail, or texture spread evenly across the body.

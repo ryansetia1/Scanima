@@ -1,7 +1,7 @@
 // POST /evolve_anima  { anima_id, idempotency_key, resume_only? }
 //
-// Private evolution art: no Core, no original photo. Vision + one image
-// generation per request; webhook commits via commit_evolution.
+// Private evolution art: no Core, no original photo. Locked sheets commit
+// without Replicate; otherwise Vision + one image; webhook commits.
 
 import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
 import { extractJson } from "../_shared/vision.mjs";
@@ -9,6 +9,7 @@ import {
   assembleEvolvePrompt,
   buildEvolvePromptContext,
   buildEvolutionIdleReference,
+  compactPriorEvolutionDesign,
   evolutionVisionInstruction,
   evolutionWebhookUrl,
   validateEvolutionPlan,
@@ -63,6 +64,25 @@ async function fetchCaptureVision(animaId: string): Promise<Record<string, unkno
   return vr && typeof vr === "object" ? vr as Record<string, unknown> : null;
 }
 
+async function fetchPriorEvolutionPlan(
+  animaId: string,
+  priorStage: number,
+): Promise<Record<string, unknown> | null> {
+  if (priorStage < 2) return null;
+  const { data } = await db
+    .from("generations")
+    .select("vision_result")
+    .eq("anima_id", animaId)
+    .eq("kind", "evolve")
+    .eq("target_stage", priorStage)
+    .eq("status", "succeeded")
+    .order("finished_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const plan = data?.vision_result;
+  return plan && typeof plan === "object" ? plan as Record<string, unknown> : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);
@@ -103,11 +123,11 @@ Deno.serve(async (req) => {
       vision_evolve_schema?: unknown;
     }
   >;
-  const prompts = promptBundle[versiPrompt];
-  if (!prompts?.sprite_sheet_evolve) {
+  const configuredPrompts = promptBundle[versiPrompt];
+  if (!configuredPrompts?.sprite_sheet_evolve) {
     return json(500, { error: `versi evolution prompt ${versiPrompt} tidak ada di bundel` });
   }
-  if (!prompts.vision_evolve_system || !prompts.vision_evolve_schema) {
+  if (!configuredPrompts.vision_evolve_system || !configuredPrompts.vision_evolve_schema) {
     return json(500, { error: `vision evolve prompt ${versiPrompt} tidak lengkap di bundel` });
   }
 
@@ -159,7 +179,7 @@ Deno.serve(async (req) => {
     .from("generations")
     .select(
       "id, status, prediction_id, vision_result, vision_started_at, " +
-        "dispatch_started_at, cost_usd_estimate",
+        "dispatch_started_at, cost_usd_estimate, prompt_version",
     )
     .eq("id", genId)
     .maybeSingle();
@@ -234,8 +254,39 @@ Deno.serve(async (req) => {
     if (errTimeout) return json(500, { error: errTimeout.message });
   }
 
+  if (!genRow?.prediction_id) {
+    const { data: lockRaw, error: errLock } = await db.rpc("apply_evolution_lock", {
+      p_owner: uid,
+      p_gen_id: genId,
+    });
+    if (errLock) {
+      await db.rpc("fail_evolution", {
+        p_gen_id: genId,
+        p_reason: errLock.message.slice(0, 500),
+      });
+      return json(500, { error: errLock.message });
+    }
+    const lockResult = (lockRaw ?? {}) as Record<string, unknown>;
+    if (lockResult.locked === true) {
+      return json(200, {
+        generation_id: genId,
+        anima_id: begin.anima_id,
+        status: "succeeded",
+        target_stage: targetStage,
+        locked: true,
+      });
+    }
+  }
+
   const storedPlan = begin.vision_result ?? genRow?.vision_result;
   const hasStoredPlan = storedPlan && typeof storedPlan === "object";
+  const activePromptVersion = hasStoredPlan || genRow?.vision_started_at
+    ? configString(genRow?.prompt_version, versiPrompt)
+    : versiPrompt;
+  const prompts = promptBundle[activePromptVersion];
+  if (!prompts?.sprite_sheet_evolve || !prompts.vision_evolve_system || !prompts.vision_evolve_schema) {
+    return json(500, { error: `evolution prompt aktif ${activePromptVersion} tidak lengkap di bundel` });
+  }
   if (!hasStoredPlan && genRow?.vision_started_at) {
     const elapsedMs = Date.now() - new Date(String(genRow.vision_started_at)).getTime();
     if (elapsedMs < EVOLUTION_PLAN_LEASE_MS) {
@@ -251,6 +302,38 @@ Deno.serve(async (req) => {
       p_reason: "EVOLUTION_PLAN_TIMEOUT",
     });
     return json(409, { error: "EVOLUTION_PLAN_TIMEOUT", generation_id: genId });
+  }
+
+  const contractVersion = Number.parseInt(activePromptVersion.replace(/^v/, ""), 10) || 21;
+  const priorPlan = targetStage === 3
+    ? await fetchPriorEvolutionPlan(begin.anima_id, begin.prior_stage)
+    : null;
+  const priorIdentityInvariants = Array.isArray(priorPlan?.identity_invariants)
+    ? priorPlan.identity_invariants
+    : [];
+  const priorShapeBudgetContract = (
+    priorPlan?.shape_budget_contract
+    && typeof priorPlan.shape_budget_contract === "object"
+  ) ? priorPlan.shape_budget_contract : null;
+  if (targetStage === 3 && contractVersion >= 23 && priorIdentityInvariants.length < 2) {
+    await db.rpc("fail_evolution", {
+      p_gen_id: genId,
+      p_reason: "EVOLUTION_PRIOR_IDENTITY_MISSING",
+    });
+    return json(409, {
+      error: "EVOLUTION_PRIOR_IDENTITY_MISSING",
+      generation_id: genId,
+    });
+  }
+  if (targetStage === 3 && contractVersion >= 25 && !priorShapeBudgetContract) {
+    await db.rpc("fail_evolution", {
+      p_gen_id: genId,
+      p_reason: "EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING",
+    });
+    return json(409, {
+      error: "EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING",
+      generation_id: genId,
+    });
   }
 
   const { data: signed, error: errSigned } = await db.storage
@@ -303,15 +386,40 @@ Deno.serve(async (req) => {
   }
   const referenceUrl = referenceSigned.signedUrl;
 
+  const meta = begin.capture_metadata ?? {};
+  const priorArchetype = String(priorPlan?.transformation_archetype ?? "unknown");
+  const planValidationOptions = {
+    targetStage,
+    priorHeightCm: Number(meta.body_height_cm) || 120,
+    contractVersion,
+    priorTransformationArchetype: priorArchetype,
+    priorLocomotionMode: String(priorPlan?.mobility_contract?.locomotion_mode ?? ""),
+    priorIdentityInvariants,
+    priorShapeBudgetContract,
+    priorStrikeName: String(meta.strike_name ?? ""),
+    priorSurgeName: String(meta.surge_name ?? ""),
+    priorStrikeEffectId: String(meta.strike_effect_id ?? ""),
+    priorSurgeEffectId: String(meta.surge_effect_id ?? ""),
+  };
+
   let plan: Record<string, unknown>;
   if (hasStoredPlan) {
-    plan = storedPlan as Record<string, unknown>;
+    try {
+      plan = validateEvolutionPlan(storedPlan, planValidationOptions).plan;
+    } catch (e) {
+      const alasan = e instanceof Error ? e.message : String(e);
+      await db.rpc("fail_evolution", {
+        p_gen_id: genId,
+        p_reason: `EVOLUTION_STORED_PLAN_INVALID: ${alasan}`.slice(0, 500),
+      });
+      return json(409, { error: "EVOLUTION_STORED_PLAN_INVALID", generation_id: genId });
+    }
   } else {
     const { data: preRaw, error: errPre } = await db.rpc("reserve_evolution", {
       p_owner: uid,
       p_gen_id: genId,
       p_plan: null,
-      p_prompt_version: versiPrompt,
+      p_prompt_version: activePromptVersion,
       p_model: modelGambar,
       p_cost: biaya,
     });
@@ -333,14 +441,36 @@ Deno.serve(async (req) => {
       });
     }
 
-    const meta = begin.capture_metadata ?? {};
+    const priorDesign = priorPlan
+      ? JSON.stringify(compactPriorEvolutionDesign({
+        ...priorPlan,
+        transformation_archetype: priorArchetype,
+        identity_invariants: priorIdentityInvariants,
+        shape_budget_contract: priorShapeBudgetContract,
+      }))
+      : "none (Hatchling source or legacy Adult without a structured Plan)";
     const visionPrompt =
       `Target stage: ${targetStage} (${targetStage === 2 ? "Adult bridge" : "Evolved culmination"}).\n` +
       `Current height cm: ${meta.body_height_cm ?? "unknown"}.\n` +
       `Current moves: ${meta.strike_name ?? ""} / ${meta.surge_name ?? ""}.\n` +
       `Current effects: ${meta.strike_effect_id ?? ""} / ${meta.surge_effect_id ?? ""}.\n` +
       `Species: ${meta.species_key ?? ""}; element: ${meta.element ?? ""}.\n` +
-      "Analyse the attached current sprite sheet and respond with the Evolution Plan JSON only.";
+      `Prior evolution design: ${priorDesign}.\n` +
+      (targetStage === 3
+        ? `Choose an archetype different from Adult archetype "${priorArchetype}".\n` +
+          "Keep every Adult identity_invariants identity_id; do not drop a face or sensory invariant. " +
+          "Copy source_truth, identity_role, and maturation_path exactly. " +
+          "Do not add detail zones. Keep discrete unfused supports with visible negative space; " +
+          "do not merge them into a root mass, mound, or pedestal. " +
+          "age_read must be mature. Do not copy Adult eye size or eye graphic; redraw a mature face. " +
+          "derived_from must use the same words as that transform anchor's source_feature. " +
+          (contractVersion >= 29
+            ? "Keep the photographed kind_noun. Change the 96px outline via mass, posture, proportion, or appendages. Same support class is allowed.\n"
+            : "Do not copy Adult limb count or walker silhouette. If Adult walks on legs, Evolved must coil, tether, roll, or change topology.\n")
+        : "") +
+      "Respond with compact JSON only. No markdown fences. Keep each string value under 160 characters. " +
+      "Do not copy Adult paragraphs. Finish every required key including surge_vfx, vfx_palette, strike_effect_id, and surge_effect_id. " +
+      "Analyse the attached current Idle reference and respond with the Evolution Plan JSON only.";
 
     let mentah: unknown;
     try {
@@ -365,15 +495,7 @@ Deno.serve(async (req) => {
 
     try {
       const parsed = extractJson(mentah);
-      const priorHeight = Number(meta.body_height_cm) || 120;
-      const validated = validateEvolutionPlan(parsed, {
-        targetStage,
-        priorHeightCm: priorHeight,
-        priorStrikeName: String(meta.strike_name ?? ""),
-        priorSurgeName: String(meta.surge_name ?? ""),
-        priorStrikeEffectId: String(meta.strike_effect_id ?? ""),
-        priorSurgeEffectId: String(meta.surge_effect_id ?? ""),
-      });
+      const validated = validateEvolutionPlan(parsed, planValidationOptions);
       plan = validated.plan;
     } catch (e) {
       const alasan = e instanceof Error ? e.message : String(e);
@@ -385,7 +507,7 @@ Deno.serve(async (req) => {
       p_owner: uid,
       p_gen_id: genId,
       p_plan: plan,
-      p_prompt_version: versiPrompt,
+      p_prompt_version: activePromptVersion,
       p_model: modelGambar,
       p_cost: biaya,
     });

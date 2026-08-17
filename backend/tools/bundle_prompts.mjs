@@ -39,6 +39,23 @@ const BERKAS = {
 };
 
 const OPSIONAL = new Set(["sprite_sheet_fauna", "vision_evolve_system", "vision_evolve_schema"]);
+const CAPTURE_KEYS = new Set([
+  "vision_system",
+  "vision_schema",
+  "sprite_sheet",
+  "sprite_sheet_fauna",
+]);
+// ponytail: v24–v29 hanya mengubah evolusi; reuse source capture v20 daripada
+// menambah empat salinan byte-identik. Tambahkan versi ke map hanya jika seluruh
+// capture contract memang tetap v20.
+const CAPTURE_PARENT = new Map([
+  ["v24", "v20"],
+  ["v25", "v20"],
+  ["v26", "v20"],
+  ["v27", "v20"],
+  ["v28", "v20"],
+  ["v29", "v20"],
+]);
 
 export async function buildBundle() {
   const versi = (await readdir(DIR_PROMPT, { withFileTypes: true }))
@@ -50,7 +67,8 @@ export async function buildBundle() {
   for (const v of versi) {
     bundel[v] = {};
     for (const [kunci, berkas] of Object.entries(BERKAS)) {
-      const jalur = join(DIR_PROMPT, v, berkas);
+      const parent = CAPTURE_KEYS.has(kunci) ? CAPTURE_PARENT.get(v) : null;
+      const jalur = join(DIR_PROMPT, parent ?? v, berkas);
       let isi;
       try {
         isi = await readFile(jalur, "utf8");

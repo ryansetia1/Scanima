@@ -27,7 +27,7 @@ Kartu **About** di profil:
 | --- | --- |
 | **Element** | Satu elemen utama dan kadang elemen kedua: Metal, Wood, Stone, Ceramic, Glass, Plastic, Cloth, Paper, Plant, Food, Fauna, Flow, Spark, Flame, Frost, Air, Toxin, atau Sound. Penting di Battle. |
 | **Rarity** | Seberapa tidak biasa benda itu, 1–5. |
-| **Level / form** | Hatchling (Lv. 1–15), Adult (16–35), Evolved (36–40). Wajah Anima belum berubah saat naik form. |
+| **Level / form** | Hatchling (Lv. 1–15), Adult (16–35), Evolved (36–40). Naik Level tidak mengganti wajah sendiri — tap **Evolve** di profil atau Collection saat siap. |
 | **EXP** | Poin perawatan dan kemenangan. Level awal naik cepat; Level tinggi butuh lebih banyak EXP. |
 | **Attack** | Nama jurus biasa, dari benda di foto. |
 | **Special** | Nama jurus Special, juga dari foto. |
@@ -53,7 +53,7 @@ Lima angka tempur. Vision membaca foto, lalu Level mengalikannya sedikit.
 
 Cangkir cenderung Defense tinggi, Special rendah. Gunting cenderung Attack tinggi. Remote cenderung Special tinggi. Bukan bug kalau Attack lebih besar dari Special — itu sifat bendanya.
 
-Naik Level membuat kelima angka itu tumbuh kira-kira **2% per level**, plus lonjakan di Adult dan Evolved.
+Naik Level membuat kelima angka itu tumbuh kira-kira **2% per level**. Lonjakan Adult dan Evolved datang sesudah ritual **Evolve**, bukan otomatis di angka Level itu.
 
 ## EXP dan Level
 
@@ -72,6 +72,15 @@ Biaya naik Level bertambah setiap lima Level:
 
 Adult dimulai pada **150 total EXP**, Evolved pada **700**, dan Level 40
 tercapai pada **860**. Di Level 40, meter menampilkan **MAX**.
+
+Saat Level cukup, Collection menandai kartu **Ready to Evolve** dan profil
+menampilkan tombol **Evolve**. Konfirmasi **Begin Evolution** memasukkan Anima
+ke chamber. Ritual ini **gratis** — tidak memakai Core — dan Anima tidak bisa
+Battle atau dirawat sampai selesai. Kalau gagal, bentuk lama tetap dipakai.
+
+Sesudah sukses, art-nya berganti, nama Attack/Special bisa berubah, dan jurus
+bisa mendapat efek tambahan di Battle. Hatchling menjadi Adult di Level 16;
+Adult menjadi Evolved di Level 36. Satu ritual per tahap, berurutan.
 
 | Aksi | EXP | Catatan |
 | --- | --- | --- |
@@ -95,7 +104,7 @@ Tap kartu membuka sheet, bukan langsung pindah companion.
   begitu kamu menekan, bukan sesudah menunggu; kalau pergantiannya gagal, portal
   menutup dan companion lamamu kembali.
 
-Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Hunger dan Hygiene di Collection turun pelan dan berhenti sebelum lapar atau kotor, jadi merawat tim tidak berarti memberi makan semua orang setiap hari. Yang sudah lapar, kotor, atau Dormant sebelum istirahat tetap begitu sampai di-Summon lalu diurus di Home. Kartu Collection memakai pose-nya: Sleep selama Energy pulih, Idle kalau siap, Damaged kalau Dormant. Tidak perlu tap dulu supaya kelihatan.
+Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Hunger dan Hygiene di Collection turun pelan dan berhenti sebelum lapar atau kotor, jadi merawat tim tidak berarti memberi makan semua orang setiap hari. Yang sudah lapar, kotor, atau Dormant sebelum istirahat tetap begitu sampai di-Summon lalu diurus di Home. Kartu Collection memakai pose-nya: Sleep selama Energy pulih, Idle kalau siap, Damaged kalau Dormant, dan **Ready to Evolve** kalau Level sudah cukup untuk Adult atau Evolved. Tidak perlu tap dulu supaya kelihatan.
 
 **Delete** ada di profil sebagai teks kecil, bukan tombol besar. Menghapus itu
 permanen: tidak ada refund Core atau Bits. Ini hanya menghapus satu Anima.

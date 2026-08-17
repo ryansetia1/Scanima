@@ -62,6 +62,7 @@ declare
   v_evolution_gen uuid;
   v_evolution_success_gen uuid;
   v_evolution_cores int;
+  v_evo_flag_prev jsonb;
   v_bits_before_battle int;
   v_score_before_battle int;
   v_wins_before_battle int;
@@ -3451,6 +3452,8 @@ begin
   ----------------------------------------------------------------------------
   -- Evolusi: berurutan, idempoten, gratis untuk pemain, rollback aman, privat.
   ----------------------------------------------------------------------------
+  select value into v_evo_flag_prev
+    from public.app_config where key = 'feature_evolution';
   update public.app_config set value = 'true'::jsonb where key = 'feature_evolution';
   insert into public.animas (
     owner_id, nickname, species_key, color_bucket, element, rarity,
@@ -3636,8 +3639,45 @@ begin
     ok := false;
   exception when insufficient_privilege then null;
   end;
+  begin
+    perform public.apply_evolution_lock(u1, v_evolution_gen);
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
   perform set_config('role', 'none', true);
   assert ok, 'client tidak boleh memanggil RPC evolusi service-role langsung';
+
+  insert into public.anima_evolution_locks (
+    anima_id, target_stage, sheet_path, manifest, evolution_plan, prompt_version
+  ) values (
+    v_evolution_other, 2,
+    u1::text || '/evolution-other/adult-lock.png',
+    '{"stage":2,"prompt_version":"v21","poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb,
+    '{
+      "lineage_anchors":["square body","front screen","side buttons"],
+      "stage_brief":"Locked Adult",
+      "body_height_cm":125,
+      "strike_name":"Lock Tap",
+      "surge_name":"Lock Bloom",
+      "strike_effect_id":"armor_pierce",
+      "surge_effect_id":"barrier"
+    }'::jsonb,
+    'v21'
+  );
+  v_j := public.begin_evolution(u1, v_evolution_other, 'evolution-lock');
+  v_evolution_gen := (v_j->>'generation_id')::uuid;
+  v_j := public.apply_evolution_lock(u1, v_evolution_gen);
+  assert (v_j->>'locked')::boolean
+         and (v_j->>'stage')::int = 2
+         and (select status from public.animas where id = v_evolution_other) = 'ready'
+         and (select stage from public.animas where id = v_evolution_other) = 2
+         and (select model from public.generations where id = v_evolution_gen) = 'locked'
+         and (select cost_usd_estimate from public.generations where id = v_evolution_gen) = 0
+         and (select genesis_cores from public.profiles where id = u1) = v_evolution_cores,
+         'evolution lock harus commit Adult tanpa Core dan tanpa generation berbayar';
+  v_j2 := public.apply_evolution_lock(u1, v_evolution_gen);
+  assert (v_j2->>'replayed')::boolean,
+         'apply_evolution_lock replay harus idempoten';
 
   delete from public.animas where id = v_evolution_anima;
   assert exists (
@@ -3656,7 +3696,9 @@ begin
          ),
          'delete Anima harus mengantrekan cleanup seluruh history evolusi';
   delete from public.animas where id = v_evolution_other;
-  update public.app_config set value = 'false'::jsonb where key = 'feature_evolution';
+  update public.app_config
+     set value = coalesce(v_evo_flag_prev, 'true'::jsonb)
+   where key = 'feature_evolution';
 
   delete from public.animas where owner_id = u1 and nickname = 'v2 ok';
   assert exists (

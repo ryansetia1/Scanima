@@ -1,0 +1,384 @@
+{
+  "type": "object",
+  "properties": {
+    "identity_invariants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "identity_id": { "type": "string" },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "face_expression",
+              "sensory",
+              "structural_motif",
+              "surface_signature",
+              "motion_language"
+            ]
+          },
+          "source_truth": { "type": "string" },
+          "identity_role": { "type": "string" },
+          "maturation_path": { "type": "string" },
+          "current_expression": { "type": "string" },
+          "evolved_policy": {
+            "type": "string",
+            "enum": ["preserve", "may_transfigure"]
+          },
+          "realization_mode": {
+            "type": "string",
+            "enum": ["preserve", "transfigure"]
+          },
+          "visible_lineage_evidence": { "type": "string" }
+        },
+        "required": [
+          "identity_id",
+          "domain",
+          "source_truth",
+          "identity_role",
+          "maturation_path",
+          "current_expression",
+          "evolved_policy",
+          "realization_mode",
+          "visible_lineage_evidence"
+        ]
+      },
+      "minItems": 2,
+      "maxItems": 4
+    },
+    "shape_budget_contract": {
+      "type": "object",
+      "properties": {
+        "primary_shapes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "shape_id": { "type": "string" },
+              "source_basis": { "type": "string" },
+              "stage_expression": { "type": "string" },
+              "visual_role": {
+                "type": "string",
+                "enum": ["dominant", "support", "counterbalance"]
+              }
+            },
+            "required": [
+              "shape_id",
+              "source_basis",
+              "stage_expression",
+              "visual_role"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 3
+        },
+        "dominant_motif": {
+          "type": "object",
+          "properties": {
+            "source_basis": { "type": "string" },
+            "stage_expression": { "type": "string" }
+          },
+          "required": ["source_basis", "stage_expression"]
+        },
+        "identity_focal_structure": {
+          "type": "object",
+          "properties": {
+            "source_read": { "type": "string" },
+            "preserved_semantics": { "type": "string" },
+            "proportion_maturation": { "type": "string" },
+            "stage_expression": { "type": "string" }
+          },
+          "required": [
+            "source_read",
+            "preserved_semantics",
+            "proportion_maturation",
+            "stage_expression"
+          ]
+        },
+        "simplification_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_detail": { "type": "string" },
+              "action": {
+                "type": "string",
+                "enum": ["merge", "enlarge", "omit"]
+              },
+              "result": { "type": "string" }
+            },
+            "required": ["source_detail", "action", "result"]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "detail_zones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "zone": { "type": "string" },
+              "purpose": { "type": "string" }
+            },
+            "required": ["zone", "purpose"]
+          },
+          "minItems": 0,
+          "maxItems": 1
+        },
+        "quiet_zones": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "repetition_policy": {
+          "type": "string",
+          "enum": ["none", "single_cluster", "broad_grouped_pattern"]
+        }
+      },
+      "required": [
+        "primary_shapes",
+        "dominant_motif",
+        "identity_focal_structure",
+        "simplification_actions",
+        "detail_zones",
+        "quiet_zones",
+        "repetition_policy"
+      ]
+    },
+    "maturity_contract": {
+      "type": "object",
+      "properties": {
+        "target_read": {
+          "type": "string",
+          "enum": ["adult", "apex"]
+        },
+        "identity_focal_maturation": { "type": "string" },
+        "proportion_delta": { "type": "string" },
+        "body_maturation": { "type": "string" },
+        "posture_maturation": { "type": "string" },
+        "preserved_personality": { "type": "string" },
+        "stage_delta": { "type": "string" }
+      },
+      "required": [
+        "target_read",
+        "identity_focal_maturation",
+        "proportion_delta",
+        "body_maturation",
+        "posture_maturation",
+        "preserved_personality",
+        "stage_delta"
+      ]
+    },
+    "presence_contract": {
+      "type": "object",
+      "properties": {
+        "presence_tier": {
+          "type": "string",
+          "enum": ["developing", "apex"]
+        },
+        "apex_thesis": { "type": "string" },
+        "presence_channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "silhouette_line",
+              "proportion",
+              "posture",
+              "negative_space",
+              "motion_language",
+              "shape_distribution",
+              "focal_motif"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "channel_evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "string",
+                "enum": [
+                  "silhouette_line",
+                  "proportion",
+                  "posture",
+                  "negative_space",
+                  "motion_language",
+                  "shape_distribution",
+                  "focal_motif"
+                ]
+              },
+              "drawable_evidence": { "type": "string" }
+            },
+            "required": ["channel", "drawable_evidence"]
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "shape_hierarchy": { "type": "string" },
+        "authority_pose": { "type": "string" },
+        "reliability_cue": { "type": "string" }
+      },
+      "required": [
+        "presence_tier",
+        "apex_thesis",
+        "presence_channels",
+        "channel_evidence",
+        "shape_hierarchy",
+        "authority_pose",
+        "reliability_cue"
+      ]
+    },
+    "lineage_anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source_feature": { "type": "string" },
+          "next_expression": { "type": "string" },
+          "mode": { "type": "string", "enum": ["retain", "transform"] }
+        },
+        "required": ["source_feature", "next_expression", "mode"]
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "transformation_archetype": {
+      "type": "string",
+      "enum": [
+        "breakout",
+        "unfolding",
+        "inversion",
+        "rooted_to_mobile",
+        "shell_shedding",
+        "mass_redistribution"
+      ]
+    },
+    "metamorphosis_thesis": { "type": "string" },
+    "stage_brief": { "type": "string" },
+    "metamorphosis_notes": { "type": "string", "nullable": true },
+    "changed_dimensions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "dominant_mass",
+          "posture",
+          "outer_contour",
+          "locomotion_or_body_plan"
+        ]
+      },
+      "minItems": 2,
+      "maxItems": 4
+    },
+    "dominant_mass_shift": { "type": "string" },
+    "posture_change": { "type": "string" },
+    "outer_contour_change": { "type": "string" },
+    "locomotion_or_body_plan_change": { "type": "string" },
+    "derived_anatomy": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "new_part": { "type": "string" },
+          "derived_from": { "type": "string" },
+          "source_anchor_index": { "type": "integer", "enum": [1, 2, 3] }
+        },
+        "required": ["new_part", "derived_from", "source_anchor_index"]
+      },
+      "minItems": 0,
+      "maxItems": 4
+    },
+    "body_height_cm": { "type": "integer" },
+    "height_change_rationale": { "type": "string" },
+    "strike_name": { "type": "string" },
+    "surge_name": { "type": "string" },
+    "strike_vfx": {
+      "type": "object",
+      "properties": {
+        "form": {
+          "type": "string",
+          "enum": ["arc", "beam", "trail", "wave", "eruption", "ring", "scatter", "tether", "stamp", "cloud", "shatter", "growth"]
+        },
+        "motion": {
+          "type": "string",
+          "enum": ["projectile", "sweep", "impact", "bloom"]
+        },
+        "brief": { "type": "string" }
+      },
+      "required": ["form", "motion", "brief"]
+    },
+    "surge_vfx": {
+      "type": "object",
+      "properties": {
+        "form": {
+          "type": "string",
+          "enum": ["arc", "beam", "trail", "wave", "eruption", "ring", "scatter", "tether", "stamp", "cloud", "shatter", "growth"]
+        },
+        "motion": {
+          "type": "string",
+          "enum": ["projectile", "sweep", "impact", "bloom"]
+        },
+        "brief": { "type": "string" }
+      },
+      "required": ["form", "motion", "brief"]
+    },
+    "vfx_palette": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "gold",
+          "amber",
+          "orange",
+          "crimson",
+          "rose",
+          "magenta",
+          "violet",
+          "indigo",
+          "blue",
+          "pale_cyan"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 2
+    },
+    "strike_effect_id": {
+      "type": "string",
+      "enum": ["armor_pierce", "guard_break", "drain", "poison", "burn", "slow", "armor_break"]
+    },
+    "surge_effect_id": {
+      "type": "string",
+      "enum": ["barrier", "guard_break", "drain", "burn", "slow", "armor_break"]
+    }
+  },
+  "required": [
+    "identity_invariants",
+    "shape_budget_contract",
+    "maturity_contract",
+    "presence_contract",
+    "lineage_anchors",
+    "transformation_archetype",
+    "metamorphosis_thesis",
+    "stage_brief",
+    "changed_dimensions",
+    "dominant_mass_shift",
+    "posture_change",
+    "outer_contour_change",
+    "locomotion_or_body_plan_change",
+    "derived_anatomy",
+    "body_height_cm",
+    "height_change_rationale",
+    "strike_name",
+    "surge_name",
+    "strike_vfx",
+    "surge_vfx",
+    "vfx_palette",
+    "strike_effect_id",
+    "surge_effect_id"
+  ]
+}

@@ -22,8 +22,8 @@ Sebelum ini benar, `resolveTurn` menyeed RNG-nya dengan
 client bisa mengocok ulang seed sampai mendapat crit. `RULES_VERSION = 2`
 membuang key itu dari seed; state lama tetap memakai formula lamanya supaya
 replay-nya cocok. **Rules v3** (Agustus 2026) sudah live di backend dan menambah
-move effects serta committed form multiplier; semua Anima production masih
-`evolution_version=0`, jadi jalur pemain tetap memakai hasil legacy. Sesi
+move effects serta committed form multiplier. Anima dengan
+`evolution_version>=1` memakai jalur committed form; snapshot `0` tetap legacy.
 `rules_version < 3` replay tanpa efek.
 Skenario 31 dan 38 di `npm run selftest` menjaga keduanya.
 

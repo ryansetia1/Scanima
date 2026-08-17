@@ -46,12 +46,17 @@ Eval Vision-only menolak fixture karakter franchise, menerima naga
 public-domain sebagai Fauna, dan memakai nol image generation; fixture dinding
 kosong tetap salah dibaca sebagai panel beton pada v19 maupun v20.
 
-## Status deploy Evolution art (backend live, flag off, Agustus 2026)
+## Status deploy Evolution art (player-live, 18 Agustus 2026)
 
-Backend schema + pipeline art evolusi sudah di-deploy; pengalaman pemain tetap
-**belum live** karena **`feature_evolution=false`** dan tujuh Anima production
-masih `evolution_version=0`. Capture tetap `prompt_version = "v20"`; evolusi
-memakai `app_config.evolution_prompt_version = "v21"` terpisah.
+**`feature_evolution=true`**, `evolution_prompt_version = "v29"`, default
+`evolution_version=1` (backfill row lama). Capture tetap `prompt_version = "v20"`.
+Ritual Evolve gratis; sheet terkunci di `anima_evolution_locks` melewati Replicate.
+
+- Migrasi `20260817095700_evolution_art_pipeline` + `20260817200110_evolution_go_live`.
+- Edge Function `evolve_anima`: Vision Plan (~$0.003) + satu generation (~$0.07)
+  **tanpa Core**, atau commit lock 0 USD. Kegagalan memanggil `fail_evolution`.
+- **`RULES_VERSION = 3`**: committed form ×1.06/×1.18 + move effects saat
+  `evolution_version>=1`. Snapshot `evolution_version=0` tetap growth legacy.
 
 - Migrasi `20260817095700_evolution_art_pipeline`: `animas.status` + `evolving`,
   `evolution_version`, `strike_effect_id`/`surge_effect_id`, `generations.target_stage`,
@@ -64,7 +69,112 @@ memakai `app_config.evolution_prompt_version = "v21"` terpisah.
   history form saat sukses, dan masuk cleanup queue saat fail/timeout/delete.
 - Prompt v21: file capture byte-identik v20 + `vision_evolve_*` + `sprite_sheet_evolve` Adult/Evolved.
 - Validasi Plan di `_shared/evolution.mjs`; katalog efek + combat v3 di `_shared/move_effects.mjs` (refactor evolution import); selftest skenario 36–38.
-- **`RULES_VERSION = 3`** + port GDScript (`move_effects.gd`) sudah live; snapshot `evolution_version=0` tetap growth legacy — aman selama `feature_evolution=false`.
+- **`RULES_VERSION = 3`** + port GDScript (`move_effects.gd`) sudah live.
+
+Paid eval pertama v21 pada Veridian/Monstera lulus teknis 9/9 sel dan seam,
+tetapi **ditolak secara art direction**: pot, wajah tengah, dan massa daun radial
+tetap membentuk siluet yang sama; output hanya menambah daun, akar, dan retak.
+Desain pengganti v22 sudah diterima di
+[`docs/13-evolution-silhouette-design.md`](docs/13-evolution-silhouette-design.md):
+setiap stage wajib body plan/siluet baru, minimal dua transformed anchors,
+Silhouette Delta Contract, dan archetype kecil. V22 sudah diimplementasikan di
+repo tetapi belum di-deploy/dipromosikan; production tetap v21 dengan feature
+flag off. Paid eval Adult v22 (`rooted_to_mobile`) lulus teknis 9/9 sel + seam,
+mengubah aspect siluet 0,838→1,445 dan terbaca sebagai leaf-carapace crawler di
+Godot; operator menyetujuinya. Evolved pertama (`unfolding`) juga distinct
+(Adult→Evolved IoU 0,361), 9/9 sel, dan seam lulus, tetapi **technical reject**
+dan **identity reject**: luminous green pada core/VFX menghasilkan residue 4,42%
+serta 3,2287% cincin alpha bright-chroma, sementara dua mata ekspresif
+Hatchling/Adult berubah menjadi satu aperture tanpa character read. Tidak ada
+retry berbayar otomatis. Desain v23 sudah disetujui di
+[`docs/designs/2026-08-17-evolution-identity-invariants-v23.md`](docs/designs/2026-08-17-evolution-identity-invariants-v23.md):
+Vision memilih 2–4 Identity Invariants dari Hatchling, menguncinya di Adult
+Plan, dan Evolved hanya boleh mentransfigurasi maksimal satu dengan turunan
+visual jelas. V23 sudah diimplementasikan dan v22 dipulihkan untuk provenance.
+Paid eval Evolved v23 lulus silhouette + soul (dua mata, senyum, dan daun
+fenestrasi bertahan), 9/9 sel, serta seam, tetapi **maturity/apex reject** dan
+**technical reject**: core kecil, tendril tipis, serta wajah muda belum terasa
+sebagai payoff Lv36; Attack/VFX masih memiliki 643/41.433 alpha-edge
+bright-chroma (1,5519%). Vision Plan sendiri meminta `shimmering green toxin`,
+jadi larangan template saja tidak cukup. Tidak ada retry otomatis.
+
+V24 diimplementasikan sesuai desain
+[`docs/designs/2026-08-17-evolution-maturity-apex-presence-v24.md`](docs/designs/2026-08-17-evolution-maturity-apex-presence-v24.md):
+Identity Invariant mendapat maturation path, Adult/Evolved mendapat kontrak
+kematangan, dan Evolved wajib memiliki power center, mass hierarchy, authority
+pose, aura architecture, grandeur cues, serta reliability cue. Aura/VFX memakai
+allowlist non-green di Plan. Bundle dan seluruh selftest gratis lulus. Adult v24
+(`rooted_to_mobile`) lulus 9/9, seam, soul, maturity, style, dan chroma-edge
+(3/33.268 bright), tetapi visual reject karena terlalu banyak leaf cluster,
+vein, root-finger, pebble joint, glow, dan detail kecil. Evolved v24
+(`unfolding`) mempertahankan soul dan ancient-power read, tetapi wajah tetap
+terlalu dekat dengan Adult, detail makin padat, dan technical reject karena tiga
+detached Idle fragment 27/50/32px dekat seam. Tidak ada retry otomatis.
+
+Desain pengganti v25 disetujui di
+[`docs/designs/2026-08-17-evolution-pokemon-clarity-v25.md`](docs/designs/2026-08-17-evolution-pokemon-clarity-v25.md):
+clarity diterjemahkan menjadi Shape Budget 2–3 primary shapes, satu dominant
+read, detail dibatasi dan wajib disederhanakan, serta Identity Focal Maturity
+yang anatomy-agnostic. Revisi terakhir mencabut bias `power = massa besar`:
+Vision bebas mengganti body archetype, `apex_thesis` tetap open-ended, dan
+tepat dua channel generik menjelaskan presence lewat line/proportion/posture/
+negative space/motion/shape distribution/focal motif. Evolved boleh 0,75×–1,50×
+tinggi Adult dengan alasan konkret. Aura/glow dihapus dari seluruh character
+cells; power supernatural hanya ada di `fx_strike` dan `fx_surge`. V25 sudah
+diimplementasikan lokal, dibundel, dan seluruh selftest gratis lulus. Paid
+eval Adult Veridian (`rooted_to_mobile`) lulus teknis 9/9 sel, seam, dan
+chroma-edge (24/31.813 bright = 0,0754%), tetapi visual masih berupa kolom
+akar/daun yang tertanam di batu: soul dua mata bertahan, mobility belum.
+Tidak ada Evolved sampai Adult disetujui. Desain v26 menambah
+`mobility_contract` anatomy-agnostic di atas v25: tubuh wajib terlihat bisa
+hop/walk/roll tanpa menyatu dengan tanah, pot, plinth, atau base diam lain.
+Paid Adult v26 disetujui operator 18 Agustus 2026 dan terkunci untuk iterasi
+Evolved. Vision Evolved v26 yang lengkap (a5) lolos validator; satu image
+GPT Image 2 medium (`5w667r8pa1rmr0d0245bq48jf0`) **technical reject**
+karena detached character components pada Happy (115/61px) dan Dirty
+(205/46px). Tidak ada image retry. Candidate v27 menambah `face_age_contract`
+agar wajah menua antar stage. Paid Evolved v27-a1 Vision
+(`vvcrnd3khnrmw0d024at9jabaw`) lolos Plan `mature` + `pillar_stride`; satu
+image (`gb69jajrcxrmt0d024bsftg5mg`) **technical reject** Happy sparkle 88px.
+Tidak ada image retry. Operator menolak siluet: Evolved masih walker empat
+kaki yang sama dengan Adult. Candidate v28 menambah `silhouette_break_contract`
+agar Evolved meninggalkan gait kaki Adult (coil/tether). Paid Evolved v28-a1
+Vision (`457h8f4x4xrmt0d024g8546xvr`) lolos Plan `unfolding` + `Undulating glide`
++ wajah `mature`; satu image (`jamfktgm1nrmr0d024hbrcm05c`) **technical reject**
+(fragmen Happy/Hungry/Dirty/Damaged terlepas). Tidak ada image retry.
+Paid Sunhound v28-a1 (Hatchling 75 cm, `dog_canine_retriever_standing`): Adult
+Vision reuse `0cpy044w85rmw0d024msjfa8mr` Plan `mass_redistribution` +
+`Four-legged stride` + wajah `adolescent` 95 cm; image
+`58v15a0gzdrmw0d024nsdxc4dg` lulus teknis 9/9, seam, detached, residu 0,67%.
+Operator menyetujui Adult 18 Agustus 2026 dan menguncinya di
+`eval/results/evolution-sunhound-adult-v28-approved/` (gitignored) untuk Anima
+`2168d17e-440d-4ba3-9004-5104800c6722` saja — go-live memakai byte ini, tanpa
+generation ulang. Row live tetap Hatchling sampai ritual. Evolved Vision
+`xbe2vc53e5rmy0d024qayj5gdc` Plan `unfolding` + `Undulating glide` + wajah
+`mature` 120 cm; image `dc5sgg9hn5rmy0d024qr2m617c` lulus teknis 9/9, seam,
+detached, residu 0,51%, tetapi **visual reject** operator 18 Agustus 2026:
+limbless coil terbaca ular, bukan Sunhound. Penyebab: v28 wajib Evolved
+meninggalkan gait kaki Adult. Adult tetap terkunci; Evolved coil tidak dipakai.
+Candidate v29: kind lock + contour delta (bukan exile gait). Paid Evolved
+Sunhound v29-a1 Vision `1nm42fcsexrmt0d024wrvse3p4` Plan `unfolding` +
+`Swift four-legged gallop` + wajah `mature` 120 cm — tetap canine. Image
+`tzp0bpsbg1rmr0d024xb9mzqem` technical reject Sleep 55px. Operator memilih
+a2 `x1sh5skgf5rmw0d024z9q5zfgw` (Plan reuse) Sleep 37px lalu menguncinya 18
+Agustus 2026 di `eval/results/evolution-sunhound-evolved-v29-approved/` untuk
+Anima yang sama — go-live memakai byte ini, tanpa generation ulang.
+Paid Playtron v29-a1 (Hatchling 50 cm, `console_plastic_handheld`): Adult
+Vision `t665hcctc1rmt0d0251rha0ykm` Plan `unfolding` + `bipedal walk` +
+wajah `adolescent` 65 cm + `kind_noun=handheld`; image `z5ycgdr459rmw0d0252axdv5h4`
+**technical reject** Sleep Z ketiga 30px. Evolved Vision `8s4hgcreh5rmt0d0252t9htwe8`
+Plan `mass_redistribution` + `multi-limbed scuttle/hover` + wajah `mature`
+80 cm + `kind_noun=handheld`; image `nz9kcs4e2srmt0d0252r8edke4` **technical
+reject** Sleep Z ketiga 135px. Tidak ada image retry. Kind lock lulus (tetap
+console, bukan hewan). Operator menguncinya 18 Agustus 2026 di
+`eval/results/evolution-playtron-adult-v29-approved/` dan
+`eval/results/evolution-playtron-evolved-v29-approved/` untuk Anima
+`99b04a1c-07be-4753-be04-ae68183817e6` — go-live memakai byte ini, tanpa
+generation ulang. Adult Veridian v26, Adult+Evolved Sunhound, dan
+Adult+Evolved Playtron masuk `anima_evolution_locks`. Production v29/flag on.
 
 Vision memakai lease atomik supaya dua isolate tidak membayar Plan dua kali.
 Dispatch ambigu tidak diulang; HTTP 4xx/token lokal gagal cepat, sedangkan job
@@ -77,18 +187,16 @@ selamanya. Cold start lintas device yang kehilangan intent lokal memakai
 lease Vision, history/reference cleanup, dan revoke RPC; seluruh suite lulus
 terhadap production setelah migrasi.
 
-Migration `20260817095700_evolution_art_pipeline` tercatat remote. Edge Function
-`evolve_anima` version 1, `create_anima` version 19, `replicate_webhook` version
+Migration `20260817095700_evolution_art_pipeline` + `20260817200110_evolution_go_live` tercatat remote. Edge Function
+`evolve_anima` version 2, `create_anima` version 19, `replicate_webhook` version
 9, `battle_anima` version 26, `team_battle` version 8, `expedition` version 16,
 dan `seeker` version 5 ACTIVE; semua selain webhook memakai `verify_jwt=true`.
 Smoke tanpa JWT/signature mengembalikan 401, dan RPC evolusi tidak executable
 oleh `anon`/`authenticated`.
 
-**Client evolution ritual (repo, NOT PLAYER-LIVE):** `GameState.pending_evolution`, stage-aware sprite cache `v6_<anima_id>_<stage>`, Profile Evolve CTA, Collection cues, `IncubatorEffect.start_evolution()` chamber, resume/poll orchestration in `scan_flow.gd`, localized battle status/effect plates. Requires `feature_evolution` + `evolution_version>=1` on Anima rows.
+**Client evolution ritual (live):** `GameState.pending_evolution`, stage-aware sprite cache `v6_<anima_id>_<stage>`, Profile **Evolve** CTA, Collection **Ready to Evolve**, `IncubatorEffect.start_evolution()` chamber, resume/poll di `scan_flow.gd`, pelat status/efek Battle. Butuh `feature_evolution` + `evolution_version>=1`. Wiki pemain di `docs/wiki/anima.md`.
 
-Belum player-live: eval visual Adult→Evolved berbayar, client minimum rollout,
-backfill + default `evolution_version=1`, dan aktivasi flag. Wiki pemain sengaja
-belum berubah sampai semua gate itu lolos.
+Wiki pemain ikut ritual Evolve. APK baru perlu diinstal supaya tombolnya ada di device yang masih memegang build lama.
 
 ## Status deploy Battle polish + Tiered EXP 17 Agustus 2026
 
@@ -306,15 +414,59 @@ backend/prompts/
 │   ├── sprite_sheet.md           # identik byte-for-byte dengan v19
 │   ├── sprite_sheet_fauna.md     # identik byte-for-byte dengan v19
 │   └── sprite_sheet_evolve.md    # identik byte-for-byte dengan v19
-└── v21/                          # CANDIDATE evolution, feature flag off
+├── v21/                          # rollback evolution, terlalu konservatif
+│   ├── vision_system.md          # capture tetap identik v20
+│   ├── vision_schema.json        # capture tetap identik v20
+│   ├── vision_evolve_system.md   # Evolution Director + lineage/effect contract
+│   ├── vision_evolve_schema.json # Evolution Plan string anchors
+│   ├── sprite_sheet.md           # identik byte-for-byte dengan v20
+│   ├── sprite_sheet_fauna.md     # identik byte-for-byte dengan v20
+│   └── sprite_sheet_evolve.md    # Adult/Evolved konservatif
+├── v22/                          # predecessor silhouette-first
+│   ├── vision_system.md          # capture tetap identik v20
+│   ├── vision_schema.json        # capture tetap identik v20
+│   ├── vision_evolve_system.md   # Silhouette Delta + archetype
+│   ├── vision_evolve_schema.json # transformed anchors + body-plan delta
+│   ├── sprite_sheet.md           # identik byte-for-byte dengan v20
+│   ├── sprite_sheet_fauna.md     # identik byte-for-byte dengan v20
+│   └── sprite_sheet_evolve.md    # body plan baru tiap stage dari Idle
+├── v23/                          # predecessor: soul pass, apex reject
     ├── vision_system.md          # capture tetap identik v20
     ├── vision_schema.json        # capture tetap identik v20
-    ├── vision_evolve_system.md   # Evolution Director + lineage/effect contract
-    ├── vision_evolve_schema.json # Evolution Plan terstruktur
+    ├── vision_evolve_system.md   # v22 + Identity Invariants
+    ├── vision_evolve_schema.json # v22 + soul contract
     ├── sprite_sheet.md           # identik byte-for-byte dengan v20
     ├── sprite_sheet_fauna.md     # identik byte-for-byte dengan v20
-    └── sprite_sheet_evolve.md    # Adult bridge / Evolved culmination dari Idle
+    └── sprite_sheet_evolve.md    # identity priority + green safety
+├── v24/                          # predecessor: maturity pass, clarity reject
+    ├── vision_evolve_system.md   # v23 + Maturity/Apex Presence
+    ├── vision_evolve_schema.json # maturation path + presence contract
+    └── sprite_sheet_evolve.md    # capture diwarisi dari v20 saat bundling
+├── v25/                          # predecessor: clarity pass, mobility reject
+    ├── vision_evolve_system.md   # Shape Budget + open apex thesis/channels
+    ├── vision_evolve_schema.json # primary shapes + VFX-only palette
+    └── sprite_sheet_evolve.md    # capture diwarisi dari v20 saat bundling
+└── v26/                          # predecessor: mobility pass
+    ├── vision_evolve_system.md   # v25 + mobility_contract
+    ├── vision_evolve_schema.json # v25 + locomotion/support fields
+    └── sprite_sheet_evolve.md    # capture diwarisi dari v20 saat bundling
+└── v27/                          # predecessor: face-age craniofacial
+    ├── vision_evolve_system.md   # v26 + face_age_contract
+    ├── vision_evolve_schema.json # v26 + age_read/ratio fields
+    └── sprite_sheet_evolve.md    # capture diwarisi dari v20 saat bundling
+└── v28/                          # predecessor: walker exile (Sunhound ular)
+    ├── vision_evolve_system.md   # v27 + silhouette_break_contract
+    ├── vision_evolve_schema.json # v27 + prior/forbidden/new contour
+    └── sprite_sheet_evolve.md    # capture diwarisi dari v20 saat bundling
+└── v29/                          # production evolution: kind lock + contour delta
+    ├── vision_evolve_system.md   # v28 minus gait exile, plus kind_noun
+    ├── vision_evolve_schema.json # v28 + source/continued kind
+    └── sprite_sheet_evolve.md    # capture diwarisi dari v20 saat bundling
 ```
+
+V29 adalah production evolution: siluet pecah tanpa memaksa coil. Adult Veridian
+v26, Adult Sunhound v28, Evolved Sunhound v29, serta Adult+Evolved Playtron v29
+terkunci per Anima. Capture tetap v20.
 
 **Prompt tidak bisa dibaca sebagai file di Edge Function.** `Deno.readTextFile()` gagal untuk file pendamping yang dideploy lewat MCP, jadi `backend/tools/bundle_prompts.mjs` membundel semua versi menjadi `functions/_shared/prompts.generated.ts` yang diimpor sebagai modul. Sumbernya tetap file `.md` di git; artefaknya turunan. Setelah mengubah prompt: `node backend/tools/bundle_prompts.mjs`. Skenario 17 di `npm run selftest` gagal kalau bundelnya basi, jadi kelupaan ketangkap gratis, bukan saat art produksi ternyata berbeda dari art yang sudah disetujui.
 

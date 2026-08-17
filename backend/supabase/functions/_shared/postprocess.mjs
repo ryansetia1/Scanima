@@ -79,6 +79,9 @@ export const DEFAULTS = {
   // Komponen lebih kecil dari ini dianggap noise anti-alias. Nilainya sengaja
   // kecil: Z tidur, motion line, dan debris tipis tetap harus ikut sprite.
   minComponentPixels: 4,
+  // v26 melarang detached mark di character cells selain maksimal dua Z Sleep.
+  // Noise anti-alias kecil tetap diabaikan.
+  minDetachedCharacterPixels: 16,
   // v12 mengizinkan aksen Battle terlepas, tetapi semuanya wajib tinggal di
   // safe envelope selnya. Audit hanya menolak komponen sekunder dekat seam;
   // ia tidak menebak lalu memindahkan piksel ke pose lain.
@@ -573,6 +576,27 @@ export function auditSourceGridSeams(components, width, height, layout, opts = D
   };
 }
 
+export function auditDetachedCharacterComponents(components, opts = DEFAULTS) {
+  const poses = ["idle", "attack", "sleep", "happy", "hungry", "dirty", "defeated"];
+  const minPixels = opts.minDetachedCharacterPixels ?? DEFAULTS.minDetachedCharacterPixels;
+  const violations = [];
+  for (const pose of poses) {
+    const parts = components
+      .filter((component) => component.pose === pose && component.pixels >= minPixels)
+      .sort((a, b) => b.pixels - a.pixels);
+    if (parts.length === 0) continue;
+    const allowedDetached = pose === "sleep" ? 2 : 0;
+    for (const component of parts.slice(1 + allowedDetached)) {
+      violations.push({
+        pose,
+        pixels: component.pixels,
+        bbox: component.bbox,
+      });
+    }
+  }
+  return { passed: violations.length === 0, violations };
+}
+
 function clearAlphaComponent(bitmap, width, height, seed, alphaThreshold) {
   if (bitmap[seed * 4 + 3] <= alphaThreshold) return 0;
   const queue = new Int32Array(width * height);
@@ -762,6 +786,15 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       .join(", ");
     throw new Error(`sheet melanggar safe margin v12: ${summary}`);
   }
+  const detachedCharacterAudit = promptMajor(meta.promptVersion) >= 26
+    ? auditDetachedCharacterComponents(segmented.components, opts)
+    : null;
+  if (detachedCharacterAudit && !detachedCharacterAudit.passed) {
+    const summary = detachedCharacterAudit.violations
+      .map((item) => `${item.pose}:${item.pixels}px`)
+      .join(", ");
+    throw new Error(`sheet v26 punya detached character components: ${summary}`);
+  }
   const bboxes = segmented.bboxes;
   const rejected = {};
 
@@ -861,6 +894,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       white_keyline_pixels_stripped: whiteKeylinePixelsStripped,
       ...(seamAudit ? { seam_margin: seamAudit } : {}),
       ...(seamCleanup ? { seam_cleanup: seamCleanup } : {}),
+      ...(detachedCharacterAudit ? { detached_character: detachedCharacterAudit } : {}),
       source_size: [decoded.width, decoded.height],
       // ponytail: erosi hijau hanya di cincin 1px terluar, bukan despill penuh.
       // Plafon: fringe yang lebih tebal dari 1px tetap lolos, dan itu terjadi

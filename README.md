@@ -162,15 +162,14 @@ Foto dikecilkan ke 1280 px di device sebelum diunggah.
 | 0 | Arsitektur, prompt spec, desain sistem | Selesai |
 | 1 | MVP: buktikan pipeline art end-to-end | Terbukti — Smoke Set v2 3/3 sheet 4/4 pose, gate 2/2 |
 | 2 | Backend Supabase + core game loop | Selesai — scan, hatch, Koleksi, Stats, Care, dan visual shell sudah hidup |
-| 3 | Battle, evolusi, onboarding, audio, monetisasi | Berjalan — Battle/onboarding live; evolusi dua tahap sudah di repo tetapi flag masih off |
+| 3 | Battle, evolusi, onboarding, audio, monetisasi | Berjalan — Battle/onboarding/evolusi live; IAP belum |
 | 4 | Soft launch itch.io lalu Play Store | Belum mulai |
 
-Evolusi Lv16 Adult dan Lv36 Evolved sudah diimplementasikan sebagai ritual
-eksplisit, generation privat tanpa debit Core, serta power/effect Battle yang
-baru aktif setelah art lolos QA dan commit atomik. Schema, RPC, Edge Function,
-dan combat bundle sudah live di backend. Pengalaman pemain **belum live**:
-eval visual berbayar, rollout client minimum, backfill/default
-`evolution_version=1`, dan aktivasi `feature_evolution` masih menjadi gate.
+Evolusi Lv16 Adult dan Lv36 Evolved live sebagai ritual **Evolve** eksplisit,
+generation privat tanpa debit Core, serta power/effect Battle yang aktif setelah
+art commit. Prompt evolution production **v29**. Sheet Adult/Evolved yang sudah
+disetujui operator untuk Anima tertentu (Veridian Adult, Sunhound, Playtron)
+terkunci dan tidak di-generate ulang. Capture tetap v20.
 
 Yang sudah bisa dijalankan sekarang, gratis:
 
@@ -270,6 +269,10 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 | [docs/09-team-battle-and-expedition.md](docs/09-team-battle-and-expedition.md) | Kontrak Team Battle, Expedition, chapter server-delivered, Trophy, dan rollout |
 | [docs/10-manual-chapter-assets.md](docs/10-manual-chapter-assets.md) | Prompt reusable + The Sugarworks dan folder handoff untuk generation aset manual di ChatGPT |
 | [docs/11-core-loop-and-player-motivation.md](docs/11-core-loop-and-player-motivation.md) | Diagnosis non-teknis: tindakan, hambatan, motivasi pemain, kekuatan loop saat ini, dan pilihan arah produk |
+| [docs/13-evolution-silhouette-design.md](docs/13-evolution-silhouette-design.md) | Desain v22 silhouette-first: body plan berbeda tiap stage, transformed anchors, archetype, dan rollout eval |
+| [docs/designs/2026-08-17-evolution-identity-invariants-v23.md](docs/designs/2026-08-17-evolution-identity-invariants-v23.md) | Desain v23 untuk mengunci identity/soul lintas Adult dan Evolved tanpa mengorbankan perubahan siluet |
+| [docs/designs/2026-08-17-evolution-maturity-apex-presence-v24.md](docs/designs/2026-08-17-evolution-maturity-apex-presence-v24.md) | Desain v24 untuk kematangan wajah/tubuh, apex presence, aura-safe, dan payoff final evolution |
+| [docs/designs/2026-08-17-evolution-pokemon-clarity-v25.md](docs/designs/2026-08-17-evolution-pokemon-clarity-v25.md) | Desain v25 untuk Shape Budget, anatomy-agnostic maturity, Pokémon-like clarity, dan VFX-only supernatural power |
 | [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md) | Sumber art direction v2: linework, cel shading, transformasi objek, pose, dan negative style |
 | [CLAUDE.md](CLAUDE.md) | Konteks dan konvensi untuk AI coding agent |
 

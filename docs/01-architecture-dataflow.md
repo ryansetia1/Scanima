@@ -726,11 +726,23 @@ Server memverifikasi syarat evolusi (Level ≥16/36 dari `care_score`, stage
 1→2→3, tidak sedang Duel/Team/Expedition) — client tidak dipercaya.
 **Implementasi backend sudah live** (`evolve_anima`, RPC
 `begin/resume/reserve/commit/fail_evolution`, `claim_evolution_dispatch`,
-`attach_evolution_prediction`, `anima_forms`, prompt v21), tetapi
-**`feature_evolution=false`**;
-ritual client, cache stage-aware, chamber, status Battle, dan resume intent sudah
-ada di repo tetapi belum menjadi pengalaman pemain. Tujuh Anima production tetap
-`evolution_version=0`, sehingga combat v3 mempertahankan growth legacy.
+`attach_evolution_prediction`, `anima_forms`, prompt v21). Predecessor lokal
+v22–v24 tidak dipromosikan: v23 lulus silhouette + soul lalu ditolak karena
+maturity/apex presence dan bright-chroma; v24 memperbaiki maturity tetapi
+ditolak karena detail terlalu padat, focal face Evolved terlalu dekat dengan
+Adult, dan aura Idle melanggar seam. Candidate v25 Shape Budget +
+anatomy-agnostic focal maturity sudah diimplementasikan lokal: prior Shape
+Budget Adult ikut dikirim/divalidasi untuk Evolved, apex body archetype bebas,
+dan tinggi Evolved boleh 0,75×–1,50× Adult dengan rationale. Bundle serta
+selftest gratis lulus. Paid Adult Veridian lulus teknis 9/9 sel + seam, tetapi
+visual masih kolom daun di atas gundukan akar/batu. Candidate v26 menambah
+mobility anatomy-agnostic; paid Adult v26 disetujui operator.
+Candidate v27 menambah face-age craniofacial contract. Paid Evolved v27 masih
+Candidate v28 mengunci silhouette break. Paid Evolved Sunhound v28 visual
+reject (ular). Candidate v29 (kind lock + contour delta) adalah production evolution.
+Pengalaman pemain **`feature_evolution=true`**, `evolution_prompt_version=v29`,
+dan `evolution_version` default 1. Sheet Adult/Evolved yang sudah disetujui
+operator masuk `anima_evolution_locks` dan melewati Replicate.
 Satu evolusi aktif per owner: `begin_evolution` mengunci baris `profiles`, partial
 unique index `animas(owner_id) WHERE status='evolving'`, dan idempotency key sama
 tetap replay tanpa EVOLUTION_ALREADY_ACTIVE.

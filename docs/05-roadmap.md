@@ -191,22 +191,19 @@ yang disembunyikan.
 
 #### 5. Evolution vertical slice
 
-- **Vertical slice backend sudah live, pengalaman pemain masih gated**
-  (`feature_evolution=false`, `evolution_version=0`): migrasi `20260817095700`,
-  `evolve_anima`, prompt v21, RPC, ritual/resume Godot, cache stage-aware, serta
-  event/status Battle.
+- **Player-live 18 Agustus 2026:** `feature_evolution=true`,
+  `evolution_prompt_version=v29`, `evolution_version` default 1.
 - Gerbang syarat authoritative di server (Level 16/36, combat lock, satu evolusi aktif).
 - `evolve_anima` memakai crop Idle privat dari form saat ini sebagai `image_input`
   (bukan foto asli/full sheet), dengan lease Vision/dispatch idempoten.
 - Ritual evolusi di client dapat resume dan tidak mendebit Genesis Core.
-- Pertahankan identitas, orientation lock, traits, move, dan art privat.
-- Combat move effects + stage stat multipliers sudah parity JS/GDScript rules v3.
-- Guardian/Ravager baru dikerjakan setelah satu jalur evolusi linear terbukti.
+- Sheet Adult/Evolved yang sudah disetujui operator (Sunhound, Playtron, Adult
+  Veridian) terkunci di `anima_evolution_locks` dan tidak memanggil Replicate.
+- Combat move effects + stage stat multipliers parity JS/GDScript rules v3.
 
-**Gate tersisa:** paid lineage eval object/fauna/plant/illustration, client
-minimum rollout, backfill/default `evolution_version=1`, aktivasi flag, serta
-satu smoke ritual nyata di semua mode Battle. Migration, Edge Function, smoke
-401, revoke RPC, dan SQL quota suite sudah lolos production.
+**Selesai jika:** pemain dengan Level 16/36 melihat **Evolve**, ritual selesai
+tanpa Core, art stage baru tampil, dan Battle memakai multiplier/efek committed.
+Guardian/Ravager tetap future improvement.
 
 #### 6. Tutorial first-session
 
