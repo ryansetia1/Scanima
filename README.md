@@ -36,8 +36,10 @@ bucket `sheets` lama kini privat. Detail kontrak baru ada di
 Catatan cache-hit/species-library di bawah adalah sejarah pipeline sebelum
 cutover dan hanya dipertahankan sebagai konteks rollback.
 
-**Expedition pertama sudah aktif:** The Sugarworks v1 telah dipublish,
-diverifikasi hash CDN-nya, dan diaktifkan dengan 14/14 asset production.
+**Expedition pertama sudah aktif:** The Sugarworks kini memakai immutable v6
+dengan nama Gellume, Velastra, Noxcoil, Cindrusk, Rimespin, Pralith, Duskadon,
+Ambermire, dan Nimbelisk. V6 mereferensikan 14/14 asset production v5 yang sama;
+v1–v5 tetap immutable untuk run lama.
 `feature_expedition` serta `feature_chapter_push` sudah menyala; popup Home dan
 badge New tersedia dari jalur in-app authoritative. Push OS pertama belum
 terkirim karena project/access token FCM belum dikonfigurasi. Team Battle juga

@@ -57,6 +57,9 @@ type Vision = {
   stats: Record<string, number>;
   body_height_cm?: number;
   suggested_name?: string;
+  name_lineage_anchor?: string;
+  name_quality?: Record<string, boolean>;
+  name_roots?: Array<{ root: string; channel: string; evidence: string }>;
   strike_name?: string;
   surge_name?: string;
   strike_vfx?: { form: string; motion: string; brief: string };
@@ -256,6 +259,13 @@ Deno.serve(async (req) => {
         allowAnimals,
         useUniqueCapture,
         promptMajor(versiPrompt) >= 17,
+        promptMajor(versiPrompt) >= 32,
+        promptMajor(versiPrompt) >= 33,
+        promptMajor(versiPrompt) === 35,
+        promptMajor(versiPrompt) === 36,
+        promptMajor(versiPrompt) === 37,
+        promptMajor(versiPrompt) === 38,
+        promptMajor(versiPrompt) >= 39,
       );
     } catch (e) {
       await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "vision_unparseable" });

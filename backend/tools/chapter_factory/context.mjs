@@ -19,8 +19,11 @@ export async function loadDesign(chapterDir) {
 export function createContext(chapterDir, brief, design) {
   const slug = String(brief.slug);
   const contentVersion = Number(brief.content_version);
+  const assetSourceVersion = brief.asset_source_version == null
+    ? contentVersion
+    : Number(brief.asset_source_version);
   const sequence = Number(brief.sequence);
-  const assetPrefix = `expeditions/${slug}/v${contentVersion}/`;
+  const assetPrefix = `expeditions/${slug}/v${assetSourceVersion}/`;
   const trophyPrefix = `expeditions/${slug}/trophy/`;
 
   const cast = Array.isArray(design?.cast) ? design.cast : [];
@@ -33,6 +36,7 @@ export function createContext(chapterDir, brief, design) {
     design,
     slug,
     contentVersion,
+    assetSourceVersion,
     sequence,
     assetPrefix,
     trophyPrefix,

@@ -179,8 +179,8 @@ Seeker.
   Confectioner memanggil Anima-nya ke arena dan fight baru dimulai. Selama
   fight ia berdiri di belakang Anima lawan, paling banyak bicara sekali lagi
   saat perintah, ketika ace terakhirnya masuk, lalu saat menang atau kalah.
-- Cotton adalah ace The Confectioner dan selalu disimpan sampai semua Anima
-  regulernya KO. Saat Cotton masuk, **Final Confection** aktif sekali dan
+- Nimbelisk adalah ace The Confectioner dan selalu disimpan sampai semua Anima
+  regulernya KO. Saat Nimbelisk masuk, **Final Confection** aktif sekali dan
   memberinya +1 PP untuk encounter itu.
 - The Confectioner tetap berpijak di tempat yang sama ketika mengganti pose.
   Ia tidak memakai pose terkena damage saat Anima-nya Guard, dan baru bereaksi

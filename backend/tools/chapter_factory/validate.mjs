@@ -124,6 +124,19 @@ export function validateBrief(brief) {
   ) {
     throw validationError("INVALID_BRIEF", "sequence/content_version harus integer positif");
   }
+  if (
+    brief.asset_source_version != null
+    && (
+      !Number.isInteger(Number(brief.asset_source_version))
+      || Number(brief.asset_source_version) < 1
+      || Number(brief.asset_source_version) > Number(brief.content_version)
+    )
+  ) {
+    throw validationError(
+      "INVALID_BRIEF",
+      "asset_source_version harus integer 1..content_version",
+    );
+  }
   for (const field of ["theme", "title", "description", "tone", "boss_seeker", "trophy"]) {
     if (typeof brief[field] !== "string" || brief[field].trim().length < 2) {
       throw validationError("INVALID_BRIEF", `brief.${field} wajib`);

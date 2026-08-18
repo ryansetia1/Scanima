@@ -3,9 +3,16 @@
 
 import { Image } from "imagescript";
 import {
+  deriveDeterministicEvolutionName,
+  deriveCuratedHybridEvolutionName,
+  deriveHybridEvolutionName,
+  deriveNameLineageAnchor,
+  deriveTransformedHybridEvolutionName,
+  normalizeNameLineageAnchor,
   normalizeMoveName,
   normalizeSuggestedName,
   normalizeVfxPlan,
+  validateNameLineageAnchor,
   VFX_FORMS,
   VFX_MOTIONS,
 } from "./vision.mjs";
@@ -939,6 +946,46 @@ function validateV30NamePlan(plan, opts, issues) {
   plan.suggested_name = name;
 }
 
+function validateV32NamePlan(plan, opts, issues) {
+  validateV30NamePlan(plan, opts, issues);
+  if (!plan.suggested_name) return;
+
+  let anchor;
+  try {
+    anchor = validateNameLineageAnchor(
+      plan.name_lineage_anchor,
+      plan.suggested_name,
+    );
+  } catch (error) {
+    issues.push(error instanceof Error ? error.message : String(error));
+    return;
+  }
+
+  const authoritative = normalizeNameLineageAnchor(
+    opts.authoritativeNameLineageAnchor,
+  );
+  if (authoritative) {
+    if (anchor !== authoritative) {
+      issues.push(
+        `name_lineage_anchor harus tetap '${authoritative}', bukan '${anchor}'`,
+      );
+    }
+  } else {
+    const legacyName = normalizeSuggestedName(
+      opts.legacyLineageSuggestedName,
+      "",
+    ).toLowerCase();
+    if (!legacyName) {
+      issues.push("legacy lineage name wajib untuk menetapkan anchor v32");
+    } else if (!legacyName.includes(anchor)) {
+      issues.push(
+        `anchor legacy '${anchor}' tidak ada di lineage name '${legacyName}'`,
+      );
+    }
+  }
+  plan.name_lineage_anchor = anchor;
+}
+
 function validateV22SilhouettePlan(plan, opts, issues) {
   const anchors = (Array.isArray(plan.lineage_anchors) ? plan.lineage_anchors : [])
     .map((raw) => {
@@ -1089,11 +1136,15 @@ export async function buildEvolutionIdleReference(pngBuffer, manifest) {
  * @param {string} [opts.priorSurgeEffectId]
  * @param {number} [opts.contractVersion] 21=legacy, 22=Silhouette Delta,
  * 23=Identity, 24=Maturity, 25=Clarity, 26=Mobility, 27=Face age,
- * 28=walker exile, 29=kind lock + contour delta, 30=name lineage.
+ * 28=walker exile, 29=kind lock + contour delta, 30=name lineage,
+ * 32=validated anchor, 36=deterministic, 37=hybrid root, 38=transformed root,
+ * 39=transformed root + scored candidate selection.
  * @param {string} [opts.priorTransformationArchetype]
  * @param {unknown[]} [opts.priorIdentityInvariants]
  * @param {object} [opts.priorShapeBudgetContract]
  * @param {string} [opts.priorSuggestedName]
+ * @param {string} [opts.authoritativeNameLineageAnchor]
+ * @param {string} [opts.legacyLineageSuggestedName]
  */
 export function validateEvolutionPlan(raw, opts) {
   const issues = [];
@@ -1191,7 +1242,29 @@ export function validateEvolutionPlan(raw, opts) {
   if (contractVersion >= 27) validateV27FaceAgePlan(plan, opts, issues);
   if (contractVersion === 28) validateV28SilhouetteBreakPlan(plan, opts, issues);
   if (contractVersion >= 29) validateV29SilhouetteBreakPlan(plan, opts, issues);
-  if (contractVersion >= 30) validateV30NamePlan(plan, opts, issues);
+  if (contractVersion >= 36) {
+    const anchor = normalizeNameLineageAnchor(opts.authoritativeNameLineageAnchor)
+      || deriveNameLineageAnchor(
+        opts.legacyLineageSuggestedName,
+        plan.name_lineage_anchor,
+        true,
+      );
+    plan.name_lineage_anchor = anchor;
+    const deriveName = contractVersion >= 39
+      ? deriveCuratedHybridEvolutionName
+      : contractVersion >= 38
+      ? deriveTransformedHybridEvolutionName
+      : contractVersion >= 37
+      ? deriveHybridEvolutionName
+      : deriveDeterministicEvolutionName;
+    plan.suggested_name = deriveName(
+      anchor,
+      plan,
+      opts.targetStage,
+    );
+    validateV32NamePlan(plan, opts, issues);
+  } else if (contractVersion >= 32) validateV32NamePlan(plan, opts, issues);
+  else if (contractVersion >= 30) validateV30NamePlan(plan, opts, issues);
 
   const strikeEffect = String(plan.strike_effect_id ?? "").trim();
   const surgeEffect = String(plan.surge_effect_id ?? "").trim();

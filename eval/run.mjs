@@ -524,6 +524,13 @@ async function main() {
           useV13,
           useV13,
           promptMajor(args.promptVersion) >= 17,
+          promptMajor(args.promptVersion) >= 32,
+          promptMajor(args.promptVersion) >= 33,
+          promptMajor(args.promptVersion) === 35,
+          promptMajor(args.promptVersion) === 36,
+          promptMajor(args.promptVersion) === 37,
+          promptMajor(args.promptVersion) === 38,
+          promptMajor(args.promptVersion) >= 39,
         );
         row.vision = checked.vision;
         row.issues = [...(row.issues ?? []), ...checked.issues];

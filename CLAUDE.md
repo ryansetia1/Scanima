@@ -52,7 +52,7 @@ unpublish/report/delete lulus dan rollback kembali ke 17 form / 18 discovery /
 dibangun/didistribusikan agar pemain melihat Menu dan Atlas.
 Follow-up `20260818194445_atlas_expedition_seeker_name` menyalin
 `boss_seeker.display_name` hanya ke form Expedition yang `special`, lalu
-`gallery` memproyeksikannya sebagai `owner_name`; jadi Cotton Special mendapat
+`gallery` memproyeksikannya sebagai `owner_name`; jadi Nimbelisk mendapat
 The Confectioner tanpa hardcode client. Migration/backfill dan source `gallery`
 ini sudah production 19 Agustus: Cotton terukur membawa The Confectioner,
 Gumdrop tetap null, helper internal hanya executable oleh `service_role`, dan
@@ -365,17 +365,17 @@ diinstal/didistribusikan. Manifest Sugarworks v5 tidak berubah.
 - RLS wajib aktif di semua tabel yang menyimpan data pemain. Edge Function pakai service role key, client pakai anon key.
 - Semua endpoint yang menghabiskan uang menerima `idempotency_key` dari client.
 - Proyek remote: **Scanima**, ref `kgcaisvmmpxswevjvgft`, region `ap-northeast-1`, Postgres 17. Empat migrasi pertama di-apply lewat Supabase MCP, dan nama file lokal sengaja disamakan dengan versi yang dicatat remote supaya `supabase migration list` tidak melihat drift. Kalau apply lewat MCP lagi, samakan lagi nama filenya sesudahnya.
-- **Sugarworks v5 sekarang aktif.** Version `b85a350c-7eba-4ad3-8e94-bfd8441aeb0c`, manifest `3f30bcc5672056fe5acf5ad5247cafa4e45649c2003efedf19ada6b6d67bb50b`; v1–v4 tetap immutable untuk run lama. V5 adalah policy-only successor yang memakai byte art v4 yang sama dan menambah jadwal Zone Bits 10/20/30 pada manifest, tanpa model call baru. V4 (`2d1afd83-1e6b-4b5f-a5c3-8a5092b976dc`, manifest `db8ec65def0de3b00f46d0389761e9cfaa35553da1e19e2b9a6885d4e894ed42`) adalah visual predecessor yang mengganti zona 1–3 dengan establishing-shot Battle backdrop, mempertahankan crop raw beresolusi tinggi, dan menaikkan tinggi presentasi The Confectioner menjadi 165 cm. Approval, publish, dan activation ledger v5 sudah dicatat di folder chapter.
+- **Sugarworks v6 sekarang aktif.** Version `ae9cd74f-a32d-4a99-a1f8-19681ecbe54b`, manifest `a28aee4e9d5d5bc37a21fcd5ba6e2a4e64cc59e4dd132468efa8c2a259250384`; v1–v5 tetap immutable untuk run lama. V6 adalah metadata-only successor yang mengganti sembilan display name menjadi Gellume, Velastra, Noxcoil, Cindrusk, Rimespin, Pralith, Duskadon, Ambermire, dan Nimbelisk. `brief.asset_source_version=5` membuat Factory mereferensikan 14 byte aset v5 yang sudah ada, jadi publish lewat Supabase MCP tidak menduplikasi PNG atau memanggil model. Probe production memastikan v6 aktif, v5 inactive, 14/14 Storage object tersedia, dan sembilan Atlas form membawa nama baru. V5 (`b85a350c-7eba-4ad3-8e94-bfd8441aeb0c`) tetap predecessor Zone Bits 10/20/30.
 - Migration Battle `20260813103446_battle_vertical_slice`, indeks bot `20260813105258_index_battle_bot_anima`, cap reward `20260813174007_limit_daily_battle_rewards`, indeks unik ledger `20260813174454_index_battle_reward_ledger_ref`, perbaikan status `20260813180241_refine_battle_reward_status`, guard Energy `20260813193612_require_battle_energy`, decay realtime + biaya Energy Battle `20260813195613_decay_realtime_and_battle_energy`, EXP/Level tanpa Bond `20260813201820_exp_level_growth`, gerbang Feed/Clean penuh `20260813220036_reject_full_feed_clean`, dan tidur Anima yang tidak di-Summon `20260813220954_bench_unsummoned_sleep` + `20260813221113_apply_care_bench_summon` + Energy bangku 3 jam `20260813224221_bench_sleep_faster` + gerbang Hunger Battle `20260814043053_reject_hungry_battle` (sudah di-drop: lapar tidak mengunci Bits) + reset hari sipil lokal `20260814064443_local_day_reset` + `20260814064550_local_day_reset_status` + `20260814064614_local_day_reset_care` sudah live. Lapar tidak mengunci Battle: `20260814101323_allow_hungry_battle`. Clean gratis: `20260814104237_free_clean`. Shop live: `20260814082442_shop_inventory_bits` + `20260814082512_shop_inventory_rpcs` + `20260814082545_shop_apply_care` + `20260814082612_shop_battle_rewards` + `20260814082658_shop_commit_battle_turn`. Guest Seeker/Google live lewat `20260814153135_seeker_google_accounts`; guard guest sebelum Vision lewat `20260814172154_guard_guest_scan_before_vision`. Capture/private art live lewat `20260814215746_capture_foundations`; Gallery lewat `20260814215801_gallery`. Tinggi kanonis live lewat `20260815214409_anima_body_height`; kalibrasi tinggi/metrics lewat `20260815225656_recalibrate_anima_heights_and_metrics`; prompt production v18 lewat `20260815225859_prompt_version_v18`. Tinggi Veridian 150 cm lewat `20260815234322_lower_veridian_height`. Starter lifetime 4 + Care rebalance live lewat `20260816074701_starter_four_and_care_rebalance`. Floor bangku / well_cared aktif-only live lewat `20260816082652_bench_care_safe_rest`. Tiered EXP, reward Battle berskala, cap Sleep harian, dan budget Expedition 30 live lewat `20260816200507_tiered_exp_and_battle_rewards`. Lawan Duel sistem live lewat `20260817072847_system_duel_opponents`. `shop` version 4, `care_anima` version 9, `battle_anima` version 26, `create_anima` version 20, `seeker` version 5, `replicate_webhook` version 10, `gallery` version 2, `team_battle` version 8, dan `expedition` version 16 ACTIVE; semua kecuali webhook memakai `verify_jwt=true`. `create_anima` membundel seluruh versi lokal; `app_config.prompt_version = "v31"` production, v20 rollback capture tanpa Vibe, v19 rollback gate, v18 rollback kebijakan tinggi handheld, v17 rollback kebijakan tinggi awal, v15 rollback art, dan v13 rollback kontrak capture. Tujuh Anima ready production sudah dibackfill `body_height_cm` dan `render_metrics` hasil ukur sheet privat. Enam Anima ready legacy sudah dipindahkan ke `anima_sheets`, diretype v2, dan bucket `sheets` dibuat privat. `apply_care()` menolak Hunger/Hygiene >= 99.5 dengan `NEED_FULL`. `Summon` menulis `profiles.active_anima_id` dan menidurkan sisanya. `care_anima` menyimpan `timezone_offset_minutes` lewat `set_profile_timezone` sebelum RPC; snapshot player/bot membawa `level` dari `care_score`, `body_height_cm`, plus `strike_name`/`surge_name`, dan `createFighter` memakai growth multiplier. Error boundary tetap membaca `message` dari object PostgREST, bukan hanya instance `Error`; tanpa itu exception RPC yang dikenal jatuh menjadi 500 generik. Probe SQL production membuktikan win ketiga dibayar dan win keempat menjadi Training tanpa satu pun mutation progression.
 - **Team Battle live untuk device playtest.** Migrasi `20260815002835_team_expedition_feature_flags` + `20260815003600_team_battle_vertical_slice` + `20260815003700_team_battle_roster_rpcs` + `20260815003736_team_battle_session_rpcs` + `20260815003846_team_battle_commit_turn` sudah tercatat remote; Edge Function `team_battle` version 7 ACTIVE dengan `verify_jwt=true`, dan `feature_team_battle=true`. Builder Team/Defense tepat 4, Defense opt-in, tiga rival atau fallback system, switch sukarela/forced, replay lintas restart, Energy 10×4, EXP berskala dari rata-rata Level roster lawan dengan pembagian active `ceil(full/2)`, bench `ceil(full/4)`, KO 0, receipt resume, cap 2 win + 40 Bits, dan mutex lintas Duel sudah tertutup oleh SQL production test. Builder Team Battle dan Expedition memakai thumbnail cache pose needs saat ini (Idle/Hungry/Dirty/Sleep/Dormant), menulis Ready/Low Energy/Dormant secara eksplisit, mempertahankan art/text saat card dipilih, toggle multi-select lewat tap (bukan Ctrl), checklist kanan atas, cursor dan hover ItemList transparan supaya isi card tidak tertutup dan band hover tidak tertinggal setelah jari diangkat, header chevron Back, dan tombol Team/Expedition di lobby Duel langsung aktif dari last-known flag (default on) tanpa menunggu RPC; hanya FEATURE_DISABLED yang mengunci. Smoke tanpa JWT menjawab 401. Flag sengaja dinyalakan atas permintaan operator untuk pengujian Godot; matikan kembali bila device playtest menemukan blocker.
 - **Recovery Team Battle stale bersifat self-healing.** Session lokal yang ditolak server sebagai `INVALID_SESSION_ID` atau `TEAM_BATTLE_NOT_FOUND` wajib dibuang lalu hub dimuat ulang. Mode demo Team/Boss tidak boleh mengirim action ke controller production atau menyimpan ID seperti `boss-demo`; sebelumnya state demo itu membuat Team Battle selalu gagal 400 walau Expedition hanya berada di checkpoint.
-- **Expedition/announcement/Chapter Factory sudah live.** The Sugarworks v1 (`version_id=2801303d-96bc-4d83-98ae-2f5d1eeca48b`, manifest `309be7018291047b25512e62aff9d020d0966356098ba70e3bf37c065b05d7f8`) adalah version historis pertama; v5 aktif dicatat di atas dan v2–v4 tetap immutable. Ketiga rollout flag production sekarang true: `feature_team_battle`, `feature_expedition`, dan `feature_chapter_push`. Edge Function `expedition` version 15 ACTIVE dengan `verify_jwt=true`. Migrasi KO EXP `20260815191450_deny_ko_party_exp` + `20260815191543_deny_ko_party_exp_rpcs` + `20260815191702_deny_ko_team_battle_exp_rpcs` sudah live: `party_member_reward_exp` memberi 0 ke anggota HP ≤ 0, lalu `commit_expedition_turn` / `commit_team_battle_turn` memakainya. Migration `20260816171515_battle_exp_reward_payloads` memulihkan `last_reward.anima_exp` Team/Expedition dari receipt turn saat resume. Version 11 membuang cast `special` dari node Battle/Elite tanpa mengubah manifest immutable; Boss tetap mempertahankan ace final. Version 12 mencegah AI memilih reserve ace sebagai switch sukarela ketika reguler aktif low-HP masih hidup, sehingga jalur itu tidak lagi gagal `INVALID_SWITCH_SLOT`; forced switch sesudah KO tetap `final_ace → switch → ace_passive`. Version 13 membundel helper Level tiered; payout Expedition memakai rata-rata Level lawan, budget 30 EXP roster per hari, dan bypass Boss sekali per run. Version 3 membawa overlay Level live di zona yang sama (party_state hanya HP + boost; naik Level menambah sisa HP sebesar delta max HP, KO tetap 0). Lawan chapter memakai `anima_id` slug (`sugarworks-gumdrop`), bukan UUID pemain; `start_expedition_encounter` / `commit_expedition_turn` membandingkannya sebagai text lewat `expedition_roster_ids` (`20260815115431_expedition_chapter_opponent_ids` + `20260815115549_expedition_chapter_opponent_compare`). Jangan `::uuid` opponent `anima_id` — itu 400 setiap Battle node dan client menampilkan `EXPEDITION_ERROR_GENERIC`. `prepareExpeditionRoster` tidak boleh memakai `base_stats.hp` sebagai current/max HP Battle: itu membuat encounter pertama 65/295. HP penuh di `createTeamParty` kecuali party_state sudah menyimpan sisa HP Battle dari node sebelumnya. `party_state` hanya overlay HP dan boost zona; Level live dari `care_score` dipakai di encounter berikutnya di zona yang sama, dan naik Level menambah sisa HP sebesar delta max HP (KO tetap 0). Hasil menang menampilkan EXP per anggota plus siapa yang naik Level. `generateZoneMap` menyalin `background_path` zona; `withFreshExpeditionArt` mengisi `arena_background_url` supaya arena menampilkan art zona. In-app popup/badge berasal dari chapter aktif dan tetap authoritative. Push OS belum terkirim: `notify --apply` berhenti aman sebelum DB claim dengan `FCM_PUSH_ENV_MISSING`, karena `FCM_PROJECT_ID`/`FCM_ACCESS_TOKEN` dan konfigurasi Firebase app belum tersedia; jangan retry sampai kredensial FCM ada. The Sugarworks memakai sembilan Anima manual, tiga zona manual, serta Boss/Trophy Replicate. Fudge membersihkan satu detached Attack fragment 25px dan Cotton dua fragment 59px+19px dari sel Idle melalui opt-in deterministic `remove_detached_idle_components_v1`; raw tetap utuh dan keputusan reviewer tercatat. Chapter Factory membaca `brief.json` + `design.json`; approval bernama, immutable publish, verify CDN, activation atomik, dan push DB claim satu-kali tetap wajib untuk chapter berikutnya.
+- **Expedition/announcement/Chapter Factory sudah live.** The Sugarworks v1 (`version_id=2801303d-96bc-4d83-98ae-2f5d1eeca48b`, manifest `309be7018291047b25512e62aff9d020d0966356098ba70e3bf37c065b05d7f8`) adalah version historis pertama; v6 aktif dicatat di atas dan v2–v5 tetap immutable. Ketiga rollout flag production sekarang true: `feature_team_battle`, `feature_expedition`, dan `feature_chapter_push`. Edge Function `expedition` version 15 ACTIVE dengan `verify_jwt=true`. Migrasi KO EXP `20260815191450_deny_ko_party_exp` + `20260815191543_deny_ko_party_exp_rpcs` + `20260815191702_deny_ko_team_battle_exp_rpcs` sudah live: `party_member_reward_exp` memberi 0 ke anggota HP ≤ 0, lalu `commit_expedition_turn` / `commit_team_battle_turn` memakainya. Migration `20260816171515_battle_exp_reward_payloads` memulihkan `last_reward.anima_exp` Team/Expedition dari receipt turn saat resume. Version 11 membuang cast `special` dari node Battle/Elite tanpa mengubah manifest immutable; Boss tetap mempertahankan ace final. Version 12 mencegah AI memilih reserve ace sebagai switch sukarela ketika reguler aktif low-HP masih hidup, sehingga jalur itu tidak lagi gagal `INVALID_SWITCH_SLOT`; forced switch sesudah KO tetap `final_ace → switch → ace_passive`. Version 13 membundel helper Level tiered; payout Expedition memakai rata-rata Level lawan, budget 30 EXP roster per hari, dan bypass Boss sekali per run. Version 3 membawa overlay Level live di zona yang sama (party_state hanya HP + boost; naik Level menambah sisa HP sebesar delta max HP, KO tetap 0). Lawan chapter memakai `anima_id` slug (`sugarworks-gumdrop`), bukan UUID pemain; `start_expedition_encounter` / `commit_expedition_turn` membandingkannya sebagai text lewat `expedition_roster_ids` (`20260815115431_expedition_chapter_opponent_ids` + `20260815115549_expedition_chapter_opponent_compare`). Jangan `::uuid` opponent `anima_id` — itu 400 setiap Battle node dan client menampilkan `EXPEDITION_ERROR_GENERIC`. `prepareExpeditionRoster` tidak boleh memakai `base_stats.hp` sebagai current/max HP Battle: itu membuat encounter pertama 65/295. HP penuh di `createTeamParty` kecuali party_state sudah menyimpan sisa HP Battle dari node sebelumnya. `party_state` hanya overlay HP dan boost zona; Level live dari `care_score` dipakai di encounter berikutnya di zona yang sama, dan naik Level menambah sisa HP sebesar delta max HP (KO tetap 0). Hasil menang menampilkan EXP per anggota plus siapa yang naik Level. `generateZoneMap` menyalin `background_path` zona; `withFreshExpeditionArt` mengisi `arena_background_url` supaya arena menampilkan art zona. In-app popup/badge berasal dari chapter aktif dan tetap authoritative. Push OS belum terkirim: `notify --apply` berhenti aman sebelum DB claim dengan `FCM_PUSH_ENV_MISSING`, karena `FCM_PROJECT_ID`/`FCM_ACCESS_TOKEN` dan konfigurasi Firebase app belum tersedia; jangan retry sampai kredensial FCM ada. The Sugarworks memakai sembilan Anima manual, tiga zona manual, serta Boss/Trophy Replicate. Fudge membersihkan satu detached Attack fragment 25px dan Cotton dua fragment 59px+19px dari sel Idle melalui opt-in deterministic `remove_detached_idle_components_v1`; raw tetap utuh dan keputusan reviewer tercatat. Chapter Factory membaca `brief.json` + `design.json`; approval bernama, immutable publish, verify CDN, activation atomik, dan push DB claim satu-kali tetap wajib untuk chapter berikutnya.
 - **Boss Seeker runtime sudah lengkap, bukan intro-only.** `withFreshExpeditionArt` menempel `boss_seeker` (nama, dialogue, `body_height_cm`, poses, `sheet_path`/`sheet_url`, pose manifest) pada `run` dan encounter, plus `zone_attempt` untuk rematch. Client memuat sheet lewat `BossSeekerSheet` (bukan `AnimaLoader`). Opening `boss_intro`/`rematch` menampilkan Seeker saja tanpa overlay gelap, lalu pose command dan Summon Anima lawan sebelum input nyala; sesudah itu Seeker di belakang Anima kecuali Anima itu lebih tinggi dari 60% tinggi Seeker (maka Anima pindah ke belakang), di-clamp di dalam stage, cut-in pada command, dan dialog tap-to-continue. Layer default background/portal `z=0` < Boss Seeker `z=1` < Anima lawan `z=2` < Anima pemain `z=3`; `z=-1` menyembunyikan Seeker di belakang art zona. Anima raksasa (tampilan > 60% tinggi Seeker) memakai `FighterLayer` supaya Seeker bisa maju ke depan. Budget per encounter: `chapter_intro` sekali per run, opening `boss_intro`/`rematch`, maksimal satu command dialogue dari Attack/Special/Switch, `last_anima` wajib hanya dari event authoritative `final_ace`, lalu `victory`/`defeat` dengan pose terbalik (pemain menang → pose `defeat` + line `victory`). Pose command tetap dimainkan walau line sudah habis; urutan wajib pose → dialog opsional → event plate → animasi → idle. Trigger lama saat pemain tinggal satu sudah dihapus. Replay event tidak mengulang line. Sesudah baris terakhir itu ditutup, `_present_boss_result()` menyelipkan reveal Trophy first-clear di dialog yang sama — nama Core sebagai judul, art Core sebagai portrait — baru `_show_result()`. `play_events()` menahan `set_busy(false)` lewat `_boss_result_settled` sampai kedua dialog habis, supaya banner/modal Level Up tidak muncul di belakangnya; `_boss_result_pending` mencegah `set_session` kedua menutup dialog yang sedang ditunggu. Art Trophy diunduh sekali oleh `ExpeditionController._attach_trophy_art()` dari `reward.trophy.art_path` + `asset_base_url` dan dititipkan ke art cache sebagai `"trophy"`. Payload Seeker yang masuk sejak version 12 tetap dibundel di `expedition` version 15 ACTIVE; client fallback `asset_base_url + sheet_path` hanya untuk response lama.
 - **Ace Boss server-authoritative.** Hanya encounter `kind=boss` yang menahan tepat satu cast `special`; starter dan switch memakai reguler sampai seluruhnya KO. Event terakhir selalu `final_ace → switch → ace_passive`. Allowlist passive: `bonus_pp`, bounded `stat_boost`, atau `one_hit_shield`; state `ace_passive_applied` mencegah replay menggandakan efek. Chapter validator menolak roster bukan empat, jumlah ace bukan satu, ace lebih lemah dari reguler, atau passive di luar allowlist. Opsi future yang belum live: ace-exclusive move (butuh action/VFX/schema) dan full Boss phase (butuh phase state, transition, reset/reward policy, dan UI).
 - **Skala Battle memakai tinggi kanonis, bukan ukuran PNG.** `animas.body_height_cm` integer 20–2000 adalah server-authoritative; Vision v19 wajib memilihnya dari anchor skala nyata, floor boneka gendong ~50 cm untuk benda genggam kecil, dan exaggeration hanya ketika silhouette memang towering/massive. Manifest post-process membawa `render_metrics.reference_height_px/reference_width_px` dari bbox opak yang benar-benar terlihat di region Idle/Intro Idle. `BattleScale.shared_scales()` menghitung kurva non-linear per tubuh dari kartu desain 720×800; lebar layar tidak mengubah rasio tubuh. Tinggi *tampilan* Anima dijepit 300 cm (`ANIMA_VISUAL_HEIGHT_CAP_CM`) — 20 m tetap dibandingkan sebagai ~3 m. Boss Seeker tetap di kurva 720×800; Anima di sampingnya linear ke tinggi Seeker (3 m ≈ 1,8× Seeker 165 cm). `_match_anima_opaque_to_seeker` memakai `shared_scales`, bukan `_seeker.scale` sebelum `set_layout`. Bbox in-game adalah piksel opak (alpha ≥ 0,12), bukan sel kotak slicing. Setelah skala tubuh ditentukan, `FighterLayer`/`DuelFighterLayer` mendapat satu zoom kamera seragam: petarung kecil mendekat, petarung besar menjauh, lalu gabungan bbox opak dipasang penuh di arena dengan margin 5%. Karena zoom seragam, perbandingan tinggi tidak berubah dan dua Anima 20 m tetap sama-sama terbaca 3 m relatif terhadap Seeker, tetapi Seeker ikut terlihat lebih kecil. Art zona chapter ikut zoom dari pusat agar latar mengikuti framing. Anima yang tinggi tampilannya > 60% tinggi Seeker (`SEEKER_OVERLAP_RATIO`) pindah ke layer belakang; default tetap pemain di depan lawan di depan Seeker. Layer z hidup di `FighterLayer` (Node2D sibling anchors + Seeker), bukan di sprite di dalam Control — `z_as_relative = false` pada sprite Anima menaruhnya di depan Seeker. Tujuh Anima production punya metrics opak hasil ukur sheet privat serta backfill matang: Mugshots 90, Hydron 180, Deckon 95, Playtron 50, Veridian 150, klasik 90, Sunhound 75 cm. Kaki opak duduk di garis tanah 91%, Boss Seeker 3×3 1024 membuka sel penuh 341 px supaya kaki tidak terpotong oleh capture 300 px, dan padding transparan tidak masuk perhitungan kamera. Tinggi visual tidak masuk combat power. Riset pembanding cara Pokémon 2019–2025 menangani ukuran karakter, beserta alasan eksperimen 20 m linear ditinggalkan, ada di [`docs/pokemon-size-research.html`](docs/pokemon-size-research.html); itu catatan desain, bukan spek yang mengikat.
 - **Framing kamera Battle mengikuti tinggi Anima.** Art zona chapter memakai Anima tertinggi untuk zoom: pasangan normal memperbesar latar sampai 1,55×, sedangkan Anima di cap 3 m memperlihatkan framing latar terluas. Backdrop mempertahankan crop raw 16:9 sampai maksimum 2048 px; runtime image membuat mipmap dan `TeamArenaBackground` memakai `TEXTURE_FILTER_LINEAR_WITH_MIPMAPS`. Shader `battle_background_dof.gdshader` mengambil satu mip LOD per piksel—far band lebih blur, lantai dekat lebih tajam—serta menurunkan saturation/brightness tipis; jangan ganti dengan Gaussian multi-tap tanpa profiling mobile. TextureRect dihitung manual sebagai cover lalu dipan horizontal dari hash ID encounter (margin 4%): battle berbeda mendapat potongan kiri/tengah/kanan berbeda, tetapi turn replay/resume session yang sama tidak melompat. Sesudah camera zoom selesai, pusat tubuh opak Boss Seeker dipin ke sisi kanan dengan margin 2,5% supaya ia terbaca berdiri di belakang posisi Anima lawan, bukan maju ke tengah arena. Switch Team/Expedition menghitung ulang seluruh layout segera setelah art anggota baru dipasang dalam keadaan tersembunyi, lalu men-tween `FighterLayer`, anchor, Seeker, shadow, dan backdrop selama 0,32 detik bersamaan dengan charge portal; jangan menunda reframe sampai event Attack atau `set_session()` akhir.
 - **Biaya masuk Expedition sekali per chapter sudah live.** Migrasi `20260815182234_expedition_entry_energy` memindahkan debit menjadi 30 Energy × 4 di `start_expedition_run`, menghapus seluruh gate/debit Energy dari `start_expedition_zone`, dan mengunci roster pada status `checkpoint` maupun `active`. Run checkpoint lama tidak ditagih retroaktif. Probe SQL production membuktikan gagal satu anggota rollback atomik, replay tidak mendebit ulang, Start Zone tetap berhasil pada Energy 0, dan RPC tetap service-role-only. Edge Function tidak perlu dideploy ulang karena aturan authoritative seluruhnya hidup di RPC.
-- **Zone Bits dan route tree Expedition sudah live.** Migrasi `20260816133107_expedition_zone_bits_and_routes` menyimpan `visited_node_ids`, receipt unik `(run_id, zone)`, dan ledger `expedition_zone`; profile row lock + batas hari sipil lokal menjaga cap lintas replay, run, dan content version dalam stable chapter yang sama. Jadwal berasal dari `zones[].bits_reward`: Sugarworks v5 memberi 10/20/30 Bits dengan cap 60/chapter/hari, sedangkan run yang terkunci ke v1–v4 tanpa field tetap nol. Bonus first-clear 25 Bits tetap terpisah. Payload run membawa `daily_bits` dan `last_zone_reward`; client me-refresh saldo sesudah payout. Peta node sekarang route tree bercabang dengan ikon per jenis, state visited/reachable/locked, edge preview, target sentuh 96 px, dan alur tap node → preview → **Enter Node** sebelum RPC. Label status per-node dan hint tap berulang sengaja tidak tampil: brightness, disabled state, focus border, dan edge menyampaikan availability. Active map menyembunyikan subtitle, merangkum status run dalam satu baris, menyembunyikan HP tim saat penuh, hanya menampilkan ringkasan saat ada yang terluka, serta memakai surface gelap opak agar ambient ring shell tidak mengganggu jalur. Baris preview kosong tetap mengambil satu tinggi label supaya memilih node tidak mengubah viewport atau scroll map; ikon node terpilih memakai warna on-primary gelap yang sama dengan label. Preview cyan hanya menyorot edge dari node terpilih ke depan. Edge yang masuk maupun jalur yang sudah selesai memakai garis putus-putus redup, bukan highlight emas yang terlihat tertinggal.
+- **Zone Bits dan route tree Expedition sudah live.** Migrasi `20260816133107_expedition_zone_bits_and_routes` menyimpan `visited_node_ids`, receipt unik `(run_id, zone)`, dan ledger `expedition_zone`; profile row lock + batas hari sipil lokal menjaga cap lintas replay, run, dan content version dalam stable chapter yang sama. Jadwal berasal dari `zones[].bits_reward`: Sugarworks v5/v6 memberi 10/20/30 Bits dengan cap 60/chapter/hari, sedangkan run yang terkunci ke v1–v4 tanpa field tetap nol. Bonus first-clear 25 Bits tetap terpisah. Payload run membawa `daily_bits` dan `last_zone_reward`; client me-refresh saldo sesudah payout. Peta node sekarang route tree bercabang dengan ikon per jenis, state visited/reachable/locked, edge preview, target sentuh 96 px, dan alur tap node → preview → **Enter Node** sebelum RPC. Label status per-node dan hint tap berulang sengaja tidak tampil: brightness, disabled state, focus border, dan edge menyampaikan availability. Active map menyembunyikan subtitle, merangkum status run dalam satu baris, menyembunyikan HP tim saat penuh, hanya menampilkan ringkasan saat ada yang terluka, serta memakai surface gelap opak agar ambient ring shell tidak mengganggu jalur. Baris preview kosong tetap mengambil satu tinggi label supaya memilih node tidak mengubah viewport atau scroll map; ikon node terpilih memakai warna on-primary gelap yang sama dengan label. Preview cyan hanya menyorot edge dari node terpilih ke depan. Edge yang masuk maupun jalur yang sudah selesai memakai garis putus-putus redup, bukan highlight emas yang terlihat tertinggal.
 - **Trail Shop boleh dilewati.** Migrasi `20260816154003_allow_expedition_shop_skip` membuat **Skip Shop** maju tanpa item, Tokens, boost, atau perubahan HP. Reserved wire choice `shop-skip` hanya sah pada pending node `shop`; Edge Function mengirim state no-op dan RPC memverifikasi state itu identik dengan state authoritative. Refresh yang sudah dibayar tidak direfund ketika Shop dilewati.
 - **Checkpoint Expedition mempertahankan HP antar-zona.** Migrasi `20260816165646_expedition_checkpoint_choice` menandai checkpoint sesudah Zona 1/2 dan mewajibkan choice service-role-only yang idempoten sebelum `start_expedition_zone`. **Recover** menambah 50% max HP semua anggota dan membangunkan KO pada 50%; **Power Up** mempertahankan HP dan memberi +10% Attack/Guard/Speed hanya untuk zona berikutnya. `prepareExpeditionZoneRoster()` membuang `base_stats` checkpoint lama, menerapkan ulang boost run, lalu membakar boost sementara ke snapshot zona supaya tidak bocor ke zona selanjutnya. Zona 1 tetap mulai penuh. UI choice memakai panel existing dan Abandon selalu lewat `UiModal` destruktif yang menjelaskan progress/Tokens/boost hilang, Energy masuk tidak direfund, reward authoritative tetap aman, dan run baru membuat route baru. Probe production membuktikan dua kolom + trigger ada, nol checkpoint antar-zona lolos tanpa choice, `authenticated` tidak dapat mengeksekusi RPC, dan `service_role` dapat; `quota_rules.sql` remote lulus.
 - **Aset chapter boleh dibuat lewat Replicate atau manual di ChatGPT.** Runbook copy-paste prompt, 14 nama file factory-native, checklist, dan folder handoff ada di [docs/10](docs/10-manual-chapter-assets.md). Hasil manual masuk `backend/chapters/<slug>/v<version>/manual_inbox/`, tidak langsung ke `assets/`; raw dipertahankan. `chapter_factory.mjs ingest-manual` default preview memeriksa PNG, menjalankan post-process canonical, dan melaporkan semua slot tanpa menulis; `--apply` all-or-nothing untuk slot pilihan, menyimpan hash-stable PNG, rebuild manifest/review, serta mencatat provider/operator/input+output hash/riwayat regenerate sebagai provenance `manual_chatgpt` tanpa prediction ID atau cost Replicate. `assetMode()` menganggap campuran Replicate + manual production hanya saat semua 14 slot tercatat, dan publish/activate mencocokkan setiap provenance output hash ke manifest. Kedua jalur memakai approval/publish gate yang sama.
@@ -559,12 +559,211 @@ backend/prompts/
     ├── sprite_sheet.md           # v20 + {{vibe_direction}}
     ├── sprite_sheet_fauna.md     # v20 + {{vibe_direction}}
     └── vibe_directions.json      # natural/cute/brave/wild/sinister
+├── v32/                          # rejected: valid structure, naming quality 0/3
+    ├── vision_system.md          # v31 + species naming/anchor 3–5 huruf
+    ├── vision_schema.json        # v31 + name_lineage_anchor
+    ├── sprite_sheet*.md          # identik v31
+    ├── vibe_directions.json      # identik v31
+    ├── vision_evolve_system.md   # v30 + exact authoritative name anchor
+    ├── vision_evolve_schema.json # v30 + name_lineage_anchor
+    └── sprite_sheet_evolve.md    # identik v30
+├── v33/                          # rejected: coined-word naming quality 1/3
+    ├── vision_system.md          # v32 + anti-compound/source-literal self-check
+    ├── vision_schema.json        # v32 + pronounceable anchor contract
+    ├── sprite_sheet*.md          # identik v31
+    ├── vibe_directions.json      # identik v31
+    ├── vision_evolve_system.md   # identik v32
+    ├── vision_evolve_schema.json # identik v32
+    └── sprite_sheet_evolve.md    # identik v30
+├── v34/                          # rejected after expanded eval: 3/6
+    ├── vision_system.md          # v33 + private candidates + cover test
+    ├── vision_schema.json        # v33 + identity-copy contract
+    ├── sprite_sheet*.md          # identik v31
+    ├── vibe_directions.json      # identik v31
+    ├── vision_evolve_system.md   # identik v32
+    ├── vision_evolve_schema.json # identik v32
+    └── sprite_sheet_evolve.md    # identik v30
+├── v35/                          # rejected: structured self-review 1/6
+    ├── vision_system.md          # v34 + lexical/product/creature checks
+    ├── vision_schema.json        # v34 + required name_quality declaration
+    ├── sprite_sheet*.md          # identik v31
+    ├── vibe_directions.json      # identik v31
+    ├── vision_evolve_system.md   # identik v32
+    ├── vision_evolve_schema.json # identik v32
+    └── sprite_sheet_evolve.md    # identik v30
+├── v36/                          # rejected: deterministic phonotactics 0/6
+    ├── vision_system.md          # naming capture dipindah ke server
+    ├── vision_schema.json        # tanpa field naming model
+    ├── sprite_sheet*.md          # identik v31
+    ├── vibe_directions.json      # identik v31
+    ├── vision_evolve_system.md   # nama final dari server
+    ├── vision_evolve_schema.json # field naming sementara untuk wire shape
+    └── sprite_sheet_evolve.md    # identik v30
+├── v37/                          # rejected: hybrid semantic roots 0/6
+    ├── vision_system.md          # enam root semantik terurut
+    ├── vision_schema.json        # name_roots; final word milik server
+    ├── sprite_sheet*.md          # identik v31
+    ├── vibe_directions.json      # identik v31
+    ├── vision_evolve_system.md   # semantic anchor + server continuation
+    ├── vision_evolve_schema.json # field naming sementara untuk wire shape
+    └── sprite_sheet_evolve.md    # identik v30
+└── v38/                          # rejected: transformed roots 1/6
+    ├── vision_system.md          # semantic seed 3–8 huruf, bukan final anchor
+    ├── vision_schema.json        # enam seed; transform final milik server
+    ├── sprite_sheet*.md          # identik v31
+    ├── vibe_directions.json      # identik v31
+    ├── vision_evolve_system.md   # empat cadence family seimbang
+    ├── vision_evolve_schema.json # field naming sementara untuk wire shape
+    └── sprite_sheet_evolve.md    # identik v30
+└── v39/                          # rejected: scored candidate selection 3/6
+    ├── vision_system.md          # seed sama; server memilih dari 32 kandidat
+    ├── vision_schema.json        # identik v38
+    ├── sprite_sheet*.md          # identik v31
+    ├── vibe_directions.json      # identik v31
+    ├── vision_evolve_system.md   # gerbang struktur untuk Adult/Evolved
+    ├── vision_evolve_schema.json # field naming sementara untuk wire shape
+    └── sprite_sheet_evolve.md    # identik v30
 ```
 
 V30 adalah production evolution: siluet pecah tanpa memaksa coil, plus nama
 spesies baru di Plan. Adult Veridian v26, Adult Sunhound v28, Evolved Sunhound
 v29, serta Adult+Evolved Playtron v29 terkunci per Anima; lock Plan membawa
 `suggested_name` operator. Capture production **v31**; evolution tetap v30.
+Candidate **Name Lineage v32** sudah diimplementasikan lokal tetapi
+**ditolak pada paid Vision eval** dan tidak pernah dipromosikan/live: Scan
+membuat nama spesies dari
+siluet/material/gerak plus anchor bunyi 3–5 huruf; Adult dan Evolved wajib
+mempertahankan anchor authoritative yang sama tanpa fixed suffix atau model
+call tambahan. Validator memperbaiki anchor capture invalid secara
+deterministik; Evolution tetap exact. Legacy fallback memakai nama generated,
+bukan nickname. Bundel prompt dan selftest gratis lulus, tetapi tiga Vision
+berbayar (mouse, mug, ilustrasi naga; ~$0.009; nol image generation/retry)
+menghasilkan `ClickGlide`, `Muggleton`, dan `Wyrmscale`: 0/3 lolos arah nama
+spesies karena compound Inggris transparan/literal/surname-like. Production
+tetap capture v31 + evolution v30.
+Candidate **v33** memperbaiki akar reject tanpa dictionary hardcode: nama wajib
+satu coined word pronounceable, bukan compound Inggris transparan, label/sinonim
+sumber, ingredient literal, atau person/surname/place/title/job/rank. Anchor
+tetap 3–5 huruf tetapi v33 menolak tiga consonant beruntun; v32 tetap
+reproducible. Tidak ada model call/migrasi/perubahan art tambahan. Bundel dan
+selftest gratis lulus. Paid Vision-only eval tiga fixture yang sama (~$0.009,
+nol image generation/retry) menghasilkan `Cursora`, `Glazel`, dan `Dracovent`;
+semua struktur/anchor valid tanpa repair, tetapi hanya `Glazel` lolos arah
+kreatif. `Cursora` masih literal terhadap cursor dan `Dracovent` masih generic
+draco + vent, jadi v33 ditolak 1/3 dan tidak live; revisi berikutnya wajib v34.
+Candidate **v34** membuat filter itu operasional tanpa dictionary server:
+Vision membangun forbidden identity list per subjek, membuat minimal lima
+kandidat privat, menolak salinan empat huruf beruntun, lalu melakukan cover
+test. Paid Vision-only eval tiga fixture yang sama (~$0.009, nol image
+generation/retry) menghasilkan `Curvix`, `Glazel`, dan `Skalyn`; ketiganya
+lolos arah nama dan anchor tanpa repair. Mug mencatat satu normalisasi
+`strike_vfx` yang tidak terkait naming. Set kedua yang lebih beragam memakai
+Monstera, sepatu, dan handheld; fixture WebP dikonversi lokal setelah gagal
+sebelum API, jadi tetap tepat tiga paid call (~$0.009). Hasil `Fenestra`,
+`Kineto`, dan `Portex` ditolak karena dictionary/scientific term, generic
+kinetic root, atau product/brand-like read. Agregat v34 3/6: v34 ditolak dan
+tidak live; revisi berikutnya wajib v35. Production tetap capture v31 +
+evolution v30.
+Candidate **v35** menambah delapan kandidat lintas empat construction family,
+explicit dictionary/scientific/product/creature-read checks, serta enam boolean
+`name_quality` yang wajib `true` di validator. Bundel dan seluruh selftest gratis
+lulus. Enam paid Vision-only call (~$0.018, nol image generation/retry)
+menghasilkan `Scurrix`, `Crockle`, `Aerisyn`, `Phyllaura`, `Solerix`, dan
+`Vectron`; model menyatakan seluruh quality flag true. Audit independen menolak
+lima terakhir: existing Scots word/character/bestiary creature, perusahaan
+AI/produk, nomenklatur botani, SaaS, serta brand POS/lokomotif. Hanya `Scurrix`
+lolos, jadi v35 ditolak **1/6** dan tidak live. Fakta penting: self-attestation
+terstruktur menegakkan bentuk response, bukan kebenaran collision claim; revisi
+berikutnya harus mengganti mekanisme dengan bukti independen atau lexical
+boundary deterministik, bukan menambah checklist model lagi.
+Candidate **v36** menguji batas deterministik itu: model tidak lagi membuat nama;
+server meng-hash `species_key`, element, strongest stat, brief, dan features
+menjadi anchor + syllable fonotaktik, sedangkan Evolution memakai anchor + Plan.
+Bundel dan selftest gratis lulus. Enam paid Vision-only call (~$0.018, nol image
+generation/retry) menghasilkan `Zimnuzem`, `Basgutun`, `Deshupil`, `Vadvuter`,
+`Luvsufak`, dan `Therhalok`. Exact-name audit tidak menemukan collision langsung,
+tetapi keenamnya ditolak kreatif: random/awkward, source character tidak dapat
+dibaca, dan beberapa mendekati kata/nama/product lain. V36 ditolak **0/6** dan
+tidak live. Kesimpulan: unique hash bukan authored species name; revisi berikut
+harus hybrid—semantic phoneme/candidates dari model, selection/transformation
+deterministik yang menjaga cue terbaik.
+Candidate **v37** mengimplementasikan hybrid itu tanpa call/dependency baru.
+Capture Vision meranking tepat enam `name_roots` 3–5 huruf dengan channel +
+evidence dari silhouette/material/motion/temperament/structure. Server menolak
+root yang menyalin `object_label`/`species_key`, memilih root valid terkuat,
+lalu menambah continuation terkurasi berdasar visual payload + strongest stat.
+Adult/Evolved mempertahankan anchor itu dengan continuation stage-specific dari
+Plan. Model tidak membuat final word atau collision claim. Bundel, seluruh
+selftest, dan dry run enam foto lulus tanpa API. Enam paid Vision-only call
+(~$0.018, nol image generation/retry) menghasilkan `Glidora`, `Serpora`,
+`Folialia`, dan `Tecnelia`; mug/sepatu gagal validator pada root `cylin` dan
+`stride`. Keempat jalur valid tetap memilih root literal/generic (`glid`,
+`serp`, `folia`, `tecn`); exact search menemukan penggunaan `Glidora` dan
+`Serpora`. V37 ditolak **0/6** dan tidak live. Formatting root minor seharusnya
+dinormalisasi deterministik di versi berikut, tetapi akar masalahnya adalah
+server suffix tidak dapat menyelamatkan root dictionary/category yang literal.
+Candidate **v38** menerima semantic seed 3–8 huruf lalu mengubah onset, vowel,
+dan coda menjadi anchor baru. Continuation tidak lagi mengikuti strongest stat:
+hash identitas visual memilih keluarga `closed`/`hard`/`liquid`/`open`, dan
+Adult/Evolved memakai keluarga stage-specific yang sama-sama seimbang. Seluruh
+selftest + dry run lulus; enam paid Vision-only call (~$0.018, nol image
+generation/retry) valid 6/6 dan menghasilkan `Kuka`, `Graskorin`, `Zoskesk`,
+`Bomari`, `Daxorin`, `Vororn`. Bias `-a/-ia` berhasil hilang: sample tersebar
+open 2, liquid 2, hard 2, dengan ending `-a/-in/-esk/-ari/-in/-orn`. Namun audit
+independen menolak lima: KUKA adalah perusahaan robotik, Bomari perusahaan
+aktif, Daxorin artis, Vororn punya penggunaan historis/niche, dan Zoskesk sulit
+diucapkan. Hanya `Graskorin` lolos provisional, jadi v38 ditolak **1/6** dan
+tidak live. Diversitas cadence terbukti masalah terpisah dari collision dan
+creature-read; memperbaiki rima saja tidak cukup.
+Candidate **v39** menyerang akar reject v38: ia hanya membentuk satu kandidat
+lalu memakainya. `nameStructureScore()` memberi penalti deterministik untuk
+nama < 7 huruf, < 3 suku kata, rantai CV tunggal tanpa klaster/coda, bigram
+berulang, tiga konsonan beruntun, dan substring identitas sumber; keempat reject
+terukur v38 semuanya jatuh negatif sementara `Graskorin` positif.
+`selectCadenceName()` membangun 32 kandidat (4 cadence family × 8 continuation),
+membuang yang di bawah lantai, lalu memilih memakai hash identitas visual. Skor
+adalah **gerbang, bukan fungsi objektif**: memilih skor tertinggi terukur
+konvergen — 151/200 fixture berakhir `-rin`, yaitu bias rima yang baru
+dibetulkan v38. Karena anchor selalu berakhir konsonan, medial v38 dibuang; itu
+sekalian memperbaiki bug join vokal yang membuat family `closed`/`hard` tidak
+pernah terjangkau. Terukur: hard 51 / liquid 51 / open 49 / closed 49, dan tail
+tiga huruf terpadat turun 51/200 → 21/200. Tujuh paid Vision-only (~$0.021, nol
+image generation/retry) valid 6/6 dan menghasilkan `Fimdakar`, `Zolvela`,
+`Vurralis`, `Diskurak`, `Dorralis`, `Kurvesun`. Audit independen: tiga lolos, dua
+borderline (`Diskurak` terbaca `Disk-` literal untuk mouse, `Dorralis` beda satu
+huruf dari nama orang `Doralis` sekaligus mengulang tail `-ralis`), dan
+`Kurvesun` **reject** karena `kurv-` vulgar di Ceko, Slovakia, Hungaria, Serbia,
+Kroasia, dan Polandia. V39 ditolak **3/6** dan tidak live. Fakta penting: sisa
+kegagalan bukan lagi bentuk kata melainkan fakta leksikal dunia nyata
+(brand, nama orang, kata kasar lintas bahasa) yang tidak terlihat oleh
+fonotaktik dan sudah terbukti tidak bisa diklaim model sendiri di v35. Empat
+mekanisme berbeda v35–v39 semuanya mentok di 0/6–3/6, jadi revisi aturan
+generasi berikutnya diperkirakan mendarat di band yang sama; yang harus berubah
+adalah **bukti yang tersedia saat seleksi**, bukan cara kandidat dibentuk.
+**Satu perbaikan v39 dipertahankan walau versinya ditolak:** penamaan tidak
+boleh menggagalkan capture berbayar. `sepatu.jpg` kehilangan satu Vision karena
+seed hanya mencakup tiga visual channel, jadi
+`deriveCuratedHybridSpeciesName()` sekarang jatuh ke fonotaktik deterministik
+v36 untuk setiap kegagalan seed, mencatat sebabnya di
+`selected_name_root.seed_fallback`, dan tetap melewati gerbang struktur.
+Production tetap capture v31 + evolution v30.
+Sugarworks v6 sudah production dengan sembilan nama
+spesies baru dan aset v5 yang direuse seperti dicatat di atas. Detail ada di
+[`docs/designs/2026-08-19-anima-name-lineage-v39.md`](docs/designs/2026-08-19-anima-name-lineage-v39.md);
+provenance reject v38 tetap di
+[`docs/designs/2026-08-19-anima-name-lineage-v38.md`](docs/designs/2026-08-19-anima-name-lineage-v38.md);
+provenance reject v37 tetap di
+[`docs/designs/2026-08-19-anima-name-lineage-v37.md`](docs/designs/2026-08-19-anima-name-lineage-v37.md);
+provenance reject v36 tetap di
+[`docs/designs/2026-08-19-anima-name-lineage-v36.md`](docs/designs/2026-08-19-anima-name-lineage-v36.md);
+provenance reject v35 tetap di
+[`docs/designs/2026-08-19-anima-name-lineage-v35.md`](docs/designs/2026-08-19-anima-name-lineage-v35.md);
+provenance reject v34 tetap di
+[`docs/designs/2026-08-19-anima-name-lineage-v34.md`](docs/designs/2026-08-19-anima-name-lineage-v34.md);
+provenance reject v33 tetap di
+[`docs/designs/2026-08-19-anima-name-lineage-v33.md`](docs/designs/2026-08-19-anima-name-lineage-v33.md);
+provenance reject v32 tetap di
+[`docs/designs/2026-08-19-anima-name-lineage-v32.md`](docs/designs/2026-08-19-anima-name-lineage-v32.md).
 Client Scan mengirim `capture_vibe`; server menolak nilai di luar allowlist
 sebelum Vision, menolak non-Natural saat prompt < v31 (`VIBE_UNAVAILABLE`),
 dan mengunci vibe di `generations.capture_vibe` pada claim pertama. Eval

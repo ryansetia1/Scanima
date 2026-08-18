@@ -23,7 +23,21 @@ import {
 } from "../backend/supabase/functions/_shared/postprocess.mjs";
 import {
   assemblePrompt,
+  deriveCuratedHybridEvolutionName,
+  deriveCuratedHybridSpeciesName,
+  deriveDeterministicEvolutionName,
+  deriveDeterministicSpeciesName,
+  deriveHybridEvolutionName,
+  deriveHybridSpeciesName,
+  deriveTransformedHybridEvolutionName,
+  deriveTransformedHybridSpeciesName,
   extractJson,
+  NAME_CADENCE_FAMILIES,
+  NAME_QUALITY_KEYS,
+  NAME_ROOT_CHANNELS,
+  nameIsSafeForPlayers,
+  nameStructureScore,
+  NAME_STRUCTURE_FLOOR,
   normalizeCaptureVibe,
   normalizeMoveName,
   normalizeSuggestedName,
@@ -5884,7 +5898,7 @@ console.log(
 }
 
 console.log(
-  "36. evolution Plan validator, prompt placeholders, dan bundel v21–v30",
+  "36. evolution Plan validator, prompt placeholders, dan bundel v21–v40",
 );
 {
   const {
@@ -7722,6 +7736,777 @@ console.log(
       }),
     /suggested_name harus baru/,
   );
+  const captureV32 = {
+    safe: true,
+    is_object: true,
+    species_key: "gel_creature",
+    stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+    signature_features: ["gem-studded gel dome", "spring-loaded fists"],
+    suggested_name: "Gellume",
+    name_lineage_anchor: "gell",
+  };
+  const checkedCaptureV32 = validateVision(
+    structuredClone(captureV32),
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+  );
+  assert.equal(checkedCaptureV32.vision.name_lineage_anchor, "gell");
+  const badCaptureAnchor = structuredClone(captureV32);
+  badCaptureAnchor.name_lineage_anchor = "glm";
+  const repairedCaptureAnchor = validateVision(
+    badCaptureAnchor,
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+  );
+  assert.equal(repairedCaptureAnchor.vision.name_lineage_anchor, "gel");
+  assert.ok(repairedCaptureAnchor.issues.some((issue) => issue.includes("dinormalisasi")));
+  const absentCaptureAnchor = structuredClone(captureV32);
+  absentCaptureAnchor.name_lineage_anchor = "nimb";
+  const repairedAbsentAnchor = validateVision(
+    absentCaptureAnchor,
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+  );
+  assert.ok(
+    repairedAbsentAnchor.vision.suggested_name.toLowerCase().includes(
+      repairedAbsentAnchor.vision.name_lineage_anchor,
+    ),
+  );
+  const paidSmokeAnchor = structuredClone(captureV32);
+  paidSmokeAnchor.suggested_name = "ClickGlide";
+  paidSmokeAnchor.name_lineage_anchor = "glic";
+  assert.equal(
+    validateVision(
+      paidSmokeAnchor,
+      [],
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+    ).vision.name_lineage_anchor,
+    "clic",
+    "paid v32 smoke typo harus diperbaiki deterministik tanpa Vision retry",
+  );
+  const strictV33Anchor = structuredClone(captureV32);
+  strictV33Anchor.suggested_name = "Wyrmscale";
+  strictV33Anchor.name_lineage_anchor = "yrmsc";
+  const checkedStrictV33 = validateVision(
+    strictV33Anchor,
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+    true,
+  );
+  assert.ok(
+    !/[b-df-hj-np-tv-z]{3}/.test(checkedStrictV33.vision.name_lineage_anchor),
+    "v33 harus memperbaiki anchor dengan tiga consonant beruntun",
+  );
+  assert.ok(
+    checkedStrictV33.vision.suggested_name.toLowerCase().includes(
+      checkedStrictV33.vision.name_lineage_anchor,
+    ),
+  );
+  const captureV35 = {
+    ...structuredClone(captureV32),
+    name_quality: Object.fromEntries(NAME_QUALITY_KEYS.map((key) => [key, true])),
+  };
+  const checkedCaptureV35 = validateVision(
+    captureV35,
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+    true,
+    true,
+  );
+  assert.deepEqual(
+    Object.keys(checkedCaptureV35.vision.name_quality),
+    NAME_QUALITY_KEYS,
+  );
+  const failedQualityV35 = structuredClone(captureV35);
+  failedQualityV35.name_quality.creature_species_read = false;
+  assert.throws(
+    () =>
+      validateVision(
+        failedQualityV35,
+        [],
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+      ),
+    /name_quality\.creature_species_read wajib true/,
+  );
+  const missingQualityV35 = structuredClone(captureV32);
+  assert.throws(
+    () =>
+      validateVision(
+        missingQualityV35,
+        [],
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+      ),
+    /name_quality wajib/,
+  );
+  const deterministicCapture = deriveDeterministicSpeciesName(captureV32);
+  assert.deepEqual(
+    deriveDeterministicSpeciesName(structuredClone(captureV32)),
+    deterministicCapture,
+    "nama capture v36 harus stabil untuk Vision payload yang sama",
+  );
+  assert.match(deterministicCapture.suggested_name, /^[A-Z][a-z]{5,11}$/);
+  assert.match(deterministicCapture.name_lineage_anchor, /^[a-z]{3,5}$/);
+  assert.ok(
+    deterministicCapture.suggested_name.toLowerCase().includes(
+      deterministicCapture.name_lineage_anchor,
+    ),
+  );
+  const otherDeterministicCapture = structuredClone(captureV32);
+  otherDeterministicCapture.species_key = "different_visual_species";
+  assert.notEqual(
+    deriveDeterministicSpeciesName(otherDeterministicCapture).suggested_name,
+    deterministicCapture.suggested_name,
+    "species_key berbeda harus mengubah nama deterministik",
+  );
+  const captureV36 = structuredClone(captureV32);
+  captureV36.suggested_name = "Vectron";
+  captureV36.name_lineage_anchor = "vect";
+  captureV36.name_quality = Object.fromEntries(
+    NAME_QUALITY_KEYS.map((key) => [key, true]),
+  );
+  const checkedCaptureV36 = validateVision(
+    captureV36,
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+    true,
+    false,
+    true,
+  );
+  assert.deepEqual(
+    {
+      suggested_name: checkedCaptureV36.vision.suggested_name,
+      name_lineage_anchor: checkedCaptureV36.vision.name_lineage_anchor,
+    },
+    deterministicCapture,
+    "v36 harus mengganti nama dan self-attestation model",
+  );
+  assert.equal(checkedCaptureV36.vision.name_quality, undefined);
+  const semanticRoots = [
+    { root: "mouse", channel: "structure", evidence: "compact source identity" },
+    { root: "curv", channel: "silhouette", evidence: "smooth rounded compact body" },
+    { root: "glid", channel: "motion", evidence: "swift gliding movement" },
+    { root: "mat", channel: "material", evidence: "matte plastic shell" },
+    { root: "nim", channel: "temperament", evidence: "nimble precise demeanor" },
+    { root: "roll", channel: "structure", evidence: "central rolling wheel" },
+  ];
+  assert.ok(NAME_ROOT_CHANNELS.includes("silhouette"));
+  const captureV37 = {
+    ...structuredClone(captureV32),
+    object_label: "computer mouse",
+    species_key: "peripheral_mouse_ergonomic_wired",
+    name_roots: semanticRoots,
+  };
+  const hybridCapture = deriveHybridSpeciesName(captureV37);
+  assert.equal(
+    hybridCapture.name_lineage_anchor,
+    "curv",
+    "v37 harus membuang root yang menyalin source identity lalu memilih semantic root terkuat",
+  );
+  assert.ok(hybridCapture.suggested_name.toLowerCase().startsWith("curv"));
+  assert.deepEqual(
+    deriveHybridSpeciesName(structuredClone(captureV37)),
+    hybridCapture,
+    "word formation hybrid harus deterministik",
+  );
+  const checkedCaptureV37 = validateVision(
+    captureV37,
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+  );
+  assert.equal(
+    checkedCaptureV37.vision.suggested_name,
+    hybridCapture.suggested_name,
+  );
+  assert.equal(
+    checkedCaptureV37.vision.selected_name_root.channel,
+    "silhouette",
+  );
+  const captureV38 = {
+    ...structuredClone(captureV32),
+    object_label: "computer mouse",
+    species_key: "peripheral_mouse_ergonomic_wired",
+    name_roots: [
+      { root: "mouse", channel: "structure", evidence: "ordinary source identity" },
+      { root: "stride", channel: "motion", evidence: "swift gliding stride" },
+      { root: "cylin", channel: "silhouette", evidence: "rounded cylindrical curve" },
+      { root: "matte", channel: "material", evidence: "matte shell surface" },
+      { root: "nimble", channel: "temperament", evidence: "nimble precise demeanor" },
+      { root: "wheel", channel: "structure", evidence: "central rolling wheel" },
+    ],
+  };
+  const transformedCapture = deriveTransformedHybridSpeciesName(captureV38);
+  assert.equal(transformedCapture.selected_name_root.root, "stride");
+  assert.notEqual(transformedCapture.name_lineage_anchor, "stride");
+  assert.match(transformedCapture.name_lineage_anchor, /^[a-z]{3,5}$/);
+  assert.ok(
+    transformedCapture.suggested_name.toLowerCase().startsWith(
+      transformedCapture.name_lineage_anchor,
+    ),
+  );
+  assert.ok(
+    NAME_CADENCE_FAMILIES.includes(
+      transformedCapture.selected_name_root.cadence_family,
+    ),
+  );
+  const checkedCaptureV38 = validateVision(
+    captureV38,
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+    true,
+    false,
+    false,
+    false,
+    true,
+  );
+  assert.equal(
+    checkedCaptureV38.vision.suggested_name,
+    transformedCapture.suggested_name,
+  );
+  const cadenceCoverage = new Set();
+  for (let index = 0; index < 100; index += 1) {
+    const sample = structuredClone(captureV38);
+    sample.species_key = `cadence_fixture_${index}`;
+    cadenceCoverage.add(
+      deriveTransformedHybridSpeciesName(sample).selected_name_root.cadence_family,
+    );
+  }
+  assert.deepEqual(
+    [...cadenceCoverage].sort(),
+    [...NAME_CADENCE_FAMILIES].sort(),
+    "v38 harus dapat memilih closed, hard, liquid, dan open cadence",
+  );
+  // Regresi terukur dari paid eval v38: keempat nama ini ditolak reviewer, dan
+  // cacatnya harus terbaca dari struktur tanpa dictionary atau model call.
+  const graskorinScore = nameStructureScore("Graskorin");
+  for (const rejected of ["Kuka", "Vororn", "Zoskesk", "Bomari"]) {
+    assert.ok(
+      nameStructureScore(rejected) < NAME_STRUCTURE_FLOOR
+        && nameStructureScore(rejected) < graskorinScore,
+      `v39 harus menilai '${rejected}' lebih buruk daripada Graskorin`,
+    );
+  }
+  assert.ok(graskorinScore >= NAME_STRUCTURE_FLOOR);
+  // V40: dua suku kata adalah bentuk yang sah, bukan cacat. Lantai v39 membuatnya
+  // mustahil, jadi keenam nama paid eval berbentuk sama.
+  for (const shaped of ["Fimeth", "Zolark", "Kureth", "Grosken"]) {
+    assert.ok(
+      nameStructureScore(shaped) >= NAME_STRUCTURE_FLOOR,
+      `nama dua suku kata '${shaped}' harus lolos lantai struktur`,
+    );
+  }
+  assert.ok(
+    nameStructureScore("Curvix", ["curv"]) < nameStructureScore("Curvix"),
+    "nama yang memuat identity token sumber harus dipenalti",
+  );
+  const curatedCapture = deriveCuratedHybridSpeciesName(captureV38);
+  assert.equal(curatedCapture.selected_name_root.root, "stride");
+  assert.equal(
+    curatedCapture.name_lineage_anchor,
+    transformedCapture.name_lineage_anchor,
+    "v39 mempertahankan anchor semantik v38; yang berubah hanya pemilihan kata",
+  );
+  assert.ok(
+    curatedCapture.suggested_name.toLowerCase().startsWith(
+      curatedCapture.name_lineage_anchor,
+    ),
+  );
+  assert.deepEqual(
+    deriveCuratedHybridSpeciesName(structuredClone(captureV38)),
+    curatedCapture,
+    "pemilihan kandidat v39 wajib deterministik",
+  );
+  assert.ok(
+    nameStructureScore(curatedCapture.suggested_name) >= 1
+      && curatedCapture.selected_name_root.structure_score >= 1,
+    "v39 hanya boleh memakai kandidat yang lolos lantai struktur",
+  );
+  const curatedCadence = new Set();
+  const curatedSyllables = new Set();
+  for (let index = 0; index < 100; index += 1) {
+    const sample = structuredClone(captureV38);
+    sample.species_key = `curated_fixture_${index}`;
+    const derived = deriveCuratedHybridSpeciesName(sample);
+    curatedCadence.add(derived.selected_name_root.cadence_family);
+    curatedSyllables.add(
+      (derived.suggested_name.toLowerCase().match(/[aeiouy]+/g) ?? []).length,
+    );
+    // Ekor -alis dibuang sesudah Dorralis satu huruf dari nama orang Doralis.
+    assert.ok(
+      !derived.suggested_name.toLowerCase().endsWith("alis"),
+      `ekor -alis kembali lewat '${derived.suggested_name}'`,
+    );
+    assert.ok(
+      nameStructureScore(derived.suggested_name) >= NAME_STRUCTURE_FLOOR,
+      `kandidat terpilih '${derived.suggested_name}' harus lolos lantai struktur`,
+    );
+    assert.ok(
+      nameIsSafeForPlayers(derived.suggested_name),
+      `kandidat terpilih '${derived.suggested_name}' memuat stem terlarang`,
+    );
+  }
+  assert.ok(
+    curatedCadence.size >= 3,
+    "v39 tidak boleh mengunci seluruh roster pada satu cadence family",
+  );
+  assert.ok(
+    curatedSyllables.has(2) && curatedSyllables.has(3),
+    "v40 wajib mencampur nama dua dan tiga suku kata, bukan satu bentuk saja",
+  );
+  // Regresi terukur dari paid eval v39: `kur` + `vesun` membentuk `kurv` yang
+  // vulgar di enam bahasa, dan substring itu tidak ada di anchor maupun di
+  // ending. `sex` dan `fuk` sebaliknya dapat dirakit langsung sebagai anchor dari
+  // onset+vowel+coda, jadi keduanya wajib ditolak sebelum lineage terbentuk.
+  assert.ok(!nameIsSafeForPlayers("Kurvesun"));
+  for (const reachable of ["sex", "fuk", "Pornora", "Turderen"]) {
+    assert.ok(
+      !nameIsSafeForPlayers(reachable),
+      `stem terlarang '${reachable}' harus tertolak`,
+    );
+  }
+  assert.ok(nameIsSafeForPlayers("Fimdakar") && nameIsSafeForPlayers("Zolark"));
+  // Paid eval v39 kehilangan satu Vision karena seed hanya mencakup tiga
+  // channel. Capture berbayar tidak boleh mati karena aturan penamaan.
+  const thinChannelsV39 = structuredClone(captureV38);
+  for (const item of thinChannelsV39.name_roots) item.channel = "motion";
+  assert.throws(() => deriveTransformedHybridSpeciesName(thinChannelsV39));
+  const degradedV39 = deriveCuratedHybridSpeciesName(thinChannelsV39);
+  assert.ok(
+    degradedV39.selected_name_root.seed_fallback.includes("channel"),
+    "seed yang tidak terpakai harus tercatat sebagai fallback, bukan melempar",
+  );
+  assert.ok(nameStructureScore(degradedV39.suggested_name) >= 1);
+  assert.match(degradedV39.name_lineage_anchor, /^[a-z]{3,5}$/);
+  const checkedCaptureV39 = validateVision(
+    captureV38,
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+  );
+  assert.equal(
+    checkedCaptureV39.vision.suggested_name,
+    curatedCapture.suggested_name,
+  );
+  const shortRootsV37 = structuredClone(captureV37);
+  shortRootsV37.name_roots.pop();
+  assert.throws(
+    () => deriveHybridSpeciesName(shortRootsV37),
+    /tepat 6 kandidat/,
+  );
+
+  const v32Raw = structuredClone(v30Raw);
+  v32Raw.suggested_name = "Sunharbor";
+  v32Raw.name_lineage_anchor = "sun";
+  const adultV32 = validateEvolutionPlan(v32Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 32,
+    priorSuggestedName: "Sunhound",
+    authoritativeNameLineageAnchor: "sun",
+    legacyLineageSuggestedName: "Sunhound",
+  });
+  assert.equal(adultV32.plan.name_lineage_anchor, "sun");
+  const v36Raw = structuredClone(v32Raw);
+  v36Raw.suggested_name = "Vectron";
+  v36Raw.name_lineage_anchor = "vect";
+  const adultV36 = validateEvolutionPlan(v36Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 36,
+    priorSuggestedName: "Sunhound",
+    authoritativeNameLineageAnchor: "sun",
+    legacyLineageSuggestedName: "Sunhound",
+  });
+  assert.notEqual(adultV36.plan.suggested_name, "Vectron");
+  assert.ok(adultV36.plan.suggested_name.toLowerCase().includes("sun"));
+  assert.equal(adultV36.plan.name_lineage_anchor, "sun");
+  const deterministicEvolved = deriveDeterministicEvolutionName(
+    "sun",
+    v36Raw,
+    3,
+  );
+  assert.ok(deterministicEvolved.toLowerCase().includes("sun"));
+  assert.notEqual(deterministicEvolved, adultV36.plan.suggested_name);
+  const v37Raw = structuredClone(v32Raw);
+  v37Raw.suggested_name = "Temporary";
+  v37Raw.name_lineage_anchor = "temp";
+  const adultV37 = validateEvolutionPlan(v37Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 37,
+    priorSuggestedName: hybridCapture.suggested_name,
+    authoritativeNameLineageAnchor: "curv",
+    legacyLineageSuggestedName: hybridCapture.suggested_name,
+  });
+  assert.equal(adultV37.plan.name_lineage_anchor, "curv");
+  assert.ok(adultV37.plan.suggested_name.toLowerCase().startsWith("curv"));
+  const evolvedV37Name = deriveHybridEvolutionName("curv", v37Raw, 3);
+  assert.ok(evolvedV37Name.toLowerCase().startsWith("curv"));
+  assert.notEqual(evolvedV37Name, adultV37.plan.suggested_name);
+  const adultV38 = validateEvolutionPlan(v37Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 38,
+    priorSuggestedName: transformedCapture.suggested_name,
+    authoritativeNameLineageAnchor: transformedCapture.name_lineage_anchor,
+    legacyLineageSuggestedName: transformedCapture.suggested_name,
+  });
+  assert.ok(
+    adultV38.plan.suggested_name.toLowerCase().startsWith(
+      transformedCapture.name_lineage_anchor,
+    ),
+  );
+  const evolvedV38Name = deriveTransformedHybridEvolutionName(
+    transformedCapture.name_lineage_anchor,
+    v37Raw,
+    3,
+  );
+  assert.ok(
+    evolvedV38Name.toLowerCase().startsWith(
+      transformedCapture.name_lineage_anchor,
+    ),
+  );
+  assert.notEqual(evolvedV38Name, adultV38.plan.suggested_name);
+  const adultV39 = validateEvolutionPlan(v37Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 39,
+    priorSuggestedName: curatedCapture.suggested_name,
+    authoritativeNameLineageAnchor: curatedCapture.name_lineage_anchor,
+    legacyLineageSuggestedName: curatedCapture.suggested_name,
+  });
+  assert.ok(
+    adultV39.plan.suggested_name.toLowerCase().startsWith(
+      curatedCapture.name_lineage_anchor,
+    ),
+  );
+  const evolvedV39Name = deriveCuratedHybridEvolutionName(
+    curatedCapture.name_lineage_anchor,
+    v37Raw,
+    3,
+  );
+  assert.ok(
+    evolvedV39Name.toLowerCase().startsWith(curatedCapture.name_lineage_anchor),
+  );
+  assert.notEqual(evolvedV39Name, adultV39.plan.suggested_name);
+  for (const staged of [adultV39.plan.suggested_name, evolvedV39Name]) {
+    assert.ok(
+      nameStructureScore(staged) >= 1,
+      `nama stage v39 '${staged}' harus lolos lantai struktur`,
+    );
+  }
+  const wrongAuthoritativeAnchor = structuredClone(v32Raw);
+  wrongAuthoritativeAnchor.name_lineage_anchor = "harb";
+  assert.throws(
+    () =>
+      validateEvolutionPlan(wrongAuthoritativeAnchor, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 32,
+        priorSuggestedName: "Sunhound",
+        authoritativeNameLineageAnchor: "sun",
+        legacyLineageSuggestedName: "Sunhound",
+      }),
+    /harus tetap 'sun'/,
+  );
+  assert.doesNotThrow(() =>
+    validateEvolutionPlan(structuredClone(v32Raw), {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 32,
+      priorSuggestedName: "Sunhound",
+      authoritativeNameLineageAnchor: "",
+      legacyLineageSuggestedName: "Sunhound",
+    })
+  );
+  assert.throws(
+    () =>
+      validateEvolutionPlan(structuredClone(v32Raw), {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 32,
+        priorSuggestedName: "Sunhound",
+        authoritativeNameLineageAnchor: "",
+        legacyLineageSuggestedName: "Playtron",
+      }),
+    /anchor legacy 'sun' tidak ada/,
+  );
+  assert.ok(
+    bundel.v32?.vision_schema?.properties?.name_lineage_anchor &&
+      bundel.v32?.vision_evolve_schema?.required?.includes("name_lineage_anchor") &&
+      bundel.v32?.vision_system?.includes("silhouette") &&
+      bundel.v32?.vision_evolve_system?.includes("name_lineage_anchor"),
+    "v32 harus membundel kontrak anchor nama capture + Evolution",
+  );
+  assert.equal(
+    bundel.v32?.sprite_sheet,
+    bundel.v31?.sprite_sheet,
+    "v32 tidak mengubah arah art capture",
+  );
+  assert.equal(
+    bundel.v32?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v32 tidak mengubah arah art Evolution",
+  );
+  assert.ok(
+    bundel.v33?.vision_schema?.properties?.name_lineage_anchor
+      && bundel.v33?.vision_evolve_schema?.required?.includes("name_lineage_anchor")
+      && bundel.v33?.vision_system?.includes("transparent compounds")
+      && bundel.v33?.vision_system?.includes("run of three consonants"),
+    "v33 harus membundel pagar nama coined-word dan anchor pronounceable",
+  );
+  assert.equal(
+    bundel.v33?.sprite_sheet,
+    bundel.v31?.sprite_sheet,
+    "v33 tidak mengubah arah art capture",
+  );
+  assert.equal(
+    bundel.v33?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v33 tidak mengubah arah art Evolution",
+  );
+  assert.ok(
+    bundel.v34?.vision_schema?.properties?.name_lineage_anchor
+      && bundel.v34?.vision_evolve_schema?.required?.includes("name_lineage_anchor")
+      && bundel.v34?.vision_system?.includes("forbidden identity list")
+      && bundel.v34?.vision_system?.includes("at least five")
+      && bundel.v34?.vision_system?.includes("four or more consecutive letters")
+      && bundel.v34?.vision_system?.includes("cover test"),
+    "v34 harus membundel private candidate selection dan source-identity cover test",
+  );
+  assert.equal(
+    bundel.v34?.sprite_sheet,
+    bundel.v31?.sprite_sheet,
+    "v34 tidak mengubah arah art capture",
+  );
+  assert.equal(
+    bundel.v34?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v34 tidak mengubah arah art Evolution",
+  );
+  assert.ok(
+    bundel.v35?.vision_schema?.properties?.name_quality
+      && bundel.v35?.vision_evolve_schema?.required?.includes("name_lineage_anchor")
+      && bundel.v35?.vision_system?.includes("at least eight")
+      && bundel.v35?.vision_system?.includes("standalone dictionary word")
+      && bundel.v35?.vision_system?.includes("creature-read test")
+      && bundel.v35?.vision_system?.includes("name_quality"),
+    "v35 harus membundel structured coined-word dan creature-read quality gate",
+  );
+  assert.deepEqual(
+    bundel.v35?.vision_schema?.properties?.name_quality?.required,
+    NAME_QUALITY_KEYS,
+    "schema v35 harus mewajibkan seluruh boolean name_quality",
+  );
+  assert.equal(
+    bundel.v35?.sprite_sheet,
+    bundel.v31?.sprite_sheet,
+    "v35 tidak mengubah arah art capture",
+  );
+  assert.equal(
+    bundel.v35?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v35 tidak mengubah arah art Evolution",
+  );
+  assert.ok(
+    !bundel.v36?.vision_schema?.properties?.suggested_name
+      && !bundel.v36?.vision_schema?.properties?.name_lineage_anchor
+      && !bundel.v36?.vision_schema?.properties?.name_quality
+      && bundel.v36?.vision_system?.includes("server derives the species name")
+      && bundel.v36?.vision_evolve_system?.includes("derives the final next-stage species name deterministically"),
+    "v36 harus memindahkan capture dan Evolution naming keluar dari model",
+  );
+  assert.equal(
+    bundel.v36?.sprite_sheet,
+    bundel.v31?.sprite_sheet,
+    "v36 tidak mengubah arah art capture",
+  );
+  assert.equal(
+    bundel.v36?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v36 tidak mengubah arah art Evolution",
+  );
+  assert.ok(
+    bundel.v37?.vision_schema?.properties?.name_roots?.minItems === 6
+      && bundel.v37?.vision_schema?.properties?.name_roots?.maxItems === 6
+      && !bundel.v37?.vision_schema?.properties?.suggested_name
+      && bundel.v37?.vision_system?.includes("six short semantic sound roots")
+      && bundel.v37?.vision_system?.includes("server discards source-label roots")
+      && bundel.v37?.vision_evolve_system?.includes("semantic sound cue"),
+    "v37 harus membundel semantic roots dengan server-owned word formation",
+  );
+  assert.equal(
+    bundel.v37?.sprite_sheet,
+    bundel.v31?.sprite_sheet,
+    "v37 tidak mengubah arah art capture",
+  );
+  assert.equal(
+    bundel.v37?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v37 tidak mengubah arah art Evolution",
+  );
+  assert.ok(
+    bundel.v38?.vision_schema?.properties?.name_roots?.minItems === 6
+      && bundel.v38?.vision_system?.includes("semantic sound seeds")
+      && bundel.v38?.vision_system?.includes("transforms the strongest valid semantic")
+      && bundel.v38?.vision_system?.includes("closed, hard, liquid, or open")
+      && bundel.v38?.vision_evolve_system?.includes("not one dominant stat"),
+    "v38 harus membundel transformed semantic seed dan balanced cadence",
+  );
+  assert.equal(
+    bundel.v38?.sprite_sheet,
+    bundel.v31?.sprite_sheet,
+    "v38 tidak mengubah arah art capture",
+  );
+  assert.equal(
+    bundel.v38?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v38 tidak mengubah arah art Evolution",
+  );
+  assert.ok(
+    bundel.v39?.vision_schema?.properties?.name_roots?.minItems === 6
+      && bundel.v39?.vision_system?.includes("builds many candidate words")
+      && bundel.v39?.vision_system?.includes("scores best on word structure")
+      && bundel.v39?.vision_evolve_system?.includes(
+        "scores best on word structure",
+      ),
+    "v39 harus membundel seleksi kandidat berskor untuk capture dan Evolution",
+  );
+  assert.equal(
+    bundel.v39?.sprite_sheet,
+    bundel.v31?.sprite_sheet,
+    "v39 tidak mengubah arah art capture",
+  );
+  assert.equal(
+    bundel.v39?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v39 tidak mengubah arah art Evolution",
+  );
+  assert.ok(
+    bundel.v40?.vision_system?.includes("two-syllable")
+      && bundel.v40?.vision_system?.includes("unsafe stem")
+      && bundel.v40?.vision_evolve_system?.includes("unsafe stem")
+      && bundel.v40?.vision_evolve_system?.includes("longer continuations"),
+    "v40 harus membundel campuran suku kata dan gerbang stem untuk kedua jalur",
+  );
+  assert.equal(
+    bundel.v40?.sprite_sheet,
+    bundel.v31?.sprite_sheet,
+    "v40 tidak mengubah arah art capture",
+  );
+  assert.equal(
+    bundel.v40?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v40 tidak mengubah arah art Evolution",
+  );
   const evolvedWalkKeep = structuredClone(evolvedV25Raw);
   evolvedWalkKeep.face_age_contract = {
     ...v27Face,
@@ -7920,6 +8705,13 @@ console.log(
       ) &&
       evolveSrc.includes("contractVersion,"),
     "resume Plan harus memakai kontrak prompt yang tersimpan, bukan config terbaru",
+  );
+  assert.ok(
+    evolveSrc.includes("generatedLineageSuggestedName") &&
+      evolveSrc.includes("contractVersion < 32") &&
+      evolveSrc.includes("authoritativeNameLineageAnchor") &&
+      evolveSrc.includes("legacyLineageSuggestedName: generatedLineageSuggestedName"),
+    "v32 harus memakai nama generated/Plan untuk lineage dan mengisolasi nickname pemain",
   );
   assert.ok(
     evolveSrc.includes("priorIdentityInvariants") &&

@@ -249,6 +249,20 @@ export async function runChapterFactorySelftest(repoRoot) {
   assert.equal(ctx.brief.sequence, 1);
   validateBrief(ctx.brief);
   validateDesign(ctx.design, ctx.brief, ctx);
+  const reusedBrief = {
+    ...syntheticBrief(),
+    content_version: 2,
+    asset_source_version: 1,
+  };
+  validateBrief(reusedBrief);
+  const reusedCtx = createContext("/tmp/chapter-reuse", reusedBrief, syntheticDesign());
+  assert.equal(reusedCtx.contentVersion, 2);
+  assert.equal(reusedCtx.assetSourceVersion, 1);
+  assert.equal(reusedCtx.assetPrefix, "expeditions/clockwork-garden/v1/");
+  assert.throws(
+    () => validateBrief({ ...reusedBrief, asset_source_version: 3 }),
+    /asset_source_version/,
+  );
   const bossPrompt = await promptForSlot("boss_seeker", ctx);
   assert.match(bossPrompt, /twenty-three-year-old woman Confection Archive Curator/i);
   assert.match(bossPrompt, /youngest archive curator/i);

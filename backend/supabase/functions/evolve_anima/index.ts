@@ -336,12 +336,19 @@ Deno.serve(async (req) => {
     .select("nickname")
     .eq("id", begin.anima_id)
     .maybeSingle();
-  const priorSuggestedName = String(
+  const generatedLineageSuggestedName = String(
     (targetStage === 3 ? priorPlan?.suggested_name : null)
       ?? captureVision?.suggested_name
-      ?? animaLive?.nickname
       ?? "",
   );
+  const priorSuggestedName = generatedLineageSuggestedName
+    || (contractVersion < 32 ? String(animaLive?.nickname ?? "") : "");
+  const authoritativeNameLineageAnchor = String(
+    (targetStage === 3
+      ? priorPlan?.name_lineage_anchor
+      : captureVision?.name_lineage_anchor)
+      ?? "",
+  ).trim().toLowerCase();
   const priorIdentityInvariants = Array.isArray(priorPlan?.identity_invariants)
     ? priorPlan.identity_invariants
     : [];
@@ -435,6 +442,8 @@ Deno.serve(async (req) => {
     priorStrikeEffectId: String(meta.strike_effect_id ?? ""),
     priorSurgeEffectId: String(meta.surge_effect_id ?? ""),
     priorSuggestedName,
+    authoritativeNameLineageAnchor,
+    legacyLineageSuggestedName: generatedLineageSuggestedName,
   };
 
   let plan: Record<string, unknown>;
@@ -484,10 +493,16 @@ Deno.serve(async (req) => {
         shape_budget_contract: priorShapeBudgetContract,
       }))
       : "none (Hatchling source or legacy Adult without a structured Plan)";
+    const nameLineageInstruction = contractVersion >= 32
+      ? authoritativeNameLineageAnchor
+        ? `Authoritative name lineage anchor: "${authoritativeNameLineageAnchor}". Return it exactly as name_lineage_anchor and include it unchanged inside suggested_name.\n`
+        : `Legacy lineage has no stored name anchor. Choose name_lineage_anchor as a lowercase 3-to-5 letter substring with a vowel from lineage name "${generatedLineageSuggestedName || "unknown"}"; include it unchanged inside suggested_name.\n`
+      : "";
     const visionPrompt =
       `Target stage: ${targetStage} (${targetStage === 2 ? "Adult bridge" : "Evolved culmination"}).\n` +
       `Current displayed name: ${animaLive?.nickname ?? "unknown"}.\n` +
       `Lineage name to evolve: ${priorSuggestedName || "unknown"}.\n` +
+      nameLineageInstruction +
       `Current height cm: ${meta.body_height_cm ?? "unknown"}.\n` +
       `Current moves: ${meta.strike_name ?? ""} / ${meta.surge_name ?? ""}.\n` +
       `Current effects: ${meta.strike_effect_id ?? ""} / ${meta.surge_effect_id ?? ""}.\n` +
@@ -506,8 +521,12 @@ Deno.serve(async (req) => {
             : "Do not copy Adult limb count or walker silhouette. If Adult walks on legs, Evolved must coil, tether, roll, or change topology.\n")
         : "") +
       "Respond with compact JSON only. No markdown fences. Keep each string value under 160 characters. " +
-      "Do not copy Adult paragraphs. Finish every required key including suggested_name, surge_vfx, vfx_palette, strike_effect_id, and surge_effect_id. " +
-      (contractVersion >= 30
+      "Do not copy Adult paragraphs. Finish every required key including suggested_name, name_lineage_anchor when required, surge_vfx, vfx_palette, strike_effect_id, and surge_effect_id. " +
+      (contractVersion >= 36
+        ? "Naming is derived deterministically by the server from the authoritative lineage anchor and validated Plan. Return schema-valid temporary suggested_name and name_lineage_anchor fields, but do not use them to determine the visual design. "
+        : contractVersion >= 32
+        ? "Write suggested_name as a new 2-to-4 syllable species name grounded in the new silhouette, material, or motion. Preserve the supplied or established name_lineage_anchor exactly. Never end in mon, use a title/rank, or copy the current name. "
+        : contractVersion >= 30
         ? "Write suggested_name as a new 2-to-4 syllable creature name that keeps a recognizable root from the lineage name. Never end in mon. Do not copy the current name. "
         : "") +
       "Analyse the attached current Idle reference and respond with the Evolution Plan JSON only.";

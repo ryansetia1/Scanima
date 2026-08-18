@@ -1,0 +1,163 @@
+{
+  "color_bucket": "amber",
+  "frame_size": [
+    355,
+    312
+  ],
+  "poses": {
+    "attack": {
+      "region": [
+        355,
+        0,
+        355,
+        312
+      ]
+    },
+    "defeated": {
+      "region": [
+        0,
+        624,
+        355,
+        312
+      ]
+    },
+    "dirty": {
+      "region": [
+        710,
+        312,
+        355,
+        312
+      ]
+    },
+    "fx_strike": {
+      "region": [
+        355,
+        624,
+        355,
+        312
+      ]
+    },
+    "fx_surge": {
+      "region": [
+        710,
+        624,
+        355,
+        312
+      ]
+    },
+    "happy": {
+      "region": [
+        0,
+        312,
+        355,
+        312
+      ]
+    },
+    "hungry": {
+      "region": [
+        355,
+        312,
+        355,
+        312
+      ]
+    },
+    "idle": {
+      "region": [
+        0,
+        0,
+        355,
+        312
+      ]
+    },
+    "sleep": {
+      "region": [
+        710,
+        0,
+        355,
+        312
+      ]
+    }
+  },
+  "prompt_version": "v12",
+  "qa": {
+    "bbox_heights": {
+      "attack": 283,
+      "defeated": 300,
+      "dirty": 289,
+      "fx_strike": 203,
+      "fx_surge": 260,
+      "happy": 297,
+      "hungry": 286,
+      "idle": 292,
+      "sleep": 289
+    },
+    "cells_detected": 9,
+    "cells_rejected": {},
+    "green_residue_ratio": 0.00362,
+    "keyed_pixel_ratio": 0.6511,
+    "pose_ownership": {
+      "attack": {
+        "cross_boundary_pixels": 150,
+        "opaque_pixels": 45956
+      },
+      "defeated": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 39140
+      },
+      "dirty": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 41162
+      },
+      "fx_strike": {
+        "cross_boundary_pixels": 21,
+        "opaque_pixels": 20232
+      },
+      "fx_surge": {
+        "cross_boundary_pixels": 16,
+        "opaque_pixels": 53200
+      },
+      "happy": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 42520
+      },
+      "hungry": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 40118
+      },
+      "idle": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 41524
+      },
+      "sleep": {
+        "cross_boundary_pixels": 0,
+        "opaque_pixels": 40393
+      }
+    },
+    "seam_margin": {
+      "passed": true,
+      "ratio": 0.12,
+      "violations": []
+    },
+    "source_size": [
+      1024,
+      1024
+    ],
+    "standing_height_variance": 0.031,
+    "warnings": [
+      "residu hijau 0.36%"
+    ],
+    "white_keyline_pixels_stripped": 1598
+  },
+  "render_metrics": {
+    "reference_height_px": 292,
+    "reference_width_px": 270
+  },
+  "sheet": null,
+  "sheet_size": [
+    1065,
+    936
+  ],
+  "species_key": "sugarworks_syrup",
+  "stage": 2,
+  "version": 1
+}

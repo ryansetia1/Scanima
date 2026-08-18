@@ -42,7 +42,7 @@ Untuk Anima Duel, nama Seeker pemilik ikut tampil. Nickname pribadi, kebutuhan
 Care, saldo, account ID, foto asli, dan link profil pemilik tidak pernah
 ditampilkan. Profil tidak menampilkan baris Seeker jika memang tidak ada nama.
 Special Anima milik Boss Expedition dapat menampilkan nama Seeker chapter-nya;
-dukungan ini baru terlihat setelah pembaruan backend Atlas ikut dirilis.
+di The Sugarworks, Nimbelisk menampilkan **The Confectioner**.
 
 ## Publish Lineage
 

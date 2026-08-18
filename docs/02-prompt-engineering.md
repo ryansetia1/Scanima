@@ -236,9 +236,26 @@ that MUST survive into the artwork. Be concrete and countable.
 Good: "two clickable buttons become the eyes", "the curved handle becomes a tail".
 Bad: "mouse-like qualities", "interesting texture".
 
-`suggested_name`: an invented creature name, 2 to 4 syllables, that hints at the
-object without naming it outright. Use no real-world brand. Style it like a
-90s monster name: Mugmon, Klikra, Sneakoid, Sporelet.
+`suggested_name`: an invented creature-species name, 2 to 4 syllables, that
+hints at the subject without naming it outright. Use no real-world brand and
+never end it in `mon`. Production v31 only returns the name. Rejected v32 added
+`name_lineage_anchor`; rejected v34 privately compared candidates against a
+per-subject forbidden identity list and cover test. Rejected v35 expanded that
+to eight candidates across four construction families and added a structured
+six-boolean `name_quality` declaration for coined-word, source-hiding,
+creature-read, visual grounding, non-product read, and lineage capacity.
+Independent review disproved five of six declarations, so these fields are
+self-attestation rather than evidence. Rejected v36 moved complete word
+formation to deterministic code but lost semantic character. Rejected v37
+asked Vision only for ranked semantic `name_roots`, but literal roots plus one
+stat-driven suffix family produced both collisions and repeated `-a/-ia`
+cadence. Rejected v38 accepts 3–8 letter semantic seeds, transforms their onset,
+vowel, and coda server-side, then chooses balanced closed/hard/liquid/open
+cadence from the full visual identity. Rejected v39 keeps that seed and transform
+but forms 32 candidates and keeps only those clearing a deterministic word
+structure floor, selecting among the survivors by visual-identity hash. In every
+version the lowercase 3–5 letter anchor occurs inside the name and must survive
+Adult and Evolved.
 
 ### Worked example — photo of a white ceramic mug with a handle
 
@@ -829,6 +846,69 @@ backend/prompts/
     ├── sprite_sheet.md    # v20 + {{vibe_direction}}
     ├── sprite_sheet_fauna.md
     └── vibe_directions.json
+├── v32/                   <- rejected: structurally valid, naming quality 0/3
+    ├── vision_system.md
+    ├── vision_schema.json # + name_lineage_anchor
+    ├── sprite_sheet.md    # identik v31
+    ├── sprite_sheet_fauna.md # identik v31
+    ├── vibe_directions.json # identik v31
+    ├── vision_evolve_system.md
+    ├── vision_evolve_schema.json # + name_lineage_anchor
+    └── sprite_sheet_evolve.md # identik v30
+├── v33/                   <- rejected: coined-word naming quality 1/3
+    ├── vision_system.md
+    ├── vision_schema.json # v32 + naming self-check
+    ├── sprite_sheet.md    # identik v31
+    ├── sprite_sheet_fauna.md # identik v31
+    ├── vibe_directions.json # identik v31
+    ├── vision_evolve_system.md # identik v32
+    ├── vision_evolve_schema.json # identik v32
+    └── sprite_sheet_evolve.md # identik v30
+├── v34/                   <- rejected after expanded eval: naming quality 3/6
+    ├── vision_system.md   # v33 + private candidate selection + cover test
+    ├── vision_schema.json # v33 + identity-copy contract
+    ├── sprite_sheet.md    # identik v31
+    ├── sprite_sheet_fauna.md # identik v31
+    ├── vibe_directions.json # identik v31
+    ├── vision_evolve_system.md # identik v32
+    ├── vision_evolve_schema.json # identik v32
+    └── sprite_sheet_evolve.md # identik v30
+├── v35/                   <- rejected: structured self-review only 1/6
+    ├── vision_system.md   # v34 + eight candidates + lexical/product/creature tests
+    ├── vision_schema.json # v34 + six-boolean name_quality declaration
+    ├── sprite_sheet.md    # identik v31
+    ├── sprite_sheet_fauna.md # identik v31
+    ├── vibe_directions.json # identik v31
+    ├── vision_evolve_system.md # identik v32
+    ├── vision_evolve_schema.json # identik v32
+    └── sprite_sheet_evolve.md # identik v30
+├── v36/                   <- rejected: deterministic phonotactics 0/6 creative
+    ├── vision_system.md   # capture naming removed from model
+    ├── vision_schema.json # no suggested_name/anchor/name_quality
+    ├── sprite_sheet.md    # identik v31
+    ├── sprite_sheet_fauna.md # identik v31
+    ├── vibe_directions.json # identik v31
+    ├── vision_evolve_system.md # final name derived by server
+    ├── vision_evolve_schema.json # temporary name fields retained for wire shape
+    └── sprite_sheet_evolve.md # identik v30
+├── v37/                   <- rejected: hybrid semantic roots 0/6
+    ├── vision_system.md   # six ranked semantic sound roots
+    ├── vision_schema.json # name_roots; final name remains server-owned
+    ├── sprite_sheet.md    # identik v31
+    ├── sprite_sheet_fauna.md # identik v31
+    ├── vibe_directions.json # identik v31
+    ├── vision_evolve_system.md # semantic anchor + server continuation
+    ├── vision_evolve_schema.json # temporary name fields retained for wire shape
+    └── sprite_sheet_evolve.md # identik v30
+└── v38/                   <- rejected: transformed roots 1/6
+    ├── vision_system.md   # ranked semantic seeds, final anchor server-owned
+    ├── vision_schema.json # six 3–8 letter seeds
+    ├── sprite_sheet.md    # identik v31
+    ├── sprite_sheet_fauna.md # identik v31
+    ├── vibe_directions.json # identik v31
+    ├── vision_evolve_system.md # balanced cadence, not strongest stat
+    ├── vision_evolve_schema.json # temporary name fields retained for wire shape
+    └── sprite_sheet_evolve.md # identik v30
 ```
 
 V30 adalah v29 plus `suggested_name` di Evolution Plan. Nama spesies baru
@@ -840,6 +920,137 @@ V31 menambah pilihan pemain **Vibe** pada Scan. Vision, stats, element, height,
 dan gate tidak berubah. `Natural` merekonstruksi wording v20; Cute/Brave/Wild/
 Sinister mengganti personality berbasis stat dan mengisi `{{vibe_direction}}`.
 Ciri objek/hewan, material, dan body plan selalu menang dari Vibe.
+
+V32 mengubah naming di dua Vision call yang sudah ada tanpa model call
+tambahan. Capture memilih nama spesies dari siluet/material/gerak dan satu
+`name_lineage_anchor` 3–5 huruf. Adult/Evolved wajib mengembalikan anchor
+authoritative yang sama di dalam `suggested_name`; validator memperbaiki anchor
+capture invalid ke substring terdekat secara deterministik, sementara
+inheritance Evolution tetap exact. Legacy menetapkan anchor dari nama generated
+capture/Plan, tidak pernah dari nickname pemain. Candidate terbundel dan
+selftest gratis lulus, tetapi paid Vision eval 3 Anima ditolak 0/3:
+`ClickGlide` dan `Wyrmscale` terlalu berupa compound Inggris transparan,
+sedangkan `Muggleton` masih literal/surname-like. Tidak ada image generation
+atau retry. Production tetap capture v31 + evolution v30; perbaikan prompt
+berikutnya wajib v33 karena v32 sudah punya provenance eval. Desain lengkap:
+[`designs/2026-08-19-anima-name-lineage-v32.md`](designs/2026-08-19-anima-name-lineage-v32.md).
+
+Candidate v33 memperbaiki penyebab bersama tiga reject itu di prompt: Vision
+wajib mengubah cue sumber menjadi fragmen bunyi, membuang draft compound/literal
+atau surname-like, lalu memilih anchor yang lebih syllable-like tanpa tiga
+consonant beruntun. Validator mengaktifkan pagar anchor tambahan hanya untuk
+v33+, sehingga provenance v32 tetap reproducible. Tidak ada model call,
+migrasi, atau perubahan art tambahan. Paid Vision-only eval pada fixture yang
+sama menghasilkan `Cursora`, `Glazel`, dan `Dracovent`: seluruh struktur dan
+anchor valid tanpa repair, tetapi hanya `Glazel` lolos arah kreatif. `Cursora`
+masih literal terhadap `cursor`; `Dracovent` masih generic `draco + vent`.
+V33 ditolak 1/3 dan tidak live; revisi berikutnya wajib v34. Production tetap
+capture v31 + evolution v30. Desain lengkap:
+[`designs/2026-08-19-anima-name-lineage-v33.md`](designs/2026-08-19-anima-name-lineage-v33.md).
+
+Candidate v34 membuat filter kualitatif itu operasional tanpa dictionary
+server: Vision membangun forbidden identity list per subjek, membuat minimal
+lima kandidat privat, menolak salinan empat huruf beruntun, lalu melakukan
+cover test sebelum memilih satu nama. Paid Vision-only eval pada fixture yang
+sama menghasilkan `Curvix`, `Glazel`, dan `Skalyn`; ketiganya lolos arah nama
+dan anchor tanpa repair. Mug memiliki satu normalisasi `strike_vfx` yang tidak
+terkait naming. Set kedua yang lebih beragam menghasilkan `Fenestra`, `Kineto`,
+dan `Portex`: semuanya ditolak karena dictionary/scientific term, generic
+kinetic root, atau product/brand-like read. Agregat v34 menjadi 3/6; v34 tidak
+live dan revisi berikutnya wajib v35. Production tetap capture v31 + evolution
+v30. Desain lengkap:
+[`designs/2026-08-19-anima-name-lineage-v34.md`](designs/2026-08-19-anima-name-lineage-v34.md).
+
+Candidate v35 mencoba menutup dua kegagalan itu dengan delapan kandidat lintas
+empat construction family, explicit dictionary/scientific/product/creature-read
+checks, dan objek `name_quality` enam boolean yang wajib seluruhnya `true`.
+Enam paid Vision-only call (~$0.018, nol image generation/retry) menghasilkan
+`Scurrix`, `Crockle`, `Aerisyn`, `Phyllaura`, `Solerix`, dan `Vectron`. Model
+menandai seluruh 36 deklarasi kualitas `true`, tetapi audit independen menemukan
+`Crockle` sebagai kata/karakter/creature existing, `Aerisyn` sebagai perusahaan,
+`Phyllaura` dekat nomenklatur botani, `Solerix` sebagai SaaS, dan `Vectron`
+sebagai brand POS serta lokomotif Siemens. Hanya `Scurrix` lolos arah kreatif:
+**1/6**. V35 ditolak; self-attestation terstruktur menjaga bentuk response, bukan
+kebenaran collision claim. Production tetap capture v31 + evolution v30.
+Desain dan provenance lengkap:
+[`designs/2026-08-19-anima-name-lineage-v35.md`](designs/2026-08-19-anima-name-lineage-v35.md).
+
+Candidate v36 memindahkan naming keluar dari model sepenuhnya. Server memakai
+hash stabil atas `species_key`, element, strongest stat, `creature_brief`, dan
+`signature_features`, lalu menyusun anchor + tiga syllable melalui grammar
+fonotaktik. Evolution memakai anchor authoritative dan Plan tervalidasi.
+Enam paid Vision-only call (~$0.018, nol image generation/retry) menghasilkan
+`Zimnuzem`, `Basgutun`, `Deshupil`, `Vadvuter`, `Luvsufak`, dan `Therhalok`.
+Exact-name search tidak menemukan collision langsung, tetapi seluruhnya ditolak
+secara kreatif: bunyinya random/awkward dan hubungan ke bentuk, material, gerak,
+atau temperament tidak dapat dibaca pemain. V36 ditolak **0/6**. Unik secara
+mekanis tidak sama dengan nama spesies yang terasa authored. Production tetap
+capture v31 + evolution v30. Desain lengkap:
+[`designs/2026-08-19-anima-name-lineage-v36.md`](designs/2026-08-19-anima-name-lineage-v36.md).
+
+Candidate v37 mengembalikan karakter authored lewat hybrid boundary. Vision
+meranking tepat enam akar bunyi semantik 3–5 huruf yang ditautkan ke bukti
+silhouette/material/motion/temperament/structure; server menolak root yang
+menyalin `object_label`/`species_key`, memilih root valid terkuat, lalu memakai
+continuation terkurasi dan deterministik. Adult/Evolved mempertahankan root yang
+sama dengan continuation stage-specific. Model tidak pernah membuat final word
+atau mengklaim collision. Bundel, seluruh selftest, dan dry run enam foto lulus
+tanpa API call. Enam paid Vision-only call (~$0.018, nol image generation/retry)
+menghasilkan `Glidora`, `Serpora`, `Folialia`, dan `Tecnelia`; mug/sepatu gagal
+validasi pada root `cylin`/`stride`. Keempat nama valid tetap memakai root
+literal/generic (`glid`, `serp`, `folia`, `tecn`); exact search juga menemukan
+penggunaan `Glidora` dan `Serpora`. V37 ditolak **0/6**: server-owned suffix
+tidak dapat menyelamatkan root dictionary/category yang literal. Production
+tetap capture v31 + evolution v30. Desain:
+[`designs/2026-08-19-anima-name-lineage-v37.md`](designs/2026-08-19-anima-name-lineage-v37.md).
+
+Candidate v38 repairs both measured v37 defects without changing model cost.
+Vision roots become lenient 3–8 letter semantic seeds, so `cylin` and `stride`
+are normalized rather than failing a paid Scan. The server shifts the selected
+seed's onset, vowel, and coda into a new 3–5 letter anchor. A stable hash of the
+full visual identity—not strongest stat—then selects one of four equally sized
+cadence families: closed, hard, liquid, or open. Adult/Evolved use separate
+stage continuations with the same four-family balance.
+
+Free selftest and six-photo dry run passed. Six paid Vision-only calls (~$0.018,
+no image generation/retry) were structurally valid 6/6 and produced `Kuka`,
+`Graskorin`, `Zoskesk`, `Bomari`, `Daxorin`, and `Vororn`. Cadence diversity was
+fixed: open 2, liquid 2, hard 2, and endings were no longer uniformly `-a`.
+Independent review still rejected five names: KUKA is a robotics company,
+Bomari an active company, Daxorin an artist, Vororn has historical/niche usage,
+and Zoskesk has an awkward consonant cluster. Only `Graskorin` provisionally
+passed, so v38 is rejected **1/6**. Rhythm diversity, collision avoidance, and
+creature-read are separate gates. Production remains capture v31 + evolution
+v30. Design and provenance:
+[`designs/2026-08-19-anima-name-lineage-v38.md`](designs/2026-08-19-anima-name-lineage-v38.md).
+
+Candidate v39 attacks the v38 root cause: it formed exactly one candidate and
+used it unconditionally. `nameStructureScore()` penalises words under seven
+letters, under three syllables, single-consonant open CV chains, repeated
+bigrams, three-consonant runs, and source-identity substrings; all four measured
+v38 rejects score negative while `Graskorin` scores positive.
+`selectCadenceName()` builds 32 candidates across four cadence families,
+discards everything below the floor, then picks by visual-identity hash. The
+score is a gate rather than an objective function — choosing the maximum was
+measured to converge, with 151 of 200 fixtures ending in `-rin`. Dropping the
+v38 medial also fixed the vowel-collision join that made the `closed` and `hard`
+families unreachable. Measured balance: hard 51, liquid 51, open 49, closed 49,
+with the densest three-letter tail falling from 51/200 to 21/200.
+
+Seven paid Vision-only calls (~$0.021, no image generation/retry) validated 6/6
+and produced `Fimdakar`, `Zolvela`, `Vurralis`, `Diskurak`, `Dorralis`, and
+`Kurvesun`. Three passed. `Diskurak` reads as literal `Disk-` for a mouse and
+`Dorralis` is one letter from the real given name `Doralis` while repeating the
+`-ralis` tail, so both are borderline. `Kurvesun` is a hard reject: `kurv-` is
+vulgar in Czech, Slovak, Hungarian, Serbian, Croatian, and Polish. V39 is
+rejected **3/6**. The residual failures are lexical facts about the real world,
+invisible to phonotactics and already proven unreliable as model
+self-attestation in v35, so the next version must change what evidence exists at
+selection time rather than how candidates are formed. One fix survives the
+rejection: naming can no longer abort a paid capture, because `sepatu.jpg` lost a
+Vision call to thin seed metadata. Production remains capture v31 + evolution
+v30. Design and provenance:
+[`designs/2026-08-19-anima-name-lineage-v39.md`](designs/2026-08-19-anima-name-lineage-v39.md).
 
 Eval Monstera v31 18 Agustus 2026 memakai satu Vision lalu tiga generation
 eksplisit Cute/Brave/Sinister tanpa retry. Ketiganya tetap potted Monstera

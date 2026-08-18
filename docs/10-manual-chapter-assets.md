@@ -312,12 +312,12 @@ Kirim prompt berikut satu per satu setelah Prompt 0. Jangan meminta ChatGPT
 mengubah nama, elemen, move, jumlah cast, atau urutan pose; semua itu sudah
 dikunci oleh `design.json`.
 
-### 1. Gumdrop Grunt
+### 1. Gellume
 
 Simpan sebagai `animas/sugarworks-gumdrop.png`.
 
 ```text
-Create the locked 3×3 Anima sprite sheet for Gumdrop Grunt in The Sugarworks.
+Create the locked 3×3 Anima sprite sheet for Gellume in The Sugarworks.
 
 Design an original compact gumdrop monster with a low rounded-triangle
 silhouette, translucent raspberry-pink candy flesh, darker berry core,
@@ -343,12 +343,12 @@ leftward gaze even if half-lidded. Never mirror anatomy. One image only; exact
 locked layout and chroma background.
 ```
 
-### 2. Taffy Scout
+### 2. Velastra
 
 Simpan sebagai `animas/sugarworks-taffy.png`.
 
 ```text
-Create the locked 3×3 Anima sprite sheet for Taffy Scout in The Sugarworks.
+Create the locked 3×3 Anima sprite sheet for Velastra in The Sugarworks.
 
 Design an original agile taffy monster with a narrow amber-orange torso,
 two long ribbon-like elastic arms, short bent legs, and one braided taffy tail
@@ -372,12 +372,12 @@ leftward gaze even if half-lidded. Never mirror anatomy. One image only; exact
 locked layout and chroma background.
 ```
 
-### 3. Licorice Lash
+### 3. Noxcoil
 
 Simpan sebagai `animas/sugarworks-licorice.png`.
 
 ```text
-Create the locked 3×3 Anima sprite sheet for Licorice Lash in The Sugarworks.
+Create the locked 3×3 Anima sprite sheet for Noxcoil in The Sugarworks.
 
 Design an original serpentine monster built from three interwoven matte
 black-violet licorice cords. Give it a coiled lower body, two hooked rope arms,
@@ -401,12 +401,12 @@ leftward gaze even if half-lidded. Never mirror anatomy. One image only; exact
 locked layout and chroma background.
 ```
 
-### 4. Caramel Clad
+### 4. Cindrusk
 
 Simpan sebagai `animas/sugarworks-caramel.png`.
 
 ```text
-Create the locked 3×3 Anima sprite sheet for Caramel Clad in The Sugarworks.
+Create the locked 3×3 Anima sprite sheet for Cindrusk in The Sugarworks.
 
 Design an original stocky armored candy monster with a glowing molten-caramel
 core protected by cracked hard-caramel plates. Use a broad beetle-like chest,
@@ -430,12 +430,12 @@ leftward gaze even if half-lidded. Never mirror anatomy. One image only; exact
 locked layout and chroma background.
 ```
 
-### 5. Peppermint Pulse
+### 5. Rimespin
 
 Simpan sebagai `animas/sugarworks-peppermint.png`.
 
 ```text
-Create the locked 3×3 Anima sprite sheet for Peppermint Pulse in The
+Create the locked 3×3 Anima sprite sheet for Rimespin in The
 Sugarworks.
 
 Design an original frost-candy monster with an offset radial peppermint-disc
@@ -461,12 +461,12 @@ leftward gaze even if half-lidded. Never mirror anatomy. One image only; exact
 locked layout and chroma background.
 ```
 
-### 6. Nougat Knight
+### 6. Pralith
 
 Simpan sebagai `animas/sugarworks-nougat.png`.
 
 ```text
-Create the locked 3×3 Anima sprite sheet for Nougat Knight in The Sugarworks.
+Create the locked 3×3 Anima sprite sheet for Pralith in The Sugarworks.
 
 Design an original broad guardian monster formed from warm cream nougat
 blocks, with embedded amber and cocoa geometric inclusions, two massive
@@ -490,12 +490,12 @@ leftward gaze even if half-lidded. Never mirror anatomy. One image only; exact
 locked layout and chroma background.
 ```
 
-### 7. Fudge Fang
+### 7. Duskadon
 
 Simpan sebagai `animas/sugarworks-fudge.png`.
 
 ```text
-Create the locked 3×3 Anima sprite sheet for Fudge Fang in The Sugarworks.
+Create the locked 3×3 Anima sprite sheet for Duskadon in The Sugarworks.
 
 Design an original crouched cocoa monster with a powerful quadrupedal wedge
 silhouette, layered dark-fudge plates, two angular chocolate fangs, bronze
@@ -519,12 +519,12 @@ leftward gaze even if half-lidded. Never mirror anatomy. One image only; exact
 locked layout and chroma background.
 ```
 
-### 8. Syrup Sentry
+### 8. Ambermire
 
 Simpan sebagai `animas/sugarworks-syrup.png`.
 
 ```text
-Create the locked 3×3 Anima sprite sheet for Syrup Sentry in The Sugarworks.
+Create the locked 3×3 Anima sprite sheet for Ambermire in The Sugarworks.
 
 Design an original semi-fluid amber guardian with a tall droplet-shaped torso,
 a crown-like splash frozen into its head silhouette, two thick liquid arms,
@@ -548,12 +548,12 @@ leftward gaze even if half-lidded. Never mirror anatomy. One image only; exact
 locked layout and chroma background.
 ```
 
-### 9. Cotton Special
+### 9. Nimbelisk
 
 Simpan sebagai `animas/sugarworks-cotton.png`.
 
 ```text
-Create the locked 3×3 Anima sprite sheet for Cotton Special, the unique special
+Create the locked 3×3 Anima sprite sheet for Nimbelisk, the unique special
 Anima of The Confectioner in The Sugarworks.
 
 Design an original airborne storm monster with an asymmetric manta-like body

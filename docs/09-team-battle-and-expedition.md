@@ -231,7 +231,7 @@ modal diperlakukan sebagai lanjut supaya flow tidak bisa tersangkut. Refresh
 roster authoritative tetap dilakukan sekali sebelum modal pertama.
 
 Selesai zona mencetak Bits permanen sesuai `zones[].bits_reward` pada manifest.
-The Sugarworks v5 menjadwalkan 10/20/30 Bits untuk Zone 1/2/3, sehingga cap
+The Sugarworks v5 dan v6 menjadwalkan 10/20/30 Bits untuk Zone 1/2/3, sehingga cap
 hariannya 60 Bits per stable chapter untuk seluruh run dan content version akun
 itu. Hari memakai batas sipil lokal profile yang sama dengan Battle. Receipt
 unik `(run_id, zone)` dan ledger `expedition_zone` membuat replay idempoten;
@@ -462,7 +462,7 @@ hashes disimpan di Git; binary immutable disimpan di Storage.
 **The Sugarworks v3** adalah version aktif; v1/v2 tetap immutable untuk run lama.
 V3 mengkalibrasi ulang tinggi sembilan Anima berdasarkan stance vertikal, bukan
 panjang atau luas silhouette, serta membetulkan bbox opak The Confectioner.
-Fudge Fang sekarang 135 cm, Cotton 130 cm, dan The Confectioner 156 cm dengan
+Duskadon sekarang 135 cm, Cotton 130 cm, dan The Confectioner 156 cm dengan
 reference metrics 158×282 px. Dialog kontekstual, Cotton sebagai ace terakhir,
 dan Final Confection dari v2 tetap dipertahankan. Seluruh asset berasal dari raw
 yang sudah disetujui dan direprocess tanpa model call. `feature_expedition` dan `feature_chapter_push` aktif. Team Battle juga aktif

@@ -86,7 +86,7 @@ kali aspek bergeser.
 `BattleScale.shared_scales()` memakai satu kurva tinggi untuk setiap tubuh di
 shot yang sama, termasuk Boss Seeker. Tinggi dikunci ke kartu desain 720×800
 tanpa memandang lebar jendela: Anima 120 cm mengisi sekitar 45% kartu itu.
-Tubuh yang lebih lebar dari 50% kartu — Fudge Fang 326 px pada tinggi 135 cm
+Tubuh yang lebih lebar dari 50% kartu — Duskadon 326 px pada tinggi 135 cm
 adalah contohnya — mengecilkan kedua Anima bersama supaya muat di 720.
 Seeker memakai back lane terpisah dan tidak ikut mengecil hanya karena Anima
 lebar. Tepi opak kedua Anima dipin 5,5% dari tepi layar; padding transparan
