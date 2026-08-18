@@ -6,7 +6,7 @@ Buka **Menu** di bottom navigation, lalu pilih **Anima Atlas**.
 Server Atlas sudah aktif. Layar ini muncul setelah pemain memasang APK baru;
 build lama tetap menampilkan Gallery selama masa pembaruan.
 
-Atlas memakai satu grid dengan filter:
+Atlas memakai satu grid tiga kolom dengan filter:
 
 - **All** — semua form yang sudah tercatat, ditambah siluet Expedition yang
   sudah tersedia untuk chapter terbuka.

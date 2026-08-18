@@ -4,9 +4,12 @@ extends Control
 signal back_requested
 signal toast_requested(message: String, is_error: bool)
 
-const CARD_MIN := Vector2(300, 360)
+const CARD_MIN := Vector2(208, 320)
+const CARD_PORTRAIT_MIN := Vector2(196, 196)
 const VISIT_CACHE_TTL_MSEC := 60_000
+const LOADING_SHIMMER_SEC := 0.72
 const SILHOUETTE_SHADER := preload("res://shaders/atlas_silhouette.gdshader")
+const LOADING_SHIMMER_SHADER := preload("res://shaders/guard_shimmer.gdshader")
 const FILTERS := ["all", "scanned", "expedition", "duel"]
 const FILTER_BUTTONS := {
 	"all": "AtlasAll",
@@ -41,6 +44,13 @@ var _detail_portrait: TextureRect
 var _detail_name: Label
 var _detail_meta: Label
 var _detail_report: Button
+var _detail_owner_cell: PanelContainer
+var _detail_discovery_grid: GridContainer
+var _detail_values: Dictionary = {}
+var _loading_portrait: TextureRect
+var _loading_material: ShaderMaterial
+var _loading_previous_material: Material
+var _loading_shimmer: Tween
 var _thumb_cache: Dictionary = {}
 var _silhouette_material: ShaderMaterial
 var _all_entries_cache: Array[Dictionary] = []
@@ -50,7 +60,9 @@ var _all_cache_at_msec := 0
 
 
 func _ready() -> void:
-	%AtlasBack.pressed.connect(func() -> void: back_requested.emit())
+	var back_button := %AtlasBack as Button
+	back_button.tooltip_text = tr("ACTION_BACK")
+	back_button.pressed.connect(func() -> void: back_requested.emit())
 	_load_more.pressed.connect(_load_next_page)
 	_detail_sheet.dismissed.connect(_on_detail_closed)
 	_chapter.item_selected.connect(_on_chapter_selected)
@@ -70,29 +82,130 @@ func _build_detail_sheet() -> void:
 		slot.remove_child(child)
 		child.queue_free()
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 16)
+	column.add_theme_constant_override("separation", 12)
 	slot.add_child(column)
+
 	_detail_portrait = TextureRect.new()
-	_detail_portrait.custom_minimum_size = Vector2(288, 288)
+	_detail_portrait.name = "AtlasDetailPortrait"
+	_detail_portrait.custom_minimum_size = Vector2(240, 240)
 	_detail_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_detail_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_detail_portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(_detail_portrait)
+
 	_detail_name = Label.new()
+	_detail_name.name = "AtlasDetailName"
 	_detail_name.theme_type_variation = &"PageTitleLabel"
 	_detail_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_detail_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_detail_name)
 	_detail_meta = Label.new()
+	_detail_meta.name = "AtlasDetailIdentity"
 	_detail_meta.theme_type_variation = &"BodyLabel"
 	_detail_meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_detail_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_detail_meta)
+
+	var traits := _make_detail_section(column, "AtlasAboutPanel", "DETAILS_TRAITS")
+	var traits_grid := GridContainer.new()
+	traits_grid.name = "AtlasTraitsGrid"
+	traits_grid.columns = 2
+	traits_grid.add_theme_constant_override("h_separation", 8)
+	traits_grid.add_theme_constant_override("v_separation", 8)
+	traits.add_child(traits_grid)
+	_add_detail_value(traits_grid, "form", "ATLAS_DETAIL_FORM_LABEL")
+	_add_detail_value(traits_grid, "kind", "ATLAS_DETAIL_KIND_LABEL")
+	_add_detail_value(traits_grid, "rarity", "DETAILS_RARITY")
+	_add_detail_value(traits_grid, "height", "ATLAS_DETAIL_HEIGHT_LABEL")
+
+	var combat := _make_detail_section(column, "AtlasCombatPanel", "DETAILS_ATTRIBUTES")
+	var stats_grid := GridContainer.new()
+	stats_grid.name = "AtlasStatsGrid"
+	stats_grid.columns = 5
+	stats_grid.add_theme_constant_override("h_separation", 8)
+	combat.add_child(stats_grid)
+	for key: String in ["hp", "atk", "def", "spd", "special"]:
+		_add_detail_value(stats_grid, key, STAT_KEYS[key], true)
+	var moves_grid := GridContainer.new()
+	moves_grid.name = "AtlasMovesGrid"
+	moves_grid.columns = 2
+	moves_grid.add_theme_constant_override("h_separation", 8)
+	combat.add_child(moves_grid)
+	_add_detail_value(moves_grid, "strike", "DETAILS_STRIKE")
+	_add_detail_value(moves_grid, "surge", "DETAILS_SURGE")
+
+	var discovery := _make_detail_section(column, "AtlasDiscoveryPanel", "ATLAS_DETAIL_DISCOVERY")
+	_detail_discovery_grid = GridContainer.new()
+	_detail_discovery_grid.name = "AtlasDiscoveryGrid"
+	_detail_discovery_grid.columns = 2
+	_detail_discovery_grid.add_theme_constant_override("h_separation", 8)
+	discovery.add_child(_detail_discovery_grid)
+	_detail_owner_cell = _add_detail_value(
+		_detail_discovery_grid, "owner", "ATLAS_DETAIL_SEEKER_LABEL"
+	)
+	_add_detail_value(
+		_detail_discovery_grid, "encounters", "ATLAS_DETAIL_ENCOUNTERS_LABEL"
+	)
+
+	var report_row := HBoxContainer.new()
+	report_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_child(report_row)
 	_detail_report = Button.new()
-	_detail_report.custom_minimum_size.y = 96
+	_detail_report.name = "AtlasReportButton"
+	_detail_report.custom_minimum_size = Vector2(180, 96)
+	_detail_report.flat = true
 	_detail_report.text = tr("ATLAS_REPORT")
+	_detail_report.add_theme_color_override("font_color", Color(1, 0.42, 0.52, 0.88))
+	_detail_report.add_theme_color_override("font_hover_color", Color(1, 0.72, 0.78, 1))
+	_detail_report.add_theme_color_override("font_focus_color", Color(1, 0.72, 0.78, 1))
+	_detail_report.add_theme_color_override("font_pressed_color", Color(1, 0.82, 0.4, 1))
+	_detail_report.add_theme_font_size_override("font_size", 24)
 	_detail_report.pressed.connect(_report_selected)
-	column.add_child(_detail_report)
+	report_row.add_child(_detail_report)
+
+
+func _make_detail_section(parent: VBoxContainer, node_name: String, title_key: String) -> VBoxContainer:
+	var panel := PanelContainer.new()
+	panel.name = node_name
+	panel.theme_type_variation = &"HudSurface"
+	parent.add_child(panel)
+	var section := VBoxContainer.new()
+	section.add_theme_constant_override("separation", 8)
+	panel.add_child(section)
+	var title := Label.new()
+	title.theme_type_variation = &"SectionLabel"
+	title.text = tr(title_key)
+	section.add_child(title)
+	return section
+
+
+func _add_detail_value(
+	parent: GridContainer, key: String, label_key: String, compact := false
+) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = "Atlas%sCell" % key.capitalize()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.theme_type_variation = &"StatValuePanel"
+	parent.add_child(panel)
+	var box := VBoxContainer.new()
+	panel.add_child(box)
+	var name_label := Label.new()
+	name_label.theme_type_variation = &"StatNameLabel"
+	name_label.text = tr(label_key)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if compact:
+		name_label.add_theme_font_size_override("font_size", 19)
+	box.add_child(name_label)
+	var value_label := Label.new()
+	value_label.name = "Atlas%sValue" % key.capitalize()
+	value_label.theme_type_variation = &"StatValueLabel"
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if compact:
+		value_label.add_theme_font_size_override("font_size", 25)
+	box.add_child(value_label)
+	_detail_values[key] = value_label
+	return panel
 
 
 func begin_visit() -> void:
@@ -144,7 +257,7 @@ func set_busy(busy: bool) -> void:
 
 
 func refresh_localized_ui() -> void:
-	%AtlasBack.text = tr("ACTION_BACK")
+	%AtlasBack.tooltip_text = tr("ACTION_BACK")
 	_load_more.text = tr("ATLAS_LOAD_MORE")
 	for filter_name: String in FILTERS:
 		var button := get_node("%%%s" % FILTER_BUTTONS[filter_name]) as Button
@@ -355,7 +468,7 @@ func _make_card(entry: Dictionary) -> Control:
 	column.add_theme_constant_override("separation", 8)
 	button.add_child(column)
 	var portrait := TextureRect.new()
-	portrait.custom_minimum_size = Vector2(280, 280)
+	portrait.custom_minimum_size = CARD_PORTRAIT_MIN
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -378,12 +491,13 @@ func _make_card(entry: Dictionary) -> Control:
 		else tr("ATLAS_UNDISCOVERED")
 	)
 	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	meta.theme_type_variation = &"MutedLabel"
 	meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(meta)
 	var form_id := str(entry.get("form_id", ""))
 	if discovered:
-		button.pressed.connect(_open_detail.bind(entry.duplicate(true)))
+		button.pressed.connect(_open_detail.bind(entry.duplicate(true), portrait))
 	call_deferred("_load_card_art", entry.duplicate(true), portrait)
 	button.tooltip_text = tr("ATLAS_CARD_OPEN") if discovered else tr("ATLAS_UNDISCOVERED")
 	button.set_meta("form_id", form_id)
@@ -405,51 +519,109 @@ func _load_card_art(entry: Dictionary, target: TextureRect) -> void:
 		target.texture = texture
 
 
-func _open_detail(card: Dictionary) -> void:
+func _set_card_loading(target: TextureRect, loading: bool) -> void:
+	_clear_card_loading()
+	if not loading or not is_instance_valid(target):
+		return
+	_loading_portrait = target
+	_loading_previous_material = target.material
+	_loading_material = ShaderMaterial.new()
+	_loading_material.shader = LOADING_SHIMMER_SHADER
+	_loading_material.set_shader_parameter("progress", 0.0)
+	target.material = _loading_material
+	_loading_shimmer = create_tween().set_loops()
+	_loading_shimmer.tween_property(
+		_loading_material,
+		"shader_parameter/progress",
+		1.0,
+		LOADING_SHIMMER_SEC
+	).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_LINEAR)
+	_loading_shimmer.tween_callback(func() -> void:
+		if _loading_material != null:
+			_loading_material.set_shader_parameter("progress", 0.0)
+	)
+
+
+func _clear_card_loading() -> void:
+	if _loading_shimmer != null and _loading_shimmer.is_valid():
+		_loading_shimmer.kill()
+	_loading_shimmer = null
+	if (
+		is_instance_valid(_loading_portrait)
+		and _loading_portrait.material == _loading_material
+	):
+		_loading_portrait.material = _loading_previous_material
+	_loading_portrait = null
+	_loading_material = null
+	_loading_previous_material = null
+
+
+func _open_detail(card: Dictionary, portrait: TextureRect) -> void:
 	if _busy:
 		return
 	var form_id := str(card.get("form_id", ""))
 	if form_id.is_empty():
 		return
+	_set_card_loading(portrait, true)
 	set_busy(true)
 	var res := await Backend.atlas("atlas_detail", {"form_id": form_id})
-	set_busy(false)
-	if not res.ok:
-		toast_requested.emit(tr("ATLAS_DETAIL_ERROR"), true)
-		return
-	_selected = GameState.as_dict(GameState.as_dict(res.data).get("entry"))
+	_selected = (
+		GameState.as_dict(GameState.as_dict(res.data).get("entry"))
+		if res.ok
+		else {}
+	)
 	if _selected.is_empty():
+		_clear_card_loading()
+		set_busy(false)
 		toast_requested.emit(tr("ATLAS_DETAIL_ERROR"), true)
 		return
-	_detail_name.text = str(_selected.get("display_name", tr("ANIMA_FALLBACK_NAME")))
-	_detail_meta.text = _detail_copy(_selected)
-	_detail_report.visible = bool(_selected.get("can_report", false))
-	_detail_portrait.texture = await _entry_texture(_selected)
+	_present_detail(_selected)
+	var detail_texture: Texture2D = await _entry_texture(_selected)
+	_clear_card_loading()
+	set_busy(false)
+	_detail_portrait.texture = detail_texture if detail_texture != null else portrait.texture
 	_detail_sheet.open()
 
 
-func _detail_copy(entry: Dictionary) -> String:
-	var lines: Array[String] = []
-	lines.append(tr("ATLAS_DETAIL_FORM") % _stage_name(int(entry.get("stage", 1))))
-	lines.append(tr("ATLAS_DETAIL_ELEMENTS") % _atlas_element_label(entry))
-	var subject_key := "ATLAS_SUBJECT_%s" % str(entry.get("subject_kind", "object")).to_upper()
-	lines.append(tr("ATLAS_DETAIL_TRAITS") % [
-		tr(subject_key),
-		LocaleManager.format_ratio(int(entry.get("rarity", 1)), 5),
-	])
-	lines.append(tr("ATLAS_DETAIL_HEIGHT") % LocaleManager.format_integer(int(entry.get("body_height_cm", 0))))
+func _present_detail(entry: Dictionary) -> void:
+	_detail_name.text = str(entry.get("display_name", tr("ANIMA_FALLBACK_NAME")))
+	_detail_meta.text = tr("ATLAS_DETAIL_IDENTITY") % [
+		_stage_name(int(entry.get("stage", 1))),
+		_atlas_element_label(entry),
+	]
+	var subject_key := "ATLAS_SUBJECT_%s" % str(
+		entry.get("subject_kind", "object")
+	).to_upper()
+	_set_detail_value("form", _stage_name(int(entry.get("stage", 1))))
+	_set_detail_value("kind", tr(subject_key))
+	_set_detail_value(
+		"rarity", LocaleManager.format_ratio(int(entry.get("rarity", 1)), 5)
+	)
+	_set_detail_value(
+		"height",
+		tr("ATLAS_DETAIL_HEIGHT_VALUE") % LocaleManager.format_integer(
+			int(entry.get("body_height_cm", 0))
+		)
+	)
 	var stats := GameState.as_dict(entry.get("base_stats"))
-	var stat_parts: Array[String] = []
 	for key: String in ["hp", "atk", "def", "spd", "special"]:
-		stat_parts.append("%s %s" % [tr(STAT_KEYS[key]), LocaleManager.format_integer(int(stats.get(key, 0)))])
-	lines.append(tr("ATLAS_DETAIL_ATTRIBUTES") % " · ".join(stat_parts))
-	lines.append(tr("ATLAS_DETAIL_ATTACK") % LocaleManager.move_name(entry, "strike"))
-	lines.append(tr("ATLAS_DETAIL_SPECIAL") % LocaleManager.move_name(entry, "surge"))
+		_set_detail_value(key, LocaleManager.format_integer(int(stats.get(key, 0))))
+	_set_detail_value("strike", LocaleManager.move_name(entry, "strike"))
+	_set_detail_value("surge", LocaleManager.move_name(entry, "surge"))
 	var owner_name := str(entry.get("owner_name", ""))
-	if not owner_name.is_empty():
-		lines.append(tr("ATLAS_DETAIL_OWNER") % owner_name)
-	lines.append(tr("ATLAS_DETAIL_ENCOUNTERS") % LocaleManager.format_integer(int(entry.get("encounter_count", 1))))
-	return "\n\n".join(lines)
+	_detail_owner_cell.visible = not owner_name.is_empty()
+	_detail_discovery_grid.columns = 2 if not owner_name.is_empty() else 1
+	_set_detail_value("owner", owner_name)
+	_set_detail_value(
+		"encounters", LocaleManager.format_integer(int(entry.get("encounter_count", 1)))
+	)
+	_detail_report.visible = bool(entry.get("can_report", false))
+
+
+func _set_detail_value(key: String, value: String) -> void:
+	var label := _detail_values.get(key) as Label
+	if label != null:
+		label.text = value
 
 
 func _stage_name(stage: int) -> String:

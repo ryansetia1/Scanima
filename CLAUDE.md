@@ -51,7 +51,13 @@ Client kandidat memakai bottom nav Home/Scan/Battle/Collection/**Menu**. Menu
 adalah launcher popover untuk Seeker Profile, Anima Atlas, dan Settings;
 Anima Profile hanya dari Collection/Battle picker, dan burger Top HUD dihapus.
 Atlas memakai satu grid All/Scanned/Expedition/Duel, form terpisah, siluet
-Expedition, profil statis, serta consent publish satu lineage. Seluruh
+Expedition, profil statis, serta consent publish satu lineage. Detail profil
+memakai hero ringkas lalu kartu Traits/Attributes/Discovery; lima stat tetap
+satu baris, Attack/Special menjadi nilai terpisah, dan Report adalah aksi teks
+sekunder touch-safe. Grid mobile memakai tiga kolom; tap form memberi shimmer
+lokal pada portrait selama `atlas_detail` dimuat. Back sistem/gesture menutup
+detail lebih dulu, lalu fallback shell menutup `UiBottomSheet` visible terakhir
+agar semua bottom sheet mengikuti kontrak yang sama. Seluruh
 preference, setting, cabang, dan referensi runtime **Reduced Motion** sudah
 dihapus; timing animasi normal adalah satu-satunya jalur. Detail desain ada di
 [`docs/designs/2026-08-18-anima-atlas.md`](docs/designs/2026-08-18-anima-atlas.md)

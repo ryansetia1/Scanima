@@ -9,7 +9,7 @@ Anima Atlas is the player's record of forms they have created or actually met
 in Battle. It replaces the public Gallery Feed rather than becoming a second
 art browser beside Collection.
 
-The Atlas has one two-column grid with four filters:
+The Atlas has one three-column grid with four filters:
 
 - **All** — every unlocked form plus undiscovered Expedition silhouettes.
 - **Scanned** — forms created by the player.
@@ -38,6 +38,28 @@ unbounded, so Duel and All never claim a global completion percentage.
   entries also show the current Seeker name of the owner. Care, nickname,
   account identifiers, and public-profile links stay private.
 - The MVP grants no Bits, Cores, badge, or other reward.
+
+## Detail hierarchy
+
+The mobile detail sheet uses progressive information hierarchy rather than one
+centered prose block:
+
+1. A compact portrait, generated name, form, and elements establish identity.
+2. **Traits** groups kind, rarity, form, and height in a two-column value grid.
+3. **Attributes** keeps the five combat stats in one comparison row, followed
+   by separate Attack and Special values.
+4. **Discovery** contains the lower-priority Seeker and encounter provenance.
+5. **Report** remains a touch-safe flat secondary action below the profile,
+   instead of competing with the profile as a full-width primary button.
+
+The sheet reuses the existing `HudSurface`, `StatValuePanel`, label hierarchy,
+spacing, and 96 px interaction target from Anima Profile. All data remains
+visible in one vertical scroll; no accordion or extra navigation is introduced.
+Tapping a discovered card immediately shimmers that card's Anima portrait while
+`atlas_detail` is loading, then removes the effect before the sheet appears or
+an error is shown. Android's system Back gesture/button and `ui_cancel` close
+the detail sheet first; the shell applies the same last-visible-sheet fallback
+to every shared `UiBottomSheet`.
 
 ## Publication and privacy
 
@@ -90,6 +112,10 @@ Settings contains Google account, Music, chapter notifications, Help, and
 Delete Account. Anima Profile is opened only from Collection or the Battle
 picker, and Back returns to its origin.
 
+The Atlas header follows the established Team/Expedition pattern: a flat,
+96 px left-chevron target sits before the title instead of a separate text
+button competing with the page heading.
+
 The existing Reduced Motion preference, UI, helper, and alternate presentation
 paths are removed by explicit product decision. Normal animation timing becomes
 the only path. Old local preference keys are ignored safely.
@@ -122,3 +148,9 @@ the only path. Old local preference keys are ignored safely.
 - Chose the bottom-nav Menu popover and removal of the header burger.
 - Chose complete removal of Reduced Motion rather than retaining a hidden
   compatibility path.
+- Chose a sectioned Atlas profile over a dense dossier or accordion: it preserves
+  direct access to every field while making identity, combat, and provenance
+  independently scannable.
+- Chose three compact cards per Atlas row and portrait-local loading shimmer so
+  browsing density improves without replacing the selected form with a global
+  loading state.

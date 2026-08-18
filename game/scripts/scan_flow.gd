@@ -4593,6 +4593,8 @@ func _handle_back(allow_quit: bool) -> bool:
 	if is_instance_valid(_atlas_view) and _atlas_view.is_detail_open():
 		_atlas_view.close_detail()
 		return true
+	if _close_open_bottom_sheet():
+		return true
 	if _destination == ANIMA_PROFILE_DEST:
 		_switch_destination(_profile_return_destination)
 		return true
@@ -4605,6 +4607,16 @@ func _handle_back(allow_quit: bool) -> bool:
 	if allow_quit:
 		get_tree().quit()
 		return true
+	return false
+
+
+func _close_open_bottom_sheet() -> bool:
+	var nodes: Array[Node] = find_children("*", "", true, false)
+	for index in range(nodes.size() - 1, -1, -1):
+		var sheet := nodes[index] as UiBottomSheet
+		if sheet != null and sheet.is_visible_in_tree():
+			sheet.close()
+			return true
 	return false
 
 

@@ -326,8 +326,12 @@ func _initialize() -> void:
 	_check(
 		shell_source.find("NOTIFICATION_WM_GO_BACK_REQUEST") >= 0
 		and shell_source.find("_handle_back(true)") >= 0
+		and shell_source.find("_atlas_view.is_detail_open()") >= 0
+		and shell_source.find("_atlas_view.close_detail()") >= 0
+		and shell_source.find("_close_open_bottom_sheet()") >= 0
+		and shell_source.find("sheet.is_visible_in_tree()") >= 0
 		and shell_source.find("STATUS_NEED_CORE") >= 0,
-		"Android back closes overlays and empty Cores block the camera"
+		"Android back closes Atlas and every remaining visible bottom sheet"
 	)
 	_check(
 		shell_source.find("_shell_modal.open_input(") >= 0
@@ -3542,10 +3546,24 @@ func _test_atlas_view() -> void:
 		and is_equal_approx(sheet.anchor_bottom, 1.0),
 		"Atlas detail sheet is a full-rect child of AtlasView"
 	)
+	var atlas_back := view.find_child("AtlasBack", true, false) as Button
+	var atlas_back_icon := view.find_child("AtlasBackIcon", true, false) as TextureRect
+	_check(
+		atlas_back != null
+		and atlas_back.get_index() == 0
+		and atlas_back.flat
+		and atlas_back.text.is_empty()
+		and atlas_back.custom_minimum_size == Vector2(96, 96)
+		and atlas_back_icon != null
+		and atlas_back_icon.texture != null,
+		"Atlas header uses the shared touch-safe left chevron before its title"
+	)
 	_check(view.has_method("_make_card"), "Anima Atlas scene exposes the AtlasView contract")
 	_check(view.has_method("show_demo"), "Anima Atlas exposes a no-network visual QA path")
 	for node_name: String in ["AtlasAll", "AtlasScanned", "AtlasExpedition", "AtlasDuel"]:
 		_check(view.find_child(node_name, true, false) is Button, "%s filter exists" % node_name)
+	var atlas_grid := view.find_child("AtlasGrid", true, false) as GridContainer
+	_check(atlas_grid != null and atlas_grid.columns == 3, "Atlas uses a compact three-column grid")
 	var discovered := view.call("_make_card", {
 		"form_id": "form-discovered",
 		"discovered": true,
@@ -3563,14 +3581,32 @@ func _test_atlas_view() -> void:
 	_check(not discovered.disabled, "discovered Atlas forms open their profile")
 	_check(silhouette.disabled, "undiscovered Expedition forms stay silhouette-only")
 	var discovered_column := discovered.get_child(0) as VBoxContainer
+	var discovered_portrait := discovered_column.get_child(0) as TextureRect
+	_check(
+		discovered.custom_minimum_size.x <= 208.0
+		and discovered_portrait.custom_minimum_size.x <= 196.0,
+		"three-column Atlas cards keep their portrait inside the mobile grid"
+	)
+	view.call("_set_card_loading", discovered_portrait, true)
+	var loading_material := discovered_portrait.material as ShaderMaterial
+	_check(
+		loading_material != null
+		and loading_material.shader == load("res://shaders/guard_shimmer.gdshader"),
+		"opening an Atlas form shimmers the selected Anima image"
+	)
+	view.call("_set_card_loading", discovered_portrait, false)
+	_check(discovered_portrait.material == null, "Atlas shimmer restores the card material after loading")
 	_check(
 		(discovered_column.get_child(1) as Label).text == "Sprig",
 		"Atlas card shows the generated form name"
 	)
-	var discovered_meta := (discovered_column.get_child(2) as Label).text
+	var discovered_meta_label := discovered_column.get_child(2) as Label
+	var discovered_meta := discovered_meta_label.text
 	_check(
-		discovered_meta.find("Plant · Stone") >= 0 and discovered_meta.find("Adult") >= 0,
-		"Atlas card shows both elements and the registered form stage"
+		discovered_meta_label.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART
+		and discovered_meta.find("Plant · Stone") >= 0
+		and discovered_meta.find("Adult") >= 0,
+		"Atlas card wraps both elements and the form stage inside its column"
 	)
 	var hidden_column := silhouette.get_child(0) as VBoxContainer
 	var hidden_portrait := hidden_column.get_child(0) as TextureRect
@@ -3579,7 +3615,8 @@ func _test_atlas_view() -> void:
 		(hidden_column.get_child(1) as Label).text == "???",
 		"Expedition silhouette does not reveal its name"
 	)
-	var detail_copy := str(view.call("_detail_copy", {
+	view.call("_present_detail", {
+		"display_name": "Sprig",
 		"stage": 2,
 		"subject_kind": "object",
 		"element": "plant",
@@ -3593,10 +3630,49 @@ func _test_atlas_view() -> void:
 		"encounter_count": 2,
 		"nickname": "PrivateNickname",
 		"care": {"hunger": 1},
-	}))
-	_check(detail_copy.find("AtlasOwner") >= 0, "Duel Atlas detail includes the current Seeker name")
+		"can_report": true,
+	})
+	await process_frame
+	var portrait := view.find_child("AtlasDetailPortrait", true, false) as TextureRect
+	var about := view.find_child("AtlasAboutPanel", true, false) as PanelContainer
+	var combat := view.find_child("AtlasCombatPanel", true, false) as PanelContainer
+	var discovery := view.find_child("AtlasDiscoveryPanel", true, false) as PanelContainer
 	_check(
-		detail_copy.find("PrivateNickname") < 0 and detail_copy.find("hunger") < 0,
+		portrait != null and portrait.custom_minimum_size.x <= 240.0,
+		"Atlas detail keeps its identity hero compact"
+	)
+	_check(
+		about != null and about.theme_type_variation == &"HudSurface"
+		and combat != null and combat.theme_type_variation == &"HudSurface"
+		and discovery != null and discovery.theme_type_variation == &"HudSurface",
+		"Atlas detail groups Traits, Attributes, and Discovery in shared card chrome"
+	)
+	var traits_grid := view.find_child("AtlasTraitsGrid", true, false) as GridContainer
+	var stats_grid := view.find_child("AtlasStatsGrid", true, false) as GridContainer
+	var moves_grid := view.find_child("AtlasMovesGrid", true, false) as GridContainer
+	_check(traits_grid != null and traits_grid.columns == 2, "Atlas traits use a readable two-column grid")
+	_check(stats_grid != null and stats_grid.columns == 5, "Atlas attributes remain glanceable in one row")
+	_check(moves_grid != null and moves_grid.columns == 2, "Atlas Attack and Special are separate values")
+	_check_eq(
+		(view.find_child("AtlasOwnerValue", true, false) as Label).text,
+		"AtlasOwner",
+		"Duel Atlas detail includes the current Seeker name"
+	)
+	_check_eq(
+		(view.find_child("AtlasStrikeValue", true, false) as Label).text,
+		"Leaf Jab",
+		"Atlas Attack shows its generated move name"
+	)
+	var report := view.find_child("AtlasReportButton", true, false) as Button
+	_check(
+		report != null and report.flat and report.custom_minimum_size.y >= TOUCH_MIN,
+		"Atlas Report is a touch-safe secondary action"
+	)
+	var detail_text := ""
+	for label_node in view.find_children("*", "Label", true, false):
+		detail_text += " " + (label_node as Label).text
+	_check(
+		detail_text.find("PrivateNickname") < 0 and detail_text.find("hunger") < 0,
 		"Atlas detail never exposes nickname or care state"
 	)
 	discovered.queue_free()
