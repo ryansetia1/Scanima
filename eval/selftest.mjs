@@ -3349,6 +3349,13 @@ console.log("23c. Anima Atlas memakai consent/moderasi Gallery");
     ),
     "utf8",
   );
+  const atlasSeekerMigration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260818194445_atlas_expedition_seeker_name.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   const atlasClient = await readFile(
     new URL("../game/scripts/atlas_view.gd", import.meta.url),
     "utf8",
@@ -3471,6 +3478,26 @@ console.log("23c. Anima Atlas memakai consent/moderasi Gallery");
     atlasMigration,
     /revoke all on function public\._atlas_upsert_discovery/,
     "client tidak boleh memalsukan discovery Atlas",
+  );
+  assert.match(
+    atlasSeekerMigration,
+    /p_member->'special' = 'true'::jsonb[\s\S]+boss_seeker,display_name[\s\S]+chapter_seeker_name[\s\S]+sync_atlas_expedition_version/,
+    "special Expedition form harus mengambil nama Boss Seeker dari manifest lalu dibackfill",
+  );
+  assert.match(
+    galleryEdge,
+    /function atlasChapterSeekerName[\s\S]+form\.source_kind !== "expedition"[\s\S]+chapter_seeker_name/,
+    "list dan detail Atlas harus memproyeksikan Boss Seeker tanpa hardcode chapter",
+  );
+  assert.match(
+    galleryEdge,
+    /ownerName = atlasChapterSeekerName[\s\S]+owner_name:[\s\S]+atlasChapterSeekerName\(form\)/,
+    "detail dan kartu Atlas harus memakai proyeksi Boss Seeker yang sama",
+  );
+  assert.doesNotMatch(
+    atlasClient,
+    /sugarworks-cotton|The Confectioner/,
+    "client Atlas tidak boleh meng-hardcode pasangan special Anima dan Boss Seeker",
   );
 }
 

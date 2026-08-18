@@ -3400,6 +3400,11 @@ func _test_battle_pick_sheet() -> void:
 
 func _test_collection_routes_are_explicit() -> void:
 	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		source.find("_collection_view.atlas_requested.connect(_open_atlas)") >= 0
+		and source.find("_atlas_view.collection_requested.connect(_open_collection)") >= 0,
+		"Collection and Atlas tabs share the existing shell destinations"
+	)
 	var profile_start := source.find("func _show_collection_profile")
 	var summon_start := source.find("func _summon_collection_anima")
 	var summon_end := source.find("\n\nfunc _open_scan", summon_start)
@@ -3433,6 +3438,23 @@ func _test_collection_bottom_sheet() -> void:
 	var collection := packed.instantiate()
 	root.add_child(collection)
 	await process_frame
+	var collection_tab := collection.find_child(
+		"CollectionCollectionTab", true, false
+	) as Button
+	var atlas_tab := collection.find_child("CollectionAtlasTab", true, false) as Button
+	_check(
+		collection_tab != null
+		and atlas_tab != null
+		and collection_tab.button_pressed
+		and not atlas_tab.button_pressed
+		and collection_tab.custom_minimum_size.y >= TOUCH_MIN
+		and atlas_tab.custom_minimum_size.y >= TOUCH_MIN,
+		"Collection exposes touch-safe Collection and Atlas tabs with Collection active"
+	)
+	var atlas_requests := [0]
+	collection.atlas_requested.connect(func() -> void: atlas_requests[0] += 1)
+	atlas_tab.pressed.emit()
+	_check_eq(atlas_requests[0], 1, "Collection Atlas tab emits its shell navigation intent")
 	var row := {
 		"id": "sheet-test",
 		"nickname": "Velumi",
@@ -3555,9 +3577,29 @@ func _test_atlas_view() -> void:
 		and atlas_back.text.is_empty()
 		and atlas_back.custom_minimum_size == Vector2(96, 96)
 		and atlas_back_icon != null
-		and atlas_back_icon.texture != null,
+		and atlas_back_icon.texture != null
+		and absf(
+			atlas_back_icon.position.y
+			+ atlas_back_icon.size.y * 0.5
+			- atlas_back.size.y * 0.5
+		) < 1.0,
 		"Atlas header uses the shared touch-safe left chevron before its title"
 	)
+	var atlas_collection_tab := view.find_child("AtlasCollectionTab", true, false) as Button
+	var atlas_tab := view.find_child("AtlasAtlasTab", true, false) as Button
+	_check(
+		atlas_collection_tab != null
+		and atlas_tab != null
+		and not atlas_collection_tab.button_pressed
+		and atlas_tab.button_pressed
+		and atlas_collection_tab.custom_minimum_size.y >= TOUCH_MIN
+		and atlas_tab.custom_minimum_size.y >= TOUCH_MIN,
+		"Atlas exposes the same touch-safe tab pair with Atlas active"
+	)
+	var collection_requests := [0]
+	view.collection_requested.connect(func() -> void: collection_requests[0] += 1)
+	atlas_collection_tab.pressed.emit()
+	_check_eq(collection_requests[0], 1, "Atlas Collection tab emits its shell navigation intent")
 	_check(view.has_method("_make_card"), "Anima Atlas scene exposes the AtlasView contract")
 	_check(view.has_method("show_demo"), "Anima Atlas exposes a no-network visual QA path")
 	for node_name: String in ["AtlasAll", "AtlasScanned", "AtlasExpedition", "AtlasDuel"]:
@@ -3584,6 +3626,7 @@ func _test_atlas_view() -> void:
 	var discovered_portrait := discovered_column.get_child(0) as TextureRect
 	_check(
 		discovered.custom_minimum_size.x <= 208.0
+		and discovered.custom_minimum_size.y <= 280.0
 		and discovered_portrait.custom_minimum_size.x <= 196.0,
 		"three-column Atlas cards keep their portrait inside the mobile grid"
 	)
@@ -3605,8 +3648,8 @@ func _test_atlas_view() -> void:
 	_check(
 		discovered_meta_label.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART
 		and discovered_meta.find("Plant · Stone") >= 0
-		and discovered_meta.find("Adult") >= 0,
-		"Atlas card wraps both elements and the form stage inside its column"
+		and discovered_meta.find("Adult") < 0,
+		"Atlas grid keeps element identity but leaves form stage to detail"
 	)
 	var hidden_column := silhouette.get_child(0) as VBoxContainer
 	var hidden_portrait := hidden_column.get_child(0) as TextureRect
@@ -3615,7 +3658,7 @@ func _test_atlas_view() -> void:
 		(hidden_column.get_child(1) as Label).text == "???",
 		"Expedition silhouette does not reveal its name"
 	)
-	view.call("_present_detail", {
+	var detail_entry := {
 		"display_name": "Sprig",
 		"stage": 2,
 		"subject_kind": "object",
@@ -3631,7 +3674,8 @@ func _test_atlas_view() -> void:
 		"nickname": "PrivateNickname",
 		"care": {"hunger": 1},
 		"can_report": true,
-	})
+	}
+	view.call("_present_detail", detail_entry)
 	await process_frame
 	var portrait := view.find_child("AtlasDetailPortrait", true, false) as TextureRect
 	var about := view.find_child("AtlasAboutPanel", true, false) as PanelContainer
@@ -3658,6 +3702,25 @@ func _test_atlas_view() -> void:
 		"AtlasOwner",
 		"Duel Atlas detail includes the current Seeker name"
 	)
+	var owner_cell := view.find_child("AtlasOwnerCell", true, false) as PanelContainer
+	var discovery_grid := view.find_child("AtlasDiscoveryGrid", true, false) as GridContainer
+	detail_entry["owner_name"] = null
+	view.call("_present_detail", detail_entry)
+	_check(
+		owner_cell != null
+		and not owner_cell.visible
+		and discovery_grid != null
+		and discovery_grid.columns == 1,
+		"Atlas detail omits the Seeker field when the API returns null"
+	)
+	detail_entry["owner_name"] = "The Confectioner"
+	view.call("_present_detail", detail_entry)
+	_check(
+		owner_cell.visible
+		and (view.find_child("AtlasOwnerValue", true, false) as Label).text
+			== "The Confectioner",
+		"special Expedition Anima show their authored Boss Seeker"
+	)
 	_check_eq(
 		(view.find_child("AtlasStrikeValue", true, false) as Label).text,
 		"Leaf Jab",
@@ -3677,7 +3740,11 @@ func _test_atlas_view() -> void:
 	)
 	discovered.queue_free()
 	silhouette.queue_free()
+	var detail_image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	detail_image.fill(Color.WHITE)
+	portrait.texture = ImageTexture.create_from_image(detail_image)
 	await sheet.open()
+	view.call("_start_detail_idle")
 	await create_timer(0.45).timeout
 	var panel := sheet.panel()
 	var bottom_gap := absf(panel.get_global_rect().end.y - sheet.get_global_rect().end.y)
@@ -3688,6 +3755,16 @@ func _test_atlas_view() -> void:
 		and panel.offset_top < 0.0
 		and bottom_gap < 2.0,
 		"Atlas detail sheet fills its host and sits on the bottom edge"
+	)
+	_check(
+		not portrait.scale.is_equal_approx(Vector2.ONE),
+		"Atlas detail portrait breathes with the shared Idle motion"
+	)
+	view.close_detail()
+	await process_frame
+	_check(
+		portrait.scale.is_equal_approx(Vector2.ONE),
+		"closing Atlas detail stops and resets its Idle motion"
 	)
 	var juice_source := FileAccess.get_file_as_string("res://scripts/ui_juice.gd")
 	_check(

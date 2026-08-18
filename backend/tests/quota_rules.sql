@@ -2313,6 +2313,32 @@ begin
               and table_name = 'seeker_atlas_discoveries'
          ),
          'registry form dan discovery ledger Atlas harus ada';
+  assert exists (
+           select 1 from information_schema.columns
+            where table_schema = 'public'
+              and table_name = 'atlas_forms'
+              and column_name = 'chapter_seeker_name'
+         ),
+         'Atlas form harus menyimpan nama Boss Seeker untuk special Expedition';
+  assert exists (
+           select 1
+             from public.atlas_forms form
+             join public.expedition_chapters chapter on chapter.id = form.chapter_id
+            where chapter.slug = 'the-sugarworks'
+              and form.source_slug = 'sugarworks-cotton'
+              and form.catalog_active
+              and form.chapter_seeker_name = 'The Confectioner'
+         )
+         and exists (
+           select 1
+             from public.atlas_forms form
+             join public.expedition_chapters chapter on chapter.id = form.chapter_id
+            where chapter.slug = 'the-sugarworks'
+              and form.source_slug = 'sugarworks-gumdrop'
+              and form.catalog_active
+              and form.chapter_seeker_name is null
+         ),
+         'hanya Cotton special yang mewarisi The Confectioner di Sugarworks';
   assert (select relrowsecurity from pg_class
            where oid = 'public.atlas_forms'::regclass)
          and (select relrowsecurity from pg_class

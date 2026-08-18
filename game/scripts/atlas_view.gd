@@ -2,12 +2,15 @@ class_name AtlasView
 extends Control
 
 signal back_requested
+signal collection_requested
 signal toast_requested(message: String, is_error: bool)
 
-const CARD_MIN := Vector2(208, 320)
+const CARD_MIN := Vector2(208, 280)
 const CARD_PORTRAIT_MIN := Vector2(196, 196)
 const VISIT_CACHE_TTL_MSEC := 60_000
 const LOADING_SHIMMER_SEC := 0.72
+const DETAIL_IDLE_SEC := 1.6
+const DETAIL_IDLE_AMOUNT := 0.045
 const SILHOUETTE_SHADER := preload("res://shaders/atlas_silhouette.gdshader")
 const LOADING_SHIMMER_SHADER := preload("res://shaders/guard_shimmer.gdshader")
 const FILTERS := ["all", "scanned", "expedition", "duel"]
@@ -51,6 +54,7 @@ var _loading_portrait: TextureRect
 var _loading_material: ShaderMaterial
 var _loading_previous_material: Material
 var _loading_shimmer: Tween
+var _detail_idle: Tween
 var _thumb_cache: Dictionary = {}
 var _silhouette_material: ShaderMaterial
 var _all_entries_cache: Array[Dictionary] = []
@@ -63,6 +67,7 @@ func _ready() -> void:
 	var back_button := %AtlasBack as Button
 	back_button.tooltip_text = tr("ACTION_BACK")
 	back_button.pressed.connect(func() -> void: back_requested.emit())
+	%AtlasCollectionTab.pressed.connect(func() -> void: collection_requested.emit())
 	_load_more.pressed.connect(_load_next_page)
 	_detail_sheet.dismissed.connect(_on_detail_closed)
 	_chapter.item_selected.connect(_on_chapter_selected)
@@ -70,8 +75,9 @@ func _ready() -> void:
 		var button := get_node("%%%s" % FILTER_BUTTONS[filter_name]) as Button
 		button.pressed.connect(_select_filter.bind(filter_name))
 	var column := _status.get_parent()
-	column.move_child(_filters, 1)
-	column.move_child(_chapter, 2)
+	var tabs := column.get_node("CollectionTabs") as HBoxContainer
+	column.move_child(_filters, tabs.get_index() + 1)
+	column.move_child(_chapter, _filters.get_index() + 1)
 	_build_detail_sheet()
 	_sync_filter_buttons()
 
@@ -258,6 +264,8 @@ func set_busy(busy: bool) -> void:
 
 func refresh_localized_ui() -> void:
 	%AtlasBack.tooltip_text = tr("ACTION_BACK")
+	%AtlasCollectionTab.text = tr("COLLECTION_TAB_COLLECTION")
+	%AtlasAtlasTab.text = tr("COLLECTION_TAB_ATLAS")
 	_load_more.text = tr("ATLAS_LOAD_MORE")
 	for filter_name: String in FILTERS:
 		var button := get_node("%%%s" % FILTER_BUTTONS[filter_name]) as Button
@@ -482,14 +490,7 @@ func _make_card(entry: Dictionary) -> Control:
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(name_label)
 	var meta := Label.new()
-	meta.text = (
-		tr("ATLAS_CARD_META") % [
-			_atlas_element_label(entry),
-			_stage_name(int(entry.get("stage", 1))),
-		]
-		if discovered
-		else tr("ATLAS_UNDISCOVERED")
-	)
+	meta.text = _atlas_element_label(entry) if discovered else tr("ATLAS_UNDISCOVERED")
 	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	meta.theme_type_variation = &"MutedLabel"
@@ -580,7 +581,8 @@ func _open_detail(card: Dictionary, portrait: TextureRect) -> void:
 	_clear_card_loading()
 	set_busy(false)
 	_detail_portrait.texture = detail_texture if detail_texture != null else portrait.texture
-	_detail_sheet.open()
+	await _detail_sheet.open()
+	_start_detail_idle()
 
 
 func _present_detail(entry: Dictionary) -> void:
@@ -608,7 +610,12 @@ func _present_detail(entry: Dictionary) -> void:
 		_set_detail_value(key, LocaleManager.format_integer(int(stats.get(key, 0))))
 	_set_detail_value("strike", LocaleManager.move_name(entry, "strike"))
 	_set_detail_value("surge", LocaleManager.move_name(entry, "surge"))
-	var owner_name := str(entry.get("owner_name", ""))
+	var owner_value: Variant = entry.get("owner_name")
+	var owner_name := (
+		(owner_value as String).strip_edges()
+		if typeof(owner_value) == TYPE_STRING
+		else ""
+	)
 	_detail_owner_cell.visible = not owner_name.is_empty()
 	_detail_discovery_grid.columns = 2 if not owner_name.is_empty() else 1
 	_set_detail_value("owner", owner_name)
@@ -640,7 +647,39 @@ func _atlas_element_label(entry: Dictionary) -> String:
 	return LocaleManager.element_compact(display)
 
 
+func _start_detail_idle() -> void:
+	_stop_detail_idle()
+	if (
+		not is_instance_valid(_detail_portrait)
+		or _detail_portrait.texture == null
+		or not _detail_sheet.is_visible_in_tree()
+	):
+		return
+	_detail_portrait.pivot_offset = Vector2(
+		_detail_portrait.size.x * 0.5, _detail_portrait.size.y
+	)
+	_detail_idle = create_tween().set_loops()
+	_detail_idle.tween_property(
+		_detail_portrait,
+		"scale",
+		Vector2(1.0 - DETAIL_IDLE_AMOUNT * 0.5, 1.0 + DETAIL_IDLE_AMOUNT),
+		DETAIL_IDLE_SEC * 0.5
+	).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	_detail_idle.tween_property(
+		_detail_portrait, "scale", Vector2.ONE, DETAIL_IDLE_SEC * 0.5
+	).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+
+
+func _stop_detail_idle() -> void:
+	if _detail_idle != null and _detail_idle.is_valid():
+		_detail_idle.kill()
+	_detail_idle = null
+	if is_instance_valid(_detail_portrait):
+		_detail_portrait.scale = Vector2.ONE
+
+
 func _on_detail_closed() -> void:
+	_stop_detail_idle()
 	_selected = {}
 
 

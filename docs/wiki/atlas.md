@@ -1,7 +1,8 @@
 # Anima Atlas
 
 **Anima Atlas** adalah catatan form Anima yang pernah kamu buat atau temui.
-Buka **Menu** di bottom navigation, lalu pilih **Anima Atlas**.
+Buka **Collection**, lalu pilih tab **Atlas**. **Menu → Anima Atlas** tetap
+menjadi shortcut langsung ke tab yang sama.
 
 Server Atlas sudah aktif. Layar ini muncul setelah pemain memasang APK baru;
 build lama tetap menampilkan Gallery selama masa pembaruan.
@@ -13,6 +14,9 @@ Atlas memakai satu grid tiga kolom dengan filter:
 - **Scanned** — form milikmu sendiri.
 - **Expedition** — Anima yang benar-benar sudah muncul di arena Expedition.
 - **Duel** — Anima pemain lain yang sudah kamu lawan.
+
+Kartu grid hanya menampilkan nama dan elemen agar tiga kolom tetap mudah
+dipindai. Form Hatchling, Adult, atau Evolved tampil setelah profil dibuka.
 
 Hatchling, Adult, dan Evolved adalah entry terpisah. Scan langsung mencatat
 Hatchling milikmu; ritual **Evolve** mencatat form baru setelah art-nya berhasil
@@ -30,12 +34,15 @@ Tidak ada hadiah Bits, Core, atau badge untuk melengkapi Atlas saat ini.
 
 ## Isi profil Atlas
 
-Entry yang sudah ditemukan dapat menampilkan art, nama hasil generation, form,
-elemen, rarity, tinggi, attributes, Attack, Special, dan jumlah encounter.
+Entry yang sudah ditemukan dapat menampilkan art dengan gerak Idle, nama hasil
+generation, form, elemen, rarity, tinggi, attributes, Attack, Special, dan
+jumlah encounter.
 
 Untuk Anima Duel, nama Seeker pemilik ikut tampil. Nickname pribadi, kebutuhan
 Care, saldo, account ID, foto asli, dan link profil pemilik tidak pernah
-ditampilkan.
+ditampilkan. Profil tidak menampilkan baris Seeker jika memang tidak ada nama.
+Special Anima milik Boss Expedition dapat menampilkan nama Seeker chapter-nya;
+dukungan ini baru terlihat setelah pembaruan backend Atlas ikut dirilis.
 
 ## Publish Lineage
 

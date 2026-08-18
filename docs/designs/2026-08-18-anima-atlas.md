@@ -16,6 +16,10 @@ The Atlas has one three-column grid with four filters:
 - **Expedition** — the finite cast of a selected chapter.
 - **Duel** — forms belonging to other Seekers that were actually faced in Duel.
 
+Cards keep only generated name and element identity. Stage stays available in
+detail, but is omitted from the grid so Hatchling/Adult/Evolved labels do not
+force taller cards or compete with the form art.
+
 Only Expedition has a completion count. The set of player-created Anima is
 unbounded, so Duel and All never claim a global completion percentage.
 
@@ -33,10 +37,12 @@ unbounded, so Duel and All never claim a global completion percentage.
   alter balance gates, level-sync opponents, or prefer unseen opponents.
 - Repeated encounters update the last-seen time and encounter count; they do
   not create duplicate entries.
-- An unlocked detail shows its static encounter profile: generated name, art,
+- An unlocked detail shows its encounter profile: generated name, art,
   form, elements, safe traits, height, attributes, Attack, and Special. Duel
-  entries also show the current Seeker name of the owner. Care, nickname,
-  account identifiers, and public-profile links stay private.
+  entries also show the current Seeker name of the owner. A special Expedition
+  form shows its chapter's authored Boss Seeker name. Null names omit the Seeker
+  value entirely. Care, nickname, account identifiers, and public-profile links
+  stay private.
 - The MVP grants no Bits, Cores, badge, or other reward.
 
 ## Detail hierarchy
@@ -44,7 +50,8 @@ unbounded, so Duel and All never claim a global completion percentage.
 The mobile detail sheet uses progressive information hierarchy rather than one
 centered prose block:
 
-1. A compact portrait, generated name, form, and elements establish identity.
+1. A compact portrait with the same restrained Idle breathing used by Anima
+   presentation, plus generated name, form, and elements, establishes identity.
 2. **Traits** groups kind, rarity, form, and height in a two-column value grid.
 3. **Attributes** keeps the five combat stats in one comparison row, followed
    by separate Attack and Special values.
@@ -112,9 +119,13 @@ Settings contains Google account, Music, chapter notifications, Help, and
 Delete Account. Anima Profile is opened only from Collection or the Battle
 picker, and Back returns to its origin.
 
-The Atlas header follows the established Team/Expedition pattern: a flat,
-96 px left-chevron target sits before the title instead of a separate text
-button competing with the page heading.
+Collection and Atlas expose one shared **Collection / Atlas** tab pair with
+96 px touch targets. The Collection bottom-nav destination opens Collection;
+its Atlas tab opens the existing Atlas destination, while **Menu → Anima Atlas**
+remains a direct shortcut. The Atlas header keeps the established
+Team/Expedition pattern: a flat, vertically centered 96 px left-chevron target
+sits before the title instead of a separate text button competing with the page
+heading.
 
 The existing Reduced Motion preference, UI, helper, and alternate presentation
 paths are removed by explicit product decision. Normal animation timing becomes
@@ -154,3 +165,7 @@ the only path. Old local preference keys are ignored safely.
 - Chose three compact cards per Atlas row and portrait-local loading shimmer so
   browsing density improves without replacing the selected form with a global
   loading state.
+- Chose shared Collection/Atlas in-view tabs over a sixth bottom-nav item; Menu
+  remains a deep link rather than a second implementation.
+- Chose chapter-manifest ownership for special Expedition forms, denormalized at
+  Atlas registration, so the client never hardcodes Cotton or The Confectioner.

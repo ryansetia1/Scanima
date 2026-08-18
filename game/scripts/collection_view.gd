@@ -6,6 +6,7 @@ signal profile_requested(row: Dictionary)
 signal summon_requested(row: Dictionary, care_synced: bool)
 signal first_scan_requested
 signal retry_requested
+signal atlas_requested
 
 @onready var _status: Label = %CollectionStatus
 @onready var _list: ItemList = %AnimaList
@@ -48,11 +49,17 @@ var _evolution_enabled := false
 
 
 func _ready() -> void:
+	%CollectionAtlasTab.pressed.connect(func() -> void: atlas_requested.emit())
 	_list.item_selected.connect(_on_item_selected)
 	_empty_action.pressed.connect(_on_empty_action)
 	_sheet.dismissed.connect(_on_sheet_dismissed)
 	_profile_button.pressed.connect(_view_profile)
 	_summon_button.pressed.connect(_summon)
+
+
+func refresh_localized_ui() -> void:
+	%CollectionCollectionTab.text = tr("COLLECTION_TAB_COLLECTION")
+	%CollectionAtlasTab.text = tr("COLLECTION_TAB_ATLAS")
 
 
 func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Callable) -> void:

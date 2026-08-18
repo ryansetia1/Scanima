@@ -498,6 +498,8 @@ async function atlasDetail(
     ownerName = typeof profile?.seeker_name === "string"
       ? profile.seeker_name
       : "Seeker";
+  } else if (form.source_kind === "expedition") {
+    ownerName = atlasChapterSeekerName(form as Record<string, unknown>);
   }
 
   return json(200, {
@@ -555,11 +557,13 @@ function atlasCard(
       ? form.publication_id
       : null,
     display_name: discovered ? atlasDisplayName(form, ownerId) : "???",
-    owner_name: discovered && discovery?.discovery_source === "duel"
+    owner_name: !discovered
+      ? null
+      : discovery?.discovery_source === "duel"
       ? (typeof profile?.seeker_name === "string"
         ? profile.seeker_name
         : "Seeker")
-      : null,
+      : atlasChapterSeekerName(form),
     stage: discovered ? form.stage : null,
     element: discovered ? form.element : null,
     secondary_element: discovered ? form.secondary_element : null,
@@ -572,6 +576,17 @@ function atlasCard(
     last_seen_at: discovery?.last_seen_at ?? null,
     encounter_count: discovery?.encounter_count ?? 0,
   };
+}
+
+function atlasChapterSeekerName(
+  form: Record<string, unknown>,
+): string | null {
+  if (
+    form.source_kind !== "expedition" ||
+    typeof form.chapter_seeker_name !== "string"
+  ) return null;
+  const name = form.chapter_seeker_name.trim();
+  return name ? name.slice(0, 48) : null;
 }
 
 function atlasDisplayName(

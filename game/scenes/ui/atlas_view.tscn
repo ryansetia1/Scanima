@@ -39,9 +39,9 @@ flat = true
 [node name="AtlasBackIcon" type="TextureRect" parent="Column/Header/AtlasBack" unique_id=1140538587]
 layout_mode = 0
 offset_left = 32.0
-offset_top = 10.0
+offset_top = 32.0
 offset_right = 64.0
-offset_bottom = 42.0
+offset_bottom = 64.0
 mouse_filter = 2
 texture = ExtResource("3_kk8vk")
 expand_mode = 1
@@ -52,6 +52,27 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PageTitleLabel"
 text = "ATLAS_TITLE"
+
+[node name="CollectionTabs" type="HBoxContainer" parent="Column" unique_id=901226947]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AtlasCollectionTab" type="Button" parent="Column/CollectionTabs" unique_id=1884624665]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "COLLECTION_TAB_COLLECTION"
+
+[node name="AtlasAtlasTab" type="Button" parent="Column/CollectionTabs" unique_id=201830710]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_pressed = true
+text = "COLLECTION_TAB_ATLAS"
 
 [node name="AtlasStatus" type="Label" parent="Column" unique_id=696856712]
 unique_name_in_owner = true

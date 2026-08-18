@@ -27,7 +27,11 @@ tetapi client Atlas memakai operation versioned `atlas_list`/`atlas_detail`;
 `list`/`hide` dipertahankan hanya agar APK Gallery yang sudah terpasang tidak
 rusak selama rollout; `hide` juga membersihkan discovery pemiliknya. Migration
 `20260818162758_anima_atlas` + `20260818163916_index_anima_atlas_foreign_keys`
-tercatat production dan `gallery` version 16 ACTIVE dengan `verify_jwt=true`.
++ `20260818194445_atlas_expedition_seeker_name` +
+`20260818194755_defer_atlas_registration_until_art` tercatat production dan
+`gallery` version 17 ACTIVE dengan `verify_jwt=true`. Migration terakhir
+membuat trigger Atlas menunggu `sheet_path` + `manifest`, sehingga RPC rollback
+legacy `record_cache_hit` tetap bisa membuat Anima ready tanpa art privat.
 Jalur list tidak lagi memverifikasi JWT dua kali: gateway memvalidasi signature,
 lalu function hanya membaca `sub` UUID dari payload yang sudah terverifikasi.
 Query independen berangkat paralel, URL Storage ditandatangani per batch, dan
@@ -46,16 +50,29 @@ dihapus. Uji transaksi production untuk backfill, siluet chapter, serta cleanup
 unpublish/report/delete lulus dan rollback kembali ke 17 form / 18 discovery /
 1 publication. Backend rollout selesai; APK baru masih perlu
 dibangun/didistribusikan agar pemain melihat Menu dan Atlas.
+Follow-up `20260818194445_atlas_expedition_seeker_name` menyalin
+`boss_seeker.display_name` hanya ke form Expedition yang `special`, lalu
+`gallery` memproyeksikannya sebagai `owner_name`; jadi Cotton Special mendapat
+The Confectioner tanpa hardcode client. Migration/backfill dan source `gallery`
+ini sudah production 19 Agustus: Cotton terukur membawa The Confectioner,
+Gumdrop tetap null, helper internal hanya executable oleh `service_role`, dan
+smoke tanpa JWT tetap menjawab 401. `quota_rules.sql` lengkap lulus terhadap
+production sesudah guard art trigger ditambahkan.
 
 Client kandidat memakai bottom nav Home/Scan/Battle/Collection/**Menu**. Menu
 adalah launcher popover untuk Seeker Profile, Anima Atlas, dan Settings;
 Anima Profile hanya dari Collection/Battle picker, dan burger Top HUD dihapus.
+Collection dan Atlas juga memakai pasangan tab **Collection / Atlas** 96px;
+Menu Atlas menjadi deep link ke destination yang sama, bukan implementasi kedua.
 Atlas memakai satu grid All/Scanned/Expedition/Duel, form terpisah, siluet
 Expedition, profil statis, serta consent publish satu lineage. Detail profil
 memakai hero ringkas lalu kartu Traits/Attributes/Discovery; lima stat tetap
 satu baris, Attack/Special menjadi nilai terpisah, dan Report adalah aksi teks
-sekunder touch-safe. Grid mobile memakai tiga kolom; tap form memberi shimmer
-lokal pada portrait selama `atlas_detail` dimuat. Back sistem/gesture menutup
+sekunder touch-safe. Grid mobile memakai tiga kolom ringkas yang hanya membawa
+nama + elemen; stage tinggal di detail. Portrait detail memakai napas Idle,
+`owner_name = null` menghilangkan sel Seeker alih-alih menulis `<null>`, dan
+chevron header dipusatkan vertikal. Tap form memberi shimmer lokal pada portrait
+selama `atlas_detail` dimuat. Back sistem/gesture menutup
 detail lebih dulu, lalu fallback shell menutup `UiBottomSheet` visible terakhir
 agar semua bottom sheet mengikuti kontrak yang sama. Seluruh
 preference, setting, cabang, dan referensi runtime **Reduced Motion** sudah
@@ -590,7 +607,11 @@ Spesifikasi isi prompt ada di [docs/02-prompt-engineering.md](docs/02-prompt-eng
   lineage; lawan pemain baru tercatat sesudah Duel, cast Expedition tampil sebagai
   siluet sampai benar-benar muncul, dan owned form tercatat saat Scan/Evolve sukses.
   Detail Duel hanya membawa generated profile + nama Seeker terkini, tanpa
-  nickname, care, account ID, atau link profil. Unpublish/delete/auto-hide
+  nickname, care, account ID, atau link profil. Special Expedition membaca
+  `special` + `boss_seeker.display_name` dari manifest chapter ke
+  `atlas_forms.chapter_seeker_name`; jangan hardcode slug Cotton/Confectioner di
+  Godot. Nilai null wajib menghilangkan sel Seeker, bukan menjadi `<null>`.
+  Unpublish/delete/auto-hide
   membersihkan discovery non-owner; report langsung menyembunyikan lineage dari
   reporter. Tabel `gallery_entries`, `gallery_moderations`, dan slug function
   `/gallery` tetap dipertahankan sebagai consent/moderation/bot-pool wire, bukan
@@ -718,8 +739,8 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 npm run selftest                       # 38 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd # 182 check manifest, loader, presenter, Boss Seeker
 godot --headless --path game --script res://tests/test_client_state.gd  # 151 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, retry transport
-godot --headless --path game --script res://tests/test_scan_ui.gd       # 819 check shell + Battle + Shop + Bag + komponen + tap + touch + UI/SFX hooks + reduced motion + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution
-godot --headless --path game --script res://tests/test_i18n.gd          # 4075 check katalog + key + formatter + wrapping
+godot --headless --path game --script res://tests/test_scan_ui.gd       # 862 check shell + Battle + Shop + Bag + komponen + tap + touch + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas
+godot --headless --path game --script res://tests/test_i18n.gd          # 4314 check katalog + key + formatter + wrapping
 godot --headless --path game --script res://tests/test_game_rules.gd    # 181 check care + EXP/Level/evolution + kontrak event Battle
 godot --headless --path game --script res://tests/test_expedition_route_map.gd # 79 check route tree + preview/Enter Node + Skip Shop + prediksi turn/Switch/penutup Boss
 node backend/tools/emit_sim_vectors.mjs                                 # regen golden vector JS -> GDScript, nol panggilan API
