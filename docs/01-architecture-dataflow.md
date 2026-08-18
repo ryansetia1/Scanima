@@ -19,11 +19,14 @@ Sheet final disimpan di bucket privat
 men-cache berdasarkan `anima_id`. `species_library` dan bucket `sheets` hanya
 rollback legacy dan tidak menerima capture v13 baru.
 
-Gallery terpisah dari art privat. Publish akun Google memoderasi sheet satu kali
-per hash, membuat hanya thumbnail Idle di bucket privat `gallery_thumbs`, dan
-feed mengembalikan signed URL singkat tanpa owner ID, Seeker name, nickname,
-sheet path, atau foto asli. Battle memilih bot pemain hanya dari entry Gallery
-approved; lawan sistem/legacy tetap fallback saat feed kosong.
+Anima Atlas terpisah dari art privat. Publish akun Google memberi consent untuk
+seluruh lineage dan memoderasi sheet satu kali per hash; nama tabel, bucket
+`gallery_thumbs`, dan endpoint `gallery` tetap sebagai wire legacy. Atlas
+menyatukan form milik sendiri, encounter Duel, serta encounter Expedition dalam
+`atlas_forms` + `seeker_atlas_discoveries`. Entry Duel boleh menampilkan nama
+Seeker saat ini, tetapi tidak owner ID, nickname, care, foto asli, atau link
+profil. Battle memilih bot pemain hanya dari publication approved; lawan
+sistem/legacy tetap fallback saat pool kosong.
 
 Target mode berikutnya tidak mengganti jalur Duel. `team_battle` memakai
 resolver roster terpisah yang mengimpor formula stat/damage/elemen yang sama,

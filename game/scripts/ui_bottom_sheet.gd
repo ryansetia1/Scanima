@@ -185,11 +185,6 @@ func _on_viewport_size_changed() -> void:
 
 
 func _on_drag_input(event: InputEvent) -> void:
-	if UiMotion.reduced_motion:
-		if _is_press(event):
-			close()
-			accept_event()
-		return
 	var y := _event_y(event)
 	if _is_press(event):
 		_begin_drag(y)

@@ -50,7 +50,7 @@ func _initialize() -> void:
 	_check_full_rect(scene.find_child("SafeMargin", true, false) as Control, "safe margin")
 	for name in [
 		"HomeView", "ScanView", "BattleView", "CollectionView",
-		"AnimaDetailsView", "SeekerProfileView", "GalleryView",
+		"AnimaDetailsView", "SeekerProfileView", "AtlasView",
 	]:
 		var view := scene.find_child(name, true, false) as Control
 		_check(view != null, "%s must exist" % name)
@@ -63,20 +63,20 @@ func _initialize() -> void:
 	var collection := scene.find_child("CollectionView", true, false) as Control
 	var details := scene.find_child("AnimaDetailsView", true, false) as Control
 	var seeker_profile := scene.find_child("SeekerProfileView", true, false) as Control
-	var gallery := scene.find_child("GalleryView", true, false) as Control
+	var atlas := scene.find_child("AtlasView", true, false) as Control
 	_check(home != null and home.visible, "Home is the default destination")
 	_check(scan != null and not scan.visible, "Scan starts hidden")
 	_check(battle != null and not battle.visible, "Battle starts hidden")
 	_check(collection != null and not collection.visible, "Collection starts hidden")
 	_check(details != null and not details.visible, "Details starts hidden")
 	_check(seeker_profile != null and not seeker_profile.visible, "Seeker profile starts hidden")
-	_check(gallery != null and not gallery.visible, "Gallery starts hidden")
+	_check(atlas != null and not atlas.visible, "Atlas starts hidden")
 
 	for name in [
 		"ScanButton", "HomeNavButton", "ScanNavButton", "BattleNavButton",
-		"CollectionNavButton", "AnimaNavButton",
+		"CollectionNavButton", "MenuNavButton",
 		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "EditAnimaNameButton",
-		"DeleteAnimaButton", "GalleryPublishButton", "EvolveAnimaButton", "GalleryBack", "GalleryLoadMore",
+		"DeleteAnimaButton", "GalleryPublishButton", "EvolveAnimaButton", "AtlasBack", "AtlasLoadMore",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
 		"CollectionSummonButton", "BattlePickProfileButton", "BattlePickBattleButton",
 		"BattleStartButton", "BattleTeamButton", "BattleExpeditionButton", "BattleStrikeButton",
@@ -88,9 +88,9 @@ func _initialize() -> void:
 		"TeamSwitchSlot0", "TeamSwitchSlot1", "TeamSwitchSlot2", "TeamSwitchSlot3",
 		"TeamRetryButton", "TeamLeaveButton",
 		"ExpeditionChoiceAbandon",
-		"SeekerMenuButton", "OnboardingSubmit", "SeekerProfileBack", "RenameSeeker",
-		"ChapterPush",
-		"SeekerProfile", "SeekerGallery", "SeekerAccount", "SeekerHelp", "DeleteAccount",
+		"OnboardingSubmit", "SeekerProfileBack", "RenameSeeker",
+		"ChapterPush", "MenuProfile", "MenuAtlas", "MenuSettings",
+		"SeekerAccount", "SeekerHelp", "DeleteAccount",
 	]:
 		var button := scene.find_child(name, true, false) as Button
 		_check(button != null, "%s must exist" % name)
@@ -100,6 +100,20 @@ func _initialize() -> void:
 				"%s must be at least %.0f px tall" % [name, TOUCH_MIN]
 			)
 
+	_check(scene.find_child("AnimaNavButton", true, false) == null, "Anima Profile is not a bottom nav tab")
+	var menu_nav := scene.find_child("MenuNavButton", true, false) as Button
+	var menu_label := menu_nav.find_child("Label", true, false) as Label if menu_nav != null else null
+	_check(
+		menu_label != null and (menu_label.text == "NAV_MENU" or menu_label.text == tr("NAV_MENU")),
+		"Menu tab is the launcher instead of a profile destination"
+	)
+	var menu_popover := scene.find_child("MenuPopover", true, false) as Control
+	_check(menu_popover != null and not menu_popover.visible, "Menu popover starts closed")
+	var menu_source := FileAccess.get_file_as_string("res://scripts/menu_popover.gd")
+	_check(
+		menu_source.find("size = get_viewport_rect().size") >= 0,
+		"Menu popover fills the viewport when opened from a CanvasLayer"
+	)
 	var list := scene.find_child("AnimaList", true, false) as ItemList
 	_check(list != null, "AnimaList must exist")
 	if list != null:
@@ -109,10 +123,10 @@ func _initialize() -> void:
 	var backend_flow := FileAccess.get_file_as_string("res://scripts/backend.gd")
 	_check(
 		scan_flow.find("_prepare_signed_battle_art") >= 0
-		and scan_flow.find("GALLERY_DEST") >= 0,
-		"scan_flow wires gallery destination and signed battle art"
+		and scan_flow.find("ATLAS_DEST") >= 0,
+		"scan_flow wires atlas destination and signed battle art"
 	)
-	_check(backend_flow.find("func gallery(") >= 0, "Backend exposes gallery transport")
+	_check(backend_flow.find("func atlas(") >= 0, "Backend exposes atlas transport")
 	_check(
 		scan_flow.find("CareRules.collection_pose") >= 0
 		and scan_flow.find("begin_visit()") >= 0
@@ -345,17 +359,24 @@ func _initialize() -> void:
 			nav.set_scan_emphasized(true)
 
 	var juice_probe := Button.new()
+	juice_probe.custom_minimum_size = Vector2(120.0, 96.0)
+	root.add_child(juice_probe)
+	await process_frame
 	UiJuice.install_button(juice_probe)
 	_check(juice_probe.has_meta(&"_scanima_juice_installed"), "button motion installs idempotently")
-	UiMotion.set_reduced_motion(true)
 	juice_probe.scale = Vector2(0.5, 0.5)
 	UiJuice.reveal(juice_probe)
-	_check_eq(juice_probe.scale, Vector2.ONE, "reduced motion reveals without scaling")
+	await create_timer(0.40).timeout
+	_check(absf(juice_probe.scale.x - 1.0) < 0.05, "reveal animates scale to normal")
 	var meter_probe := ProgressBar.new()
+	meter_probe.custom_minimum_size = Vector2(240.0, 32.0)
+	root.add_child(meter_probe)
+	await process_frame
+	meter_probe.value = 0.0
 	UiJuice.tween_meter(meter_probe, 73.0)
-	_check_eq(meter_probe.value, 73.0, "reduced motion updates meters immediately")
+	await create_timer(0.45).timeout
+	_check_eq(meter_probe.value, 73.0, "meter tween reaches target value")
 	meter_probe.free()
-	UiMotion.set_reduced_motion(false)
 	juice_probe.free()
 
 	for cue_path in [
@@ -550,7 +571,7 @@ func _initialize() -> void:
 	await _test_expedition_view()
 	await _test_battle_pick_sheet()
 	await _test_collection_bottom_sheet()
-	await _test_gallery_detail_sheet()
+	await _test_atlas_view()
 	await _test_profile_info_rows()
 	await _test_anima_delete_action()
 	await _test_evolve_profile_cta()
@@ -561,7 +582,6 @@ func _initialize() -> void:
 
 
 func _test_shared_components() -> void:
-	UiMotion.set_reduced_motion(true)
 	var modal = (load("res://scenes/ui/ui_modal.tscn") as PackedScene).instantiate()
 	root.add_child(modal)
 	await process_frame
@@ -581,7 +601,8 @@ func _test_shared_components() -> void:
 		"UiModal input mode exposes the current value and Cancel"
 	)
 	modal.close()
-	_check(not modal.visible, "UiModal closes immediately under Reduced Motion")
+	await create_timer(0.25).timeout
+	_check(not modal.visible, "UiModal closes after its dismiss animation")
 
 	var chip = (load("res://scenes/ui/resource_chip.tscn") as PackedScene).instantiate()
 	root.add_child(chip)
@@ -614,13 +635,13 @@ func _test_shared_components() -> void:
 	sheet.open()
 	_check(sheet.visible, "UiBottomSheet opens through shared chrome")
 	sheet.close()
-	_check(not sheet.visible, "UiBottomSheet closes immediately under Reduced Motion")
+	await create_timer(0.30).timeout
+	_check(not sheet.visible, "UiBottomSheet closes after its dismiss animation")
 
 	var fresh = (load("res://scenes/ui/ui_bottom_sheet.tscn") as PackedScene).instantiate()
 	root.add_child(fresh)
-	fresh.open()
-	await process_frame
-	await process_frame
+	await fresh.open()
+	await create_timer(0.40).timeout
 	var fresh_panel := fresh.panel() as Control
 	var fresh_column := fresh_panel.find_child("Column", true, false) as VBoxContainer
 	var fresh_content := fresh_panel.find_child("ContentSlot", true, false) as VBoxContainer
@@ -701,7 +722,6 @@ func _test_shared_components() -> void:
 	var animated_bag = (load("res://scenes/ui/shop_sheet.tscn") as PackedScene).instantiate()
 	root.add_child(animated_bag)
 	await process_frame
-	UiMotion.set_reduced_motion(false)
 	animated_bag.set_meta("test_opened", false)
 	animated_bag.opened.connect(func() -> void: animated_bag.set_meta("test_opened", true))
 	animated_bag.set_catalog(catalog, inventory, 0)
@@ -726,7 +746,6 @@ func _test_shared_components() -> void:
 	animated_bag.close()
 	await create_timer(0.3).timeout
 	animated_bag.queue_free()
-	UiMotion.set_reduced_motion(true)
 
 	shop_sheet.set_catalog(catalog, inventory, 0)
 	shop_sheet.open_shop("item")
@@ -859,8 +878,8 @@ func _test_shared_components() -> void:
 	root.add_child(skeleton)
 	skeleton.set_loading(true)
 	_check(
-		skeleton.visible and is_equal_approx(skeleton.modulate.a, 0.58),
-		"UiSkeleton uses a static Reduced Motion state"
+		skeleton.visible and skeleton.get("_pulse") != null,
+		"UiSkeleton pulses while authoritative data is still loading"
 	)
 	skeleton.set_loading(false)
 	_check(not skeleton.visible, "UiSkeleton clears when authoritative data arrives")
@@ -871,7 +890,6 @@ func _test_shared_components() -> void:
 	shop_sheet.queue_free()
 	skeleton.queue_free()
 	await process_frame
-	UiMotion.set_reduced_motion(false)
 
 
 func _test_care_feedback_is_immediate() -> void:
@@ -1047,7 +1065,6 @@ func _test_home_tap_interaction(scene: Node) -> void:
 
 
 func _test_anima_tap_reactions() -> void:
-	UiMotion.set_reduced_motion(false)
 	var presenter = load("res://scripts/anima_presenter.gd").new()
 	root.add_child(presenter)
 	await process_frame
@@ -1084,13 +1101,6 @@ func _test_anima_tap_reactions() -> void:
 	var accent: float = await _lowest_sample(0.4, func() -> float: return -presenter.scale.y)
 	_check(accent < -1.02, "tapping a Dormant Anima gives a weak accent")
 
-	UiMotion.set_reduced_motion(true)
-	presenter.set_pose("idle")
-	presenter.react_to_tap()
-	await process_frame
-	_check_eq(presenter.position, Vector2.ZERO, "Reduced Motion keeps a tapped Anima still")
-	UiMotion.set_reduced_motion(false)
-
 	presenter.queue_free()
 	await process_frame
 
@@ -1107,7 +1117,6 @@ func _lowest_sample(seconds: float, sampler: Callable) -> float:
 
 
 func _test_scan_phase_visuals() -> void:
-	UiMotion.set_reduced_motion(false)
 	var packed := load("res://scenes/ui/scan_view.tscn") as PackedScene
 	var view := packed.instantiate()
 	root.add_child(view)
@@ -1126,11 +1135,6 @@ func _test_scan_phase_visuals() -> void:
 	_check(preview.visible, "analysis keeps the captured photo visible")
 	_check(not idle_graphic.visible, "analysis hides the idle camera graphic")
 	_check(overlay.visible and overlay.is_processing(), "analysis animates a scanner over the photo")
-
-	UiMotion.set_reduced_motion(true)
-	view.set_phase(&"idle")
-	view.set_phase(&"analyzing")
-	_check(overlay.visible and not overlay.is_processing(), "Reduced Motion keeps a static scan overlay")
 
 	view.clear_preview()
 	view.set_phase(&"synthesizing")
@@ -1199,11 +1203,9 @@ func _test_scan_phase_visuals() -> void:
 
 	view.queue_free()
 	await process_frame
-	UiMotion.set_reduced_motion(false)
 
 
 func _test_seeker_ui() -> void:
-	UiMotion.set_reduced_motion(true)
 	var flow_script := load("res://scripts/scan_flow.gd") as GDScript
 	_check(
 		not flow_script.profile_value_present({"guest_scan_used_at": null}, &"guest_scan_used_at"),
@@ -1286,19 +1288,15 @@ func _test_seeker_ui() -> void:
 	var menu = (load("res://scenes/ui/seeker_menu_sheet.tscn") as PackedScene).instantiate()
 	root.add_child(menu)
 	await process_frame
-	menu.show_menu({"seeker_name": "Nova_13"}, true, true, true, true)
+	menu.show_menu(true, true, true, true)
 	_check(
-		(menu.find_child("SeekerMenuTitle", true, false) as Label).text == "Nova_13",
-		"Seeker menu shows the current Seeker name"
+		(menu.find_child("SeekerMenuTitle", true, false) as Label).text == tr("SETTINGS_TITLE"),
+		"Settings menu uses the shared title"
 	)
 	_check(
 		(menu.find_child("SeekerAccount", true, false) as Button).text
 			== tr("SEEKER_SIGN_IN_GOOGLE"),
 		"guest account action offers Google sign-in"
-	)
-	_check(
-		(menu.find_child("ReducedMotion", true, false) as CheckButton).button_pressed,
-		"Reduced Motion preference is reflected in Settings"
 	)
 	_check(
 		(menu.find_child("ChapterPush", true, false) as CheckButton).visible
@@ -1320,11 +1318,11 @@ func _test_seeker_ui() -> void:
 		(menu.find_child("MusicEnabled", true, false) as CheckButton).button_pressed,
 		"music plays by default and can be turned off from Settings"
 	)
-	menu.show_menu({"seeker_name": null}, true, false, false, false, false)
+	menu.show_menu(true, false, false, false)
 	_check(
 		(menu.find_child("SeekerMenuTitle", true, false) as Label).text
-			== tr("SEEKER_MENU_TITLE"),
-		"guest menu never renders a null wire value"
+			== tr("SETTINGS_TITLE"),
+		"Settings title stays stable for guest accounts"
 	)
 	_check(
 		not (menu.find_child("MusicEnabled", true, false) as CheckButton).button_pressed,
@@ -1394,11 +1392,9 @@ func _test_seeker_ui() -> void:
 	menu.queue_free()
 	profile.queue_free()
 	await process_frame
-	UiMotion.set_reduced_motion(false)
 
 
 func _test_battle_view() -> void:
-	UiMotion.set_reduced_motion(true)
 	# The view reads durable pending bookmarks at ready time; isolate this UI test
 	# from whichever Battle the developer currently has saved in user://.
 	var game_state := get_root().get_node("GameState")
@@ -1884,7 +1880,6 @@ func _test_battle_view() -> void:
 		not strike.disabled and not surge.disabled and not guard.disabled and item != null and not item.disabled,
 		"active turn unlocks four actions"
 	)
-	UiMotion.set_reduced_motion(false)
 	player_sprite.set_pose("attack")
 	bot_sprite.set_pose("attack")
 	var bot_impact := bot_sprite.to_global(bot_sprite.offset)
@@ -1908,7 +1903,6 @@ func _test_battle_view() -> void:
 	)
 	player_sprite.set_pose("idle")
 	bot_sprite.set_pose("idle")
-	UiMotion.set_reduced_motion(true)
 
 	view.set_loading("BATTLE_RESUMING")
 	_check(
@@ -1989,8 +1983,8 @@ func _test_battle_view() -> void:
 	)
 	var victory_hop := player_sprite.get("_feedback") as Tween
 	_check(
-		victory_hop == null or victory_hop.get_loops_left() != -1,
-		"Reduced Motion menang tanpa lompatan tak berujung"
+		victory_hop != null and victory_hop.get_loops_left() == -1,
+		"Hatchling win keeps bouncing until the next pose"
 	)
 	_check(result.size.y >= 236.0, "Battle result grows upward and stays clear of bottom navigation")
 	_check(
@@ -2094,11 +2088,9 @@ func _test_battle_view() -> void:
 
 	view.queue_free()
 	await process_frame
-	UiMotion.set_reduced_motion(false)
 
 
 func _test_team_battle_view() -> void:
-	UiMotion.set_reduced_motion(true)
 	var packed := load("res://scenes/ui/team_battle_view.tscn") as PackedScene
 	var view := packed.instantiate()
 	root.add_child(view)
@@ -2512,7 +2504,6 @@ func _test_team_battle_view() -> void:
 	var camera_before := switch_camera_layer.scale
 	var previous_layout: Dictionary = view.call("_fighter_layout")
 	view.call("_apply_side", switched, "player", true, false)
-	UiMotion.set_reduced_motion(false)
 	var refit := view.call(
 		"_reframe_for_switch", switched, previous_layout, true
 	) as Tween
@@ -2536,7 +2527,6 @@ func _test_team_battle_view() -> void:
 		{"type": "switch", "actor": "player", "from_slot": 0, "to_slot": 1},
 		switched
 	)
-	UiMotion.set_reduced_motion(true)
 	_check(
 		switch_camera_layer.scale.is_equal_approx(camera_after),
 		"Switch applies the new framing before the next attack event"
@@ -2924,7 +2914,6 @@ func _test_team_battle_view() -> void:
 	)
 	view.queue_free()
 	await process_frame
-	UiMotion.set_reduced_motion(false)
 
 
 func _test_expedition_view() -> void:
@@ -3341,7 +3330,6 @@ func _test_expedition_view() -> void:
 
 
 func _test_battle_pick_sheet() -> void:
-	UiMotion.set_reduced_motion(true)
 	var packed := load("res://scenes/ui/battle_pick_sheet.tscn") as PackedScene
 	var sheet := packed.instantiate()
 	root.add_child(sheet)
@@ -3398,10 +3386,12 @@ func _test_battle_pick_sheet() -> void:
 	sheet.open_picker([ready], "ready-one", Callable(), true)
 	sheet._on_item_selected(0)
 	_check(battle_btn.text == tr("BATTLE_TRAIN"), "training lobby labels the sheet action Train")
-	_check(sheet.handle_back() and sheet.handle_back() and not sheet.visible, "back from the list closes the picker")
+	_check(sheet.handle_back() and sheet.visible and not detail.visible, "back from detail returns to the list")
+	_check(sheet.handle_back(), "back from the list starts closing the picker")
+	await create_timer(0.30).timeout
+	_check(not sheet.visible, "back from the list closes the picker")
 	sheet.queue_free()
 	await process_frame
-	UiMotion.set_reduced_motion(false)
 
 
 func _test_collection_routes_are_explicit() -> void:
@@ -3416,7 +3406,7 @@ func _test_collection_routes_are_explicit() -> void:
 		summon_start, summon_end - summon_start
 	) if summon_start >= 0 and summon_end > summon_start else ""
 	_check(
-		profile_body.find("_switch_destination(BottomNav.ANIMA, row)") >= 0,
+		profile_body.find("_switch_destination(ANIMA_PROFILE_DEST, row)") >= 0,
 		"View Profile opens the selected Anima without summoning it"
 	)
 	_check(
@@ -3435,7 +3425,6 @@ func _test_collection_routes_are_explicit() -> void:
 
 
 func _test_collection_bottom_sheet() -> void:
-	UiMotion.set_reduced_motion(true)
 	var packed := load("res://scenes/ui/collection_view.tscn") as PackedScene
 	var collection := packed.instantiate()
 	root.add_child(collection)
@@ -3483,10 +3472,10 @@ func _test_collection_bottom_sheet() -> void:
 	)
 	var sheet_source := FileAccess.get_file_as_string("res://scripts/ui_bottom_sheet.gd")
 	_check(
-		sheet_source.find("if UiMotion.reduced_motion:") >= 0
-		and sheet_source.find("close()") >= 0
-		and sheet_source.find("DISMISS_PX") >= 0,
-		"sheet swipe follows the finger and closes immediately under reduced motion"
+		sheet_source.find("DISMISS_PX") >= 0
+		and sheet_source.find("_on_drag_input") >= 0
+		and sheet_source.find("close()") >= 0,
+		"sheet swipe follows the finger and dismisses past the threshold"
 	)
 	_check(
 		skeleton != null and skeleton.visible and care_rows != null and not care_rows.visible,
@@ -3503,6 +3492,7 @@ func _test_collection_bottom_sheet() -> void:
 	)
 
 	_check(skeleton != null and not skeleton.visible and care_rows.visible, "care sync reveals real meters")
+	await create_timer(0.45).timeout
 	_check_eq(hp.text, "74", "bottom sheet exposes base stats at a glance")
 	_check_eq(hunger.value, 42.0, "bottom sheet exposes authoritative care at a glance")
 	_check(summon != null and not summon.disabled, "non-active Anima can be summoned")
@@ -3534,38 +3524,94 @@ func _test_collection_bottom_sheet() -> void:
 	)
 	collection.queue_free()
 	await process_frame
-	UiMotion.set_reduced_motion(false)
 
 
-func _test_gallery_detail_sheet() -> void:
-	UiMotion.set_reduced_motion(true)
-	var packed := load("res://scenes/ui/gallery_view.tscn") as PackedScene
+func _test_atlas_view() -> void:
+	var packed := load("res://scenes/ui/atlas_view.tscn") as PackedScene
 	var view := packed.instantiate() as Control
+	view.custom_minimum_size = Vector2(720.0, 1280.0)
 	root.add_child(view)
 	view.visible = true
 	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	await process_frame
-	var sheet := view.find_child("GalleryDetailSheet", true, false) as Control
+	await process_frame
+	var sheet := view.find_child("AtlasDetailSheet", true, false) as UiBottomSheet
 	_check(
 		sheet != null
 		and is_equal_approx(sheet.anchor_right, 1.0)
 		and is_equal_approx(sheet.anchor_bottom, 1.0),
-		"Gallery detail sheet is a full-rect child of GalleryView"
+		"Atlas detail sheet is a full-rect child of AtlasView"
 	)
+	_check(view.has_method("_make_card"), "Anima Atlas scene exposes the AtlasView contract")
+	_check(view.has_method("show_demo"), "Anima Atlas exposes a no-network visual QA path")
+	for node_name: String in ["AtlasAll", "AtlasScanned", "AtlasExpedition", "AtlasDuel"]:
+		_check(view.find_child(node_name, true, false) is Button, "%s filter exists" % node_name)
+	var discovered := view.call("_make_card", {
+		"form_id": "form-discovered",
+		"discovered": true,
+		"display_name": "Sprig",
+		"element": "plant",
+		"secondary_element": "earth",
+		"stage": 2,
+	}) as Button
+	var silhouette := view.call("_make_card", {
+		"form_id": "form-hidden",
+		"discovered": false,
+		"display_name": "Hidden Name",
+		"source_kind": "expedition",
+	}) as Button
+	_check(not discovered.disabled, "discovered Atlas forms open their profile")
+	_check(silhouette.disabled, "undiscovered Expedition forms stay silhouette-only")
+	var discovered_column := discovered.get_child(0) as VBoxContainer
+	_check(
+		(discovered_column.get_child(1) as Label).text == "Sprig",
+		"Atlas card shows the generated form name"
+	)
+	var discovered_meta := (discovered_column.get_child(2) as Label).text
+	_check(
+		discovered_meta.find("Plant · Stone") >= 0 and discovered_meta.find("Adult") >= 0,
+		"Atlas card shows both elements and the registered form stage"
+	)
+	var hidden_column := silhouette.get_child(0) as VBoxContainer
+	var hidden_portrait := hidden_column.get_child(0) as TextureRect
+	_check(hidden_portrait.material is ShaderMaterial, "undiscovered Expedition art uses a true silhouette shader")
+	_check(
+		(hidden_column.get_child(1) as Label).text == "???",
+		"Expedition silhouette does not reveal its name"
+	)
+	var detail_copy := str(view.call("_detail_copy", {
+		"stage": 2,
+		"subject_kind": "object",
+		"element": "plant",
+		"secondary_element": "earth",
+		"rarity": 3,
+		"body_height_cm": 88,
+		"base_stats": {"hp": 51, "atk": 52, "def": 53, "spd": 54, "special": 55},
+		"strike_name": "Leaf Jab",
+		"surge_name": "Root Rise",
+		"owner_name": "AtlasOwner",
+		"encounter_count": 2,
+		"nickname": "PrivateNickname",
+		"care": {"hunger": 1},
+	}))
+	_check(detail_copy.find("AtlasOwner") >= 0, "Duel Atlas detail includes the current Seeker name")
+	_check(
+		detail_copy.find("PrivateNickname") < 0 and detail_copy.find("hunger") < 0,
+		"Atlas detail never exposes nickname or care state"
+	)
+	discovered.queue_free()
+	silhouette.queue_free()
 	await sheet.open()
-	await process_frame
-	var panel := (sheet as UiBottomSheet).panel() if sheet is UiBottomSheet else null
+	await create_timer(0.45).timeout
+	var panel := sheet.panel()
+	var bottom_gap := absf(panel.get_global_rect().end.y - sheet.get_global_rect().end.y)
 	_check(
 		sheet.visible
-		and sheet.size.x >= view.size.x - 1.0
-		and sheet.size.y >= view.size.y - 1.0
-		and is_equal_approx(sheet.position.x, 0.0)
-		and is_equal_approx(sheet.position.y, 0.0)
 		and panel != null
-		and is_equal_approx(panel.offset_bottom, 0.0)
+		and absf(panel.offset_bottom) < 0.05
 		and panel.offset_top < 0.0
-		and is_equal_approx(panel.position.x, 0.0),
-		"Gallery detail sheet fills its host and sits on the bottom edge"
+		and bottom_gap < 2.0,
+		"Atlas detail sheet fills its host and sits on the bottom edge"
 	)
 	var juice_source := FileAccess.get_file_as_string("res://scripts/ui_juice.gd")
 	_check(
@@ -3576,7 +3622,6 @@ func _test_gallery_detail_sheet() -> void:
 	)
 	view.queue_free()
 	await process_frame
-	UiMotion.set_reduced_motion(false)
 
 
 func _test_profile_info_rows() -> void:
@@ -4017,12 +4062,9 @@ func _test_evolve_profile_cta() -> void:
 	incubator.start_evolution()
 	await process_frame
 	_check(incubator.is_active(), "evolution chamber mode activates")
-	UiMotion.reduced_motion = true
-	incubator.start_evolution()
-	await process_frame
-	_check(incubator.is_active(), "reduced motion keeps evolution chamber visible")
-	_check(not incubator.is_processing(), "reduced motion stops idle chamber frame processing")
-	UiMotion.reduced_motion = false
+	_check(incubator.is_processing(), "evolution chamber keeps animating while active")
+	incubator.stop()
+	_check(not incubator.is_active(), "evolution chamber stop clears the ritual")
 	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
 		flow_source.find("call_deferred(\"_show_rename\", anima_id, suggested)") >= 0
@@ -4253,21 +4295,28 @@ func _test_bottom_nav_busy() -> void:
 	var home_button := nav.find_child("HomeNavButton", true, false) as Button
 	var scan_button := nav.find_child("ScanNavButton", true, false) as Button
 	var battle_button := nav.find_child("BattleNavButton", true, false) as Button
-	var details_button := nav.find_child("AnimaNavButton", true, false) as Button
+	var menu_button := nav.find_child("MenuNavButton", true, false) as Button
 	_check(buttons != null and buttons.get_child_count() == 5, "bottom navigation contains five tabs")
+	_check(nav.find_child("AnimaNavButton", true, false) == null, "bottom nav no longer exposes Anima Profile")
 	_check(
 		battle_button != null and battle_button.find_child("Content", true, false) is VBoxContainer,
 		"Battle tab keeps the vertical icon-over-label layout"
 	)
 	nav.set_active(BottomNav.BATTLE)
 	_check(battle_button.button_pressed, "Battle destination has an explicit active state")
+	menu_button.button_pressed = true
+	nav.call("_select", BottomNav.MENU)
+	_check(
+		battle_button.button_pressed and not menu_button.button_pressed,
+		"Menu launches its popover without replacing the active destination"
+	)
 	nav.set_busy(true, true)
 	_check(not home_button.disabled, "busy requests keep Home navigation available")
 	_check(not scan_button.disabled, "busy requests keep Scan navigation available")
 	_check(not battle_button.disabled, "busy requests keep Battle navigation available")
-	_check(not details_button.disabled, "available Anima remains inspectable while busy")
+	_check(menu_button.disabled, "Menu launcher blocks concurrent profile and Atlas requests while busy")
 	nav.set_busy(false, false)
-	_check(details_button.disabled, "profile stays disabled without an Anima")
+	_check(not menu_button.disabled, "Menu launcher becomes available after busy clears")
 	nav.queue_free()
 	await process_frame
 
@@ -4297,13 +4346,6 @@ func _test_incubator_effect() -> void:
 	await effect.burst()
 	await create_timer(0.45).timeout
 	_check(not effect.visible and not effect.is_active(), "Summon portal cleans itself up")
-	UiMotion.set_reduced_motion(true)
-	await effect.start_portal()
-	_check(
-		not effect.visible and not effect.is_active(),
-		"Reduced Motion skips the Summon portal entirely"
-	)
-	UiMotion.set_reduced_motion(false)
 	effect.free()
 
 

@@ -8,11 +8,11 @@ hubungkan Google untuk Scan lagi dan menjaga progres lintas perangkat.
 
 - Guest baru mendapat **1 Core** dan **50 Bits**.
 - Guest boleh menyelesaikan **satu Scan**.
-- Kalau spesiesnya baru, Scan memakai 1 Core dan menyalakan inkubator.
-- Kalau art spesiesnya sudah ada, Core tidak berkurang, tetapi kesempatan Scan
-  guest tetap selesai.
+- Scan yang diterima memakai 1 Core dan menyalakan inkubator untuk membuat art
+  privat yang unik.
 - Sesudahnya tombol Scan menjadi **Sign in to Scan Again**.
-- Home, Care, Battle, Shop, Collection, dan profil Anima tetap bisa dipakai.
+- Home, Care, Battle, Shop, Collection, profil Anima, dan Anima Atlas tetap bisa
+  dipakai.
 
 Kalau Genesis benar-benar gagal dan Core dikembalikan, kesempatan guest ikut
 kembali selama belum ada Scan sukses lain.
@@ -29,21 +29,26 @@ Sesudah Anima pertama menetas, sheet **Create Your Seeker** meminta:
 Sheet boleh ditutup dulu. Selama nama belum dibuat, game akan menawarkannya lagi.
 **Change Seeker Name** tersedia sesudahnya, dengan jeda 30 hari antarperubahan.
 
-## Menu Seeker
+## Menu
 
-Tap ikon menu 96px di baris HUD atas.
+Tap **Menu** di bottom navigation. Popover berisi:
 
 | Aksi | Fungsi |
 | --- | --- |
 | **Seeker Profile** | Lihat Level, EXP, koleksi, kemenangan, dan tanggal bergabung |
+| **Anima Atlas** | Lihat form yang sudah kamu Scan atau temui |
+| **Settings** | Buka pengaturan akun dan aplikasi |
+
+Di **Settings**:
+
+| Aksi | Fungsi |
+| --- | --- |
 | **Sign in with Google** | Hubungkan guest atau pulihkan Seeker lama |
-| **Reduced Motion** | Kurangi gerakan UI, Care, Battle, dan inkubator |
 | **Music** | Nyalakan atau matikan lagu latar. Default menyala |
 | **Help** | Penjelasan singkat Seeker |
 | **Delete Account** | Hapus seluruh akun secara permanen |
 
-Reduced Motion dan Music adalah setting perangkat. Keduanya tetap tersimpan saat
-kamu berganti akun.
+Music adalah setting perangkat dan tetap tersimpan saat kamu berganti akun.
 
 Lagu latar berganti sendiri mengikuti layar: satu lagu tenang untuk Home, Scan,
 Collection, dan lobby Battle, satu lagu cepat begitu Duel, Team Battle, atau
@@ -94,6 +99,7 @@ berada di pustaka untuk pemain lain.
 
 ## Lihat juga
 
-- [Ekonomi](economy.md) — Cores, guest Scan, dan cache hit
+- [Ekonomi](economy.md) — Cores dan guest Scan
 - [Anima](anima.md) — EXP, nickname, dan Delete Anima
+- [Anima Atlas](atlas.md) — form Scanned, Expedition, dan Duel
 - [Battle](battle.md) — Battle, Train, dan kemenangan

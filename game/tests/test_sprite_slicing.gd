@@ -294,21 +294,6 @@ func _test_presenter() -> void:
 		play_feedback != null and play_feedback.get_loops_left() == 6,
 		"Play harus memulai beberapa bounce, bukan satu hop"
 	)
-	UiMotion.set_reduced_motion(true)
-	presenter.modulate = Color(0.68, 0.72, 0.82, 1.0)
-	presenter.care_feedback("play")
-	_check_eq(presenter.current_pose(), "happy", "Reduced Motion tetap menampilkan pose Happy")
-	_check(
-		(presenter.get("_feedback") as Tween).get_loops_left() != 6,
-		"Reduced Motion tidak boleh memulai bounce Play"
-	)
-	_check_eq(presenter.position, presenter.get("_base_position"), "Reduced Motion harus mengembalikan posisi dasar")
-	_check(
-		presenter.modulate != Color.WHITE,
-		"Reduced Motion tidak boleh menghapus tint state authoritative"
-	)
-	UiMotion.set_reduced_motion(false)
-
 	# apply() dengan data gagal tidak boleh merusak Anima yang sedang tampil.
 	_check(not presenter.apply({"ok": false, "error": "uji"}), "apply data gagal harus mengembalikan false")
 	_check(presenter.sprite_frames != null, "frames lama harus tetap terpasang")
@@ -386,31 +371,7 @@ func _test_presenter() -> void:
 	presenter.call("_clear_shimmer")
 	_check(presenter.material == null, "kilau Guard harus melepas materialnya sendiri")
 
-	UiMotion.set_reduced_motion(true)
-	presenter.victory_celebration()
-	_check_eq(
-		presenter.current_pose(), "happy", "Reduced Motion tetap memakai pose Happy saat menang"
-	)
-	var quiet_victory := presenter.get("_feedback") as Tween
-	_check(
-		quiet_victory == null or quiet_victory.get_loops_left() != -1,
-		"Reduced Motion tidak boleh melompat terus"
-	)
-	presenter.guard_shimmer()
-	_check(
-		float((presenter.material as ShaderMaterial).get_shader_parameter("progress")) > 0.0,
-		"Reduced Motion tetap menyalakan badan Guard, hanya tanpa sapuan"
-	)
-	presenter.call("_clear_shimmer")
-	UiMotion.set_reduced_motion(false)
-	presenter.set_pose("idle")
-
 	presenter.set_facing(1.0)
-	var rest := presenter.position
-	UiMotion.set_reduced_motion(true)
-	presenter.hit_react()
-	_check_eq(presenter.position, rest, "Reduced Motion hit does not shake")
-	UiMotion.set_reduced_motion(false)
 	presenter.hit_react()
 	_check(presenter.get("_feedback") != null, "hit_react starts a shake tween")
 	presenter.set_pose("dirty")

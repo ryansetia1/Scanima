@@ -154,8 +154,9 @@ tujuan jangka menengah serta panjang.
 
 #### Expression
 
-Nama Anima, isi Collection, pilihan companion, susunan tim, dan Gallery menjadi
-cara pemain menunjukkan identitasnya.
+Nama Anima, isi Collection, pilihan companion, susunan tim, publication lineage,
+dan nama Seeker pada entry Duel Anima Atlas menjadi cara pemain menunjukkan
+identitasnya.
 
 ## Diagnosis utama
 

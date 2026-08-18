@@ -3,10 +3,10 @@
 Dokumen ini mendesain tiga sistem yang saling terikat: perawatan gaya Tamagotchi, ekonomi yang menahan biaya API agar tidak meledak, dan pertarungan berbasis stat yang diturunkan dari foto objek.
 
 > **Status kontrak (15 Agustus 2026):** Ekonomi capture privat, 18 elemen,
-> dual typing, grant Core mingguan, dan bot Gallery di bawah sudah menjadi
+> dual typing, grant Core mingguan, dan bot dari publication Atlas di bawah sudah menjadi
 > kontrak production. Bagian bertanda *historis* dipertahankan hanya sebagai
-> decision record sebelum cutover. Spesifikasi art privat dan Gallery:
-> [08 — Art Privat dan Gallery](08-private-art-and-gallery.md).
+> decision record sebelum cutover. Spesifikasi art privat dan Anima Atlas:
+> [08 — Art Privat dan Anima Atlas](08-private-art-and-gallery.md).
 
 Urutannya sengaja: ekonomi dibahas lebih dulu daripada yang terlihat wajar, karena struktur biaya API menentukan bentuk game loop-nya. Mendesain loop dulu lalu menempelkan monetisasi belakangan akan menghasilkan game yang bangkrut pada pemain ke-500.
 
@@ -405,7 +405,7 @@ memberi damage/HP gratis dan tanpa menutup HUD. Sheet Boss 3×3 1024 dibuka
 per sel penuh (341 px) di client; capture 300 px memotong kaki tubuh yang
 lebih tinggi dari jendela itu.
 
-`createFighter` memotong stat tempur pemain sesudah pertumbuhan level kalau care rendah. Hunger < 40 interpolasi linear ke ×0.6 di 0; Hygiene < 50 interpolasi ke ×0.7 di 0; keduanya dikalikan lalu dijepit minimal ×0.5. Ambang sama dengan pose Hungry/Dirty. Bot Gallery/legacy tidak dipotong; **lawan sistem Duel dipotong sama besar** karena snapshot-nya membawa Hunger/Hygiene pemain (lihat [Resep lawan sistem](#resep-lawan-sistem)). Simulasi tier `battleRewardPreview` menetralkan care di kedua sisi supaya care rendah tidak menaikkan Bits — tanpa itu Anima lapar+kotor menang 0% dan naik ke Formidable 15 Bits. Hunger dan Hygiene bukan gerbang masuk.
+`createFighter` memotong stat tempur pemain sesudah pertumbuhan level kalau care rendah. Hunger < 40 interpolasi linear ke ×0.6 di 0; Hygiene < 50 interpolasi ke ×0.7 di 0; keduanya dikalikan lalu dijepit minimal ×0.5. Ambang sama dengan pose Hungry/Dirty. Bot publication/legacy tidak dipotong; **lawan sistem Duel dipotong sama besar** karena snapshot-nya membawa Hunger/Hygiene pemain (lihat [Resep lawan sistem](#resep-lawan-sistem)). Simulasi tier `battleRewardPreview` menetralkan care di kedua sisi supaya care rendah tidak menaikkan Bits — tanpa itu Anima lapar+kotor menang 0% dan naik ke Formidable 15 Bits. Hunger dan Hygiene bukan gerbang masuk.
 
 ### Element wheel — target (18 elemen)
 
@@ -515,7 +515,7 @@ static func element_multiplier(attacker: String, defender: String) -> float:
 
 DEF dipakai sebagai peredam multiplikatif `100/(100+DEF)`, bukan pengurang `ATK - DEF`. Alasannya praktis: dengan pengurang, Anima ber-DEF tinggi kebal total terhadap ATK rendah, dan pertarungan macet. Dengan peredam, damage minimum tetap mengalir — dan graph 18 elemen memberi jalan menang yang sah (mis. `paper` kuat vs `stone`).
 
-Setiap event serangan membawa `element_multiplier` authoritative dari formula server. Client menampilkan `Super effective!` untuk `1.5`, `Not very effective.` untuk `0.67`, dan tidak menampilkan callout pada matchup netral; warna serta punch angka damage mengikuti hasil yang sama. Callout memakai Oxanium ExtraBold besar dengan outline gelap dan glow warna—tanpa box, border, atau garis samping—di ruang kosong tepat di bawah fighter HUD agar tidak menutupi badan Anima. Tilt dan pop dimatikan oleh Reduced Motion. Dengan begitu feedback elemen terasa sebagai impact saat hit tanpa menyalin roda elemen ke client.
+Setiap event serangan membawa `element_multiplier` authoritative dari formula server. Client menampilkan `Super effective!` untuk `1.5`, `Not very effective.` untuk `0.67`, dan tidak menampilkan callout pada matchup netral; warna serta punch angka damage mengikuti hasil yang sama. Callout memakai Oxanium ExtraBold besar dengan outline gelap dan glow warna—tanpa box, border, atau garis samping—di ruang kosong tepat di bawah fighter HUD agar tidak menutupi badan Anima. Dengan begitu feedback elemen terasa sebagai impact saat hit tanpa menyalin roda elemen ke client.
 
 Peluang critical diambil dari SPD: `crit_chance = clampf(spd / 400.0, 0.02, 0.25)`. Ini membuat SPD bernilai ganda (urutan turn dan crit) sehingga objek ringan dan lincah punya identitas yang jelas di pertarungan, bukan cuma bergerak lebih dulu.
 
@@ -640,12 +640,12 @@ Lawan Battle:
 
 | | Aturan live | Sebelum 17 Agustus 2026 |
 | --- | --- | --- |
-| Sumber | Gallery published, lalu legacy privat, lalu bot sistem | Gallery published lalu legacy |
+| Sumber | Publication Atlas approved, lalu legacy privat, lalu bot sistem | Gallery published lalu legacy |
 | Identitas | Tidak pernah `owner_id` / nickname | Sama |
 | Matching | ±15% base stat + **gate keseimbangan**; stage sama diutamakan | ±15% base stat saja |
 | Pool kosong / tidak ada yang seimbang | **Bot sistem** dari `_shared/duel_bot.mjs` | Error `NO_BATTLE_OPPONENT` |
 
-Detail publish/unpublish Galeri: [08](08-private-art-and-gallery.md). PvP
+Detail publish/unpublish lineage dan discovery Atlas: [08](08-private-art-and-gallery.md). PvP
 real-time, ranked, dan item drop tetap ditunda.
 
 #### Gate keseimbangan Duel

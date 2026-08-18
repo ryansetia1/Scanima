@@ -17,7 +17,7 @@ func _ready() -> void:
 
 func set_active(active: bool) -> void:
 	visible = active
-	set_process(active and not UiMotion.reduced_motion)
+	set_process(active)
 	if active:
 		queue_redraw()
 
@@ -32,7 +32,7 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var center := Vector2(0.0, -116.0)
-	var pulse := 1.0 if UiMotion.reduced_motion else 1.0 + sin(_phase * 2.4) * 0.035
+	var pulse := 1.0 + sin(_phase * 2.4) * 0.035
 	draw_circle(center, 108.0 * pulse, Color(0.06, 0.12, 0.28, 0.34))
 	draw_arc(center, 108.0 * pulse, 0.0, TAU, 64, Color(CYAN, 0.32), 3.0, true)
 	draw_arc(

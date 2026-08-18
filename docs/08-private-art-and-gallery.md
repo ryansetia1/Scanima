@@ -1,6 +1,10 @@
-# 08 — Art Privat, Galeri, dan Bot Pool
+# 08 — Art Privat, Anima Atlas, dan Bot Pool
 
-Dokumen ini adalah spesifikasi arsitektur/produk untuk kontrak **art privat + Galeri opsional** yang sedang diimplementasikan. Ia melengkapi [04 — Game Loop & Core Systems](04-game-systems-economy.md) pada bagian ekonomi Scan dan Battle bot pool.
+Dokumen ini adalah spesifikasi arsitektur/produk untuk kontrak **art privat +
+publikasi lineage opsional**. UI pemainnya adalah Anima Atlas; nama tabel,
+bucket, dan endpoint `gallery*` tetap dipertahankan sebagai wire kompatibilitas.
+Ia melengkapi [04 — Game Loop & Core Systems](04-game-systems-economy.md) pada
+bagian ekonomi Scan dan Battle bot pool.
 
 Kontrak ini live sejak cutover 15 Agustus 2026. `species_library` dan bucket
 `sheets` privat tetap ada hanya sebagai rollback legacy; capture baru selalu
@@ -13,8 +17,8 @@ unik dan privat.
 | Kepemilikan art | **Privat per pemilik** — setiap capture diterima menghasilkan generation unik milik akun pemain |
 | Reuse art antar pemain | **Tidak** — tidak ada cache hit Discovery Scan; dua pemain memfoto objek sama tetap masing-masing membayar generation |
 | Visibilitas default | **Privat** — hanya pemilik (dan sistem otoritatif) melihat sheet/manifest penuh |
-| Galeri | **Opsional, art-only** — pemain memilih publish thumbnail; tidak ada identitas pemilik atau fitur sosial |
-| Bot Battle | Hanya Anima yang **published ke Galeri** masuk pool lawan pemain; fallback sistem jika pool kosong |
+| Anima Atlas | Discovery log form Scanned/Expedition/Duel; publikasi lineage pemain bersifat opt-in |
+| Bot Battle | Hanya Anima yang **published ke Atlas** masuk pool lawan pemain; fallback sistem jika pool kosong |
 
 Motivasi ekonomi: biaya generation (~$0.07 per capture diterima) harus selalu tertutup Core; biaya Vision (~$0.003) dibatasi Scan Charge agar percobaan gate tidak meledak tanpa batas.
 
@@ -74,33 +78,50 @@ sequenceDiagram
 | Data | Pemilik | Client authenticated | Publik |
 | --- | --- | --- | --- |
 | Sheet RGBA + manifest penuh | Row `animas` / storage path scoped `owner_id` | Hanya `auth.uid() = owner_id` | Tidak |
-| Thumbnail Galeri (jika publish) | Sistem + referensi ke generation | Tidak (baca lewat endpoint Galeri) | Ya, moderated |
+| Thumbnail publikasi (jika publish) | Sistem + referensi ke generation | Tidak (baca lewat endpoint Atlas) | Ya, moderated |
 | Metadata Battle bot (snapshot) | Derived dari publish | Lawan duel: snapshot anonim | Tidak identitas |
+| Registry form Atlas | `atlas_forms` | Tidak langsung; Edge Function service-role | Hanya subset hasil discovery |
+| Discovery Seeker | `seeker_atlas_discoveries` | Tidak langsung; ditulis trigger authoritative | Hanya milik Seeker lewat endpoint |
 
-**RLS:** semua tabel data pemain tetap `owner_id`-scoped. Galeri hanya mengekspos subset yang sengaja dipublish — bukan salinan profil atau nickname.
+**RLS:** semua tabel data pemain tetap tertutup dari query client langsung.
+Endpoint Atlas hanya mengekspos subset form yang dimiliki atau sudah ditemukan.
+Untuk entry Duel, nama Seeker saat ini boleh tampil; nickname Anima, care,
+account ID, foto, dan link profil tidak pernah ikut.
 
 **Delete Anima:** hard delete row pemilik; generation audit boleh dipertahankan tanpa `anima_id`. Art privat di storage pemilik dihapus; **tidak** ada entri bersama di pustaka global yang harus dipertahankan untuk pemain lain.
 
-## 5. Galeri — produk dan moderasi
+## 5. Anima Atlas, publikasi, dan moderasi
 
-Galeri bukan feed sosial. Kontrak fitur:
+Gallery Feed sudah dihentikan. Anima Atlas memakai satu grid dengan filter
+All/Scanned/Expedition/Duel. Hatchling, Adult, dan Evolved adalah form terpisah.
+Cast chapter terbuka dapat tampil sebagai siluet; profil baru terbuka setelah
+encounter authoritative.
 
 | Ada | Tidak ada |
 | --- | --- |
-| Thumbnail art-only (pose Idle atau frame kurasi) | Nama pemilik, avatar, atau `@handle` |
-| Nama Anima + elemen + stage (metadata gameplay netral) | Like, comment, follow, DM |
-| Opt-in publish / unpublish oleh pemilik | Leaderboard penemu pertama |
-| Moderation queue sebelum thumbnail live | Repost otomatis semua capture |
+| Form yang dibuat sendiri atau ditemui di Duel/Expedition | Feed publik, like, comment, follow, DM |
+| Profil statis form dan nama Seeker pemilik entry Duel | Nickname, care, account ID, foto, link profil |
+| Opt-in publish / unpublish seluruh lineage | Reward completion pada MVP |
+| Moderation sebelum lineage masuk Duel pool | Discovery client-side yang bisa dipalsukan |
 
-**Alur publish (live):**
+**Alur publish:**
 
 1. Pemain membuka Anima siap (`ready`) dari Collection atau Profile.
-2. Aksi **Publish to Gallery** — konfirmasi bahwa thumbnail akan terlihat publik (tanpa identitas).
+2. Aksi **Publish Lineage to Atlas** menjelaskan bahwa generated profile, form
+   yang ditemui, dan nama Seeker saat ini dapat terlihat.
 3. Server enqueue moderation (otomatis + manual jika flag).
-4. Setelah `approved`, thumbnail masuk indeks Galeri read-only.
-5. **Unpublish** menarik dari indeks; bot pool Battle berhenti memakai Anima itu pada session baru.
+4. Setelah `approved`, lineage masuk pool Duel.
+5. Battle session authoritative mencatat form lawan ke Atlas penantang.
+6. **Unpublish** menarik lineage dari pool dan menghapus discovery non-owner.
 
 Moderation memeriksa thumbnail yang sama seperti gate capture: tidak manusia, tidak NSFW, tidak simbol terlarang. Reject tidak menghapus Anima privat pemain.
+
+`atlas_forms` menyimpan snapshot form kanonis; `seeker_atlas_discoveries`
+menyimpan sumber, first/last seen, count, dan Level saat encounter. Trigger
+`animas`, `battle_sessions`, `expedition_encounters`, serta switch Expedition
+menulis ledger. Backfill rilis mengisi form milik pemain, Duel historis yang sah,
+dan encounter Expedition historis. Report menghapus lineage dari Atlas reporter;
+auto-hide, unpublish, atau Delete menghapus seluruh discovery non-owner.
 
 ## 6. Bot pool Battle
 
@@ -108,7 +129,7 @@ Vertical slice **historis** memakai snapshot anonim dari `species_library` (semu
 
 ```mermaid
 graph TD
-    Start["start_battle"] --> Pool{"Pool Galeri published"}
+    Start["start_battle"] --> Pool{"Pool lineage published"}
     Pool -->|ada kandidat| Match["Pilih snapshot ±15% power,<br/>stage match prioritas"]
     Pool -->|kosong / gagal match| Fallback["Bot sistem<br/>(template stat + art fallback)"]
     Match --> Session["battle_sessions.bot snapshot"]
@@ -117,7 +138,7 @@ graph TD
 
 | Aturan | Detail |
 | --- | --- |
-| Sumber lawan | Hanya Anima dengan `gallery_published = true` dan moderation `approved` |
+| Sumber lawan | Hanya Anima dengan publication `published = true` dan moderation `approved` |
 | Anonimitas | Snapshot tidak membawa `owner_id`, nickname Seeker, atau link profil |
 | Matching | Sama seperti slice live: total base stat ±15%, prioritas stage sama |
 | Fallback | Bot sistem deterministik dari seed session — bukan pemain nyata |
@@ -149,8 +170,11 @@ Saat implementasi, verifikasi minimal:
 
 - Dua akun memfoto objek identik → dua generation terpisah, dua debit Core, tidak share `sheet_path`.
 - Guest / linked: aturan slot guest dan grant starter tetap; grant mingguan hanya linked, interval 7 hari server, saldo gratis ≤ 3.
-- Battle tanpa publish di Galeri → fallback sistem, bukan error.
-- Galeri: query publik tidak mengembalikan kolom `owner_id` atau identitas Seeker.
-- Unpublish → hilang dari Galeri dan pool bot session berikutnya.
+- Battle tanpa publication → fallback sistem, bukan error.
+- Atlas: detail Duel hanya mengembalikan nama Seeker; tidak ada nickname, care,
+  account ID, foto, atau link profil.
+- Unpublish/Delete/auto-hide → hilang dari Atlas non-owner dan pool bot session
+  berikutnya.
+- Report → lineage hilang dari Atlas reporter.
 
 Rincian rumus Battle (18 elemen, Attack/Special element) ada di [04 §5](04-game-systems-economy.md).

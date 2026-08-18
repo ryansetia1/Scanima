@@ -68,8 +68,7 @@ Setelah siap:
 6. care state authoritative diterapkan.
 
 Efek ini tidak memakai telur/inkubator karena Anima bukan sedang menetas.
-Reduced Motion langsung mengganti companion tanpa dissolve atau portal. Efek
-dissolve cukup memakai fade, scale, dan spark; tidak perlu shader baru yang
+Efek dissolve cukup memakai fade, scale, dan spark; tidak perlu shader baru yang
 berisiko bentrok dengan chroma key.
 
 ### Empty state adalah bagian dari Home
@@ -106,8 +105,7 @@ sehingga tidak diperlukan flag first-launch.
 ## Verifikasi
 
 - `test_scan_ui.gd`: sheet hidden/open, kedua section stats, active CTA, kedua
-  route, stale-response guard, Loading/Error/Empty/Ready Home, touch target, dan
-  Reduced Motion.
+  route, stale-response guard, Loading/Error/Empty/Ready Home, dan touch target.
 - `test_sprite_slicing.gd`: dissolve/reveal mengembalikan visibility dan
   transform presenter.
 - Demo gratis: `--collection-sheet-demo`, `--empty-demo`, `--summon-demo`.

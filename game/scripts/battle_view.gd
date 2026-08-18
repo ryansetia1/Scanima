@@ -376,8 +376,7 @@ func begin_action(action: String) -> void:
 	_queued_action = action
 	_busy = true
 	_show_action_commit(action)
-	if not UiMotion.reduced_motion:
-		Input.vibrate_handheld(18)
+	Input.vibrate_handheld(18)
 	_update_action_state()
 
 
@@ -443,9 +442,6 @@ func _show_action_commit(action: String) -> void:
 	selected_commit.pivot_offset = selected_commit.size * 0.5
 	selected_commit.scale = Vector2(0.0, 1.0)
 	selected_commit.modulate = Color.WHITE
-	if UiMotion.reduced_motion:
-		selected_commit.scale = Vector2.ONE
-		return
 	_command_tween = create_tween()
 	_command_tween.tween_property(selected_commit, "scale:x", 1.0, 0.10) \
 		.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
@@ -636,32 +632,28 @@ func _play_attack(event: Dictionary) -> void:
 		apply_hp_bar_state(_bot_hp, float(event.get("target_hp", 0)), _bot_hp.max_value)
 	if is_instance_valid(target):
 		target.hit_react(element_multiplier)
-		if UiMotion.reduced_motion:
-			target.modulate = Color.WHITE
-		else:
-			target.modulate = Color(1.65, 0.45, 0.55, 1.0)
-			var flash := create_tween()
-			flash.tween_property(target, "modulate", Color.WHITE, 0.28)
-			Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
-	if not UiMotion.reduced_motion:
-		_damage.modulate = Color.WHITE
-		_damage.pivot_offset = _damage.size * 0.5
-		_damage.scale = Vector2(0.72, 0.72)
-		var damage_start_y := _damage.position.y
-		var float_damage := create_tween()
-		float_damage.tween_property(_damage, "scale", Vector2(1.22, 1.22), 0.10) \
-			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		float_damage.parallel().tween_property(_damage, "position:y", damage_start_y - 10.0, 0.10)
-		float_damage.tween_property(_damage, "scale", Vector2.ONE, 0.12) \
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		float_damage.parallel().tween_property(_damage, "position:y", damage_start_y - 20.0, 0.12)
-		float_damage.tween_interval(0.06)
-		float_damage.tween_property(_damage, "modulate:a", 0.0, 0.16)
-		float_damage.parallel().tween_property(_damage, "position:y", damage_start_y - 42.0, 0.16)
-		await float_damage.finished
-		_damage.position.y = damage_start_y
-		_damage.scale = Vector2.ONE
-		_damage.modulate = Color.WHITE
+		target.modulate = Color(1.65, 0.45, 0.55, 1.0)
+		var flash := create_tween()
+		flash.tween_property(target, "modulate", Color.WHITE, 0.28)
+		Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
+	_damage.modulate = Color.WHITE
+	_damage.pivot_offset = _damage.size * 0.5
+	_damage.scale = Vector2(0.72, 0.72)
+	var damage_start_y := _damage.position.y
+	var float_damage := create_tween()
+	float_damage.tween_property(_damage, "scale", Vector2(1.22, 1.22), 0.10) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	float_damage.parallel().tween_property(_damage, "position:y", damage_start_y - 10.0, 0.10)
+	float_damage.tween_property(_damage, "scale", Vector2.ONE, 0.12) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	float_damage.parallel().tween_property(_damage, "position:y", damage_start_y - 20.0, 0.12)
+	float_damage.tween_interval(0.06)
+	float_damage.tween_property(_damage, "modulate:a", 0.0, 0.16)
+	float_damage.parallel().tween_property(_damage, "position:y", damage_start_y - 42.0, 0.16)
+	await float_damage.finished
+	_damage.position.y = damage_start_y
+	_damage.scale = Vector2.ONE
+	_damage.modulate = Color.WHITE
 	_damage.visible = false
 	if not effect_key.is_empty():
 		await _present_banner(
@@ -706,8 +698,6 @@ func _show_banner(text: String, color: Color, big: bool = true) -> void:
 	)
 	_damage.add_theme_color_override("font_color", color)
 	_damage.add_theme_font_size_override("font_size", 54 if big else 46)
-	if UiMotion.reduced_motion:
-		return
 	_effectiveness.modulate.a = 0.0
 	_effectiveness.scale = Vector2(0.70, 0.70)
 	_effectiveness_tween = create_tween().set_parallel(true)
@@ -721,9 +711,6 @@ func _show_banner(text: String, color: Color, big: bool = true) -> void:
 
 func _hide_effectiveness() -> void:
 	if not _effectiveness.visible:
-		return
-	if UiMotion.reduced_motion:
-		_effectiveness.visible = false
 		return
 	if is_instance_valid(_effectiveness_tween):
 		_effectiveness_tween.kill()
@@ -1113,8 +1100,6 @@ func _readability_pause(seconds: float = ACTION_CUE_SEC) -> void:
 
 
 func _event_pause(seconds: float) -> void:
-	if UiMotion.reduced_motion:
-		return
 	await get_tree().create_timer(seconds).timeout
 
 

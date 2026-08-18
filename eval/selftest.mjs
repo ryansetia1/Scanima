@@ -2436,7 +2436,7 @@ console.log("23c. gallery moderation + thumb crop");
   assert.equal(unsafe.reject_reason, "human");
 }
 
-console.log("23c. gallery edge function kontrak");
+console.log("23c. Anima Atlas memakai consent/moderasi Gallery");
 {
   const { readFile } = await import("node:fs/promises");
   const galleryEdge = await readFile(
@@ -2447,20 +2447,63 @@ console.log("23c. gallery edge function kontrak");
     new URL("../backend/supabase/functions/_shared/gallery_moderation.mjs", import.meta.url),
     "utf8",
   );
-  for (const op of ["list", "publish", "unpublish", "report", "hide", "my_status"]) {
-    assert.ok(galleryEdge.includes(`"${op}"`), `gallery operation ${op} harus ada`);
+  const atlasMigration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260818142631_anima_atlas.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const atlasClient = await readFile(
+    new URL("../game/scripts/atlas_view.gd", import.meta.url),
+    "utf8",
+  );
+  for (const op of ["atlas_list", "atlas_detail", "publish", "unpublish", "report", "my_status"]) {
+    assert.ok(galleryEdge.includes(`"${op}"`), `Atlas operation ${op} harus ada`);
   }
-  assert.match(galleryEdge, /feature_gallery/, "gallery harus menghormati feature flag");
-  assert.match(galleryEdge, /GOOGLE_IDENTITY_REQUIRED|requireLinkedGoogle/, "publish gallery harus linked Google");
+  assert.match(
+    galleryEdge,
+    /operation === "list"[\s\S]+listLegacyEntries[\s\S]+operation === "hide"[\s\S]+hideEntry/,
+    "build Gallery terpasang harus tetap hidup selama rollout Atlas",
+  );
+  assert.match(
+    atlasClient,
+    /Backend\.atlas\("atlas_list"[\s\S]+Backend\.atlas\("atlas_detail"/,
+    "client Atlas tidak boleh tertukar dengan wire Gallery build lama",
+  );
+  assert.match(galleryEdge, /feature_atlas/, "Atlas harus menghormati feature flag");
+  assert.match(galleryEdge, /seeker_atlas_discoveries/, "list Atlas harus membaca discovery ledger");
+  assert.match(galleryEdge, /atlas_forms/, "detail Atlas harus membaca registry form");
+  assert.match(
+    galleryEdge,
+    /expedition_chapter_catalog[\s\S]+row\.unlocked === true/,
+    "Silhouette Atlas harus memakai unlock chapter kanonis, termasuk chapter pertama",
+  );
+  assert.match(galleryEdge, /GOOGLE_IDENTITY_REQUIRED|requireLinkedGoogle/, "Publish lineage harus linked Google");
+  assert.match(
+    galleryEdge,
+    /if \(chapterId\)[\s\S]+discoveryByForm[\s\S]+next_cursor: null/,
+    "Chapter terpilih harus mengembalikan seluruh cast + discovery tanpa pagination global",
+  );
   assert.match(
     galleryModeration,
     /specific nameable character[\s\S]+commercial franchise/,
     "moderasi Gallery harus menolak karakter franchise yang bisa disebut namanya",
   );
   assert.match(
-    galleryEdge,
-    /select\("id, display_name/,
-    "list gallery hanya mengekspos metadata publik",
+    atlasMigration,
+    /battle_session_records_atlas[\s\S]+expedition_encounter_records_atlas[\s\S]+expedition_turn_records_atlas/,
+    "Duel, encounter awal, dan switch Expedition harus punya hook authoritative",
+  );
+  assert.match(
+    atlasMigration,
+    /if not new\.published or new\.auto_hidden then[\s\S]+delete from public\.seeker_atlas_discoveries/,
+    "Unpublish dan auto-hide harus membersihkan discovery non-owner",
+  );
+  assert.match(
+    atlasMigration,
+    /revoke all on function public\._atlas_upsert_discovery/,
+    "client tidak boleh memalsukan discovery Atlas",
   );
 }
 

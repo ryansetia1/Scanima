@@ -424,8 +424,7 @@ func begin_action(action: String) -> void:
 		return
 	_busy = true
 	_show_action_commit(action)
-	if not UiMotion.reduced_motion:
-		Input.vibrate_handheld(18)
+	Input.vibrate_handheld(18)
 	_update_arena_actions()
 
 
@@ -872,7 +871,7 @@ func _play_switch(event: Dictionary, next_session: Dictionary) -> void:
 	var sprite := _sprite_for(side)
 	var portal := _portal_for(side)
 	var previous_layout := _fighter_layout()
-	if UiMotion.reduced_motion or not is_instance_valid(sprite):
+	if not is_instance_valid(sprite):
 		_apply_side(next_session, side, true)
 		_reframe_for_switch(next_session, previous_layout, false)
 		return
@@ -1015,13 +1014,10 @@ func _play_attack(event: Dictionary) -> void:
 	if is_instance_valid(target):
 		_react_seeker_attack(event)
 		target.hit_react(element_multiplier)
-		if UiMotion.reduced_motion:
-			target.modulate = Color.WHITE
-		else:
-			target.modulate = Color(1.65, 0.45, 0.55, 1.0)
-			var flash := create_tween()
-			flash.tween_property(target, "modulate", Color.WHITE, 0.28)
-			Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
+		target.modulate = Color(1.65, 0.45, 0.55, 1.0)
+		var flash := create_tween()
+		flash.tween_property(target, "modulate", Color.WHITE, 0.28)
+		Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
 	await _play_damage(int(event.get("damage", 0)), element_multiplier)
 	_restore_seeker_idle()
 	if not effect_key.is_empty():
@@ -1065,8 +1061,6 @@ func _show_banner(text: String, color: Color, big: bool = true) -> void:
 		"font_shadow_color", Color(color.r, color.g, color.b, 0.48)
 	)
 	_effectiveness_label.add_theme_font_size_override("font_size", 40 if big else 32)
-	if UiMotion.reduced_motion:
-		return
 	_effectiveness.modulate.a = 0.0
 	_effectiveness.scale = Vector2(0.70, 0.70)
 	_effectiveness_tween = create_tween().set_parallel(true)
@@ -1080,9 +1074,6 @@ func _show_banner(text: String, color: Color, big: bool = true) -> void:
 
 func _hide_effectiveness() -> void:
 	if not _effectiveness.visible:
-		return
-	if UiMotion.reduced_motion:
-		_effectiveness.visible = false
 		return
 	if is_instance_valid(_effectiveness_tween):
 		_effectiveness_tween.kill()
@@ -1500,9 +1491,6 @@ func _show_action_commit(action: String) -> void:
 	commit.pivot_offset = Vector2(commit.size.x * 0.5, commit.size.y * 0.5)
 	commit.scale = Vector2(0.0, 1.0)
 	commit.modulate = Color.WHITE
-	if UiMotion.reduced_motion:
-		commit.scale = Vector2.ONE
-		return
 	_command_tween = create_tween()
 	_command_tween.tween_property(commit, "scale:x", 1.0, 0.10) \
 		.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
@@ -2014,9 +2002,6 @@ func _play_damage(amount: int, multiplier: float) -> void:
 	_damage.text = tr("BATTLE_DAMAGE") % LocaleManager.format_integer(amount)
 	_damage.add_theme_color_override("font_color", color)
 	_damage.visible = true
-	if UiMotion.reduced_motion:
-		_damage.visible = false
-		return
 	_damage.modulate = Color.WHITE
 	_damage.pivot_offset = _damage.size * 0.5
 	_damage.scale = Vector2(0.72, 0.72)
@@ -2043,8 +2028,7 @@ func _readability_pause(seconds: float = ACTION_CUE_SEC) -> void:
 
 
 func _event_pause(seconds: float) -> void:
-	if not UiMotion.reduced_motion:
-		await get_tree().create_timer(seconds).timeout
+	await get_tree().create_timer(seconds).timeout
 
 
 func _is_boss_encounter() -> bool:
@@ -2117,7 +2101,7 @@ func _summon_boss_opening() -> void:
 	_position_fighters()
 	var sprite := _opponent_sprite
 	var portal := _opponent_portal
-	if UiMotion.reduced_motion or not is_instance_valid(sprite):
+	if not is_instance_valid(sprite):
 		_apply_side(_session, "opponent", true)
 		_restore_seeker_idle()
 		return

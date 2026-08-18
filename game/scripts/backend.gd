@@ -17,7 +17,7 @@ const URL_BASE := "https://kgcaisvmmpxswevjvgft.supabase.co"
 const KEY_PUBLISHABLE := "sb_publishable_piIQGzH_6YwgNS7EiyOZ_Q_z7WN8NGN"
 
 const TIMEOUT_SEC := 30.0
-const GALLERY_THUMB_CACHE_MAX := 96
+const ATLAS_THUMB_CACHE_MAX := 96
 ## create_anima menunggu Vision di dalamnya; terukur 15 detik di produksi.
 const TIMEOUT_FUNGSI_SEC := 90.0
 ## Token hidup satu jam. Diperbarui saat sisanya di bawah angka ini, bukan setelah
@@ -404,7 +404,7 @@ func seeker(operation: String, payload: Dictionary = {}) -> Dictionary:
 	)
 
 
-func gallery(operation: String, payload: Dictionary = {}) -> Dictionary:
+func atlas(operation: String, payload: Dictionary = {}) -> Dictionary:
 	var body := payload.duplicate(true)
 	body["operation"] = operation
 	return await _send(
@@ -428,28 +428,28 @@ func download_url(url: String) -> Dictionary:
 	)
 
 
-static func gallery_thumb_cache_path(entry_id: String) -> String:
-	return "user://gallery_thumbs/%s.png" % entry_id
+static func atlas_thumb_cache_path(form_id: String) -> String:
+	return "user://atlas_thumbs/%s.png" % form_id
 
 
-static func store_gallery_thumb(entry_id: String, bytes: PackedByteArray) -> Dictionary:
-	if entry_id.is_empty() or bytes.is_empty():
+static func store_atlas_thumb(form_id: String, bytes: PackedByteArray) -> Dictionary:
+	if form_id.is_empty() or bytes.is_empty():
 		return {"ok": false, "error": "thumb kosong"}
 	var dir := DirAccess.open("user://")
 	if dir == null:
 		return {"ok": false, "error": "cache dir gagal"}
-	if not dir.dir_exists("gallery_thumbs"):
-		var mk := dir.make_dir("gallery_thumbs")
+	if not dir.dir_exists("atlas_thumbs"):
+		var mk := dir.make_dir("atlas_thumbs")
 		if mk != OK:
 			return {"ok": false, "error": "cache dir gagal dibuat"}
-	var path := gallery_thumb_cache_path(entry_id)
+	var path := atlas_thumb_cache_path(form_id)
 	if not FileAccess.file_exists(path):
-		var files := DirAccess.get_files_at("user://gallery_thumbs")
-		while files.size() >= GALLERY_THUMB_CACHE_MAX:
+		var files := DirAccess.get_files_at("user://atlas_thumbs")
+		while files.size() >= ATLAS_THUMB_CACHE_MAX:
 			var oldest := ""
 			var oldest_time := 9223372036854775807
 			for filename in files:
-				var candidate := "user://gallery_thumbs".path_join(filename)
+				var candidate := "user://atlas_thumbs".path_join(filename)
 				var modified := FileAccess.get_modified_time(candidate)
 				if modified < oldest_time:
 					oldest_time = modified
@@ -457,7 +457,7 @@ static func store_gallery_thumb(entry_id: String, bytes: PackedByteArray) -> Dic
 			if oldest.is_empty():
 				break
 			DirAccess.remove_absolute(
-				ProjectSettings.globalize_path("user://gallery_thumbs".path_join(oldest))
+				ProjectSettings.globalize_path("user://atlas_thumbs".path_join(oldest))
 			)
 			files.remove_at(files.find(oldest))
 	var file := FileAccess.open(path, FileAccess.WRITE)

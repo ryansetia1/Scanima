@@ -71,7 +71,9 @@ Tab **Scan** bisa membuka kamera atau memilih **satu foto** dari perangkat.
    dari Scan.
 
 Foto serupa tetap menghasilkan art masing-masing. Art lengkap hanya dapat dilihat
-oleh pemilik kecuali pemilik memilih **Publish to Gallery**.
+oleh pemilik kecuali pemilik memilih **Publish Lineage to Atlas**. Publikasi itu
+memungkinkan form lineage muncul sebagai lawan Duel dan, setelah dilawan, di
+Anima Atlas pemain lain.
 
 ### Batas Scan guest
 

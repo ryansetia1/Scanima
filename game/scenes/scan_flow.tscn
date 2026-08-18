@@ -9,8 +9,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/scan_view.tscn" id="7_scan"]
 [ext_resource type="PackedScene" path="res://scenes/ui/collection_view.tscn" id="8_collection"]
 [ext_resource type="PackedScene" path="res://scenes/ui/anima_details_view.tscn" id="9_details"]
-[ext_resource type="PackedScene" path="res://scenes/ui/bottom_nav.tscn" id="10_nav"]
-[ext_resource type="Script" path="res://scripts/first_anima_effect.gd" id="11_first"]
+[ext_resource type="PackedScene" uid="uid://10b1ay38emxd" path="res://scenes/ui/bottom_nav.tscn" id="10_nav"]
+[ext_resource type="Script" uid="uid://cc635b4sia6tt" path="res://scripts/first_anima_effect.gd" id="11_first"]
 [ext_resource type="PackedScene" uid="uid://b7vgr8irxql47" path="res://scenes/ui/battle_view.tscn" id="12_battle"]
 [ext_resource type="PackedScene" path="res://scenes/ui/resource_chip.tscn" id="13_chip"]
 [ext_resource type="PackedScene" path="res://scenes/ui/ui_modal.tscn" id="14_modal"]
@@ -18,11 +18,11 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/shop_sheet.tscn" id="16_shop"]
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_pick_sheet.tscn" id="17_pick"]
 [ext_resource type="PackedScene" path="res://scenes/ui/seeker_onboarding_sheet.tscn" id="18_onboarding"]
-[ext_resource type="PackedScene" path="res://scenes/ui/seeker_menu_sheet.tscn" id="19_seeker_menu"]
+[ext_resource type="PackedScene" uid="uid://depjh8tobfvcs" path="res://scenes/ui/seeker_menu_sheet.tscn" id="19_seeker_menu"]
 [ext_resource type="PackedScene" path="res://scenes/ui/seeker_profile_view.tscn" id="20_seeker_profile"]
-[ext_resource type="PackedScene" path="res://scenes/ui/gallery_view.tscn" id="21_gallery"]
-[ext_resource type="Texture2D" uid="uid://badighevejd2n" path="res://assets/icons/menu.svg" id="21_menu_icon"]
+[ext_resource type="PackedScene" uid="uid://bha6ewm316bjy" path="res://scenes/ui/atlas_view.tscn" id="21_gallery"]
 [ext_resource type="PackedScene" path="res://scenes/ui/photo_source_sheet.tscn" id="22_photo"]
+[ext_resource type="Script" uid="uid://cw8shmpti4kvh" path="res://scripts/menu_popover.gd" id="23_n5v8b"]
 
 [sub_resource type="FontVariation" id="LevelUpBold"]
 base_font = ExtResource("15_display")
@@ -95,14 +95,6 @@ theme_type_variation = &"BrandLabel"
 text = "APP_NAME"
 vertical_alignment = 1
 
-[node name="SeekerMenuButton" type="Button" parent="UI/SafeMargin/Shell/TopHud/Row" unique_id=769293208]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 96)
-layout_mode = 2
-tooltip_text = "SEEKER_MENU_TITLE"
-icon = ExtResource("21_menu_icon")
-flat = true
-
 [node name="Resources" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row" unique_id=1847110908]
 layout_mode = 2
 theme_override_constants/separation = 6
@@ -143,7 +135,7 @@ layout_mode = 1
 unique_name_in_owner = true
 layout_mode = 1
 
-[node name="GalleryView" parent="UI/SafeMargin/Shell/ViewStack" unique_id=942559904 instance=ExtResource("21_gallery")]
+[node name="AtlasView" parent="UI/SafeMargin/Shell/ViewStack" unique_id=942559904 instance=ExtResource("21_gallery")]
 unique_name_in_owner = true
 layout_mode = 1
 
@@ -165,7 +157,6 @@ layout_mode = 3
 
 [node name="SeekerMenuSheet" parent="UI" unique_id=347127333 instance=ExtResource("19_seeker_menu")]
 unique_name_in_owner = true
-layout_mode = 3
 
 [node name="SeekerOnboardingSheet" parent="UI" unique_id=762268665 instance=ExtResource("18_onboarding")]
 unique_name_in_owner = true
@@ -288,3 +279,67 @@ theme = ExtResource("3_theme")
 ok_button_text = "FILE_DIALOG_ACCEPT"
 file_mode = 0
 access = 2
+
+[node name="MenuPopover" type="Control" parent="UI" unique_id=1370216798]
+unique_name_in_owner = true
+visible = false
+z_index = 40
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -720.0
+offset_bottom = -1602.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("23_n5v8b")
+
+[node name="MenuBackdrop" type="Button" parent="UI/MenuPopover" unique_id=720797691]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_default_cursor_shape = 2
+flat = true
+
+[node name="MenuPanel" type="PanelContainer" parent="UI/MenuPopover" unique_id=339508048]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(336, 320)
+layout_mode = 0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -352.0
+offset_top = -500.0
+offset_right = -16.0
+offset_bottom = -156.0
+theme_type_variation = &"ModalPanel"
+
+[node name="MenuColumn" type="VBoxContainer" parent="UI/MenuPopover/MenuPanel" unique_id=1161093412]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MenuProfile" type="Button" parent="UI/MenuPopover/MenuPanel/MenuColumn" unique_id=137996347]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"PrimaryButton"
+text = "MENU_SEEKER_PROFILE"
+
+[node name="MenuAtlas" type="Button" parent="UI/MenuPopover/MenuPanel/MenuColumn" unique_id=1544244935]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_vertical = 3
+text = "MENU_ANIMA_ATLAS"
+
+[node name="MenuSettings" type="Button" parent="UI/MenuPopover/MenuPanel/MenuColumn" unique_id=1146403946]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_vertical = 3
+text = "MENU_SETTINGS"

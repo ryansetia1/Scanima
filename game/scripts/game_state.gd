@@ -56,7 +56,6 @@ var pending_oauth: Dictionary = {}
 ## Preference lokal yang aman dipersist. Push adalah pilihan per-device karena
 ## izin OS dan FCM topic subscription juga hidup per-device.
 var preferences: Dictionary = {
-	"reduced_motion": false,
 	"chapter_push_enabled": false,
 }
 
@@ -291,15 +290,6 @@ func discard_guest_local_state() -> void:
 	client_config = {}
 	clear_boot_cache()
 	save()
-
-
-func set_reduced_motion(enabled: bool) -> void:
-	preferences["reduced_motion"] = enabled
-	save()
-
-
-func reduced_motion() -> bool:
-	return bool(preferences.get("reduced_motion", false))
 
 
 func set_music_enabled(enabled: bool) -> void:

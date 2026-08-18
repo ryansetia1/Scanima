@@ -20,7 +20,7 @@ func _ready() -> void:
 
 func set_active(active: bool) -> void:
 	visible = active
-	set_process(active and not UiMotion.reduced_motion)
+	set_process(active)
 	if active:
 		_phase = 0.0
 		_redraw_accumulator = 0.0
@@ -52,9 +52,7 @@ func _draw() -> void:
 	_draw_corners(frame)
 
 	var travel := maxf(frame.size.y, 1.0)
-	var scan_y := frame.position.y + travel * 0.5
-	if not UiMotion.reduced_motion:
-		scan_y = frame.position.y + fposmod(_phase * SCAN_SPEED_PX, travel)
+	var scan_y := frame.position.y + fposmod(_phase * SCAN_SPEED_PX, travel)
 	var scan_from := Vector2(frame.position.x, scan_y)
 	var scan_to := Vector2(frame.end.x, scan_y)
 	draw_rect(

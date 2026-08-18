@@ -7,14 +7,14 @@ const HOME := &"home"
 const SCAN := &"scan"
 const BATTLE := &"battle"
 const COLLECTION := &"collection"
-const ANIMA := &"anima"
+const MENU := &"menu"
 
 @onready var _buttons: Dictionary = {
 	HOME: %HomeNavButton,
 	SCAN: %ScanNavButton,
 	BATTLE: %BattleNavButton,
 	COLLECTION: %CollectionNavButton,
-	ANIMA: %AnimaNavButton,
+	MENU: %MenuNavButton,
 }
 
 var _active: StringName = HOME
@@ -50,14 +50,17 @@ func set_battle_badge(visible: bool) -> void:
 	%BattleNewBadge.visible = visible
 
 
-func set_busy(_busy: bool, details_available: bool) -> void:
+func set_busy(busy: bool, _details_available: bool = true) -> void:
 	# Requests continue in the persistent shell, so changing view stays safe.
 	for destination: StringName in _buttons:
-		(_buttons[destination] as Button).disabled = false
-	(_buttons[ANIMA] as Button).disabled = not details_available
+		(_buttons[destination] as Button).disabled = destination == MENU and busy
 
 
 func _select(destination: StringName) -> void:
+	if destination == MENU:
+		set_active(_active)
+		destination_selected.emit(destination)
+		return
 	if destination == _active:
 		set_active(destination)
 		return

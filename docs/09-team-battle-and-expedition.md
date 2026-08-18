@@ -76,8 +76,8 @@ Sesudah art anggota baru dipasang dalam keadaan tersembunyi, client langsung
 menghitung ulang rasio tinggi, posisi, layer, framing kamera, Boss Seeker, dan
 backdrop. Layout lama lalu bergerak ke target selama 0,32 detik bersamaan dengan
 charge portal, sebelum Anima baru di-reveal atau serangan berikutnya dimainkan.
-Reduced Motion menerapkan target tanpa tween. Reframe tidak boleh ditunda sampai
-event Attack berikutnya atau commit session di akhir event log.
+Reframe tidak boleh ditunda sampai event Attack berikutnya atau commit session
+di akhir event log.
 
 Semua mode Battle memakai warna HP kontinu: merah pada 0%, campuran di tengah,
 dan biru/cyan pada 100%. Angka `current / max` tetap wajib karena status tidak
@@ -249,8 +249,7 @@ Victory, atau Defeat. Semua pose tetap pada anchor horizontal yang sama, sementa
 client menghitung baseline dari batas opak bawah setiap pose. Titik piksel opak
 paling bawah Anima maupun Boss Seeker tepat berimpit dengan pusat vertikal ground
 shadow yang centered; tidak ada nudge Y tambahan. Pose lebih lebar boleh tercrop
-viewport tetapi tidak menggeser Seeker maju. Reduced Motion mengganti pose tanpa
-tween.
+viewport tetapi tidak menggeser Seeker maju.
 
 Dialog memakai budget per encounter: opening (`boss_intro` atau `rematch`),
 maksimal satu line command dari Attack/Special/Switch pertama yang terjadi,

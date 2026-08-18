@@ -6,8 +6,10 @@ Collection, lalu ajak Battle.
 
 Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). Angka dan rumus untuk developer ada di [docs/04](../04-game-systems-economy.md).
 
-Game langsung berjalan sebagai **guest Seeker** tanpa login. Ikon menu di HUD
-membuka profil, Google, Reduced Motion, Music, bantuan, dan hapus akun.
+Game langsung berjalan sebagai **guest Seeker** tanpa login. Tombol **Menu** di
+bottom navigation membuka Seeker Profile, Anima Atlas, dan Settings.
+Menu/Atlas ini memerlukan APK baru dan rollout server; build production lama
+masih memakai navigasi sebelumnya.
 
 ## Mulai dari mana
 
@@ -18,8 +20,9 @@ membuka profil, Google, Reduced Motion, Music, bantuan, dan hapus akun.
 3. **Collection** — lihat semua Anima. Tap kartu, lalu **Summon** untuk membawanya ke Home.
 4. **Battle** — mainkan Duel, Team Battle dengan 4 Anima, atau Expedition **The
    Sugarworks**. Lapar atau kotor tidak mengunci battle, tapi stats turun.
-5. **Anima** — profil: traits, attributes, ganti nama, Evolve, Delete.
-6. **Gallery** — buka dari menu Seeker untuk melihat atau memublikasikan art.
+5. **Menu** — buka Seeker Profile, **Anima Atlas**, atau Settings. Profil Anima
+   dibuka lewat Collection atau picker Battle.
+6. **Anima Atlas** — catat form yang kamu Scan atau temui di Duel dan Expedition.
 
 ## Isi wiki
 
@@ -27,10 +30,10 @@ membuka profil, Google, Reduced Motion, Music, bantuan, dan hapus akun.
 | --- | --- |
 | [Perawatan](caring.md) | Hunger, Energy, Hygiene, Shop, Bag, Feed, Clean, Play, Sleep, Dormant |
 | [Ekonomi](economy.md) | Genesis Cores, Bits, Shop, Scan, menunggu telur |
-| [Seeker](seeker.md) | Guest, Google, profil, onboarding, Reduced Motion, hapus akun |
+| [Seeker](seeker.md) | Guest, Google, profil, onboarding, Settings, hapus akun |
 | [Anima](anima.md) | Traits, attributes, EXP, Level, Evolve, Collection, Summon |
 | [Battle](battle.md) | Duel, cara lawan dipilih, Team Battle, Expedition The Sugarworks, Boss Seeker, perintah, PP, hadiah, kartu hasil |
-| [Gallery](gallery.md) | Publish, moderation, Report, Hide, dan privasi |
+| [Anima Atlas](atlas.md) | Scanned, Expedition, Duel, siluet, Publish Lineage, Report, dan privasi |
 
 ## Yang perlu diingat
 

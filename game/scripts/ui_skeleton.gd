@@ -15,9 +15,6 @@ func set_loading(loading: bool) -> void:
 
 func _start_pulse() -> void:
 	_stop_pulse()
-	if UiMotion.reduced_motion:
-		modulate = Color(1.0, 1.0, 1.0, 0.58)
-		return
 	modulate = Color(0.82, 0.9, 1.0, 0.42)
 	_pulse = create_tween().set_loops()
 	_pulse.tween_property(self, "modulate", Color(0.72, 0.94, 1.12, 0.9), 0.62) \

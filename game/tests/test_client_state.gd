@@ -145,10 +145,8 @@ func _test_sesi_bertahan() -> void:
 		not state_on_disk.contains("akses-1") and not state_on_disk.contains("refresh-1"),
 		"state.json tidak boleh lagi memuat token"
 	)
-	GameState.set_reduced_motion(true)
 	GameState.set_chapter_push_enabled(true)
 	_muat_ulang()
-	_check(GameState.reduced_motion(), "Reduced Motion harus bertahan restart")
 	_check(
 		GameState.chapter_push_enabled(),
 		"opt-in push chapter harus bertahan sebagai preference per-device"

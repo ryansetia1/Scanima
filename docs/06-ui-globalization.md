@@ -11,7 +11,7 @@ tetapi dekorasi sci-fi tidak boleh mengalahkan karakter atau keterbacaan.
 
 `scenes/scan_flow.tscn` adalah satu-satunya scene production yang berjalan. Ia
 menjaga Stage, request, pending scan/care/battle, inkubator, top HUD, dan bottom
-nav tetap hidup. Lima destination adalah child scene yang di-instance sekali:
+nav tetap hidup. View utama dan overlay adalah child scene yang di-instance sekali:
 
 ```mermaid
 flowchart TD
@@ -24,8 +24,9 @@ flowchart TD
     ViewStack --> CollectionView
     ViewStack --> AnimaDetailsView
     ViewStack --> SeekerProfileView
-    ViewStack --> GalleryView
-    ScanFlow --> SeekerMenuSheet
+    ViewStack --> AtlasView
+    ScanFlow --> MenuPopover
+    ScanFlow --> SeekerMenuSheet["SeekerMenuSheet (Settings)"]
     ScanFlow --> SeekerOnboardingSheet
     ScanFlow --> BottomNav
 ```
@@ -66,24 +67,28 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
 - **Collection:** roster dua kolom; tap langsung membuka bottom sheet identity +
   base stats. Condition memakai skeleton sampai care authoritative tersedia,
   dengan aksi `View Profile` dan `Summon`. Thumbnail hanya dari cache.
-- **Anima Profile:** portrait dan sembilan row label/help/value untuk traits serta
+- **Anima Profile:** overlay yang hanya dibuka dari Collection atau picker
+  Battle. Portrait dan sembilan row label/help/value menampilkan traits serta
   base stats. Konten scroll, dan setiap help membuka penjelasan singkat in-app.
 - **Seeker Profile:** view tambahan di luar bottom nav. Portrait memakai companion
   aktif dan enam row menampilkan Level kosmetik, EXP, jumlah Anima/spesies,
   seluruh kemenangan, dan tanggal bergabung. Rename membuka `UiModal`.
-- **Gallery:** view dari menu Seeker, bukan tab keenam. Feed memakai pagination,
-  thumbnail cache bounded, detail art, Report/Hide, serta Publish/Unpublish pada
-  profil Anima. Identitas pemilik tidak pernah tampil.
+- **Anima Atlas:** view dari **Menu**. Satu grid ter-paginasi memakai filter
+  All/Scanned/Expedition/Duel. Cast chapter terbuka menampilkan siluet sampai
+  encounter; detail form Duel boleh menampilkan nama Seeker, tetapi tidak pernah
+  nickname, care, account ID, foto, atau link profil.
 
-Tombol menu 96px di Top HUD membuka `SeekerMenuSheet`: Profile, aksi
-Google/account linked, Reduced Motion, Help, dan Delete Account. Setelah hatch
-pertama, `SeekerOnboardingSheet` meminta nama unik; birth year dan gender
+Bottom nav berakhir dengan tombol **Menu**. Tombol itu membuka `MenuPopover`
+ringkas di atas nav: Seeker Profile, Anima Atlas, dan Settings. Settings memakai
+`SeekerMenuSheet` untuk Google/account, Music, chapter push, Help, dan Delete
+Account. Burger lama di Top HUD sudah dihapus. Setelah hatch pertama,
+`SeekerOnboardingSheet` meminta nama unik; birth year dan gender
 opsional. Sheet boleh ditutup dan akan ditawarkan lagi selama `seeker_name`
 server masih null—tidak ada flag onboarding lokal yang bisa drift. Nama yang
 tidak valid atau sudah dipakai menyalakan label + field merah dan pesan inline
 merah; edit berikutnya membersihkan state error lama. Preflight client memakai
 format server yang sama, jadi spasi tidak pernah dikirim sebagai nama Seeker.
-Menu yang sama membuka Gallery. Jika server mensyaratkan build lebih baru,
+Jika server mensyaratkan build lebih baru,
 `UiModal` force-update menutup aksi online berdasarkan `min_client_version`;
 client juga mengirim header platform/build pada setiap request.
 
@@ -130,11 +135,10 @@ Container/anchor dan safe-area conversion milik `scan_flow.gd`; jangan mengunci
 lebar berdasarkan panjang copy English. Care actions otomatis berubah dari
 empat menjadi dua kolom jika label locale tidak lagi muat.
 
-Bottom nav berurutan Home, Scan, Battle, Collection, Anima. Kelima tombol
+Bottom nav berurutan Home, Scan, Battle, Collection, Menu. Kelima tombol
 memakai ikon di atas label agar target 96px tetap muat; Scan tetap CTA cyan,
-sementara destination aktif punya state pressed yang terpisah. Delapan belas elemen
-Battle memakai ikon berbentuk berbeda supaya informasi tidak bergantung pada
-warna.
+sementara destination aktif punya state pressed yang terpisah. Menu adalah
+launcher, bukan destination aktif.
 
 Chip Core dan Bits tetap ringkas di HUD. Penjelasan Genesis Core atau Bits
 dibuka sebagai modal lokal saat chip disentuh, supaya istilah ekonomi tidak
@@ -146,7 +150,7 @@ Komponen reusable tinggal di `scenes/ui/` dengan logic di `scripts/`:
 
 - `UiModal`: mode info, confirm, danger-confirm, dan input. Host memberi string
   yang sudah di-resolve dan merutekan hasil memakai context; komponen menangani
-  backdrop, focus aman, busy, Cancel, dan Reduced Motion.
+  backdrop, focus aman, busy, dan Cancel.
 - `ResourceChip`: value/name plus action overlay opsional 96px, isinya ditengahkan
   di dalam target itu. Tidak menyimpan domain saldo atau navigation.
 - `UiBottomSheet`: backdrop, handle 96px, panel, dismiss, safe-area bawah, dan
@@ -160,7 +164,7 @@ Komponen reusable tinggal di `scenes/ui/` dengan logic di `scripts/`:
   satu `ShopScroll` internal dengan viewport pilihan 560px agar lima row katalog
   terbaca sekaligus; tinggi itu menyusut mengikuti cap 92% pada layar pendek,
   sedangkan empty state menyembunyikan viewport agar sheet tetap ringkas.
-- `UiSkeleton`: pulse bounded tanpa `_process`; Reduced Motion memakai state statis.
+- `UiSkeleton`: pulse bounded tanpa `_process`.
 - `InfoValueRow`: label, value rata kanan pada kolom lebar tetap, lalu help redup
   96px paling akhir. Urutan itu yang membuat baris tetap sejajar walau value
   sependek `5` atau sepanjang `Baby`; help sengaja lebih redup daripada value
@@ -180,10 +184,10 @@ Warna focus `PrimaryButton` harus tetap memakai teks navy di atas cyan.
 portal; `FirstAnimaEffect` memiliki scanner empty state. Jangan membuat tween
 baru yang menulis properti milik komponen lain.
 
-`UiMotion.reduced_motion` mematikan ambient motion, squash/reveal, meter tween,
-dan hatch movement tanpa mematikan feedback atau kontrol. Check **Reduced
-Motion** di menu Seeker menulis preference lewat `GameState`; nilainya tetap
-lokal pada device dan dipertahankan saat restore/hapus akun.
+Build ini tidak memiliki preference atau cabang **Reduced Motion**. Semua
+komponen menjalankan timing normal yang dimiliki komponen masing-masing; jangan
+menghidupkan kembali state global tersembunyi tanpa kebutuhan accessibility yang
+teruji dan acceptance behavior yang jelas.
 
 Tap pada Anima Home bergantung pada dua hal yang mudah dilanggar. Pertama, semua
 `Container` di atas Stage (`SafeMargin`, `Shell`, `ViewStack`, `HomeView`, dan

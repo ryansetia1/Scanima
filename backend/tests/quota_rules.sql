@@ -34,6 +34,7 @@ declare
   v_battle_player uuid;
   v_battle_bot uuid;
   v_battle_session uuid;
+  v_atlas_form uuid;
   v_battle_player_snapshot jsonb;
   v_battle_bot_snapshot jsonb;
   v_system_bot_snapshot jsonb;
@@ -1185,6 +1186,24 @@ begin
     'player', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3),
     'bot', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3)
   );
+  update public.animas
+     set sheet_path = coalesce(
+           sheet_path,
+           u2::text || '/' || v_battle_bot::text || '/atlas-test.png'
+         ),
+         manifest = coalesce(
+           manifest,
+           '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+         )
+   where id = v_battle_bot;
+  insert into public.gallery_entries (
+    owner_id, anima_id, art_hash, display_name, element, secondary_element,
+    stage, thumb_path, moderation_status, published, auto_hidden,
+    report_count, published_at
+  ) values (
+    u2, v_battle_bot, repeat('a', 64), 'Atlas Bot', 'plant', null,
+    1, null, 'approved', true, false, 0, now()
+  );
 
   -- Batas kepemilikan diverifikasi lagi di transaksi, bukan dipercaya dari JWT
   -- yang sudah diterjemahkan Edge Function menjadi p_owner.
@@ -1262,6 +1281,16 @@ begin
   exception when others then ok := false;
   end;
   assert ok, 'Anima lapar tetap boleh Battle supaya Bits tidak terkunci';
+  assert exists (
+           select 1
+             from public.seeker_atlas_discoveries discovery
+             join public.atlas_forms form on form.id = discovery.form_id
+            where discovery.owner_id = u1
+              and discovery.discovery_source = 'duel'
+              and form.anima_id = v_battle_bot
+              and form.stage = 1
+         ),
+         'session Duel pemain yang committed harus mendaftarkan form ke Atlas';
   update public.battle_sessions
      set status = 'forfeited', finished_at = now(), updated_at = now()
    where owner_id = u1 and status = 'active';
@@ -1701,6 +1730,50 @@ begin
   assert (select bits from public.profiles where id = u1) = v_bits_before_battle + 3,
          'cap 100 Bits harus dihormati di saldo';
 
+  select form.id into v_atlas_form
+    from public.atlas_forms form
+   where form.anima_id = v_battle_bot and form.stage = 1;
+  update public.gallery_entries set published = false
+   where anima_id = v_battle_bot;
+  assert not exists (
+           select 1 from public.seeker_atlas_discoveries
+            where owner_id = u1 and form_id = v_atlas_form
+         )
+         and exists (
+           select 1 from public.seeker_atlas_discoveries
+            where owner_id = u2 and form_id = v_atlas_form
+              and discovery_source = 'scanned'
+         ),
+         'Unpublish harus menghapus discovery Duel tanpa menghapus form milik owner';
+  update public.gallery_entries set published = true, moderation_status = 'approved'
+   where anima_id = v_battle_bot;
+  perform public._atlas_upsert_discovery(u1, v_atlas_form, 'duel', now(), 11);
+  insert into public.gallery_reports (entry_id, reporter_id)
+  select id, u1 from public.gallery_entries where anima_id = v_battle_bot;
+  assert not exists (
+           select 1 from public.seeker_atlas_discoveries
+            where owner_id = u1 and form_id = v_atlas_form
+         )
+         and exists (
+           select 1
+             from public.gallery_hidden hidden
+             join public.gallery_entries entry on entry.id = hidden.entry_id
+            where hidden.owner_id = u1 and entry.anima_id = v_battle_bot
+         ),
+         'Report harus langsung menghilangkan lineage dari Atlas reporter';
+  perform public._atlas_upsert_discovery(u3, v_atlas_form, 'duel', now(), 9);
+  delete from public.gallery_entries where anima_id = v_battle_bot;
+  assert not exists (
+           select 1 from public.seeker_atlas_discoveries
+            where owner_id = u3 and form_id = v_atlas_form
+         )
+         and exists (
+           select 1 from public.seeker_atlas_discoveries
+            where owner_id = u2 and form_id = v_atlas_form
+              and discovery_source = 'scanned'
+         ),
+         'Delete publication harus membersihkan discovery Duel tanpa menghapus form milik owner';
+
   perform set_config('request.jwt.claims',
     json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);
   perform set_config('role', 'authenticated', true);
@@ -1742,8 +1815,9 @@ begin
   assert (select count(*) from public.app_config
            where key in (
              'feature_typing_v13', 'feature_unique_generation', 'feature_animals',
-             'feature_weekly_core', 'feature_gallery', 'min_client_version'
-           )) = 6,
+             'feature_weekly_core', 'feature_gallery', 'feature_atlas',
+             'min_client_version'
+           )) = 7,
          'app_config rollout flags dan min_client_version harus ada';
   assert (
            select jsonb_typeof(value) = 'boolean'
@@ -2229,6 +2303,21 @@ begin
             where oid = 'public.gallery_entries'::regclass
          ),
          'gallery_entries harus RLS aktif';
+  assert exists (
+           select 1 from information_schema.tables
+            where table_schema = 'public' and table_name = 'atlas_forms'
+         )
+         and exists (
+           select 1 from information_schema.tables
+            where table_schema = 'public'
+              and table_name = 'seeker_atlas_discoveries'
+         ),
+         'registry form dan discovery ledger Atlas harus ada';
+  assert (select relrowsecurity from pg_class
+           where oid = 'public.atlas_forms'::regclass)
+         and (select relrowsecurity from pg_class
+               where oid = 'public.seeker_atlas_discoveries'::regclass),
+         'kedua tabel Atlas harus tertutup RLS';
 
   begin
     insert into public.animas
@@ -2894,6 +2983,12 @@ begin
       'test-reset-seed', 2, 'test-enter-reset-battle'
     );
     v_expedition_encounter := (v_j->'encounter'->>'id')::uuid;
+    assert exists (
+             select 1
+               from public.seeker_atlas_discoveries
+              where owner_id = u1 and discovery_source = 'expedition'
+           ),
+           'anggota aktif saat encounter Expedition mulai harus masuk Atlas';
     v_j := public.forfeit_expedition_encounter(
       u1, v_expedition_encounter,
       '{"entry":["retry-1"],"nodes":[{"id":"retry-1","kind":"battle","next":[]}]}'::jsonb,
@@ -3376,6 +3471,23 @@ begin
   end;
   assert ok, 'gallery_hidden hanya boleh ditulis lewat Edge Function';
   begin
+    perform 1 from public.atlas_forms;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'atlas_forms tidak boleh terbaca langsung oleh client';
+  begin
+    perform 1 from public.seeker_atlas_discoveries;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'discovery ledger Atlas tidak boleh terbaca langsung oleh client';
+  assert not pg_catalog.has_function_privilege(
+    'authenticated',
+    'public._atlas_upsert_discovery(uuid,uuid,text,timestamptz,integer)',
+    'EXECUTE'
+  ), 'client tidak boleh memalsukan unlock Atlas';
+  begin
     perform 1 from public.anima_teams;
     ok := false;
   exception when insufficient_privilege then ok := true;
@@ -3609,6 +3721,14 @@ begin
                 || '/evolution_refs/' || v_evolution_success_gen::text || '.png'
          ),
          'form lama dan reference Idle privat harus tersimpan untuk rollback';
+  assert (select count(*) from public.atlas_forms
+           where anima_id = v_evolution_anima and stage in (1, 2)) = 2
+         and (select count(*) from public.seeker_atlas_discoveries discovery
+               join public.atlas_forms form on form.id = discovery.form_id
+              where discovery.owner_id = u1
+                and discovery.discovery_source = 'scanned'
+                and form.anima_id = v_evolution_anima) = 2,
+         'Hatchling dan Adult harus menjadi dua entry Atlas milik owner';
   v_j2 := public.commit_evolution(
     v_evolution_gen,
     u1::text || '/evolution-main/adult.png',

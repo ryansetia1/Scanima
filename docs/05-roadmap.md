@@ -1,14 +1,14 @@
 # 05 — Roadmap Pengembangan
 
-Status diperbarui **16 Agustus 2026**. Roadmap ini hanya memuat kontrak build
+Status diperbarui **18 Agustus 2026**. Roadmap ini hanya memuat kontrak build
 aktif dan pekerjaan yang masih relevan. Decision record sebelum pivot private
 art tetap tersedia di riwayat Git serta dokumen teknis, tetapi tidak lagi
 menentukan exit criteria.
 
 Sumber kontrak aktif:
 
-- [08 — Private Art dan Gallery](08-private-art-and-gallery.md) untuk capture,
-  elemen, fauna, Core mingguan, dan Gallery.
+- [08 — Private Art dan Anima Atlas](08-private-art-and-gallery.md) untuk
+  capture, elemen, fauna, Core mingguan, publication lineage, dan Atlas.
 - [09 — Team Battle dan Expedition](09-team-battle-and-expedition.md) untuk
   mode battle empat Anima, chapter, dan push.
 - [04 — Game Systems dan Economy](04-game-systems-economy.md) untuk care,
@@ -26,7 +26,7 @@ Sumber kontrak aktif:
 | 4 | Soft launch dan pengukuran skala nyata | **Belum mulai** |
 
 Urutan kerja tetap mengikuti risiko. Namun, fitur yang sudah live tidak dibangun
-ulang hanya agar sesuai urutan roadmap lama. Team Battle, Expedition, Gallery,
+ulang hanya agar sesuai urutan roadmap lama. Team Battle, Expedition, Anima Atlas,
 Boss Seeker, dan Chapter Factory sudah melampaui scope Phase 3 awal.
 
 ## Kontrak produk yang aktif
@@ -39,7 +39,8 @@ sheet 2×2. Semuanya sudah digantikan:
 - Capture mendukung benda serta hewan non-manusia yang aman.
 - Ada 18 elemen dengan secondary element opsional.
 - Sheet production memakai grid 3×3: tujuh pose karakter dan dua VFX.
-- Gallery bersifat opt-in, art-only, dimoderasi, dan tidak mengekspos pemilik.
+- Anima Atlas mencatat form Scanned/Expedition/Duel. Publication lineage
+  bersifat opt-in dan dimoderasi; entry Duel hanya mengekspos nama Seeker.
 - Akun Google mendapat 1 Core otomatis setiap tujuh hari server saat bank Core
   gratis di bawah 3, tanpa catch-up.
 - Tidak ada cache-hit capture baru. `species_library`, `claim_genesis`, dan
@@ -102,7 +103,7 @@ Yang sudah live:
 - Kamera OEM dan single-photo picker tanpa izin galeri luas.
 - APK debug dengan hanya izin `INTERNET` dan `CAMERA`.
 - Duel Battle 1v1, item, reward harian, Training, dan replay pending intent.
-- Gallery opt-in dan bot anonim dari art yang disetujui.
+- Anima Atlas, publication lineage opt-in, dan bot dari art yang disetujui.
 
 Test lokal menjaga quota/RLS, prompt bundle, auth, pending intent, care,
 sprite/manifest, UI mobile, Battle, dan katalog i18n.
@@ -135,8 +136,10 @@ Perubahan flag out-of-band wajib dicatat melalui migrasi atau runbook rollout.
   announcement in-app.
 - Onboarding identitas Seeker setelah hatch pertama.
 - Weekly Core otomatis.
-- Visual shell mobile, target tap 96 px, Reduced Motion, haptic, ikon elemen,
-  dan feedback visual care/Battle.
+- Visual shell mobile, target tap 96 px, haptic, ikon elemen, dan feedback
+  visual care/Battle.
+- Bottom nav Menu, Settings, serta profil Anima yang hanya dibuka lewat
+  Collection/Battle picker.
 
 Team Battle, Expedition, dan chapter push in-app saat ini aktif untuk device
 playtest. Jika ditemukan blocker, matikan flag rollout tanpa mengubah kontrak
@@ -147,7 +150,8 @@ data run yang sudah ada.
 #### 1. Privacy policy dan data safety
 
 - Tulis privacy policy yang menjelaskan kamera, upload foto, Replicate,
-  penghapusan foto mentah, akun guest/Google, Gallery, dan retention data.
+  penghapusan foto mentah, akun guest/Google, Anima Atlas/publication, dan
+  retention data.
 - Host di URL publik dan tautkan dari aplikasi.
 - Isi Data Safety Play Store berdasarkan perilaku build, bukan rencana.
 
@@ -170,7 +174,7 @@ kali, replay tidak menggandakan saldo, dan pending capture dapat dituntaskan.
 - SFX untuk Feed, Clean, Sleep/Wake, Play, Summon, Attack, Special, Guard, Item,
   hit, KO, menang, dan kalah.
 - Musik latar Home serta Battle dengan pengaturan mute/volume.
-- Reduced Motion tidak mematikan audio; pengaturan audio berdiri sendiri.
+- Pengaturan audio berdiri sendiri dari timing animasi.
 
 **Selesai jika:** seluruh aksi yang terlihat juga memiliki feedback audio yang
 sesuai dan tidak saling menumpuk.

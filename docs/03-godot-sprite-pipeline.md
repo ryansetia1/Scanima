@@ -24,9 +24,10 @@ art baru baru menggantikan presenter setelah server mengembalikan stage baru dan
 bundle stage itu selesai diunduh.
 
 Battle opponent adalah pengecualian sempit: server memberi signed URL singkat
-hanya untuk thumbnail/sheet lawan Gallery approved atau fallback sistem. Gallery
-thumbnail memiliki cache terpisah yang dibatasi 96 file. Contoh dan pembahasan
-cache berbasis spesies di bagian lama dokumen ini berlaku hanya untuk aset legacy.
+hanya untuk thumbnail/sheet lawan publication Atlas approved atau fallback
+sistem. Thumbnail Atlas memiliki cache terpisah yang dibatasi 96 file. Contoh dan
+pembahasan cache berbasis spesies di bagian lama dokumen ini berlaku hanya untuk
+aset legacy.
 
 ## 1. Kontrak manifest
 
@@ -445,10 +446,6 @@ setinggi 14 px dengan total sekitar 2,5 detik. Napas menulis `scale` sementara
 bounce menulis `position`, jadi keduanya tidak berebut. Hatch adalah pengecualian
 yang memang menulis keduanya: ia membunuh tween pose dan feedback dulu, lalu
 menyalakan pose kembali setelah reveal selesai.
-
-Semua jalur memeriksa `UiMotion.reduced_motion`. Saat flag itu aktif, pose tetap
-benar tetapi transform tidak dianimasikan. Ini satu kontrak aksesibilitas yang
-sama dengan chrome UI dan inkubator, bukan sakelar baru khusus Anima.
 
 **Yang tidak bisa dilakukan dengan empat pose: berkedip.** Berkedip butuh gambar mata tertutup, dan tidak ada trik transformasi yang bisa memalsukannya. Menutupinya dengan shader yang menggelapkan area mata terdengar pintar tapi butuh koordinat mata per spesies, yang tidak kita punya. Jadi berkedip tidak ada, dan itu keputusan sadar.
 

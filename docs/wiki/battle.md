@@ -220,11 +220,13 @@ Server memilihkan lawan; tidak ada daftar lawan dan tidak ada pengaturan tingkat
 kesulitan.
 
 Yang diutamakan tetap **Anima milik pemain lain** yang sudah dipublikasikan ke
-Gallery (tanpa identitas pemiliknya). Tapi Anima itu hanya dipakai kalau duelnya
-masih terasa seperti pertandingan. Server menaksir dulu berapa lama masing-masing
-sisi butuh untuk menjatuhkan yang lain, dengan menghitung Level, sebaran stat, dan
-elemen sekaligus. Lawan yang jelas akan menghabisimu, atau yang jelas akan kamu
-habisi tanpa perlawanan, tidak dipakai.
+Anima Atlas. Arena tidak menampilkan identitas pemiliknya; sesudah kamu benar-benar
+melawannya, form itu masuk Atlas dan profilnya dapat menampilkan nama Seeker
+pemilik. Anima itu hanya dipakai kalau duelnya masih terasa seperti pertandingan.
+Server menaksir dulu berapa lama masing-masing sisi butuh untuk menjatuhkan yang
+lain, dengan menghitung Level, sebaran stat, dan elemen sekaligus. Lawan yang
+jelas akan menghabisimu, atau yang jelas akan kamu habisi tanpa perlawanan, tidak
+dipakai.
 
 Kalau tidak ada Anima pemain yang cocok — dan selama pemain masih sedikit itu
 sering terjadi — kamu bertemu **lawan sistem**: **Echo Fledgling**, **Echo
@@ -351,8 +353,7 @@ itu berubah, bukan diam-diam ditolak:
 Setelah menang, Anima-mu berpose senang. Anima yang belum berevolusi
 (Level 1–15) melompat-lompat selama layar hasil masih terbuka. Mulai **Level 16**
 badannya lebih besar dan lebih berat, jadi ia mengangkat badan dua kali dengan
-tenang lalu kembali diam, bukan melompat. Kalau **Reduced Motion** menyala,
-keduanya cukup berpose senang tanpa bergerak.
+tenang lalu kembali diam, bukan melompat.
 
 ## Empat perintah
 
@@ -443,5 +444,5 @@ label diam sekitar 1,4 detik sebelum aksi atau pelat hilang.
 
 Guard punya penandanya sendiri: begitu pelatnya muncul, badan Anima yang bertahan
 disapu kilau sekali, jadi kamu bisa melihat siapa yang mengeras tanpa membaca
-teksnya. Kalau **Reduced Motion** menyala, kilaunya tinggal nyala singkat.
+teksnya.
 Perayaan kemenangan dijelaskan di [Sesudah battle selesai](#sesudah-battle-selesai).

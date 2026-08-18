@@ -649,11 +649,11 @@ func _initialize() -> void:
 	)
 	_check(not is_equal_approx(pan_a, pan_b), "encounter berbeda mendapat framing berbeda")
 
-	print("14. gallery transport")
+	print("14. Anima Atlas transport")
 	var backend_text := FileAccess.get_file_as_string("res://scripts/backend.gd")
-	_check(backend_text.find("func gallery(") >= 0, "Backend exposes gallery edge transport")
-	_check(backend_text.find("gallery_thumb_cache_path") >= 0, "gallery thumbs cache bounded per entry id")
-	_check(backend_text.find("download_url") >= 0, "signed gallery and battle art use ephemeral URL download")
+	_check(backend_text.find("func atlas(") >= 0, "Backend exposes Atlas edge transport")
+	_check(backend_text.find("atlas_thumb_cache_path") >= 0, "Atlas thumbs cache is bounded per form id")
+	_check(backend_text.find("download_url") >= 0, "signed Atlas and Battle art use ephemeral URL download")
 
 	_finish()
 

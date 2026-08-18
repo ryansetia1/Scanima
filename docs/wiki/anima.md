@@ -2,7 +2,7 @@
 
 Setiap Anima lahir dari foto satu benda atau hewan non-manusia. Bentuk, jurus,
 dan stats-nya mengikuti subjek itu, lalu tumbuh pelan lewat Level. Art setiap
-Anima unik dan privat kecuali kamu memilih memublikasikannya ke Gallery.
+Anima unik dan privat kecuali kamu memilih **Publish Lineage to Atlas**.
 
 Setiap Anima juga lahir dengan ukuran tubuh khas. Ukurannya berangkat dari
 subjek asli. Benda genggam kecil (konsol, remote, mainan) menjadi Anima
@@ -84,6 +84,7 @@ untuk form itu, lalu membuka **Rename** seperti sesudah Scan. **Save Name**
 memakai usulan itu atau suntinganmu. **Cancel** mempertahankan nama lama.
 Hatchling menjadi Adult di Level 16;
 Adult menjadi Evolved di Level 36. Satu ritual per tahap, berurutan.
+Setiap form yang selesai menjadi entry terpisah di [Anima Atlas](atlas.md).
 
 | Aksi | EXP | Catatan |
 | --- | --- | --- |
@@ -102,7 +103,8 @@ Dormant **tidak** menghapus EXP.
 
 Tap kartu membuka sheet, bukan langsung pindah companion.
 
-- **View Profile** — lihat traits dan attributes, ganti nama, atau Delete.
+- **View Profile** — lihat traits dan attributes, ganti nama, Evolve, atur
+  publikasi lineage, atau Delete.
 - **Summon** — Anima ini pindah ke Home. Yang tadi di Home tidur. Portalnya mulai
   begitu kamu menekan, bukan sesudah menunggu; kalau pergantiannya gagal, portal
   menutup dan companion lamamu kembali.
@@ -112,6 +114,9 @@ Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 
 **Delete** ada di profil sebagai teks kecil, bukan tombol besar. Menghapus itu
 permanen: tidak ada refund Core atau Bits. Ini hanya menghapus satu Anima.
 **Delete Account** di menu [Seeker](seeker.md) menghapus seluruh akun.
+
+Profil Anima tidak lagi menjadi tab bottom navigation. Buka dari Collection atau
+picker Anima di Battle.
 
 Rename Anima tidak memiliki cooldown Seeker. **Change Seeker Name** adalah aksi
 terpisah dan hanya tersedia sekali setiap 30 hari.

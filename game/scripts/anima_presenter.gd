@@ -253,7 +253,7 @@ func _flip_local(point: Vector2) -> Vector2:
 
 
 func react_to_tap() -> void:
-	if UiMotion.reduced_motion or sprite_frames == null:
+	if sprite_frames == null:
 		return
 	_stop_tap_motion()
 	match _current_pose:
@@ -271,9 +271,6 @@ func hit_react(element_multiplier: float = 1.0) -> void:
 		return
 	Sfx.play_effectiveness(element_multiplier)
 	_stop_tap_motion()
-	if UiMotion.reduced_motion:
-		_start_motion(_current_pose)
-		return
 	var knockback := -_facing_direction * 16.0
 	_feedback = create_tween()
 	_feedback.tween_property(self, "position", _base_position + Vector2(knockback, 0.0), 0.04) \
@@ -293,9 +290,6 @@ func _start_motion(pose: String) -> void:
 	scale = Vector2.ONE
 	rotation = 0.0
 	position = _base_position
-	if UiMotion.reduced_motion:
-		return
-
 	match pose:
 		"idle", "happy", "hungry", "dirty":
 			_motion = _breathe(BREATH_IDLE_SEC, 0.045)
@@ -427,8 +421,6 @@ func _resume_pose_motion() -> void:
 ## Pantulan sekali untuk Feed. Tidak mengganggu napas pose karena bounce menulis
 ## position sementara napas menulis scale.
 func hop() -> void:
-	if UiMotion.reduced_motion:
-		return
 	if _feedback != null and _feedback.is_valid():
 		_feedback.kill()
 	_feedback = _bounce(1, HOP_HEIGHT_PX)
@@ -444,12 +436,6 @@ func celebrate_level_up() -> void:
 	set_pose("happy")
 	position = _base_position
 	rotation = 0.0
-	if UiMotion.reduced_motion:
-		modulate = Color.WHITE
-		scale = Vector2.ONE
-		_start_motion(_current_pose)
-		return
-
 	modulate = Color(1.38, 1.18, 0.58, 1.0)
 	scale = Vector2(0.88, 1.14)
 	_feedback = create_tween()
@@ -464,8 +450,6 @@ func celebrate_level_up() -> void:
 
 
 func play_bounce() -> void:
-	if UiMotion.reduced_motion:
-		return
 	if _feedback != null and _feedback.is_valid():
 		_feedback.kill()
 	_feedback = _bounce(PLAY_BOUNCE_COUNT, PLAY_BOUNCE_HEIGHT_PX)
@@ -488,8 +472,6 @@ func victory_celebration(level: int = 1) -> void:
 	_feedback = null
 	_victory_loop = false
 	set_pose("happy")
-	if UiMotion.reduced_motion:
-		return
 	if CareRules.form_key(level) == "hatchling":
 		_victory_loop = true
 		_feedback = _bounce(0, VICTORY_BOUNCE_HEIGHT_PX)
@@ -518,13 +500,6 @@ func guard_shimmer() -> void:
 		_shimmer_material.shader = GUARD_SHIMMER_SHADER
 	material = _shimmer_material
 	_shimmer = create_tween()
-	if UiMotion.reduced_motion:
-		# Sapuan dibuang, tetapi badannya tetap menyala sebentar: kalau Guard
-		# tidak meninggalkan jejak apa pun, satu-satunya penanda tinggal pelat.
-		_shimmer_material.set_shader_parameter("progress", 0.5)
-		_shimmer.tween_interval(0.45)
-		_shimmer.tween_callback(_clear_shimmer)
-		return
 	_shimmer_material.set_shader_parameter("progress", 0.0)
 	_shimmer.tween_property(
 		_shimmer_material, "shader_parameter/progress", 1.0, GUARD_SHIMMER_SEC
@@ -566,16 +541,8 @@ func care_feedback(action: String) -> void:
 	position = _base_position
 	if action == "play":
 		set_pose("happy")
-		if UiMotion.reduced_motion:
-			_feedback = create_tween()
-			_feedback.tween_interval(0.40)
-			_feedback.finished.connect(_resume_pose_motion, CONNECT_ONE_SHOT)
-			return
 		play_bounce()
 		return
-	if UiMotion.reduced_motion:
-		return
-
 	var tint := Color.WHITE
 	match action:
 		"feed":
@@ -660,13 +627,6 @@ func play_fx(pose: String, impact_global: Vector2 = Vector2.INF) -> void:
 			impact = impact_global
 	var motion := fx_motion(pose)
 	_fx.position = impact if motion in ["impact", "bloom"] and impact_global.is_finite() else start
-	if UiMotion.reduced_motion:
-		_fx.position = impact
-		_fx.scale = Vector2.ONE
-		_fx_tween = create_tween()
-		_fx_tween.tween_interval(0.28)
-		_fx_tween.tween_callback(_hide_fx)
-		return
 	if motion == "sweep":
 		var sweep_center := impact if impact_global.is_finite() else start
 		_fx.position = sweep_center - Vector2(30.0 * _facing_direction, 0.0)
@@ -756,14 +716,6 @@ func hatch_reveal() -> void:
 		_motion.kill()
 	if _feedback != null and _feedback.is_valid():
 		_feedback.kill()
-	if UiMotion.reduced_motion:
-		visible = true
-		position = _base_position
-		scale = Vector2.ONE
-		rotation = 0.0
-		modulate = Color.WHITE
-		return
-
 	visible = true
 	position = _base_position - Vector2(0.0, 46.0)
 	scale = Vector2(0.18, 1.24)
@@ -805,10 +757,6 @@ func summon_dissolve() -> void:
 		_motion.kill()
 	if _feedback != null and _feedback.is_valid():
 		_feedback.kill()
-	if UiMotion.reduced_motion:
-		visible = false
-		return
-
 	var dissolve := create_tween().set_parallel(true)
 	dissolve.tween_property(self, "modulate", Color(0.45, 0.92, 1.25, 0.0), 0.28) \
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)

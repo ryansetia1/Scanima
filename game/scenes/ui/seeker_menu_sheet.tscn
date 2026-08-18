@@ -1,21 +1,21 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://depjh8tobfvcs"]
 
-[ext_resource type="Script" path="res://scripts/seeker_menu_sheet.gd" id="1_script"]
-[ext_resource type="Theme" path="res://themes/mobile_theme.tres" id="2_theme"]
+[ext_resource type="Script" uid="uid://blxfenu2wl6bc" path="res://scripts/seeker_menu_sheet.gd" id="1_script"]
+[ext_resource type="Theme" uid="uid://cbi43xka3xsp5" path="res://themes/mobile_theme.tres" id="2_theme"]
 
-[node name="SeekerMenuSheet" type="Control"]
+[node name="SeekerMenuSheet" type="Control" unique_id=1294890698]
 visible = false
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 theme = ExtResource("2_theme")
 script = ExtResource("1_script")
 scroll_content = true
 
-[node name="Backdrop" type="ColorRect" parent="."]
+[node name="Backdrop" type="ColorRect" parent="." unique_id=1581166941]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -25,7 +25,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.004, 0.008, 0.025, 0.68)
 
-[node name="DismissButton" type="Button" parent="."]
+[node name="DismissButton" type="Button" parent="." unique_id=1970900707]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -34,7 +34,7 @@ grow_horizontal = 2
 grow_vertical = 2
 flat = true
 
-[node name="Bottom" type="Control" parent="."]
+[node name="Bottom" type="Control" parent="." unique_id=1495404163]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -43,92 +43,73 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Panel" type="PanelContainer" parent="Bottom"]
+[node name="Panel" type="PanelContainer" parent="Bottom" unique_id=1066114594]
 layout_mode = 1
 anchors_preset = 12
-anchor_right = 1.0
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = -670.0
 grow_horizontal = 2
 grow_vertical = 0
-mouse_filter = 0
 theme_type_variation = &"BottomSheetPanel"
 
-[node name="Column" type="VBoxContainer" parent="Bottom/Panel"]
+[node name="Column" type="VBoxContainer" parent="Bottom/Panel" unique_id=1910538839]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="HandleCenter" type="CenterContainer" parent="Bottom/Panel/Column"]
+[node name="HandleCenter" type="CenterContainer" parent="Bottom/Panel/Column" unique_id=1059880683]
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 mouse_filter = 0
 
-[node name="Handle" type="ColorRect" parent="Bottom/Panel/Column/HandleCenter"]
+[node name="Handle" type="ColorRect" parent="Bottom/Panel/Column/HandleCenter" unique_id=581942255]
 custom_minimum_size = Vector2(84, 7)
 layout_mode = 2
 mouse_filter = 2
 color = Color(0.4, 0.5, 0.68, 0.72)
 
-[node name="ContentSlot" type="VBoxContainer" parent="Bottom/Panel/Column"]
+[node name="ContentSlot" type="VBoxContainer" parent="Bottom/Panel/Column" unique_id=1666947334]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="SeekerMenuTitle" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="SeekerMenuTitle" type="Label" parent="Bottom/Panel/Column/ContentSlot" unique_id=208307416]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PageTitleLabel"
 text = "SEEKER_MENU_TITLE"
 
-[node name="SeekerProfile" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-text = "SEEKER_PROFILE_OPEN"
-
-[node name="SeekerGallery" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-text = "GALLERY_OPEN"
-
-[node name="SeekerAccount" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="SeekerAccount" type="Button" parent="Bottom/Panel/Column/ContentSlot" unique_id=1065820772]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "SEEKER_SIGN_IN_GOOGLE"
 
-[node name="ReducedMotion" type="CheckButton" parent="Bottom/Panel/Column/ContentSlot"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-text = "SETTINGS_REDUCED_MOTION"
-
-[node name="MusicEnabled" type="CheckButton" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="MusicEnabled" type="CheckButton" parent="Bottom/Panel/Column/ContentSlot" unique_id=1583982631]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 button_pressed = true
 text = "SETTINGS_MUSIC"
 
-[node name="ChapterPush" type="CheckButton" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="ChapterPush" type="CheckButton" parent="Bottom/Panel/Column/ContentSlot" unique_id=1936802744]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "SETTINGS_CHAPTER_PUSH"
 
-[node name="SeekerHelp" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="SeekerHelp" type="Button" parent="Bottom/Panel/Column/ContentSlot" unique_id=410244771]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "SEEKER_HELP"
 
-[node name="DangerDivider" type="HSeparator" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="DangerDivider" type="HSeparator" parent="Bottom/Panel/Column/ContentSlot" unique_id=633502190]
 layout_mode = 2
 
-[node name="DeleteAccount" type="Button" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="DeleteAccount" type="Button" parent="Bottom/Panel/Column/ContentSlot" unique_id=1740332830]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2

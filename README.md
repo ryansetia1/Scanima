@@ -9,6 +9,17 @@ Art style: 2D anime creature cel-shading — clean bold linework, flat colors, c
 
 ## Status
 
+**Anima Atlas build candidate, 18 Agustus 2026.** Gallery Feed sudah diganti
+secara lokal dengan registry form + discovery ledger server-authoritative,
+backfill owned/Duel/Expedition, satu grid All/Scanned/Expedition/Duel, siluet
+chapter, profil statis, dan publication consent satu lineage. Bottom navigation
+sekarang Home/Scan/Battle/Collection/Menu; popover Menu membuka Seeker Profile,
+Anima Atlas, dan Settings, sementara burger Top HUD serta seluruh Reduced Motion
+plumbing sudah dihapus. `npm run selftest`, seluruh suite Godot, import, Deno
+check, dan visual Menu lulus. Migration `20260818142631_anima_atlas`, deploy
+ulang function wire-compatible `gallery`, dan APK baru **belum** dirilis ke
+production; Gallery v2/build lama masih live sampai rollout terkoordinasi.
+
 **Cutover Elements/Animals/Gallery, 15 Agustus 2026.** Kontrak aktif memakai 18
 elemen dengan secondary opsional; Attack memakai primary dan Special memakai
 secondary/fallback. Setiap capture yang diterima memakai 1 Genesis Core dan
@@ -93,16 +104,13 @@ Rantainya tertutup sampai ke game: sheet itu diunduh dari CDN publik apa adanya,
 
 **Jeda generation sekarang punya inkubator yang benar-benar hidup.** Setelah Genesis dimulai, foto atau Anima lama diganti telur energi procedural dengan orbit cyan-violet, scanner, spark emas, dan core yang berdenyut—tanpa asset tambahan. Ia tetap berjalan selama polling Replicate, termasuk saat pending scan dilanjutkan setelah restart. Saat webhook selesai, ring meledak menjadi flash lalu Anima muncul dengan bounce, squash-and-stretch, dan settle; kegagalan/timeout mengembalikan Anima lama. Cache hit tetap instan dan tidak memalsukan proses hatch.
 
-**UI sekarang berupa shell game mobile lima destination: Home, Scan, Battle,
-Collection, dan Anima Profile.** Semua tab memakai ikon di atas label agar lima
-target 96px tetap muat; Scan tetap CTA cyan dan Battle punya state aktif
-tersendiri. Child scene persisten membuat pindah tab tidak me-reset request,
-pending scan/care/battle, Stage, atau inkubator. Seluruh copy production memakai
-katalog English Godot-native, theme cyan-violet-gold, ikon SVG berlisensi, dan
-Reduced Motion bersama. Menu Seeker di HUD membuka profil, akun Google, bantuan,
-setting Reduced Motion, dan hapus akun; onboarding nama Seeker muncul sesudah
-Anima pertama menetas. `test_scan_ui.gd` menjaga 468 kontrak
-shell/touch/Battle/Seeker/motion dan `test_i18n.gd` menjaga 2290 kontrak katalog.
+**UI build kandidat berupa shell game mobile dengan empat destination persisten
+dan satu launcher: Home, Scan, Battle, Collection, Menu.** Menu membuka Seeker
+Profile, Anima Atlas, dan Settings; Anima Profile hanya dari Collection atau
+picker Battle. Child scene persisten membuat pindah tab tidak me-reset request,
+pending scan/care/battle, Stage, atau inkubator. Seluruh copy memakai katalog
+English Godot-native, theme cyan-violet-gold, dan ikon SVG berlisensi. Onboarding
+nama Seeker tetap muncul sesudah Anima pertama menetas.
 
 **Guest Seeker dan upgrade Google sudah menjadi mekanik live.** Akun anonim baru
 mendapat 1 Core dan satu Scan sukses; Genesis maupun cache hit memakai kesempatan
@@ -185,7 +193,7 @@ npm run selftest                 # 38 skenario + 12 uji tanda tangan webhook, ta
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 768 pemeriksaan shell, touch, Battle, Seeker, roster, reduced motion
+# Godot: 841 pemeriksaan shell, Atlas, touch, Battle, Seeker, roster, dan motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
 

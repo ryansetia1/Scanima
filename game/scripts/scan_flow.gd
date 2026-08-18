@@ -61,7 +61,8 @@ const STAT_LABEL_KEYS := {
 	"special": "STAT_SPECIAL",
 }
 const SEEKER_PROFILE_DEST := &"seeker_profile"
-const GALLERY_DEST := &"gallery"
+const ANIMA_PROFILE_DEST := &"anima_profile"
+const ATLAS_DEST := &"atlas"
 const TROPHY_ART_DIR := "user://trophies"
 const SHOP_ICON := preload("res://assets/icons/shopping-bag.svg")
 const BAG_ICON := preload("res://assets/icons/backpack.svg")
@@ -80,7 +81,7 @@ const BAG_ICON := preload("res://assets/icons/backpack.svg")
 @onready var _bits_chip: ResourceChip = %BitsChip
 @onready var _bag_button: ResourceChip = %BagButton
 @onready var _shop_button: ResourceChip = %ShopButton
-@onready var _seeker_menu_button: Button = %SeekerMenuButton
+@onready var _menu_popover: MenuPopover = %MenuPopover
 @onready var _shell_modal = %ShellModal
 @onready var _shop_sheet = %ShopSheet
 @onready var _battle_pick_sheet = %BattlePickSheet
@@ -95,7 +96,7 @@ const BAG_ICON := preload("res://assets/icons/backpack.svg")
 @onready var _collection_view: CollectionView = %CollectionView
 @onready var _details_view: AnimaDetailsView = %AnimaDetailsView
 @onready var _seeker_profile_view: SeekerProfileView = %SeekerProfileView
-@onready var _gallery_view: GalleryView = %GalleryView
+@onready var _atlas_view: AtlasView = %AtlasView
 @onready var _bottom_nav: BottomNav = %BottomNav
 @onready var _level_up_banner: Control = %LevelUpBanner
 @onready var _level_up_title: Label = %LevelUpTitle
@@ -112,6 +113,9 @@ var _roster_error := ""
 var _placeholder_icon: Texture2D = null
 var _thumbnail_cache: Dictionary = {}
 var _destination: StringName = BottomNav.HOME
+var _overlay_return_destination: StringName = BottomNav.HOME
+var _profile_return_destination: StringName = BottomNav.COLLECTION
+var _pending_atlas_publish_id := ""
 var _toast_revision := 0
 var _level_up_revision := 0
 var _level_up_tween: Tween
@@ -225,7 +229,7 @@ func _ready() -> void:
 	_details_view.help_requested.connect(_show_details_help)
 	_details_view.gallery_publish_requested.connect(_toggle_gallery_publish)
 	_details_view.evolve_requested.connect(_show_evolve_confirmation)
-	_bottom_nav.destination_selected.connect(_switch_destination)
+	_bottom_nav.destination_selected.connect(_on_bottom_nav_destination)
 	_shell_modal.confirmed.connect(_modal_confirmed)
 	_shell_modal.canceled.connect(_modal_canceled)
 	_shop_sheet.buy_requested.connect(_buy_catalog_item)
@@ -240,26 +244,24 @@ func _ready() -> void:
 	_bits_chip.pressed.connect(_show_bits_info)
 	_bag_button.pressed.connect(_on_bag_pressed)
 	_shop_button.pressed.connect(_open_shop)
-	_seeker_menu_button.pressed.connect(_open_seeker_menu)
-	_seeker_menu_sheet.profile_requested.connect(_open_seeker_profile)
-	_seeker_menu_sheet.gallery_requested.connect(_open_gallery)
+	_menu_popover.profile_requested.connect(_open_seeker_profile)
+	_menu_popover.atlas_requested.connect(_open_atlas)
+	_menu_popover.settings_requested.connect(_open_settings)
 	_seeker_menu_sheet.account_requested.connect(_show_account_action)
 	_seeker_menu_sheet.help_requested.connect(_show_seeker_help)
 	_seeker_menu_sheet.delete_account_requested.connect(_show_delete_account_confirmation)
-	_seeker_menu_sheet.reduced_motion_changed.connect(_set_reduced_motion)
 	_seeker_menu_sheet.music_changed.connect(_set_music_enabled)
 	_seeker_menu_sheet.chapter_push_changed.connect(_set_chapter_push)
 	_seeker_onboarding_sheet.submit_requested.connect(_complete_seeker_profile)
-	_seeker_profile_view.back_requested.connect(func() -> void: _switch_destination(BottomNav.HOME))
+	_seeker_profile_view.back_requested.connect(_return_from_overlay)
 	_seeker_profile_view.help_requested.connect(_show_details_help)
 	_seeker_profile_view.rename_requested.connect(_show_rename_seeker)
-	_gallery_view.back_requested.connect(func() -> void: _switch_destination(BottomNav.HOME))
-	_gallery_view.toast_requested.connect(_say)
+	_atlas_view.back_requested.connect(_return_from_overlay)
+	_atlas_view.toast_requested.connect(_say)
 	AuthFlow.auth_succeeded.connect(_on_auth_succeeded)
 	AuthFlow.auth_failed.connect(_on_auth_failed)
 	AuthFlow.existing_account_required.connect(_show_existing_account_warning)
 	LocaleManager.locale_changed.connect(_refresh_localized_ui)
-	UiMotion.set_reduced_motion(GameState.reduced_motion())
 	_music = MusicDirector.new()
 	_music.name = "MusicDirector"
 	add_child(_music)
@@ -300,7 +302,7 @@ func _ready() -> void:
 		if arg == "--collection":
 			_switch_destination(BottomNav.COLLECTION)
 		if arg == "--stats":
-			_switch_destination(BottomNav.ANIMA)
+			_switch_destination(ANIMA_PROFILE_DEST)
 		if arg == "--core-info":
 			_show_core_info()
 		if arg == "--bits-info":
@@ -344,6 +346,8 @@ func _ready() -> void:
 			_celebrate_level_up(4, 3, 10, 15)
 		if arg == "--trophy-demo":
 			_run_trophy_demo()
+		if arg == "--atlas-demo":
+			_run_atlas_demo()
 		if arg == "--empty-demo":
 			_run_empty_demo()
 		if arg == "--summon-demo":
@@ -607,7 +611,12 @@ func _sync_collection_preview(row: Dictionary, revision: int) -> void:
 func _show_collection_profile(row: Dictionary) -> void:
 	if row.is_empty() or _busy:
 		return
-	_switch_destination(BottomNav.ANIMA, row)
+	_profile_return_destination = (
+		_destination
+		if _destination in [BottomNav.COLLECTION, BottomNav.BATTLE]
+		else BottomNav.COLLECTION
+	)
+	_switch_destination(ANIMA_PROFILE_DEST, row)
 
 
 func _summon_collection_anima(row: Dictionary, care_synced: bool) -> void:
@@ -1374,6 +1383,8 @@ func _modal_confirmed(text: String) -> void:
 			_delete_account()
 		&"rename_seeker":
 			_rename_seeker(text)
+		&"atlas_publish":
+			_commit_atlas_publish(_pending_atlas_publish_id, true)
 		&"chapter_announcement":
 			_ack_chapter_popup(true)
 		&"retreat":
@@ -1396,6 +1407,8 @@ func _modal_canceled() -> void:
 		_pending_rename_id = ""
 		_pending_rename_text = ""
 		call_deferred("_maybe_prompt_seeker_onboarding")
+	elif context == &"atlas_publish":
+		_pending_atlas_publish_id = ""
 	elif context == &"core_info":
 		_cores_chip.grab_action_focus()
 	elif context == &"bits_info":
@@ -1545,17 +1558,54 @@ func _complete_seeker_profile(
 	call_deferred("_maybe_show_chapter_popup")
 
 
-func _open_gallery() -> void:
-	_seeker_menu_sheet.close()
-	_switch_destination(GALLERY_DEST)
+func _on_bottom_nav_destination(destination: StringName) -> void:
+	if destination == BottomNav.MENU:
+		if _menu_popover.visible:
+			_menu_popover.close()
+		else:
+			_menu_popover.show_menu()
+		return
+	_menu_popover.close()
+	_switch_destination(destination)
+
+
+func _remember_overlay_origin() -> void:
+	if _destination in [BottomNav.HOME, BottomNav.SCAN, BottomNav.BATTLE, BottomNav.COLLECTION]:
+		_overlay_return_destination = _destination
+
+
+func _return_from_overlay() -> void:
+	_switch_destination(_overlay_return_destination)
+
+
+func _open_atlas() -> void:
+	_remember_overlay_origin()
+	_switch_destination(ATLAS_DEST)
 
 
 func _toggle_gallery_publish(anima_id: String, publish: bool) -> void:
 	if _busy or anima_id.is_empty():
 		return
+	if publish:
+		_pending_atlas_publish_id = anima_id
+		_modal_context = &"atlas_publish"
+		_shell_modal.open_confirm(
+			tr("ATLAS_PUBLISH_TITLE"),
+			tr("ATLAS_PUBLISH_CONSENT"),
+			tr("ATLAS_PUBLISH_ACTION"),
+			tr("ACTION_CANCEL")
+		)
+		return
+	await _commit_atlas_publish(anima_id, false)
+
+
+func _commit_atlas_publish(anima_id: String, publish: bool) -> void:
+	if _busy or anima_id.is_empty():
+		return
+	_pending_atlas_publish_id = ""
 	_set_busy(true)
 	var operation := "publish" if publish else "unpublish"
-	var res := await Backend.gallery(operation, {"anima_id": anima_id})
+	var res := await Backend.atlas(operation, {"anima_id": anima_id})
 	if res.ok:
 		_say(tr("GALLERY_PUBLISHED") if publish else tr("GALLERY_UNPUBLISHED"), false)
 		await _refresh_gallery_status(anima_id)
@@ -1571,12 +1621,12 @@ func _gallery_error(code: String) -> String:
 		"GALLERY_MODERATION_REJECTED":
 			return tr("GALLERY_MODERATION_REJECTED")
 		"FEATURE_DISABLED":
-			return tr("GALLERY_DISABLED")
+			return tr("ATLAS_DISABLED")
 		"ANIMA_NOT_TYPING_V2", "ANIMA_NOT_READY", "ANIMA_NO_ART":
 			return tr("GALLERY_PUBLISH_UNAVAILABLE")
 		_:
 			var key := "ERROR_%s" % code
-			return tr(key) if tr(key) != key else tr("GALLERY_ERROR")
+			return tr(key) if tr(key) != key else tr("ATLAS_ERROR")
 
 
 func _refresh_gallery_status(anima_id: String = "") -> void:
@@ -1589,7 +1639,7 @@ func _refresh_gallery_status(anima_id: String = "") -> void:
 		return
 	_gallery_status_revision += 1
 	var revision := _gallery_status_revision
-	var res := await Backend.gallery("my_status", {"anima_id": target_id})
+	var res := await Backend.atlas("my_status", {"anima_id": target_id})
 	if revision != _gallery_status_revision:
 		return
 	if not res.ok:
@@ -1608,13 +1658,11 @@ func _refresh_gallery_status(anima_id: String = "") -> void:
 	})
 
 
-func _open_seeker_menu() -> void:
+func _open_settings() -> void:
 	if _busy:
 		return
 	_seeker_menu_sheet.show_menu(
-		GameState.profile,
 		GameState.is_anonymous(),
-		GameState.reduced_motion(),
 		ChapterPush.available(),
 		GameState.chapter_push_enabled(),
 		GameState.music_enabled()
@@ -1622,7 +1670,7 @@ func _open_seeker_menu() -> void:
 
 
 func _open_seeker_profile() -> void:
-	_seeker_menu_sheet.close()
+	_remember_overlay_origin()
 	_set_busy(true)
 	var res := await Backend.seeker("profile")
 	_set_busy(false)
@@ -1860,11 +1908,6 @@ func _show_seeker_help() -> void:
 		tr("SEEKER_HELP_BODY"),
 		tr("CORE_INFO_CLOSE")
 	)
-
-
-func _set_reduced_motion(enabled: bool) -> void:
-	GameState.set_reduced_motion(enabled)
-	UiMotion.set_reduced_motion(enabled)
 
 
 func _set_music_enabled(enabled: bool) -> void:
@@ -3881,9 +3924,10 @@ func _switch_destination(
 	refresh_battle_reward: bool = true
 ) -> void:
 	_battle_reward_revision += 1
-	if destination == BottomNav.ANIMA and not profile_row.is_empty():
+	_menu_popover.close()
+	if destination == ANIMA_PROFILE_DEST and not profile_row.is_empty():
 		_profile_anima = profile_row.duplicate(true)
-	if destination == BottomNav.ANIMA and not _details_available():
+	if destination == ANIMA_PROFILE_DEST and not _details_available():
 		destination = BottomNav.HOME
 	var previous := _destination
 	if previous == BottomNav.HOME and destination != BottomNav.HOME:
@@ -3896,7 +3940,7 @@ func _switch_destination(
 	if destination == BottomNav.COLLECTION and previous != BottomNav.COLLECTION:
 		_collection_view.begin_visit()
 		_populate_collection()
-	if destination == BottomNav.ANIMA:
+	if destination == ANIMA_PROFILE_DEST:
 		if profile_row.is_empty():
 			_profile_anima = _current_anima.duplicate(true)
 	_destination = destination
@@ -3904,10 +3948,10 @@ func _switch_destination(
 	_scan_view.visible = destination == BottomNav.SCAN
 	_battle_view.visible = destination == BottomNav.BATTLE
 	_collection_view.visible = destination == BottomNav.COLLECTION
-	_details_view.visible = destination == BottomNav.ANIMA
+	_details_view.visible = destination == ANIMA_PROFILE_DEST
 	_seeker_profile_view.visible = destination == SEEKER_PROFILE_DEST
-	_gallery_view.visible = destination == GALLERY_DEST
-	if destination != SEEKER_PROFILE_DEST and destination != GALLERY_DEST:
+	_atlas_view.visible = destination == ATLAS_DEST
+	if destination not in [SEEKER_PROFILE_DEST, ANIMA_PROFILE_DEST, ATLAS_DEST]:
 		_bottom_nav.set_active(destination)
 	if destination != BottomNav.HOME:
 		_toast_revision += 1
@@ -3951,11 +3995,11 @@ func _switch_destination(
 
 	if destination == BottomNav.COLLECTION and not _roster_error.is_empty() and not _busy:
 		_reload_roster()
-	if destination == BottomNav.ANIMA:
+	if destination == ANIMA_PROFILE_DEST:
 		_refresh_stats()
 		call_deferred("_refresh_gallery_status")
-	if destination == GALLERY_DEST:
-		_gallery_view.begin_visit()
+	if destination == ATLAS_DEST:
+		_atlas_view.begin_visit()
 	if destination == BottomNav.HOME:
 		call_deferred("_maybe_show_chapter_popup")
 	_sync_shop_chrome()
@@ -3975,12 +4019,12 @@ func _active_view() -> Control:
 			return _battle_view
 		BottomNav.COLLECTION:
 			return _collection_view
-		BottomNav.ANIMA:
+		ANIMA_PROFILE_DEST:
 			return _details_view
 		SEEKER_PROFILE_DEST:
 			return _seeker_profile_view
-		GALLERY_DEST:
-			return _gallery_view
+		ATLAS_DEST:
+			return _atlas_view
 		_:
 			return _home_view
 
@@ -3997,7 +4041,8 @@ func _refresh_localized_ui(_locale: String = "") -> void:
 	_setup_picker()
 	_configure_resource_chips()
 	_details_view.refresh_localized_ui()
-	_gallery_view.refresh_localized_ui()
+	_atlas_view.refresh_localized_ui()
+	_menu_popover.refresh_localized_ui()
 	_scan_view.refresh_localized_ui()
 	_refresh_header()
 	_refresh_stats()
@@ -4326,18 +4371,14 @@ func _celebrate_level_up(
 	Input.vibrate_handheld(70)
 	if is_instance_valid(_level_up_tween):
 		_level_up_tween.kill()
-	if UiMotion.reduced_motion:
-		_level_up_banner.modulate = Color.WHITE
-		_level_up_banner.scale = Vector2.ONE
-	else:
-		_level_up_banner.modulate = Color(1.0, 1.0, 1.0, 0.0)
-		_level_up_banner.scale = Vector2(0.72, 0.72)
-		_level_up_tween = create_tween()
-		_level_up_tween.tween_property(_level_up_banner, "modulate:a", 1.0, 0.10)
-		_level_up_tween.parallel().tween_property(
-			_level_up_banner, "scale", Vector2(1.06, 1.06), 0.18
-		).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		_level_up_tween.chain().tween_property(_level_up_banner, "scale", Vector2.ONE, 0.12)
+	_level_up_banner.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	_level_up_banner.scale = Vector2(0.72, 0.72)
+	_level_up_tween = create_tween()
+	_level_up_tween.tween_property(_level_up_banner, "modulate:a", 1.0, 0.10)
+	_level_up_tween.parallel().tween_property(
+		_level_up_banner, "scale", Vector2(1.06, 1.06), 0.18
+	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_level_up_tween.chain().tween_property(_level_up_banner, "scale", Vector2.ONE, 0.12)
 	_level_up_revision += 1
 	var revision := _level_up_revision
 	_hide_level_up_later(
@@ -4355,19 +4396,16 @@ func _hide_level_up_later(
 	await get_tree().create_timer(1.8).timeout
 	if revision != _level_up_revision or not is_instance_valid(_level_up_banner):
 		return
-	if UiMotion.reduced_motion:
-		_level_up_banner.visible = false
-	else:
-		if is_instance_valid(_level_up_tween):
-			_level_up_tween.kill()
-		_level_up_tween = create_tween()
-		_level_up_tween.tween_property(_level_up_banner, "modulate:a", 0.0, 0.22)
-		await _level_up_tween.finished
-		if revision != _level_up_revision or not is_instance_valid(_level_up_banner):
-			return
-		_level_up_banner.visible = false
-		_level_up_banner.modulate = Color.WHITE
-		_level_up_banner.scale = Vector2.ONE
+	if is_instance_valid(_level_up_tween):
+		_level_up_tween.kill()
+	_level_up_tween = create_tween()
+	_level_up_tween.tween_property(_level_up_banner, "modulate:a", 0.0, 0.22)
+	await _level_up_tween.finished
+	if revision != _level_up_revision or not is_instance_valid(_level_up_banner):
+		return
+	_level_up_banner.visible = false
+	_level_up_banner.modulate = Color.WHITE
+	_level_up_banner.scale = Vector2.ONE
 	_show_level_up_stats(previous_score, new_score, target_anima, modal_context)
 
 
@@ -4489,10 +4527,9 @@ func _set_busy(busy: bool) -> void:
 	_team_battle_view.set_busy(busy)
 	_home_view.set_busy(busy)
 	_collection_view.set_busy(busy)
-	_gallery_view.set_busy(busy)
+	_atlas_view.set_busy(busy)
 	_details_view.set_busy(busy)
 	_seeker_profile_view.set_busy(busy)
-	_seeker_menu_button.disabled = busy
 	_bottom_nav.set_busy(busy, _details_available())
 	_bag_button.set_interactive(not busy, tr("BAG_OPEN"))
 	_shop_button.set_interactive(not busy, tr("SHOP_OPEN"))
@@ -4517,6 +4554,9 @@ func _handle_back(allow_quit: bool) -> bool:
 		return true
 	if is_instance_valid(_seeker_onboarding_sheet) and _seeker_onboarding_sheet.visible:
 		_seeker_onboarding_sheet.close()
+		return true
+	if is_instance_valid(_menu_popover) and _menu_popover.visible:
+		_menu_popover.close()
 		return true
 	if is_instance_valid(_seeker_menu_sheet) and _seeker_menu_sheet.visible:
 		_seeker_menu_sheet.close()
@@ -4550,8 +4590,14 @@ func _handle_back(allow_quit: bool) -> bool:
 	if _collection_view.is_sheet_open():
 		_collection_view.close_sheet()
 		return true
-	if is_instance_valid(_gallery_view) and _gallery_view.is_detail_open():
-		_gallery_view.close_detail()
+	if is_instance_valid(_atlas_view) and _atlas_view.is_detail_open():
+		_atlas_view.close_detail()
+		return true
+	if _destination == ANIMA_PROFILE_DEST:
+		_switch_destination(_profile_return_destination)
+		return true
+	if _destination in [SEEKER_PROFILE_DEST, ATLAS_DEST]:
+		_return_from_overlay()
 		return true
 	if _destination != BottomNav.HOME:
 		_switch_destination(BottomNav.HOME)
@@ -4627,7 +4673,6 @@ func _sync_shop_chrome() -> void:
 		_bag_button.visible = show_chrome
 	_shop_button.visible = show_chrome
 	_shop_button.modulate = Color(1.0, 1.0, 1.0, 0.45) if shop_locked else Color.WHITE
-	_seeker_menu_button.disabled = _busy or immersive
 	if (
 		is_instance_valid(_shop_sheet)
 		and _shop_sheet.visible
@@ -4789,7 +4834,7 @@ func _run_evolve_demo() -> void:
 	demo["stage"] = 1
 	demo["status"] = "ready"
 	_profile_anima = demo.duplicate(true)
-	_switch_destination(BottomNav.ANIMA)
+	_switch_destination(ANIMA_PROFILE_DEST)
 	_details_view.set_evolution_enabled(true)
 	_details_view.set_anima(demo, _thumbnail_for(demo))
 	_say(tr("COLLECTION_READY_EVOLVE"), true)
@@ -4846,10 +4891,61 @@ func _run_profile_help_demo(show_help: bool = true) -> void:
 			"care_score": 28,
 			"base_stats": {"hp": 74, "atk": 62, "def": 58, "spd": 81, "special": 77},
 		}
-	_switch_destination(BottomNav.ANIMA, demo)
+	_switch_destination(ANIMA_PROFILE_DEST, demo)
 	_refresh_stats()
 	if show_help:
 		_show_details_help(tr("STAT_SPD"), tr("STAT_SPD_HELP"))
+
+
+func _run_atlas_demo() -> void:
+	var rows: Array[Dictionary] = [
+		{
+			"form_id": "atlas-demo-scanned",
+			"source_kind": "player",
+			"discovery_source": "scanned",
+			"discovered": true,
+			"display_name": "Veridian",
+			"element": "plant",
+			"secondary_element": "stone",
+			"stage": 1,
+		},
+		{
+			"form_id": "atlas-demo-duel",
+			"source_kind": "player",
+			"discovery_source": "duel",
+			"discovered": true,
+			"display_name": "Sunhound",
+			"element": "flame",
+			"secondary_element": "fauna",
+			"stage": 2,
+		},
+		{
+			"form_id": "atlas-demo-expedition",
+			"source_kind": "expedition",
+			"discovery_source": "expedition",
+			"discovered": true,
+			"display_name": "Gumdrop",
+			"element": "food",
+			"secondary_element": "",
+			"stage": 3,
+		},
+		{
+			"form_id": "atlas-demo-hidden",
+			"source_kind": "expedition",
+			"discovery_source": "",
+			"discovered": false,
+			"display_name": "???",
+			"element": "",
+			"secondary_element": "",
+			"stage": 1,
+		},
+	]
+	var placeholder := PlaceholderSheet.build()
+	var idle := AtlasView._crop_idle(placeholder["image"], placeholder["manifest"])
+	var texture := ImageTexture.create_from_image(idle)
+	_atlas_view.set_busy(true)
+	_switch_destination(ATLAS_DEST)
+	_atlas_view.show_demo(rows, texture)
 
 
 ## Kartu kedua sengaja dibiarkan tanpa art supaya slot yang sudah dipesan

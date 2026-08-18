@@ -414,8 +414,8 @@ membuatnya lebih garang atau menumbuhkan anggota tubuh baru.
 
 Di client, Play dirancang sebagai bounce berulang sekitar 2,5 detik. Pose
 Damaged—key internal-nya tetap `defeated`—memakai heavy breathing loop selama
-Anima berada dalam Dormant. Keduanya tetap Tween procedural, berhenti saat
-state berubah, dan tunduk pada satu sakelar Reduced Motion.
+Anima berada dalam Dormant. Keduanya tetap Tween procedural dan berhenti saat
+state berubah.
 
 V5 juga menghentikan pola nama `-mon`: Vision dilarang memakai suffix itu maupun
 meniru pola nama franchise monster yang sudah ada. Pagar runtime tetap berlaku
