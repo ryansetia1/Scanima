@@ -16,9 +16,11 @@ chapter, profil statis, dan publication consent satu lineage. Bottom navigation
 sekarang Home/Scan/Battle/Collection/Menu; popover Menu membuka Seeker Profile,
 Anima Atlas, dan Settings, sementara burger Top HUD serta seluruh Reduced Motion
 plumbing sudah dihapus. `npm run selftest`, seluruh suite Godot, import, Deno
-check, dan visual Menu lulus. Migration `20260818142631_anima_atlas`, deploy
-ulang function wire-compatible `gallery`, dan APK baru **belum** dirilis ke
-production; Gallery v2/build lama masih live sampai rollout terkoordinasi.
+check, dan visual Menu lulus. Migration `20260818162758_anima_atlas` +
+`20260818163916_index_anima_atlas_foreign_keys` serta function wire-compatible
+`gallery` version 3 sudah live dan lulus smoke Atlas baru maupun operation
+Gallery lama. APK baru **belum** dirilis; build lama tetap berjalan lewat
+`list`/`hide` sampai distribusi client Atlas selesai.
 
 **Cutover Elements/Animals/Gallery, 15 Agustus 2026.** Kontrak aktif memakai 18
 elemen dengan secondary opsional; Attack memakai primary dan Special memakai

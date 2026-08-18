@@ -2449,7 +2449,7 @@ console.log("23c. Anima Atlas memakai consent/moderasi Gallery");
   );
   const atlasMigration = await readFile(
     new URL(
-      "../backend/supabase/migrations/20260818142631_anima_atlas.sql",
+      "../backend/supabase/migrations/20260818162758_anima_atlas.sql",
       import.meta.url,
     ),
     "utf8",

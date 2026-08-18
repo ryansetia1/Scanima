@@ -8,8 +8,8 @@ Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). A
 
 Game langsung berjalan sebagai **guest Seeker** tanpa login. Tombol **Menu** di
 bottom navigation membuka Seeker Profile, Anima Atlas, dan Settings.
-Menu/Atlas ini memerlukan APK baru dan rollout server; build production lama
-masih memakai navigasi sebelumnya.
+Server Atlas sudah aktif. Menu/Atlas tetap memerlukan APK baru; build lama masih
+memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
 
 ## Mulai dari mana
 

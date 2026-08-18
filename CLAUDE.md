@@ -16,7 +16,7 @@ menjawab, dan commit turn mengulang sendiri saat transport gagal. Detail, pagar
 parity, dan daftar jalur yang sengaja tetap menunggu server ada di
 [`docs/12-local-first-turns.md`](docs/12-local-first-turns.md).
 
-## Status implementasi Anima Atlas (lokal, belum production)
+## Status deploy Anima Atlas (backend production, APK pending)
 
 Gallery Feed sudah diganti di source dengan **Anima Atlas**: registry
 `atlas_forms`, ledger `seeker_atlas_discoveries`, hook authoritative untuk
@@ -26,11 +26,17 @@ tetapi client Atlas memakai operation versioned `atlas_list`/`atlas_detail`;
 `publish`, `unpublish`, `report`, dan `my_status` tetap shared. Operation lama
 `list`/`hide` dipertahankan hanya agar APK Gallery yang sudah terpasang tidak
 rusak selama rollout; `hide` juga membersihkan discovery pemiliknya. Migration
-`20260818142631_anima_atlas` dan function baru **belum** di-deploy; production
-masih memakai Gallery version 2 sampai rollout server + APK baru terkoordinasi.
-Urutan rollout aman: apply migration → deploy function `gallery` → smoke 401 +
-quota rules → distribusikan APK; jangan membalik APK sebelum endpoint versioned
-tersedia.
+`20260818162758_anima_atlas` + `20260818163916_index_anima_atlas_foreign_keys`
+tercatat production dan `gallery` version 3 ACTIVE dengan `verify_jwt=true`.
+Backfill production menghasilkan 8 form pemain, 9 form Expedition, serta
+discovery 8 Scanned / 1 Duel / 9 Expedition; RLS, revoke helper internal, dan
+covering index cleanup terverifikasi. Smoke tanpa JWT menjawab 401, client baru
+`atlas_list` menjawab 200 dengan 9 siluet chapter untuk akun baru, dan operation
+legacy `list` tetap menjawab 200 dengan satu publication; kedua akun smoke sudah
+dihapus. Uji transaksi production untuk backfill, siluet chapter, serta cleanup
+unpublish/report/delete lulus dan rollback kembali ke 17 form / 18 discovery /
+1 publication. Backend rollout selesai; APK baru masih perlu
+dibangun/didistribusikan agar pemain melihat Menu dan Atlas.
 
 Client kandidat memakai bottom nav Home/Scan/Battle/Collection/**Menu**. Menu
 adalah launcher popover untuk Seeker Profile, Anima Atlas, dan Settings;

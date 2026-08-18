@@ -3,8 +3,8 @@
 **Anima Atlas** adalah catatan form Anima yang pernah kamu buat atau temui.
 Buka **Menu** di bottom navigation, lalu pilih **Anima Atlas**.
 
-Fitur ini sudah ada di build baru, tetapi belum aktif untuk pemain production
-sampai rollout server dan APK baru selesai.
+Server Atlas sudah aktif. Layar ini muncul setelah pemain memasang APK baru;
+build lama tetap menampilkan Gallery selama masa pembaruan.
 
 Atlas memakai satu grid dengan filter:
 
