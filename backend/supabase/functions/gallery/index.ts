@@ -1,20 +1,21 @@
 // POST /gallery { operation: atlas_list|atlas_detail|publish|unpublish|report|my_status, ... }
 // Legacy list/hide remain only so installed Gallery builds survive the Atlas rollout.
 
-import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
-import { normalizeSuggestedName } from "../_shared/vision.mjs";
-import { signSheetUrl } from "../_shared/signed_roster.ts";
+import {
+  adminClient,
+  clientVersionGate,
+  json,
+  sha256Hex,
+} from "../_shared/supa.ts";
+import { signSheetUrl, signSheetUrls } from "../_shared/signed_roster.ts";
 import {
   BATTLE_SHEET_SIGNED_TTL,
   GALLERY_REPORT_AUTO_HIDE,
   THUMB_SIGNED_TTL,
-  cropIdleThumb,
-  hashSheetBytes,
-  moderateSheetImage,
-  removeThumb,
-} from "../_shared/gallery.mjs";
+} from "../_shared/gallery_constants.mjs";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const OPERATIONS = new Set([
   "atlas_list",
   "atlas_detail",
@@ -28,6 +29,7 @@ const OPERATIONS = new Set([
 const FILTERS = new Set(["all", "scanned", "expedition", "duel"]);
 const LIST_LIMIT_DEFAULT = 24;
 const LIST_LIMIT_MAX = 48;
+const FEATURE_CACHE_MS = 30_000;
 
 const ERROR_STATUS: Record<string, number> = {
   FEATURE_DISABLED: 503,
@@ -65,16 +67,20 @@ type GalleryBody = {
 };
 
 const db = adminClient();
+let featureCache: boolean | null = null;
+let featureCacheUntil = 0;
 
 Deno.serve(async (req) => {
+  const requestStarted = performance.now();
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);
   if (versionError) return versionError;
+  const versionCheckedAt = performance.now();
 
-  const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-  const { data: auth, error: authError } = await db.auth.getClaims(token);
-  const ownerId = auth?.claims?.sub;
-  if (authError || typeof ownerId !== "string") return json(401, { error: "token tidak sah" });
+  const ownerId = verifiedSubject(req);
+  if (!ownerId) {
+    return json(401, { error: "token tidak sah" });
+  }
 
   let body: GalleryBody;
   try {
@@ -84,15 +90,32 @@ Deno.serve(async (req) => {
   }
 
   const operation = typeof body.operation === "string" ? body.operation : "";
-  if (!OPERATIONS.has(operation)) return json(400, { error: "operation tidak dikenal" });
+  if (!OPERATIONS.has(operation)) {
+    return json(400, { error: "operation tidak dikenal" });
+  }
 
   try {
     if (operation === "list") {
-      return await listLegacyEntries(ownerId, body, await galleryFeatureEnabled());
+      return await listLegacyEntries(
+        ownerId,
+        body,
+        await galleryFeatureEnabled(),
+      );
+    }
+    if (operation === "atlas_list") {
+      const response = await listAtlas(ownerId, body);
+      response.headers.append(
+        "Server-Timing",
+        `client-version;dur=${
+          (versionCheckedAt - requestStarted).toFixed(1)
+        }, edge-total;dur=${(performance.now() - requestStarted).toFixed(1)}`,
+      );
+      return response;
     }
     const enabled = await featureEnabled();
-    if (operation === "atlas_list") return await listAtlas(ownerId, body, enabled);
-    if (operation === "atlas_detail") return await atlasDetail(ownerId, body, enabled);
+    if (operation === "atlas_detail") {
+      return await atlasDetail(ownerId, body, enabled);
+    }
     if (operation === "my_status") return await myStatus(ownerId, body);
     if (!enabled) throw new Error("FEATURE_DISABLED");
     if (operation === "publish") return await publishEntry(ownerId, body);
@@ -106,7 +129,9 @@ Deno.serve(async (req) => {
       : typeof error === "object" && error !== null && "message" in error
       ? String(error.message)
       : String(error);
-    const marker = Object.keys(ERROR_STATUS).find((candidate) => message.includes(candidate));
+    const marker = Object.keys(ERROR_STATUS).find((candidate) =>
+      message.includes(candidate)
+    );
     if (marker) return json(ERROR_STATUS[marker], { error: marker });
     console.error("Anima Atlas gagal", error);
     return json(500, { error: "Anima Atlas gagal diproses" });
@@ -114,14 +139,26 @@ Deno.serve(async (req) => {
 });
 
 async function featureEnabled(): Promise<boolean> {
-  const { data } = await db.from("app_config").select("value").eq("key", "feature_atlas").maybeSingle();
-  if (typeof data?.value === "boolean") return data.value;
-  if (typeof data?.value === "string") return data.value === "true";
-  return false;
+  const now = Date.now();
+  if (featureCache !== null && now < featureCacheUntil) return featureCache;
+  const { data } = await db.from("app_config").select("value").eq(
+    "key",
+    "feature_atlas",
+  ).maybeSingle();
+  featureCache = typeof data?.value === "boolean"
+    ? data.value
+    : typeof data?.value === "string"
+    ? data.value === "true"
+    : false;
+  featureCacheUntil = now + FEATURE_CACHE_MS;
+  return featureCache;
 }
 
 async function galleryFeatureEnabled(): Promise<boolean> {
-  const { data } = await db.from("app_config").select("value").eq("key", "feature_gallery").maybeSingle();
+  const { data } = await db.from("app_config").select("value").eq(
+    "key",
+    "feature_gallery",
+  ).maybeSingle();
   if (typeof data?.value === "boolean") return data.value;
   if (typeof data?.value === "string") return data.value === "true";
   return false;
@@ -133,13 +170,19 @@ async function listLegacyEntries(
   enabled: boolean,
 ): Promise<Response> {
   if (!enabled) {
-    return json(200, { entries: [], next_cursor: null, feature_enabled: false });
+    return json(200, {
+      entries: [],
+      next_cursor: null,
+      feature_enabled: false,
+    });
   }
 
   const limit = parseLimit(body.limit);
   let query = db
     .from("gallery_entries")
-    .select("id, display_name, element, secondary_element, stage, thumb_path, published_at")
+    .select(
+      "id, display_name, element, secondary_element, stage, thumb_path, published_at",
+    )
     .eq("published", true)
     .eq("moderation_status", "approved")
     .eq("auto_hidden", false)
@@ -164,50 +207,58 @@ async function listLegacyEntries(
   const visible = ((rows ?? []) as Record<string, unknown>[])
     .filter((row) => !hidden.has(String(row.id)));
   const page = visible.slice(0, limit);
-  const hasMore = visible.length > limit || ((rows ?? []).length > limit && page.length === limit);
+  const hasMore = visible.length > limit ||
+    ((rows ?? []).length > limit && page.length === limit);
+  const thumbUrls = await signThumbUrls(
+    page.map((row) => typeof row.thumb_path === "string" ? row.thumb_path : ""),
+  );
   const entries = [];
 
   for (const row of page) {
     const thumbPath = typeof row.thumb_path === "string" ? row.thumb_path : "";
-    let thumbUrl = "";
-    if (thumbPath) {
-      const { data: signed } = await db.storage
-        .from("gallery_thumbs")
-        .createSignedUrl(thumbPath, THUMB_SIGNED_TTL);
-      thumbUrl = signed?.signedUrl ?? "";
-    }
     entries.push({
       id: row.id,
       display_name: row.display_name,
       element: row.element,
       secondary_element: row.secondary_element ?? null,
       stage: row.stage,
-      thumb_url: thumbUrl,
+      thumb_url: thumbUrls.get(thumbPath) ?? "",
     });
   }
 
   const last = hasMore && page.length > 0 ? page[page.length - 1] : null;
   return json(200, {
     entries,
-    next_cursor: last ? encodeLegacyCursor(String(last.published_at), String(last.id)) : null,
+    next_cursor: last
+      ? encodeLegacyCursor(String(last.published_at), String(last.id))
+      : null,
     feature_enabled: true,
   });
 }
 
-async function listAtlas(ownerId: string, body: GalleryBody, enabled: boolean): Promise<Response> {
-  if (!enabled) {
-    return json(200, { entries: [], chapters: [], next_cursor: null, feature_enabled: false });
-  }
-
+async function listAtlas(
+  ownerId: string,
+  body: GalleryBody,
+): Promise<Response> {
+  const startedAt = performance.now();
   const limit = parseLimit(body.limit);
   const filter = parseFilter(body.filter);
-  const chapterId = body.chapter_id === undefined || body.chapter_id === null || body.chapter_id === ""
+  const chapterId = body.chapter_id === undefined || body.chapter_id === null ||
+      body.chapter_id === ""
     ? null
     : asUuid(body.chapter_id, "chapter_id");
   const cursor = parseCursor(body.cursor);
   let query = db
     .from("seeker_atlas_discoveries")
-    .select("*")
+    .select(`
+      *,
+      form:atlas_forms!seeker_atlas_discoveries_form_id_fkey!inner(
+        *,
+        publication:gallery_entries!atlas_forms_publication_id_fkey(id,published,auto_hidden),
+        owner_profile:profiles!atlas_forms_owner_id_fkey(id,seeker_name),
+        anima:animas!atlas_forms_anima_id_fkey(id,nickname,stage)
+      )
+    `)
     .eq("owner_id", ownerId)
     .order("last_seen_at", { ascending: false })
     .order("id", { ascending: false })
@@ -218,110 +269,102 @@ async function listAtlas(ownerId: string, body: GalleryBody, enabled: boolean): 
       `last_seen_at.lt.${cursor.last_seen_at},and(last_seen_at.eq.${cursor.last_seen_at},id.lt.${cursor.id})`,
     );
   }
+  if (chapterId) query = query.eq("form.chapter_id", chapterId);
 
-  const [{ data: discoveryRows, error: discoveryError }, { data: chapterCatalog, error: catalogError }] =
-    await Promise.all([
-      query,
-      db.rpc("expedition_chapter_catalog", { p_owner: ownerId }),
-    ]);
-  if (discoveryError) throw discoveryError;
-  if (catalogError) throw catalogError;
-
-  const rawDiscoveries = (discoveryRows ?? []) as Record<string, unknown>[];
-  const pageDiscoveries = rawDiscoveries.slice(0, limit);
-  const pageFormIds = pageDiscoveries.map((row) => String(row.form_id));
-  const unlockedChapterIds = (Array.isArray(chapterCatalog) ? chapterCatalog : [])
-    .filter((row) => row && typeof row === "object" && row.unlocked === true)
-    .map((row) => String(row.id));
-  const [{ data: pageForms, error: formsError }, { data: chapterRows, error: chapterError }] =
-    await Promise.all([
-      pageFormIds.length > 0
-        ? db.from("atlas_forms").select("*").in("id", pageFormIds)
-        : Promise.resolve({ data: [], error: null }),
-      unlockedChapterIds.length > 0
-        ? db
-          .from("expedition_chapters")
-          .select("id, slug, sequence")
-          .in("id", unlockedChapterIds)
-          .order("sequence")
-        : Promise.resolve({ data: [], error: null }),
-    ]);
-  if (formsError) throw formsError;
-  if (chapterError) throw chapterError;
-
-  let activeQuery = db
-    .from("atlas_forms")
-    .select("*")
-    .eq("source_kind", "expedition")
-    .eq("catalog_active", true)
-    .order("source_slug")
-    .order("stage");
-  activeQuery = unlockedChapterIds.length > 0
-    ? activeQuery.in("chapter_id", unlockedChapterIds)
-    : activeQuery.limit(0);
-  const { data: activeForms, error: activeError } = await activeQuery.limit(200);
-  if (activeError) throw activeError;
-
-  const activeFormIds = (activeForms ?? []).map((row) => String(row.id));
-  const { data: chapterDiscoveryRows, error: chapterDiscoveryError } = activeFormIds.length > 0
-    ? await db
+  const [
+    enabled,
+    { data: discoveryRows, error: discoveryError },
+    { data: chapterCatalog, error: catalogError },
+    { data: allActiveForms, error: activeError },
+    { data: chapterDiscoveryRows, error: chapterDiscoveryError },
+  ] = await Promise.all([
+    featureEnabled(),
+    query,
+    db.rpc("expedition_chapter_catalog", { p_owner: ownerId }),
+    db
+      .from("atlas_forms")
+      .select("*")
+      .eq("source_kind", "expedition")
+      .eq("catalog_active", true)
+      .order("source_slug")
+      .order("stage")
+      .limit(200),
+    db
       .from("seeker_atlas_discoveries")
       .select("*")
       .eq("owner_id", ownerId)
-      .in("form_id", activeFormIds)
-    : { data: [], error: null };
+      .eq("discovery_source", "expedition"),
+  ]);
+  const queriedAt = performance.now();
+  if (!enabled) {
+    return atlasListResponse(
+      {
+        entries: [],
+        chapters: [],
+        next_cursor: null,
+        feature_enabled: false,
+      },
+      startedAt,
+      queriedAt,
+      queriedAt,
+    );
+  }
+  if (discoveryError) throw discoveryError;
+  if (catalogError) throw catalogError;
+  if (activeError) throw activeError;
   if (chapterDiscoveryError) throw chapterDiscoveryError;
+
+  const rawDiscoveries = (discoveryRows ?? []) as Record<string, unknown>[];
+  const pageDiscoveries = rawDiscoveries.slice(0, limit);
+  const catalogRows = Array.isArray(chapterCatalog) ? chapterCatalog : [];
+  const unlockedCatalogRows = catalogRows
+    .filter((row) => row && typeof row === "object" && row.unlocked === true)
+    .sort((left, right) =>
+      Number(left.sequence ?? 0) - Number(right.sequence ?? 0)
+    );
+  const unlockedChapterIds = new Set(
+    unlockedCatalogRows.map((row) => String(row.id)),
+  );
+  const activeForms = ((allActiveForms ?? []) as Record<string, unknown>[])
+    .filter((form) => unlockedChapterIds.has(String(form.chapter_id)));
   const discoveredChapterForms = new Set(
     (chapterDiscoveryRows ?? []).map((row) => String(row.form_id)),
   );
 
-  const forms = new Map(
-    ((pageForms ?? []) as Record<string, unknown>[]).map((form) => [String(form.id), form]),
-  );
-  const publicationIds = [...new Set(
-    [...forms.values()]
-      .map((form) => typeof form.publication_id === "string" ? form.publication_id : "")
-      .filter(Boolean),
-  )];
-  const ownerIds = [...new Set(
-    [...forms.values()]
-      .map((form) => typeof form.owner_id === "string" ? form.owner_id : "")
-      .filter(Boolean),
-  )];
-  const [{ data: publications, error: publicationError }, { data: profiles, error: profileError }] =
-    await Promise.all([
-      publicationIds.length > 0
-        ? db
-          .from("gallery_entries")
-          .select("id, published, auto_hidden")
-          .in("id", publicationIds)
-        : Promise.resolve({ data: [], error: null }),
-      ownerIds.length > 0
-        ? db.from("profiles").select("id, seeker_name").in("id", ownerIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
-  if (publicationError) throw publicationError;
-  if (profileError) throw profileError;
-  const publicationById = new Map((publications ?? []).map((row) => [String(row.id), row]));
-  const profileById = new Map((profiles ?? []).map((row) => [String(row.id), row]));
+  const pageForms = pageDiscoveries
+    .map((row) => asRecord(row.form))
+    .filter((form) => Object.keys(form).length > 0);
+  const thumbPaths = [...pageForms, ...activeForms]
+    .map((form) => typeof form.thumb_path === "string" ? form.thumb_path : "");
+  const sheetPaths = pageForms
+    .filter((form) => form.source_kind === "player")
+    .map((form) => typeof form.sheet_path === "string" ? form.sheet_path : "");
+  const [thumbUrls, sheetUrls] = await Promise.all([
+    signThumbUrls(thumbPaths),
+    signSheetUrls(db, sheetPaths),
+  ]);
+  const signedAt = performance.now();
 
   const entries: Record<string, unknown>[] = [];
   for (const discovery of pageDiscoveries) {
-    const form = forms.get(String(discovery.form_id));
-    if (!form || (chapterId && form.chapter_id !== chapterId)) continue;
+    const form = asRecord(discovery.form);
+    if (Object.keys(form).length === 0) continue;
     if (form.source_kind === "player" && form.owner_id !== ownerId) {
-      const publication = publicationById.get(String(form.publication_id));
+      const publication = asRecord(form.publication);
       if (
         !publication?.published ||
         publication.auto_hidden ||
         form.moderation_status !== "approved"
       ) continue;
     }
-    entries.push(await atlasCard(
+    entries.push(atlasCard(
       form,
       discovery,
-      profileById.get(String(form.owner_id)),
+      asRecord(form.owner_profile),
       true,
+      ownerId,
+      thumbUrls,
+      sheetUrls,
     ));
   }
 
@@ -329,23 +372,25 @@ async function listAtlas(ownerId: string, body: GalleryBody, enabled: boolean): 
   // discoveries remain cursor-paginated; add a catalog cursor if authored
   // chapter casts ever exceed that ceiling.
   if (!cursor && (filter === "all" || filter === "expedition")) {
-    for (const form of (activeForms ?? []) as Record<string, unknown>[]) {
+    for (const form of activeForms) {
       if (chapterId && form.chapter_id !== chapterId) continue;
       if (discoveredChapterForms.has(String(form.id))) continue;
-      entries.push(await atlasCard(form, null, null, false));
+      entries.push(
+        atlasCard(form, null, null, false, ownerId, thumbUrls, sheetUrls),
+      );
     }
   }
 
   const activeByChapter = new Map<string, number>();
   const discoveredByChapter = new Map<string, number>();
-  for (const form of (activeForms ?? []) as Record<string, unknown>[]) {
+  for (const form of activeForms) {
     const id = String(form.chapter_id);
     activeByChapter.set(id, (activeByChapter.get(id) ?? 0) + 1);
     if (discoveredChapterForms.has(String(form.id))) {
       discoveredByChapter.set(id, (discoveredByChapter.get(id) ?? 0) + 1);
     }
   }
-  const chapters = (chapterRows ?? []).map((row) => ({
+  const chapters = unlockedCatalogRows.map((row) => ({
     id: row.id,
     slug: row.slug,
     sequence: row.sequence,
@@ -361,43 +406,71 @@ async function listAtlas(ownerId: string, body: GalleryBody, enabled: boolean): 
       ]),
     );
     const chapterEntries: Record<string, unknown>[] = [];
-    for (const form of (activeForms ?? []) as Record<string, unknown>[]) {
+    for (const form of activeForms) {
       if (form.chapter_id !== chapterId) continue;
       const discovery = discoveryByForm.get(String(form.id)) ?? null;
-      chapterEntries.push(await atlasCard(form, discovery, null, discovery !== null));
+      chapterEntries.push(atlasCard(
+        form,
+        discovery,
+        null,
+        discovery !== null,
+        ownerId,
+        thumbUrls,
+        sheetUrls,
+      ));
     }
-    return json(200, {
-      entries: chapterEntries,
-      chapters,
-      next_cursor: null,
-      feature_enabled: true,
-    });
+    return atlasListResponse(
+      {
+        entries: chapterEntries,
+        chapters,
+        next_cursor: null,
+        feature_enabled: true,
+      },
+      startedAt,
+      queriedAt,
+      signedAt,
+    );
   }
 
   const last = pageDiscoveries[pageDiscoveries.length - 1];
-  return json(200, {
-    entries,
-    chapters,
-    next_cursor: rawDiscoveries.length > limit && last
-      ? encodeCursor(String(last.last_seen_at), String(last.id))
-      : null,
-    feature_enabled: true,
-  });
+  return atlasListResponse(
+    {
+      entries,
+      chapters,
+      next_cursor: rawDiscoveries.length > limit && last
+        ? encodeCursor(String(last.last_seen_at), String(last.id))
+        : null,
+      feature_enabled: true,
+    },
+    startedAt,
+    queriedAt,
+    signedAt,
+  );
 }
 
-async function atlasDetail(ownerId: string, body: GalleryBody, enabled: boolean): Promise<Response> {
+async function atlasDetail(
+  ownerId: string,
+  body: GalleryBody,
+  enabled: boolean,
+): Promise<Response> {
   if (!enabled) throw new Error("FEATURE_DISABLED");
   const formId = asUuid(body.form_id, "form_id");
-  const [{ data: form, error: formError }, { data: discovery, error: discoveryError }] =
-    await Promise.all([
-      db.from("atlas_forms").select("*").eq("id", formId).maybeSingle(),
-      db
-        .from("seeker_atlas_discoveries")
-        .select("*")
-        .eq("owner_id", ownerId)
-        .eq("form_id", formId)
-        .maybeSingle(),
-    ]);
+  const [
+    { data: form, error: formError },
+    { data: discovery, error: discoveryError },
+  ] = await Promise.all([
+    db
+      .from("atlas_forms")
+      .select("*, anima:animas!atlas_forms_anima_id_fkey(id,nickname,stage)")
+      .eq("id", formId)
+      .maybeSingle(),
+    db
+      .from("seeker_atlas_discoveries")
+      .select("*")
+      .eq("owner_id", ownerId)
+      .eq("form_id", formId)
+      .maybeSingle(),
+  ]);
   if (formError) throw formError;
   if (discoveryError) throw discoveryError;
   if (!form || !discovery) throw new Error("ATLAS_FORM_NOT_FOUND");
@@ -422,7 +495,9 @@ async function atlasDetail(ownerId: string, body: GalleryBody, enabled: boolean)
       .select("seeker_name")
       .eq("id", form.owner_id)
       .maybeSingle();
-    ownerName = typeof profile?.seeker_name === "string" ? profile.seeker_name : "Seeker";
+    ownerName = typeof profile?.seeker_name === "string"
+      ? profile.seeker_name
+      : "Seeker";
   }
 
   return json(200, {
@@ -432,7 +507,7 @@ async function atlasDetail(ownerId: string, body: GalleryBody, enabled: boolean)
       discovery_source: discovery.discovery_source,
       anima_id: form.owner_id === ownerId ? form.anima_id : null,
       entry_id: entryId,
-      display_name: form.display_name,
+      display_name: atlasDisplayName(form as Record<string, unknown>, ownerId),
       owner_name: ownerName,
       stage: form.stage,
       subject_kind: form.subject_kind,
@@ -451,44 +526,47 @@ async function atlasDetail(ownerId: string, body: GalleryBody, enabled: boolean)
       level_at_first_seen: discovery.level_at_first_seen,
       level_at_last_seen: discovery.level_at_last_seen,
       can_report: form.source_kind === "player" && form.owner_id !== ownerId,
-      can_view_collection: form.source_kind === "player" && form.owner_id === ownerId,
+      can_view_collection: form.source_kind === "player" &&
+        form.owner_id === ownerId,
     },
     feature_enabled: true,
   });
 }
 
-async function atlasCard(
+function atlasCard(
   form: Record<string, unknown>,
   discovery: Record<string, unknown> | null,
   profile: Record<string, unknown> | null | undefined,
   discovered: boolean,
-): Promise<Record<string, unknown>> {
+  ownerId: string,
+  thumbUrls: Map<string, string>,
+  sheetUrls: Map<string, string>,
+): Record<string, unknown> {
   const thumbPath = typeof form.thumb_path === "string" ? form.thumb_path : "";
-  let thumbUrl = "";
-  if (thumbPath) {
-    const { data: signed } = await db.storage
-      .from("gallery_thumbs")
-      .createSignedUrl(thumbPath, THUMB_SIGNED_TTL);
-    thumbUrl = signed?.signedUrl ?? "";
-  }
   return {
     form_id: form.id,
     source_kind: form.source_kind,
     discovery_source: discovery?.discovery_source ?? null,
     discovered,
-    anima_id: discovered && discovery?.discovery_source === "scanned" ? form.anima_id : null,
-    entry_id: discovered && discovery?.discovery_source === "duel" ? form.publication_id : null,
-    display_name: discovered ? form.display_name : "???",
+    anima_id: discovered && discovery?.discovery_source === "scanned"
+      ? form.anima_id
+      : null,
+    entry_id: discovered && discovery?.discovery_source === "duel"
+      ? form.publication_id
+      : null,
+    display_name: discovered ? atlasDisplayName(form, ownerId) : "???",
     owner_name: discovered && discovery?.discovery_source === "duel"
-      ? (typeof profile?.seeker_name === "string" ? profile.seeker_name : "Seeker")
+      ? (typeof profile?.seeker_name === "string"
+        ? profile.seeker_name
+        : "Seeker")
       : null,
     stage: discovered ? form.stage : null,
     element: discovered ? form.element : null,
     secondary_element: discovered ? form.secondary_element : null,
     chapter_id: form.chapter_id,
     source_slug: form.source_slug,
-    thumb_url: thumbUrl,
-    sheet_url: await atlasSheetUrl(form),
+    thumb_url: thumbUrls.get(thumbPath) ?? "",
+    sheet_url: atlasCardSheetUrl(form, sheetUrls),
     card_manifest: cardManifest(form.manifest),
     first_seen_at: discovery?.first_seen_at ?? null,
     last_seen_at: discovery?.last_seen_at ?? null,
@@ -496,20 +574,76 @@ async function atlasCard(
   };
 }
 
+function atlasDisplayName(
+  form: Record<string, unknown>,
+  ownerId: string,
+): string {
+  const stableName =
+    typeof form.display_name === "string" && form.display_name.trim()
+      ? form.display_name.trim()
+      : "Anima";
+  if (form.owner_id !== ownerId) return stableName;
+  const anima = asRecord(form.anima);
+  if (Number(anima.stage) !== Number(form.stage)) return stableName;
+  return typeof anima.nickname === "string" && anima.nickname.trim()
+    ? anima.nickname.trim().slice(0, 48)
+    : stableName;
+}
+
+function atlasCardSheetUrl(
+  form: Record<string, unknown>,
+  sheetUrls: Map<string, string>,
+): string {
+  const path = typeof form.sheet_path === "string" ? form.sheet_path : "";
+  if (!path || path.includes("..")) return "";
+  if (form.source_kind === "expedition") {
+    const base = `${
+      Deno.env.get("SUPABASE_URL")
+    }/storage/v1/object/public/chapter_assets/`;
+    return `${base}${path.split("/").map(encodeURIComponent).join("/")}`;
+  }
+  return sheetUrls.get(path) ?? "";
+}
+
+async function signThumbUrls(paths: string[]): Promise<Map<string, string>> {
+  const uniquePaths = [...new Set(paths.filter(Boolean))];
+  const result = new Map<string, string>();
+  if (uniquePaths.length === 0) return result;
+  const { data, error } = await db.storage
+    .from("gallery_thumbs")
+    .createSignedUrls(uniquePaths, THUMB_SIGNED_TTL);
+  if (error) throw error;
+  for (const [index, item] of (data ?? []).entries()) {
+    const path = typeof item.path === "string" ? item.path : uniquePaths[index];
+    const url = item.signedUrl ?? "";
+    if (path && url) result.set(path, url);
+  }
+  return result;
+}
+
 async function atlasSheetUrl(form: Record<string, unknown>): Promise<string> {
   const path = typeof form.sheet_path === "string" ? form.sheet_path : "";
   if (!path || path.includes("..")) return "";
   if (form.source_kind === "expedition") {
-    const base = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/chapter_assets/`;
+    const base = `${
+      Deno.env.get("SUPABASE_URL")
+    }/storage/v1/object/public/chapter_assets/`;
     return `${base}${path.split("/").map(encodeURIComponent).join("/")}`;
   }
   return await signSheetUrl(db, path);
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
 function cardManifest(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const manifest = value as Record<string, unknown>;
-  const poses = manifest.poses && typeof manifest.poses === "object" && !Array.isArray(manifest.poses)
+  const poses = manifest.poses && typeof manifest.poses === "object" &&
+      !Array.isArray(manifest.poses)
     ? manifest.poses as Record<string, unknown>
     : {};
   return {
@@ -533,7 +667,9 @@ async function myStatus(ownerId: string, body: GalleryBody): Promise<Response> {
 
   const { data: entry } = await db
     .from("gallery_entries")
-    .select("id, moderation_status, published, auto_hidden, published_at, updated_at")
+    .select(
+      "id, moderation_status, published, auto_hidden, published_at, updated_at",
+    )
     .eq("anima_id", animaId)
     .maybeSingle();
 
@@ -556,7 +692,10 @@ async function myStatus(ownerId: string, body: GalleryBody): Promise<Response> {
   });
 }
 
-async function publishEntry(ownerId: string, body: GalleryBody): Promise<Response> {
+async function publishEntry(
+  ownerId: string,
+  body: GalleryBody,
+): Promise<Response> {
   await requireLinkedGoogle(ownerId);
   const animaId = asUuid(body.anima_id, "anima_id");
 
@@ -573,6 +712,15 @@ async function publishEntry(ownerId: string, body: GalleryBody): Promise<Respons
   if (anima.status !== "ready") throw new Error("ANIMA_NOT_READY");
   if ((anima.typing_version ?? 1) < 2) throw new Error("ANIMA_NOT_TYPING_V2");
   if (!anima.sheet_path || !anima.manifest) throw new Error("ANIMA_NO_ART");
+  const [
+    { normalizeSuggestedName },
+    { cropIdleThumb },
+    { moderateSheetImage },
+  ] = await Promise.all([
+    import("../_shared/vision.mjs"),
+    import("../_shared/gallery_shared.mjs"),
+    import("../_shared/gallery_moderation.mjs"),
+  ]);
 
   const { data: generation } = await db
     .from("generations")
@@ -582,9 +730,10 @@ async function publishEntry(ownerId: string, body: GalleryBody): Promise<Respons
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const vision = generation?.vision_result && typeof generation.vision_result === "object"
-    ? generation.vision_result as Record<string, unknown>
-    : {};
+  const vision =
+    generation?.vision_result && typeof generation.vision_result === "object"
+      ? generation.vision_result as Record<string, unknown>
+      : {};
   const displayName = normalizeSuggestedName(
     typeof vision.suggested_name === "string" ? vision.suggested_name : "",
     "Anima",
@@ -595,7 +744,7 @@ async function publishEntry(ownerId: string, body: GalleryBody): Promise<Respons
     .download(anima.sheet_path);
   if (dlError || !sheetBlob) throw new Error("ANIMA_NO_ART");
   const sheetBytes = new Uint8Array(await sheetBlob.arrayBuffer());
-  const artHash = await hashSheetBytes(sheetBytes);
+  const artHash = await sha256Hex(sheetBytes);
 
   let moderationStatus = "pending";
   let rejectReason: string | null = null;
@@ -607,7 +756,9 @@ async function publishEntry(ownerId: string, body: GalleryBody): Promise<Respons
     .maybeSingle();
 
   if (cachedMod) {
-    moderationStatus = cachedMod.status === "approved" ? "approved" : "rejected";
+    moderationStatus = cachedMod.status === "approved"
+      ? "approved"
+      : "rejected";
     rejectReason = cachedMod.reject_reason ?? null;
   } else {
     const { data: signed } = await db.storage
@@ -726,7 +877,10 @@ async function publishEntry(ownerId: string, body: GalleryBody): Promise<Respons
   });
 }
 
-async function unpublishEntry(ownerId: string, body: GalleryBody): Promise<Response> {
+async function unpublishEntry(
+  ownerId: string,
+  body: GalleryBody,
+): Promise<Response> {
   const animaId = asUuid(body.anima_id, "anima_id");
   const { data: entry, error } = await db
     .from("gallery_entries")
@@ -746,13 +900,21 @@ async function unpublishEntry(ownerId: string, body: GalleryBody): Promise<Respo
     .eq("anima_id", animaId)
     .not("thumb_path", "is", null);
   if (formThumbError) throw formThumbError;
-  const thumbPaths = [...new Set([
-    entry.thumb_path,
-    ...(formThumbRows ?? []).map((row) => row.thumb_path),
-  ].filter((path): path is string => typeof path === "string" && path.length > 0))];
+  const thumbPaths = [
+    ...new Set([
+      entry.thumb_path,
+      ...(formThumbRows ?? []).map((row) => row.thumb_path),
+    ].filter((path): path is string =>
+      typeof path === "string" && path.length > 0
+    )),
+  ];
   const { error: updateError } = await db
     .from("gallery_entries")
-    .update({ published: false, thumb_path: null, updated_at: new Date().toISOString() })
+    .update({
+      published: false,
+      thumb_path: null,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", entry.id);
   if (updateError) throw updateError;
   const { error: clearError } = await db
@@ -761,11 +923,15 @@ async function unpublishEntry(ownerId: string, body: GalleryBody): Promise<Respo
     .eq("anima_id", animaId);
   if (clearError) throw clearError;
 
+  const { removeThumb } = await import("../_shared/gallery_shared.mjs");
   await Promise.all(thumbPaths.map((path) => removeThumb(db, path)));
   return json(200, { unpublished: true, entry_id: entry.id });
 }
 
-async function reportEntry(ownerId: string, body: GalleryBody): Promise<Response> {
+async function reportEntry(
+  ownerId: string,
+  body: GalleryBody,
+): Promise<Response> {
   const entryId = asUuid(body.entry_id, "entry_id");
   const { data: entry, error } = await db
     .from("gallery_entries")
@@ -773,7 +939,10 @@ async function reportEntry(ownerId: string, body: GalleryBody): Promise<Response
     .eq("id", entryId)
     .maybeSingle();
   if (error) throw error;
-  if (!entry || !entry.published || entry.auto_hidden || entry.owner_id === ownerId) {
+  if (
+    !entry || !entry.published || entry.auto_hidden ||
+    entry.owner_id === ownerId
+  ) {
     throw new Error("GALLERY_ENTRY_NOT_FOUND");
   }
 
@@ -781,7 +950,9 @@ async function reportEntry(ownerId: string, body: GalleryBody): Promise<Response
     entry_id: entryId,
     reporter_id: ownerId,
   });
-  if (reportError && !reportError.message.includes("duplicate")) throw reportError;
+  if (reportError && !reportError.message.includes("duplicate")) {
+    throw reportError;
+  }
 
   const { count } = await db
     .from("gallery_reports")
@@ -811,7 +982,10 @@ async function reportEntry(ownerId: string, body: GalleryBody): Promise<Response
   });
 }
 
-async function hideEntry(ownerId: string, body: GalleryBody): Promise<Response> {
+async function hideEntry(
+  ownerId: string,
+  body: GalleryBody,
+): Promise<Response> {
   const entryId = asUuid(body.entry_id, "entry_id");
   const { data: entry, error: entryError } = await db
     .from("gallery_entries")
@@ -851,13 +1025,17 @@ async function hideEntry(ownerId: string, body: GalleryBody): Promise<Response> 
 async function hasLinkedGoogle(ownerId: string): Promise<boolean> {
   const { data: userRow } = await db.auth.admin.getUserById(ownerId);
   if (userRow.user?.is_anonymous) return false;
-  return (userRow.user?.identities ?? []).some((identity) => identity.provider === "google");
+  return (userRow.user?.identities ?? []).some((identity) =>
+    identity.provider === "google"
+  );
 }
 
 async function requireLinkedGoogle(ownerId: string): Promise<void> {
   const { data: userRow } = await db.auth.admin.getUserById(ownerId);
   if (userRow.user?.is_anonymous) throw new Error("ACCOUNT_STILL_ANONYMOUS");
-  const hasGoogle = (userRow.user?.identities ?? []).some((identity) => identity.provider === "google");
+  const hasGoogle = (userRow.user?.identities ?? []).some((identity) =>
+    identity.provider === "google"
+  );
   if (!hasGoogle) throw new Error("GOOGLE_IDENTITY_REQUIRED");
 }
 
@@ -868,9 +1046,49 @@ function asUuid(value: unknown, field: string): string {
   return value;
 }
 
+function verifiedSubject(req: Request): string {
+  // verify_jwt=true validates the signature at Supabase's gateway before this
+  // handler runs. Decode that verified payload instead of fetching JWKS again.
+  const jwt = (req.headers.get("authorization") ?? "").replace(
+    /^Bearer\s+/i,
+    "",
+  );
+  const payload = jwt.split(".")[1] ?? "";
+  if (!payload) return "";
+  try {
+    const base64 = payload.replaceAll("-", "+").replaceAll("_", "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const claims = JSON.parse(atob(padded));
+    return typeof claims.sub === "string" && UUID_RE.test(claims.sub)
+      ? claims.sub
+      : "";
+  } catch {
+    return "";
+  }
+}
+
+function atlasListResponse(
+  payload: Record<string, unknown>,
+  startedAt: number,
+  queriedAt: number,
+  signedAt: number,
+): Response {
+  const response = json(200, payload);
+  response.headers.set(
+    "Server-Timing",
+    `atlas-db;dur=${(queriedAt - startedAt).toFixed(1)}, atlas-sign;dur=${
+      (signedAt - queriedAt).toFixed(1)
+    }, atlas-render;dur=${(performance.now() - signedAt).toFixed(1)}`,
+  );
+  return response;
+}
+
 function parseLimit(value: unknown): number {
   if (value === undefined || value === null) return LIST_LIMIT_DEFAULT;
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > LIST_LIMIT_MAX) {
+  if (
+    typeof value !== "number" || !Number.isInteger(value) || value < 1 ||
+    value > LIST_LIMIT_MAX
+  ) {
     throw new Error("INVALID_LIMIT");
   }
   return value;
@@ -878,11 +1096,15 @@ function parseLimit(value: unknown): number {
 
 function parseFilter(value: unknown): string {
   if (value === undefined || value === null || value === "") return "all";
-  if (typeof value !== "string" || !FILTERS.has(value)) throw new Error("INVALID_FILTER");
+  if (typeof value !== "string" || !FILTERS.has(value)) {
+    throw new Error("INVALID_FILTER");
+  }
   return value;
 }
 
-function parseCursor(value: unknown): { last_seen_at: string; id: string } | null {
+function parseCursor(
+  value: unknown,
+): { last_seen_at: string; id: string } | null {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string") throw new Error("INVALID_CURSOR");
   try {
@@ -890,7 +1112,9 @@ function parseCursor(value: unknown): { last_seen_at: string; id: string } | nul
     if (
       typeof decoded?.last_seen_at !== "string" ||
       typeof decoded?.id !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(decoded.last_seen_at) ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(
+        decoded.last_seen_at,
+      ) ||
       !Number.isFinite(Date.parse(decoded.last_seen_at)) ||
       !UUID_RE.test(decoded.id)
     ) {
@@ -906,7 +1130,9 @@ function encodeCursor(lastSeenAt: string, id: string): string {
   return btoa(JSON.stringify({ last_seen_at: lastSeenAt, id }));
 }
 
-function parseLegacyCursor(value: unknown): { published_at: string; id: string } | null {
+function parseLegacyCursor(
+  value: unknown,
+): { published_at: string; id: string } | null {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string") throw new Error("INVALID_CURSOR");
   try {
@@ -914,7 +1140,9 @@ function parseLegacyCursor(value: unknown): { published_at: string; id: string }
     if (
       typeof decoded?.published_at !== "string" ||
       typeof decoded?.id !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(decoded.published_at) ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(
+        decoded.published_at,
+      ) ||
       !Number.isFinite(Date.parse(decoded.published_at)) ||
       !UUID_RE.test(decoded.id)
     ) {

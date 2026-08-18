@@ -2,15 +2,18 @@
 import { Image } from "imagescript";
 import { extractJson } from "./vision.mjs";
 import { encodeImage } from "./png.mjs";
-
-export const GALLERY_REPORT_AUTO_HIDE = 3;
-export const THUMB_SIGNED_TTL = 300;
-export const BATTLE_SHEET_SIGNED_TTL = 900;
+export {
+  BATTLE_SHEET_SIGNED_TTL,
+  GALLERY_REPORT_AUTO_HIDE,
+  THUMB_SIGNED_TTL,
+} from "./gallery_constants.mjs";
 
 /** Crop region Idle dari manifest post-process; fallback ke sel kiri-atas grid. */
 export async function cropIdleThumb(pngBuffer, manifest) {
   const decoded = await Image.decode(pngBuffer);
-  const poses = manifest?.poses && typeof manifest.poses === "object" ? manifest.poses : {};
+  const poses = manifest?.poses && typeof manifest.poses === "object"
+    ? manifest.poses
+    : {};
   const idle = poses.idle?.region;
   let x = 0;
   let y = 0;
@@ -48,6 +51,11 @@ export async function removeThumb(db, thumbPath) {
   if (!thumbPath) return;
   const { error } = await db.storage.from("gallery_thumbs").remove([thumbPath]);
   if (error) {
-    await queueStorageCleanup(db, "gallery_thumbs", thumbPath, "unpublish_thumb_failed");
+    await queueStorageCleanup(
+      db,
+      "gallery_thumbs",
+      thumbPath,
+      "unpublish_thumb_failed",
+    );
   }
 }

@@ -10,26 +10,26 @@
 import assert from "node:assert/strict";
 import { Image } from "imagescript";
 import {
-  POSES,
-  POSE_QUADRANT,
-  LAYOUT_3X3,
   DEFAULTS,
-  isKeyColor,
-  isCatalogKeyVapor,
   findBBox,
   heightMetrics,
+  isCatalogKeyVapor,
+  isKeyColor,
+  LAYOUT_3X3,
+  POSE_QUADRANT,
+  POSES,
   postprocessSheet,
   stripWhiteKeylineFromRgba,
 } from "../backend/supabase/functions/_shared/postprocess.mjs";
 import {
-  validateVision,
   assemblePrompt,
   extractJson,
   normalizeCaptureVibe,
-  normalizeSuggestedName,
   normalizeMoveName,
+  normalizeSuggestedName,
   promptMajor,
   spriteSheetTemplate,
+  validateVision,
 } from "../backend/supabase/functions/_shared/vision.mjs";
 import { biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
 import {
@@ -39,8 +39,12 @@ import {
   encodeOptimizedPng,
   filterScanlines,
 } from "../backend/supabase/functions/_shared/png.mjs";
-import { COMMITTED_PNG_TARGETS, optimizePngFile } from "../backend/tools/optimize_png.mjs";
 import {
+  COMMITTED_PNG_TARGETS,
+  optimizePngFile,
+} from "../backend/tools/optimize_png.mjs";
+import {
+  dualDefenderMultiplier,
   ELEMENT_ALIASES,
   ELEMENT_CYCLE,
   ELEMENT_ROSTER,
@@ -48,68 +52,67 @@ import {
   MATCHUP_NEUTRAL,
   MATCHUP_STRONG,
   MATCHUP_WEAK,
-  dualDefenderMultiplier,
   normalizeElement,
   singleMatchup,
 } from "../backend/supabase/functions/_shared/elements.mjs";
 import {
-  MOMENTUM_MAX,
-  MOMENTUM_START,
-  RULES_VERSION,
-  SURGE_COST,
-  turnSeed,
   baseStatTotal,
+  BATTLE_MAX_TURNS,
   battleExpYield,
   battleRewardPreview,
   bestDuelAction,
+  CARE_COMBAT_FLOOR,
+  careCombatMultiplier,
   computeDamage,
   createBattleState,
-  duelWinRate,
   critChance,
+  DIRTY_COMBAT_FLOOR,
+  DIRTY_NEED,
+  duelWinRate,
   elementMultiplier,
-  normalizeBaseStats,
-  resolveTurn,
-  toBattleStats,
-  hungerCombatMultiplier,
-  hygieneCombatMultiplier,
-  careCombatMultiplier,
   EXP_MAX,
   expForLevel,
   expToNextLevel,
-  levelFromExp,
-  growthMultiplier,
   formFromLevel,
-  BATTLE_MAX_TURNS,
-  LEVEL_CAP,
-  HUNGRY_NEED,
-  DIRTY_NEED,
+  growthMultiplier,
+  hungerCombatMultiplier,
   HUNGRY_COMBAT_FLOOR,
-  DIRTY_COMBAT_FLOOR,
-  CARE_COMBAT_FLOOR,
+  HUNGRY_NEED,
+  hygieneCombatMultiplier,
+  LEVEL_CAP,
+  levelFromExp,
+  MOMENTUM_MAX,
+  MOMENTUM_START,
+  normalizeBaseStats,
+  resolveTurn,
+  RULES_VERSION,
+  SURGE_COST,
+  toBattleStats,
+  turnSeed,
 } from "../backend/supabase/functions/_shared/battle.mjs";
 import {
   BATTLE_BITS_CAP,
-  CATALOG_ITEMS,
-  REWARD_TIERS,
-  STARTER_BITS,
   bitsForTier,
+  CATALOG_ITEMS,
   catalogItem,
+  REWARD_TIERS,
   rewardTierFromRatio,
+  STARTER_BITS,
   tierFromWinRate,
 } from "../backend/supabase/functions/_shared/catalog.mjs";
 import {
   BOT_RATIO_MAX,
   BOT_RATIO_MIN,
-  SYSTEM_DUEL_BOTS,
   estimateDuelBalance,
   isFairRealOpponent,
   neutralBotElements,
+  SYSTEM_DUEL_BOTS,
   systemDuelBot,
 } from "../backend/supabase/functions/_shared/duel_bot.mjs";
 import {
-  TEAM_MAX_TURNS,
   createTeamBattleState,
   resolveTeamTurn,
+  TEAM_MAX_TURNS,
   teamCombatPower,
   teamRewardPreview,
 } from "../backend/supabase/functions/_shared/team_combat.mjs";
@@ -165,17 +168,24 @@ function drawBlob(bitmap, x, y, w, h, fill) {
     for (let xx = x - edge; xx < x + w + edge; xx++) {
       if (xx < 0 || yy < 0 || xx >= SIZE || yy >= SIZE) continue;
       const inside = xx >= x && xx < x + w && yy >= y && yy < y + h;
-      const inOutline =
-        xx >= x - OUTLINE_PX &&
+      const inOutline = xx >= x - OUTLINE_PX &&
         xx < x + w + OUTLINE_PX &&
         yy >= y - OUTLINE_PX &&
         yy < y + h + OUTLINE_PX;
-      setPx(bitmap, xx, yy, inside ? fill : inOutline ? DARK_OUTLINE : [255, 255, 255]);
+      setPx(
+        bitmap,
+        xx,
+        yy,
+        inside ? fill : inOutline ? DARK_OUTLINE : [255, 255, 255],
+      );
     }
   }
 }
 
-async function buildSheet(blobs, layout = { grid: 2, quadrant: POSE_QUADRANT }) {
+async function buildSheet(
+  blobs,
+  layout = { grid: 2, quadrant: POSE_QUADRANT },
+) {
   const img = new Image(SIZE, SIZE);
   for (let i = 0; i < SIZE * SIZE; i++) {
     const o = i * 4;
@@ -187,7 +197,14 @@ async function buildSheet(blobs, layout = { grid: 2, quadrant: POSE_QUADRANT }) 
   const cell = Math.floor(SIZE / layout.grid);
   for (const [pose, spec] of Object.entries(blobs)) {
     const [col, row] = layout.quadrant[pose];
-    drawBlob(img.bitmap, col * cell + spec.x, row * cell + spec.y, spec.w, spec.h, FILLS[pose]);
+    drawBlob(
+      img.bitmap,
+      col * cell + spec.x,
+      row * cell + spec.y,
+      spec.w,
+      spec.h,
+      FILLS[pose],
+    );
   }
   return await img.encode();
 }
@@ -204,13 +221,25 @@ console.log("1. isKeyColor memisahkan background dari warna sah");
   assert.ok(isKeyColor(0, 200, 0), "hijau murni agak gelap tetap kunci");
   assert.ok(!isKeyColor(255, 255, 255), "putih bukan kunci, ini warna keyline");
   assert.ok(!isKeyColor(0, 0, 0), "hitam bukan kunci, ini line art");
-  assert.ok(!isKeyColor(120, 140, 125), "abu kehijauan bukan kunci (sat rendah)");
+  assert.ok(
+    !isKeyColor(120, 140, 125),
+    "abu kehijauan bukan kunci (sat rendah)",
+  );
   assert.ok(!isKeyColor(0, 255, 255), "cyan bukan kunci");
   assert.ok(!isKeyColor(255, 255, 0), "kuning bukan kunci");
   assert.ok(!isCatalogKeyVapor(60, 160, 70), "hijau daun bukan uap katalog");
-  assert.ok(isCatalogKeyVapor(47, 242, 41), "steam neon sat 0,83 adalah uap katalog");
-  assert.ok(isCatalogKeyVapor(121, 238, 98), "steam campur putih tetap uap katalog");
-  assert.ok(isCatalogKeyVapor(177, 231, 3), "percikan chartreuse skewer adalah uap katalog");
+  assert.ok(
+    isCatalogKeyVapor(47, 242, 41),
+    "steam neon sat 0,83 adalah uap katalog",
+  );
+  assert.ok(
+    isCatalogKeyVapor(121, 238, 98),
+    "steam campur putih tetap uap katalog",
+  );
+  assert.ok(
+    isCatalogKeyVapor(177, 231, 3),
+    "percikan chartreuse skewer adalah uap katalog",
+  );
 }
 
 console.log("2. REGRESI: tubuh Anima hijau tidak boleh ikut terhapus");
@@ -227,11 +256,16 @@ console.log("2. REGRESI: tubuh Anima hijau tidak boleh ikut terhapus");
     [90, 140, 95, "hijau redup"],
   ];
   for (const [r, g, b, nama] of greensYangHarusSelamat) {
-    assert.ok(!isKeyColor(r, g, b), `${nama} rgb(${r},${g},${b}) tidak boleh terhapus`);
+    assert.ok(
+      !isKeyColor(r, g, b),
+      `${nama} rgb(${r},${g},${b}) tidak boleh terhapus`,
+    );
   }
 }
 
-console.log("2b. keyline putih dikupas, tubuh putih selamat, dan rollback tersedia");
+console.log(
+  "2b. keyline putih dikupas, tubuh putih selamat, dan rollback tersedia",
+);
 {
   const spec = { x: 120, y: 120, w: 120, h: 160 };
   const img = new Image(SIZE, SIZE);
@@ -246,12 +280,28 @@ console.log("2b. keyline putih dikupas, tubuh putih selamat, dan rollback tersed
   const source = await img.encode();
 
   const stripped = await postprocessSheet(source, {});
-  assert.ok(stripped.manifest.qa.white_keyline_pixels_stripped > 0, "matte putih harus terdeteksi");
+  assert.ok(
+    stripped.manifest.qa.white_keyline_pixels_stripped > 0,
+    "matte putih harus terdeteksi",
+  );
   const strippedOut = await Image.decode(stripped.png);
   const [sx, sy, sw, sh] = stripped.manifest.poses.idle.region;
-  const strippedBox = findBBox(strippedOut.bitmap, strippedOut.width, [sx, sy, sw, sh]);
-  assert.equal(strippedBox.w, spec.w + OUTLINE_PX * 2, "yang tersisa badan + dark outline");
-  assert.equal(strippedBox.h, spec.h + OUTLINE_PX * 2, "tinggi dark outline tetap utuh");
+  const strippedBox = findBBox(strippedOut.bitmap, strippedOut.width, [
+    sx,
+    sy,
+    sw,
+    sh,
+  ]);
+  assert.equal(
+    strippedBox.w,
+    spec.w + OUTLINE_PX * 2,
+    "yang tersisa badan + dark outline",
+  );
+  assert.equal(
+    strippedBox.h,
+    spec.h + OUTLINE_PX * 2,
+    "tinggi dark outline tetap utuh",
+  );
   let whiteBodyPixels = 0;
   for (let i = 0; i < strippedOut.bitmap.length; i += 4) {
     if (
@@ -263,25 +313,51 @@ console.log("2b. keyline putih dikupas, tubuh putih selamat, dan rollback tersed
       whiteBodyPixels++;
     }
   }
-  assert.ok(whiteBodyPixels >= spec.w * spec.h, "badan putih di balik dark outline tidak boleh bolong");
+  assert.ok(
+    whiteBodyPixels >= spec.w * spec.h,
+    "badan putih di balik dark outline tidak boleh bolong",
+  );
 
-  const kept = await postprocessSheet(source, {}, { ...DEFAULTS, stripWhiteKeyline: false });
-  assert.equal(kept.manifest.qa.white_keyline_pixels_stripped, 0, "flag false harus menjadi rollback");
+  const kept = await postprocessSheet(source, {}, {
+    ...DEFAULTS,
+    stripWhiteKeyline: false,
+  });
+  assert.equal(
+    kept.manifest.qa.white_keyline_pixels_stripped,
+    0,
+    "flag false harus menjadi rollback",
+  );
   const keptOut = await Image.decode(kept.png);
   const [kx, ky, kw, kh] = kept.manifest.poses.idle.region;
   const keptBox = findBBox(keptOut.bitmap, keptOut.width, [kx, ky, kw, kh]);
   assert.equal(
     keptBox.w,
     spec.w + (OUTLINE_PX + KEYLINE_PX) * 2,
-    "rollback mempertahankan keyline lama"
+    "rollback mempertahankan keyline lama",
   );
 
   const migrated = await stripWhiteKeylineFromRgba(kept.png);
-  assert.ok(migrated.pixelsStripped > 0, "sheet RGBA lama harus bisa direproses tanpa raw hijau");
-  assert.deepEqual(migrated.size, [keptOut.width, keptOut.height], "migrasi tidak mengubah grid manifest");
+  assert.ok(
+    migrated.pixelsStripped > 0,
+    "sheet RGBA lama harus bisa direproses tanpa raw hijau",
+  );
+  assert.deepEqual(
+    migrated.size,
+    [keptOut.width, keptOut.height],
+    "migrasi tidak mengubah grid manifest",
+  );
   const migratedOut = await Image.decode(migrated.png);
-  const migratedBox = findBBox(migratedOut.bitmap, migratedOut.width, [kx, ky, kw, kh]);
-  assert.equal(migratedBox.w, spec.w + OUTLINE_PX * 2, "migrasi RGBA menyisakan dark outline");
+  const migratedBox = findBBox(migratedOut.bitmap, migratedOut.width, [
+    kx,
+    ky,
+    kw,
+    kh,
+  ]);
+  assert.equal(
+    migratedBox.w,
+    spec.w + OUTLINE_PX * 2,
+    "migrasi RGBA menyisakan dark outline",
+  );
 }
 
 console.log("3. findBBox menemukan kotak rapat");
@@ -293,7 +369,11 @@ console.log("3. findBBox menemukan kotak rapat");
   put(8, 6);
   const bb = findBBox(bm, w, [0, 0, w, 10]);
   assert.deepEqual(bb, { x: 5, y: 3, w: 4, h: 4 });
-  assert.equal(findBBox(bm, w, [12, 0, 8, 10]), null, "wilayah kosong harus null");
+  assert.equal(
+    findBBox(bm, w, [12, 0, 8, 10]),
+    null,
+    "wilayah kosong harus null",
+  );
 }
 
 console.log("4. sheet lengkap 4 pose, blob off-center dan beda ukuran");
@@ -313,15 +393,30 @@ const blobs = {
   });
 
   assert.equal(manifest.qa.cells_detected, 4, "keempat sel harus terdeteksi");
-  assert.deepEqual(manifest.qa.cells_rejected, {}, "tidak boleh ada sel ditolak");
-  assert.equal(manifest.qa.green_residue_ratio, 0, "tidak boleh ada hijau tersisa");
-  assert.deepEqual(manifest.qa.warnings, [], "sheet bersih tidak boleh memberi peringatan");
+  assert.deepEqual(
+    manifest.qa.cells_rejected,
+    {},
+    "tidak boleh ada sel ditolak",
+  );
+  assert.equal(
+    manifest.qa.green_residue_ratio,
+    0,
+    "tidak boleh ada hijau tersisa",
+  );
+  assert.deepEqual(
+    manifest.qa.warnings,
+    [],
+    "sheet bersih tidak boleh memberi peringatan",
+  );
 
   // frame_size = bbox terbesar + padding di dua sisi
   const maxW = Math.max(...POSES.map((p) => outer(blobs[p]).w));
   const maxH = Math.max(...POSES.map((p) => outer(blobs[p]).h));
   assert.deepEqual(manifest.frame_size, [maxW + PAD * 2, maxH + PAD * 2]);
-  assert.deepEqual(manifest.sheet_size, [(maxW + PAD * 2) * 2, (maxH + PAD * 2) * 2]);
+  assert.deepEqual(manifest.sheet_size, [
+    (maxW + PAD * 2) * 2,
+    (maxH + PAD * 2) * 2,
+  ]);
 
   const [fw, fh] = manifest.frame_size;
 
@@ -335,7 +430,11 @@ const blobs = {
   // Region menempati kuadran yang benar di sheet keluaran
   for (const pose of POSES) {
     const [col, row] = POSE_QUADRANT[pose];
-    assert.deepEqual(manifest.poses[pose].region, [col * fw, row * fh, fw, fh], `region ${pose} salah`);
+    assert.deepEqual(
+      manifest.poses[pose].region,
+      [col * fw, row * fh, fw, fh],
+      `region ${pose} salah`,
+    );
   }
 
   // Isi tiap region: tidak terpotong, rata bawah, rata tengah horizontal
@@ -345,14 +444,30 @@ const blobs = {
     const bb = findBBox(out.bitmap, out.width, [rx, ry, fw, fh]);
     const want = outer(blobs[pose]);
 
-    assert.equal(bb.w, want.w, `${pose}: lebar isi berubah, kemungkinan terpotong`);
-    assert.equal(bb.h, want.h, `${pose}: tinggi isi berubah, kemungkinan terpotong`);
+    assert.equal(
+      bb.w,
+      want.w,
+      `${pose}: lebar isi berubah, kemungkinan terpotong`,
+    );
+    assert.equal(
+      bb.h,
+      want.h,
+      `${pose}: tinggi isi berubah, kemungkinan terpotong`,
+    );
 
     const bottomGap = ry + fh - (bb.y + bb.h);
-    assert.equal(bottomGap, PAD, `${pose}: tidak rata bawah, garis tanah bergeser`);
+    assert.equal(
+      bottomGap,
+      PAD,
+      `${pose}: tidak rata bawah, garis tanah bergeser`,
+    );
 
     const leftGap = bb.x - rx;
-    assert.equal(leftGap, Math.floor((fw - want.w) / 2), `${pose}: tidak rata tengah horizontal`);
+    assert.equal(
+      leftGap,
+      Math.floor((fw - want.w) / 2),
+      `${pose}: tidak rata tengah horizontal`,
+    );
   }
 
   // Semua pose punya jangkar identik: bottom-center frame. Ini yang bikin
@@ -362,7 +477,9 @@ const blobs = {
     const bb = findBBox(out.bitmap, out.width, [rx, ry, fw, fh]);
     return [Math.round(bb.x + bb.w / 2 - rx), bb.y + bb.h - ry];
   });
-  for (const a of anchors) assert.deepEqual(a, anchors[0], "jangkar antar pose harus sama");
+  for (const a of anchors) {
+    assert.deepEqual(a, anchors[0], "jangkar antar pose harus sama");
+  }
 }
 
 console.log("4b. anggota tubuh yang melewati garis tengah tidak terpotong");
@@ -375,19 +492,30 @@ console.log("4b. anggota tubuh yang melewati garis tengah tidak terpotong");
     ...blobs,
     attack: { x: -48, y: 52, w: 300, h: 368 },
   };
-  const { png, manifest } = await postprocessSheet(await buildSheet(crossing), {});
+  const { png, manifest } = await postprocessSheet(
+    await buildSheet(crossing),
+    {},
+  );
   assert.equal(manifest.qa.cells_detected, 4);
   assert.ok(
     manifest.qa.pose_ownership.attack.cross_boundary_pixels > 0,
-    "test harus benar-benar punya piksel Attack di kuadran kiri"
+    "test harus benar-benar punya piksel Attack di kuadran kiri",
   );
 
   const out = await Image.decode(png);
   const [fw, fh] = manifest.frame_size;
   const [rx, ry] = manifest.poses.attack.region;
   const bb = findBBox(out.bitmap, out.width, [rx, ry, fw, fh]);
-  assert.equal(bb.w, outer(crossing.attack).w, "tangan melewati seam tidak boleh mengurangi lebar");
-  assert.equal(bb.h, outer(crossing.attack).h, "tinggi Attack tidak boleh berubah");
+  assert.equal(
+    bb.w,
+    outer(crossing.attack).w,
+    "tangan melewati seam tidak boleh mengurangi lebar",
+  );
+  assert.equal(
+    bb.h,
+    outer(crossing.attack).h,
+    "tinggi Attack tidak boleh berubah",
+  );
 
   // Warna biru Attack tidak boleh bocor ke frame Idle walaupun sumbernya masuk
   // kuadran kiri; inilah alasan blit memakai ownership mask, bukan bbox longgar.
@@ -396,7 +524,10 @@ console.log("4b. anggota tubuh yang melewati garis tengah tidak terpotong");
   for (let y = iy; y < iy + fh; y++) {
     for (let x = ix; x < ix + fw; x++) {
       const i = (y * out.width + x) * 4;
-      if (out.bitmap[i] === FILLS.attack[0] && out.bitmap[i + 1] === FILLS.attack[1]) {
+      if (
+        out.bitmap[i] === FILLS.attack[0] &&
+        out.bitmap[i + 1] === FILLS.attack[1]
+      ) {
         blueInIdle++;
       }
     }
@@ -404,7 +535,9 @@ console.log("4b. anggota tubuh yang melewati garis tengah tidak terpotong");
   assert.equal(blueInIdle, 0, "piksel pose tetangga tidak boleh ikut tercopy");
 }
 
-console.log("4c. pose lebar dengan efek TIDAK dianggap keying gagal, blok padat IYA");
+console.log(
+  "4c. pose lebar dengan efek TIDAK dianggap keying gagal, blok padat IYA",
+);
 {
   // Bug nyata dari Smoke Set v2: pose Attack punya speed line dan percikan yang
   // terpisah dari tubuh, sehingga bbox gabungannya mengisi 96% kuadran padahal
@@ -416,23 +549,49 @@ console.log("4c. pose lebar dengan efek TIDAK dianggap keying gagal, blok padat 
   drawBlob(img.bitmap, SIZE - 24, HALF - 30, 14, 14, FILLS.attack); // percikan sudut
 
   const { manifest } = await postprocessSheet(await img.encode(), {});
-  const bb = { w: manifest.frame_size[0] - PAD * 2, h: manifest.frame_size[1] - PAD * 2 };
+  const bb = {
+    w: manifest.frame_size[0] - PAD * 2,
+    h: manifest.frame_size[1] - PAD * 2,
+  };
   assert.ok(
     (bb.w * bb.h) / (HALF * HALF) > DEFAULTS.maxCellFillRatio,
-    `test harus benar-benar melewati ambang lama: ${(bb.w * bb.h) / (HALF * HALF)}`
+    `test harus benar-benar melewati ambang lama: ${
+      (bb.w * bb.h) / (HALF * HALF)
+    }`,
   );
-  assert.equal(manifest.qa.cells_detected, 4, "pose berpercikan tetap harus dihitung");
-  assert.deepEqual(manifest.qa.cells_rejected, {}, "tidak ada yang boleh ditolak di sini");
+  assert.equal(
+    manifest.qa.cells_detected,
+    4,
+    "pose berpercikan tetap harus dihitung",
+  );
+  assert.deepEqual(
+    manifest.qa.cells_rejected,
+    {},
+    "tidak ada yang boleh ditolak di sini",
+  );
 
   // Sisi lain dari penjaga yang sama harus tetap hidup: satu kuadran yang
   // seluruhnya opak berarti latarnya tidak ter-key, dan itu wajib ditolak.
-  const solid = await Image.decode(await buildSheet({ idle: blobs.idle, attack: blobs.attack, sleep: blobs.sleep }));
+  const solid = await Image.decode(
+    await buildSheet({
+      idle: blobs.idle,
+      attack: blobs.attack,
+      sleep: blobs.sleep,
+    }),
+  );
   for (let y = HALF; y < SIZE; y++) {
     for (let x = HALF; x < SIZE; x++) setPx(solid.bitmap, x, y, [40, 44, 52]);
   }
   const blocked = await postprocessSheet(await solid.encode(), {});
-  assert.equal(blocked.manifest.qa.cells_detected, 3, "blok padat tidak boleh dianggap sprite");
-  assert.match(blocked.manifest.qa.cells_rejected.defeated ?? "", /padat|keying gagal/);
+  assert.equal(
+    blocked.manifest.qa.cells_detected,
+    3,
+    "blok padat tidak boleh dianggap sprite",
+  );
+  assert.match(
+    blocked.manifest.qa.cells_rejected.defeated ?? "",
+    /padat|keying gagal/,
+  );
 }
 
 console.log("5. sel hilang terdeteksi, bukan diam-diam lolos");
@@ -441,10 +600,14 @@ console.log("5. sel hilang terdeteksi, bukan diam-diam lolos");
   delete partial.defeated;
   const { manifest } = await postprocessSheet(await buildSheet(partial), {});
   assert.equal(manifest.qa.cells_detected, 3);
-  assert.equal(manifest.poses.defeated, undefined, "pose hilang tidak boleh dikarang");
+  assert.equal(
+    manifest.poses.defeated,
+    undefined,
+    "pose hilang tidak boleh dikarang",
+  );
   assert.ok(
     manifest.qa.warnings.some((w) => w.includes("3/4")),
-    "harus ada peringatan sel hilang"
+    "harus ada peringatan sel hilang",
   );
 }
 
@@ -452,7 +615,11 @@ console.log("6. label teks kecil tidak dianggap sprite");
 {
   const withLabel = { ...blobs, defeated: { x: 180, y: 400, w: 90, h: 14 } };
   const { manifest } = await postprocessSheet(await buildSheet(withLabel), {});
-  assert.equal(manifest.poses.defeated, undefined, "coretan tipis harus ditolak");
+  assert.equal(
+    manifest.poses.defeated,
+    undefined,
+    "coretan tipis harus ditolak",
+  );
   assert.match(manifest.qa.cells_rejected.defeated ?? "", /kecil|ambang/);
 }
 
@@ -462,7 +629,9 @@ console.log("7. model membesarkan pose Attack -> peringatan skala");
   const { manifest } = await postprocessSheet(await buildSheet(inflated), {});
   assert.ok(
     manifest.qa.warnings.some((w) => w.includes("Idle vs Attack")),
-    `harus memperingatkan skala, dapat: ${JSON.stringify(manifest.qa.warnings)}`
+    `harus memperingatkan skala, dapat: ${
+      JSON.stringify(manifest.qa.warnings)
+    }`,
   );
 }
 
@@ -473,7 +642,11 @@ console.log("8. pose sleep pendek TIDAK dianggap masalah skala");
   // palsu terus-menerus. Yang diukur harus Idle vs Attack saja.
   const crouched = { ...blobs, sleep: { x: 40, y: 380, w: 330, h: 110 } };
   const { manifest } = await postprocessSheet(await buildSheet(crouched), {});
-  assert.deepEqual(manifest.qa.warnings, [], "sleep pendek itu normal, jangan diperingatkan");
+  assert.deepEqual(
+    manifest.qa.warnings,
+    [],
+    "sleep pendek itu normal, jangan diperingatkan",
+  );
   assert.ok(manifest.qa.standing_height_variance <= 0.15);
 }
 
@@ -483,7 +656,7 @@ console.log("9. sleep lebih tinggi dari idle -> curiga skala berubah");
   const { manifest } = await postprocessSheet(await buildSheet(wrong), {});
   assert.ok(
     manifest.qa.warnings.some((w) => w.includes("sleep")),
-    "sleep yang lebih tinggi dari idle harus dicurigai"
+    "sleep yang lebih tinggi dari idle harus dicurigai",
   );
 }
 
@@ -501,16 +674,23 @@ console.log("10. background bukan hijau -> gagal keras, bukan sheet rusak");
   await assert.rejects(
     () => postprocessSheet(whitePng, {}),
     /background bukan hijau/,
-    "harus menolak dengan pesan yang menyebut penyebabnya"
+    "harus menolak dengan pesan yang menyebut penyebabnya",
   );
 }
 
-console.log("11. REGRESI end-to-end: Anima hijau tetap utuh di atas latar hijau");
+console.log(
+  "11. REGRESI end-to-end: Anima hijau tetap utuh di atas latar hijau",
+);
 {
   // Kasus nyata yang paling mudah lolos dari pengujian: foto tanaman jadi Anima
   // berelemen plant yang tubuhnya hijau, di atas background hijau. Kalau ambang
   // keying terlalu longgar, tubuhnya bolong dan bbox-nya mengecil.
-  const leafy = { idle: [60, 160, 70], attack: [34, 139, 34], sleep: [110, 190, 120], defeated: [90, 140, 95] };
+  const leafy = {
+    idle: [60, 160, 70],
+    attack: [34, 139, 34],
+    sleep: [110, 190, 120],
+    defeated: [90, 140, 95],
+  };
   const img = new Image(SIZE, SIZE);
   for (let i = 0; i < SIZE * SIZE; i++) {
     const o = i * 4;
@@ -521,12 +701,27 @@ console.log("11. REGRESI end-to-end: Anima hijau tetap utuh di atas latar hijau"
   }
   for (const [pose, spec] of Object.entries(blobs)) {
     const [col, row] = POSE_QUADRANT[pose];
-    drawBlob(img.bitmap, col * HALF + spec.x, row * HALF + spec.y, spec.w, spec.h, leafy[pose]);
+    drawBlob(
+      img.bitmap,
+      col * HALF + spec.x,
+      row * HALF + spec.y,
+      spec.w,
+      spec.h,
+      leafy[pose],
+    );
   }
 
   const { png, manifest } = await postprocessSheet(await img.encode(), {});
-  assert.equal(manifest.qa.cells_detected, 4, "Anima hijau harus tetap terdeteksi keempatnya");
-  assert.deepEqual(manifest.qa.warnings, [], "tubuh hijau bukan residu background");
+  assert.equal(
+    manifest.qa.cells_detected,
+    4,
+    "Anima hijau harus tetap terdeteksi keempatnya",
+  );
+  assert.deepEqual(
+    manifest.qa.warnings,
+    [],
+    "tubuh hijau bukan residu background",
+  );
 
   const out = await Image.decode(png);
   const [fw, fh] = manifest.frame_size;
@@ -541,11 +736,17 @@ console.log("11. REGRESI end-to-end: Anima hijau tetap utuh di atas latar hijau"
 console.log("12. heightMetrics aman saat pose tidak lengkap");
 {
   const m = heightMetrics({ idle: { h: 100 } });
-  assert.equal(m.standingVariance, 0, "tanpa attack, varians tidak bisa dihitung");
+  assert.equal(
+    m.standingVariance,
+    0,
+    "tanpa attack, varians tidak bisa dihitung",
+  );
   assert.deepEqual(m.tooTall, []);
 }
 
-console.log("13. halo hijau di cincin tepi dierosi, tubuh hijau yang sah tidak");
+console.log(
+  "13. halo hijau di cincin tepi dierosi, tubuh hijau yang sah tidak",
+);
 {
   // Dua sisi dari satu keputusan, jadi diuji berpasangan. Halo yang terukur di
   // sheet sungguhan adalah piksel CAMPURAN putih+hijau di cincin 1px: 99,7% dari
@@ -575,7 +776,15 @@ console.log("13. halo hijau di cincin tepi dierosi, tubuh hijau yang sah tidak")
     }
     for (const [pose, spec] of Object.entries(blobs)) {
       const [col, row] = POSE_QUADRANT[pose];
-      drawAntialiased(img.bitmap, col * HALF + spec.x, row * HALF + spec.y, spec.w, spec.h, fill, edge);
+      drawAntialiased(
+        img.bitmap,
+        col * HALF + spec.x,
+        row * HALF + spec.y,
+        spec.w,
+        spec.h,
+        fill,
+        edge,
+      );
     }
     return await postprocessSheet(await img.encode(), {});
   }
@@ -583,8 +792,16 @@ console.log("13. halo hijau di cincin tepi dierosi, tubuh hijau yang sah tidak")
   // (a) Halo: badan gelap, cincin tepi campuran putih+hijau seperti rgb(128,255,128)
   // yang saturasinya 0,5 sehingga lolos keying utama.
   const halo = await sheetWith([40, 40, 48], [128, 255, 128]);
-  assert.equal(halo.manifest.qa.green_residue_ratio, 0, "cincin campuran harus hilang, bukan jadi halo");
-  assert.deepEqual(halo.manifest.qa.warnings, [], "tanpa halo, tidak ada peringatan residu");
+  assert.equal(
+    halo.manifest.qa.green_residue_ratio,
+    0,
+    "cincin campuran harus hilang, bukan jadi halo",
+  );
+  assert.deepEqual(
+    halo.manifest.qa.warnings,
+    [],
+    "tanpa halo, tidak ada peringatan residu",
+  );
 
   const haloOut = await Image.decode(halo.png);
   const [hw, hh] = halo.manifest.frame_size;
@@ -592,8 +809,16 @@ console.log("13. halo hijau di cincin tepi dierosi, tubuh hijau yang sah tidak")
     const [rx, ry] = halo.manifest.poses[pose].region;
     const bb = findBBox(haloOut.bitmap, haloOut.width, [rx, ry, hw, hh]);
     // Cincin ikut terbuang, jadi yang tersisa persis ukuran isi blob.
-    assert.equal(bb.w, blobs[pose].w, `${pose}: bbox harus menyusut ke isi, bukan menyertakan halo`);
-    assert.equal(bb.h, blobs[pose].h, `${pose}: bbox harus menyusut ke isi, bukan menyertakan halo`);
+    assert.equal(
+      bb.w,
+      blobs[pose].w,
+      `${pose}: bbox harus menyusut ke isi, bukan menyertakan halo`,
+    );
+    assert.equal(
+      bb.h,
+      blobs[pose].h,
+      `${pose}: bbox harus menyusut ke isi, bukan menyertakan halo`,
+    );
   }
 
   // (b) Hijau daun yang didokumentasikan HARUS utuh, bahkan tanpa keyline putih
@@ -605,8 +830,16 @@ console.log("13. halo hijau di cincin tepi dierosi, tubuh hijau yang sah tidak")
   for (const pose of POSES) {
     const [rx, ry] = leaf.manifest.poses[pose].region;
     const bb = findBBox(leafOut.bitmap, leafOut.width, [rx, ry, lw, lh]);
-    assert.equal(bb.w, blobs[pose].w + 2, `${pose}: tubuh hijau daun tidak boleh terkikis`);
-    assert.equal(bb.h, blobs[pose].h + 2, `${pose}: tubuh hijau daun tidak boleh terkikis`);
+    assert.equal(
+      bb.w,
+      blobs[pose].w + 2,
+      `${pose}: tubuh hijau daun tidak boleh terkikis`,
+    );
+    assert.equal(
+      bb.h,
+      blobs[pose].h + 2,
+      `${pose}: tubuh hijau daun tidak boleh terkikis`,
+    );
   }
 
   // (c) Batas jujur dari pendekatan ini: tubuh hijau yang SANGAT terang (g >= 220)
@@ -620,8 +853,16 @@ console.log("13. halo hijau di cincin tepi dierosi, tubuh hijau yang sah tidak")
   for (const pose of POSES) {
     const [rx, ry] = vividSheet.manifest.poses[pose].region;
     const bb = findBBox(vividOut.bitmap, vividOut.width, [rx, ry, vw, vh]);
-    assert.equal(bb.w, blobs[pose].w, `${pose}: erosi hijau pekat harus berhenti di 1px`);
-    assert.equal(bb.h, blobs[pose].h, `${pose}: erosi hijau pekat harus berhenti di 1px`);
+    assert.equal(
+      bb.w,
+      blobs[pose].w,
+      `${pose}: erosi hijau pekat harus berhenti di 1px`,
+    );
+    assert.equal(
+      bb.h,
+      blobs[pose].h,
+      `${pose}: erosi hijau pekat harus berhenti di 1px`,
+    );
   }
 }
 
@@ -644,25 +885,40 @@ console.log("14. validateVision menegakkan yang tidak bisa dijamin schema");
   });
 
   // Gate tertutup: tidak ada gunanya memeriksa sisa isi
-  const rejected = validateVision({ safe: false, is_object: true, reject_reason: "human_face" });
+  const rejected = validateVision({
+    safe: false,
+    is_object: true,
+    reject_reason: "human_face",
+  });
   assert.equal(rejected.gate, "rejected");
   assert.equal(rejected.reason, "human_face");
 
   const clean = validateVision(base(), [], true);
   assert.equal(clean.gate, "passed");
-  assert.deepEqual(clean.issues, [], `sample bersih tidak boleh punya isu: ${clean.issues}`);
+  assert.deepEqual(
+    clean.issues,
+    [],
+    `sample bersih tidak boleh punya isu: ${clean.issues}`,
+  );
 
   const legacy = base();
   delete legacy.surface_finish;
   delete legacy.damage_hints;
-  assert.deepEqual(validateVision(legacy, []).issues, [], "payload v1-v3 tetap sah tanpa field v4");
+  assert.deepEqual(
+    validateVision(legacy, []).issues,
+    [],
+    "payload v1-v3 tetap sah tanpa field v4",
+  );
 
   // Jumlah stat di luar 200-350 diskalakan, bukan ditolak
   const weak = base();
   weak.stats = { hp: 10, atk: 10, def: 10, spd: 10, special: 10 };
   const scaled = validateVision(weak, [], true);
   const sum = Object.values(scaled.vision.stats).reduce((a, b) => a + b, 0);
-  assert.ok(sum >= 195 && sum <= 210, `jumlah stat harus diskalakan ke ~200, dapat ${sum}`);
+  assert.ok(
+    sum >= 195 && sum <= 210,
+    `jumlah stat harus diskalakan ke ~200, dapat ${sum}`,
+  );
   assert.ok(scaled.issues.some((i) => i.includes("diskalakan")));
 
   // Typo species_key dinormalisasi ke kunci yang sudah ada. Tanpa ini, satu
@@ -670,28 +926,51 @@ console.log("14. validateVision menegakkan yang tidak bisa dijamin schema");
   const typo = base();
   typo.species_key = "mug_ceramic_handles";
   const fixed = validateVision(typo, ["mug_ceramic_handled"], true);
-  assert.equal(fixed.vision.species_key, "mug_ceramic_handled", "typo harus dinormalisasi");
+  assert.equal(
+    fixed.vision.species_key,
+    "mug_ceramic_handled",
+    "typo harus dinormalisasi",
+  );
 
   // Tapi spesies yang benar-benar beda jangan digabung
   const other = base();
   other.species_key = "shoe_fabric_sneaker";
   const kept = validateVision(other, ["mug_ceramic_handled"], true);
-  assert.equal(kept.vision.species_key, "shoe_fabric_sneaker", "spesies beda jangan digabung");
+  assert.equal(
+    kept.vision.species_key,
+    "shoe_fabric_sneaker",
+    "spesies beda jangan digabung",
+  );
 
   const badKey = base();
   badKey.species_key = "Mug Ceramic";
-  assert.ok(validateVision(badKey, [], true).issues.some((i) => i.includes("format")));
+  assert.ok(
+    validateVision(badKey, [], true).issues.some((i) => i.includes("format")),
+  );
 
   const vagueFeat = base();
   vagueFeat.signature_features = ["interesting texture", "unique qualities"];
-  assert.equal(validateVision(vagueFeat, [], true).issues.filter((i) => i.includes("kabur")).length, 2);
+  assert.equal(
+    validateVision(vagueFeat, [], true).issues.filter((i) =>
+      i.includes("kabur")
+    ).length,
+    2,
+  );
 
   const franchiseSuffix = base();
   franchiseSuffix.suggested_name = "Mugmon";
   const renamed = validateVision(franchiseSuffix, [], true);
-  assert.equal(renamed.vision.suggested_name, "Mugra", "nama generated tidak boleh berakhiran -mon");
+  assert.equal(
+    renamed.vision.suggested_name,
+    "Mugra",
+    "nama generated tidak boleh berakhiran -mon",
+  );
   assert.ok(renamed.issues.some((i) => i.includes("dinormalisasi")));
-  assert.equal(normalizeSuggestedName("Sporelet"), "Sporelet", "nama yang sudah aman tidak boleh berubah");
+  assert.equal(
+    normalizeSuggestedName("Sporelet"),
+    "Sporelet",
+    "nama yang sudah aman tidak boleh berubah",
+  );
 }
 
 console.log("15. assemblePrompt tidak pernah mengirim placeholder ke model");
@@ -705,24 +984,33 @@ console.log("15. assemblePrompt tidak pernah mengirim placeholder ke model");
       object_label: "computer mouse",
       dominant_colors: ["#111111", "#444444"],
       stats: { hp: 40, atk: 35, def: 45, spd: 65, special: 80 },
-    }
+    },
   );
   assert.ok(filled.includes("A tubuh kotak B"));
   assert.ok(filled.includes("- tombol jadi mata\n- kabel jadi ekor"));
   assert.ok(filled.includes("computer mouse"));
   assert.ok(filled.includes("#111111, #444444"));
-  assert.ok(filled.includes("clever, strange, mischievous"), "personality harus mengikuti stat tertinggi");
+  assert.ok(
+    filled.includes("clever, strange, mischievous"),
+    "personality harus mengikuti stat tertinggi",
+  );
   assert.ok(!filled.includes("{{"));
 
   // Placeholder yang lupa diisi harus gagal keras: mengirimnya ke model berarti
   // membayar ~$0.07 untuk gambar yang isinya instruksi mentah.
   assert.throws(
-    () => assemblePrompt("{{creature_brief}} {{stage_name}}", { creature_brief: "x", signature_features: [] }),
-    /stage_name/
+    () =>
+      assemblePrompt("{{creature_brief}} {{stage_name}}", {
+        creature_brief: "x",
+        signature_features: [],
+      }),
+    /stage_name/,
   );
 }
 
-console.log("16. extractJson menggantikan jaminan response_schema yang tidak ada");
+console.log(
+  "16. extractJson menggantikan jaminan response_schema yang tidak ada",
+);
 {
   // Wrapper Gemini di Replicate tidak punya parameter response_schema, jadi
   // JSON valid tidak lagi dijamin API. Semua bentuk keluaran yang wajar harus
@@ -733,27 +1021,43 @@ console.log("16. extractJson menggantikan jaminan response_schema yang tidak ada
   assert.deepEqual(extractJson(JSON.stringify(want)), want, "JSON polos");
 
   // Output wrapper datang sebagai array potongan string yang harus disambung
-  assert.deepEqual(extractJson(['{"safe": true, ', '"species_key": "mug_ceramic_handled"}']), want, "array potongan");
+  assert.deepEqual(
+    extractJson(['{"safe": true, ', '"species_key": "mug_ceramic_handled"}']),
+    want,
+    "array potongan",
+  );
 
   assert.deepEqual(
     extractJson("```json\n" + JSON.stringify(want) + "\n```"),
     want,
-    "dibungkus fence markdown"
+    "dibungkus fence markdown",
   );
-  assert.deepEqual(extractJson("```\n" + JSON.stringify(want) + "\n```"), want, "fence tanpa label");
+  assert.deepEqual(
+    extractJson("```\n" + JSON.stringify(want) + "\n```"),
+    want,
+    "fence tanpa label",
+  );
 
   assert.deepEqual(
-    extractJson(`Here is the analysis:\n${JSON.stringify(want)}\nHope this helps!`),
+    extractJson(
+      `Here is the analysis:\n${JSON.stringify(want)}\nHope this helps!`,
+    ),
     want,
-    "diapit kalimat pengantar dan penutup"
+    "diapit kalimat pengantar dan penutup",
   );
 
   // Nested object tidak boleh terpotong oleh pencarian kurawal terakhir
   const nested = { safe: true, stats: { hp: 50, atk: 30 } };
-  assert.deepEqual(extractJson(`blah ${JSON.stringify(nested)} blah`), nested, "object bersarang");
+  assert.deepEqual(
+    extractJson(`blah ${JSON.stringify(nested)} blah`),
+    nested,
+    "object bersarang",
+  );
 
   assert.deepEqual(
-    extractJson("```json\n{\"safe\":true,\"note\":\"keep, } literal\",\"nested\":{\"hp\":50,},\"rows\":[1,2,],}\n```"),
+    extractJson(
+      '```json\n{"safe":true,"note":"keep, } literal","nested":{"hp":50,},"rows":[1,2,],}\n```',
+    ),
     { safe: true, note: "keep, } literal", nested: { hp: 50 }, rows: [1, 2] },
     "trailing comma model diperbaiki tanpa mengubah isi string",
   );
@@ -763,8 +1067,20 @@ console.log("16. extractJson menggantikan jaminan response_schema yang tidak ada
     "concat string JS di JSON Vision diperbaiki",
   );
 
-  for (const bad of ["", "   ", "maaf, saya tidak bisa membantu", "{ ini bukan json }", null]) {
-    assert.throws(() => extractJson(bad), /tidak mengembalikan JSON/, `harus menolak: ${JSON.stringify(bad)}`);
+  for (
+    const bad of [
+      "",
+      "   ",
+      "maaf, saya tidak bisa membantu",
+      "{ ini bukan json }",
+      null,
+    ]
+  ) {
+    assert.throws(
+      () => extractJson(bad),
+      /tidak mengembalikan JSON/,
+      `harus menolak: ${JSON.stringify(bad)}`,
+    );
   }
 }
 
@@ -774,123 +1090,220 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
   // langsung. Kalau keduanya menyimpang, art produksi berbeda dari art yang
   // sudah kita setujui di Smoke Set dan tidak ada yang memberi tahu. Ini
   // pemeriksaan gratis yang menggantikan disiplin mengingat.
-  const { buildBundle, renderModule } = await import("../backend/tools/bundle_prompts.mjs");
+  const { buildBundle, renderModule } = await import(
+    "../backend/tools/bundle_prompts.mjs"
+  );
   const { readFile } = await import("node:fs/promises");
-  const jalur = new URL("../backend/supabase/functions/_shared/prompts.generated.ts", import.meta.url);
+  const jalur = new URL(
+    "../backend/supabase/functions/_shared/prompts.generated.ts",
+    import.meta.url,
+  );
 
   const seharusnya = renderModule(await buildBundle());
   const sekarang = await readFile(jalur, "utf8");
   assert.equal(
     sekarang,
     seharusnya,
-    "prompts.generated.ts basi, jalankan: node backend/tools/bundle_prompts.mjs"
+    "prompts.generated.ts basi, jalankan: node backend/tools/bundle_prompts.mjs",
   );
 
   // Bundel yang mutakhir tapi kosong tetap lolos perbandingan di atas.
   const bundel = await buildBundle();
-  assert.ok(bundel.v3?.sprite_sheet.includes("{{creature_brief}}"), "v3 sprite_sheet ikut terbundel");
-  assert.ok(bundel.v3?.vision_schema?.properties?.species_key, "v3 vision_schema terparse");
-  assert.ok(bundel.v4?.vision_schema?.properties?.surface_finish, "v4 surface_finish ikut terbundel");
-  assert.ok(bundel.v4?.vision_schema?.properties?.damage_hints, "v4 damage_hints ikut terbundel");
-  assert.ok(bundel.v5?.vision_schema?.properties?.character_direction, "v5 character_direction ikut terbundel");
-  assert.ok(bundel.v7?.vision_schema?.properties?.strike_name, "v7 strike_name ikut terbundel");
-  assert.ok(bundel.v7?.sprite_sheet.includes("3x3"), "v7 sprite_sheet 3x3 ikut terbundel");
   assert.ok(
-    bundel.v8?.sprite_sheet.includes("Left-column cells (Idle, Happy, Damaged)"),
-    "v8 facing lock kolom kiri ikut terbundel"
+    bundel.v3?.sprite_sheet.includes("{{creature_brief}}"),
+    "v3 sprite_sheet ikut terbundel",
+  );
+  assert.ok(
+    bundel.v3?.vision_schema?.properties?.species_key,
+    "v3 vision_schema terparse",
+  );
+  assert.ok(
+    bundel.v4?.vision_schema?.properties?.surface_finish,
+    "v4 surface_finish ikut terbundel",
+  );
+  assert.ok(
+    bundel.v4?.vision_schema?.properties?.damage_hints,
+    "v4 damage_hints ikut terbundel",
+  );
+  assert.ok(
+    bundel.v5?.vision_schema?.properties?.character_direction,
+    "v5 character_direction ikut terbundel",
+  );
+  assert.ok(
+    bundel.v7?.vision_schema?.properties?.strike_name,
+    "v7 strike_name ikut terbundel",
+  );
+  assert.ok(
+    bundel.v7?.sprite_sheet.includes("3x3"),
+    "v7 sprite_sheet 3x3 ikut terbundel",
+  );
+  assert.ok(
+    bundel.v8?.sprite_sheet.includes(
+      "Left-column cells (Idle, Happy, Damaged)",
+    ),
+    "v8 facing lock kolom kiri ikut terbundel",
   );
   assert.ok(
     bundel.v9?.sprite_sheet.includes("NEGATIVE SPACE â€” MUST REMAIN BACKGROUND"),
-    "v9 negative-space lock ikut terbundel"
+    "v9 negative-space lock ikut terbundel",
   );
   assert.ok(
     bundel.v10?.sprite_sheet.includes("WHITE IS NOT A GENERIC ACCENT"),
-    "v10 white-accent lock ikut terbundel"
+    "v10 white-accent lock ikut terbundel",
   );
   assert.ok(
-    bundel.v11?.sprite_sheet.includes("EDGES â€” DARK CONTOUR DIRECTLY AGAINST GREEN"),
-    "v11 borderless dark-contour lock ikut terbundel"
+    bundel.v11?.sprite_sheet.includes(
+      "EDGES â€” DARK CONTOUR DIRECTLY AGAINST GREEN",
+    ),
+    "v11 borderless dark-contour lock ikut terbundel",
   );
   assert.ok(
     bundel.v12?.sprite_sheet.includes("VFX DIVERSITY CONTRACT"),
-    "v12 VFX diversity + safe-envelope lock ikut terbundel"
+    "v12 VFX diversity + safe-envelope lock ikut terbundel",
   );
   assert.ok(
     bundel.v13?.vision_schema?.properties?.subject_kind,
-    "v13 subject_kind ikut terbundel"
+    "v13 subject_kind ikut terbundel",
   );
   assert.ok(
     bundel.v13?.vision_schema?.properties?.secondary_element,
-    "v13 secondary_element ikut terbundel"
+    "v13 secondary_element ikut terbundel",
   );
   assert.ok(
     bundel.v13?.sprite_sheet_fauna?.includes("Show **fatigue and"),
-    "v13 sprite_sheet_fauna ikut terbundel"
+    "v13 sprite_sheet_fauna ikut terbundel",
   );
   assert.ok(
     bundel.v14?.sprite_sheet_fauna?.includes("SCANIMA MONSTERIZATION FLOOR"),
-    "v14 monsterization floor fauna ikut terbundel"
+    "v14 monsterization floor fauna ikut terbundel",
   );
-  assert.equal(bundel.v14?.sprite_sheet, bundel.v13?.sprite_sheet, "v14 tidak mengubah prompt object");
+  assert.equal(
+    bundel.v14?.sprite_sheet,
+    bundel.v13?.sprite_sheet,
+    "v14 tidak mengubah prompt object",
+  );
   assert.ok(
-    bundel.v15?.sprite_sheet_fauna?.includes("MANDATORY MONSTER IDENTITY LAYER"),
-    "v15 monster identity layer fauna ikut terbundel"
+    bundel.v15?.sprite_sheet_fauna?.includes(
+      "MANDATORY MONSTER IDENTITY LAYER",
+    ),
+    "v15 monster identity layer fauna ikut terbundel",
   );
-  assert.equal(bundel.v15?.sprite_sheet, bundel.v13?.sprite_sheet, "v15 tidak mengubah prompt object");
-  for (const prompt of [
-    bundel.v16?.sprite_sheet,
-    bundel.v16?.sprite_sheet_fauna,
-    bundel.v16?.sprite_sheet_evolve,
-  ]) {
-    assert.ok(prompt?.includes("EYE GAZE LOCK"), "v16 gaze lock ikut terbundel di semua jalur");
+  assert.equal(
+    bundel.v15?.sprite_sheet,
+    bundel.v13?.sprite_sheet,
+    "v15 tidak mengubah prompt object",
+  );
+  for (
+    const prompt of [
+      bundel.v16?.sprite_sheet,
+      bundel.v16?.sprite_sheet_fauna,
+      bundel.v16?.sprite_sheet_evolve,
+    ]
+  ) {
+    assert.ok(
+      prompt?.includes("EYE GAZE LOCK"),
+      "v16 gaze lock ikut terbundel di semua jalur",
+    );
     assert.ok(prompt?.includes("ONE shared target in open"));
     assert.match(prompt, /Never look\s+at the viewer/);
     assert.ok(prompt?.includes("Sleep keeps every eye fully closed"));
   }
-  assert.equal(bundel.v19?.sprite_sheet, bundel.v18?.sprite_sheet, "v19 tidak mengubah prompt object");
-  assert.equal(bundel.v19?.sprite_sheet_fauna, bundel.v18?.sprite_sheet_fauna, "v19 tidak mengubah prompt fauna");
+  assert.equal(
+    bundel.v19?.sprite_sheet,
+    bundel.v18?.sprite_sheet,
+    "v19 tidak mengubah prompt object",
+  );
+  assert.equal(
+    bundel.v19?.sprite_sheet_fauna,
+    bundel.v18?.sprite_sheet_fauna,
+    "v19 tidak mengubah prompt fauna",
+  );
   assert.ok(
     bundel.v19?.vision_system.includes("hug-and-carry doll"),
-    "v19 memakai floor boneka gendong untuk benda genggam kecil"
+    "v19 memakai floor boneka gendong untuk benda genggam kecil",
   );
-  assert.equal(bundel.v20?.sprite_sheet, bundel.v19?.sprite_sheet, "v20 tidak mengubah prompt object");
-  assert.equal(bundel.v20?.sprite_sheet_fauna, bundel.v19?.sprite_sheet_fauna, "v20 tidak mengubah prompt fauna");
-  assert.equal(bundel.v20?.sprite_sheet_evolve, bundel.v19?.sprite_sheet_evolve, "v20 tidak mengubah prompt evolve");
+  assert.equal(
+    bundel.v20?.sprite_sheet,
+    bundel.v19?.sprite_sheet,
+    "v20 tidak mengubah prompt object",
+  );
+  assert.equal(
+    bundel.v20?.sprite_sheet_fauna,
+    bundel.v19?.sprite_sheet_fauna,
+    "v20 tidak mengubah prompt fauna",
+  );
+  assert.equal(
+    bundel.v20?.sprite_sheet_evolve,
+    bundel.v19?.sprite_sheet_evolve,
+    "v20 tidak mengubah prompt evolve",
+  );
   assert.ok(
-    bundel.v20?.vision_schema?.properties?.reject_reason?.enum?.includes("known_character"),
-    "v20 membundel reason karakter franchise"
+    bundel.v20?.vision_schema?.properties?.reject_reason?.enum?.includes(
+      "known_character",
+    ),
+    "v20 membundel reason karakter franchise",
   );
   assert.ok(
     bundel.v20?.vision_system.includes("Classify what the artwork depicts"),
-    "v20 menerima ilustrasi orisinal dan mengklasifikasi subjek yang digambar"
+    "v20 menerima ilustrasi orisinal dan mengklasifikasi subjek yang digambar",
   );
   assert.ok(
-    bundel.v20?.vision_system.includes("original or generic anthropomorphic non-human creature"),
-    "v20 memberi subject_kind valid pada ilustrasi antropomorfik non-franchise"
+    bundel.v20?.vision_system.includes(
+      "original or generic anthropomorphic non-human creature",
+    ),
+    "v20 memberi subject_kind valid pada ilustrasi antropomorfik non-franchise",
   );
 }
 
 console.log("17b. capture vibe hanya mengubah arah visual, bukan Vision");
 {
-  const bundel = await (await import("../backend/tools/bundle_prompts.mjs")).buildBundle();
+  const bundel = await (await import("../backend/tools/bundle_prompts.mjs"))
+    .buildBundle();
   const { readFile } = await import("node:fs/promises");
   const createAnima = await readFile(
-    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/create_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
-  assert.equal(bundel.v31?.vision_system, bundel.v20?.vision_system, "v31 tidak mengubah Vision");
-  assert.deepEqual(bundel.v31?.vision_schema, bundel.v20?.vision_schema, "v31 tidak mengubah schema Vision");
+  assert.equal(
+    bundel.v31?.vision_system,
+    bundel.v20?.vision_system,
+    "v31 tidak mengubah Vision",
+  );
+  assert.deepEqual(
+    bundel.v31?.vision_schema,
+    bundel.v20?.vision_schema,
+    "v31 tidak mengubah schema Vision",
+  );
   assert.equal(
     bundel.v31?.sprite_sheet_evolve,
     bundel.v30?.sprite_sheet_evolve,
-    "v31 mewarisi evolve v30"
+    "v31 mewarisi evolve v30",
   );
-  assert.notEqual(bundel.v31?.sprite_sheet, bundel.v20?.sprite_sheet, "v31 mengubah prompt object");
-  assert.ok(bundel.v31?.sprite_sheet?.includes("{{vibe_direction}}"), "v31 object punya placeholder vibe");
-  assert.ok(bundel.v31?.sprite_sheet_fauna?.includes("{{vibe_direction}}"), "v31 fauna punya placeholder vibe");
-  assert.ok(bundel.v31?.vibe_directions?.cute?.direction?.includes("Player Vibe: Cute"));
+  assert.notEqual(
+    bundel.v31?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v31 mengubah prompt object",
+  );
+  assert.ok(
+    bundel.v31?.sprite_sheet?.includes("{{vibe_direction}}"),
+    "v31 object punya placeholder vibe",
+  );
+  assert.ok(
+    bundel.v31?.sprite_sheet_fauna?.includes("{{vibe_direction}}"),
+    "v31 fauna punya placeholder vibe",
+  );
+  assert.ok(
+    bundel.v31?.vibe_directions?.cute?.direction?.includes("Player Vibe: Cute"),
+  );
   assert.ok(bundel.v31?.vibe_directions?.brave?.personality);
-  assert.ok(bundel.v31?.vibe_directions?.sinister?.direction?.includes("Never add horns"));
+  assert.ok(
+    bundel.v31?.vibe_directions?.sinister?.direction?.includes(
+      "Never add horns",
+    ),
+  );
   assert.equal(normalizeCaptureVibe(""), "natural");
   assert.equal(normalizeCaptureVibe(undefined), "natural");
   assert.equal(normalizeCaptureVibe("CUTE"), "cute");
@@ -901,14 +1314,17 @@ console.log("17b. capture vibe hanya mengubah arah visual, bukan Vision");
   assert.ok(createAnima.includes("normalizeCaptureVibe(lama.capture_vibe)"));
   assert.ok(
     !/rpc\("claim_genesis", claimParams[\s\S]*p_capture_vibe/.test(createAnima),
-    "jalur rollback claim_genesis tidak boleh mengirim capture_vibe"
+    "jalur rollback claim_genesis tidak boleh mengirim capture_vibe",
   );
 
   const sample = {
     object_label: "monstera in a ceramic pot",
     creature_brief: "a leafy plant creature whose split leaves stay the body",
     character_direction: "upright, leafy, and object-led",
-    signature_features: ["fenestrated leaves remain the torso", "black pot stays the base"],
+    signature_features: [
+      "fenestrated leaves remain the torso",
+      "black pot stays the base",
+    ],
     surface_finish: "glossy green leaf and matte black ceramic",
     damage_hints: ["one torn leaf edge", "one small chip on the pot rim"],
     dominant_colors: ["#2f7a3a", "#1a1a1a"],
@@ -917,22 +1333,54 @@ console.log("17b. capture vibe hanya mengubah arah visual, bukan Vision");
     surge_name: "Canopy Burst",
   };
   const directions = bundel.v31.vibe_directions;
-  const natural = assemblePrompt(bundel.v31.sprite_sheet, sample, "natural", directions);
-  const cute = assemblePrompt(bundel.v31.sprite_sheet, sample, "cute", directions);
-  const faunaCute = assemblePrompt(bundel.v31.sprite_sheet_fauna, sample, "cute", directions);
-  assert.ok(natural.includes("bold, spirited"), "Natural memakai personality dari stat");
+  const natural = assemblePrompt(
+    bundel.v31.sprite_sheet,
+    sample,
+    "natural",
+    directions,
+  );
+  const cute = assemblePrompt(
+    bundel.v31.sprite_sheet,
+    sample,
+    "cute",
+    directions,
+  );
+  const faunaCute = assemblePrompt(
+    bundel.v31.sprite_sheet_fauna,
+    sample,
+    "cute",
+    directions,
+  );
+  assert.ok(
+    natural.includes("bold, spirited"),
+    "Natural memakai personality dari stat",
+  );
   assert.ok(!natural.includes("Player Vibe: Cute"));
   assert.ok(cute.includes("warm, playful"), "Cute mengganti personality stat");
-  assert.ok(!cute.includes("bold, spirited"), "personality ATK tidak boleh menang dari Cute");
+  assert.ok(
+    !cute.includes("bold, spirited"),
+    "personality ATK tidak boleh menang dari Cute",
+  );
   assert.ok(cute.includes("Player Vibe: Cute"));
-  assert.ok(cute.includes(sample.character_direction), "arah objek Vision tetap dipakai");
-  assert.ok(cute.includes("fenestrated leaves remain the torso"), "anchor objek tidak boleh hilang");
+  assert.ok(
+    cute.includes(sample.character_direction),
+    "arah objek Vision tetap dipakai",
+  );
+  assert.ok(
+    cute.includes("fenestrated leaves remain the torso"),
+    "anchor objek tidak boleh hilang",
+  );
   assert.ok(!cute.includes("{{"), "placeholder v31 object harus terisi");
   assert.ok(!faunaCute.includes("{{"), "placeholder v31 fauna harus terisi");
-  assert.ok(!assemblePrompt(bundel.v20.sprite_sheet, sample, "cute", directions).includes("{{vibe_direction}}"));
+  assert.ok(
+    !assemblePrompt(bundel.v20.sprite_sheet, sample, "cute", directions)
+      .includes("{{vibe_direction}}"),
+  );
 }
 
-console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set");
+console.log(
+  "18. resize foto di device tidak melampaui apa yang diuji Smoke Set",
+);
 {
   // scan_flow.gd mengecilkan foto kamera sebelum diunggah. Kalau angkanya naik
   // di atas foto terbesar di eval/photos/, produksi memberi Vision gambar yang
@@ -941,14 +1389,20 @@ console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set"
   // membayar $0.07. Konstanta di GDScript dan foto uji di Node tidak punya
   // tempat lain untuk bertemu selain di sini.
   const { readFile, readdir } = await import("node:fs/promises");
-  const gd = await readFile(new URL("../game/scripts/scan_flow.gd", import.meta.url), "utf8");
+  const gd = await readFile(
+    new URL("../game/scripts/scan_flow.gd", import.meta.url),
+    "utf8",
+  );
   const cocok = gd.match(/const FOTO_MAX_PX\s*:?=\s*(\d+)/);
   assert.ok(cocok, "FOTO_MAX_PX tidak ditemukan di scan_flow.gd");
   const maxPx = Number(cocok[1]);
 
   const dir = new URL("./photos/", import.meta.url);
   const fotos = (await readdir(dir)).filter((f) => /\.(jpe?g|png)$/i.test(f));
-  assert.ok(fotos.length > 0, "eval/photos/ kosong, tidak ada yang bisa dibandingkan");
+  assert.ok(
+    fotos.length > 0,
+    "eval/photos/ kosong, tidak ada yang bisa dibandingkan",
+  );
 
   let terbesar = 0;
   for (const f of fotos) {
@@ -958,7 +1412,7 @@ console.log("18. resize foto di device tidak melampaui apa yang diuji Smoke Set"
   assert.ok(
     maxPx <= terbesar,
     `FOTO_MAX_PX=${maxPx} melampaui foto eval terbesar (${terbesar} px). Turunkan ` +
-      "konstantanya, atau jalankan ulang Smoke Set dengan foto seukuran itu dulu."
+      "konstantanya, atau jalankan ulang Smoke Set dengan foto seukuran itu dulu.",
   );
 }
 
@@ -995,15 +1449,20 @@ console.log("19. tidak ada kredensial mahal di sumber client Godot");
     }
   };
   await jelajah(akar);
-  assert.ok(berkas.length > 5, `hanya ${berkas.length} berkas terpindai, penjelajahannya salah`);
+  assert.ok(
+    berkas.length > 5,
+    `hanya ${berkas.length} berkas terpindai, penjelajahannya salah`,
+  );
 
   for (const f of berkas) {
     const isi = await readFile(f, "utf8");
     for (const [pola, nama] of terlarang) {
       assert.ok(
         !pola.test(isi),
-        `${nama} ditemukan di ${f.pathname.split("/game/")[1]}. Kredensial ini tidak ` +
-          "boleh ikut ke APK; ia hanya hidup di Edge Function secrets."
+        `${nama} ditemukan di ${
+          f.pathname.split("/game/")[1]
+        }. Kredensial ini tidak ` +
+          "boleh ikut ke APK; ia hanya hidup di Edge Function secrets.",
       );
     }
   }
@@ -1012,67 +1471,107 @@ console.log("19. tidak ada kredensial mahal di sumber client Godot");
   // memverifikasi JWT, tetapi memakai JWKS cache alih-alih round-trip getUser
   // pada setiap tap. Pagar platform harus tetap hidup bersama optimasi ini.
   const care = await readFile(
-    new URL("../backend/supabase/functions/care_anima/index.ts", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/care_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
-  const authFlow = await readFile(new URL("../game/scripts/auth_flow.gd", import.meta.url), "utf8");
-  const config = await readFile(new URL("../backend/supabase/config.toml", import.meta.url), "utf8");
-  const careConfig = config.split("[functions.care_anima]")[1]?.split("\n[")[0] ?? "";
+  const authFlow = await readFile(
+    new URL("../game/scripts/auth_flow.gd", import.meta.url),
+    "utf8",
+  );
+  const config = await readFile(
+    new URL("../backend/supabase/config.toml", import.meta.url),
+    "utf8",
+  );
+  const careConfig =
+    config.split("[functions.care_anima]")[1]?.split("\n[")[0] ?? "";
   assert.ok(
     config.includes('site_url = "scanima://auth/callback"'),
-    "Site URL Auth mobile harus kembali ke aplikasi, bukan localhost"
+    "Site URL Auth mobile harus kembali ke aplikasi, bukan localhost",
   );
   assert.ok(
     config.includes('"scanima://auth/callback**"'),
-    "allow-list OAuth harus menerima query state acak pada callback aplikasi"
+    "allow-list OAuth harus menerima query state acak pada callback aplikasi",
   );
   assert.ok(
     !authFlow.includes("OAUTH_ALREADY_PENDING") &&
       authFlow.includes("GameState.cancel_oauth()"),
-    "tap Sign in berikutnya harus mengganti intent OAuth yang browsernya tidak kembali"
+    "tap Sign in berikutnya harus mengganti intent OAuth yang browsernya tidak kembali",
   );
   assert.ok(
     authFlow.includes('auth_failed.emit("OAUTH_UPGRADE_PENDING")'),
-    "link tidak boleh mengumumkan sukses kalau grant starter belum tersimpan"
+    "link tidak boleh mengumumkan sukses kalau grant starter belum tersimpan",
   );
-  assert.ok(care.includes('ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon", "use_item"])'),
-    "care_anima harus menerima summon dan use_item");
-  assert.ok(!care.includes(".auth.getUser("), "care_anima tidak boleh mengembalikan round-trip getUser");
-  assert.match(careConfig, /verify_jwt\s*=\s*true/, "gateway JWT care_anima harus tetap aktif");
+  assert.ok(
+    care.includes(
+      'ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon", "use_item"])',
+    ),
+    "care_anima harus menerima summon dan use_item",
+  );
+  assert.ok(
+    !care.includes(".auth.getUser("),
+    "care_anima tidak boleh mengembalikan round-trip getUser",
+  );
+  assert.match(
+    careConfig,
+    /verify_jwt\s*=\s*true/,
+    "gateway JWT care_anima harus tetap aktif",
+  );
   assert.ok(
     care.includes("syncProfileTimezone"),
-    "care_anima harus menyimpan offset zona sebelum apply_care"
+    "care_anima harus menyimpan offset zona sebelum apply_care",
   );
 }
 
 console.log("20. prompt v4 tidak mengarang logo atau damage cyborg");
 {
   const { readFile } = await import("node:fs/promises");
-  const template = await readFile(new URL("../backend/prompts/v4/sprite_sheet.md", import.meta.url), "utf8");
+  const template = await readFile(
+    new URL("../backend/prompts/v4/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
   const stats = { hp: 50, atk: 40, def: 60, spd: 45, special: 55 };
 
-  assert.ok(template.includes("Never invent a replacement mark"), "v4 wajib memilih permukaan polos");
+  assert.ok(
+    template.includes("Never invent a replacement mark"),
+    "v4 wajib memilih permukaan polos",
+  );
   assert.ok(
     !template.includes("invented simple geometric marking of your own"),
-    "instruksi v3 yang melahirkan logo semu tidak boleh kembali"
+    "instruksi v3 yang melahirkan logo semu tidak boleh kembali",
   );
 
   const mug = assemblePrompt(template, {
     object_label: "ceramic mug",
     creature_brief: "rounded mug creature with handle arm",
-    signature_features: ["curved handle becomes one arm", "open rim crowns the head"],
+    signature_features: [
+      "curved handle becomes one arm",
+      "open rim crowns the head",
+    ],
     surface_finish: "smooth glazed ceramic",
-    damage_hints: ["two short glaze cracks", "one chipped rim", "exposed wire bundle"],
+    damage_hints: [
+      "two short glaze cracks",
+      "one chipped rim",
+      "exposed wire bundle",
+    ],
     dominant_colors: ["#eeeeee"],
     stats,
   });
   assert.ok(mug.includes("- two short glaze cracks\n- one chipped rim"));
-  assert.ok(!mug.includes("- exposed wire bundle"), "mug tanpa wire anchor tidak boleh mendapat damage kabel");
+  assert.ok(
+    !mug.includes("- exposed wire bundle"),
+    "mug tanpa wire anchor tidak boleh mendapat damage kabel",
+  );
 
   const filteredMug = assemblePrompt(template, {
     object_label: "ceramic mug",
     creature_brief: "rounded mug creature with handle arm",
-    signature_features: ["curved handle becomes one arm", "open rim crowns the head"],
+    signature_features: [
+      "curved handle becomes one arm",
+      "open rim crowns the head",
+    ],
     surface_finish: "smooth glazed ceramic",
     damage_hints: ["one short glaze crack", "exposed electronic component"],
     dominant_colors: ["#eeeeee"],
@@ -1082,45 +1581,70 @@ console.log("20. prompt v4 tidak mengarang logo atau damage cyborg");
   assert.equal(
     filteredMug.match(/^- /gm)?.length,
     4,
-    "dua signature feature + dua damage bullet harus tetap ada sesudah filter"
+    "dua signature feature + dua damage bullet harus tetap ada sesudah filter",
   );
 
   const plant = assemblePrompt(template, {
     object_label: "potted plant",
     creature_brief: "leafy creature growing from a round pot body",
-    signature_features: ["five broad leaves form the crown", "clay pot becomes the torso"],
+    signature_features: [
+      "five broad leaves form the crown",
+      "clay pot becomes the torso",
+    ],
     surface_finish: "living waxy leaves and terracotta",
-    damage_hints: ["one torn leaf edge", "one bruised leaf tip", "exposed circuit"],
+    damage_hints: [
+      "one torn leaf edge",
+      "one bruised leaf tip",
+      "exposed circuit",
+    ],
     dominant_colors: ["#3f7f42", "#a35d35"],
     stats,
   });
   assert.ok(plant.includes("- one torn leaf edge\n- one bruised leaf tip"));
-  assert.ok(!plant.includes("- exposed circuit"), "tanaman tidak boleh mendapat damage elektronik");
+  assert.ok(
+    !plant.includes("- exposed circuit"),
+    "tanaman tidak boleh mendapat damage elektronik",
+  );
 
   const mouse = assemblePrompt(template, {
     object_label: "wired computer mouse",
     creature_brief: "low domed mouse-shell creature",
-    signature_features: ["two click buttons become eyes", "USB cable becomes a segmented tail"],
+    signature_features: [
+      "two click buttons become eyes",
+      "USB cable becomes a segmented tail",
+    ],
     surface_finish: "smooth molded plastic and rubber",
     damage_hints: ["scuffed plastic shell", "slightly frayed cable sheath"],
     dominant_colors: ["#222222"],
     stats,
   });
-  assert.ok(mouse.includes("- slightly frayed cable sheath"), "kabel nyata tetap boleh rusak seperti kabel");
+  assert.ok(
+    mouse.includes("- slightly frayed cable sheath"),
+    "kabel nyata tetap boleh rusak seperti kabel",
+  );
   const keyboard = assemblePrompt(template, {
     object_label: "mechanical keyboard",
     creature_brief: "wide keyboard creature with keycap scales",
-    signature_features: ["black keys become armored scales", "mechanical dial becomes one eye"],
+    signature_features: [
+      "black keys become armored scales",
+      "mechanical dial becomes one eye",
+    ],
     surface_finish: "matte molded plastic keycaps",
     damage_hints: ["one broken key at the corner", "scuffed plastic frame"],
     dominant_colors: ["#222222"],
     stats,
   });
-  assert.ok(keyboard.includes("- one broken key at the corner"), "plural keys harus mengizinkan damage key");
+  assert.ok(
+    keyboard.includes("- one broken key at the corner"),
+    "plural keys harus mengizinkan damage key",
+  );
   const specialMouse = assemblePrompt(template, {
     object_label: "wired computer mouse",
     creature_brief: "low domed mouse-shell creature",
-    signature_features: ["two click buttons become eyes", "USB cable becomes a segmented tail"],
+    signature_features: [
+      "two click buttons become eyes",
+      "USB cable becomes a segmented tail",
+    ],
     surface_finish: "smooth molded plastic and rubber",
     damage_hints: ["scuffed plastic shell", "slightly frayed cable sheath"],
     dominant_colors: ["#222222"],
@@ -1128,129 +1652,209 @@ console.log("20. prompt v4 tidak mengarang logo atau damage cyborg");
   });
   assert.ok(specialMouse.includes("hidden functional energy"));
   assert.ok(!specialMouse.includes("hidden technical energy"));
-  assert.ok(!mug.includes("{{") && !plant.includes("{{") && !mouse.includes("{{"));
+  assert.ok(
+    !mug.includes("{{") && !plant.includes("{{") && !mouse.includes("{{"),
+  );
 }
 
 console.log("21. prompt v5 mengikuti karakter dan body plan objek");
 {
   const { readFile } = await import("node:fs/promises");
-  const template = await readFile(new URL("../backend/prompts/v5/sprite_sheet.md", import.meta.url), "utf8");
-  const evolve = await readFile(new URL("../backend/prompts/v5/sprite_sheet_evolve.md", import.meta.url), "utf8");
-  const vision = await readFile(new URL("../backend/prompts/v5/vision_system.md", import.meta.url), "utf8");
+  const template = await readFile(
+    new URL("../backend/prompts/v5/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
+  const evolve = await readFile(
+    new URL("../backend/prompts/v5/sprite_sheet_evolve.md", import.meta.url),
+    "utf8",
+  );
+  const vision = await readFile(
+    new URL("../backend/prompts/v5/vision_system.md", import.meta.url),
+    "utf8",
+  );
   const createAnima = await readFile(
-    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/create_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
 
   assert.ok(
     /Zero arms,\s+zero\s+legs,\s+or neither is fully valid/.test(template),
-    "v5 tidak boleh memaksakan tangan atau kaki"
+    "v5 tidak boleh memaksakan tangan atau kaki",
   );
   assert.ok(
     /whether arms and legs exist,\s+and how many of each/.test(vision),
-    "Vision harus membuat keputusan limb plan eksplisit"
+    "Vision harus membuat keputusan limb plan eksplisit",
   );
   assert.ok(
     /A limbless earlier form\s+stays\s+limbless/.test(evolve),
-    "evolusi tidak boleh menumbuhkan anggota tubuh generik"
+    "evolusi tidak boleh menumbuhkan anggota tubuh generik",
   );
   assert.ok(
     vision.includes("Never end the name") && vision.includes("with `mon`"),
-    "Vision v5 harus melarang suffix -mon secara eksplisit"
+    "Vision v5 harus melarang suffix -mon secara eksplisit",
   );
-  assert.ok(!vision.includes("Mugmon"), "contoh nama v5 tidak boleh mengajari pola Digimon");
+  assert.ok(
+    !vision.includes("Mugmon"),
+    "contoh nama v5 tidak boleh mengajari pola Digimon",
+  );
   assert.ok(
     createAnima.includes("normalizeSuggestedName(vision.suggested_name"),
-    "resume generation lama juga harus menormalkan suggested_name sebelum disimpan"
+    "resume generation lama juga harus menormalkan suggested_name sebelum disimpan",
   );
 
-  const idle = template.split("TOP LEFT â€” IDLE")[1]?.split("TOP RIGHT â€” BATTLE")[0] ?? "";
-  assert.ok(idle.includes("calm, open, non-angry"), "Idle v5 harus tenang dan tidak marah");
-  assert.ok(idle.includes("Never use a fierce glare"), "Idle v5 harus melarang fierce glare secara eksplisit");
+  const idle =
+    template.split("TOP LEFT â€” IDLE")[1]?.split("TOP RIGHT â€” BATTLE")[0] ?? "";
+  assert.ok(
+    idle.includes("calm, open, non-angry"),
+    "Idle v5 harus tenang dan tidak marah",
+  );
+  assert.ok(
+    idle.includes("Never use a fierce glare"),
+    "Idle v5 harus melarang fierce glare secara eksplisit",
+  );
 
   const sample = {
     object_label: "rounded perfume bottle",
     creature_brief: "a floating bottle creature with no arms or legs",
     character_direction: "elegant, softly feminine, and composed",
-    signature_features: ["rounded glass body remains the torso", "cap becomes a small crown"],
+    signature_features: [
+      "rounded glass body remains the torso",
+      "cap becomes a small crown",
+    ],
     surface_finish: "smooth translucent glass",
     damage_hints: ["one hairline crack", "one tiny chipped edge"],
     dominant_colors: ["#d9b7d8"],
     stats: { hp: 30, atk: 80, def: 35, spd: 50, special: 65 },
   };
   const filled = assemblePrompt(template, sample);
-  assert.ok(filled.includes(sample.character_direction), "character_direction harus sampai ke prompt gambar");
+  assert.ok(
+    filled.includes(sample.character_direction),
+    "character_direction harus sampai ke prompt gambar",
+  );
   assert.ok(
     filled.includes("without looking angry at rest"),
-    "personality ATK v5 tidak boleh membuat Idle marah"
+    "personality ATK v5 tidak boleh membuat Idle marah",
   );
   assert.ok(
     !filled.includes("bold, fierce, confrontational"),
-    "personality lama yang fierce tidak boleh bocor ke v5"
+    "personality lama yang fierce tidak boleh bocor ke v5",
   );
   assert.ok(!filled.includes("{{"), "semua placeholder v5 harus terisi");
 
-  const missingCharacter = { ...sample, safe: true, is_object: true, species_key: "bottle_glass_rounded" };
+  const missingCharacter = {
+    ...sample,
+    safe: true,
+    is_object: true,
+    species_key: "bottle_glass_rounded",
+  };
   delete missingCharacter.character_direction;
   assert.ok(
-    validateVision(missingCharacter, [], true, true).issues.includes("character_direction kosong"),
-    "validator v5 harus menandai character_direction yang hilang"
+    validateVision(missingCharacter, [], true, true).issues.includes(
+      "character_direction kosong",
+    ),
+    "validator v5 harus menandai character_direction yang hilang",
   );
 
   const neutralFallback = assemblePrompt(template, missingCharacter);
   assert.ok(
     neutralFallback.includes("visually neutral and object-led"),
-    "fallback aman harus netral, bukan menebak gender"
+    "fallback aman harus netral, bukan menebak gender",
   );
 }
 
 console.log("21b. prompt v6 mengunci arah hadap ke kiri di semua pose");
 {
   const { readFile } = await import("node:fs/promises");
-  const template = await readFile(new URL("../backend/prompts/v6/sprite_sheet.md", import.meta.url), "utf8");
+  const template = await readFile(
+    new URL("../backend/prompts/v6/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
   const evolve = await readFile(
     new URL("../backend/prompts/v6/sprite_sheet_evolve.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const visionV5 = await readFile(new URL("../backend/prompts/v5/vision_system.md", import.meta.url), "utf8");
-  const visionV6 = await readFile(new URL("../backend/prompts/v6/vision_system.md", import.meta.url), "utf8");
-  const schemaV5 = await readFile(new URL("../backend/prompts/v5/vision_schema.json", import.meta.url), "utf8");
-  const schemaV6 = await readFile(new URL("../backend/prompts/v6/vision_schema.json", import.meta.url), "utf8");
+  const visionV5 = await readFile(
+    new URL("../backend/prompts/v5/vision_system.md", import.meta.url),
+    "utf8",
+  );
+  const visionV6 = await readFile(
+    new URL("../backend/prompts/v6/vision_system.md", import.meta.url),
+    "utf8",
+  );
+  const schemaV5 = await readFile(
+    new URL("../backend/prompts/v5/vision_schema.json", import.meta.url),
+    "utf8",
+  );
+  const schemaV6 = await readFile(
+    new URL("../backend/prompts/v6/vision_schema.json", import.meta.url),
+    "utf8",
+  );
   const createAnima = await readFile(
-    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/create_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
-  const evalRunner = await readFile(new URL("./run.mjs", import.meta.url), "utf8");
+  const evalRunner = await readFile(
+    new URL("./run.mjs", import.meta.url),
+    "utf8",
+  );
 
-  assert.equal(visionV6, visionV5, "v6 tidak boleh mengubah Vision atau species cache key");
-  assert.equal(schemaV6, schemaV5, "v6 tidak boleh mengubah kontrak output Vision");
+  assert.equal(
+    visionV6,
+    visionV5,
+    "v6 tidak boleh mengubah Vision atau species cache key",
+  );
+  assert.equal(
+    schemaV6,
+    schemaV5,
+    "v6 tidak boleh mengubah kontrak output Vision",
+  );
   for (const prompt of [template, evolve]) {
     assert.ok(prompt.includes("HORIZONTAL FACING LOCK â€” BATTLE CONTRACT"));
-    assert.ok(prompt.includes("In EVERY cell"), "facing lock wajib berlaku ke empat pose");
-    assert.ok(prompt.includes("canvas-left (the viewer's left)"), "arah wajib tidak ambigu");
-    assert.ok(prompt.includes("Never mirror, flip, turn around"), "mirror per-cell wajib dilarang");
-    assert.ok(prompt.includes("must attack toward canvas-left"), "vektor Attack wajib ke kiri");
+    assert.ok(
+      prompt.includes("In EVERY cell"),
+      "facing lock wajib berlaku ke empat pose",
+    );
+    assert.ok(
+      prompt.includes("canvas-left (the viewer's left)"),
+      "arah wajib tidak ambigu",
+    );
+    assert.ok(
+      prompt.includes("Never mirror, flip, turn around"),
+      "mirror per-cell wajib dilarang",
+    );
+    assert.ok(
+      prompt.includes("must attack toward canvas-left"),
+      "vektor Attack wajib ke kiri",
+    );
     assert.ok(
       prompt.includes("client mirrors the complete sheet"),
-      "prompt harus menjelaskan kontrak flip client"
+      "prompt harus menjelaskan kontrak flip client",
     );
   }
   assert.ok(
     createAnima.includes("promptMajor(versiPrompt) >= 5"),
-    "runtime production harus memvalidasi field presentation v6 seperti v5"
+    "runtime production harus memvalidasi field presentation v6 seperti v5",
   );
   assert.ok(
     evalRunner.includes("promptMajor(args.promptVersion) >= 5"),
-    "eval harus memvalidasi v6 dengan kontrak yang sama"
+    "eval harus memvalidasi v6 dengan kontrak yang sama",
   );
 }
 
-console.log("22. adapter nano-banana-2-lite mengikuti schema dan harga Replicate");
+console.log(
+  "22. adapter nano-banana-2-lite mengikuti schema dan harga Replicate",
+);
 {
   const input = imageInputForModel(
     "google/nano-banana-2-lite",
     "draw one sheet",
-    "data:image/jpeg;base64,dGVzdA=="
+    "data:image/jpeg;base64,dGVzdA==",
   );
   assert.deepEqual(input, {
     prompt: "draw one sheet",
@@ -1261,7 +1865,9 @@ console.log("22. adapter nano-banana-2-lite mengikuti schema dan harga Replicate
   assert.equal(biayaGambarUsd("google/nano-banana-2-lite"), 0.034);
 }
 
-console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi");
+console.log(
+  "23. battle server deterministik, idempoten, dan mengikuti ekonomi",
+);
 {
   const base = { hp: 50, atk: 50, def: 50, spd: 50, special: 50 };
   assert.deepEqual(toBattleStats(base), {
@@ -1315,14 +1921,27 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   });
   for (const element of ELEMENT_ROSTER) {
     const strengths = ELEMENT_STRENGTHS[element];
-    assert.equal(strengths?.length, 2, `${element} harus punya tepat 2 keunggulan`);
+    assert.equal(
+      strengths?.length,
+      2,
+      `${element} harus punya tepat 2 keunggulan`,
+    );
     for (const target of strengths) {
-      assert.ok(ELEMENT_ROSTER.includes(target), `${element}â†’${target} harus ada di roster`);
+      assert.ok(
+        ELEMENT_ROSTER.includes(target),
+        `${element}â†’${target} harus ada di roster`,
+      );
       assert.equal(singleMatchup(element, target), MATCHUP_STRONG);
       assert.equal(elementMultiplier(element, target), MATCHUP_STRONG);
     }
-    const weaknesses = ELEMENT_ROSTER.filter((other) => ELEMENT_STRENGTHS[other]?.includes(element));
-    assert.equal(weaknesses.length, 2, `${element} harus punya tepat 2 kelemahan`);
+    const weaknesses = ELEMENT_ROSTER.filter((other) =>
+      ELEMENT_STRENGTHS[other]?.includes(element)
+    );
+    assert.equal(
+      weaknesses.length,
+      2,
+      `${element} harus punya tepat 2 kelemahan`,
+    );
     for (const source of weaknesses) {
       assert.equal(singleMatchup(element, source), MATCHUP_WEAK);
     }
@@ -1332,20 +1951,36 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
       assert.notEqual(
         singleMatchup(target, element),
         MATCHUP_STRONG,
-        `${element}â†”${target} tidak boleh saling kuat`
+        `${element}â†”${target} tidak boleh saling kuat`,
       );
     }
   }
   for (let index = 0; index < ELEMENT_CYCLE.length; index++) {
     const attacker = ELEMENT_CYCLE[index];
     const strongAgainst = ELEMENT_CYCLE[(index + 1) % ELEMENT_CYCLE.length];
-    assert.equal(singleMatchup(attacker, strongAgainst), MATCHUP_STRONG, `siklus lama ${attacker}â†’${strongAgainst}`);
+    assert.equal(
+      singleMatchup(attacker, strongAgainst),
+      MATCHUP_STRONG,
+      `siklus lama ${attacker}â†’${strongAgainst}`,
+    );
   }
   assert.equal(singleMatchup("plant", "air"), MATCHUP_STRONG);
   assert.equal(singleMatchup("plant", "fauna"), MATCHUP_WEAK);
-  assert.equal(dualDefenderMultiplier("plant", "fauna", "air"), MATCHUP_NEUTRAL, "kuat+lemah dual defender netral");
-  assert.equal(dualDefenderMultiplier("metal", "plant", "wood"), MATCHUP_STRONG, "dua weakness tidak ditumpuk");
-  assert.equal(dualDefenderMultiplier("metal", "stone", "spark"), MATCHUP_WEAK, "dua resist tidak ditumpuk");
+  assert.equal(
+    dualDefenderMultiplier("plant", "fauna", "air"),
+    MATCHUP_NEUTRAL,
+    "kuat+lemah dual defender netral",
+  );
+  assert.equal(
+    dualDefenderMultiplier("metal", "plant", "wood"),
+    MATCHUP_STRONG,
+    "dua weakness tidak ditumpuk",
+  );
+  assert.equal(
+    dualDefenderMultiplier("metal", "stone", "spark"),
+    MATCHUP_WEAK,
+    "dua resist tidak ditumpuk",
+  );
   assert.equal(elementMultiplier("unknown", "metal"), MATCHUP_NEUTRAL);
   assert.equal(normalizeElement("water"), "flow");
   assert.equal(normalizeElement("fire"), "flame");
@@ -1365,21 +2000,41 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
     variance: 1,
   });
   assert.equal(normalDamage, 33);
-  assert.ok(surgeDamage > normalDamage, "Surge dengan DEF pierce harus lebih keras");
+  assert.ok(
+    surgeDamage > normalDamage,
+    "Surge dengan DEF pierce harus lebih keras",
+  );
   assert.equal(
     computeDamage({ attack: 1, defense: 9999, power: 1, variance: 0.92 }),
     1,
-    "DEF tinggi tidak boleh membuat damage nol"
+    "DEF tinggi tidak boleh membuat damage nol",
   );
   assert.equal(
-    computeDamage({ attack: 50, defense: 50, power: 50, variance: 1, guarding: true }),
+    computeDamage({
+      attack: 50,
+      defense: 50,
+      power: 50,
+      variance: 1,
+      guarding: true,
+    }),
     16,
-    "Guard membelah damage masuk"
+    "Guard membelah damage masuk",
   );
-  assert.ok(Math.ceil(220 / normalDamage) >= 6 && Math.ceil(220 / normalDamage) <= 10);
+  assert.ok(
+    Math.ceil(220 / normalDamage) >= 6 && Math.ceil(220 / normalDamage) <= 10,
+  );
 
-  const scaled = normalizeBaseStats({ hp: 30, atk: 40, def: 50, spd: 60, special: 70 }, 300);
-  assert.ok(Math.abs(baseStatTotal(scaled) - 300) <= 3, "bot dinormalisasi dekat power pemain");
+  const scaled = normalizeBaseStats({
+    hp: 30,
+    atk: 40,
+    def: 50,
+    spd: 60,
+    special: 70,
+  }, 300);
+  assert.ok(
+    Math.abs(baseStatTotal(scaled) - 300) <= 3,
+    "bot dinormalisasi dekat power pemain",
+  );
 
   const player = {
     species_key: "player",
@@ -1445,19 +2100,31 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
     { base_stats: base, level: 1 },
     "hungry-bits",
   );
-  assert.equal(previewHungry.bits, previewFed.bits, "lapar tidak boleh menaikkan Bits");
+  assert.equal(
+    previewHungry.bits,
+    previewFed.bits,
+    "lapar tidak boleh menaikkan Bits",
+  );
 
   const first = resolveTurn(initial, "strike", "turn-key");
   const retry = resolveTurn(initial, "strike", "turn-key");
-  assert.deepEqual(retry, first, "retry key sama harus memberi event log identik");
+  assert.deepEqual(
+    retry,
+    first,
+    "retry key sama harus memberi event log identik",
+  );
   assert.equal(first.state.status, "won");
-  const strikeHit = first.events.find((event) => event.type === "attack" && event.actor === "player");
+  const strikeHit = first.events.find((event) =>
+    event.type === "attack" && event.actor === "player"
+  );
   assert.equal(strikeHit?.attack_element, "metal");
   assert.deepEqual(strikeHit?.defense_elements, ["plant"]);
   assert.equal(strikeHit?.element_multiplier, MATCHUP_STRONG);
   assert.ok(
-    !first.events.some((event) => event.type === "attack" && event.actor === "bot"),
-    "aktor yang KO sebelum giliran tidak boleh menyerang"
+    !first.events.some((event) =>
+      event.type === "attack" && event.actor === "bot"
+    ),
+    "aktor yang KO sebelum giliran tidak boleh menyerang",
   );
 
   const dualAttacker = createBattleState({
@@ -1475,17 +2142,25 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
     seed: "dual-elements",
   });
   const strikeTurn = resolveTurn(dualAttacker, "strike", "dual-strike");
-  const strikeEvent = strikeTurn.events.find((event) => event.type === "attack" && event.actor === "player");
+  const strikeEvent = strikeTurn.events.find((event) =>
+    event.type === "attack" && event.actor === "player"
+  );
   assert.equal(strikeEvent?.action, "strike");
   assert.equal(strikeEvent?.attack_element, "flow");
   assert.deepEqual(strikeEvent?.defense_elements, ["cloth"]);
   assert.equal(strikeEvent?.element_multiplier, MATCHUP_NEUTRAL);
 
   const surgeTurn = resolveTurn(dualAttacker, "surge", "dual-surge");
-  const surgeEvent = surgeTurn.events.find((event) => event.type === "attack" && event.actor === "player");
+  const surgeEvent = surgeTurn.events.find((event) =>
+    event.type === "attack" && event.actor === "player"
+  );
   assert.equal(surgeEvent?.action, "surge");
   assert.equal(surgeEvent?.attack_element, "spark");
-  assert.equal(surgeEvent?.element_multiplier, MATCHUP_STRONG, "spark kuat terhadap cloth");
+  assert.equal(
+    surgeEvent?.element_multiplier,
+    MATCHUP_STRONG,
+    "spark kuat terhadap cloth",
+  );
 
   const cancelDefender = createBattleState({
     player: {
@@ -1502,7 +2177,9 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
     seed: "dual-defense",
   });
   const cancelTurn = resolveTurn(cancelDefender, "strike", "dual-defense");
-  const cancelEvent = cancelTurn.events.find((event) => event.type === "attack" && event.actor === "player");
+  const cancelEvent = cancelTurn.events.find((event) =>
+    event.type === "attack" && event.actor === "player"
+  );
   assert.deepEqual(cancelEvent?.defense_elements, ["fauna", "air"]);
   assert.equal(cancelEvent?.element_multiplier, MATCHUP_NEUTRAL);
 
@@ -1515,161 +2192,198 @@ console.log("23. battle server deterministik, idempoten, dan mengikuti ekonomi")
   assert.equal(
     speedOrdered.events.find((event) => event.type === "attack")?.actor,
     "bot",
-    "fighter dengan SPD lebih tinggi harus bergerak dulu"
+    "fighter dengan SPD lebih tinggi harus bergerak dulu",
   );
 
-  const guardState = createBattleState({ player: { ...player, base_stats: base }, bot, seed: "guard" });
+  const guardState = createBattleState({
+    player: { ...player, base_stats: base },
+    bot,
+    seed: "guard",
+  });
   const guarded = resolveTurn(guardState, "guard", "guard-key");
-  assert.equal(guarded.state.player.momentum, MOMENTUM_MAX, "Guard tunduk cap PP");
+  assert.equal(
+    guarded.state.player.momentum,
+    MOMENTUM_MAX,
+    "Guard tunduk cap PP",
+  );
 
   // PP adalah budget per battle, bukan meter yang mengisi sendiri: satu Special
   // memakan tepat SURGE_COST dan turn berikutnya tidak mengembalikannya. Kalau
   // regen per-turn kembali, battle empat turn membuat PP tidak pernah mengekang.
-  const budget = createBattleState({ player: { ...player, base_stats: base }, bot, seed: "budget" });
+  const budget = createBattleState({
+    player: { ...player, base_stats: base },
+    bot,
+    seed: "budget",
+  });
   const spent = resolveTurn(budget, "surge", "budget-key");
   assert.equal(
     spent.state.player.momentum,
     MOMENTUM_START - SURGE_COST,
-    "Special memakan PP tanpa regen per turn"
+    "Special memakan PP tanpa regen per turn",
   );
   budget.player.momentum = SURGE_COST;
   assert.doesNotThrow(
     () => resolveTurn(budget, "surge", "last-pp"),
-    "PP tepat sebesar biayanya masih boleh Special"
+    "PP tepat sebesar biayanya masih boleh Special",
   );
   budget.player.momentum = 0;
-  assert.throws(() => resolveTurn(budget, "surge", "no-momentum"), /NO_MOMENTUM/);
+  assert.throws(
+    () => resolveTurn(budget, "surge", "no-momentum"),
+    /NO_MOMENTUM/,
+  );
   const refilled = resolveTurn(budget, "guard", "guard-refill");
-  assert.equal(refilled.state.player.momentum, 1, "Guard adalah satu-satunya pemulih PP");
+  assert.equal(
+    refilled.state.player.momentum,
+    1,
+    "Guard adalah satu-satunya pemulih PP",
+  );
 
   const { readFile } = await import("node:fs/promises");
   const battleEdge = await readFile(
-    new URL("../backend/supabase/functions/battle_anima/index.ts", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/battle_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
   const tieredExpMigration = await readFile(
     new URL(
       "../backend/supabase/migrations/20260816200507_tiered_exp_and_battle_rewards.sql",
-      import.meta.url
+      import.meta.url,
     ),
-    "utf8"
+    "utf8",
   );
   assert.match(
     tieredExpMigration,
     /disable trigger animas_mirror_seeker_xp[\s\S]*update public\.animas[\s\S]*enable trigger animas_mirror_seeker_xp/,
-    "rebase EXP harus mencegah Seeker EXP administratif"
+    "rebase EXP harus mencegah Seeker EXP administratif",
   );
   assert.ok(
-    tieredExpMigration.includes("v_anima.sleep_exp_on is distinct from v_today"),
-    "Sleep EXP harus dibatasi sekali per Anima per hari lokal"
+    tieredExpMigration.includes(
+      "v_anima.sleep_exp_on is distinct from v_today",
+    ),
+    "Sleep EXP harus dibatasi sekali per Anima per hari lokal",
   );
   assert.ok(
-    tieredExpMigration.includes("v_session.reward_tier")
-      && tieredExpMigration.includes("v_encounter.kind = 'boss' and v_run.boss_exp_awarded_at is null"),
-    "reward Battle harus memakai tier snapshot dan Boss Expedition sekali per run"
+    tieredExpMigration.includes("v_session.reward_tier") &&
+      tieredExpMigration.includes(
+        "v_encounter.kind = 'boss' and v_run.boss_exp_awarded_at is null",
+      ),
+    "reward Battle harus memakai tier snapshot dan Boss Expedition sekali per run",
   );
-  assert.match(battleEdge, /ANIMA_LOW_ENERGY:\s*409/, "Energy rendah harus menjadi conflict");
-  assert.match(battleEdge, /ANIMA_HUNGRY:\s*409/, "Anima lapar harus menjadi conflict");
+  assert.match(
+    battleEdge,
+    /ANIMA_LOW_ENERGY:\s*409/,
+    "Energy rendah harus menjadi conflict",
+  );
+  assert.match(
+    battleEdge,
+    /ANIMA_HUNGRY:\s*409/,
+    "Anima lapar harus menjadi conflict",
+  );
   assert.ok(
     battleEdge.includes('"message" in error'),
-    "error RPC PostgREST berbentuk object tetap harus terbaca oleh mapper"
+    "error RPC PostgREST berbentuk object tetap harus terbaca oleh mapper",
   );
   assert.match(
     battleEdge,
     /level:\s*levelFromExp\(row\.care_score\)/,
-    "snapshot Battle harus membawa level dari care_score"
+    "snapshot Battle harus membawa level dari care_score",
   );
-	assert.ok(
-		battleEdge.includes("strike_name: row.strike_name"),
-		"snapshot Battle harus membawa nama move unik"
-	);
-	assert.match(
-		battleEdge,
-		/ANIMA_BATTLE_FIELDS[\s\S]*strike_name, surge_name/,
-		"start Battle harus membaca kolom nama move, bukan hanya menulisnya ke snapshot kosong"
-	);
+  assert.ok(
+    battleEdge.includes("strike_name: row.strike_name"),
+    "snapshot Battle harus membawa nama move unik",
+  );
+  assert.match(
+    battleEdge,
+    /ANIMA_BATTLE_FIELDS[\s\S]*strike_name, surge_name/,
+    "start Battle harus membaca kolom nama move, bukan hanya menulisnya ke snapshot kosong",
+  );
   assert.ok(
     battleEdge.includes("syncProfileTimezone"),
-    "battle_anima harus menyimpan offset zona sebelum status/start"
+    "battle_anima harus menyimpan offset zona sebelum status/start",
   );
   assert.match(
     battleEdge,
     /SECONDARY_ELEMENT_FIELD\s*=\s*", secondary_element"/,
-    "start Battle harus membaca secondary_element setelah migration foundation"
+    "start Battle harus membaca secondary_element setelah migration foundation",
   );
   assert.match(
     battleEdge,
     /readSecondaryElement/,
-    "snapshot Battle siap membaca secondary_element saat kolom live"
+    "snapshot Battle siap membaca secondary_element saat kolom live",
   );
   assert.match(
     battleEdge,
     /gallery_entries/,
-    "bot Battle harus memprioritaskan gallery published"
+    "bot Battle harus memprioritaskan gallery published",
   );
   assert.match(
     battleEdge,
     /legacyCandidates\s*[\s\S]{0,40}\.filter/,
-    "bot Battle harus fallback legacy species_library saat gallery kosong"
+    "bot Battle harus fallback legacy species_library saat gallery kosong",
   );
   assert.match(
     battleEdge,
     /isFairRealOpponent/,
-    "lawan Duel sungguhan harus lewat gate keseimbangan, bukan hanya pool Â±15%"
+    "lawan Duel sungguhan harus lewat gate keseimbangan, bukan hanya pool Â±15%",
   );
   assert.match(
     battleEdge,
     /systemDuelBot\(playerSnapshot, seed\)/,
-    "Duel harus punya lawan sistem saat tidak ada lawan sungguhan yang seimbang"
+    "Duel harus punya lawan sistem saat tidak ada lawan sungguhan yang seimbang",
   );
   assert.match(
     battleEdge,
     /system_asset === "placeholder"\) return value/,
-    "withFreshBotArt harus melewati lawan sistem; ia tidak punya baris animas"
+    "withFreshBotArt harus melewati lawan sistem; ia tidak punya baris animas",
   );
   assert.match(
     battleEdge,
     /sheet_url/,
-    "snapshot bot gallery harus membawa signed sheet_url, bukan path privat"
+    "snapshot bot gallery harus membawa signed sheet_url, bukan path privat",
   );
   assert.match(
     battleEdge,
     /async function startBattle[\s\S]*withFreshBotArt\(existing\)[\s\S]*withFreshBotArt\(data\)/,
-    "start/resume existing Battle harus menyegarkan signed art bot"
+    "start/resume existing Battle harus menyegarkan signed art bot",
   );
   assert.match(
     battleEdge,
     /async function resumeBattle[\s\S]*withFreshBotArt\(data\)/,
-    "resume Battle harus menyegarkan signed art bot yang kedaluwarsa"
+    "resume Battle harus menyegarkan signed art bot yang kedaluwarsa",
   );
   assert.match(
     battleEdge,
     /withFreshBotArt[\s\S]*signSheetUrl\(db, bot\.sheet_path\)/,
-    "art bot fallback harus ditandatangani dari salinan privat per-Anima"
+    "art bot fallback harus ditandatangani dari salinan privat per-Anima",
   );
   const signedRoster = await readFile(
-    new URL("../backend/supabase/functions/_shared/signed_roster.ts", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/_shared/signed_roster.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
   assert.match(
     signedRoster,
-    /\.from\("anima_sheets"\)[\s\S]*createSignedUrl\(path, BATTLE_SHEET_SIGNED_TTL\)/,
-    "signSheetUrl harus menandatangani bucket privat anima_sheets"
+    /\.from\("anima_sheets"\)[\s\S]*createSignedUrls\(missing, BATTLE_SHEET_SIGNED_TTL\)/,
+    "signSheetUrl harus membatch tanda tangan bucket privat anima_sheets",
   );
   assert.match(
     signedRoster,
     /hit\.expires_at - now > SIGN_REFRESH_MARGIN_MS/,
-    "cache signed URL harus menandatangani ulang sebelum masa berlakunya menipis"
+    "cache signed URL harus menandatangani ulang sebelum masa berlakunya menipis",
   );
   assert.match(
     battleEdge,
     /typeof botSnapshot\.anima_id === "string"/,
-    "refresh art harus membaca ID bot dari snapshot karena payload publik menyembunyikan FK session"
+    "refresh art harus membaca ID bot dari snapshot karena payload publik menyembunyikan FK session",
   );
   assert.match(
     battleEdge,
     /artByKey\.has\(artKey\(row\)\) && row\.sheet_path && row\.manifest/,
-    "fallback legacy hanya boleh memakai kandidat yang sudah punya salinan art privat"
+    "fallback legacy hanya boleh memakai kandidat yang sudah punya salinan art privat",
   );
 }
 
@@ -1697,7 +2411,11 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
     member("o2", { hp: 10, def: 10, spd: 10 }),
     member("o3", { hp: 10, def: 10, spd: 10 }),
   ];
-  const initial = createTeamBattleState({ player, opponent, seed: "team-selftest" });
+  const initial = createTeamBattleState({
+    player,
+    opponent,
+    seed: "team-selftest",
+  });
   assert.equal(initial.player.roster.length, 4);
   assert.equal(initial.player.roster[0].participated, true);
   assert.equal(initial.player.roster[1].participated, false);
@@ -1713,7 +2431,8 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
   assert.equal(switched.state.player.roster[1].participated, true);
   assert.ok(
     switched.events.some((event) =>
-      event.type === "switch" && event.actor === "player" && event.forced === false
+      event.type === "switch" && event.actor === "player" &&
+      event.forced === false
     ),
     "switch sukarela harus tercatat dan memakan turn",
   );
@@ -1731,12 +2450,15 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
   assert.equal(knockout.state.opponent.active_slot, 1);
   assert.ok(
     knockout.events.some((event) =>
-      event.type === "switch" && event.actor === "opponent" && event.forced === true
+      event.type === "switch" && event.actor === "opponent" &&
+      event.forced === true
     ),
     "opponent KO harus auto-switch gratis",
   );
   assert.ok(
-    !knockout.events.some((event) => event.type === "attack" && event.actor === "opponent"),
+    !knockout.events.some((event) =>
+      event.type === "attack" && event.actor === "opponent"
+    ),
     "replacement tidak boleh mewarisi initiative fighter yang KO",
   );
 
@@ -1773,14 +2495,26 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
     seed: "solo-opponent",
   });
   const partyWipe = resolveTeamTurn(soloOpponent, "strike", "party-wipe");
-  assert.equal(partyWipe.state.status, "won", "1-member opponent harus selesai saat KO");
+  assert.equal(
+    partyWipe.state.status,
+    "won",
+    "1-member opponent harus selesai saat KO",
+  );
 
   const itemState = createTeamBattleState({
-    player: player.map((entry) => ({ ...entry, base_stats: { ...entry.base_stats, hp: 95 } })),
+    player: player.map((entry) => ({
+      ...entry,
+      base_stats: { ...entry.base_stats, hp: 95 },
+    })),
     opponent,
     seed: "team-item",
   });
-  const usedItem = resolveTeamTurn(itemState, "item", "item-key", "vital_patch");
+  const usedItem = resolveTeamTurn(
+    itemState,
+    "item",
+    "item-key",
+    "vital_patch",
+  );
   assert.equal(usedItem.state.player.item_used, true);
   assert.throws(
     () => resolveTeamTurn(usedItem.state, "item", "second-item", "vital_patch"),
@@ -1806,7 +2540,11 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
       copy: "Cotton enters with +1 PP.",
     },
   });
-  assert.equal(bossState.opponent.active_slot, 1, "ace tidak boleh menjadi starter Boss");
+  assert.equal(
+    bossState.opponent.active_slot,
+    1,
+    "ace tidak boleh menjadi starter Boss",
+  );
   const lowRegularState = structuredClone(bossState);
   lowRegularState.opponent.roster[1].hp = Math.floor(
     lowRegularState.opponent.roster[1].max_hp * 0.2,
@@ -1825,16 +2563,33 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
   );
   assert.ok(
     !lowRegularTurn.events.some((event) =>
-      event.type === "switch" && event.actor === "opponent" && event.to_slot === 0
+      event.type === "switch" && event.actor === "opponent" &&
+      event.to_slot === 0
     ),
     "ace hanya boleh masuk lewat forced switch setelah reguler terakhir KO",
   );
   const firstRegular = resolveTeamTurn(bossState, "strike", "ace-ko-1");
-  const secondRegular = resolveTeamTurn(firstRegular.state, "strike", "ace-ko-2");
-  assert.notEqual(firstRegular.state.opponent.active_slot, 0, "ace tetap di-reserve saat reguler hidup");
-  assert.notEqual(secondRegular.state.opponent.active_slot, 0, "ace tetap di-reserve sampai reguler terakhir");
+  const secondRegular = resolveTeamTurn(
+    firstRegular.state,
+    "strike",
+    "ace-ko-2",
+  );
+  assert.notEqual(
+    firstRegular.state.opponent.active_slot,
+    0,
+    "ace tetap di-reserve saat reguler hidup",
+  );
+  assert.notEqual(
+    secondRegular.state.opponent.active_slot,
+    0,
+    "ace tetap di-reserve sampai reguler terakhir",
+  );
   const finalAce = resolveTeamTurn(secondRegular.state, "strike", "ace-ko-3");
-  assert.equal(finalAce.state.opponent.active_slot, 0, "switch terakhir wajib memilih ace");
+  assert.equal(
+    finalAce.state.opponent.active_slot,
+    0,
+    "switch terakhir wajib memilih ace",
+  );
   assert.deepEqual(
     finalAce.events.map((event) => event.type).filter((type) =>
       ["final_ace", "switch", "ace_passive"].includes(type)
@@ -1855,23 +2610,36 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
     opponent: bossOpponent,
     seed: "ordinary-special",
   });
-  assert.equal(ordinaryTeam.opponent.active_slot, 0, "Team Battle biasa tidak memakai reserve ace");
+  assert.equal(
+    ordinaryTeam.opponent.active_slot,
+    0,
+    "Team Battle biasa tidak memakai reserve ace",
+  );
   assert.equal(ordinaryTeam.opponent.reserve_ace, false);
 
   const { readFile } = await import("node:fs/promises");
   const teamEdge = await readFile(
-    new URL("../backend/supabase/functions/team_battle/index.ts", import.meta.url),
+    new URL(
+      "../backend/supabase/functions/team_battle/index.ts",
+      import.meta.url,
+    ),
     "utf8",
   );
-  const teamTurnHandler = teamEdge.slice(teamEdge.indexOf("async function playTeamTurn"));
+  const teamTurnHandler = teamEdge.slice(
+    teamEdge.indexOf("async function playTeamTurn"),
+  );
   assert.ok(
     teamTurnHandler.indexOf('db.rpc("resume_team_battle"') <
       teamTurnHandler.indexOf('.from("team_battle_turns")'),
     "replay lookup Team harus memverifikasi owner session lebih dulu",
   );
-  assert.ok(!teamEdge.includes("body.owner_id"), "owner Team harus selalu turun dari JWT");
   assert.ok(
-    teamEdge.includes('"feature_team_battle"') && teamEdge.includes('"FEATURE_DISABLED"'),
+    !teamEdge.includes("body.owner_id"),
+    "owner Team harus selalu turun dari JWT",
+  );
+  assert.ok(
+    teamEdge.includes('"feature_team_battle"') &&
+      teamEdge.includes('"FEATURE_DISABLED"'),
     "feature flag Team harus ditegakkan server-side",
   );
   assert.ok(
@@ -1886,7 +2654,10 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
     "refresh rival harus replace atomik lewat RPC",
   );
   const signedRoster = await readFile(
-    new URL("../backend/supabase/functions/_shared/signed_roster.ts", import.meta.url),
+    new URL(
+      "../backend/supabase/functions/_shared/signed_roster.ts",
+      import.meta.url,
+    ),
     "utf8",
   );
   assert.ok(
@@ -1897,19 +2668,25 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
     new URL("../backend/supabase/config.toml", import.meta.url),
     "utf8",
   );
-  assert.match(teamConfig, /\[functions\.team_battle\][\s\S]*verify_jwt = true/);
+  assert.match(
+    teamConfig,
+    /\[functions\.team_battle\][\s\S]*verify_jwt = true/,
+  );
 }
 
-console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist");
+console.log(
+  "23b. Expedition manifest, map, persistent HP, dan effect allowlist",
+);
 {
-  const roster = (prefix) => Array.from({ length: 4 }, (_, index) => ({
-    anima_id: `${prefix}-${index}`,
-    name: `${prefix}-${index}`,
-    stage: 1,
-    level: 1,
-    element: "food",
-    base_stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
-  }));
+  const roster = (prefix) =>
+    Array.from({ length: 4 }, (_, index) => ({
+      anima_id: `${prefix}-${index}`,
+      name: `${prefix}-${index}`,
+      stage: 1,
+      level: 1,
+      element: "food",
+      base_stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+    }));
   const opponents = Array.from({ length: 4 }, (_, index) => ({
     id: `candy-${index}`,
     roster: roster(`candy-${index}`),
@@ -1961,25 +2738,47 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
   };
   assert.equal(validateChapterManifest(manifest).zones.length, 3);
   assert.throws(
-    () => validateChapterManifest({
-      ...manifest,
-      zones: [{ ...zone(1), node_pools: { ...zone(1).node_pools, mystery: [{
-        options: [{ id: "bad", effect: { type: "arbitrary_script" } }],
-      }] } }, zone(2), zone(3)],
-    }),
+    () =>
+      validateChapterManifest({
+        ...manifest,
+        zones: [
+          {
+            ...zone(1),
+            node_pools: {
+              ...zone(1).node_pools,
+              mystery: [{
+                options: [{ id: "bad", effect: { type: "arbitrary_script" } }],
+              }],
+            },
+          },
+          zone(2),
+          zone(3),
+        ],
+      }),
     /UNSUPPORTED_CHAPTER_EFFECT/,
     "manifest tidak boleh mengarang effect runtime baru",
   );
   assert.throws(
-    () => validateChapterManifest({
-      ...manifest,
-      zones: [{ ...zone(1), node_pools: { ...zone(1).node_pools, shop: [{
-        options: [{
-          id: EXPEDITION_SHOP_SKIP_OPTION_ID,
-          effect: { type: "supplies", value: 1 },
-        }],
-      }] } }, zone(2), zone(3)],
-    }),
+    () =>
+      validateChapterManifest({
+        ...manifest,
+        zones: [
+          {
+            ...zone(1),
+            node_pools: {
+              ...zone(1).node_pools,
+              shop: [{
+                options: [{
+                  id: EXPEDITION_SHOP_SKIP_OPTION_ID,
+                  effect: { type: "supplies", value: 1 },
+                }],
+              }],
+            },
+          },
+          zone(2),
+          zone(3),
+        ],
+      }),
     /INVALID_CHAPTER_OPTIONS/,
     "manifest tidak boleh memakai ID wire yang dicadangkan untuk Skip Shop",
   );
@@ -1998,10 +2797,13 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     "boss",
     "zona ketiga harus mengarah ke Boss sesudah empat node",
   );
-  assert.equal(opponentForNode(manifest, {
-    kind: "boss",
-    opponent_id: "candy-3",
-  }).roster.length, 4);
+  assert.equal(
+    opponentForNode(manifest, {
+      kind: "boss",
+      opponent_id: "candy-3",
+    }).roster.length,
+    4,
+  );
   const manifestWithAce = structuredClone(manifest);
   manifestWithAce.opponents[3].roster[3].special = true;
   manifestWithAce.zones[2].node_pools.elite = [{
@@ -2012,7 +2814,11 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     kind: "elite",
     opponent_id: "candy-3",
   }, 3);
-  assert.equal(eliteRoster.length, 4, "elite pengganti ace tetap membawa roster penuh");
+  assert.equal(
+    eliteRoster.length,
+    4,
+    "elite pengganti ace tetap membawa roster penuh",
+  );
   assert.ok(
     eliteRoster.every((member) => member.special !== true),
     "Battle dan Elite tidak boleh memunculkan Anima special Boss",
@@ -2042,7 +2848,8 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
   );
   assert.equal(
     fresh.player.roster[0].max_hp,
-    toBattleStats({ hp: 50, atk: 50, def: 50, spd: 50, special: 50 }, 1, "", 1).max_hp,
+    toBattleStats({ hp: 50, atk: 50, def: 50, spd: 50, special: 50 }, 1, "", 1)
+      .max_hp,
     "max HP zona baru memakai rumus Battle, bukan base_stats.hp",
   );
   const stamped = createTeamBattleState({
@@ -2076,11 +2883,22 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     opponent: opponents[0].roster,
     seed: "persistent-hp",
   });
-  assert.equal(encounter.player.active_slot, 1, "encounter baru melewati fighter yang masih KO");
-  assert.equal(encounter.player.roster[1].hp, 17, "HP harus bertahan antar-node dalam zona");
+  assert.equal(
+    encounter.player.active_slot,
+    1,
+    "encounter baru melewati fighter yang masih KO",
+  );
+  assert.equal(
+    encounter.player.roster[1].hp,
+    17,
+    "HP harus bertahan antar-node dalam zona",
+  );
   assert.equal(encounter.player.roster[0].participated, false);
   assert.equal(encounter.player.roster[1].participated, true);
-  assert.ok(persistent[0].base_stats.atk > 50, "boost run diterapkan sebelum snapshot encounter");
+  assert.ok(
+    persistent[0].base_stats.atk > 50,
+    "boost run diterapkan sebelum snapshot encounter",
+  );
   assert.ok(
     encounter.player.roster[2].max_hp > 50,
     "max HP Battle tidak boleh jatuh ke base_stats.hp",
@@ -2103,16 +2921,20 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     opponent: opponents[0].roster,
     seed: "checkpoint-power",
   });
-  assert.equal(poweredZone.player.roster[0].hp, 0, "Power Up tidak boleh membangunkan KO");
+  assert.equal(
+    poweredZone.player.roster[0].hp,
+    0,
+    "Power Up tidak boleh membangunkan KO",
+  );
   assert.equal(
     poweredZone.player.roster[1].hp,
     checkpointParty[1].hp,
     "Start zona berikutnya harus mempertahankan HP checkpoint",
   );
   assert.ok(
-    poweredZone.player.roster[1].atk > fresh.player.roster[1].atk
-    && poweredZone.player.roster[1].def > fresh.player.roster[1].def
-    && poweredZone.player.roster[1].spd > fresh.player.roster[1].spd,
+    poweredZone.player.roster[1].atk > fresh.player.roster[1].atk &&
+      poweredZone.player.roster[1].def > fresh.player.roster[1].def &&
+      poweredZone.player.roster[1].spd > fresh.player.roster[1].spd,
     "Power Up memberi +10% Attack, Guard, dan Speed untuk zona berikutnya",
   );
   const expiredPower = createTeamBattleState({
@@ -2144,7 +2966,9 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     2,
   );
   const grownRoster = roster("player").map((member, index) => (
-    index <= 1 ? { ...member, level: 2, care_score: 5 } : { ...member, care_score: 0 }
+    index <= 1
+      ? { ...member, level: 2, care_score: 5 }
+      : { ...member, care_score: 0 }
   ));
   const savedStats = { hp: 50, atk: 50, def: 50, spd: 50, special: 50 };
   const grown = prepareExpeditionRoster(
@@ -2186,8 +3010,16 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
       },
     ],
   );
-  assert.equal(grown[0].level, 2, "party_state tidak boleh membekukan Level setelah EXP");
-  assert.equal(grown[1].level, 2, "fighter yang terluka tetap memakai Level live");
+  assert.equal(
+    grown[0].level,
+    2,
+    "party_state tidak boleh membekukan Level setelah EXP",
+  );
+  assert.equal(
+    grown[1].level,
+    2,
+    "fighter yang terluka tetap memakai Level live",
+  );
   const grownFight = createTeamBattleState({
     player: grown,
     opponent: opponents[0].roster,
@@ -2200,7 +3032,11 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     17 + (levelTwo.max_hp - levelOne.max_hp),
     "naik Level menambah sisa HP sebesar kenaikan max HP",
   );
-  assert.equal(grownFight.player.roster[2].hp, 0, "KO tidak bangkit dari Level Up");
+  assert.equal(
+    grownFight.player.roster[2].hp,
+    0,
+    "KO tidak bangkit dari Level Up",
+  );
   assert.equal(
     grownFight.player.roster[0].hp,
     levelTwo.max_hp,
@@ -2218,7 +3054,10 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     optionId: "shop-heal",
   });
   assert.equal(healed.supplies, 1, "Shop Expedition memakai Supplies");
-  assert.ok(healed.party_state[1].hp > 17, "Recovery/Shop mengubah HP persisten");
+  assert.ok(
+    healed.party_state[1].hp > 17,
+    "Recovery/Shop mengubah HP persisten",
+  );
   const skipBoosts = [{ type: "shop_discount", value: 0.25 }];
   const skippedShop = applyNodeOption({
     partyState: healed.party_state,
@@ -2227,18 +3066,31 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     node: { ...optionPools.shop[0], kind: "shop" },
     optionId: EXPEDITION_SHOP_SKIP_OPTION_ID,
   });
-  assert.deepEqual(skippedShop.party_state, healed.party_state, "skip Shop menjaga HP");
-  assert.equal(skippedShop.supplies, healed.supplies, "skip Shop tidak memakai Tokens");
+  assert.deepEqual(
+    skippedShop.party_state,
+    healed.party_state,
+    "skip Shop menjaga HP",
+  );
+  assert.equal(
+    skippedShop.supplies,
+    healed.supplies,
+    "skip Shop tidak memakai Tokens",
+  );
   assert.deepEqual(skippedShop.boosts, skipBoosts, "skip Shop menjaga boost");
-  assert.equal(skippedShop.option.skipped, true, "skip Shop dicatat sebagai no-purchase choice");
+  assert.equal(
+    skippedShop.option.skipped,
+    true,
+    "skip Shop dicatat sebagai no-purchase choice",
+  );
   assert.throws(
-    () => applyNodeOption({
-      partyState: healed.party_state,
-      supplies: healed.supplies,
-      boosts: skipBoosts,
-      node: { ...optionPools.shop[0], kind: "recovery" },
-      optionId: EXPEDITION_SHOP_SKIP_OPTION_ID,
-    }),
+    () =>
+      applyNodeOption({
+        partyState: healed.party_state,
+        supplies: healed.supplies,
+        boosts: skipBoosts,
+        node: { ...optionPools.shop[0], kind: "recovery" },
+        optionId: EXPEDITION_SHOP_SKIP_OPTION_ID,
+      }),
     /INVALID_EXPEDITION_CHOICE/,
     "choice skip hanya sah di node Shop",
   );
@@ -2255,18 +3107,37 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     },
     optionId: "boost",
   });
-  assert.equal(boosted.supplies, 3, "diskon Shop harus menurunkan biaya Supplies");
-  assert.equal(boosted.party_state[1].max_hp, 60, "boost max HP berlaku pada zona aktif");
+  assert.equal(
+    boosted.supplies,
+    3,
+    "diskon Shop harus menurunkan biaya Supplies",
+  );
+  assert.equal(
+    boosted.party_state[1].max_hp,
+    60,
+    "boost max HP berlaku pada zona aktif",
+  );
   const ppState = applyEncounterBoosts(encounter, [
     { type: "start_pp", value: 1 },
     { type: "start_pp", value: 1 },
   ]);
-  assert.equal(ppState.player.roster[0].momentum, 5, "boost PP diterapkan per encounter");
-  assert.equal(ppState.player.roster[0].momentum_max, 5, "bonus PP dibatasi dua");
+  assert.equal(
+    ppState.player.roster[0].momentum,
+    5,
+    "boost PP diterapkan per encounter",
+  );
+  assert.equal(
+    ppState.player.roster[0].momentum_max,
+    5,
+    "bonus PP dibatasi dua",
+  );
 
   const { readFile } = await import("node:fs/promises");
   const koExpSql = await readFile(
-    new URL("../backend/supabase/migrations/20260815191450_deny_ko_party_exp.sql", import.meta.url),
+    new URL(
+      "../backend/supabase/migrations/20260815191450_deny_ko_party_exp.sql",
+      import.meta.url,
+    ),
     "utf8",
   );
   assert.match(
@@ -2275,11 +3146,19 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     "anggota KO tidak boleh mendapat EXP Team/Expedition",
   );
   const expeditionEdge = await readFile(
-    new URL("../backend/supabase/functions/expedition/index.ts", import.meta.url),
+    new URL(
+      "../backend/supabase/functions/expedition/index.ts",
+      import.meta.url,
+    ),
     "utf8",
   );
-  const expeditionTurn = expeditionEdge.slice(expeditionEdge.indexOf("async function playTurn"));
-  assert.ok(!expeditionEdge.includes("body.owner_id"), "owner Expedition harus turun dari JWT");
+  const expeditionTurn = expeditionEdge.slice(
+    expeditionEdge.indexOf("async function playTurn"),
+  );
+  assert.ok(
+    !expeditionEdge.includes("body.owner_id"),
+    "owner Expedition harus turun dari JWT",
+  );
   assert.ok(
     expeditionEdge.includes('"feature_expedition"') &&
       expeditionEdge.includes('"ack_home_popup"') &&
@@ -2349,7 +3228,9 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
     "cap progression Expedition harus dibaca setelah profile row lock",
   );
   assert.ok(
-    expeditionAnnouncements.includes("version.published_at > profile.created_at") &&
+    expeditionAnnouncements.includes(
+      "version.published_at > profile.created_at",
+    ) &&
       expeditionAnnouncements.includes("receipt.chapter_opened_at is null") &&
       expeditionAnnouncements.includes("home_popup_seen_at = coalesce") &&
       expeditionAnnouncements.includes("revoke all on function"),
@@ -2379,7 +3260,11 @@ console.log("23b. Expedition manifest, map, persistent HP, dan effect allowlist"
   assert.equal(seeker.display_name, "The Confectioner");
   assert.equal(seeker.sheet_path, "expeditions/demo/v1/boss/seeker.png");
   assert.equal(seeker.dialogue.boss_intro, "Show me your formula.");
-  assert.equal(publicBossSeeker(manifest), null, "chapter tanpa seeker tidak boleh mengarang payload");
+  assert.equal(
+    publicBossSeeker(manifest),
+    null,
+    "chapter tanpa seeker tidak boleh mengarang payload",
+  );
   assert.equal(
     publicBossSeeker({
       boss_seeker: {
@@ -2444,7 +3329,17 @@ console.log("23c. Anima Atlas memakai consent/moderasi Gallery");
     "utf8",
   );
   const galleryModeration = await readFile(
-    new URL("../backend/supabase/functions/_shared/gallery_moderation.mjs", import.meta.url),
+    new URL(
+      "../backend/supabase/functions/_shared/gallery_moderation.mjs",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const signedRoster = await readFile(
+    new URL(
+      "../backend/supabase/functions/_shared/signed_roster.ts",
+      import.meta.url,
+    ),
     "utf8",
   );
   const atlasMigration = await readFile(
@@ -2458,8 +3353,20 @@ console.log("23c. Anima Atlas memakai consent/moderasi Gallery");
     new URL("../game/scripts/atlas_view.gd", import.meta.url),
     "utf8",
   );
-  for (const op of ["atlas_list", "atlas_detail", "publish", "unpublish", "report", "my_status"]) {
-    assert.ok(galleryEdge.includes(`"${op}"`), `Atlas operation ${op} harus ada`);
+  for (
+    const op of [
+      "atlas_list",
+      "atlas_detail",
+      "publish",
+      "unpublish",
+      "report",
+      "my_status",
+    ]
+  ) {
+    assert.ok(
+      galleryEdge.includes(`"${op}"`),
+      `Atlas operation ${op} harus ada`,
+    );
   }
   assert.match(
     galleryEdge,
@@ -2471,15 +3378,75 @@ console.log("23c. Anima Atlas memakai consent/moderasi Gallery");
     /Backend\.atlas\("atlas_list"[\s\S]+Backend\.atlas\("atlas_detail"/,
     "client Atlas tidak boleh tertukar dengan wire Gallery build lama",
   );
-  assert.match(galleryEdge, /feature_atlas/, "Atlas harus menghormati feature flag");
-  assert.match(galleryEdge, /seeker_atlas_discoveries/, "list Atlas harus membaca discovery ledger");
-  assert.match(galleryEdge, /atlas_forms/, "detail Atlas harus membaca registry form");
+  assert.match(
+    galleryEdge,
+    /feature_atlas/,
+    "Atlas harus menghormati feature flag",
+  );
+  assert.match(
+    galleryEdge,
+    /seeker_atlas_discoveries/,
+    "list Atlas harus membaca discovery ledger",
+  );
+  assert.match(
+    galleryEdge,
+    /atlas_forms/,
+    "detail Atlas harus membaca registry form",
+  );
+  const atlasStaticImports = galleryEdge.slice(
+    0,
+    galleryEdge.indexOf("const UUID_RE"),
+  );
+  assert.doesNotMatch(
+    atlasStaticImports,
+    /vision\.mjs|gallery_shared\.mjs|gallery_moderation\.mjs/,
+    "list Atlas tidak boleh membayar cold-start modul gambar dan moderasi Publish",
+  );
+  assert.match(
+    galleryEdge,
+    /async function publishEntry[\s\S]+import\("\.\.\/_shared\/gallery_shared\.mjs"\)/,
+    "modul gambar tetap harus dimuat malas saat pemain benar-benar Publish",
+  );
+  assert.doesNotMatch(
+    galleryEdge,
+    /db\.auth\.getClaims/,
+    "Atlas tidak boleh memverifikasi JWT dua kali setelah gateway verify_jwt",
+  );
+  assert.match(
+    galleryEdge,
+    /function verifiedSubject[\s\S]+UUID_RE\.test\(claims\.sub\)/,
+    "Atlas hanya boleh membaca sub UUID dari payload yang sudah diverifikasi gateway",
+  );
+  assert.match(
+    signedRoster,
+    /export async function signSheetUrls[\s\S]+createSignedUrls/,
+    "sheet kartu Atlas harus ditandatangani satu batch, bukan satu round trip per Anima",
+  );
+  assert.match(
+    galleryEdge,
+    /Promise\.all\(\[[\s\S]+featureEnabled\(\)[\s\S]+expedition_chapter_catalog[\s\S]+catalog_active/,
+    "query independen Atlas harus berangkat paralel dalam satu gelombang",
+  );
+  assert.match(
+    galleryEdge,
+    /function atlasDisplayName[\s\S]+form\.owner_id !== ownerId[\s\S]+anima\.nickname/,
+    "nickname Collection hanya boleh menimpa nama Atlas bagi pemilik form saat ini",
+  );
+  assert.match(
+    atlasClient,
+    /_all_entries_cache[\s\S]+func _project_all_cache[\s\S]+discovery_source/,
+    "filter Atlas lengkap harus diproyeksikan lokal tanpa request tab berikutnya",
+  );
   assert.match(
     galleryEdge,
     /expedition_chapter_catalog[\s\S]+row\.unlocked === true/,
     "Silhouette Atlas harus memakai unlock chapter kanonis, termasuk chapter pertama",
   );
-  assert.match(galleryEdge, /GOOGLE_IDENTITY_REQUIRED|requireLinkedGoogle/, "Publish lineage harus linked Google");
+  assert.match(
+    galleryEdge,
+    /GOOGLE_IDENTITY_REQUIRED|requireLinkedGoogle/,
+    "Publish lineage harus linked Google",
+  );
   assert.match(
     galleryEdge,
     /if \(chapterId\)[\s\S]+discoveryByForm[\s\S]+next_cursor: null/,
@@ -2520,21 +3487,32 @@ console.log("24. sheet v7 3x3 sembilan sel");
     fx_strike: { x: 90, y: 180, w: 80, h: 60 },
     fx_surge: { x: 80, y: 160, w: 100, h: 80 },
   };
-  const { png, manifest } = await postprocessSheet(await buildSheet(blobs3, LAYOUT_3X3), {
-    speciesKey: "selftest_grid3",
-    promptVersion: "v7",
-    sheetName: "grid3.png",
-  });
+  const { png, manifest } = await postprocessSheet(
+    await buildSheet(blobs3, LAYOUT_3X3),
+    {
+      speciesKey: "selftest_grid3",
+      promptVersion: "v7",
+      sheetName: "grid3.png",
+    },
+  );
   assert.equal(manifest.qa.cells_detected, 9, "sembilan sel harus terdeteksi");
-  assert.deepEqual(manifest.qa.cells_rejected, {}, "tidak boleh ada sel 3x3 ditolak");
+  assert.deepEqual(
+    manifest.qa.cells_rejected,
+    {},
+    "tidak boleh ada sel 3x3 ditolak",
+  );
   const [fw, fh] = manifest.frame_size;
-  assert.deepEqual(manifest.sheet_size, [fw * 3, fh * 3], "sheet keluaran harus 3x3 frame");
+  assert.deepEqual(
+    manifest.sheet_size,
+    [fw * 3, fh * 3],
+    "sheet keluaran harus 3x3 frame",
+  );
   for (const pose of LAYOUT_3X3.poses) {
     const [col, row] = LAYOUT_3X3.quadrant[pose];
     assert.deepEqual(
       manifest.poses[pose].region,
       [col * fw, row * fh, fw, fh],
-      `region ${pose} salah di grid 3x3`
+      `region ${pose} salah di grid 3x3`,
     );
   }
   const out = await Image.decode(png);
@@ -2552,7 +3530,11 @@ console.log("24. sheet v7 3x3 sembilan sel");
     promptVersion: "v12",
     vfxMotion: { fx_strike: "sweep", fx_surge: "bloom" },
   });
-  assert.equal(v12.manifest.qa.seam_margin.passed, true, "sheet v12 yang rapi harus lolos seam gate");
+  assert.equal(
+    v12.manifest.qa.seam_margin.passed,
+    true,
+    "sheet v12 yang rapi harus lolos seam gate",
+  );
   assert.equal(v12.manifest.poses.fx_strike.motion, "sweep");
   assert.equal(v12.manifest.poses.fx_surge.motion, "bloom");
 
@@ -2564,16 +3546,17 @@ console.log("24. sheet v7 3x3 sembilan sel");
     cell - 34,
     18,
     18,
-    FILLS.attack
+    FILLS.attack,
   );
   const leakedPng = await leaked.encode();
   await assert.rejects(
-    () => postprocessSheet(leakedPng, {
-      speciesKey: "selftest_grid3_leak",
-      promptVersion: "v12",
-    }),
+    () =>
+      postprocessSheet(leakedPng, {
+        speciesKey: "selftest_grid3_leak",
+        promptVersion: "v12",
+      }),
     /safe margin v12.*idle:detached_idle_seam_fragment/,
-    "fragmen Attack yang jatuh ke margin Idle wajib menolak sheet v12"
+    "fragmen Attack yang jatuh ke margin Idle wajib menolak sheet v12",
   );
 
   const cleaned = await postprocessSheet(leakedPng, {
@@ -2584,23 +3567,24 @@ console.log("24. sheet v7 3x3 sembilan sel");
   assert.equal(
     cleaned.manifest.qa.cells_detected,
     9,
-    "capture v31 harus membuang bocoran Idle, bukan menolak sheet"
+    "capture v31 harus membuang bocoran Idle, bukan menolak sheet",
   );
   assert.ok(
     cleaned.manifest.qa.seam_cleanup?.components >= 1,
-    "v31 capture harus mencatat idle seam cleanup"
+    "v31 capture harus mencatat idle seam cleanup",
   );
 
   const sparkly = await Image.decode(await buildSheet(blobs3, LAYOUT_3X3));
   drawBlob(sparkly.bitmap, 280, cell + 12, 22, 22, FILLS.happy);
   const sparklyPng = await sparkly.encode();
   await assert.rejects(
-    () => postprocessSheet(sparklyPng, {
-      speciesKey: "selftest_v26_sparkle",
-      promptVersion: "v26",
-    }),
+    () =>
+      postprocessSheet(sparklyPng, {
+        speciesKey: "selftest_v26_sparkle",
+        promptVersion: "v26",
+      }),
     /detached character components/,
-    "evolusi v26 tetap menolak sparkle Happy terlepas"
+    "evolusi v26 tetap menolak sparkle Happy terlepas",
   );
   const captureSparkle = await postprocessSheet(sparklyPng, {
     speciesKey: "selftest_v31_sparkle",
@@ -2610,37 +3594,59 @@ console.log("24. sheet v7 3x3 sembilan sel");
   assert.equal(
     captureSparkle.manifest.qa.cells_detected,
     9,
-    "capture v31 boleh punya aksen Happy terlepas"
+    "capture v31 boleh punya aksen Happy terlepas",
   );
 }
 
 console.log("25. prompt v7 3x3 plus nama move, species_key tidak berubah");
 {
   const { readFile } = await import("node:fs/promises");
-  const template = await readFile(new URL("../backend/prompts/v7/sprite_sheet.md", import.meta.url), "utf8");
+  const template = await readFile(
+    new URL("../backend/prompts/v7/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
   const evolve = await readFile(
     new URL("../backend/prompts/v7/sprite_sheet_evolve.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const vision = await readFile(new URL("../backend/prompts/v7/vision_system.md", import.meta.url), "utf8");
+  const vision = await readFile(
+    new URL("../backend/prompts/v7/vision_system.md", import.meta.url),
+    "utf8",
+  );
   const schema = JSON.parse(
-    await readFile(new URL("../backend/prompts/v7/vision_schema.json", import.meta.url), "utf8")
+    await readFile(
+      new URL("../backend/prompts/v7/vision_schema.json", import.meta.url),
+      "utf8",
+    ),
   );
   const createAnima = await readFile(
-    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/create_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
-  const evalRunner = await readFile(new URL("./run.mjs", import.meta.url), "utf8");
+  const evalRunner = await readFile(
+    new URL("./run.mjs", import.meta.url),
+    "utf8",
+  );
   const postprocess = await readFile(
-    new URL("../backend/supabase/functions/_shared/postprocess.mjs", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/_shared/postprocess.mjs",
+      import.meta.url,
+    ),
+    "utf8",
   );
 
   assert.ok(template.includes("EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT"));
   assert.ok(evolve.includes("EXACTLY NINE CELLS IN A 3x3 ARRANGEMENT"));
   assert.ok(template.includes("BOTTOM CENTER â€” STRIKE EFFECT"));
-  assert.ok(template.includes("{{strike_name}}") && template.includes("{{surge_name}}"));
-  assert.ok(vision.includes("`strike_name`:") && vision.includes("`surge_name`:"));
+  assert.ok(
+    template.includes("{{strike_name}}") && template.includes("{{surge_name}}"),
+  );
+  assert.ok(
+    vision.includes("`strike_name`:") && vision.includes("`surge_name`:"),
+  );
   assert.ok(schema.properties.strike_name && schema.properties.surge_name);
   assert.equal(promptMajor("v7"), 7);
   assert.equal(promptMajor("v3"), 3);
@@ -2648,30 +3654,39 @@ console.log("25. prompt v7 3x3 plus nama move, species_key tidak berubah");
   assert.equal(normalizeMoveName("Thunder Rim Toss Combo"), "Thunder Rim");
   assert.equal(normalizeMoveName("d-pad jab extra"), "D-pad Jab");
   assert.equal(normalizeMoveName("Shellmon"), "Shell");
-  assert.ok(vision.includes("Exactly two short"), "v7 meminta nama move dua kata");
+  assert.ok(
+    vision.includes("Exactly two short"),
+    "v7 meminta nama move dua kata",
+  );
   assert.ok(
     createAnima.includes("promptMajor(versiPrompt) >= 7"),
-    "production harus meminta nama move mulai v7"
+    "production harus meminta nama move mulai v7",
   );
   assert.ok(
     createAnima.includes('?? "v7"'),
-    "fallback create_anima harus v7 kalau app_config kosong"
+    "fallback create_anima harus v7 kalau app_config kosong",
   );
   assert.ok(
     evalRunner.includes('promptVersion: "v7"'),
-    "eval default harus mengikuti production v7"
+    "eval default harus mengikuti production v7",
   );
   assert.ok(
     evalRunner.includes("promptMajor(args.promptVersion) >= 7"),
-    "eval harus meminta nama move mulai v7"
+    "eval harus meminta nama move mulai v7",
   );
-  assert.ok(postprocess.includes("LAYOUT_3X3"), "slicer v7 harus 3x3 tanpa merusak 2x2");
+  assert.ok(
+    postprocess.includes("LAYOUT_3X3"),
+    "slicer v7 harus 3x3 tanpa merusak 2x2",
+  );
 
   const filled = assemblePrompt(template, {
     object_label: "handheld console",
     creature_brief: "a pocket console creature",
     character_direction: "compact, playful, and object-led",
-    signature_features: ["d-pad becomes a face plate", "shoulder buttons become ears"],
+    signature_features: [
+      "d-pad becomes a face plate",
+      "shoulder buttons become ears",
+    ],
     surface_finish: "painted plastic shell",
     damage_hints: ["scuffed shoulder button", "hairline crack on the shell"],
     strike_name: "D-Pad Jab",
@@ -2687,7 +3702,10 @@ console.log("25. prompt v7 3x3 plus nama move, species_key tidak berubah");
     is_object: true,
     species_key: "console_plastic_handheld",
     stats: { hp: 40, atk: 55, def: 50, spd: 60, special: 70 },
-    signature_features: ["d-pad becomes a face plate", "shoulder buttons become ears"],
+    signature_features: [
+      "d-pad becomes a face plate",
+      "shoulder buttons become ears",
+    ],
     surface_finish: "painted plastic",
     damage_hints: ["scuff", "crack"],
     character_direction: "compact",
@@ -2698,62 +3716,153 @@ console.log("25. prompt v7 3x3 plus nama move, species_key tidak berubah");
   assert.ok(checked.issues.includes("surge_name kosong"));
 }
 
-console.log("26. prompt v8 mengunci kolom kiri agar tidak menoleh ke tengah sheet");
+console.log(
+  "26. prompt v8 mengunci kolom kiri agar tidak menoleh ke tengah sheet",
+);
 {
   const { readFile } = await import("node:fs/promises");
-  const template = await readFile(new URL("../backend/prompts/v8/sprite_sheet.md", import.meta.url), "utf8");
+  const template = await readFile(
+    new URL("../backend/prompts/v8/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
   const evolve = await readFile(
     new URL("../backend/prompts/v8/sprite_sheet_evolve.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const visionV7 = await readFile(new URL("../backend/prompts/v7/vision_system.md", import.meta.url), "utf8");
-  const visionV8 = await readFile(new URL("../backend/prompts/v8/vision_system.md", import.meta.url), "utf8");
-  const templateV9 = await readFile(new URL("../backend/prompts/v9/sprite_sheet.md", import.meta.url), "utf8");
+  const visionV7 = await readFile(
+    new URL("../backend/prompts/v7/vision_system.md", import.meta.url),
+    "utf8",
+  );
+  const visionV8 = await readFile(
+    new URL("../backend/prompts/v8/vision_system.md", import.meta.url),
+    "utf8",
+  );
+  const templateV9 = await readFile(
+    new URL("../backend/prompts/v9/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
   const evolveV9 = await readFile(
     new URL("../backend/prompts/v9/sprite_sheet_evolve.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const visionV9 = await readFile(new URL("../backend/prompts/v9/vision_system.md", import.meta.url), "utf8");
-  const templateV10 = await readFile(new URL("../backend/prompts/v10/sprite_sheet.md", import.meta.url), "utf8");
+  const visionV9 = await readFile(
+    new URL("../backend/prompts/v9/vision_system.md", import.meta.url),
+    "utf8",
+  );
+  const templateV10 = await readFile(
+    new URL("../backend/prompts/v10/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
   const evolveV10 = await readFile(
     new URL("../backend/prompts/v10/sprite_sheet_evolve.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const visionV10 = await readFile(new URL("../backend/prompts/v10/vision_system.md", import.meta.url), "utf8");
-  const templateV11 = await readFile(new URL("../backend/prompts/v11/sprite_sheet.md", import.meta.url), "utf8");
+  const visionV10 = await readFile(
+    new URL("../backend/prompts/v10/vision_system.md", import.meta.url),
+    "utf8",
+  );
+  const templateV11 = await readFile(
+    new URL("../backend/prompts/v11/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
   const evolveV11 = await readFile(
     new URL("../backend/prompts/v11/sprite_sheet_evolve.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const visionV11 = await readFile(new URL("../backend/prompts/v11/vision_system.md", import.meta.url), "utf8");
-  const templateV12 = await readFile(new URL("../backend/prompts/v12/sprite_sheet.md", import.meta.url), "utf8");
+  const visionV11 = await readFile(
+    new URL("../backend/prompts/v11/vision_system.md", import.meta.url),
+    "utf8",
+  );
+  const templateV12 = await readFile(
+    new URL("../backend/prompts/v12/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
   const evolveV12 = await readFile(
     new URL("../backend/prompts/v12/sprite_sheet_evolve.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const visionV12 = await readFile(new URL("../backend/prompts/v12/vision_system.md", import.meta.url), "utf8");
-  const schemaV7 = await readFile(new URL("../backend/prompts/v7/vision_schema.json", import.meta.url), "utf8");
-  const schemaV8 = await readFile(new URL("../backend/prompts/v8/vision_schema.json", import.meta.url), "utf8");
-  const schemaV9 = await readFile(new URL("../backend/prompts/v9/vision_schema.json", import.meta.url), "utf8");
-  const schemaV10 = await readFile(new URL("../backend/prompts/v10/vision_schema.json", import.meta.url), "utf8");
-  const schemaV11 = await readFile(new URL("../backend/prompts/v11/vision_schema.json", import.meta.url), "utf8");
+  const visionV12 = await readFile(
+    new URL("../backend/prompts/v12/vision_system.md", import.meta.url),
+    "utf8",
+  );
+  const schemaV7 = await readFile(
+    new URL("../backend/prompts/v7/vision_schema.json", import.meta.url),
+    "utf8",
+  );
+  const schemaV8 = await readFile(
+    new URL("../backend/prompts/v8/vision_schema.json", import.meta.url),
+    "utf8",
+  );
+  const schemaV9 = await readFile(
+    new URL("../backend/prompts/v9/vision_schema.json", import.meta.url),
+    "utf8",
+  );
+  const schemaV10 = await readFile(
+    new URL("../backend/prompts/v10/vision_schema.json", import.meta.url),
+    "utf8",
+  );
+  const schemaV11 = await readFile(
+    new URL("../backend/prompts/v11/vision_schema.json", import.meta.url),
+    "utf8",
+  );
   const schemaV12 = JSON.parse(
-    await readFile(new URL("../backend/prompts/v12/vision_schema.json", import.meta.url), "utf8")
+    await readFile(
+      new URL("../backend/prompts/v12/vision_schema.json", import.meta.url),
+      "utf8",
+    ),
   );
   const createAnima = await readFile(
-    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/create_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
-  const evalRunner = await readFile(new URL("./run.mjs", import.meta.url), "utf8");
+  const evalRunner = await readFile(
+    new URL("./run.mjs", import.meta.url),
+    "utf8",
+  );
 
-  assert.equal(visionV8, visionV7, "v8 tidak boleh mengubah Vision atau species cache key");
-  assert.equal(schemaV8, schemaV7, "v8 tidak boleh mengubah kontrak output Vision");
-  assert.equal(visionV9, visionV7, "v9 tidak boleh mengubah Vision atau species cache key");
-  assert.equal(schemaV9, schemaV7, "v9 tidak boleh mengubah kontrak output Vision");
-  assert.equal(visionV10, visionV7, "v10 tidak boleh mengubah Vision atau species cache key");
-  assert.equal(schemaV10, schemaV7, "v10 tidak boleh mengubah kontrak output Vision");
-  assert.equal(visionV11, visionV7, "v11 tidak boleh mengubah Vision atau species cache key");
-  assert.equal(schemaV11, schemaV7, "v11 tidak boleh mengubah kontrak output Vision");
+  assert.equal(
+    visionV8,
+    visionV7,
+    "v8 tidak boleh mengubah Vision atau species cache key",
+  );
+  assert.equal(
+    schemaV8,
+    schemaV7,
+    "v8 tidak boleh mengubah kontrak output Vision",
+  );
+  assert.equal(
+    visionV9,
+    visionV7,
+    "v9 tidak boleh mengubah Vision atau species cache key",
+  );
+  assert.equal(
+    schemaV9,
+    schemaV7,
+    "v9 tidak boleh mengubah kontrak output Vision",
+  );
+  assert.equal(
+    visionV10,
+    visionV7,
+    "v10 tidak boleh mengubah Vision atau species cache key",
+  );
+  assert.equal(
+    schemaV10,
+    schemaV7,
+    "v10 tidak boleh mengubah kontrak output Vision",
+  );
+  assert.equal(
+    visionV11,
+    visionV7,
+    "v11 tidak boleh mengubah Vision atau species cache key",
+  );
+  assert.equal(
+    schemaV11,
+    schemaV7,
+    "v11 tidak boleh mengubah kontrak output Vision",
+  );
   assert.equal(promptMajor("v8"), 8);
   assert.equal(promptMajor("v9"), 9);
   assert.equal(promptMajor("v10"), 10);
@@ -2763,98 +3872,122 @@ console.log("26. prompt v8 mengunci kolom kiri agar tidak menoleh ke tengah shee
     assert.ok(prompt.includes("HORIZONTAL FACING LOCK â€” BATTLE CONTRACT"));
     assert.ok(
       prompt.includes("independent animation frame of ONE character"),
-      "v8 wajib menolak komposisi grup yang membuat sel menoleh ke dalam"
+      "v8 wajib menolak komposisi grup yang membuat sel menoleh ke dalam",
     );
     assert.ok(
       prompt.includes("Left-column cells (Idle, Happy, Damaged)"),
-      "v8 wajib menyebut kolom kiri sebagai risiko tertinggi"
+      "v8 wajib menyebut kolom kiri sebagai risiko tertinggi",
     );
     assert.ok(
       prompt.includes("Whichever flank is nearer the camera"),
-      "v8 wajib mengunci sisi yang dekat ke kamera"
+      "v8 wajib mengunci sisi yang dekat ke kamera",
     );
-    assert.ok(!prompt.includes("delighted tilt"), "tilt Happy tidak boleh dibaca sebagai yaw");
+    assert.ok(
+      !prompt.includes("delighted tilt"),
+      "tilt Happy tidak boleh dibaca sebagai yaw",
+    );
     assert.ok(
       /TOP LEFT â€” IDLE[\s\S]{0,400}still facing canvas-left/.test(prompt),
-      "Idle wajib mengulang canvas-left di instruksi sel"
+      "Idle wajib mengulang canvas-left di instruksi sel",
     );
     assert.ok(
       /MIDDLE LEFT â€” HAPPY[\s\S]{0,500}still facing canvas-left/.test(prompt),
-      "Happy wajib mengulang canvas-left di instruksi sel"
+      "Happy wajib mengulang canvas-left di instruksi sel",
     );
   }
   for (const prompt of [templateV9, evolveV9]) {
     assert.ok(prompt.includes("NEGATIVE SPACE â€” MUST REMAIN BACKGROUND"));
     assert.ok(
       /must show the exact\s+chroma background #00FF00/.test(prompt),
-      "v9 wajib membuat lubang internal ikut chroma key"
+      "v9 wajib membuat lubang internal ikut chroma key",
     );
     assert.ok(
       prompt.includes("never across or inside an opening"),
-      "v9 wajib melarang keyline putih di negative space"
+      "v9 wajib melarang keyline putih di negative space",
     );
   }
   for (const prompt of [templateV10, evolveV10]) {
     assert.ok(prompt.includes("WHITE IS NOT A GENERIC ACCENT"));
     assert.ok(
       /each\s+fenestration is a literal hole through the leaf/.test(prompt),
-      "v10 wajib menyebut fenestrasi daun secara eksplisit"
+      "v10 wajib menyebut fenestrasi daun secara eksplisit",
     );
     assert.ok(
       /Never draw\s+the white keyline around internal holes/.test(prompt),
-      "v10 wajib membatasi matte ke outline terluar"
+      "v10 wajib membatasi matte ke outline terluar",
     );
   }
   for (const prompt of [templateV11, evolveV11]) {
     assert.ok(prompt.includes("EDGES â€” DARK CONTOUR DIRECTLY AGAINST GREEN"));
     assert.ok(
       /Do NOT draw any white or off-white keyline/.test(prompt),
-      "v11 wajib melarang matte putih di seluruh sheet"
+      "v11 wajib melarang matte putih di seluruh sheet",
     );
     assert.ok(
-      !prompt.includes("White keyline around") && !prompt.includes("technical outer keyline"),
-      "v11 tidak boleh menyisakan instruksi positif white keyline"
+      !prompt.includes("White keyline around") &&
+        !prompt.includes("technical outer keyline"),
+      "v11 tidak boleh menyisakan instruksi positif white keyline",
     );
   }
   for (const prompt of [templateV12, evolveV12]) {
     assert.ok(prompt.includes("VFX DIVERSITY CONTRACT"));
     assert.ok(prompt.includes("12% safe envelope"));
-    assert.ok(prompt.includes("motion lines") && prompt.includes("tiny debris"));
-    assert.ok(prompt.includes("{{strike_vfx_brief}}") && prompt.includes("{{surge_vfx_motion}}"));
+    assert.ok(
+      prompt.includes("motion lines") && prompt.includes("tiny debris"),
+    );
+    assert.ok(
+      prompt.includes("{{strike_vfx_brief}}") &&
+        prompt.includes("{{surge_vfx_motion}}"),
+    );
     assert.ok(
       /Never default to a round\s+fireball/.test(prompt),
-      "v12 wajib melarang default fireball tanpa melarang aksen Battle"
+      "v12 wajib melarang default fireball tanpa melarang aksen Battle",
     );
   }
   assert.ok(visionV12.includes("Battle-effect plan"));
   assert.ok(schemaV12.properties.strike_vfx && schemaV12.properties.surge_vfx);
-  const vfxChecked = validateVision({
-    safe: true,
-    is_object: true,
-    reject_reason: null,
-    species_key: "shoe_fabric_running",
-    stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
-    signature_features: ["tread sole", "long lace"],
-    suggested_name: "Treadra",
-    surface_finish: "woven fabric and rubber",
-    damage_hints: ["frayed lace", "scuffed sole"],
-    character_direction: "agile",
-    strike_name: "Tread Snap",
-    surge_name: "Lace Cyclone",
-    strike_vfx: { form: "stamp", motion: "impact", brief: "A tread stamp snaps on target." },
-    surge_vfx: { form: "tether", motion: "sweep", brief: "A lace tether sweeps across target." },
-  }, [], true, true, true, true);
+  const vfxChecked = validateVision(
+    {
+      safe: true,
+      is_object: true,
+      reject_reason: null,
+      species_key: "shoe_fabric_running",
+      stats: { hp: 50, atk: 50, def: 50, spd: 50, special: 50 },
+      signature_features: ["tread sole", "long lace"],
+      suggested_name: "Treadra",
+      surface_finish: "woven fabric and rubber",
+      damage_hints: ["frayed lace", "scuffed sole"],
+      character_direction: "agile",
+      strike_name: "Tread Snap",
+      surge_name: "Lace Cyclone",
+      strike_vfx: {
+        form: "stamp",
+        motion: "impact",
+        brief: "A tread stamp snaps on target.",
+      },
+      surge_vfx: {
+        form: "tether",
+        motion: "sweep",
+        brief: "A lace tether sweeps across target.",
+      },
+    },
+    [],
+    true,
+    true,
+    true,
+    true,
+  );
   assert.deepEqual(vfxChecked.issues, []);
   assert.equal(vfxChecked.vision.strike_vfx.motion, "impact");
   assert.equal(vfxChecked.vision.surge_vfx.motion, "sweep");
   assert.ok(!assemblePrompt(templateV12, vfxChecked.vision).includes("{{"));
   assert.ok(
     createAnima.includes('?? "v7"'),
-    "fallback production tetap v7 sampai v8 dipromosikan"
+    "fallback production tetap v7 sampai v8 dipromosikan",
   );
   assert.ok(
     evalRunner.includes('promptVersion: "v7"'),
-    "eval default tetap v7 sampai v8 dipromosikan"
+    "eval default tetap v7 sampai v8 dipromosikan",
   );
 }
 
@@ -2863,13 +3996,24 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
   assert.equal(STARTER_BITS, 50);
   assert.equal(BATTLE_BITS_CAP, 100);
   assert.equal(CATALOG_ITEMS.length, 18);
-  assert.equal(CATALOG_ITEMS.filter((item) => item.use_type === "food").length, 9);
-  assert.deepEqual(
-    CATALOG_ITEMS.filter((item) => item.use_type === "food").map((item) => item.price),
-    [1, 2, 2, 3, 4, 5, 6, 8, 10]
+  assert.equal(
+    CATALOG_ITEMS.filter((item) => item.use_type === "food").length,
+    9,
   );
-  assert.equal(CATALOG_ITEMS.filter((item) => item.use_type === "energy").length, 2);
-  assert.equal(CATALOG_ITEMS.filter((item) => item.use_type === "battle").length, 7);
+  assert.deepEqual(
+    CATALOG_ITEMS.filter((item) => item.use_type === "food").map((item) =>
+      item.price
+    ),
+    [1, 2, 2, 3, 4, 5, 6, 8, 10],
+  );
+  assert.equal(
+    CATALOG_ITEMS.filter((item) => item.use_type === "energy").length,
+    2,
+  );
+  assert.equal(
+    CATALOG_ITEMS.filter((item) => item.use_type === "battle").length,
+    7,
+  );
   assert.equal(rewardTierFromRatio(0.94), "favorable");
   assert.equal(rewardTierFromRatio(0.95), "even");
   assert.equal(rewardTierFromRatio(1.04), "even");
@@ -2899,11 +4043,13 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
   for (let index = 1; index < ladder.length; index += 1) {
     assert.ok(
       ladder[index].bits > ladder[index - 1].bits,
-      `Bits tier ${ladder[index].tier} harus di atas ${ladder[index - 1].tier}`
+      `Bits tier ${ladder[index].tier} harus di atas ${ladder[index - 1].tier}`,
     );
     assert.ok(
       ladder[index].minWinRate < ladder[index - 1].minWinRate,
-      `ambang win rate ${ladder[index].tier} harus di bawah ${ladder[index - 1].tier}`
+      `ambang win rate ${ladder[index].tier} harus di bawah ${
+        ladder[index - 1].tier
+      }`,
     );
   }
 
@@ -2919,8 +4065,16 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
   assert.equal(evenPreview.bits, bitsForTier("even", evenPreview.roll));
   assert.deepEqual(battleRewardPreview(twin, twin, "reward-seed"), evenPreview);
 
-  const weak = { ...twin, species_key: "weak", base_stats: { hp: 10, atk: 10, def: 10, spd: 10, special: 10 } };
-  const strong = { ...twin, species_key: "strong", base_stats: { hp: 95, atk: 95, def: 95, spd: 95, special: 95 } };
+  const weak = {
+    ...twin,
+    species_key: "weak",
+    base_stats: { hp: 10, atk: 10, def: 10, spd: 10, special: 10 },
+  };
+  const strong = {
+    ...twin,
+    species_key: "strong",
+    base_stats: { hp: 95, atk: 95, def: 95, spd: 95, special: 95 },
+  };
   assert.equal(battleRewardPreview(strong, weak, "fav").tier, "favorable");
   assert.equal(battleRewardPreview(weak, strong, "form").tier, "formidable");
 
@@ -2946,13 +4100,16 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
   assert.equal(healed.events[0].effect, "heal_hp_pct");
   assert.equal(healed.events[0].effect_value, 30);
   assert.equal(healed.events[0].hp, 100 + Math.trunc(hurt.player.max_hp * 0.3));
-  assert.throws(() => resolveTurn(healed.state, "item", "second", "vital_patch"), /ITEM_ALREADY_USED/);
+  assert.throws(
+    () => resolveTurn(healed.state, "item", "second", "vital_patch"),
+    /ITEM_ALREADY_USED/,
+  );
 
   const power = resolveTurn(
     createBattleState({ player: fighter, bot: rival, seed: "atk" }),
     "item",
     "atk-key",
-    "power_chip"
+    "power_chip",
   );
   assert.equal(power.state.player.atk_mult, 1.35);
 
@@ -2960,7 +4117,7 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
     createBattleState({ player: fighter, bot: rival, seed: "spec" }),
     "item",
     "spec-key",
-    "surge_lens"
+    "surge_lens",
   );
   assert.equal(lens.state.player.special_mult, 1.35);
 
@@ -2968,7 +4125,7 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
     createBattleState({ player: fighter, bot: rival, seed: "guard-item" }),
     "item",
     "aegis-key",
-    "aegis_plate"
+    "aegis_plate",
   );
   assert.equal(aegis.state.player.incoming_mult, 0.75);
 
@@ -2980,42 +4137,71 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
     }),
     "item",
     "coil-key",
-    "tempo_coil"
+    "tempo_coil",
   );
   assert.equal(coiled.state.player.spd, Math.trunc(40 * 1.4));
   const afterCoil = resolveTurn(coiled.state, "strike", "after-coil");
   assert.equal(
     afterCoil.events.find((event) => event.type === "attack")?.actor,
     "player",
-    "Tempo Coil harus membalik initiative sebelum serangan"
+    "Tempo Coil harus membalik initiative sebelum serangan",
   );
 
   const capsule = resolveTurn(
     createBattleState({ player: fighter, bot: rival, seed: "pp" }),
     "item",
     "pp-key",
-    "pp_capsule"
+    "pp_capsule",
   );
   assert.equal(capsule.state.player.momentum_max, 5);
   assert.equal(capsule.state.player.momentum, 5);
   assert.equal(catalogItem("pp_capsule").effect_value, 2);
 
-  const strikeState = createBattleState({ player: fighter, bot: rival, seed: "shield-cmp" });
-  const shieldState = createBattleState({ player: fighter, bot: rival, seed: "shield-cmp" });
+  const strikeState = createBattleState({
+    player: fighter,
+    bot: rival,
+    seed: "shield-cmp",
+  });
+  const shieldState = createBattleState({
+    player: fighter,
+    bot: rival,
+    seed: "shield-cmp",
+  });
   const struck = resolveTurn(strikeState, "strike", "same-key");
   const shielded = resolveTurn(shieldState, "item", "same-key", "phase_shield");
-  const botStrike = struck.events.find((event) => event.type === "attack" && event.actor === "bot");
-  const botShielded = shielded.events.find((event) => event.type === "attack" && event.actor === "bot");
+  const botStrike = struck.events.find((event) =>
+    event.type === "attack" && event.actor === "bot"
+  );
+  const botShielded = shielded.events.find((event) =>
+    event.type === "attack" && event.actor === "bot"
+  );
   assert.equal(shielded.events[0]?.type, "item");
-  assert.ok(botStrike && botShielded, "bot tetap menyerang saat pemain memakai item");
-  assert.equal(botShielded.damage, Math.max(1, Math.trunc(botStrike.damage * 0.2)));
+  assert.ok(
+    botStrike && botShielded,
+    "bot tetap menyerang saat pemain memakai item",
+  );
+  assert.equal(
+    botShielded.damage,
+    Math.max(1, Math.trunc(botStrike.damage * 0.2)),
+  );
   assert.equal(shielded.state.player.shield_charges, 0);
 
-  assert.throws(() => resolveTurn(createBattleState({ player: fighter, bot: rival, seed: "food" }), "item", "bad", "byte_berry"), /INVALID_ITEM/);
+  assert.throws(
+    () =>
+      resolveTurn(
+        createBattleState({ player: fighter, bot: rival, seed: "food" }),
+        "item",
+        "bad",
+        "byte_berry",
+      ),
+    /INVALID_ITEM/,
+  );
 
   const { readFile } = await import("node:fs/promises");
   for (const name of ["food_sheet.png", "item_sheet.png"]) {
-    const png = await readFile(new URL(`../game/assets/catalog/${name}`, import.meta.url));
+    const png = await readFile(
+      new URL(`../game/assets/catalog/${name}`, import.meta.url),
+    );
     const img = await Image.decode(png);
     assert.equal(img.width, 1024, `${name} harus 1024 lebar`);
     assert.equal(img.height, 1024, `${name} harus 1024 tinggi`);
@@ -3038,7 +4224,10 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
       }
       assert.ok(filled > 200, `${name} sel ${index} harus berisi ikon`);
       if (name === "food_sheet.png") {
-        assert.ok(vapor < 80, `${name} sel ${index} tidak boleh menyisakan uap green-screen (${vapor})`);
+        assert.ok(
+          vapor < 80,
+          `${name} sel ${index} tidak boleh menyisakan uap green-screen (${vapor})`,
+        );
       }
     }
   }
@@ -3050,64 +4239,105 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
 //   node eval/selftest.mjs --emit /tmp/scanima_e2e
 //   godot --headless --path game --script res://tests/test_sprite_slicing.gd \
 //       -- --manifest=/tmp/scanima_e2e/manifest.json
-console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture privat");
+console.log(
+  "28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture privat",
+);
 {
   const { readFile } = await import("node:fs/promises");
-  const visionV13 = await readFile(new URL("../backend/prompts/v13/vision_system.md", import.meta.url), "utf8");
+  const visionV13 = await readFile(
+    new URL("../backend/prompts/v13/vision_system.md", import.meta.url),
+    "utf8",
+  );
   const schemaV13Source = await readFile(
     new URL("../backend/prompts/v13/vision_schema.json", import.meta.url),
-    "utf8"
+    "utf8",
   );
   const schemaV13 = JSON.parse(schemaV13Source);
-  const templateV13 = await readFile(new URL("../backend/prompts/v13/sprite_sheet.md", import.meta.url), "utf8");
+  const templateV13 = await readFile(
+    new URL("../backend/prompts/v13/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
   const evolveV13 = await readFile(
     new URL("../backend/prompts/v13/sprite_sheet_evolve.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const faunaV13 = await readFile(new URL("../backend/prompts/v13/sprite_sheet_fauna.md", import.meta.url), "utf8");
-  const visionV14 = await readFile(new URL("../backend/prompts/v14/vision_system.md", import.meta.url), "utf8");
+  const faunaV13 = await readFile(
+    new URL("../backend/prompts/v13/sprite_sheet_fauna.md", import.meta.url),
+    "utf8",
+  );
+  const visionV14 = await readFile(
+    new URL("../backend/prompts/v14/vision_system.md", import.meta.url),
+    "utf8",
+  );
   const schemaV14Source = await readFile(
     new URL("../backend/prompts/v14/vision_schema.json", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const templateV14 = await readFile(new URL("../backend/prompts/v14/sprite_sheet.md", import.meta.url), "utf8");
+  const templateV14 = await readFile(
+    new URL("../backend/prompts/v14/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
   const evolveV14 = await readFile(
     new URL("../backend/prompts/v14/sprite_sheet_evolve.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const faunaV14 = await readFile(new URL("../backend/prompts/v14/sprite_sheet_fauna.md", import.meta.url), "utf8");
-  const faunaV15 = await readFile(new URL("../backend/prompts/v15/sprite_sheet_fauna.md", import.meta.url), "utf8");
-  const visionV16 = await readFile(new URL("../backend/prompts/v16/vision_system.md", import.meta.url), "utf8");
+  const faunaV14 = await readFile(
+    new URL("../backend/prompts/v14/sprite_sheet_fauna.md", import.meta.url),
+    "utf8",
+  );
+  const faunaV15 = await readFile(
+    new URL("../backend/prompts/v15/sprite_sheet_fauna.md", import.meta.url),
+    "utf8",
+  );
+  const visionV16 = await readFile(
+    new URL("../backend/prompts/v16/vision_system.md", import.meta.url),
+    "utf8",
+  );
   const schemaV16Source = await readFile(
     new URL("../backend/prompts/v16/vision_schema.json", import.meta.url),
-    "utf8"
+    "utf8",
   );
-  const templateV16 = await readFile(new URL("../backend/prompts/v16/sprite_sheet.md", import.meta.url), "utf8");
-  const faunaV16 = await readFile(new URL("../backend/prompts/v16/sprite_sheet_fauna.md", import.meta.url), "utf8");
+  const templateV16 = await readFile(
+    new URL("../backend/prompts/v16/sprite_sheet.md", import.meta.url),
+    "utf8",
+  );
+  const faunaV16 = await readFile(
+    new URL("../backend/prompts/v16/sprite_sheet_fauna.md", import.meta.url),
+    "utf8",
+  );
   const evolveV16 = await readFile(
     new URL("../backend/prompts/v16/sprite_sheet_evolve.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
   const chapterAnimaPrompt = await readFile(
-    new URL("../backend/prompts/chapter_factory/anima_sheet.md", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/prompts/chapter_factory/anima_sheet.md",
+      import.meta.url,
+    ),
+    "utf8",
   );
   const chapterZonePrompt = await readFile(
     new URL("../backend/prompts/chapter_factory/zone_art.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
   const manualChapterGuide = await readFile(
     new URL("../docs/10-manual-chapter-assets.md", import.meta.url),
-    "utf8"
+    "utf8",
   );
   const createAnima = await readFile(
-    new URL("../backend/supabase/functions/create_anima/index.ts", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/create_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
   const evalRun = await readFile(new URL("./run.mjs", import.meta.url), "utf8");
   const finalizeSheet = await readFile(
-    new URL("../backend/supabase/functions/_shared/finalize_sheet.ts", import.meta.url),
-    "utf8"
+    new URL(
+      "../backend/supabase/functions/_shared/finalize_sheet.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
 
   assert.equal(promptMajor("v13"), 13);
@@ -3123,13 +4353,21 @@ console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture 
   assert.ok(/BOTTOM LEFT â€” DAMAGED[\s\S]{0,400}Never.*blood/.test(faunaV13));
   assert.ok(templateV13.includes("VFX DIVERSITY CONTRACT"));
   assert.equal(visionV14, visionV13, "v14 tidak mengubah Vision");
-  assert.equal(schemaV14Source, schemaV13Source, "v14 tidak mengubah schema Vision");
+  assert.equal(
+    schemaV14Source,
+    schemaV13Source,
+    "v14 tidak mengubah schema Vision",
+  );
   assert.equal(templateV14, templateV13, "v14 tidak mengubah prompt object");
   assert.equal(evolveV14, evolveV13, "v14 tidak mengubah prompt evolve");
   assert.ok(faunaV14.includes("SCANIMA MONSTERIZATION FLOOR"));
   assert.ok(faunaV14.includes("PRESERVE RECOGNITION, NOT REALISM"));
   assert.ok(faunaV14.includes("FINAL SILENT STYLE CHECK"));
-  assert.ok(faunaV14.includes("Idle cannot be mistaken for a realistic wildlife or pet illustration"));
+  assert.ok(
+    faunaV14.includes(
+      "Idle cannot be mistaken for a realistic wildlife or pet illustration",
+    ),
+  );
   assert.ok(!faunaV14.includes("anatomy-led proportions faithful"));
   assert.ok(/BOTTOM LEFT â€” DAMAGED[\s\S]{0,400}Never.*blood/.test(faunaV14));
   assert.ok(faunaV15.includes("MANDATORY MONSTER IDENTITY LAYER"));
@@ -3140,9 +4378,15 @@ console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture 
   assert.ok(faunaV15.includes("Chroma green is a transport color only"));
   assert.ok(/BOTTOM LEFT â€” DAMAGED[\s\S]{0,400}Never.*blood/.test(faunaV15));
   assert.equal(visionV16, visionV13, "v16 tidak mengubah Vision");
-  assert.equal(schemaV16Source, schemaV13Source, "v16 tidak mengubah schema Vision");
+  assert.equal(
+    schemaV16Source,
+    schemaV13Source,
+    "v16 tidak mengubah schema Vision",
+  );
   for (const prompt of [templateV16, faunaV16, evolveV16]) {
-    assert.ok(prompt.includes("HORIZONTAL FACING LOCK â€” HOME AND BATTLE CONTRACT"));
+    assert.ok(
+      prompt.includes("HORIZONTAL FACING LOCK â€” HOME AND BATTLE CONTRACT"),
+    );
     assert.ok(prompt.includes("EYE GAZE LOCK"));
     assert.ok(prompt.includes("ONE shared target in open"));
     assert.match(prompt, /Never look\s+at the viewer/);
@@ -3157,127 +4401,141 @@ console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture 
     assert.ok(/BOTTOM LEFT â€” DAMAGED[\s\S]{0,500}canvas-left/.test(prompt));
   }
   assert.ok(faunaV16.includes("MANDATORY MONSTER IDENTITY LAYER"));
-  assert.ok(chapterAnimaPrompt.includes("both pupils focus on the same canvas-left target"));
+  assert.ok(
+    chapterAnimaPrompt.includes(
+      "both pupils focus on the same canvas-left target",
+    ),
+  );
   assert.ok(
     /Expedition\s+combat arena/.test(chapterZonePrompt),
-    "prompt zona Replicate wajib memakai backdrop Battle, bukan peta node"
+    "prompt zona Replicate wajib memakai backdrop Battle, bukan peta node",
   );
   assert.ok(
     chapterZonePrompt.includes("lower 22â€“26% is one continuous solid floor"),
-    "prompt zona wajib mengunci pita lantai tempur"
+    "prompt zona wajib mengunci pita lantai tempur",
   );
   assert.ok(
-    chapterZonePrompt.includes("no liquid, lava, syrup, rails, gutters, chasms"),
-    "prompt zona wajib menolak hazard di bawah kaki"
+    chapterZonePrompt.includes(
+      "no liquid, lava, syrup, rails, gutters, chasms",
+    ),
+    "prompt zona wajib menolak hazard di bawah kaki",
   );
   assert.doesNotMatch(
     chapterZonePrompt,
     /route-like lanes|readable path lanes|node map/i,
-    "prompt zona tidak boleh kembali ke wording peta node"
+    "prompt zona tidak boleh kembali ke wording peta node",
   );
   const manualZoneTemplate =
-    manualChapterGuide.match(/### Template zone[\s\S]*?(?=### Template Trophy)/)?.[0] ?? "";
+    manualChapterGuide.match(/### Template zone[\s\S]*?(?=### Template Trophy)/)
+      ?.[0] ?? "";
   assert.ok(
     manualZoneTemplate.includes("Expedition combat arena"),
-    "template zona manual wajib memakai backdrop Battle"
+    "template zona manual wajib memakai backdrop Battle",
   );
   assert.ok(
     manualZoneTemplate.includes("lower 22â€“26% is one continuous solid floor"),
-    "template zona manual wajib mengunci pita lantai"
+    "template zona manual wajib mengunci pita lantai",
   );
   assert.doesNotMatch(
     manualZoneTemplate,
     /route-like lanes|readable path lanes/i,
-    "template zona manual tidak boleh meminta lane peta"
+    "template zona manual tidak boleh meminta lane peta",
   );
   const manualSugarworksZones =
-    manualChapterGuide.match(/### 10\. Zone 1[\s\S]*?(?=### 13\. Boss Seeker)/)?.[0] ?? "";
+    manualChapterGuide.match(/### 10\. Zone 1[\s\S]*?(?=### 13\. Boss Seeker)/)
+      ?.[0] ?? "";
   assert.ok(
     manualSugarworksZones.includes("continuous solid floor"),
-    "Gumdrop Yard wajib punya lantai padat"
+    "Gumdrop Yard wajib punya lantai padat",
   );
   assert.ok(
     manualSugarworksZones.includes("caramel-slab work floor"),
-    "Caramel Foundry wajib punya lantai kerja padat"
+    "Caramel Foundry wajib punya lantai kerja padat",
   );
   assert.ok(
     manualSugarworksZones.includes("broad peppermint-stone"),
-    "Peppermint Furnace wajib punya forecourt padat"
+    "Peppermint Furnace wajib punya forecourt padat",
   );
   assert.doesNotMatch(
     manualSugarworksZones,
     /route-like lanes|narrow syrup runnels/i,
-    "prompt zona Sugarworks tidak boleh meminta got atau lane peta"
+    "prompt zona Sugarworks tidak boleh meminta got atau lane peta",
   );
   assert.equal(
     manualChapterGuide.match(/Every open-eye pose/g)?.length,
     9,
-    "sembilan prompt manual Anima wajib mengulang gaze lock lokal"
+    "sembilan prompt manual Anima wajib mengulang gaze lock lokal",
   );
   assert.ok(
     manualChapterGuide.includes("recognizable as a solid black silhouette"),
-    "manual Boss Seeker lock wajib silhouette-first"
+    "manual Boss Seeker lock wajib silhouette-first",
   );
   assert.ok(
     manualChapterGuide.includes("never make every Boss Seeker a young"),
-    "manual Boss Seeker lock wajib menuntut variasi antar-chapter"
+    "manual Boss Seeker lock wajib menuntut variasi antar-chapter",
   );
   const manualConfectionerPrompt =
-    manualChapterGuide.match(/### 13\. Boss Seeker[\s\S]*?(?=### 14\.)/)?.[0] ?? "";
+    manualChapterGuide.match(/### 13\. Boss Seeker[\s\S]*?(?=### 14\.)/)?.[0] ??
+      "";
   assert.ok(
     manualConfectionerPrompt.includes("youngest archive curator"),
-    "prompt Confectioner wajib membawa background Curator"
+    "prompt Confectioner wajib membawa background Curator",
   );
   assert.ok(
     manualConfectionerPrompt.includes("octagonal dark-plum recipe folio"),
-    "prompt Confectioner wajib memakai folio, bukan alat dapur"
+    "prompt Confectioner wajib memakai folio, bukan alat dapur",
   );
   assert.ok(
-    manualConfectionerPrompt.includes("cells 1 through 8 keep the exact same three-quarter"),
-    "delapan pose penuh Confectioner wajib memakai angle lock yang sama"
+    manualConfectionerPrompt.includes(
+      "cells 1 through 8 keep the exact same three-quarter",
+    ),
+    "delapan pose penuh Confectioner wajib memakai angle lock yang sama",
   );
   assert.ok(
-    manualConfectionerPrompt.includes("both eyes remain visible while only the pupils turn"),
-    "portrait dialog Confectioner wajib menatap pemain tanpa mengubah angle"
+    manualConfectionerPrompt.includes(
+      "both eyes remain visible while only the pupils turn",
+    ),
+    "portrait dialog Confectioner wajib menatap pemain tanpa mengubah angle",
   );
   assert.ok(
     /front-facing\s+passport portrait/.test(manualConfectionerPrompt),
-    "nama pose Profile tidak boleh dibaca sebagai side profile atau front-facing penuh"
+    "nama pose Profile tidak boleh dibaca sebagai side profile atau front-facing penuh",
   );
   assert.doesNotMatch(
     manualConfectionerPrompt,
     /whisk-baton|Graphic Commandant|mid-40s/i,
-    "prompt Confectioner tidak boleh membawa desain lama"
+    "prompt Confectioner tidak boleh membawa desain lama",
   );
   const manualSugarworksCorePrompt =
-    manualChapterGuide.match(/### 14\. Trophy[\s\S]*?(?=## Lokasi file)/)?.[0] ?? "";
+    manualChapterGuide.match(/### 14\. Trophy[\s\S]*?(?=## Lokasi file)/)
+      ?.[0] ?? "";
   assert.ok(
     manualSugarworksCorePrompt.includes("two-layer Chapter Core v3 grammar"),
-    "Trophy manual wajib memakai sistem dua lapis Chapter Core"
+    "Trophy manual wajib memakai sistem dua lapis Chapter Core",
   );
   assert.ok(
     /Generate\s+the Inner Core only/.test(manualSugarworksCorePrompt),
-    "model manual tidak boleh menggambar ulang canonical Vessel"
+    "model manual tidak boleh menggambar ulang canonical Vessel",
   );
   assert.ok(
     manualSugarworksCorePrompt.includes("point-top Hexagonal Vessel"),
-    "prompt wajib menjelaskan canonical Vessel ditambahkan sesudah generation"
+    "prompt wajib menjelaskan canonical Vessel ditambahkan sesudah generation",
   );
   assert.ok(
     manualSugarworksCorePrompt.includes("broad shallow concave"),
-    "Sugarfold Core wajib punya silhouette motif chapter-specific"
+    "Sugarfold Core wajib punya silhouette motif chapter-specific",
   );
   assert.ok(
     manualSugarworksCorePrompt.includes("eight to ten large"),
-    "Sugarfold Core wajib sederhana dan bounded"
+    "Sugarfold Core wajib sederhana dan bounded",
   );
   assert.ok(
     manualSugarworksCorePrompt.includes("not one continuous ribbon, letter"),
-    "internal construction tidak boleh kembali menjadi huruf S"
+    "internal construction tidak boleh kembali menjadi huruf S",
   );
   assert.ok(
     manualSugarworksCorePrompt.includes("No glass shell, orb, crystal"),
-    "Inner Core tidak boleh menggambar ulang Vessel atau artifact scene"
+    "Inner Core tidak boleh menggambar ulang Vessel atau artifact scene",
   );
 
   const objectVision = {
@@ -3299,10 +4557,28 @@ console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture 
     suggested_name: "Mugra",
     strike_name: "Rim Toss",
     surge_name: "Glaze Burst",
-    strike_vfx: { form: "arc", motion: "sweep", brief: "A glazed crescent sweeps across target." },
-    surge_vfx: { form: "ring", motion: "bloom", brief: "Glaze rings bloom from the target." },
+    strike_vfx: {
+      form: "arc",
+      motion: "sweep",
+      brief: "A glazed crescent sweeps across target.",
+    },
+    surge_vfx: {
+      form: "ring",
+      motion: "bloom",
+      brief: "Glaze rings bloom from the target.",
+    },
   };
-  const typed = validateVision(objectVision, [], true, true, true, true, true, true, true);
+  const typed = validateVision(
+    objectVision,
+    [],
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+  );
   assert.equal(typed.gate, "passed");
   assert.equal(typed.vision.element, "ceramic");
   assert.equal(typed.vision.secondary_element, "flow");
@@ -3317,44 +4593,133 @@ console.log("28. Vision v13 typing, fauna v14/v15, facing/gaze v16, dan capture 
     surface_finish: "short tabby fur",
     damage_hints: ["drooped ear", "dull ruffled fur"],
   };
-  const animalFixed = validateVision(animalVision, [], true, true, true, true, true, true, true);
-  assert.equal(animalFixed.vision.element, "fauna", "hewan wajib dinormalisasi ke fauna");
+  const animalFixed = validateVision(
+    animalVision,
+    [],
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+  );
+  assert.equal(
+    animalFixed.vision.element,
+    "fauna",
+    "hewan wajib dinormalisasi ke fauna",
+  );
 
-  const blockedAnimal = validateVision(animalVision, [], true, true, true, true, true, false, true);
+  const blockedAnimal = validateVision(
+    animalVision,
+    [],
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    true,
+  );
   assert.equal(blockedAnimal.gate, "rejected");
   assert.equal(blockedAnimal.reason, "live_animal");
 
-  const bundel = await (await import("../backend/tools/bundle_prompts.mjs")).buildBundle();
-  assert.equal(spriteSheetTemplate(bundel.v13, "animal"), bundel.v13.sprite_sheet_fauna);
-  assert.equal(spriteSheetTemplate(bundel.v13, "object"), bundel.v13.sprite_sheet);
-  assert.ok(!assemblePrompt(bundel.v13.sprite_sheet_fauna, animalFixed.vision).includes("{{"));
-  assert.equal(spriteSheetTemplate(bundel.v14, "animal"), bundel.v14.sprite_sheet_fauna);
-  assert.equal(spriteSheetTemplate(bundel.v14, "object"), bundel.v14.sprite_sheet);
-  assert.ok(!assemblePrompt(bundel.v14.sprite_sheet_fauna, animalFixed.vision).includes("{{"));
-  assert.equal(spriteSheetTemplate(bundel.v15, "animal"), bundel.v15.sprite_sheet_fauna);
-  assert.equal(spriteSheetTemplate(bundel.v15, "object"), bundel.v15.sprite_sheet);
-  assert.equal(bundel.v15.vision_system, bundel.v13.vision_system, "v15 tidak mengubah Vision");
-  assert.deepEqual(bundel.v15.vision_schema, bundel.v13.vision_schema, "v15 tidak mengubah schema Vision");
-  assert.equal(bundel.v15.sprite_sheet_evolve, bundel.v13.sprite_sheet_evolve, "v15 tidak mengubah prompt evolve");
-  assert.ok(!assemblePrompt(bundel.v15.sprite_sheet_fauna, animalFixed.vision).includes("{{"));
-  assert.equal(spriteSheetTemplate(bundel.v16, "animal"), bundel.v16.sprite_sheet_fauna);
-  assert.equal(spriteSheetTemplate(bundel.v16, "object"), bundel.v16.sprite_sheet);
-  assert.equal(bundel.v16.vision_system, bundel.v15.vision_system, "v16 tidak mengubah Vision");
-  assert.deepEqual(bundel.v16.vision_schema, bundel.v15.vision_schema, "v16 tidak mengubah schema Vision");
-  assert.ok(!assemblePrompt(bundel.v16.sprite_sheet, typed.vision).includes("{{"));
-  assert.ok(!assemblePrompt(bundel.v16.sprite_sheet_fauna, animalFixed.vision).includes("{{"));
+  const bundel = await (await import("../backend/tools/bundle_prompts.mjs"))
+    .buildBundle();
+  assert.equal(
+    spriteSheetTemplate(bundel.v13, "animal"),
+    bundel.v13.sprite_sheet_fauna,
+  );
+  assert.equal(
+    spriteSheetTemplate(bundel.v13, "object"),
+    bundel.v13.sprite_sheet,
+  );
+  assert.ok(
+    !assemblePrompt(bundel.v13.sprite_sheet_fauna, animalFixed.vision).includes(
+      "{{",
+    ),
+  );
+  assert.equal(
+    spriteSheetTemplate(bundel.v14, "animal"),
+    bundel.v14.sprite_sheet_fauna,
+  );
+  assert.equal(
+    spriteSheetTemplate(bundel.v14, "object"),
+    bundel.v14.sprite_sheet,
+  );
+  assert.ok(
+    !assemblePrompt(bundel.v14.sprite_sheet_fauna, animalFixed.vision).includes(
+      "{{",
+    ),
+  );
+  assert.equal(
+    spriteSheetTemplate(bundel.v15, "animal"),
+    bundel.v15.sprite_sheet_fauna,
+  );
+  assert.equal(
+    spriteSheetTemplate(bundel.v15, "object"),
+    bundel.v15.sprite_sheet,
+  );
+  assert.equal(
+    bundel.v15.vision_system,
+    bundel.v13.vision_system,
+    "v15 tidak mengubah Vision",
+  );
+  assert.deepEqual(
+    bundel.v15.vision_schema,
+    bundel.v13.vision_schema,
+    "v15 tidak mengubah schema Vision",
+  );
+  assert.equal(
+    bundel.v15.sprite_sheet_evolve,
+    bundel.v13.sprite_sheet_evolve,
+    "v15 tidak mengubah prompt evolve",
+  );
+  assert.ok(
+    !assemblePrompt(bundel.v15.sprite_sheet_fauna, animalFixed.vision).includes(
+      "{{",
+    ),
+  );
+  assert.equal(
+    spriteSheetTemplate(bundel.v16, "animal"),
+    bundel.v16.sprite_sheet_fauna,
+  );
+  assert.equal(
+    spriteSheetTemplate(bundel.v16, "object"),
+    bundel.v16.sprite_sheet,
+  );
+  assert.equal(
+    bundel.v16.vision_system,
+    bundel.v15.vision_system,
+    "v16 tidak mengubah Vision",
+  );
+  assert.deepEqual(
+    bundel.v16.vision_schema,
+    bundel.v15.vision_schema,
+    "v16 tidak mengubah schema Vision",
+  );
+  assert.ok(
+    !assemblePrompt(bundel.v16.sprite_sheet, typed.vision).includes("{{"),
+  );
+  assert.ok(
+    !assemblePrompt(bundel.v16.sprite_sheet_fauna, animalFixed.vision).includes(
+      "{{",
+    ),
+  );
 
   assert.ok(createAnima.includes("feature_unique_generation"));
   assert.ok(createAnima.includes("claim_capture"));
   assert.ok(createAnima.includes("spriteSheetTemplate"));
   assert.ok(createAnima.includes("useUniqueCapture"));
   assert.ok(
-    evalRun.includes("spriteSheetTemplate(prompts, checked.vision.subject_kind)"),
-    "eval memilih template object/fauna dari subject_kind"
+    evalRun.includes(
+      "spriteSheetTemplate(prompts, checked.vision.subject_kind)",
+    ),
+    "eval memilih template object/fauna dari subject_kind",
   );
   assert.ok(
     /validateVision\([\s\S]{0,500}useV13,\s+useV13,\s+useV13,/.test(evalRun),
-    "eval v13+ mengizinkan fauna dan melewati dedup species"
+    "eval v13+ mengizinkan fauna dan melewati dedup species",
   );
   assert.ok(finalizeSheet.includes("anima_sheets"));
   assert.ok(finalizeSheet.includes("typing_version"));
@@ -3373,7 +4738,9 @@ console.log("29. Legacy typing inference + privatization audit planner");
     auditReportText,
     privateSheetPath,
     isAlreadyMigrated,
-  } = await import("../backend/supabase/functions/_shared/legacy_art_migration.mjs");
+  } = await import(
+    "../backend/supabase/functions/_shared/legacy_art_migration.mjs"
+  );
 
   const mug = inferCanonicalLegacyTyping({
     existingElement: "flow",
@@ -3405,7 +4772,11 @@ console.log("29. Legacy typing inference + privatization audit planner");
     },
   });
   assert.equal(book.element, "paper");
-  assert.equal(book.secondary_element, null, "cloth legacy tidak boleh tetap primary/secondary");
+  assert.equal(
+    book.secondary_element,
+    null,
+    "cloth legacy tidak boleh tetap primary/secondary",
+  );
 
   const unknown = inferCanonicalLegacyTyping({
     existingElement: "stone",
@@ -3415,7 +4786,10 @@ console.log("29. Legacy typing inference + privatization audit planner");
   assert.equal(unknown.reason, "legacy:ambiguous");
 
   assert.ok(
-    gatherLegacyTypingCorpus({ species_key: "mouse_plastic", object_label: "computer mouse" })
+    gatherLegacyTypingCorpus({
+      species_key: "mouse_plastic",
+      object_label: "computer mouse",
+    })
       .includes("mouse plastic"),
     "corpus harus menggabungkan species_key dan object_label",
   );
@@ -3450,12 +4824,18 @@ console.log("29. Legacy typing inference + privatization audit planner");
       id: "gen-1",
       anima_id: animaId,
       created_at: "2026-08-15T00:00:00Z",
-      vision_result: { object_label: "ceramic mug", surface_finish: "glazed ceramic" },
+      vision_result: {
+        object_label: "ceramic mug",
+        surface_finish: "glazed ceramic",
+      },
     }],
   });
   assert.equal(report.summary.pending, 1);
   assert.equal(report.rows[0].canonical.element, "ceramic");
-  assert.equal(report.rows[0].source.target_sheet_path, `${owner}/${animaId}/deadbeefcafebabe.png`);
+  assert.equal(
+    report.rows[0].source.target_sheet_path,
+    `${owner}/${animaId}/deadbeefcafebabe.png`,
+  );
 
   const migrated = {
     id: animaId,
@@ -3502,7 +4882,10 @@ console.log("29. Legacy typing inference + privatization audit planner");
       id: "gen-1",
       anima_id: animaId,
       created_at: "2026-08-15T00:00:00Z",
-      vision_result: { object_label: "ceramic mug", surface_finish: "glazed ceramic" },
+      vision_result: {
+        object_label: "ceramic mug",
+        surface_finish: "glazed ceramic",
+      },
     }],
   }));
   assert.equal(textOnce, textTwice, "audit report harus deterministik");
@@ -3522,16 +4905,24 @@ console.log("30. helper _shared berklien selalu dipanggil dengan client-nya");
   // parameter pertamanya SupabaseClient; ganti dengan `deno check` begitu Deno
   // tersedia di mesin build.
   const { readFile, readdir } = await import("node:fs/promises");
-  const functionsDir = new URL("../backend/supabase/functions/", import.meta.url);
+  const functionsDir = new URL(
+    "../backend/supabase/functions/",
+    import.meta.url,
+  );
   const sources = [];
   const walk = async (dir) => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       if (entry.isDirectory()) await walk(new URL(`${entry.name}/`, dir));
-      else if (/\.(ts|mjs)$/.test(entry.name)) sources.push(new URL(entry.name, dir));
+      else if (/\.(ts|mjs)$/.test(entry.name)) {
+        sources.push(new URL(entry.name, dir));
+      }
     }
   };
   await walk(functionsDir);
-  assert.ok(sources.length > 10, `hanya ${sources.length} sumber terpindai, penjelajahannya salah`);
+  assert.ok(
+    sources.length > 10,
+    `hanya ${sources.length} sumber terpindai, penjelajahannya salah`,
+  );
 
   const bodies = new Map();
   for (const file of sources) bodies.set(file, await readFile(file, "utf8"));
@@ -3539,27 +4930,35 @@ console.log("30. helper _shared berklien selalu dipanggil dengan client-nya");
   const clientFirst = new Set();
   for (const [file, body] of bodies) {
     if (!file.pathname.includes("/_shared/")) continue;
-    for (const match of body.matchAll(
-      /export\s+(?:async\s+)?function\s+(\w+)\(\s*\n?\s*\w+\s*:\s*SupabaseClient/g
-    )) {
+    for (
+      const match of body.matchAll(
+        /export\s+(?:async\s+)?function\s+(\w+)\(\s*\n?\s*\w+\s*:\s*SupabaseClient/g,
+      )
+    ) {
       clientFirst.add(match[1]);
     }
   }
   assert.ok(
     clientFirst.has("withSignedRoster") && clientFirst.size >= 3,
-    `helper berklien tidak terdeteksi: ${[...clientFirst].join(", ")}`
+    `helper berklien tidak terdeteksi: ${[...clientFirst].join(", ")}`,
   );
 
   for (const [file, body] of bodies) {
     if (file.pathname.includes("/_shared/")) continue;
     for (const name of clientFirst) {
-      for (const match of body.matchAll(new RegExp(`\\b${name}\\(([^,)]*)[,)]`, "g"))) {
+      for (
+        const match of body.matchAll(
+          new RegExp(`\\b${name}\\(([^,)]*)[,)]`, "g"),
+        )
+      ) {
         const first = match[1].trim();
         assert.match(
           first,
           /^(db|client|admin)\b/,
-          `${name}() di ${file.pathname.split("/functions/")[1]} harus menerima client ` +
-            `Supabase di argumen pertama, bukan "${first}"`
+          `${name}() di ${
+            file.pathname.split("/functions/")[1]
+          } harus menerima client ` +
+            `Supabase di argumen pertama, bukan "${first}"`,
         );
       }
     }
@@ -3577,14 +4976,26 @@ console.log("31. idempotency_key tidak lagi menggerakkan RNG turn");
     element: "metal",
     level: 8,
   };
-  const fresh = createBattleState({ player: fighter, bot: fighter, seed: "rng-gate" });
+  const fresh = createBattleState({
+    player: fighter,
+    bot: fighter,
+    seed: "rng-gate",
+  });
   assert.equal(fresh.rules_version, RULES_VERSION);
   assert.equal(turnSeed(fresh, "apa-pun"), "rng-gate:1");
 
   const a = resolveTurn(fresh, "strike", "key-aaaaaaaa");
   const b = resolveTurn(fresh, "strike", "key-zzzzzzzz");
-  assert.deepEqual(a.state, b.state, "dua key berbeda harus memberi state identik");
-  assert.deepEqual(a.events, b.events, "dua key berbeda harus memberi events identik");
+  assert.deepEqual(
+    a.state,
+    b.state,
+    "dua key berbeda harus memberi state identik",
+  );
+  assert.deepEqual(
+    a.events,
+    b.events,
+    "dua key berbeda harus memberi events identik",
+  );
   assert.equal(a.bot_action, b.bot_action);
 
   const legacy = { ...structuredClone(fresh) };
@@ -3595,20 +5006,30 @@ console.log("31. idempotency_key tidak lagi menggerakkan RNG turn");
   assert.notDeepEqual(
     legacyA.events,
     legacyB.events,
-    "state lama harus tetap memakai formula lama supaya replay-nya cocok"
+    "state lama harus tetap memakai formula lama supaya replay-nya cocok",
   );
 
-  const roster = [{ ...fighter, anima_id: "a", name: "A" }, { ...fighter, anima_id: "b", name: "B" }];
-  const team = createTeamBattleState({ player: roster, opponent: roster, seed: "team-rng-gate" });
+  const roster = [{ ...fighter, anima_id: "a", name: "A" }, {
+    ...fighter,
+    anima_id: "b",
+    name: "B",
+  }];
+  const team = createTeamBattleState({
+    player: roster,
+    opponent: roster,
+    seed: "team-rng-gate",
+  });
   assert.equal(team.rules_version, RULES_VERSION);
   assert.deepEqual(
     resolveTeamTurn(team, "strike", "key-aaaaaaaa").events,
     resolveTeamTurn(team, "strike", "key-zzzzzzzz").events,
-    "Team Battle juga tidak boleh menggerakkan RNG dari key client"
+    "Team Battle juga tidak boleh menggerakkan RNG dari key client",
   );
 }
 
-console.log("32. konstanta simulasi client tidak boleh menyimpang dari _shared");
+console.log(
+  "32. konstanta simulasi client tidak boleh menyimpang dari _shared",
+);
 {
   // Client menjalankan resolver yang sama secara lokal supaya animasi mulai di
   // frame yang sama dengan tap. `test_battle_sim_parity.gd` membuktikan
@@ -3623,7 +5044,10 @@ console.log("32. konstanta simulasi client tidak boleh menyimpang dari _shared")
 
   const scalarConst = (body, name) => {
     const match = body.match(
-      new RegExp(`^const\\s+${name}\\s*(?::\\s*\\w+\\s*)?:?=\\s*(-?[\\d.]+)\\s*$`, "m")
+      new RegExp(
+        `^const\\s+${name}\\s*(?::\\s*\\w+\\s*)?:?=\\s*(-?[\\d.]+)\\s*$`,
+        "m",
+      ),
     );
     assert.ok(match, `const ${name} tidak ditemukan di sumber GDScript`);
     return Number(match[1]);
@@ -3657,54 +5081,79 @@ console.log("32. konstanta simulasi client tidak boleh menyimpang dari _shared")
     [elementRules, "MATCHUP_NEUTRAL", MATCHUP_NEUTRAL],
   ];
   for (const [body, name, expected] of expectedScalars) {
-    assert.equal(scalarConst(body, name), expected, `const GDScript ${name} berbeda dari _shared`);
+    assert.equal(
+      scalarConst(body, name),
+      expected,
+      `const GDScript ${name} berbeda dari _shared`,
+    );
   }
 
   // Tiga tabel elemen: satu-satunya data yang benar-benar disalin ke client.
   const roster = [
     ...elementRules
-      .slice(elementRules.indexOf("const ROSTER"), elementRules.indexOf("const ALIASES"))
+      .slice(
+        elementRules.indexOf("const ROSTER"),
+        elementRules.indexOf("const ALIASES"),
+      )
       .matchAll(/"(\w+)"/g),
   ].map((match) => match[1]);
-  assert.deepEqual(roster, [...ELEMENT_ROSTER], "ROSTER GDScript berbeda dari ELEMENT_ROSTER");
+  assert.deepEqual(
+    roster,
+    [...ELEMENT_ROSTER],
+    "ROSTER GDScript berbeda dari ELEMENT_ROSTER",
+  );
 
   const aliasBlock = elementRules.slice(
     elementRules.indexOf("const ALIASES"),
-    elementRules.indexOf("const STRENGTHS")
+    elementRules.indexOf("const STRENGTHS"),
   );
   const aliases = Object.fromEntries(
-    [...aliasBlock.matchAll(/"(\w+)":\s*"(\w+)"/g)].map((match) => [match[1], match[2]])
+    [...aliasBlock.matchAll(/"(\w+)":\s*"(\w+)"/g)].map((
+      match,
+    ) => [match[1], match[2]]),
   );
-  assert.deepEqual(aliases, { ...ELEMENT_ALIASES }, "ALIASES GDScript berbeda dari _shared");
+  assert.deepEqual(
+    aliases,
+    { ...ELEMENT_ALIASES },
+    "ALIASES GDScript berbeda dari _shared",
+  );
 
   const strengthBlock = elementRules.slice(
     elementRules.indexOf("const STRENGTHS"),
-    elementRules.indexOf("const MATCHUP_STRONG")
+    elementRules.indexOf("const MATCHUP_STRONG"),
   );
   const strengths = Object.fromEntries(
     [...strengthBlock.matchAll(/"(\w+)":\s*\[([^\]]*)\]/g)].map((match) => [
       match[1],
       [...match[2].matchAll(/"(\w+)"/g)].map((inner) => inner[1]),
-    ])
+    ]),
   );
   assert.deepEqual(
     strengths,
     JSON.parse(JSON.stringify(ELEMENT_STRENGTHS)),
-    "STRENGTHS GDScript berbeda dari ELEMENT_STRENGTHS"
+    "STRENGTHS GDScript berbeda dari ELEMENT_STRENGTHS",
   );
 
   // Tier dan Bits sengaja tidak diport ke GDScript: keduanya hasil simulasi
   // matchup di server dan client tidak pernah menampilkan hadiah sebelum server
   // menjawab, jadi port-nya hanya permukaan yang bisa menyimpang tanpa pemanggil.
-  for (const symbol of ["REWARD_TIER_BITS", "battle_reward_preview", "combat_power"]) {
+  for (
+    const symbol of [
+      "REWARD_TIER_BITS",
+      "battle_reward_preview",
+      "combat_power",
+    ]
+  ) {
     assert.ok(
       !battleSim.includes(symbol),
-      `${symbol} kembali ke battle_sim.gd tanpa pemanggil; hadiah tetap milik server`
+      `${symbol} kembali ke battle_sim.gd tanpa pemanggil; hadiah tetap milik server`,
     );
   }
 }
 
-console.log("33. encoder PNG kanonis lossless, deterministik, dan tidak pernah lebih besar");
+console.log(
+  "33. encoder PNG kanonis lossless, deterministik, dan tidak pernah lebih besar",
+);
 {
   // Encoder ini menyentuh setiap sheet yang pemain unduh dan setiap byte yang
   // dibayar di Storage, jadi pagar-nya bukan opsional. Yang dijaga: piksel yang
@@ -3715,10 +5164,22 @@ console.log("33. encoder PNG kanonis lossless, deterministik, dan tidak pernah l
   const decoded = await Image.decode(source);
   const before = Uint8Array.from(decoded.bitmap);
 
-  const optimized = await encodeOptimizedPng(decoded.bitmap, decoded.width, decoded.height);
+  const optimized = await encodeOptimizedPng(
+    decoded.bitmap,
+    decoded.width,
+    decoded.height,
+  );
   const roundTrip = await Image.decode(optimized);
-  assert.equal(roundTrip.width, decoded.width, "lebar berubah setelah encode ulang");
-  assert.equal(roundTrip.height, decoded.height, "tinggi berubah setelah encode ulang");
+  assert.equal(
+    roundTrip.width,
+    decoded.width,
+    "lebar berubah setelah encode ulang",
+  );
+  assert.equal(
+    roundTrip.height,
+    decoded.height,
+    "tinggi berubah setelah encode ulang",
+  );
 
   let visibleDrift = 0;
   for (let i = 0; i < before.length; i += 4) {
@@ -3741,7 +5202,7 @@ console.log("33. encoder PNG kanonis lossless, deterministik, dan tidak pernah l
   const legacy = await (await Image.decode(source)).encode();
   assert.ok(
     optimized.length < legacy.length,
-    `encoder kanonis (${optimized.length}) tidak lebih kecil dari ImageScript (${legacy.length})`
+    `encoder kanonis (${optimized.length}) tidak lebih kecil dari ImageScript (${legacy.length})`,
   );
 
   // Dua pass filter: hasil akhir tidak boleh kalah dari filter 0 rata, karena
@@ -3750,57 +5211,77 @@ console.log("33. encoder PNG kanonis lossless, deterministik, dan tidak pernah l
     decoded.width,
     decoded.height,
     await deflateBytes(
-      filterScanlines(roundTrip.bitmap, decoded.width, decoded.height, { adaptive: false })
-    )
+      filterScanlines(roundTrip.bitmap, decoded.width, decoded.height, {
+        adaptive: false,
+      }),
+    ),
   );
   assert.ok(
     optimized.length <= flatOnly.length,
-    `pilihan filter kalah dari filter 0 rata (${optimized.length} > ${flatOnly.length})`
+    `pilihan filter kalah dari filter 0 rata (${optimized.length} > ${flatOnly.length})`,
   );
 
-  const adaptive = filterScanlines(roundTrip.bitmap, decoded.width, decoded.height);
+  const adaptive = filterScanlines(
+    roundTrip.bitmap,
+    decoded.width,
+    decoded.height,
+  );
   const stride = decoded.width * 4;
   const filtersUsed = new Set();
-  for (let y = 0; y < decoded.height; y += 1) filtersUsed.add(adaptive[y * (stride + 1)]);
+  for (let y = 0; y < decoded.height; y += 1) {
+    filtersUsed.add(adaptive[y * (stride + 1)]);
+  }
   assert.ok(
     [...filtersUsed].some((type) => type !== 0),
-    "adaptive filtering tidak memilih satu pun filter selain 0"
+    "adaptive filtering tidak memilih satu pun filter selain 0",
   );
 
   // Deterministik: piksel yang sama harus memberi byte yang sama, kalau tidak
   // dedup `sheet_path` berbasis hash pecah dan satu gambar dibayar dua kali.
   const repeat = await Image.decode(source);
-  const again = await encodeOptimizedPng(repeat.bitmap, repeat.width, repeat.height);
+  const again = await encodeOptimizedPng(
+    repeat.bitmap,
+    repeat.width,
+    repeat.height,
+  );
   assert.deepEqual(
     Buffer.from(again),
     Buffer.from(optimized),
-    "encode kedua menghasilkan byte berbeda dari yang pertama"
+    "encode kedua menghasilkan byte berbeda dari yang pertama",
   );
   assert.ok(
     !Buffer.from(optimized).includes(Buffer.from("tEXt", "ascii")),
-    "chunk tEXt masih ditulis, jadi byte-nya bergantung pada waktu"
+    "chunk tEXt masih ditulis, jadi byte-nya bergantung pada waktu",
   );
 
   const painted = new Uint8Array([9, 200, 30, 0, 5, 5, 5, 255]);
-  assert.equal(clearTransparentRgb(painted), 1, "RGB di bawah alpha 0 tidak dibersihkan");
+  assert.equal(
+    clearTransparentRgb(painted),
+    1,
+    "RGB di bawah alpha 0 tidak dibersihkan",
+  );
   assert.deepEqual(
     [...painted],
     [0, 0, 0, 0, 5, 5, 5, 255],
-    "clearTransparentRgb menyentuh piksel yang terlihat"
+    "clearTransparentRgb menyentuh piksel yang terlihat",
   );
 
   // Aset yang ter-commit harus sudah dalam bentuk optimal, kalau tidak repo dan
   // Storage membawa byte yang tidak menghasilkan apa pun.
   for (const relative of COMMITTED_PNG_TARGETS) {
     const result = await optimizePngFile(
-      new URL(`../${relative}`, import.meta.url).pathname
+      new URL(`../${relative}`, import.meta.url).pathname,
     );
-    assert.equal(result.drift, 0, `${relative} tidak lossless lewat encoder kanonis`);
+    assert.equal(
+      result.drift,
+      0,
+      `${relative} tidak lossless lewat encoder kanonis`,
+    );
     assert.equal(
       result.saved,
       0,
       `${relative} masih bisa dikecilkan ${result.saved} byte; jalankan ` +
-        "`node backend/tools/optimize_png.mjs --apply`"
+        "`node backend/tools/optimize_png.mjs --apply`",
     );
   }
 
@@ -3809,12 +5290,17 @@ console.log("33. encoder PNG kanonis lossless, deterministik, dan tidak pernah l
   const sheet = await postprocessSheet(source, {});
   assert.ok(
     !Buffer.from(sheet.png).includes(Buffer.from("tEXt", "ascii")),
-    "postprocessSheet masih mengenkode lewat ImageScript"
+    "postprocessSheet masih mengenkode lewat ImageScript",
   );
-  assert.ok((await Image.decode(sheet.png)).width > 0, "postprocessSheet memberi PNG tidak sah");
+  assert.ok(
+    (await Image.decode(sheet.png)).width > 0,
+    "postprocessSheet memberi PNG tidak sah",
+  );
 }
 
-console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditolak");
+console.log(
+  "34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditolak",
+);
 {
   // Matchmaking Duel hanya menyaring stage dan total base stat Â±15%. Pada roster
   // production itu meloloskan duel 7% sekaligus duel 100%, sebab Level, bentuk
@@ -3826,19 +5312,84 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
   // rumus combat bergeser, kalibrasi band-nya ikut gagal di sini alih-alih
   // diam-diam berubah di tangan pemain.
   const ROSTER = {
-    klasik: { hp: 40, atk: 30, def: 50, spd: 70, special: 80, element: "plastic", secondary: "spark", care: 30 },
-    Deckon: { hp: 70, atk: 40, def: 65, spd: 60, special: 85, element: "plastic", secondary: "spark", care: 30 },
-    Hydron: { hp: 80, atk: 25, def: 65, spd: 20, special: 50, element: "flow", care: 89 },
-    Veridian: { hp: 65, atk: 30, def: 55, spd: 25, special: 70, element: "plant", care: 84 },
-    Playtron: { hp: 40, atk: 45, def: 50, spd: 65, special: 85, element: "spark", care: 63 },
-    Mugshots: { hp: 55, atk: 25, def: 65, spd: 40, special: 15, element: "ceramic", secondary: "flow", care: 51 },
-    Sunhound: { hp: 65, atk: 55, def: 50, spd: 70, special: 60, element: "fauna", care: 43 },
+    klasik: {
+      hp: 40,
+      atk: 30,
+      def: 50,
+      spd: 70,
+      special: 80,
+      element: "plastic",
+      secondary: "spark",
+      care: 30,
+    },
+    Deckon: {
+      hp: 70,
+      atk: 40,
+      def: 65,
+      spd: 60,
+      special: 85,
+      element: "plastic",
+      secondary: "spark",
+      care: 30,
+    },
+    Hydron: {
+      hp: 80,
+      atk: 25,
+      def: 65,
+      spd: 20,
+      special: 50,
+      element: "flow",
+      care: 89,
+    },
+    Veridian: {
+      hp: 65,
+      atk: 30,
+      def: 55,
+      spd: 25,
+      special: 70,
+      element: "plant",
+      care: 84,
+    },
+    Playtron: {
+      hp: 40,
+      atk: 45,
+      def: 50,
+      spd: 65,
+      special: 85,
+      element: "spark",
+      care: 63,
+    },
+    Mugshots: {
+      hp: 55,
+      atk: 25,
+      def: 65,
+      spd: 40,
+      special: 15,
+      element: "ceramic",
+      secondary: "flow",
+      care: 51,
+    },
+    Sunhound: {
+      hp: 65,
+      atk: 55,
+      def: 50,
+      spd: 70,
+      special: 60,
+      element: "fauna",
+      care: 43,
+    },
   };
   const snap = (name) => {
     const row = ROSTER[name];
     const built = {
       anima_id: name,
-      base_stats: { hp: row.hp, atk: row.atk, def: row.def, spd: row.spd, special: row.special },
+      base_stats: {
+        hp: row.hp,
+        atk: row.atk,
+        def: row.def,
+        spd: row.spd,
+        special: row.special,
+      },
       stage: 1,
       level: levelFromExp(row.care),
       element: row.element,
@@ -3855,9 +5406,14 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
   const winRate = (player, bot, runs) => {
     let wins = 0;
     for (let index = 0; index < runs; index += 1) {
-      let state = createBattleState({ player, bot, seed: `duel-fair-${index}` });
+      let state = createBattleState({
+        player,
+        bot,
+        seed: `duel-fair-${index}`,
+      });
       while (state.status === "active") {
-        state = resolveTurn(state, bestDuelAction(state), `t-${state.turn}`).state;
+        state =
+          resolveTurn(state, bestDuelAction(state), `t-${state.turn}`).state;
       }
       if (state.status === "won") wins += 1;
     }
@@ -3870,37 +5426,56 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
     const shapes = new Set();
     for (const seed of ["a", "b", "c", "d", "e", "f", "g", "h"]) {
       const bot = systemDuelBot(player, seed);
-      assert.equal(bot.level, player.level, `${name}: Level lawan sistem tidak dicerminkan`);
-      assert.equal(bot.system_asset, "placeholder", `${name}: lawan sistem tanpa penanda art`);
+      assert.equal(
+        bot.level,
+        player.level,
+        `${name}: Level lawan sistem tidak dicerminkan`,
+      );
+      assert.equal(
+        bot.system_asset,
+        "placeholder",
+        `${name}: lawan sistem tanpa penanda art`,
+      );
       assert.equal(
         bot.anima_id,
         SYSTEM_DUEL_BOTS[formFromLevel(player.level)].anima_id,
-        `${name}: tier lawan sistem tidak mengikuti formFromLevel`
+        `${name}: tier lawan sistem tidak mengikuti formFromLevel`,
       );
 
       // Elemen netral dua arah. Pengali elemen tidak masuk perhitungan tier,
       // jadi satu-satunya pilihan jujur adalah tidak ada pengali sama sekali.
       assert.equal(
-        dualDefenderMultiplier(bot.element, player.element, player.secondary_element),
+        dualDefenderMultiplier(
+          bot.element,
+          player.element,
+          player.secondary_element,
+        ),
         MATCHUP_NEUTRAL,
-        `${name}: lawan sistem unggul/lemah saat menyerang`
+        `${name}: lawan sistem unggul/lemah saat menyerang`,
       );
-      for (const attack of [player.element, player.secondary_element].filter(Boolean)) {
+      for (
+        const attack of [player.element, player.secondary_element].filter(
+          Boolean,
+        )
+      ) {
         assert.equal(
           dualDefenderMultiplier(attack, bot.element),
           MATCHUP_NEUTRAL,
-          `${name}: pemain punya pengali elemen terhadap lawan sistem`
+          `${name}: pemain punya pengali elemen terhadap lawan sistem`,
         );
       }
 
       // Rasio hasil pencarian harus tetap di dalam bound; di luar itu berarti
       // bisection lari, bukan menemukan. normalizeBaseStats menjepit tiap stat
       // ke 10..95 dan membulatkan, jadi total yang tercapai boleh menyimpang.
-      const ratio = baseStatTotal(bot.base_stats) / baseStatTotal(player.base_stats);
+      const ratio = baseStatTotal(bot.base_stats) /
+        baseStatTotal(player.base_stats);
       ratios.set(name, ratio);
       assert.ok(
         ratio >= BOT_RATIO_MIN - 0.06 && ratio <= BOT_RATIO_MAX + 0.02,
-        `${name}: rasio lawan sistem ${ratio.toFixed(3)} di luar bound pencarian`
+        `${name}: rasio lawan sistem ${
+          ratio.toFixed(3)
+        } di luar bound pencarian`,
       );
       // Inilah kontraknya: kekuatan bot dicari sampai duelnya terukur imbang,
       // jadi tier-nya wajib `even`. `favorable` berarti pencariannya mendarat di
@@ -3912,20 +5487,28 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
       assert.equal(
         systemPreview.tier,
         "even",
-        `${name}: duel lawan sistem dimenangkan `
-          + `${(systemPreview.win_rate * 100).toFixed(0)}% sehingga dibayar `
-          + `${systemPreview.tier}; pencarian kekuatan di duel_bot.mjs tidak mendarat di band imbang`
+        `${name}: duel lawan sistem dimenangkan ` +
+          `${(systemPreview.win_rate * 100).toFixed(0)}% sehingga dibayar ` +
+          `${systemPreview.tier}; pencarian kekuatan di duel_bot.mjs tidak mendarat di band imbang`,
       );
 
       // Deterministik terhadap seed, kalau tidak resume dan replay akan bertemu
       // lawan yang berbeda dari yang sudah tersimpan.
-      assert.deepEqual(systemDuelBot(player, seed), bot, `${name}: lawan sistem tidak deterministik`);
+      assert.deepEqual(
+        systemDuelBot(player, seed),
+        bot,
+        `${name}: lawan sistem tidak deterministik`,
+      );
       shapes.add(`${bot.element}:${baseStatTotal(bot.base_stats)}`);
     }
-    assert.ok(shapes.size > 1, `${name}: lawan sistem sama terus di semua seed`);
     assert.ok(
-      neutralBotElements(player.element, player.secondary_element ?? "").length >= 8,
-      `${name}: pilihan elemen netral terlalu sempit`
+      shapes.size > 1,
+      `${name}: lawan sistem sama terus di semua seed`,
+    );
+    assert.ok(
+      neutralBotElements(player.element, player.secondary_element ?? "")
+        .length >= 8,
+      `${name}: pilihan elemen netral terlalu sempit`,
     );
   }
 
@@ -3936,8 +5519,8 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
   const spread = Math.max(...ratios.values()) - Math.min(...ratios.values());
   assert.ok(
     spread > 0.05,
-    `rasio lawan sistem cuma menyebar ${spread.toFixed(3)} antar-Anima; `
-      + "pencarian kekuatan tidak lagi menyesuaikan diri terhadap bentuk stat"
+    `rasio lawan sistem cuma menyebar ${spread.toFixed(3)} antar-Anima; ` +
+      "pencarian kekuatan tidak lagi menyesuaikan diri terhadap bentuk stat",
   );
 
   // Bentuk stat hiper-spesialis tidak punya titik imbang sama sekali: duel
@@ -3948,9 +5531,18 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
   // jadi lawan sistem wajib tetap bisa dimenangkan. Sekitar 2% bentuk acak
   // menyentuh pagar ini, jadi ia bukan cabang hipotetis.
   const CLIFF_SHAPES = [
-    { level: 14, base_stats: { hp: 10, atk: 92, def: 35, spd: 54, special: 62 } },
-    { level: 23, base_stats: { hp: 23, atk: 94, def: 85, spd: 40, special: 42 } },
-    { level: 2, base_stats: { hp: 11, atk: 59, def: 94, spd: 83, special: 36 } },
+    {
+      level: 14,
+      base_stats: { hp: 10, atk: 92, def: 35, spd: 54, special: 62 },
+    },
+    {
+      level: 23,
+      base_stats: { hp: 23, atk: 94, def: 85, spd: 40, special: 42 },
+    },
+    {
+      level: 2,
+      base_stats: { hp: 11, atk: 59, def: 94, spd: 83, special: 36 },
+    },
   ];
   for (const shape of CLIFF_SHAPES) {
     const player = {
@@ -3961,12 +5553,18 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
       hygiene: 100,
       ...shape,
     };
-    const preview = battleRewardPreview(player, systemDuelBot(player, "cliff"), "cliff");
+    const preview = battleRewardPreview(
+      player,
+      systemDuelBot(player, "cliff"),
+      "cliff",
+    );
     assert.ok(
       preview.win_rate >= REWARD_TIERS.even.minWinRate,
-      `bentuk tangga Lv${shape.level}: lawan sistem hanya dimenangkan `
-        + `${(preview.win_rate * 100).toFixed(0)}%; pencarian memilih sisi tangga yang kalah `
-        + "dan lawan sistem berubah dari jalan keluar menjadi dinding"
+      `bentuk tangga Lv${shape.level}: lawan sistem hanya dimenangkan ` +
+        `${
+          (preview.win_rate * 100).toFixed(0)
+        }%; pencarian memilih sisi tangga yang kalah ` +
+        "dan lawan sistem berubah dari jalan keluar menjadi dinding",
     );
   }
 
@@ -3980,12 +5578,12 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
     ...mirrored,
     base_stats: normalizeBaseStats(
       { hp: 1, atk: 1, def: 1, spd: 1, special: 1 },
-      flatTotal
+      flatTotal,
     ),
   };
   assert.ok(
     winRate(fragile, mirrored, 240) - winRate(fragile, flat, 240) > 0.2,
-    "cermin stat tidak lagi lebih adil daripada distribusi rata untuk Anima ber-Special rendah"
+    "cermin stat tidak lagi lebih adil daripada distribusi rata untuk Anima ber-Special rendah",
   );
 
   // Gerbang Hunger dibuang supaya pemain tanpa Bits dan tanpa makanan punya
@@ -3993,30 +5591,45 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
   // melawan lawan yang tidak tersentuh, Anima lapar terukur menang 0%..22% dan
   // lapar+kotor 0%..2%, jadi jalan keluarnya cuma bergeser dari "diblokir"
   // menjadi "kalah saja". Anima paling rapuh di roster yang menjaga ambang ini.
-  const tendedBot = systemDuelBot({ ...snap("Mugshots"), hunger: 100, hygiene: 100 }, "neglect");
-  for (const [hunger, hygiene] of [[100, 100], [10, 100], [100, 10], [10, 10], [0, 0]]) {
+  const tendedBot = systemDuelBot({
+    ...snap("Mugshots"),
+    hunger: 100,
+    hygiene: 100,
+  }, "neglect");
+  for (
+    const [hunger, hygiene] of [[100, 100], [10, 100], [100, 10], [10, 10], [
+      0,
+      0,
+    ]]
+  ) {
     const neglected = { ...snap("Mugshots"), hunger, hygiene };
     const bot = systemDuelBot(neglected, "neglect");
     assert.equal(
       bot.hunger,
       hunger,
-      "lawan sistem tidak ikut menanggung potongan lapar, jadi cerminnya tidak lagi persis"
+      "lawan sistem tidak ikut menanggung potongan lapar, jadi cerminnya tidak lagi persis",
     );
-    assert.equal(bot.hygiene, hygiene, "lawan sistem tidak ikut menanggung potongan kotor");
+    assert.equal(
+      bot.hygiene,
+      hygiene,
+      "lawan sistem tidak ikut menanggung potongan kotor",
+    );
     // Pencarian kekuatan wajib care-neutral. Bot yang ikut melemah saat meter
     // pemain kosong akan membuat menelantarkan Anima menjadi cara mendapat duel
     // gampang dengan bayaran yang sama, sebab tier juga dihitung care-neutral.
     assert.deepEqual(
       bot.base_stats,
       tendedBot.base_stats,
-      `stat lawan sistem berubah pada care ${hunger}/${hygiene}; `
-        + "menelantarkan Anima menjadi cara mendapat lawan yang lebih lemah"
+      `stat lawan sistem berubah pada care ${hunger}/${hygiene}; ` +
+        "menelantarkan Anima menjadi cara mendapat lawan yang lebih lemah",
     );
     const measured = winRate(neglected, bot, 300);
     assert.ok(
       measured >= 0.4,
-      `Anima terlantar (${hunger}/${hygiene}) hanya menang ${(measured * 100).toFixed(0)}% `
-        + "melawan lawan sistem; Duel berhenti menjadi jalan keluar dari kehabisan Bits"
+      `Anima terlantar (${hunger}/${hygiene}) hanya menang ${
+        (measured * 100).toFixed(0)
+      }% ` +
+        "melawan lawan sistem; Duel berhenti menjadi jalan keluar dari kehabisan Bits",
     );
   }
 
@@ -4024,8 +5637,14 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
   // walkover 98%+ dan duel 8% dua-duanya ditolak.
   const matchmakerStats = (bot, player) => {
     const playerTotal = baseStatTotal(player.base_stats);
-    if (Math.abs(baseStatTotal(bot.base_stats) - playerTotal) <= playerTotal * 0.15) return bot;
-    return { ...bot, base_stats: normalizeBaseStats(bot.base_stats, playerTotal) };
+    if (
+      Math.abs(baseStatTotal(bot.base_stats) - playerTotal) <=
+        playerTotal * 0.15
+    ) return bot;
+    return {
+      ...bot,
+      base_stats: normalizeBaseStats(bot.base_stats, playerTotal),
+    };
   };
   const PAIRS = [
     { player: "klasik", bot: "Hydron", win: 0.07, fair: false },
@@ -4041,14 +5660,16 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
     const measured = winRate(player, bot, 300);
     assert.ok(
       Math.abs(measured - pair.win) <= 0.12,
-      `${label}: win rate resolver bergeser ke ${(measured * 100).toFixed(0)}%, `
-        + `kalibrasi band di duel_bot.mjs perlu diukur ulang`
+      `${label}: win rate resolver bergeser ke ${
+        (measured * 100).toFixed(0)
+      }%, ` +
+        `kalibrasi band di duel_bot.mjs perlu diukur ulang`,
     );
     assert.equal(
       isFairRealOpponent(player, bot),
       pair.fair,
-      `${label}: gate salah menilai duel ${(measured * 100).toFixed(0)}% `
-        + `(balance ${estimateDuelBalance(player, bot).toFixed(2)})`
+      `${label}: gate salah menilai duel ${(measured * 100).toFixed(0)}% ` +
+        `(balance ${estimateDuelBalance(player, bot).toFixed(2)})`,
     );
   }
 
@@ -4056,7 +5677,7 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
   // semuanya, ia tidak mengerjakan apa pun.
   assert.ok(
     PAIRS.some((pair) => !pair.fair) && PAIRS.some((pair) => pair.fair),
-    "fixture gate tidak memuat kedua sisi"
+    "fixture gate tidak memuat kedua sisi",
   );
 
   // Tier hadiah diukur dari matchup-nya, bukan ditaksir dari combat power.
@@ -4065,19 +5686,37 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
   // kali, sementara Veridian vs Sunhound yang benar-benar seimbang dilabeli
   // `favorable` 6 Bits. Keduanya sekarang harus terbalik urutannya.
   const TIER_RANK = { favorable: 0, even: 1, tough: 2, formidable: 3 };
-  const walkover = { player: snap("klasik"), bot: matchmakerStats(snap("Playtron"), snap("klasik")) };
-  const coinFlip = { player: snap("Veridian"), bot: matchmakerStats(snap("Sunhound"), snap("Veridian")) };
-  const walkoverPreview = battleRewardPreview(walkover.player, walkover.bot, "measured");
-  const coinFlipPreview = battleRewardPreview(coinFlip.player, coinFlip.bot, "measured");
+  const walkover = {
+    player: snap("klasik"),
+    bot: matchmakerStats(snap("Playtron"), snap("klasik")),
+  };
+  const coinFlip = {
+    player: snap("Veridian"),
+    bot: matchmakerStats(snap("Sunhound"), snap("Veridian")),
+  };
+  const walkoverPreview = battleRewardPreview(
+    walkover.player,
+    walkover.bot,
+    "measured",
+  );
+  const coinFlipPreview = battleRewardPreview(
+    coinFlip.player,
+    coinFlip.bot,
+    "measured",
+  );
   assert.ok(
     walkoverPreview.win_rate > coinFlipPreview.win_rate,
-    "fixture salah: klasik vs Playtron seharusnya lebih mudah daripada Veridian vs Sunhound"
+    "fixture salah: klasik vs Playtron seharusnya lebih mudah daripada Veridian vs Sunhound",
   );
   assert.ok(
     TIER_RANK[coinFlipPreview.tier] > TIER_RANK[walkoverPreview.tier],
-    `duel ${(coinFlipPreview.win_rate * 100).toFixed(0)}% dibayar ${coinFlipPreview.tier} `
-      + `sementara duel ${(walkoverPreview.win_rate * 100).toFixed(0)}% dibayar `
-      + `${walkoverPreview.tier}; tier kembali memakai proxy combat power`
+    `duel ${
+      (coinFlipPreview.win_rate * 100).toFixed(0)
+    }% dibayar ${coinFlipPreview.tier} ` +
+      `sementara duel ${
+        (walkoverPreview.win_rate * 100).toFixed(0)
+      }% dibayar ` +
+      `${walkoverPreview.tier}; tier kembali memakai proxy combat power`,
   );
 
   // Invariant umumnya: duel yang lebih mudah tidak boleh pernah membayar tier
@@ -4087,7 +5726,11 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
   const graded = [];
   for (const name of Object.keys(ROSTER)) {
     const player = snap(name);
-    graded.push({ label: `${name} vs sistem`, player, bot: systemDuelBot(player, "grade") });
+    graded.push({
+      label: `${name} vs sistem`,
+      player,
+      bot: systemDuelBot(player, "grade"),
+    });
     for (const other of Object.keys(ROSTER)) {
       if (other === name) continue;
       const bot = matchmakerStats(snap(other), player);
@@ -4104,14 +5747,18 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
     const harder = graded[index];
     assert.ok(
       TIER_RANK[easier.preview.tier] <= TIER_RANK[harder.preview.tier],
-      `${easier.label} (${(easier.preview.win_rate * 100).toFixed(0)}% menang) dibayar `
-        + `${easier.preview.tier} sementara ${harder.label} yang lebih berat `
-        + `(${(harder.preview.win_rate * 100).toFixed(0)}%) hanya ${harder.preview.tier}`
+      `${easier.label} (${
+        (easier.preview.win_rate * 100).toFixed(0)
+      }% menang) dibayar ` +
+        `${easier.preview.tier} sementara ${harder.label} yang lebih berat ` +
+        `(${
+          (harder.preview.win_rate * 100).toFixed(0)
+        }%) hanya ${harder.preview.tier}`,
     );
   }
   assert.ok(
     new Set(graded.map((row) => row.preview.tier)).size >= 3,
-    "fixture tier tidak lagi menjangkau beberapa tingkat kesulitan"
+    "fixture tier tidak lagi menjangkau beberapa tingkat kesulitan",
   );
 
   // Dan tangganya tidak boleh menjadi perangkap: Bits harapan per duel harus
@@ -4129,13 +5776,13 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
     tier,
     ev: list.reduce((sum, value) => sum + value, 0) / list.length,
   }));
-  const evSpread = Math.max(...evMeans.map((row) => row.ev))
-    - Math.min(...evMeans.map((row) => row.ev));
+  const evSpread = Math.max(...evMeans.map((row) => row.ev)) -
+    Math.min(...evMeans.map((row) => row.ev));
   assert.ok(
     evSpread <= 2,
-    "Bits harapan per duel melebar " + evSpread.toFixed(2) + " antar-tier ("
-      + evMeans.map((row) => `${row.tier} ${row.ev.toFixed(1)}`).join(", ")
-      + "); tangga Bits atau ambang win rate harus disetel ulang"
+    "Bits harapan per duel melebar " + evSpread.toFixed(2) + " antar-tier (" +
+      evMeans.map((row) => `${row.tier} ${row.ev.toFixed(1)}`).join(", ") +
+      "); tangga Bits atau ambang win rate harus disetel ulang",
   );
 
   // Care tidak boleh menaikkan tier. Tanpa penetralan, Anima lapar+kotor terukur
@@ -4146,42 +5793,57 @@ console.log("34. lawan Duel sistem adil, dan lawan sungguhan yang timpang ditola
   assert.deepEqual(
     battleRewardPreview(starved, systemDuelBot(starved, "care"), "care"),
     battleRewardPreview(tended, systemDuelBot(tended, "care"), "care"),
-    "care rendah mengubah hadiah Duel; simulasi tier harus menetralkan care di dua sisi"
+    "care rendah mengubah hadiah Duel; simulasi tier harus menetralkan care di dua sisi",
   );
   assert.equal(
     duelWinRate(starved, snap("Deckon"), 32),
     duelWinRate(tended, snap("Deckon"), 32),
-    "duelWinRate ikut membaca care, jadi tier bergeser mengikuti isi meter"
+    "duelWinRate ikut membaca care, jadi tier bergeser mengikuti isi meter",
   );
 }
 
-console.log("35. halaman referensi elemen tidak basi terhadap roster production");
+console.log(
+  "35. halaman referensi elemen tidak basi terhadap roster production",
+);
 {
   // `docs/element-matchups.html` dibuka langsung dari disk, jadi ia tidak bisa
   // mengimpor `elements.mjs`: ES module lewat file:// ditolak CORS. Datanya
   // karena itu disalin ke dalam halaman, dan salinan yang basi lebih
   // menyesatkan daripada tidak ada halaman sama sekali.
   const { readFile } = await import("node:fs/promises");
-  const page = await readFile(new URL("../docs/element-matchups.html", import.meta.url), "utf8");
+  const page = await readFile(
+    new URL("../docs/element-matchups.html", import.meta.url),
+    "utf8",
+  );
 
   const block = page.match(/const STRENGTHS = (\{[\s\S]*?\n  \});/);
-  assert.ok(block, "blok STRENGTHS tidak ditemukan di docs/element-matchups.html");
+  assert.ok(
+    block,
+    "blok STRENGTHS tidak ditemukan di docs/element-matchups.html",
+  );
   assert.deepEqual(
     JSON.parse(block[1]),
     ELEMENT_STRENGTHS,
-    "docs/element-matchups.html memuat roster matchup yang berbeda dari elements.mjs"
+    "docs/element-matchups.html memuat roster matchup yang berbeda dari elements.mjs",
   );
 
   const roster = page.match(/const ELEMENTS = (\[[\s\S]*?\]);/);
-  assert.ok(roster, "blok ELEMENTS tidak ditemukan di docs/element-matchups.html");
-  assert.deepEqual(JSON.parse(roster[1]), ELEMENT_ROSTER, "urutan roster halaman berbeda");
+  assert.ok(
+    roster,
+    "blok ELEMENTS tidak ditemukan di docs/element-matchups.html",
+  );
+  assert.deepEqual(
+    JSON.parse(roster[1]),
+    ELEMENT_ROSTER,
+    "urutan roster halaman berbeda",
+  );
 
   // Alias ditulis sebagai teks agar terbaca manusia, jadi yang dijaga hanya
   // kelengkapannya: setiap alias production harus muncul di halaman.
   for (const [alias, target] of Object.entries(ELEMENT_ALIASES)) {
     assert.ok(
       new RegExp(`"${target}",\\s*"[^"]*\\b${alias}\\b`).test(page),
-      `alias ${alias} â†’ ${target} belum tercatat di docs/element-matchups.html`
+      `alias ${alias} â†’ ${target} belum tercatat di docs/element-matchups.html`,
     );
   }
 
@@ -4189,12 +5851,14 @@ console.log("35. halaman referensi elemen tidak basi terhadap roster production"
     const localized = value.toString().replace(".", ",");
     assert.ok(
       page.includes(`${localized}Ã—`),
-      `pengali ${localized}Ã— tidak disebut di docs/element-matchups.html`
+      `pengali ${localized}Ã— tidak disebut di docs/element-matchups.html`,
     );
   }
 }
 
-console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€“v30");
+console.log(
+  "36. evolution Plan validator, prompt placeholders, dan bundel v21â€“v30",
+);
 {
   const {
     validateEvolutionPlan,
@@ -4209,13 +5873,25 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
 
   const adult = validateEvolutionPlan(
     {
-      lineage_anchors: ["wide ceramic belly", "loop handle arc", "glaze chip rim"],
+      lineage_anchors: [
+        "wide ceramic belly",
+        "loop handle arc",
+        "glaze chip rim",
+      ],
       stage_brief: "Taller adult bridge with reinforced handle crest.",
       body_height_cm: 130,
       strike_name: "Glaze Fang",
       surge_name: "Steam Crown",
-      strike_vfx: { form: "arc", motion: "sweep", brief: "a ceramic contact arc" },
-      surge_vfx: { form: "eruption", motion: "bloom", brief: "a radial steam bloom" },
+      strike_vfx: {
+        form: "arc",
+        motion: "sweep",
+        brief: "a ceramic contact arc",
+      },
+      surge_vfx: {
+        form: "eruption",
+        motion: "bloom",
+        brief: "a radial steam bloom",
+      },
       strike_effect_id: "armor_pierce",
       surge_effect_id: "barrier",
     },
@@ -4225,95 +5901,238 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   assert.ok(EVOLUTION_EFFECT_IDS.includes(adult.plan.strike_effect_id));
 
   assert.throws(
-    () => validateEvolutionPlan(
-      {
-        lineage_anchors: ["a", "a", "b"],
-        stage_brief: "x",
-        body_height_cm: 90,
-        strike_name: "A B",
-        surge_name: "C D",
-        strike_vfx: { form: "arc", motion: "sweep", brief: "x" },
-        surge_vfx: { form: "ring", motion: "bloom", brief: "y" },
-        strike_effect_id: "poison",
-        surge_effect_id: "barrier",
-      },
-      { targetStage: 2, priorHeightCm: 100 },
-    ),
+    () =>
+      validateEvolutionPlan(
+        {
+          lineage_anchors: ["a", "a", "b"],
+          stage_brief: "x",
+          body_height_cm: 90,
+          strike_name: "A B",
+          surge_name: "C D",
+          strike_vfx: { form: "arc", motion: "sweep", brief: "x" },
+          surge_vfx: { form: "ring", motion: "bloom", brief: "y" },
+          strike_effect_id: "poison",
+          surge_effect_id: "barrier",
+        },
+        { targetStage: 2, priorHeightCm: 100 },
+      ),
     /lineage_anchors|berbeda/,
   );
 
   const { buildBundle } = await import("../backend/tools/bundle_prompts.mjs");
   const bundel = await buildBundle();
-  assert.ok(bundel.v21?.vision_evolve_system?.includes("Evolution Director"), "v21 vision_evolve_system terbundel");
-  assert.ok(bundel.v21?.vision_evolve_schema?.properties?.lineage_anchors, "v21 vision_evolve_schema terparse");
-  assert.equal(bundel.v21?.sprite_sheet, bundel.v20?.sprite_sheet, "v21 capture sprite_sheet identik v20");
-  assert.equal(bundel.v22?.vision_system, bundel.v20?.vision_system, "v22 capture Vision identik v20");
-  assert.deepEqual(bundel.v22?.vision_schema, bundel.v20?.vision_schema, "v22 capture schema identik v20");
-  assert.equal(bundel.v22?.sprite_sheet, bundel.v20?.sprite_sheet, "v22 capture sprite_sheet identik v20");
-  assert.equal(bundel.v22?.sprite_sheet_fauna, bundel.v20?.sprite_sheet_fauna, "v22 fauna identik v20");
-  assert.equal(bundel.v23?.vision_system, bundel.v20?.vision_system, "v23 capture Vision identik v20");
-  assert.deepEqual(bundel.v23?.vision_schema, bundel.v20?.vision_schema, "v23 capture schema identik v20");
-  assert.equal(bundel.v23?.sprite_sheet, bundel.v20?.sprite_sheet, "v23 capture sprite_sheet identik v20");
-  assert.equal(bundel.v23?.sprite_sheet_fauna, bundel.v20?.sprite_sheet_fauna, "v23 fauna identik v20");
-  assert.equal(bundel.v24?.vision_system, bundel.v20?.vision_system, "v24 capture Vision mewarisi v20");
-  assert.deepEqual(bundel.v24?.vision_schema, bundel.v20?.vision_schema, "v24 capture schema mewarisi v20");
-  assert.equal(bundel.v24?.sprite_sheet, bundel.v20?.sprite_sheet, "v24 capture sprite_sheet mewarisi v20");
-  assert.equal(bundel.v24?.sprite_sheet_fauna, bundel.v20?.sprite_sheet_fauna, "v24 fauna mewarisi v20");
-  assert.equal(bundel.v25?.vision_system, bundel.v20?.vision_system, "v25 capture Vision mewarisi v20");
-  assert.deepEqual(bundel.v25?.vision_schema, bundel.v20?.vision_schema, "v25 capture schema mewarisi v20");
-  assert.equal(bundel.v25?.sprite_sheet, bundel.v20?.sprite_sheet, "v25 capture sprite_sheet mewarisi v20");
-  assert.equal(bundel.v25?.sprite_sheet_fauna, bundel.v20?.sprite_sheet_fauna, "v25 fauna mewarisi v20");
-  assert.equal(bundel.v26?.vision_system, bundel.v20?.vision_system, "v26 capture Vision mewarisi v20");
-  assert.deepEqual(bundel.v26?.vision_schema, bundel.v20?.vision_schema, "v26 capture schema mewarisi v20");
-  assert.equal(bundel.v26?.sprite_sheet, bundel.v20?.sprite_sheet, "v26 capture sprite_sheet mewarisi v20");
-  assert.equal(bundel.v26?.sprite_sheet_fauna, bundel.v20?.sprite_sheet_fauna, "v26 fauna mewarisi v20");
+  assert.ok(
+    bundel.v21?.vision_evolve_system?.includes("Evolution Director"),
+    "v21 vision_evolve_system terbundel",
+  );
+  assert.ok(
+    bundel.v21?.vision_evolve_schema?.properties?.lineage_anchors,
+    "v21 vision_evolve_schema terparse",
+  );
+  assert.equal(
+    bundel.v21?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v21 capture sprite_sheet identik v20",
+  );
+  assert.equal(
+    bundel.v22?.vision_system,
+    bundel.v20?.vision_system,
+    "v22 capture Vision identik v20",
+  );
+  assert.deepEqual(
+    bundel.v22?.vision_schema,
+    bundel.v20?.vision_schema,
+    "v22 capture schema identik v20",
+  );
+  assert.equal(
+    bundel.v22?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v22 capture sprite_sheet identik v20",
+  );
+  assert.equal(
+    bundel.v22?.sprite_sheet_fauna,
+    bundel.v20?.sprite_sheet_fauna,
+    "v22 fauna identik v20",
+  );
+  assert.equal(
+    bundel.v23?.vision_system,
+    bundel.v20?.vision_system,
+    "v23 capture Vision identik v20",
+  );
+  assert.deepEqual(
+    bundel.v23?.vision_schema,
+    bundel.v20?.vision_schema,
+    "v23 capture schema identik v20",
+  );
+  assert.equal(
+    bundel.v23?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v23 capture sprite_sheet identik v20",
+  );
+  assert.equal(
+    bundel.v23?.sprite_sheet_fauna,
+    bundel.v20?.sprite_sheet_fauna,
+    "v23 fauna identik v20",
+  );
+  assert.equal(
+    bundel.v24?.vision_system,
+    bundel.v20?.vision_system,
+    "v24 capture Vision mewarisi v20",
+  );
+  assert.deepEqual(
+    bundel.v24?.vision_schema,
+    bundel.v20?.vision_schema,
+    "v24 capture schema mewarisi v20",
+  );
+  assert.equal(
+    bundel.v24?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v24 capture sprite_sheet mewarisi v20",
+  );
+  assert.equal(
+    bundel.v24?.sprite_sheet_fauna,
+    bundel.v20?.sprite_sheet_fauna,
+    "v24 fauna mewarisi v20",
+  );
+  assert.equal(
+    bundel.v25?.vision_system,
+    bundel.v20?.vision_system,
+    "v25 capture Vision mewarisi v20",
+  );
+  assert.deepEqual(
+    bundel.v25?.vision_schema,
+    bundel.v20?.vision_schema,
+    "v25 capture schema mewarisi v20",
+  );
+  assert.equal(
+    bundel.v25?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v25 capture sprite_sheet mewarisi v20",
+  );
+  assert.equal(
+    bundel.v25?.sprite_sheet_fauna,
+    bundel.v20?.sprite_sheet_fauna,
+    "v25 fauna mewarisi v20",
+  );
+  assert.equal(
+    bundel.v26?.vision_system,
+    bundel.v20?.vision_system,
+    "v26 capture Vision mewarisi v20",
+  );
+  assert.deepEqual(
+    bundel.v26?.vision_schema,
+    bundel.v20?.vision_schema,
+    "v26 capture schema mewarisi v20",
+  );
+  assert.equal(
+    bundel.v26?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v26 capture sprite_sheet mewarisi v20",
+  );
+  assert.equal(
+    bundel.v26?.sprite_sheet_fauna,
+    bundel.v20?.sprite_sheet_fauna,
+    "v26 fauna mewarisi v20",
+  );
   assert.ok(
     bundel.v23?.vision_evolve_schema?.properties?.identity_invariants,
     "v23 Evolution Plan harus membawa Identity Invariants",
   );
   assert.ok(
-    bundel.v24?.vision_evolve_schema?.properties?.maturity_contract
-      && bundel.v24?.vision_evolve_schema?.properties?.presence_contract,
+    bundel.v24?.vision_evolve_schema?.properties?.maturity_contract &&
+      bundel.v24?.vision_evolve_schema?.properties?.presence_contract,
     "v24 Evolution Plan harus membawa Maturity + Apex Presence Contract",
   );
   assert.ok(
-    bundel.v25?.vision_evolve_schema?.properties?.shape_budget_contract
-      && bundel.v25?.vision_evolve_schema?.properties?.vfx_palette,
+    bundel.v25?.vision_evolve_schema?.properties?.shape_budget_contract &&
+      bundel.v25?.vision_evolve_schema?.properties?.vfx_palette,
     "v25 Evolution Plan harus membawa Shape Budget dan VFX-only palette",
   );
   assert.ok(
-    bundel.v26?.vision_evolve_schema?.properties?.mobility_contract
-      && bundel.v26?.vision_evolve_schema?.required?.includes("mobility_contract"),
+    bundel.v26?.vision_evolve_schema?.properties?.mobility_contract &&
+      bundel.v26?.vision_evolve_schema?.required?.includes("mobility_contract"),
     "v26 Evolution Plan harus membawa mobility_contract",
   );
-  assert.equal(bundel.v27?.vision_system, bundel.v20?.vision_system, "v27 capture Vision mewarisi v20");
-  assert.deepEqual(bundel.v27?.vision_schema, bundel.v20?.vision_schema, "v27 capture schema mewarisi v20");
-  assert.equal(bundel.v27?.sprite_sheet, bundel.v20?.sprite_sheet, "v27 capture sprite_sheet mewarisi v20");
+  assert.equal(
+    bundel.v27?.vision_system,
+    bundel.v20?.vision_system,
+    "v27 capture Vision mewarisi v20",
+  );
+  assert.deepEqual(
+    bundel.v27?.vision_schema,
+    bundel.v20?.vision_schema,
+    "v27 capture schema mewarisi v20",
+  );
+  assert.equal(
+    bundel.v27?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v27 capture sprite_sheet mewarisi v20",
+  );
   assert.ok(
-    bundel.v27?.vision_evolve_schema?.properties?.face_age_contract
-      && bundel.v27?.vision_evolve_schema?.required?.includes("face_age_contract"),
+    bundel.v27?.vision_evolve_schema?.properties?.face_age_contract &&
+      bundel.v27?.vision_evolve_schema?.required?.includes("face_age_contract"),
     "v27 Evolution Plan harus membawa face_age_contract",
   );
-  assert.equal(bundel.v28?.vision_system, bundel.v20?.vision_system, "v28 capture Vision mewarisi v20");
-  assert.deepEqual(bundel.v28?.vision_schema, bundel.v20?.vision_schema, "v28 capture schema mewarisi v20");
-  assert.equal(bundel.v28?.sprite_sheet, bundel.v20?.sprite_sheet, "v28 capture sprite_sheet mewarisi v20");
+  assert.equal(
+    bundel.v28?.vision_system,
+    bundel.v20?.vision_system,
+    "v28 capture Vision mewarisi v20",
+  );
+  assert.deepEqual(
+    bundel.v28?.vision_schema,
+    bundel.v20?.vision_schema,
+    "v28 capture schema mewarisi v20",
+  );
+  assert.equal(
+    bundel.v28?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v28 capture sprite_sheet mewarisi v20",
+  );
   assert.ok(
-    bundel.v28?.vision_evolve_schema?.properties?.silhouette_break_contract
-      && bundel.v28?.vision_evolve_schema?.required?.includes("silhouette_break_contract"),
+    bundel.v28?.vision_evolve_schema?.properties?.silhouette_break_contract &&
+      bundel.v28?.vision_evolve_schema?.required?.includes(
+        "silhouette_break_contract",
+      ),
     "v28 Evolution Plan harus membawa silhouette_break_contract",
   );
-  assert.equal(bundel.v29?.vision_system, bundel.v20?.vision_system, "v29 capture Vision mewarisi v20");
-  assert.deepEqual(bundel.v29?.vision_schema, bundel.v20?.vision_schema, "v29 capture schema mewarisi v20");
-  assert.equal(bundel.v29?.sprite_sheet, bundel.v20?.sprite_sheet, "v29 capture sprite_sheet mewarisi v20");
+  assert.equal(
+    bundel.v29?.vision_system,
+    bundel.v20?.vision_system,
+    "v29 capture Vision mewarisi v20",
+  );
+  assert.deepEqual(
+    bundel.v29?.vision_schema,
+    bundel.v20?.vision_schema,
+    "v29 capture schema mewarisi v20",
+  );
+  assert.equal(
+    bundel.v29?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v29 capture sprite_sheet mewarisi v20",
+  );
   assert.ok(
     bundel.v29?.vision_evolve_schema?.properties?.silhouette_break_contract
-      ?.properties?.kind_noun
-      && bundel.v29?.vision_evolve_schema?.required?.includes("silhouette_break_contract"),
+      ?.properties?.kind_noun &&
+      bundel.v29?.vision_evolve_schema?.required?.includes(
+        "silhouette_break_contract",
+      ),
     "v29 Evolution Plan harus membawa kind_noun",
   );
-  assert.equal(bundel.v30?.vision_system, bundel.v20?.vision_system, "v30 capture Vision mewarisi v20");
-  assert.deepEqual(bundel.v30?.vision_schema, bundel.v20?.vision_schema, "v30 capture schema mewarisi v20");
-  assert.equal(bundel.v30?.sprite_sheet, bundel.v20?.sprite_sheet, "v30 capture sprite_sheet mewarisi v20");
+  assert.equal(
+    bundel.v30?.vision_system,
+    bundel.v20?.vision_system,
+    "v30 capture Vision mewarisi v20",
+  );
+  assert.deepEqual(
+    bundel.v30?.vision_schema,
+    bundel.v20?.vision_schema,
+    "v30 capture schema mewarisi v20",
+  );
+  assert.equal(
+    bundel.v30?.sprite_sheet,
+    bundel.v20?.sprite_sheet,
+    "v30 capture sprite_sheet mewarisi v20",
+  );
   assert.ok(
     bundel.v22?.vision_evolve_system?.includes("SILHOUETTE DELTA CONTRACT"),
     "v22 Vision harus silhouette-first",
@@ -4326,12 +6145,22 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   );
 
   adult.plan.target_stage = 2;
-  const prompt = assembleEvolvePrompt(bundel.v21.sprite_sheet_evolve, adult.plan, {
-    species_key: "mug_ceramic",
-    color_bucket: "warm_red",
-  });
-  assert.ok(!/\{\{[a-z_]+\}\}/.test(prompt), "sprite_sheet_evolve v21 masih punya placeholder");
-  assert.ok(prompt.includes("Glaze Fang"), "nama move Plan masuk ke prompt evolve");
+  const prompt = assembleEvolvePrompt(
+    bundel.v21.sprite_sheet_evolve,
+    adult.plan,
+    {
+      species_key: "mug_ceramic",
+      color_bucket: "warm_red",
+    },
+  );
+  assert.ok(
+    !/\{\{[a-z_]+\}\}/.test(prompt),
+    "sprite_sheet_evolve v21 masih punya placeholder",
+  );
+  assert.ok(
+    prompt.includes("Glaze Fang"),
+    "nama move Plan masuk ke prompt evolve",
+  );
 
   const v22Raw = {
     lineage_anchors: [
@@ -4352,14 +6181,24 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
       },
     ],
     transformation_archetype: "rooted_to_mobile",
-    metamorphosis_thesis: "A stationary potted sprout becomes a mobile canopy guardian.",
-    stage_brief: "A low mobile ceramic torso drives forward under one long split canopy.",
-    metamorphosis_notes: "Keep leaf holes literal and ceramic plainly unbranded.",
-    changed_dimensions: ["dominant_mass", "outer_contour", "locomotion_or_body_plan"],
-    dominant_mass_shift: "radial top-heavy crown becomes a forward ceramic core with rear canopy",
-    posture_change: "stationary upright squat becomes a low four-point stalking stance",
+    metamorphosis_thesis:
+      "A stationary potted sprout becomes a mobile canopy guardian.",
+    stage_brief:
+      "A low mobile ceramic torso drives forward under one long split canopy.",
+    metamorphosis_notes:
+      "Keep leaf holes literal and ceramic plainly unbranded.",
+    changed_dimensions: [
+      "dominant_mass",
+      "outer_contour",
+      "locomotion_or_body_plan",
+    ],
+    dominant_mass_shift:
+      "radial top-heavy crown becomes a forward ceramic core with rear canopy",
+    posture_change:
+      "stationary upright squat becomes a low four-point stalking stance",
     outer_contour_change: "round radial crown becomes a long asymmetric wedge",
-    locomotion_or_body_plan_change: "loose roots become four load-bearing mobile limbs",
+    locomotion_or_body_plan_change:
+      "loose roots become four load-bearing mobile limbs",
     derived_anatomy: [
       {
         new_part: "root limbs",
@@ -4370,8 +6209,16 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     body_height_cm: 185,
     strike_name: "Verdant Swipe",
     surge_name: "Root Snare",
-    strike_vfx: { form: "arc", motion: "sweep", brief: "a fenestrated leaf arc" },
-    surge_vfx: { form: "growth", motion: "bloom", brief: "branching root enclosure" },
+    strike_vfx: {
+      form: "arc",
+      motion: "sweep",
+      brief: "a fenestrated leaf arc",
+    },
+    surge_vfx: {
+      form: "growth",
+      motion: "bloom",
+      brief: "branching root enclosure",
+    },
     strike_effect_id: "armor_pierce",
     surge_effect_id: "slow",
   };
@@ -4405,10 +6252,18 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   const promptV22 = assembleEvolvePrompt(
     bundel.v22.sprite_sheet_evolve,
     adultV22.plan,
-    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+    {
+      species_key: "plant_organic_monstera_potted",
+      color_bucket: "cool_green",
+    },
   );
-  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV22), "sprite_sheet_evolve v22 masih punya placeholder");
-  assert.ok(promptV22.includes("round ceramic pot â†’ segmented ceramic torso core"));
+  assert.ok(
+    !/\{\{[a-z_]+\}\}/.test(promptV22),
+    "sprite_sheet_evolve v22 masih punya placeholder",
+  );
+  assert.ok(
+    promptV22.includes("round ceramic pot â†’ segmented ceramic torso core"),
+  );
   assert.ok(promptV22.includes("black outer contour FIRST"));
   assert.ok(
     !promptV22.includes("FOREGROUND GREEN SAFETY"),
@@ -4418,84 +6273,95 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   const oneTransform = structuredClone(v22Raw);
   oneTransform.lineage_anchors[1].mode = "retain";
   assert.throws(
-    () => validateEvolutionPlan(oneTransform, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 22,
-    }),
+    () =>
+      validateEvolutionPlan(oneTransform, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 22,
+      }),
     /minimal 2 mode transform/,
   );
 
   const oneDimension = structuredClone(v22Raw);
   oneDimension.changed_dimensions = ["outer_contour"];
   assert.throws(
-    () => validateEvolutionPlan(oneDimension, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 22,
-    }),
+    () =>
+      validateEvolutionPlan(oneDimension, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 22,
+      }),
     /changed_dimensions/,
   );
 
   const untracedAnatomy = structuredClone(v22Raw);
   untracedAnatomy.derived_anatomy[0].derived_from = "unrelated generic energy";
   assert.throws(
-    () => validateEvolutionPlan(untracedAnatomy, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 22,
-    }),
+    () =>
+      validateEvolutionPlan(untracedAnatomy, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 22,
+      }),
     /derived_anatomy/,
   );
 
   const punctuationOnlyAnatomy = structuredClone(v22Raw);
   punctuationOnlyAnatomy.lineage_anchors[2].source_feature = "fibrous roots.";
-  assert.doesNotThrow(() => validateEvolutionPlan(punctuationOnlyAnatomy, {
-    targetStage: 2,
-    priorHeightCm: 150,
-    contractVersion: 22,
-  }));
+  assert.doesNotThrow(() =>
+    validateEvolutionPlan(punctuationOnlyAnatomy, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 22,
+    })
+  );
 
   const abbreviatedAnatomy = structuredClone(v22Raw);
-  abbreviatedAnatomy.lineage_anchors[2].source_feature = "multiple cylindrical green stems";
+  abbreviatedAnatomy.lineage_anchors[2].source_feature =
+    "multiple cylindrical green stems";
   abbreviatedAnatomy.derived_anatomy[0].derived_from = "multiple stems";
-  assert.doesNotThrow(() => validateEvolutionPlan(abbreviatedAnatomy, {
-    targetStage: 2,
-    priorHeightCm: 150,
-    contractVersion: 22,
-  }));
+  assert.doesNotThrow(() =>
+    validateEvolutionPlan(abbreviatedAnatomy, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 22,
+    })
+  );
 
   const unchangedAnchor = structuredClone(v22Raw);
   unchangedAnchor.lineage_anchors[1].next_expression = "round ceramic pot";
   assert.throws(
-    () => validateEvolutionPlan(unchangedAnchor, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 22,
-    }),
+    () =>
+      validateEvolutionPlan(unchangedAnchor, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 22,
+      }),
     /next_expression/,
   );
 
   const invalidDimension = structuredClone(v22Raw);
   invalidDimension.changed_dimensions = ["outer_contour", "more_detail"];
   assert.throws(
-    () => validateEvolutionPlan(invalidDimension, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 22,
-    }),
+    () =>
+      validateEvolutionPlan(invalidDimension, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 22,
+      }),
     /changed_dimensions/,
   );
 
   assert.throws(
-    () => validateEvolutionPlan(v22Raw, {
-      targetStage: 3,
-      priorHeightCm: 150,
-      contractVersion: 22,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(v22Raw, {
+        targetStage: 3,
+        priorHeightCm: 150,
+        contractVersion: 22,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /tidak boleh mengulang archetype Adult/,
   );
 
@@ -4505,32 +6371,41 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
       {
         identity_id: "paired_expressive_eyes",
         domain: "face_expression",
-        source_truth: "Exactly two separate visible eyes form the primary face.",
+        source_truth:
+          "Exactly two separate visible eyes form the primary face.",
         identity_role: "A gentle alert companion-like gaze.",
-        current_expression: "Two warm almond eyes sit beneath the leading leaf.",
+        current_expression:
+          "Two warm almond eyes sit beneath the leading leaf.",
         evolved_policy: "preserve",
         realization_mode: "preserve",
-        visible_lineage_evidence: "Both eyes remain separate visible and warmly expressive.",
+        visible_lineage_evidence:
+          "Both eyes remain separate visible and warmly expressive.",
       },
       {
         identity_id: "fenestrated_leaf_windows",
         domain: "surface_signature",
-        source_truth: "Large literal openings divide the broad Monstera leaves.",
-        identity_role: "The botanical pattern that makes the lineage recognizable.",
-        current_expression: "The leaf carapace repeats the same literal openings.",
+        source_truth:
+          "Large literal openings divide the broad Monstera leaves.",
+        identity_role:
+          "The botanical pattern that makes the lineage recognizable.",
+        current_expression:
+          "The leaf carapace repeats the same literal openings.",
         evolved_policy: "preserve",
         realization_mode: "preserve",
-        visible_lineage_evidence: "Open leaf windows remain visible across the canopy.",
+        visible_lineage_evidence:
+          "Open leaf windows remain visible across the canopy.",
       },
       {
         identity_id: "root_support_language",
         domain: "structural_motif",
         source_truth: "Dark fibrous roots visibly support the ceramic body.",
-        identity_role: "A grounded living-plant stance rather than generic legs.",
+        identity_role:
+          "A grounded living-plant stance rather than generic legs.",
         current_expression: "Four root bundles become weight-bearing supports.",
         evolved_policy: "may_transfigure",
         realization_mode: "preserve",
-        visible_lineage_evidence: "Each support still branches like the original roots.",
+        visible_lineage_evidence:
+          "Each support still branches like the original roots.",
       },
     ],
   };
@@ -4545,9 +6420,15 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   const promptV23 = assembleEvolvePrompt(
     bundel.v23.sprite_sheet_evolve,
     adultV23.plan,
-    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+    {
+      species_key: "plant_organic_monstera_potted",
+      color_bucket: "cool_green",
+    },
   );
-  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV23), "sprite_sheet_evolve v23 masih punya placeholder");
+  assert.ok(
+    !/\{\{[a-z_]+\}\}/.test(promptV23),
+    "sprite_sheet_evolve v23 masih punya placeholder",
+  );
   assert.ok(promptV23.includes("[preserve] paired_expressive_eyes"));
   assert.ok(promptV23.includes("Exactly two separate visible eyes"));
   assert.ok(promptV23.includes("FOREGROUND GREEN SAFETY"));
@@ -4572,19 +6453,25 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   evolvedV23Raw.identity_invariants = [
     {
       ...structuredClone(v23Raw.identity_invariants[2]),
-      current_expression: "Root supports unfold into a wide branching lower frame.",
+      current_expression:
+        "Root supports unfold into a wide branching lower frame.",
       realization_mode: "transfigure",
-      visible_lineage_evidence: "Branching dark root forks visibly form every lower frame segment.",
+      visible_lineage_evidence:
+        "Branching dark root forks visibly form every lower frame segment.",
     },
     {
       ...structuredClone(v23Raw.identity_invariants[0]),
-      current_expression: "Two larger warm eyes remain separate beneath the fan.",
-      visible_lineage_evidence: "Both eyes are separate and keep the gentle alert gaze.",
+      current_expression:
+        "Two larger warm eyes remain separate beneath the fan.",
+      visible_lineage_evidence:
+        "Both eyes are separate and keep the gentle alert gaze.",
     },
     {
       ...structuredClone(v23Raw.identity_invariants[1]),
-      current_expression: "Literal leaf windows repeat across the tall rear fan.",
-      visible_lineage_evidence: "Every canopy blade carries recognizable open windows.",
+      current_expression:
+        "Literal leaf windows repeat across the tall rear fan.",
+      visible_lineage_evidence:
+        "Every canopy blade carries recognizable open windows.",
     },
   ];
   const evolvedV23 = validateEvolutionPlan(evolvedV23Raw, {
@@ -4601,55 +6488,64 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     v23Raw.identity_invariants.map((item) => item.identity_id),
     "Evolved harus dikanonisasi ke urutan Identity Invariants Adult",
   );
-  assert.equal(evolvedV23.plan.identity_invariants[2].realization_mode, "transfigure");
+  assert.equal(
+    evolvedV23.plan.identity_invariants[2].realization_mode,
+    "transfigure",
+  );
 
   const tooFewForFlexible = structuredClone(v23Raw);
-  tooFewForFlexible.identity_invariants = tooFewForFlexible.identity_invariants.slice(0, 2);
+  tooFewForFlexible.identity_invariants = tooFewForFlexible.identity_invariants
+    .slice(0, 2);
   tooFewForFlexible.identity_invariants[1].evolved_policy = "may_transfigure";
   assert.throws(
-    () => validateEvolutionPlan(tooFewForFlexible, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 23,
-    }),
+    () =>
+      validateEvolutionPlan(tooFewForFlexible, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 23,
+      }),
     /minimal tiga Identity Invariants/,
   );
 
   const adultTransfigure = structuredClone(v23Raw);
   adultTransfigure.identity_invariants[2].realization_mode = "transfigure";
   assert.throws(
-    () => validateEvolutionPlan(adultTransfigure, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 23,
-    }),
+    () =>
+      validateEvolutionPlan(adultTransfigure, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 23,
+      }),
     /Adult harus preserve/,
   );
 
   assert.throws(
-    () => validateEvolutionPlan(evolvedV23Raw, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 23,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(evolvedV23Raw, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 23,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /prior Identity Invariants Adult/,
   );
 
   const identityDrift = structuredClone(evolvedV23Raw);
-  identityDrift.identity_invariants[1].source_truth = "One central eye replaces the old pair.";
+  identityDrift.identity_invariants[1].source_truth =
+    "One central eye replaces the old pair.";
   assert.throws(
-    () => validateEvolutionPlan(identityDrift, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 23,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorIdentityInvariants: adultV23.plan.identity_invariants,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(identityDrift, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 23,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorIdentityInvariants: adultV23.plan.identity_invariants,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /terkunci berubah/,
   );
 
@@ -4657,15 +6553,16 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   hiddenDescendant.identity_invariants[0].visible_lineage_evidence =
     "The old root relationship is hidden beneath the new frame.";
   assert.throws(
-    () => validateEvolutionPlan(hiddenDescendant, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 23,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorIdentityInvariants: adultV23.plan.identity_invariants,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(hiddenDescendant, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 23,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorIdentityInvariants: adultV23.plan.identity_invariants,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /turunan visual/,
   );
 
@@ -4673,77 +6570,87 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   hiddenCurrentExpression.identity_invariants[0].current_expression =
     "The root supports are hidden beneath an unrelated smooth frame.";
   assert.throws(
-    () => validateEvolutionPlan(hiddenCurrentExpression, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 23,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorIdentityInvariants: adultV23.plan.identity_invariants,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(hiddenCurrentExpression, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 23,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorIdentityInvariants: adultV23.plan.identity_invariants,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /turunan visual/,
   );
 
   const explicitlyVisibleDescendant = structuredClone(evolvedV23Raw);
   explicitlyVisibleDescendant.identity_invariants[0].visible_lineage_evidence =
     "The branching root descendant is not hidden and remains clearly visible.";
-  assert.doesNotThrow(() => validateEvolutionPlan(explicitlyVisibleDescendant, {
-    targetStage: 3,
-    priorHeightCm: 185,
-    contractVersion: 23,
-    priorTransformationArchetype: "rooted_to_mobile",
-    priorIdentityInvariants: adultV23.plan.identity_invariants,
-    priorStrikeEffectId: "armor_pierce",
-    priorSurgeEffectId: "slow",
-  }));
+  assert.doesNotThrow(() =>
+    validateEvolutionPlan(explicitlyVisibleDescendant, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 23,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV23.plan.identity_invariants,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    })
+  );
 
   const punctuationOnlyDrift = structuredClone(evolvedV23Raw);
   punctuationOnlyDrift.identity_invariants[1].source_truth =
     "Exactly two separate visible eyes form the primary face";
-  assert.doesNotThrow(() => validateEvolutionPlan(punctuationOnlyDrift, {
-    targetStage: 3,
-    priorHeightCm: 185,
-    contractVersion: 23,
-    priorTransformationArchetype: "rooted_to_mobile",
-    priorIdentityInvariants: adultV23.plan.identity_invariants,
-    priorStrikeEffectId: "armor_pierce",
-    priorSurgeEffectId: "slow",
-  }));
+  assert.doesNotThrow(() =>
+    validateEvolutionPlan(punctuationOnlyDrift, {
+      targetStage: 3,
+      priorHeightCm: 185,
+      contractVersion: 23,
+      priorTransformationArchetype: "rooted_to_mobile",
+      priorIdentityInvariants: adultV23.plan.identity_invariants,
+      priorStrikeEffectId: "armor_pierce",
+      priorSurgeEffectId: "slow",
+    })
+  );
 
   const twoTransfigured = structuredClone(evolvedV23Raw);
   twoTransfigured.identity_invariants[1].realization_mode = "transfigure";
   assert.throws(
-    () => validateEvolutionPlan(twoTransfigured, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 23,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorIdentityInvariants: adultV23.plan.identity_invariants,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(twoTransfigured, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 23,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorIdentityInvariants: adultV23.plan.identity_invariants,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /maksimal mentransfigurasi satu/,
   );
 
   const transfigurePreservePolicy = structuredClone(evolvedV23Raw);
-  transfigurePreservePolicy.identity_invariants[0].realization_mode = "preserve";
-  transfigurePreservePolicy.identity_invariants[2].realization_mode = "transfigure";
+  transfigurePreservePolicy.identity_invariants[0].realization_mode =
+    "preserve";
+  transfigurePreservePolicy.identity_invariants[2].realization_mode =
+    "transfigure";
   assert.throws(
-    () => validateEvolutionPlan(transfigurePreservePolicy, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 23,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorIdentityInvariants: adultV23.plan.identity_invariants,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(transfigurePreservePolicy, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 23,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorIdentityInvariants: adultV23.plan.identity_invariants,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /transfigure hanya sah/,
   );
 
   const faceFlexibleAdultRaw = structuredClone(v23Raw);
-  faceFlexibleAdultRaw.identity_invariants[0].evolved_policy = "may_transfigure";
+  faceFlexibleAdultRaw.identity_invariants[0].evolved_policy =
+    "may_transfigure";
   faceFlexibleAdultRaw.identity_invariants[2].evolved_policy = "preserve";
   const faceFlexibleAdult = validateEvolutionPlan(faceFlexibleAdultRaw, {
     targetStage: 2,
@@ -4751,22 +6658,25 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     contractVersion: 23,
   });
   const lostFaceRead = structuredClone(evolvedV23Raw);
-  lostFaceRead.identity_invariants = structuredClone(faceFlexibleAdult.plan.identity_invariants);
+  lostFaceRead.identity_invariants = structuredClone(
+    faceFlexibleAdult.plan.identity_invariants,
+  );
   lostFaceRead.identity_invariants[0].realization_mode = "transfigure";
   lostFaceRead.identity_invariants[0].current_expression =
     "The paired gaze becomes a branching sensory crown.";
   lostFaceRead.identity_invariants[0].visible_lineage_evidence =
     "Two eye-derived branches remain visibly paired in the sensory crown.";
   assert.throws(
-    () => validateEvolutionPlan(lostFaceRead, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 23,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorIdentityInvariants: faceFlexibleAdult.plan.identity_invariants,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(lostFaceRead, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 23,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorIdentityInvariants: faceFlexibleAdult.plan.identity_invariants,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /identity read wajah atau sensory/,
   );
 
@@ -4776,32 +6686,44 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     maturation_path: item.identity_id === "paired_expressive_eyes"
       ? "The paired eyes may lengthen and gain a composed brow while count separation warmth and alert gaze remain."
       : item.identity_id === "fenestrated_leaf_windows"
-        ? "Leaf plates may broaden harden and reorganize while their literal open windows remain recognizable."
-        : "Root bundles may thicken branch or change support role while their living fibrous origin stays visible.",
+      ? "Leaf plates may broaden harden and reorganize while their literal open windows remain recognizable."
+      : "Root bundles may thicken branch or change support role while their living fibrous origin stays visible.",
   }));
   v24Raw.maturity_contract = {
     target_read: "adult",
-    facial_maturation: "The paired eyes lengthen beneath a stronger brow on a less juvenile face.",
-    body_maturation: "A larger ceramic-root torso replaces the tiny pot-centered body and carries real weight.",
-    posture_maturation: "Four developed root supports hold a calm low mobile stance without tentative wobble.",
-    preserved_personality: "The gentle alert companion-like confidence remains immediately readable.",
-    stage_delta: "Baby face ratio and stationary potted posture become an adult mobile guardian structure.",
+    facial_maturation:
+      "The paired eyes lengthen beneath a stronger brow on a less juvenile face.",
+    body_maturation:
+      "A larger ceramic-root torso replaces the tiny pot-centered body and carries real weight.",
+    posture_maturation:
+      "Four developed root supports hold a calm low mobile stance without tentative wobble.",
+    preserved_personality:
+      "The gentle alert companion-like confidence remains immediately readable.",
+    stage_delta:
+      "Baby face ratio and stationary potted posture become an adult mobile guardian structure.",
   };
   v24Raw.presence_contract = {
     presence_tier: "developing",
-    power_center: "A dense amber-lit ceramic-root heart sits visibly at the center of the torso.",
-    mass_hierarchy: "The broad torso remains dominant while leaf carapace and root supports frame it.",
-    authority_pose: "A planted low stance distributes weight evenly through four controlled supports.",
-    aura_architecture: "A compact amber orbit follows the rear edge of the ceramic-root heart.",
+    power_center:
+      "A dense amber-lit ceramic-root heart sits visibly at the center of the torso.",
+    mass_hierarchy:
+      "The broad torso remains dominant while leaf carapace and root supports frame it.",
+    authority_pose:
+      "A planted low stance distributes weight evenly through four controlled supports.",
+    aura_architecture:
+      "A compact amber orbit follows the rear edge of the ceramic-root heart.",
     aura_palette: ["amber", "violet"],
     grandeur_cues: [
       "overlapping source-derived leaf plates form one deliberate mantle",
       "the ceramic core develops broad load-bearing facets",
     ],
-    reliability_cue: "Four thick branching root supports visibly carry and stabilize the full body.",
+    reliability_cue:
+      "Four thick branching root supports visibly carry and stabilize the full body.",
   };
-  v24Raw.strike_vfx.brief = "an amber fenestrated leaf arc with a dark material contour";
-  v24Raw.surge_vfx.brief = "a violet branching root enclosure with a distinct radial topology";
+  v24Raw.strike_vfx.brief =
+    "an amber fenestrated leaf arc with a dark material contour";
+  v24Raw.surge_vfx.brief =
+    "a violet branching root enclosure with a distinct radial topology";
 
   const adultV24 = validateEvolutionPlan(v24Raw, {
     targetStage: 2,
@@ -4811,14 +6733,25 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   adultV24.plan.target_stage = 2;
   assert.equal(adultV24.plan.maturity_contract.target_read, "adult");
   assert.equal(adultV24.plan.presence_contract.presence_tier, "developing");
-  assert.equal(adultV24.plan.identity_invariants[0].maturation_path.includes("paired eyes"), true);
+  assert.equal(
+    adultV24.plan.identity_invariants[0].maturation_path.includes(
+      "paired eyes",
+    ),
+    true,
+  );
 
   const promptV24 = assembleEvolvePrompt(
     bundel.v24.sprite_sheet_evolve,
     adultV24.plan,
-    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+    {
+      species_key: "plant_organic_monstera_potted",
+      color_bucket: "cool_green",
+    },
   );
-  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV24), "sprite_sheet_evolve v24 masih punya placeholder");
+  assert.ok(
+    !/\{\{[a-z_]+\}\}/.test(promptV24),
+    "sprite_sheet_evolve v24 masih punya placeholder",
+  );
   assert.ok(promptV24.includes("MATURITY CONTRACT â€” adult"));
   assert.ok(promptV24.includes("PRESENCE CONTRACT â€” developing"));
   assert.ok(promptV24.includes("Maturation path:"));
@@ -4833,97 +6766,119 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   const missingMaturationPath = structuredClone(v24Raw);
   delete missingMaturationPath.identity_invariants[0].maturation_path;
   assert.throws(
-    () => validateEvolutionPlan(missingMaturationPath, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 24,
-    }),
+    () =>
+      validateEvolutionPlan(missingMaturationPath, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 24,
+      }),
     /maturation_path/,
   );
 
   const wrongAdultTier = structuredClone(v24Raw);
   wrongAdultTier.presence_contract.presence_tier = "apex";
   assert.throws(
-    () => validateEvolutionPlan(wrongAdultTier, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 24,
-    }),
+    () =>
+      validateEvolutionPlan(wrongAdultTier, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 24,
+      }),
     /presence_tier/,
   );
 
   const greenAura = structuredClone(v24Raw);
   greenAura.presence_contract.aura_palette = ["emerald"];
   assert.throws(
-    () => validateEvolutionPlan(greenAura, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 24,
-    }),
+    () =>
+      validateEvolutionPlan(greenAura, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 24,
+      }),
     /aura_palette/,
   );
 
   const greenVfx = structuredClone(v24Raw);
   greenVfx.strike_vfx.brief = "a luminous green fenestrated leaf arc";
   assert.throws(
-    () => validateEvolutionPlan(greenVfx, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 24,
-    }),
+    () =>
+      validateEvolutionPlan(greenVfx, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 24,
+      }),
     /strike_vfx\.brief/,
   );
 
   const uncoloredVfx = structuredClone(v24Raw);
-  uncoloredVfx.surge_vfx.brief = "a branching root enclosure with a distinct radial topology";
+  uncoloredVfx.surge_vfx.brief =
+    "a branching root enclosure with a distinct radial topology";
   assert.throws(
-    () => validateEvolutionPlan(uncoloredVfx, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 24,
-    }),
+    () =>
+      validateEvolutionPlan(uncoloredVfx, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 24,
+      }),
     /surge_vfx\.brief harus menyebut warna/,
   );
 
   const evolvedV24Raw = structuredClone(evolvedV23Raw);
-  evolvedV24Raw.identity_invariants = adultV24.plan.identity_invariants.map((item) => ({
+  evolvedV24Raw.identity_invariants = adultV24.plan.identity_invariants.map((
+    item,
+  ) => ({
     ...structuredClone(item),
     current_expression: item.identity_id === "paired_expressive_eyes"
       ? "Two longer composed eyes remain separate beneath a mature leaf-framed brow."
       : item.identity_id === "fenestrated_leaf_windows"
-        ? "Monumental mantle plates preserve literal windows around the central body."
-        : "Root supports unfold into thick ceremonial anchor branches beneath the core.",
-    realization_mode: item.identity_id === "root_support_language" ? "transfigure" : "preserve",
+      ? "Monumental mantle plates preserve literal windows around the central body."
+      : "Root supports unfold into thick ceremonial anchor branches beneath the core.",
+    realization_mode: item.identity_id === "root_support_language"
+      ? "transfigure"
+      : "preserve",
     visible_lineage_evidence: item.identity_id === "paired_expressive_eyes"
       ? "Both eyes remain separate warm alert and immediately visible."
       : item.identity_id === "fenestrated_leaf_windows"
-        ? "Every broad mantle plate carries recognizable literal open windows."
-        : "Thick branching anchor roots visibly descend from the prior support bundles.",
+      ? "Every broad mantle plate carries recognizable literal open windows."
+      : "Thick branching anchor roots visibly descend from the prior support bundles.",
   }));
   evolvedV24Raw.maturity_contract = {
     target_read: "apex",
-    facial_maturation: "The paired gaze becomes longer calmer and fully composed within strong mature facial planes.",
-    body_maturation: "The adult crawler reorganizes into a monumental central core with complete material integration.",
-    posture_maturation: "A controlled ascending stance centers every appendage around one stable vertical axis.",
-    preserved_personality: "Warm intelligent confidence remains beneath the final form's calm authority.",
-    stage_delta: "Intermediate crawler proportions become a complete apex body with no juvenile face or tentative supports.",
+    facial_maturation:
+      "The paired gaze becomes longer calmer and fully composed within strong mature facial planes.",
+    body_maturation:
+      "The adult crawler reorganizes into a monumental central core with complete material integration.",
+    posture_maturation:
+      "A controlled ascending stance centers every appendage around one stable vertical axis.",
+    preserved_personality:
+      "Warm intelligent confidence remains beneath the final form's calm authority.",
+    stage_delta:
+      "Intermediate crawler proportions become a complete apex body with no juvenile face or tentative supports.",
   };
   evolvedV24Raw.presence_contract = {
     presence_tier: "apex",
-    power_center: "A large gold-lit ceramic-root heart dominates the center of the mature torso.",
-    mass_hierarchy: "The torso and face remain larger and clearer than mantle plates anchor roots and aura.",
-    authority_pose: "The body ascends in a calm balanced posture with heavy anchors held under control.",
-    aura_architecture: "A structured violet corona rises behind the core in broad source-derived layers.",
+    power_center:
+      "A large gold-lit ceramic-root heart dominates the center of the mature torso.",
+    mass_hierarchy:
+      "The torso and face remain larger and clearer than mantle plates anchor roots and aura.",
+    authority_pose:
+      "The body ascends in a calm balanced posture with heavy anchors held under control.",
+    aura_architecture:
+      "A structured violet corona rises behind the core in broad source-derived layers.",
     aura_palette: ["gold", "violet"],
     grandeur_cues: [
       "monumental fenestrated mantle layers frame the central body",
       "obsidian ceramic facets converge on one large power center",
       "thick anchor roots hang with controlled load-bearing weight",
     ],
-    reliability_cue: "Heavy roots and a broad integrated torso visibly stabilize the hovering apex form.",
+    reliability_cue:
+      "Heavy roots and a broad integrated torso visibly stabilize the hovering apex form.",
   };
-  evolvedV24Raw.strike_vfx.brief = "a gold fenestrated mantle sweep with a dark leaf contour";
-  evolvedV24Raw.surge_vfx.brief = "a violet anchor-root impact that closes in thick branching segments";
+  evolvedV24Raw.strike_vfx.brief =
+    "a gold fenestrated mantle sweep with a dark leaf contour";
+  evolvedV24Raw.surge_vfx.brief =
+    "a violet anchor-root impact that closes in thick branching segments";
   const evolvedV24 = validateEvolutionPlan(evolvedV24Raw, {
     targetStage: 3,
     priorHeightCm: 185,
@@ -4935,21 +6890,25 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   });
   assert.equal(evolvedV24.plan.maturity_contract.target_read, "apex");
   assert.equal(evolvedV24.plan.presence_contract.presence_tier, "apex");
-  assert.equal(evolvedV24.plan.identity_invariants[2].realization_mode, "transfigure");
+  assert.equal(
+    evolvedV24.plan.identity_invariants[2].realization_mode,
+    "transfigure",
+  );
 
   const maturationDrift = structuredClone(evolvedV24Raw);
   maturationDrift.identity_invariants[0].maturation_path =
     "Replace the paired eyes with one abstract aperture.";
   assert.throws(
-    () => validateEvolutionPlan(maturationDrift, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 24,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorIdentityInvariants: adultV24.plan.identity_invariants,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(maturationDrift, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 24,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorIdentityInvariants: adultV24.plan.identity_invariants,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /terkunci berubah/,
   );
 
@@ -4959,25 +6918,31 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
       {
         shape_id: "slender_leaf_flow",
         source_basis: "the current long fenestrated leaf direction",
-        stage_expression: "one clean slender S-curve carries the first silhouette read",
+        stage_expression:
+          "one clean slender S-curve carries the first silhouette read",
         visual_role: "dominant",
       },
       {
         shape_id: "root_counter_arc",
         source_basis: "the current grouped root support structure",
-        stage_expression: "one compact counter-arc supports the long upper flow",
+        stage_expression:
+          "one compact counter-arc supports the long upper flow",
         visual_role: "counterbalance",
       },
     ],
     dominant_motif: {
       source_basis: "the literal fenestrated openings in the source leaves",
-      stage_expression: "three broad windows punctuate one continuous leaf mantle",
+      stage_expression:
+        "three broad windows punctuate one continuous leaf mantle",
     },
     identity_focal_structure: {
       source_read: "the paired expressive eyes and warm forward-facing gaze",
-      preserved_semantics: "two separate eyes preserve the gentle alert companion identity",
-      proportion_maturation: "eye height becomes one fifth of the focal plane instead of one third",
-      stage_expression: "two composed eyes sit farther within one longer calm focal plane",
+      preserved_semantics:
+        "two separate eyes preserve the gentle alert companion identity",
+      proportion_maturation:
+        "eye height becomes one fifth of the focal plane instead of one third",
+      stage_expression:
+        "two composed eyes sit farther within one longer calm focal plane",
     },
     simplification_actions: [
       {
@@ -5000,30 +6965,42 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   };
   v25Raw.maturity_contract = {
     target_read: "adult",
-    identity_focal_maturation: "The paired focal gaze lengthens and settles into a calmer mature plane.",
-    proportion_delta: "Eye height shifts from one third to one fifth of the focal plane while spacing remains paired.",
-    body_maturation: "The stationary source reorganizes into a capable slender mobile structure without added bulk.",
-    posture_maturation: "The long silhouette holds a deliberate balanced curve over two controlled supports.",
-    preserved_personality: "The gentle alert companion-like confidence remains immediately readable.",
-    stage_delta: "Tentative juvenile clustering becomes one composed adult line with stable support.",
+    identity_focal_maturation:
+      "The paired focal gaze lengthens and settles into a calmer mature plane.",
+    proportion_delta:
+      "Eye height shifts from one third to one fifth of the focal plane while spacing remains paired.",
+    body_maturation:
+      "The stationary source reorganizes into a capable slender mobile structure without added bulk.",
+    posture_maturation:
+      "The long silhouette holds a deliberate balanced curve over two controlled supports.",
+    preserved_personality:
+      "The gentle alert companion-like confidence remains immediately readable.",
+    stage_delta:
+      "Tentative juvenile clustering becomes one composed adult line with stable support.",
   };
   v25Raw.presence_contract = {
     presence_tier: "developing",
-    apex_thesis: "A poised living botanical guardian whose authority comes from elegant control rather than physical bulk.",
+    apex_thesis:
+      "A poised living botanical guardian whose authority comes from elegant control rather than physical bulk.",
     presence_channels: ["silhouette_line", "posture"],
     channel_evidence: [
       {
         channel: "silhouette_line",
-        drawable_evidence: "One uninterrupted S-curve leads from the focal plane through the mantle.",
+        drawable_evidence:
+          "One uninterrupted S-curve leads from the focal plane through the mantle.",
       },
       {
         channel: "posture",
-        drawable_evidence: "Two supports hold a calm elevated balance without a crouch or frantic spread.",
+        drawable_evidence:
+          "Two supports hold a calm elevated balance without a crouch or frantic spread.",
       },
     ],
-    shape_hierarchy: "The slender mantle reads first, paired focal structure second, and root counter-arc third.",
-    authority_pose: "A calm elevated curve holds every support under visible control.",
-    reliability_cue: "Two clean source-derived supports visibly balance the full elongated body.",
+    shape_hierarchy:
+      "The slender mantle reads first, paired focal structure second, and root counter-arc third.",
+    authority_pose:
+      "A calm elevated curve holds every support under visible control.",
+    reliability_cue:
+      "Two clean source-derived supports visibly balance the full elongated body.",
   };
   delete v25Raw.presence_contract.power_center;
   delete v25Raw.presence_contract.mass_hierarchy;
@@ -5033,8 +7010,10 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   v25Raw.vfx_palette = ["amber", "violet"];
   v25Raw.height_change_rationale =
     "Adult grows taller because the stationary source unfolds into a slender mobile line.";
-  v25Raw.strike_vfx.brief = "an amber fenestrated leaf arc with a dark material contour";
-  v25Raw.surge_vfx.brief = "a violet branching root enclosure with a distinct radial topology";
+  v25Raw.strike_vfx.brief =
+    "an amber fenestrated leaf arc with a dark material contour";
+  v25Raw.surge_vfx.brief =
+    "a violet branching root enclosure with a distinct radial topology";
 
   const adultV25 = validateEvolutionPlan(v25Raw, {
     targetStage: 2,
@@ -5056,13 +7035,22 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   const promptV25 = assembleEvolvePrompt(
     bundel.v25.sprite_sheet_evolve,
     adultV25.plan,
-    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+    {
+      species_key: "plant_organic_monstera_potted",
+      color_bucket: "cool_green",
+    },
   );
-  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV25), "sprite_sheet_evolve v25 masih punya placeholder");
+  assert.ok(
+    !/\{\{[a-z_]+\}\}/.test(promptV25),
+    "sprite_sheet_evolve v25 masih punya placeholder",
+  );
   assert.ok(promptV25.includes("SHAPE BUDGET â€” TWO OR THREE FIRST READS"));
   assert.ok(promptV25.includes("OPEN APEX PRESENCE â€” developing"));
   assert.ok(promptV25.includes("CHARACTER CELLS HAVE NO AURA"));
-  assert.ok(!promptV25.includes("Aura architecture:"), "v25 tidak boleh menghidupkan kontrak aura v24");
+  assert.ok(
+    !promptV25.includes("Aura architecture:"),
+    "v25 tidak boleh menghidupkan kontrak aura v24",
+  );
   assert.ok(
     !/Pok[eÃ©]mon|Digimon/i.test(
       `${bundel.v25.vision_evolve_system}\n${bundel.v25.sprite_sheet_evolve}`,
@@ -5077,44 +7065,54 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   );
 
   const evolvedV25Raw = structuredClone(evolvedV24Raw);
-  evolvedV25Raw.identity_invariants = adultV25.plan.identity_invariants.map((item) => ({
+  evolvedV25Raw.identity_invariants = adultV25.plan.identity_invariants.map((
+    item,
+  ) => ({
     ...structuredClone(item),
     current_expression: item.identity_id === "paired_expressive_eyes"
       ? "Two smaller composed eyes remain separate along an elongated mature focal plane."
       : item.identity_id === "fenestrated_leaf_windows"
-        ? "Three broad literal windows remain within one long ceremonial leaf line."
-        : "The prior root bundles become two clean balancing arcs under the compact form.",
-    realization_mode: item.identity_id === "root_support_language" ? "transfigure" : "preserve",
+      ? "Three broad literal windows remain within one long ceremonial leaf line."
+      : "The prior root bundles become two clean balancing arcs under the compact form.",
+    realization_mode: item.identity_id === "root_support_language"
+      ? "transfigure"
+      : "preserve",
     visible_lineage_evidence: item.identity_id === "paired_expressive_eyes"
       ? "Both eyes remain separate warm alert and immediately visible."
       : item.identity_id === "fenestrated_leaf_windows"
-        ? "Three broad literal openings remain visibly cut through the dominant motif."
-        : "Two support arcs visibly descend from the earlier fibrous root bundles.",
+      ? "Three broad literal openings remain visibly cut through the dominant motif."
+      : "Two support arcs visibly descend from the earlier fibrous root bundles.",
   }));
   evolvedV25Raw.shape_budget_contract = {
     primary_shapes: [
       {
         shape_id: "ascending_ribbon_body",
         source_basis: "the Adult slender mantle and focal line",
-        stage_expression: "one tall clean ribbon curve defines the complete apex silhouette",
+        stage_expression:
+          "one tall clean ribbon curve defines the complete apex silhouette",
         visual_role: "dominant",
       },
       {
         shape_id: "balanced_root_crescent",
         source_basis: "the Adult paired root counter-arcs",
-        stage_expression: "one low crescent counterbalances the ascending body line",
+        stage_expression:
+          "one low crescent counterbalances the ascending body line",
         visual_role: "counterbalance",
       },
     ],
     dominant_motif: {
       source_basis: "the Adult mantle with literal fenestrated openings",
-      stage_expression: "one elongated mantle carries three oversized negative-space windows",
+      stage_expression:
+        "one elongated mantle carries three oversized negative-space windows",
     },
     identity_focal_structure: {
       source_read: "the Adult paired eyes and calm companion gaze",
-      preserved_semantics: "two separate eyes preserve warmth intelligence and alert companionship",
-      proportion_maturation: "the eyes become one sixth of the longer focal plane while remaining paired",
-      stage_expression: "two small composed eyes anchor the upper turn of the ribbon silhouette",
+      preserved_semantics:
+        "two separate eyes preserve warmth intelligence and alert companionship",
+      proportion_maturation:
+        "the eyes become one sixth of the longer focal plane while remaining paired",
+      stage_expression:
+        "two small composed eyes anchor the upper turn of the ribbon silhouette",
     },
     simplification_actions: [
       {
@@ -5137,37 +7135,51 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   };
   evolvedV25Raw.maturity_contract = {
     target_read: "apex",
-    identity_focal_maturation: "The paired gaze becomes smaller relative to a longer fully composed focal plane.",
-    proportion_delta: "Eye height shifts from one fifth to one sixth while the body changes from low curve to tall ribbon.",
-    body_maturation: "The Adult crawler reorganizes into a slender complete apex line without added physical bulk.",
-    posture_maturation: "A still ascending curve replaces the Adult forward lean with effortless vertical control.",
-    preserved_personality: "Warm intelligent confidence remains within the calm final authority.",
-    stage_delta: "The intermediate mobile curve becomes one complete controlled silhouette with final proportions.",
+    identity_focal_maturation:
+      "The paired gaze becomes smaller relative to a longer fully composed focal plane.",
+    proportion_delta:
+      "Eye height shifts from one fifth to one sixth while the body changes from low curve to tall ribbon.",
+    body_maturation:
+      "The Adult crawler reorganizes into a slender complete apex line without added physical bulk.",
+    posture_maturation:
+      "A still ascending curve replaces the Adult forward lean with effortless vertical control.",
+    preserved_personality:
+      "Warm intelligent confidence remains within the calm final authority.",
+    stage_delta:
+      "The intermediate mobile curve becomes one complete controlled silhouette with final proportions.",
   };
   evolvedV25Raw.presence_contract = {
     presence_tier: "apex",
-    apex_thesis: "An elegant dependable nature sovereign whose final power reads through restraint and perfect control.",
+    apex_thesis:
+      "An elegant dependable nature sovereign whose final power reads through restraint and perfect control.",
     presence_channels: ["silhouette_line", "negative_space"],
     channel_evidence: [
       {
         channel: "silhouette_line",
-        drawable_evidence: "One tall uninterrupted ribbon curve carries the entire first read.",
+        drawable_evidence:
+          "One tall uninterrupted ribbon curve carries the entire first read.",
       },
       {
         channel: "negative_space",
-        drawable_evidence: "Three oversized source-derived windows create a calm ceremonial rhythm.",
+        drawable_evidence:
+          "Three oversized source-derived windows create a calm ceremonial rhythm.",
       },
     ],
-    shape_hierarchy: "The tall ribbon reads first, three windows second, and paired focal gaze third.",
-    authority_pose: "The slender body rises in one still controlled curve without spread limbs or bulk.",
-    reliability_cue: "A low source-derived crescent visibly counterbalances the tall compact body.",
+    shape_hierarchy:
+      "The tall ribbon reads first, three windows second, and paired focal gaze third.",
+    authority_pose:
+      "The slender body rises in one still controlled curve without spread limbs or bulk.",
+    reliability_cue:
+      "A low source-derived crescent visibly counterbalances the tall compact body.",
   };
   evolvedV25Raw.vfx_palette = ["gold", "violet"];
   evolvedV25Raw.body_height_cm = 150;
   evolvedV25Raw.height_change_rationale =
     "The final body becomes shorter than Adult because its wide crawler mass compacts into a slender upright ribbon.";
-  evolvedV25Raw.strike_vfx.brief = "a gold fenestrated mantle sweep with a dark leaf contour";
-  evolvedV25Raw.surge_vfx.brief = "a violet root-crescent impact that closes in two clean segments";
+  evolvedV25Raw.strike_vfx.brief =
+    "a gold fenestrated mantle sweep with a dark leaf contour";
+  evolvedV25Raw.surge_vfx.brief =
+    "a violet root-crescent impact that closes in two clean segments";
 
   const evolvedV25 = validateEvolutionPlan(evolvedV25Raw, {
     targetStage: 3,
@@ -5179,19 +7191,24 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     priorStrikeEffectId: "armor_pierce",
     priorSurgeEffectId: "slow",
   });
-  assert.equal(evolvedV25.plan.body_height_cm, 150, "Evolved v25 boleh lebih pendek secara bounded");
+  assert.equal(
+    evolvedV25.plan.body_height_cm,
+    150,
+    "Evolved v25 boleh lebih pendek secara bounded",
+  );
   assert.equal(evolvedV25.plan.presence_contract.presence_tier, "apex");
 
   assert.throws(
-    () => validateEvolutionPlan(evolvedV25Raw, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 25,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorIdentityInvariants: adultV25.plan.identity_invariants,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(evolvedV25Raw, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 25,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorIdentityInvariants: adultV25.plan.identity_invariants,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /prior Shape Budget/,
   );
 
@@ -5201,107 +7218,127 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     purpose: "one compact identity accent around the paired gaze",
   }];
   assert.throws(
-    () => validateEvolutionPlan(detailGrowth, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 25,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorIdentityInvariants: adultV25.plan.identity_invariants,
-      priorShapeBudgetContract: adultV25.plan.shape_budget_contract,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(detailGrowth, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 25,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorIdentityInvariants: adultV25.plan.identity_invariants,
+        priorShapeBudgetContract: adultV25.plan.shape_budget_contract,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /tidak boleh menambah detail zone/,
   );
 
   const duplicateChannels = structuredClone(v25Raw);
-  duplicateChannels.presence_contract.presence_channels = ["posture", "posture"];
+  duplicateChannels.presence_contract.presence_channels = [
+    "posture",
+    "posture",
+  ];
   duplicateChannels.presence_contract.channel_evidence[0].channel = "posture";
   duplicateChannels.presence_contract.channel_evidence[1].channel = "posture";
   assert.throws(
-    () => validateEvolutionPlan(duplicateChannels, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 25,
-    }),
+    () =>
+      validateEvolutionPlan(duplicateChannels, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 25,
+      }),
     /presence_channels/,
   );
 
   const auraLeak = structuredClone(v25Raw);
-  auraLeak.presence_contract.aura_architecture = "a violet halo around every pose";
+  auraLeak.presence_contract.aura_architecture =
+    "a violet halo around every pose";
   assert.throws(
-    () => validateEvolutionPlan(auraLeak, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 25,
-    }),
+    () =>
+      validateEvolutionPlan(auraLeak, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 25,
+      }),
     /melarang aura/,
   );
 
   const auraInBrief = structuredClone(v25Raw);
   auraInBrief.stage_brief += " A violet aura surrounds the body.";
   assert.throws(
-    () => validateEvolutionPlan(auraInBrief, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 25,
-    }),
+    () =>
+      validateEvolutionPlan(auraInBrief, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 25,
+      }),
     /character cells/,
   );
   const explicitNoAura = structuredClone(v25Raw);
   explicitNoAura.stage_brief += " The character has no aura and no glow.";
-  assert.doesNotThrow(() => validateEvolutionPlan(explicitNoAura, {
-    targetStage: 2,
-    priorHeightCm: 150,
-    contractVersion: 25,
-  }));
+  assert.doesNotThrow(() =>
+    validateEvolutionPlan(explicitNoAura, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 25,
+    })
+  );
 
   const characterGlow = structuredClone(v25Raw);
   characterGlow.outer_contour_change += " The entire contour glows violet.";
   assert.throws(
-    () => validateEvolutionPlan(characterGlow, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 25,
-    }),
+    () =>
+      validateEvolutionPlan(characterGlow, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 25,
+      }),
     /aura\/glow\/particles/,
   );
 
   const overDetailed = structuredClone(v25Raw);
-  overDetailed.outer_contour_change += " Add a highly detailed fringe around every edge.";
+  overDetailed.outer_contour_change +=
+    " Add a highly detailed fringe around every edge.";
   assert.throws(
-    () => validateEvolutionPlan(overDetailed, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 25,
-    }),
+    () =>
+      validateEvolutionPlan(overDetailed, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 25,
+      }),
     /over-detail/,
   );
 
   const tooShort = structuredClone(evolvedV25Raw);
   tooShort.body_height_cm = 130;
   assert.throws(
-    () => validateEvolutionPlan(tooShort, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 25,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorIdentityInvariants: adultV25.plan.identity_invariants,
-      priorShapeBudgetContract: adultV25.plan.shape_budget_contract,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(tooShort, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 25,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorIdentityInvariants: adultV25.plan.identity_invariants,
+        priorShapeBudgetContract: adultV25.plan.shape_budget_contract,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
     /di luar band/,
   );
 
   const v26Raw = structuredClone(v25Raw);
   v26Raw.mobility_contract = {
-    locomotion_mode: "four-point walking gait using transformed source supports",
-    source_derivation: "the original clustered base becomes four discrete load-bearing supports",
-    support_geometry: "four short separated supports with visible negative space between them",
-    movement_read: "a viewer can point to four limbs that clearly lift and step",
-    idle_stability: "the body rests on those four points without fusing into a base",
-    battle_mobility: "it advances, pivots, and dodges by stepping those same supports",
+    locomotion_mode:
+      "four-point walking gait using transformed source supports",
+    source_derivation:
+      "the original clustered base becomes four discrete load-bearing supports",
+    support_geometry:
+      "four short separated supports with visible negative space between them",
+    movement_read:
+      "a viewer can point to four limbs that clearly lift and step",
+    idle_stability:
+      "the body rests on those four points without fusing into a base",
+    battle_mobility:
+      "it advances, pivots, and dodges by stepping those same supports",
   };
   const adultV26 = validateEvolutionPlan(v26Raw, {
     targetStage: 2,
@@ -5309,7 +7346,10 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     contractVersion: 26,
   });
   adultV26.plan.target_stage = 2;
-  assert.equal(adultV26.plan.mobility_contract.locomotion_mode.split(" ")[0], "four-point");
+  assert.equal(
+    adultV26.plan.mobility_contract.locomotion_mode.split(" ")[0],
+    "four-point",
+  );
   const shortMode = structuredClone(v26Raw);
   shortMode.mobility_contract.locomotion_mode = "rooted_walk";
   assert.equal(
@@ -5322,19 +7362,33 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   );
 
   const compactPrior = compactPriorEvolutionDesign(adultV26.plan);
-  assert.ok(compactPrior.identity_invariants.every((item) =>
-    item.identity_id && item.source_truth && item.maturation_path));
-  assert.equal(compactPrior.mobility_contract.locomotion_mode.split(" ")[0], "four-point");
-  assert.ok("maturity_contract" in compactPrior && "presence_contract" in compactPrior);
+  assert.ok(
+    compactPrior.identity_invariants.every((item) =>
+      item.identity_id && item.source_truth && item.maturation_path
+    ),
+  );
+  assert.equal(
+    compactPrior.mobility_contract.locomotion_mode.split(" ")[0],
+    "four-point",
+  );
+  assert.ok(
+    "maturity_contract" in compactPrior && "presence_contract" in compactPrior,
+  );
   assert.ok(!JSON.stringify(compactPrior).includes("current_expression"));
   assert.ok(!JSON.stringify(compactPrior).includes("visible_lineage_evidence"));
 
   const promptV26 = assembleEvolvePrompt(
     bundel.v26.sprite_sheet_evolve,
     adultV26.plan,
-    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+    {
+      species_key: "plant_organic_monstera_potted",
+      color_bucket: "cool_green",
+    },
   );
-  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV26), "sprite_sheet_evolve v26 masih punya placeholder");
+  assert.ok(
+    !/\{\{[a-z_]+\}\}/.test(promptV26),
+    "sprite_sheet_evolve v26 masih punya placeholder",
+  );
   assert.ok(promptV26.includes("MOBILITY CONTRACT â€” MUST BE VISIBLE"));
   assert.ok(promptV26.includes("four-point walking gait"));
   assert.ok(promptV26.includes("SHAPE BUDGET â€” TWO OR THREE FIRST READS"));
@@ -5345,51 +7399,62 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     "prompt evolve v26 tidak boleh membawa nama franchise",
   );
   assert.equal(
-    bundel.v26.vision_evolve_schema.properties.shape_budget_contract.properties.primary_shapes.maxItems,
+    bundel.v26.vision_evolve_schema.properties.shape_budget_contract.properties
+      .primary_shapes.maxItems,
     3,
     "v26 tetap memakai Shape Budget 2â€“3, bukan mengunci dua shape",
   );
 
   const planted = structuredClone(v26Raw);
-  planted.mobility_contract.locomotion_mode = "subtle shifts while remaining planted";
-  planted.mobility_contract.idle_stability = "fused to a root mound and a stone pedestal";
+  planted.mobility_contract.locomotion_mode =
+    "subtle shifts while remaining planted";
+  planted.mobility_contract.idle_stability =
+    "fused to a root mound and a stone pedestal";
   assert.throws(
-    () => validateEvolutionPlan(planted, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 26,
-    }),
+    () =>
+      validateEvolutionPlan(planted, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 26,
+      }),
     /terpatri|immobile/,
   );
   const neverFused = structuredClone(v26Raw);
   neverFused.mobility_contract.idle_stability =
     "Stands firmly on four broad pads, with visible negative space, never fused to the ground.";
-  assert.doesNotThrow(() => validateEvolutionPlan(neverFused, {
-    targetStage: 2,
-    priorHeightCm: 150,
-    contractVersion: 26,
-  }));
+  assert.doesNotThrow(() =>
+    validateEvolutionPlan(neverFused, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 26,
+    })
+  );
 
   const rootMass = structuredClone(v26Raw);
   rootMass.mobility_contract.locomotion_mode = "root_mass_glide";
   rootMass.mobility_contract.support_geometry =
     "a single broad root-mass that makes continuous ground contact";
   assert.throws(
-    () => validateEvolutionPlan(rootMass, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 26,
-    }),
+    () =>
+      validateEvolutionPlan(rootMass, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 26,
+      }),
     /terpatri|immobile/,
   );
 
   const v27Face = {
     age_read: "adolescent",
-    eye_to_face_ratio: "eyes recede to occupy less of the face than the hatchling leaf-face",
-    eye_construction: "longer lids and a clearer brow instead of the hatchling eye sticker",
+    eye_to_face_ratio:
+      "eyes recede to occupy less of the face than the hatchling leaf-face",
+    eye_construction:
+      "longer lids and a clearer brow instead of the hatchling eye sticker",
     craniofacial_mass: "more cheek and brow plate around the same paired gaze",
-    mouth_to_eye_relationship: "mouth grows from a speck into a readable feature below the eyes",
-    prior_copy_forbidden: "do not paste the hatchling oversized almonds onto the adult body",
+    mouth_to_eye_relationship:
+      "mouth grows from a speck into a readable feature below the eyes",
+    prior_copy_forbidden:
+      "do not paste the hatchling oversized almonds onto the adult body",
   };
   const v27Raw = structuredClone(v26Raw);
   v27Raw.face_age_contract = v27Face;
@@ -5402,9 +7467,15 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   const promptV27 = assembleEvolvePrompt(
     bundel.v27.sprite_sheet_evolve,
     adultV27.plan,
-    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+    {
+      species_key: "plant_organic_monstera_potted",
+      color_bucket: "cool_green",
+    },
   );
-  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV27), "sprite_sheet_evolve v27 masih punya placeholder");
+  assert.ok(
+    !/\{\{[a-z_]+\}\}/.test(promptV27),
+    "sprite_sheet_evolve v27 masih punya placeholder",
+  );
   assert.ok(promptV27.includes("FACE AGE CONTRACT â€” MUST BE VISIBLE"));
   assert.ok(promptV27.includes("eyes recede to occupy less"));
   assert.ok(
@@ -5414,39 +7485,46 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     "prompt evolve v27 tidak boleh membawa nama franchise",
   );
   assert.throws(
-    () => validateEvolutionPlan(v26Raw, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 27,
-    }),
+    () =>
+      validateEvolutionPlan(v26Raw, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 27,
+      }),
     /face_age_contract/,
   );
   const wrongAge = structuredClone(v27Raw);
   wrongAge.face_age_contract.age_read = "mature";
   assert.throws(
-    () => validateEvolutionPlan(wrongAge, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 27,
-    }),
+    () =>
+      validateEvolutionPlan(wrongAge, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 27,
+      }),
     /age_read/,
   );
   const copiedEyes = structuredClone(v27Raw);
-  copiedEyes.face_age_contract.eye_to_face_ratio = "same large eyes as the hatchling";
+  copiedEyes.face_age_contract.eye_to_face_ratio =
+    "same large eyes as the hatchling";
   assert.throws(
-    () => validateEvolutionPlan(copiedEyes, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 27,
-    }),
+    () =>
+      validateEvolutionPlan(copiedEyes, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 27,
+      }),
     /grafis mata/,
   );
 
   const v28Break = {
-    prior_silhouette_read: "upright four-leg canopy walker with mass in the leaf crown",
+    prior_silhouette_read:
+      "upright four-leg canopy walker with mass in the leaf crown",
     forbidden_copy: "the adult four-leg canopy walker stance and limb count",
-    new_contour_read: "a long coiled stem body with the canopy as a trailing mantle",
-    topology_change: "vertical stalk and walking legs become one coiling tethered body axis",
+    new_contour_read:
+      "a long coiled stem body with the canopy as a trailing mantle",
+    topology_change:
+      "vertical stalk and walking legs become one coiling tethered body axis",
   };
   const v28Raw = structuredClone(v27Raw);
   v28Raw.silhouette_break_contract = v28Break;
@@ -5455,13 +7533,21 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     priorHeightCm: 150,
     contractVersion: 28,
   });
-  assert.ok(adultV28.plan.silhouette_break_contract.topology_change.includes("coiling"));
+  assert.ok(
+    adultV28.plan.silhouette_break_contract.topology_change.includes("coiling"),
+  );
   const promptV28 = assembleEvolvePrompt(
     bundel.v28.sprite_sheet_evolve,
     adultV28.plan,
-    { species_key: "plant_organic_monstera_potted", color_bucket: "cool_green" },
+    {
+      species_key: "plant_organic_monstera_potted",
+      color_bucket: "cool_green",
+    },
   );
-  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV28), "sprite_sheet_evolve v28 masih punya placeholder");
+  assert.ok(
+    !/\{\{[a-z_]+\}\}/.test(promptV28),
+    "sprite_sheet_evolve v28 masih punya placeholder",
+  );
   assert.ok(promptV28.includes("SILHOUETTE BREAK â€” MUST BE VISIBLE AT 96 PX"));
   assert.ok(promptV28.includes("long coiled stem body"));
   assert.ok(
@@ -5471,22 +7557,24 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     "prompt evolve v28 tidak boleh membawa nama franchise",
   );
   assert.throws(
-    () => validateEvolutionPlan(v27Raw, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 28,
-    }),
+    () =>
+      validateEvolutionPlan(v27Raw, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 28,
+      }),
     /silhouette_break_contract/,
   );
   const copiedWalker = structuredClone(v28Raw);
   copiedWalker.silhouette_break_contract.new_contour_read =
     "keep the adult walker stance with a thicker trunk";
   assert.throws(
-    () => validateEvolutionPlan(copiedWalker, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 28,
-    }),
+    () =>
+      validateEvolutionPlan(copiedWalker, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 28,
+      }),
     /menyalin siluet walker/,
   );
   const evolvedWalkCopy = structuredClone(v28Raw);
@@ -5501,30 +7589,36 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   evolvedWalkCopy.surge_effect_id = "drain";
   evolvedWalkCopy.body_height_cm = 220;
   assert.throws(
-    () => validateEvolutionPlan(evolvedWalkCopy, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 28,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorLocomotionMode: "rooted_walk",
-      priorIdentityInvariants: adultV28.plan.identity_invariants,
-      priorShapeBudgetContract: adultV28.plan.shape_budget_contract,
-      priorStrikeName: adultV28.plan.strike_name,
-      priorSurgeName: adultV28.plan.surge_name,
-      priorStrikeEffectId: adultV28.plan.strike_effect_id,
-      priorSurgeEffectId: adultV28.plan.surge_effect_id,
-    }),
+    () =>
+      validateEvolutionPlan(evolvedWalkCopy, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 28,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorLocomotionMode: "rooted_walk",
+        priorIdentityInvariants: adultV28.plan.identity_invariants,
+        priorShapeBudgetContract: adultV28.plan.shape_budget_contract,
+        priorStrikeName: adultV28.plan.strike_name,
+        priorSurgeName: adultV28.plan.surge_name,
+        priorStrikeEffectId: adultV28.plan.strike_effect_id,
+        priorSurgeEffectId: adultV28.plan.surge_effect_id,
+      }),
     /gait kaki Adult/,
   );
 
   const v29Break = {
     kind_noun: "canine",
-    source_kind_read: "a golden canine companion with a compact four-leg stance",
-    continued_kind_read: "a majestic canine guardian with a heavier mane and longer body",
-    prior_silhouette_read: "compact fluffy quadruped with mass in the chest ruff",
+    source_kind_read:
+      "a golden canine companion with a compact four-leg stance",
+    continued_kind_read:
+      "a majestic canine guardian with a heavier mane and longer body",
+    prior_silhouette_read:
+      "compact fluffy quadruped with mass in the chest ruff",
     forbidden_copy: "the squat puppy outline with short legs and a round torso",
-    new_contour_read: "a longer athletic quadruped with a cape-like mane and sweeping tail",
-    topology_change: "mass shifts from round puppy core to elongated guardian body; same support class",
+    new_contour_read:
+      "a longer athletic quadruped with a cape-like mane and sweeping tail",
+    topology_change:
+      "mass shifts from round puppy core to elongated guardian body; same support class",
   };
   const v29Raw = structuredClone(v28Raw);
   v29Raw.silhouette_break_contract = v29Break;
@@ -5537,10 +7631,18 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   const promptV29 = assembleEvolvePrompt(
     bundel.v29.sprite_sheet_evolve,
     adultV29.plan,
-    { species_key: "dog_canine_retriever_standing", color_bucket: "warm_yellow" },
+    {
+      species_key: "dog_canine_retriever_standing",
+      color_bucket: "warm_yellow",
+    },
   );
-  assert.ok(!/\{\{[a-z_]+\}\}/.test(promptV29), "sprite_sheet_evolve v29 masih punya placeholder");
-  assert.ok(promptV29.includes("Kind noun (keep this category of thing): canine"));
+  assert.ok(
+    !/\{\{[a-z_]+\}\}/.test(promptV29),
+    "sprite_sheet_evolve v29 masih punya placeholder",
+  );
+  assert.ok(
+    promptV29.includes("Kind noun (keep this category of thing): canine"),
+  );
   assert.ok(
     !/Pok[eÃ©]mon|Digimon/i.test(
       `${bundel.v29.vision_evolve_system}\n${bundel.v29.sprite_sheet_evolve}`,
@@ -5556,10 +7658,14 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     priorSuggestedName: "Sunhound",
   });
   assert.equal(adultV30.plan.suggested_name, "Sunhundor");
-  assert.equal(bundel.v30?.vision_system, bundel.v20?.vision_system, "v30 capture Vision mewarisi v20");
+  assert.equal(
+    bundel.v30?.vision_system,
+    bundel.v20?.vision_system,
+    "v30 capture Vision mewarisi v20",
+  );
   assert.ok(
-    bundel.v30?.vision_evolve_schema?.required?.includes("suggested_name")
-      && bundel.v30?.vision_evolve_system?.includes("NAME LINEAGE"),
+    bundel.v30?.vision_evolve_schema?.required?.includes("suggested_name") &&
+      bundel.v30?.vision_evolve_system?.includes("NAME LINEAGE"),
     "v30 Evolution Plan harus membawa suggested_name",
   );
   assert.ok(
@@ -5569,22 +7675,24 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     "prompt evolve v30 tidak boleh membawa nama franchise",
   );
   assert.throws(
-    () => validateEvolutionPlan(structuredClone(v29Raw), {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 30,
-    }),
+    () =>
+      validateEvolutionPlan(structuredClone(v29Raw), {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 30,
+      }),
     /suggested_name/,
   );
   const copiedName = structuredClone(v30Raw);
   copiedName.suggested_name = "Sunhound";
   assert.throws(
-    () => validateEvolutionPlan(copiedName, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 30,
-      priorSuggestedName: "Sunhound",
-    }),
+    () =>
+      validateEvolutionPlan(copiedName, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 30,
+        priorSuggestedName: "Sunhound",
+      }),
     /suggested_name harus baru/,
   );
   const evolvedWalkKeep = structuredClone(evolvedV25Raw);
@@ -5603,19 +7711,20 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   evolvedWalkKeep.strike_name = "Canopy Crush";
   evolvedWalkKeep.surge_name = "Verdant Coil";
   assert.doesNotThrow(
-    () => validateEvolutionPlan(evolvedWalkKeep, {
-      targetStage: 3,
-      priorHeightCm: 185,
-      contractVersion: 29,
-      priorTransformationArchetype: "rooted_to_mobile",
-      priorLocomotionMode: "Four-legged stride",
-      priorIdentityInvariants: adultV25.plan.identity_invariants,
-      priorShapeBudgetContract: adultV25.plan.shape_budget_contract,
-      priorStrikeName: adultV25.plan.strike_name,
-      priorSurgeName: adultV25.plan.surge_name,
-      priorStrikeEffectId: "armor_pierce",
-      priorSurgeEffectId: "slow",
-    }),
+    () =>
+      validateEvolutionPlan(evolvedWalkKeep, {
+        targetStage: 3,
+        priorHeightCm: 185,
+        contractVersion: 29,
+        priorTransformationArchetype: "rooted_to_mobile",
+        priorLocomotionMode: "Four-legged stride",
+        priorIdentityInvariants: adultV25.plan.identity_invariants,
+        priorShapeBudgetContract: adultV25.plan.shape_budget_contract,
+        priorStrikeName: adultV25.plan.strike_name,
+        priorSurgeName: adultV25.plan.surge_name,
+        priorStrikeEffectId: "armor_pierce",
+        priorSurgeEffectId: "slow",
+      }),
   );
   const snakeSwap = structuredClone(v29Raw);
   snakeSwap.silhouette_break_contract.continued_kind_read =
@@ -5623,22 +7732,24 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   snakeSwap.silhouette_break_contract.new_contour_read =
     "a limbless coil with a trailing fan tail";
   assert.throws(
-    () => validateEvolutionPlan(snakeSwap, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 29,
-    }),
+    () =>
+      validateEvolutionPlan(snakeSwap, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 29,
+      }),
     /ganti kategori/,
   );
   const copiedOutline = structuredClone(v29Raw);
   copiedOutline.silhouette_break_contract.new_contour_read =
     "keep the current outline with a thicker mane";
   assert.throws(
-    () => validateEvolutionPlan(copiedOutline, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 29,
-    }),
+    () =>
+      validateEvolutionPlan(copiedOutline, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 29,
+      }),
     /outline 96 px/,
   );
   const vesselSwap = structuredClone(v29Raw);
@@ -5650,21 +7761,23 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
   vesselSwap.silhouette_break_contract.new_contour_read =
     "a snake-like coil replacing the jug silhouette";
   assert.throws(
-    () => validateEvolutionPlan(vesselSwap, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 29,
-    }),
+    () =>
+      validateEvolutionPlan(vesselSwap, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 29,
+      }),
     /ganti kategori|kind_noun/,
   );
 
   const missingMobility = structuredClone(v25Raw);
   assert.throws(
-    () => validateEvolutionPlan(missingMobility, {
-      targetStage: 2,
-      priorHeightCm: 150,
-      contractVersion: 26,
-    }),
+    () =>
+      validateEvolutionPlan(missingMobility, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 26,
+      }),
     /mobility_contract/,
   );
 
@@ -5688,17 +7801,28 @@ console.log("36. evolution Plan validator, prompt placeholders, dan bundel v21â€
     "ruang transparan reference evolusi harus exact chroma green",
   );
   assert.deepEqual(
-    [...decodedReference.bitmap.slice((4 * decodedReference.width + 4) * 4, (4 * decodedReference.width + 4) * 4 + 4)],
+    [...decodedReference.bitmap.slice(
+      (4 * decodedReference.width + 4) * 4,
+      (4 * decodedReference.width + 4) * 4 + 4,
+    )],
     [220, 40, 30, 255],
     "piksel tubuh Idle harus bertahan saat reference diratakan",
   );
 }
 
-console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-active, no refund");
+console.log(
+  "37. evolution hardening: pre-reserve, dispatch, callback, one-active, no refund",
+);
 {
   const { readFile } = await import("node:fs/promises");
-  const evolveSrc = await readFile("backend/supabase/functions/evolve_anima/index.ts", "utf8");
-  const webhookSrc = await readFile("backend/supabase/functions/replicate_webhook/index.ts", "utf8");
+  const evolveSrc = await readFile(
+    "backend/supabase/functions/evolve_anima/index.ts",
+    "utf8",
+  );
+  const webhookSrc = await readFile(
+    "backend/supabase/functions/replicate_webhook/index.ts",
+    "utf8",
+  );
   const quotaSrc = await readFile("backend/tests/quota_rules.sql", "utf8");
   const migSrc = await readFile(
     "backend/supabase/migrations/20260817095700_evolution_art_pipeline.sql",
@@ -5709,11 +7833,11 @@ console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-activ
     "utf8",
   );
   assert.ok(
-    goLiveSrc.includes("anima_evolution_locks")
-      && goLiveSrc.includes('"v29"')
-      && goLiveSrc.includes("feature_evolution")
-      && goLiveSrc.includes("evolution_version set default 1")
-      && goLiveSrc.includes("function public.apply_evolution_lock"),
+    goLiveSrc.includes("anima_evolution_locks") &&
+      goLiveSrc.includes('"v29"') &&
+      goLiveSrc.includes("feature_evolution") &&
+      goLiveSrc.includes("evolution_version set default 1") &&
+      goLiveSrc.includes("function public.apply_evolution_lock"),
     "go-live migration harus menyalakan v29, default version 1, dan tabel lock",
   );
   const nameLineageSrc = await readFile(
@@ -5721,9 +7845,9 @@ console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-activ
     "utf8",
   );
   assert.ok(
-    nameLineageSrc.includes('"v30"')
-      && nameLineageSrc.includes("suggested_name")
-      && nameLineageSrc.includes("Veridara"),
+    nameLineageSrc.includes('"v30"') &&
+      nameLineageSrc.includes("suggested_name") &&
+      nameLineageSrc.includes("Veridara"),
     "migrasi v30 harus mempromosikan prompt dan mengisi nama lock",
   );
   const {
@@ -5737,38 +7861,43 @@ console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-activ
 
   const visionIdx = evolveSrc.indexOf("await jalankanPrediksi");
   const preReserveIdx = evolveSrc.indexOf("p_plan: null");
-  assert.ok(preReserveIdx > -1 && preReserveIdx < visionIdx, "pre-reserve harus sebelum Vision");
   assert.ok(
-    evolveSrc.includes("if (!pre.planning_claimed)")
-      && migSrc.includes("'planning_claimed', false"),
+    preReserveIdx > -1 && preReserveIdx < visionIdx,
+    "pre-reserve harus sebelum Vision",
+  );
+  assert.ok(
+    evolveSrc.includes("if (!pre.planning_claimed)") &&
+      migSrc.includes("'planning_claimed', false"),
     "lease Vision harus atomik lintas edge isolate",
   );
   assert.ok(
-    evolveSrc.includes("body.resume_only === true")
-      && evolveSrc.includes('db.rpc("resume_evolution"')
-      && migSrc.includes("function public.resume_evolution")
-      && migSrc.includes("revoke all on function public.resume_evolution")
-      && quotaSrc.includes("resume lintas device harus menempel"),
+    evolveSrc.includes("body.resume_only === true") &&
+      evolveSrc.includes('db.rpc("resume_evolution"') &&
+      migSrc.includes("function public.resume_evolution") &&
+      migSrc.includes("revoke all on function public.resume_evolution") &&
+      quotaSrc.includes("resume lintas device harus menempel"),
     "resume tanpa state lokal harus menempel ke generation aktif tanpa membuka spend baru",
   );
   assert.ok(
-    evolveSrc.includes("fetchPriorEvolutionPlan")
-      && evolveSrc.includes('.eq("target_stage", priorStage)')
-      && evolveSrc.includes("priorTransformationArchetype: priorArchetype"),
+    evolveSrc.includes("fetchPriorEvolutionPlan") &&
+      evolveSrc.includes('.eq("target_stage", priorStage)') &&
+      evolveSrc.includes("priorTransformationArchetype: priorArchetype"),
     "Evolved harus membaca Plan Adult dan menolak archetype yang berulang",
   );
   assert.ok(
-    evolveSrc.includes("activePromptVersion")
-      && evolveSrc.includes("genRow?.prompt_version")
-      && evolveSrc.includes("hasStoredPlan || genRow?.vision_started_at")
-      && evolveSrc.includes("const contractVersion = Number.parseInt(activePromptVersion")
-      && evolveSrc.includes("contractVersion,"),
+    evolveSrc.includes("activePromptVersion") &&
+      evolveSrc.includes("genRow?.prompt_version") &&
+      evolveSrc.includes("hasStoredPlan || genRow?.vision_started_at") &&
+      evolveSrc.includes(
+        "const contractVersion = Number.parseInt(activePromptVersion",
+      ) &&
+      evolveSrc.includes("contractVersion,"),
     "resume Plan harus memakai kontrak prompt yang tersimpan, bukan config terbaru",
   );
   assert.ok(
-    evolveSrc.includes("priorIdentityInvariants")
-      && evolveSrc.includes("EVOLUTION_PRIOR_IDENTITY_MISSING")
-      && evolveSrc.indexOf("EVOLUTION_PRIOR_IDENTITY_MISSING") < visionIdx,
+    evolveSrc.includes("priorIdentityInvariants") &&
+      evolveSrc.includes("EVOLUTION_PRIOR_IDENTITY_MISSING") &&
+      evolveSrc.indexOf("EVOLUTION_PRIOR_IDENTITY_MISSING") < visionIdx,
     "Evolved v23 harus menolak prior identity yang hilang sebelum Vision berbayar",
   );
   assert.ok(
@@ -5776,83 +7905,110 @@ console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-activ
     "Evolved v24 harus memberi Vision kontrak Adult lewat compact prior Design",
   );
   assert.ok(
-    evolveSrc.includes("priorShapeBudgetContract")
-      && evolveSrc.includes("EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING")
-      && evolveSrc.includes("shape_budget_contract: priorShapeBudgetContract")
-      && evolveSrc.indexOf("EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING") < visionIdx,
+    evolveSrc.includes("priorShapeBudgetContract") &&
+      evolveSrc.includes("EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING") &&
+      evolveSrc.includes("shape_budget_contract: priorShapeBudgetContract") &&
+      evolveSrc.indexOf("EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING") < visionIdx,
     "Evolved v25 harus menolak Shape Budget Adult hilang dan mengirimkannya ke Vision",
   );
   assert.ok(
-    evolveSrc.includes("compactPriorEvolutionDesign")
-      && evolveSrc.includes("Copy source_truth, identity_role, and maturation_path exactly")
-      && evolveSrc.includes("Respond with compact JSON only")
-      && evolveSrc.includes("Finish every required key")
-      && evolveSrc.includes("age_read must be mature")
-      && evolveSrc.includes("If Adult walks on legs, Evolved must coil")
-      && evolveSrc.includes("contractVersion >= 29")
-      && evolveSrc.includes("Keep the photographed kind_noun"),
+    evolveSrc.includes("compactPriorEvolutionDesign") &&
+      evolveSrc.includes(
+        "Copy source_truth, identity_role, and maturation_path exactly",
+      ) &&
+      evolveSrc.includes("Respond with compact JSON only") &&
+      evolveSrc.includes("Finish every required key") &&
+      evolveSrc.includes("age_read must be mature") &&
+      evolveSrc.includes("If Adult walks on legs, Evolved must coil") &&
+      evolveSrc.includes("contractVersion >= 29") &&
+      evolveSrc.includes("Keep the photographed kind_noun"),
     "Evolved v26 coil exile tetap ada; v29 menggantinya dengan kind lock",
   );
   assert.ok(
-    evolveSrc.includes('db.rpc("apply_evolution_lock"')
-      && evolveSrc.indexOf("apply_evolution_lock") < visionIdx
-      && quotaSrc.includes("evolution-lock")
-      && quotaSrc.includes("apply_evolution_lock replay harus idempoten"),
+    evolveSrc.includes('db.rpc("apply_evolution_lock"') &&
+      evolveSrc.indexOf("apply_evolution_lock") < visionIdx &&
+      quotaSrc.includes("evolution-lock") &&
+      quotaSrc.includes("apply_evolution_lock replay harus idempoten"),
     "sheet terkunci harus commit sebelum Vision berbayar",
   );
   assert.ok(
-    evolveSrc.includes("suggestedNameOf")
-      && evolveSrc.includes("withSuggestedName")
-      && evolveSrc.includes("priorSuggestedName")
-      && evolveSrc.includes("Write suggested_name as a new 2-to-4 syllable")
-      && quotaSrc.includes("tanpa menimpa nickname"),
+    evolveSrc.includes("suggestedNameOf") &&
+      evolveSrc.includes("withSuggestedName") &&
+      evolveSrc.includes("priorSuggestedName") &&
+      evolveSrc.includes("Write suggested_name as a new 2-to-4 syllable") &&
+      quotaSrc.includes("tanpa menimpa nickname"),
     "Evolve v30 harus mengusulkan nama tanpa menimpa nickname di commit",
   );
   assert.ok(
-    evolveSrc.includes("validateEvolutionPlan(storedPlan, planValidationOptions)")
-      && evolveSrc.includes("EVOLUTION_STORED_PLAN_INVALID"),
+    evolveSrc.includes(
+      "validateEvolutionPlan(storedPlan, planValidationOptions)",
+    ) &&
+      evolveSrc.includes("EVOLUTION_STORED_PLAN_INVALID"),
     "stored Plan harus divalidasi ulang sebelum image generation",
   );
   assert.ok(
-    evolveSrc.indexOf("validateEvolutionPlan(storedPlan, planValidationOptions)")
-      < evolveSrc.indexOf("await mulaiGeneration"),
+    evolveSrc.indexOf(
+      "validateEvolutionPlan(storedPlan, planValidationOptions)",
+    ) <
+      evolveSrc.indexOf("await mulaiGeneration"),
     "stored Plan harus divalidasi sebelum image generation dimulai",
   );
 
   const claimIdx = evolveSrc.indexOf("claim_evolution_dispatch");
   const mulaiIdx = evolveSrc.indexOf("await mulaiGeneration");
-  assert.ok(claimIdx > -1 && claimIdx < mulaiIdx, "claim dispatch harus sebelum mulaiGeneration");
-
-  assert.ok(webhookSrc.includes("generation_id"), "webhook baca generation_id callback");
   assert.ok(
-    evolutionWebhookUrl("https://example.com/functions/v1/replicate_webhook", "abc-123")
+    claimIdx > -1 && claimIdx < mulaiIdx,
+    "claim dispatch harus sebelum mulaiGeneration",
+  );
+
+  assert.ok(
+    webhookSrc.includes("generation_id"),
+    "webhook baca generation_id callback",
+  );
+  assert.ok(
+    evolutionWebhookUrl(
+      "https://example.com/functions/v1/replicate_webhook",
+      "abc-123",
+    )
       .includes("generation_id=abc-123"),
     "evolutionWebhookUrl menempel generation_id",
   );
 
-  assert.ok(migSrc.includes("animas_one_evolving_per_owner_idx"), "partial unique one-evolving index");
-  assert.ok(migSrc.includes("anima_team_members"), "combat gate pakai anima_team_members");
-  assert.ok(migSrc.includes("dispatch_started_at"), "dispatch_started_at kolom ada");
   assert.ok(
-    evolveSrc.includes("buildEvolutionIdleReference") && evolveSrc.includes("evolution_refs"),
+    migSrc.includes("animas_one_evolving_per_owner_idx"),
+    "partial unique one-evolving index",
+  );
+  assert.ok(
+    migSrc.includes("anima_team_members"),
+    "combat gate pakai anima_team_members",
+  );
+  assert.ok(
+    migSrc.includes("dispatch_started_at"),
+    "dispatch_started_at kolom ada",
+  );
+  assert.ok(
+    evolveSrc.includes("buildEvolutionIdleReference") &&
+      evolveSrc.includes("evolution_refs"),
     "evolution wajib mengirim crop Idle privat, bukan full sheet",
   );
   assert.ok(
-    migSrc.includes("evolution_completion_timeout")
-      && migSrc.includes("evolution_dispatch_timeout")
-      && migSrc.includes("evolution_plan, reference_path, generation_id"),
+    migSrc.includes("evolution_completion_timeout") &&
+      migSrc.includes("evolution_dispatch_timeout") &&
+      migSrc.includes("evolution_plan, reference_path, generation_id"),
     "reference privat harus dipertahankan saat sukses dan dibersihkan saat timeout",
   );
   assert.ok(
-    quotaSrc.includes("evolution-fail")
-      && quotaSrc.includes("evolution-success")
-      && quotaSrc.includes("evolution-stage-three")
-      && quotaSrc.includes("EVOLUTION_PLAN_EFFECT_NOT_UPGRADE")
-      && quotaSrc.includes("client tidak boleh memanggil RPC evolusi"),
+    quotaSrc.includes("evolution-fail") &&
+      quotaSrc.includes("evolution-success") &&
+      quotaSrc.includes("evolution-stage-three") &&
+      quotaSrc.includes("EVOLUTION_PLAN_EFFECT_NOT_UPGRADE") &&
+      quotaSrc.includes("client tidak boleh memanggil RPC evolusi"),
     "quota_rules harus menguji rollback, commit, urutan stage, dan revoke evolusi",
   );
 
-  const evolveBranches = [...webhookSrc.matchAll(/if \(isEvolve\) \{([\s\S]*?\n    \})/g)];
+  const evolveBranches = [
+    ...webhookSrc.matchAll(/if \(isEvolve\) \{([\s\S]*?\n    \})/g),
+  ];
   assert.ok(evolveBranches.length >= 2, "webhook punya cabang isEvolve");
   for (const [, body] of evolveBranches) {
     assert.ok(!body.includes("refund_generation"), "evolve tidak refund");
@@ -5861,11 +8017,17 @@ console.log("37. evolution hardening: pre-reserve, dispatch, callback, one-activ
   assert.ok(evolutionFinalizeRetryable("unggah anima sheet gagal: timeout"));
   assert.ok(evolutionFinalizeRetryable("commit evolution gagal: db down"));
   assert.ok(
-    !evolutionFinalizeRetryable("commit evolution gagal: EVOLUTION_MANIFEST_MISMATCH"),
+    !evolutionFinalizeRetryable(
+      "commit evolution gagal: EVOLUTION_MANIFEST_MISMATCH",
+    ),
     "commit evolution permanen harus fail, bukan mengulang webhook",
   );
   assert.ok(!evolutionFinalizeRetryable("QA: sel ditolak"));
-  assert.ok(dispatchDefinitelyNotStarted(new Error("openai/gpt-image-2 create 401: bad token")));
+  assert.ok(
+    dispatchDefinitelyNotStarted(
+      new Error("openai/gpt-image-2 create 401: bad token"),
+    ),
+  );
   assert.ok(!dispatchDefinitelyNotStarted(new Error("fetch failed")));
 
   const ctx = buildEvolvePromptContext(
@@ -5911,9 +8073,19 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
   }));
 
   const base = { hp: 50, atk: 50, def: 50, spd: 50, special: 50 };
-  const legacyLv16 = growthMultiplier(16, { rulesVersion: 3, evolutionVersion: 0 });
-  assert.ok(Math.abs(legacyLv16 - 1.45) < 1e-9, "evolution_version=0 keeps legacy +0.15");
-  const adultCommitted = growthMultiplier(16, { rulesVersion: 3, evolutionVersion: 1, stage: 2 });
+  const legacyLv16 = growthMultiplier(16, {
+    rulesVersion: 3,
+    evolutionVersion: 0,
+  });
+  assert.ok(
+    Math.abs(legacyLv16 - 1.45) < 1e-9,
+    "evolution_version=0 keeps legacy +0.15",
+  );
+  const adultCommitted = growthMultiplier(16, {
+    rulesVersion: 3,
+    evolutionVersion: 1,
+    stage: 2,
+  });
   assert.ok(
     Math.abs(adultCommitted - (1 + 0.02 * 15) * ADULT_FORM_MULT) < 1e-9,
     "committed Adult uses form multiplier",
@@ -5956,7 +8128,10 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
 
   const favored = { ...hatchling, element: "spark" };
   const underdogWin = duelWinRate(favored, adult, 1024);
-  assert.ok(underdogWin > 0, `favorable hatchling needs nonzero path, got ${underdogWin}`);
+  assert.ok(
+    underdogWin > 0,
+    `favorable hatchling needs nonzero path, got ${underdogWin}`,
+  );
 
   let legacyState = {
     status: "active",
@@ -5981,12 +8156,25 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
     bot: createFighter(hatchling, 3),
   };
   const barrierTurn = resolveTurn(barrierState, "surge", "barrier-key");
-  const barrierFx = barrierTurn.events.find((event) => event.type === "move_effect" && event.effect_id === "barrier");
+  const barrierFx = barrierTurn.events.find((event) =>
+    event.type === "move_effect" && event.effect_id === "barrier"
+  );
   assert.ok(barrierFx, "surge barrier must emit move_effect");
-  assert.equal(barrierFx.remaining_turns, 2, "Adult barrier advertises 2 owner turns");
-  const attackIdx = barrierTurn.events.findIndex((event) => event.type === "attack");
-  const fxIdx = barrierTurn.events.findIndex((event) => event.type === "move_effect");
-  assert.ok(attackIdx >= 0 && fxIdx > attackIdx, "attack must precede move_effect events");
+  assert.equal(
+    barrierFx.remaining_turns,
+    2,
+    "Adult barrier advertises 2 owner turns",
+  );
+  const attackIdx = barrierTurn.events.findIndex((event) =>
+    event.type === "attack"
+  );
+  const fxIdx = barrierTurn.events.findIndex((event) =>
+    event.type === "move_effect"
+  );
+  assert.ok(
+    attackIdx >= 0 && fxIdx > attackIdx,
+    "attack must precede move_effect events",
+  );
 
   let poisonState = {
     status: "active",
@@ -6011,15 +8199,27 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
     }, 3),
   };
   const firstPoison = resolveTurn(poisonState, "strike", "refresh-key");
-  assert.ok(firstPoison.state.bot.statuses?.poison, "poison must land on bot after strike");
+  assert.ok(
+    firstPoison.state.bot.statuses?.poison,
+    "poison must land on bot after strike",
+  );
   const turnsAfterFirst = firstPoison.state.bot.statuses.poison.remaining_turns;
-  const strikeIdx = firstPoison.events.findIndex((event) => event.type === "attack");
+  const strikeIdx = firstPoison.events.findIndex((event) =>
+    event.type === "attack"
+  );
   const poisonFxIdx = firstPoison.events.findIndex(
     (event) => event.type === "move_effect" && event.effect_id === "poison",
   );
-  assert.ok(strikeIdx >= 0 && poisonFxIdx > strikeIdx, "attack must precede poison move_effect");
+  assert.ok(
+    strikeIdx >= 0 && poisonFxIdx > strikeIdx,
+    "attack must precede poison move_effect",
+  );
 
-  const secondPoison = resolveTurn(firstPoison.state, "strike", "refresh-key-2");
+  const secondPoison = resolveTurn(
+    firstPoison.state,
+    "strike",
+    "refresh-key-2",
+  );
   assert.equal(
     secondPoison.state.bot.statuses?.poison?.remaining_turns ?? 0,
     turnsAfterFirst,
@@ -6032,10 +8232,18 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
   let sawExpiry = false;
   for (let i = 0; i < 8 && tickState.status === "active"; i += 1) {
     const turn = resolveTurn(tickState, "guard", `tick-key-${i}`);
-    if (turn.events.some((event) => event.type === "status_tick" && event.effect_id === "poison")) {
+    if (
+      turn.events.some((event) =>
+        event.type === "status_tick" && event.effect_id === "poison"
+      )
+    ) {
       sawTick = true;
     }
-    if (turn.events.some((event) => event.type === "status_expired" && event.effect_id === "poison")) {
+    if (
+      turn.events.some((event) =>
+        event.type === "status_expired" && event.effect_id === "poison"
+      )
+    ) {
       sawExpiry = true;
     }
     tickState = turn.state;
@@ -6075,7 +8283,9 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
   });
   const teamStrike = resolveTeamTurn(teamPoison, "strike", "team-poison-key");
   assert.ok(
-    teamStrike.events.some((event) => event.type === "status_tick" && event.effect_id === "poison"),
+    teamStrike.events.some((event) =>
+      event.type === "status_tick" && event.effect_id === "poison"
+    ),
     "team poison must tick active opponent",
   );
   assert.ok(
@@ -6083,7 +8293,9 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
     "team poison tick KO must emit knockout",
   );
   assert.ok(
-    teamStrike.events.some((event) => event.type === "switch" && event.actor === "opponent"),
+    teamStrike.events.some((event) =>
+      event.type === "switch" && event.actor === "opponent"
+    ),
     "team status KO must auto-switch opponent bench",
   );
 }
@@ -6102,7 +8314,10 @@ if (emitIdx > -1 && process.argv[emitIdx + 1]) {
     sheetName: "sheet.png",
   });
   await writeFile(join(dir, "sheet.png"), png);
-  await writeFile(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
+  await writeFile(
+    join(dir, "manifest.json"),
+    JSON.stringify(manifest, null, 2),
+  );
   console.log(`\nsheet uji ditulis ke ${dir}`);
 }
 

@@ -18,8 +18,10 @@ Anima Atlas, dan Settings, sementara burger Top HUD serta seluruh Reduced Motion
 plumbing sudah dihapus. `npm run selftest`, seluruh suite Godot, import, Deno
 check, dan visual Menu lulus. Migration `20260818162758_anima_atlas` +
 `20260818163916_index_anima_atlas_foreign_keys` serta function wire-compatible
-`gallery` version 3 sudah live dan lulus smoke Atlas baru maupun operation
-Gallery lama. APK baru **belum** dirilis; build lama tetap berjalan lewat
+`gallery` version 16 sudah live dan lulus smoke Atlas baru maupun operation
+Gallery lama. First load production terukur 1,508 detik dan warm 0,931–0,990
+detik; filter berikutnya memakai cache page All di client sehingga tidak
+menunggu jaringan. APK baru **belum** dirilis; build lama tetap berjalan lewat
 `list`/`hide` sampai distribusi client Atlas selesai.
 
 **Cutover Elements/Animals/Gallery, 15 Agustus 2026.** Kontrak aktif memakai 18

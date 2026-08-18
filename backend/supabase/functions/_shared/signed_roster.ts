@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { BATTLE_SHEET_SIGNED_TTL } from "./gallery.mjs";
-import { asSnapshotArray } from "./team_snapshot.mjs";
+import { BATTLE_SHEET_SIGNED_TTL } from "./gallery_constants.mjs";
 
 // ponytail: URL bertanda tangan di-cache per path selama isolate hidup, jadi satu
 // battle empat lawan empat tidak memanggil Storage 8-12 kali tiap turn. Plafonnya
@@ -14,30 +13,61 @@ export async function signSheetUrl(
   db: SupabaseClient,
   path: string,
 ): Promise<string> {
+  return (await signSheetUrls(db, [path])).get(path) ?? "";
+}
+
+export async function signSheetUrls(
+  db: SupabaseClient,
+  paths: string[],
+): Promise<Map<string, string>> {
   const now = Date.now();
-  const hit = signCache.get(path);
-  if (hit && hit.expires_at - now > SIGN_REFRESH_MARGIN_MS) return hit.url;
+  const uniquePaths = [...new Set(paths.filter(Boolean))];
+  const result = new Map<string, string>();
+  const missing: string[] = [];
+  for (const path of uniquePaths) {
+    const hit = signCache.get(path);
+    if (hit && hit.expires_at - now > SIGN_REFRESH_MARGIN_MS) {
+      result.set(path, hit.url);
+    } else {
+      missing.push(path);
+    }
+  }
+  if (missing.length === 0) return result;
+
   const { data, error } = await db.storage
     .from("anima_sheets")
-    .createSignedUrl(path, BATTLE_SHEET_SIGNED_TTL);
+    .createSignedUrls(missing, BATTLE_SHEET_SIGNED_TTL);
   if (error) throw error;
-  const url = data?.signedUrl ?? "";
-  if (!url) return "";
-  if (signCache.size >= SIGN_CACHE_MAX) signCache.clear();
-  signCache.set(path, { url, expires_at: now + BATTLE_SHEET_SIGNED_TTL * 1000 });
-  return url;
+  if (signCache.size + missing.length > SIGN_CACHE_MAX) signCache.clear();
+  for (const [index, item] of (data ?? []).entries()) {
+    const path = typeof item.path === "string" ? item.path : missing[index];
+    const url = item.signedUrl ?? "";
+    if (!path || !url) continue;
+    result.set(path, url);
+    signCache.set(path, {
+      url,
+      expires_at: now + BATTLE_SHEET_SIGNED_TTL * 1000,
+    });
+  }
+  return result;
 }
 
 export async function withSignedRoster(
   db: SupabaseClient,
   value: unknown,
 ): Promise<Record<string, unknown>[]> {
+  const { asSnapshotArray } = await import("./team_snapshot.mjs");
   const roster = asSnapshotArray(value) as Record<string, unknown>[] | null;
   if (!roster) throw new Error("INVALID_TEAM_SNAPSHOT");
   return await Promise.all(roster.map(async (raw) => {
     const member = { ...raw };
-    if (member.system_asset === "placeholder" || member.system_asset === "chapter") {
-      if (member.system_asset === "chapter" && typeof member.sheet_url !== "string") {
+    if (
+      member.system_asset === "placeholder" || member.system_asset === "chapter"
+    ) {
+      if (
+        member.system_asset === "chapter" &&
+        typeof member.sheet_url !== "string"
+      ) {
         throw new Error("TEAM_ART_NOT_READY");
       }
       delete member.owner_id;

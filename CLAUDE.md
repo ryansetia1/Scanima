@@ -27,7 +27,16 @@ tetapi client Atlas memakai operation versioned `atlas_list`/`atlas_detail`;
 `list`/`hide` dipertahankan hanya agar APK Gallery yang sudah terpasang tidak
 rusak selama rollout; `hide` juga membersihkan discovery pemiliknya. Migration
 `20260818162758_anima_atlas` + `20260818163916_index_anima_atlas_foreign_keys`
-tercatat production dan `gallery` version 3 ACTIVE dengan `verify_jwt=true`.
+tercatat production dan `gallery` version 16 ACTIVE dengan `verify_jwt=true`.
+Jalur list tidak lagi memverifikasi JWT dua kali: gateway memvalidasi signature,
+lalu function hanya membaca `sub` UUID dari payload yang sudah terverifikasi.
+Query independen berangkat paralel, URL Storage ditandatangani per batch, dan
+filter All/Scanned/Expedition/Duel diproyeksikan lokal dari page All lengkap.
+Smoke production 19 Agustus mengukur first load 1,508 detik dan warm
+0,931–0,990 detik (sebelumnya sekitar 4–7 detik); perpindahan filter sesudahnya
+tidak memakai request jaringan. Deploy wajib dari source lewat Supabase CLI agar
+dynamic import modul image/moderation tetap malas—bundel MCP tunggal menarik
+`imagescript` saat boot, sedangkan split bundle pernah membuat worker crash.
 Backfill production menghasilkan 8 form pemain, 9 form Expedition, serta
 discovery 8 Scanned / 1 Duel / 9 Expedition; RLS, revoke helper internal, dan
 covering index cleanup terverifikasi. Smoke tanpa JWT menjawab 401, client baru

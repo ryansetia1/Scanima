@@ -5,6 +5,7 @@ signal back_requested
 signal toast_requested(message: String, is_error: bool)
 
 const CARD_MIN := Vector2(300, 360)
+const VISIT_CACHE_TTL_MSEC := 60_000
 const SILHOUETTE_SHADER := preload("res://shaders/atlas_silhouette.gdshader")
 const FILTERS := ["all", "scanned", "expedition", "duel"]
 const FILTER_BUTTONS := {
@@ -42,6 +43,10 @@ var _detail_meta: Label
 var _detail_report: Button
 var _thumb_cache: Dictionary = {}
 var _silhouette_material: ShaderMaterial
+var _all_entries_cache: Array[Dictionary] = []
+var _all_cache_loaded := false
+var _all_cache_complete := false
+var _all_cache_at_msec := 0
 
 
 func _ready() -> void:
@@ -91,16 +96,24 @@ func _build_detail_sheet() -> void:
 
 
 func begin_visit() -> void:
-	_entries.clear()
-	_chapters.clear()
 	_cursor = ""
 	_filter = "all"
 	_chapter_id = ""
 	_selected = {}
-	_sync_filter_buttons()
-	_chapter.visible = false
 	if _detail_sheet.visible:
 		_detail_sheet.close()
+	if (
+		_all_cache_loaded
+		and _all_cache_complete
+		and Time.get_ticks_msec() - _all_cache_at_msec <= VISIT_CACHE_TTL_MSEC
+	):
+		_sync_filter_buttons()
+		_project_all_cache()
+		return
+	_entries.clear()
+	_chapters.clear()
+	_sync_filter_buttons()
+	_chapter.visible = false
 	_load_first_page()
 
 
@@ -156,9 +169,11 @@ func _select_filter(filter_name: String) -> void:
 	if _busy or filter_name == _filter or filter_name not in FILTERS:
 		return
 	_filter = filter_name
-	if _filter != "expedition":
-		_chapter_id = ""
+	if _filter == "expedition":
+		_ensure_default_chapter()
 	_sync_filter_buttons()
+	if _project_all_cache():
+		return
 	await _load_first_page()
 
 
@@ -178,6 +193,8 @@ func _on_chapter_selected(index: int) -> void:
 	if next_id == _chapter_id:
 		return
 	_chapter_id = next_id
+	if _project_all_cache():
+		return
 	await _load_first_page()
 
 
@@ -235,6 +252,42 @@ func _fetch_page(reset_status: bool) -> void:
 		if typeof(row) == TYPE_DICTIONARY:
 			_entries.append(GameState.as_dict(row))
 	_cursor = str(data.get("next_cursor", ""))
+	if reset_status and _filter == "all":
+		_all_entries_cache.assign(_entries)
+		_all_cache_loaded = true
+		_all_cache_complete = _cursor.is_empty()
+		_all_cache_at_msec = Time.get_ticks_msec()
+	_present_entries()
+
+
+func _ensure_default_chapter() -> void:
+	if not _chapter_id.is_empty() or _chapters.is_empty():
+		return
+	_chapter_id = str(_chapters[0].get("id", ""))
+	_populate_chapter_picker()
+
+
+func _project_all_cache() -> bool:
+	if not _all_cache_loaded or not _all_cache_complete:
+		return false
+	_entries.clear()
+	for entry in _all_entries_cache:
+		var include := _filter == "all"
+		if _filter == "scanned" or _filter == "duel":
+			include = str(entry.get("discovery_source", "")) == _filter
+		elif _filter == "expedition":
+			include = (
+				str(entry.get("source_kind", "")) == "expedition"
+				and (_chapter_id.is_empty() or str(entry.get("chapter_id", "")) == _chapter_id)
+			)
+		if include:
+			_entries.append(entry)
+	_cursor = ""
+	_present_entries()
+	return true
+
+
+func _present_entries() -> void:
 	_load_more.visible = not _cursor.is_empty()
 	if _entries.is_empty():
 		_status.text = tr("ATLAS_EMPTY")
@@ -431,6 +484,7 @@ func _report_selected() -> void:
 	if res.ok:
 		toast_requested.emit(tr("ATLAS_REPORTED"), false)
 		_detail_sheet.close()
+		_all_cache_loaded = false
 		await _load_first_page()
 	else:
 		var key := "ERROR_" + str(res.error)

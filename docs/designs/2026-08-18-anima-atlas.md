@@ -1,7 +1,7 @@
 # Anima Atlas MVP
 
 Status: implemented and verified; server migration and Gallery function version
-3 are live, while new APK distribution remains pending, 18 August 2026.
+16 are live, while new APK distribution remains pending, 19 August 2026.
 
 ## Intent
 
