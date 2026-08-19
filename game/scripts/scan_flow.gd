@@ -66,6 +66,7 @@ const ATLAS_DEST := &"atlas"
 const TROPHY_ART_DIR := "user://trophies"
 const SHOP_ICON := preload("res://assets/icons/shopping-bag.svg")
 const BAG_ICON := preload("res://assets/icons/backpack.svg")
+const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 
 @onready var _stage: Node2D = %Stage
 @onready var _first_anima_effect: FirstAnimaEffect = %FirstAnimaEffect
@@ -2360,32 +2361,21 @@ func _predict_battle_turn(session: Dictionary, pending: Dictionary) -> Dictionar
 
 
 ## Ringkasan turn seperti yang dilihat pemain: status, nomor turn, HP/PP petarung
-## Duel, lalu tiap event beserta HP target dan damage-nya. Dipakai Duel maupun
-## Team untuk membandingkan hasil server dengan animasi yang sudah terlanjur jalan;
+## Duel, lalu log-nya lewat `BattleEvent.log_digest()`. Dipakai Duel maupun Team
+## untuk membandingkan hasil server dengan animasi yang sudah terlanjur jalan;
 ## state Team menyimpan HP di dalam roster, jadi event-nya yang membawa angka itu.
 func _turn_outcome_digest(state: Dictionary, events: Array) -> String:
 	var player := GameState.as_dict(state.get("player"))
 	var bot := GameState.as_dict(state.get("bot"))
-	var parts := PackedStringArray([
+	return "|".join(PackedStringArray([
 		str(state.get("status", "")),
 		str(int(float(state.get("turn", 0)))),
 		str(int(float(player.get("hp", 0)))),
 		str(int(float(bot.get("hp", 0)))),
 		str(int(float(player.get("momentum", 0)))),
 		str(int(float(bot.get("momentum", 0)))),
-	])
-	for value in events:
-		var event := GameState.as_dict(value)
-		parts.append(
-			"%s/%s/%d/%d"
-			% [
-				str(event.get("type", "")),
-				str(event.get("actor", "")),
-				int(float(event.get("damage", 0))),
-				int(float(event.get("target_hp", -1))),
-			]
-		)
-	return "|".join(parts)
+		BATTLE_EVENT.log_digest(events),
+	]))
 
 
 func _turn_outcome_matches(
@@ -2893,7 +2883,9 @@ func _submit_pending_team_battle(pending: Dictionary) -> void:
 			if str(GameState.as_dict(value).get("type", "")) == "switch":
 				art = await _prepare_team_active_art(next_session)
 				break
-		await _team_battle_view.play_events(events, next_session, art)
+		# Arena masih menampilkan prediksi, jadi log server diputar dari session
+		# sebelum turn supaya Summon membaca HP anggota yang masuk apa adanya.
+		await _team_battle_view.play_events(events, next_session, art, session_before)
 	GameState.confirm_team_battle_response(next_session)
 	_set_busy(false)
 	if action == "item":

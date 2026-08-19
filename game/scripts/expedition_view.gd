@@ -354,9 +354,10 @@ func set_level_up_sequence_busy(busy: bool) -> void:
 func play_combat_events(
 	events: Array,
 	next_encounter: Dictionary,
-	art_cache: Dictionary = {}
+	art_cache: Dictionary = {},
+	from_encounter: Dictionary = {}
 ) -> void:
-	await _combat.play_events(events, next_encounter, art_cache)
+	await _combat.play_events(events, next_encounter, art_cache, from_encounter)
 
 
 ## Memasang encounter authoritative tanpa memutar ulang event-nya. Dipakai saat

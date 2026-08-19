@@ -428,12 +428,23 @@ func begin_action(action: String) -> void:
 	_update_arena_actions()
 
 
+## Log dianimasikan dari session yang sedang tampil — `_play_switch()` membaca nama
+## dan HP anggota yang masuk dari sana — lalu mendarat di `next_session`. Pemanggil
+## karena itu tidak boleh memasang session akhir turn sebelum memutar log-nya.
+## Replay authoritative sesudah prediksi menyimpang adalah satu pengecualiannya:
+## arena masih menampilkan prediksi, jadi ia mengirim `from_session` berisi state
+## sebelum turn supaya Summon tidak membaca HP satu turn terlalu maju.
 func play_events(
 	events: Array,
 	next_session: Dictionary,
-	art_cache: Dictionary = {}
+	art_cache: Dictionary = {},
+	from_session: Dictionary = {}
 ) -> void:
 	_art_cache.merge(art_cache, true)
+	if not from_session.is_empty():
+		# Sengaja tanpa repaint: bar yang tampil ditimpa absolut oleh event log ini,
+		# dan memasangnya lewat set_session() akan terlihat sebagai arena mundur.
+		_session = from_session.duplicate(true)
 	set_busy(true)
 	for value in events:
 		var event := GameState.as_dict(value)
@@ -471,7 +482,7 @@ func play_events(
 				var switch_actor := str(event.get("actor", ""))
 				if switch_actor == "opponent" and not _final_ace_pending:
 					await _cue_seeker_command("first_switch", "switch_command")
-				await _play_switch(event, next_session)
+				await _play_switch(event)
 				if switch_actor == "opponent" and not _final_ace_pending:
 					_restore_seeker_idle()
 			"ace_passive":
@@ -490,7 +501,9 @@ func play_events(
 				_restore_seeker_idle()
 			"knockout":
 				var side := str(event.get("actor", ""))
-				_sprite_for(side).set_pose("defeated")
+				var fainting := _sprite_for(side)
+				if is_instance_valid(fainting):
+					fainting.set_pose("defeated")
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(side),
 					BattleView.DAMAGE_COLOR,
@@ -860,11 +873,20 @@ func _apply_side(
 		)
 
 
-func _play_switch(event: Dictionary, next_session: Dictionary) -> void:
+## Session yang dianimasikan adalah yang sedang tampil plus `to_slot` event ini,
+## bukan session akhir turn. Satu log bisa memuat dua switch di sisi yang sama —
+## switch sukarela lalu KO menyusul — dan session akhir turn hanya mengenal
+## anggota terakhir beserta HP-nya sesudah damage, jadi memakainya membuat Summon
+## menampilkan Anima yang salah lalu menahan HP bar di angka pasca-damage.
+func _play_switch(event: Dictionary) -> void:
 	var side := str(event.get("actor", ""))
 	var slot := int(event.get("to_slot", 0))
+	var incoming := _session.duplicate(true)
+	GameState.as_dict(
+		GameState.as_dict(incoming.get("state")).get(side)
+	)["active_slot"] = slot
 	await _present_banner(
-		tr("TEAM_EVENT_SWITCH") % _member_name(next_session, side, slot),
+		tr("TEAM_EVENT_SWITCH") % _member_name(incoming, side, slot),
 		BattleView.CUE_COLOR,
 		false
 	)
@@ -872,13 +894,13 @@ func _play_switch(event: Dictionary, next_session: Dictionary) -> void:
 	var portal := _portal_for(side)
 	var previous_layout := _fighter_layout()
 	if not is_instance_valid(sprite):
-		_apply_side(next_session, side, true)
-		_reframe_for_switch(next_session, previous_layout, false)
+		_apply_side(incoming, side, true)
+		_reframe_for_switch(incoming, previous_layout, false)
 		return
 	if sprite.visible and sprite.sprite_frames != null:
 		await sprite.summon_dissolve()
-	_apply_side(next_session, side, true, false)
-	var refit := _reframe_for_switch(next_session, previous_layout, true)
+	_apply_side(incoming, side, true, false)
+	var refit := _reframe_for_switch(incoming, previous_layout, true)
 	_align_portal(side)
 	if is_instance_valid(portal):
 		await portal.start_portal()
@@ -895,11 +917,11 @@ func _play_switch(event: Dictionary, next_session: Dictionary) -> void:
 
 
 func _reframe_for_switch(
-	next_session: Dictionary,
+	session: Dictionary,
 	previous_layout: Dictionary,
 	animate: bool
 ) -> Tween:
-	_session = next_session.duplicate(true)
+	_session = session.duplicate(true)
 	_position_fighters(false)
 	var target_layout := _fighter_layout()
 	if not animate:

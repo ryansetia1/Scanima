@@ -77,9 +77,39 @@ tap
 ```
 
 Pembandingnya ringkasan yang **dilihat pemain**, bukan seluruh state: status,
-nomor turn, HP/PP petarung Duel, lalu tiap event beserta `target_hp` dan
-`damage`-nya. Selisih yang tak terlihat di layar tidak perlu memicu animasi
-ulang, karena `set_session` tetap memasang row authoritative.
+nomor turn, HP/PP petarung Duel, lalu tiap event beserta `target_hp`, `damage`,
+dan `to_slot`-nya. Selisih yang tak terlihat di layar tidak perlu memicu animasi
+ulang, karena `set_session` tetap memasang row authoritative. `to_slot` ikut
+karena anggota yang di-Summon **adalah** yang dilihat pemain: prediksi yang
+memilih slot lain sudah memainkan portal dan pelat nama untuk Anima yang salah,
+dan `set_session` di akhir turn hanya menukar sprite-nya tanpa penjelasan.
+
+Bagian per-event-nya hidup sekali di `BattleEvent.log_digest()`. Duel, Team, dan
+Expedition menambahkan header state-nya sendiri di atas hasil itu — Duel membawa
+HP/PP dua petarung, Team/Expedition hanya status dan nomor turn karena HP-nya ada
+di dalam roster. Dua salinan berarti satu jalur bisa berhenti memicu replay
+sementara jalur lain tetap memicunya.
+
+## Summon di tengah log
+
+Event `switch` dianimasikan dari session yang **sedang tampil** plus `to_slot`
+event itu, bukan dari session akhir turn yang diterima `play_events()`. Satu log
+bisa memuat dua switch di sisi yang sama — switch sukarela lalu KO menyusul —
+dan session akhir turn hanya mengenal anggota terakhir beserta HP-nya sesudah
+seluruh damage. Memakainya membuat pelat menyebut satu nama sementara Anima lain
+yang keluar dari portal, lalu HP bar berhenti di angka pasca-damage sehingga
+damage yang menyusul di log yang sama tidak menggerakkannya sama sekali —
+angkanya mengambang, bar-nya diam. Yang authoritative tetap `set_session()` di
+akhir log.
+
+Karena itu pemanggil tidak boleh memasang session akhir turn sebelum memutar
+log-nya. **Replay authoritative adalah satu pengecualiannya**: saat prediksi
+menyimpang, arena sudah menampilkan session prediksi, jadi ia mengirim state
+sebelum turn sebagai `from_session` — `session_before` di `scan_flow`, `_encounter`
+di `ExpeditionController`. Baseline itu dipasang tanpa repaint: setiap bar yang
+tampil ditimpa absolut oleh event log itu sendiri, sedangkan memasangnya lewat
+`set_session()` akan terlihat sebagai arena yang mundur satu turn sebelum
+diputar ulang.
 
 ## Yang sengaja tetap menunggu server
 

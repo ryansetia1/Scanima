@@ -2581,8 +2581,7 @@ func _test_team_battle_view() -> void:
 	await process_frame
 	await view.call(
 		"_play_switch",
-		{"type": "switch", "actor": "player", "from_slot": 0, "to_slot": 1},
-		switched
+		{"type": "switch", "actor": "player", "from_slot": 0, "to_slot": 1}
 	)
 	_check(
 		switch_camera_layer.scale.is_equal_approx(camera_after),
@@ -2591,6 +2590,53 @@ func _test_team_battle_view() -> void:
 	_check(
 		player_name.text.begins_with("Team 2") and player_name.text.contains(tr("LEVEL_SHORT")),
 		"Switch replaces the active fighter after the Summon handoff"
+	)
+	# Satu log turn bisa memuat dua switch di sisi yang sama — switch sukarela lalu
+	# KO menyusul — jadi Summon wajib menampilkan anggota yang event ini sebut,
+	# pada HP-nya sebelum damage turn itu. Memakai session akhir turn membuat pelat
+	# menyebut satu nama sementara Anima lain yang muncul, lalu HP bar berhenti di
+	# angka pasca-damage sehingga damage berikutnya tidak menggerakkannya.
+	var opponent_name := view.find_child("TeamOpponentName", true, false) as Label
+	var opponent_hp := view.find_child("TeamOpponentHp", true, false) as ProgressBar
+	var mid_switch := session.duplicate(true)
+	mid_switch["state"]["opponent"]["roster"][1]["hp"] = 43
+	var end_of_turn := mid_switch.duplicate(true)
+	end_of_turn["state"]["opponent"]["active_slot"] = 2
+	end_of_turn["state"]["opponent"]["roster"][1]["hp"] = 12
+	view.set_session(mid_switch, art_cache)
+	await process_frame
+	var summoned_named_member := false
+	view.play_events(
+		[{"type": "switch", "actor": "opponent", "from_slot": 0, "to_slot": 1}],
+		end_of_turn,
+		art_cache
+	)
+	var switch_deadline := Time.get_ticks_msec() + 15000
+	while bool(view.get("_busy")) and Time.get_ticks_msec() < switch_deadline:
+		if opponent_name.text.begins_with("Rival 2") and int(opponent_hp.value) == 43:
+			summoned_named_member = true
+		await process_frame
+	_check(
+		summoned_named_member,
+		"Switch summons the member its plate names, at that member's HP before the turn"
+	)
+	# Replay authoritative dimulai ketika arena sudah menampilkan session prediksi,
+	# jadi baseline Summon wajib datang dari pemanggil lewat `from_session`.
+	var replay_read_pre_turn_hp := false
+	view.play_events(
+		[{"type": "switch", "actor": "opponent", "from_slot": 0, "to_slot": 1}],
+		end_of_turn,
+		art_cache,
+		mid_switch
+	)
+	var replay_deadline := Time.get_ticks_msec() + 15000
+	while bool(view.get("_busy")) and Time.get_ticks_msec() < replay_deadline:
+		if opponent_name.text.begins_with("Rival 2") and int(opponent_hp.value) == 43:
+			replay_read_pre_turn_hp = true
+		await process_frame
+	_check(
+		replay_read_pre_turn_hp,
+		"Authoritative replay summons from the session before the turn, not the prediction"
 	)
 	session["state"]["player"]["active_slot"] = 0
 	view.set_session(session, art_cache)

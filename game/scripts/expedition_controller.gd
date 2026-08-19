@@ -17,6 +17,7 @@ signal _request_settled
 ## menunggu unduhan yang sama alih-alih memulai unduhan kedua.
 signal _preload_settled
 
+const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
 
 ## Hanya operasi yang memang menggantikan seluruh konteks layar memakai panel
@@ -404,24 +405,13 @@ func _predict_turn(pending: Dictionary) -> Dictionary:
 
 
 ## Ringkasan turn seperti yang dilihat pemain. HP Expedition hidup di dalam roster,
-## jadi event-nya yang membawa angka itu.
+## jadi log-nya yang membawa angka itu lewat `BattleEvent.log_digest()`.
 static func _turn_outcome_digest(state: Dictionary, events: Array) -> String:
-	var parts := PackedStringArray([
+	return "|".join(PackedStringArray([
 		str(state.get("status", "")),
 		str(int(float(state.get("turn", 0)))),
-	])
-	for value in events:
-		var event := GameState.as_dict(value)
-		parts.append(
-			"%s/%s/%d/%d"
-			% [
-				str(event.get("type", "")),
-				str(event.get("actor", "")),
-				int(float(event.get("damage", 0))),
-				int(float(event.get("target_hp", -1))),
-			]
-		)
-	return "|".join(parts)
+		BATTLE_EVENT.log_digest(events),
+	]))
 
 
 static func _turn_outcome_matches(
@@ -513,7 +503,9 @@ func _submit_pending(pending: Dictionary) -> void:
 					break
 			art = await _attach_seeker_art(art)
 			art = await _attach_trophy_art(turn_reward, str(data.get("asset_base_url", "")), art)
-			await _view.play_combat_events(events, next_encounter, art)
+			# Arena masih menampilkan prediksi, jadi log server diputar dari encounter
+			# sebelum turn — `_encounter` baru diganti sesudah blok ini.
+			await _view.play_combat_events(events, next_encounter, art, _encounter)
 	_run = next_run
 	_encounter = next_encounter
 	GameState.confirm_expedition_response(_run, _encounter)

@@ -68,6 +68,29 @@ static func normalized(value: Variant) -> Dictionary:
 	return event.duplicate(true)
 
 
+## Ringkasan satu log seperti yang **dilihat pemain**: jenis event, pelaku, damage,
+## HP target, dan anggota yang di-Summon. Duel, Team, dan Expedition memakainya untuk
+## membandingkan prediksi lokal dengan log server; selisih yang tidak terlihat di
+## layar tidak perlu memicu animasi ulang. `to_slot` ikut karena anggota yang masuk
+## adalah yang dilihat pemain: prediksi yang memilih slot lain sudah memainkan portal
+## dan pelat nama untuk Anima yang salah.
+static func log_digest(events: Array) -> String:
+	var parts := PackedStringArray()
+	for value in events:
+		var event: Dictionary = value if typeof(value) == TYPE_DICTIONARY else {}
+		parts.append(
+			"%s/%s/%d/%d/%d"
+			% [
+				str(event.get("type", "")),
+				str(event.get("actor", "")),
+				int(float(event.get("damage", 0))),
+				int(float(event.get("target_hp", -1))),
+				int(float(event.get("to_slot", -1))),
+			]
+		)
+	return "|".join(parts)
+
+
 static func plate_text(event: Dictionary) -> String:
 	var event_type := str(event.get("type", ""))
 	var actor := str(event.get("actor", ""))

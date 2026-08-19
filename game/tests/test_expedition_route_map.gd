@@ -350,6 +350,17 @@ func _check_turn_prediction() -> void:
 		and int(switched["encounter"]["state"]["player"]["active_slot"]) == 1,
 		"a Switch into a cached sheet animates without waiting for the server"
 	)
+	var other_slot: Array = (switched["events"] as Array).duplicate(true)
+	for value in other_slot:
+		var event: Dictionary = value
+		if str(event.get("type", "")) == "switch":
+			event["to_slot"] = 0
+	_check(
+		not controller_script._turn_outcome_matches(
+			switched, switched["encounter"], other_slot
+		),
+		"a server turn that summons a different member replays instead of swapping silently"
+	)
 
 	var finisher := {"expected_turn": 1, "action": "strike", "idempotency_key": "key-d"}
 	var last_hit: Dictionary = {
