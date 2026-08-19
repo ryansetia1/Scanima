@@ -7,12 +7,27 @@ signal authority_refresh_requested
 signal reward_presented(reward: Dictionary, encounter: Dictionary)
 signal announcements_changed(announcements: Dictionary)
 
-## Dipancarkan saat response turn tiba. Turn disimulasikan lokal lebih dulu supaya
-## animasi mulai di frame yang sama dengan tap, sementara request-nya jalan
-## berbarengan; sinyal ini yang menyatukan keduanya lagi.
-signal _turn_settled
+## Dipancarkan saat response request yang dikirim lewat `_dispatch()` tiba. Turn
+## disimulasikan lokal lebih dulu supaya animasi mulai di frame yang sama dengan
+## tap, sementara request-nya jalan berbarengan; sinyal ini yang menyatukan
+## keduanya lagi. Hub memakainya untuk mengirim dua request sekaligus.
+signal _request_settled
+
+## Dipancarkan saat preload art run selesai, supaya enter node yang mendahuluinya
+## menunggu unduhan yang sama alih-alih memulai unduhan kedua.
+signal _preload_settled
 
 const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
+
+## Hanya operasi yang memang menggantikan seluruh konteks layar memakai panel
+## loading. Masuk node, pilihan node, checkpoint, Shop, dan mulai zona
+## mempertahankan peta/panel yang sedang dibaca pemain dan cukup meredupkan
+## tombolnya lewat `set_busy` — menimpanya dengan layar loading membuat setiap
+## langkah Expedition terasa seperti memuat ulang layar.
+const CONTEXT_LOADING := {
+	"start_run": "EXPEDITION_STARTING_RUN",
+	"abandon": "EXPEDITION_ABANDONING",
+}
 
 var _view: ExpeditionView
 var _battle_view: BattleView
@@ -22,10 +37,13 @@ var _chapters: Array = []
 var _run: Dictionary = {}
 var _encounter: Dictionary = {}
 var _art_cache: Dictionary = {}
+var _chapter_manifest: Dictionary = {}
+var _chapter_manifest_version := ""
 var _busy := false
 var _catalog_available := false
-var _turn_result: Dictionary = {}
-var _turn_in_flight := false
+var _request_result: Dictionary = {}
+var _request_in_flight := false
+var _preload_running := false
 
 
 func configure(view: ExpeditionView, battle_view: BattleView) -> void:
@@ -155,12 +173,18 @@ func resume_pending() -> void:
 func _load_hub() -> void:
 	_set_busy(true)
 	_view.set_loading()
+	# Katalog dan Team tidak bergantung satu sama lain, jadi hub menunggu satu
+	# round trip alih-alih dua. Sesi disegarkan lebih dulu: `Backend` belum punya
+	# guard refresh in-flight, jadi dua request paralel yang sama-sama menemukan
+	# token nyaris kedaluwarsa akan memakai refresh token yang sama dua kali.
+	await Backend.ensure_session()
+	_dispatch("team", {})
 	var chapters_res := await Backend.expedition("chapters")
+	var team_res := await _await_dispatch()
 	if not chapters_res.ok:
 		_view.set_error(chapters_res.error)
 		_set_busy(false)
 		return
-	var team_res := await Backend.expedition("team")
 	if not team_res.ok:
 		_view.set_error(team_res.error)
 		_set_busy(false)
@@ -187,10 +211,13 @@ func _load_chapter(version_id: String) -> void:
 	if _busy or version_id.is_empty():
 		return
 	_set_busy(true)
-	_view.set_loading("EXPEDITION_LOADING_CHAPTER")
 	var res := await Backend.expedition("chapter", {"chapter_version_id": version_id})
 	if res.ok:
 		var data := GameState.as_dict(res.data)
+		# Manifest chapter membawa roster lawan dan art zona; menyimpannya di sini
+		# yang membuat preload run bisa menyiapkan lawan sebelum node dibuka.
+		_chapter_manifest = GameState.as_dict(data.get("manifest"))
+		_chapter_manifest_version = version_id
 		_view.set_chapter_detail(data)
 		announcements_changed.emit(GameState.as_dict(data.get("announcements")))
 	else:
@@ -202,7 +229,6 @@ func _save_team(anima_ids: Array[String]) -> void:
 	if _busy or anima_ids.size() != 4:
 		return
 	_set_busy(true)
-	_view.set_loading("EXPEDITION_SAVING_TEAM")
 	var res := await Backend.expedition("save_team", {"anima_ids": anima_ids})
 	if res.ok:
 		_team = GameState.as_dict(GameState.as_dict(res.data).get("team"))
@@ -410,17 +436,19 @@ static func _turn_outcome_matches(
 	)
 
 
+## Mengirim satu request tanpa menahan pemanggilnya. Setiap `_dispatch()` wajib
+## dipasangkan dengan tepat satu `_await_dispatch()` sesudahnya.
 func _dispatch(operation: String, payload: Dictionary) -> void:
-	_turn_in_flight = true
-	_turn_result = await Backend.expedition(operation, payload)
-	_turn_in_flight = false
-	_turn_settled.emit()
+	_request_in_flight = true
+	_request_result = await Backend.expedition(operation, payload)
+	_request_in_flight = false
+	_request_settled.emit()
 
 
-func _await_turn() -> Dictionary:
-	if _turn_in_flight:
-		await _turn_settled
-	return _turn_result
+func _await_dispatch() -> Dictionary:
+	if _request_in_flight:
+		await _request_settled
+	return _request_result
 
 
 func _submit_pending(pending: Dictionary) -> void:
@@ -429,8 +457,8 @@ func _submit_pending(pending: Dictionary) -> void:
 	var operation := str(pending.get("operation", ""))
 	if operation == "turn":
 		_view.begin_combat_action(str(pending.get("action", "")))
-	else:
-		_view.set_loading(_loading_key(operation))
+	elif CONTEXT_LOADING.has(operation):
+		_view.set_loading(str(CONTEXT_LOADING[operation]))
 	_set_busy(true)
 	var predicted := _predict_turn(pending) if operation == "turn" else {}
 	_dispatch(operation, operation_payload(pending))
@@ -442,8 +470,8 @@ func _submit_pending(pending: Dictionary) -> void:
 		)
 		# play_events melepas tombolnya sendiri. Turn berikutnya baru boleh dikirim
 		# setelah server memberi version-nya, jadi redupkan lagi kalau masih terbang.
-		_view.set_busy(_turn_in_flight)
-	var res := await _await_turn()
+		_view.set_busy(_request_in_flight)
+	var res := await _await_dispatch()
 	if not res.ok:
 		# Turn yang tidak sampai ke server tidak boleh meninggalkan arena di masa
 		# depan: `_encounter` masih memegang state authoritative terakhir.
@@ -527,10 +555,79 @@ func _present() -> void:
 			return
 	art = await _attach_seeker_art(art)
 	_view.set_run(_run, _encounter, art)
+	if _encounter.is_empty():
+		# Tanpa await: pemain sudah bisa membaca peta sementara art-nya turun.
+		_preload_run_art()
+
+
+## Art yang dibutuhkan encounter berikutnya sudah dapat diketahui dari payload run
+## — art zona, roster pemain, dan Boss Seeker semuanya ada di sana — jadi ia diunduh
+## selama pemain membaca peta, bukan saat ia menekan node. Lawan ikut kalau manifest
+## chapter sudah ada dari layar detail.
+# ponytail: cache hanya di memori proses (art chapter publik tetap diunduh ulang
+# tiap sesi app), dan `_prepare_active_art` menunggu seluruh task ini kalau pemain
+# menekan node lebih cepat daripada unduhannya — paling banyak satu grup lawan
+# ekstra. Upgrade: cache disk ber-key path aset chapter yang immutable kalau
+# kuota seluler jadi keluhan.
+func _preload_run_art() -> void:
+	if _preload_running or _run.is_empty() or not _encounter.is_empty():
+		return
+	_preload_running = true
+	await _load_arena_background(_encounter)
+	for value in _array(_run.get("party_state")):
+		await _cache_member_art(GameState.as_dict(value))
+	await _attach_seeker_art({})
+	for value in _zone_opponent_snapshots():
+		await _cache_member_art(GameState.as_dict(value))
+	_preload_running = false
+	_preload_settled.emit()
+
+
+## Roster lawan zona berjalan, dibaca dari manifest chapter yang sudah diambil layar
+## detail. Resume dingin tidak memegang manifest itu, jadi ia mengembalikan kosong
+## dan lawan tetap diunduh saat node dibuka.
+func _zone_opponent_snapshots() -> Array:
+	if (
+		_chapter_manifest.is_empty()
+		or _chapter_manifest_version != str(_run.get("chapter_version_id", ""))
+	):
+		return []
+	var zones := _array(_chapter_manifest.get("zones"))
+	var zone := int(_run.get("zone", 1))
+	if zone < 1 or zone > zones.size():
+		return []
+	var wanted: Array[String] = []
+	var pools := GameState.as_dict(GameState.as_dict(zones[zone - 1]).get("node_pools"))
+	for kind in ["battle", "elite"]:
+		for value in _array(pools.get(kind)):
+			var group_id := str(GameState.as_dict(value).get("opponent_id", ""))
+			if not group_id.is_empty() and not group_id in wanted:
+				wanted.append(group_id)
+	if zone == zones.size():
+		var boss_id := str(GameState.as_dict(_chapter_manifest.get("boss")).get("opponent_id", ""))
+		if not boss_id.is_empty() and not boss_id in wanted:
+			wanted.append(boss_id)
+	var result: Array = []
+	for value in _array(_chapter_manifest.get("opponents")):
+		var group := GameState.as_dict(value)
+		if str(group.get("id", "")) in wanted:
+			result.append_array(_array(group.get("roster")))
+	return result
+
+
+func _cache_member_art(snapshot: Dictionary) -> void:
+	var anima_id := str(snapshot.get("anima_id", ""))
+	if anima_id.is_empty() or _art_cache.has(anima_id):
+		return
+	var loaded := await _load_art(snapshot)
+	if bool(loaded.get("ok", false)):
+		_art_cache[anima_id] = loaded
 
 
 func _prepare_active_art(encounter: Dictionary, include_background: bool = true) -> Dictionary:
 	var result: Dictionary = {}
+	if _preload_running:
+		await _preload_settled
 	var state := GameState.as_dict(encounter.get("state"))
 	for side in ["player", "opponent"]:
 		var party := GameState.as_dict(state.get(side))
@@ -548,17 +645,13 @@ func _prepare_active_art(encounter: Dictionary, include_background: bool = true)
 				if slot == active_slot:
 					return {}
 				continue
-			if _art_cache.has(anima_id):
-				result[anima_id] = _art_cache[anima_id]
-				continue
-			var snapshot := _snapshot(snapshots, anima_id)
-			var loaded := await _load_art(snapshot)
-			if not bool(loaded.get("ok", false)):
+			if not _art_cache.has(anima_id):
+				await _cache_member_art(_snapshot(snapshots, anima_id))
+			if not _art_cache.has(anima_id):
 				if slot == active_slot:
 					return {}
 				continue
-			_art_cache[anima_id] = loaded
-			result[anima_id] = loaded
+			result[anima_id] = _art_cache[anima_id]
 	if include_background:
 		var background := await _load_arena_background(encounter)
 		if background != null:
@@ -663,6 +756,17 @@ func _load_art(snapshot: Dictionary) -> Dictionary:
 			ImageTexture.create_from_image(placeholder["image"]),
 			placeholder["manifest"]
 		)
+	# Anggota tim adalah Anima pemain sendiri, jadi sheet-nya biasanya sudah ada di
+	# cache disk milik Home/Collection. Kunci cache-nya anima_id + stage, jadi hasil
+	# evolusi tetap mendapat art barunya.
+	var anima_id := str(snapshot.get("anima_id", ""))
+	var stage := int(snapshot.get("stage", 1))
+	if not anima_id.is_empty() and GameState.has_sprite_for_anima(anima_id, stage):
+		var cached := AnimaLoader.load_from_manifest(
+			GameState.manifest_path_for_anima(anima_id, stage)
+		)
+		if bool(cached.get("ok", false)):
+			return cached
 	var sheet_url := str(snapshot.get("sheet_url", ""))
 	var manifest := GameState.as_dict(snapshot.get("manifest"))
 	if sheet_url.is_empty() or manifest.is_empty():
@@ -721,18 +825,6 @@ func _set_busy(busy: bool) -> void:
 	_busy = busy
 	if _view != null:
 		_view.set_busy(busy)
-
-
-func _loading_key(operation: String) -> String:
-	return str({
-		"start_run": "EXPEDITION_STARTING_RUN",
-		"start_zone": "EXPEDITION_STARTING_ZONE",
-		"checkpoint_choice": "EXPEDITION_APPLYING_CHECKPOINT",
-		"enter_node": "EXPEDITION_ENTERING_NODE",
-		"choose": "EXPEDITION_CHOOSING",
-		"refresh_shop": "EXPEDITION_REFRESHING_SHOP",
-		"abandon": "EXPEDITION_ABANDONING",
-	}.get(operation, "EXPEDITION_LOADING"))
 
 
 static func operation_payload(pending: Dictionary) -> Dictionary:

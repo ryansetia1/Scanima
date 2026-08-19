@@ -256,6 +256,7 @@ func _run() -> void:
 	)
 
 	_check_turn_prediction()
+	_check_instant_flow()
 
 	view.free()
 	route.free()
@@ -370,6 +371,76 @@ func _check_turn_prediction() -> void:
 		"the turn that finishes a Boss waits for the reward that carries the Trophy"
 	)
 	controller.free()
+
+
+## Setiap langkah di dalam run harus terasa instan: hanya operasi yang memang
+## menggantikan seluruh layar boleh memakai panel loading, dan art encounter
+## berikutnya diunduh dari payload run selama pemain membaca peta. Preload yang
+## memilih zona atau chapter yang salah tidak terlihat di layar — ia cuma
+## mengembalikan loading yang seharusnya sudah hilang.
+func _check_instant_flow() -> void:
+	var controller_script: GDScript = load("res://scripts/expedition_controller.gd")
+	var context_loading := controller_script.get_script_constant_map().get(
+		"CONTEXT_LOADING", {}
+	) as Dictionary
+	for operation: String in ["enter_node", "start_zone", "checkpoint_choice", "choose", "refresh_shop"]:
+		_check(
+			not context_loading.has(operation),
+			"%s keeps the map or choice panel instead of a loading screen" % operation
+		)
+	_check(
+		context_loading.has("start_run") and context_loading.has("abandon"),
+		"operations that replace the whole screen still announce themselves"
+	)
+	var source := FileAccess.get_file_as_string("res://scripts/expedition_controller.gd")
+	_check(
+		source.find("GameState.has_sprite_for_anima(anima_id, stage)") >= 0,
+		"team members reuse the cached sheet on disk instead of downloading it again"
+	)
+
+	var controller: Node = controller_script.new()
+	controller.set("_chapter_manifest", _manifest_fixture())
+	controller.set("_chapter_manifest_version", "route-test-version")
+	controller.set("_run", _run_fixture())
+	var zone_two: Array = controller.call("_zone_opponent_snapshots")
+	_check(
+		zone_two.size() == 1 and str(zone_two[0].get("anima_id", "")) == "mid-a",
+		"the preload only fetches the opponents the running zone can spawn"
+	)
+	var boss_run := _run_fixture()
+	boss_run["zone"] = 3
+	controller.set("_run", boss_run)
+	var zone_three: Array = controller.call("_zone_opponent_snapshots")
+	var ids := PackedStringArray()
+	for value in zone_three:
+		ids.append(str((value as Dictionary).get("anima_id", "")))
+	_check(
+		ids.has("late-a") and ids.has("boss-a"),
+		"the final zone also preloads the Boss roster"
+	)
+	controller.set("_chapter_manifest_version", "another-chapter")
+	_check(
+		(controller.call("_zone_opponent_snapshots") as Array).is_empty(),
+		"a manifest from another chapter never preloads the wrong art"
+	)
+	controller.free()
+
+
+func _manifest_fixture() -> Dictionary:
+	return {
+		"boss": {"opponent_id": "group-boss"},
+		"opponents": [
+			{"id": "group-early", "roster": [{"anima_id": "early-a"}]},
+			{"id": "group-mid", "roster": [{"anima_id": "mid-a"}]},
+			{"id": "group-late", "roster": [{"anima_id": "late-a"}]},
+			{"id": "group-boss", "roster": [{"anima_id": "boss-a"}]},
+		],
+		"zones": [
+			{"id": "zone-1", "node_pools": {"battle": [{"opponent_id": "group-early"}]}},
+			{"id": "zone-2", "node_pools": {"battle": [{"opponent_id": "group-mid"}]}},
+			{"id": "zone-3", "node_pools": {"battle": [{"opponent_id": "group-late"}]}},
+		],
+	}
 
 
 func _save_screenshot_if_requested(prefix: String = "--screenshot=") -> void:

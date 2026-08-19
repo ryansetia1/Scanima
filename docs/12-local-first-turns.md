@@ -159,6 +159,51 @@ Sheet Shop sengaja **tidak** dikunci selama request: `set_busy()` membangun ulan
 seluruh daftar, dan kedipan itulah yang dulu terbaca sebagai lag. Kalau server
 menolak, saldo dan tas dikembalikan lalu daftar dicat ulang sekali.
 
+## Loading di Expedition
+
+Satu run Expedition adalah dua belas node plus checkpoint, dan setiap langkahnya
+dulu memanggil `_view.set_loading()`. Panel itu mengganti seluruh isi layar, jadi
+peta yang baru dibaca pemain hilang lalu digambar ulang — dua belas kali per run,
+untuk request yang paling sering selesai di bawah satu detik.
+
+`CONTEXT_LOADING` di `expedition_controller.gd` sekarang menyebut **hanya** dua
+operasi yang memang menukar konteks layar: `start_run` (hub → peta) dan `abandon`
+(peta → hub). `start_zone`, `enter_node`, `checkpoint_choice`, `choose`, dan
+`refresh_shop` mempertahankan panel yang sedang tampil dan cukup diredupkan
+`_set_busy(true)` selama request-nya terbang; `_load_chapter` dan `_save_team`
+tidak mengumumkan apa pun. Kesembilan key `ui.csv` yang tidak lagi punya
+pemanggil sudah dihapus, bukan ditinggalkan menganggur.
+
+Art encounter berikutnya tidak perlu ditunggu di detik pemain menekan node,
+sebab payload run sudah menyebutkan semuanya: `arena_background_url` (4–5 MB per
+zona), `party_state`, dan `boss_seeker`. `_preload_run_art()` karena itu
+dipanggil dari `_present()` **tanpa `await`** setiap kali peta tampil tanpa
+encounter aktif, dan lawan ikut kalau `_chapter_manifest` masih dipegang dari
+layar detail chapter — manifest itu membawa `sheet_url` publik untuk setiap
+roster, jadi zona berjalan (plus roster Boss di zona terakhir) bisa disiapkan
+lebih dulu. Dua pagarnya: `_preload_running` menolak preload kedua, dan
+`_prepare_active_art()` menunggu `_preload_settled` kalau pemain menekan node
+lebih cepat daripada unduhannya — jadi tap yang mendahului preload memakai
+unduhan yang sama alih-alih memulai unduhan kedua atas byte yang sama.
+
+Anggota tim adalah Anima pemain sendiri, dan sheet-nya biasanya sudah ada di
+`user://animas/` dari Home/Collection. `_load_art()` sekarang membaca cache disk
+itu lewat `GameState.has_sprite_for_anima(anima_id, stage)` sebelum menyentuh
+signed URL, jadi empat sheet ~1 MB tidak diunduh ulang tiap run. Kunci cache-nya
+memuat stage, jadi Anima yang baru berevolusi tetap mendapat art barunya.
+
+Hub mengirim `chapters` dan `team` bersamaan lewat `_dispatch()`/
+`_await_dispatch()` — helper yang sama yang dipakai commit turn. Keduanya tidak
+saling bergantung, jadi hub menunggu satu round trip. `Backend.ensure_session()`
+dipanggil lebih dulu karena `Backend` belum punya guard refresh in-flight: dua
+request paralel yang sama-sama menemukan token nyaris kedaluwarsa akan memakai
+refresh token yang sama dua kali.
+
+Yang **tetap** menunggu server tidak berubah: hasil encounter, reward, EXP,
+Bits, item, checkpoint, dan reveal Trophy semuanya tetap dari response. Prediksi
+turn Expedition juga tidak disentuh — ia masih berhenti di `final_ace`, turn
+penutup Boss, dan item, dengan alasan yang sama seperti di atas.
+
 ## Turn yang gagal terkirim
 
 Dua lapis, dan keduanya perlu:
