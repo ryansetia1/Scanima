@@ -55,6 +55,8 @@ Cangkir cenderung Defense tinggi, Special rendah. Gunting cenderung Attack tingg
 
 Naik Level membuat kelima angka itu tumbuh kira-kira **2% per level**. Lonjakan Adult dan Evolved datang sesudah ritual **Evolve**, bukan otomatis di angka Level itu.
 
+Setiap kali Anima naik Level, satu dialog muncul: judul **{nama} Level Up**, lalu Level barunya sebagai angka besar (**Lv. 4**), lalu kelima stat dengan nilai **lama → baru**.
+
 ## EXP dan Level
 
 Biaya naik Level bertambah setiap lima Level:

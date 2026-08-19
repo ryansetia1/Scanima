@@ -98,9 +98,6 @@ const BAG_ICON := preload("res://assets/icons/backpack.svg")
 @onready var _seeker_profile_view: SeekerProfileView = %SeekerProfileView
 @onready var _atlas_view: AtlasView = %AtlasView
 @onready var _bottom_nav: BottomNav = %BottomNav
-@onready var _level_up_banner: Control = %LevelUpBanner
-@onready var _level_up_title: Label = %LevelUpTitle
-@onready var _level_up_label: Label = %LevelUpLabel
 
 var _busy := false
 var _roster: Array[Dictionary] = []
@@ -117,8 +114,6 @@ var _overlay_return_destination: StringName = BottomNav.HOME
 var _profile_return_destination: StringName = BottomNav.COLLECTION
 var _pending_atlas_publish_id := ""
 var _toast_revision := 0
-var _level_up_revision := 0
-var _level_up_tween: Tween
 var _expedition_level_queue: Array[Dictionary] = []
 var _expedition_level_sequence_active := false
 var _last_care_delta := 0
@@ -340,6 +335,7 @@ func _ready() -> void:
 		if arg == "--level-up-demo":
 			if _current_anima.is_empty():
 				_current_anima = {
+					"nickname": "Vitrelisk",
 					"base_stats": {
 						"hp": 50, "atk": 43, "def": 38, "spd": 51, "special": 44
 					},
@@ -2082,7 +2078,7 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> bool:
 		if _apply_care_response(GameState.as_dict(res.data)):
 			if action == "feed" or action == "use_item":
 				_refresh_inventory()
-			if show_feedback and not _level_up_banner.visible:
+			if show_feedback and not _shell_modal.visible:
 				_say(_care_success_message(action), show_feedback)
 			return true
 		return false
@@ -4338,7 +4334,7 @@ func _maybe_celebrate_level(previous_score: int, new_score: int) -> void:
 		)
 
 
-# ponytail: one shell banner, not a per-screen fanfare. Plafon: no particles;
+# ponytail: one shell dialog, not a per-screen fanfare. Plafon: no particles;
 # committed form changes own the evolution chamber instead of Level-up copy.
 func _celebrate_level_up(
 	level: int,
@@ -4348,88 +4344,32 @@ func _celebrate_level_up(
 	target_anima: Dictionary = {},
 	modal_context: StringName = &"level_up"
 ) -> void:
-	if not is_instance_valid(_level_up_banner):
-		return
-	var form_row := target_anima if not target_anima.is_empty() else _current_anima
-	var uses_evolution_ritual: bool = (
-		_evolution_enabled()
-		and CareRules.evolution_version(form_row) >= 1
-	)
-	var crossed_legacy_form: bool = (
-		not uses_evolution_ritual
-		and CARE_RULES.form_key(level) != CARE_RULES.form_key(previous_level)
-	)
 	_status_panel.visible = false
-	_level_up_title.text = tr("LEVEL_UP")
-	if not target_anima.is_empty():
-		var anima_name := LocaleManager.display_name(target_anima)
-		if crossed_legacy_form:
-			_level_up_label.text = tr("EXPEDITION_LEVEL_UP_FORM") % [
-				anima_name,
-				LocaleManager.level_label(level),
-				LocaleManager.form_name(level),
-			]
-		else:
-			_level_up_label.text = tr("EXPEDITION_LEVEL_UP_TO") % [
-				anima_name,
-				LocaleManager.format_integer(level),
-			]
-	elif crossed_legacy_form:
-		_level_up_label.text = tr("LEVEL_UP_FORM") % [
-			LocaleManager.level_label(level),
-			LocaleManager.form_name(level),
-		]
-	else:
-		_level_up_label.text = tr("LEVEL_UP_TO") % LocaleManager.format_integer(level)
-	_level_up_banner.visible = true
-	_level_up_banner.pivot_offset = _level_up_banner.size * 0.5
 	Sfx.play(Sfx.CUE_LEVEL_UP)
 	if target_anima.is_empty():
 		_home_view.pulse_progress()
 	if is_instance_valid(_anima) and _anima.visible:
 		_anima.celebrate_level_up()
 	Input.vibrate_handheld(70)
-	if is_instance_valid(_level_up_tween):
-		_level_up_tween.kill()
-	_level_up_banner.modulate = Color(1.0, 1.0, 1.0, 0.0)
-	_level_up_banner.scale = Vector2(0.72, 0.72)
-	_level_up_tween = create_tween()
-	_level_up_tween.tween_property(_level_up_banner, "modulate:a", 1.0, 0.10)
-	_level_up_tween.parallel().tween_property(
-		_level_up_banner, "scale", Vector2(1.06, 1.06), 0.18
-	).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_level_up_tween.chain().tween_property(_level_up_banner, "scale", Vector2.ONE, 0.12)
-	_level_up_revision += 1
-	var revision := _level_up_revision
-	_hide_level_up_later(
-		revision, previous_score, new_score, target_anima, modal_context
+	_show_level_up_stats(
+		level, previous_level, previous_score, new_score, target_anima, modal_context
 	)
 
 
-func _hide_level_up_later(
-	revision: int,
-	previous_score: int,
-	new_score: int,
-	target_anima: Dictionary = {},
-	modal_context: StringName = &"level_up"
-) -> void:
-	await get_tree().create_timer(1.8).timeout
-	if revision != _level_up_revision or not is_instance_valid(_level_up_banner):
-		return
-	if is_instance_valid(_level_up_tween):
-		_level_up_tween.kill()
-	_level_up_tween = create_tween()
-	_level_up_tween.tween_property(_level_up_banner, "modulate:a", 0.0, 0.22)
-	await _level_up_tween.finished
-	if revision != _level_up_revision or not is_instance_valid(_level_up_banner):
-		return
-	_level_up_banner.visible = false
-	_level_up_banner.modulate = Color.WHITE
-	_level_up_banner.scale = Vector2.ONE
-	_show_level_up_stats(previous_score, new_score, target_anima, modal_context)
+# Legacy snapshots (`evolution_version = 0`) still grow their form from the Level
+# alone, so they get a body line. The hero slot stays a bare `Lv. N`: it is the
+# largest text in the dialog and a form name beside it would wrap.
+func _level_up_form_line(level: int, previous_level: int, form_row: Dictionary) -> String:
+	if _evolution_enabled() and CareRules.evolution_version(form_row) >= 1:
+		return ""
+	if CARE_RULES.form_key(level) == CARE_RULES.form_key(previous_level):
+		return ""
+	return tr("LEVEL_UP_FORM_LINE") % LocaleManager.form_name(level)
 
 
 func _show_level_up_stats(
+	level: int,
+	previous_level: int,
 	previous_score: int,
 	new_score: int,
 	target_anima: Dictionary = {},
@@ -4438,10 +4378,17 @@ func _show_level_up_stats(
 	var anima := target_anima if not target_anima.is_empty() else _current_anima
 	if previous_score < 0 or new_score < 0 or anima.is_empty():
 		return
-	if is_instance_valid(_shell_modal) and _shell_modal.visible:
+	# ponytail: hide_overlay fades for 0.18 s, so the dialog the player just
+	# dismissed still reports visible while the Expedition queue advances. Plafon:
+	# only the Level Up chain may reopen over itself; other modals still win.
+	var chained := modal_context == &"expedition_level_up"
+	if not chained and is_instance_valid(_shell_modal) and _shell_modal.visible:
 		return
 	var stats := GameState.as_dict(anima.get("base_stats"))
 	var lines: PackedStringArray = []
+	var form_line := _level_up_form_line(level, previous_level, anima)
+	if not form_line.is_empty():
+		lines.append_array([form_line, ""])
 	for key in STAT_ORDER:
 		lines.append(
 			tr("LEVEL_UP_STAT_ROW")
@@ -4452,15 +4399,15 @@ func _show_level_up_stats(
 			]
 		)
 	_modal_context = modal_context
-	var title := (
-		tr("EXPEDITION_LEVEL_UP_STATS_TITLE") % LocaleManager.display_name(anima)
-		if modal_context == &"expedition_level_up" else tr("LEVEL_UP_STATS_TITLE")
-	)
 	var action := (
-		tr("EXPEDITION_CHOICE_CONTINUE")
-		if modal_context == &"expedition_level_up" else tr("CORE_INFO_CLOSE")
+		tr("EXPEDITION_CHOICE_CONTINUE") if chained else tr("CORE_INFO_CLOSE")
 	)
-	_shell_modal.open_info(title, "\n".join(lines), action)
+	_shell_modal.open_info(
+		tr("LEVEL_UP_TITLE") % LocaleManager.display_name(anima),
+		"\n".join(lines),
+		action,
+		tr("LEVEL_UP_TO") % LocaleManager.format_integer(level)
+	)
 
 
 func _say(text: String, transient: bool = false) -> void:

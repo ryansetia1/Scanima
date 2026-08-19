@@ -134,9 +134,10 @@ Seeker.
 - Sesudah menang Battle, Elite, atau Boss, layar hasil menampilkan Tokens,
   EXP tiap anggota, dan siapa yang naik Level. Stats dari Level baru dipakai
   di fight berikutnya di zona yang sama. Jika beberapa Anima naik Level,
-  setelah ringkasan hadiah kamu melihat banner dan perbandingan stat
-  **lama → baru** untuk satu Anima terlebih dahulu. Ketuk **Continue** untuk
-  melihat Anima berikutnya; **Return to Map** baru aktif setelah semuanya selesai.
+  setelah ringkasan hadiah kamu melihat satu dialog per Anima: judul
+  **{nama} Level Up**, Level barunya sebagai angka besar, lalu perbandingan
+  stat **lama → baru**. Ketuk **Continue** untuk melihat Anima berikutnya;
+  **Return to Map** baru aktif setelah semuanya selesai.
 - Anima special milik Boss Seeker tidak pernah muncul di node Battle atau Elite.
   Jika roster node memakai tim Boss, slot special diganti Anima reguler dari
   zona itu. Special baru dapat masuk sebagai Anima terakhir di Final Battle.

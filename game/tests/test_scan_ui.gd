@@ -277,6 +277,35 @@ func _initialize() -> void:
 		and modal_input.custom_minimum_size.y >= TOUCH_MIN,
 		"shared input mode enforces the server name length and touch target"
 	)
+	var modal_probe := (load("res://scenes/ui/ui_modal.tscn") as PackedScene).instantiate()
+	await process_frame
+	root.add_child(modal_probe)
+	modal_probe.open_info("first", "first body", "Continue")
+	await create_timer(0.35).timeout
+	# Continue closes and reopens in one frame. The dismiss fade lasts 0.18 s, so
+	# wait it out: if the reopen were treated as "already shown", the pending fade
+	# would hide the next Anima's stats and the Expedition queue would never reach
+	# Return to Map.
+	modal_probe.close()
+	modal_probe.open_info("second", "second body", "Continue")
+	await create_timer(0.35).timeout
+	var probe_title := modal_probe.find_child("ModalTitle", true, false) as Label
+	var probe_hero := modal_probe.find_child("ModalHero", true, false) as Label
+	_check(
+		modal_probe.visible and probe_title != null and probe_title.text == "second",
+		"a dialog reopened during its own fade stays up, so the Level Up queue advances"
+	)
+	_check(
+		probe_hero != null and not probe_hero.visible,
+		"dialogs without a hero line hide the slot instead of leaving a gap"
+	)
+	modal_probe.open_info("third", "third body", "Continue", "Lv. 4")
+	_check(
+		probe_hero != null and probe_hero.visible and probe_hero.text == "Lv. 4",
+		"the hero slot carries the Level Up number above the title's stat rows"
+	)
+	modal_probe.queue_free()
+
 	var shell_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
 		shell_source.find("var show_chrome := _destination == BottomNav.HOME and not immersive") >= 0
@@ -481,7 +510,7 @@ func _initialize() -> void:
 	_check(
 		flow_source.find("func _celebrate_level_up") >= 0
 		and flow_source.find("Sfx.play(Sfx.CUE_LEVEL_UP)") > flow_source.find("func _celebrate_level_up"),
-		"Level Up SFX stays on the shell banner, not a restyled button"
+		"Level Up SFX stays on the shell celebration, not a restyled button"
 	)
 	Sfx.play(Sfx.CUE_STRIKE)
 	var sfx_host := root.get_node_or_null("SfxHost")
@@ -492,20 +521,44 @@ func _initialize() -> void:
 	if care_dock != null:
 		_check(not care_dock.visible, "care stays hidden before an Anima loads")
 	_check(scene.find_child("CareSummary", true, false) is Label, "EXP summary has a label")
-	var level_up := scene.find_child("LevelUpBanner", true, false) as Control
-	_check(level_up != null, "level-up banner exists")
-	if level_up != null:
-		_check(not level_up.visible, "level-up banner starts hidden")
-		_check_eq(
-			level_up.mouse_filter,
-			Control.MOUSE_FILTER_IGNORE,
-			"level-up banner does not steal taps"
-		)
-		var level_up_column := scene.find_child("LevelUpColumn", true, false) as Control
-		_check(
-			level_up_column != null and level_up_column.anchor_top <= 0.22,
-			"level-up copy sits in the identity band above the Anima"
-		)
+	_check(
+		scene.find_child("LevelUpBanner", true, false) == null,
+		"the standalone Level Up banner is gone; one dialog carries the copy"
+	)
+	var celebrate_at := flow_source.find("func _celebrate_level_up")
+	_check(
+		celebrate_at >= 0
+		and flow_source.substr(celebrate_at, 900).find("_show_level_up_stats(") >= 0
+		and flow_source.find("func _hide_level_up_later") < 0,
+		"Level Up opens its dialog directly instead of waiting on a banner"
+	)
+	_check(
+		flow_source.find(
+			"tr(\"LEVEL_UP_TITLE\") % LocaleManager.display_name(anima)"
+		) >= 0,
+		"the Level Up dialog names the Anima in its own title"
+	)
+	var modal_theme := load("res://themes/mobile_theme.tres") as Theme
+	var hero_size := modal_theme.get_font_size("font_size", "ModalHero") if modal_theme != null else 0
+	var modal_title_size := modal_theme.get_font_size("font_size", "ModalTitle") if modal_theme != null else 0
+	var modal_body_size := modal_theme.get_font_size("font_size", "BodyLabel") if modal_theme != null else 0
+	_check(
+		hero_size > modal_title_size and modal_title_size > modal_body_size,
+		"Lv. N dominates the Level Up title, which still outranks the stat rows"
+	)
+	_check(
+		modal_theme != null
+		and modal_theme.get_font("font", "ModalHero") != null
+		and modal_theme.get_font("font", "ModalHero").resource_path
+		== "res://assets/fonts/Oxanium-Variable.ttf",
+		"the hero Level uses the Oxanium display font"
+	)
+	_check(
+		flow_source.find(
+			"tr(\"LEVEL_UP_TO\") % LocaleManager.format_integer(level)"
+		) >= 0,
+		"the Level Up hero slot carries the new Level, not a wrapped form name"
+	)
 	for name in ["NeedHunger", "NeedEnergy", "NeedHygiene", "NeedExp"]:
 		var meter := scene.find_child(name, true, false) as ProgressBar
 		_check(meter != null, "%s must exist" % name)
@@ -3024,7 +3077,7 @@ func _test_expedition_view() -> void:
 		"Expedition advances one Level Up dialog per button or back action before Return Map"
 	)
 	_check(
-		flow_source.find("EXPEDITION_LEVEL_UP_STATS_TITLE") >= 0
+		flow_source.find("LEVEL_UP_TITLE") >= 0
 		and flow_source.find("CARE_RULES.grown_stat(stats.get(key, 0), previous_score)") >= 0
 		and flow_source.find("CARE_RULES.grown_stat(stats.get(key, 0), new_score)") >= 0,
 		"each queued Expedition Anima receives Duel-style stat comparison"
@@ -4275,8 +4328,12 @@ func _test_evolve_profile_cta() -> void:
 		) >= 0,
 		"pending evolution lokal mencegah flash form lama saat cold boot"
 	)
+	var form_line_at := flow_source.find("func _level_up_form_line")
 	_check(
-		flow_source.find("not uses_evolution_ritual") >= 0,
+		form_line_at >= 0
+		and flow_source.substr(form_line_at, 400).find(
+			"if _evolution_enabled() and CareRules.evolution_version(form_row) >= 1:"
+		) >= 0,
 		"Level 16/36 rollout tidak mengumumkan form sebelum ritual committed"
 	)
 	_check(

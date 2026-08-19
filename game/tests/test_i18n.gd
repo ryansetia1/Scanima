@@ -20,8 +20,7 @@ const REQUIRED_KEYS := [
 	"ERROR_PLAY_CAPPED",
 	"HOME_LEVEL_EXP",
 	"HOME_LEVEL_MAX",
-	"LEVEL_UP",
-	"LEVEL_UP_STATS_TITLE",
+	"LEVEL_UP_TITLE",
 	"LEVEL_UP_STAT_ROW",
 	"SCAN_NO_CORE_HINT",
 	"SCAN_VIBE_TITLE",
@@ -211,7 +210,6 @@ func _check_scene_copy(keys: Dictionary) -> void:
 		"Subtitle", "AnimaMeta", "ScanStatus", "ScanPhaseHint",
 		"CollectionStatus", "DetailsEmpty", "DetailsMeta",
 		"BattleSubtitle", "BattleLobbyMeta", "BattleResultBody",
-		"LevelUpTitle", "LevelUpLabel",
 	]:
 		var label := scene.find_child(name, true, false) as Label
 		if label != null:

@@ -130,6 +130,11 @@ static func hide_overlay(overlay: Control, panel: Control) -> void:
 	if not overlay.visible:
 		return
 	_kill_tween(overlay)
+	# ponytail: drop under show_overlay's settled threshold in the same frame the
+	# fade starts. A dialog reopened mid-fade (the Expedition Level Up queue does
+	# exactly that) would otherwise be treated as already shown and swallowed by
+	# this tween. Plafon: the two thresholds live next to each other on purpose.
+	overlay.modulate.a = 0.98
 	panel.pivot_offset = panel.size * Vector2(0.5, 0.72)
 	var tween := overlay.create_tween().set_parallel(true)
 	tween.tween_property(overlay, "modulate:a", 0.0, 0.18) \

@@ -12,6 +12,7 @@ enum Mode {
 
 @onready var _panel: PanelContainer = %ModalPanel
 @onready var _title: Label = %ModalTitle
+@onready var _hero: Label = %ModalHero
 @onready var _body: Label = %ModalBody
 @onready var _input: LineEdit = %ModalInput
 @onready var _cancel_button: Button = %CancelButton
@@ -31,12 +32,15 @@ func _ready() -> void:
 	UiJuice.install_buttons(self)
 
 
+## `hero_text` is the one line that outranks the title: the Level Up dialog puts
+## the new `Lv. N` there. Every other dialog leaves it empty and the slot hides.
 func open_info(
 	title_text: String,
 	body_text: String,
-	close_text: String
+	close_text: String,
+	hero_text: String = ""
 ) -> void:
-	_configure(Mode.INFO, title_text, body_text, close_text, "", false)
+	_configure(Mode.INFO, title_text, body_text, close_text, "", false, hero_text)
 	_show_modal(_primary_button)
 
 
@@ -101,11 +105,14 @@ func _configure(
 	body_text: String,
 	primary_text: String,
 	cancel_text: String,
-	destructive: bool
+	destructive: bool,
+	hero_text: String = ""
 ) -> void:
 	_mode = mode
 	set_busy(false)
 	_title.text = title_text
+	_hero.text = hero_text
+	_hero.visible = not hero_text.is_empty()
 	_body.text = body_text
 	_body.visible = not body_text.is_empty()
 	_input.visible = mode == Mode.INPUT
