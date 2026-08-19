@@ -28,7 +28,6 @@ func show_menu() -> void:
 	_dim.modulate.a = 0.0
 	create_tween().set_trans(Tween.TRANS_QUAD).tween_property(_dim, "modulate:a", 1.0, 0.15)
 	UiJuice.pop(_panel, 1.025)
-	_profile.grab_focus()
 
 
 func close() -> void:
