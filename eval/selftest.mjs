@@ -8486,29 +8486,78 @@ console.log(
     "array yang seluruhnya rusak harus tercatat sebagai fallback, bukan melempar",
   );
   assert.match(degradedDerived.name_lineage_anchor, /^[a-z]{3,5}$/);
-  const checkedCaptureV41 = validateVision(
-    captureV37,
-    [],
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    true,
-    false,
-    true,
-    true,
-    false,
-    false,
-    false,
-    false,
-    false,
-    true,
+  // Dua Anima bernama sama dalam satu koleksi tidak bisa dibedakan pemain, jadi
+  // nama yang sudah dipakai dilewati selama kolam morfem masih punya sisa.
+  const dedupSecond = deriveMorphemeSpeciesName(
+    structuredClone(captureV37),
+    [morphemeCapture.suggested_name.toUpperCase()],
   );
+  assert.notEqual(
+    dedupSecond.suggested_name,
+    morphemeCapture.suggested_name,
+    "nama yang sudah ada di koleksi harus dihindari, tanpa peduli kapitalisasi",
+  );
+  assert.equal(
+    dedupSecond.name_lineage_anchor,
+    morphemeCapture.name_lineage_anchor,
+    "dedup mengganti morfem lanjutan, bukan anchor lineage",
+  );
+  // Kolam satu head berhingga, jadi pemilik yang rajin Scan pasti menghabiskannya.
+  // Saat itu terjadi nama kembar dikembalikan apa adanya: capture berbayar tidak
+  // boleh gagal karena keunikan nama, dan pemain bisa me-rename salah satunya.
+  const poolV41 = new Set();
+  for (let guard = 0; guard < 64; guard += 1) {
+    const next = deriveMorphemeSpeciesName(
+      structuredClone(captureV37),
+      [...poolV41],
+    ).suggested_name;
+    if (poolV41.has(next)) break;
+    poolV41.add(next);
+  }
+  assert.ok(poolV41.size >= 4, "satu head harus punya beberapa morfem lanjutan");
+  assert.ok(
+    poolV41.has(
+      deriveMorphemeSpeciesName(structuredClone(captureV37), [...poolV41])
+        .suggested_name,
+    ),
+    "kolam habis harus mengembalikan nama kembar, bukan melempar",
+  );
+  const validateCaptureV41 = (vision, takenNames = []) =>
+    validateVision(
+      vision,
+      [],
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      takenNames,
+    );
+  const checkedCaptureV41 = validateCaptureV41(captureV37);
   assert.equal(
     checkedCaptureV41.vision.suggested_name,
     morphemeCapture.suggested_name,
+  );
+  // `create_anima` menitipkan nickname pemilik lewat validateVision, jadi dedup
+  // harus bertahan di jalur itu — bukan hanya pada derivasi telanjang.
+  assert.notEqual(
+    validateCaptureV41(
+      structuredClone(captureV37),
+      [morphemeCapture.suggested_name],
+    ).vision.suggested_name,
+    morphemeCapture.suggested_name,
+    "validateVision harus meneruskan takenNames ke penamaan morfem",
   );
   // Anchor berklaster wajib selamat melewati validateVision: aturan pronounceable
   // v33 akan diam-diam menggantinya, dan lineage-nya pecah tanpa satu pun galat.
@@ -8518,26 +8567,7 @@ console.log(
     channel: "material",
     evidence: "charred seam",
   };
-  const clusterChecked = validateVision(
-    clusterAnchorV41,
-    [],
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    true,
-    false,
-    true,
-    true,
-    false,
-    false,
-    false,
-    false,
-    false,
-    true,
-  );
+  const clusterChecked = validateCaptureV41(clusterAnchorV41);
   assert.equal(
     clusterChecked.vision.name_lineage_anchor,
     "cindr",
@@ -8552,6 +8582,28 @@ console.log(
     authoritativeNameLineageAnchor: morphemeCapture.name_lineage_anchor,
     legacyLineageSuggestedName: morphemeCapture.suggested_name,
   });
+  // Rename sesudah Evolve terisi `suggested_name`, jadi kembar di koleksi yang
+  // sama juga lahir di sini — bukan hanya dari nama stage sebelumnya.
+  const adultDedupV41 = validateEvolutionPlan(v37Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 41,
+    priorSuggestedName: morphemeCapture.suggested_name,
+    authoritativeNameLineageAnchor: morphemeCapture.name_lineage_anchor,
+    legacyLineageSuggestedName: morphemeCapture.suggested_name,
+    ownerNames: [adultV41.plan.suggested_name.toUpperCase()],
+  });
+  assert.notEqual(
+    adultDedupV41.plan.suggested_name,
+    adultV41.plan.suggested_name,
+    "nama Evolve harus menghindari nama yang sudah ada di koleksi pemilik",
+  );
+  assert.ok(
+    adultDedupV41.plan.suggested_name
+      .toLowerCase()
+      .startsWith(morphemeCapture.name_lineage_anchor),
+    "dedup Evolve tidak boleh memutus anchor lineage",
+  );
   const evolvedV41Name = deriveMorphemeEvolutionName(
     morphemeCapture.name_lineage_anchor,
     v37Raw,
@@ -9553,6 +9605,99 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
       event.type === "switch" && event.actor === "opponent"
     ),
     "team status KO must auto-switch opponent bench",
+  );
+}
+
+console.log("39. nickname pemain tidak pernah sampai ke pemain lain");
+{
+  // Rename Anima hanya dipagari deterministik — profanity, impersonasi, charset
+  // — dan itu cukup **karena** `animas.nickname` privat. Kalau ia menjadi
+  // publik, gerbang SQL berhenti memadai: karakter franchise yang dapat
+  // disebut namanya butuh moderasi model seperti jalur art di Atlas, sebab
+  // tidak ada daftar kata yang bisa mengejar IP dunia.
+  //
+  // Skenario ini adalah tripwire untuk keputusan itu. Ia gagal saat sumber baru
+  // menyentuh nickname atau saat salah satu dari empat pagar proyeksi hilang,
+  // supaya perubahan itu tidak lolos diam-diam sebagai patch satu baris.
+  //
+  // ponytail: pemindai sumber, bukan uji runtime. Plafon: ia melihat file dan
+  // pagar yang sudah dikenal, bukan jalur data yang benar-benar dieksekusi.
+  const { readFile, readdir } = await import("node:fs/promises");
+  const functionsDir = new URL(
+    "../backend/supabase/functions/",
+    import.meta.url,
+  );
+  const touched = [];
+  const walk = async (dir, prefix) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        await walk(new URL(`${entry.name}/`, dir), `${prefix}${entry.name}/`);
+      } else if (/\.(ts|mjs)$/.test(entry.name)) {
+        const body = await readFile(new URL(entry.name, dir), "utf8");
+        if (body.includes("nickname")) touched.push(`${prefix}${entry.name}`);
+      }
+    }
+  };
+  await walk(functionsDir, "");
+
+  // prompts.generated.ts hanya menyalin teks prompt; ia tidak memproyeksikan
+  // baris apa pun. Sisanya adalah seluruh permukaan yang boleh melihat kolom.
+  const allowed = [
+    "_shared/prompts.generated.ts",
+    "_shared/signed_roster.ts",
+    "_shared/team_snapshot.mjs",
+    "battle_anima/index.ts",
+    "create_anima/index.ts",
+    "evolve_anima/index.ts",
+    "expedition/index.ts",
+    "gallery/index.ts",
+    "team_battle/index.ts",
+  ];
+  assert.deepEqual(
+    touched.sort(),
+    [...allowed].sort(),
+    "sumber baru menyentuh animas.nickname — putuskan dulu apakah ia tetap "
+      + "privat; kalau menjadi publik, gerbang deterministik saja tidak cukup",
+  );
+
+  const source = async (path) =>
+    await readFile(new URL(path, functionsDir), "utf8");
+
+  // 1. Atlas: nickname hanya untuk pemiliknya, sisanya display_name generated.
+  const galleryBody = await source("gallery/index.ts");
+  const atlasFn = galleryBody.slice(
+    galleryBody.indexOf("function atlasDisplayName"),
+  ).split("\n}\n")[0];
+  assert.ok(
+    /form\.owner_id\s*!==\s*ownerId/.test(atlasFn)
+      && /anima\.nickname/.test(atlasFn),
+    "atlasDisplayName harus mengembalikan nama generated untuk non-pemilik",
+  );
+
+  // 2. Snapshot roster yang sudah tersimpan tetap dibersihkan sebelum dikirim.
+  assert.match(
+    await source("_shared/signed_roster.ts"),
+    /delete member\.nickname/,
+    "withSignedRoster harus tetap membuang nickname dari roster lawan",
+  );
+
+  // 3. Satu-satunya jalan nickname masuk snapshot adalah includeName.
+  assert.match(
+    await source("_shared/team_snapshot.mjs"),
+    /includeName\s*\?\s*String\(row\.nickname[^)]*\)\s*:\s*"Anima"/,
+    "snapshot team tanpa includeName harus memakai nama netral",
+  );
+
+  // 4. Defense Team yang dipublikasikan adalah lawan pemain lain, jadi ia
+  //    satu-satunya pemanggil teamSnapshot yang wajib false.
+  const teamBody = await source("team_battle/index.ts");
+  const publishDefense = teamBody.slice(
+    teamBody.indexOf("async function publishDefense"),
+  ).split("\n}\n")[0];
+  assert.match(
+    publishDefense,
+    /teamSnapshot\(team,\s*false\)/,
+    "Defense Team terpublish tidak boleh membawa nickname pemiliknya",
   );
 }
 

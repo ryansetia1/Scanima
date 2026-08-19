@@ -229,6 +229,16 @@ Deno.serve(async (req) => {
       : await db.from("species_library").select("species_key");
     const dikenal = [...new Set((spesiesAda ?? []).map((r) => r.species_key))];
 
+    // Dua Anima bernama sama dalam satu koleksi membuat Collection, picker
+    // Battle, dan Summon ambigu. Kegagalan query ini sengaja tidak diperiksa:
+    // daftar kosong hanya berarti dedup tidak jalan, dan itu jauh lebih murah
+    // daripada menggagalkan capture yang sebentar lagi membayar Vision.
+    const { data: namaDipakai } = await db
+      .from("animas")
+      .select("nickname")
+      .eq("owner_id", uid);
+    const namaPemilik = (namaDipakai ?? []).map((r) => r.nickname);
+
     let mentah: unknown;
     try {
       mentah = await jalankanPrediksi(MODEL_VISION, {
@@ -267,6 +277,7 @@ Deno.serve(async (req) => {
         promptMajor(versiPrompt) === 38,
         promptMajor(versiPrompt) >= 39,
         promptMajor(versiPrompt) >= 41,
+        namaPemilik,
       );
     } catch (e) {
       await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "vision_unparseable" });

@@ -1316,7 +1316,8 @@ func _popup_rename() -> void:
 		_pending_rename_text,
 		tr("ANIMA_RENAME_SAVE"),
 		tr("ACTION_CANCEL"),
-		tr("ANIMA_RENAME_PLACEHOLDER")
+		tr("ANIMA_RENAME_PLACEHOLDER"),
+		AnimaDetailsView.NAME_MAX_LENGTH
 	)
 
 
@@ -1333,6 +1334,10 @@ func _rename_confirmed(submitted_text: String) -> void:
 		_say(tr("ANIMA_RENAME_EMPTY"), true)
 		call_deferred("_popup_rename")
 		return
+	if not AnimaDetailsView.is_valid_anima_name(nickname):
+		_say(tr("ANIMA_RENAME_INVALID"), true)
+		call_deferred("_popup_rename")
+		return
 	if _busy:
 		call_deferred("_popup_rename")
 		return
@@ -1341,7 +1346,7 @@ func _rename_confirmed(submitted_text: String) -> void:
 	var res := await Backend.rename_anima(anima_id, nickname)
 	if not res.ok or typeof(res.data) != TYPE_ARRAY or (res.data as Array).is_empty():
 		_set_busy(false)
-		_say(tr("ANIMA_RENAME_ERROR"), true)
+		_say(_anima_rename_error(str(res.error)), true)
 		call_deferred("_popup_rename")
 		return
 
@@ -1361,6 +1366,18 @@ func _rename_confirmed(submitted_text: String) -> void:
 	_set_busy(false)
 	_say(tr("ANIMA_RENAME_SUCCESS") % nickname, true)
 	call_deferred("_maybe_prompt_seeker_onboarding")
+
+
+## Trigger `animas_validate_nickname` menjawab lewat PostgREST, jadi kode ini
+## sampai apa adanya di `res.error` — sama seperti kontrak error seeker.
+func _anima_rename_error(error: String) -> String:
+	match error:
+		"INVALID_ANIMA_NAME":
+			return tr("ANIMA_RENAME_INVALID")
+		"ANIMA_NAME_RESERVED":
+			return tr("ANIMA_RENAME_RESERVED")
+		_:
+			return tr("ANIMA_RENAME_ERROR")
 
 
 func _modal_confirmed(text: String) -> void:

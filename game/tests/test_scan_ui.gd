@@ -3869,6 +3869,44 @@ func _test_hatch_offers_rename() -> void:
 		confirm_body.find("_profile_anima[\"nickname\"] = nickname") >= 0,
 		"successful rename refreshes a non-active Profile row"
 	)
+	# Preflight client mencerminkan `_validated_anima_name()` di Postgres. Kalau
+	# keduanya berbeda, pemain melihat Save yang dijawab galat server, atau nama
+	# yang sah tertahan sebelum sempat dikirim. Script-nya di-load, bukan ditulis
+	# sebagai nama global: mode `--script` mengompilasi test lebih dulu daripada
+	# autoload, dan `LocaleManager` di dalamnya belum ada di titik itu.
+	var details_script: GDScript = load("res://scripts/anima_details_view.gd")
+	for valid in ["Sir Fluffy", "O'Malley", "Rex-2", "A"]:
+		_check(
+			details_script.is_valid_anima_name(valid),
+			"nama peliharaan wajar '%s' harus lolos preflight" % valid
+		)
+	for invalid in ["12345", "Pika\u00e9", "Two  Spaces", " -Lead", "x".repeat(33)]:
+		_check(
+			not details_script.is_valid_anima_name(invalid),
+			"preflight harus menolak '%s'" % invalid
+		)
+	# Daftar impersonasi/profanity sengaja tinggal di database saja: ia berubah
+	# tanpa build baru, dan server tetap pagar terakhirnya.
+	_check(
+		details_script.is_valid_anima_name("Admin Bot"),
+		"daftar terlarang tidak boleh ikut turun ke client"
+	)
+	_check(
+		int(details_script.NAME_MAX_LENGTH) == 32
+		and source.find("AnimaDetailsView.NAME_MAX_LENGTH") >= 0,
+		"LineEdit Rename memakai batas yang sama dengan validator"
+	)
+	_check(
+		confirm_body.find("AnimaDetailsView.is_valid_anima_name") >= 0,
+		"rename memakai preflight bersama, bukan aturan kedua yang bisa melenceng"
+	)
+	# Trigger Postgres menjawab dengan kode, bukan kalimat. Tanpa pemetaan ini
+	# pemain membaca `ANIMA_NAME_RESERVED` mentah di toast.
+	for code in ["INVALID_ANIMA_NAME", "ANIMA_NAME_RESERVED"]:
+		_check(
+			source.find("\"%s\":" % code) >= 0,
+			"galat rename '%s' harus dipetakan ke copy localized" % code
+		)
 
 
 func _test_header_uses_ready_roster() -> void:

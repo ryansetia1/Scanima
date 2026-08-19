@@ -336,6 +336,14 @@ Deno.serve(async (req) => {
     .select("nickname")
     .eq("id", begin.anima_id)
     .maybeSingle();
+  // Nama seluruh koleksi, bukan hanya Anima ini: modal Rename sesudah Evolve
+  // terisi `suggested_name`, jadi di sinilah nama kembar lahir. Kegagalan query
+  // dibiarkan lewat — dedup adalah usaha terbaik, dan evolusi ini sudah
+  // membayar Vision Plan.
+  const { data: ownerAnimas } = await db
+    .from("animas")
+    .select("nickname")
+    .eq("owner_id", uid);
   const generatedLineageSuggestedName = String(
     (targetStage === 3 ? priorPlan?.suggested_name : null)
       ?? captureVision?.suggested_name
@@ -445,6 +453,7 @@ Deno.serve(async (req) => {
     authoritativeNameLineageAnchor,
     legacyLineageSuggestedName: generatedLineageSuggestedName,
     captureElement: String(meta.element ?? ""),
+    ownerNames: (ownerAnimas ?? []).map((r) => r.nickname),
   };
 
   let plan: Record<string, unknown>;

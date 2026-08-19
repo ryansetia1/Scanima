@@ -1155,7 +1155,13 @@ function selectMorphemeName(head, tails, seed, takenNames = []) {
   return usable[mixNameSeed(seed) % usable.length];
 }
 
-export function deriveMorphemeSpeciesName(vision) {
+/**
+ * `takenNames` adalah nama yang sudah dipakai koleksi pemilik. Dedup-nya usaha
+ * terbaik dengan alasan yang sama seperti di evolusi: kolam morfem satu head
+ * bisa habis, dan menggagalkan capture berbayar demi keunikan nama adalah
+ * pertukaran yang salah — nama kembar bisa di-rename pemain, $0.07 tidak.
+ */
+export function deriveMorphemeSpeciesName(vision, takenNames = []) {
   // Pagar v39 yang dipertahankan: penamaan tidak boleh menggagalkan capture
   // berbayar. Akar yang tidak terpakai jatuh ke fonotaktik deterministik dan
   // tetap melewati gerbang morfem yang sama.
@@ -1195,6 +1201,7 @@ export function deriveMorphemeSpeciesName(vision) {
     candidate.root,
     family_tails.length ? family_tails : MORPHEME_CAPTURE_TAILS[family],
     seed,
+    takenNames,
   );
   return {
     suggested_name: chosen.name,
@@ -1299,6 +1306,7 @@ export function validateVision(
   requireTransformedHybridName = false,
   requireCuratedHybridName = false,
   requireMorphemeName = false,
+  takenNames = [],
 ) {
   const issues = [];
 
@@ -1391,7 +1399,7 @@ export function validateVision(
   }
 
   if (requireMorphemeName) {
-    const generatedName = deriveMorphemeSpeciesName(v);
+    const generatedName = deriveMorphemeSpeciesName(v, takenNames);
     v.suggested_name = generatedName.suggested_name;
     v.name_lineage_anchor = generatedName.name_lineage_anchor;
     v.selected_name_root = generatedName.selected_name_root;

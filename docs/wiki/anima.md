@@ -124,3 +124,18 @@ picker Anima di Battle.
 
 Rename Anima tidak memiliki cooldown Seeker. **Change Seeker Name** adalah aksi
 terpisah dan hanya tersedia sekali setiap 30 hari.
+
+## Nama Anima
+
+Nama yang kamu tulis sendiri boleh memakai huruf, angka, spasi, apostrof, dan
+tanda hubung, sampai 32 karakter, dan harus memuat setidaknya satu huruf. Spasi
+di awal dan akhir dibuang. Kata kasar dan nama yang menyamar sebagai staf
+(Admin, Moderator, Support, Scanima) ditolak dengan pesan di layar; namanya tidak
+tersimpan dan sheet-nya tetap terbuka supaya kamu bisa mencoba lagi.
+
+Nama hasil Scan dan Evolve berusaha menghindari nama yang sudah ada di
+koleksimu, jadi dua Anima serupa tidak lahir kembar. Kalau pilihannya benar-benar
+habis, nama kembar tetap diberikan — kamu bisa mengganti salah satunya.
+
+Nickname buatanmu hanya terlihat olehmu. Lawan Battle, Defense Team, dan
+[Anima Atlas](atlas.md) memakai nama spesies hasil Scan, bukan nickname.

@@ -7,6 +7,12 @@ signal gallery_publish_requested(anima_id: String, publish: bool)
 signal evolve_requested(row: Dictionary)
 signal help_requested(title: String, body: String)
 
+## Cermin `_validated_anima_name()` di Postgres. Preflight ini hanya menghemat
+## satu round trip; database tetap pagar terakhirnya, dan daftar impersonasi
+## sengaja tidak ikut turun ke client — ia berubah tanpa build baru.
+const NAME_PATTERN := "^[A-Za-z0-9][A-Za-z0-9 '-]{0,31}$"
+const NAME_MAX_LENGTH := 32
+
 @onready var _empty_state: Label = %DetailsEmpty
 @onready var _content: Control = %DetailsContent
 @onready var _portrait: TextureRect = %DetailsPortrait
@@ -156,6 +162,15 @@ func _request_evolve() -> void:
 	if _row.is_empty() or not CareRules.evolution_ready(_row):
 		return
 	evolve_requested.emit(_row.duplicate(true))
+
+
+static func is_valid_anima_name(value: String) -> bool:
+	var name := value.strip_edges()
+	return (
+		RegEx.create_from_string(NAME_PATTERN).search(name) != null
+		and RegEx.create_from_string("[A-Za-z]").search(name) != null
+		and not name.contains("  ")
+	)
 
 
 func _request_rename() -> void:

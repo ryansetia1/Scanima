@@ -1267,7 +1267,13 @@ export function validateEvolutionPlan(raw, opts) {
       plan,
       opts.targetStage,
       opts.captureElement,
-      [opts.priorSuggestedName, opts.legacyLineageSuggestedName],
+      [
+        opts.priorSuggestedName,
+        opts.legacyLineageSuggestedName,
+        // Rename sesudah Evolve terisi nama ini, jadi kembar di koleksi yang
+        // sama datang dari sini juga — bukan hanya dari nama stage sebelumnya.
+        ...(Array.isArray(opts.ownerNames) ? opts.ownerNames : []),
+      ],
     );
     validateV32NamePlan(plan, opts, issues);
   } else if (contractVersion >= 32) validateV32NamePlan(plan, opts, issues);

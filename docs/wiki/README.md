@@ -33,7 +33,7 @@ memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
 | [Perawatan](caring.md) | Hunger, Energy, Hygiene, Shop, Bag, Feed, Clean, Play, Sleep, Dormant |
 | [Ekonomi](economy.md) | Genesis Cores, Bits, Shop, Scan, menunggu telur |
 | [Seeker](seeker.md) | Guest, Google, profil, onboarding, Settings, hapus akun |
-| [Anima](anima.md) | Traits, attributes, EXP, Level, Evolve, Collection, Summon |
+| [Anima](anima.md) | Traits, attributes, EXP, Level, Evolve, Collection, Summon, aturan nama |
 | [Battle](battle.md) | Duel, cara lawan dipilih, Team Battle, Expedition The Sugarworks, Boss Seeker, perintah, PP, hadiah, kartu hasil |
 | [Anima Atlas](atlas.md) | Scanned, Expedition, Duel, siluet, Publish Lineage, Report, dan privasi |
 

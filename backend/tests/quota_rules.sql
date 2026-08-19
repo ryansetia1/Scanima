@@ -58,6 +58,7 @@ declare
   v_expedition_map jsonb;
   v_expedition_party jsonb;
   v_expedition_state jsonb;
+  v_name_anima uuid;
   v_evolution_anima uuid;
   v_evolution_other uuid;
   v_evolution_gen uuid;
@@ -240,6 +241,53 @@ begin
   insert into public.species_library
     (species_key, color_bucket, stage, sheet_path, manifest, prompt_version)
   values (v_spesies, 'gray', 1, 'uji.png', '{}'::jsonb, 'v3');
+
+  ----------------------------------------------------------------------------
+  -- Gerbang nama Rename: menyala di UPDATE, dan capture berbayar tetap lewat
+  ----------------------------------------------------------------------------
+  select id into v_name_anima
+    from public.animas where owner_id = u1 and nickname = 'uji anima';
+  update public.animas set nickname = 'Sir Fluffy' where id = v_name_anima;
+  assert (select nickname from public.animas where id = v_name_anima) = 'Sir Fluffy',
+         'nama peliharaan wajar harus lolos gerbang Rename';
+  update public.animas set nickname = '  Padded Name  ' where id = v_name_anima;
+  assert (select nickname from public.animas where id = v_name_anima) = 'Padded Name',
+         'gerbang Rename harus memangkas spasi tepi, bukan menyimpannya';
+  begin
+    update public.animas set nickname = 'Kontol' where id = v_name_anima;
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ANIMA_NAME_RESERVED');
+  end;
+  assert ok, 'Rename dengan profanity harus ditolak';
+  begin
+    update public.animas set nickname = 'Admin Bot' where id = v_name_anima;
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ANIMA_NAME_RESERVED');
+  end;
+  assert ok, 'impersonasi harus diperiksa per kata, bukan hanya nama utuh';
+  begin
+    update public.animas set nickname = 'Pika' || chr(233) where id = v_name_anima;
+    ok := false;
+  exception when others then ok := (sqlerrm = 'INVALID_ANIMA_NAME');
+  end;
+  assert ok, 'karakter di luar ASCII harus ditolak';
+  begin
+    update public.animas set nickname = '12345' where id = v_name_anima;
+    ok := false;
+  exception when others then ok := (sqlerrm = 'INVALID_ANIMA_NAME');
+  end;
+  assert ok, 'nama tanpa satu pun huruf harus ditolak';
+  -- Penamaan tidak boleh menggagalkan capture berbayar, jadi INSERT sengaja
+  -- tidak dipagari: nama generated sudah disaring nameIsSafeForPlayers() di
+  -- Edge Function, dan stem baru di daftar tidak boleh membunuh $0.07.
+  insert into public.animas (owner_id, nickname, species_key, color_bucket,
+                             element, rarity, base_stats, care)
+  values (u1, 'staff', 'gate_probe', 'gray', 'tech', 1, v_stats, v_care);
+  assert (select count(*) from public.animas
+           where owner_id = u1 and species_key = 'gate_probe') = 1,
+         'INSERT capture tidak boleh ikut dipagari gerbang Rename';
+  delete from public.animas where owner_id = u1 and species_key = 'gate_probe';
+  update public.animas set nickname = 'uji anima' where id = v_name_anima;
 
   ----------------------------------------------------------------------------
   -- Guest: satu Scan sukses per akun anonim, dan hatch gagal melepas slot
@@ -626,7 +674,10 @@ begin
   begin
     update public.animas set nickname = '   ' where id = v_delete_own;
     ok := false;
-  exception when check_violation then ok := true;
+  -- Dulu `check_violation` dari `animas_nickname_length`. Sejak gerbang Rename,
+  -- trigger menyala lebih dulu dan menjawab dengan kode yang bisa dipetakan
+  -- client; CHECK-nya tetap ada sebagai pagar kedua untuk INSERT.
+  exception when others then ok := (sqlerrm = 'INVALID_ANIMA_NAME');
   end;
   assert ok, 'nickname kosong harus ditolak di trust boundary database';
 
