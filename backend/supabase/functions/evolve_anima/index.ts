@@ -444,6 +444,7 @@ Deno.serve(async (req) => {
     priorSuggestedName,
     authoritativeNameLineageAnchor,
     legacyLineageSuggestedName: generatedLineageSuggestedName,
+    captureElement: String(meta.element ?? ""),
   };
 
   let plan: Record<string, unknown>;

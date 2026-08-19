@@ -301,7 +301,7 @@ const HYBRID_CAPTURE_SUFFIXES = {
 const HYBRID_ADULT_SUFFIXES = ["arin", "eron", "ivar", "ora", "une", "elis", "avor", "yra"];
 const HYBRID_EVOLVED_SUFFIXES = ["arion", "athor", "elyra", "urion", "ovar", "endra", "aveth", "oryn"];
 
-function joinNameRoot(root, suffix) {
+export function joinNameRoot(root, suffix) {
   const joinedSuffix = /[aeiou]$/.test(root) && /^[aeiou]/.test(suffix)
     ? suffix.slice(1)
     : suffix;
@@ -315,44 +315,66 @@ function sourceIdentityTokens(vision) {
   ].join(" ").toLowerCase().split(/[^a-z]+/).filter((token) => token.length >= 3);
 }
 
-function normalizeNameRoots(vision) {
+/**
+ * `allowClusters` ada karena v41 memang meminta morfem terbaca yang dikliping
+ * dari kata bermakna, dan klipingnya sering berakhir klaster: `cindr` dari
+ * cinder, `umbr` dari umbra, `strid` dari stride. Aturan tiga-konsonan v37
+ * membuang ketiganya, jadi tiga dari enam subjek dry run jatuh ke fallback
+ * fonotaktik — termasuk head `cindr` milik Cindrusk yang sudah disetujui
+ * operator. V37 tetap ketat supaya provenance-nya reproducible.
+ */
+/**
+ * `skipInvalid` membuang entri buruk alih-alih membatalkan seluruh array. Paid eval
+ * v41 mengukur biayanya: satu `wyrm` tanpa vokal, satu `stride` enam huruf, dan satu
+ * channel `sound` di luar allowlist membuang lima akar sehat bersamanya, lalu lima
+ * dari sembilan Anima memakai fonotaktik v36 yang justru sudah ditolak operator.
+ * Ranking model tetap dihormati: yang dipakai adalah entri sah pertama.
+ */
+function normalizeNameRoots(vision, allowClusters = false, skipInvalid = false) {
   const raw = Array.isArray(vision?.name_roots) ? vision.name_roots : [];
   if (raw.length !== 6) {
     throw new Error("name_roots v37 harus tepat 6 kandidat");
   }
   const identityTokens = sourceIdentityTokens(vision);
-  const roots = raw.map((item, index) => {
+  const rejected = [];
+  const roots = [];
+  raw.forEach((item, index) => {
     const root = normalizeNameLineageAnchor(item?.root);
     const channel = String(item?.channel ?? "").trim().toLowerCase();
     const evidence = String(item?.evidence ?? "").trim();
+    let problem = "";
     if (
       !/^[a-z]{3,5}$/.test(root)
       || !/[aeiou]/.test(root)
-      || /[b-df-hj-np-tv-z]{3}/.test(root)
+      || (!allowClusters && /[b-df-hj-np-tv-z]{3}/.test(root))
     ) {
-      throw new Error(`name_roots[${index}].root tidak sah: '${root}'`);
+      problem = `name_roots[${index}].root tidak sah: '${root}'`;
+    } else if (!NAME_ROOT_CHANNELS.includes(channel)) {
+      problem = `name_roots[${index}].channel tidak sah: '${channel}'`;
+    } else if (!evidence) {
+      problem = `name_roots[${index}].evidence kosong`;
     }
-    if (!NAME_ROOT_CHANNELS.includes(channel)) {
-      throw new Error(`name_roots[${index}].channel tidak sah: '${channel}'`);
-    }
-    if (!evidence) {
-      throw new Error(`name_roots[${index}].evidence kosong`);
+    if (problem) {
+      if (!skipInvalid) throw new Error(problem);
+      rejected.push(problem);
+      return;
     }
     const copiesIdentity = identityTokens.some((token) =>
       token === root || (root.length >= 4 && token.includes(root))
     );
-    return { root, channel, evidence, copiesIdentity };
+    roots.push({ root, channel, evidence, copiesIdentity });
   });
   if (new Set(roots.map((item) => item.root)).size !== roots.length) {
     throw new Error("name_roots v37 harus enam akar berbeda");
   }
-  if (new Set(roots.map((item) => item.channel)).size < 4) {
+  if (!skipInvalid && new Set(roots.map((item) => item.channel)).size < 4) {
     throw new Error("name_roots v37 harus mencakup minimal empat visual channel");
   }
   const valid = roots.filter((item) => !item.copiesIdentity);
   if (!valid.length) {
     throw new Error("name_roots v37 seluruhnya menyalin identitas sumber");
   }
+  if (rejected.length) valid[0].rejected_roots = rejected;
   return valid;
 }
 
@@ -633,7 +655,12 @@ export function nameStructureScore(word, identityTokens = []) {
   // seperti "rn" pada Dornara sudah cukup membedakannya.
   if (/^([^aeiouy][aeiouy])+$/.test(lower)) score -= 2;
   if (hasRepeatedBigram(lower)) score -= 2;
-  if (/[^aeiouy]{3}/.test(lower)) score -= 2;
+  // Penalti tiga konsonan beruntun dibuang di v41 karena terukur salah sasaran:
+  // ia tidak menyala pada satu pun reject v38 (Kuka, Vororn, Zoskesk, Bomari),
+  // tetapi ia satu-satunya sebab Velastra ("str") dan Cindrusk ("ndr") — dua nama
+  // Sugarworks yang disetujui operator — jatuh di bawah lantai. Klaster di seam
+  // dua morfem terbaca memang dapat diucapkan; Kingdra "ngdr" dan Sandshrew
+  // "ndshr" hidup dengan bentuk yang sama.
   if (identityTokens.some((token) => token.length >= 4 && lower.includes(token))) {
     score -= 4;
   }
@@ -790,6 +817,433 @@ export function deriveTransformedHybridEvolutionName(anchor, plan, targetStage) 
   );
 }
 
+/**
+ * V41 membalik premis v32–v40. Enam mekanisme berbeda mengejar keunikan leksikal
+ * dan semuanya mendarat di 0/6–3/6. Riset 1025 nama Pokémon
+ * (`docs/pokemon-name-research.html`) menunjukkan targetnya salah: 76,6% nama
+ * Pokémon memuat kata kamus utuh >=4 huruf, 2,5% adalah kata kamus, Dragonair
+ * memakai nama maskapai aktif, dan Kadabra bertahan 20 tahun litigasi tanpa
+ * berganti nama. Ishihara bahkan menguji ke orang Amerika bahwa Bulbasaur
+ * *terbaca* sebagai bulb + saurus.
+ *
+ * Yang terukur di sisi kita: ketujuh nama reject v32–v39 yang tanpa morfem
+ * (Aerisyn, Zimnuzem, Basgutun, Daxorin, Kurvesun, Dorralis, Vurralis) semuanya
+ * lolos gerbang lama, sementara Velastra dan Cindrusk — dua nama Sugarworks yang
+ * disetujui operator — justru ditolak. Kata yang bisa diucapkan tanpa morfem
+ * apa pun tidak punya pilihan selain terbaca sebagai nama orang.
+ *
+ * Jadi akar Vision tidak lagi dirusak menjadi anchor tak dikenal, dan
+ * lanjutannya morfem bermakna, bukan sufiks fonetik.
+ */
+const MORPHEME_ELEMENT_FAMILIES = Object.freeze({
+  metal: "mineral",
+  stone: "mineral",
+  ceramic: "mineral",
+  glass: "mineral",
+  wood: "verdant",
+  plant: "verdant",
+  food: "verdant",
+  flow: "tidal",
+  frost: "tidal",
+  flame: "ember",
+  spark: "ember",
+  plastic: "drape",
+  cloth: "drape",
+  paper: "drape",
+  fauna: "feral",
+  toxin: "feral",
+  air: "zephyr",
+  sound: "zephyr",
+});
+
+// Kesembilan tail Sugarworks yang disetujui operator ada di tabel ini — lith dan
+// elisk (mineral), mire (tidal), lume (ember), husk dan coil (drape), adon
+// (feral), spin dan astra (zephyr) — dan selftest merakit ulang kesembilan nama
+// itu dari head + tail lewat `joinNameRoot` yang sama. Kalau tabelnya bergeser
+// sampai Noxcoil atau Ambermire tidak bisa dibentuk lagi, itu regresi.
+// Setiap keluarga wajib menyimpan minimal dua tail berawal vokal. Head berkoda
+// dua konsonan seperti `curv` membuat seluruh tail berawal konsonan berbiaya seam
+// 3, jadi mineral yang hanya punya `elisk` terukur mengunci 100/100 fixture pada
+// `Curvelisk`.
+// Setiap keluarga menyimpan campuran satu dan dua suku kata. Itu satu-satunya
+// tuas panjang nama yang benar-benar dimiliki server: head datang dari Vision,
+// jadi head satu suku kata + tail satu suku kata adalah satu-satunya jalan ke
+// nama dua suku kata seperti Noxcoil dan Pralith.
+export const MORPHEME_CAPTURE_TAILS = Object.freeze({
+  mineral: [
+    "lith", "crag", "shard", "forge", "spire", "elisk", "onyx", "ingot",
+    "slate", "vein", "quartz", "ore",
+  ],
+  verdant: [
+    "frond", "thorn", "bloom", "root", "vine", "grove", "arbor", "acanth",
+    "sap", "bark", "husk", "seed",
+  ],
+  tidal: [
+    "mire", "rime", "tide", "brine", "drift", "eddy", "abyss", "silt",
+    "wake", "foam", "murk", "shoal",
+  ],
+  ember: [
+    "ember", "pyre", "cinder", "blaze", "volt", "lume", "arc", "ignis",
+    "coal", "flare", "soot", "kiln",
+  ],
+  // Plastic, cloth, dan paper berbagi keluarga ini, jadi morfem yang hanya benar
+  // untuk tekstil (yarn, twill, eider) dibuang: `Pixlyarn` terukur pada konsol
+  // plastik. Yang tersisa membaca sebagai lipatan/lembar/cangkang mana pun.
+  drape: [
+    "weave", "fold", "shroud", "quill", "seam", "husk", "usk", "coil", "arc",
+    "knot", "hem", "sheath", "ridge",
+  ],
+  feral: [
+    "fang", "maw", "talon", "pelt", "venom", "adon", "ursa", "spur",
+    "howl", "gnaw", "prowl", "sting",
+  ],
+  zephyr: [
+    "gale", "echo", "chime", "plume", "whorl", "spin", "astra",
+    "gust", "hush", "veer", "drone",
+  ],
+});
+
+// Pokémon tidak memanjangkan nama tiap stage — Charmander/Charmeleon/Charizard
+// sama panjang, Bulbasaur justru menyusut ke Ivysaur — jadi eskalasinya ada di
+// makna morfemnya, bukan di jumlah hurufnya.
+//
+// Kedua tabel ini sengaja **form-neutral**: nol bagian tubuh. Versi pertama
+// memuat `horn`, `mane`, `antler`, dan `crest`, lalu terukur memberi `-horn`
+// kepada lampu minyak yang Plan-nya tidak pernah menyebut tanduk — kesalahan
+// yang tidak bisa dimaafkan pemain karena namanya menjanjikan anatomi yang tidak
+// ada di sprite-nya. Morfem anatomi sekarang hanya boleh datang dari Plan itu
+// sendiri lewat `planFeatureTails()`, dan tabel di bawah adalah jalan keluar
+// terakhir yang selalu benar apa pun bentuk tubuhnya.
+// Dua tail berawal vokal wajib ada di setiap tabel stage. Head berkoda klaster
+// seperti `cindr` membuat seluruh tail berawal konsonan berbiaya seam 4, jadi
+// tanpa jalan keluar vokal ia terpaksa memakai `Cindrward` yang tersandung.
+export const MORPHEME_ADULT_TAILS = Object.freeze([
+  "ward",
+  "kin",
+  "brood",
+  "elder",
+  // Head berkoda klaster seperti `cindr` masih berbiaya seam 4 di depan konsonan
+  // apa pun, jadi kolam ini tetap butuh jalan keluar berawal vokal.
+  "adon",
+  "bastion",
+]);
+// Morfem gelar wajib pendek. Terukur: `monolith` dan `paragon` di atas head lima
+// huruf melewati 12 karakter dan dijatuhkan lantai struktur, sehingga kolam yang
+// benar-benar diterima menyusut ke tiga entri dan sembilan lineage kembali
+// berima `-aegis` — persis keluhan operator terhadap `-gos`/`-korax`/`-egis`.
+// Pokémon sendiri memakai gelar pendek yang bertabrakan dengan kata nyata —
+// Nidoking, Slowking, Charizard — jadi `king` dan `zard` sah di sini, dan
+// keduanya satu suku kata sehingga Evolved tidak wajib memanjang.
+export const MORPHEME_EVOLVED_TAILS = Object.freeze([
+  "sovran",
+  "titan",
+  "zenith",
+  "astral",
+  "aegis",
+  "apex",
+  "aeon",
+  "aether",
+  "king",
+  "zard",
+  "myth",
+  "doom",
+]);
+
+/**
+ * Morfem anatomi yang jujur: kunci di kiri hanya dipakai kalau Plan benar-benar
+ * menyebut salah satu kata di kanan. Urutannya deterministik, dan yang cocok
+ * menjadi kolam preferensi — jadi dua Anima dengan Plan berbeda mendapat ekor
+ * berbeda, yang sekalian membubarkan rima Evolved.
+ */
+const MORPHEME_PLAN_FEATURES = Object.freeze([
+  ["antler", ["antler"]],
+  ["horn", ["horn"]],
+  ["crest", ["crest", "crown", "diadem"]],
+  ["mane", ["mane", "ruff", "fringe"]],
+  ["maw", ["maw", "jaw", "fang", "tusk"]],
+  ["talon", ["talon", "claw"]],
+  ["coil", ["coil", "serpentine", "sinuous", "undulat"]],
+  ["carapace", ["carapace", "armor", "armour", "plated", "plating"]],
+  ["husk", ["husk", "shell", "chitin"]],
+  ["spine", ["spine", "spike", "quill", "barb"]],
+  ["pinion", ["wing", "pinion", "sail"]],
+  ["frond", ["frond", "leaf", "foliage", "petal"]],
+  ["tendril", ["tendril", "vine", "root", "creeper"]],
+  ["mantle", ["mantle", "cloak", "shroud", "cape", "drape"]],
+  ["spire", ["spire", "tower", "column", "pillar"]],
+  ["crag", ["crag", "boulder", "stone", "rock"]],
+]);
+
+export const MORPHEME_PLAN_FEATURE_TAILS = Object.freeze(
+  MORPHEME_PLAN_FEATURES.map(([tail]) => tail),
+);
+
+/**
+ * Morfem yang menjanjikan bagian tubuh. `-horn` cuma contoh yang paling terlihat;
+ * `-coil` pada konsol, `-pelt` pada naga bersisik, dan `-thorn` pada Monstera
+ * tanpa duri adalah janji yang sama. Di stage evolusi keseluruhan kelas ini hanya
+ * boleh lolos kalau Plan-nya sendiri yang menyebutkannya, sebab Plan adalah
+ * dokumen authoritative tentang tubuh barunya. Capture memakai gerbang yang sama
+ * atas `signature_features`, kecuali morfem permukaan di bawah.
+ */
+export const MORPHEME_BODY_TAILS = new Set([
+  ...MORPHEME_PLAN_FEATURE_TAILS,
+  "thorn",
+  "bloom",
+  "acanth",
+  "spur",
+  "plume",
+  "quill",
+  "shroud",
+  "root",
+  "vine",
+  "pelt",
+  "fang",
+  // `usk` cuma potongan elisi dari `husk`, jadi ia menjanjikan hal yang sama.
+  "usk",
+]);
+
+/**
+ * Cangkang adalah satu-satunya pengecualian: setiap objek punya kulit luar, dan
+ * `Cindrusk` dibangun tepat begitu. Bulu, karapas, dan mantel tidak ikut — bulu
+ * pada naga bersisik (`Dracopelt`, terukur) adalah janji yang sama dengan tanduk
+ * pada Anima tanpa tanduk. Stage evolusi tetap memakai gerbang penuh.
+ */
+const MORPHEME_SURFACE_TAILS = new Set(["husk", "usk"]);
+
+function featureTailsFromText(parts) {
+  const text = parts
+    .flat()
+    .map((value) => String(value ?? ""))
+    .join(" ")
+    .toLowerCase();
+  return MORPHEME_PLAN_FEATURES
+    .filter(([, words]) => words.some((word) => text.includes(word)))
+    .map(([tail]) => tail);
+}
+
+function planFeatureTails(plan) {
+  return featureTailsFromText([
+    plan?.stage_brief,
+    plan?.transformation_archetype,
+    plan?.mobility_contract?.locomotion_mode,
+    plan?.mobility_contract?.support_read,
+    plan?.silhouette_break_contract?.new_contour_read,
+    Array.isArray(plan?.shape_budget_contract?.primary_shapes)
+      ? plan.shape_budget_contract.primary_shapes
+      : [],
+  ]);
+}
+
+/**
+ * Capture tidak punya Evolution Plan, tetapi ia punya `signature_features` dan
+ * `creature_brief` — sumber yang sama baiknya. Tanpa ini `Fenesthorn` terukur
+ * pada Monstera tanpa duri: aturan anatomi hanya berlaku di stage evolusi
+ * sementara capture bebas menjanjikan apa pun.
+ */
+function captureFeatureTails(vision) {
+  return featureTailsFromText([
+    vision?.creature_brief,
+    vision?.object_label,
+    vision?.species_key,
+    vision?.surface_finish,
+    Array.isArray(vision?.signature_features) ? vision.signature_features : [],
+    Array.isArray(vision?.damage_hints) ? vision.damage_hints : [],
+  ]);
+}
+
+export const MORPHEME_CAPTURE_POOL = Object.freeze(
+  Object.values(MORPHEME_CAPTURE_TAILS).flat(),
+);
+
+function morphemeFamily(element) {
+  return MORPHEME_ELEMENT_FAMILIES[normalizeElement(element, "stone")]
+    ?? "mineral";
+}
+
+/**
+ * Yang membuat nama dua morfem sulit dibaca bukan klaster di mana pun, tetapi
+ * klaster yang benar-benar lahir di sambungannya. Terukur pada kesembilan nama
+ * Sugarworks yang disetujui operator, biaya seam-nya selalu <= 2: `nox|coil` 2,
+ * `rime|spin` 2, `amber|mire` 2, sementara `cindr|usk` dan `dusk|adon` justru 0
+ * karena tail-nya mulai vokal dan coda head tidak bertemu konsonan apa pun.
+ * Dry run v41 menghasilkan `cindr|volt` (4) dan `glaz|shard` (3) yang tersandung
+ * dibaca. Karena hanya sambungannya yang dihitung, aturan ini hidup di sini dan
+ * bukan sebagai penalti global di `nameStructureScore` — versi global itulah yang
+ * tadi menjatuhkan Velastra dan Cindrusk.
+ */
+function morphemeSeamOk(head, tail) {
+  const elided = /[aeiou]$/.test(head) && /^[aeiou]/.test(tail);
+  const joinedTail = elided ? tail.slice(1) : tail;
+  // Pokémon berhenti di sekitar sepuluh huruf (Crabominable dua belas), dan batas
+  // ini menggantikan seluruh fungsi skor yang dulu menjaga panjang — sekalian
+  // memberi nama dua suku kata jalan masuk yang tidak ia punya sebelumnya.
+  if (head.length + joinedTail.length > 12) return false;
+  // Elisi yang menyisakan potongan terlalu pendek menghapus morfemnya: `elisk`
+  // masih terbaca sebagai `lisk` (Nimbelisk), sedangkan `usk` tinggal `sk`.
+  if (joinedTail.length < 3) return false;
+  // Elisi yang menyisakan vokal kedua hanya memindahkan tumpukannya: `glide` +
+  // `aeon` menjadi `Glideeon`. Kesembilan nama Sugarworks tidak memakai elisi
+  // sama sekali, jadi aturan ini tidak menyentuh satu pun di antaranya.
+  // Potongan elisi harus tetap berupa suku kata: satu konsonan lalu vokal. `elisk`
+  // menjadi `lisk` (Nimbelisk) dan `adon` menjadi `don`, tetapi `elder` menjadi
+  // `lder` yang tidak bisa diucapkan — terukur sebagai `Dracolder`.
+  if (elided && !/^[^aeiou][aeiou]/.test(joinedTail)) return false;
+  const onset = (joinedTail.match(/^[^aeiou]*/) ?? [""])[0].length;
+  if (!onset) return true;
+  // `y` di ujung head berbunyi vokal — `cozy` tidak berkoda `zy`. Tanpa ini
+  // Cozyweave, Cozyfold, dan Cozyseam semuanya tertolak dan seluruh head
+  // berakhiran y terpaksa memakai satu-satunya tail berawal vokal.
+  const coda = (head.match(/[^aeiouy]*$/) ?? [""])[0].length;
+  // Batasnya tiga, bukan dua. Dua terukur mengunci setiap head berkoda ganda
+  // (`dash`, `dusk`) pada tail berawal vokal, dan tail berawal vokal selalu dua
+  // suku kata — itulah sebabnya sembilan nama terakhir semuanya tiga suku kata.
+  // Tiga membuka `Dashcoil` dan `Duskfang`; `Cindrvolt` tetap tertutup di empat.
+  return coda + onset <= 3;
+}
+
+/**
+ * Nama adalah placeholder — pemain boleh me-rename kapan pun — jadi aturannya
+ * tinggal tiga: tidak kasar, sambungannya bisa dibaca, dan tidak mengulang
+ * morfem head-nya. Lantai skor, seleksi 32 kandidat, dan tiga tingkat fallback
+ * v39–v41 sudah dibuang: justru gerbang-gerbang itu yang menyusutkan kolam
+ * sampai sembilan nama berturut-turut berakhir tiga suku kata dengan ekor yang
+ * berulang. Kolam lebar + satu pilihan hash memberi variasi lebih banyak dengan
+ * kode lebih sedikit; sesekali ada nama kaku, dan pemain bisa menggantinya.
+ */
+/**
+ * FNV-1a sendiri tidak cukup tersebar untuk dipakai langsung sebagai indeks:
+ * `seed % 4` terukur memilih hanya dua dari empat cadence family di v40, dan
+ * `seed >>> 8` terukur memberi ekor Adult yang sama pada tiga dari enam Anima.
+ * Keduanya adalah tebakan tentang bit mana yang aman. Finalizer lowbias32 ini
+ * mengaduk seluruh 32 bit sekali, sehingga indeks apa pun boleh memakai modulo
+ * apa adanya. Deterministik, jadi Anima yang sama tetap mendapat nama yang sama.
+ */
+function mixNameSeed(seed) {
+  let x = seed >>> 0;
+  x ^= x >>> 16;
+  x = Math.imul(x, 0x7feb352d);
+  x ^= x >>> 15;
+  x = Math.imul(x, 0x846ca68b);
+  x ^= x >>> 16;
+  return x >>> 0;
+}
+
+function selectMorphemeName(head, tails, seed, takenNames = []) {
+  const taken = new Set(takenNames.filter(Boolean).map((name) =>
+    String(name).toLowerCase()
+  ));
+  const build = (strictSeam) =>
+    [...new Set(tails)]
+      // `lume` + `lume` menggagap, jadi ekor yang mengulang head dibuang.
+      .filter((tail) => !head.startsWith(tail) && !tail.startsWith(head))
+      .map((tail) => ({ tail, name: joinNameRoot(head, tail) }))
+      .filter(({ name, tail }) =>
+        nameIsSafeForPlayers(name) && (!strictSeam || morphemeSeamOk(head, tail))
+      );
+  // Head tanpa satu pun seam terbaca tetap harus mendapat nama; yang tidak aman
+  // tidak pernah dilonggarkan.
+  const pool = build(true).length ? build(true) : build(false);
+  // Menghindari nama stage sebelumnya bersifat usaha terbaik, bukan gerbang:
+  // Plan yang hanya menyebut satu anatomi pernah membuat kolamnya habis dan
+  // derivasi melempar, dan evolusi berbayar tidak boleh gagal karena nama.
+  const fresh = pool.filter((item) => !taken.has(item.name.toLowerCase()));
+  const usable = fresh.length ? fresh : pool;
+  if (!usable.length) {
+    throw new Error(`morfem aman tidak tersedia untuk head '${head}'`);
+  }
+  return usable[mixNameSeed(seed) % usable.length];
+}
+
+export function deriveMorphemeSpeciesName(vision) {
+  // Pagar v39 yang dipertahankan: penamaan tidak boleh menggagalkan capture
+  // berbayar. Akar yang tidak terpakai jatuh ke fonotaktik deterministik dan
+  // tetap melewati gerbang morfem yang sama.
+  let candidate;
+  try {
+    candidate = normalizeNameRoots(vision, true, true)[0];
+  } catch (error) {
+    candidate = {
+      root: deriveDeterministicSpeciesName(vision).name_lineage_anchor,
+      channel: "structure",
+      evidence: "root fallback",
+      copiesIdentity: false,
+      root_fallback: String(error.message ?? error),
+    };
+  }
+  const family = morphemeFamily(vision?.element);
+  const seed = nameHash([
+    vision?.species_key,
+    vision?.subject_kind,
+    vision?.element,
+    vision?.secondary_element,
+    vision?.creature_brief,
+    ...(
+      Array.isArray(vision?.signature_features) ? vision.signature_features : []
+    ),
+  ].join("|").toLowerCase());
+  // Morfem bagian tubuh hanya boleh dipakai kalau Vision benar-benar melihatnya:
+  // `-thorn` pada Monstera tanpa duri adalah janji yang sama dengan `-horn` pada
+  // Anima tanpa tanduk. Pengurangannya bisa mengosongkan keluarga tipis, jadi
+  // keluarga penuh tetap jadi jaring terakhir.
+  const seen = captureFeatureTails(vision);
+  const family_tails = MORPHEME_CAPTURE_TAILS[family].filter((tail) =>
+    !MORPHEME_BODY_TAILS.has(tail) || MORPHEME_SURFACE_TAILS.has(tail) ||
+    seen.includes(tail)
+  );
+  const chosen = selectMorphemeName(
+    candidate.root,
+    family_tails.length ? family_tails : MORPHEME_CAPTURE_TAILS[family],
+    seed,
+  );
+  return {
+    suggested_name: chosen.name,
+    name_lineage_anchor: candidate.root,
+    selected_name_root: {
+      ...candidate,
+      element_family: family,
+      morpheme_tail: chosen.tail,
+    },
+  };
+}
+
+export function deriveMorphemeEvolutionName(
+  anchor,
+  plan,
+  targetStage,
+  element,
+  takenNames = [],
+) {
+  const normalizedAnchor = normalizeNameLineageAnchor(anchor);
+  if (!/^[a-z]{3,5}$/.test(normalizedAnchor) || !/[aeiou]/.test(normalizedAnchor)) {
+    throw new Error(`name_lineage_anchor morfem tidak sah: '${anchor}'`);
+  }
+  const seed = nameHash([
+    normalizedAnchor,
+    targetStage,
+    plan?.transformation_archetype,
+    plan?.stage_brief,
+    plan?.mobility_contract?.locomotion_mode,
+    plan?.silhouette_break_contract?.new_contour_read,
+  ].join("|").toLowerCase());
+  const stageTails = Number(targetStage) >= 3
+    ? MORPHEME_EVOLVED_TAILS
+    : MORPHEME_ADULT_TAILS;
+  // Aturan anatomi bersifat **negatif**: morfem bagian tubuh hanya boleh muncul
+  // kalau Plan memang menyebutnya, sebab `-horn` pada Anima tanpa tanduk adalah
+  // janji yang pemain lihat bersebelahan dengan sprite-nya. Ia bukan aturan
+  // positif — memaksa anatomi menang membuat Plan bersatu fitur mengunci setiap
+  // Adult pada morfem yang sama, terukur `Glidhusk`/`Celerhusk`/`Glazehusk`.
+  // Jadi anatomi ikut ke kolam, bukan menggantikan kolamnya.
+  const tails = [
+    ...planFeatureTails(plan),
+    ...stageTails,
+    ...MORPHEME_CAPTURE_TAILS[morphemeFamily(element)]
+      .filter((tail) => !MORPHEME_BODY_TAILS.has(tail)),
+  ];
+  return selectMorphemeName(normalizedAnchor, tails, seed, takenNames).name;
+}
+
 export function normalizeMoveName(name, fallback = "") {
   const words = String(name ?? "")
     .trim()
@@ -844,6 +1298,7 @@ export function validateVision(
   requireHybridName = false,
   requireTransformedHybridName = false,
   requireCuratedHybridName = false,
+  requireMorphemeName = false,
 ) {
   const issues = [];
 
@@ -935,7 +1390,13 @@ export function validateVision(
     if (vague.test(f.trim())) issues.push(`signature_feature kabur: "${f}"`);
   }
 
-  if (requireCuratedHybridName) {
+  if (requireMorphemeName) {
+    const generatedName = deriveMorphemeSpeciesName(v);
+    v.suggested_name = generatedName.suggested_name;
+    v.name_lineage_anchor = generatedName.name_lineage_anchor;
+    v.selected_name_root = generatedName.selected_name_root;
+    delete v.name_quality;
+  } else if (requireCuratedHybridName) {
     const generatedName = deriveCuratedHybridSpeciesName(v);
     v.suggested_name = generatedName.suggested_name;
     v.name_lineage_anchor = generatedName.name_lineage_anchor;
@@ -960,6 +1421,12 @@ export function validateVision(
     delete v.name_quality;
   }
   if (requireNameLineage) {
+    // Aturan "pronounceable" v33 menolak tiga konsonan beruntun, dan itu akan
+    // diam-diam mengganti anchor morfem v41 seperti `cindr` — head milik Cindrusk
+    // yang disetujui operator — dengan potongan lain. Anchor v41 datang dari
+    // validator morfem server, jadi pagar itu tidak berlaku di jalur ini.
+    const pronounceableAnchor = requirePronounceableNameLineage
+      && !requireMorphemeName;
     const normalizedName = normalizeSuggestedName(v.suggested_name, "");
     if (!normalizedName) throw new Error("suggested_name wajib untuk name lineage");
     v.suggested_name = normalizedName;
@@ -967,13 +1434,13 @@ export function validateVision(
       v.name_lineage_anchor = validateNameLineageAnchor(
         v.name_lineage_anchor,
         normalizedName,
-        requirePronounceableNameLineage,
+        pronounceableAnchor,
       );
     } catch {
       const derived = deriveNameLineageAnchor(
         normalizedName,
         v.name_lineage_anchor,
-        requirePronounceableNameLineage,
+        pronounceableAnchor,
       );
       issues.push(
         `name_lineage_anchor '${v.name_lineage_anchor ?? ""}' dinormalisasi ke '${derived}'`,

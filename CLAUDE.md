@@ -96,9 +96,21 @@ Scan adalah hook terkuat, Care/Battle adalah loop berulang paling lengkap, dan
 aktivitas harian belum membawa pemain kembali ke discovery. Itu baseline untuk
 diskusi arah produk, **bukan** keputusan redesign atau fitur yang sudah dijanjikan.
 
-## Status deploy Capture Vibe v31 (player-live, 18 Agustus 2026)
+## Status deploy Name Lineage v41 (player-live, 19 Agustus 2026)
 
-`app_config.prompt_version = "v31"`, `evolution_prompt_version` tetap `"v30"`.
+`app_config.prompt_version = "v41"` dan `evolution_prompt_version = "v41"` lewat
+migration `20260819120015_prompt_version_v41.sql`; `create_anima`, `evolve_anima`,
+dan `replicate_webhook` sudah dideploy dari source dan smoke tanpa JWT/signature
+menjawab 401. Flip ini **nol risiko art**: keempat prompt gambar byte-identik
+dengan versi yang digantikan (capture sprite v31, evolve sprite v30, diverifikasi
+shasum), jadi yang berubah hanya nama. Nol baris `generations` lahir di jendela
+antara flip config dan deploy. Rollback: `prompt_version` kembali `"v31"` dan
+`evolution_prompt_version` kembali `"v30"` — keduanya tetap di bundel.
+
+## Status deploy Capture Vibe v31 (art baseline, 18 Agustus 2026)
+
+Vibe adalah kontrak art yang **masih berlaku** di v41; hanya nomor versinya yang
+maju. `app_config.prompt_version` sudah `"v41"`, dan v31 tetap rollback capture.
 Scan optional **Vibe** (Natural / Cute / Brave / Wild / Sinister) adalah art-only:
 Vision, stats, elemen, tinggi, Core, dan gate IP tidak berubah. Default Natural
 setiap Scan baru; slug tersimpan di `generations.capture_vibe`, bukan `animas`.
@@ -132,9 +144,9 @@ kosong tetap salah dibaca sebagai panel beton pada v19 maupun v20.
 
 ## Status deploy Evolution art (player-live, 18 Agustus 2026)
 
-**`feature_evolution=true`**, `evolution_prompt_version = "v30"`, default
-`evolution_version=1` (backfill row lama). Capture `prompt_version = "v31"`
-(rollback v20).
+**`feature_evolution=true`**, `evolution_prompt_version = "v41"` (v30 rollback),
+default `evolution_version=1` (backfill row lama). Capture `prompt_version = "v41"`
+(rollback v31, lalu v20).
 Ritual Evolve gratis; sheet terkunci di `anima_evolution_locks` melewati Replicate.
 Plan v30 mengusulkan `suggested_name`; `commit_evolution` tidak menimpa `nickname`.
 Sesudah sukses, client membuka Rename terisi nama itu; Cancel mempertahankan nama lama.
@@ -623,12 +635,29 @@ backend/prompts/
     ├── vision_evolve_system.md   # gerbang struktur untuk Adult/Evolved
     ├── vision_evolve_schema.json # field naming sementara untuk wire shape
     └── sprite_sheet_evolve.md    # identik v30
+└── v40/                          # superseded sebelum eval berbayar
+    ├── vision_system.md          # seed sama; campuran 2–3 suku kata
+    ├── vision_schema.json        # identik v38
+    ├── sprite_sheet*.md          # identik v31
+    ├── vibe_directions.json      # identik v31
+    ├── vision_evolve_system.md   # identik v39
+    ├── vision_evolve_schema.json # field naming sementara untuk wire shape
+    └── sprite_sheet_evolve.md    # identik v30
+└── v41/                          # candidate: dua morfem terbaca, menunggu operator
+    ├── vision_system.md          # enam morfem 3–5 huruf + kalibrasi register
+    ├── vision_schema.json        # root morfem terbaca, bukan seed acak
+    ├── sprite_sheet*.md          # identik v31
+    ├── vibe_directions.json      # identik v31
+    ├── vision_evolve_system.md   # anchor utuh; eskalasi di makna morfem
+    ├── vision_evolve_schema.json # field naming sementara untuk wire shape
+    └── sprite_sheet_evolve.md    # identik v30
 ```
 
-V30 adalah production evolution: siluet pecah tanpa memaksa coil, plus nama
-spesies baru di Plan. Adult Veridian v26, Adult Sunhound v28, Evolved Sunhound
+V41 adalah production untuk capture maupun evolution; kontrak siluet/mobility/
+face-age v29 dan art v30 tetap berlaku di dalamnya, dan v31/v30 adalah rollback.
+Adult Veridian v26, Adult Sunhound v28, Evolved Sunhound
 v29, serta Adult+Evolved Playtron v29 terkunci per Anima; lock Plan membawa
-`suggested_name` operator. Capture production **v31**; evolution tetap v30.
+`suggested_name` operator.
 Candidate **Name Lineage v32** sudah diimplementasikan lokal tetapi
 **ditolak pada paid Vision eval** dan tidak pernah dipromosikan/live: Scan
 membuat nama spesies dari
@@ -745,8 +774,121 @@ boleh menggagalkan capture berbayar. `sepatu.jpg` kehilangan satu Vision karena
 seed hanya mencakup tiga visual channel, jadi
 `deriveCuratedHybridSpeciesName()` sekarang jatuh ke fonotaktik deterministik
 v36 untuk setiap kegagalan seed, mencatat sebabnya di
-`selected_name_root.seed_fallback`, dan tetap melewati gerbang struktur.
-Production tetap capture v31 + evolution v30.
+`selected_name_root.seed_fallback`, dan tetap melewati gerbang struktur. Pagar
+yang sama hidup di jalur morfem v41: seluruh akar rusak jatuh ke fonotaktik v36
+alih-alih menggagalkan Vision yang sudah dibayar.
+
+Riset pembanding seluruh generasi Pokémon membalik premisnya: Pokémon sendiri
+memakai nama yang bertabrakan dengan kata, brand, dan nama orang nyata
+(Onix/Onyx, Ditto, Golem, Arbok, Eevee), sementara aturan kita menolak nama
+bermakna demi keunikan leksikal lalu meloloskan nama tanpa nyawa. Catatannya di
+[`docs/pokemon-name-research.html`](docs/pokemon-name-research.html). **V40**
+(campuran suku kata + blocklist beku) diimplementasikan tetapi digantikan
+sebelum satu pun eval berbayar. **V41** berhenti mentransformasi root: morfem
+terbaca dari Vision bertahan utuh sebagai paruh pertama nama sekaligus anchor
+lineage, dan server menyambungnya dengan morfem bermakna dari tabel per elemen
+(mineral `lith`/`crag`/`elisk`, tidal `rime`/`mire`/`brine`, ember
+`ember`/`pyre`/`lume`), persis cara Noxcoil dan Ambermire dibangun. Aturan
+kamus, compound, dan tabrakan nama dicabut; blocklist profanity tetap. Evolution
+memakai anchor yang sama dengan tail per stage — biasa untuk Adult, berwibawa
+untuk Evolved — jadi eskalasi ada di makna morfem, bukan di jumlah huruf.
+Dua perbaikan produksi dipertahankan apa pun keputusannya: satu akar rusak tidak
+lagi membuang lima akar sehat (`normalizeNameRoots` melewatinya dan mencatatnya
+di `rejected_roots`), dan aturan pronounceable v33 tidak lagi berlaku saat jalur
+morfem memiliki anchor — tanpa itu `cindr` milik `Cindrusk` diganti diam-diam.
+Dua ronde Vision-only sembilan subjek (~$0.054, nol image generation/retry):
+ronde pertama mengukur bug akar terbuang (5/9 memakai fonotaktik v36), ronde
+kedua 9/9 anchor dari Vision dan menghasilkan `Vitrelisk`, `Lumecrag`,
+`Resonelisk`, `Stridusk`, `Verdarbor`, `Glidfold`, `Pixelquill`, `Loopfold`,
+`Dracovenom`. Lineage lulus tanpa syarat: head bertahan huruf demi huruf di
+ketiga stage dan tidak bergantung pada Evolution Plan, jadi bentuk lineage bisa
+diperiksa tanpa Plan berbayar atau image generation. Register adalah satu-satunya
+sisa kegagalan: morfem Latin/material terbaca spesies, kata modern/teknologi
+terbaca merchandise, dan empat dari lima kasus lemah sudah menawarkan morfem
+lebih baik di peringkat bawah responsnya sendiri.
+Operator menolak tail stage ronde kedua, dan keduanya sudah diperbaiki lalu
+diukur ulang offline dari Vision JSON tersimpan tanpa satu pun panggilan API.
+**Tail tidak boleh menjanjikan anatomi yang tidak ada di Plan:** `Loophorn` dan
+`Lumegirt` memasang tanduk pada sarung tangan dan lampu, dan `-coil` pada konsol,
+`-pelt` pada naga bersisik, serta `-thorn` pada Monstera tanpa duri adalah janji
+yang sama. `planFeatureTails()` memindai `stage_brief`, archetype, mobility
+contract, contour read, dan shape budget untuk enam belas fitur tubuh; hanya yang
+cocok boleh dipakai, sementara `MORPHEME_BODY_TAILS` mencabut seluruh kelas itu
+dari kolam keluarga di stage evolusi. Capture sengaja tetap memakainya karena di
+sana morfem menggambarkan material objek aslinya — jalur yang sama yang
+menghasilkan Noxcoil dan Duskadon. **Evolved berhenti berima:** penyebabnya
+mekanis, bukan gaya — `monolith`/`paragon` melewati 12 karakter di atas head lima
+huruf lalu dijatuhkan lantai struktur, dan `throne` tidak pernah terjangkau
+karena onset `thr` selalu berbiaya seam >= 3, jadi kolam yang benar-benar
+diterima menyusut ke tiga entri. Kolam Evolved sekarang delapan gelar pendek
+(`sovran`, `titan`, `zenith`, `astral`, `aegis`, `apex`, `aeon`, `aether`) dan
+Adult melanjut ke keluarga materialnya sendiri supaya terbaca spesies saudara.
+Tiga cacat lain ikut tertutup: `Cylinonyx` terukur menjadi Hatchling sekaligus
+Adult (nama stage sebelumnya sekarang dikecualikan), elisi menghasilkan `Aquamen`
+yang terbaca dua kata Inggris dan `Glideeon` yang menumpuk tiga vokal (potongan
+elisi wajib mulai konsonan), dan `y` di ujung head kini dihitung vokal untuk seam
+sehingga `Cozyweave`/`Cozyseam` tidak lagi tertolak.
+Bacaan operator berikutnya menemukan sembilan nama semuanya tiga suku kata dengan
+ekor yang masih berulang, lalu meminta mesinnya **dikecilkan**, bukan ditambah:
+nama ini placeholder yang boleh di-rename pemain, jadi cukup berbunyi seperti nama
+Pokémon. Dua sebabnya mekanis. Tail berawal vokal selalu dua suku kata, dan seam
+lama yang dibatasi dua konsonan mengunci setiap head berkoda ganda (`dash`, `dusk`,
+`glaz`) pada tail itu — jadi head satu suku kata tidak pernah bisa menghasilkan
+nama dua suku kata; batas tiga membuka `Dashcoil` sementara `Cindrvolt` tetap
+tertutup di empat. Ekor berulang lahir dari `nameStructureScore()` +
+`NAME_STRUCTURE_FLOOR` di atas seam: kolam tiap keluarga tersisa dua–tiga entri,
+dan kolam kecil berulang secara aritmetika. Karena itu **seluruh lapisan seleksi
+v39–v41 dicabut dari jalur ini** — nol skor, nol 32 kandidat, nol tiga tingkat
+fallback. Yang tersisa: kolam lebar, tiga filter (profanity, seam, nama yang sudah
+dipakai stage sebelumnya), satu indeks hash, sekitar lima belas baris menggantikan
+enam puluh; cap 12 huruf di `morphemeSeamOk()` mengambil satu-satunya tugas yang
+masih dimiliki scorer. Tiap keluarga ditambah empat morfem pendek, dan kolam
+Evolved menerima gelar satu suku kata `king`/`zard`/`myth`/`doom` — Pokémon sendiri
+memakai Nidoking, Slowking, dan Charizard. Aturan anatomi bersifat
+**negatif**: hanya fitur yang Plan sebut boleh muncul, tetapi ia **ikut** ke kolam
+dan tidak menggantikannya. Versi yang memaksa anatomi menang sudah diukur salah —
+Plan bersatu fitur mengunci setiap Adult pada morfem yang sama (`Glidhusk`,
+`Celerhusk`, `Glazehusk` pada tiga subjek berbeda) dan sekalian membuka satu crash
+yang hanya bisa terjadi saat uang sudah keluar: kolam Evolved tinggal satu tail,
+Adult sudah memakainya, filter nama terpakai mengosongkannya, derivasi melempar.
+Anatomi yang ikut ke kolam menghapus kelas kegagalan itu, dan filter di dalam
+seleksi kini usaha terbaik bukan gerbang — nama kembar itu gangguan kosmetik,
+evolusi berbayar yang gagal bukan. Terukur atas tiga puluh head pada satu Plan
+identik (kasus terburuk): lima belas ekor Adult berbeda, terpadat 5/30. Metrik
+diversitas di selftest sendiri sempat off-by-one — ia menghitung huruf terakhir
+head sebagai bagian ekor — dan sudah dibetulkan. Terukur offline atas
+sembilan subjek ronde dua tanpa panggilan API: Hatchling dari 9/9 tiga suku kata
+menjadi 2 dua suku kata / 3 tiga / 4 empat dengan tujuh ekor berbeda, dan Evolved
+sembilan ekor berbeda dari sembilan. Head ronde dua sendiri dua suku kata (`aqua`,
+`folia`, `cylin`), jadi prompt sekarang meminta Vision menjaga sebagian besar akar
+satu suku kata; simulasi dua belas head satu suku kata mendarat di 5 dua suku kata
+/ 7 tiga dengan sebelas ekor berbeda — bentuk Sugarworks. Selftest menuntut nama
+dua suku kata tetap terjangkau supaya ini tidak diam-diam kembali.
+Ronde ketiga enam subjek baru (~$0.018, nol image generation) memunculkan empat
+cacat yang semuanya berupa aturan yang sudah ditulis tetapi baru separuh
+diterapkan. **Gerbang anatomi ternyata hanya menjaga evolusi:** capture memberi
+`Fenesthorn` pada Monstera tanpa duri, jadi `featureTailsFromText()` sekarang
+melayani Plan maupun `signature_features` dan capture memakai gerbang negatif yang
+sama. Satu-satunya pengecualian adalah kelas cangkang (`husk`, `usk`) karena setiap
+objek punya kulit luar dan `Cindrusk` dibangun begitu; bulu tidak ikut — `Dracopelt`
+pada naga bersisik adalah janji yang sama. **Plastik menarik morfem tekstil:**
+`Pixlyarn` lahir karena plastic/cloth/paper berbagi keluarga `drape`, jadi `yarn`,
+`twill`, dan `eider` dibuang dan diganti `arc`, `sheath`, `ridge`. **Memilih rentang
+bit hash masih tebakan:** `seed % 4` harus menjadi `seed >>> 24` di v40 dengan sebab
+yang sama seperti `seed >>> 8` memberi tiga dari enam Anima ekor Adult identik di
+sini, jadi `mixNameSeed()` menjalankan satu finalizer lowbias32 atas seluruh 32 bit
+dan modulo apa pun aman — terukur atas dua puluh empat head ber-Plan identik, ekor
+berbeda naik dari 9/24 menjadi 12–15/24. **Elisi bisa menghancurkan morfemnya:**
+`Dracolder` menyisakan `lder` yang bukan suku kata, jadi potongan elisi wajib
+dibuka satu konsonan lalu vokal — `elisk`→`lisk` dan `adon`→`don` tetap lolos.
+Hasil enam subjek: `Pixlusk`→`Pixlward`→`Pixlfold`, `Vitrore`→`Vitrforge`→
+`Vitrsovran`, `Thrumridge`→`Thrumadon`→`Thrumzard`, `Resonforge`→`Resonvein`→
+`Resondoom`, `Fenessap`→`Fenesbastion`→`Feneszenith`, `Dracosting`→`Dracocoil`→
+`Dracopex`; enam ekor berbeda dari enam di ketiga stage, suku kata tersebar 2/3/4.
+**Operator menyetujui ronde ketiga dan v41 dikunci player-live 19 Agustus 2026**
+untuk capture maupun evolution; detail dan angka di
+[`docs/designs/2026-08-19-anima-name-lineage-v41.md`](docs/designs/2026-08-19-anima-name-lineage-v41.md).
+
 Sugarworks v6 sudah production dengan sembilan nama
 spesies baru dan aset v5 yang direuse seperti dicatat di atas. Detail ada di
 [`docs/designs/2026-08-19-anima-name-lineage-v39.md`](docs/designs/2026-08-19-anima-name-lineage-v39.md);

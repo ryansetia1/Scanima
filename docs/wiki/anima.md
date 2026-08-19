@@ -82,6 +82,10 @@ Sesudah sukses, art-nya berganti, nama Attack/Special bisa berubah, dan jurus
 bisa mendapat efek tambahan di Battle. Game juga mengusulkan **nama baru**
 untuk form itu, lalu membuka **Rename** seperti sesudah Scan. **Save Name**
 memakai usulan itu atau suntinganmu. **Cancel** mempertahankan nama lama.
+Usulan itu mempertahankan awal nama asli Anima dan hanya mengganti akhirannya,
+jadi satu garis terbaca sebagai satu keluarga — Vitrore menjadi Vitrforge lalu
+Vitrsovran. Kalau kamu sudah memberi nickname sendiri, usulannya tetap mengikuti
+nama aslinya, dan **Cancel** menjaga nickname-mu.
 Hatchling menjadi Adult di Level 16;
 Adult menjadi Evolved di Level 36. Satu ritual per tahap, berurutan.
 Setiap form yang selesai menjadi entry terpisah di [Anima Atlas](atlas.md).

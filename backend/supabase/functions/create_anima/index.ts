@@ -266,6 +266,7 @@ Deno.serve(async (req) => {
         promptMajor(versiPrompt) === 37,
         promptMajor(versiPrompt) === 38,
         promptMajor(versiPrompt) >= 39,
+        promptMajor(versiPrompt) >= 41,
       );
     } catch (e) {
       await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "vision_unparseable" });

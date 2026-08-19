@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Riset penamaan Pokémon — Scanima</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", sans-serif; background:#0b1020; color:#eef3ff; }
+    body { margin: 24px; line-height: 1.45; max-width: 1080px; }
+    h1,h2,h3 { font-family: Georgia, serif; color:#ffd978; }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    h2 { font-size: 20px; margin: 0 0 10px; }
+    h3 { font-size: 15px; margin: 0 0 4px; }
+    section { margin: 28px 0; padding: 20px; border: 1px solid #2a3558; border-radius: 12px; background:#121a31; }
+    table { width:100%; border-collapse: collapse; font-size: 14px; }
+    th, td { border-bottom: 1px solid #2a3558; padding: 8px 10px; text-align:left; vertical-align: top; }
+    th { color:#9fd6ff; }
+    tbody tr:nth-child(even) { background:#0d1428; }
+    code { background:#060912; padding: 2px 6px; border-radius: 6px; font-size: 13px; }
+    a { color:#9fd6ff; }
+    .muted { color:#9fb0d0; font-size: 13px; }
+    .callout { border:1px solid #314068; border-left: 3px solid #9fd6ff; border-radius: 8px;
+      background:#0d1428; padding: 12px 14px; margin: 0 0 16px; }
+    .callout.good { border-left-color:#8fe3b0; }
+    .callout.warn { border-left-color:#ffd978; }
+    .callout.bad { border-left-color:#ff9d9d; }
+    .callout b { display:block; margin-bottom: 4px; color:#eef3ff; }
+    .two { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items:start; }
+    .card { border:1px solid #314068; border-radius: 10px; background:#0d1428; padding: 14px; }
+    .bar-row { display:grid; grid-template-columns: 90px minmax(0, 1fr) 64px; gap: 10px; align-items:center;
+      margin: 6px 0; font-size: 13px; }
+    .bar { height: 16px; border-radius: 4px; background:#26314f; min-width: 3px; }
+    .bar.accent { background:#ffd978; }
+    .bar.ours { background:#9fd6ff; }
+    .tag { display:inline-block; padding: 1px 7px; border-radius: 9999px; font-size: 12px; }
+    .tag.pass { background:#1d3a2a; color:#8fe3b0; }
+    .tag.fail { background:#3a1d22; color:#ff9d9d; }
+    hr { border: 0; border-top: 1px solid #2a3558; margin: 16px 0; }
+    ul { margin: 8px 0 0; padding-left: 20px; }
+    li { margin-bottom: 6px; }
+    blockquote { margin: 10px 0; padding: 10px 14px; border-left: 3px solid #ffd978;
+      background:#0d1428; border-radius: 0 8px 8px 0; }
+  </style>
+</head>
+<body>
+  <h1>Seberapa ketat Pokémon menamai spesiesnya</h1>
+  <p class="muted">
+    Riset penamaan, 1025 spesies (Gen 1–9) · konteks: delapan iterasi aturan nama Anima v32–v40
+    yang semuanya mentok di 0/6–3/6, dicatat di <code>CLAUDE.md</code>.
+  </p>
+  <p>
+    Pertanyaannya sederhana: apakah Pokémon benar-benar menghindari kata kamus, nama orang, dan
+    nama merek seperti yang aturan kita tuntut? Jawabannya tidak, tidak sedikit pun.
+  </p>
+
+  <div class="callout bad">
+    <b>Kesimpulan paling penting</b>
+    Aturan kita lebih ketat daripada Pokémon, dan kelebihan ketatnya justru yang merusak hasilnya.
+    Diukur dengan gerbang struktur Scanima sendiri, <b>35% nama Pokémon asli akan ditolak</b> —
+    termasuk Ditto, Golem, Onix, Eevee, Mew, Jynx, Electrode, dan Kangaskhan. Sementara ketujuh nama
+    kita yang <em>tanpa</em> morfem terbaca semuanya lolos. Gerbangnya menghadiahi kata tanpa makna
+    dan menghukum kata yang bisa dibaca.
+  </div>
+
+  <section>
+    <h2>1. Kata kamus dan morfem terbaca</h2>
+    <p>
+      Diukur atas 1025 nama spesies dari PokeAPI terhadap <code>/usr/share/dict/words</code>
+      (235.976 entri):
+    </p>
+    <div class="two">
+      <div class="card">
+        <h3>26 nama (2,5%) adalah kata kamus utuh</h3>
+        <p class="muted">
+          Ditto, Golem, Persian, Slowpoke, Magneton, Electrode, Jynx, Mew, Seel, Haunter, Gloom,
+          Oddish, Unown, Slaking, Skitty, Gulpin, Chatot, Snivy, Cottonee, Scraggy, Durant, Deino,
+          Rowlet, Litten, Dottler, Dreepy.
+        </p>
+        <p>
+          Aturan v33 kita menolak <code>Crockle</code> karena ia kata Scots yang sudah ada.
+          Pokémon punya <b>Dreepy</b> dan <b>Scraggy</b>.
+        </p>
+      </div>
+      <div class="card">
+        <h3>785 nama (76,6%) memuat kata kamus ≥4 huruf</h3>
+        <p class="muted">
+          bulbasaur[bulb/saur], venusaur[venus], charizard[char], squirtle[squirt],
+          blastoise[blast], butterfree[butter/free], weedle[weed], beedrill[drill], spearow[spear].
+        </p>
+        <p>
+          Ini persis yang prompt kita larang sebagai <em>transparent English compound</em>.
+          Tiga perempat Pokémon melanggarnya.
+        </p>
+      </div>
+    </div>
+    <hr>
+    <p>
+      Dan transparansi itu bukan kelalaian, melainkan target yang diuji. CEO The Pokémon Company
+      Tsunekazu Ishihara menjelaskan pembuatan nama Bulbasaur:
+    </p>
+    <blockquote>
+      “We mixed Bulb — which can also mean Seed — with Saurus from Dinosaurs, and it became
+      Bulbasaur. When we asked Americans just to make sure, they had the image of a reptile or
+      amphibian carrying a bud on their back, so it was OK.”
+    </blockquote>
+    <p>
+      Mereka <em>memvalidasi</em> bahwa maknanya terbaca. Kita menjadikan keterbacaan itu alasan
+      penolakan: <code>ClickGlide</code> dan <code>Wyrmscale</code> ditolak v32 karena terlalu
+      transparan.
+    </p>
+  </section>
+
+  <section>
+    <h2>2. Nama orang, merek, dan produk nyata</h2>
+    <p>
+      Ini kekhawatiran terbesar kita — <code>Dorralis</code> ditolak karena satu huruf dari nama
+      orang <code>Doralis</code>, <code>Kuka</code> karena perusahaan robotik. Pokémon melakukannya
+      dengan sengaja, berulang kali, lintas bahasa.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Nama Pokémon</th><th>Tabrakan dunia nyata</th><th>Akibatnya</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Kadabra</b><br><span class="muted">JP ユンゲラー Yungerer</span></td>
+          <td>Pesulap <b>Uri Geller</b> (ユリゲラー). Nama Jepangnya nyaris transliterasi namanya,
+            dan Pokémon-nya memegang sendok bengkok.</td>
+          <td>Geller menuntut Nintendo £60 juta pada 2000 dengan tuduhan “Nintendo stole my name and
+            my signature image”. Kartunya hilang dari TCG sekitar 20 tahun (2002–2023).
+            <b>Nama Pokémon-nya tidak pernah diganti.</b></td>
+        </tr>
+        <tr>
+          <td><b>Hitmonlee</b> / <b>Hitmonchan</b></td>
+          <td><b>Bruce Lee</b> dan <b>Jackie Chan</b> — dua orang nyata. Nama Jepangnya menunjuk
+            atlet nyata lain: Sawamular dari kickboxer Tadashi Sawamura, Ebiwalar dari boxer
+            Hiroyuki Ebihara. Korea memakai Sirasomon dan Hongsoomon dari figur Korea nyata.
+            Prancis memakai Tygnon dari <b>Mike Tyson</b>.</td>
+          <td>Tidak ada masalah. Nama Inggrisnya sengaja diusulkan demikian oleh Bill Giese.</td>
+        </tr>
+        <tr>
+          <td><b>Dragonair</b></td>
+          <td><b>Dragonair</b>, maskapai internasional Hong Kong, berdiri 24 Mei 1985 dan beroperasi
+            sampai 2020.</td>
+          <td>Nama Inggris Pokémon-nya dipilih 1998 — tiga belas tahun setelah maskapainya ada — dan
+            tetap dipakai sampai hari ini.</td>
+        </tr>
+        <tr>
+          <td><b>Kangaskhan</b></td>
+          <td><b>Genghis Khan</b>, tokoh sejarah nyata, digabung dengan kangaroo.</td>
+          <td>Tidak ada masalah.</td>
+        </tr>
+        <tr>
+          <td><b>Persian</b></td>
+          <td>Kebangsaan, bahasa, sekaligus ras kucing nyata. Bukan sekadar mirip — identik.</td>
+          <td>Tidak ada masalah.</td>
+        </tr>
+        <tr>
+          <td><b>Roselia</b></td>
+          <td>Nama pemberian (given name) nyata dalam bahasa Spanyol dan Italia.</td>
+          <td>Tidak ada masalah. Ini kategori yang sama dengan <code>Dorralis</code> yang kita tolak.</td>
+        </tr>
+        <tr>
+          <td><b>Magneton</b></td>
+          <td>Satuan fisika nyata (Bohr magneton).</td>
+          <td>Tidak ada masalah.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="callout warn">
+      <b>Yang benar-benar mereka hindari cuma satu hal</b>
+      Bukan tabrakan nama, melainkan <em>trademark untuk merek intinya sendiri</em>. Pikachu dibuat
+      sama di seluruh dunia justru karena, kata Ishihara, “we secured the Pikachu trademark
+      worldwide”. Nama spesies biasa tidak diperlakukan seperti itu.
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Lintas bahasa: mereka tidak mencari satu kata yang aman sedunia</h2>
+    <p>
+      Kekhawatiran <code>Kurvesun</code> — vulgar dalam enam bahasa — nyata dan tetap valid. Tetapi
+      Pokémon tidak menyelesaikannya dengan mencari satu kata yang selamat di semua bahasa. Mereka
+      <b>mengganti namanya per bahasa</b>: mayoritas Pokémon punya nama berbeda di Inggris, Prancis,
+      Jerman, Korea, Mandarin, Hindi, dan Thai. Spanyol, Italia, dan Portugis Brasil memakai nama
+      Inggris.
+    </p>
+    <p>
+      Jadi keamanan lintas bahasa mereka datang dari <em>banyak nama</em>, bukan dari satu nama
+      super-aman. Scanima mengirim satu nama global, jadi beban itu memang jatuh ke satu kata —
+      tetapi bebannya adalah <b>menghindari kata kasar</b>, bukan menghindari setiap nama orang,
+      merek, dan kata kamus di dunia.
+    </p>
+    <blockquote>
+      “Nonsense cannot be valued. People won't be able to answer whether onomatopoeia they don't
+      understand the meaning of is good or bad.” — Tsunekazu Ishihara
+    </blockquote>
+    <p>
+      Itu persis hasil ukur v36 kita. <code>Zimnuzem</code>, <code>Basgutun</code>,
+      <code>Deshupil</code>, <code>Vadvuter</code>, <code>Luvsufak</code>, dan <code>Therhalok</code>
+      tidak menabrak apa pun dan tetap ditolak 0/6 karena karakter sumbernya tidak terbaca.
+    </p>
+    <blockquote>
+      “We don't use regularity in determining the English names, but instead everyone had to think
+      their best and use their creativity for each word one by one. By that way, each Pokemon will
+      feel livelier.” — Tsunekazu Ishihara
+    </blockquote>
+    <p>
+      Pokémon secara eksplisit <b>tidak memakai aturan atau algoritma</b>. Mereka menamai satu per
+      satu dengan tangan. Itu juga yang membuat Sugarworks v6 berhasil.
+    </p>
+  </section>
+
+  <section>
+    <h2>4. Gerbang kita diuji terhadap Pokémon</h2>
+    <p>
+      <code>nameStructureScore()</code> di <code>_shared/vision.mjs</code> dijalankan atas 1025 nama
+      Pokémon. Lantai <code>NAME_STRUCTURE_FLOOR = 1</code>:
+      <b>664 lolos (64,8%), 361 ditolak (35,2%)</b>.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Nama</th><th>Huruf</th><th>Suku kata</th><th>Skor kita</th><th>Putusan kita</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Mew</td><td>3</td><td>1</td><td>−6</td><td><span class="tag fail">DITOLAK</span></td></tr>
+        <tr><td>Jynx</td><td>4</td><td>1</td><td>−6</td><td><span class="tag fail">DITOLAK</span></td></tr>
+        <tr><td>Onix</td><td>4</td><td>2</td><td>−2</td><td><span class="tag fail">DITOLAK</span></td></tr>
+        <tr><td>Ditto</td><td>5</td><td>2</td><td>−2</td><td><span class="tag fail">DITOLAK</span></td></tr>
+        <tr><td>Golem</td><td>5</td><td>2</td><td>−2</td><td><span class="tag fail">DITOLAK</span></td></tr>
+        <tr><td>Eevee</td><td>5</td><td>2</td><td>−4</td><td><span class="tag fail">DITOLAK</span></td></tr>
+        <tr><td>Kangaskhan</td><td>10</td><td>3</td><td>−2</td><td><span class="tag fail">DITOLAK</span></td></tr>
+        <tr><td>Electrode</td><td>9</td><td>4</td><td>0</td><td><span class="tag fail">DITOLAK</span></td></tr>
+        <tr><td>Hitmonchan</td><td>10</td><td>3</td><td>0</td><td><span class="tag fail">DITOLAK</span></td></tr>
+        <tr><td>Gengar</td><td>6</td><td>2</td><td>+2</td><td><span class="tag pass">lolos</span></td></tr>
+        <tr><td>Snorlax</td><td>7</td><td>2</td><td>+2</td><td><span class="tag pass">lolos</span></td></tr>
+        <tr><td>Pikachu</td><td>7</td><td>3</td><td>+2</td><td><span class="tag pass">lolos</span></td></tr>
+      </tbody>
+    </table>
+    <p class="muted">
+      Catatan: <b>Skuntank</b> (Gen 4) juga tertangkap gerbang stem terlarang kita, karena memuat
+      substring <code>kunt</code>. Nintendo mengirimkannya apa adanya. Bagi kita false positive
+      seperti ini hampir gratis — kita memilih dari 56 kandidat, jadi kehilangan satu tidak
+      berbiaya. Itulah sebabnya blocklist tetap dipertahankan sementara gerbang struktur dilonggarkan.
+    </p>
+    <hr>
+    <div class="bar-label muted">Distribusi suku kata, 1025 nama Pokémon</div>
+    <div class="bar-row"><span>1 suku kata</span><div class="bar" style="width:4%"></div><span class="muted">19</span></div>
+    <div class="bar-row"><span>2 suku kata</span><div class="bar accent" style="width:100%"></div><span class="muted">460</span></div>
+    <div class="bar-row"><span>3 suku kata</span><div class="bar accent" style="width:88%"></div><span class="muted">407</span></div>
+    <div class="bar-row"><span>4 suku kata</span><div class="bar" style="width:28%"></div><span class="muted">131</span></div>
+    <div class="bar-row"><span>5 suku kata</span><div class="bar" style="width:2%"></div><span class="muted">8</span></div>
+    <p class="muted">
+      Dua suku kata adalah bentuk Pokémon <b>paling umum</b> (45%). Lantai v39 kita menghukum
+      &lt;3 suku kata dengan −3 sementara nilai positif maksimum hanya +2, jadi dua suku kata
+      <em>mustahil</em> — dan keenam nama paid eval v39 berbentuk sama bukan karena kebetulan.
+      V40 memperbaikinya ke 41% dua suku kata, dekat dengan 45% milik Pokémon.
+    </p>
+  </section>
+
+  <section>
+    <h2>5. Sugarworks versus iterasi generator</h2>
+    <p>
+      Operator menyukai kesembilan nama Sugarworks v6 dan menolak hampir semua nama generator. Diukur
+      dengan tes morfem yang sama:
+    </p>
+    <div class="two">
+      <div class="card">
+        <h3>Sugarworks v6 — morfem terbaca 9/9</h3>
+        <p class="muted">
+          Gellume[gell], Velastra[vela], Noxcoil[coil], Cindrusk[rusk], Rimespin[rime/spin],
+          Pralith[lith], Duskadon[dusk], Ambermire[amber/mire], Nimbelisk[nimb/lisk].
+        </p>
+        <p>
+          Setiap nama membawa morfem yang bisa dibaca. <b>Dua di antaranya — Velastra dan
+          Cindrusk — justru ditolak gerbang struktur kita sendiri.</b>
+        </p>
+      </div>
+      <div class="card">
+        <h3>Reject v32–v39 — morfem terbaca 10/18</h3>
+        <p class="muted">
+          Tanpa morfem sama sekali: Aerisyn, Zimnuzem, Basgutun, Daxorin, Kurvesun, Dorralis,
+          Vurralis.
+        </p>
+        <p>
+          Ketujuhnya <b>lolos</b> gerbang kita. Dan tanpa morfem, satu kata yang bisa diucapkan
+          otomatis terbaca sebagai <em>nama orang</em> — itu sebabnya iterasi terakhir terasa
+          seperti nama manusia.
+        </p>
+      </div>
+    </div>
+    <div class="callout good">
+      <b>Inversi yang terukur</b>
+      Gerbang kita memberi skor tertinggi kepada kata tanpa makna dan menolak kata bermorfem.
+      Sugarworks berhasil karena melakukan yang sebaliknya, dan itu juga yang dilakukan Pokémon
+      pada 76,6% namanya.
+    </div>
+  </section>
+
+  <section>
+    <h2>6. Implikasi untuk aturan Scanima</h2>
+    <p>
+      Yang harus dicabut, karena Pokémon melanggarnya secara rutin dan tanpa akibat:
+    </p>
+    <ul>
+      <li>larangan kata kamus utuh — 2,5% Pokémon adalah kata kamus;</li>
+      <li>larangan compound Inggris transparan — 76,6% Pokémon memuat kata kamus ≥4 huruf, dan
+        transparansinya divalidasi, bukan dihindari;</li>
+      <li>larangan mirip nama orang, merek, atau produk — Kadabra bertahan 20 tahun litigasi tanpa
+        berganti nama, dan Dragonair memakai nama maskapai aktif;</li>
+      <li>lantai panjang dan suku kata yang menolak Ditto, Golem, Onix, Eevee, dan Mew.</li>
+    </ul>
+    <p>
+      Yang harus dipertahankan, karena Pokémon menanganinya dengan cara yang tidak tersedia bagi kita
+      (nama per bahasa):
+    </p>
+    <ul>
+      <li>gerbang stem kasar lintas bahasa — <code>Kurvesun</code> tetap tidak boleh terkirim, dan
+        false positive seperti <code>Skuntank</code> nyaris gratis karena kita memilih dari kolam
+        kandidat;</li>
+      <li>larangan menyalin label sumber apa adanya — <code>Diskurak</code> untuk mouse dan
+        <code>Muggleton</code> untuk mug memang lemah, tetapi bedanya halus: Pokémon <em>ingin</em>
+        morfemnya terbaca (bulb, char, squirt), yang dihindari hanyalah <em>nama benda aslinya</em>
+        sebagai keseluruhan kata.</li>
+    </ul>
+    <div class="callout">
+      <b>Arah yang disarankan</b>
+      Berhenti mengejar keunikan leksikal. Kejar <b>morfem yang terbaca</b> seperti Sugarworks:
+      dua morfem bermakna dari fitur visual, dijahit menjadi satu kata, dengan blocklist kasar
+      sebagai satu-satunya gerbang keras. Itu membalik premisnya, bukan menambah aturan kesembilan.
+    </div>
+  </section>
+
+  <section>
+    <h2>Metode dan sumber</h2>
+    <p class="muted">
+      1025 nama spesies diambil dari <code>pokeapi.co/api/v2/pokemon-species?limit=2000</code>.
+      Kata kamus dari <code>/usr/share/dict/words</code> (web2, 235.976 entri; entri &lt;3 huruf
+      dibuang). Suku kata dihitung dengan regex yang sama seperti runtime,
+      <code>/[aeiouy]+/g</code>. Skor memakai <code>nameStructureScore()</code> dan
+      <code>nameIsSafeForPlayers()</code> yang diekspor
+      <code>backend/supabase/functions/_shared/vision.mjs</code>, jadi angkanya bergerak kalau
+      gerbangnya berubah. Nol panggilan model, nol biaya.
+    </p>
+    <ul>
+      <li><a href="https://www.nintendolife.com/news/2016/03/tsunekazu_ishihara_on_the_difficulty_of_naming_pokemon_for_different_regions">Wawancara
+        Tsunekazu Ishihara soal penamaan lintas region</a> — sumber kedua kutipan.</li>
+      <li><a href="https://www.polygon.com/2020/11/30/21726492/pokemon-nintendo-lawsuit-uri-geller-kadabra-apology/">Polygon:
+        Uri Geller mengakhiri sengketa 20 tahun soal Kadabra</a></li>
+      <li><a href="https://kotaku.com/pokemon-tcg-uri-geller-kadabra-card-ban-nintendo-1850050358">Kotaku:
+        orang yang membuat Kadabra dilarang 20 tahun</a></li>
+      <li><a href="https://en.wikipedia.org/wiki/Dragonair_(airline)">Dragonair / Cathay Dragon,
+        berdiri 24 Mei 1985</a></li>
+      <li><a href="https://bulbapedia.bulbagarden.net/wiki/Hitmonlee_(Pok%C3%A9mon)">Bulbapedia:
+        asal nama Hitmonlee</a> dan
+        <a href="https://bulbapedia.bulbagarden.net/wiki/Hitmonchan_(Pok%C3%A9mon)">Hitmonchan</a></li>
+      <li><a href="https://bulbapedia.bulbagarden.net/wiki/Localization">Bulbapedia: lokalisasi nama
+        per bahasa</a></li>
+    </ul>
+    <p class="muted">
+      Ini catatan desain, bukan spek yang mengikat — sama statusnya dengan
+      <a href="pokemon-size-research.html">riset ukuran karakter</a>.
+    </p>
+  </section>
+</body>
+</html>

@@ -6,6 +6,7 @@ import {
   deriveDeterministicEvolutionName,
   deriveCuratedHybridEvolutionName,
   deriveHybridEvolutionName,
+  deriveMorphemeEvolutionName,
   deriveNameLineageAnchor,
   deriveTransformedHybridEvolutionName,
   normalizeNameLineageAnchor,
@@ -1144,6 +1145,8 @@ export async function buildEvolutionIdleReference(pngBuffer, manifest) {
  * @param {object} [opts.priorShapeBudgetContract]
  * @param {string} [opts.priorSuggestedName]
  * @param {string} [opts.authoritativeNameLineageAnchor]
+ * @param {string} [opts.captureElement] elemen primary Anima; v41 memakainya
+ * supaya Adult melanjut ke keluarga materialnya sendiri.
  * @param {string} [opts.legacyLineageSuggestedName]
  */
 export function validateEvolutionPlan(raw, opts) {
@@ -1250,7 +1253,9 @@ export function validateEvolutionPlan(raw, opts) {
         true,
       );
     plan.name_lineage_anchor = anchor;
-    const deriveName = contractVersion >= 39
+    const deriveName = contractVersion >= 41
+      ? deriveMorphemeEvolutionName
+      : contractVersion >= 39
       ? deriveCuratedHybridEvolutionName
       : contractVersion >= 38
       ? deriveTransformedHybridEvolutionName
@@ -1261,6 +1266,8 @@ export function validateEvolutionPlan(raw, opts) {
       anchor,
       plan,
       opts.targetStage,
+      opts.captureElement,
+      [opts.priorSuggestedName, opts.legacyLineageSuggestedName],
     );
     validateV32NamePlan(plan, opts, issues);
   } else if (contractVersion >= 32) validateV32NamePlan(plan, opts, issues);

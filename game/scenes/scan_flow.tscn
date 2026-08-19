@@ -7,7 +7,7 @@
 [ext_resource type="Script" uid="uid://dptota5pyehri" path="res://scripts/scanima_background.gd" id="5_background"]
 [ext_resource type="PackedScene" path="res://scenes/ui/home_view.tscn" id="6_home"]
 [ext_resource type="PackedScene" path="res://scenes/ui/scan_view.tscn" id="7_scan"]
-[ext_resource type="PackedScene" path="res://scenes/ui/collection_view.tscn" id="8_collection"]
+[ext_resource type="PackedScene" uid="uid://c5s7hfsvqq6d5" path="res://scenes/ui/collection_view.tscn" id="8_collection"]
 [ext_resource type="PackedScene" path="res://scenes/ui/anima_details_view.tscn" id="9_details"]
 [ext_resource type="PackedScene" uid="uid://10b1ay38emxd" path="res://scenes/ui/bottom_nav.tscn" id="10_nav"]
 [ext_resource type="Script" uid="uid://cc635b4sia6tt" path="res://scripts/first_anima_effect.gd" id="11_first"]

@@ -29,9 +29,18 @@ import {
   deriveDeterministicSpeciesName,
   deriveHybridEvolutionName,
   deriveHybridSpeciesName,
+  deriveMorphemeEvolutionName,
+  deriveMorphemeSpeciesName,
   deriveTransformedHybridEvolutionName,
   deriveTransformedHybridSpeciesName,
   extractJson,
+  joinNameRoot,
+  MORPHEME_ADULT_TAILS,
+  MORPHEME_CAPTURE_POOL,
+  MORPHEME_CAPTURE_TAILS,
+  MORPHEME_BODY_TAILS,
+  MORPHEME_EVOLVED_TAILS,
+  MORPHEME_PLAN_FEATURE_TAILS,
   NAME_CADENCE_FAMILIES,
   NAME_QUALITY_KEYS,
   NAME_ROOT_CHANNELS,
@@ -5898,7 +5907,7 @@ console.log(
 }
 
 console.log(
-  "36. evolution Plan validator, prompt placeholders, dan bundel v21–v40",
+  "36. evolution Plan validator, prompt placeholders, dan bundel v21–v41",
 );
 {
   const {
@@ -8303,6 +8312,412 @@ console.log(
       `nama stage v39 '${staged}' harus lolos lantai struktur`,
     );
   }
+  // V41: kesembilan nama Sugarworks yang disetujui operator adalah spesifikasinya,
+  // jadi tabel morfem wajib bisa merakit ulang semuanya dari head + tail. Kalau
+  // tabelnya bergeser sampai Noxcoil atau Ambermire tidak terbentuk lagi, itu
+  // regresi terhadap satu-satunya roster yang pernah lulus penilaian manusia.
+  const sugarworksMorphemes = [
+    ["gel", "lume", "Gellume"],
+    ["vel", "astra", "Velastra"],
+    ["nox", "coil", "Noxcoil"],
+    ["cindr", "usk", "Cindrusk"],
+    ["rime", "spin", "Rimespin"],
+    ["pra", "lith", "Pralith"],
+    ["dusk", "adon", "Duskadon"],
+    ["amber", "mire", "Ambermire"],
+    ["nimbe", "elisk", "Nimbelisk"],
+  ];
+  for (const [head, tail, expected] of sugarworksMorphemes) {
+    assert.ok(
+      MORPHEME_CAPTURE_POOL.includes(tail),
+      `tail Sugarworks '${tail}' hilang dari kolam morfem`,
+    );
+    assert.equal(
+      joinNameRoot(head, tail),
+      expected,
+      `head+tail harus merakit ulang '${expected}'`,
+    );
+    assert.ok(
+      nameStructureScore(expected) >= NAME_STRUCTURE_FLOOR
+        && nameIsSafeForPlayers(expected),
+      `nama Sugarworks '${expected}' harus lolos gerbang v41`,
+    );
+  }
+  // Penalti tiga konsonan beruntun v39 tidak menyala pada satu pun reject v38,
+  // tetapi ia satu-satunya sebab Velastra dan Cindrusk jatuh. Empat reject itu
+  // wajib tetap jatuh sesudah penalti itu dibuang.
+  for (const rejected of ["Kuka", "Vororn", "Zoskesk", "Bomari"]) {
+    assert.ok(
+      nameStructureScore(rejected) < NAME_STRUCTURE_FLOOR,
+      `reject v38 '${rejected}' harus tetap di bawah lantai tanpa penalti klaster`,
+    );
+  }
+  const morphemeCapture = deriveMorphemeSpeciesName(captureV37);
+  assert.ok(
+    captureV37.name_roots.some((item) =>
+      item.root === morphemeCapture.name_lineage_anchor
+    ),
+    "v41 memakai akar Vision apa adanya sebagai anchor, tidak lagi merusaknya",
+  );
+  assert.notEqual(
+    morphemeCapture.name_lineage_anchor,
+    "mouse",
+    "akar yang menyalin identitas sumber tetap dibuang sebelum morfem dipilih",
+  );
+  assert.ok(
+    morphemeCapture.suggested_name.toLowerCase().startsWith(
+      morphemeCapture.name_lineage_anchor,
+    ),
+  );
+  assert.ok(
+    MORPHEME_CAPTURE_POOL.includes(morphemeCapture.selected_name_root.morpheme_tail),
+    "paruh kedua nama v41 wajib morfem dari tabel, bukan sufiks fonetik",
+  );
+  assert.deepEqual(
+    deriveMorphemeSpeciesName(structuredClone(captureV37)),
+    morphemeCapture,
+    "pemilihan morfem v41 wajib deterministik",
+  );
+  const morphemeTails = new Set();
+  const morphemeNames = new Set();
+  const morphemeElements = ["metal", "plant", "frost", "flame", "cloth", "fauna", "air"];
+  const morphemeHeads = ["vel", "nox", "rime", "dusk", "amber", "pra", "cindr", "glid"];
+  for (let index = 0; index < 100; index += 1) {
+    const sample = structuredClone(captureV37);
+    sample.species_key = `morpheme_fixture_${index}`;
+    sample.creature_brief = `varian morfem ${index}`;
+    sample.element = morphemeElements[index % morphemeElements.length];
+    // Variasi roster datang dari head yang berbeda tiap Anima, bukan dari satu
+    // head yang berganti-ganti tail: head berkoda klaster seperti `curv` memang
+    // hanya punya dua tail berseam bersih per keluarga, sama seperti keluarga
+    // `-saur` Pokémon yang membagikan satu morfem lanjutan.
+    sample.name_roots = sample.name_roots.map((item, position) =>
+      position === 1
+        ? { ...item, root: morphemeHeads[index % morphemeHeads.length] }
+        : item
+    );
+    const derived = deriveMorphemeSpeciesName(sample);
+    morphemeTails.add(derived.selected_name_root.morpheme_tail);
+    morphemeNames.add(derived.suggested_name);
+    assert.ok(
+      derived.suggested_name.toLowerCase()
+        === joinNameRoot(
+          derived.name_lineage_anchor,
+          derived.selected_name_root.morpheme_tail,
+        ).toLowerCase(),
+      `nama v41 '${derived.suggested_name}' harus terbaca sebagai dua morfem`,
+    );
+    assert.ok(
+      nameIsSafeForPlayers(derived.suggested_name),
+      `nama v41 '${derived.suggested_name}' memuat stem terlarang`,
+    );
+  }
+  assert.ok(
+    morphemeTails.size >= 8 && morphemeNames.size >= 8,
+    "v41 tidak boleh mengunci roster pada satu morfem lanjutan",
+  );
+  // Keluhan operator yang paling konkret: sembilan nama berturut-turut tiga suku
+  // kata. Head datang dari Vision, jadi tuas server adalah menyediakan tail satu
+  // suku kata — tanpa itu head satu suku kata pun tidak bisa menghasilkan nama
+  // dua suku kata seperti Noxcoil dan Pralith.
+  const morphemeSyllables = new Set(
+    [...morphemeNames].map((name) =>
+      (name.toLowerCase().match(/[aeiou]+/g) ?? []).length
+    ),
+  );
+  assert.ok(
+    morphemeSyllables.has(2) && morphemeSyllables.size >= 2,
+    `panjang nama v41 wajib bervariasi, terukur ${[...morphemeSyllables].join(", ")}`,
+  );
+  // Setiap keluarga wajib punya dua jalan keluar berawal vokal, karena head
+  // berkoda dua konsonan membuat seluruh tail berawal konsonan berbiaya seam 3.
+  // Mineral yang hanya punya `elisk` terukur mengunci 100/100 pada `Curvelisk`.
+  for (const [family, tails] of Object.entries(MORPHEME_CAPTURE_TAILS)) {
+    assert.ok(
+      tails.filter((tail) => /^[aeiou]/.test(tail)).length >= 2,
+      `keluarga morfem '${family}' butuh minimal dua tail berawal vokal`,
+    );
+  }
+  // Elemen memilih keluarga morfem: frost menarik tail tidal, flame menarik ember.
+  const frostSample = structuredClone(captureV37);
+  frostSample.element = "frost";
+  const flameSample = structuredClone(captureV37);
+  flameSample.element = "flame";
+  assert.equal(deriveMorphemeSpeciesName(frostSample).selected_name_root.element_family, "tidal");
+  assert.equal(deriveMorphemeSpeciesName(flameSample).selected_name_root.element_family, "ember");
+  // Cakupan channel yang tipis bukan alasan membuang akar sehat. Paid eval v41
+  // mengukur biayanya: satu entri buruk membuang lima akar sehat, dan lima dari
+  // sembilan Anima memakai fonotaktik v36 yang sudah ditolak operator.
+  const thinChannelsV41 = structuredClone(captureV37);
+  for (const item of thinChannelsV41.name_roots) item.channel = "motion";
+  const thinDerived = deriveMorphemeSpeciesName(thinChannelsV41);
+  assert.ok(
+    !thinDerived.selected_name_root.root_fallback,
+    "cakupan channel tipis tidak boleh membuang seluruh akar Vision",
+  );
+  assert.ok(
+    thinChannelsV41.name_roots.some((item) =>
+      item.root === thinDerived.name_lineage_anchor
+    ),
+    "anchor tetap harus salah satu akar yang ditawarkan model",
+  );
+  // Satu entri rusak hanya membuang dirinya sendiri; `wyrm` tanpa vokal dan
+  // `stride` enam huruf keduanya terukur di paid eval.
+  const partialV41 = structuredClone(captureV37);
+  partialV41.name_roots[1] = { root: "wyrm", channel: "silhouette", evidence: "coil" };
+  partialV41.name_roots[2] = { root: "stride", channel: "sound", evidence: "gait" };
+  const partialDerived = deriveMorphemeSpeciesName(partialV41);
+  assert.ok(
+    !partialDerived.selected_name_root.root_fallback,
+    "dua entri rusak tidak boleh menjatuhkan seluruh array",
+  );
+  assert.equal(partialDerived.selected_name_root.rejected_roots?.length, 2);
+  // Pagar v39 yang dipertahankan: penamaan tidak boleh menggagalkan capture
+  // berbayar, jadi array yang seluruhnya rusak tetap menghasilkan nama.
+  const degradedV41 = structuredClone(captureV37);
+  degradedV41.name_roots = degradedV41.name_roots.map((item, index) => ({
+    ...item,
+    root: `toolongroot${index}`,
+  }));
+  const degradedDerived = deriveMorphemeSpeciesName(degradedV41);
+  assert.ok(
+    degradedDerived.selected_name_root.root_fallback.includes("menyalin")
+      || degradedDerived.selected_name_root.root_fallback.includes("root"),
+    "array yang seluruhnya rusak harus tercatat sebagai fallback, bukan melempar",
+  );
+  assert.match(degradedDerived.name_lineage_anchor, /^[a-z]{3,5}$/);
+  const checkedCaptureV41 = validateVision(
+    captureV37,
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+  );
+  assert.equal(
+    checkedCaptureV41.vision.suggested_name,
+    morphemeCapture.suggested_name,
+  );
+  // Anchor berklaster wajib selamat melewati validateVision: aturan pronounceable
+  // v33 akan diam-diam menggantinya, dan lineage-nya pecah tanpa satu pun galat.
+  const clusterAnchorV41 = structuredClone(captureV37);
+  clusterAnchorV41.name_roots[1] = {
+    root: "cindr",
+    channel: "material",
+    evidence: "charred seam",
+  };
+  const clusterChecked = validateVision(
+    clusterAnchorV41,
+    [],
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+  );
+  assert.equal(
+    clusterChecked.vision.name_lineage_anchor,
+    "cindr",
+    "anchor morfem berklaster tidak boleh diganti aturan pronounceable v33",
+  );
+  assert.ok(clusterChecked.vision.suggested_name.toLowerCase().startsWith("cindr"));
+  const adultV41 = validateEvolutionPlan(v37Raw, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 41,
+    priorSuggestedName: morphemeCapture.suggested_name,
+    authoritativeNameLineageAnchor: morphemeCapture.name_lineage_anchor,
+    legacyLineageSuggestedName: morphemeCapture.suggested_name,
+  });
+  const evolvedV41Name = deriveMorphemeEvolutionName(
+    morphemeCapture.name_lineage_anchor,
+    v37Raw,
+    3,
+  );
+  for (const staged of [adultV41.plan.suggested_name, evolvedV41Name]) {
+    assert.ok(
+      staged.toLowerCase().startsWith(morphemeCapture.name_lineage_anchor),
+      `stage v41 '${staged}' harus mempertahankan anchor lineage`,
+    );
+    assert.ok(nameIsSafeForPlayers(staged));
+    assert.ok(
+      staged.length <= 12,
+      `stage v41 '${staged}' melewati batas panjang Pokémon`,
+    );
+  }
+  assert.notEqual(adultV41.plan.suggested_name, evolvedV41Name);
+  assert.equal(adultV41.plan.name_lineage_anchor, morphemeCapture.name_lineage_anchor);
+  // Eskalasi ada di makna morfemnya, bukan di jumlah hurufnya — Charmander,
+  // Charmeleon, dan Charizard sama panjang, sedangkan Bulbasaur justru menyusut
+  // ke Ivysaur. Jadi Evolved tidak wajib lebih panjang daripada Adult.
+  const stagePool = [
+    ...MORPHEME_ADULT_TAILS,
+    ...MORPHEME_EVOLVED_TAILS,
+    ...MORPHEME_CAPTURE_POOL,
+    ...MORPHEME_PLAN_FEATURE_TAILS,
+  ];
+  for (const staged of [adultV41.plan.suggested_name, evolvedV41Name]) {
+    assert.ok(
+      stagePool.some((tail) => staged.toLowerCase().endsWith(tail)),
+      `stage v41 '${staged}' harus berakhir pada morfem yang dikenal`,
+    );
+  }
+  // Regresi yang paling mahal: `-horn` pada Anima yang Plan-nya tidak pernah
+  // menyebut tanduk. Nama menjanjikan anatomi yang tidak ada di sprite-nya, dan
+  // pemain melihat keduanya di layar yang sama. Morfem anatomi karena itu hanya
+  // boleh datang dari teks Plan.
+  const featureless = structuredClone(v37Raw);
+  featureless.stage_brief = "A taller mobile ceramic body advances steadily.";
+  featureless.transformation_archetype = "mass_redistribution";
+  if (featureless.mobility_contract) {
+    featureless.mobility_contract.locomotion_mode = "steady forward stride";
+    featureless.mobility_contract.support_read = "two broad ceramic feet";
+  }
+  if (featureless.silhouette_break_contract) {
+    featureless.silhouette_break_contract.new_contour_read = "tall narrow wedge";
+  }
+  if (featureless.shape_budget_contract) {
+    featureless.shape_budget_contract.primary_shapes = ["tall wedge", "wide base"];
+  }
+  for (const stage of [2, 3]) {
+    for (const head of ["cindr", "umbra", "nox", "glaz", "amber", "strid"]) {
+      const staged = deriveMorphemeEvolutionName(head, featureless, stage, "ceramic")
+        .toLowerCase();
+      for (const anatomy of MORPHEME_BODY_TAILS) {
+        assert.ok(
+          !staged.endsWith(anatomy),
+          `Plan tanpa anatomi tidak boleh menghasilkan '${staged}'`,
+        );
+      }
+    }
+  }
+  // Enam Evolved dari Plan yang sama pernah mendarat pada rima yang sama
+  // (-argos, -korax, -aegis) sehingga tiap lineage kehilangan ciri. Kolam gelar
+  // sekarang wajib benar-benar tersebar.
+  const evolvedTails = new Set(
+    ["cindr", "umbra", "nox", "glaz", "amber", "strid"].map((head) => {
+      const staged = deriveMorphemeEvolutionName(head, featureless, 3, "ceramic");
+      return staged.toLowerCase().slice(head.length);
+    }),
+  );
+  assert.ok(
+    evolvedTails.size >= 3,
+    `Evolved wajib tersebar, terukur ${[...evolvedTails].join(", ")}`,
+  );
+  // Sisi sebaliknya: Plan yang memang menjanjikan anatomi wajib bisa memakainya,
+  // kalau tidak pemindai fitur cuma kode mati yang selalu menolak. Anatomi ikut
+  // ke kolam dan tidak menggantikannya, jadi yang diuji ketercapaian atas sapuan
+  // head — bukan satu derivasi yang harus mendarat tepat di situ.
+  const horned = structuredClone(featureless);
+  horned.stage_brief =
+    "Paired horns and hooked talons crown a coiled, plated frame.";
+  horned.silhouette_break_contract.new_contour_read = "horned crown wedge";
+  const hornedHeads = [
+    "cindr", "umbra", "nox", "glaz", "amber", "strid", "vitr", "pral", "glim",
+  ];
+  const hornedNames = hornedHeads.flatMap((head) =>
+    [2, 3].map((stage) =>
+      deriveMorphemeEvolutionName(head, horned, stage, "ceramic").toLowerCase()
+    )
+  );
+  const hornedAnatomy = hornedNames.filter((name) =>
+    [...MORPHEME_BODY_TAILS].some((tail) => name.endsWith(tail))
+  );
+  assert.ok(
+    hornedAnatomy.length >= 3,
+    `Plan beranatomi wajib bisa memakai morfemnya, terukur ${hornedNames.join(", ")}`,
+  );
+  // Dan tetap tidak boleh mengunci: Plan bersatu fitur pernah membuat setiap
+  // Adult berakhir `-husk` karena anatomi menggantikan seluruh kolam.
+  const shelled = structuredClone(featureless);
+  shelled.stage_brief = "A leaner frame rises beneath a broader shell.";
+  const shelledTails = new Set(
+    hornedHeads.map((head) =>
+      deriveMorphemeEvolutionName(head, shelled, 2, "ceramic")
+        .toLowerCase()
+        .slice(head.length)
+    ),
+  );
+  assert.ok(
+    shelledTails.size >= 3,
+    `anatomi tunggal tidak boleh mengunci Adult, terukur ${
+      [...shelledTails].join(", ")
+    }`,
+  );
+  // Adult melanjut ke keluarga materialnya sendiri, jadi tanpa daftar nama
+  // terpakai ia bisa memilih tail yang sama dengan Hatchling.
+  const twinRisk = deriveMorphemeEvolutionName(
+    morphemeCapture.name_lineage_anchor,
+    featureless,
+    2,
+    "ceramic",
+    [morphemeCapture.suggested_name],
+  );
+  assert.notEqual(
+    twinRisk.toLowerCase(),
+    morphemeCapture.suggested_name.toLowerCase(),
+    "Adult tidak boleh identik dengan nama Hatchling-nya",
+  );
+  // Plan yang menyebut tepat satu anatomi pernah membuat kolam Evolved habis
+  // karena Adult sudah memakainya, lalu derivasi melempar — evolusi berbayar
+  // tidak boleh gagal karena nama.
+  const oneFeature = structuredClone(featureless);
+  oneFeature.stage_brief = "A leaner frame rises beneath a broader shell.";
+  const singleAdult = deriveMorphemeEvolutionName("glid", oneFeature, 2, "plastic", [
+    "Glidcoil",
+  ]);
+  const singleEvolved = deriveMorphemeEvolutionName("glid", oneFeature, 3, "plastic", [
+    "Glidcoil",
+    singleAdult,
+  ]);
+  assert.notEqual(
+    singleEvolved.toLowerCase(),
+    singleAdult.toLowerCase(),
+    "Evolved wajib turun ke gelar stage ketika anatomi tunggalnya sudah dipakai",
+  );
+  // Head berkoda klaster seperti `cindr` membuat setiap tail berawal konsonan
+  // berbiaya seam 4, dan tanpa jalan keluar berawal vokal Adult-nya jatuh ke
+  // `Cindrward`. Kedua tabel stage karena itu wajib menyimpan opsi vokal.
+  for (const tails of [MORPHEME_ADULT_TAILS, MORPHEME_EVOLVED_TAILS]) {
+    assert.ok(
+      tails.filter((tail) => /^[aeiou]/.test(tail)).length >= 2,
+      "tabel morfem stage wajib menyimpan minimal dua tail berawal vokal",
+    );
+  }
+  for (const head of ["cindr", "umbra", "strid", "glaz", "nox", "amber"]) {
+    for (const stage of [2, 3]) {
+      const staged = deriveMorphemeEvolutionName(head, v37Raw, stage);
+      assert.ok(
+        staged.toLowerCase().startsWith(head)
+          && staged.length <= 12
+          && nameIsSafeForPlayers(staged),
+        `stage ${stage} untuk head '${head}' menghasilkan '${staged}'`,
+      );
+    }
+  }
   const wrongAuthoritativeAnchor = structuredClone(v32Raw);
   wrongAuthoritativeAnchor.name_lineage_anchor = "harb";
   assert.throws(
@@ -8506,6 +8921,28 @@ console.log(
     bundel.v40?.sprite_sheet_evolve,
     bundel.v30?.sprite_sheet_evolve,
     "v40 tidak mengubah arah art Evolution",
+  );
+  assert.ok(
+    bundel.v41?.vision_system?.includes("readable morphemes")
+      && bundel.v41?.vision_system?.includes("Resemblance to an existing word")
+      && bundel.v41?.vision_schema?.properties?.name_roots?.items?.properties
+        ?.root?.description?.includes("3-5"),
+    "v41 harus membundel kontrak morfem terbaca dan mencabut klaim tabrakan kata",
+  );
+  assert.ok(
+    bundel.v41?.vision_evolve_system?.includes("carries through every stage")
+      && bundel.v41?.vision_evolve_system?.includes("not longer names"),
+    "v41 harus membundel lineage anchor utuh untuk Adult dan Evolved",
+  );
+  assert.equal(
+    bundel.v41?.sprite_sheet,
+    bundel.v31?.sprite_sheet,
+    "v41 tidak mengubah arah art capture",
+  );
+  assert.equal(
+    bundel.v41?.sprite_sheet_evolve,
+    bundel.v30?.sprite_sheet_evolve,
+    "v41 tidak mengubah arah art Evolution",
   );
   const evolvedWalkKeep = structuredClone(evolvedV25Raw);
   evolvedWalkKeep.face_age_contract = {

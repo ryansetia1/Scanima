@@ -531,6 +531,7 @@ async function main() {
           promptMajor(args.promptVersion) === 37,
           promptMajor(args.promptVersion) === 38,
           promptMajor(args.promptVersion) >= 39,
+          promptMajor(args.promptVersion) >= 41,
         );
         row.vision = checked.vision;
         row.issues = [...(row.issues ?? []), ...checked.issues];
