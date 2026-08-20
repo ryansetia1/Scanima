@@ -66,17 +66,21 @@ func _configure_chips() -> void:
 	_bag_button.set_name_text("")
 
 
+# Mirrors `ScanFlow._place_shop`: Shop and Bag keep their own 48dp press target
+# instead of copying the Bits badge, and the gutter they claim is what keeps the
+# nickname from running under them.
 func _place_chips() -> void:
-	var bits := _bits_chip.get_global_rect()
 	var hud := _top_hud.get_global_rect()
-	if bits.size.x <= 0.0 or hud.size.y <= 0.0:
+	var chip := _shop_button.get_combined_minimum_size()
+	if hud.size.y <= 0.0 or chip.x <= 0.0:
 		return
-	var row: Dictionary = FLOW.shop_chip_row(bits, hud)
-	_shop_button.position = row["shop"]
-	_shop_button.size = bits.size
-	_bag_button.position = row["bag"]
-	_bag_button.size = bits.size
-	_home.set_chip_gutter(row["gutter"])
+	var gutter := chip.x * 2.0 + FLOW.SHOP_GAP
+	var top := hud.position.y + hud.size.y + FLOW.SHOP_GAP
+	_shop_button.position = Vector2(hud.end.x - gutter, top)
+	_shop_button.size = chip
+	_bag_button.position = Vector2(hud.end.x - chip.x, top)
+	_bag_button.size = chip
+	_home.set_chip_gutter(gutter)
 
 
 func _arg_value(prefix: String) -> String:

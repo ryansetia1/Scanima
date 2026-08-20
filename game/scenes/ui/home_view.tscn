@@ -34,6 +34,13 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+[sub_resource type="StyleBoxFlat" id="ExpTrack"]
+bg_color = Color(0.16, 0.09, 0.24, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
 [sub_resource type="StyleBoxFlat" id="BondFill"]
 bg_color = Color(0.83, 0.48, 1, 1)
 corner_radius_top_left = 8
@@ -134,12 +141,27 @@ size_flags_horizontal = 3
 theme_type_variation = &"SectionLabel"
 text = "HOME_NEEDS_TITLE"
 
-[node name="CareSummary" type="Label" parent="Column/CareDock/CareColumn/CareHeader"]
+[node name="SummaryColumn" type="VBoxContainer" parent="Column/CareDock/CareColumn/CareHeader"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="CareSummary" type="Label" parent="Column/CareDock/CareColumn/CareHeader/SummaryColumn"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"EyebrowLabel"
 text = "HOME_CARE_SCORE"
 horizontal_alignment = 2
+
+[node name="NeedExp" type="ProgressBar" parent="Column/CareDock/CareColumn/CareHeader/SummaryColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("ExpTrack")
+theme_override_styles/fill = SubResource("BondFill")
+value = 100.0
+show_percentage = false
 
 [node name="NeedsRow" type="HBoxContainer" parent="Column/CareDock/CareColumn"]
 layout_mode = 2
@@ -298,29 +320,3 @@ size_flags_horizontal = 3
 theme_type_variation = &"CarePlayButton"
 icon = ExtResource("5_play")
 text = "CARE_PLAY"
-
-[node name="BondChip" type="PanelContainer" parent="Column/CareDock/CareColumn"]
-layout_mode = 2
-theme_type_variation = &"BondChip"
-
-[node name="NeedExp" type="ProgressBar" parent="Column/CareDock/CareColumn/BondChip"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 40)
-layout_mode = 2
-theme_override_styles/background = SubResource("NeedBackground")
-theme_override_styles/fill = SubResource("BondFill")
-value = 100.0
-show_percentage = false
-
-[node name="ExpLabel" type="Label" parent="Column/CareDock/CareColumn/BondChip/NeedExp"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_type_variation = &"SectionLabel"
-text = "CARE_EXP"
-vertical_alignment = 1

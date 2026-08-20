@@ -8,6 +8,15 @@ signal retry_requested
 
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
+## Needs read as bars at rest. The exact number is one tap away, and the three
+## reveal together with a short stagger so a single gesture answers "how is my
+## companion doing" instead of one chip at a time.
+const VALUE_STAGGER := 0.06
+
+## The hold runs from the tap, so the 0,5 s reveal is part of it and the numbers
+## sit fully lit for about three seconds before letting themselves out.
+const VALUE_HOLD := 3.5
+
 @onready var _identity_row: HBoxContainer = %IdentityRow
 @onready var _identity: VBoxContainer = %Identity
 @onready var _chip_gutter: Control = %ChipGutter
@@ -36,6 +45,9 @@ const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
 var _row: Dictionary = {}
 var _shell_state := &"loading"
+var _values_shown := false
+var _values_toggled_frame := -1
+var _values_token := 0
 
 
 func _ready() -> void:
@@ -44,6 +56,17 @@ func _ready() -> void:
 	_sleep_button.pressed.connect(_request_sleep_toggle)
 	_play_button.pressed.connect(_request_play)
 	_primary_action.pressed.connect(_request_primary_action)
+	for chip in _need_chips():
+		chip.mouse_filter = Control.MOUSE_FILTER_STOP
+		chip.gui_input.connect(_on_need_chip_input)
+		# The whole chip is the target, so nothing inside it may answer input.
+		# ProgressBar defaults to STOP and ate every tap that landed on the bar
+		# itself; Label defaults to IGNORE, which is why only the caption row
+		# ever responded. Sweeping the subtree keeps the next child honest too.
+		for inner in chip.find_children("*", "Control", true, false):
+			inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for label in _value_labels():
+		label.modulate.a = 0.0
 	_set_loading_layout(true)
 
 
@@ -159,13 +182,18 @@ func update_care(row: Dictionary, busy: bool) -> void:
 			LocaleManager.format_integer(CARE_RULES.exp_into_level(total_exp)),
 			LocaleManager.format_integer(CARE_RULES.exp_to_next_level(level)),
 		]
-	_care_summary.text = tr("HOME_CARE_SUMMARY") % [
-		exp_label,
-		LocaleManager.care_state(sleeping, dormant),
-	]
+	# Active is the resting state, so naming it is noise on every single refresh.
+	# Sleeping and Dormant stay: they are what explains the collapsed action row.
+	_care_summary.text = exp_label
+	if sleeping or dormant:
+		_care_summary.text = tr("HOME_CARE_SUMMARY") % [
+			exp_label,
+			LocaleManager.care_state(sleeping, dormant),
+		]
 	_sleep_button.text = tr("CARE_WAKE") if sleeping else tr("CARE_SLEEP")
 	_play_button.text = tr("CARE_PLAY")
 	_update_action_state(busy)
+	_restart_value_hold()
 
 
 func set_busy(busy: bool) -> void:
@@ -179,6 +207,70 @@ func pulse_progress() -> void:
 	if _care_dock.visible:
 		UiJuice.pop(_care_summary, 1.08)
 		UiJuice.pop(_need_exp, 1.06)
+
+
+func _on_need_chip_input(event: InputEvent) -> void:
+	if not _is_tap(event):
+		return
+	# Touch emulation hands the same finger over twice, as a screen touch and as
+	# a synthetic mouse press. A toggle that runs twice reads as a dead tap.
+	var frame := Engine.get_process_frames()
+	if frame == _values_toggled_frame:
+		return
+	_values_toggled_frame = frame
+	set_need_values_shown(not _values_shown)
+
+
+func set_need_values_shown(shown: bool) -> void:
+	_values_shown = shown
+	var labels := _value_labels()
+	for index in labels.size():
+		var delay := VALUE_STAGGER * float(index)
+		if shown:
+			UiJuice.reveal(labels[index], delay)
+		else:
+			UiJuice.dismiss(labels[index], delay)
+	_restart_value_hold()
+
+
+## The numbers leave the same way they arrived instead of waiting for a second
+## tap. Bumping the token here is what cancels an earlier hold, so hiding early
+## or revealing again never leaves a stale timer to snuff the next reveal. A care
+## refresh restarts it: tapping Feed with a second left should still let the
+## player watch Hunger climb.
+func _restart_value_hold() -> void:
+	_values_token += 1
+	if not _values_shown or not is_inside_tree():
+		return
+	var token := _values_token
+	await get_tree().create_timer(VALUE_HOLD).timeout
+	if not is_instance_valid(self) or token != _values_token or not _values_shown:
+		return
+	set_need_values_shown(false)
+
+
+func need_values_shown() -> bool:
+	return _values_shown
+
+
+func _value_labels() -> Array[Label]:
+	var labels: Array[Label] = [_hunger_value, _hygiene_value, _energy_value]
+	return labels
+
+
+func _need_chips() -> Array[PanelContainer]:
+	var chips: Array[PanelContainer] = [_hunger_chip, _hygiene_chip, _energy_chip]
+	return chips
+
+
+static func _is_tap(event: InputEvent) -> bool:
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).pressed
+	return (
+		event is InputEventMouseButton
+		and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT
+		and (event as InputEventMouseButton).pressed
+	)
 
 
 func _request_feed() -> void:

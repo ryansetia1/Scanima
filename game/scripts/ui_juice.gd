@@ -90,6 +90,20 @@ static func reveal(control: Control, delay: float = 0.0) -> void:
 	control.set_meta(META_TWEEN, tween)
 
 
+## The counterpart of `reveal` for a control that has to keep its slot in a
+## container. It fades the ink and never touches `visible`, because hiding a
+## Label collapses its width and drags every sibling still on screen with it.
+static func dismiss(control: Control, delay: float = 0.0) -> void:
+	_kill_tween(control)
+	control.pivot_offset = control.size * 0.5
+	var tween := control.create_tween().set_parallel(true)
+	tween.tween_property(control, "modulate:a", 0.0, 0.14) \
+		.set_delay(delay).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(control, "scale", Vector2(0.94, 0.94), 0.14) \
+		.set_delay(delay).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	control.set_meta(META_TWEEN, tween)
+
+
 static func pop(control: Control, strength: float = 1.045) -> void:
 	if not is_instance_valid(control) or not control.visible:
 		return

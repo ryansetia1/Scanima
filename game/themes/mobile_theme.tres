@@ -23,19 +23,6 @@ shadow_color = Color(0, 0, 0, 0.42)
 shadow_size = 10
 shadow_offset = Vector2(0, 4)
 
-[sub_resource type="StyleBoxFlat" id="BondChip"]
-content_margin_left = 12.0
-content_margin_top = 10.0
-content_margin_right = 12.0
-content_margin_bottom = 10.0
-bg_color = Color(0.15, 0.075, 0.24, 0.9)
-border_width_left = 2
-border_color = Color(0.83, 0.48, 1, 0.48)
-corner_radius_top_left = 18
-corner_radius_top_right = 18
-corner_radius_bottom_right = 18
-corner_radius_bottom_left = 18
-
 [sub_resource type="StyleBoxFlat" id="BottomNav"]
 content_margin_left = 0.0
 content_margin_top = 0.0
@@ -151,10 +138,10 @@ corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
 [sub_resource type="StyleBoxFlat" id="CleanNormal"]
-content_margin_left = 10.0
-content_margin_top = 12.0
-content_margin_right = 10.0
-content_margin_bottom = 12.0
+content_margin_left = 20.0
+content_margin_top = 14.0
+content_margin_right = 20.0
+content_margin_bottom = 14.0
 bg_color = Color(0.035, 0.25, 0.225, 0.98)
 border_width_left = 2
 border_width_top = 2
@@ -172,8 +159,6 @@ content_margin_top = 16.0
 content_margin_right = 18.0
 content_margin_bottom = 18.0
 bg_color = Color(0.025, 0.042, 0.095, 0.96)
-border_width_top = 2
-border_color = Color(0.278, 0.902, 1, 0.18)
 corner_radius_top_left = 30
 corner_radius_top_right = 30
 corner_radius_bottom_right = 30
@@ -183,10 +168,10 @@ shadow_size = 18
 shadow_offset = Vector2(0, 8)
 
 [sub_resource type="StyleBoxFlat" id="FeedNormal"]
-content_margin_left = 10.0
-content_margin_top = 12.0
-content_margin_right = 10.0
-content_margin_bottom = 12.0
+content_margin_left = 20.0
+content_margin_top = 14.0
+content_margin_right = 20.0
+content_margin_bottom = 14.0
 bg_color = Color(0.34, 0.115, 0.095, 0.98)
 border_width_left = 2
 border_width_top = 2
@@ -199,32 +184,32 @@ corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
 [sub_resource type="StyleBoxFlat" id="PlayNormal"]
-content_margin_left = 10.0
-content_margin_top = 12.0
-content_margin_right = 10.0
-content_margin_bottom = 12.0
-bg_color = Color(0.31, 0.235, 0.055, 0.98)
+content_margin_left = 20.0
+content_margin_top = 14.0
+content_margin_right = 20.0
+content_margin_bottom = 14.0
+bg_color = Color(0.21, 0.115, 0.3, 0.98)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(1, 0.82, 0.4, 0.92)
+border_color = Color(0.83, 0.48, 1, 0.92)
 corner_radius_top_left = 18
 corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
 [sub_resource type="StyleBoxFlat" id="SleepNormal"]
-content_margin_left = 10.0
-content_margin_top = 12.0
-content_margin_right = 10.0
-content_margin_bottom = 12.0
-bg_color = Color(0.18, 0.105, 0.35, 0.98)
+content_margin_left = 20.0
+content_margin_top = 14.0
+content_margin_right = 20.0
+content_margin_bottom = 14.0
+bg_color = Color(0.045, 0.185, 0.29, 0.98)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.69, 0.43, 1, 0.9)
+border_color = Color(0.3, 0.84, 1, 0.9)
 corner_radius_top_left = 18
 corner_radius_top_right = 18
 corner_radius_bottom_right = 18
@@ -791,8 +776,6 @@ BattleEventPlate/styles/panel = SubResource("StyleBoxFlat_joq8t")
 BodyLabel/base_type = &"Label"
 BodyLabel/colors/font_color = Color(0.76, 0.82, 0.92, 1)
 BodyLabel/font_sizes/font_size = 26
-BondChip/base_type = &"PanelContainer"
-BondChip/styles/panel = SubResource("BondChip")
 BottomNavPanel/base_type = &"PanelContainer"
 BottomNavPanel/styles/panel = SubResource("BottomNav")
 BottomSheetPanel/base_type = &"PanelContainer"

@@ -10,6 +10,17 @@ Anima punya tiga kebutuhan, masing-masing 0–100. Semuanya pelan-pelan turun se
 
 **Clean** gratis. **Feed** memakai makanan dari **Bag**. Play dan Sleep juga gratis. Item Energy dibeli di Shop, dipakai dari **Bag**.
 
+Panel **Needs** menampilkan tiga meter tanpa angka. Tap salah satu kotaknya dan
+persentase ketiganya muncul bersamaan, lalu memudar sendiri sesudah beberapa
+detik — tap lagi kalau mau menutupnya lebih cepat. Kalau kamu Feed atau Clean
+sementara angkanya masih tampil, hitungannya dimulai ulang, jadi kamu bisa
+menonton meternya naik.
+
+Tiap tombol Care memakai warna meter yang ia gerakkan: **Feed** jingga seperti
+Hunger, **Clean** mint seperti Hygiene, **Sleep** biru seperti Energy, dan
+**Play** violet seperti bar EXP. Bar EXP itu garis tipis violet tepat di bawah
+tulisan `Lv. · EXP` di kanan atas panel.
+
 Meter bergerak di detik yang sama dengan ketukanmu, dan tombol Care tidak mati
 sesudahnya. Angka resminya datang dari server sesaat kemudian dan menimpa
 tampilan itu; kalau aksinya ternyata ditolak (misalnya koneksi putus), meternya

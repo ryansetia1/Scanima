@@ -4566,6 +4566,46 @@ func _test_home_care_actions() -> void:
 	var care_summary := home.find_child("CareSummary", true, false) as Label
 	var stage_space := home.find_child("StageSpace", true, false) as Control
 	var stage_footer_space := home.find_child("StageFooterSpace", true, false) as Control
+	var care_theme := load("res://themes/mobile_theme.tres") as Theme
+	# Hover was the only care state padded 20/14, so the resting icon sat 10 px
+	# further left and snapped inward the instant a pointer arrived. A phone has
+	# no hover at all, which left the odd state out as the only one players saw.
+	var hover_box := care_theme.get_stylebox(&"hover", &"Button")
+	for variation in ["CareFeedButton", "CareCleanButton", "CareSleepButton", "CarePlayButton"]:
+		var resting := care_theme.get_stylebox(&"normal", StringName(variation))
+		_check(
+			resting != null
+			and is_equal_approx(resting.content_margin_left, hover_box.content_margin_left)
+			and is_equal_approx(resting.content_margin_right, hover_box.content_margin_right),
+			"%s holds its icon still between resting and hover" % variation
+		)
+	# Every action wears the colour of the meter it moves, so which button feeds
+	# which bar is legible before the label is. Tolerance because each border is
+	# hand-lifted a little off its fill for punch, not generated from it.
+	for pairing in [
+		["CareFeedButton", "NeedHunger"],
+		["CareCleanButton", "NeedHygiene"],
+		["CareSleepButton", "NeedEnergy"],
+		["CarePlayButton", "NeedExp"],
+	]:
+		var resting := care_theme.get_stylebox(&"normal", StringName(pairing[0])) as StyleBoxFlat
+		var meter := home.find_child(pairing[1], true, false) as ProgressBar
+		var fill: StyleBoxFlat = null
+		if meter != null:
+			fill = meter.get_theme_stylebox(&"fill") as StyleBoxFlat
+		_check(
+			resting != null
+			and fill != null
+			and absf(resting.border_color.r - fill.bg_color.r) < 0.12
+			and absf(resting.border_color.g - fill.bg_color.g) < 0.12
+			and absf(resting.border_color.b - fill.bg_color.b) < 0.12,
+			"%s carries the colour of %s, the meter it moves" % [pairing[0], pairing[1]]
+		)
+	var dock_box := care_theme.get_stylebox(&"panel", &"CareDock") as StyleBoxFlat
+	_check(
+		dock_box != null and dock_box.border_width_top == 0,
+		"the care panel reads as one surface instead of wearing a lit top edge"
+	)
 	_check(
 		identity_row != null
 		and chip_gutter != null
@@ -4637,6 +4677,10 @@ func _test_home_care_actions() -> void:
 		"a loaded nickname stays on one line and ellipsizes before the chips"
 	)
 	_check(care_summary.text.contains("EXP 3/5"), "Lv.2 still uses the first 5-EXP band")
+	_check(
+		not care_summary.text.contains(tr("CARE_STATE_ACTIVE")),
+		"an awake companion states Level and EXP without labelling itself Active"
+	)
 	row["care_score"] = 150
 	home.update_care(row, false)
 	_check(care_summary.text.contains("EXP 0/20"), "Lv.16 shows its 20-EXP denominator")
@@ -4714,33 +4758,151 @@ func _test_home_care_actions() -> void:
 	_check_eq(hygiene_chip.theme_type_variation, &"NeedChip", "Hygiene at 50 drops the alert")
 
 	var locale_home := root.get_node("LocaleManager")
+	var hunger_value := home.find_child("HungerValue", true, false) as Label
+	var energy_value := home.find_child("EnergyValue", true, false) as Label
+	var hygiene_value := home.find_child("HygieneValue", true, false) as Label
 	_check(
-		(home.find_child("HungerValue", true, false) as Label).text
-		== locale_home.format_percent(40.0)
-		and (home.find_child("EnergyValue", true, false) as Label).text
-		== locale_home.format_percent(20.0)
-		and (home.find_child("HygieneValue", true, false) as Label).text
-		== locale_home.format_percent(50.0),
-		"every need chip states its own percentage beside its label"
+		hunger_value.text == locale_home.format_percent(40.0)
+		and energy_value.text == locale_home.format_percent(20.0)
+		and hygiene_value.text == locale_home.format_percent(50.0),
+		"every need chip keeps its own percentage ready behind its bar"
 	)
-	var bond_chip := home.find_child("BondChip", true, false) as PanelContainer
+	# Hidden by alpha, never by `visible`: collapsing a Label shrinks its chip, so
+	# the whole row would shuffle every time the numbers came and went.
+	_check(
+		not home.need_values_shown()
+		and hunger_value.modulate.a == 0.0
+		and hunger_value.visible,
+		"needs rest as bars alone while keeping the room the numbers will need"
+	)
+	_check(
+		hunger_chip.mouse_filter == Control.MOUSE_FILTER_STOP,
+		"the whole chip is the tap target, not just the bar inside it"
+	)
+	# The bug this guards is invisible to `gui_input.emit` below, which hands the
+	# event straight to the chip: a ProgressBar defaults to STOP, so a real tap
+	# landing on the bar died there while the caption row above it worked. Labels
+	# default to IGNORE, which is exactly why only half the chip ever answered.
+	for chip in [hunger_chip, hygiene_chip, energy_chip]:
+		var blockers: Array[String] = []
+		for inner in (chip as Control).find_children("*", "Control", true, false):
+			if (inner as Control).mouse_filter != Control.MOUSE_FILTER_IGNORE:
+				blockers.append(inner.name)
+		_check(
+			blockers.is_empty(),
+			"%s passes every pixel to the chip, not just the caption row (%s)"
+				% [chip.name, ", ".join(blockers)]
+		)
+	# Once more through the viewport's own picking, aimed at the middle of the bar
+	# — the pixel players actually reported as dead. `in_local_coords = true` is
+	# load-bearing: without it the viewport applies a screen transform that the
+	# headless DisplayServer reports garbage for, and every pick silently misses.
+	var hunger_bar := home.find_child("NeedHunger", true, false) as Control
+	# Scenes other suites left in this shared root are drawn over Home and would
+	# win the pick, so Home goes to the front for the duration of this one check.
+	root.move_child(home, -1)
+	await process_frame
+	var pick := InputEventMouseButton.new()
+	pick.button_index = MOUSE_BUTTON_LEFT
+	pick.pressed = true
+	pick.position = hunger_bar.get_global_rect().get_center()
+	pick.global_position = pick.position
+	root.get_viewport().push_input(pick, true)
+	await process_frame
+	_check(
+		home.need_values_shown(),
+		"a real tap on the bar reveals, not just one on the caption (hit %s)"
+			% root.get_viewport().gui_get_hovered_control()
+	)
+	home.set_need_values_shown(false)
+	await _await_juice_settled(energy_value)
+	# One finger arrives twice on Android: as a screen touch, then as the mouse
+	# press emulation synthesizes. A toggle that runs twice reads as a dead tap.
+	hunger_chip.gui_input.emit(_touch_press())
+	hunger_chip.gui_input.emit(_mouse_press())
+	_check(home.need_values_shown(), "one finger reveals the numbers exactly once")
+	await _await_juice_settled(energy_value)
+	_check(
+		hunger_value.modulate.a > 0.99
+		and hygiene_value.modulate.a > 0.99
+		and energy_value.modulate.a > 0.99,
+		"tapping one chip answers all three, so one gesture reads the whole row"
+	)
+	hygiene_chip.gui_input.emit(_mouse_press())
+	_check(not home.need_values_shown(), "tapping again puts the numbers away")
+	await _await_juice_settled(energy_value)
+	_check(
+		hunger_value.modulate.a == 0.0 and energy_value.modulate.a == 0.0,
+		"and they fade out instead of blinking off"
+	)
+	home.set_need_values_shown(true)
+	await _await_juice_settled(energy_value)
+	row["care"]["hunger"] = 55.0
+	home.update_care(row, false)
+	_check(
+		hunger_value.modulate.a > 0.99
+		and hunger_value.text == locale_home.format_percent(55.0),
+		"a care refresh keeps revealed numbers up and moves them to the new value"
+	)
+	# The refresh above also restarts the hold, so this waits out a full window
+	# from there rather than from the reveal.
+	# Read off the instance, never as `HomeView.VALUE_HOLD`: naming the class here
+	# makes this suite compile home_view.gd before the autoloads exist, and its
+	# LocaleManager reference dies there, silently leaving the scene scriptless.
+	var hold_seconds: float = home.VALUE_HOLD
+	var hold_deadline := Time.get_ticks_msec() + int(1000.0 * (hold_seconds + 3.0))
+	while home.need_values_shown() and Time.get_ticks_msec() < hold_deadline:
+		await process_frame
+	_check(
+		not home.need_values_shown(),
+		"the numbers see themselves out after a few seconds instead of waiting for a second tap"
+	)
+	await _await_juice_settled(energy_value)
+	_check(
+		hunger_value.modulate.a == 0.0 and energy_value.modulate.a == 0.0,
+		"and they leave through the same fade a tap would have given them"
+	)
+
 	var need_exp := home.find_child("NeedExp", true, false) as ProgressBar
-	var exp_label := home.find_child("ExpLabel", true, false) as Label
+	# The bar sits directly under `Lv. · EXP` and takes its width from that text,
+	# so the caption it used to need is the line above it. As its own row at the
+	# foot of the panel it was a fifth band competing with the four actions.
 	_check(
-		bond_chip != null
-		and bond_chip.get_parent() == actions.get_parent()
-		and bond_chip.get_index() > actions.get_index(),
-		"the EXP bar closes the panel below the four care actions"
+		need_exp != null
+		and need_exp.get_parent() == care_summary.get_parent()
+		and need_exp.get_index() > care_summary.get_index(),
+		"the EXP bar underlines the level text instead of closing the panel"
 	)
 	_check(
-		need_exp != null and exp_label != null and exp_label.get_parent() == need_exp,
-		"the EXP label rides inside its own track instead of a left column"
+		home.find_child("ExpRow", true, false) == null
+		and home.find_child("ExpLabel", true, false) == null,
+		"and it needs no caption of its own down there any more"
+	)
+	_check(
+		need_exp != null and need_exp.custom_minimum_size.y <= 8.0,
+		"the track reads as a hairline, not a meter"
+	)
+	_check(
+		need_exp != null
+		and need_exp.get_theme_stylebox(&"fill") != null
+		and (need_exp.get_theme_stylebox(&"fill") as StyleBoxFlat).bg_color
+			== Color(0.83, 0.48, 1),
+		"thinner did not mean repainted: the EXP violet is unchanged"
+	)
+	_check(
+		home.find_child("BondChip", true, false) == null
+		and not care_theme.has_stylebox(&"panel", &"BondChip"),
+		"the EXP row drops the panel chrome it no longer needs"
 	)
 
 	row["sleep_started_at"] = "2026-08-13T00:00:00Z"
 	home.update_care(row, false)
 	await process_frame
 	_check(not feed.visible and not clean.visible and not play.visible, "sleep hides other care actions")
+	_check(
+		care_summary.text.contains(tr("CARE_STATE_SLEEPING")),
+		"sleep still names itself, since it is why the action row collapsed"
+	)
 	_check(sleep.visible and not sleep.disabled, "sleep leaves Wake available")
 	_check_eq(actions.columns, 1, "Wake occupies one full-width action column")
 
@@ -5336,6 +5498,19 @@ func _check_music(scene: Node) -> void:
 ## way. Frame pacing here averages 24 ms and has been seen at 62 ms, so no fixed
 ## sleep buys a safe margin; wait for the animation itself. The deadline only
 ## keeps a stuck tween from hanging the suite instead of failing it.
+static func _mouse_press() -> InputEventMouseButton:
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	return press
+
+
+static func _touch_press() -> InputEventScreenTouch:
+	var press := InputEventScreenTouch.new()
+	press.pressed = true
+	return press
+
+
 func _await_juice_settled(target: Object, meta_key: StringName = UiJuice.META_TWEEN) -> void:
 	var deadline := Time.get_ticks_msec() + 3000
 	while Time.get_ticks_msec() < deadline:
