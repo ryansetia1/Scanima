@@ -173,6 +173,25 @@ func _initialize() -> void:
 			locale_manager.call("move_name", {}, "surge") == TranslationServer.translate("BATTLE_ACTION_SURGE"),
 			"unnamed Special falls back to the catalog"
 		)
+		_check(
+			locale_manager.call("element_compact", {"element": "fauna", "secondary_element": null})
+			== TranslationServer.translate("ELEMENT_FAUNA"),
+			"a null secondary element must not invent a second element"
+		)
+		_check(
+			locale_manager.call("element_compact", {"element": "flow", "secondary_element": "<null>"})
+			== TranslationServer.translate("ELEMENT_FLOW"),
+			"str(null) leaking from PostgREST must not invent a second element"
+		)
+		_check(
+			locale_manager.call(
+				"element_compact", {"element": "ceramic", "secondary_element": "flow"}
+			) == TranslationServer.translate("ELEMENT_PAIR") % [
+				TranslationServer.translate("ELEMENT_CERAMIC"),
+				TranslationServer.translate("ELEMENT_FLOW"),
+			],
+			"dual typing shows both elements without needing typing_version"
+		)
 		for code in GATE_REASON_CODES:
 			var key := "GATE_%s" % code.to_upper()
 			_check(

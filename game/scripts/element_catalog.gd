@@ -3,29 +3,26 @@ extends RefCounted
 
 ## Lapisan presentasi elemen: label dan teks bantuan. Elemen tidak punya ikon —
 ## delapan belas roster berarti delapan belas aset yang harus dijaga konsisten,
-## sementara namanya sudah cukup di setiap layar yang menampilkannya. Roster
-## serta alias dimiliki `ElementRules` supaya simulasi tidak perlu ikut menarik
-## autoload `LocaleManager` yang dipakai di bawah.
-const ROSTER: PackedStringArray = ElementRules.ROSTER
-const ALIASES := ElementRules.ALIASES
-
-
-static func normalize(code: String, fallback := "stone") -> String:
-	var value := code.strip_edges().to_lower()
-	if value in ROSTER:
-		return value
-	var aliased := str(ALIASES.get(value, ""))
-	if not aliased.is_empty() and aliased in ROSTER:
-		return aliased
-	return fallback if fallback in ROSTER else "stone"
+## sementara namanya sudah cukup di setiap layar yang menampilkannya.
+##
+## Normalisasi dimiliki `ElementRules`, dan file ini sengaja tidak punya
+## salinannya sendiri. Salinan lama menerima `String`, sehingga pemanggil harus
+## menulis `str(row.get("secondary_element"))` — dan `str(null)` PostgREST
+## menghasilkan `"<null>"`, bukan string kosong. String itu lalu jatuh ke
+## fallback dan setiap Anima tanpa elemen kedua tampil sebagai `· Stone`.
+##
+## `typing_version` juga tidak lagi dibaca di sini: keberadaan
+## `secondary_element` adalah satu-satunya syarat yang dipakai server saat
+## menghitung damage (`defenseElements()`), dan constraint
+## `animas_secondary_v1_null` sudah menjamin row typing_version 1 selalu null.
+## Membacanya kembali berarti label bisa berbeda dari matchup yang benar-benar
+## dipakai, dan payload yang tidak memproyeksikan kolom itu — roster Team,
+## `atlas_forms` — kehilangan elemen keduanya tanpa sebab yang terlihat.
 
 
 static func compact_label(row: Dictionary) -> String:
-	var primary := normalize(str(row.get("element", "")))
-	var secondary_raw := str(row.get("secondary_element", "")).strip_edges()
-	if secondary_raw.is_empty() or int(row.get("typing_version", 1)) < 2:
-		return LocaleManager.element_name(primary)
-	var secondary := normalize(secondary_raw, "")
+	var primary := ElementRules.normalize(row.get("element"))
+	var secondary := ElementRules.normalize(row.get("secondary_element"), "")
 	if secondary.is_empty() or secondary == primary:
 		return LocaleManager.element_name(primary)
 	return TranslationServer.translate("ELEMENT_PAIR") % [
@@ -35,6 +32,6 @@ static func compact_label(row: Dictionary) -> String:
 
 
 static func help_text(code: String) -> String:
-	var key := "ELEMENT_%s_HELP" % normalize(code, "unknown").to_upper()
+	var key := "ELEMENT_%s_HELP" % ElementRules.normalize(code, "unknown").to_upper()
 	var translated := TranslationServer.translate(key)
 	return translated if translated != key else TranslationServer.translate("DETAILS_ELEMENT_HELP")

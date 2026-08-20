@@ -490,7 +490,7 @@ func _make_card(entry: Dictionary) -> Control:
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(name_label)
 	var meta := Label.new()
-	meta.text = _atlas_element_label(entry) if discovered else tr("ATLAS_UNDISCOVERED")
+	meta.text = LocaleManager.element_compact(entry) if discovered else tr("ATLAS_UNDISCOVERED")
 	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	meta.theme_type_variation = &"MutedLabel"
@@ -589,7 +589,7 @@ func _present_detail(entry: Dictionary) -> void:
 	_detail_name.text = str(entry.get("display_name", tr("ANIMA_FALLBACK_NAME")))
 	_detail_meta.text = tr("ATLAS_DETAIL_IDENTITY") % [
 		_stage_name(int(entry.get("stage", 1))),
-		_atlas_element_label(entry),
+		LocaleManager.element_compact(entry),
 	]
 	var subject_key := "ATLAS_SUBJECT_%s" % str(
 		entry.get("subject_kind", "object")
@@ -639,12 +639,6 @@ func _stage_name(stage: int) -> String:
 			return tr("FORM_EVOLVED")
 		_:
 			return tr("FORM_HATCHLING")
-
-
-func _atlas_element_label(entry: Dictionary) -> String:
-	var display := entry.duplicate()
-	display["typing_version"] = 2 if not str(entry.get("secondary_element", "")).is_empty() else 1
-	return LocaleManager.element_compact(display)
 
 
 func _start_detail_idle() -> void:

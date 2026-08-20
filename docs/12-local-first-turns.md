@@ -42,9 +42,22 @@ Skenario 31 dan 38 di `npm run selftest` menjaga keduanya.
 
 Port GDScript-nya meniru semantik JavaScript, bukan menulis ulang rumusnya:
 `Math.imul` 32-bit, `Number()`, dan `clampInt` semuanya diemulasi. `ElementRules`
-memiliki `ROSTER` dan `ALIASES`; `ElementCatalog` hanya memakai ulang keduanya
-untuk label dan ikon. Urutan itu sengaja — kalau dibalik, simulasi ikut menarik
-autoload `LocaleManager` dan gagal dikompilasi di mode `--script`.
+memiliki `ROSTER`, `ALIASES`, dan `normalize()`; `ElementCatalog` hanya memakai
+ulang ketiganya untuk label. Urutan itu sengaja — kalau dibalik, simulasi ikut
+menarik autoload `LocaleManager` dan gagal dikompilasi di mode `--script`.
+
+Label **wajib** memakai normalisasi yang sama dengan damage, dan `ElementCatalog`
+karena itu tidak boleh punya salinannya sendiri. Salinan lama pernah ada dengan
+dua perbedaan yang terlihat sepele: parameternya `String`, sehingga pemanggil
+menulis `str(row.get("secondary_element"))` dan `null` PostgREST menjadi
+`"<null>"`, lalu fallback kosong dipaksa menjadi `"stone"`. Hasilnya setiap Anima
+tanpa elemen kedua dilabeli `· Stone` di Home, Collection, profil, lobby Duel,
+Team, Expedition, dan Atlas — empat dari lima Anima production — sementara
+matchup server tetap benar. Keberadaan `secondary_element` juga satu-satunya
+syarat yang dibaca: `defenseElements()` di server tidak pernah melihat
+`typing_version`, dan constraint `animas_secondary_v1_null` sudah menjamin row
+legacy selalu null, jadi membacanya di client hanya menghasilkan label yang
+berbeda dari damage pada payload yang tidak memproyeksikan kolom itu.
 
 ## Dua pagar yang menjaga parity
 

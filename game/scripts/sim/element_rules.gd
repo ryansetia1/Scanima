@@ -2,17 +2,19 @@ class_name ElementRules
 extends RefCounted
 
 ## Port matchup dari `backend/supabase/functions/_shared/elements.mjs`.
-## `ElementCatalog` memakai ulang ROSTER dan ALIASES di sini untuk labelnya;
-## arahnya sengaja begitu, karena presentasi boleh bergantung pada aturan
-## tetapi aturan tidak boleh menyeret autoload. `ElementCatalog` menyentuh
-## `LocaleManager`, dan nama autoload belum terdaftar saat skrip `--script`
-## dikompilasi, sehingga test headless akan gagal memuat seluruh simulasi.
+## `ElementCatalog` memakai ulang ROSTER, ALIASES, dan `normalize()` di sini
+## untuk labelnya; arahnya sengaja begitu, karena presentasi boleh bergantung
+## pada aturan tetapi aturan tidak boleh menyeret autoload. `ElementCatalog`
+## menyentuh `LocaleManager`, dan nama autoload belum terdaftar saat skrip
+## `--script` dikompilasi, sehingga test headless akan gagal memuat seluruh
+## simulasi.
 ##
-## `normalize()` juga sengaja tidak memanggil `ElementCatalog.normalize()`: yang
-## itu mengembalikan "stone" ketika fallback kosong, sedangkan
-## `normalizeElement()` di server mengembalikan string kosong. Bedanya
-## menentukan apakah sebuah Anima dianggap punya elemen sekunder, dan itu
-## langsung mengubah damage.
+## `normalize()` menerima `Variant` dan mengembalikan `fallback` apa adanya
+## supaya `null` PostgREST tidak pernah menjadi elemen. Salinan kedua pernah
+## hidup di `ElementCatalog` dengan dua perbedaan kecil — parameter `String`
+## dan fallback kosong yang dipaksa menjadi "stone" — dan itu cukup untuk
+## melabeli setiap Anima tanpa elemen kedua sebagai `· Stone`. Jangan tulis
+## normalisasi elemen kedua di client.
 
 const ROSTER: PackedStringArray = [
 	"metal", "wood", "stone", "ceramic", "glass", "plastic", "cloth", "paper",

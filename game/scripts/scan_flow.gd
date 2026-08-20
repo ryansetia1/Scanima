@@ -1800,7 +1800,11 @@ func _show_rename_seeker() -> void:
 	_shell_modal.open_input(
 		tr("SEEKER_RENAME_TITLE"),
 		tr("SEEKER_RENAME_BODY"),
-		str(GameState.profile.get("seeker_name", "")),
+		(
+			str(GameState.profile.get("seeker_name", ""))
+			if profile_value_present(GameState.profile, &"seeker_name")
+			else ""
+		),
 		tr("SEEKER_RENAME_SAVE"),
 		tr("ACTION_CANCEL"),
 		tr("SEEKER_NAME_PLACEHOLDER")
@@ -4926,7 +4930,7 @@ func _run_atlas_demo() -> void:
 			"discovered": true,
 			"display_name": "Gumdrop",
 			"element": "food",
-			"secondary_element": "",
+			"secondary_element": null,
 			"stage": 3,
 		},
 		{
@@ -4936,7 +4940,7 @@ func _run_atlas_demo() -> void:
 			"discovered": false,
 			"display_name": "???",
 			"element": "",
-			"secondary_element": "",
+			"secondary_element": null,
 			"stage": 1,
 		},
 	]
