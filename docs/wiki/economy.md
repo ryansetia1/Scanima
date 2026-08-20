@@ -28,11 +28,11 @@ memakai **1 Core**. Setiap Anima mendapat art unik yang privat secara default.
 Dipakai di **Shop**.
 
 - Pemain baru mulai dengan **50 Bits**. Akun lama tidak diisi ulang.
-- Di **Home**, buka **Shop** tepat di bawah chip Bits: tab Food dan Items. Harga
-  tertulis di tiap kartu; tombol harga yang melebihi saldo Bits akan redup dan
+- Di **Home**, buka **Shop** tepat di bawah baris HUD di kanan: tab Food dan Items.
+  Harga tertulis di tiap kartu; tombol harga yang melebihi saldo Bits akan redup dan
   tidak bisa ditekan. Beli sebelum memulai Duel, Team Battle, atau Expedition —
-  Shop terkunci selama battle atau run masih berjalan. **Bag** di kiri, sejajar
-  dengan Shop: isi tas, **Feed**, dan **Use** item Energy. Item Battle tidak
+  Shop terkunci selama battle atau run masih berjalan. **Bag** duduk tepat di kanan
+  Shop: isi tas, **Feed**, dan **Use** item Energy. Item Battle tidak
   punya Use di Bag. Keduanya tidak tampil di tab lain.
 - Beli terasa langsung: Bits turun dan barang masuk tas begitu tombolnya ditekan,
   dan Shop tetap bisa dipakai untuk membeli berikutnya. Kalau koneksi gagal,

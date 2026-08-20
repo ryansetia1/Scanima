@@ -167,6 +167,67 @@ func _initialize() -> void:
 				margin.theme.get_type_variation_base(StringName(variation)) != StringName(),
 				"theme must provide %s" % variation
 			)
+		# The nav lives inside SafeMargin but the design draws it edge to edge, so
+		# it bleeds back out by exactly the margins the shell applied. Two
+		# mechanisms are needed and only one of them is obvious: expand margins
+		# stretch what the StyleBox paints, but a NEGATIVE content margin cannot
+		# move the children, because StyleBox.get_margin() reads any negative
+		# content margin as "unset" and silently substitutes the style margin.
+		# The Bleed MarginContainer is what actually widens the child rect.
+		var shell_script := load("res://scripts/scan_flow.gd")
+		var side: float = shell_script.BASE_MARGIN
+		var bottom: float = shell_script.HUD_TOP_PAD
+		var nav_panel := margin.theme.get_stylebox(&"panel", &"BottomNavPanel") as StyleBoxFlat
+		_check(nav_panel != null, "the bottom nav keeps a flat panel to bleed from")
+		if nav_panel != null:
+			_check(
+				is_equal_approx(nav_panel.expand_margin_left, side)
+				and is_equal_approx(nav_panel.expand_margin_right, side)
+				and is_equal_approx(nav_panel.expand_margin_bottom, bottom),
+				"the nav bar paints out to the screen edges the shell margins reserved"
+			)
+			_check(
+				nav_panel.content_margin_left >= 0.0 and nav_panel.content_margin_bottom >= 0.0,
+				"it never tries to negate those margins through the StyleBox"
+			)
+		# The selected tab is exported art too, not a StyleBoxFlat approximation:
+		# the design's pill is a vertical gradient at 20% alpha and StyleBoxFlat
+		# has no gradient, so a flat fill would always be a guess. Drawn 1:1 from
+		# a 2x texture, hence no texture_margin_* — 9-slice corners would render
+		# at authoring pixels and double the radius.
+		var pill := margin.theme.get_stylebox(&"pressed", &"NavTabButton") as StyleBoxTexture
+		_check(pill != null, "the selected tab is drawn from a texture, not a flat box")
+		if pill != null:
+			_check(
+				pill.texture != null
+				and pill.texture.resource_path == "res://assets/ui/nav_tab_selected.png",
+				"and that texture is the committed asset from the design"
+			)
+			_check(
+				is_equal_approx(pill.texture_margin_left, 0.0)
+				and is_equal_approx(pill.texture_margin_top, 0.0),
+				"it stretches whole instead of nine-slicing a 2x source"
+			)
+			# 114.8px cell minus 7.4 a side is the design's 100px pill.
+			_check(
+				pill.expand_margin_left < 0.0
+				and is_equal_approx(pill.expand_margin_left, pill.expand_margin_right),
+				"and it shrinks symmetrically to the design's pill width"
+			)
+		var nav_text := margin.theme.get_color(&"font_shadow_color", &"NavTabLabel")
+		_check(
+			nav_text.a == 0.0,
+			"nav labels drop the global Label shadow the design does not draw"
+		)
+		var bleed := scene.find_child("Bleed", true, false) as MarginContainer
+		_check(bleed != null, "a Bleed container carries the nav's children past the safe margin")
+		if bleed != null:
+			_check(
+				bleed.get_theme_constant(&"margin_left") == int(-side)
+				and bleed.get_theme_constant(&"margin_right") == int(-side)
+				and bleed.get_theme_constant(&"margin_bottom") == int(-bottom),
+				"and it widens them by the same amount the panel paints"
+			)
 
 	var background := scene.find_child("Background", true, false) as Node2D
 	_check(background != null and background.get_script() != null, "procedural background remains attached")
@@ -197,18 +258,20 @@ func _initialize() -> void:
 		"Bag sits on the same overlay row as Shop"
 	)
 	_check(
-		shop.custom_minimum_size == bits_chip.custom_minimum_size,
-		"Shop matches the Bits chip press target"
+		shop.custom_minimum_size.y >= TOUCH_MIN and bag.custom_minimum_size == shop.custom_minimum_size,
+		"Shop and Bag keep the 96px press target and stay the same size"
+	)
+	# The three HUD badges are the one deliberate exception to the 48dp floor:
+	# read-only counters sized to the design, not primary actions.
+	_check(
+		animas_chip.custom_minimum_size.y == 52.0
+		and cores_chip.custom_minimum_size.y == 52.0
+		and bits_chip.custom_minimum_size.y == 52.0,
+		"HUD badges stay compact so the header reads as a bar, not a slab"
 	)
 	_check(
-		bag.custom_minimum_size == shop.custom_minimum_size,
-		"Bag matches the Shop chip press target"
-	)
-	_check(
-		animas_chip.custom_minimum_size.y >= TOUCH_MIN
-		and cores_chip.custom_minimum_size.y >= TOUCH_MIN
-		and bits_chip.custom_minimum_size.y >= TOUCH_MIN,
-		"interactive resource chips expose 96px press targets"
+		bits_chip.custom_minimum_size.y < shop.custom_minimum_size.y,
+		"the compact badges never drag the Shop and Bag press targets down with them"
 	)
 	for chip in [animas_chip, cores_chip, bits_chip, shop, bag]:
 		var column := chip.get_node_or_null("Column") as BoxContainer
@@ -323,6 +386,13 @@ func _initialize() -> void:
 		and shell_source.find("show_retreat_banner()") >= 0,
 		"Bag and Shop only appear on Home, Shop locks mid-run, and Retreat asks first"
 	)
+	_check(
+		shell_source.find("var gutter := chip.x * 2.0 + SHOP_GAP") >= 0
+		and shell_source.find("to_local * Vector2(hud.end.x - gutter, hud_bottom)") >= 0
+		and shell_source.find("to_local * Vector2(hud.end.x - chip.x, hud_bottom)") >= 0
+		and shell_source.find("_home_view.set_chip_gutter(gutter)") >= 0,
+		"Bag and Shop share the HUD's right edge and reserve that width beside the name"
+	)
 	var boot_start := shell_source.find("func _boot()")
 	var boot_end := shell_source.find("\n\nfunc _reload_roster", boot_start)
 	var boot_body := (
@@ -380,16 +450,20 @@ func _initialize() -> void:
 		_check_eq(scan_button.theme_type_variation, &"PrimaryButton", "Scan remains the signature CTA")
 	var scan_nav := scene.find_child("ScanNavButton", true, false) as Button
 	if scan_nav != null:
-		_check_eq(scan_nav.theme_type_variation, &"ScanTabButton", "Scan is emphasized when Cores remain")
-		var nav := scene.find_child("BottomNav", true, false)
-		if nav != null and nav.has_method("set_scan_emphasized"):
-			nav.set_scan_emphasized(false)
+		_check_eq(scan_nav.theme_type_variation, &"NavTabButton", "every tab wears the same chrome")
+		# The old bright Scan pill baked near-black ink into the scene, so the
+		# moment the emphasis dropped the whole tab went invisible. This shell
+		# tree is never added to the SceneTree, so what it asserts is precisely
+		# the shipped default rather than anything _paint() fixed up.
+		var scan_ink := scan_nav.find_child("Icon", true, false) as TextureRect
+		var scan_text := scan_nav.find_child("Label", true, false) as Label
+		if scan_ink != null and scan_text != null:
+			_check_eq(scan_ink.modulate, BottomNav.INK_IDLE, "Scan ships readable ink, not stage paint")
 			_check_eq(
-				scan_nav.theme_type_variation,
-				&"NavTabButton",
-				"Scan nav matches other tabs when Cores are empty"
+				scan_text.get_theme_color(&"font_color"),
+				BottomNav.INK_IDLE,
+				"its label ships the same readable ink"
 			)
-			nav.set_scan_emphasized(true)
 
 	var juice_probe := Button.new()
 	juice_probe.custom_minimum_size = Vector2(120.0, 96.0)
@@ -4486,9 +4560,38 @@ func _test_home_care_actions() -> void:
 	var actions := home.find_child("CareActions", true, false) as GridContainer
 	var primary := home.find_child("HomePrimaryAction", true, false) as Button
 	var identity := home.find_child("Identity", true, false) as VBoxContainer
+	var identity_row := home.find_child("IdentityRow", true, false) as HBoxContainer
+	var chip_gutter := home.find_child("ChipGutter", true, false) as Control
+	var anima_name := home.find_child("AnimaName", true, false) as Label
 	var care_summary := home.find_child("CareSummary", true, false) as Label
 	var stage_space := home.find_child("StageSpace", true, false) as Control
 	var stage_footer_space := home.find_child("StageFooterSpace", true, false) as Control
+	_check(
+		identity_row != null
+		and chip_gutter != null
+		and identity.get_parent() == identity_row
+		and chip_gutter.get_parent() == identity_row
+		and chip_gutter.get_index() > identity.get_index(),
+		"Home identity shares one row with the gutter that Bag and Shop overlay"
+	)
+	_check(
+		anima_name != null
+		and anima_name.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT
+		and chip_gutter.custom_minimum_size.x > 0.0,
+		"the name reads from the left and stops before the top-right chips"
+	)
+	home.set_chip_gutter(240.0)
+	_check(
+		is_equal_approx(chip_gutter.custom_minimum_size.x, 240.0),
+		"the shell resizes the gutter from the chips it just measured"
+	)
+	# Autowrap and ellipsis trimming together make Label height-aware, and the
+	# identity row only reserves one line, so the headline renders empty.
+	_check(
+		anima_name.autowrap_mode != TextServer.AUTOWRAP_OFF
+		and anima_name.text_overrun_behavior == TextServer.OVERRUN_NO_TRIMMING,
+		"loading and error headlines wrap beside the chips instead of vanishing"
+	)
 	_home_action = ""
 	_home_care_action = ""
 	_home_care_blocked = ""
@@ -4528,6 +4631,11 @@ func _test_home_care_actions() -> void:
 	home.set_anima(row, false)
 	_check_eq(home.shell_state(), &"ready", "loaded companion replaces the empty state")
 	_check(not primary.visible, "ready Home hides its onboarding CTA")
+	_check(
+		anima_name.autowrap_mode == TextServer.AUTOWRAP_OFF
+		and anima_name.text_overrun_behavior == TextServer.OVERRUN_TRIM_ELLIPSIS,
+		"a loaded nickname stays on one line and ellipsizes before the chips"
+	)
 	_check(care_summary.text.contains("EXP 3/5"), "Lv.2 still uses the first 5-EXP band")
 	row["care_score"] = 150
 	home.update_care(row, false)
@@ -4605,6 +4713,30 @@ func _test_home_care_actions() -> void:
 	_check_eq(energy_chip.theme_type_variation, &"NeedChip", "Energy at 20 drops the alert")
 	_check_eq(hygiene_chip.theme_type_variation, &"NeedChip", "Hygiene at 50 drops the alert")
 
+	var locale_home := root.get_node("LocaleManager")
+	_check(
+		(home.find_child("HungerValue", true, false) as Label).text
+		== locale_home.format_percent(40.0)
+		and (home.find_child("EnergyValue", true, false) as Label).text
+		== locale_home.format_percent(20.0)
+		and (home.find_child("HygieneValue", true, false) as Label).text
+		== locale_home.format_percent(50.0),
+		"every need chip states its own percentage beside its label"
+	)
+	var bond_chip := home.find_child("BondChip", true, false) as PanelContainer
+	var need_exp := home.find_child("NeedExp", true, false) as ProgressBar
+	var exp_label := home.find_child("ExpLabel", true, false) as Label
+	_check(
+		bond_chip != null
+		and bond_chip.get_parent() == actions.get_parent()
+		and bond_chip.get_index() > actions.get_index(),
+		"the EXP bar closes the panel below the four care actions"
+	)
+	_check(
+		need_exp != null and exp_label != null and exp_label.get_parent() == need_exp,
+		"the EXP label rides inside its own track instead of a left column"
+	)
+
 	row["sleep_started_at"] = "2026-08-13T00:00:00Z"
 	home.update_care(row, false)
 	await process_frame
@@ -4637,6 +4769,52 @@ func _test_bottom_nav_busy() -> void:
 		battle_button != null and battle_button.find_child("Content", true, false) is VBoxContainer,
 		"Battle tab keeps the vertical icon-over-label layout"
 	)
+	var collection_button := nav.find_child("CollectionNavButton", true, false) as Button
+	_check(
+		collection_button != null and collection_button.get_index() < battle_button.get_index(),
+		"Animas sits between Scan and Battle like the design orders it"
+	)
+	for tab: Button in [home_button, scan_button, collection_button, battle_button, menu_button]:
+		_check(
+			is_equal_approx(tab.custom_minimum_size.y, 100.0),
+			"%s is 100px tall so the active pill and the idle tabs share one baseline" % tab.name
+		)
+	# The bar's texture is authored art pulled from the design, not something
+	# drawn here — a gradient StyleBox would drift from it on every retouch.
+	var backdrop := nav.find_child("Backdrop", true, false) as TextureRect
+	_check(
+		backdrop != null and backdrop.texture != null,
+		"the nav bar wears the design's own background image"
+	)
+	if backdrop != null and backdrop.texture != null:
+		_check(
+			backdrop.texture.resource_path == "res://assets/ui/bottom_nav_bg.png",
+			"that image is the committed asset rather than a runtime redraw"
+		)
+		_check(
+			backdrop.get_index() < buttons.get_parent().get_index(),
+			"the backdrop paints behind the tabs"
+		)
+	nav.set_active(BottomNav.HOME)
+	var home_ink := home_button.find_child("Icon", true, false) as TextureRect
+	var battle_ink := battle_button.find_child("Icon", true, false) as TextureRect
+	var scan_ink := scan_button.find_child("Icon", true, false) as TextureRect
+	_check(
+		home_ink.modulate == BottomNav.INK_ACTIVE and battle_ink.modulate == BottomNav.INK_IDLE,
+		"only the active tab takes the bright ink"
+	)
+	nav.set_active(BottomNav.BATTLE)
+	_check(
+		battle_ink.modulate == BottomNav.INK_ACTIVE and home_ink.modulate == BottomNav.INK_IDLE,
+		"the bright ink follows the destination instead of sticking to Home"
+	)
+	nav.set_scan_emphasized(false)
+	_check(
+		scan_ink.modulate == BottomNav.INK_UNAVAILABLE and scan_ink.modulate.a > 0.0,
+		"an unavailable Scan dims instead of disappearing"
+	)
+	nav.set_scan_emphasized(true)
+	_check(scan_ink.modulate == BottomNav.INK_IDLE, "Scan returns to its neighbours' ink")
 	nav.set_active(BottomNav.BATTLE)
 	_check(battle_button.button_pressed, "Battle destination has an explicit active state")
 	menu_button.button_pressed = true

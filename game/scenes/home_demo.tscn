@@ -1,0 +1,99 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/home_demo.gd" id="1_demo"]
+[ext_resource type="Script" uid="uid://dptota5pyehri" path="res://scripts/scanima_background.gd" id="2_background"]
+[ext_resource type="Theme" uid="uid://cbi43xka3xsp5" path="res://themes/mobile_theme.tres" id="3_theme"]
+[ext_resource type="PackedScene" path="res://scenes/ui/resource_chip.tscn" id="4_chip"]
+[ext_resource type="PackedScene" path="res://scenes/ui/home_view.tscn" id="5_home"]
+[ext_resource type="PackedScene" uid="uid://10b1ay38emxd" path="res://scenes/ui/bottom_nav.tscn" id="6_nav"]
+
+[node name="HomeDemo" type="Node2D"]
+script = ExtResource("1_demo")
+
+[node name="Background" type="Node2D" parent="."]
+z_index = -10
+script = ExtResource("2_background")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="SafeMargin" type="MarginContainer" parent="UI"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("3_theme")
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 24
+
+[node name="Shell" type="VBoxContainer" parent="UI/SafeMargin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="TopHud" type="PanelContainer" parent="UI/SafeMargin/Shell"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 82)
+layout_mode = 2
+theme_type_variation = &"HudSurface"
+
+[node name="Row" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Brand" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"BrandLabel"
+text = "APP_NAME"
+vertical_alignment = 1
+
+[node name="Resources" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="AnimasChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" instance=ExtResource("4_chip")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CoresChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" instance=ExtResource("4_chip")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BitsChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" instance=ExtResource("4_chip")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ViewStack" type="Control" parent="UI/SafeMargin/Shell"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="HomeView" parent="UI/SafeMargin/Shell/ViewStack" instance=ExtResource("5_home")]
+layout_mode = 1
+
+[node name="BottomNav" parent="UI/SafeMargin/Shell" instance=ExtResource("6_nav")]
+layout_mode = 2
+
+[node name="Overlay" type="Control" parent="UI"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ShopButton" parent="UI/Overlay" instance=ExtResource("4_chip")]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 108.0
+offset_bottom = 96.0
+
+[node name="BagButton" parent="UI/Overlay" instance=ExtResource("4_chip")]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 108.0
+offset_bottom = 96.0

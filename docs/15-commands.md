@@ -13,6 +13,11 @@ Setiap flag `--*-demo` memeriksa satu layar tanpa jaringan dan tanpa biaya.
 godot --path game                      # scan_flow: sesi, saldo, Anima dari cache
 godot --path game -- --screenshot=/tmp/scan.png       # periksa layar tanpa editor
 godot --headless --path game --import  # rebuild cache class, cek parse error
+
+# harness layout Home: memasang home_view.tscn yang sama dengan production plus
+# HUD, bottom nav, dan overlay Shop/Bag, dengan satu Anima palsu. Nol jaringan,
+# nol akun. F6 di editor dengan scene ini terbuka, atau:
+godot --path game res://scenes/home_demo.tscn -- --screenshot=/tmp/home.png
 godot --path game -- --core-info --screenshot=/tmp/core.png
 godot --path game -- --bits-info --screenshot=/tmp/bits.png
 godot --path game -- --sleep-demo --screenshot=/tmp/sleep.png

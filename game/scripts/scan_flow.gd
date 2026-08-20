@@ -4688,26 +4688,32 @@ func _sync_shop_chrome() -> void:
 
 
 func _place_shop() -> void:
-	if not is_instance_valid(_shop_button) or not is_instance_valid(_bits_chip) or not is_instance_valid(_top_hud):
+	if not is_instance_valid(_shop_button) or not is_instance_valid(_top_hud):
 		return
 	if not _shop_button.visible:
 		return
-	var bits: Rect2 = _bits_chip.get_global_rect()
 	var hud: Rect2 = _top_hud.get_global_rect()
-	if bits.size.x <= 0.0 or hud.size.y <= 0.0:
+	# Shop and Bag keep the 48dp press target that the compact HUD badges give
+	# up, so they size themselves instead of copying the Bits badge.
+	var chip: Vector2 = _shop_button.get_combined_minimum_size()
+	if hud.size.y <= 0.0 or chip.x <= 0.0:
 		return
 	var parent := _shop_button.get_parent() as Control
 	if parent == null:
 		return
 	var to_local := parent.get_global_transform_with_canvas().affine_inverse()
-	var origin: Vector2 = to_local * Vector2(bits.position.x, hud.position.y + hud.size.y)
+	var hud_bottom := hud.position.y + hud.size.y
+	var gutter := chip.x * 2.0 + SHOP_GAP
+	var origin: Vector2 = to_local * Vector2(hud.end.x - gutter, hud_bottom)
 	_shop_button.position = origin + Vector2(0.0, SHOP_GAP)
-	_shop_button.size = bits.size
+	_shop_button.size = chip
+	if is_instance_valid(_home_view):
+		_home_view.set_chip_gutter(gutter)
 	if not is_instance_valid(_bag_button) or not _bag_button.visible:
 		return
-	var bag_origin: Vector2 = to_local * Vector2(hud.position.x, hud.position.y + hud.size.y)
+	var bag_origin: Vector2 = to_local * Vector2(hud.end.x - chip.x, hud_bottom)
 	_bag_button.position = bag_origin + Vector2(0.0, SHOP_GAP)
-	_bag_button.size = bits.size
+	_bag_button.size = chip
 
 
 func _place_toast(insets: Vector4) -> void:

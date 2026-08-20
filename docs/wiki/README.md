@@ -6,9 +6,13 @@ Collection, lalu ajak Battle.
 
 Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). Angka dan rumus untuk developer ada di [docs/04](../04-game-systems-economy.md).
 
-Game langsung berjalan sebagai **guest Seeker** tanpa login. **Collection**
-memiliki tab Collection dan Atlas; tombol **Menu** di bottom navigation tetap
-menjadi shortcut untuk Seeker Profile, Anima Atlas, dan Settings.
+Game langsung berjalan sebagai **guest Seeker** tanpa login. Bottom navigation
+berisi lima tab berurutan: **HOME, SCAN, ANIMAS, BATTLE, MENU**. Tab **ANIMAS**
+adalah Collection, dan di dalamnya ada tab Collection dan Atlas; tombol **MENU**
+tetap menjadi shortcut untuk Seeker Profile, Anima Atlas, dan Settings. Tab yang
+sedang dibuka ditandai kotak biru dan tulisan cyan. Kalau **SCAN** tampak redup,
+Scan sedang tidak bisa dipakai — biasanya Core habis atau scan gratis guest sudah
+terpakai. Tabnya tetap bisa ditekan untuk melihat alasannya.
 Server Atlas sudah aktif. Menu/Atlas tetap memerlukan APK baru; build lama masih
 memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
 
@@ -18,12 +22,12 @@ memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
    satu foto. Setiap hasil yang diterima memakai 1 Core dan membuat art privat
    yang unik.
 2. **Home** — rawat companion yang sedang di-Summon.
-3. **Collection** — lihat semua Anima. Tap kartu, lalu **Summon** untuk membawanya ke Home.
+3. **Animas** — lihat semua Anima. Tap kartu, lalu **Summon** untuk membawanya ke Home.
 4. **Battle** — mainkan Duel, Team Battle dengan 4 Anima, atau Expedition **The
    Sugarworks**. Lapar atau kotor tidak mengunci battle, tapi stats turun.
-5. **Collection** — kelola Anima milikmu atau pindah ke tab **Atlas**.
+5. **Animas** — kelola Anima milikmu atau pindah ke tab **Atlas** di dalamnya.
 6. **Menu** — buka Seeker Profile, shortcut **Anima Atlas**, atau Settings.
-   Profil Anima dibuka lewat Collection atau picker Battle.
+   Profil Anima dibuka lewat Animas atau picker Battle.
 7. **Anima Atlas** — catat form yang kamu Scan atau temui di Duel dan Expedition.
 
 ## Isi wiki

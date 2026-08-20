@@ -6,41 +6,61 @@
 [ext_resource type="Texture2D" uid="uid://cw3e80fv6bv38" path="res://assets/icons/library.svg" id="4_collection"]
 [ext_resource type="Texture2D" uid="uid://b320vpdvsp2s1" path="res://assets/icons/swords.svg" id="6_battle"]
 [ext_resource type="Texture2D" uid="uid://badighevejd2n" path="res://assets/icons/menu.svg" id="6_tkwaf"]
+[ext_resource type="Texture2D" uid="uid://drxdwd1cak1xp" path="res://assets/ui/bottom_nav_bg.png" id="7_backdrop"]
 
 [node name="BottomNav" type="PanelContainer" unique_id=752505685]
-custom_minimum_size = Vector2(0, 124)
 theme_type_variation = &"BottomNavPanel"
 script = ExtResource("1_nav")
 
-[node name="Buttons" type="HBoxContainer" parent="." unique_id=158985613]
+[node name="Bleed" type="MarginContainer" parent="." unique_id=1620344855]
 layout_mode = 2
-theme_override_constants/separation = 6
+mouse_filter = 2
+theme_override_constants/margin_left = -32
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = -32
+theme_override_constants/margin_bottom = -24
 
-[node name="HomeNavButton" type="Button" parent="Buttons" unique_id=189627668]
+[node name="Backdrop" type="TextureRect" parent="Bleed" unique_id=1993022411]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("7_backdrop")
+expand_mode = 1
+
+[node name="Padding" type="MarginContainer" parent="Bleed" unique_id=1071350044]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 23
+theme_override_constants/margin_top = 26
+theme_override_constants/margin_right = 23
+theme_override_constants/margin_bottom = 26
+
+[node name="Buttons" type="HBoxContainer" parent="Bleed/Padding" unique_id=158985613]
+layout_mode = 2
+theme_override_constants/separation = 25
+
+[node name="HomeNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=189627668]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"NavTabButton"
 toggle_mode = true
 
-[node name="Content" type="VBoxContainer" parent="Buttons/HomeNavButton" unique_id=1438849286]
+[node name="Content" type="VBoxContainer" parent="Bleed/Padding/Buttons/HomeNavButton" unique_id=1438849286]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 7
 alignment = 1
 
-[node name="Icon" type="TextureRect" parent="Buttons/HomeNavButton/Content" unique_id=1486809398]
-custom_minimum_size = Vector2(34, 34)
+[node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/HomeNavButton/Content" unique_id=1486809398]
+modulate = Color(0.161, 0.714, 0.965, 1)
+custom_minimum_size = Vector2(37, 37)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
@@ -48,39 +68,35 @@ texture = ExtResource("2_home")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Buttons/HomeNavButton/Content" unique_id=1891586119]
+[node name="Label" type="Label" parent="Bleed/Padding/Buttons/HomeNavButton/Content" unique_id=1891586119]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.72, 0.79, 0.92, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.161, 0.714, 0.965, 1)
+theme_type_variation = &"NavTabLabel"
 text = "NAV_HOME"
 horizontal_alignment = 1
 
-[node name="ScanNavButton" type="Button" parent="Buttons" unique_id=2074471224]
+[node name="ScanNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=2074471224]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"ScanTabButton"
+theme_type_variation = &"NavTabButton"
 toggle_mode = true
 
-[node name="Content" type="VBoxContainer" parent="Buttons/ScanNavButton" unique_id=1108084221]
+[node name="Content" type="VBoxContainer" parent="Bleed/Padding/Buttons/ScanNavButton" unique_id=1108084221]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 7
 alignment = 1
 
-[node name="Icon" type="TextureRect" parent="Buttons/ScanNavButton/Content" unique_id=738512855]
-modulate = Color(0.015, 0.055, 0.105, 1)
-custom_minimum_size = Vector2(34, 34)
+[node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/ScanNavButton/Content" unique_id=738512855]
+modulate = Color(0.561, 0.612, 0.682, 1)
+custom_minimum_size = Vector2(37, 37)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
@@ -88,38 +104,71 @@ texture = ExtResource("3_scan")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Buttons/ScanNavButton/Content" unique_id=104111297]
+[node name="Label" type="Label" parent="Bleed/Padding/Buttons/ScanNavButton/Content" unique_id=104111297]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.015, 0.055, 0.105, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
+theme_type_variation = &"NavTabLabel"
 text = "NAV_SCAN"
 horizontal_alignment = 1
 
-[node name="BattleNavButton" type="Button" parent="Buttons" unique_id=1567234615]
+[node name="CollectionNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=1442979047]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"NavTabButton"
 toggle_mode = true
 
-[node name="Content" type="VBoxContainer" parent="Buttons/BattleNavButton" unique_id=226052574]
+[node name="Content" type="VBoxContainer" parent="Bleed/Padding/Buttons/CollectionNavButton" unique_id=470282964]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 7
 alignment = 1
 
-[node name="Icon" type="TextureRect" parent="Buttons/BattleNavButton/Content" unique_id=228642323]
-custom_minimum_size = Vector2(34, 34)
+[node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/CollectionNavButton/Content" unique_id=1969600234]
+modulate = Color(0.561, 0.612, 0.682, 1)
+custom_minimum_size = Vector2(37, 37)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+texture = ExtResource("4_collection")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Bleed/Padding/Buttons/CollectionNavButton/Content" unique_id=1083093041]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
+theme_type_variation = &"NavTabLabel"
+text = "NAV_COLLECTION"
+horizontal_alignment = 1
+
+[node name="BattleNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=1567234615]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"NavTabButton"
+toggle_mode = true
+
+[node name="Content" type="VBoxContainer" parent="Bleed/Padding/Buttons/BattleNavButton" unique_id=226052574]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 7
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/BattleNavButton/Content" unique_id=228642323]
+modulate = Color(0.561, 0.612, 0.682, 1)
+custom_minimum_size = Vector2(37, 37)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
@@ -127,14 +176,14 @@ texture = ExtResource("6_battle")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Buttons/BattleNavButton/Content" unique_id=1102522929]
+[node name="Label" type="Label" parent="Bleed/Padding/Buttons/BattleNavButton/Content" unique_id=1102522929]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.72, 0.79, 0.92, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
+theme_type_variation = &"NavTabLabel"
 text = "NAV_BATTLE"
 horizontal_alignment = 1
 
-[node name="BattleNewBadge" type="Label" parent="Buttons/BattleNavButton" unique_id=378735088]
+[node name="BattleNewBadge" type="Label" parent="Bleed/Padding/Buttons/BattleNavButton" unique_id=378735088]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -142,9 +191,9 @@ anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -52.0
-offset_top = 4.0
+offset_top = 2.0
 offset_right = -4.0
-offset_bottom = 30.0
+offset_bottom = 28.0
 grow_horizontal = 0
 theme_override_colors/font_color = Color(1, 0.78, 0.28, 1)
 theme_override_colors/font_outline_color = Color(0.02, 0.04, 0.09, 1)
@@ -153,71 +202,29 @@ theme_override_font_sizes/font_size = 18
 text = "CHAPTER_NEW_BADGE"
 horizontal_alignment = 2
 
-[node name="CollectionNavButton" type="Button" parent="Buttons" unique_id=1442979047]
+[node name="MenuNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=1806523287]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"NavTabButton"
-toggle_mode = true
-
-[node name="Content" type="VBoxContainer" parent="Buttons/CollectionNavButton" unique_id=470282964]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = -8.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 2
-alignment = 1
-
-[node name="Icon" type="TextureRect" parent="Buttons/CollectionNavButton/Content" unique_id=1969600234]
-custom_minimum_size = Vector2(34, 34)
-layout_mode = 2
-size_flags_horizontal = 4
-mouse_filter = 2
-texture = ExtResource("4_collection")
-expand_mode = 1
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="Buttons/CollectionNavButton/Content" unique_id=1083093041]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.72, 0.79, 0.92, 1)
-theme_override_font_sizes/font_size = 18
-text = "NAV_COLLECTION"
-horizontal_alignment = 1
-
-[node name="MenuNavButton" type="Button" parent="Buttons" unique_id=1806523287]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"NavTabButton"
 disabled = true
 toggle_mode = true
 
-[node name="Content" type="VBoxContainer" parent="Buttons/MenuNavButton" unique_id=1320250372]
+[node name="Content" type="VBoxContainer" parent="Bleed/Padding/Buttons/MenuNavButton" unique_id=1320250372]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 7
 alignment = 1
 
-[node name="Icon" type="TextureRect" parent="Buttons/MenuNavButton/Content" unique_id=838800077]
-custom_minimum_size = Vector2(34, 34)
+[node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/MenuNavButton/Content" unique_id=838800077]
+modulate = Color(0.561, 0.612, 0.682, 1)
+custom_minimum_size = Vector2(37, 37)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
@@ -225,9 +232,9 @@ texture = ExtResource("6_tkwaf")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Label" type="Label" parent="Buttons/MenuNavButton/Content" unique_id=1976427112]
+[node name="Label" type="Label" parent="Bleed/Padding/Buttons/MenuNavButton/Content" unique_id=1976427112]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.72, 0.79, 0.92, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
+theme_type_variation = &"NavTabLabel"
 text = "NAV_MENU"
 horizontal_alignment = 1

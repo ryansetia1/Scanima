@@ -76,7 +76,6 @@ theme_override_constants/separation = 12
 
 [node name="TopHud" type="PanelContainer" parent="UI/SafeMargin/Shell" unique_id=26803576]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 82)
 layout_mode = 2
 theme_type_variation = &"HudSurface"
 
@@ -97,14 +96,17 @@ theme_override_constants/separation = 6
 
 [node name="AnimasChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=1333787622 instance=ExtResource("13_chip")]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(108, 52)
 layout_mode = 2
 
 [node name="CoresChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=1733062678 instance=ExtResource("13_chip")]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(108, 52)
 layout_mode = 2
 
 [node name="BitsChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=1416032062 instance=ExtResource("13_chip")]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(108, 52)
 layout_mode = 2
 
 [node name="ViewStack" type="Control" parent="UI/SafeMargin/Shell" unique_id=1504614856]

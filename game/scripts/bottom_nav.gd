@@ -9,6 +9,10 @@ const BATTLE := &"battle"
 const COLLECTION := &"collection"
 const MENU := &"menu"
 
+const INK_ACTIVE := Color(0.161, 0.714, 0.965)
+const INK_IDLE := Color(0.561, 0.612, 0.682)
+const INK_UNAVAILABLE := Color(0.561, 0.612, 0.682, 0.4)
+
 @onready var _buttons: Dictionary = {
 	HOME: %HomeNavButton,
 	SCAN: %ScanNavButton,
@@ -18,6 +22,7 @@ const MENU := &"menu"
 }
 
 var _active: StringName = HOME
+var _scan_available := true
 
 
 func _ready() -> void:
@@ -33,17 +38,14 @@ func set_active(destination: StringName) -> void:
 	_active = destination
 	for key: StringName in _buttons:
 		(_buttons[key] as Button).button_pressed = key == destination
+		_paint(key)
 
 
 func set_scan_emphasized(emphasized: bool) -> void:
-	var button := (
-		_buttons.get(SCAN) as Button
-		if not _buttons.is_empty()
-		else find_child("ScanNavButton", true, false) as Button
-	)
-	if button == null:
-		return
-	button.theme_type_variation = &"ScanTabButton" if emphasized else &"NavTabButton"
+	# The flag is stored even when the tabs are not built yet, so the paint that
+	# _ready() runs already reflects it.
+	_scan_available = emphasized
+	_paint(SCAN)
 
 
 func set_battle_badge(visible: bool) -> void:
@@ -66,3 +68,28 @@ func _select(destination: StringName) -> void:
 		return
 	set_active(destination)
 	destination_selected.emit(destination)
+
+
+func _paint(key: StringName) -> void:
+	var button := _buttons.get(key) as Button
+	if button == null:
+		return
+	var content := button.get_node_or_null(^"Content")
+	if content == null:
+		return
+	var active := key == _active
+	var ink := INK_ACTIVE if active else INK_IDLE
+	if key == SCAN and not _scan_available:
+		ink = INK_UNAVAILABLE
+	var icon := content.get_node_or_null(^"Icon") as TextureRect
+	if icon != null:
+		icon.modulate = ink
+	var label := content.get_node_or_null(^"Label") as Label
+	if label == null:
+		return
+	label.add_theme_color_override(&"font_color", ink)
+	# ponytail: the design weights the active label heavier (ExtraBold vs
+	# SemiBold); a same-colour outline thickens the glyphs without shipping a
+	# second FontVariation. Upgrade to a real weight axis if 18px looks muddy.
+	label.add_theme_color_override(&"font_outline_color", ink)
+	label.add_theme_constant_override(&"outline_size", 2 if active else 0)

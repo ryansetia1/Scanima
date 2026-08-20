@@ -8,7 +8,9 @@ signal retry_requested
 
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
+@onready var _identity_row: HBoxContainer = %IdentityRow
 @onready var _identity: VBoxContainer = %Identity
+@onready var _chip_gutter: Control = %ChipGutter
 @onready var _anima_name: Label = %AnimaName
 @onready var _anima_meta: Label = %AnimaMeta
 @onready var _stage_space: Control = %StageSpace
@@ -19,6 +21,9 @@ const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 @onready var _need_hunger: ProgressBar = %NeedHunger
 @onready var _need_energy: ProgressBar = %NeedEnergy
 @onready var _need_hygiene: ProgressBar = %NeedHygiene
+@onready var _hunger_value: Label = %HungerValue
+@onready var _energy_value: Label = %EnergyValue
+@onready var _hygiene_value: Label = %HygieneValue
 @onready var _hunger_chip: PanelContainer = %HungerChip
 @onready var _energy_chip: PanelContainer = %EnergyChip
 @onready var _hygiene_chip: PanelContainer = %HygieneChip
@@ -50,6 +55,7 @@ func set_anima(row: Dictionary, busy: bool) -> void:
 		return
 
 	_shell_state = &"ready"
+	_set_headline_wrapping(false)
 	_anima_name.text = LocaleManager.display_name(_row)
 	_anima_meta.text = tr("HOME_IDENTITY_META") % [
 		LocaleManager.level_label(CARE_RULES.level_from_exp(int(_row.get("care_score", 0)))),
@@ -64,6 +70,7 @@ func set_anima(row: Dictionary, busy: bool) -> void:
 func set_shell_state(state: StringName) -> void:
 	_shell_state = state
 	_row = {}
+	_set_headline_wrapping(true)
 	_care_dock.visible = false
 	_set_buttons_disabled(true)
 	_identity.visible = true
@@ -87,7 +94,27 @@ func shell_state() -> StringName:
 	return _shell_state
 
 
+func set_chip_gutter(width: float) -> void:
+	_chip_gutter.custom_minimum_size.x = maxf(width, 0.0)
+
+
+# A nickname stays on one line next to the chips, but loading, empty, and error
+# headlines are sentences that no longer fit that width. Autowrap and ellipsis
+# trimming must move together: together they make Label height-aware, the row
+# only reserves one line, and the headline then renders empty.
+func _set_headline_wrapping(multiline: bool) -> void:
+	_anima_name.autowrap_mode = (
+		TextServer.AUTOWRAP_WORD_SMART if multiline else TextServer.AUTOWRAP_OFF
+	)
+	_anima_name.text_overrun_behavior = (
+		TextServer.OVERRUN_NO_TRIMMING if multiline else TextServer.OVERRUN_TRIM_ELLIPSIS
+	)
+
+
 func _set_loading_layout(centered: bool) -> void:
+	_identity_row.size_flags_vertical = (
+		Control.SIZE_EXPAND_FILL if centered else Control.SIZE_SHRINK_BEGIN
+	)
 	_identity.size_flags_vertical = (
 		Control.SIZE_EXPAND_FILL if centered else Control.SIZE_SHRINK_BEGIN
 	)
@@ -113,6 +140,9 @@ func update_care(row: Dictionary, busy: bool) -> void:
 	UiJuice.tween_meter(_need_hunger, care["hunger"])
 	UiJuice.tween_meter(_need_energy, care["energy"])
 	UiJuice.tween_meter(_need_hygiene, care["hygiene"])
+	_hunger_value.text = LocaleManager.format_percent(care["hunger"])
+	_energy_value.text = LocaleManager.format_percent(care["energy"])
+	_hygiene_value.text = LocaleManager.format_percent(care["hygiene"])
 	_set_need_alert(_hunger_chip, CARE_RULES.need_is_low(care, "hunger"))
 	_set_need_alert(_energy_chip, CARE_RULES.need_is_low(care, "energy"))
 	_set_need_alert(_hygiene_chip, CARE_RULES.need_is_low(care, "hygiene"))
