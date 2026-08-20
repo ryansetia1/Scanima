@@ -432,6 +432,7 @@ func _initialize() -> void:
 		and shell_source.find("_bag_button.visible = show_chrome") >= 0
 		and shell_source.find("_top_hud.visible = not immersive") >= 0
 		and shell_source.find("_bottom_nav.visible = not immersive") >= 0
+		and shell_source.find("is_duel_arena_open()") >= 0
 		and shell_source.find("GameState.shop_locked()") >= 0
 		and shell_source.find("ERROR_SHOP_IN_BATTLE") >= 0
 		and shell_source.find("_confirm_retreat.bind(\"duel\")") >= 0
@@ -1717,6 +1718,7 @@ func _test_battle_view() -> void:
 	}
 	view.set_lobby(anima)
 	_check(lobby.visible and not content.visible and not result.visible, "Battle opens in its lobby")
+	_check(not view.is_duel_arena_open(), "the Battle lobby is not an immersive arena")
 	_check(header.visible, "Battle lobby keeps its page title and explanation")
 	var resume_requests := [0]
 	view.resume_requested.connect(func() -> void: resume_requests[0] += 1)
@@ -1903,6 +1905,23 @@ func _test_battle_view() -> void:
 	var active_arena_height := arena.size.y
 	var active_ground_y := player_anchor.position.y
 	_check(content.visible and not lobby.visible and not result.visible, "active turn replaces the lobby")
+	var arena_panel := view.find_child("ArenaPanel", true, false) as PanelContainer
+	var arena_background := view.find_child("BattleArenaBackground", true, false) as TextureRect
+	var dock_fill := view.find_child("DockFill", true, false) as Panel
+	_check(
+		arena_panel != null
+		and arena_panel.get_theme_stylebox("panel") is StyleBoxEmpty,
+		"Duel arena drops the modal frame so it can take Expedition zone art"
+	)
+	_check(arena_background != null, "Duel stage has an Expedition-style background slot")
+	_check(arena_background != null and not arena_background.visible, "Duel background stays hidden until art is supplied")
+	_check(dock_fill != null, "Duel footer wears the Expedition dock plate")
+	_check(surge.theme_type_variation == &"", "Duel Special is not a PrimaryButton so the four actions match")
+	_check(
+		player_anchor.get_node_or_null("GroundShadow") != null,
+		"Duel fighters get the same ground shadow as Expedition"
+	)
+	_check(view.is_duel_arena_open(), "an active Duel session is an immersive arena")
 	_check(
 		not header.visible
 		and arena.is_ancestor_of(forfeit)
@@ -1912,7 +1931,7 @@ func _test_battle_view() -> void:
 	)
 	_check(
 		not feedback.visible
-		and is_equal_approx(footer.custom_minimum_size.y, 104.0),
+		and is_equal_approx(footer.custom_minimum_size.y, 120.0),
 		"Battle command footer keeps the four primary actions without idle copy"
 	)
 	_check(player_sprite.flip_h and not bot_sprite.flip_h, "Battle fighters face each other")
@@ -2069,6 +2088,14 @@ func _test_battle_view() -> void:
 		and initiative_hide > initiative_present
 		and initiative_hide < battle_source.find("func _apply_state"),
 		"Guard and initiative hold the plate before hiding it"
+	)
+	var duel_ko := battle_source.substr(
+		battle_source.find("\"knockout\":", battle_source.find("func play_events")), 420
+	)
+	_check(
+		duel_ko.find("set_pose(\"defeated\")") >= 0
+		and duel_ko.find("set_pose(\"defeated\")") < duel_ko.find("_present_banner"),
+		"Duel faint pose lands with the knockout plate"
 	)
 	_check(
 		battle_source.find("bracing.guard_shimmer()") >= 0
@@ -2621,7 +2648,9 @@ func _test_team_battle_view() -> void:
 	_check(
 		team_source.find("BATTLE_EVENT_ITEM") >= 0
 		and team_source.find("BATTLE_EVENT_ATTACK") >= 0
-		and team_source.find("BATTLE_EVENT_TIMEOUT") >= 0,
+		and team_source.find("BATTLE_EVENT_TIMEOUT") >= 0
+		and team_source.find("await _announce_initiative(events)") >= 0
+		and team_source.find("BATTLE_INITIATIVE") >= 0,
 		"Team event copy reuses the Duel plate strings"
 	)
 	_check(
@@ -2811,7 +2840,12 @@ func _test_team_battle_view() -> void:
 	after_ko["state"]["player"]["forced_switch"] = true
 	after_ko["state"]["player"]["roster"][0]["hp"] = 0
 	after_ko["state"]["player"]["roster"][0]["momentum"] = 0
-	await view.play_events([
+	var player_sprite := view.find_child("TeamPlayerSprite", true, false)
+	var saw_initiative := false
+	var fainted_on_ko_plate := false
+	var initiative_copy := tr("BATTLE_INITIATIVE") % str(view.call("_actor_name", "opponent"))
+	var ko_copy := tr("BATTLE_EVENT_KO") % str(view.call("_actor_name", "player"))
+	view.play_events([
 		{
 			"type": "attack",
 			"actor": "opponent",
@@ -2824,7 +2858,21 @@ func _test_team_battle_view() -> void:
 		},
 		{"type": "knockout", "actor": "player"},
 	], after_ko)
-	var player_sprite := view.find_child("TeamPlayerSprite", true, false)
+	var ko_deadline := Time.get_ticks_msec() + 20000
+	while bool(view.get("_busy")) and Time.get_ticks_msec() < ko_deadline:
+		if effectiveness_label.text == initiative_copy:
+			saw_initiative = true
+		if player_sprite.current_pose() == "defeated" and effectiveness_label.text == ko_copy:
+			fainted_on_ko_plate = true
+		await process_frame
+	_check(
+		saw_initiative,
+		"Team and Expedition announce who moves first before the first Attack"
+	)
+	_check(
+		fainted_on_ko_plate,
+		"knockout plate lands on the Defeated pose"
+	)
 	_check(
 		switch_panel.visible and actions.visible and not switch_cancel.visible,
 		"knockout event log opens the replacement picker after the faint"
@@ -5224,7 +5272,8 @@ func _boss_seeker_loaded() -> Dictionary:
 
 
 func _dismiss_when_open(dialog: BossSeekerDialog) -> void:
-	for _step in 180:
+	var deadline := Time.get_ticks_msec() + 8000
+	while Time.get_ticks_msec() < deadline:
 		if dialog != null and dialog.is_open():
 			dialog.dismiss()
 			return

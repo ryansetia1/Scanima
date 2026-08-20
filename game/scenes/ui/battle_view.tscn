@@ -6,6 +6,28 @@
 [ext_resource type="PackedScene" uid="uid://vuy5pib6yib6" path="res://scenes/ui/team_battle_view.tscn" id="10_team"]
 [ext_resource type="PackedScene" uid="uid://kl1jxjl2p56i" path="res://scenes/ui/expedition_view.tscn" id="11_expedition"]
 
+[sub_resource type="StyleBoxEmpty" id="Empty"]
+
+[sub_resource type="Gradient" id="TopScrimGradient"]
+colors = PackedColorArray(0.015, 0.025, 0.065, 0.78, 0.015, 0.025, 0.065, 0)
+
+[sub_resource type="GradientTexture2D" id="TopScrimTexture"]
+gradient = SubResource("TopScrimGradient")
+width = 8
+height = 256
+fill_to = Vector2(0, 1)
+
+[sub_resource type="StyleBoxFlat" id="ArenaDockPlate"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.018, 0.03, 0.07, 0.9)
+border_width_top = 1
+border_color = Color(0.278, 0.902, 1, 0.14)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+
 [sub_resource type="StyleBoxFlat" id="HpBackground"]
 bg_color = Color(0.025, 0.04, 0.09, 0.96)
 corner_radius_top_left = 8
@@ -145,12 +167,12 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 0
 
 [node name="ArenaPanel" type="PanelContainer" parent="Column/BattleContent" unique_id=722882558]
 layout_mode = 2
 size_flags_vertical = 3
-theme_type_variation = &"ModalPanel"
+theme_override_styles/panel = SubResource("Empty")
 
 [node name="BattleArena" type="Control" parent="Column/BattleContent/ArenaPanel" unique_id=272239319]
 unique_name_in_owner = true
@@ -158,6 +180,29 @@ clip_contents = true
 custom_minimum_size = Vector2(0, 400)
 layout_mode = 2
 mouse_filter = 2
+
+[node name="BattleArenaBackground" type="TextureRect" parent="Column/BattleContent/ArenaPanel/BattleArena"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="TopScrim" type="TextureRect" parent="Column/BattleContent/ArenaPanel/BattleArena"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 220.0
+grow_horizontal = 2
+mouse_filter = 2
+texture = SubResource("TopScrimTexture")
+expand_mode = 1
 
 [node name="StatusOverlay" type="VBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=715232036]
 z_index = 2
@@ -435,8 +480,18 @@ max_lines_visible = 2
 
 [node name="BattleFooter" type="Control" parent="Column/BattleContent" unique_id=1382603803]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 104)
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
+
+[node name="DockFill" type="Panel" parent="Column/BattleContent/BattleFooter"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("ArenaDockPlate")
 
 [node name="ActionFooter" type="VBoxContainer" parent="Column/BattleContent/BattleFooter" unique_id=546138790]
 layout_mode = 1
@@ -492,7 +547,6 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"PrimaryButton"
 text = "BATTLE_ACTION_SURGE"
 
 [node name="BattleSurgeCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleSurgeButton" unique_id=1554437650]

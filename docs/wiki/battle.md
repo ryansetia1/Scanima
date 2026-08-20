@@ -66,8 +66,9 @@ menampilkan satu fighter aktif dari setiap tim.
   supaya arena tidak bergeser. Picker naik sebagai lembar dari bawah layar
   dan menampilkan art, nama plus
   Level, status **In battle** / **Ready** / **KO**, dan sisa HP tiap anggota.
-  **Cancel** menutup picker dan mengembalikan tombol aksi. Setelah Anima KO, pose Defeated tampil
-  sebentar, lalu picker pengganti terbuka tanpa memakai turn berikutnya — di
+  **Cancel** menutup picker dan mengembalikan tombol aksi. Begitu pelat
+  **{nama} is knocked out.** muncul, Anima itu sudah pose Defeated. Sesudah
+  itu picker pengganti terbuka tanpa memakai turn berikutnya — di
   situ Cancel tidak ada karena pengganti wajib. Kalau hanya satu Anima yang
   masih hidup, ia langsung masuk arena tanpa picker. Anima yang masuk memakai
   animasi Summon yang sama seperti di Home. HUD menampilkan nama plus Level,
@@ -75,6 +76,7 @@ menampilkan satu fighter aktif dari setiap tim.
 - Ketuk Attack, Special, Guard, Item, atau Switch langsung mengunci tombol
   itu (garis di bawahnya). Tidak ada teks “locked in” atau “Resolving”.
   Turn-nya juga langsung dimainkan tanpa menunggu jaringan: pelat gelap menulis
+  **{nama} moves first.** sebelum Attack pertama (siapa yang lebih cepat), lalu
   **{nama} uses {move}.**, **{nama} braces for impact.**, item, Switch, atau
   KO dan diam sekitar 1,4 detik. Untuk serangan, pelat itu hilang sebelum pose
   Attack dan VFX dimulai. Penyerang kembali Idle tepat saat VFX mengenai
@@ -324,8 +326,11 @@ Kalah atau **Retreat** juga nol hadiah. **Retreat** membuka konfirmasi dulu;
 Cancel kembali ke arena. Di Expedition, konfirmasi itu menjelaskan bahwa zona
 saat ini dimulai ulang dari awal. Sesudah kamu konfirmasi, arena menampilkan
 **Retreating** di pelat event yang sama dengan Super effective sampai fight
-berakhir. Di Duel, **Retreat** rata kanan di baris atas arena (tanpa nomor
-Turn). Di Team Battle dan Expedition, **Retreat** ada di paling kanan baris
+berakhir. Saat fight Duel, Team Battle, atau Expedition berjalan, judul
+Scanima, chip resource, dan navigasi bawah hilang — layar jadi arena penuh.
+Di Duel, **Retreat** rata kanan di baris atas arena (tanpa nomor
+Turn), dan empat aksi **Attack** / **Special** / **Guard** / **Item** duduk
+di kaki layar. Di Team Battle dan Expedition, **Retreat** ada di paling kanan baris
 Item / Switch. Shop dan Bag hanya ada di Home, jadi arena tetap bersih. Beli item di
 **Shop** sebelum memulai Duel, Team Battle, atau Expedition — tombol Shop
 redup selama battle atau run masih berjalan.
@@ -384,7 +389,9 @@ menusuk armor, menembus Guard, meracuni, atau memasang barrier. Efek itu milik
 jurus Anima itu, tampil di pelat event, dan tidak menumpuk.
 
 Siapa yang gerak dulu mengikuti **Speed**. Pelat menulis **{nama} moves first.**
-sebelum animasi, jadi giliran bot duluan bukan bug.
+sebelum Attack pertama di Duel, Team Battle, dan Expedition, jadi giliran lawan
+duluan bukan bug. Guard, Switch, atau Item di giliran itu tidak memakai pelat
+ini, karena itu bukan lomba Speed.
 
 ## PP
 
@@ -438,7 +445,7 @@ membatalkan menjadi normal. Dua weakness tidak ditumpuk lebih tinggi dari ×1.5,
 dan dua resistance tidak ditumpuk lebih rendah dari ×0.67.
 
 Saat kena, layar bisa menulis **Super effective!** atau **Not very effective.**
-Nama jurus netral, Guard, item, Switch, dan KO memakai pelat yang sama di
+Nama jurus netral, **{nama} moves first.**, Guard, item, Switch, dan KO memakai pelat yang sama di
 arena: **{nama} uses {move}.**, **{nama} braces for impact.**, **{nama} uses
 an item.**, **{nama} enters the arena.**, **{nama} is knocked out.** Setiap
 label diam sekitar 1,4 detik sebelum aksi atau pelat hilang.

@@ -446,6 +446,7 @@ func play_events(
 		# dan memasangnya lewat set_session() akan terlihat sebagai arena mundur.
 		_session = from_session.duplicate(true)
 	set_busy(true)
+	await _announce_initiative(events)
 	for value in events:
 		var event := GameState.as_dict(value)
 		match str(event.get("type", "")):
@@ -501,9 +502,7 @@ func play_events(
 				_restore_seeker_idle()
 			"knockout":
 				var side := str(event.get("actor", ""))
-				var fainting := _sprite_for(side)
-				if is_instance_valid(fainting):
-					fainting.set_pose("defeated")
+				_faint(side)
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(side),
 					BattleView.DAMAGE_COLOR,
@@ -549,6 +548,8 @@ func _apply_effect_hp_event(event: Dictionary) -> void:
 	var value := _player_hp_value if side == "player" else _opponent_hp_value
 	BattleView.apply_hp_bar_state(bar, float(hp), bar.max_value)
 	value.text = LocaleManager.format_ratio(hp, int(bar.max_value))
+	if hp <= 0:
+		_faint(side)
 
 
 func _show_only(panel: Control) -> void:
@@ -1040,6 +1041,8 @@ func _play_attack(event: Dictionary) -> void:
 		var flash := create_tween()
 		flash.tween_property(target, "modulate", Color.WHITE, 0.28)
 		Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
+		if hp <= 0:
+			target.set_pose("defeated")
 	await _play_damage(int(event.get("damage", 0)), element_multiplier)
 	_restore_seeker_idle()
 	if not effect_key.is_empty():
@@ -1336,6 +1339,29 @@ func _actor_name(side: String) -> String:
 
 func _sprite_for(side: String) -> AnimaPresenter:
 	return _player_sprite if side == "player" else _opponent_sprite
+
+
+func _faint(side: String) -> void:
+	var sprite := _sprite_for(side)
+	if is_instance_valid(sprite):
+		sprite.set_pose("defeated")
+
+
+func _announce_initiative(events: Array) -> void:
+	for value in events:
+		var event := GameState.as_dict(value)
+		var event_type := str(event.get("type", ""))
+		if event_type in ["guard", "switch", "item"]:
+			return
+		if event_type != "attack":
+			continue
+		await _present_banner(
+			tr("BATTLE_INITIATIVE") % _actor_name(str(event.get("actor", ""))),
+			BattleView.CUE_COLOR,
+			false
+		)
+		await _hide_effectiveness()
+		return
 
 
 func _forced_switch() -> bool:

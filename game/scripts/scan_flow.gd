@@ -207,6 +207,7 @@ func _ready() -> void:
 	_team_battle_view.retry_requested.connect(_retry_team_battle)
 	_team_battle_view.arena_open_changed.connect(_on_immersive_arena_changed)
 	_expedition_view.combat_open_changed.connect(_on_immersive_arena_changed)
+	_battle_view.arena_open_changed.connect(_on_immersive_arena_changed)
 	_expedition_controller = ExpeditionController.new()
 	_expedition_controller.name = "ExpeditionController"
 	add_child(_expedition_controller)
@@ -4630,11 +4631,13 @@ func _is_immersive_arena() -> bool:
 		return false
 	if is_instance_valid(_expedition_view) and _expedition_view.is_combat_open():
 		return true
-	return (
+	if (
 		is_instance_valid(_team_battle_view)
 		and _team_battle_view.visible
 		and _team_battle_view.is_arena_open()
-	)
+	):
+		return true
+	return _battle_view.is_duel_arena_open()
 
 
 func _music_cue() -> StringName:

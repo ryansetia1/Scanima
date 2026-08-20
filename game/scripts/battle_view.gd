@@ -28,6 +28,9 @@ signal resume_requested
 signal forfeit_requested
 signal reward_status_refresh_requested
 signal exit_requested
+signal arena_open_changed(open: bool)
+
+const BACKGROUND_DOF_SHADER: Shader = preload("res://shaders/battle_background_dof.gdshader")
 
 @onready var _header: Control = %Header
 @onready var _duel_column: VBoxContainer = %Column
@@ -49,6 +52,7 @@ signal exit_requested
 @onready var _player_hp_value: Label = %BattlePlayerHpValue
 @onready var _bot_hp_value: Label = %BattleBotHpValue
 @onready var _arena: Control = %BattleArena
+@onready var _arena_background: TextureRect = %BattleArenaBackground
 @onready var _player_anchor: Node2D = %BattlePlayerAnchor
 @onready var _bot_anchor: Node2D = %BattleBotAnchor
 @onready var _player_sprite: AnimaPresenter = %BattlePlayerSprite
@@ -92,6 +96,11 @@ var _command_tween: Tween
 var _player_loaded: Dictionary = {}
 var _bot_loaded: Dictionary = {}
 var _fighter_layer: Node2D
+var _art_cache: Dictionary = {}
+var _background_session_id := ""
+var _background_pan := 0.5
+var _player_shadow: Sprite2D
+var _bot_shadow: Sprite2D
 
 
 func _ready() -> void:
@@ -121,6 +130,13 @@ func _ready() -> void:
 	_bot_sprite.set_facing(-1.0)
 	_player_sprite.z_index = 3
 	_bot_sprite.z_index = 2
+	var background_material := ShaderMaterial.new()
+	background_material.shader = BACKGROUND_DOF_SHADER
+	_arena_background.material = background_material
+	_player_shadow = _make_ground_shadow(_player_anchor)
+	_bot_shadow = _make_ground_shadow(_bot_anchor)
+	_player_sprite.pose_changed.connect(func(_pose: String) -> void: _sync_shadow("player"))
+	_bot_sprite.pose_changed.connect(func(_pose: String) -> void: _sync_shadow("bot"))
 	set_team_available(GameState.team_battle_available())
 	set_expedition_available(GameState.expedition_available())
 	set_lobby({})
@@ -179,6 +195,7 @@ func show_team_mode() -> void:
 	_duel_column.visible = false
 	_expedition_view.close_mode(true)
 	_team_view.open_mode()
+	_emit_arena_open()
 
 
 func show_expedition_mode() -> void:
@@ -187,6 +204,7 @@ func show_expedition_mode() -> void:
 	if _team_view.is_open():
 		return
 	_expedition_view.open_mode()
+	_emit_arena_open()
 
 
 func show_duel_mode() -> void:
@@ -195,6 +213,7 @@ func show_duel_mode() -> void:
 	if _team_view.is_open() or _expedition_view.is_open():
 		return
 	_duel_column.visible = true
+	_emit_arena_open()
 
 
 func is_team_mode() -> bool:
@@ -218,6 +237,7 @@ func set_lobby(row: Dictionary) -> void:
 	_result_panel.visible = false
 	_start_button.visible = true
 	_refresh_pending_entries()
+	_emit_arena_open()
 
 
 ## Result CTA harus membaca Energy sesudah battle, bukan row lobby sebelum start.
@@ -337,7 +357,8 @@ func set_loading(message_key: String = "BATTLE_CONNECTING") -> void:
 func set_session(
 	battle_session: Dictionary,
 	player_loaded: Dictionary = {},
-	bot_loaded: Dictionary = {}
+	bot_loaded: Dictionary = {},
+	art_cache: Dictionary = {}
 ) -> void:
 	_clear_action_commit()
 	_session = battle_session.duplicate(true)
@@ -353,6 +374,7 @@ func set_session(
 		_bot_sprite.apply(bot_loaded)
 	_player_sprite.visible = _player_sprite.sprite_frames != null
 	_bot_sprite.visible = _bot_sprite.sprite_frames != null
+	_apply_arena_background(art_cache)
 
 	var player_snapshot := _as_dict(_session.get("player_snapshot"))
 	var bot_snapshot := _as_dict(_session.get("bot_snapshot"))
@@ -360,6 +382,7 @@ func set_session(
 	_bot_name.text = _fighter_hud_title(bot_snapshot, tr("BATTLE_BOT_NAME"))
 	_position_fighters()
 	_apply_state()
+	_emit_arena_open()
 
 
 func session_data() -> Dictionary:
@@ -368,6 +391,11 @@ func session_data() -> Dictionary:
 
 func has_session() -> bool:
 	return not _session.is_empty()
+
+
+func is_duel_arena_open() -> bool:
+	# Packed scene starts hidden; scan_flow already gates HUD on _battle_view.visible.
+	return _duel_column.visible and not _session.is_empty() and _battle_content.visible
 
 
 func begin_action(action: String) -> void:
@@ -538,14 +566,14 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 				await _play_attack(event)
 			"knockout":
 				var defeated_side := str(event.get("actor", ""))
+				var defeated := _sprite_for(defeated_side)
+				if is_instance_valid(defeated):
+					defeated.set_pose("defeated")
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(defeated_side),
 					DAMAGE_COLOR,
 					true
 				)
-				var defeated := _sprite_for(defeated_side)
-				if is_instance_valid(defeated):
-					defeated.set_pose("defeated")
 				await _hide_effectiveness()
 			"timeout":
 				await _present_banner(tr("BATTLE_EVENT_TIMEOUT"), DAMAGE_COLOR, false)
@@ -574,6 +602,10 @@ func _apply_effect_hp_event(event: Dictionary) -> void:
 	elif target == "bot":
 		apply_hp_bar_state(_bot_hp, float(hp), _bot_hp.max_value)
 		_bot_hp_value.text = LocaleManager.format_ratio(hp, int(_bot_hp.max_value))
+	if hp <= 0:
+		var fainting := _sprite_for(target)
+		if is_instance_valid(fainting):
+			fainting.set_pose("defeated")
 
 
 func _play_item(event: Dictionary) -> void:
@@ -636,6 +668,8 @@ func _play_attack(event: Dictionary) -> void:
 		var flash := create_tween()
 		flash.tween_property(target, "modulate", Color.WHITE, 0.28)
 		Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
+		if int(event.get("target_hp", 0)) <= 0:
+			target.set_pose("defeated")
 	_damage.modulate = Color.WHITE
 	_damage.pivot_offset = _damage.size * 0.5
 	_damage.scale = Vector2(0.72, 0.72)
@@ -1052,6 +1086,10 @@ func _position_fighters() -> void:
 		_arena.size.x * 0.5 - bounds.get_center().x * zoom,
 		ground_y * (1.0 - zoom)
 	)
+	_sync_shadow("player")
+	_sync_shadow("bot")
+	var background_zoom := lerpf(TeamBattleView.CAMERA_BACKGROUND_MAX_SCALE, 1.0, size_mix)
+	_layout_arena_background(background_zoom)
 
 
 func _sprite_for(actor: String) -> AnimaPresenter:
@@ -1205,3 +1243,86 @@ func _item_already_used() -> bool:
 		if not text.is_empty() and text != "<null>":
 			return true
 	return bool(_as_dict(_as_dict(_session.get("state")).get("player")).get("item_used", false))
+
+
+func _emit_arena_open() -> void:
+	arena_open_changed.emit(is_duel_arena_open())
+
+
+func _apply_arena_background(art_cache: Dictionary) -> void:
+	if not art_cache.is_empty():
+		_art_cache = art_cache.duplicate(true)
+	var texture: Variant = _art_cache.get("arena_background")
+	var ready := texture is Texture2D
+	if ready:
+		_arena_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_arena_background.stretch_mode = TextureRect.STRETCH_SCALE
+		_arena_background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		_arena_background.texture = texture
+	else:
+		_arena_background.texture = null
+	_arena_background.visible = ready
+	_sync_background_pan()
+
+
+func _sync_background_pan() -> void:
+	var session_id := str(_session.get("id", ""))
+	if session_id == _background_session_id:
+		return
+	_background_session_id = session_id
+	_background_pan = BattleScale.background_pan_for_session(session_id)
+
+
+func _layout_arena_background(background_zoom: float) -> void:
+	if not is_instance_valid(_arena_background) or not _arena_background.texture is Texture2D:
+		return
+	var texture_size := _arena_background.texture.get_size()
+	var stage_size := _arena.size
+	if texture_size.x <= 0.0 or texture_size.y <= 0.0 or stage_size.x <= 0.0 or stage_size.y <= 0.0:
+		return
+	var cover_scale := maxf(stage_size.x / texture_size.x, stage_size.y / texture_size.y)
+	var draw_size := texture_size * cover_scale * maxf(1.0, background_zoom)
+	var overflow := Vector2(
+		maxf(0.0, draw_size.x - stage_size.x),
+		maxf(0.0, draw_size.y - stage_size.y)
+	)
+	_arena_background.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_arena_background.pivot_offset = Vector2.ZERO
+	_arena_background.scale = Vector2.ONE
+	_arena_background.size = draw_size
+	_arena_background.position = Vector2(
+		-overflow.x * _background_pan,
+		-overflow.y * 0.5
+	)
+
+
+func _make_ground_shadow(anchor: Node2D) -> Sprite2D:
+	var gradient := Gradient.new()
+	gradient.colors = PackedColorArray([
+		Color(0.01, 0.02, 0.05, 0.45),
+		Color(0.01, 0.02, 0.05, 0.0),
+	])
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.width = 220
+	texture.height = 64
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
+	var shadow := Sprite2D.new()
+	shadow.name = "GroundShadow"
+	shadow.centered = true
+	shadow.texture = texture
+	shadow.z_index = 0
+	shadow.position = Vector2.ZERO
+	shadow.scale = Vector2(1.35, 0.7)
+	anchor.add_child(shadow)
+	anchor.move_child(shadow, 0)
+	return shadow
+
+
+func _sync_shadow(side: String) -> void:
+	var sprite := _player_sprite if side == "player" else _bot_sprite
+	var shadow := _player_shadow if side == "player" else _bot_shadow
+	if is_instance_valid(sprite):
+		sprite.sync_ground_shadow(shadow)
