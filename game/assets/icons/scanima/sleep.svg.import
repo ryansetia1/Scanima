@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://badighevejd2n"
-path="res://.godot/imported/menu.svg-59db10be0368b42c7e33f9f74c374b3a.ctex"
+uid="uid://07ghtbufoah7"
+path="res://.godot/imported/sleep.svg-9065bb7dbe03c27700ee1e7fd99279ba.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/icons/menu.svg"
-dest_files=["res://.godot/imported/menu.svg-59db10be0368b42c7e33f9f74c374b3a.ctex"]
+source_file="res://assets/icons/scanima/sleep.svg"
+dest_files=["res://.godot/imported/sleep.svg-9065bb7dbe03c27700ee1e7fd99279ba.ctex"]
 
 [params]
 

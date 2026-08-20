@@ -21,6 +21,12 @@ Hunger, **Clean** mint seperti Hygiene, **Sleep** biru seperti Energy, dan
 **Play** violet seperti bar EXP. Bar EXP itu garis tipis violet tepat di bawah
 tulisan `Lv. · EXP` di kanan atas panel.
 
+Gambar di tiap tombol menyebut aksinya tanpa perlu dibaca: semangkuk makanan
+untuk **Feed**, tetesan air untuk **Clean**, bulan sabit untuk **Sleep**, dan
+kelinci yang melompat untuk **Play**. Tombol yang tidak bisa dipakai —
+kebutuhannya sudah penuh, atau Play sudah lima kali hari ini — gambarnya ikut
+meredup, warnanya tidak berubah.
+
 Meter bergerak di detik yang sama dengan ketukanmu, dan tombol Care tidak mati
 sesudahnya. Angka resminya datang dari server sesaat kemudian dan menimpa
 tampilan itu; kalau aksinya ternyata ditolak (misalnya koneksi putus), meternya

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dkgwfoqrpqhd4"
-path="res://.godot/imported/house.svg-777f90f7ef546d0187631bca1b14d041.ctex"
+uid="uid://cr0qnp4jhhgo0"
+path="res://.godot/imported/battle.svg-66bb0817442261a0338806f26289885a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/icons/house.svg"
-dest_files=["res://.godot/imported/house.svg-777f90f7ef546d0187631bca1b14d041.ctex"]
+source_file="res://assets/icons/scanima/battle.svg"
+dest_files=["res://.godot/imported/battle.svg-66bb0817442261a0338806f26289885a.ctex"]
 
 [params]
 

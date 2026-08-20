@@ -13,6 +13,14 @@ const INK_ACTIVE := Color(0.161, 0.714, 0.965)
 const INK_IDLE := Color(0.561, 0.612, 0.682)
 const INK_UNAVAILABLE := Color(0.561, 0.612, 0.682, 0.4)
 
+## The tab icons are full-colour art, so their state cannot ride on hue the way
+## the labels' does — painting cyan over the gold and cream would throw the
+## drawing away. They carry state as brightness instead, and the label ink plus
+## the selected pill keep saying it in a second and third way.
+const ICON_ACTIVE := Color(1.0, 1.0, 1.0)
+const ICON_IDLE := Color(1.0, 1.0, 1.0, 0.55)
+const ICON_UNAVAILABLE := Color(1.0, 1.0, 1.0, 0.22)
+
 @onready var _buttons: Dictionary = {
 	HOME: %HomeNavButton,
 	SCAN: %ScanNavButton,
@@ -79,11 +87,13 @@ func _paint(key: StringName) -> void:
 		return
 	var active := key == _active
 	var ink := INK_ACTIVE if active else INK_IDLE
+	var icon_ink := ICON_ACTIVE if active else ICON_IDLE
 	if key == SCAN and not _scan_available:
 		ink = INK_UNAVAILABLE
+		icon_ink = ICON_UNAVAILABLE
 	var icon := content.get_node_or_null(^"Icon") as TextureRect
 	if icon != null:
-		icon.modulate = ink
+		icon.modulate = icon_ink
 	var label := content.get_node_or_null(^"Label") as Label
 	if label == null:
 		return

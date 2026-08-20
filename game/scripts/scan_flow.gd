@@ -64,8 +64,8 @@ const SEEKER_PROFILE_DEST := &"seeker_profile"
 const ANIMA_PROFILE_DEST := &"anima_profile"
 const ATLAS_DEST := &"atlas"
 const TROPHY_ART_DIR := "user://trophies"
-const SHOP_ICON := preload("res://assets/icons/shopping-bag.svg")
-const BAG_ICON := preload("res://assets/icons/backpack.svg")
+const SHOP_ICON := preload("res://assets/icons/scanima/shop.svg")
+const BAG_ICON := preload("res://assets/icons/scanima/bag.svg")
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 
 @onready var _stage: Node2D = %Stage

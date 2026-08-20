@@ -1,11 +1,11 @@
 [gd_scene format=3 uid="uid://10b1ay38emxd"]
 
 [ext_resource type="Script" uid="uid://bt8stlwu34u0f" path="res://scripts/bottom_nav.gd" id="1_nav"]
-[ext_resource type="Texture2D" uid="uid://dkgwfoqrpqhd4" path="res://assets/icons/house.svg" id="2_home"]
-[ext_resource type="Texture2D" uid="uid://i4ygmwej40av" path="res://assets/icons/scan-line.svg" id="3_scan"]
-[ext_resource type="Texture2D" uid="uid://cw3e80fv6bv38" path="res://assets/icons/library.svg" id="4_collection"]
-[ext_resource type="Texture2D" uid="uid://b320vpdvsp2s1" path="res://assets/icons/swords.svg" id="6_battle"]
-[ext_resource type="Texture2D" uid="uid://badighevejd2n" path="res://assets/icons/menu.svg" id="6_tkwaf"]
+[ext_resource type="Texture2D" uid="uid://cca2i3bf60wnm" path="res://assets/icons/scanima/home.svg" id="2_home"]
+[ext_resource type="Texture2D" uid="uid://56nmh5mpc4aa" path="res://assets/icons/scanima/scan.svg" id="3_scan"]
+[ext_resource type="Texture2D" uid="uid://bw4084iv6137c" path="res://assets/icons/scanima/animas.svg" id="4_collection"]
+[ext_resource type="Texture2D" uid="uid://cr0qnp4jhhgo0" path="res://assets/icons/scanima/battle.svg" id="6_battle"]
+[ext_resource type="Texture2D" uid="uid://ddtiafthb20ph" path="res://assets/icons/scanima/menu.svg" id="6_tkwaf"]
 [ext_resource type="Texture2D" uid="uid://drxdwd1cak1xp" path="res://assets/ui/bottom_nav_bg.png" id="7_backdrop"]
 
 [node name="BottomNav" type="PanelContainer" unique_id=752505685]
@@ -59,8 +59,8 @@ theme_override_constants/separation = 7
 alignment = 1
 
 [node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/HomeNavButton/Content" unique_id=1486809398]
-modulate = Color(0.161, 0.714, 0.965, 1)
-custom_minimum_size = Vector2(37, 37)
+modulate = Color(1, 1, 1, 1)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
@@ -95,8 +95,8 @@ theme_override_constants/separation = 7
 alignment = 1
 
 [node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/ScanNavButton/Content" unique_id=738512855]
-modulate = Color(0.561, 0.612, 0.682, 1)
-custom_minimum_size = Vector2(37, 37)
+modulate = Color(1, 1, 1, 0.55)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
@@ -131,8 +131,8 @@ theme_override_constants/separation = 7
 alignment = 1
 
 [node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/CollectionNavButton/Content" unique_id=1969600234]
-modulate = Color(0.561, 0.612, 0.682, 1)
-custom_minimum_size = Vector2(37, 37)
+modulate = Color(1, 1, 1, 0.55)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
@@ -167,8 +167,8 @@ theme_override_constants/separation = 7
 alignment = 1
 
 [node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/BattleNavButton/Content" unique_id=228642323]
-modulate = Color(0.561, 0.612, 0.682, 1)
-custom_minimum_size = Vector2(37, 37)
+modulate = Color(1, 1, 1, 0.55)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
@@ -223,8 +223,8 @@ theme_override_constants/separation = 7
 alignment = 1
 
 [node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/MenuNavButton/Content" unique_id=838800077]
-modulate = Color(0.561, 0.612, 0.682, 1)
-custom_minimum_size = Vector2(37, 37)
+modulate = Color(1, 1, 1, 0.55)
+custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2

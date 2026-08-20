@@ -458,7 +458,7 @@ func _initialize() -> void:
 		var scan_ink := scan_nav.find_child("Icon", true, false) as TextureRect
 		var scan_text := scan_nav.find_child("Label", true, false) as Label
 		if scan_ink != null and scan_text != null:
-			_check_eq(scan_ink.modulate, BottomNav.INK_IDLE, "Scan ships readable ink, not stage paint")
+			_check_eq(scan_ink.modulate, BottomNav.ICON_IDLE, "Scan ships readable ink, not stage paint")
 			_check_eq(
 				scan_text.get_theme_color(&"font_color"),
 				BottomNav.INK_IDLE,
@@ -753,7 +753,7 @@ func _test_shared_components() -> void:
 	chip.set_name_text("")
 	_check(chip_name != null and not chip_name.visible, "empty ResourceChip name is hidden so Shop can center")
 	_check(chip_icon != null and not chip_icon.visible, "ResourceChip icon stays hidden until set")
-	chip.set_icon(load("res://assets/icons/shopping-bag.svg") as Texture2D)
+	chip.set_icon(load("res://assets/icons/scanima/shop.svg") as Texture2D)
 	var chip_column := chip.get_node_or_null("Column") as BoxContainer
 	_check(chip_icon != null and chip_icon.visible and chip_icon.texture != null, "ResourceChip can show a Shop icon")
 	_check(
@@ -4601,6 +4601,27 @@ func _test_home_care_actions() -> void:
 			and absf(resting.border_color.b - fill.bg_color.b) < 0.12,
 			"%s carries the colour of %s, the meter it moves" % [pairing[0], pairing[1]]
 		)
+	# The care icons are painted art, not glyphs. Base Button tints icons toward
+	# white-blue at rest and gold when pressed, which is right for the Lucide
+	# line icons still on the Menu rows but would repaint the kibble and the
+	# rabbit. Each variation therefore has to opt out on every state, and it has
+	# to opt out by keeping the channels equal — dropping the alpha for disabled
+	# is fine, shifting the hue is not. Nothing on screen says when this breaks.
+	for variation in ["CareFeedButton", "CareCleanButton", "CareSleepButton", "CarePlayButton"]:
+		var tinted: Array[String] = []
+		for state in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_disabled_color"]:
+			var paint := care_theme.get_color(StringName(state), StringName(variation))
+			if not (is_equal_approx(paint.r, paint.g) and is_equal_approx(paint.g, paint.b)):
+				tinted.append(state)
+		_check(
+			tinted.is_empty(),
+			"%s shows its art instead of repainting it (%s)" % [variation, ", ".join(tinted)]
+		)
+		_check(
+			care_theme.get_constant(&"icon_max_width", StringName(variation))
+			> care_theme.get_constant(&"icon_max_width", &"Button"),
+			"%s gives the illustration more room than a line glyph needs" % variation
+		)
 	var dock_box := care_theme.get_stylebox(&"panel", &"CareDock") as StyleBoxFlat
 	_check(
 		dock_box != null and dock_box.border_width_top == 0,
@@ -4961,22 +4982,31 @@ func _test_bottom_nav_busy() -> void:
 	var home_ink := home_button.find_child("Icon", true, false) as TextureRect
 	var battle_ink := battle_button.find_child("Icon", true, false) as TextureRect
 	var scan_ink := scan_button.find_child("Icon", true, false) as TextureRect
+	var home_text := home_button.find_child("Label", true, false) as Label
 	_check(
-		home_ink.modulate == BottomNav.INK_ACTIVE and battle_ink.modulate == BottomNav.INK_IDLE,
+		home_ink.modulate == BottomNav.ICON_ACTIVE and battle_ink.modulate == BottomNav.ICON_IDLE,
 		"only the active tab takes the bright ink"
+	)
+	# The tab art is full-colour, so its state can only be brightness — a hue
+	# would repaint the drawing. The label still carries the cyan, which is what
+	# keeps the state readable in more than one channel.
+	_check(
+		home_ink.modulate.r == home_ink.modulate.b
+		and home_text.get_theme_color(&"font_color") == BottomNav.INK_ACTIVE,
+		"the active icon dims rather than tints, and the label keeps the cyan"
 	)
 	nav.set_active(BottomNav.BATTLE)
 	_check(
-		battle_ink.modulate == BottomNav.INK_ACTIVE and home_ink.modulate == BottomNav.INK_IDLE,
+		battle_ink.modulate == BottomNav.ICON_ACTIVE and home_ink.modulate == BottomNav.ICON_IDLE,
 		"the bright ink follows the destination instead of sticking to Home"
 	)
 	nav.set_scan_emphasized(false)
 	_check(
-		scan_ink.modulate == BottomNav.INK_UNAVAILABLE and scan_ink.modulate.a > 0.0,
+		scan_ink.modulate == BottomNav.ICON_UNAVAILABLE and scan_ink.modulate.a > 0.0,
 		"an unavailable Scan dims instead of disappearing"
 	)
 	nav.set_scan_emphasized(true)
-	_check(scan_ink.modulate == BottomNav.INK_IDLE, "Scan returns to its neighbours' ink")
+	_check(scan_ink.modulate == BottomNav.ICON_IDLE, "Scan returns to its neighbours' ink")
 	nav.set_active(BottomNav.BATTLE)
 	_check(battle_button.button_pressed, "Battle destination has an explicit active state")
 	menu_button.button_pressed = true

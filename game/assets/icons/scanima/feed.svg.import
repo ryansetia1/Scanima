@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://2cfkvanp3kof"
-path="res://.godot/imported/utensils.svg-50972811176c2c17da43f8f4ce7c726b.ctex"
+uid="uid://b152gh8hoq306"
+path="res://.godot/imported/feed.svg-3e020e1bc5bd6e22f064ca7eb75c48e4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/icons/utensils.svg"
-dest_files=["res://.godot/imported/utensils.svg-50972811176c2c17da43f8f4ce7c726b.ctex"]
+source_file="res://assets/icons/scanima/feed.svg"
+dest_files=["res://.godot/imported/feed.svg-3e020e1bc5bd6e22f064ca7eb75c48e4.ctex"]
 
 [params]
 

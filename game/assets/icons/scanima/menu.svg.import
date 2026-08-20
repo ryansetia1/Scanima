@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d0ryuymvpumn2"
-path="res://.godot/imported/backpack.svg-882ad0e8a6e3e9c8b83d884650d30572.ctex"
+uid="uid://ddtiafthb20ph"
+path="res://.godot/imported/menu.svg-78217fdfc6636591cc6913d4f96d64c3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/icons/backpack.svg"
-dest_files=["res://.godot/imported/backpack.svg-882ad0e8a6e3e9c8b83d884650d30572.ctex"]
+source_file="res://assets/icons/scanima/menu.svg"
+dest_files=["res://.godot/imported/menu.svg-78217fdfc6636591cc6913d4f96d64c3.ctex"]
 
 [params]
 
