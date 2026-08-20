@@ -96,17 +96,17 @@ theme_override_constants/separation = 6
 
 [node name="AnimasChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=1333787622 instance=ExtResource("13_chip")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(108, 52)
+custom_minimum_size = Vector2(130, 62)
 layout_mode = 2
 
 [node name="CoresChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=1733062678 instance=ExtResource("13_chip")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(108, 52)
+custom_minimum_size = Vector2(130, 62)
 layout_mode = 2
 
 [node name="BitsChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=1416032062 instance=ExtResource("13_chip")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(108, 52)
+custom_minimum_size = Vector2(130, 62)
 layout_mode = 2
 
 [node name="ViewStack" type="Control" parent="UI/SafeMargin/Shell" unique_id=1504614856]
@@ -141,6 +141,29 @@ layout_mode = 1
 unique_name_in_owner = true
 layout_mode = 2
 
+[node name="ChipLayer" type="Control" parent="UI" unique_id=1122334455]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BagButton" parent="UI/ChipLayer" unique_id=61296367 instance=ExtResource("13_chip")]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 108.0
+offset_bottom = 96.0
+theme_type_variation = &"GhostChip"
+
+[node name="ShopButton" parent="UI/ChipLayer" unique_id=345871826 instance=ExtResource("13_chip")]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 108.0
+offset_bottom = 96.0
+theme_type_variation = &"GhostChip"
+
 [node name="ShopSheet" parent="UI" unique_id=1915279003 instance=ExtResource("16_shop")]
 unique_name_in_owner = true
 layout_mode = 3
@@ -168,18 +191,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-
-[node name="BagButton" parent="UI/ToastLayer" unique_id=61296367 instance=ExtResource("13_chip")]
-unique_name_in_owner = true
-layout_mode = 0
-offset_right = 108.0
-offset_bottom = 96.0
-
-[node name="ShopButton" parent="UI/ToastLayer" unique_id=345871826 instance=ExtResource("13_chip")]
-unique_name_in_owner = true
-layout_mode = 0
-offset_right = 108.0
-offset_bottom = 96.0
 
 [node name="StatusPanel" type="PanelContainer" parent="UI/ToastLayer" unique_id=1597799830]
 unique_name_in_owner = true

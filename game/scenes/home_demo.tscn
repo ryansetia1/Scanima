@@ -57,14 +57,17 @@ theme_override_constants/separation = 6
 
 [node name="AnimasChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" instance=ExtResource("4_chip")]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 62)
 layout_mode = 2
 
 [node name="CoresChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" instance=ExtResource("4_chip")]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 62)
 layout_mode = 2
 
 [node name="BitsChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" instance=ExtResource("4_chip")]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 62)
 layout_mode = 2
 
 [node name="ViewStack" type="Control" parent="UI/SafeMargin/Shell"]
@@ -91,9 +94,11 @@ unique_name_in_owner = true
 layout_mode = 0
 offset_right = 108.0
 offset_bottom = 96.0
+theme_type_variation = &"GhostChip"
 
 [node name="BagButton" parent="UI/Overlay" instance=ExtResource("4_chip")]
 unique_name_in_owner = true
 layout_mode = 0
 offset_right = 108.0
 offset_bottom = 96.0
+theme_type_variation = &"GhostChip"

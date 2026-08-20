@@ -39,7 +39,9 @@ menyusul beberapa saat kemudian.
 
 ## Shop dan Bag
 
-Tombol **Shop** dan **Bag** duduk berdampingan tepat di bawah baris HUD, rata kanan: Shop di kiri, Bag di kanan. Keduanya lebih tinggi daripada chip Animas / Cores / Bits di atasnya — chip itu cuma penghitung, Shop dan Bag adalah tombol. Nama Anima dan barisnya `Lv. · elemen` ada di kiri, sebaris dengan keduanya. Keduanya hanya tampil di **Home**, termasuk saat Anima tidur; tab lain tetap bersih. Animas / Cores / Bits tetap satu baris.
+Tombol **Shop** dan **Bag** duduk berdampingan tepat di bawah baris HUD, rata kanan: Shop di kiri, Bag di kanan. Keduanya tampil sebagai gambar plus namanya saja, tanpa kotak — beda dari Animas / Cores / Bits di atasnya yang berkotak karena ketiganya cuma penghitung, sementara Shop dan Bag adalah tombol. Area tapnya lebih lebar daripada gambarnya, jadi tap di sekitarnya tetap kena. Nama Anima dan barisnya `Lv. · elemen` ada di kiri, sebaris dengan keduanya. Keduanya hanya tampil di **Home**, termasuk saat Anima tidur; tab lain tetap bersih. Saat panel Shop atau Bag terbuka, keduanya ikut meredup bersama sisa layar — yang terang hanya panelnya.
+
+Baris HUD di atasnya membaca angka dan namanya **berdampingan**: `5 Animas`, `2 Cores`, `30 Bits`. Ketiganya bisa di-tap — Animas membuka Collection, Cores dan Bits membuka penjelasan singkat.
 
 Shop hanya untuk beli. Isi tas dibuka dari **Bag**. Beli makanan dan item
 **sebelum** memulai Duel, Team Battle, atau Expedition. Selama battle atau

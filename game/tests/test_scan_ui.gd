@@ -250,7 +250,7 @@ func _initialize() -> void:
 	_check(
 		shop.get_parent() != bits_chip.get_parent()
 		and shop.get_parent() != null
-		and String(shop.get_parent().name) == "ToastLayer",
+		and String(shop.get_parent().name) == "ChipLayer",
 		"Shop overlays below Bits instead of splitting the HUD resource row"
 	)
 	_check(
@@ -264,9 +264,9 @@ func _initialize() -> void:
 	# The three HUD badges are the one deliberate exception to the 48dp floor:
 	# read-only counters sized to the design, not primary actions.
 	_check(
-		animas_chip.custom_minimum_size.y == 52.0
-		and cores_chip.custom_minimum_size.y == 52.0
-		and bits_chip.custom_minimum_size.y == 52.0,
+		animas_chip.custom_minimum_size.y == 62.0
+		and cores_chip.custom_minimum_size.y == 62.0
+		and bits_chip.custom_minimum_size.y == 62.0,
 		"HUD badges stay compact so the header reads as a bar, not a slab"
 	)
 	_check(
@@ -279,6 +279,18 @@ func _initialize() -> void:
 			column != null and column.alignment == BoxContainer.ALIGNMENT_CENTER,
 			"%s centers its content inside the press target" % chip.name
 		)
+		# `Column` must stay a plain BoxContainer: a VBoxContainer rejects
+		# `vertical = false` and keeps stacking, so the badges would quietly
+		# stay two-line with only a console error to show for it.
+		_check(
+			column != null and column.get_class() == "BoxContainer",
+			"%s can still flip its axis at runtime" % chip.name
+		)
+	for action in [shop, bag]:
+		_check(
+			(action.get_node("Column") as BoxContainer).vertical,
+			"%s keeps its icon above the label like a nav tab" % action.name
+		)
 	_check(
 		shop.find_child("Icon", true, false) is TextureRect,
 		"Shop chip has an icon slot"
@@ -287,6 +299,28 @@ func _initialize() -> void:
 		bag.find_child("Icon", true, false) is TextureRect,
 		"Bag chip has an icon slot"
 	)
+	# Shop and Bag are actions, so they read like the nav tabs do — painted icon
+	# over a label, no surface. The three badges beside them are counters and
+	# keep theirs, which is the whole reason the split lives in two theme
+	# variations rather than one. A dropped variation puts the boxes back and
+	# nothing on screen complains. The stylebox is resolved through the theme
+	# rather than `get_theme_stylebox()` because this shell is never added to the
+	# tree, and a detached Control answers with the plain PanelContainer default
+	# no matter which variation it wears — the assertion would pass on Bits and
+	# fail on Shop for reasons that have nothing to do with either.
+	var chip_theme := load("res://themes/mobile_theme.tres") as Theme
+	for chip in [shop, bag, animas_chip, cores_chip, bits_chip]:
+		var surfaced := not (
+			chip_theme.get_stylebox(&"panel", chip.theme_type_variation) is StyleBoxEmpty
+		)
+		var is_badge: bool = chip != shop and chip != bag
+		_check(
+			surfaced == is_badge,
+			"%s wears %s" % [
+				chip.name,
+				"the surface that marks a counter" if is_badge else "its icon without a container",
+			]
+		)
 	_check(
 		scene.find_child("BagGutter", true, false) == null
 		and scene.find_child("ShopGutter", true, false) == null,
@@ -312,6 +346,28 @@ func _initialize() -> void:
 		and toast_layer.get_index() > shop_sheet.get_index(),
 		"toasts paint above the Shop sheet so NO_BITS stays visible"
 	)
+	# Shop and Bag used to share the toast layer, which meant the sheet's own
+	# backdrop dimmed the whole shell except the two buttons that opened it.
+	# They need opposite sides of the sheet: chips under it, toast over it.
+	_check(
+		shop.get_parent().get_parent() == shop_sheet.get_parent()
+		and shop.get_parent().get_index() < shop_sheet.get_index(),
+		"the sheet backdrop dims Shop and Bag along with the rest of the shell"
+	)
+	# The flip side of that order: every sheet now paints over the chips, so a
+	# sheet left visible while closed would swallow the taps that open it.
+	for sheet_name in [
+		"ShopSheet",
+		"BattlePickSheet",
+		"PhotoSourceSheet",
+		"SeekerMenuSheet",
+		"SeekerOnboardingSheet",
+	]:
+		var idle := scene.find_child(sheet_name, true, false) as Control
+		_check(
+			idle != null and not idle.visible,
+			"%s starts hidden so it never eats a Shop or Bag tap" % sheet_name
+		)
 	_check(scene.find_child("PoseRow", true, false) == null, "debug pose controls must not ship in production")
 	var shell_modal := scene.find_child("ShellModal", true, false) as Control
 	var modal_panel := scene.find_child("ModalPanel", true, false) as PanelContainer
@@ -759,6 +815,40 @@ func _test_shared_components() -> void:
 	_check(
 		chip_column != null and chip_column.get_theme_constant("separation") >= 8,
 		"Shop icon keeps a gap above the label"
+	)
+	# The HUD counters read as one phrase — "30 Bits" — so the same chip has to
+	# lay out horizontally on request. This is asserted on a live chip because
+	# `Column` resolves at `_ready()`, and the shell inspected above never
+	# enters the tree.
+	chip.set_inline(true)
+	_check(
+		chip_column != null and not chip_column.vertical,
+		"ResourceChip can put the value beside its label for the HUD counters"
+	)
+	chip.set_inline(false)
+	_check(
+		chip_column != null and chip_column.vertical,
+		"ResourceChip goes back to icon-over-label for Shop and Bag"
+	)
+	# ActionButton is a full-rect overlay on a panel that already has a border.
+	# Inheriting `ButtonFocus` draws a 4px gold stadium around the text after
+	# "Got It" returns focus — the chip looks selected when nothing is. Empty
+	# styles on `ChipActionButton` kill the ring; `flat` alone is not enough,
+	# Godot still paints focus on flat buttons.
+	var chip_theme := load("res://themes/mobile_theme.tres") as Theme
+	_check(
+		chip_theme.get_stylebox(&"focus", &"ChipActionButton") is StyleBoxEmpty,
+		"chip action overlay does not inherit the gold ButtonFocus ring"
+	)
+	chip_action.grab_focus()
+	_check(
+		chip_action.get_theme_stylebox("focus") is StyleBoxEmpty,
+		"a focused resource chip still has no leftover outline"
+	)
+	_check(
+		chip_theme.get_font_size("font_size", "ResourceValueLabel") >= 30
+		and chip_theme.get_font_size("font_size", "ResourceNameLabel") >= 22,
+		"HUD counter type fills the badge instead of floating in the middle"
 	)
 
 	var sheet = (load("res://scenes/ui/ui_bottom_sheet.tscn") as PackedScene).instantiate()

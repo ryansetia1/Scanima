@@ -52,6 +52,8 @@ static func demo_row() -> Dictionary:
 
 
 func _configure_chips() -> void:
+	for badge: ResourceChip in [_animas_chip, _cores_chip, _bits_chip]:
+		badge.set_inline(true)
 	_animas_chip.set_name_text(tr("RESOURCE_ANIMAS"))
 	_animas_chip.set_value_text("4")
 	_cores_chip.set_name_text(tr("RESOURCE_CORES"))

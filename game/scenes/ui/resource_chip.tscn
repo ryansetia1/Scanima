@@ -9,16 +9,17 @@ theme = ExtResource("2_theme")
 theme_type_variation = &"ResourceChip"
 script = ExtResource("1_chip")
 
-[node name="Column" type="VBoxContainer" parent="."]
+[node name="Column" type="BoxContainer" parent="."]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = -4
 alignment = 1
+vertical = true
 
 [node name="Icon" type="TextureRect" parent="Column"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(52, 52)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_filter = 2
@@ -30,6 +31,7 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ResourceValueLabel"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="Name" type="Label" parent="Column"]
 unique_name_in_owner = true
@@ -37,10 +39,12 @@ visible = false
 layout_mode = 2
 theme_type_variation = &"ResourceNameLabel"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="ActionButton" type="Button" parent="."]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
+theme_type_variation = &"ChipActionButton"
 mouse_default_cursor_shape = 2
 flat = true

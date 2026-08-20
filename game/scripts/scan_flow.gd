@@ -1407,10 +1407,6 @@ func _modal_confirmed(text: String) -> void:
 			_evolve_confirmed()
 		&"rename":
 			_rename_confirmed(text)
-		&"core_info":
-			_cores_chip.grab_action_focus()
-		&"bits_info":
-			_bits_chip.grab_action_focus()
 		&"sign_in_google":
 			_start_google_link()
 		&"restore_google":
@@ -1445,10 +1441,6 @@ func _modal_canceled() -> void:
 		call_deferred("_maybe_prompt_seeker_onboarding")
 	elif context == &"atlas_publish":
 		_pending_atlas_publish_id = ""
-	elif context == &"core_info":
-		_cores_chip.grab_action_focus()
-	elif context == &"bits_info":
-		_bits_chip.grab_action_focus()
 	elif context == &"chapter_announcement":
 		_ack_chapter_popup(false)
 	elif context == &"retreat":
@@ -4279,10 +4271,13 @@ func _open_collection() -> void:
 
 
 func _configure_resource_chips() -> void:
+	_animas_chip.set_inline(true)
 	_animas_chip.set_name_text(tr("RESOURCE_ANIMAS"))
 	_animas_chip.set_interactive(true, tr("COLLECTION_TITLE"))
+	_cores_chip.set_inline(true)
 	_cores_chip.set_name_text(tr("RESOURCE_CORES"))
 	_cores_chip.set_interactive(true, tr("CORE_INFO_TITLE"))
+	_bits_chip.set_inline(true)
 	_bits_chip.set_name_text(tr("RESOURCE_BITS"))
 	_bits_chip.set_interactive(true, tr("BITS_INFO_TITLE"))
 	_bag_button.set_icon(BAG_ICON)
