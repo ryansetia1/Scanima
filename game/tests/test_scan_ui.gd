@@ -399,7 +399,7 @@ func _initialize() -> void:
 	_check(juice_probe.has_meta(&"_scanima_juice_installed"), "button motion installs idempotently")
 	juice_probe.scale = Vector2(0.5, 0.5)
 	UiJuice.reveal(juice_probe)
-	await create_timer(0.40).timeout
+	await _await_juice_settled(juice_probe)
 	_check(absf(juice_probe.scale.x - 1.0) < 0.05, "reveal animates scale to normal")
 	var meter_probe := ProgressBar.new()
 	meter_probe.custom_minimum_size = Vector2(240.0, 32.0)
@@ -407,7 +407,7 @@ func _initialize() -> void:
 	await process_frame
 	meter_probe.value = 0.0
 	UiJuice.tween_meter(meter_probe, 73.0)
-	await create_timer(0.45).timeout
+	await _await_juice_settled(meter_probe, UiJuice.META_METER_TWEEN)
 	_check_eq(meter_probe.value, 73.0, "meter tween reaches target value")
 	meter_probe.free()
 	juice_probe.free()
@@ -635,6 +635,7 @@ func _initialize() -> void:
 	await _test_home_care_actions()
 	await _test_bottom_nav_busy()
 	await _test_incubator_effect()
+	await _test_loading_screen()
 	_finish()
 
 
@@ -698,7 +699,7 @@ func _test_shared_components() -> void:
 	var fresh = (load("res://scenes/ui/ui_bottom_sheet.tscn") as PackedScene).instantiate()
 	root.add_child(fresh)
 	await fresh.open()
-	await create_timer(0.40).timeout
+	await _await_juice_settled(fresh)
 	var fresh_panel := fresh.panel() as Control
 	var fresh_column := fresh_panel.find_child("Column", true, false) as VBoxContainer
 	var fresh_content := fresh_panel.find_child("ContentSlot", true, false) as VBoxContainer
@@ -3845,6 +3846,7 @@ func _test_atlas_view() -> void:
 	await sheet.open()
 	view.call("_start_detail_idle")
 	await create_timer(0.45).timeout
+	await _await_juice_settled(sheet)
 	var panel := sheet.panel()
 	var bottom_gap := absf(panel.get_global_rect().end.y - sheet.get_global_rect().end.y)
 	_check(
@@ -4737,6 +4739,329 @@ func _tap_roster_item(list: ItemList, index: int) -> void:
 	list.item_clicked.emit(index, Vector2.ZERO, MOUSE_BUTTON_LEFT)
 
 
+## One loading screen serves every screen swap, so the checks that matter are
+## that it instantiates on its own, fills the screen with the brand surface
+## instead of reading as a dialog, and never paints for work that finishes
+## inside its delay.
+func _test_loading_screen() -> void:
+	var packed := load(LoadingScreen.SCENE_PATH) as PackedScene
+	_check(packed != null, "the loading screen scene loads")
+	var probe: Node = packed.instantiate() if packed != null else null
+	_check(probe is LoadingScreen, "the loading screen scene instantiates on its own script")
+	if probe != null:
+		var probe_root := probe.find_child("LoadingScreenRoot", true, false) as Control
+		_check_full_rect(probe_root, "loading screen root")
+		_check(
+			probe_root != null and not probe_root.visible,
+			"the loading screen rests hidden until something asks for it"
+		)
+		_check(
+			probe_root != null
+			and probe_root.theme != null
+			and probe_root.theme.resource_path == "res://themes/mobile_theme.tres",
+			"the loading screen carries the shared mobile theme"
+		)
+		# A dialog panel over a dimmed shell is the shape this screen must not
+		# have: it covers the whole screen with the brand surface the shell
+		# already draws, so nothing of the half-built Home shows through.
+		_check(
+			probe.find_child("Brand", true, false) is ScanimaBackground,
+			"the loading screen fills itself with the shared brand surface"
+		)
+		_check(
+			ScanimaBackground.BG_TOP.a == 1.0
+			and ScanimaBackground.BG_MID.a == 1.0
+			and ScanimaBackground.BG_BOTTOM.a == 1.0,
+			"the brand fill is opaque instead of letting the shell read through"
+		)
+		# The seam is the vignette, not the layout: a flat band ends in a hard
+		# full-width edge, and with nothing but one line of copy on screen that
+		# edge reads as the background stopping short of the bottom. Reaching
+		# exactly zero at the band's inner edge is what removes it.
+		_check_eq(
+			ScanimaBackground.vignette_alpha(0.22, 1.0),
+			0.0,
+			"the vignette fades to nothing instead of ending on a hard seam"
+		)
+		var seam := ""
+		var last := ScanimaBackground.vignette_alpha(0.22, 0.0)
+		for step in range(1, ScanimaBackground.VIGNETTE_BANDS + 1):
+			var alpha := ScanimaBackground.vignette_alpha(
+				0.22, float(step) / float(ScanimaBackground.VIGNETTE_BANDS)
+			)
+			if alpha > last:
+				seam = "band %d" % step
+			last = alpha
+		_check(seam.is_empty(), "the vignette only ever lightens inward: %s" % seam)
+		# Headless runs cannot read pixels, so a soft `vignette_alpha` alone would
+		# still pass with the two flat rects it replaced. The draw path is scanned
+		# instead: both edges go through the banded helper, and no bare `draw_rect`
+		# survives in `_draw_vignette` to reintroduce a hard-edged slab.
+		var brand_source := FileAccess.get_file_as_string(
+			"res://scripts/scanima_background.gd"
+		)
+		var vignette_body := _func_body(brand_source, "func _draw_vignette(")
+		_check(
+			vignette_body.count("_draw_vignette_band(") == 2
+			and vignette_body.find("draw_rect(") < 0,
+			"both vignette edges are drawn as bands, not as flat rects"
+		)
+		var dressing := ""
+		for node in probe.find_children("*", "", true, false):
+			if node is PanelContainer:
+				dressing = str(node.name)
+			if node is ColorRect and (node as ColorRect).color.a < 1.0:
+				dressing = str(node.name)
+		_check(
+			dressing.is_empty(),
+			"no card or dim scrim makes the loading screen read as a dialog: %s" % dressing
+		)
+		var message := probe.find_child("LoadingMessage", true, false) as Label
+		_check(
+			message != null
+			and message.theme_type_variation == &"PageTitleLabel"
+			and message.text == "STATUS_LOADING"
+			and message.autowrap_mode != TextServer.AUTOWRAP_OFF,
+			"the centred copy is the display-font Loading title and wraps long locales"
+		)
+		# The motion must not be a bar that fills: nothing upstream reports a
+		# percentage, so a track the dash could fill would be inventing one.
+		var track := probe.find_child("LoadingSweep", true, false) as Control
+		var spark := probe.find_child("LoadingSpark", true, false) as ColorRect
+		_check(
+			track != null and spark != null and spark.get_parent() == track,
+			"the motion under the copy is a dash inside a clipped track"
+		)
+		_check(
+			track != null and track.clip_contents and track.custom_minimum_size.y <= 12.0,
+			"the track stays a thin strip that clips the dash at both ends"
+		)
+		# A dash far shorter than its track cannot be read as an amount, which is
+		# the whole reason it replaced the bar.
+		_check(
+			track != null and spark != null
+			and spark.size.x <= track.custom_minimum_size.x * 0.4,
+			"the dash is far shorter than the track so no position reads as a percentage"
+		)
+		_check(
+			spark != null and spark.color == ScanimaBackground.CYAN,
+			"the dash reuses the brand cyan instead of a new colour"
+		)
+		_check(
+			probe.find_child("LoadingBar", true, false) == null,
+			"the oscillating progress bar is gone rather than left hidden"
+		)
+		probe.free()
+
+	# Work that settles inside the delay must never paint. That is the promise
+	# that a local-first tap does not pay a frame of flicker for this screen.
+	LoadingScreen.show_screen("BATTLE_CONNECTING")
+	LoadingScreen.hide_screen()
+	await create_timer(LoadingScreen.SHOW_DELAY_SEC + 0.12).timeout
+	_check(not LoadingScreen.is_showing(), "instant work never paints the loading screen")
+
+	LoadingScreen.show_screen("BATTLE_CONNECTING")
+	_check(
+		not LoadingScreen.is_showing(),
+		"the loading screen waits out its delay before covering the shell"
+	)
+	await create_timer(LoadingScreen.SHOW_DELAY_SEC + 0.12).timeout
+	_check(LoadingScreen.is_showing(), "work slower than the delay paints the loading screen")
+
+	# Reusable means one node answers every caller, with the new copy applied.
+	LoadingScreen.show_screen("EXPEDITION_STARTING_RUN")
+	var live: Array[Node] = []
+	for child in root.get_children():
+		if child is LoadingScreen:
+			live.append(child)
+	_check_eq(live.size(), 1, "every caller shares one loading screen instance")
+	var screen: LoadingScreen = live[0] if not live.is_empty() else null
+	_check(
+		screen != null and screen.message_key() == "EXPEDITION_STARTING_RUN",
+		"a second caller swaps the copy instead of stacking a second screen"
+	)
+	if screen != null:
+		await _check_loading_sweep_never_reverses(screen)
+
+	LoadingScreen.hide_screen()
+	await create_timer(LoadingScreen.MIN_PAINT_SEC + LoadingScreen.FADE_SEC + 0.12).timeout
+	_check(not LoadingScreen.is_showing(), "hiding releases the shell again")
+	if screen != null:
+		_check_eq(
+			(screen.find_child("LoadingScreenRoot", true, false) as Control).visible,
+			false,
+			"the hidden loading screen stops drawing instead of sitting transparent"
+		)
+
+	# Boot asks for the screen at frame zero, so it must paint without waiting the
+	# delay, and a warm boot that settles instantly must still be seen.
+	LoadingScreen.show_screen("STATUS_LOADING", true)
+	_check(
+		LoadingScreen.is_showing(),
+		"a boot request paints in the same frame instead of waiting the delay"
+	)
+	LoadingScreen.hide_screen()
+	_check(
+		LoadingScreen.is_showing(),
+		"a screen dismissed straight away holds its floor instead of blinking"
+	)
+	# A transition landing inside that floor takes over the painted screen: the
+	# queued close is cancelled, not honoured behind the new copy.
+	LoadingScreen.show_screen("BATTLE_CONNECTING")
+	await create_timer(LoadingScreen.MIN_PAINT_SEC + 0.12).timeout
+	_check(
+		LoadingScreen.is_showing() and screen != null
+		and screen.message_key() == "BATTLE_CONNECTING",
+		"a request during the floor cancels the queued close"
+	)
+	LoadingScreen.hide_screen()
+	await create_timer(LoadingScreen.FADE_SEC + 0.12).timeout
+	_check(not LoadingScreen.is_showing(), "the held screen still closes once it is stale")
+
+	# Boot's own hand-off: the screen has been up long past the floor, so
+	# `_set_busy(false)` really starts the fade, and the art wait re-requests it in
+	# that same frame. Repainting mid-fade is what keeps Home from flashing through.
+	LoadingScreen.show_screen("STATUS_LOADING", true)
+	await create_timer(LoadingScreen.MIN_PAINT_SEC + 0.12).timeout
+	LoadingScreen.hide_screen()
+	LoadingScreen.show_screen("STATUS_LOADING")
+	await create_timer(LoadingScreen.FADE_SEC + 0.12).timeout
+	_check(
+		LoadingScreen.is_showing(),
+		"a request in the frame the fade starts keeps the screen up instead of blinking"
+	)
+	LoadingScreen.hide_screen()
+	await create_timer(LoadingScreen.MIN_PAINT_SEC + LoadingScreen.FADE_SEC + 0.12).timeout
+	if screen != null:
+		screen.queue_free()
+		await process_frame
+
+	var shell_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var expedition_source := FileAccess.get_file_as_string(
+		"res://scripts/expedition_controller.gd"
+	)
+	_check(
+		shell_source.find("LoadingScreen.show_screen(\"HOME_LOADING_META\")") >= 0
+		and shell_source.find("LoadingScreen.show_screen(\"BATTLE_CONNECTING\")") >= 0
+		and shell_source.find("LoadingScreen.show_screen(\"BATTLE_RESUMING\")") >= 0
+		and shell_source.find("LoadingScreen.show_screen(\"TEAM_STARTING\")") >= 0
+		and shell_source.find("LoadingScreen.show_screen(\"TEAM_RESUMING\")") >= 0
+		and expedition_source.find("LoadingScreen.show_screen(\"EXPEDITION_LOADING\")") >= 0
+		and expedition_source.find("LoadingScreen.show_screen(\"EXPEDITION_RESUMING\")") >= 0
+		and expedition_source.find(
+			"LoadingScreen.show_screen(str(CONTEXT_LOADING[operation]))"
+		) >= 0,
+		"boot, Battle, Team Battle, and Expedition transitions all raise the one screen"
+	)
+	# Boot is the one caller that opens the screen before its busy window: it has
+	# to cover the first frame, and `_ready()` runs before `root` will accept the
+	# node, so the call is deferred. `_boot()` closing it from `_set_busy(false)`
+	# is what keeps that safe.
+	_check(
+		shell_source.find(
+			"LoadingScreen.show_screen.call_deferred(\"STATUS_LOADING\", true)"
+		) >= 0,
+		"boot opens the loading screen at frame zero"
+	)
+	var boot_start := shell_source.find("func _boot()")
+	var boot_end := shell_source.find("\n\nfunc _reload_roster", boot_start)
+	var boot_cover := (
+		shell_source.substr(boot_start, boot_end - boot_start)
+		if boot_start >= 0 and boot_end > boot_start
+		else ""
+	)
+	# A warm boot from the cache used to skip the screen entirely, which is the
+	# one boot a player sees most often.
+	_check(
+		boot_cover.find("if not from_cache:\n\t\t\tLoadingScreen") < 0
+		and boot_cover.find("LoadingScreen.show_screen(\"STATUS_LOADING\")") >= 0,
+		"the art wait stays covered on a warm boot too"
+	)
+	# The busy flag owns the hide, so no error path can leave the screen stuck.
+	_check(
+		_set_busy_body(shell_source).find("LoadingScreen.hide_screen()") >= 0,
+		"the shell releases the loading screen from _set_busy"
+	)
+	_check(
+		_set_busy_body(expedition_source).find("LoadingScreen.hide_screen()") >= 0,
+		"Expedition releases the loading screen from _set_busy"
+	)
+	# Per-node Expedition steps keep the map the player is already reading, so the
+	# screen only rides the two operations that swap the whole context. The class
+	# is read as source, not imported: naming it here would compile the script
+	# before the autoloads it references exist under --script.
+	var context_start := expedition_source.find("const CONTEXT_LOADING")
+	var context_end := expedition_source.find("}", context_start)
+	var context_body := (
+		expedition_source.substr(context_start, context_end - context_start)
+		if context_start >= 0 and context_end > context_start
+		else ""
+	)
+	_check(
+		context_body.count("\":") == 2
+		and context_body.find("\"start_run\":") >= 0
+		and context_body.find("\"abandon\":") >= 0,
+		"only Expedition context swaps raise the loading screen inside a run"
+	)
+
+
+## The dash may only ever move forward while the player can see it. Sampling past
+## one full lap is the point: a bar that eases back the way the first version did
+## would show a run of gradual decreases here, while the real sweep only ever
+## drops in one step, back to its off-screen entry point.
+func _check_loading_sweep_never_reverses(screen: LoadingScreen) -> void:
+	const SAMPLES := 18
+	var interval := LoadingScreen.SWEEP_SEC * 1.6 / float(SAMPLES)
+	var bounds: Vector2 = screen.sweep_bounds()
+	_check(
+		bounds.x < 0.0 and bounds.y > 0.0,
+		"the dash enters and leaves outside the clipped track so the wrap is unseen"
+	)
+	# A wrap hands back the whole lap in one step, while a bar easing backwards
+	# could only ever hand back a sample of travel, so the size of the drop tells
+	# them apart without depending on frame pacing. A fixed landing ceiling does
+	# depend on it: one slow frame carries the dash a few pixels further past its
+	# entry point, and the wrap then reads as a retreat.
+	var lap := bounds.y - bounds.x
+	var previous: float = screen.sweep_x()
+	var wraps := 0
+	var retreat := ""
+	for _i in SAMPLES:
+		await create_timer(interval).timeout
+		var current: float = screen.sweep_x()
+		if current < previous:
+			if previous - current > lap * 0.5:
+				wraps += 1
+			else:
+				retreat = "%.1f -> %.1f" % [previous, current]
+		previous = current
+	_check(retreat.is_empty(), "the dash never walks backwards in view: %s" % retreat)
+	_check(wraps > 0, "the dash keeps looping instead of parking at the far end")
+
+
+## A body ends at the next thing written at column zero, whatever it is: the
+## following `func`, a `static func`, or the `##` block that introduces one.
+## Stopping only at `func` swallows the whole next function whenever a doc
+## comment sits between the two, which quietly makes any scan of the body a scan
+## of its neighbour as well.
+static func _func_body(source: String, signature: String) -> String:
+	var start := source.find(signature)
+	if start < 0:
+		return ""
+	var body := PackedStringArray()
+	var lines := source.substr(start).split("\n")
+	for i in lines.size():
+		var line := lines[i]
+		if i > 0 and not line.is_empty() and not line.begins_with("\t"):
+			break
+		body.append(line)
+	return "\n".join(body)
+
+
+static func _set_busy_body(source: String) -> String:
+	return _func_body(source, "func _set_busy(")
+
+
 func _check_music(scene: Node) -> void:
 	_check(AudioServer.get_bus_index("Music") > 0, "music rides a bus of its own")
 	var missing := ""
@@ -4783,6 +5108,27 @@ func _check_music(scene: Node) -> void:
 	music.set_enabled(true)
 	_check(music.is_sounding(), "unmuting brings the same cue back")
 	music.queue_free()
+
+
+## A Tween's own clock is not wall clock: under `--headless` it lags by a frame
+## or two, so sleeping a hair longer than an animation's duration is not a proof
+## that the animation landed. Measured on the bottom sheet, 417 ms of wall time
+## left its 0.38 s entry tween at 0.368 s and still running, parking the panel
+## 0.002 px above the bottom edge — one step short of the resting offsets, which
+## is a flake and not a layout bug. The meter tween read 72.99 of 73.0 the same
+## way. Frame pacing here averages 24 ms and has been seen at 62 ms, so no fixed
+## sleep buys a safe margin; wait for the animation itself. The deadline only
+## keeps a stuck tween from hanging the suite instead of failing it.
+func _await_juice_settled(target: Object, meta_key: StringName = UiJuice.META_TWEEN) -> void:
+	var deadline := Time.get_ticks_msec() + 3000
+	while Time.get_ticks_msec() < deadline:
+		var tween: Variant = target.get_meta(meta_key) if target.has_meta(meta_key) else null
+		if not (tween is Tween and (tween as Tween).is_valid() and (tween as Tween).is_running()):
+			return
+		await process_frame
+	# Say so here rather than letting the caller report a panel two pixels out of
+	# place: that reading is what sent this flake to the layout code first.
+	_check(false, "a UiJuice tween never settled: %s" % meta_key)
 
 
 func _check_full_rect(node: Control, label: String) -> void:

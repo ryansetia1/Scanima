@@ -105,6 +105,8 @@ const PLAYER_UI_FILES := [
 	"res://scripts/element_catalog.gd",
 	"res://scripts/client_version.gd",
 	"res://scripts/photo_source_sheet.gd",
+	"res://scripts/loading_screen.gd",
+	"res://scenes/ui/loading_screen.tscn",
 	"res://scenes/scan_flow.tscn",
 	"res://scenes/ui/home_view.tscn",
 	"res://scenes/ui/scan_view.tscn",
@@ -184,7 +186,7 @@ func _initialize() -> void:
 func _check_referenced_keys(keys: Dictionary) -> void:
 	var pattern := RegEx.new()
 	pattern.compile(
-		"(?:tr\\(|set_loading\\(|text = |title = |ok_button_text = )"
+		"(?:tr\\(|set_loading\\(|show_screen\\(|text = |title = |ok_button_text = )"
 		+ "\\s*\\\"([A-Z][A-Z0-9_]+)\\\""
 	)
 	var direct_text := RegEx.new()

@@ -161,6 +161,13 @@ var _picker: Object = null
 
 
 func _ready() -> void:
+	# Boot dibuka dengan layar Loading sejak frame pertama: sebelum ini pemain
+	# melihat shell kosong lalu Home setengah terisi selama empat round trip, dan
+	# boot hangat dari cache tidak pernah menampilkan layarnya sama sekali.
+	# Deferred karena `root` masih menyiapkan anak scene utama selama `_ready()`,
+	# jadi `add_child` di titik ini ditolak; flush-nya tetap jatuh sebelum frame
+	# pertama digambar. Yang menutupnya `_set_busy(false)` milik `_boot()`.
+	LoadingScreen.show_screen.call_deferred("STATUS_LOADING", true)
 	_chapter_push = ChapterPush.new()
 	_chapter_push.name = "ChapterPush"
 	add_child(_chapter_push)
@@ -343,6 +350,8 @@ func _ready() -> void:
 					"care_score": 15,
 				}
 			_celebrate_level_up(4, 3, 10, 15)
+		if arg == "--loading-demo":
+			LoadingScreen.show_screen("STATUS_LOADING", true)
 		if arg == "--trophy-demo":
 			_run_trophy_demo()
 		if arg == "--atlas-demo":
@@ -438,8 +447,10 @@ func _notification(what: int) -> void:
 
 func _boot() -> void:
 	_set_busy(true)
-	# Cache boot yang sudah tercat tidak diganti layar Loading: refresh-nya jalan
-	# di belakang dan menimpa angkanya sendiri saat Postgres menjawab.
+	# Layar Loading boot sudah dibuka di `_ready()` dan tetap menutupi keduanya.
+	# Yang membedakan cache adalah state Home di bawahnya: yang sudah tercat tidak
+	# dikosongkan, sebab refresh-nya menimpa angkanya sendiri saat Postgres
+	# menjawab.
 	var from_cache := _home_view.shell_state() == &"ready"
 	if not from_cache:
 		_set_home_shell_state(&"loading")
@@ -519,6 +530,14 @@ func _boot() -> void:
 			_set_home_shell_state(&"ready")
 		else:
 			_set_busy(true)
+			# Boot belum selesai sampai Anima-nya benar-benar di layar: art bisa
+			# masih harus diunduh, dan itu berlaku juga untuk Home yang tercat dari
+			# cache. Request ini menahan layar yang sama alih-alih mengedipkannya,
+			# dan itu berlaku **karena** seluruh jarak dari `_set_busy(false)` di
+			# atas sampai ke sini sinkron: fade-nya belum memproses satu frame pun,
+			# jadi `request()` membatalkannya. Menyisipkan `await` di antaranya
+			# memperlihatkan Home setengah terisi sebelum art datang.
+			LoadingScreen.show_screen("STATUS_LOADING")
 			await _present_row(active)
 			_set_busy(false)
 	else:
@@ -760,6 +779,7 @@ func _retry_roster() -> void:
 		return
 	_set_busy(true)
 	_set_home_shell_state(&"loading")
+	LoadingScreen.show_screen("HOME_LOADING_META")
 	_say(tr("STATUS_LOADING_COLLECTION"))
 	var loaded := await _reload_roster()
 	if loaded and not _roster.is_empty():
@@ -2231,6 +2251,7 @@ func _start_battle() -> void:
 	_battle_reward_revision += 1
 	_set_busy(true)
 	_battle_view.set_loading()
+	LoadingScreen.show_screen("BATTLE_CONNECTING")
 	var res := await Backend.battle_anima("start", {
 		"anima_id": str(_current_anima.get("id", "")),
 	})
@@ -2267,6 +2288,7 @@ func _resume_battle() -> void:
 
 	_set_busy(true)
 	_battle_view.set_loading("BATTLE_RESUMING")
+	LoadingScreen.show_screen("BATTLE_RESUMING")
 	var res := await Backend.battle_anima("resume", {"session_id": session_id})
 	if not res.ok and res.error == "BATTLE_NOT_FOUND":
 		GameState.finish_battle()
@@ -2692,6 +2714,7 @@ func _start_team_battle(team_id: String, candidate_id: String) -> void:
 		return
 	_set_busy(true)
 	_team_battle_view.set_loading("TEAM_STARTING")
+	LoadingScreen.show_screen("TEAM_STARTING")
 	var res := await Backend.team_battle("start", {
 		"team_id": team_id,
 		"candidate_id": candidate_id,
@@ -2726,6 +2749,7 @@ func _resume_team_battle() -> void:
 		return
 	_set_busy(true)
 	_team_battle_view.set_loading("TEAM_RESUMING")
+	LoadingScreen.show_screen("TEAM_RESUMING")
 	var res := await Backend.team_battle("resume", {"session_id": session_id})
 	if not res.ok and res.error in ["TEAM_BATTLE_NOT_FOUND", "INVALID_SESSION_ID"]:
 		GameState.finish_team_battle()
@@ -4481,6 +4505,11 @@ func _refresh_anima_count() -> void:
 
 func _set_busy(busy: bool) -> void:
 	_busy = busy
+	# Layar loading dimiliki flag busy shell. Setiap transisi yang menampilkannya
+	# sudah dikurung `_set_busy`, jadi tidak ada jalur error yang bisa
+	# meninggalkannya menempel; menutup layar yang tidak tampil adalah no-op.
+	if not busy:
+		LoadingScreen.hide_screen()
 	_scan_view.set_busy(busy)
 	_battle_view.set_busy(busy)
 	_team_battle_view.set_busy(busy)

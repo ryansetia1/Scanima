@@ -139,6 +139,7 @@ func resume_pending() -> void:
 		return
 	_set_busy(true)
 	_view.set_loading("EXPEDITION_RESUMING")
+	LoadingScreen.show_screen("EXPEDITION_RESUMING")
 	var pending := GameState.pending_expedition.duplicate(true)
 	var payload := {}
 	var run_id := str(pending.get("run_id", ""))
@@ -174,6 +175,7 @@ func resume_pending() -> void:
 func _load_hub() -> void:
 	_set_busy(true)
 	_view.set_loading()
+	LoadingScreen.show_screen("EXPEDITION_LOADING")
 	# Katalog dan Team tidak bergantung satu sama lain, jadi hub menunggu satu
 	# round trip alih-alih dua. Sesi disegarkan lebih dulu: `Backend` belum punya
 	# guard refresh in-flight, jadi dua request paralel yang sama-sama menemukan
@@ -449,6 +451,7 @@ func _submit_pending(pending: Dictionary) -> void:
 		_view.begin_combat_action(str(pending.get("action", "")))
 	elif CONTEXT_LOADING.has(operation):
 		_view.set_loading(str(CONTEXT_LOADING[operation]))
+		LoadingScreen.show_screen(str(CONTEXT_LOADING[operation]))
 	_set_busy(true)
 	var predicted := _predict_turn(pending) if operation == "turn" else {}
 	_dispatch(operation, operation_payload(pending))
@@ -815,6 +818,10 @@ static func _zone_reward_changed(previous_run: Dictionary, next_run: Dictionary)
 
 func _set_busy(busy: bool) -> void:
 	_busy = busy
+	# Kontrak yang sama dengan `scan_flow`: layar loading dimiliki flag busy, jadi
+	# operasi yang menampilkannya tidak perlu menutupnya di tiap jalur error.
+	if not busy:
+		LoadingScreen.hide_screen()
 	if _view != null:
 		_view.set_busy(busy)
 

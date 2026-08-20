@@ -232,7 +232,7 @@ mouse_filter = 1
 theme = ExtResource("3_theme")
 script = ExtResource("23_n5v8b")
 
-[node name="MenuDim" type="ColorRect" parent="UI/MenuPopover"]
+[node name="MenuDim" type="ColorRect" parent="UI/MenuPopover" unique_id=1986631753]
 unique_name_in_owner = true
 layout_mode = 0
 anchor_right = 1.0
@@ -269,13 +269,13 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 14
 
-[node name="MenuTitle" type="Label" parent="UI/MenuPopover/MenuPanel/MenuColumn"]
+[node name="MenuTitle" type="Label" parent="UI/MenuPopover/MenuPanel/MenuColumn" unique_id=1578051398]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MenuPopoverTitle"
 text = "MENU_TITLE"
 
-[node name="MenuDivider" type="HSeparator" parent="UI/MenuPopover/MenuPanel/MenuColumn"]
+[node name="MenuDivider" type="HSeparator" parent="UI/MenuPopover/MenuPanel/MenuColumn" unique_id=613952288]
 layout_mode = 2
 
 [node name="MenuProfile" type="Button" parent="UI/MenuPopover/MenuPanel/MenuColumn" unique_id=137996347]

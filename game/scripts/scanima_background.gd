@@ -13,6 +13,9 @@ const CYAN := Color(0.278, 0.902, 1.0)
 const VIOLET := Color(0.67, 0.42, 1.0)
 const GOLD := Color(1.0, 0.82, 0.4)
 const REDRAW_INTERVAL_SEC := 1.0 / 15.0
+const VIGNETTE_TOP_PX := 170.0
+const VIGNETTE_BOTTOM_PX := 330.0
+const VIGNETTE_BANDS := 18
 
 var _phase: float = 0.0
 var _redraw_accumulator: float = 0.0
@@ -126,10 +129,39 @@ func _draw_floor_grid(size: Vector2) -> void:
 		)
 
 
+## Vignette alpha at `t`, the distance from the screen edge to the far side of
+## the band. Landing on exactly zero at `t == 1` is what removes the seam: a
+## single flat rect ends in a full-width hard edge, and on a screen whose only
+## content is one line of copy — the loading screen, the empty state — that edge
+## reads as a separate darker panel instead of a surface that runs to the bottom.
+static func vignette_alpha(peak: float, t: float) -> float:
+	return peak * (1.0 - smoothstep(0.0, 1.0, clampf(t, 0.0, 1.0)))
+
+
 func _draw_vignette(size: Vector2) -> void:
-	draw_rect(Rect2(0.0, 0.0, size.x, 170.0), Color(0.005, 0.01, 0.035, 0.28))
-	draw_rect(Rect2(0.0, size.y - 330.0, size.x, 330.0), Color(0.005, 0.008, 0.03, 0.22))
+	_draw_vignette_band(size.x, 0.0, VIGNETTE_TOP_PX, Color(0.005, 0.01, 0.035), 0.28)
+	_draw_vignette_band(size.x, size.y, -VIGNETTE_BOTTOM_PX, Color(0.005, 0.008, 0.03), 0.22)
 	draw_line(Vector2(0.0, 2.0), Vector2(size.x, 2.0), Color(CYAN, 0.2), 2.0)
+
+
+## `depth` is signed: positive grows down from `edge_y`, negative grows up. The
+## one-pixel overlap is the same trick `_draw_gradient` uses, so rounding cannot
+## leave a bright hairline between bands.
+##
+## Each band is tinted for its *inner* edge, so the last one lands on alpha zero
+## and the seam is gone by construction. Sampling the outer edge instead would
+## leave the innermost band a shade above zero — small, but it is the very edge
+## this whole helper exists to remove.
+func _draw_vignette_band(
+	width: float, edge_y: float, depth: float, tint: Color, peak: float
+) -> void:
+	var step := depth / float(VIGNETTE_BANDS)
+	for band in VIGNETTE_BANDS:
+		var y := edge_y + step * float(band)
+		draw_rect(
+			Rect2(0.0, minf(y, y + step), width, absf(step) + 1.0),
+			Color(tint, vignette_alpha(peak, float(band + 1) / float(VIGNETTE_BANDS)))
+		)
 
 
 func _ellipse_points(center: Vector2, radius_x: float, radius_y: float, count: int) -> PackedVector2Array:
