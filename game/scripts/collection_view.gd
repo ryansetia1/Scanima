@@ -8,6 +8,9 @@ signal first_scan_requested
 signal retry_requested
 signal atlas_requested
 
+const BADGE_INSET := Vector2(6.0, 6.0)
+const BADGE_FONT_SIZE := 20
+
 @onready var _status: Label = %CollectionStatus
 @onready var _list: ItemList = %AnimaList
 @onready var _empty_action: Button = %CollectionEmptyAction
@@ -51,6 +54,7 @@ var _evolution_enabled := false
 func _ready() -> void:
 	%CollectionAtlasTab.pressed.connect(func() -> void: atlas_requested.emit())
 	_list.item_selected.connect(_on_item_selected)
+	_list.draw.connect(_draw_level_badges)
 	_empty_action.pressed.connect(_on_empty_action)
 	_sheet.dismissed.connect(_on_sheet_dismissed)
 	_profile_button.pressed.connect(_view_profile)
@@ -218,6 +222,60 @@ func _on_item_selected(index: int) -> void:
 	var row := GameState.as_dict(_list.get_item_metadata(index))
 	if not row.is_empty():
 		show_preview(row)
+
+
+## Level per kartu digambar sendiri karena `ItemList` hanya punya satu slot teks
+## per item. Angkanya dibaca dari metadata row yang sudah dipasang `set_rows()`,
+## jadi tidak ada jalur data kedua yang bisa basi saat care sync mengubah EXP.
+##
+## `get_item_rect()` mengembalikan koordinat konten dan terukur TIDAK ikut
+## bergeser saat list di-scroll, jadi offset scrollbar dikurangi sendiri; tanpa
+## itu badge menempel di layar sementara kartunya jalan.
+func _draw_level_badges() -> void:
+	var style := _list.get_theme_stylebox(&"panel", &"ResourceChip")
+	var font := _list.get_theme_font(&"font", &"ResourceValueLabel")
+	var ink := _list.get_theme_color(&"font_color", &"ResourceValueLabel")
+	var window := Rect2(Vector2.ZERO, _list.size)
+	for index in _list.item_count:
+		var text := _badge_text(index)
+		if text.is_empty():
+			continue
+		var text_size := font.get_string_size(
+			text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, BADGE_FONT_SIZE
+		)
+		var pill := Rect2(_badge_origin(index), text_size + style.get_minimum_size())
+		if not window.intersects(pill):
+			continue
+		_list.draw_style_box(style, pill)
+		_list.draw_string(
+			font,
+			pill.position + Vector2(
+				style.get_margin(SIDE_LEFT),
+				style.get_margin(SIDE_TOP) + font.get_ascent(BADGE_FONT_SIZE)
+			),
+			text,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			BADGE_FONT_SIZE,
+			ink
+		)
+
+
+func _badge_text(index: int) -> String:
+	var row := GameState.as_dict(_list.get_item_metadata(index))
+	if row.is_empty():
+		return ""
+	return LocaleManager.level_label(
+		CareRules.level_from_exp(int(row.get("care_score", 0)))
+	)
+
+
+func _badge_origin(index: int) -> Vector2:
+	return (
+		_list.get_item_rect(index).position
+		+ BADGE_INSET
+		- Vector2(0.0, _list.get_v_scroll_bar().value)
+	)
 
 
 func _fill_identity() -> void:

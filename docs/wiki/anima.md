@@ -115,7 +115,7 @@ Tap kartu membuka sheet, bukan langsung pindah companion.
   begitu kamu menekan, bukan sesudah menunggu; kalau pergantiannya gagal, portal
   menutup dan companion lamamu kembali.
 
-Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Hunger dan Hygiene di Collection turun pelan dan berhenti sebelum lapar atau kotor, jadi merawat tim tidak berarti memberi makan semua orang setiap hari. Yang sudah lapar, kotor, atau Dormant sebelum istirahat tetap begitu sampai di-Summon lalu diurus di Home. Kartu Collection memakai pose-nya: Sleep selama Energy pulih, Idle kalau siap, Damaged kalau Dormant, dan **Ready to Evolve** kalau Level sudah cukup untuk Adult atau Evolved. Tidak perlu tap dulu supaya kelihatan.
+Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Hunger dan Hygiene di Collection turun pelan dan berhenti sebelum lapar atau kotor, jadi merawat tim tidak berarti memberi makan semua orang setiap hari. Yang sudah lapar, kotor, atau Dormant sebelum istirahat tetap begitu sampai di-Summon lalu diurus di Home. Kartu Collection memakai pose-nya: Sleep selama Energy pulih, Idle kalau siap, Damaged kalau Dormant, dan **Ready to Evolve** kalau Level sudah cukup untuk Adult atau Evolved. Setiap kartu juga menandai Level-nya (**Lv. 12**) di pojok kiri atas. Tidak perlu tap dulu supaya kelihatan.
 
 **Delete** ada di profil sebagai teks kecil, bukan tombol besar. Menghapus itu
 permanen: tidak ada refund Core atau Bits. Ini hanya menghapus satu Anima.

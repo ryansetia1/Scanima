@@ -47,11 +47,15 @@ func sync_chosen() -> void:
 
 
 func _draw() -> void:
+	# `get_item_rect()` mengembalikan koordinat konten dan terukur TIDAK ikut
+	# bergeser saat list di-scroll, jadi offsetnya dikurangi sendiri; tanpa itu
+	# checklist menempel di layar sementara kartunya jalan.
+	var scroll := get_v_scroll_bar().value
 	for index in item_count:
 		if not is_selected(index):
 			continue
 		var item_rect := get_item_rect(index)
-		var center := Vector2(item_rect.end.x - 28.0, item_rect.position.y + 26.0)
+		var center := Vector2(item_rect.end.x - 28.0, item_rect.position.y + 26.0 - scroll)
 		draw_circle(center, 18.0, SELECTED_BORDER)
 		draw_polyline(
 			PackedVector2Array([

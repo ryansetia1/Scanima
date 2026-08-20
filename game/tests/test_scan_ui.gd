@@ -3648,6 +3648,45 @@ func _test_collection_bottom_sheet() -> void:
 		not collection.apply_care_sync(row, old_revision),
 		"care response is ignored after its sheet revision closes"
 	)
+
+	# Badge level digambar di luar layout, jadi satu-satunya cara ia salah tanpa
+	# suara adalah scroll: `get_item_rect()` terukur mengembalikan koordinat
+	# konten, bukan koordinat yang terlihat, sehingga badge bisa tertinggal di
+	# tempatnya sementara kartunya jalan.
+	var locale := root.get_node("LocaleManager")
+	var badge_rows: Array[Dictionary] = []
+	for index in 24:
+		badge_rows.append({
+			"id": "badge-%d" % index,
+			"nickname": "Badge %d" % index,
+			"element": "spark",
+			"care_score": 250 if index == 1 else 0,
+		})
+	collection.set_rows(badge_rows, "", func(_row: Dictionary) -> Texture2D: return null)
+	await process_frame
+	_check_eq(
+		str(collection.call("_badge_text", 0)),
+		str(locale.call("level_label", 1)),
+		"every Collection card carries its own Lv. badge"
+	)
+	_check_eq(
+		str(collection.call("_badge_text", 1)),
+		str(locale.call("level_label", CareRules.level_from_exp(250))),
+		"the Lv. badge reads stored EXP, not the row order"
+	)
+	var badge_bar := (
+		collection.find_child("AnimaList", true, false) as ItemList
+	).get_v_scroll_bar()
+	var badge_top: float = (collection.call("_badge_origin", 0) as Vector2).y
+	badge_bar.value = badge_bar.max_value
+	_check(
+		badge_bar.max_value > 0.0
+		and is_equal_approx(
+			badge_top - (collection.call("_badge_origin", 0) as Vector2).y,
+			badge_bar.max_value
+		),
+		"the Lv. badge travels with its card when the grid scrolls"
+	)
 	collection.queue_free()
 	await process_frame
 
