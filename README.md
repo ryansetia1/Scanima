@@ -280,15 +280,21 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 | [docs/05-roadmap.md](docs/05-roadmap.md) | Breakdown Phase 1-4 dengan exit criteria dan risiko |
 | [docs/06-ui-globalization.md](docs/06-ui-globalization.md) | Shell mobile lima destination, design tokens, i18n, accessibility, dan aturan penambahan locale |
 | [docs/07-collection-summon-and-empty-state.md](docs/07-collection-summon-and-empty-state.md) | Desain bottom sheet Collection, transisi Summon, dan empty state pemain tanpa Anima |
+| [docs/08-private-art-and-gallery.md](docs/08-private-art-and-gallery.md) | Art privat per-Anima, consent publish, moderation, dan bot pool Battle |
 | [docs/09-team-battle-and-expedition.md](docs/09-team-battle-and-expedition.md) | Kontrak Team Battle, Expedition, chapter server-delivered, Trophy, dan rollout |
 | [docs/10-manual-chapter-assets.md](docs/10-manual-chapter-assets.md) | Prompt reusable + The Sugarworks dan folder handoff untuk generation aset manual di ChatGPT |
 | [docs/11-core-loop-and-player-motivation.md](docs/11-core-loop-and-player-motivation.md) | Diagnosis non-teknis: tindakan, hambatan, motivasi pemain, kekuatan loop saat ini, dan pilihan arah produk |
+| [docs/12-local-first-turns.md](docs/12-local-first-turns.md) | Prediksi turn client, pagar parity, rollback transport, dan jalur yang sengaja tetap menunggu server |
 | [docs/13-evolution-silhouette-design.md](docs/13-evolution-silhouette-design.md) | Desain v22 silhouette-first: body plan berbeda tiap stage, transformed anchors, archetype, dan rollout eval |
+| [docs/14-deploy-log.md](docs/14-deploy-log.md) | Riwayat rollout production: Atlas, Name Lineage v41, gerbang Rename, Capture Vibe, gate IP, Evolution art, Battle polish, daftar migration |
+| [docs/15-commands.md](docs/15-commands.md) | Katalog demo visual `--*-demo`, uji terhadap production, build dan verifikasi APK, backend lokal |
+| [docs/16-prompt-version-history.md](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v41 dan provenance setiap versi prompt yang ditolak |
 | [docs/designs/2026-08-17-evolution-identity-invariants-v23.md](docs/designs/2026-08-17-evolution-identity-invariants-v23.md) | Desain v23 untuk mengunci identity/soul lintas Adult dan Evolved tanpa mengorbankan perubahan siluet |
 | [docs/designs/2026-08-17-evolution-maturity-apex-presence-v24.md](docs/designs/2026-08-17-evolution-maturity-apex-presence-v24.md) | Desain v24 untuk kematangan wajah/tubuh, apex presence, aura-safe, dan payoff final evolution |
 | [docs/designs/2026-08-17-evolution-pokemon-clarity-v25.md](docs/designs/2026-08-17-evolution-pokemon-clarity-v25.md) | Desain v25 untuk Shape Budget, anatomy-agnostic maturity, Pokémon-like clarity, dan VFX-only supernatural power |
 | [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md) | Sumber art direction v2: linework, cel shading, transformasi objek, pose, dan negative style |
-| [CLAUDE.md](CLAUDE.md) | Konteks dan konvensi untuk AI coding agent |
+| [CLAUDE.md](CLAUDE.md) | Konteks dan konvensi untuk AI coding agent; peta ke rule per-domain |
+| [.cursor/rules/](.cursor/rules/) | Lima rule ber-glob yang dimuat sendiri saat file domainnya disentuh: Battle/Expedition, shell client, pagar backend, pipeline art, plugin Android |
 
 ## Struktur repo
 
