@@ -1,0 +1,26 @@
+{
+  "slot": "expedition_sugarworks_map",
+  "status": "succeeded",
+  "prediction_id": "wa3wma5b15rmt0d042ssycskd8",
+  "model": "openai/gpt-image-2",
+  "quality": "medium",
+  "aspect_ratio": "9:16",
+  "prompt_path": "backend/prompts/ui_backgrounds/expedition_sugarworks_map.md",
+  "prompt_sha256": "1ac0627f7295401d7bdb673aad31dee92aef84c84a875e640ce5b7472813dde0",
+  "created_at": "2026-08-20T19:44:00.928Z",
+  "updated_at": "2026-08-20T19:44:41.260Z",
+  "raw_sha256": "c48b8b5df4f2046953aad3f3bbab7d0322db63d9e8d2fabb0354d93bfcdc5bc0",
+  "output_sha256": "667b9bce7facf3c02f2698ada018596a2244328b1761db2c6fc7e736ba3d6ada",
+  "source_dimensions": [
+    720,
+    1602
+  ],
+  "output_dimensions": [
+    720,
+    1602
+  ],
+  "raw_path": "backend/generated/ui_backgrounds/raw/expedition_sugarworks_map.png",
+  "output_path": "game/assets/backgrounds/expedition_sugarworks_map_background.png",
+  "seconds": 44,
+  "completed_at": "2026-08-20T19:44:43.904Z"
+}

@@ -90,6 +90,7 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 @onready var _seeker_menu_sheet: SeekerMenuSheet = %SeekerMenuSheet
 @onready var _seeker_onboarding_sheet: SeekerOnboardingSheet = %SeekerOnboardingSheet
 @onready var _home_view: HomeView = %HomeView
+@onready var _home_background: HomeBackground = %HomeBackground
 @onready var _scan_view: ScanView = %ScanView
 @onready var _battle_view = %BattleView
 @onready var _team_battle_view: TeamBattleView = _battle_view.get_node("TeamBattleView")
@@ -546,7 +547,6 @@ func _boot() -> void:
 		GameState.remember_anima({})
 		_anima.sprite_frames = null
 		_set_home_shell_state(&"empty")
-		_say(tr("STATUS_FIRST_SCAN"))
 	if not GameState.pending_evolution.is_empty():
 		call_deferred("_resume_pending_evolution", false)
 	else:
@@ -788,7 +788,6 @@ func _retry_roster() -> void:
 		await _present_row(active if not active.is_empty() else _roster[0])
 	elif loaded:
 		_set_home_shell_state(&"empty")
-		_say(tr("STATUS_FIRST_SCAN"))
 	else:
 		_set_home_shell_state(&"error")
 		_say(tr("STATUS_ROSTER_ERROR"))
@@ -3973,6 +3972,7 @@ func _switch_destination(
 			_profile_anima = _current_anima.duplicate(true)
 	_destination = destination
 	_home_view.visible = destination == BottomNav.HOME
+	_home_background.visible = destination == BottomNav.HOME
 	_scan_view.visible = destination == BottomNav.SCAN
 	_battle_view.visible = destination == BottomNav.BATTLE
 	_collection_view.visible = destination == BottomNav.COLLECTION

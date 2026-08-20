@@ -31,6 +31,12 @@ signal exit_requested
 signal arena_open_changed(open: bool)
 
 const BACKGROUND_DOF_SHADER: Shader = preload("res://shaders/battle_background_dof.gdshader")
+const DUEL_BACKGROUND_DAY: Texture2D = preload(
+	"res://assets/backgrounds/duel_day_background.png"
+)
+const DUEL_BACKGROUND_NIGHT: Texture2D = preload(
+	"res://assets/backgrounds/duel_background.png"
+)
 
 @onready var _header: Control = %Header
 @onready var _duel_column: VBoxContainer = %Column
@@ -99,6 +105,9 @@ var _fighter_layer: Node2D
 var _art_cache: Dictionary = {}
 var _background_session_id := ""
 var _background_pan := 0.5
+var _uses_static_background := false
+var _background_material: ShaderMaterial
+var _background_timer: Timer
 var _player_shadow: Sprite2D
 var _bot_shadow: Sprite2D
 
@@ -130,9 +139,15 @@ func _ready() -> void:
 	_bot_sprite.set_facing(-1.0)
 	_player_sprite.z_index = 3
 	_bot_sprite.z_index = 2
-	var background_material := ShaderMaterial.new()
-	background_material.shader = BACKGROUND_DOF_SHADER
-	_arena_background.material = background_material
+	_background_material = ShaderMaterial.new()
+	_background_material.shader = BACKGROUND_DOF_SHADER
+	_arena_background.material = _background_material
+	_background_timer = Timer.new()
+	_background_timer.name = "DuelBackgroundTimer"
+	_background_timer.wait_time = 1.0
+	_background_timer.autostart = true
+	add_child(_background_timer)
+	_background_timer.timeout.connect(_refresh_static_background)
 	_player_shadow = _make_ground_shadow(_player_anchor)
 	_bot_shadow = _make_ground_shadow(_bot_anchor)
 	_player_sprite.pose_changed.connect(func(_pose: String) -> void: _sync_shadow("player"))
@@ -1253,16 +1268,27 @@ func _apply_arena_background(art_cache: Dictionary) -> void:
 	if not art_cache.is_empty():
 		_art_cache = art_cache.duplicate(true)
 	var texture: Variant = _art_cache.get("arena_background")
-	var ready := texture is Texture2D
-	if ready:
-		_arena_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		_arena_background.stretch_mode = TextureRect.STRETCH_SCALE
-		_arena_background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		_arena_background.texture = texture
+	_uses_static_background = not texture is Texture2D
+	if _uses_static_background:
+		texture = DUEL_BACKGROUND_NIGHT
+		_background_material.set_shader_parameter("day_texture", DUEL_BACKGROUND_DAY)
+		_refresh_static_background()
 	else:
-		_arena_background.texture = null
-	_arena_background.visible = ready
+		_background_material.set_shader_parameter("daylight_blend", 0.0)
+	_arena_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_arena_background.stretch_mode = TextureRect.STRETCH_SCALE
+	_arena_background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_arena_background.texture = texture
+	_arena_background.visible = texture is Texture2D
 	_sync_background_pan()
+
+
+func _refresh_static_background() -> void:
+	if not _uses_static_background or not is_instance_valid(_background_material):
+		return
+	_background_material.set_shader_parameter(
+		"daylight_blend", LocalDaylight.daylight_blend()
+	)
 
 
 func _sync_background_pan() -> void:
@@ -1290,8 +1316,9 @@ func _layout_arena_background(background_zoom: float) -> void:
 	_arena_background.pivot_offset = Vector2.ZERO
 	_arena_background.scale = Vector2.ONE
 	_arena_background.size = draw_size
+	var pan := 0.5 if _uses_static_background else _background_pan
 	_arena_background.position = Vector2(
-		-overflow.x * _background_pan,
+		-overflow.x * pan,
 		-overflow.y * 0.5
 	)
 

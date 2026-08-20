@@ -11,7 +11,10 @@ const EDGE_WIDTH := 5.0
 const EDGE_FUTURE := Color(0.38, 0.48, 0.68, 0.42)
 const EDGE_LOCKED := Color(0.25, 0.3, 0.43, 0.2)
 const EDGE_PREVIEW := Color(0.278, 0.902, 1.0, 0.95)
-const BACKGROUND_STYLE := &"ModalPanel"
+const BACKGROUND_TINT := Color(0.008, 0.015, 0.035, 0.24)
+const ROUTE_BACKGROUND: Texture2D = preload(
+	"res://assets/backgrounds/expedition_sugarworks_top_view_background.png"
+)
 const MOBILE_THEME := preload("res://themes/mobile_theme.tres")
 const SELECTED_ICON_COLORS := {
 	"icon_normal_color": "font_color",
@@ -126,13 +129,10 @@ func node_button(node_id: String) -> Button:
 
 
 func _draw() -> void:
-	var background_style := MOBILE_THEME.get_stylebox("panel", BACKGROUND_STYLE)
-	if background_style is StyleBoxFlat:
-		var background_color := (background_style as StyleBoxFlat).bg_color
-		background_color.a = 1.0
-		draw_rect(Rect2(Vector2.ZERO, size), background_color)
-	else:
-		draw_style_box(background_style, Rect2(Vector2.ZERO, size))
+	var background_rect := cover_rect(ROUTE_BACKGROUND.get_size(), size)
+	if background_rect.has_area():
+		draw_texture_rect(ROUTE_BACKGROUND, background_rect, false)
+		draw_rect(Rect2(Vector2.ZERO, size), BACKGROUND_TINT)
 	for node: Dictionary in _nodes:
 		var from_id := str(node.get("id", ""))
 		var from_button := node_button(from_id)
@@ -147,6 +147,19 @@ func _draw() -> void:
 				to_button.position + to_button.size * 0.5,
 				_edge_state(from_id, to_id)
 			)
+
+
+static func cover_rect(texture_size: Vector2, target_size: Vector2) -> Rect2:
+	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
+		return Rect2()
+	if target_size.x <= 0.0 or target_size.y <= 0.0:
+		return Rect2()
+	var scale_factor := maxf(
+		target_size.x / texture_size.x,
+		target_size.y / texture_size.y
+	)
+	var draw_size := texture_size * scale_factor
+	return Rect2((target_size - draw_size) * 0.5, draw_size)
 
 
 func _draw_edge(from: Vector2, to: Vector2, state: String) -> void:

@@ -1,0 +1,26 @@
+{
+  "slot": "home",
+  "status": "succeeded",
+  "prediction_id": "d88j9fgm0xrmr0d042rv8rakaw",
+  "model": "openai/gpt-image-2",
+  "quality": "medium",
+  "aspect_ratio": "9:16",
+  "prompt_path": "backend/prompts/ui_backgrounds/home.md",
+  "prompt_sha256": "d9c2b87a1c05016c250120ab56500146d865f744c5fe4a77b8ac98105ff26a68",
+  "created_at": "2026-08-20T19:41:11.205Z",
+  "updated_at": "2026-08-20T19:41:56.607Z",
+  "raw_sha256": "9fa5c402d3919a5a57b7841c94f3b5c5a7bf242bc779559e826884bd398f649e",
+  "output_sha256": "3a4d25475e8ea33f999fd800dca60d40cef69d26ab25e595952590a9be5df2bd",
+  "source_dimensions": [
+    720,
+    1602
+  ],
+  "output_dimensions": [
+    720,
+    1602
+  ],
+  "raw_path": "backend/generated/ui_backgrounds/raw/home.png",
+  "output_path": "game/assets/backgrounds/home_background.png",
+  "seconds": 50,
+  "completed_at": "2026-08-20T19:41:58.884Z"
+}

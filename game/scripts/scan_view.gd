@@ -6,11 +6,17 @@ signal sign_in_requested
 
 const VIBES: PackedStringArray = ["natural", "cute", "brave", "wild", "sinister"]
 const DEFAULT_VIBE := "natural"
+# Lucide camera flash sits above and left of the body; (8, 24) is the optical
+# center at 172px. Revisit if the glyph changes.
+const CAMERA_OPTICAL_OFFSET := Vector2(8.0, 24.0)
 
 @onready var _preview_panel: PanelContainer = %PreviewPanel
 @onready var _preview: TextureRect = %PhotoPreview
+@onready var _subtitle: Label = $Column/Subtitle
+@onready var _discovery_space: Control = $Column/DiscoverySpace
 @onready var _idle_graphic: TextureRect = $Column/DiscoverySpace/IdleGraphic
 @onready var _scan_overlay: Control = %ScanOverlay
+@onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _phase_badge: Label = %ScanPhase
 @onready var _status: Label = %ScanStatus
 @onready var _hint: Label = %ScanPhaseHint
@@ -39,12 +45,16 @@ func _ready() -> void:
 			continue
 		button.toggle_mode = true
 		button.focus_mode = Control.FOCUS_ALL
-		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		button.autowrap_mode = TextServer.AUTOWRAP_OFF
 		button.set_meta("vibe", slug)
 		button.pressed.connect(_on_vibe_pressed.bind(slug))
 		_vibe_buttons.append(button)
+	resized.connect(_align_idle_graphic)
+	_discovery_space.resized.connect(_align_idle_graphic)
+	visibility_changed.connect(_align_idle_graphic)
 	set_phase(&"idle")
 	_refresh_vibe_ui()
+	_align_idle_graphic.call_deferred()
 
 
 func vibe() -> String:
@@ -99,7 +109,9 @@ func set_phase(phase: StringName) -> void:
 		_:
 			_phase_badge.text = tr("SCAN_NEW_DISCOVERY")
 			_refresh_lock()
+	_refresh_idle_copy()
 	_refresh_vibe_ui()
+	_align_idle_graphic.call_deferred()
 
 
 func _refresh_lock() -> void:
@@ -111,8 +123,41 @@ func _refresh_lock() -> void:
 	if _phase == &"idle":
 		if _sign_in_required:
 			_hint.text = tr("SCAN_SIGN_IN_HINT")
+		elif locked:
+			_hint.text = tr("SCAN_NO_CORE_HINT")
 		else:
-			_hint.text = tr("SCAN_NO_CORE_HINT") if locked else tr("SCAN_CAMERA_HINT")
+			_hint.text = tr("SCAN_CAMERA_HINT")
+	_refresh_idle_copy()
+
+
+func _refresh_idle_copy() -> void:
+	var idle := _phase == &"idle"
+	_subtitle.visible = false
+	_phase_badge.visible = not idle
+	_status.visible = not idle
+	_hint.visible = not idle or not _sign_in_required
+	_status_panel.visible = _phase_badge.visible or _status.visible or _hint.visible
+
+
+func _align_idle_graphic() -> void:
+	if not is_instance_valid(_idle_graphic) or not is_instance_valid(_discovery_space):
+		return
+	var space := _discovery_space
+	if space.size.x < 8.0 or space.size.y < 8.0:
+		return
+	var chamber := ScanimaBackground.chamber_center(get_viewport_rect().size)
+	var local := space.get_global_transform_with_canvas().affine_inverse() * chamber
+	local += CAMERA_OPTICAL_OFFSET
+	var half := _idle_graphic.size * 0.5
+	if half.x <= 0.0 or half.y <= 0.0:
+		half = Vector2(86.0, 86.0)
+	local.x = clampf(local.x, half.x, maxf(half.x, space.size.x - half.x))
+	local.y = clampf(local.y, half.y, maxf(half.y, space.size.y - half.y))
+	var delta := local - space.size * 0.5
+	_idle_graphic.offset_left = -half.x + delta.x
+	_idle_graphic.offset_top = -half.y + delta.y
+	_idle_graphic.offset_right = half.x + delta.x
+	_idle_graphic.offset_bottom = half.y + delta.y
 
 
 func _refresh_vibe_ui() -> void:
@@ -126,7 +171,7 @@ func _refresh_vibe_ui() -> void:
 		var selected := slug == _vibe
 		button.set_pressed_no_signal(selected)
 		button.disabled = _busy or not idle
-		button.theme_type_variation = &"PrimaryButton" if selected else &""
+		button.theme_type_variation = &"VibeSelected" if selected else &""
 		button.text = tr("SCAN_VIBE_%s" % slug.to_upper())
 	_vibe_hint.text = tr("SCAN_VIBE_HINT_%s" % _vibe.to_upper())
 

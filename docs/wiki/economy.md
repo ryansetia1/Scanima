@@ -57,7 +57,7 @@ Tab **Scan** bisa membuka kamera atau memilih **satu foto** dari perangkat.
    untuk membuka pilihan foto.
 2. Di tab **Scan**, **Vibe** sudah terpilih **Natural**. Boleh langsung Scan, atau
    ganti ke **Cute**, **Brave**, **Wild**, atau **Sinister** supaya wajah, postur,
-   dan energi visualnya berbeda. Ciri objek atau hewan aslinya tetap harus
+   dan energi visualnya berbeda. Satu baris di bawah chip menjelaskan pilihan itu. Ciri objek atau hewan aslinya tetap harus
    terbaca. Vibe tidak mengubah kekuatan, elemen, atau biaya, dan tidak muncul
    lagi di profil sesudah Anima menetas. Build lama tanpa chip Vibe tetap Scan
    sebagai **Natural**.

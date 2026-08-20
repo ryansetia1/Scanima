@@ -31,6 +31,9 @@ const SEEKER_CAMERA_EDGE_PAD_RATIO := 0.025
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 const BACKGROUND_DOF_SHADER: Shader = preload("res://shaders/battle_background_dof.gdshader")
+const TEAM_BACKGROUND: Texture2D = preload(
+	"res://assets/backgrounds/team_battle_background.png"
+)
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 const BOSS_SEEKER_PRESENTER := preload("res://scripts/boss_seeker_presenter.gd")
 const BOSS_SEEKER_DIALOG := preload("res://scripts/boss_seeker_dialog.gd")
@@ -129,6 +132,7 @@ var _seeker_shadow: Sprite2D
 var _fighter_layer: Node2D
 var _background_session_id := ""
 var _background_pan := 0.5
+var _uses_static_background := false
 var _seeker_dialog: BOSS_SEEKER_DIALOG
 var _seeker_loaded: Dictionary = {}
 var _spoken: Dictionary = {}
@@ -408,15 +412,14 @@ func session_kind() -> String:
 
 func _apply_arena_background(art_cache: Dictionary) -> void:
 	var texture: Variant = art_cache.get("arena_background", _art_cache.get("arena_background"))
-	var ready := texture is Texture2D
-	if ready:
-		_arena_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		_arena_background.stretch_mode = TextureRect.STRETCH_SCALE
-		_arena_background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		_arena_background.texture = texture
-	else:
-		_arena_background.texture = null
-	_arena_background.visible = ready
+	_uses_static_background = not _expedition_mode and not texture is Texture2D
+	if _uses_static_background:
+		texture = TEAM_BACKGROUND
+	_arena_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_arena_background.stretch_mode = TextureRect.STRETCH_SCALE
+	_arena_background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_arena_background.texture = texture if texture is Texture2D else null
+	_arena_background.visible = texture is Texture2D
 
 
 func begin_action(action: String) -> void:
@@ -1832,8 +1835,9 @@ func _layout_arena_background(background_zoom: float) -> void:
 	_arena_background.pivot_offset = Vector2.ZERO
 	_arena_background.scale = Vector2.ONE
 	_arena_background.size = draw_size
+	var pan := 0.5 if _uses_static_background else _background_pan
 	_arena_background.position = Vector2(
-		-overflow.x * _background_pan,
+		-overflow.x * pan,
 		-overflow.y * 0.5
 	)
 

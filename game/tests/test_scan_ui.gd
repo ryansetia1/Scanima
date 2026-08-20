@@ -160,7 +160,7 @@ func _initialize() -> void:
 		_check(margin.theme.default_font_size >= 32, "default font is readable at the 2x baseline")
 		_check(margin.theme.default_font != null, "commercial UI font must be bundled")
 		for variation in [
-			"PrimaryButton", "DangerButton", "CareDock", "BottomNavPanel", "NavTabButton", "ToastPanel",
+			"PrimaryButton", "VibeSelected", "DangerButton", "CareDock", "BottomNavPanel", "NavTabButton", "ToastPanel",
 			"NeedChip", "NeedChipLow",
 		]:
 			_check(
@@ -501,6 +501,34 @@ func _initialize() -> void:
 			margin.theme.get_color("font_color", "PrimaryButton"),
 			"focused primary labels retain readable dark contrast"
 		)
+		_check_eq(
+			margin.theme.get_color("font_pressed_color", "PrimaryButton"),
+			margin.theme.get_color("font_color", "PrimaryButton"),
+			"pressed primary labels stay dark on cyan"
+		)
+		_check_eq(
+			margin.theme.get_color("font_hover_pressed_color", "PrimaryButton"),
+			margin.theme.get_color("font_color", "PrimaryButton"),
+			"hover-pressed primary labels stay dark on cyan"
+		)
+		var primary_font := margin.theme.get_font("font", "PrimaryButton")
+		_check(primary_font is FontVariation, "PrimaryButton uses a weighted Nunito cut")
+		if primary_font is FontVariation:
+			_check_eq(
+				int((primary_font as FontVariation).variation_opentype.get(2003265652, 0)),
+				700,
+				"PrimaryButton is wght 700 so cyan chips stay readable"
+			)
+		_check_eq(
+			margin.theme.get_color("font_pressed_color", "VibeSelected"),
+			margin.theme.get_color("font_color", "VibeSelected"),
+			"selected Vibe labels stay dark on cyan"
+		)
+		var vibe_fill := margin.theme.get_stylebox("normal", "VibeSelected") as StyleBoxFlat
+		_check(
+			vibe_fill != null and vibe_fill.content_margin_left <= 8.0,
+			"selected Vibe chips keep CTA padding off the five-up row"
+		)
 
 	var scan_button := scene.find_child("ScanButton", true, false) as Button
 	if scan_button != null:
@@ -748,6 +776,7 @@ func _initialize() -> void:
 	_test_home_tap_interaction(scene)
 
 	await _check_music(scene)
+	_check_home_background(scene)
 
 	scene.free()
 	await _test_anima_tap_reactions()
@@ -1343,12 +1372,46 @@ func _test_scan_phase_visuals() -> void:
 	var packed := load("res://scenes/ui/scan_view.tscn") as PackedScene
 	var view := packed.instantiate()
 	root.add_child(view)
+	view.visible = true
+	await process_frame
+	await process_frame
+	view.call("_align_idle_graphic")
 	await process_frame
 	var idle_graphic := view.find_child("IdleGraphic", true, false) as TextureRect
 	var preview := view.find_child("PreviewPanel", true, false) as PanelContainer
 	var overlay := view.find_child("ScanOverlay", true, false) as Control
 	_check(idle_graphic != null and idle_graphic.visible, "idle Scan shows the camera graphic")
 	_check(overlay != null and not overlay.visible, "scan overlay starts hidden")
+	await process_frame
+	var discovery := idle_graphic.get_parent() as Control
+	var half := idle_graphic.size * 0.5
+	if half.x <= 0.0 or half.y <= 0.0:
+		half = Vector2(86.0, 86.0)
+	var icon_center := idle_graphic.global_position + idle_graphic.size * 0.5
+	if idle_graphic.size.x <= 0.0:
+		icon_center = idle_graphic.global_position + half
+	var chamber_local := discovery.get_global_transform_with_canvas().affine_inverse() * (
+		ScanimaBackground.chamber_center(view.get_viewport_rect().size)
+	)
+	chamber_local += ScanView.CAMERA_OPTICAL_OFFSET
+	chamber_local.x = clampf(chamber_local.x, half.x, maxf(half.x, discovery.size.x - half.x))
+	chamber_local.y = clampf(chamber_local.y, half.y, maxf(half.y, discovery.size.y - half.y))
+	_check(
+		icon_center.distance_to(discovery.global_position + chamber_local) < 2.0,
+		"idle camera sits on the chamber ring"
+	)
+	var subtitle := view.find_child("Subtitle", true, false) as Label
+	var phase_badge := view.find_child("ScanPhase", true, false) as Label
+	var status := view.find_child("ScanStatus", true, false) as Label
+	_check(
+		subtitle != null
+		and not subtitle.visible
+		and phase_badge != null
+		and not phase_badge.visible
+		and status != null
+		and not status.visible,
+		"idle Scan hides subtitle and ready-status copy"
+	)
 
 	var image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
 	image.fill(Color.WHITE)
@@ -1389,12 +1452,17 @@ func _test_scan_phase_visuals() -> void:
 		tr("STATUS_SCAN_READY"),
 		"Scan still writes in-page status"
 	)
+	_check(
+		not (view.find_child("ScanStatus", true, false) as Label).visible,
+		"idle Scan does not paint ready-status as a third headline"
+	)
 	for slug in ["natural", "cute", "brave", "wild", "sinister"]:
 		var vibe_button := view.find_child("Vibe%s" % slug.capitalize(), true, false) as Button
 		_check(
 			vibe_button != null
 			and vibe_button.custom_minimum_size.y >= TOUCH_MIN
 			and vibe_button.focus_mode == Control.FOCUS_ALL
+			and vibe_button.autowrap_mode == TextServer.AUTOWRAP_OFF
 			and not vibe_button.text.is_empty(),
 			"%s Vibe stays a 96px labelled focus target" % slug
 		)
@@ -1403,11 +1471,15 @@ func _test_scan_phase_visuals() -> void:
 	_check(
 		view.vibe() == "cute"
 		and cute_button != null
-		and cute_button.theme_type_variation == &"PrimaryButton",
+		and cute_button.theme_type_variation == &"VibeSelected",
 		"choosing Cute marks that chip without requiring another Scan tap"
 	)
 	view.set_phase(&"analyzing")
 	_check(not vibe_block.visible, "analysis hides Vibe so the choice cannot change mid-scan")
+	_check(
+		phase_badge.visible and status.visible,
+		"analysis restores phase copy"
+	)
 	view.set_phase(&"idle")
 	_check(vibe_block.visible and view.vibe() == "cute", "returning idle keeps the chosen Vibe")
 	view.reset_vibe()
@@ -1417,7 +1489,7 @@ func _test_scan_phase_visuals() -> void:
 	view.set_sign_in_required(true)
 	_check(
 		scan_button.text == tr("SCAN_SIGN_IN_ACTION")
-		and hint.text == tr("SCAN_SIGN_IN_HINT")
+		and not hint.visible
 		and not scan_button.disabled,
 		"used guest Scan becomes an active Google sign-in CTA"
 	)
@@ -1914,7 +1986,25 @@ func _test_battle_view() -> void:
 		"Duel arena drops the modal frame so it can take Expedition zone art"
 	)
 	_check(arena_background != null, "Duel stage has an Expedition-style background slot")
-	_check(arena_background != null and not arena_background.visible, "Duel background stays hidden until art is supplied")
+	var duel_material := arena_background.material as ShaderMaterial
+	var daylight := load("res://scripts/local_daylight.gd") as GDScript
+	_check(
+		arena_background != null
+		and arena_background.visible
+		and arena_background.texture == load(
+			"res://assets/backgrounds/duel_background.png"
+		)
+		and duel_material.get_shader_parameter("day_texture") == load(
+			"res://assets/backgrounds/duel_day_background.png"
+		)
+		and is_equal_approx(
+			float(duel_material.get_shader_parameter("daylight_blend")),
+			daylight.daylight_blend()
+		)
+		and arena_background.size.x >= arena.size.x
+		and arena_background.size.y >= arena.size.y,
+		"Duel smoothly blends local daylight while cover-cropping without gaps"
+	)
 	_check(dock_fill != null, "Duel footer wears the Expedition dock plate")
 	_check(surge.theme_type_variation == &"", "Duel Special is not a PrimaryButton so the four actions match")
 	_check(
@@ -2500,9 +2590,16 @@ func _test_team_battle_view() -> void:
 	view.set_session(session, art_cache)
 	_check(view.is_arena_open(), "set_session opens the immersive arena")
 	var arena_background := view.find_child("TeamArenaBackground", true, false) as TextureRect
+	var battle_stage := view.find_child("TeamBattleStage", true, false) as Control
 	_check(
-		arena_background != null and not arena_background.visible,
-		"Team Battle arena keeps zone art hidden without an Expedition background"
+		arena_background != null
+		and arena_background.visible
+		and arena_background.texture == load(
+			"res://assets/backgrounds/team_battle_background.png"
+		)
+		and arena_background.size.x >= battle_stage.size.x
+		and arena_background.size.y >= battle_stage.size.y,
+		"Team Battle uses its generated arena and cover-crops it without gaps"
 	)
 	var header := view.get_node("Column/Header") as Control
 	var turn := view.find_child("TeamTurn", true, false) as Label
@@ -3451,6 +3548,15 @@ func _test_expedition_view() -> void:
 	)
 	var route_map := view.find_child("ExpeditionRouteMap", true, false) as Control
 	var map_primary := view.find_child("ExpeditionMapPrimary", true, false) as Button
+	var map_cover: Rect2 = route_map.call(
+		"cover_rect", Vector2(720.0, 1602.0), Vector2(1000.0, 800.0)
+	)
+	_check(
+		map_cover.size.x + 0.01 >= 1000.0
+		and map_cover.size.y + 0.01 >= 800.0
+		and is_equal_approx(map_cover.size.x / map_cover.size.y, 720.0 / 1602.0),
+		"Expedition map cover-crops wide layouts without stretching the Sugarworks"
+	)
 	var enabled_route_nodes := 0
 	for child in route_map.get_children():
 		if child is Button and not (child as Button).disabled:
@@ -4684,6 +4790,52 @@ func _capture_preview_request(_row: Dictionary, _revision: int) -> void:
 func _capture_help_request(title: String, body: String) -> void:
 	_help_title = title
 	_help_body = body
+
+
+func _check_home_background(scene: Node) -> void:
+	var background := scene.find_child("HomeBackground", true, false) as TextureRect
+	var stage := scene.find_child("Stage", true, false) as Node2D
+	var procedural := scene.find_child("Background", false, false) as Node2D
+	var live_background := background.duplicate() as TextureRect
+	root.add_child(live_background)
+	var daylight_timer := live_background.find_child("DaylightTimer", false, false) as Timer
+	var daylight := load("res://scripts/local_daylight.gd") as GDScript
+	var background_material := live_background.material as ShaderMaterial
+	_check(
+		is_zero_approx(daylight.daylight_blend(5, 30))
+		and is_equal_approx(daylight.daylight_blend(6, 0), 0.5)
+		and is_equal_approx(daylight.daylight_blend(6, 30), 1.0)
+		and is_equal_approx(daylight.daylight_blend(17, 30), 1.0)
+		and is_equal_approx(daylight.daylight_blend(18, 0), 0.5)
+		and is_zero_approx(daylight.daylight_blend(18, 30)),
+		"local daylight eases continuously through one-hour dawn and dusk windows"
+	)
+	_check(
+		background != null
+		and background.get_parent() == scene
+		and procedural.z_index < background.z_index
+		and background.z_index < stage.z_index
+		and background.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		and live_background.position == Vector2.ZERO
+		and live_background.size == live_background.get_viewport_rect().size,
+		"Home background fills the viewport between the procedural shell and Anima"
+	)
+	_check(
+		live_background.texture == load("res://assets/backgrounds/home_background.png")
+		and background_material.get_shader_parameter("day_texture") == load(
+			"res://assets/backgrounds/home_day_background.png"
+		)
+		and is_equal_approx(
+			float(background_material.get_shader_parameter("daylight_blend")),
+			daylight.daylight_blend()
+		),
+		"Home shader continuously blends the preloaded day and night artwork"
+	)
+	_check(
+		daylight_timer != null and daylight_timer.wait_time <= 1.0,
+		"Home daylight blend resynchronizes at least once per second"
+	)
+	live_background.free()
 
 
 func _test_home_care_actions() -> void:

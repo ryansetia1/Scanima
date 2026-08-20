@@ -5,7 +5,7 @@
 [ext_resource type="Theme" uid="uid://cbi43xka3xsp5" path="res://themes/mobile_theme.tres" id="3_theme"]
 [ext_resource type="Script" uid="uid://brrftjl02bq63" path="res://scripts/incubator_effect.gd" id="4_incubator"]
 [ext_resource type="Script" uid="uid://dptota5pyehri" path="res://scripts/scanima_background.gd" id="5_background"]
-[ext_resource type="PackedScene" path="res://scenes/ui/home_view.tscn" id="6_home"]
+[ext_resource type="PackedScene" uid="uid://c10np8eypr1bw" path="res://scenes/ui/home_view.tscn" id="6_home"]
 [ext_resource type="PackedScene" path="res://scenes/ui/scan_view.tscn" id="7_scan"]
 [ext_resource type="PackedScene" uid="uid://c5s7hfsvqq6d5" path="res://scenes/ui/collection_view.tscn" id="8_collection"]
 [ext_resource type="PackedScene" path="res://scenes/ui/anima_details_view.tscn" id="9_details"]
@@ -24,13 +24,14 @@
 [ext_resource type="Script" uid="uid://cw8shmpti4kvh" path="res://scripts/menu_popover.gd" id="23_n5v8b"]
 [ext_resource type="Texture2D" uid="uid://b1i2vmm8a4qh2" path="res://assets/icons/user.svg" id="24_menu_user"]
 [ext_resource type="Texture2D" uid="uid://cw3e80fv6bv38" path="res://assets/icons/library.svg" id="25_menu_atlas"]
+[ext_resource type="Script" uid="uid://bfbuujsg42m0" path="res://scripts/home_background.gd" id="26_0wixs"]
 [ext_resource type="Texture2D" uid="uid://dcmoq8khu8xnx" path="res://assets/icons/settings.svg" id="26_menu_settings"]
 
 [node name="ScanFlow" type="Node2D" unique_id=494235915]
 script = ExtResource("1_flow")
 
 [node name="Background" type="Node2D" parent="." unique_id=998669022]
-z_index = -10
+z_index = -2
 script = ExtResource("5_background")
 
 [node name="Stage" type="Node2D" parent="." unique_id=502841098]
@@ -317,3 +318,12 @@ theme_type_variation = &"MenuRowButton"
 text = "MENU_SETTINGS"
 icon = ExtResource("26_menu_settings")
 alignment = 0
+
+[node name="HomeBackground" type="TextureRect" parent="." unique_id=646066821]
+unique_name_in_owner = true
+z_index = -1
+texture_filter = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+script = ExtResource("26_0wixs")

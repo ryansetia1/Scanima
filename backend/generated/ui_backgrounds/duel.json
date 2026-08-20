@@ -1,0 +1,26 @@
+{
+  "slot": "duel",
+  "status": "succeeded",
+  "prediction_id": "rqkae2r9g9rmr0d042s94xznnw",
+  "model": "openai/gpt-image-2",
+  "quality": "medium",
+  "aspect_ratio": "9:16",
+  "prompt_path": "backend/prompts/ui_backgrounds/duel.md",
+  "prompt_sha256": "cbf0c3f2b3514867cb69a9a91b541ceaa179a824b71dd88e69d704fe0b267df8",
+  "created_at": "2026-08-20T19:42:14.052Z",
+  "updated_at": "2026-08-20T19:42:49.472Z",
+  "raw_sha256": "48d87020eda5ac645b21b27e69a5c66ffd719e41f153c1217edeb1ec7c82cee0",
+  "output_sha256": "48eba71dff2619324e67f9c60251f152591a29b67d8e3e3334b6e63f3db3e069",
+  "source_dimensions": [
+    720,
+    1602
+  ],
+  "output_dimensions": [
+    720,
+    1602
+  ],
+  "raw_path": "backend/generated/ui_backgrounds/raw/duel.png",
+  "output_path": "game/assets/backgrounds/duel_background.png",
+  "seconds": 39,
+  "completed_at": "2026-08-20T19:42:51.884Z"
+}

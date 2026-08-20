@@ -16,6 +16,7 @@ const REDRAW_INTERVAL_SEC := 1.0 / 15.0
 const VIGNETTE_TOP_PX := 170.0
 const VIGNETTE_BOTTOM_PX := 330.0
 const VIGNETTE_BANDS := 18
+const CHAMBER_Y := 0.43
 
 var _phase: float = 0.0
 var _redraw_accumulator: float = 0.0
@@ -34,14 +35,17 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
+static func chamber_center(viewport_size: Vector2) -> Vector2:
+	return Vector2(viewport_size.x * 0.5, viewport_size.y * CHAMBER_Y)
+
+
 func _draw() -> void:
 	var size := get_viewport_rect().size
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
 
 	_draw_gradient(size)
-	var chamber_center := Vector2(size.x * 0.5, size.y * 0.43)
-	_draw_chamber(chamber_center, size)
+	_draw_chamber(chamber_center(size), size)
 	_draw_particles(size)
 	_draw_floor_grid(size)
 	_draw_vignette(size)

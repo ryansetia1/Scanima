@@ -1,38 +1,10 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene format=3 uid="uid://c10np8eypr1bw"]
 
-[ext_resource type="Script" path="res://scripts/home_view.gd" id="1_home"]
-[ext_resource type="Texture2D" path="res://assets/icons/scanima/feed.svg" id="2_feed"]
-[ext_resource type="Texture2D" path="res://assets/icons/scanima/clean.svg" id="3_clean"]
-[ext_resource type="Texture2D" path="res://assets/icons/scanima/sleep.svg" id="4_sleep"]
-[ext_resource type="Texture2D" path="res://assets/icons/scanima/play.svg" id="5_play"]
-
-[sub_resource type="StyleBoxFlat" id="NeedBackground"]
-bg_color = Color(0.025, 0.04, 0.09, 0.96)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxFlat" id="HungerFill"]
-bg_color = Color(0.95, 0.42, 0.28, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxFlat" id="EnergyFill"]
-bg_color = Color(0.3, 0.84, 1, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxFlat" id="HygieneFill"]
-bg_color = Color(0.42, 0.9, 0.72, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+[ext_resource type="Script" uid="uid://bq5jtsg2ny5ir" path="res://scripts/home_view.gd" id="1_home"]
+[ext_resource type="Texture2D" uid="uid://b152gh8hoq306" path="res://assets/icons/scanima/feed.svg" id="2_feed"]
+[ext_resource type="Texture2D" uid="uid://ddx4qqdkcd07v" path="res://assets/icons/scanima/clean.svg" id="3_clean"]
+[ext_resource type="Texture2D" uid="uid://07ghtbufoah7" path="res://assets/icons/scanima/sleep.svg" id="4_sleep"]
+[ext_resource type="Texture2D" uid="uid://2h465m4yrdh8" path="res://assets/icons/scanima/play.svg" id="5_play"]
 
 [sub_resource type="StyleBoxFlat" id="ExpTrack"]
 bg_color = Color(0.16, 0.09, 0.24, 0.85)
@@ -48,7 +20,35 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[node name="HomeView" type="Control"]
+[sub_resource type="StyleBoxFlat" id="NeedBackground"]
+bg_color = Color(0.025, 0.04, 0.09, 0.96)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="HungerFill"]
+bg_color = Color(0.95, 0.42, 0.28, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="HygieneFill"]
+bg_color = Color(0.42, 0.9, 0.72, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="EnergyFill"]
+bg_color = Color(0.3, 0.84, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="HomeView" type="Control" unique_id=182363633]
 unique_name_in_owner = true
 layout_mode = 3
 anchors_preset = 15
@@ -59,7 +59,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_home")
 
-[node name="Column" type="VBoxContainer" parent="."]
+[node name="Column" type="VBoxContainer" parent="." unique_id=1271220891]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -69,52 +69,52 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_constants/separation = 10
 
-[node name="IdentityRow" type="HBoxContainer" parent="Column"]
+[node name="IdentityRow" type="HBoxContainer" parent="Column" unique_id=865184614]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 12
 
-[node name="Identity" type="VBoxContainer" parent="Column/IdentityRow"]
+[node name="Identity" type="VBoxContainer" parent="Column/IdentityRow" unique_id=224779817]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/separation = 0
 
-[node name="AnimaName" type="Label" parent="Column/IdentityRow/Identity"]
+[node name="AnimaName" type="Label" parent="Column/IdentityRow/Identity" unique_id=1787410891]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"AnimaNameLabel"
 text = "HOME_LOADING_NAME"
 autowrap_mode = 3
 
-[node name="AnimaMeta" type="Label" parent="Column/IdentityRow/Identity"]
+[node name="AnimaMeta" type="Label" parent="Column/IdentityRow/Identity" unique_id=812929318]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
 text = "HOME_LOADING_META"
 autowrap_mode = 2
 
-[node name="ChipGutter" type="Control" parent="Column/IdentityRow"]
+[node name="ChipGutter" type="Control" parent="Column/IdentityRow" unique_id=1521569028]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(222, 0)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="StageSpace" type="Control" parent="Column"]
+[node name="StageSpace" type="Control" parent="Column" unique_id=1484051595]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
 
-[node name="StageFooterSpace" type="Control" parent="Column"]
+[node name="StageFooterSpace" type="Control" parent="Column" unique_id=1170166537]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="HomePrimaryAction" type="Button" parent="Column"]
+[node name="HomePrimaryAction" type="Button" parent="Column" unique_id=1607511724]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(0, 96)
@@ -122,38 +122,38 @@ layout_mode = 2
 theme_type_variation = &"PrimaryButton"
 text = "HOME_EMPTY_CTA"
 
-[node name="CareDock" type="PanelContainer" parent="Column"]
+[node name="CareDock" type="PanelContainer" parent="Column" unique_id=162794509]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_type_variation = &"CareDock"
 
-[node name="CareColumn" type="VBoxContainer" parent="Column/CareDock"]
+[node name="CareColumn" type="VBoxContainer" parent="Column/CareDock" unique_id=765864279]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="CareHeader" type="HBoxContainer" parent="Column/CareDock/CareColumn"]
+[node name="CareHeader" type="HBoxContainer" parent="Column/CareDock/CareColumn" unique_id=536502767]
 layout_mode = 2
 
-[node name="NeedsTitle" type="Label" parent="Column/CareDock/CareColumn/CareHeader"]
+[node name="NeedsTitle" type="Label" parent="Column/CareDock/CareColumn/CareHeader" unique_id=1310948168]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"SectionLabel"
 text = "HOME_NEEDS_TITLE"
 
-[node name="SummaryColumn" type="VBoxContainer" parent="Column/CareDock/CareColumn/CareHeader"]
+[node name="SummaryColumn" type="VBoxContainer" parent="Column/CareDock/CareColumn/CareHeader" unique_id=1529520028]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 4
 
-[node name="CareSummary" type="Label" parent="Column/CareDock/CareColumn/CareHeader/SummaryColumn"]
+[node name="CareSummary" type="Label" parent="Column/CareDock/CareColumn/CareHeader/SummaryColumn" unique_id=684983839]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"EyebrowLabel"
 text = "HOME_CARE_SCORE"
 horizontal_alignment = 2
 
-[node name="NeedExp" type="ProgressBar" parent="Column/CareDock/CareColumn/CareHeader/SummaryColumn"]
+[node name="NeedExp" type="ProgressBar" parent="Column/CareDock/CareColumn/CareHeader/SummaryColumn" unique_id=1135987132]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 6)
 layout_mode = 2
@@ -163,39 +163,39 @@ theme_override_styles/fill = SubResource("BondFill")
 value = 100.0
 show_percentage = false
 
-[node name="NeedsRow" type="HBoxContainer" parent="Column/CareDock/CareColumn"]
+[node name="NeedsRow" type="HBoxContainer" parent="Column/CareDock/CareColumn" unique_id=146315452]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="HungerChip" type="PanelContainer" parent="Column/CareDock/CareColumn/NeedsRow"]
+[node name="HungerChip" type="PanelContainer" parent="Column/CareDock/CareColumn/NeedsRow" unique_id=1388911298]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"NeedChip"
 
-[node name="Box" type="VBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip"]
+[node name="Box" type="VBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip" unique_id=1015451217]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="TopRow" type="HBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip/Box"]
+[node name="TopRow" type="HBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip/Box" unique_id=890954787]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Label" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip/Box/TopRow"]
+[node name="Label" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip/Box/TopRow" unique_id=2130914276]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
 text = "CARE_HUNGER"
 
-[node name="HungerValue" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip/Box/TopRow"]
+[node name="HungerValue" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip/Box/TopRow" unique_id=221401140]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
 horizontal_alignment = 2
 
-[node name="NeedHunger" type="ProgressBar" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip/Box"]
+[node name="NeedHunger" type="ProgressBar" parent="Column/CareDock/CareColumn/NeedsRow/HungerChip/Box" unique_id=1858326827]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
@@ -204,35 +204,35 @@ theme_override_styles/fill = SubResource("HungerFill")
 value = 100.0
 show_percentage = false
 
-[node name="HygieneChip" type="PanelContainer" parent="Column/CareDock/CareColumn/NeedsRow"]
+[node name="HygieneChip" type="PanelContainer" parent="Column/CareDock/CareColumn/NeedsRow" unique_id=1681769007]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"NeedChip"
 
-[node name="Box" type="VBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip"]
+[node name="Box" type="VBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip" unique_id=893093829]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="TopRow" type="HBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip/Box"]
+[node name="TopRow" type="HBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip/Box" unique_id=139752357]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Label" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip/Box/TopRow"]
+[node name="Label" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip/Box/TopRow" unique_id=1077102682]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
 text = "CARE_HYGIENE"
 
-[node name="HygieneValue" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip/Box/TopRow"]
+[node name="HygieneValue" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip/Box/TopRow" unique_id=44385503]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
 horizontal_alignment = 2
 
-[node name="NeedHygiene" type="ProgressBar" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip/Box"]
+[node name="NeedHygiene" type="ProgressBar" parent="Column/CareDock/CareColumn/NeedsRow/HygieneChip/Box" unique_id=1939239596]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
@@ -241,35 +241,35 @@ theme_override_styles/fill = SubResource("HygieneFill")
 value = 100.0
 show_percentage = false
 
-[node name="EnergyChip" type="PanelContainer" parent="Column/CareDock/CareColumn/NeedsRow"]
+[node name="EnergyChip" type="PanelContainer" parent="Column/CareDock/CareColumn/NeedsRow" unique_id=1617644920]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"NeedChip"
 
-[node name="Box" type="VBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip"]
+[node name="Box" type="VBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip" unique_id=1684019615]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="TopRow" type="HBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip/Box"]
+[node name="TopRow" type="HBoxContainer" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip/Box" unique_id=1494236503]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Label" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip/Box/TopRow"]
+[node name="Label" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip/Box/TopRow" unique_id=196625885]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
 text = "CARE_ENERGY"
 
-[node name="EnergyValue" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip/Box/TopRow"]
+[node name="EnergyValue" type="Label" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip/Box/TopRow" unique_id=423022366]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
 horizontal_alignment = 2
 
-[node name="NeedEnergy" type="ProgressBar" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip/Box"]
+[node name="NeedEnergy" type="ProgressBar" parent="Column/CareDock/CareColumn/NeedsRow/EnergyChip/Box" unique_id=179223598]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
@@ -278,45 +278,45 @@ theme_override_styles/fill = SubResource("EnergyFill")
 value = 100.0
 show_percentage = false
 
-[node name="CareActions" type="GridContainer" parent="Column/CareDock/CareColumn"]
+[node name="CareActions" type="GridContainer" parent="Column/CareDock/CareColumn" unique_id=1696544992]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 8
 columns = 4
 
-[node name="FeedButton" type="Button" parent="Column/CareDock/CareColumn/CareActions"]
+[node name="FeedButton" type="Button" parent="Column/CareDock/CareColumn/CareActions" unique_id=20795538]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"CareFeedButton"
-icon = ExtResource("2_feed")
 text = "CARE_FEED"
+icon = ExtResource("2_feed")
 
-[node name="CleanButton" type="Button" parent="Column/CareDock/CareColumn/CareActions"]
+[node name="CleanButton" type="Button" parent="Column/CareDock/CareColumn/CareActions" unique_id=1488023256]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"CareCleanButton"
-icon = ExtResource("3_clean")
 text = "CARE_CLEAN"
+icon = ExtResource("3_clean")
 
-[node name="SleepButton" type="Button" parent="Column/CareDock/CareColumn/CareActions"]
+[node name="SleepButton" type="Button" parent="Column/CareDock/CareColumn/CareActions" unique_id=712629475]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"CareSleepButton"
-icon = ExtResource("4_sleep")
 text = "CARE_SLEEP"
+icon = ExtResource("4_sleep")
 
-[node name="PlayButton" type="Button" parent="Column/CareDock/CareColumn/CareActions"]
+[node name="PlayButton" type="Button" parent="Column/CareDock/CareColumn/CareActions" unique_id=1818514655]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"CarePlayButton"
-icon = ExtResource("5_play")
 text = "CARE_PLAY"
+icon = ExtResource("5_play")

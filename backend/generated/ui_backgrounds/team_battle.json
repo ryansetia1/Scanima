@@ -1,0 +1,26 @@
+{
+  "slot": "team_battle",
+  "status": "succeeded",
+  "prediction_id": "mjjv7eejw1rmr0d042s89vrnqw",
+  "model": "openai/gpt-image-2",
+  "quality": "medium",
+  "aspect_ratio": "9:16",
+  "prompt_path": "backend/prompts/ui_backgrounds/team_battle.md",
+  "prompt_sha256": "0ec85c20e162571ca14e1de8916ef829df7546d1a5fd1469061f5bfdbe2b1833",
+  "created_at": "2026-08-20T19:43:05.586Z",
+  "updated_at": "2026-08-20T19:43:43.957Z",
+  "raw_sha256": "e346d69574b8490379ed838b0adcfb0888827dff09aa39a51f229c0da67aa540",
+  "output_sha256": "5bc75e0f53650d3b84eb67afe6d3fe5dae7767f15ccc71ba08ea6339f437840a",
+  "source_dimensions": [
+    720,
+    1602
+  ],
+  "output_dimensions": [
+    720,
+    1602
+  ],
+  "raw_path": "backend/generated/ui_backgrounds/raw/team_battle.png",
+  "output_path": "game/assets/backgrounds/team_battle_background.png",
+  "seconds": 42,
+  "completed_at": "2026-08-20T19:43:47.191Z"
+}
