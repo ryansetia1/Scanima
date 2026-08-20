@@ -26,6 +26,7 @@ layout_mode = 2
 mouse_filter = 2
 texture = ExtResource("7_backdrop")
 expand_mode = 1
+stretch_mode = 5
 
 [node name="Padding" type="MarginContainer" parent="Bleed" unique_id=1071350044]
 layout_mode = 2
@@ -36,7 +37,9 @@ theme_override_constants/margin_right = 23
 theme_override_constants/margin_bottom = 26
 
 [node name="Buttons" type="HBoxContainer" parent="Bleed/Padding" unique_id=158985613]
+custom_minimum_size = Vector2(674, 0)
 layout_mode = 2
+size_flags_horizontal = 4
 theme_override_constants/separation = 25
 
 [node name="HomeNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=189627668]
@@ -59,7 +62,6 @@ theme_override_constants/separation = 7
 alignment = 1
 
 [node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/HomeNavButton/Content" unique_id=1486809398]
-modulate = Color(1, 1, 1, 1)
 custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -70,8 +72,8 @@ stretch_mode = 5
 
 [node name="Label" type="Label" parent="Bleed/Padding/Buttons/HomeNavButton/Content" unique_id=1891586119]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.161, 0.714, 0.965, 1)
 theme_type_variation = &"NavTabLabel"
+theme_override_colors/font_color = Color(0.161, 0.714, 0.965, 1)
 text = "NAV_HOME"
 horizontal_alignment = 1
 
@@ -106,8 +108,8 @@ stretch_mode = 5
 
 [node name="Label" type="Label" parent="Bleed/Padding/Buttons/ScanNavButton/Content" unique_id=104111297]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
 theme_type_variation = &"NavTabLabel"
+theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
 text = "NAV_SCAN"
 horizontal_alignment = 1
 
@@ -142,8 +144,8 @@ stretch_mode = 5
 
 [node name="Label" type="Label" parent="Bleed/Padding/Buttons/CollectionNavButton/Content" unique_id=1083093041]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
 theme_type_variation = &"NavTabLabel"
+theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
 text = "NAV_COLLECTION"
 horizontal_alignment = 1
 
@@ -178,8 +180,8 @@ stretch_mode = 5
 
 [node name="Label" type="Label" parent="Bleed/Padding/Buttons/BattleNavButton/Content" unique_id=1102522929]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
 theme_type_variation = &"NavTabLabel"
+theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
 text = "NAV_BATTLE"
 horizontal_alignment = 1
 
@@ -234,7 +236,7 @@ stretch_mode = 5
 
 [node name="Label" type="Label" parent="Bleed/Padding/Buttons/MenuNavButton/Content" unique_id=1976427112]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
 theme_type_variation = &"NavTabLabel"
+theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
 text = "NAV_MENU"
 horizontal_alignment = 1

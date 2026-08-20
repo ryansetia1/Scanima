@@ -1,0 +1,28 @@
+{
+  "slot": "home_day_landscape",
+  "status": "succeeded",
+  "prediction_id": "aq7yrxj8rdrmw0d044er3nr2f0",
+  "model": "openai/gpt-image-2",
+  "quality": "medium",
+  "aspect_ratio": "16:9",
+  "prompt_path": "backend/prompts/ui_backgrounds/home_day_landscape.md",
+  "prompt_sha256": "2e5ff9bf362549924d29b5037fdca12e47a6efaad390889322f2d65fd3069d4c",
+  "reference_path": "game/assets/backgrounds/home_landscape_background.png",
+  "reference_sha256": "6030f4123604b1da679dad5b474dff05e49cdbc84b7d3ed68b172e101106f6a9",
+  "created_at": "2026-08-20T21:39:22.667Z",
+  "updated_at": "2026-08-20T21:40:00.347Z",
+  "raw_sha256": "986680c7c2c7aa1671866f1f39076c312863242f488917a4820c90cc81c87ae7",
+  "output_sha256": "56fc7600b18d443cc6551e15a5a71905a7d2689e950543cdb5de5c239080390a",
+  "source_dimensions": [
+    1600,
+    900
+  ],
+  "output_dimensions": [
+    1600,
+    900
+  ],
+  "raw_path": "backend/generated/ui_backgrounds/raw/home_day_landscape.png",
+  "output_path": "game/assets/backgrounds/home_day_landscape_background.png",
+  "seconds": 45,
+  "completed_at": "2026-08-20T21:40:03.375Z"
+}

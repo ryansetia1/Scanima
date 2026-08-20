@@ -37,6 +37,12 @@ const DUEL_BACKGROUND_DAY: Texture2D = preload(
 const DUEL_BACKGROUND_NIGHT: Texture2D = preload(
 	"res://assets/backgrounds/duel_background.png"
 )
+const DUEL_BACKGROUND_DAY_LANDSCAPE: Texture2D = preload(
+	"res://assets/backgrounds/duel_day_landscape_background.png"
+)
+const DUEL_BACKGROUND_NIGHT_LANDSCAPE: Texture2D = preload(
+	"res://assets/backgrounds/duel_landscape_background.png"
+)
 
 @onready var _header: Control = %Header
 @onready var _duel_column: VBoxContainer = %Column
@@ -1270,8 +1276,8 @@ func _apply_arena_background(art_cache: Dictionary) -> void:
 	var texture: Variant = _art_cache.get("arena_background")
 	_uses_static_background = not texture is Texture2D
 	if _uses_static_background:
-		texture = DUEL_BACKGROUND_NIGHT
-		_background_material.set_shader_parameter("day_texture", DUEL_BACKGROUND_DAY)
+		texture = _static_duel_background()
+		_background_material.set_shader_parameter("day_texture", _static_duel_day_background())
 		_refresh_static_background()
 	else:
 		_background_material.set_shader_parameter("daylight_blend", 0.0)
@@ -1291,6 +1297,36 @@ func _refresh_static_background() -> void:
 	)
 
 
+func _sync_static_background_variant() -> void:
+	if not _uses_static_background:
+		return
+	var night := _static_duel_background()
+	if _arena_background.texture == night:
+		return
+	_arena_background.texture = night
+	_background_material.set_shader_parameter("day_texture", _static_duel_day_background())
+
+
+func _static_duel_background() -> Texture2D:
+	return (
+		DUEL_BACKGROUND_NIGHT_LANDSCAPE
+		if static_background_uses_landscape(_arena.size)
+		else DUEL_BACKGROUND_NIGHT
+	)
+
+
+func _static_duel_day_background() -> Texture2D:
+	return (
+		DUEL_BACKGROUND_DAY_LANDSCAPE
+		if static_background_uses_landscape(_arena.size)
+		else DUEL_BACKGROUND_DAY
+	)
+
+
+static func static_background_uses_landscape(stage_size: Vector2) -> bool:
+	return stage_size.x > stage_size.y
+
+
 func _sync_background_pan() -> void:
 	var session_id := str(_session.get("id", ""))
 	if session_id == _background_session_id:
@@ -1300,6 +1336,7 @@ func _sync_background_pan() -> void:
 
 
 func _layout_arena_background(background_zoom: float) -> void:
+	_sync_static_background_variant()
 	if not is_instance_valid(_arena_background) or not _arena_background.texture is Texture2D:
 		return
 	var texture_size := _arena_background.texture.get_size()
@@ -1317,9 +1354,10 @@ func _layout_arena_background(background_zoom: float) -> void:
 	_arena_background.scale = Vector2.ONE
 	_arena_background.size = draw_size
 	var pan := 0.5 if _uses_static_background else _background_pan
+	var vertical_pan := 1.0 if _uses_static_background else 0.5
 	_arena_background.position = Vector2(
 		-overflow.x * pan,
-		-overflow.y * 0.5
+		-overflow.y * vertical_pan
 	)
 
 

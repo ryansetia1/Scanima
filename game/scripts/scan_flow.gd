@@ -47,6 +47,8 @@ const FOTO_QUALITY := 85
 const THUMBNAIL_SIZE := 128
 const BASE_MARGIN := 32.0
 const HUD_TOP_PAD := 24.0
+const HOME_GROUND_PORTRAIT_RATIO := 0.60
+const HOME_GROUND_LANDSCAPE_RATIO := 0.51
 const TOAST_GAP := 8.0
 const TOAST_MIN_HEIGHT := 76.0
 const SHOP_GAP := 6.0
@@ -3935,7 +3937,12 @@ func _layout_for_viewport() -> void:
 static func stage_position_for(viewport_size: Vector2, insets: Vector4) -> Vector2:
 	var safe_top := insets.y
 	var safe_bottom := viewport_size.y - insets.w
-	return Vector2(viewport_size.x * 0.5, lerpf(safe_top, safe_bottom, 0.60))
+	var ground_ratio := (
+		HOME_GROUND_LANDSCAPE_RATIO
+		if HomeBackground.uses_landscape(viewport_size)
+		else HOME_GROUND_PORTRAIT_RATIO
+	)
+	return Vector2(viewport_size.x * 0.5, lerpf(safe_top, safe_bottom, ground_ratio))
 
 
 func _apply_margins(node: MarginContainer, insets: Vector4, side: float, vertical: float) -> void:

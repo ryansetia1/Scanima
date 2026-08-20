@@ -78,10 +78,15 @@ ini memungkinkan Duel, Team Battle, dan Expedition menampilkan monster kecil,
 normal, dan raksasa dengan proporsi yang konsisten meski padding sheet berbeda.
 Chapter Factory dan post-process capture menghasilkan blok yang sama.
 
-Background zona memakai `KEEP_ASPECT_COVERED` di dalam stage, dan project
-stretch `keep` pada viewport 720×1602 (Xiaomi 14 20:9, native 1200×2670).
-Resize window tidak boleh memakai `expand` — itu mengubah crop latar setiap
-kali aspek bergeser.
+Project memakai basis 720×1602 (Xiaomi 14 20:9, native 1200×2670) dengan
+stretch `expand`, supaya viewport logical benar-benar mencerminkan portrait,
+tablet, atau landscape. Karena itu art statis tidak boleh diregangkan:
+Home, Duel, dan Team Battle memilih pasangan 9:16 atau 16:9 dari aspect
+viewport lalu memasangnya sebagai `cover` yang dipin ke bawah. Ground Home
+berada pada 60% tinggi safe band di portrait dan 51% di landscape; kaki Duel
+dan Team Battle tetap pada 91% tinggi arena. Art chapter Expedition tetap
+center-crop karena komposisinya datang dari server dan tidak memiliki pasangan
+aspect lokal.
 
 `BattleScale.shared_scales()` memakai satu kurva tinggi untuk setiap tubuh di
 shot yang sama, termasuk Boss Seeker. Tinggi dikunci ke kartu desain 720×800

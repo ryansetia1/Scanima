@@ -1,0 +1,28 @@
+{
+  "slot": "home_landscape",
+  "status": "succeeded",
+  "prediction_id": "zxx4242hm1rmy0d044das75ne0",
+  "model": "openai/gpt-image-2",
+  "quality": "medium",
+  "aspect_ratio": "16:9",
+  "prompt_path": "backend/prompts/ui_backgrounds/home_landscape.md",
+  "prompt_sha256": "f604c83c9a487291ed6d9e2d1423e79d16f2ed62bd4296b51282f81a7ffc2aae",
+  "reference_path": "game/assets/backgrounds/home_background.png",
+  "reference_sha256": "3a4d25475e8ea33f999fd800dca60d40cef69d26ab25e595952590a9be5df2bd",
+  "created_at": "2026-08-20T21:36:08.309Z",
+  "updated_at": "2026-08-20T21:37:12.171Z",
+  "raw_sha256": "29a92d89d63c8782b74bf63500661fb16b03a977fe4a544a332b7a9fb0e9e956",
+  "output_sha256": "6030f4123604b1da679dad5b474dff05e49cdbc84b7d3ed68b172e101106f6a9",
+  "source_dimensions": [
+    1600,
+    900
+  ],
+  "output_dimensions": [
+    1600,
+    900
+  ],
+  "raw_path": "backend/generated/ui_backgrounds/raw/home_landscape.png",
+  "output_path": "game/assets/backgrounds/home_landscape_background.png",
+  "seconds": 71,
+  "completed_at": "2026-08-20T21:37:15.625Z"
+}

@@ -18,9 +18,12 @@ const RAW_DIR = join(PROVENANCE_DIR, "raw");
 const OUTPUT_DIR = join(ROOT, "game", "assets", "backgrounds");
 const MODEL = "openai/gpt-image-2";
 const QUALITY = "medium";
-const ASPECT_RATIO = "9:16";
-const TARGET_WIDTH = 720;
-const TARGET_HEIGHT = 1602;
+const DEFAULT_ASPECT_RATIO = "9:16";
+const DEFAULT_TARGET_WIDTH = 720;
+const DEFAULT_TARGET_HEIGHT = 1602;
+const LANDSCAPE_ASPECT_RATIO = "16:9";
+const LANDSCAPE_TARGET_WIDTH = 1600;
+const LANDSCAPE_TARGET_HEIGHT = 900;
 const POLL_MS = 2000;
 const POLL_TIMEOUT_MS = 180_000;
 const COST_ACK = "US$0.07";
@@ -37,6 +40,46 @@ const SLOTS = Object.freeze({
   team_battle: {
     prompt: "team_battle.md",
     output: "team_battle_background.png",
+  },
+  home_landscape: {
+    prompt: "home_landscape.md",
+    output: "home_landscape_background.png",
+    reference: "game/assets/backgrounds/home_background.png",
+    aspectRatio: LANDSCAPE_ASPECT_RATIO,
+    targetWidth: LANDSCAPE_TARGET_WIDTH,
+    targetHeight: LANDSCAPE_TARGET_HEIGHT,
+  },
+  home_day_landscape: {
+    prompt: "home_day_landscape.md",
+    output: "home_day_landscape_background.png",
+    reference: "game/assets/backgrounds/home_landscape_background.png",
+    aspectRatio: LANDSCAPE_ASPECT_RATIO,
+    targetWidth: LANDSCAPE_TARGET_WIDTH,
+    targetHeight: LANDSCAPE_TARGET_HEIGHT,
+  },
+  duel_landscape: {
+    prompt: "duel_landscape.md",
+    output: "duel_landscape_background.png",
+    reference: "game/assets/backgrounds/duel_background.png",
+    aspectRatio: LANDSCAPE_ASPECT_RATIO,
+    targetWidth: LANDSCAPE_TARGET_WIDTH,
+    targetHeight: LANDSCAPE_TARGET_HEIGHT,
+  },
+  duel_day_landscape: {
+    prompt: "duel_day_landscape.md",
+    output: "duel_day_landscape_background.png",
+    reference: "game/assets/backgrounds/duel_landscape_background.png",
+    aspectRatio: LANDSCAPE_ASPECT_RATIO,
+    targetWidth: LANDSCAPE_TARGET_WIDTH,
+    targetHeight: LANDSCAPE_TARGET_HEIGHT,
+  },
+  team_battle_landscape: {
+    prompt: "team_battle_landscape.md",
+    output: "team_battle_landscape_background.png",
+    reference: "game/assets/backgrounds/team_battle_background.png",
+    aspectRatio: LANDSCAPE_ASPECT_RATIO,
+    targetWidth: LANDSCAPE_TARGET_WIDTH,
+    targetHeight: LANDSCAPE_TARGET_HEIGHT,
   },
   expedition_sugarworks_map: {
     prompt: "expedition_sugarworks_map.md",
@@ -126,10 +169,10 @@ async function pollPrediction(token, prediction, sourcePath, source) {
   return current;
 }
 
-async function createPrediction(token, prompt, reference = null) {
+async function createPrediction(token, prompt, aspectRatio, reference = null) {
   const input = {
     prompt,
-    aspect_ratio: ASPECT_RATIO,
+    aspect_ratio: aspectRatio,
     quality: QUALITY,
     number_of_images: 1,
     background: "opaque",
@@ -160,12 +203,12 @@ async function createPrediction(token, prompt, reference = null) {
   return await response.json();
 }
 
-async function downloadAndProcess(url, rawPath, outputPath) {
+async function downloadAndProcess(url, rawPath, outputPath, targetWidth, targetHeight) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`OUTPUT_DOWNLOAD_${response.status}`);
   const raw = new Uint8Array(await response.arrayBuffer());
   const decoded = await Image.decode(raw);
-  const targetRatio = TARGET_WIDTH / TARGET_HEIGHT;
+  const targetRatio = targetWidth / targetHeight;
   const sourceRatio = decoded.width / decoded.height;
   const cropWidth = sourceRatio > targetRatio
     ? Math.round(decoded.height * targetRatio)
@@ -182,7 +225,7 @@ async function downloadAndProcess(url, rawPath, outputPath) {
     cropWidth,
     cropHeight,
   );
-  const finalImage = cropped.resize(TARGET_WIDTH, TARGET_HEIGHT);
+  const finalImage = cropped.resize(targetWidth, targetHeight);
   const output = await encodeImage(finalImage);
   await mkdir(dirname(rawPath), { recursive: true });
   await mkdir(dirname(outputPath), { recursive: true });
@@ -217,6 +260,9 @@ async function generate(slot) {
   const reference = definition.reference
     ? await readFile(join(ROOT, definition.reference))
     : null;
+  const aspectRatio = definition.aspectRatio ?? DEFAULT_ASPECT_RATIO;
+  const targetWidth = definition.targetWidth ?? DEFAULT_TARGET_WIDTH;
+  const targetHeight = definition.targetHeight ?? DEFAULT_TARGET_HEIGHT;
   const referenceHash = reference ? sha256(reference) : null;
   const sourcePath = join(PROVENANCE_DIR, `${slot}.json`);
   const rawPath = join(RAW_DIR, `${slot}.png`);
@@ -247,14 +293,14 @@ async function generate(slot) {
     prediction = await response.json();
   } else {
     console.log(`${slot}: 1× ${MODEL} ${QUALITY}, estimated ${COST_ACK}`);
-    prediction = await createPrediction(token, prompt, reference);
+    prediction = await createPrediction(token, prompt, aspectRatio, reference);
     source = {
       slot,
       status: prediction.status,
       prediction_id: prediction.id,
       model: MODEL,
       quality: QUALITY,
-      aspect_ratio: ASPECT_RATIO,
+      aspect_ratio: aspectRatio,
       prompt_path: `backend/prompts/ui_backgrounds/${definition.prompt}`,
       prompt_sha256: promptHash,
       reference_path: definition.reference ?? null,
@@ -275,7 +321,13 @@ async function generate(slot) {
   }
   if (!source.output_url) throw new Error(`OUTPUT_INVALID:${JSON.stringify(prediction.output)}`);
 
-  const processed = await downloadAndProcess(source.output_url, rawPath, outputPath);
+  const processed = await downloadAndProcess(
+    source.output_url,
+    rawPath,
+    outputPath,
+    targetWidth,
+    targetHeight,
+  );
   source = {
     ...source,
     ...processed,
@@ -299,7 +351,9 @@ async function check() {
       if (source?.status !== "succeeded") throw new Error("provenance is not succeeded");
       const output = await readFile(outputPath);
       const image = await Image.decode(output);
-      if (image.width !== TARGET_WIDTH || image.height !== TARGET_HEIGHT) {
+      const targetWidth = definition.targetWidth ?? DEFAULT_TARGET_WIDTH;
+      const targetHeight = definition.targetHeight ?? DEFAULT_TARGET_HEIGHT;
+      if (image.width !== targetWidth || image.height !== targetHeight) {
         throw new Error(`dimensions ${image.width}x${image.height}`);
       }
       if (sha256(output) !== source.output_sha256) throw new Error("output hash mismatch");
@@ -309,7 +363,7 @@ async function check() {
   }
   if (failures.length > 0) throw new Error(`UI_BACKGROUND_CHECK_FAILED\n${failures.join("\n")}`);
   const count = Object.keys(SLOTS).length;
-  console.log(`ui backgrounds: ${count}/${count} valid at ${TARGET_WIDTH}x${TARGET_HEIGHT}`);
+  console.log(`ui backgrounds: ${count}/${count} valid`);
 }
 
 const args = process.argv.slice(2);

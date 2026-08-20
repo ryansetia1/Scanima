@@ -34,6 +34,9 @@ const BACKGROUND_DOF_SHADER: Shader = preload("res://shaders/battle_background_d
 const TEAM_BACKGROUND: Texture2D = preload(
 	"res://assets/backgrounds/team_battle_background.png"
 )
+const TEAM_BACKGROUND_LANDSCAPE: Texture2D = preload(
+	"res://assets/backgrounds/team_battle_landscape_background.png"
+)
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 const BOSS_SEEKER_PRESENTER := preload("res://scripts/boss_seeker_presenter.gd")
 const BOSS_SEEKER_DIALOG := preload("res://scripts/boss_seeker_dialog.gd")
@@ -414,12 +417,32 @@ func _apply_arena_background(art_cache: Dictionary) -> void:
 	var texture: Variant = art_cache.get("arena_background", _art_cache.get("arena_background"))
 	_uses_static_background = not _expedition_mode and not texture is Texture2D
 	if _uses_static_background:
-		texture = TEAM_BACKGROUND
+		texture = _static_team_background()
 	_arena_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_arena_background.stretch_mode = TextureRect.STRETCH_SCALE
 	_arena_background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_arena_background.texture = texture if texture is Texture2D else null
 	_arena_background.visible = texture is Texture2D
+
+
+func _sync_static_background_variant() -> void:
+	if not _uses_static_background:
+		return
+	var background := _static_team_background()
+	if _arena_background.texture != background:
+		_arena_background.texture = background
+
+
+func _static_team_background() -> Texture2D:
+	return (
+		TEAM_BACKGROUND_LANDSCAPE
+		if static_background_uses_landscape(_battle_stage.size)
+		else TEAM_BACKGROUND
+	)
+
+
+static func static_background_uses_landscape(stage_size: Vector2) -> bool:
+	return stage_size.x > stage_size.y
 
 
 func begin_action(action: String) -> void:
@@ -1819,6 +1842,7 @@ func _sync_background_pan() -> void:
 
 
 func _layout_arena_background(background_zoom: float) -> void:
+	_sync_static_background_variant()
 	if not is_instance_valid(_arena_background) or not _arena_background.texture is Texture2D:
 		return
 	var texture_size := _arena_background.texture.get_size()
@@ -1836,9 +1860,10 @@ func _layout_arena_background(background_zoom: float) -> void:
 	_arena_background.scale = Vector2.ONE
 	_arena_background.size = draw_size
 	var pan := 0.5 if _uses_static_background else _background_pan
+	var vertical_pan := 1.0 if _uses_static_background else 0.5
 	_arena_background.position = Vector2(
 		-overflow.x * pan,
-		-overflow.y * 0.5
+		-overflow.y * vertical_pan
 	)
 
 

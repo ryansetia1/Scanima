@@ -745,13 +745,18 @@ func _initialize() -> void:
 	)
 	_check_eq(
 		str(ProjectSettings.get_setting("display/window/stretch/aspect")),
-		"keep",
-		"stretch keep mengunci crop background saat window di-resize"
+		"expand",
+		"stretch expand exposes real portrait and landscape viewport sizes"
 	)
 	for size in [Vector2(720, 1280), Vector2(720, 1602), Vector2(360, 640), Vector2(412, 915), Vector2(1080, 1920)]:
 		var pos: Vector2 = script.stage_position_for(size, Vector4.ZERO)
 		_check(is_equal_approx(pos.x, size.x * 0.5), "Stage stays horizontally centered at %s" % size)
 		_check(pos.y > 0.0 and pos.y < size.y, "Stage stays inside %s" % size)
+	_check(
+		is_equal_approx(script.stage_position_for(Vector2(720, 1602), Vector4.ZERO).y, 1602.0 * 0.60)
+		and is_equal_approx(script.stage_position_for(Vector2(1600, 900), Vector4.ZERO).y, 900.0 * 0.51),
+		"Home Stage follows the authored portrait and landscape floor baselines"
+	)
 
 	var inset_pos: Vector2 = script.stage_position_for(Vector2(720, 1280), Vector4(0, 80, 0, 120))
 	_check(inset_pos.y > 80.0 and inset_pos.y < 1160.0, "Stage stays inside safe areas")
@@ -1700,6 +1705,15 @@ func _test_battle_view() -> void:
 	var view := packed.instantiate()
 	root.add_child(view)
 	await process_frame
+	var battle_script := load("res://scripts/battle_view.gd") as GDScript
+	var team_script := load("res://scripts/team_battle_view.gd") as GDScript
+	_check(
+		not battle_script.static_background_uses_landscape(Vector2(720, 900))
+		and battle_script.static_background_uses_landscape(Vector2(1600, 900))
+		and not team_script.static_background_uses_landscape(Vector2(720, 900))
+		and team_script.static_background_uses_landscape(Vector2(1600, 900)),
+		"Duel and Team Battle select static art from the live arena aspect"
+	)
 
 	var lobby := view.find_child("BattleLobbyPanel", true, false) as Control
 	var header := view.find_child("Header", true, false) as Control
@@ -4816,9 +4830,15 @@ func _check_home_background(scene: Node) -> void:
 		and procedural.z_index < background.z_index
 		and background.z_index < stage.z_index
 		and background.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		and live_background.position == Vector2.ZERO
-		and live_background.size == live_background.get_viewport_rect().size,
-		"Home background fills the viewport between the procedural shell and Anima"
+		and live_background.position.x <= 0.001
+		and live_background.position.y <= 0.001
+		and live_background.size.x >= live_background.get_viewport_rect().size.x
+		and live_background.size.y >= live_background.get_viewport_rect().size.y
+		and is_equal_approx(
+			live_background.position.y + live_background.size.y,
+			live_background.get_viewport_rect().size.y
+		),
+		"Home background covers the viewport with its floor pinned to the bottom"
 	)
 	_check(
 		live_background.texture == load("res://assets/backgrounds/home_background.png")
@@ -4830,6 +4850,19 @@ func _check_home_background(scene: Node) -> void:
 			daylight.daylight_blend()
 		),
 		"Home shader continuously blends the preloaded day and night artwork"
+	)
+	var home_background_script := load("res://scripts/home_background.gd") as GDScript
+	var wide_cover: Rect2 = home_background_script.floor_aligned_cover_rect(
+		Vector2(1600, 900),
+		Vector2(1024, 804)
+	)
+	_check(
+		home_background_script.uses_landscape(Vector2(1024, 804))
+		and not home_background_script.uses_landscape(Vector2(720, 1602))
+		and is_equal_approx(wide_cover.end.y, 804.0)
+		and wide_cover.size.x >= 1024.0
+		and wide_cover.size.y >= 804.0,
+		"Home landscape art covers wide viewports while its floor stays bottom-aligned"
 	)
 	_check(
 		daylight_timer != null and daylight_timer.wait_time <= 1.0,
@@ -5263,6 +5296,16 @@ func _test_bottom_nav_busy() -> void:
 		_check(
 			backdrop.texture.resource_path == "res://assets/ui/bottom_nav_bg.png",
 			"that image is the committed asset rather than a runtime redraw"
+		)
+		_check_eq(
+			backdrop.stretch_mode,
+			TextureRect.STRETCH_KEEP_ASPECT_CENTERED,
+			"wide nav keeps the authored backdrop ratio instead of stretching it"
+		)
+		_check(
+			is_equal_approx(buttons.custom_minimum_size.x, 674.0)
+			and buttons.size_flags_horizontal == Control.SIZE_SHRINK_CENTER,
+			"wide nav keeps the five-tab row centered at its 720px design width"
 		)
 		_check(
 			backdrop.get_index() < buttons.get_parent().get_index(),
