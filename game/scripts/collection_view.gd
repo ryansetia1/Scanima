@@ -8,7 +8,7 @@ signal first_scan_requested
 signal retry_requested
 signal atlas_requested
 
-const BADGE_INSET := Vector2(6.0, 6.0)
+const BADGE_INSET := Vector2(10.0, 8.0)
 const BADGE_FONT_SIZE := 20
 
 @onready var _status: Label = %CollectionStatus
@@ -227,12 +227,13 @@ func _on_item_selected(index: int) -> void:
 ## Level per kartu digambar sendiri karena `ItemList` hanya punya satu slot teks
 ## per item. Angkanya dibaca dari metadata row yang sudah dipasang `set_rows()`,
 ## jadi tidak ada jalur data kedua yang bisa basi saat care sync mengubah EXP.
+## Teks telanjang, tanpa chip: ia duduk di margin kosong sebelah kiri art, jadi
+## tidak ada yang perlu dipisahkan dari latar oleh sebuah panel.
 ##
 ## `get_item_rect()` mengembalikan koordinat konten dan terukur TIDAK ikut
 ## bergeser saat list di-scroll, jadi offset scrollbar dikurangi sendiri; tanpa
 ## itu badge menempel di layar sementara kartunya jalan.
 func _draw_level_badges() -> void:
-	var style := _list.get_theme_stylebox(&"panel", &"ResourceChip")
 	var font := _list.get_theme_font(&"font", &"ResourceValueLabel")
 	var ink := _list.get_theme_color(&"font_color", &"ResourceValueLabel")
 	var window := Rect2(Vector2.ZERO, _list.size)
@@ -240,19 +241,15 @@ func _draw_level_badges() -> void:
 		var text := _badge_text(index)
 		if text.is_empty():
 			continue
+		var origin := _badge_origin(index)
 		var text_size := font.get_string_size(
 			text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, BADGE_FONT_SIZE
 		)
-		var pill := Rect2(_badge_origin(index), text_size + style.get_minimum_size())
-		if not window.intersects(pill):
+		if not window.intersects(Rect2(origin, text_size)):
 			continue
-		_list.draw_style_box(style, pill)
 		_list.draw_string(
 			font,
-			pill.position + Vector2(
-				style.get_margin(SIDE_LEFT),
-				style.get_margin(SIDE_TOP) + font.get_ascent(BADGE_FONT_SIZE)
-			),
+			origin + Vector2(0.0, font.get_ascent(BADGE_FONT_SIZE)),
 			text,
 			HORIZONTAL_ALIGNMENT_LEFT,
 			-1,
