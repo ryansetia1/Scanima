@@ -20,11 +20,21 @@ const FLOW: GDScript = preload("res://scripts/scan_flow.gd")
 @onready var _bits_chip: ResourceChip = %BitsChip
 @onready var _shop_button: ResourceChip = %ShopButton
 @onready var _bag_button: ResourceChip = %BagButton
+@onready var _stage: Node2D = %Stage
+@onready var _anima: AnimaPresenter = %Anima
 
 
 func _ready() -> void:
 	_configure_chips()
 	_home.set_anima(demo_row(), false)
+	var built := PlaceholderSheet.build()
+	var loaded := AnimaLoader.build(
+		ImageTexture.create_from_image(built["image"]), built["manifest"]
+	)
+	_anima.apply(loaded)
+	_anima.set_pose("idle")
+	_place_stage()
+	get_viewport().size_changed.connect(_place_stage)
 	get_viewport().size_changed.connect(_place_chips)
 
 	# Chip rects stay zero-sized until the shell has laid out, so the overlay can
@@ -83,6 +93,10 @@ func _place_chips() -> void:
 	_bag_button.position = Vector2(hud.end.x - chip.x, top)
 	_bag_button.size = chip
 	_home.set_chip_gutter(gutter)
+
+
+func _place_stage() -> void:
+	_stage.position = FLOW.stage_position_for(get_viewport_rect().size)
 
 
 func _arg_value(prefix: String) -> String:

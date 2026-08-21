@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://c10np8eypr1bw" path="res://scenes/ui/home_view.tscn" id="5_home"]
 [ext_resource type="PackedScene" uid="uid://10b1ay38emxd" path="res://scenes/ui/bottom_nav.tscn" id="6_nav"]
 [ext_resource type="Script" uid="uid://bfbuujsg42m0" path="res://scripts/home_background.gd" id="7_j1gxg"]
+[ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="8_presenter"]
 
 [node name="HomeDemo" type="Node2D" unique_id=484570840]
 script = ExtResource("1_demo")
@@ -14,6 +15,13 @@ script = ExtResource("1_demo")
 [node name="Background" type="Node2D" parent="." unique_id=1448284893]
 z_index = -2
 script = ExtResource("2_background")
+
+[node name="Stage" type="Node2D" parent="."]
+unique_name_in_owner = true
+
+[node name="Anima" type="AnimatedSprite2D" parent="Stage"]
+unique_name_in_owner = true
+script = ExtResource("8_presenter")
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=2047575547]
 

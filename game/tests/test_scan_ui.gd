@@ -748,18 +748,25 @@ func _initialize() -> void:
 		"expand",
 		"stretch expand exposes real portrait and landscape viewport sizes"
 	)
-	for size in [Vector2(720, 1280), Vector2(720, 1602), Vector2(360, 640), Vector2(412, 915), Vector2(1080, 1920)]:
-		var pos: Vector2 = script.stage_position_for(size, Vector4.ZERO)
+	for size in [Vector2(720, 1280), Vector2(720, 1602), Vector2(360, 640), Vector2(412, 915), Vector2(1080, 1920), Vector2(1600, 900), Vector2(2340, 1080)]:
+		var pos: Vector2 = script.stage_position_for(size)
 		_check(is_equal_approx(pos.x, size.x * 0.5), "Stage stays horizontally centered at %s" % size)
 		_check(pos.y > 0.0 and pos.y < size.y, "Stage stays inside %s" % size)
-	_check(
-		is_equal_approx(script.stage_position_for(Vector2(720, 1602), Vector4.ZERO).y, 1602.0 * 0.60)
-		and is_equal_approx(script.stage_position_for(Vector2(1600, 900), Vector4.ZERO).y, 900.0 * 0.51),
-		"Home Stage follows the authored portrait and landscape floor baselines"
-	)
-
-	var inset_pos: Vector2 = script.stage_position_for(Vector2(720, 1280), Vector4(0, 80, 0, 120))
-	_check(inset_pos.y > 80.0 and inset_pos.y < 1160.0, "Stage stays inside safe areas")
+		# Aspect yang menjauh dari aspect art membuat `cover` memotong tinggi, jadi
+		# satu ratio viewport akan menggeser kaki keluar dari lantai yang digambar.
+		# Yang harus tetap konstan adalah baris art-nya.
+		var landscape: bool = size.x > size.y
+		var art_size: Vector2 = (
+			HomeBackground.HOME_BACKGROUND_NIGHT_LANDSCAPE
+			if landscape
+			else HomeBackground.HOME_BACKGROUND_NIGHT
+		).get_size()
+		var art: Rect2 = HomeBackground.floor_aligned_cover_rect(art_size, size)
+		var art_row := (pos.y - art.position.y) / art.size.y
+		_check(
+			is_equal_approx(art_row, 0.69 if landscape else 0.68),
+			"Home Stage lands on the authored dais row at %s" % size
+		)
 
 	var incubator := scene.find_child("Incubator", true, false) as Node2D
 	_check(incubator != null, "Stage keeps its Incubator")
@@ -768,6 +775,16 @@ func _initialize() -> void:
 		_check_eq(incubator.position, Vector2.ZERO, "Incubator shares the Stage ground anchor")
 	var anima := scene.find_child("Anima", true, false) as AnimatedSprite2D
 	_check(anima != null and not anima.visible, "cached art stays hidden until server care is known")
+	var home_stage := scene.find_child("Stage", true, false) as Node2D
+	var home_shadow := scene.call("_make_home_ground_shadow", home_stage) as Sprite2D
+	_check(
+		home_shadow != null
+		and home_shadow.texture is GradientTexture2D
+		and home_shadow.z_index == anima.z_index
+		and home_shadow.get_index() < anima.get_index()
+		and not home_shadow.visible,
+		"Home draws its soft contact shadow above the background and before the Anima"
+	)
 	var first_effect := scene.find_child("FirstAnimaEffect", true, false) as Node2D
 	_check(first_effect != null and not first_effect.visible, "first-Anima scanner starts hidden")
 	_test_care_feedback_is_immediate()
@@ -4824,6 +4841,23 @@ func _check_home_background(scene: Node) -> void:
 		and is_zero_approx(daylight.daylight_blend(18, 30)),
 		"local daylight eases continuously through one-hour dawn and dusk windows"
 	)
+	var live_viewport := live_background.get_viewport_rect().size
+	var live_base := HomeBackground.floor_aligned_cover_rect(
+		HomeBackground.HOME_BACKGROUND_NIGHT.get_size(), live_viewport
+	)
+	var live_blend: float = daylight.daylight_blend()
+	var live_platform_center := lerpf(
+		HomeBackground.PLATFORM_CENTER_NIGHT_PORTRAIT_RATIO,
+		HomeBackground.PLATFORM_CENTER_DAY_PORTRAIT_RATIO,
+		live_blend
+	)
+	var live_platform_y := (
+		live_background.position.y + live_background.size.y * live_platform_center
+	)
+	var live_target_y := (
+		live_base.position.y
+		+ live_base.size.y * HomeBackground.PLATFORM_TARGET_PORTRAIT_RATIO
+	)
 	_check(
 		background != null
 		and background.get_parent() == scene
@@ -4832,13 +4866,10 @@ func _check_home_background(scene: Node) -> void:
 		and background.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		and live_background.position.x <= 0.001
 		and live_background.position.y <= 0.001
-		and live_background.size.x >= live_background.get_viewport_rect().size.x
-		and live_background.size.y >= live_background.get_viewport_rect().size.y
-		and is_equal_approx(
-			live_background.position.y + live_background.size.y,
-			live_background.get_viewport_rect().size.y
-		),
-		"Home background covers the viewport with its floor pinned to the bottom"
+		and live_background.position.x + live_background.size.x >= live_viewport.x
+		and live_background.position.y + live_background.size.y >= live_viewport.y
+		and is_equal_approx(live_platform_y, live_target_y),
+		"Home cover keeps the blended platform center under the fixed Stage anchor"
 	)
 	_check(
 		live_background.texture == load("res://assets/backgrounds/home_background.png")
@@ -4864,6 +4895,32 @@ func _check_home_background(scene: Node) -> void:
 		and wide_cover.size.y >= 804.0,
 		"Home landscape art covers wide viewports while its floor stays bottom-aligned"
 	)
+	for blend in [0.0, 1.0]:
+		var portrait_size := Vector2(720, 1602)
+		var portrait_base: Rect2 = home_background_script.floor_aligned_cover_rect(
+			Vector2(720, 1602), portrait_size
+		)
+		var portrait_cover: Rect2 = home_background_script.portrait_platform_cover_rect(
+			Vector2(720, 1602), portrait_size, blend
+		)
+		var platform_ratio := lerpf(
+			HomeBackground.PLATFORM_CENTER_NIGHT_PORTRAIT_RATIO,
+			HomeBackground.PLATFORM_CENTER_DAY_PORTRAIT_RATIO,
+			blend
+		)
+		_check(
+			portrait_cover.position.x <= 0.0
+			and portrait_cover.position.y <= 0.0
+			and portrait_cover.end.x >= portrait_size.x
+			and portrait_cover.end.y >= portrait_size.y
+			and is_equal_approx(
+				portrait_cover.position.y + portrait_cover.size.y * platform_ratio,
+				portrait_base.position.y
+				+ portrait_base.size.y * HomeBackground.PLATFORM_TARGET_PORTRAIT_RATIO
+			),
+			"Home portrait focal crop centers the %s platform without moving Stage"
+			% ("day" if blend > 0.5 else "night")
+		)
 	_check(
 		daylight_timer != null and daylight_timer.wait_time <= 1.0,
 		"Home daylight blend resynchronizes at least once per second"

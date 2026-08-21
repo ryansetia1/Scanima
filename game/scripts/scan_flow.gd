@@ -47,8 +47,8 @@ const FOTO_QUALITY := 85
 const THUMBNAIL_SIZE := 128
 const BASE_MARGIN := 32.0
 const HUD_TOP_PAD := 24.0
-const HOME_GROUND_PORTRAIT_RATIO := 0.60
-const HOME_GROUND_LANDSCAPE_RATIO := 0.51
+const HOME_GROUND_PORTRAIT_RATIO := HomeBackground.PLATFORM_TARGET_PORTRAIT_RATIO
+const HOME_GROUND_LANDSCAPE_RATIO := HomeBackground.PLATFORM_TARGET_LANDSCAPE_RATIO
 const TOAST_GAP := 8.0
 const TOAST_MIN_HEIGHT := 76.0
 const SHOP_GAP := 6.0
@@ -137,6 +137,7 @@ var _team_art_cache: Dictionary = {}
 var _trophy_icon_cache: Dictionary = {}
 var _expedition_controller: ExpeditionController
 var _music: MusicDirector
+var _home_ground_shadow: Sprite2D
 var _gallery_status_revision := 0
 var _sleep_completion_timer: Timer = null
 var _sleep_sync_in_flight := false
@@ -178,6 +179,10 @@ func _ready() -> void:
 	_chapter_push.chapter_message_received.connect(_refresh_chapter_announcements)
 	_chapter_push.failed.connect(_on_chapter_push_failed)
 	_chapter_push.configure(GameState.chapter_push_enabled())
+	_home_ground_shadow = _make_home_ground_shadow(_stage)
+	_anima.pose_changed.connect(_sync_home_ground_shadow)
+	_anima.visibility_changed.connect(_sync_home_ground_shadow)
+	_sync_home_ground_shadow()
 	_team_battle_view.set_thumbnail_provider(_thumbnail_for)
 	_expedition_view.set_thumbnail_provider(_thumbnail_for)
 	_sleep_completion_timer = Timer.new()
@@ -3905,6 +3910,37 @@ static func _has_timestamp(value: Variant) -> bool:
 	return value != null and not str(value).is_empty()
 
 
+func _make_home_ground_shadow(anchor: Node2D) -> Sprite2D:
+	var gradient := Gradient.new()
+	gradient.colors = PackedColorArray([
+		Color(0.01, 0.02, 0.05, 0.42),
+		Color(0.01, 0.02, 0.05, 0.0),
+	])
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.width = 220
+	texture.height = 64
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
+	var shadow := Sprite2D.new()
+	shadow.name = "HomeGroundShadow"
+	shadow.texture = texture
+	shadow.visible = false
+	shadow.z_index = 0
+	anchor.add_child(shadow)
+	anchor.move_child(shadow, 0)
+	return shadow
+
+
+func _sync_home_ground_shadow(_pose: StringName = &"") -> void:
+	if not is_instance_valid(_home_ground_shadow):
+		return
+	_anima.sync_ground_shadow(_home_ground_shadow)
+	_home_ground_shadow.scale = Vector2(_home_ground_shadow.scale.x * 0.82, 0.52)
+	_home_ground_shadow.modulate.a = lerpf(0.90, 0.76, LocalDaylight.daylight_blend())
+
+
 func _layout_for_viewport() -> void:
 	if not is_instance_valid(_stage):
 		return
@@ -3931,18 +3967,27 @@ func _layout_for_viewport() -> void:
 	)
 	_sync_shop_chrome()
 	_place_toast(insets)
-	_stage.position = stage_position_for(viewport_size, insets)
+	_stage.position = stage_position_for(viewport_size)
 
 
-static func stage_position_for(viewport_size: Vector2, insets: Vector4) -> Vector2:
-	var safe_top := insets.y
-	var safe_bottom := viewport_size.y - insets.w
-	var ground_ratio := (
-		HOME_GROUND_LANDSCAPE_RATIO
-		if HomeBackground.uses_landscape(viewport_size)
-		else HOME_GROUND_PORTRAIT_RATIO
+## Ground line-nya diukur pada art, bukan pada viewport, dan safe area sengaja
+## tidak ikut: `HomeBackground` menggambar `cover` yang dipin ke bawah tanpa
+## melihat inset, jadi ratio yang dihitung dari viewport meleset sebesar crop-nya
+## begitu aspect device menjauh dari aspect art — kaki lalu terlihat melayang.
+static func stage_position_for(viewport_size: Vector2) -> Vector2:
+	var landscape := HomeBackground.uses_landscape(viewport_size)
+	var art := HomeBackground.floor_aligned_cover_rect(
+		(
+			HomeBackground.HOME_BACKGROUND_NIGHT_LANDSCAPE
+			if landscape
+			else HomeBackground.HOME_BACKGROUND_NIGHT
+		).get_size(),
+		viewport_size
 	)
-	return Vector2(viewport_size.x * 0.5, lerpf(safe_top, safe_bottom, ground_ratio))
+	var ground_ratio := (
+		HOME_GROUND_LANDSCAPE_RATIO if landscape else HOME_GROUND_PORTRAIT_RATIO
+	)
+	return Vector2(viewport_size.x * 0.5, art.position.y + art.size.y * ground_ratio)
 
 
 func _apply_margins(node: MarginContainer, insets: Vector4, side: float, vertical: float) -> void:
