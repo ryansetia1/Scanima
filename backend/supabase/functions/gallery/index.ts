@@ -53,6 +53,7 @@ const ERROR_STATUS: Record<string, number> = {
   GALLERY_NOT_PUBLISHED: 409,
   VISION_MODERATION_FAILED: 502,
   ATLAS_FORM_NOT_FOUND: 404,
+  SYNTHESIS_CONSENT_REQUIRED: 409,
 };
 
 type GalleryBody = {
@@ -64,6 +65,7 @@ type GalleryBody = {
   chapter_id?: unknown;
   cursor?: unknown;
   limit?: unknown;
+  synthesis_source_consent?: unknown;
 };
 
 const db = adminClient();
@@ -502,6 +504,9 @@ async function atlasDetail(
     ownerName = atlasChapterSeekerName(form as Record<string, unknown>);
   }
 
+  const synthesisHistory = await atlasSynthesisHistory(
+    form.synthesis_history,
+  );
   return json(200, {
     entry: {
       form_id: form.id,
@@ -530,9 +535,36 @@ async function atlasDetail(
       can_report: form.source_kind === "player" && form.owner_id !== ownerId,
       can_view_collection: form.source_kind === "player" &&
         form.owner_id === ownerId,
+      synthesis_history: synthesisHistory,
     },
     feature_enabled: true,
   });
+}
+
+async function atlasSynthesisHistory(raw: unknown): Promise<Record<string, unknown> | null> {
+  const history = asRecord(raw);
+  if (Object.keys(history).length === 0) return null;
+  const sources = ["source_a", "source_b"].map((key) => asRecord(history[key]));
+  const paths = sources.map((source) =>
+    typeof source.thumbnail_path === "string" ? source.thumbnail_path : ""
+  );
+  const urls = await signSheetUrls(db, paths);
+  const sourcePayload = (source: Record<string, unknown>) => {
+    const path = typeof source.thumbnail_path === "string" ? source.thumbnail_path : "";
+    return {
+      name: typeof source.name === "string" ? source.name : "Anima",
+      selected_stage: Number(source.selected_stage) || 1,
+      thumbnail_url: urls.get(path) ?? "",
+    };
+  };
+  return {
+    mode: history.mode,
+    resonance: history.resonance,
+    created_at: history.created_at,
+    source_a: sourcePayload(sources[0]),
+    source_b: sourcePayload(sources[1]),
+    inheritance_summary: asRecord(history.inheritance_summary),
+  };
 }
 
 function atlasCard(
@@ -673,7 +705,7 @@ async function myStatus(ownerId: string, body: GalleryBody): Promise<Response> {
   const animaId = asUuid(body.anima_id, "anima_id");
   const { data: anima, error: animaError } = await db
     .from("animas")
-    .select("id, owner_id, status, typing_version")
+    .select("id, owner_id, status, typing_version, synthesis_history")
     .eq("id", animaId)
     .maybeSingle();
   if (animaError) throw animaError;
@@ -694,6 +726,7 @@ async function myStatus(ownerId: string, body: GalleryBody): Promise<Response> {
     ready: anima.status === "ready",
     typing_v2: (anima.typing_version ?? 1) >= 2,
     linked_google: linked,
+    synthesis_result: Boolean(anima.synthesis_history),
     entry: entry
       ? {
         id: entry.id,
@@ -717,7 +750,7 @@ async function publishEntry(
   const { data: anima, error: animaError } = await db
     .from("animas")
     .select(
-      "id, owner_id, status, typing_version, element, secondary_element, stage, sheet_path, manifest",
+      "id, owner_id, status, typing_version, element, secondary_element, stage, sheet_path, manifest, synthesis_history",
     )
     .eq("id", animaId)
     .maybeSingle();
@@ -727,6 +760,9 @@ async function publishEntry(
   if (anima.status !== "ready") throw new Error("ANIMA_NOT_READY");
   if ((anima.typing_version ?? 1) < 2) throw new Error("ANIMA_NOT_TYPING_V2");
   if (!anima.sheet_path || !anima.manifest) throw new Error("ANIMA_NO_ART");
+  if (anima.synthesis_history && body.synthesis_source_consent !== true) {
+    throw new Error("SYNTHESIS_CONSENT_REQUIRED");
+  }
   const [
     { normalizeSuggestedName },
     { cropIdleThumb },

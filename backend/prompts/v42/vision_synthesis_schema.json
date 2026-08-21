@@ -1,0 +1,83 @@
+{
+  "type": "object",
+  "required": [
+    "suggested_name",
+    "color_bucket",
+    "subject_kind",
+    "primary_element",
+    "secondary_element",
+    "stat_archetype",
+    "stat_choices",
+    "height_scale",
+    "creature_brief",
+    "body_plan",
+    "surface_finish",
+    "character_direction",
+    "signature_features",
+    "inheritance_summary",
+    "strike_name",
+    "surge_name",
+    "strike_vfx",
+    "surge_vfx"
+  ],
+  "properties": {
+    "suggested_name": { "type": "string" },
+    "color_bucket": { "type": "string" },
+    "subject_kind": { "type": "string", "enum": ["object", "animal"] },
+    "primary_element": { "type": "string" },
+    "secondary_element": { "type": "string", "nullable": true },
+    "stat_archetype": { "type": "string" },
+    "stat_choices": {
+      "type": "object",
+      "required": ["hp", "atk", "def", "spd", "special"],
+      "properties": {
+        "hp": { "type": "string" },
+        "atk": { "type": "string" },
+        "def": { "type": "string" },
+        "spd": { "type": "string" },
+        "special": { "type": "string" }
+      }
+    },
+    "height_scale": {
+      "type": "string",
+      "enum": ["smaller", "weighted", "larger"]
+    },
+    "creature_brief": { "type": "string" },
+    "body_plan": { "type": "string" },
+    "surface_finish": { "type": "string" },
+    "character_direction": { "type": "string" },
+    "signature_features": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "inheritance_summary": {
+      "type": "object",
+      "required": ["source_a", "source_b", "coherence"],
+      "properties": {
+        "source_a": { "type": "string" },
+        "source_b": { "type": "string" },
+        "coherence": { "type": "string" }
+      }
+    },
+    "strike_name": { "type": "string" },
+    "surge_name": { "type": "string" },
+    "strike_vfx": {
+      "type": "object",
+      "required": ["form", "motion", "brief"],
+      "properties": {
+        "form": { "type": "string" },
+        "motion": { "type": "string" },
+        "brief": { "type": "string" }
+      }
+    },
+    "surge_vfx": {
+      "type": "object",
+      "required": ["form", "motion", "brief"],
+      "properties": {
+        "form": { "type": "string" },
+        "motion": { "type": "string" },
+        "brief": { "type": "string" }
+      }
+    }
+  }
+}

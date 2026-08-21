@@ -10,6 +10,7 @@ var _checks := 0
 var _failures: PackedStringArray = []
 var _requested_delete_id := ""
 var _requested_evolve_row: Dictionary = {}
+var _requested_synthesis_id := ""
 var _requested_rename_id := ""
 var _requested_profile_id := ""
 var _requested_summon_id := ""
@@ -49,7 +50,7 @@ func _initialize() -> void:
 
 	_check_full_rect(scene.find_child("SafeMargin", true, false) as Control, "safe margin")
 	for name in [
-		"HomeView", "ScanView", "BattleView", "CollectionView",
+		"HomeView", "ScanView", "BattleView", "CollectionView", "SynthesisLabView",
 		"AnimaDetailsView", "SeekerProfileView", "AtlasView",
 	]:
 		var view := scene.find_child(name, true, false) as Control
@@ -61,6 +62,7 @@ func _initialize() -> void:
 	var scan := scene.find_child("ScanView", true, false) as Control
 	var battle := scene.find_child("BattleView", true, false) as Control
 	var collection := scene.find_child("CollectionView", true, false) as Control
+	var synthesis := scene.find_child("SynthesisLabView", true, false) as Control
 	var details := scene.find_child("AnimaDetailsView", true, false) as Control
 	var seeker_profile := scene.find_child("SeekerProfileView", true, false) as Control
 	var atlas := scene.find_child("AtlasView", true, false) as Control
@@ -68,6 +70,7 @@ func _initialize() -> void:
 	_check(scan != null and not scan.visible, "Scan starts hidden")
 	_check(battle != null and not battle.visible, "Battle starts hidden")
 	_check(collection != null and not collection.visible, "Collection starts hidden")
+	_check(synthesis != null and not synthesis.visible, "Synthesis Lab starts hidden")
 	_check(details != null and not details.visible, "Details starts hidden")
 	_check(seeker_profile != null and not seeker_profile.visible, "Seeker profile starts hidden")
 	_check(atlas != null and not atlas.visible, "Atlas starts hidden")
@@ -76,7 +79,11 @@ func _initialize() -> void:
 		"ScanButton", "HomeNavButton", "ScanNavButton", "BattleNavButton",
 		"CollectionNavButton", "MenuNavButton",
 		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "EditAnimaNameButton",
-		"DeleteAnimaButton", "GalleryPublishButton", "EvolveAnimaButton", "AtlasBack", "AtlasLoadMore",
+		"DeleteAnimaButton", "GalleryPublishButton", "EvolveAnimaButton", "SynthesisAnimaButton",
+		"CollectionSynthesisButton", "SynthesisBackButton", "SynthesisSourceA", "SynthesisSourceAForm",
+		"SynthesisSourceB", "SynthesisSourceBForm", "SynthesisDominantA", "SynthesisBalanced",
+		"SynthesisDominantB", "SynthesisReviewButton", "SynthesisConfirmButton", "SynthesisResultButton",
+		"AtlasBack", "AtlasLoadMore",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
 		"CollectionSummonButton", "BattlePickProfileButton", "BattlePickBattleButton",
 		"BattleStartButton", "BattleTeamButton", "BattleExpeditionButton", "BattleStrikeButton",
@@ -814,6 +821,8 @@ func _initialize() -> void:
 	await _test_profile_info_rows()
 	await _test_anima_delete_action()
 	await _test_evolve_profile_cta()
+	await _test_synthesis_lab_state()
+	await _test_synthesis_profile_ui()
 	await _test_home_care_actions()
 	await _test_bottom_nav_busy()
 	await _test_incubator_effect()
@@ -4791,6 +4800,160 @@ func _test_evolve_profile_cta() -> void:
 	await process_frame
 
 
+func _test_synthesis_lab_state() -> void:
+	var packed := load("res://scenes/scan_flow.tscn") as PackedScene
+	var host := packed.instantiate()
+	# Untyped on purpose: statically naming the class here would compile it
+	# before the autoloads exist, and the view reads GameState at runtime.
+	var view = host.find_child("SynthesisLabView", true, false)
+	_check(view != null, "Synthesis Lab can be instantiated for state checks")
+	if view == null:
+		host.free()
+		return
+	# The lab lives inside the shell scene, so its `%UniqueName` children are
+	# registered on the shell root. Moving ownership down to the lab before it
+	# enters the tree keeps those lookups resolvable once the shell is freed.
+	# `_synthesis_error_key` hands back catalog keys instead of translated text,
+	# so the i18n scanner cannot see them. Resolve each one against the catalog.
+	var catalog := FileAccess.get_file_as_string("res://locales/ui.csv")
+	for code in [
+		"FEATURE_DISABLED", "SYNTHESIS_LEVEL_TOO_LOW", "SYNTHESIS_COOLDOWN",
+		"SYNTHESIS_MODE_USED", "SYNTHESIS_ALREADY_ACTIVE", "SYNTHESIS_IN_PROGRESS",
+		"SYNTHESIS_FORM_LOCKED", "SYNTHESIS_FORM_INVALID", "ANIMA_DORMANT",
+		"ANIMA_IN_ACTIVE_COMBAT", "NO_CORE", "NO_BITS", "SPEND_CAP",
+		"SYNTHESIS_FAILED", "UNMAPPED_SERVER_CODE",
+	]:
+		var key := str(host.call("_synthesis_error_key", code))
+		_check(
+			catalog.find("\n%s," % key) >= 0,
+			"Synthesis error %s resolves to a translated key" % code
+		)
+	view.get_parent().remove_child(view)
+	view.owner = null
+	_reown_subtree(view, view)
+	root.add_child(view)
+	host.free()
+	await process_frame
+	var game_state := root.get_node_or_null("GameState")
+	var previous_pending: Dictionary = game_state.get("pending_synthesis").duplicate(true)
+	game_state.set("pending_synthesis", {})
+	var rows: Array[Dictionary] = [
+		{
+			"id": "synthesis-locale-a", "nickname": "Solin", "status": "ready",
+			"stage": 2, "care_score": 150, "element": "plant",
+			"base_stats": {"hp": 70, "atk": 60, "def": 55, "spd": 35, "special": 40},
+		},
+		{
+			"id": "synthesis-locale-b", "nickname": "Mossel", "status": "ready",
+			"stage": 1, "care_score": 150, "element": "spark",
+			"base_stats": {"hp": 45, "atk": 75, "def": 35, "spd": 80, "special": 65},
+		},
+	]
+	view.set_rows(rows, "synthesis-locale-a")
+	view.apply_preview({
+		"breakdown": {
+			"chance": 72, "base": 40, "level": 10, "care": 12,
+			"affinity": 10, "mode": 0, "calibration": 0,
+		},
+		"cost": {"cores": 1, "bits": 250},
+		"source_a": {"base_stats": rows[0].base_stats},
+		"source_b": {"base_stats": rows[1].base_stats},
+	})
+	var payload_before := JSON.stringify(view.current_payload())
+	view.refresh_localized_ui()
+	_check_eq(
+		JSON.stringify(view.current_payload()),
+		payload_before,
+		"locale refresh preserves Synthesis selections"
+	)
+	var preview_panel := view.find_child("SynthesisPreviewPanel", true, false) as Control
+	var confirm := view.find_child("SynthesisConfirmButton", true, false) as Button
+	_check(
+		preview_panel != null and preview_panel.visible and confirm != null and not confirm.disabled,
+		"locale refresh preserves the reviewed Resonance preview"
+	)
+	view.show_error_key("SYNTHESIS_TECHNICAL_FAILURE")
+	view.refresh_localized_ui()
+	var outcome_body := view.find_child("SynthesisOutcomeBody", true, false) as Label
+	_check_eq(
+		outcome_body.text,
+		tr("SYNTHESIS_TECHNICAL_FAILURE"),
+		"locale refresh repaints the visible Synthesis error"
+	)
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		flow_source.find("_say(tr(_synthesis_error_key(code)), true)") >= 0
+		and flow_source.find("\"SYNTHESIS_FAILED\":") >= 0,
+		"terminal Synthesis failures always surface the correct toast"
+	)
+	_check(
+		flow_source.find(
+			"not GameState.as_dict(target.get(\"synthesis_history\")).is_empty()"
+		) >= 0,
+		"Atlas only sends Synthesis consent after showing the matching disclosure"
+	)
+	game_state.set("pending_synthesis", previous_pending)
+	view.queue_free()
+	await process_frame
+
+
+func _test_synthesis_profile_ui() -> void:
+	var packed := load("res://scenes/ui/anima_details_view.tscn") as PackedScene
+	var details := packed.instantiate()
+	root.add_child(details)
+	await process_frame
+	var button := details.find_child("SynthesisAnimaButton", true, false) as Button
+	var history_panel := details.find_child("SynthesisHistoryPanel", true, false) as Control
+	var history_mode := details.find_child("SynthesisHistoryMode", true, false) as Label
+	_requested_synthesis_id = ""
+	details.synthesis_requested.connect(_capture_synthesis_request)
+	var row := {
+		"id": "anima-synthesis-source",
+		"nickname": "Velumi",
+		"status": "ready",
+		"stage": 2,
+		"care_score": 150,
+		"element": "spark",
+		"rarity": 3,
+		"base_stats": {"hp": 50, "atk": 55, "def": 45, "spd": 60, "special": 65},
+		"strike_name": "Spark Tap",
+		"surge_name": "Voltage Rush",
+		"synthesis_history": {
+			"mode": "balanced",
+			"resonance": 72,
+			"source_a": {"name": "Solin", "selected_stage": 1},
+			"source_b": {"name": "Mossel", "selected_stage": 2},
+			"inheritance_summary": {
+				"source_a": "bright crest",
+				"source_b": "stone paws",
+				"coherence": "one compact guardian",
+			},
+		},
+	}
+	details.set_synthesis_enabled(true)
+	details.set_anima(row, null)
+	_check(button != null and button.visible and not button.disabled, "eligible profile opens Synthesis")
+	_check(history_panel != null and history_panel.visible, "Result profile shows Synthesis History")
+	_check(history_mode != null and history_mode.text.find("72") >= 0, "History shows successful Resonance")
+	button.pressed.emit()
+	_check_eq(_requested_synthesis_id, "anima-synthesis-source", "profile preselects Source A")
+	row["care_score"] = 0
+	details.set_anima(row, null)
+	_check(button.disabled, "Anima below Level 10 cannot become a Source")
+	details.queue_free()
+	await process_frame
+
+
+func _reown_subtree(node: Node, owner_node: Node) -> void:
+	for child in node.get_children():
+		child.owner = owner_node
+		_reown_subtree(child, owner_node)
+
+
+func _capture_synthesis_request(row: Dictionary) -> void:
+	_requested_synthesis_id = str(row.get("id", ""))
+
+
 func _capture_evolve_request(row: Dictionary) -> void:
 	_requested_evolve_row = row.duplicate(true)
 
@@ -5952,6 +6115,10 @@ func _check_full_rect(node: Control, label: String) -> void:
 	_check_eq(node.anchor_top, 0.0, "%s top anchor" % label)
 	_check_eq(node.anchor_right, 1.0, "%s right anchor" % label)
 	_check_eq(node.anchor_bottom, 1.0, "%s bottom anchor" % label)
+	_check_eq(node.offset_left, 0.0, "%s left offset" % label)
+	_check_eq(node.offset_top, 0.0, "%s top offset" % label)
+	_check_eq(node.offset_right, 0.0, "%s right offset" % label)
+	_check_eq(node.offset_bottom, 0.0, "%s bottom offset" % label)
 
 
 func _check(condition: bool, message: String) -> void:

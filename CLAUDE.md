@@ -48,15 +48,25 @@ kontradiksi.
 | `evolution_prompt_version` | `v41` | `v30` |
 | `RULES_VERSION` combat | `3` | snapshot `evolution_version=0` tetap legacy |
 | Chapter aktif | The Sugarworks v6 | v1–v5 immutable untuk run lama |
-| Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push` semuanya `true` | matikan per flag |
+| Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push` semuanya `true`; `feature_synthesis` sengaja `false` | matikan per flag |
 
-Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 22,
-`evolve_anima` 6, `replicate_webhook` 11, `battle_anima` 26, `team_battle` 8,
-`expedition` 16, `seeker` 5, `gallery` 17, `shop` 4, `care_anima` 9.
+Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 23,
+`evolve_anima` 7, `replicate_webhook` 12, `battle_anima` 26, `team_battle` 8,
+`expedition` 16, `seeker` 6, `gallery` 18, `shop` 4, `care_anima` 9,
+`synthesize_anima` 1.
 
 Yang belum sampai ke pemain adalah **APK baru**. Backend Anima Atlas, gerbang
 Rename, ritual Evolve, dan seluruh polish client sudah production di server,
 tetapi build lama belum memuatnya.
+
+Guided Synthesis **live di backend** per 22 Agustus 2026: migration
+`20260821121417_anima_synthesis` ter-apply, `synthesize_anima` version 1 ACTIVE,
+blok uji Synthesis di `quota_rules.sql` lulus terhadap schema production, dan
+`feature_synthesis` dinyalakan atas keputusan eksplisit. Yang belum sampai ke
+pemain adalah **APK**-nya: build terpasang tidak punya layar Synthesis Lab, jadi
+saat ini flag itu hanya terbuka untuk build yang dijalankan dari source. Begitu
+APK baru terdistribusi, jalur 1 Core + 250 Bits ikut terbuka tanpa langkah
+tambahan — kalau perlu ditahan, matikan flag-nya dulu.
 
 ## Aturan yang tidak bisa dinegosiasikan
 
@@ -205,6 +215,23 @@ supabase projects list   # Scanima harus muncul di sini sebelum lanjut
 ```
 
 Dengan env var itu, `link` tidak diperlukan; cukup `--project-ref`. Kalau ragu token siapa yang dipegang, tanya langsung ke Management API — `curl -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" https://api.supabase.com/v1/organizations` harus menjawab `rekansebangku`, bukan organisasi lain.
+
+Pisau itu bermata dua, dan pada 22 Agustus 2026 mata satunya yang kena: shell di
+mesin ini sudah membawa `SUPABASE_ACCESS_TOKEN` milik **org kerja**, jadi env var
+yang biasanya menyelamatkan justru merampas project yang benar — `projects list`
+memuat tiketdesign dan `organizations` menjawab `PT Global Tiket Network`. Karena
+env var menang, satu-satunya jalan adalah membuangnya per perintah: `env -u
+SUPABASE_ACCESS_TOKEN supabase ...` memakai kredensial tersimpan, yang di mesin
+ini memang milik Scanima dan sudah ter-`link` (`backend/supabase/.temp/project-ref`
+berisi `kgcaisvmmpxswevjvgft`). Jadi periksa isi env var itu **sebelum** memakainya;
+kalau ia bukan `rekansebangku`, `env -u` dulu, jangan `export` lagi.
+
+Dengan project yang sudah ter-link, migrasi lebih baik lewat `supabase db push
+--linked --workdir backend` daripada MCP `apply_migration`: versi yang tercatat
+remote sama dengan nama file lokal, jadi tidak ada langkah rename dan
+`migration list` tetap bersih. Jalankan `--dry-run` lebih dulu untuk melihat
+tepatnya file mana yang akan naik. Ia butuh password database, dan yang tersimpan
+dari `link` sudah cukup; `psql` langsung ke pooler tidak punya password itu.
 
 `REPLICATE_WEBHOOK_SECRET` **tidak ada dan tidak perlu dibuat**: `replicate_webhook` mengambil rahasia penanda tangan dari `GET /v1/webhooks/default/secret` memakai token yang sudah ada, lalu men-cache-nya selama instance hidup. Satu kredensial lebih sedikit berarti satu langkah setup yang tidak bisa terlupakan — dan webhook tanpa verifikasi berarti siapa pun bisa mengisi pustaka art yang di-share semua pemain.
 

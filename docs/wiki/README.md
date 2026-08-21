@@ -25,7 +25,8 @@ memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
 3. **Animas** — lihat semua Anima. Tap kartu, lalu **Summon** untuk membawanya ke Home.
 4. **Battle** — mainkan Duel, Team Battle dengan 4 Anima, atau Expedition **The
    Sugarworks**. Lapar atau kotor tidak mengunci battle, tapi stats turun.
-5. **Animas** — kelola Anima milikmu atau pindah ke tab **Atlas** di dalamnya.
+5. **Animas** — kelola Anima milikmu, buka **Synthesis Lab** setelah punya dua
+   Anima Level 10+, atau pindah ke tab **Atlas** di dalamnya.
 6. **Menu** — buka Seeker Profile, shortcut **Anima Atlas**, atau Settings.
    Profil Anima dibuka lewat Animas atau picker Battle.
 7. **Anima Atlas** — catat form yang kamu Scan atau temui di Duel dan Expedition.
@@ -35,9 +36,9 @@ memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
 | Halaman | Isi |
 | --- | --- |
 | [Perawatan](caring.md) | Hunger, Energy, Hygiene, Shop, Bag, Feed, Clean, Play, Sleep, Dormant |
-| [Ekonomi](economy.md) | Genesis Cores, Bits, Shop, Scan, menunggu telur |
+| [Ekonomi](economy.md) | Genesis Cores, Bits, Shop, biaya Synthesis, Scan, menunggu telur |
 | [Seeker](seeker.md) | Guest, Google, profil, onboarding, Settings, hapus akun |
-| [Anima](anima.md) | Traits, attributes, EXP, Level, Evolve, Collection, Summon, aturan nama |
+| [Anima](anima.md) | Traits, attributes, EXP, Level, Evolve, Synthesis, Collection, Summon, aturan nama |
 | [Battle](battle.md) | Duel, cara lawan dipilih, Team Battle, Expedition The Sugarworks, Boss Seeker, perintah, PP, hadiah, kartu hasil |
 | [Anima Atlas](atlas.md) | Scanned, Expedition, Duel, siluet, Publish Lineage, Report, dan privasi |
 

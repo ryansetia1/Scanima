@@ -42,6 +42,7 @@ export async function finalizeSheet(
   rawPng: Uint8Array,
 ) {
   const isEvolve = gen.kind === "evolve";
+  const isSynthesis = gen.kind === "synthesis";
   const postStage = isEvolve ? (gen.target_stage ?? anima.stage) : anima.stage;
 
   const t0 = Date.now();
@@ -92,6 +93,21 @@ export async function finalizeSheet(
         }
         throw new Error(`commit evolution gagal: ${error.message}`);
       }
+    } else if (isSynthesis) {
+      const { error } = await db.rpc("complete_synthesis", {
+        p_gen_id: gen.id,
+        p_sheet_path: sheetPath,
+        p_manifest: manifest,
+      });
+      if (error) {
+        const { error: cleanupError } = await db.storage
+          .from("anima_sheets")
+          .remove([sheetPath]);
+        if (cleanupError) {
+          console.error(`gagal membersihkan sheet Synthesis ${sheetPath}: ${cleanupError.message}`);
+        }
+        throw new Error(`commit Synthesis gagal: ${error.message}`);
+      }
     } else if (gen.anima_id) {
       const { error } = await db.from("animas").update({
         status: "ready",
@@ -130,7 +146,7 @@ export async function finalizeSheet(
     }
   }
 
-  if (!isEvolve) {
+  if (!isEvolve && !isSynthesis) {
     const { error: errGen } = await db
       .from("generations")
       .update({ status: "succeeded", finished_at: new Date().toISOString() })
@@ -143,5 +159,12 @@ export async function finalizeSheet(
     if (error) console.error(`gagal menghapus foto mentah ${gen.photo_path}: ${error.message}`);
   }
 
-  return { sheetPath, manifest, msPostprocess, privateCapture: isPrivateCapture, evolved: isEvolve };
+  return {
+    sheetPath,
+    manifest,
+    msPostprocess,
+    privateCapture: isPrivateCapture,
+    evolved: isEvolve,
+    synthesized: isSynthesis,
+  };
 }

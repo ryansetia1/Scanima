@@ -37,7 +37,8 @@ const ANIMA_FIELDS := (
 	+ "typing_version,sheet_path,manifest,rarity,base_stats,body_height_cm,"
 	+ "strike_name,surge_name,evolution_version,strike_effect_id,surge_effect_id,"
 	+ "care,care_score,care_synced_at,sleep_started_at,sleep_energy_at_start,"
-	+ "well_cared_on,play_score_on,play_score_today,dormant_since,battle_wins"
+	+ "well_cared_on,play_score_on,play_score_today,dormant_since,battle_wins,"
+	+ "synthesis_history"
 )
 
 
@@ -192,6 +193,18 @@ func evolve_anima(
 			"resume_only": resume_only,
 		}).to_utf8_buffer(),
 		TIMEOUT_FUNGSI_SEC
+	)
+
+
+func synthesize_anima(operation: String, payload: Dictionary = {}) -> Dictionary:
+	var body := payload.duplicate(true)
+	body["operation"] = operation
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/functions/v1/synthesize_anima",
+		_headers(true, ["content-type: application/json"]),
+		JSON.stringify(body).to_utf8_buffer(),
+		TIMEOUT_FUNGSI_SEC if operation in ["attempt", "resume"] else TIMEOUT_SEC
 	)
 
 

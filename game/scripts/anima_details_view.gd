@@ -5,6 +5,7 @@ signal delete_requested(anima_id: String)
 signal rename_requested(anima_id: String)
 signal gallery_publish_requested(anima_id: String, publish: bool)
 signal evolve_requested(row: Dictionary)
+signal synthesis_requested(row: Dictionary)
 signal help_requested(title: String, body: String)
 
 ## Cermin `_validated_anima_name()` di Postgres. Preflight ini hanya menghemat
@@ -35,6 +36,15 @@ const NAME_MAX_LENGTH := 32
 @onready var _gallery_button: Button = %GalleryPublishButton
 @onready var _evolve_button: Button = %EvolveAnimaButton
 @onready var _evolution_status: Label = %EvolutionStatusLabel
+@onready var _synthesis_button: Button = %SynthesisAnimaButton
+@onready var _synthesis_history: Control = %SynthesisHistoryPanel
+@onready var _history_title: Label = %SynthesisHistoryTitle
+@onready var _history_source_a: TextureRect = %SynthesisHistorySourceA
+@onready var _history_source_a_label: Label = %SynthesisHistorySourceALabel
+@onready var _history_source_b: TextureRect = %SynthesisHistorySourceB
+@onready var _history_source_b_label: Label = %SynthesisHistorySourceBLabel
+@onready var _history_mode: Label = %SynthesisHistoryMode
+@onready var _history_summary: Label = %SynthesisHistorySummary
 @onready var _delete_button: Button = %DeleteAnimaButton
 
 var _anima_id := ""
@@ -44,12 +54,15 @@ var _busy := false
 var _gallery_published := false
 var _gallery_available := false
 var _evolution_enabled := false
+var _synthesis_enabled := false
+var _synthesis_history_textures: Dictionary = {}
 
 
 func _ready() -> void:
 	_rename_button.pressed.connect(_request_rename)
 	_gallery_button.pressed.connect(_request_gallery_toggle)
 	_evolve_button.pressed.connect(_request_evolve)
+	_synthesis_button.pressed.connect(_request_synthesis)
 	_delete_button.pressed.connect(_request_delete)
 	_about_help.pressed.connect(_show_about_help)
 	_combat_help.pressed.connect(_show_combat_help)
@@ -57,6 +70,9 @@ func _ready() -> void:
 
 
 func set_anima(row: Dictionary, portrait: Texture2D) -> void:
+	var next_id := str(row.get("id", ""))
+	if next_id != _anima_id:
+		_synthesis_history_textures.clear()
 	_row = row.duplicate(true) if not row.is_empty() else {}
 	if row.is_empty():
 		_anima_id = ""
@@ -67,6 +83,8 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_gallery_button.disabled = true
 		_evolve_button.visible = false
 		_evolution_status.visible = false
+		_synthesis_button.visible = false
+		_synthesis_history.visible = false
 		_delete_button.disabled = true
 		return
 
@@ -102,6 +120,11 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 	_stat_spd.text = _stat_for_row(stats, "spd", row)
 	_stat_special.text = _stat_for_row(stats, "special", row)
 	_apply_evolution_ui(row)
+	_apply_synthesis_ui(row)
+	_apply_synthesis_history(
+		GameState.as_dict(row.get("synthesis_history")),
+		_synthesis_history_textures
+	)
 
 
 func set_busy(busy: bool) -> void:
@@ -112,12 +135,27 @@ func set_busy(busy: bool) -> void:
 	_delete_button.disabled = _busy or _anima_id.is_empty() or evolving
 	if not _row.is_empty():
 		_apply_evolution_ui(_row)
+		_apply_synthesis_ui(_row)
 
 
 func set_evolution_enabled(enabled: bool) -> void:
 	_evolution_enabled = enabled
 	if not _row.is_empty():
 		_apply_evolution_ui(_row)
+
+
+func set_synthesis_enabled(enabled: bool) -> void:
+	_synthesis_enabled = enabled
+	if not _row.is_empty():
+		_apply_synthesis_ui(_row)
+
+
+func set_synthesis_history(history: Dictionary, textures: Dictionary = {}) -> void:
+	if _row.is_empty():
+		return
+	if not textures.is_empty():
+		_synthesis_history_textures = textures.duplicate()
+	_apply_synthesis_history(history, _synthesis_history_textures)
 
 
 func set_gallery_status(status: Dictionary) -> void:
@@ -131,6 +169,45 @@ func set_gallery_status(status: Dictionary) -> void:
 	_gallery_button.disabled = (
 		_busy or _anima_id.is_empty() or CareRules.is_evolving(_row)
 	)
+
+
+func _apply_synthesis_ui(row: Dictionary) -> void:
+	var eligible := SynthesisLabView.is_eligible_source(row)
+	_synthesis_button.visible = _synthesis_enabled
+	# `_busy` hanya menunda tap, bukan menolak Anima-nya, jadi tooltip alasan
+	# ketidaklayakan cuma dipasang kalau Anima ini memang tidak memenuhi syarat.
+	_synthesis_button.disabled = _busy or not eligible
+	_synthesis_button.tooltip_text = (
+		tr("SYNTHESIS_USE_SOURCE_ACTION") if eligible else tr("SYNTHESIS_SOURCE_INELIGIBLE")
+	)
+
+
+func _apply_synthesis_history(history: Dictionary, textures: Dictionary) -> void:
+	_synthesis_history.visible = not history.is_empty()
+	if history.is_empty():
+		return
+	var source_a := GameState.as_dict(history.get("source_a"))
+	var source_b := GameState.as_dict(history.get("source_b"))
+	_history_source_a.texture = textures.get("source_a") as Texture2D
+	_history_source_b.texture = textures.get("source_b") as Texture2D
+	_history_source_a_label.text = tr("SYNTHESIS_HISTORY_SOURCE") % [
+		str(source_a.get("name", tr("ANIMA_FALLBACK_NAME"))),
+		tr(_form_key(int(source_a.get("selected_stage", 1)))),
+	]
+	_history_source_b_label.text = tr("SYNTHESIS_HISTORY_SOURCE") % [
+		str(source_b.get("name", tr("ANIMA_FALLBACK_NAME"))),
+		tr(_form_key(int(source_b.get("selected_stage", 1)))),
+	]
+	_history_mode.text = tr("SYNTHESIS_HISTORY_MODE") % [
+		tr(_mode_key(str(history.get("mode", "balanced")))),
+		LocaleManager.format_integer(int(history.get("resonance", 0))),
+	]
+	var summary := GameState.as_dict(history.get("inheritance_summary"))
+	_history_summary.text = tr("SYNTHESIS_HISTORY_SUMMARY") % [
+		str(summary.get("source_a", "")),
+		str(summary.get("source_b", "")),
+		str(summary.get("coherence", "")),
+	]
 
 
 func _apply_evolution_ui(row: Dictionary) -> void:
@@ -164,6 +241,25 @@ func _request_evolve() -> void:
 	evolve_requested.emit(_row.duplicate(true))
 
 
+func _request_synthesis() -> void:
+	if not _synthesis_button.disabled and not _row.is_empty():
+		synthesis_requested.emit(_row.duplicate(true))
+
+
+static func _form_key(stage: int) -> String:
+	return SynthesisLabView._form_key(stage)
+
+
+static func _mode_key(mode: String) -> String:
+	match mode:
+		"dominant_a":
+			return "SYNTHESIS_MODE_DOMINANT_A"
+		"dominant_b":
+			return "SYNTHESIS_MODE_DOMINANT_B"
+		_:
+			return "SYNTHESIS_MODE_BALANCED"
+
+
 static func is_valid_anima_name(value: String) -> bool:
 	var name := value.strip_edges()
 	return (
@@ -193,6 +289,8 @@ func refresh_localized_ui() -> void:
 	_about_help.tooltip_text = tr("DETAILS_TRAITS")
 	_combat_help.tooltip_text = tr("DETAILS_ATTRIBUTES")
 	_evolve_button.text = tr("EVOLVE_ACTION")
+	_synthesis_button.text = tr("SYNTHESIS_USE_SOURCE_ACTION")
+	_history_title.text = tr("SYNTHESIS_HISTORY_TITLE")
 	if not _row.is_empty():
 		set_anima(_row, _portrait.texture)
 

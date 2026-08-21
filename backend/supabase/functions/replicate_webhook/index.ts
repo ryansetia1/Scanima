@@ -81,12 +81,15 @@ async function muatGeneration(
   if (!byCallback) return { gen: null };
 
   const row = byCallback as GenRow;
-  if (row.kind !== "evolve") return { gen: null };
+  if (row.kind !== "evolve" && row.kind !== "synthesis") return { gen: null };
   if (row.prediction_id && row.prediction_id !== predictionId) {
     return { gen: null, mismatch: true };
   }
 
-  const { error: errAttach } = await db.rpc("attach_evolution_prediction", {
+  const attachRpc = row.kind === "synthesis"
+    ? "attach_synthesis_prediction"
+    : "attach_evolution_prediction";
+  const { error: errAttach } = await db.rpc(attachRpc, {
     p_gen_id: row.id,
     p_prediction_id: predictionId,
   });
@@ -176,6 +179,7 @@ Deno.serve(async (req) => {
 
   const anima = Array.isArray(gen.animas) ? gen.animas[0] : gen.animas;
   const isEvolve = gen.kind === "evolve";
+  const isSynthesis = gen.kind === "synthesis";
   const urlKeluaran = payload.status === "succeeded" ? ambilUrlKeluaran(payload.output) : null;
 
   const alasanGagal = payload.status !== "succeeded"
@@ -194,6 +198,14 @@ Deno.serve(async (req) => {
       });
       if (error) return json(503, { error: error.message });
       return json(200, { evolution_gagal: true, alasan: alasanGagal });
+    }
+    if (isSynthesis) {
+      const { error } = await db.rpc("fail_synthesis", {
+        p_gen_id: gen.id,
+        p_reason: alasanGagal.slice(0, 500),
+      });
+      if (error) return json(503, { error: error.message });
+      return json(200, { synthesis_gagal: true, alasan: alasanGagal });
     }
     const { error } = await db.rpc("refund_generation", {
       p_gen_id: gen.id,
@@ -233,6 +245,17 @@ Deno.serve(async (req) => {
       });
       if (error) return json(503, { error: error.message });
       return json(200, { evolution_gagal: true, alasan });
+    }
+    if (isSynthesis) {
+      if (evolutionFinalizeRetryable(alasan)) {
+        return json(503, { error: alasan, transient: true });
+      }
+      const { error } = await db.rpc("fail_synthesis", {
+        p_gen_id: gen.id,
+        p_reason: alasan.slice(0, 500),
+      });
+      if (error) return json(503, { error: error.message });
+      return json(200, { synthesis_gagal: true, alasan });
     }
     await db.rpc("refund_generation", { p_gen_id: gen.id, p_reason: alasan.slice(0, 500) });
     if (gen.anima_id) {

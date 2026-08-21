@@ -49,6 +49,11 @@ var pending_purchase: Dictionary = {}
 ## Satu ritual evolusi aktif per akun; kunci tidak pernah diganti sampai selesai.
 var pending_evolution: Dictionary = {}
 
+## {idempotency_key, source_a_id, source_a_stage, source_b_id, source_b_stage,
+## mode, generation_id, result_anima_id, started_at}. Resonance dan debit hanya
+## boleh direplay dengan intent persis sama setelah timeout atau restart.
+var pending_synthesis: Dictionary = {}
+
 ## {mode, state, code_verifier, started_at}. Sesi guest tetap aktif sampai
 ## exchange berhasil, dan backup token disimpan terpisah di SecureStore.
 var pending_oauth: Dictionary = {}
@@ -105,6 +110,7 @@ func load_state() -> void:
 	pending_expedition = as_dict(data.get("pending_expedition"))
 	pending_purchase = as_dict(data.get("pending_purchase"))
 	pending_evolution = as_dict(data.get("pending_evolution"))
+	pending_synthesis = as_dict(data.get("pending_synthesis"))
 	pending_oauth = as_dict(data.get("pending_oauth"))
 	preferences.merge(as_dict(data.get("preferences")), true)
 	last_anima = as_dict(data.get("last_anima"))
@@ -173,6 +179,7 @@ func save() -> void:
 		"pending_expedition": pending_expedition,
 		"pending_purchase": pending_purchase,
 		"pending_evolution": pending_evolution,
+		"pending_synthesis": pending_synthesis,
 		"pending_oauth": pending_oauth,
 		"preferences": preferences,
 		"last_anima": last_anima,
@@ -263,6 +270,7 @@ func clear_account_state() -> void:
 	pending_expedition = {}
 	pending_purchase = {}
 	pending_evolution = {}
+	pending_synthesis = {}
 	pending_oauth = {}
 	last_anima = {}
 	profile = {}
@@ -285,6 +293,7 @@ func discard_guest_local_state() -> void:
 	pending_expedition = {}
 	pending_purchase = {}
 	pending_evolution = {}
+	pending_synthesis = {}
 	last_anima = {}
 	profile = {}
 	client_config = {}
@@ -629,6 +638,46 @@ func note_evolution_started(
 
 func finish_evolution() -> void:
 	pending_evolution = {}
+	save()
+
+
+func begin_synthesis(
+	source_a_id: String,
+	source_a_stage: int,
+	source_b_id: String,
+	source_b_stage: int,
+	mode: String
+) -> Dictionary:
+	if not pending_synthesis.is_empty():
+		return pending_synthesis
+	var key := "%d-%08x%08x" % [int(Time.get_unix_time_from_system()), randi(), randi()]
+	pending_synthesis = {
+		"idempotency_key": key,
+		"source_a_id": source_a_id,
+		"source_a_stage": source_a_stage,
+		"source_b_id": source_b_id,
+		"source_b_stage": source_b_stage,
+		"mode": mode,
+		"generation_id": "",
+		"result_anima_id": "",
+		"started_at": int(Time.get_unix_time_from_system()),
+	}
+	save()
+	return pending_synthesis
+
+
+func note_synthesis_started(generation_id: String, result_anima_id: String) -> void:
+	if pending_synthesis.is_empty():
+		return
+	if not generation_id.is_empty():
+		pending_synthesis["generation_id"] = generation_id
+	if not result_anima_id.is_empty():
+		pending_synthesis["result_anima_id"] = result_anima_id
+	save()
+
+
+func finish_synthesis() -> void:
+	pending_synthesis = {}
 	save()
 
 

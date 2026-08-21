@@ -6,6 +6,8 @@ Dua mata uang yang kamu lihat di pita atas: **Cores** dan **Bits**. Angka di lay
 
 Dipakai untuk **Scan** — setiap foto yang lolos pemeriksaan dan menjadi Anima
 memakai **1 Core**. Setiap Anima mendapat art unik yang privat secara default.
+Satu **Synthesis** yang berhasil juga memakai **1 Core** untuk membuat art
+Result yang unik dan privat.
 
 - Guest baru mulai dengan **1 Core**.
 - **Sign in with Google** memberi **3 Core tambahan sekali**, sehingga grant
@@ -25,7 +27,7 @@ memakai **1 Core**. Setiap Anima mendapat art unik yang privat secara default.
 
 ## Bits
 
-Dipakai di **Shop**.
+Dipakai di **Shop** dan Synthesis.
 
 - Pemain baru mulai dengan **50 Bits**. Akun lama tidak diisi ulang.
 - Di **Home**, buka **Shop** tepat di bawah baris HUD di kanan: tab Food dan Items.
@@ -48,6 +50,17 @@ Dipakai di **Shop**.
 - Play, Sleep, dan Summon **gratis**.
 
 50 Bits awal cukup untuk beberapa makanan murah. Makanan mahal dan item Battle lebih jarang.
+
+## Biaya Synthesis
+
+Satu Synthesis yang **berhasil** memakai **1 Genesis Core + 250 Bits**.
+**Review Resonance** selalu menampilkan biaya dan peluangnya sebelum konfirmasi.
+
+Resonance yang gagal tidak memakai Core atau Bits dan tidak memanggil pembuatan
+art. Konsekuensinya adalah Energy kedua Source turun 10 dan pasangan+bias itu
+cooldown satu jam. Kalau kegagalan teknis terjadi setelah pembayaran, server
+mengembalikan Core dan Bits tepat sekali. Menutup app atau pindah tab tidak
+mengulang roll maupun pembayaran; percobaan yang sama dilanjutkan saat kembali.
 
 ## Scan
 

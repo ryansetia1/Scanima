@@ -92,6 +92,34 @@ Hatchling menjadi Adult di Level 16;
 Adult menjadi Evolved di Level 36. Satu ritual per tahap, berurutan.
 Setiap form yang selesai menjadi entry terpisah di [Anima Atlas](atlas.md).
 
+## Synthesis
+
+**Synthesis Lab** membuat satu Anima baru dari dua **Source Anima** milikmu.
+Kedua Source tetap ada dan tetap bisa dimainkan; Synthesis bukan breeding dan
+tidak memakai istilah keluarga.
+
+- Buka **Synthesis Lab** dari Collection, atau **Use in Synthesis** dari Profile
+  untuk langsung memilih Source A.
+- Kedua Source harus ready, tidak Dormant, tidak sedang Evolve, tidak sedang di
+  Battle atau Expedition yang berjalan, dan minimal **Level 10**. Pilih form Hatchling, Adult, atau Evolved yang sudah terbuka
+  sebagai referensi visual; stage Source saat ini tidak membatasi pilihan.
+- Pilih **Dominant A**, **Balanced**, atau **Dominant B**. Dominant lebih
+  menekankan bentuk dan stats salah satu Source; Balanced mencampur keduanya
+  lebih rata. Satu pasangan dapat berhasil sekali untuk tiap pilihan itu.
+- **Review Resonance** menunjukkan peluang sukses, pengaruh Level, Care,
+  kecocokan, bias, Calibration, perkiraan bentuk stats, dan biaya sebelum kamu
+  menekan **Attempt Synthesis**.
+- Kalau Resonance gagal, Core dan Bits tidak dipakai. Energy kedua Source turun
+  10, pasangan dan bias itu cooldown satu jam, lalu Calibration menambah peluang
+  percobaan berikutnya.
+- Kalau berhasil, kedua Source tetap bisa dipakai sementara Result dibuat.
+  Result selalu menetas sebagai **Hatchling Level 1**. Stats-nya adalah build
+  baru dalam kisaran kekuatan kedua Source, bukan bonus power gratis.
+
+Profile Result menampilkan **Synthesis History**: nama dan form kedua Source,
+bias, Resonance yang berhasil, serta ringkasan ciri yang diwarisi. Result juga
+bisa menjadi Source setelah mencapai Level 10.
+
 | Aksi | EXP | Catatan |
 | --- | --- | --- |
 | Feed yang menyeberangkan Hunger ke 40 | +3 | Camilan yang masih di bawah 40 = 0 |
@@ -109,8 +137,8 @@ Dormant **tidak** menghapus EXP.
 
 Tap kartu membuka sheet, bukan langsung pindah companion.
 
-- **View Profile** — lihat traits dan attributes, ganti nama, Evolve, atur
-  publikasi lineage, atau Delete.
+- **View Profile** — lihat traits dan attributes, ganti nama, Evolve, buka
+  Synthesis, atur publikasi lineage, atau Delete.
 - **Summon** — Anima ini pindah ke Home. Yang tadi di Home tidur. Portalnya mulai
   begitu kamu menekan, bukan sesudah menunggu; kalau pergantiannya gagal, portal
   menutup dan companion lamamu kembali.

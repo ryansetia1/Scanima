@@ -9642,6 +9642,10 @@ console.log("39. nickname pemain tidak pernah sampai ke pemain lain");
 
   // prompts.generated.ts hanya menyalin teks prompt; ia tidak memproyeksikan
   // baris apa pun. Sisanya adalah seluruh permukaan yang boleh melihat kolom.
+  // Synthesis membacanya masuk, bukan keluar: nama koleksi pemanggil sendiri
+  // hanya dipakai `uniqueSuggestedName` untuk menolak nama kembar, persis
+  // seperti Evolve. Ia tidak pernah masuk prompt dan tidak pernah diproyeksikan
+  // ke pemain lain, jadi keempat pagar di bawah tidak berlaku untuknya.
   const allowed = [
     "_shared/prompts.generated.ts",
     "_shared/signed_roster.ts",
@@ -9651,6 +9655,7 @@ console.log("39. nickname pemain tidak pernah sampai ke pemain lain");
     "evolve_anima/index.ts",
     "expedition/index.ts",
     "gallery/index.ts",
+    "synthesize_anima/index.ts",
     "team_battle/index.ts",
   ];
   assert.deepEqual(
@@ -9698,6 +9703,261 @@ console.log("39. nickname pemain tidak pernah sampai ke pemain lain");
     publishDefense,
     /teamSnapshot\(team,\s*false\)/,
     "Defense Team terpublish tidak boleh membawa nickname pemiliknya",
+  );
+}
+
+console.log("40. Guided Synthesis menjaga budget stat dan roster elemen");
+{
+  const {
+    assembleSynthesisPrompt,
+    validateSynthesisPlan,
+  } = await import(
+    "../backend/supabase/functions/_shared/synthesis.mjs"
+  );
+  const sourceA = {
+    name: "Veridian",
+    rarity: 3,
+    body_height_cm: 150,
+    base_stats: { hp: 70, atk: 60, def: 55, spd: 35, special: 40 },
+  };
+  const sourceB = {
+    name: "Sunhound",
+    rarity: 4,
+    body_height_cm: 75,
+    base_stats: { hp: 45, atk: 75, def: 35, spd: 80, special: 65 },
+  };
+  const raw = {
+    suggested_name: "Verdihoundmon",
+    color_bucket: "green_gold",
+    subject_kind: "animal",
+    primary_element: "plant",
+    secondary_element: "spark",
+    stat_archetype: "fast bruiser with resilient plant body",
+    stat_choices: {
+      hp: "source_a",
+      atk: "blend",
+      def: "remix_up",
+      spd: "source_b",
+      special: "remix_down",
+    },
+    height_scale: "weighted",
+    creature_brief: "A compact leaf-maned quadruped with a conductive tail.",
+    body_plan: "Low quadruped with one leaf mane and one flexible tail.",
+    surface_finish: "Matte leaf plates over short golden fur.",
+    character_direction: "Curious, alert, and energetic without a fierce default face.",
+    signature_features: [
+      "Veridian leaf mane",
+      "Veridian layered plates",
+      "Sunhound quadruped stance",
+      "Sunhound conductive tail",
+    ],
+    inheritance_summary: {
+      source_a: "Leaf mane and layered plant armor define the torso.",
+      source_b: "Quadruped mobility and conductive tail drive the action.",
+      coherence: "Leaf veins carry the spark motif through one material system.",
+    },
+    strike_name: "Vine Pounce",
+    surge_name: "Aurora Canopy",
+    strike_vfx: {
+      form: "leaf-edged arc",
+      motion: "sweep",
+      brief: "A compact leaf crescent with small gold sparks.",
+    },
+    surge_vfx: {
+      form: "branching canopy",
+      motion: "bloom",
+      brief: "A radial canopy of leaf veins and contained sparks.",
+    },
+  };
+  const { plan } = validateSynthesisPlan(raw, {
+    mode: "balanced",
+    sourceA,
+    sourceB,
+  });
+  const wantedTotal = Math.round(
+    (baseStatTotal(sourceA.base_stats) + baseStatTotal(sourceB.base_stats)) / 2,
+  );
+  assert.equal(
+    Object.values(plan.base_stats).reduce((sum, value) => sum + value, 0),
+    wantedTotal,
+    "Synthesis must preserve the weighted source power budget exactly",
+  );
+  assert.ok(
+    Object.values(plan.base_stats).every((value) => value >= 10 && value <= 95),
+    "Synthesis stats must remain inside combat bounds",
+  );
+  assert.equal(plan.primary_element, "plant");
+  assert.equal(plan.secondary_element, "spark");
+  assert.notEqual(plan.strike_effect_id, plan.surge_effect_id);
+  assert.doesNotMatch(plan.suggested_name, /mon$/i);
+
+  // reserve_synthesis_plan menolak plan yang totalnya melebihi anggaran yang ia
+  // hitung sendiri dari bobot bias. Angka di bawah adalah anggaran itu, jadi
+  // pergeseran pembulatan di sisi JS akan menghasilkan Plan yang selalu ditolak
+  // SQL sesudah pemain dibebani Core + Bits. Terukur di Postgres: 280/272/288.
+  for (const [mode, budget] of [["balanced", 280], ["dominant_a", 272], ["dominant_b", 288]]) {
+    const modePlan = validateSynthesisPlan(raw, { mode, sourceA, sourceB }).plan;
+    assert.equal(
+      Object.values(modePlan.base_stats).reduce((sum, value) => sum + value, 0),
+      budget,
+      `Synthesis ${mode} must land exactly on the budget the SQL guard allows`,
+    );
+  }
+
+  const prompt = assembleSynthesisPrompt(
+    "{{mode}}\n{{source_a_name}} + {{source_b_name}}\n{{creature_brief}}\n"
+      + "{{signature_features_as_bullets}}\n{{body_plan}}\n{{surface_finish}}\n"
+      + "{{character_direction}}\n{{element_identity}}\n{{strike_name}}\n"
+      + "{{surge_name}}\n{{strike_vfx}}\n{{surge_vfx}}",
+    plan,
+    sourceA,
+    sourceB,
+    "balanced",
+  );
+  assert.doesNotMatch(prompt, /\{\{[^}]+\}\}/, "Synthesis prompt may not leave placeholders");
+
+  assert.throws(
+    () => validateSynthesisPlan({ ...raw, primary_element: "light" }, {
+      mode: "balanced",
+      sourceA,
+      sourceB,
+    }),
+    /primary_element/,
+    "Synthesis may not invent an element outside the roster",
+  );
+}
+
+console.log("41. Synthesis membayar model hanya sesudah Resonance sukses");
+{
+  const { readFile } = await import("node:fs/promises");
+  const migration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260821121417_anima_synthesis.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const endpoint = await readFile(
+    new URL(
+      "../backend/supabase/functions/synthesize_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const webhook = await readFile(
+    new URL(
+      "../backend/supabase/functions/replicate_webhook/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const finalizer = await readFile(
+    new URL(
+      "../backend/supabase/functions/_shared/finalize_sheet.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const quota = await readFile(
+    new URL("../backend/tests/quota_rules.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.ok(
+    endpoint.indexOf('db.rpc("attempt_synthesis"')
+      < endpoint.indexOf("jalankanPrediksi(MODEL_VISION"),
+    "Resonance/database claim must precede every paid Synthesis Vision call",
+  );
+  assert.match(
+    migration,
+    /if v_roll > v_chance then[\s\S]*?return jsonb_build_object\([\s\S]*?'outcome', 'failed'[\s\S]*?end if;[\s\S]*?update public\.profiles[\s\S]*?genesis_cores = genesis_cores - v_core_cost/,
+    "failed Resonance must return before Core/Bits debit",
+  );
+  assert.ok(
+    migration.includes("'synthesis_bits_refund'")
+      && migration.includes("quota_ledger_synthesis_bits_refund_once_idx")
+      && migration.includes("reason = 'refund'"),
+    "technical failure must refund Core and Bits idempotently",
+  );
+  assert.ok(
+    migration.includes("anima_synthesis_one_pending_per_owner_idx")
+      && migration.includes("'synthesis:' || p_owner::text"),
+    "different keys for one owner must not create concurrent paid Syntheses",
+  );
+  assert.ok(
+    migration.includes("'synthesis:' || p_key")
+      && migration.includes("synthesis_history = null"),
+    "Synthesis generations must namespace keys and failed rows must drop stale history",
+  );
+  assert.ok(
+    migration.includes("'base_stats', v_a.base_stats, 'rarity', v_a.rarity")
+      && migration.includes("'base_stats', v_b.base_stats, 'rarity', v_b.rarity"),
+    "production Source snapshots must preserve rarity for plan validation",
+  );
+  assert.ok(
+    webhook.includes("if (isSynthesis)")
+      && webhook.includes('db.rpc("fail_synthesis"'),
+    "webhook must route Synthesis failures through dual-currency refund",
+  );
+  assert.ok(
+    finalizer.includes('db.rpc("complete_synthesis"'),
+    "sheet finalization must commit Result + slot atomically",
+  );
+  assert.ok(
+    quota.includes("synthesis-failure")
+      && quota.includes("synthesis-technical-fail")
+      && quota.includes("synthesis-success")
+      && quota.includes("client tidak boleh memanggil RPC Synthesis"),
+    "quota_rules must cover free failure, refund, success, and EXECUTE revoke",
+  );
+  assert.match(
+    migration,
+    /SYNTHESIS_STALE_RECOVERED[\s\S]*?raise exception 'SYNTHESIS_ALREADY_ACTIVE'/,
+    "a paid Synthesis nobody resumed must be swept before the one-active gate",
+  );
+  assert.match(
+    migration,
+    /idempotency_key = 'synthesis:' \|\| p_key[\s\S]*?IDEMPOTENCY_CONFLICT[\s\S]*?genesis_cores = genesis_cores - v_core_cost/,
+    "a colliding namespaced key must be refused before any currency moves",
+  );
+  assert.ok(
+    migration.includes("SYNTHESIS_PLAN_STATS_INVALID")
+      && migration.includes("_synthesis_stat_total(p_plan->'base_stats') > v_budget"),
+    "the stat budget must be re-derived in SQL, not trusted from the Edge plan",
+  );
+  assert.ok(
+    quota.includes("synthesis-stale-lock"),
+    "quota_rules must prove the stale sweep refunds and reopens the slot",
+  );
+  assert.ok(
+    !endpoint.includes('.select("vision_result")'),
+    "Synthesis name dedup must not pull every stored plan for the owner",
+  );
+
+  // Three copies of the inheritance weights exist by necessity: SQL prices the
+  // roll, the shared module recomputes with the plan's stat choices, and the lab
+  // previews it before the player pays. Nothing else keeps them equal.
+  const labView = await readFile(
+    new URL("../game/scripts/synthesis_lab_view.gd", import.meta.url),
+    "utf8",
+  );
+  const sharedModule = await readFile(
+    new URL("../backend/supabase/functions/_shared/synthesis.mjs", import.meta.url),
+    "utf8",
+  );
+  for (const [mode, sql, mjs, gd] of [
+    ["dominant_a", "when 'dominant_a' then 0.70", '"dominant_a") return 0.7;', '0.70 if _mode == "dominant_a"'],
+    ["dominant_b", "when 'dominant_b' then 0.30", '"dominant_b") return 0.3;', '0.30 if _mode == "dominant_b"'],
+  ]) {
+    assert.ok(
+      migration.includes(sql) && sharedModule.includes(mjs) && labView.includes(gd),
+      `inheritance weight for ${mode} must agree across SQL, shared module, and lab`,
+    );
+  }
+  assert.ok(
+    migration.includes("else 0.50") && sharedModule.includes("return 0.5;")
+      && labView.includes("0.50"),
+    "the balanced inheritance weight must agree across all three copies",
   );
 }
 

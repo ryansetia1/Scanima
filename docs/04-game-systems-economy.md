@@ -173,6 +173,54 @@ Operasinya memakai DELETE PostgREST langsung dengan policy RLS
 audit dengan `anima_id = null`. Client reload roster lalu memilih Anima terbaru
 berikutnya; kalau tidak ada, Home kembali ke empty state.
 
+### Guided Synthesis: biaya hanya setelah Resonance sukses
+
+Synthesis menerima dua Anima milik pemain sebagai **Source** tanpa mengonsumsi
+keduanya. Masing-masing harus `ready`, tidak Dormant atau sedang Evolve, tidak
+terkunci combat aktif, dan minimal Level 10. Pemain memilih satu form yang sudah
+terbuka dari tiap Source serta mode `dominant_a`, `balanced`, atau `dominant_b`.
+Satu pasangan tak berurutan dapat sukses sekali per mode, sehingga batasnya tiga
+Result berbeda. Result selalu dibuat sebagai Hatchling Level 1.
+
+Peluang Resonance server-authoritative:
+
+```text
+chance = clamp(
+  40
+  + level_bonus 0..20
+  + current_care_bonus 0..20
+  + stat_and_element_affinity 0..15
+  + dominant_mode_bonus 0 atau 10
+  + calibration 0..20,
+  1, 100
+)
+```
+
+Level dihitung dari Level 10–40 kedua Source. Care memakai Hunger, Energy, dan
+Hygiene sesudah decay disinkronkan. Affinity membandingkan bentuk lima base stat
+yang dinormalisasi dan overlap elemen. Setiap kegagalan untuk pasangan+mode yang
+sama menambah Calibration 5, maksimal 20.
+
+`attempt_synthesis` memegang lock per owner, memvalidasi feature flag, ownership,
+form, saldo, spend cap, dan batas satu Synthesis aktif, lalu melakukan roll.
+Roll gagal kembali **sebelum panggilan model dan sebelum debit**: Core/Bits tetap,
+Energy kedua Source -10, cooldown pasangan+mode satu jam. Roll sukses membuat
+Result incubating + generation + debit **1 Genesis Core dan 250 Bits** + ledger
+dalam satu transaksi. Partial unique index menjaga paling banyak satu slot
+`pending` per owner walau dua idempotency key datang bersamaan.
+
+Vision hanya memilih konsep visual, elemen dari roster yang sudah ada, dan
+candidate kind untuk setiap stat. Angka final tetap disusun server, dijepit
+10–95, lalu dinormalisasi ke weighted average budget kedua Source (70/30, 50/50,
+atau 30/70). Level dan stage Source menaikkan Resonance, bukan power Result.
+
+Kegagalan teknis sesudah debit memanggil `fail_synthesis`: Core dan Bits
+dikembalikan tepat sekali lewat ledger terpisah, slot dibuka lagi, dan
+Calibration tidak bertambah. Client menyimpan satu intent + idempotency key dan
+me-replay key yang sama setelah timeout/restart. Detail player contract dan
+privacy snapshot Atlas ada di
+[`designs/2026-08-21-anima-synthesis.md`](designs/2026-08-21-anima-synthesis.md).
+
 ### Seeker, upgrade akun, dan progression kosmetik
 
 Pemain baru masuk sebagai user anonim tanpa login gate. `handle_new_user()`

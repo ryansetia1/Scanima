@@ -81,6 +81,14 @@ theme_type_variation = &"BodyLabel"
 text = "COLLECTION_SUBTITLE"
 autowrap_mode = 2
 
+[node name="CollectionSynthesisButton" type="Button" parent="Column/Header" unique_id=1148474385]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(220, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "SYNTHESIS_LAB_ACTION"
+
 [node name="CollectionTabs" type="HBoxContainer" parent="Column" unique_id=720371244]
 layout_mode = 2
 size_flags_horizontal = 3

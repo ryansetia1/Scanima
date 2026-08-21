@@ -2,6 +2,54 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Status deploy Guided Synthesis (backend production, flag hidup, APK pending)
+
+Rollout 22 Agustus 2026. Migration `20260821121417_anima_synthesis` di-apply
+lewat `supabase db push --linked --workdir backend`, jadi versi yang tercatat
+remote sama dengan nama file lokal dan `migration list` tidak melihat drift —
+berbeda dari empat migrasi pertama yang lewat MCP dan harus di-rename manual.
+Terukur sesudahnya di production: dua tabel baru (`anima_synthesis_slots`,
+`anima_synthesis_attempts`), tujuh fungsi Synthesis, dan 14 kunci `app_config`
+dengan `feature_synthesis` = `false` sesuai seed migration.
+
+Edge Function di-deploy satu batch: `synthesize_anima` version 1 (baru),
+`gallery` 18, `replicate_webhook` 12, `seeker` 6, plus `create_anima` 23 dan
+`evolve_anima` 7 yang ikut karena keduanya memuat `prompts.generated.ts` yang
+sekarang membawa v42. Semua `verify_jwt=true` kecuali webhook.
+
+Smoke test: kelima fungsi ber-JWT menjawab 401 tanpa header, dan webhook
+menolak tanda tangan palsu. Karena `verify_jwt=true` menolak di gateway sebelum
+modul diimpor, 401 saja **tidak** membuktikan impor berhasil; pemanggilan ulang
+dengan publishable key menembus gateway dan berhenti di 426 `CLIENT_OUTDATED`,
+yang berarti `prompts.generated.ts` dan `synthesis.mjs` benar-benar termuat.
+
+Blok uji Synthesis dari `backend/tests/quota_rules.sql` dijalankan terhadap
+production lewat MCP `execute_sql` dan lulus: Resonance gagal tidak membayar,
+claim sukses atomik, refund Core+Bits tepat sekali, sapuan pending basi,
+mode lock, Source lock, dan RPC tetap service-role-only. Sesudahnya database
+bersih — nol slot, nol attempt, nol generation `kind='synthesis'`, user uji
+terhapus, dan `synthesis_resonance_base` kembali ke 40.
+
+Probe end-to-end sesudah flag hidup, nol biaya: satu guest anonim sekali pakai
+dibuat lewat `auth/v1/signup`, lalu `synthesize_anima` dipanggil dengan JWT-nya
+plus header `x-scanima-platform: android` dan `x-scanima-build: 1`. `preview`
+dengan Source palsu menjawab 409 `ANIMA_NOT_FOUND` — artinya JWT, routing
+operation, validasi payload, RPC, dan pemetaan error benar-benar terhubung, bukan
+cuma modulnya termuat. Guest-nya dihapus lagi dan cascade-nya bersih sampai
+`profiles`. Terukur juga: `operation` yang tidak dikenal ditolak 400 sebelum
+menyentuh `attempt`, jadi salah tulis operation tidak bisa mendebit apa pun —
+pesan 400 yang muncul lebih dulu hanyalah validasi Source, yang berjalan sebelum
+whitelist operation.
+
+`feature_synthesis` dinyalakan ke `true` sesudah smoke test itu, atas keputusan
+eksplisit dan lebih awal dari pagar "tunggu APK" yang tercatat sebelumnya.
+Konsekuensinya: jalur 1 Core + 250 Bits sudah terbuka di server sekarang, tetapi
+belum ada APK terdistribusi yang punya layar Synthesis Lab, jadi praktis hanya
+build dari source yang bisa memanggilnya. Rollback-nya satu baris —
+`update public.app_config set value = 'false'::jsonb where key = 'feature_synthesis'`
+— dan `attempt_synthesis` maupun `preview_synthesis` langsung menolak dengan
+`FEATURE_DISABLED` tanpa menyentuh saldo.
+
 ## Status deploy Anima Atlas (backend production, APK pending)
 
 Gallery Feed sudah diganti di source dengan **Anima Atlas**: registry

@@ -155,6 +155,7 @@ sequenceDiagram
 | `seeker` | Profil Seeker, grant upgrade Google, dan hapus akun | Menerima `owner_id` dari body atau menggabungkan dua akun |
 | `SecureStore` + `AuthFlow` | Token Keystore/Keychain, backup guest, link/restore OAuth | Menulis refresh token ke `state.json` atau mengganti sesi sebelum exchange valid |
 | `evolve_anima` | Generation stage berikutnya pakai sheet privat saat ini sebagai input | Dipanggil tanpa cek syarat evolusi di server |
+| `synthesize_anima` | Preview/roll Resonance, buat board dua Source privat, validasi Plan, lalu dispatch Result | Memanggil model sebelum roll sukses atau menentukan angka stat di LLM |
 | Postgres | Sumber kebenaran untuk kuota, stat, kepemilikan | Menyimpan foto mentah |
 | Storage | Foto sementara, sheet RGBA, manifest | Menyimpan foto lebih dari 24 jam |
 

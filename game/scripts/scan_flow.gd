@@ -33,6 +33,9 @@ const POLL_TIMEOUT_SEC := 180.0
 const EVOLUTION_POLL_INTERVAL_SEC := 5.0
 const EVOLUTION_POLL_TIMEOUT_SEC := 10.0 * 60.0
 const EVOLUTION_POLL_RETRY_SEC := 15.0
+const SYNTHESIS_POLL_INTERVAL_SEC := 5.0
+const SYNTHESIS_POLL_TIMEOUT_SEC := 10.0 * 60.0
+const SYNTHESIS_POLL_RETRY_SEC := 15.0
 const MAX_FOTO_BYTE := 6 * 1024 * 1024
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
@@ -65,6 +68,7 @@ const STAT_LABEL_KEYS := {
 const SEEKER_PROFILE_DEST := &"seeker_profile"
 const ANIMA_PROFILE_DEST := &"anima_profile"
 const ATLAS_DEST := &"atlas"
+const SYNTHESIS_DEST := &"synthesis"
 const TROPHY_ART_DIR := "user://trophies"
 const SHOP_ICON := preload("res://assets/icons/scanima/shop.svg")
 const BAG_ICON := preload("res://assets/icons/scanima/bag.svg")
@@ -98,6 +102,7 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 @onready var _team_battle_view: TeamBattleView = _battle_view.get_node("TeamBattleView")
 @onready var _expedition_view: ExpeditionView = _battle_view.get_node("ExpeditionView")
 @onready var _collection_view: CollectionView = %CollectionView
+@onready var _synthesis_view: SynthesisLabView = %SynthesisLabView
 @onready var _details_view: AnimaDetailsView = %AnimaDetailsView
 @onready var _seeker_profile_view: SeekerProfileView = %SeekerProfileView
 @onready var _atlas_view: AtlasView = %AtlasView
@@ -149,6 +154,11 @@ var _evolution_chamber_active := false
 var _evolution_resume_in_flight := false
 var _evolution_poll_in_flight := false
 var _evolution_art_error_reported := false
+var _synthesis_resume_in_flight := false
+var _synthesis_poll_in_flight := false
+var _synthesis_art_error_reported := false
+var _synthesis_return_destination: StringName = BottomNav.COLLECTION
+var _synthesis_history_revision := 0
 var _pending_retreat := ""
 var _modal_context := &""
 var _last_anima_press_ms := -1000
@@ -237,11 +247,17 @@ func _ready() -> void:
 	_collection_view.first_scan_requested.connect(_open_scan)
 	_collection_view.retry_requested.connect(_retry_roster)
 	_collection_view.atlas_requested.connect(_open_atlas)
+	_collection_view.synthesis_requested.connect(_open_synthesis_lab)
+	_synthesis_view.back_requested.connect(_close_synthesis_lab)
+	_synthesis_view.preview_requested.connect(_preview_synthesis)
+	_synthesis_view.attempt_requested.connect(_attempt_synthesis)
+	_synthesis_view.result_requested.connect(_show_synthesis_result)
 	_details_view.rename_requested.connect(_show_rename)
 	_details_view.delete_requested.connect(_show_delete_confirmation)
 	_details_view.help_requested.connect(_show_details_help)
 	_details_view.gallery_publish_requested.connect(_toggle_gallery_publish)
 	_details_view.evolve_requested.connect(_show_evolve_confirmation)
+	_details_view.synthesis_requested.connect(_open_synthesis_lab)
 	_bottom_nav.destination_selected.connect(_on_bottom_nav_destination)
 	_shell_modal.confirmed.connect(_modal_confirmed)
 	_shell_modal.canceled.connect(_modal_canceled)
@@ -449,6 +465,8 @@ func _notification(what: int) -> void:
 		and not _evolving_roster_row().is_empty()
 	):
 		_resume_server_evolution(_evolving_roster_row(), false)
+	if not GameState.pending_synthesis.is_empty() and not _synthesis_poll_in_flight:
+		call_deferred("_resume_pending_synthesis")
 	call_deferred("_refresh_chapter_announcements")
 
 
@@ -560,6 +578,8 @@ func _boot() -> void:
 		var evolving := _evolving_roster_row()
 		if not evolving.is_empty():
 			_resume_server_evolution(evolving, false)
+	if not GameState.pending_synthesis.is_empty():
+		call_deferred("_resume_pending_synthesis")
 	# Battle yang tersimpan tetap menjadi bookmark sampai pemain memilih Continue.
 	# Boot tidak mengambil alih Home atau me-replay intent jaringan secara otomatis.
 	if GameState.pending_scan.is_empty():
@@ -639,10 +659,278 @@ func _show_collection_profile(row: Dictionary) -> void:
 		return
 	_profile_return_destination = (
 		_destination
-		if _destination in [BottomNav.COLLECTION, BottomNav.BATTLE]
+		if _destination in [BottomNav.COLLECTION, BottomNav.BATTLE, SYNTHESIS_DEST]
 		else BottomNav.COLLECTION
 	)
 	_switch_destination(ANIMA_PROFILE_DEST, row)
+
+
+func _open_synthesis_lab(preselected: Dictionary = {}) -> void:
+	if not _synthesis_enabled():
+		_say(tr("SYNTHESIS_FEATURE_DISABLED"), true)
+		return
+	if _destination != SYNTHESIS_DEST:
+		_synthesis_return_destination = (
+			_destination
+			if _destination in [BottomNav.COLLECTION, ANIMA_PROFILE_DEST]
+			else BottomNav.COLLECTION
+		)
+	_switch_destination(SYNTHESIS_DEST)
+	_synthesis_view.set_rows(_roster, str(preselected.get("id", "")))
+	if not GameState.pending_synthesis.is_empty() and not _synthesis_poll_in_flight:
+		call_deferred("_resume_pending_synthesis")
+
+
+func _close_synthesis_lab() -> void:
+	_switch_destination(_synthesis_return_destination)
+
+
+func _preview_synthesis(payload: Dictionary) -> void:
+	if payload.is_empty() or not _synthesis_enabled():
+		return
+	_synthesis_view.set_busy(true)
+	var res := await Backend.synthesize_anima("preview", payload)
+	_synthesis_view.set_busy(false)
+	if res.ok and typeof(res.data) == TYPE_DICTIONARY:
+		_synthesis_view.apply_preview(GameState.as_dict(res.data))
+	else:
+		_synthesis_view.show_error_key(_synthesis_error_key(str(res.error)))
+
+
+func _attempt_synthesis(payload: Dictionary) -> void:
+	if payload.is_empty() or not _synthesis_enabled():
+		return
+	if not GameState.pending_synthesis.is_empty():
+		_say(tr("SYNTHESIS_ALREADY_ACTIVE"), true)
+		return
+	var pending := GameState.begin_synthesis(
+		str(payload.get("source_a_id", "")),
+		int(payload.get("source_a_stage", 0)),
+		str(payload.get("source_b_id", "")),
+		int(payload.get("source_b_stage", 0)),
+		str(payload.get("mode", ""))
+	)
+	_synthesis_art_error_reported = false
+	_synthesis_view.show_generating(pending)
+	await _send_pending_synthesis("attempt")
+
+
+func _resume_pending_synthesis() -> void:
+	if GameState.pending_synthesis.is_empty():
+		return
+	await _send_pending_synthesis("resume")
+
+
+func _send_pending_synthesis(operation: String) -> void:
+	if _synthesis_resume_in_flight or _synthesis_poll_in_flight:
+		return
+	var pending := GameState.pending_synthesis.duplicate(true)
+	if pending.is_empty():
+		return
+	_synthesis_resume_in_flight = true
+	var payload := pending.duplicate(true)
+	var res := await Backend.synthesize_anima(operation, payload)
+	_synthesis_resume_in_flight = false
+	var body := GameState.as_dict(res.data)
+	if res.ok:
+		if body.has("resonance_succeeded") and not bool(body.get("resonance_succeeded", false)):
+			GameState.finish_synthesis()
+			await _reload_roster()
+			if _destination == SYNTHESIS_DEST:
+				_synthesis_view.set_rows(_roster)
+				_synthesis_view.show_resonance_failure(body)
+			_say(tr("SYNTHESIS_RESONANCE_FAILED_TOAST"), true)
+			return
+		var generation_id := str(body.get("generation_id", pending.get("generation_id", "")))
+		var result_id := str(body.get("result_anima_id", pending.get("result_anima_id", "")))
+		GameState.note_synthesis_started(generation_id, result_id)
+		if _destination == SYNTHESIS_DEST:
+			_synthesis_view.show_generating(GameState.pending_synthesis)
+		if result_id.is_empty():
+			_say(tr("SYNTHESIS_PENDING"), true)
+			call_deferred("_retry_pending_synthesis")
+			return
+		await _wait_for_synthesis(result_id)
+		return
+
+	var code := str(body.get("error", res.error))
+	# Sesi kedaluwarsa (401) dan gerbang versi client (426) bukan keputusan server
+	# tentang Synthesis ini; keduanya bisa muncul sesudah Core + Bits terdebit.
+	# Membuang idempotency key di situ berarti Result yang sudah dibayar tidak
+	# bisa di-resume lagi, jadi keduanya diperlakukan seperti 5xx.
+	var server_verdict: bool = (
+		res.code >= 400 and res.code < 500 and res.code != 401 and res.code != 426
+	)
+	if server_verdict:
+		GameState.finish_synthesis()
+		_apply_profile_refresh(await Backend.fetch_profile())
+		_refresh_header()
+		if _destination == SYNTHESIS_DEST:
+			_synthesis_view.set_rows(_roster)
+			_synthesis_view.show_error_key(_synthesis_error_key(code))
+		_say(tr(_synthesis_error_key(code)), true)
+	else:
+		if _destination == SYNTHESIS_DEST:
+			_synthesis_view.show_generating(GameState.pending_synthesis)
+		_say(tr("SYNTHESIS_PENDING"), true)
+		call_deferred("_retry_pending_synthesis")
+
+
+func _retry_pending_synthesis() -> void:
+	await get_tree().create_timer(SYNTHESIS_POLL_RETRY_SEC).timeout
+	if (
+		not GameState.pending_synthesis.is_empty()
+		and not _synthesis_resume_in_flight
+		and not _synthesis_poll_in_flight
+	):
+		call_deferred("_resume_pending_synthesis")
+
+
+func _wait_for_synthesis(result_anima_id: String) -> void:
+	if _synthesis_poll_in_flight or result_anima_id.is_empty():
+		return
+	_synthesis_poll_in_flight = true
+	var remaining := SYNTHESIS_POLL_TIMEOUT_SEC
+	while remaining > 0.0 and not GameState.pending_synthesis.is_empty():
+		await get_tree().create_timer(SYNTHESIS_POLL_INTERVAL_SEC).timeout
+		remaining -= SYNTHESIS_POLL_INTERVAL_SEC
+		var res := await Backend.fetch_anima(result_anima_id)
+		if not res.ok or typeof(res.data) != TYPE_ARRAY:
+			continue
+		var rows: Array = res.data
+		if rows.is_empty():
+			continue
+		var row := normalize_anima_data(GameState.as_dict(rows[0]))
+		match str(row.get("status", "")):
+			"ready":
+				if await _complete_synthesis(row):
+					_synthesis_poll_in_flight = false
+					return
+			"failed":
+				_synthesis_poll_in_flight = false
+				await _fail_synthesis_client()
+				return
+	_synthesis_poll_in_flight = false
+	_say(tr("SYNTHESIS_PENDING"), true)
+	call_deferred("_retry_pending_synthesis")
+
+
+func _complete_synthesis(row: Dictionary) -> bool:
+	var anima_id := str(row.get("id", ""))
+	var loaded := await _prepare_anima_art(
+		str(row.get("species_key", "")),
+		str(row.get("color_bucket", "")),
+		1,
+		str(row.get("sheet_path", "")),
+		GameState.as_dict(row.get("manifest")),
+		false,
+		anima_id,
+		1
+	)
+	if not bool(loaded.get("ok", false)):
+		# Polling terus berjalan supaya art-nya bisa datang di percobaan berikutnya,
+		# tapi toast-nya sekali saja: Result sudah ada di server, dan mengulang
+		# pesan yang sama tiap 5 detik hanya menutupi layar.
+		if not _synthesis_art_error_reported:
+			_say(tr("STATUS_ART_DOWNLOAD_ERROR"), true)
+			_synthesis_art_error_reported = true
+		return false
+	_synthesis_art_error_reported = false
+	GameState.finish_synthesis()
+	_upsert_roster(row)
+	_apply_profile_refresh(await Backend.fetch_profile())
+	_refresh_header()
+	_populate_collection()
+	GameState.remember_boot_cache({"roster": _roster, "profile": GameState.profile})
+	if _destination == SYNTHESIS_DEST:
+		_synthesis_view.set_rows(_roster)
+		_synthesis_view.show_result(row, _thumbnail_for(row))
+	_say(tr("SYNTHESIS_COMPLETE_TOAST") % LocaleManager.display_name(row), true)
+	return true
+
+
+func _fail_synthesis_client() -> void:
+	GameState.finish_synthesis()
+	_apply_profile_refresh(await Backend.fetch_profile())
+	_refresh_header()
+	if _destination == SYNTHESIS_DEST:
+		_synthesis_view.set_rows(_roster)
+		_synthesis_view.show_error_key("SYNTHESIS_TECHNICAL_FAILURE")
+	_say(tr("SYNTHESIS_TECHNICAL_FAILURE"), true)
+
+
+func _show_synthesis_result(row: Dictionary) -> void:
+	if row.is_empty():
+		return
+	_profile_return_destination = SYNTHESIS_DEST
+	_switch_destination(ANIMA_PROFILE_DEST, row)
+	call_deferred("_show_rename", str(row.get("id", "")), LocaleManager.display_name(row))
+
+
+func _refresh_synthesis_history() -> void:
+	_synthesis_history_revision += 1
+	var revision := _synthesis_history_revision
+	var row := _profile_anima if not _profile_anima.is_empty() else _current_anima
+	var anima_id := str(row.get("id", ""))
+	var local_history := GameState.as_dict(row.get("synthesis_history"))
+	_details_view.set_synthesis_history(local_history)
+	if anima_id.is_empty() or local_history.is_empty():
+		return
+	var res := await Backend.synthesize_anima("history", {"result_anima_id": anima_id})
+	if revision != _synthesis_history_revision or not res.ok:
+		return
+	var history := GameState.as_dict(GameState.as_dict(res.data).get("history"))
+	if history.is_empty():
+		return
+	var textures: Dictionary = {}
+	var source_a := GameState.as_dict(history.get("source_a"))
+	var source_b := GameState.as_dict(history.get("source_b"))
+	textures["source_a"] = await _synthesis_history_texture(str(source_a.get("thumbnail_url", "")))
+	textures["source_b"] = await _synthesis_history_texture(str(source_b.get("thumbnail_url", "")))
+	if revision == _synthesis_history_revision and anima_id == str(_profile_anima.get("id", "")):
+		_details_view.set_synthesis_history(history, textures)
+
+
+func _synthesis_history_texture(url: String) -> Texture2D:
+	if url.is_empty():
+		return null
+	var res := await Backend.download_url(url)
+	if not res.ok or res.bytes.is_empty():
+		return null
+	var image := Image.new()
+	if image.load_png_from_buffer(res.bytes) != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+
+func _synthesis_error_key(code: String) -> String:
+	match code:
+		"FEATURE_DISABLED":
+			return "SYNTHESIS_FEATURE_DISABLED"
+		"SYNTHESIS_LEVEL_TOO_LOW":
+			return "SYNTHESIS_LEVEL_TOO_LOW"
+		"SYNTHESIS_COOLDOWN":
+			return "SYNTHESIS_COOLDOWN"
+		"SYNTHESIS_MODE_USED":
+			return "SYNTHESIS_MODE_USED"
+		"SYNTHESIS_ALREADY_ACTIVE", "SYNTHESIS_IN_PROGRESS":
+			return "SYNTHESIS_ALREADY_ACTIVE"
+		"SYNTHESIS_FORM_LOCKED", "SYNTHESIS_FORM_INVALID":
+			return "SYNTHESIS_FORM_LOCKED"
+		"ANIMA_DORMANT":
+			return "SYNTHESIS_ANIMA_DORMANT"
+		"ANIMA_IN_ACTIVE_COMBAT":
+			return "SYNTHESIS_ANIMA_IN_COMBAT"
+		"NO_CORE":
+			return "STATUS_NEED_CORE"
+		"NO_BITS":
+			return "ERROR_NO_BITS"
+		"SPEND_CAP":
+			return "STATUS_SPEND_CAP"
+		"SYNTHESIS_FAILED":
+			return "SYNTHESIS_TECHNICAL_FAILURE"
+		_:
+			return "SYNTHESIS_ERROR"
 
 
 func _summon_collection_anima(row: Dictionary, care_synced: bool) -> void:
@@ -1312,6 +1600,10 @@ func _evolution_enabled() -> bool:
 	return bool(GameState.client_config.get("feature_evolution", false))
 
 
+func _synthesis_enabled() -> bool:
+	return bool(GameState.client_config.get("feature_synthesis", false))
+
+
 func _show_rename(anima_id: String, draft: String = "") -> void:
 	var target := _current_anima
 	if anima_id == str(_profile_anima.get("id", "")):
@@ -1624,9 +1916,14 @@ func _toggle_gallery_publish(anima_id: String, publish: bool) -> void:
 	if publish:
 		_pending_atlas_publish_id = anima_id
 		_modal_context = &"atlas_publish"
+		var target := _roster_row(anima_id)
 		_shell_modal.open_confirm(
 			tr("ATLAS_PUBLISH_TITLE"),
-			tr("ATLAS_PUBLISH_CONSENT"),
+			(
+				tr("ATLAS_PUBLISH_SYNTHESIS_CONSENT")
+				if not GameState.as_dict(target.get("synthesis_history")).is_empty()
+				else tr("ATLAS_PUBLISH_CONSENT")
+			),
 			tr("ATLAS_PUBLISH_ACTION"),
 			tr("ACTION_CANCEL")
 		)
@@ -1640,7 +1937,11 @@ func _commit_atlas_publish(anima_id: String, publish: bool) -> void:
 	_pending_atlas_publish_id = ""
 	_set_busy(true)
 	var operation := "publish" if publish else "unpublish"
-	var res := await Backend.atlas(operation, {"anima_id": anima_id})
+	var target := _roster_row(anima_id)
+	var payload := {"anima_id": anima_id}
+	if publish and not GameState.as_dict(target.get("synthesis_history")).is_empty():
+		payload["synthesis_source_consent"] = true
+	var res := await Backend.atlas(operation, payload)
 	if res.ok:
 		_say(tr("GALLERY_PUBLISHED") if publish else tr("GALLERY_UNPUBLISHED"), false)
 		await _refresh_gallery_status(anima_id)
@@ -3752,6 +4053,7 @@ func _populate_collection() -> void:
 	if not is_instance_valid(_collection_view):
 		return
 	_collection_view.set_evolution_enabled(_evolution_enabled())
+	_collection_view.set_synthesis_enabled(_synthesis_enabled())
 	# ponytail: pass pertama membuat thumbnail cached secara sinkron. Plafon
 	# sekitar 100 Anima lokal; kalau roster nyata melewatinya, simpan thumbnail
 	# 128px terpisah saat sheet diunduh dan virtualisasikan daftar.
@@ -3811,6 +4113,7 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 func _refresh_stats() -> void:
 	var details_row := _profile_anima if not _profile_anima.is_empty() else _current_anima
 	_details_view.set_evolution_enabled(_evolution_enabled())
+	_details_view.set_synthesis_enabled(_synthesis_enabled())
 	_details_view.set_anima(
 		details_row,
 		_thumbnail_for(details_row) if not details_row.is_empty() else null
@@ -4028,10 +4331,11 @@ func _switch_destination(
 	_scan_view.visible = destination == BottomNav.SCAN
 	_battle_view.visible = destination == BottomNav.BATTLE
 	_collection_view.visible = destination == BottomNav.COLLECTION
+	_synthesis_view.visible = destination == SYNTHESIS_DEST
 	_details_view.visible = destination == ANIMA_PROFILE_DEST
 	_seeker_profile_view.visible = destination == SEEKER_PROFILE_DEST
 	_atlas_view.visible = destination == ATLAS_DEST
-	if destination not in [SEEKER_PROFILE_DEST, ANIMA_PROFILE_DEST, ATLAS_DEST]:
+	if destination not in [SEEKER_PROFILE_DEST, ANIMA_PROFILE_DEST, ATLAS_DEST, SYNTHESIS_DEST]:
 		_bottom_nav.set_active(destination)
 	if destination != BottomNav.HOME:
 		_toast_revision += 1
@@ -4078,6 +4382,9 @@ func _switch_destination(
 	if destination == ANIMA_PROFILE_DEST:
 		_refresh_stats()
 		call_deferred("_refresh_gallery_status")
+		call_deferred("_refresh_synthesis_history")
+	if destination == SYNTHESIS_DEST:
+		_synthesis_view.set_rows(_roster)
 	if destination == ATLAS_DEST:
 		_atlas_view.begin_visit()
 	if destination == BottomNav.HOME:
@@ -4125,6 +4432,7 @@ func _refresh_localized_ui(_locale: String = "") -> void:
 	_atlas_view.refresh_localized_ui()
 	_menu_popover.refresh_localized_ui()
 	_scan_view.refresh_localized_ui()
+	_synthesis_view.refresh_localized_ui()
 	_refresh_header()
 	_refresh_stats()
 	_refresh_care()
@@ -4567,6 +4875,7 @@ func _set_busy(busy: bool) -> void:
 	_team_battle_view.set_busy(busy)
 	_home_view.set_busy(busy)
 	_collection_view.set_busy(busy)
+	_synthesis_view.set_busy(busy)
 	_atlas_view.set_busy(busy)
 	_details_view.set_busy(busy)
 	_seeker_profile_view.set_busy(busy)
@@ -4629,6 +4938,9 @@ func _handle_back(allow_quit: bool) -> bool:
 		return true
 	if _collection_view.is_sheet_open():
 		_collection_view.close_sheet()
+		return true
+	if _destination == SYNTHESIS_DEST:
+		_close_synthesis_lab()
 		return true
 	if is_instance_valid(_atlas_view) and _atlas_view.is_detail_open():
 		_atlas_view.close_detail()

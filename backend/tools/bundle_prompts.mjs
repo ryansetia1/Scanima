@@ -33,8 +33,11 @@ const BERKAS = {
   vision_schema: "vision_schema.json",
   vision_evolve_system: "vision_evolve_system.md",
   vision_evolve_schema: "vision_evolve_schema.json",
+  vision_synthesis_system: "vision_synthesis_system.md",
+  vision_synthesis_schema: "vision_synthesis_schema.json",
   sprite_sheet: "sprite_sheet.md",
   sprite_sheet_evolve: "sprite_sheet_evolve.md",
+  sprite_sheet_synthesis: "sprite_sheet_synthesis.md",
   sprite_sheet_fauna: "sprite_sheet_fauna.md",
   vibe_directions: "vibe_directions.json",
 };
@@ -43,6 +46,9 @@ const OPSIONAL = new Set([
   "sprite_sheet_fauna",
   "vision_evolve_system",
   "vision_evolve_schema",
+  "vision_synthesis_system",
+  "vision_synthesis_schema",
+  "sprite_sheet_synthesis",
   "vibe_directions",
 ]);
 const CAPTURE_KEYS = new Set([
@@ -69,7 +75,12 @@ const CAPTURE_PARENT = new Map([
   ["v30", "v20"],
 ]);
 // v31 mengubah capture saja; evolve production tetap v30.
-const EVOLVE_PARENT = new Map([["v31", "v30"]]);
+const EVOLVE_PARENT = new Map([
+  ["v31", "v30"],
+  ["v42", "v41"],
+]);
+// v42 hanya menambah kontrak Synthesis; capture/evolve tetap byte-identik v41.
+CAPTURE_PARENT.set("v42", "v41");
 
 export async function buildBundle() {
   const versi = (await readdir(DIR_PROMPT, { withFileTypes: true }))

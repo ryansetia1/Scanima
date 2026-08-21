@@ -7,6 +7,7 @@ signal summon_requested(row: Dictionary, care_synced: bool)
 signal first_scan_requested
 signal retry_requested
 signal atlas_requested
+signal synthesis_requested(preselected: Dictionary)
 
 const BADGE_INSET := Vector2(10.0, 8.0)
 const BADGE_FONT_SIZE := 20
@@ -24,6 +25,7 @@ const BADGE_FONT_SIZE := 20
 @onready var _care_rows: VBoxContainer = %CareRows
 @onready var _profile_button: Button = %CollectionProfileButton
 @onready var _summon_button: Button = %CollectionSummonButton
+@onready var _synthesis_button: Button = %CollectionSynthesisButton
 
 @onready var _base_values := {
 	"hp": %SheetStatHp,
@@ -49,10 +51,13 @@ var _condition_loading := false
 var _condition_synced := false
 var _empty_mode := &"scan"
 var _evolution_enabled := false
+var _synthesis_enabled := false
+var _eligible_synthesis_sources := 0
 
 
 func _ready() -> void:
 	%CollectionAtlasTab.pressed.connect(func() -> void: atlas_requested.emit())
+	_synthesis_button.pressed.connect(func() -> void: synthesis_requested.emit({}))
 	_list.item_selected.connect(_on_item_selected)
 	_list.draw.connect(_draw_level_badges)
 	_empty_action.pressed.connect(_on_empty_action)
@@ -64,6 +69,7 @@ func _ready() -> void:
 func refresh_localized_ui() -> void:
 	%CollectionCollectionTab.text = tr("COLLECTION_TAB_COLLECTION")
 	%CollectionAtlasTab.text = tr("COLLECTION_TAB_ATLAS")
+	_synthesis_button.text = tr("SYNTHESIS_LAB_ACTION")
 
 
 func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Callable) -> void:
@@ -71,7 +77,10 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 	_thumbnail_provider = thumbnail_provider
 	_list.clear()
 	var selected := -1
+	_eligible_synthesis_sources = 0
 	for row in rows:
+		if SynthesisLabView.is_eligible_source(row):
+			_eligible_synthesis_sources += 1
 		var id := str(row.get("id", ""))
 		var name := LocaleManager.display_name(row)
 		if CareRules.is_evolving(row):
@@ -106,6 +115,7 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 	_empty_mode = &"scan"
 	_empty_action.text = tr("COLLECTION_START_SCAN")
 	_empty_action.visible = rows.is_empty()
+	_update_synthesis_state()
 	if not _selected_row.is_empty():
 		var selected_id := str(_selected_row.get("id", ""))
 		var replacement := _row_with_id(rows, selected_id)
@@ -131,10 +141,26 @@ func set_busy(busy: bool) -> void:
 	_list.mouse_filter = Control.MOUSE_FILTER_IGNORE if busy else Control.MOUSE_FILTER_STOP
 	_empty_action.disabled = busy
 	_update_action_state()
+	_update_synthesis_state()
 
 
 func set_evolution_enabled(enabled: bool) -> void:
 	_evolution_enabled = enabled
+
+
+func set_synthesis_enabled(enabled: bool) -> void:
+	_synthesis_enabled = enabled
+	_update_synthesis_state()
+
+
+func _update_synthesis_state() -> void:
+	_synthesis_button.visible = _synthesis_enabled
+	_synthesis_button.disabled = _busy or _eligible_synthesis_sources < 2
+	_synthesis_button.tooltip_text = (
+		tr("SYNTHESIS_NEEDS_TWO_SOURCES")
+		if _eligible_synthesis_sources < 2
+		else tr("SYNTHESIS_LAB_ACTION")
+	)
 
 
 func begin_visit() -> void:

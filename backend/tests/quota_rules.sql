@@ -65,6 +65,14 @@ declare
   v_evolution_success_gen uuid;
   v_evolution_cores int;
   v_evo_flag_prev jsonb;
+  v_synthesis_a uuid;
+  v_synthesis_b uuid;
+  v_synthesis_gen uuid;
+  v_synthesis_result uuid;
+  v_synthesis_cores int;
+  v_synthesis_bits int;
+  v_synthesis_config jsonb;
+  v_synthesis_seed_roll int;
   v_bits_before_battle int;
   v_score_before_battle int;
   v_wins_before_battle int;
@@ -3934,6 +3942,342 @@ begin
   update public.app_config
      set value = coalesce(v_evo_flag_prev, 'true'::jsonb)
    where key = 'feature_evolution';
+
+  ----------------------------------------------------------------------------
+  -- Guided Synthesis: roll gagal gratis, claim sukses atomik, refund dua mata
+  -- uang, mode lock, Source lock, history, dan RPC tetap service-role-only.
+  select jsonb_object_agg(key, value) into v_synthesis_config
+    from public.app_config
+   where key in (
+     'feature_synthesis',
+     'synthesis_resonance_base',
+     'synthesis_resonance_level_max',
+     'synthesis_resonance_care_max',
+     'synthesis_resonance_affinity_max',
+     'synthesis_resonance_dominant_bonus',
+     'synthesis_calibration_max'
+   );
+  update public.app_config
+     set value = case key
+       when 'feature_synthesis' then 'true'::jsonb
+       when 'synthesis_resonance_base' then '-1000'::jsonb
+       else '0'::jsonb
+     end
+   where key in (
+     'feature_synthesis',
+     'synthesis_resonance_base',
+     'synthesis_resonance_level_max',
+     'synthesis_resonance_care_max',
+     'synthesis_resonance_affinity_max',
+     'synthesis_resonance_dominant_bonus',
+     'synthesis_calibration_max'
+   );
+
+  update public.profiles set genesis_cores = 20, bits = 1000 where id = u1;
+  insert into public.animas (
+    owner_id, nickname, species_key, color_bucket, element, secondary_element,
+    rarity, base_stats, care, care_score, status, stage, body_height_cm,
+    sheet_path, manifest
+  ) values (
+    u1, 'synthesis-source-a', 'synthesis_source_a', 'green', 'plant', null,
+    3, '{"hp":70,"atk":60,"def":55,"spd":35,"special":40}'::jsonb,
+    v_care, public.anima_exp_for_level(10), 'ready', 1, 150,
+    u1::text || '/synthesis-source-a/sheet.png',
+    '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+  ) returning id into v_synthesis_a;
+  insert into public.animas (
+    owner_id, nickname, species_key, color_bucket, element, secondary_element,
+    rarity, base_stats, care, care_score, status, stage, body_height_cm,
+    sheet_path, manifest
+  ) values (
+    u1, 'synthesis-source-b', 'synthesis_source_b', 'gold', 'spark', null,
+    4, '{"hp":45,"atk":75,"def":35,"spd":80,"special":65}'::jsonb,
+    v_care, public.anima_exp_for_level(10), 'ready', 1, 75,
+    u1::text || '/synthesis-source-b/sheet.png',
+    '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+  ) returning id into v_synthesis_b;
+
+  v_j := public.preview_synthesis(
+    u1, v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced'
+  );
+  assert (v_j->'breakdown'->>'chance')::integer = 1,
+         'preview Resonance wajib memakai konfigurasi authoritative';
+
+  -- Preview memakai gerbang yang sama dengan attempt. Kalau tidak, Source yang
+  -- sedang bertarung tetap memperlihatkan angka Resonance yang tidak bisa dibeli.
+  insert into public.battle_sessions (
+    owner_id, player_anima_id, player_snapshot, bot_snapshot, state,
+    player_hp, bot_hp, rng_seed
+  ) values (
+    u1, v_synthesis_a, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, 10, 10, 'uji'
+  );
+  begin
+    perform public.preview_synthesis(
+      u1, v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'ANIMA_IN_ACTIVE_COMBAT');
+  end;
+  assert ok, 'preview Synthesis wajib menolak Source yang sedang bertarung';
+  delete from public.battle_sessions
+   where owner_id = u1 and player_anima_id = v_synthesis_a;
+
+  perform setseed(0.42);
+  select floor(random() * 100)::integer + 1 into v_synthesis_seed_roll;
+  if v_synthesis_seed_roll = 1 then
+    perform setseed(-0.42);
+    select floor(random() * 100)::integer + 1 into v_synthesis_seed_roll;
+    assert v_synthesis_seed_roll > 1, 'seed uji Resonance gagal tidak sah';
+    perform setseed(-0.42);
+  else
+    perform setseed(0.42);
+  end if;
+  select genesis_cores, bits into v_synthesis_cores, v_synthesis_bits
+    from public.profiles where id = u1;
+  v_j := public.attempt_synthesis(
+    u1, 'synthesis-failure',
+    v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced', 'v42', 'uji'
+  );
+  assert not (v_j->>'resonance_succeeded')::boolean
+         and (v_j->>'chance')::integer = 1
+         and (select genesis_cores from public.profiles where id = u1) = v_synthesis_cores
+         and (select bits from public.profiles where id = u1) = v_synthesis_bits
+         and (select count(*) from public.generations
+               where owner_id = u1 and idempotency_key = 'synthesis-failure') = 0
+         and (select (care->>'energy')::numeric from public.animas
+               where id = v_synthesis_a) = 90
+         and (select (care->>'energy')::numeric from public.animas
+               where id = v_synthesis_b) = 90,
+         'Resonance gagal tidak boleh membayar model/Core/Bits dan wajib memotong Energy';
+  v_j2 := public.attempt_synthesis(
+    u1, 'synthesis-failure',
+    v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced', 'v42', 'uji'
+  );
+  assert (v_j2->>'replayed')::boolean
+         and (select failure_count from public.anima_synthesis_slots
+               where owner_id = u1
+                 and source_low_id::text = least(v_synthesis_a::text, v_synthesis_b::text)
+                 and source_high_id::text = greatest(v_synthesis_a::text, v_synthesis_b::text)
+                 and mode = 'balanced') = 1,
+         'retry Resonance gagal tidak boleh memotong Energy atau menambah Calibration lagi';
+
+  update public.anima_synthesis_slots
+     set cooldown_until = null
+   where owner_id = u1
+     and source_low_id::text = least(v_synthesis_a::text, v_synthesis_b::text)
+     and source_high_id::text = greatest(v_synthesis_a::text, v_synthesis_b::text)
+     and mode = 'balanced';
+  update public.app_config set value = '100'::jsonb
+   where key = 'synthesis_resonance_base';
+  insert into public.generations (
+    owner_id, idempotency_key, kind, status, prompt_version, model, cost_usd_estimate
+  ) values (
+    u1, 'synthesis-technical-fail', 'create', 'failed', 'uji', 'uji', 0
+  );
+  v_j := public.attempt_synthesis(
+    u1, 'synthesis-technical-fail',
+    v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced', 'v42', 'uji'
+  );
+  v_synthesis_gen := (v_j->>'generation_id')::uuid;
+  v_synthesis_result := (v_j->>'result_anima_id')::uuid;
+  assert (v_j->>'resonance_succeeded')::boolean
+         and (select genesis_cores from public.profiles where id = u1) = v_synthesis_cores - 1
+         and (select bits from public.profiles where id = u1) = v_synthesis_bits - 250
+         and (select count(*) from public.quota_ledger
+               where ref_id = v_synthesis_gen and delta < 0) = 2,
+         'Resonance sukses harus claim Result + Core + Bits dalam satu transaksi';
+  v_j2 := public.attempt_synthesis(
+    u1, 'synthesis-technical-fail',
+    v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced', 'v42', 'uji'
+  );
+  assert (v_j2->>'replayed')::boolean
+         and (select count(*) from public.quota_ledger
+               where ref_id = v_synthesis_gen and delta < 0) = 2,
+         'retry claim Synthesis tidak boleh mendebit ulang';
+  assert (select idempotency_key from public.generations where id = v_synthesis_gen)
+           = 'synthesis:synthesis-technical-fail',
+         'generation Synthesis wajib menamespace key agar tidak bentrok dengan kind lain';
+
+  begin
+    perform public.attempt_synthesis(
+      u1, 'synthesis-overlap',
+      v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'dominant_a', 'v42', 'uji'
+    );
+    ok := false;
+  exception when others then ok := sqlerrm = 'SYNTHESIS_ALREADY_ACTIVE';
+  end;
+  assert ok, 'satu akun hanya boleh memiliki satu Synthesis aktif';
+  begin
+    delete from public.animas where id = v_synthesis_a;
+    ok := false;
+  exception when others then ok := sqlerrm = 'SYNTHESIS_SOURCE_LOCKED';
+  end;
+  assert ok, 'Source tidak boleh dihapus sebelum reference snapshot aman';
+
+  update public.animas
+     set synthesis_history = '{"source_a":{"thumbnail_path":"stale.png"}}'::jsonb
+   where id = v_synthesis_result;
+  update public.anima_synthesis_slots
+     set reference_paths = jsonb_build_object(
+           'source_a', u1::text || '/synthesis-stale-a.png',
+           'source_b', u1::text || '/synthesis-stale-b.png'
+         )
+   where active_generation_id = v_synthesis_gen;
+  v_j := public.fail_synthesis(v_synthesis_gen, 'uji technical failure');
+  v_j2 := public.fail_synthesis(v_synthesis_gen, 'uji technical replay');
+  assert (v_j->>'core_refund')::integer = 1
+         and (v_j->>'bits_refund')::integer = 250
+         and (v_j2->>'core_refund')::integer = 0
+         and (v_j2->>'bits_refund')::integer = 0
+         and (select genesis_cores from public.profiles where id = u1) = v_synthesis_cores
+         and (select bits from public.profiles where id = u1) = v_synthesis_bits
+         and (select count(*) from public.quota_ledger
+               where ref_id = v_synthesis_gen and reason = 'refund') = 1
+         and (select count(*) from public.quota_ledger
+               where ref_id = v_synthesis_gen and reason = 'synthesis_bits_refund') = 1
+         and (select status from public.anima_synthesis_slots
+               where owner_id = u1
+                 and source_low_id::text = least(v_synthesis_a::text, v_synthesis_b::text)
+                 and source_high_id::text = greatest(v_synthesis_a::text, v_synthesis_b::text)
+                 and mode = 'balanced') = 'open'
+         and (select synthesis_history is null from public.animas
+               where id = v_synthesis_result)
+         and (select count(*) from public.storage_cleanup_queue
+               where object_path in (
+                 u1::text || '/synthesis-stale-a.png',
+                 u1::text || '/synthesis-stale-b.png'
+               )
+                 and reason = 'synthesis_failed') = 2,
+         'technical failure wajib refund Core+Bits tepat sekali dan membuka mode lagi';
+  -- storage_cleanup_queue tidak punya owner_id, jadi ia tidak ikut cascade saat
+  -- user uji dihapus. Tanpa hapus manual, hitungan di atas menumpuk dan run
+  -- kedua gagal walau kodenya benar.
+  delete from public.storage_cleanup_queue
+   where object_path in (
+     u1::text || '/synthesis-stale-a.png',
+     u1::text || '/synthesis-stale-b.png'
+   );
+
+  v_j := public.attempt_synthesis(
+    u1, 'synthesis-success',
+    v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced', 'v42', 'uji'
+  );
+  v_synthesis_gen := (v_j->>'generation_id')::uuid;
+  v_synthesis_result := (v_j->>'result_anima_id')::uuid;
+  perform public.store_synthesis_references(
+    u1, v_synthesis_gen,
+    jsonb_build_object(
+      'source_a', u1::text || '/synthesis-ref-a.png',
+      'source_b', u1::text || '/synthesis-ref-b.png'
+    )
+  );
+  perform public.reserve_synthesis_plan(
+    u1,
+    v_synthesis_gen,
+    '{
+      "suggested_name":"Verdiflux",
+      "species_key":"synthesis_verdiflux",
+      "color_bucket":"green_gold",
+      "subject_kind":"animal",
+      "primary_element":"plant",
+      "secondary_element":"spark",
+      "rarity":4,
+      "base_stats":{"hp":58,"atk":68,"def":45,"spd":58,"special":51},
+      "body_height_cm":113,
+      "strike_name":"Vine Pounce",
+      "surge_name":"Aurora Canopy",
+      "strike_effect_id":"drain",
+      "surge_effect_id":"slow",
+      "inheritance_summary":{
+        "source_a":"leaf mane",
+        "source_b":"quadruped motion",
+        "coherence":"conductive leaf veins"
+      }
+    }'::jsonb,
+    jsonb_build_object(
+      'source_a', u1::text || '/synthesis-ref-a.png',
+      'source_b', u1::text || '/synthesis-ref-b.png'
+    )
+  );
+  v_j := public.complete_synthesis(
+    v_synthesis_gen,
+    u1::text || '/synthesis-result/sheet.png',
+    '{"stage":1,"prompt_version":"v42","poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+  );
+  assert (v_j->>'status') = 'succeeded'
+         and (select status from public.animas where id = v_synthesis_result) = 'ready'
+         and (select stage from public.animas where id = v_synthesis_result) = 1
+         and (select care_score from public.animas where id = v_synthesis_result) = 0
+         and (select synthesis_history is not null from public.animas
+               where id = v_synthesis_result)
+         and (select synthesis_history is not null from public.atlas_forms
+               where anima_id = v_synthesis_result and stage = 1)
+         and (select status from public.anima_synthesis_slots
+               where active_generation_id = v_synthesis_gen) = 'succeeded',
+         'Result harus lahir Hatchling Lv1 dengan history privat + Atlas snapshot';
+  begin
+    perform public.attempt_synthesis(
+      u1, 'synthesis-mode-reused',
+      v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced', 'v42', 'uji'
+    );
+    ok := false;
+  exception when others then ok := sqlerrm = 'SYNTHESIS_MODE_USED';
+  end;
+  assert ok, 'satu Source Pair hanya boleh sukses sekali per bias';
+
+  -- Synthesis yang sudah dibayar tapi tidak pernah di-resume (uninstall, ganti
+  -- HP, data dihapus) harus dibebaskan sendiri. Tanpa sapuan ini slot satu-aktif
+  -- terkunci selamanya dan Core + Bits-nya tidak pernah kembali.
+  v_synthesis_cores := (select genesis_cores from public.profiles where id = u1);
+  v_synthesis_bits := (select bits from public.profiles where id = u1);
+  v_j := public.attempt_synthesis(
+    u1, 'synthesis-stale-lock',
+    v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'dominant_b', 'v42', 'uji'
+  );
+  v_synthesis_gen := (v_j->>'generation_id')::uuid;
+  update public.generations
+     set created_at = now() - interval '30 minutes'
+   where id = v_synthesis_gen;
+  v_j := public.attempt_synthesis(
+    u1, 'synthesis-after-stale',
+    v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'dominant_a', 'v42', 'uji'
+  );
+  assert (v_j->>'resonance_succeeded')::boolean
+         and (select status from public.generations where id = v_synthesis_gen) = 'failed'
+         and (select error from public.generations where id = v_synthesis_gen)
+               = 'SYNTHESIS_STALE_RECOVERED'
+         and (select count(*) from public.anima_synthesis_slots
+               where owner_id = u1 and status = 'pending') = 1
+         and (select count(*) from public.quota_ledger
+               where ref_id = v_synthesis_gen and reason = 'refund') = 1
+         and (select genesis_cores from public.profiles where id = u1) = v_synthesis_cores - 1
+         and (select bits from public.profiles where id = u1) = v_synthesis_bits - 250,
+         'pending Synthesis yang basi wajib direfund dan tidak mengunci slot lain';
+  perform public.fail_synthesis((v_j->>'generation_id')::uuid, 'uji bersihkan pending');
+  assert (select count(*) from public.anima_synthesis_slots
+           where owner_id = u1 and status = 'pending') = 0
+         and (select genesis_cores from public.profiles where id = u1) = v_synthesis_cores
+         and (select bits from public.profiles where id = u1) = v_synthesis_bits,
+         'membatalkan pending terakhir harus memulihkan saldo apa adanya';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform public.attempt_synthesis(
+      u1, 'synthesis-client-forbidden',
+      v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'dominant_b', 'v42', 'uji'
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform set_config('role', 'none', true);
+  assert ok, 'client tidak boleh memanggil RPC Synthesis service-role langsung';
+
+  update public.app_config config
+     set value = saved.value
+    from jsonb_each(v_synthesis_config) saved
+   where config.key = saved.key;
 
   delete from public.animas where owner_id = u1 and nickname = 'v2 ok';
   assert exists (

@@ -272,11 +272,11 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 
 | Dokumen | Isi |
 | --- | --- |
-| [docs/wiki/README.md](docs/wiki/README.md) | Panduan pemain: Seeker, perawatan, Cores/Bits, traits, EXP, Battle |
+| [docs/wiki/README.md](docs/wiki/README.md) | Panduan pemain: Seeker, perawatan, Cores/Bits, traits, EXP, Synthesis, Battle |
 | [docs/01-architecture-dataflow.md](docs/01-architecture-dataflow.md) | Pipeline data lengkap, skema Postgres + RLS, kontrak Edge Function, caching 3 lapis, penanganan latensi, jalur BYOK |
 | [docs/02-prompt-engineering.md](docs/02-prompt-engineering.md) | System prompt Vision LLM, JSON schema output, pemetaan fitur objek ke stat, style lock, payload Replicate, harness evaluasi |
 | [docs/03-godot-sprite-pipeline.md](docs/03-godot-sprite-pipeline.md) | Arsitektur node Godot, download + slicing sprite, background removal, animasi prosedural |
-| [docs/04-game-systems-economy.md](docs/04-game-systems-economy.md) | Survival mechanics, evo-tree, kuota, ekonomi dengan angka nyata, algoritma battle |
+| [docs/04-game-systems-economy.md](docs/04-game-systems-economy.md) | Survival mechanics, Evolution/Synthesis, kuota, ekonomi dengan angka nyata, algoritma battle |
 | [docs/05-roadmap.md](docs/05-roadmap.md) | Breakdown Phase 1-4 dengan exit criteria dan risiko |
 | [docs/06-ui-globalization.md](docs/06-ui-globalization.md) | Shell mobile lima destination, design tokens, i18n, accessibility, dan aturan penambahan locale |
 | [docs/07-collection-summon-and-empty-state.md](docs/07-collection-summon-and-empty-state.md) | Desain bottom sheet Collection, transisi Summon, dan empty state pemain tanpa Anima |
@@ -288,7 +288,8 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 | [docs/13-evolution-silhouette-design.md](docs/13-evolution-silhouette-design.md) | Desain v22 silhouette-first: body plan berbeda tiap stage, transformed anchors, archetype, dan rollout eval |
 | [docs/14-deploy-log.md](docs/14-deploy-log.md) | Riwayat rollout production: Atlas, Name Lineage v41, gerbang Rename, Capture Vibe, gate IP, Evolution art, Battle polish, daftar migration |
 | [docs/15-commands.md](docs/15-commands.md) | Katalog demo visual `--*-demo`, uji terhadap production, build dan verifikasi APK, backend lokal |
-| [docs/16-prompt-version-history.md](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v41 dan provenance setiap versi prompt yang ditolak |
+| [docs/16-prompt-version-history.md](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v42 dan provenance setiap versi prompt yang ditolak |
+| [docs/designs/2026-08-21-anima-synthesis.md](docs/designs/2026-08-21-anima-synthesis.md) | Kontrak Guided Synthesis: Source tetap ada, Resonance, inheritance, biaya, recovery, dan snapshot Atlas |
 | [docs/designs/2026-08-17-evolution-identity-invariants-v23.md](docs/designs/2026-08-17-evolution-identity-invariants-v23.md) | Desain v23 untuk mengunci identity/soul lintas Adult dan Evolved tanpa mengorbankan perubahan siluet |
 | [docs/designs/2026-08-17-evolution-maturity-apex-presence-v24.md](docs/designs/2026-08-17-evolution-maturity-apex-presence-v24.md) | Desain v24 untuk kematangan wajah/tubuh, apex presence, aura-safe, dan payoff final evolution |
 | [docs/designs/2026-08-17-evolution-pokemon-clarity-v25.md](docs/designs/2026-08-17-evolution-pokemon-clarity-v25.md) | Desain v25 untuk Shape Budget, anatomy-agnostic maturity, Pokémon-like clarity, dan VFX-only supernatural power |

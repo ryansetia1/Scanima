@@ -246,7 +246,7 @@ backend/prompts/
     ├── vision_evolve_system.md   # identik v39
     ├── vision_evolve_schema.json # field naming sementara untuk wire shape
     └── sprite_sheet_evolve.md    # identik v30
-└── v41/                          # candidate: dua morfem terbaca, menunggu operator
+├── v41/                          # production capture/evolution: Name Lineage
     ├── vision_system.md          # enam morfem 3–5 huruf + kalibrasi register
     ├── vision_schema.json        # root morfem terbaca, bukan seed acak
     ├── sprite_sheet*.md          # identik v31
@@ -254,6 +254,10 @@ backend/prompts/
     ├── vision_evolve_system.md   # anchor utuh; eskalasi di makna morfem
     ├── vision_evolve_schema.json # field naming sementara untuk wire shape
     └── sprite_sheet_evolve.md    # identik v30
+└── v42/                          # Guided Synthesis; capture/evolution diwarisi v41
+    ├── vision_synthesis_system.md # dua Source -> satu konsep koheren
+    ├── vision_synthesis_schema.json # elemen, candidate stat, dan inheritance summary
+    └── sprite_sheet_synthesis.md # Result Hatchling 3x3 dari board dua Source
 ```
 
 ## Provenance v32–v41
@@ -519,3 +523,16 @@ nol retry) lulus baca visual operator. Crop pertama gagal karena Cute/Sinister
 bocor seam Idle dan Brave kena audit detached-character v26 milik evolusi.
 Capture v31 membuang bocoran Idle deterministik dan tidak memakai audit tubuh
 terlepas itu; `--reprocess` ketiga raw lulus 9/9 tanpa panggilan model.
+
+## V42 — Guided Synthesis
+
+V42 menambah tiga prompt khusus Synthesis tanpa mengubah prompt capture atau
+evolution v41. Vision menerima satu crop Idle privat dari tiap form Source dan
+metadata yang sudah disanitasi. Output-nya hanya memilih konsep visual koheren,
+elemen dari roster, candidate kind untuk lima stat, nama move, dan ringkasan
+inheritance; angka stat final tetap milik server.
+
+Prompt sprite menerjemahkan referensi Adult/Evolved menjadi Result Hatchling dan
+mempertahankan kontrak grid, facing, silhouette, mobility, face-age, serta
+chroma-key yang sudah terkunci. Bundel prompt mewarisi file capture/evolution
+dari v41 dan diverifikasi oleh selftest agar artefak Edge Function tidak basi.

@@ -50,6 +50,12 @@ Anima tetap privat sampai pemilik akun Google memilih **Publish Lineage to
 Atlas** dari profil Anima dan menyetujui penjelasan privasi. Persetujuan itu
 berlaku untuk seluruh lineage: Hatchling, Adult, dan Evolved.
 
+Kalau Anima itu adalah Result Synthesis, konfirmasi Publish menyebut snapshot
+tambahan yang ikut menjadi publik: nama kedua Source, thumbnail form yang
+dipilih, dan bias **Dominant A / Balanced / Dominant B**. Profil lengkap Source,
+Care, dan stats Source tetap privat. Membatalkan konfirmasi tidak menerbitkan
+apa pun.
+
 Art diperiksa sebelum dapat masuk pool lawan Duel. **Unpublish Lineage from
 Atlas** menarik lineage dari pool lawan baru dan menghapus entry-nya dari Atlas
 Seeker lain. Delete Anima melakukan hal yang sama.

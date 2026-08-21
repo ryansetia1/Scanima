@@ -8,12 +8,13 @@
 [ext_resource type="PackedScene" uid="uid://c10np8eypr1bw" path="res://scenes/ui/home_view.tscn" id="6_home"]
 [ext_resource type="PackedScene" path="res://scenes/ui/scan_view.tscn" id="7_scan"]
 [ext_resource type="PackedScene" uid="uid://c5s7hfsvqq6d5" path="res://scenes/ui/collection_view.tscn" id="8_collection"]
-[ext_resource type="PackedScene" path="res://scenes/ui/anima_details_view.tscn" id="9_details"]
+[ext_resource type="PackedScene" uid="uid://cev7y1wc0rsbu" path="res://scenes/ui/anima_details_view.tscn" id="9_details"]
 [ext_resource type="PackedScene" uid="uid://10b1ay38emxd" path="res://scenes/ui/bottom_nav.tscn" id="10_nav"]
 [ext_resource type="Script" uid="uid://cc635b4sia6tt" path="res://scripts/first_anima_effect.gd" id="11_first"]
 [ext_resource type="PackedScene" uid="uid://b7vgr8irxql47" path="res://scenes/ui/battle_view.tscn" id="12_battle"]
 [ext_resource type="PackedScene" path="res://scenes/ui/resource_chip.tscn" id="13_chip"]
 [ext_resource type="PackedScene" path="res://scenes/ui/ui_modal.tscn" id="14_modal"]
+[ext_resource type="Script" uid="uid://5m88hi443ylt" path="res://scripts/synthesis_lab_view.gd" id="15_ybfop"]
 [ext_resource type="PackedScene" path="res://scenes/ui/shop_sheet.tscn" id="16_shop"]
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_pick_sheet.tscn" id="17_pick"]
 [ext_resource type="PackedScene" path="res://scenes/ui/seeker_onboarding_sheet.tscn" id="18_onboarding"]
@@ -137,6 +138,287 @@ layout_mode = 1
 [node name="AtlasView" parent="UI/SafeMargin/Shell/ViewStack" unique_id=942559904 instance=ExtResource("21_gallery")]
 unique_name_in_owner = true
 layout_mode = 1
+
+[node name="SynthesisLabView" type="Control" parent="UI/SafeMargin/Shell/ViewStack" unique_id=2078091239]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("15_ybfop")
+
+[node name="Column" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView" unique_id=1767398524]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Header" type="HBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column" unique_id=1758307349]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SynthesisBackButton" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Header" unique_id=1249564813]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 96)
+layout_mode = 2
+text = "ACTION_BACK"
+
+[node name="Titles" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Header" unique_id=1240826467]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SynthesisTitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Header/Titles" unique_id=1285197153]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PageTitleLabel"
+text = "SYNTHESIS_TITLE"
+
+[node name="SynthesisSubtitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Header/Titles" unique_id=515590619]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "SYNTHESIS_SUBTITLE"
+autowrap_mode = 2
+
+[node name="Scroll" type="ScrollContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column" unique_id=1522983980]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll" unique_id=1286419490]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SynthesisIntro" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content" unique_id=1486936562]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"BodyLabel"
+text = "SYNTHESIS_INTRO"
+autowrap_mode = 2
+
+[node name="Sources" type="GridContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content" unique_id=633131431]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+
+[node name="SourceAPanel" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources" unique_id=14724718]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"HudSurface"
+
+[node name="Box" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources/SourceAPanel" unique_id=1703045143]
+layout_mode = 2
+
+[node name="SynthesisSourceATitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources/SourceAPanel/Box" unique_id=901023600]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "SYNTHESIS_SOURCE_A"
+
+[node name="SynthesisSourceA" type="OptionButton" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources/SourceAPanel/Box" unique_id=1193327268]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SynthesisSourceAForm" type="OptionButton" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources/SourceAPanel/Box" unique_id=258749274]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SynthesisSourceAMeta" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources/SourceAPanel/Box" unique_id=1945005386]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "SYNTHESIS_SOURCE_NONE"
+autowrap_mode = 2
+
+[node name="SourceBPanel" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources" unique_id=478400172]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"HudSurface"
+
+[node name="Box" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources/SourceBPanel" unique_id=882507304]
+layout_mode = 2
+
+[node name="SynthesisSourceBTitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources/SourceBPanel/Box" unique_id=998831673]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "SYNTHESIS_SOURCE_B"
+
+[node name="SynthesisSourceB" type="OptionButton" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources/SourceBPanel/Box" unique_id=551504704]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SynthesisSourceBForm" type="OptionButton" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources/SourceBPanel/Box" unique_id=388317135]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SynthesisSourceBMeta" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/Sources/SourceBPanel/Box" unique_id=1459395640]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "SYNTHESIS_SOURCE_NONE"
+autowrap_mode = 2
+
+[node name="SynthesisModeTitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content" unique_id=1576909088]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "SYNTHESIS_MODE_TITLE"
+
+[node name="ModeRow" type="HBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content" unique_id=1991159263]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SynthesisDominantA" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/ModeRow" unique_id=771518633]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "SYNTHESIS_MODE_DOMINANT_A"
+
+[node name="SynthesisBalanced" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/ModeRow" unique_id=1510740722]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "SYNTHESIS_MODE_BALANCED"
+
+[node name="SynthesisDominantB" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/ModeRow" unique_id=2037354864]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "SYNTHESIS_MODE_DOMINANT_B"
+
+[node name="SynthesisReviewButton" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content" unique_id=1578045590]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "SYNTHESIS_REVIEW_ACTION"
+
+[node name="SynthesisPreviewPanel" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content" unique_id=1334375052]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"HudSurface"
+
+[node name="Box" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisPreviewPanel" unique_id=1452562875]
+layout_mode = 2
+
+[node name="SynthesisReviewTitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisPreviewPanel/Box" unique_id=917906641]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "SYNTHESIS_REVIEW_TITLE"
+
+[node name="SynthesisChance" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisPreviewPanel/Box" unique_id=1577570980]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ResourceValueLabel"
+text = "SYNTHESIS_CHANCE_VALUE"
+horizontal_alignment = 1
+
+[node name="SynthesisBreakdown" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisPreviewPanel/Box" unique_id=821940086]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "SYNTHESIS_BREAKDOWN"
+autowrap_mode = 2
+
+[node name="SynthesisStatShape" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisPreviewPanel/Box" unique_id=1861511219]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "SYNTHESIS_STAT_SHAPE"
+autowrap_mode = 2
+
+[node name="SynthesisCost" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisPreviewPanel/Box" unique_id=1721444315]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "SYNTHESIS_COST"
+autowrap_mode = 2
+
+[node name="SynthesisConsequence" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisPreviewPanel/Box" unique_id=1273701655]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "SYNTHESIS_FAILURE_CONSEQUENCE"
+autowrap_mode = 2
+
+[node name="SynthesisConfirmButton" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisPreviewPanel/Box" unique_id=387945094]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "SYNTHESIS_CONFIRM_ACTION"
+
+[node name="SynthesisOutcomePanel" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content" unique_id=1891568286]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"HudSurface"
+
+[node name="Box" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisOutcomePanel" unique_id=1321755017]
+layout_mode = 2
+
+[node name="SynthesisOutcomeTitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisOutcomePanel/Box" unique_id=1188933998]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "SYNTHESIS_INCUBATING_TITLE"
+horizontal_alignment = 1
+
+[node name="SynthesisOutcomeBody" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisOutcomePanel/Box" unique_id=486770908]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "SYNTHESIS_INCUBATING_BODY"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="SynthesisResultPortrait" type="TextureRect" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisOutcomePanel/Box" unique_id=930430716]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(220, 220)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="SynthesisResultMeta" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisOutcomePanel/Box" unique_id=2133408047]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "SYNTHESIS_RESULT_META"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="SynthesisResultButton" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column/Scroll/Content/SynthesisOutcomePanel/Box" unique_id=2107337460]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "SYNTHESIS_VIEW_RESULT"
 
 [node name="BottomNav" parent="UI/SafeMargin/Shell" unique_id=377546388 instance=ExtResource("10_nav")]
 unique_name_in_owner = true

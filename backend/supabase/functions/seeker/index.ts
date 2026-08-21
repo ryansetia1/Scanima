@@ -58,15 +58,21 @@ Deno.serve(async (req) => {
       const currentConfig = summary.client_config && typeof summary.client_config === "object"
         ? summary.client_config as Record<string, unknown>
         : {};
-      const { data: evolutionFlag, error: flagError } = await db
+      const { data: configRows, error: flagError } = await db
         .from("app_config")
-        .select("value")
-        .eq("key", "feature_evolution")
-        .maybeSingle();
+        .select("key, value")
+        .in("key", ["feature_evolution", "feature_synthesis", "synthesis_min_level"]);
       if (flagError) throw flagError;
+      const appConfig = Object.fromEntries(
+        (configRows ?? []).map((row) => [row.key, row.value]),
+      );
       summary.client_config = {
         ...currentConfig,
-        feature_evolution: evolutionFlag?.value === true,
+        feature_evolution: appConfig.feature_evolution === true,
+        feature_synthesis: appConfig.feature_synthesis === true,
+        // Gerbang Level Source hidup di server; client hanya menirunya supaya
+        // Anima yang pasti ditolak tidak muncul sebagai pilihan.
+        synthesis_min_level: Number(appConfig.synthesis_min_level ?? 10),
       };
       return json(200, summary);
     }

@@ -59,6 +59,7 @@ func _initialize() -> void:
 	_test_cache_art()
 	_test_cache_anima_id()
 	_test_pending_evolution()
+	_test_pending_synthesis()
 	_test_cache_setengah()
 	_test_client_version()
 	_test_cache_boot()
@@ -645,6 +646,41 @@ func _test_pending_evolution() -> void:
 	_muat_ulang()
 	_check(bool(GameState.pending_evolution.get("resume_only", false)), "resume-only persist setelah restart")
 	GameState.finish_evolution()
+
+
+func _test_pending_synthesis() -> void:
+	print("16. pending Synthesis mempertahankan intent dan satu kunci")
+	GameState.clear_account_state()
+	var pending: Dictionary = GameState.begin_synthesis(
+		"source-a", 2, "source-b", 3, "balanced"
+	)
+	_check(str(pending.get("idempotency_key", "")).length() > 0, "Synthesis harus punya kunci")
+	_check_eq(str(pending.get("source_a_id", "")), "source-a", "Source A tersimpan")
+	_check_eq(int(pending.get("source_b_stage", 0)), 3, "form Source B tersimpan")
+	_check_eq(str(pending.get("mode", "")), "balanced", "bias tersimpan")
+	var replay: Dictionary = GameState.begin_synthesis(
+		"other-a", 1, "other-b", 1, "dominant_a"
+	)
+	_check_eq(
+		str(replay.get("idempotency_key", "")),
+		str(pending.get("idempotency_key", "")),
+		"Synthesis aktif tidak boleh mengganti kunci"
+	)
+	_check_eq(str(replay.get("source_a_id", "")), "source-a", "intent aktif tidak boleh berubah")
+	GameState.note_synthesis_started("gen-synthesis", "result-anima")
+	_muat_ulang()
+	_check_eq(
+		str(GameState.pending_synthesis.get("generation_id", "")),
+		"gen-synthesis",
+		"generation Synthesis bertahan setelah restart"
+	)
+	_check_eq(
+		str(GameState.pending_synthesis.get("result_anima_id", "")),
+		"result-anima",
+		"Result Synthesis bertahan setelah restart"
+	)
+	GameState.finish_synthesis()
+	_check(GameState.pending_synthesis.is_empty(), "finish membersihkan pending Synthesis")
 
 
 func _test_client_version() -> void:
