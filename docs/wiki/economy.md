@@ -10,9 +10,10 @@ Satu **Synthesis** yang berhasil juga memakai **1 Core** untuk membuat art
 Result yang unik dan privat.
 
 - Guest baru mulai dengan **1 Core**.
-- **Sign in with Google** memberi **3 Core tambahan sekali**, sehingga grant
-  starter lifetime berjumlah 4. Kalau Core pertama sudah dipakai, saldo sesudah
-  link bisa 3—bukan di-reset menjadi 4.
+- Seeker Google baru mendapat **3 Core tambahan sekali**, baik guest dipindahkan
+  maupun Google dimainkan terpisah, sehingga grant starter lifetime berjumlah
+  4. Kalau Core guest pertama sudah dipakai sebelum dipindahkan, saldo sesudahnya
+  bisa 3—bukan di-reset menjadi 4.
 - Pemain lama yang sudah linked dengan starter 3 mendapat **+1 Core sekali**.
   Grant starter legacy 3 juga dilengkapi menjadi 4, sekali.
 - Akun yang sudah terhubung ke Google otomatis mendapat **1 Core setiap 7 hari
@@ -96,9 +97,11 @@ Guest boleh menyelesaikan **satu Scan**:
 - Setelah itu tombol menjadi **Sign in to Scan Again**, meskipun Core masih ada.
 - Care, Battle, Shop, Collection, dan Anima tetap berjalan.
 
-Link Google mempertahankan progres guest dan memberi 2 Core tambahan sekali.
-Kalau Google sudah punya Seeker lain, restore membuka akun lama dan progres guest
-di perangkat ini **tidak digabungkan**. Lihat [Seeker](seeker.md).
+Saat **Sign in with Google**, pilih **Keep Guest Separate** atau **Move Guest
+Progress**. Move mempertahankan progres guest dan memberi **3 Core tambahan
+sekali** pada Seeker Google baru. Kalau Google sudah punya Seeker, hanya sign-in
+terpisah yang tersedia; progres kedua akun **tidak digabungkan**. **Sign Out**
+kembali ke guest perangkat. Lihat [Seeker](seeker.md).
 
 ## Menunggu telur
 

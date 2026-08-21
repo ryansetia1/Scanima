@@ -166,7 +166,7 @@ func _run(photo: String) -> bool:
 	if not simpan.ok:
 		printerr("  gagal menyimpan art: %s" % simpan.error)
 		return false
-	var cache_ok := (
+	var cache_ok: bool = (
 		GameState.has_sprite_for_anima(anima_id)
 		if use_anima
 		else GameState.has_sprite(species, color, stage)
@@ -175,7 +175,7 @@ func _run(photo: String) -> bool:
 		printerr("  cache tidak terbaca lengkap sesudah disimpan")
 		return false
 
-	var manifest_path := (
+	var manifest_path: String = (
 		GameState.manifest_path_for_anima(anima_id)
 		if use_anima
 		else GameState.manifest_path(species, color, stage)

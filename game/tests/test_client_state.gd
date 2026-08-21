@@ -47,6 +47,7 @@ func _initialize() -> void:
 	_bersihkan()
 
 	_test_sesi_bertahan()
+	_test_account_switch_state()
 	_test_kedaluwarsa()
 	_test_kunci_scan()
 	_test_scan_selesai()
@@ -102,6 +103,12 @@ func _muat_ulang() -> void:
 	GameState.pending_battle = {}
 	GameState.pending_team_battle = {}
 	GameState.pending_expedition = {}
+	GameState.pending_purchase = {}
+	GameState.pending_evolution = {}
+	GameState.pending_synthesis = {}
+	GameState.pending_oauth = {}
+	GameState.pending_account_switch = {}
+	GameState.device_guest_expected = false
 	GameState.last_anima = {}
 	GameState.load_state()
 
@@ -168,6 +175,95 @@ func _test_sesi_bertahan() -> void:
 	# expires_at wajib int, bukan float: JSON tidak punya int dan pembandingan
 	# umur token memakai aritmetika bilangan bulat.
 	_check_eq(int(GameState.session.get("expires_at")), 1786600000, "expires_at harus utuh")
+
+
+func _test_account_switch_state() -> void:
+	print("1b. guest perangkat dan marker switch bertahan restart")
+	SecureStore.clear_device_guest()
+	GameState.device_guest_expected = false
+	GameState.save()
+	_muat_ulang()
+	_check_eq(SecureStore.load_device_guest().get("uid"), "uid-abc",
+		"build lama yang masih guest harus dimigrasikan ke slot guest perangkat")
+	_check(GameState.device_guest_expected,
+		"marker guest expected harus dapat diturunkan lagi dari SecureStore")
+
+	GameState.last_anima = {"id": "anima-akun-lama"}
+	GameState.remember_boot_cache({"profile": {"seeker_name": "Guest Lama"}})
+	GameState.begin_account_switch("device_guest")
+	var state_on_disk := FileAccess.get_file_as_string(PATH_UJI)
+	_check(state_on_disk.contains("pending_account_switch"),
+		"marker switch harus ditulis atomik ke state.json")
+	_check(not state_on_disk.contains("refresh-1") and not state_on_disk.contains("akses-1"),
+		"marker switch tidak boleh membocorkan token guest")
+	_muat_ulang()
+	_check_eq(GameState.pending_account_switch.get("from_uid"), "uid-abc",
+		"marker switch harus pulih setelah restart")
+	_check(GameState.boot_cache.is_empty(),
+		"boot tidak boleh mengecat cache akun lama saat switch belum selesai")
+	_check(GameState.last_anima.is_empty(),
+		"boot tidak boleh mengecat Anima pilihan akun lama saat switch belum selesai")
+	GameState.finish_account_switch()
+
+	# Crash sesudah session Google tersimpan tetapi sebelum cleanup OAuth tidak
+	# boleh mengecat cache atau Anima guest di bawah UID Google.
+	GameState.set_session("linked-access", "linked-refresh", 2000000000, "uid-linked", false)
+	GameState.last_anima = {"id": "guest-before-oauth"}
+	GameState.remember_boot_cache({"profile": {"seeker_name": "Guest Lama"}})
+	_check(GameState.begin_oauth("separate", "secure-state", "secure-verifier"),
+		"OAuth fixture harus menyimpan verifier ke SecureStore")
+	state_on_disk = FileAccess.get_file_as_string(PATH_UJI)
+	_check(not state_on_disk.contains("secure-verifier")
+		and not state_on_disk.contains("code_verifier"),
+		"state.json tidak boleh memuat verifier PKCE")
+	_muat_ulang()
+	_check(GameState.boot_cache.is_empty() and GameState.last_anima.is_empty(),
+		"linked OAuth recovery harus menyembunyikan seluruh cache guest")
+	GameState.cancel_oauth()
+	GameState.set_session("akses-1", "refresh-1", 1786600000, "uid-abc", true)
+	var guest_epoch: int = GameState.session_epoch
+	GameState.set_session("akses-2", "refresh-2", 1786600100, "uid-abc", true)
+	_check_eq(GameState.session_epoch, guest_epoch,
+		"refresh token UID yang sama tidak boleh membatalkan callback yang sah")
+	GameState.set_session("linked-2", "linked-refresh-2", 2000000000, "uid-linked-2", false)
+	_check_eq(GameState.session_epoch, guest_epoch + 1,
+		"pergantian UID harus menaikkan generation callback")
+	_check(Backend.response_applies({"ok": true}, GameState.session_epoch),
+		"response UID aktif harus boleh diterapkan")
+	_check(not Backend.response_applies({"ok": true}, guest_epoch),
+		"response sukses dari generation lama harus dibuang")
+	_check(not Backend.response_applies({"ok": false, "stale": true}, GameState.session_epoch),
+		"response yang ditandai stale harus selalu dibuang")
+	GameState.set_session("akses-1", "refresh-1", 1786600000, "uid-abc", true)
+
+	var blockers: Array[String] = [
+		"pending_scan", "pending_care", "pending_battle", "pending_team_battle",
+		"pending_expedition", "pending_purchase", "pending_evolution",
+		"pending_synthesis", "pending_oauth", "pending_account_switch",
+	]
+	for property in blockers:
+		GameState.set(property, {"test": true})
+		_check(GameState.account_switch_blocked(),
+			"%s harus memblokir pergantian akun" % property)
+		GameState.set(property, {})
+	_check(not GameState.account_switch_blocked(),
+		"switch harus dibuka lagi setelah semua intent selesai")
+	GameState.pending_oauth = {"state": "stale"}
+	_check(not GameState.account_switch_blocked(true),
+		"UI guest harus boleh mengganti percobaan OAuth lama")
+	GameState.pending_oauth = {}
+
+	GameState.set_chapter_push_enabled(true)
+	GameState.pending_scan = {"idempotency_key": "guest-only"}
+	GameState.pending_oauth = {"state": "recovery"}
+	GameState.discard_guest_local_state(true)
+	_check(GameState.chapter_push_enabled(),
+		"reset akun harus mempertahankan preference perangkat")
+	_check(GameState.pending_scan.is_empty(),
+		"reset akun harus membuang intent UID lama")
+	_check(not GameState.pending_oauth.is_empty(),
+		"cleanup OAuth harus bisa mempertahankan marker recovery")
+	GameState.finish_oauth()
 
 
 func _test_kedaluwarsa() -> void:
@@ -783,6 +879,17 @@ func _test_retry_transport() -> void:
 	var dead := "http://127.0.0.1:1/"
 	var headers := PackedStringArray(["content-type: application/json"])
 	var body := PackedByteArray()
+	GameState.set_session("active", "refresh", 2000000000, "uid-active", false)
+	var stale: Dictionary = await node._send_attempt(
+		HTTPClient.METHOD_POST,
+		dead,
+		PackedStringArray(["authorization: Bearer old"]),
+		body,
+		5.0,
+		"uid-old",
+	)
+	_check_eq(stale.get("error"), "STALE_ACCOUNT_RESPONSE",
+		"request UID lama harus ditolak sebelum menyentuh jaringan")
 	var direct: Dictionary = await node._send(HTTPClient.METHOD_POST, dead, headers, body, 5.0)
 	_check(
 		bool(direct.get("transport", false)),

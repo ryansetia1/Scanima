@@ -2,12 +2,14 @@ class_name UiModal
 extends Control
 
 signal confirmed(text: String)
+signal choice_selected(choice: String)
 signal canceled
 
 enum Mode {
 	INFO,
 	CONFIRM,
 	INPUT,
+	CHOICE,
 }
 
 @onready var _panel: PanelContainer = %ModalPanel
@@ -17,6 +19,7 @@ enum Mode {
 @onready var _input: LineEdit = %ModalInput
 @onready var _cancel_button: Button = %CancelButton
 @onready var _primary_button: Button = %PrimaryButton
+@onready var _choice_cancel_button: Button = %ChoiceCancelButton
 @onready var _dismiss_button: Button = %DismissButton
 
 var _mode := Mode.INFO
@@ -26,8 +29,9 @@ var _busy := false
 func _ready() -> void:
 	z_index = 20
 	_dismiss_button.pressed.connect(_cancel)
-	_cancel_button.pressed.connect(_cancel)
+	_cancel_button.pressed.connect(_on_cancel_button_pressed)
 	_primary_button.pressed.connect(_submit)
+	_choice_cancel_button.pressed.connect(_cancel)
 	_input.text_submitted.connect(func(_text: String) -> void: _submit())
 	UiJuice.install_buttons(self)
 
@@ -62,6 +66,18 @@ func open_confirm(
 	_show_modal(_cancel_button)
 
 
+func open_choice(
+	title_text: String,
+	body_text: String,
+	primary_text: String,
+	secondary_text: String,
+	cancel_text: String
+) -> void:
+	_configure(Mode.CHOICE, title_text, body_text, primary_text, secondary_text, false)
+	_choice_cancel_button.text = cancel_text
+	_show_modal(_primary_button)
+
+
 func open_input(
 	title_text: String,
 	body_text: String,
@@ -82,6 +98,7 @@ func set_busy(busy: bool) -> void:
 	_busy = busy
 	_primary_button.disabled = busy
 	_cancel_button.disabled = busy
+	_choice_cancel_button.disabled = busy
 	_dismiss_button.disabled = busy
 	_input.editable = not busy
 
@@ -117,6 +134,7 @@ func _configure(
 	_body.visible = not body_text.is_empty()
 	_input.visible = mode == Mode.INPUT
 	_cancel_button.visible = mode != Mode.INFO
+	_choice_cancel_button.visible = mode == Mode.CHOICE
 	_cancel_button.text = cancel_text
 	_primary_button.text = primary_text
 	_primary_button.theme_type_variation = &"DangerButton" if destructive else &"PrimaryButton"
@@ -139,9 +157,26 @@ func _focus_after_layout(target: Control) -> void:
 func _submit() -> void:
 	if _busy:
 		return
+	if _mode == Mode.CHOICE:
+		_submit_choice("primary")
+		return
 	var text := _input.text if _mode == Mode.INPUT else ""
 	close()
 	confirmed.emit(text)
+
+
+func _on_cancel_button_pressed() -> void:
+	if _mode == Mode.CHOICE:
+		_submit_choice("secondary")
+	else:
+		_cancel()
+
+
+func _submit_choice(choice: String) -> void:
+	if _busy:
+		return
+	close()
+	choice_selected.emit(choice)
 
 
 func _cancel() -> void:

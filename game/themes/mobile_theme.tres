@@ -215,6 +215,8 @@ corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_n7avp"]
+
 [sub_resource type="StyleBoxFlat" id="DangerHover"]
 content_margin_left = 24.0
 content_margin_top = 16.0
@@ -596,6 +598,12 @@ shadow_color = Color(0, 0, 0, 0.42)
 shadow_size = 16
 shadow_offset = Vector2(0, 8)
 
+[sub_resource type="FontVariation" id="FontVariation_hwlub"]
+base_font = ExtResource("1_body")
+variation_opentype = {
+2003265652: 700
+}
+
 [sub_resource type="StyleBoxFlat" id="PrimaryHover"]
 content_margin_left = 24.0
 content_margin_top = 16.0
@@ -741,6 +749,95 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dabq7"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.065, 0.075, 0.12, 0.68)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.42, 0.48, 0.62, 0.18)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6eren"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.47, 0.95, 1, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 1, 1, 0.92)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0.125, 0.72, 1, 0.46)
+shadow_size = 18
+shadow_offset = Vector2(0, 7)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_awbip"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.47, 0.95, 1, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 1, 1, 0.92)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0.125, 0.72, 1, 0.46)
+shadow_size = 18
+shadow_offset = Vector2(0, 7)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_deuei"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.278, 0.902, 1, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.72, 0.98, 1, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0.125, 0.72, 1, 0.34)
+shadow_size = 14
+shadow_offset = Vector2(0, 7)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j00fo"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.12, 0.58, 0.72, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.82, 0.4, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
 [sub_resource type="StyleBoxFlat" id="DialogPanel"]
 content_margin_left = 28.0
 content_margin_top = 26.0
@@ -840,6 +937,12 @@ CareSleepButton/constants/icon_max_width = 46
 CareSleepButton/font_sizes/font_size = 25
 CareSleepButton/styles/disabled = SubResource("ButtonDisabled")
 CareSleepButton/styles/normal = SubResource("SleepNormal")
+ChipActionButton/base_type = &"Button"
+ChipActionButton/styles/disabled = SubResource("StyleBoxEmpty_n7avp")
+ChipActionButton/styles/focus = SubResource("StyleBoxEmpty_n7avp")
+ChipActionButton/styles/hover = SubResource("StyleBoxEmpty_n7avp")
+ChipActionButton/styles/normal = SubResource("StyleBoxEmpty_n7avp")
+ChipActionButton/styles/pressed = SubResource("StyleBoxEmpty_n7avp")
 DangerButton/base_type = &"Button"
 DangerButton/colors/font_color = Color(1, 0.9, 0.92, 1)
 DangerButton/colors/font_disabled_color = Color(0.55, 0.6, 0.72, 0.58)
@@ -961,8 +1064,10 @@ PrimaryButton/colors/font_color = Color(0.015, 0.055, 0.105, 1)
 PrimaryButton/colors/font_disabled_color = Color(0.55, 0.6, 0.72, 0.58)
 PrimaryButton/colors/font_focus_color = Color(0.015, 0.055, 0.105, 1)
 PrimaryButton/colors/font_hover_color = Color(0.015, 0.055, 0.105, 1)
-PrimaryButton/colors/font_pressed_color = Color(1, 0.95, 0.78, 1)
+PrimaryButton/colors/font_hover_pressed_color = Color(0.015, 0.055, 0.105, 1)
+PrimaryButton/colors/font_pressed_color = Color(0.015, 0.055, 0.105, 1)
 PrimaryButton/font_sizes/font_size = 32
+PrimaryButton/fonts/font = SubResource("FontVariation_hwlub")
 PrimaryButton/styles/disabled = SubResource("ButtonDisabled")
 PrimaryButton/styles/focus = SubResource("PrimaryHover")
 PrimaryButton/styles/hover = SubResource("PrimaryHover")
@@ -978,10 +1083,10 @@ ResourceChip/base_type = &"PanelContainer"
 ResourceChip/styles/panel = SubResource("ResourceChip")
 ResourceNameLabel/base_type = &"Label"
 ResourceNameLabel/colors/font_color = Color(0.58, 0.66, 0.8, 1)
-ResourceNameLabel/font_sizes/font_size = 16
+ResourceNameLabel/font_sizes/font_size = 22
 ResourceValueLabel/base_type = &"Label"
 ResourceValueLabel/colors/font_color = Color(1, 0.9, 0.58, 1)
-ResourceValueLabel/font_sizes/font_size = 23
+ResourceValueLabel/font_sizes/font_size = 30
 ResourceValueLabel/fonts/font = ExtResource("2_display")
 SectionLabel/base_type = &"Label"
 SectionLabel/colors/font_color = Color(0.72, 0.79, 0.92, 1)
@@ -1004,6 +1109,19 @@ VScrollBar/styles/grabber_highlight = SubResource("ScrollHover")
 VScrollBar/styles/grabber_pressed = SubResource("ScrollHover")
 VScrollBar/styles/scroll = SubResource("Empty")
 VScrollBar/styles/scroll_focus = SubResource("Empty")
+VibeSelected/base_type = &"Button"
+VibeSelected/colors/font_color = Color(0.015, 0.055, 0.105, 1)
+VibeSelected/colors/font_focus_color = Color(0.015, 0.055, 0.105, 1)
+VibeSelected/colors/font_hover_color = Color(0.015, 0.055, 0.105, 1)
+VibeSelected/colors/font_hover_pressed_color = Color(0.015, 0.055, 0.105, 1)
+VibeSelected/colors/font_pressed_color = Color(0.015, 0.055, 0.105, 1)
+VibeSelected/font_sizes/font_size = 32
+VibeSelected/fonts/font = SubResource("FontVariation_hwlub")
+VibeSelected/styles/disabled = SubResource("StyleBoxFlat_dabq7")
+VibeSelected/styles/focus = SubResource("StyleBoxFlat_6eren")
+VibeSelected/styles/hover = SubResource("StyleBoxFlat_awbip")
+VibeSelected/styles/normal = SubResource("StyleBoxFlat_deuei")
+VibeSelected/styles/pressed = SubResource("StyleBoxFlat_j00fo")
 Window/colors/title_color = Color(0.94, 0.965, 1, 1)
 Window/constants/title_height = 72
 Window/font_sizes/title_font_size = 28

@@ -153,7 +153,7 @@ sequenceDiagram
 | `expedition` | Chapter list, map, checkpoint, node, Trophy, encounter team | Menjalankan model atau mempercayai route/reward client |
 | `shop` | Verifikasi JWT, debit Bits, upsert inventory, replay receipt | Dipanggil lewat RPC `purchase_catalog_item` dari client |
 | `seeker` | Profil Seeker, grant upgrade Google, dan hapus akun | Menerima `owner_id` dari body atau menggabungkan dua akun |
-| `SecureStore` + `AuthFlow` | Token Keystore/Keychain, backup guest, link/restore OAuth | Menulis refresh token ke `state.json` atau mengganti sesi sebelum exchange valid |
+| `SecureStore` + `AuthFlow` | Token aktif + guest perangkat di Keystore/Keychain, PKCE transfer/separate, Sign Out lokal, recovery switch | Menulis refresh token ke `state.json`, menyimpan vault akun Google, atau merge dua UID |
 | `evolve_anima` | Generation stage berikutnya pakai sheet privat saat ini sebagai input | Dipanggil tanpa cek syarat evolusi di server |
 | `synthesize_anima` | Preview/roll Resonance, buat board dua Source privat, validasi Plan, lalu dispatch Result | Memanggil model sebelum roll sukses atau menentukan angka stat di LLM |
 | Postgres | Sumber kebenaran untuk kuota, stat, kepemilikan | Menyimpan foto mentah |
@@ -626,10 +626,47 @@ lalu melengkapi grant starter lifetime dari 1 menjadi 4 Core dengan ledger unik
 akun yang sudah sempat di-grant ke 3). Akun lama `starter_legacy` mendapat +1
 sekali lewat alasan yang sama.
 
-Client menautkan Google melalui PKCE dan `scanima://auth/callback`. Link wajib
-mempertahankan UID guest. Bila Google sudah dimiliki akun lain, pemain melihat
-peringatan sebelum restore; akun Google menang dan intent/cache pilihan guest
-lokal dibuang tanpa merge. Refresh token tidak pernah masuk `state.json`.
+Client menawarkan dua mode melalui PKCE dan `scanima://auth/callback`:
+
+- `transfer` memakai identity linking dan wajib mempertahankan UID guest. Slot
+  guest perangkat baru dihapus setelah callback same-UID tersimpan. Kalau Google
+  sudah dimiliki UID lain, transfer berhenti tanpa merge dan pemain hanya boleh
+  sign-in terpisah atau batal.
+- `separate` menyimpan guest ke
+  `scanima:device_guest_session`, lalu membuka `/auth/v1/authorize`. Session
+  Google menjadi aktif, tetapi guest tetap dapat dipulihkan saat Sign Out.
+
+Google authorize selalu membawa `prompt=select_account`; Scanima tidak menyimpan
+vault token Google A/B. Pergantian Google A ke B melewati Sign Out ke guest.
+Sign Out menyiapkan atau me-refresh guest lebih dulu, menulis marker
+`pending_account_switch`, mencoba `POST /auth/v1/logout?scope=local`, baru
+memasang guest dan membersihkan state UID lama. Revokasi yang gagal karena
+transport tidak menghalangi switch lokal; marker menyelesaikan urutan yang
+terputus saat boot. Jika guest yang ditandai wajib ada justru hilang/rusak, sesi
+Google dipertahankan dan tidak diganti diam-diam dengan guest baru.
+Delete Account untuk Google terpisah memakai preflight refresh + simpan guest
+yang sama **sebelum** request penghapusan permanen dikirim; guest yang tidak
+dapat dipulihkan membatalkan delete.
+
+`state.json` hanya memuat marker OAuth/switch nonrahasia dan
+`device_guest_expected`; verifier PKCE tidak ikut. Session aktif, guest
+perangkat, backup OAuth sementara, dan verifier PKCE adalah empat key SecureStore
+terpisah. Build lama yang sempat menyimpan verifier memindahkannya sekali lalu
+menghapus salinan plaintext. Recovery marker diselesaikan sebelum cold-start
+deeplink diproses, dan boot menjadi satu-satunya pemilik reload jika callback
+selesai saat app baru dibuka. Scan/Care/Shop/Battle/Team/Expedition/Evolution/
+Synthesis yang pending memblokir switch maupun Delete Account agar intent UID
+lama tidak berlomba dengan pergantian atau penghapusan akun. Setelah setiap
+sign-in Google, operasi `upgrade` tetap dipanggil idempoten sehingga Google baru
+pada jalur separate juga menerima starter yang benar.
+
+Selain pagar transport berbasis UID, `GameState.session_epoch` naik setiap UID
+aktif berubah. Semua coroutine UI menangkap epoch sebelum request lalu membuang
+response, rollback optimistis, dan hasil download bila epoch-nya sudah lama.
+Handoff juga mengosongkan konteks shell, Atlas, dan Expedition; dispatch hub
+Expedition memakai revision sendiri supaya response akun lama tidak dapat
+menimpa request akun baru yang sudah terbang.
+
 Callback membawa `?state=<acak>`, sehingga URL Configuration production memakai
 Site URL `scanima://auth/callback` dan allow-list `scanima://auth/callback**`.
 Exact callback tanpa globstar ditolak ketika query state hadir dan GoTrue jatuh

@@ -381,6 +381,7 @@ func _initialize() -> void:
 	var modal_input := scene.find_child("ModalInput", true, false) as LineEdit
 	var modal_cancel := scene.find_child("CancelButton", true, false) as Button
 	var modal_primary := scene.find_child("PrimaryButton", true, false) as Button
+	var modal_choice_cancel := scene.find_child("ChoiceCancelButton", true, false) as Button
 	_check(shell_modal != null and not shell_modal.visible, "shared shell modal starts hidden")
 	_check(
 		shell_modal.z_index >= 10,
@@ -394,7 +395,9 @@ func _initialize() -> void:
 		modal_primary != null
 		and modal_primary.custom_minimum_size.y >= TOUCH_MIN
 		and modal_cancel != null
-		and modal_cancel.custom_minimum_size.y >= TOUCH_MIN,
+		and modal_cancel.custom_minimum_size.y >= TOUCH_MIN
+		and modal_choice_cancel != null
+		and modal_choice_cancel.custom_minimum_size.y >= TOUCH_MIN,
 		"shared modal actions meet the touch target"
 	)
 	_check(
@@ -837,12 +840,25 @@ func _test_shared_components() -> void:
 	var modal_input := modal.find_child("ModalInput", true, false) as LineEdit
 	var modal_cancel := modal.find_child("CancelButton", true, false) as Button
 	var modal_primary := modal.find_child("PrimaryButton", true, false) as Button
+	var modal_choice_cancel := modal.find_child("ChoiceCancelButton", true, false) as Button
 	modal.open_info("Info", "Short body", "Got It")
 	_check(modal.visible and not modal_input.visible and not modal_cancel.visible, "UiModal info mode is compact")
 	modal.open_confirm("Delete", "Danger body", "Delete", "Cancel", true)
 	_check(
 		modal_cancel.visible and modal_primary.theme_type_variation == &"DangerButton",
 		"UiModal danger-confirm mode exposes safe cancel and danger action"
+	)
+	modal.open_choice("Google", "Choose", "Keep Guest", "Move Guest", "Cancel")
+	await process_frame
+	_check(
+		modal_primary.visible
+		and modal_primary.text == "Keep Guest"
+		and modal_cancel.visible
+		and modal_cancel.text == "Move Guest"
+		and modal_choice_cancel.visible
+		and modal_choice_cancel.text == "Cancel"
+		and modal_primary.has_focus(),
+		"UiModal choice mode exposes two actions plus Cancel and focuses the safe default"
 	)
 	modal.open_input("Rename", "Prompt", "Velumi", "Save", "Cancel", "Name")
 	_check(
@@ -1643,6 +1659,16 @@ func _test_seeker_ui() -> void:
 	_check(
 		(menu.find_child("MusicEnabled", true, false) as CheckButton).button_pressed,
 		"music plays by default and can be turned off from Settings"
+	)
+	menu.show_menu(false, false, false, false)
+	_check(
+		(menu.find_child("SeekerAccount", true, false) as Button).text
+			== tr("SEEKER_SIGN_OUT"),
+		"linked account action is Sign Out while Delete Account remains separate"
+	)
+	_check(
+		delete_account.theme_type_variation == &"DangerButton",
+		"Sign Out does not replace or soften the permanent Delete Account action"
 	)
 	menu.show_menu(true, false, false, false)
 	_check(
@@ -4602,7 +4628,7 @@ func _test_battle_turn_prediction(scene: Node) -> void:
 	)
 	scene.set("_team_art_cache", {})
 	_test_failed_turn_rolls_back()
-	_test_boot_cache_is_display_only()
+	_test_boot_cache_is_display_only(scene)
 
 
 ## Turn yang animasinya sudah jalan tetapi requestnya tidak sampai harus
@@ -4634,7 +4660,7 @@ func _test_failed_turn_rolls_back() -> void:
 ## Cache boot hanya boleh mempercepat gambar pertama. Dua hal yang bisa rusak
 ## diam-diam: layar Loading kembali menimpa cache, dan katalog berhenti disegarkan
 ## karena cache dianggap sudah tersinkron.
-func _test_boot_cache_is_display_only() -> void:
+func _test_boot_cache_is_display_only(scene: Node) -> void:
 	var shell := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	var boot_start := shell.find("func _boot()")
 	var boot_body := shell.substr(boot_start, shell.find("\n\nfunc ", boot_start) - boot_start)
@@ -4653,13 +4679,64 @@ func _test_boot_cache_is_display_only() -> void:
 		"the catalog is still fetched once per session, cache or not"
 	)
 	var state := FileAccess.get_file_as_string("res://scripts/game_state.gd")
+	var reset_start := state.find("func _clear_account_runtime_state")
+	var reset_body := state.substr(
+		reset_start, state.find("\n\nfunc ", reset_start) - reset_start
+	)
+	_check(reset_body.find("clear_boot_cache()") >= 0,
+		"shared account reset drops the cached Home")
 	for entry in ["func clear_account_state", "func discard_guest_local_state"]:
 		var start := state.find(entry)
 		var body := state.substr(start, state.find("\n\nfunc ", start) - start)
 		_check(
-			body.find("clear_boot_cache()") >= 0,
-			"%s also drops the cached Home" % entry
+			body.find("_clear_account_runtime_state(") >= 0,
+			"%s uses the shared cached-Home reset" % entry
 		)
+	var delete_start := shell.find("func _delete_account()")
+	var delete_body := shell.substr(
+		delete_start, shell.find("\n\nfunc ", delete_start) - delete_start
+	)
+	var preflight_guest := delete_body.find("AuthFlow.prepare_device_guest()")
+	var delete_request := delete_body.find("Backend.seeker(\"delete_account\"")
+	_check(
+		preflight_guest >= 0 and delete_request > preflight_guest,
+		"Delete Account proves the guest vault before deleting the linked Seeker"
+	)
+	var activate_guest := delete_body.find("GameState.activate_stored_session(guest)")
+	var discard_deleted := delete_body.find("GameState.discard_guest_local_state()")
+	_check(
+		activate_guest >= 0 and discard_deleted > activate_guest,
+		"Delete Account preserves the guest vault until that guest is active"
+	)
+	_check(
+		delete_body.find("GameState.clear_account_state(false)") >= 0,
+		"failed Delete Account guest activation cannot create and overwrite a new guest"
+	)
+	_check(
+		delete_body.find("GameState.account_switch_blocked()") >= 0,
+		"Delete Account refuses to race a pending account mutation"
+	)
+	var cached_start := shell.find("func _show_cached_anima()")
+	var cached_body := shell.substr(
+		cached_start, shell.find("\n\nfunc ", cached_start) - cached_start
+	)
+	_check(
+		cached_body.find("GameState.last_anima") < 0,
+		"cold Home only paints a UID-bound boot cache, never a loose last_anima row"
+	)
+	scene.set("_booting", true)
+	scene.set("_boot_auth_success_mode", "")
+	scene.call("_on_auth_succeeded", "separate", {})
+	_check_eq(
+		scene.get("_boot_auth_success_mode"),
+		"separate",
+		"cold OAuth delegates its one authoritative reload to boot"
+	)
+	_check_eq(
+		scene.call("_account_success_key", "transfer"),
+		"SEEKER_MOVED",
+		"boot can still announce the suppressed cold OAuth success"
+	)
 
 
 func _test_anima_delete_action() -> void:

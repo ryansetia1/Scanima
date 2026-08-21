@@ -1,10 +1,12 @@
 extends Node
 
-## Penyimpanan satu blob sesi. Di Android/iOS nilainya dienkripsi native oleh
+## Penyimpanan blob sesi. Di Android/iOS nilainya dienkripsi native oleh
 ## OAuth2Plugin (Android Keystore / iOS Keychain), bukan ditulis ke state.json.
 
 const SESSION_KEY := "scanima:session"
+const DEVICE_GUEST_KEY := "scanima:device_guest_session"
 const BACKUP_KEY := "scanima:session_backup"
+const OAUTH_PKCE_KEY := "scanima:oauth_pkce"
 
 ## Hanya untuk editor/headless dan build desktop yang bukan target rilis mobile.
 # ponytail: fallback plaintext menjaga alat dev tetap hidup. Plafonnya desktop
@@ -35,6 +37,18 @@ func clear_session() -> void:
 	_delete(SESSION_KEY)
 
 
+func load_device_guest() -> Dictionary:
+	return _decode(_read(DEVICE_GUEST_KEY))
+
+
+func save_device_guest(value: Dictionary) -> bool:
+	return _write(DEVICE_GUEST_KEY, JSON.stringify(value))
+
+
+func clear_device_guest() -> void:
+	_delete(DEVICE_GUEST_KEY)
+
+
 func backup_session(value: Dictionary) -> bool:
 	return _write(BACKUP_KEY, JSON.stringify(value))
 
@@ -45,6 +59,18 @@ func load_backup() -> Dictionary:
 
 func clear_backup() -> void:
 	_delete(BACKUP_KEY)
+
+
+func load_oauth_pkce() -> Dictionary:
+	return _decode(_read(OAUTH_PKCE_KEY))
+
+
+func save_oauth_pkce(value: Dictionary) -> bool:
+	return _write(OAUTH_PKCE_KEY, JSON.stringify(value))
+
+
+func clear_oauth_pkce() -> void:
+	_delete(OAUTH_PKCE_KEY)
 
 
 func _read(key: String) -> String:

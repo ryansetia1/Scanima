@@ -109,6 +109,8 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 @onready var _bottom_nav: BottomNav = %BottomNav
 
 var _busy := false
+var _booting := true
+var _boot_auth_success_mode := ""
 var _roster: Array[Dictionary] = []
 var _catalog: Array = []
 var _catalog_synced := false
@@ -260,6 +262,7 @@ func _ready() -> void:
 	_details_view.synthesis_requested.connect(_open_synthesis_lab)
 	_bottom_nav.destination_selected.connect(_on_bottom_nav_destination)
 	_shell_modal.confirmed.connect(_modal_confirmed)
+	_shell_modal.choice_selected.connect(_modal_choice_selected)
 	_shell_modal.canceled.connect(_modal_canceled)
 	_shop_sheet.buy_requested.connect(_buy_catalog_item)
 	_shop_sheet.use_requested.connect(_use_catalog_item)
@@ -309,8 +312,13 @@ func _ready() -> void:
 	UiJuice.reveal(_bottom_nav, 0.14)
 	_switch_destination(BottomNav.HOME)
 	_setup_picker()
+	await AuthFlow.ensure_recovered()
 	_show_cached_anima()
 	await _boot()
+	_booting = false
+	if not _boot_auth_success_mode.is_empty():
+		_say(tr(_account_success_key(_boot_auth_success_mode)), true)
+		_boot_auth_success_mode = ""
 
 	# Memeriksa layar sungguhan tanpa membuka editor:
 	#   godot --path game -- --screenshot=/tmp/scan.png
@@ -496,7 +504,10 @@ func _boot() -> void:
 	_discover_team_battle()
 	_expedition_controller.discover()
 
+	var boot_epoch := GameState.session_epoch
 	var profile_res := await Backend.fetch_profile()
+	if not Backend.response_applies(profile_res, boot_epoch):
+		return
 	_apply_profile_refresh(profile_res)
 	if not await _ensure_client_version():
 		_set_busy(false)
@@ -508,11 +519,17 @@ func _boot() -> void:
 		and not profile_value_present(GameState.profile, &"account_upgraded_at")
 	):
 		var upgraded := await Backend.seeker("upgrade")
+		if not Backend.response_applies(upgraded, boot_epoch):
+			return
 		if upgraded.ok:
 			GameState.profile.merge(GameState.as_dict(upgraded.data), true)
 	await _refresh_catalog()
+	if GameState.session_epoch != boot_epoch:
+		return
 	_refresh_header()
 	var roster_loaded := await _reload_roster()
+	if GameState.session_epoch != boot_epoch:
+		return
 	if not GameState.pending_care.is_empty():
 		_say(tr("STATUS_RESUMING_CARE"))
 		await _resume_pending_care()
@@ -587,7 +604,10 @@ func _boot() -> void:
 
 
 func _reload_roster() -> bool:
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.fetch_animas()
+	if not Backend.response_applies(res, account_epoch):
+		return false
 	if not res.ok or typeof(res.data) != TYPE_ARRAY:
 		_roster_error = res.error if not res.error.is_empty() else "balasan koleksi tidak sah"
 		_collection_view.set_error()
@@ -636,10 +656,13 @@ func _sprite_stage_for_row(row: Dictionary) -> int:
 
 
 func _sync_collection_preview(row: Dictionary, revision: int) -> void:
+	var account_epoch := GameState.session_epoch
 	var anima_id := str(row.get("id", ""))
 	if anima_id.is_empty():
 		return
 	var res := await Backend.care_anima(anima_id, "sync")
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		print("collection care sync error: %s" % res.error)
 		_collection_view.set_care_sync_error(revision)
@@ -686,10 +709,13 @@ func _close_synthesis_lab() -> void:
 
 
 func _preview_synthesis(payload: Dictionary) -> void:
+	var account_epoch := GameState.session_epoch
 	if payload.is_empty() or not _synthesis_enabled():
 		return
 	_synthesis_view.set_busy(true)
 	var res := await Backend.synthesize_anima("preview", payload)
+	if not Backend.response_applies(res, account_epoch):
+		return
 	_synthesis_view.set_busy(false)
 	if res.ok and typeof(res.data) == TYPE_DICTIONARY:
 		_synthesis_view.apply_preview(GameState.as_dict(res.data))
@@ -722,6 +748,7 @@ func _resume_pending_synthesis() -> void:
 
 
 func _send_pending_synthesis(operation: String) -> void:
+	var account_epoch := GameState.session_epoch
 	if _synthesis_resume_in_flight or _synthesis_poll_in_flight:
 		return
 	var pending := GameState.pending_synthesis.duplicate(true)
@@ -730,6 +757,8 @@ func _send_pending_synthesis(operation: String) -> void:
 	_synthesis_resume_in_flight = true
 	var payload := pending.duplicate(true)
 	var res := await Backend.synthesize_anima(operation, payload)
+	if not Backend.response_applies(res, account_epoch):
+		return
 	_synthesis_resume_in_flight = false
 	var body := GameState.as_dict(res.data)
 	if res.ok:
@@ -763,7 +792,10 @@ func _send_pending_synthesis(operation: String) -> void:
 	)
 	if server_verdict:
 		GameState.finish_synthesis()
-		_apply_profile_refresh(await Backend.fetch_profile())
+		var profile_res := await Backend.fetch_profile()
+		if not Backend.response_applies(profile_res, account_epoch):
+			return
+		_apply_profile_refresh(profile_res)
 		_refresh_header()
 		if _destination == SYNTHESIS_DEST:
 			_synthesis_view.set_rows(_roster)
@@ -787,14 +819,19 @@ func _retry_pending_synthesis() -> void:
 
 
 func _wait_for_synthesis(result_anima_id: String) -> void:
+	var account_epoch := GameState.session_epoch
 	if _synthesis_poll_in_flight or result_anima_id.is_empty():
 		return
 	_synthesis_poll_in_flight = true
 	var remaining := SYNTHESIS_POLL_TIMEOUT_SEC
 	while remaining > 0.0 and not GameState.pending_synthesis.is_empty():
 		await get_tree().create_timer(SYNTHESIS_POLL_INTERVAL_SEC).timeout
+		if GameState.session_epoch != account_epoch:
+			return
 		remaining -= SYNTHESIS_POLL_INTERVAL_SEC
 		var res := await Backend.fetch_anima(result_anima_id)
+		if not Backend.response_applies(res, account_epoch):
+			return
 		if not res.ok or typeof(res.data) != TYPE_ARRAY:
 			continue
 		var rows: Array = res.data
@@ -836,9 +873,13 @@ func _complete_synthesis(row: Dictionary) -> bool:
 			_synthesis_art_error_reported = true
 		return false
 	_synthesis_art_error_reported = false
+	var account_epoch := GameState.session_epoch
 	GameState.finish_synthesis()
 	_upsert_roster(row)
-	_apply_profile_refresh(await Backend.fetch_profile())
+	var profile_res := await Backend.fetch_profile()
+	if not Backend.response_applies(profile_res, account_epoch):
+		return false
+	_apply_profile_refresh(profile_res)
 	_refresh_header()
 	_populate_collection()
 	GameState.remember_boot_cache({"roster": _roster, "profile": GameState.profile})
@@ -850,8 +891,12 @@ func _complete_synthesis(row: Dictionary) -> bool:
 
 
 func _fail_synthesis_client() -> void:
+	var account_epoch := GameState.session_epoch
 	GameState.finish_synthesis()
-	_apply_profile_refresh(await Backend.fetch_profile())
+	var profile_res := await Backend.fetch_profile()
+	if not Backend.response_applies(profile_res, account_epoch):
+		return
+	_apply_profile_refresh(profile_res)
 	_refresh_header()
 	if _destination == SYNTHESIS_DEST:
 		_synthesis_view.set_rows(_roster)
@@ -876,7 +921,10 @@ func _refresh_synthesis_history() -> void:
 	_details_view.set_synthesis_history(local_history)
 	if anima_id.is_empty() or local_history.is_empty():
 		return
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.synthesize_anima("history", {"result_anima_id": anima_id})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if revision != _synthesis_history_revision or not res.ok:
 		return
 	var history := GameState.as_dict(GameState.as_dict(res.data).get("history"))
@@ -894,7 +942,10 @@ func _refresh_synthesis_history() -> void:
 func _synthesis_history_texture(url: String) -> Texture2D:
 	if url.is_empty():
 		return null
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.download_url(url)
+	if not Backend.response_applies(res, account_epoch):
+		return null
 	if not res.ok or res.bytes.is_empty():
 		return null
 	var image := Image.new()
@@ -1117,7 +1168,10 @@ func _delete_confirmed() -> void:
 	var deleted_active := anima_id == str(_current_anima.get("id", ""))
 	_pending_delete_id = ""
 	_set_busy(true)
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.delete_anima(anima_id)
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok or typeof(res.data) != TYPE_ARRAY or (res.data as Array).is_empty():
 		_set_busy(false)
 		_say(tr("ANIMA_DELETE_ERROR"), true)
@@ -1204,7 +1258,10 @@ func _start_evolution_ritual(row: Dictionary) -> void:
 	_populate_collection()
 	_say(tr("EVOLUTION_STARTED") % LocaleManager.display_name(row), true)
 
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.evolve_anima(anima_id, str(pending.get("idempotency_key", "")))
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		var code := str(GameState.as_dict(res.data).get("error", res.error))
 		if code == "FEATURE_DISABLED":
@@ -1352,12 +1409,15 @@ func _wait_for_evolution(
 	if _evolution_poll_in_flight:
 		return
 	_evolution_poll_in_flight = true
+	var account_epoch := GameState.session_epoch
 	_say(tr("EVOLUTION_SYNTHESIZING"))
 	var remaining_poll_sec := EVOLUTION_POLL_TIMEOUT_SEC
 	while remaining_poll_sec > 0.0:
 		await get_tree().create_timer(EVOLUTION_POLL_INTERVAL_SEC).timeout
 		remaining_poll_sec -= EVOLUTION_POLL_INTERVAL_SEC
 		var res := await Backend.fetch_anima(anima_id)
+		if not Backend.response_applies(res, account_epoch):
+			return
 		if not res.ok or typeof(res.data) != TYPE_ARRAY:
 			continue
 		var rows: Array = res.data
@@ -1452,7 +1512,10 @@ func _evolution_suggested_name(anima_id: String) -> String:
 	var key := str(pending.get("idempotency_key", ""))
 	if anima_id.is_empty() or key.is_empty():
 		return ""
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.evolve_anima(anima_id, key, false)
+	if not Backend.response_applies(res, account_epoch):
+		return ""
 	if not res.ok or typeof(res.data) != TYPE_DICTIONARY:
 		return ""
 	return str(res.data.get("suggested_name", "")).strip_edges()
@@ -1529,7 +1592,10 @@ func _stop_evolution_chamber() -> void:
 
 
 func _fetch_evolution_row(anima_id: String) -> Dictionary:
+	var account_epoch := GameState.session_epoch
 	var fetched := await Backend.fetch_anima(anima_id)
+	if not Backend.response_applies(fetched, account_epoch):
+		return {}
 	if (
 		not fetched.ok
 		or typeof(fetched.data) != TYPE_ARRAY
@@ -1659,7 +1725,10 @@ func _rename_confirmed(submitted_text: String) -> void:
 		return
 
 	_set_busy(true)
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.rename_anima(anima_id, nickname)
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok or typeof(res.data) != TYPE_ARRAY or (res.data as Array).is_empty():
 		_set_busy(false)
 		_say(_anima_rename_error(str(res.error)), true)
@@ -1706,10 +1775,12 @@ func _modal_confirmed(text: String) -> void:
 			_evolve_confirmed()
 		&"rename":
 			_rename_confirmed(text)
-		&"sign_in_google":
-			_start_google_link()
+		&"confirm_transfer_guest":
+			_start_google_transfer()
 		&"restore_google":
-			_start_google_restore()
+			_start_google_separate()
+		&"sign_out":
+			_sign_out()
 		&"delete_account":
 			_delete_account()
 		&"rename_seeker":
@@ -1725,6 +1796,17 @@ func _modal_confirmed(text: String) -> void:
 				_expedition_controller.abandon()
 		&"expedition_level_up":
 			_show_next_expedition_level_up()
+
+
+func _modal_choice_selected(choice: String) -> void:
+	var context := _modal_context
+	_modal_context = &""
+	if context != &"sign_in_google":
+		return
+	if choice == "primary":
+		_start_google_separate()
+	else:
+		_show_transfer_confirmation()
 
 
 func _modal_canceled() -> void:
@@ -1756,7 +1838,10 @@ func _show_details_help(title: String, body: String) -> void:
 func _refresh_chapter_announcements() -> void:
 	_chapter_announcement_revision += 1
 	var revision := _chapter_announcement_revision
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.expedition("announcements")
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if revision != _chapter_announcement_revision:
 		return
 	if res.ok:
@@ -1839,7 +1924,10 @@ func _ack_chapter_popup(open_expedition: bool) -> void:
 	if not chapter_ids.is_empty():
 		_chapter_announcement_revision += 1
 		var revision := _chapter_announcement_revision
+		var account_epoch := GameState.session_epoch
 		var res := await Backend.expedition("ack_home_popup", {"chapter_ids": chapter_ids})
+		if not Backend.response_applies(res, account_epoch):
+			return
 		if res.ok and revision == _chapter_announcement_revision:
 			_apply_chapter_announcements(GameState.as_dict(res.data), false)
 	if open_expedition:
@@ -1867,11 +1955,14 @@ func _complete_seeker_profile(
 	if _busy:
 		return
 	_seeker_onboarding_sheet.set_busy(true)
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.seeker("complete", {
 		"seeker_name": seeker_name,
 		"birth_year": birth_year,
 		"gender": gender,
 	})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		_seeker_onboarding_sheet.show_error(
 			_seeker_error(res.error),
@@ -1941,7 +2032,10 @@ func _commit_atlas_publish(anima_id: String, publish: bool) -> void:
 	var payload := {"anima_id": anima_id}
 	if publish and not GameState.as_dict(target.get("synthesis_history")).is_empty():
 		payload["synthesis_source_consent"] = true
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.atlas(operation, payload)
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if res.ok:
 		_say(tr("GALLERY_PUBLISHED") if publish else tr("GALLERY_UNPUBLISHED"), false)
 		await _refresh_gallery_status(anima_id)
@@ -1975,7 +2069,10 @@ func _refresh_gallery_status(anima_id: String = "") -> void:
 		return
 	_gallery_status_revision += 1
 	var revision := _gallery_status_revision
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.atlas("my_status", {"anima_id": target_id})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if revision != _gallery_status_revision:
 		return
 	if not res.ok:
@@ -2008,7 +2105,10 @@ func _open_settings() -> void:
 func _open_seeker_profile() -> void:
 	_remember_overlay_origin()
 	_set_busy(true)
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.seeker("profile")
+	if not Backend.response_applies(res, account_epoch):
+		return
 	_set_busy(false)
 	if not res.ok:
 		_say(tr("SEEKER_PROFILE_ERROR"), true)
@@ -2039,7 +2139,10 @@ func _paint_cached_trophies() -> void:
 
 
 func _load_seeker_trophies() -> void:
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.expedition("trophies")
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		if typeof(GameState.boot_cache.get("trophies")) != TYPE_ARRAY:
 			_seeker_profile_view.hide_trophies()
@@ -2072,7 +2175,10 @@ func _stored_trophy_art(trophy_id: String) -> Texture2D:
 func _download_trophy_art(trophy_id: String, art_url: String) -> Texture2D:
 	if trophy_id.is_empty() or art_url.is_empty():
 		return null
+	var account_epoch := GameState.session_epoch
 	var download := await Backend.download_url(art_url)
+	if not Backend.response_applies(download, account_epoch):
+		return null
 	if not download.ok:
 		return null
 	var texture := _decode_trophy_art(trophy_id, download.bytes)
@@ -2116,7 +2222,10 @@ func _rename_seeker(value: String) -> void:
 		_say(tr("SEEKER_NAME_INVALID"), true)
 		return
 	_set_busy(true)
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.seeker("rename", {"seeker_name": value})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	_set_busy(false)
 	if not res.ok:
 		_say(
@@ -2135,13 +2244,17 @@ func _show_account_action() -> void:
 	_seeker_menu_sheet.close()
 	if GameState.is_anonymous():
 		_show_sign_in_confirmation()
-	else:
-		_modal_context = &"account_linked"
-		_shell_modal.open_info(
-			tr("SEEKER_ACCOUNT_TITLE"),
-			tr("SEEKER_ACCOUNT_LINKED_BODY"),
-			tr("CORE_INFO_CLOSE")
-		)
+		return
+	if GameState.account_switch_blocked():
+		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
+		return
+	_modal_context = &"sign_out"
+	_shell_modal.open_confirm(
+		tr("SEEKER_SIGN_OUT_TITLE"),
+		tr("SEEKER_SIGN_OUT_BODY"),
+		tr("SEEKER_SIGN_OUT"),
+		tr("ACTION_CANCEL")
+	)
 
 
 func _show_sign_in_confirmation() -> void:
@@ -2150,19 +2263,44 @@ func _show_sign_in_confirmation() -> void:
 	if not GameState.is_anonymous():
 		_show_account_action()
 		return
+	if GameState.account_switch_blocked(true):
+		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
+		return
 	_modal_context = &"sign_in_google"
-	_shell_modal.open_confirm(
+	_shell_modal.open_choice(
 		tr("SEEKER_SIGN_IN_TITLE"),
-		tr("SEEKER_SIGN_IN_BODY"),
-		tr("SEEKER_SIGN_IN_GOOGLE"),
+		tr("SEEKER_SIGN_IN_CHOICE_BODY"),
+		tr("SEEKER_KEEP_GUEST_SEPARATE"),
+		tr("SEEKER_MOVE_GUEST_PROGRESS"),
 		tr("ACTION_CANCEL")
 	)
 
 
-func _start_google_link() -> void:
-	var res := await AuthFlow.start_google_link()
+func _show_transfer_confirmation() -> void:
+	_modal_context = &"confirm_transfer_guest"
+	_shell_modal.open_confirm(
+		tr("SEEKER_MOVE_CONFIRM_TITLE"),
+		tr("SEEKER_MOVE_CONFIRM_BODY"),
+		tr("SEEKER_MOVE_GUEST_PROGRESS"),
+		tr("ACTION_CANCEL"),
+		true
+	)
+
+
+func _start_google_separate() -> void:
+	var res := await AuthFlow.start_google_separate()
 	if not bool(res.get("ok", false)):
-		_say(tr("SEEKER_AUTH_ERROR"), true)
+		_say(_account_switch_error(str(res.get("error", ""))), true)
+
+
+func _start_google_transfer() -> void:
+	var res := await AuthFlow.start_google_transfer()
+	if not bool(res.get("ok", false)):
+		_say(_account_switch_error(str(res.get("error", ""))), true)
+
+
+func _start_google_link() -> void:
+	_start_google_transfer()
 
 
 func _show_existing_account_warning() -> void:
@@ -2171,24 +2309,55 @@ func _show_existing_account_warning() -> void:
 		tr("SEEKER_RESTORE_TITLE"),
 		tr("SEEKER_RESTORE_WARNING"),
 		tr("SEEKER_RESTORE_ACTION"),
-		tr("ACTION_CANCEL"),
-		true
+		tr("ACTION_CANCEL")
 	)
 
 
 func _start_google_restore() -> void:
-	var res := await AuthFlow.start_google_restore()
+	_start_google_separate()
+
+
+func _sign_out() -> void:
+	_set_busy(true)
+	var res := await AuthFlow.sign_out_to_guest()
 	if not bool(res.get("ok", false)):
-		_say(tr("SEEKER_AUTH_ERROR"), true)
+		_set_busy(false)
+		_say(_account_switch_error(str(res.get("error", ""))), true)
+
+
+func _account_switch_error(error: String) -> String:
+	if error == "ACCOUNT_SWITCH_BLOCKED":
+		return tr("SEEKER_SWITCH_BLOCKED")
+	if error in [
+		"DEVICE_GUEST_MISSING", "DEVICE_GUEST_NOT_ANONYMOUS",
+		"DEVICE_GUEST_SAVE_FAILED", "DEVICE_GUEST_ACTIVATE_FAILED",
+		"DEVICE_GUEST_RECOVERY_FAILED",
+	]:
+		return tr("SEEKER_GUEST_RECOVERY_ERROR")
+	return tr("SEEKER_AUTH_ERROR")
 
 
 func _on_auth_succeeded(mode: String, profile: Dictionary) -> void:
+	var account_epoch := GameState.session_epoch
+	if _booting:
+		_boot_auth_success_mode = mode
+		return
 	_set_busy(true)
+	_reset_account_presentation()
+	_switch_destination(BottomNav.HOME)
 	if not profile.is_empty():
 		GameState.profile.merge(profile, true)
 	else:
-		_apply_profile_refresh(await Backend.fetch_profile())
+		var profile_res := await Backend.fetch_profile()
+		if not Backend.response_applies(profile_res, account_epoch):
+			return
+		_apply_profile_refresh(profile_res)
+	await _refresh_catalog()
+	if GameState.session_epoch != account_epoch:
+		return
 	var loaded := await _reload_roster()
+	if GameState.session_epoch != account_epoch:
+		return
 	_refresh_header()
 	if loaded and not _roster.is_empty():
 		var active := _active_row()
@@ -2197,10 +2366,53 @@ func _on_auth_succeeded(mode: String, profile: Dictionary) -> void:
 		_current_anima = {}
 		_set_home_shell_state(&"empty")
 	_set_busy(false)
-	_switch_destination(BottomNav.HOME)
-	_say(tr("SEEKER_RESTORED") if mode == "restore" else tr("SEEKER_LINKED"), true)
+	_say(tr(_account_success_key(mode)), true)
 	call_deferred("_maybe_prompt_seeker_onboarding")
 	call_deferred("_refresh_chapter_announcements")
+
+
+static func _account_success_key(mode: String) -> String:
+	if mode == "separate":
+		return "SEEKER_SIGNED_IN"
+	if mode == "transfer":
+		return "SEEKER_MOVED"
+	return "SEEKER_SIGNED_OUT"
+
+
+func _reset_account_presentation() -> void:
+	_roster.clear()
+	_catalog.clear()
+	_catalog_synced = false
+	_inventory.clear()
+	_current_anima = {}
+	_profile_anima = {}
+	_roster_error = ""
+	_thumbnail_cache.clear()
+	_team_battle_team = {}
+	_team_battle_candidates.clear()
+	_team_battle_daily = {}
+	_team_defense_published = false
+	_team_art_cache.clear()
+	_synthesis_resume_in_flight = false
+	_synthesis_poll_in_flight = false
+	_battle_turn_in_flight = false
+	_team_turn_in_flight = false
+	if is_instance_valid(_expedition_controller):
+		_expedition_controller.reset_account_context()
+	if is_instance_valid(_atlas_view):
+		_atlas_view.reset_account_context()
+	_synthesis_history_revision += 1
+	_chapter_announcement_revision += 1
+	_gallery_status_revision += 1
+	_chapter_announcement_revision += 1
+	_anima.sprite_frames = null
+	_anima.visible = false
+	_battle_view.show_duel_mode()
+	_battle_view.set_lobby({})
+	_set_home_shell_state(&"loading")
+	_populate_collection()
+	_refresh_header()
+	_sync_shop_chrome()
 
 
 func _on_auth_failed(error: String) -> void:
@@ -2208,13 +2420,16 @@ func _on_auth_failed(error: String) -> void:
 	_say(
 		tr("SEEKER_UPGRADE_PENDING")
 		if error == "OAUTH_UPGRADE_PENDING"
-		else tr("SEEKER_AUTH_ERROR"),
+		else _account_switch_error(error),
 		true
 	)
 
 
 func _show_delete_account_confirmation() -> void:
 	_seeker_menu_sheet.close()
+	if GameState.account_switch_blocked():
+		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
+		return
 	_modal_context = &"delete_account"
 	_shell_modal.open_confirm(
 		tr("ACCOUNT_DELETE_TITLE"),
@@ -2226,18 +2441,41 @@ func _show_delete_account_confirmation() -> void:
 
 
 func _delete_account() -> void:
+	if GameState.account_switch_blocked():
+		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
+		return
 	_set_busy(true)
+	var preserve_guest := not GameState.is_anonymous() and GameState.device_guest_expected
+	var guest: Dictionary = {}
+	if preserve_guest:
+		var prepared := await AuthFlow.prepare_device_guest()
+		if not bool(prepared.get("ok", false)):
+			_set_busy(false)
+			_say(tr("SEEKER_GUEST_RECOVERY_ERROR"), true)
+			return
+		guest = GameState.as_dict(prepared.get("session"))
 	var res := await Backend.seeker("delete_account", {"confirmation": "DELETE"})
 	if not res.ok:
 		_set_busy(false)
 		_say(tr("ACCOUNT_DELETE_ERROR"), true)
 		return
-	GameState.clear_account_state()
-	_roster.clear()
-	_current_anima = {}
-	_anima.sprite_frames = null
-	_set_busy(false)
-	await _boot()
+	if preserve_guest:
+		if guest.is_empty() or not GameState.activate_stored_session(guest):
+			GameState.clear_account_state(false)
+			_reset_account_presentation()
+			_set_busy(false)
+			_say(tr("SEEKER_GUEST_RECOVERY_ERROR"), true)
+			return
+		GameState.discard_guest_local_state()
+	else:
+		GameState.clear_account_state(true)
+		var signed_in := await Backend.sign_in_anonymous()
+		if not bool(signed_in.get("ok", false)):
+			_reset_account_presentation()
+			_set_busy(false)
+			_say(tr("STATUS_ACCOUNT_ERROR"), true)
+			return
+	await _on_auth_succeeded("guest", {})
 
 
 func _show_seeker_help() -> void:
@@ -2321,6 +2559,7 @@ func _perform_care(action: String) -> void:
 ## dan pemeriksaannya duduk di sini, bukan di pemanggil, sebab Bag memanggil
 ## `_commit_care` langsung tanpa lewat Care Dock.
 func _commit_care(action: String, item_id: String = "") -> void:
+	var account_epoch := GameState.session_epoch
 	var anima_id := str(_current_anima.get("id", ""))
 	if anima_id.is_empty():
 		return
@@ -2335,6 +2574,8 @@ func _commit_care(action: String, item_id: String = "") -> void:
 	var care_before: Variant = _current_anima.get("care")
 	_apply_optimistic_care(action, item_id)
 	var committed := await _send_pending_care(pending, true)
+	if GameState.session_epoch != account_epoch:
+		return
 	if not committed and care_before != null:
 		_current_anima["care"] = care_before
 		_refresh_care()
@@ -2391,6 +2632,7 @@ func _resume_pending_care() -> void:
 
 
 func _send_pending_care(pending: Dictionary, show_feedback: bool) -> bool:
+	var account_epoch := GameState.session_epoch
 	var action := str(pending.get("action", ""))
 	var res := await Backend.care_anima(
 		str(pending.get("anima_id", "")),
@@ -2398,6 +2640,8 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> bool:
 		str(pending.get("idempotency_key", "")),
 		str(pending.get("item_id", ""))
 	)
+	if not Backend.response_applies(res, account_epoch):
+		return false
 	if res.ok:
 		GameState.finish_care()
 		if _apply_care_response(GameState.as_dict(res.data)):
@@ -2417,10 +2661,13 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> bool:
 
 
 func _sync_active_care(show_error: bool) -> void:
+	var account_epoch := GameState.session_epoch
 	var anima_id := str(_current_anima.get("id", ""))
 	if anima_id.is_empty():
 		return
 	var res := await Backend.care_anima(anima_id, "sync")
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if res.ok:
 		_apply_care_response(GameState.as_dict(res.data))
 	elif show_error:
@@ -2524,6 +2771,7 @@ func _refresh_battle_reward_status() -> void:
 		return
 	_battle_reward_revision += 1
 	var revision := _battle_reward_revision
+	var account_epoch := GameState.session_epoch
 	var session_before: Dictionary = _battle_view.session_data()
 	var session_id := str(session_before.get("id", ""))
 	var session_version := int(session_before.get("version", 0))
@@ -2531,6 +2779,8 @@ func _refresh_battle_reward_status() -> void:
 	if not session_id.is_empty():
 		payload["session_id"] = session_id
 	var res := await Backend.battle_anima("status", payload)
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if revision != _battle_reward_revision or _destination != BottomNav.BATTLE:
 		return
 	var session_after: Dictionary = _battle_view.session_data()
@@ -2730,6 +2980,7 @@ func _await_battle_turn() -> Dictionary:
 
 
 func _submit_pending_battle(pending: Dictionary) -> void:
+	var account_epoch := GameState.session_epoch
 	if pending.is_empty():
 		return
 	_battle_reward_revision += 1
@@ -2758,6 +3009,8 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 		# setelah server memberi version-nya, jadi redupkan lagi kalau masih terbang.
 		_battle_view.set_busy(_battle_turn_in_flight)
 	var res := await _await_battle_turn()
+	if not Backend.response_applies(res, account_epoch):
+		return
 
 	if not res.ok:
 		# Turn yang tidak sampai ke server tidak boleh meninggalkan arena di masa
@@ -2880,7 +3133,10 @@ func _apply_cached_mode_availability() -> void:
 
 
 func _discover_team_battle() -> void:
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.team_battle("status")
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if res.ok:
 		GameState.set_team_battle_available(true)
 		_battle_view.set_team_available(true)
@@ -2910,9 +3166,12 @@ func _close_team_battle_mode() -> void:
 
 
 func _load_team_battle_hub() -> void:
+	var account_epoch := GameState.session_epoch
 	_set_busy(true)
 	_team_battle_view.set_loading()
 	var res := await Backend.team_battle("teams")
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		_team_battle_view.set_error(res.error)
 		_set_busy(false)
@@ -2931,6 +3190,7 @@ func _load_team_battle_hub() -> void:
 
 
 func _save_team_battle_roster(anima_ids: Array[String]) -> void:
+	var account_epoch := GameState.session_epoch
 	if _busy or anima_ids.size() != 4:
 		return
 	_set_busy(true)
@@ -2939,6 +3199,8 @@ func _save_team_battle_roster(anima_ids: Array[String]) -> void:
 		"kind": "team_battle",
 		"anima_ids": anima_ids,
 	})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		_team_battle_view.set_error(res.error)
 		_set_busy(false)
@@ -2956,16 +3218,21 @@ func _set_team_defense(publish: bool, anima_ids: Array[String]) -> void:
 		_team_battle_view.set_loading("TEAM_PUBLISHING_DEFENSE")
 	else:
 		_team_battle_view.set_loading("TEAM_UNPUBLISHING_DEFENSE")
+	var account_epoch := GameState.session_epoch
 	if publish:
 		var saved := await Backend.team_battle("save_team", {
 			"kind": "defense",
 			"anima_ids": anima_ids,
 		})
+		if not Backend.response_applies(saved, account_epoch):
+			return
 		if not saved.ok:
 			_team_battle_view.set_error(saved.error)
 			_set_busy(false)
 			return
 	var res := await Backend.team_battle("publish_defense", {"publish": publish})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		_team_battle_view.set_error(res.error)
 		_set_busy(false)
@@ -2990,11 +3257,16 @@ func _refresh_team_battle_candidates(team_id: String = "") -> void:
 		return
 	_set_busy(true)
 	_team_battle_view.set_loading("TEAM_FINDING_RIVALS")
+	var account_epoch := GameState.session_epoch
 	var status_res := await Backend.team_battle("status")
+	if not Backend.response_applies(status_res, account_epoch):
+		return
 	_team_battle_daily = (
 		GameState.as_dict(status_res.data) if status_res.ok else {}
 	)
 	var res := await Backend.team_battle("candidates", {"team_id": team_id})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		_team_battle_view.set_error(res.error)
 		_set_busy(false)
@@ -3159,6 +3431,7 @@ func _await_team_turn() -> Dictionary:
 
 
 func _submit_pending_team_battle(pending: Dictionary) -> void:
+	var account_epoch := GameState.session_epoch
 	if pending.is_empty():
 		return
 	var action := str(pending.get("action", ""))
@@ -3174,6 +3447,8 @@ func _submit_pending_team_battle(pending: Dictionary) -> void:
 		)
 		_team_battle_view.set_busy(_team_turn_in_flight)
 	var res := await _await_team_turn()
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		# Turn yang tidak sampai ke server tidak boleh meninggalkan arena di masa
 		# depan: tap berikutnya akan mengirim nomor turn yang belum pernah ada.
@@ -3391,8 +3666,14 @@ func _show_next_expedition_level_up() -> void:
 
 
 func _refresh_team_battle_authority() -> void:
-	_apply_profile_refresh(await Backend.fetch_profile())
+	var account_epoch := GameState.session_epoch
+	var profile_res := await Backend.fetch_profile()
+	if not Backend.response_applies(profile_res, account_epoch):
+		return
+	_apply_profile_refresh(profile_res)
 	await _reload_roster()
+	if GameState.session_epoch != account_epoch:
+		return
 	_refresh_header()
 	_refresh_stats()
 	_refresh_care()
@@ -3463,7 +3744,10 @@ func _prepare_signed_battle_art(snapshot: Dictionary, sheet_url: String) -> Dict
 	var manifest := GameState.as_dict(snapshot.get("manifest"))
 	if manifest.is_empty():
 		return {"ok": false}
+	var account_epoch := GameState.session_epoch
 	var download := await Backend.download_url(sheet_url)
+	if not Backend.response_applies(download, account_epoch):
+		return {"ok": false}
 	if not download.ok:
 		return {"ok": false}
 	var image := Image.new()
@@ -3490,8 +3774,14 @@ func _refresh_battle_authority(session: Dictionary) -> void:
 		if str(_current_anima.get("id", "")) == anima_id
 		else -1
 	)
-	_apply_profile_refresh(await Backend.fetch_profile())
+	var account_epoch := GameState.session_epoch
+	var profile_res := await Backend.fetch_profile()
+	if not Backend.response_applies(profile_res, account_epoch):
+		return
+	_apply_profile_refresh(profile_res)
 	await _reload_roster()
+	if GameState.session_epoch != account_epoch:
+		return
 	for row in _roster:
 		if str(row.get("id", "")) != anima_id:
 			continue
@@ -3509,6 +3799,7 @@ func _refresh_battle_authority(session: Dictionary) -> void:
 ## idempotency yang sama aman: server mengembalikan hasil yang sama, dan hanya
 ## itu satu-satunya cara pemain tidak kehilangan Core karena jaringan yang putus.
 func _resume_without_anima() -> void:
+	var account_epoch := GameState.session_epoch
 	_set_busy(true)
 	var pending := GameState.pending_scan
 	var res := await Backend.create_anima(
@@ -3517,8 +3808,11 @@ func _resume_without_anima() -> void:
 		"",
 		ScanView.normalize_vibe(pending.get("capture_vibe", ""))
 	)
-	await _handle_create_result(res)
-	_set_busy(false)
+	if not Backend.response_applies(res, account_epoch):
+		return
+	await _handle_create_result(res, account_epoch)
+	if GameState.session_epoch == account_epoch:
+		_set_busy(false)
 
 
 # ---------------------------------------------------------------- ambil foto
@@ -3630,6 +3924,7 @@ func _scan_file(path: String) -> void:
 # ---------------------------------------------------------------- scan
 
 func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
+	var account_epoch := GameState.session_epoch
 	if _busy:
 		return
 	_switch_destination(BottomNav.SCAN)
@@ -3651,6 +3946,8 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 	var up := await Backend.upload_photo(
 		str(scan["photo_path"]), bytes, "image/png" if is_png else "image/jpeg"
 	)
+	if not Backend.response_applies(up, account_epoch):
+		return
 	if not up.ok:
 		GameState.finish_scan()
 		print("upload error: %s" % up.error)
@@ -3668,12 +3965,20 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 		"",
 		str(scan.get("capture_vibe", ""))
 	)
-	await _handle_create_result(res)
-	_set_busy(false)
+	if not Backend.response_applies(res, account_epoch):
+		return
+	await _handle_create_result(res, account_epoch)
+	if GameState.session_epoch == account_epoch:
+		_set_busy(false)
 
 
-func _handle_create_result(res: Dictionary) -> void:
-	_apply_profile_refresh(await Backend.fetch_profile())
+func _handle_create_result(res: Dictionary, account_epoch: int) -> void:
+	if not Backend.response_applies(res, account_epoch):
+		return
+	var profile_res := await Backend.fetch_profile()
+	if not Backend.response_applies(profile_res, account_epoch):
+		return
+	_apply_profile_refresh(profile_res)
 	_refresh_header()
 
 	if not res.ok:
@@ -3744,6 +4049,7 @@ func _handle_create_result(res: Dictionary) -> void:
 # ---------------------------------------------------------------- inkubasi
 
 func _wait_for_hatch(anima_id: String) -> void:
+	var account_epoch := GameState.session_epoch
 	_start_incubation()
 	_say(tr("STATUS_SYNTHESIZING"))
 	var remaining_poll_sec := POLL_TIMEOUT_SEC
@@ -3753,8 +4059,12 @@ func _wait_for_hatch(anima_id: String) -> void:
 	# langsung menghabiskan timeout begitu Scanima aktif lagi.
 	while remaining_poll_sec > 0.0:
 		await get_tree().create_timer(POLL_INTERVAL_SEC).timeout
+		if GameState.session_epoch != account_epoch:
+			return
 		remaining_poll_sec -= POLL_INTERVAL_SEC
 		var res := await Backend.fetch_anima(anima_id)
+		if not Backend.response_applies(res, account_epoch):
+			return
 		if not res.ok or typeof(res.data) != TYPE_ARRAY:
 			continue
 		var rows: Array = res.data
@@ -3778,7 +4088,10 @@ func _wait_for_hatch(anima_id: String) -> void:
 			"failed":
 				# Server sudah mengembalikan Core-nya sendiri lewat refund_generation.
 				_say(tr("STATUS_GENERATION_FAILED"))
-				_apply_profile_refresh(await Backend.fetch_profile())
+				var profile_res := await Backend.fetch_profile()
+				if not Backend.response_applies(profile_res, account_epoch):
+					return
+				_apply_profile_refresh(profile_res)
 				_refresh_header()
 				GameState.finish_scan()
 				_restore_previous_anima()
@@ -3805,10 +4118,13 @@ func _present(
 	anima_data: Dictionary = {},
 	complete_scan: bool = true
 ) -> void:
+	var account_epoch := GameState.session_epoch
 	var hatching := _incubator.is_active() and not _evolution_chamber_active
 	var loaded := await _prepare_anima_art(
 		species_key, color_bucket, stage, sheet_path, manifest, complete_scan, anima_id, stage
 	)
+	if GameState.session_epoch != account_epoch:
+		return
 	if not bool(loaded.get("ok", false)):
 		if complete_scan:
 			_restore_previous_anima()
@@ -3874,6 +4190,7 @@ func _prepare_anima_art(
 	anima_id: String = "",
 	cache_stage: int = -1
 ) -> Dictionary:
+	var account_epoch := GameState.session_epoch
 	if species_key.is_empty() or color_bucket.is_empty():
 		if report_status:
 			_say(tr("STATUS_SPECIES_DATA_ERROR"))
@@ -3893,6 +4210,8 @@ func _prepare_anima_art(
 
 	if manifest.is_empty() or sheet_path.is_empty():
 		var art := await Backend.fetch_species_art(species_key, color_bucket, stage)
+		if not Backend.response_applies(art, account_epoch):
+			return {"ok": false, "abandoned": true}
 		if not art.ok or typeof(art.data) != TYPE_ARRAY or (art.data as Array).is_empty():
 			print("art library error: %s" % art.error)
 			if report_status:
@@ -3908,8 +4227,12 @@ func _prepare_anima_art(
 		if use_anima_cache
 		else await Backend.download_sheet(sheet_path)
 	)
+	if not Backend.response_applies(download, account_epoch):
+		return {"ok": false, "abandoned": true}
 	if not download.ok and use_anima_cache:
 		download = await Backend.download_sheet(sheet_path)
+		if not Backend.response_applies(download, account_epoch):
+			return {"ok": false, "abandoned": true}
 	if not download.ok:
 		print("art download error: %s" % download.error)
 		if report_status:
@@ -3984,10 +4307,9 @@ func _paint_boot_cache() -> bool:
 
 func _show_cached_anima() -> void:
 	var painted := _paint_boot_cache()
-	var anima := _active_row() if painted else {}
-	if anima.is_empty():
-		anima = GameState.last_anima
-		painted = false
+	if not painted:
+		return
+	var anima := _active_row()
 	if anima.is_empty():
 		return
 	_anima.visible = false
@@ -4491,6 +4813,7 @@ func _open_battle_item_picker() -> void:
 ## jumlah item bergerak optimistis, tap ulang biasanya sudah lolos. Upgrade ke
 ## antrean hanya kalau telemetri menunjukkan tap yang benar-benar hilang.
 func _buy_catalog_item(item: Dictionary) -> void:
+	var account_epoch := GameState.session_epoch
 	if _busy or not GameState.pending_purchase.is_empty():
 		return
 	if GameState.shop_locked():
@@ -4503,6 +4826,8 @@ func _buy_catalog_item(item: Dictionary) -> void:
 	var inventory_before := _inventory.duplicate(true)
 	_apply_optimistic_purchase(item_id, price)
 	if not await _send_pending_purchase(pending):
+		if GameState.session_epoch != account_epoch:
+			return
 		GameState.profile["bits"] = bits_before
 		_inventory = inventory_before
 		_refresh_header()
@@ -4572,11 +4897,14 @@ func _resume_pending_purchase() -> void:
 
 
 func _send_pending_purchase(pending: Dictionary) -> bool:
+	var account_epoch := GameState.session_epoch
 	var res := await Backend.purchase_item(
 		str(pending.get("item_id", "")),
 		int(pending.get("expected_price", 0)),
 		str(pending.get("idempotency_key", ""))
 	)
+	if not Backend.response_applies(res, account_epoch):
+		return false
 	if res.ok:
 		GameState.finish_purchase()
 		var data := GameState.as_dict(res.data)
@@ -4601,8 +4929,11 @@ func _send_pending_purchase(pending: Dictionary) -> bool:
 ## Shop segera, tetapi harga dan item baru tetap harus datang dari server, jadi
 ## cache tidak boleh menghitung sebagai sudah tersinkron.
 func _refresh_catalog() -> void:
+	var account_epoch := GameState.session_epoch
 	if not _catalog_synced:
 		var catalog_res := await Backend.fetch_catalog()
+		if not Backend.response_applies(catalog_res, account_epoch):
+			return
 		if catalog_res.ok and typeof(catalog_res.data) == TYPE_ARRAY:
 			_catalog = catalog_res.data
 			_catalog_synced = true
@@ -4610,7 +4941,10 @@ func _refresh_catalog() -> void:
 
 
 func _refresh_inventory() -> void:
+	var account_epoch := GameState.session_epoch
 	var inventory_res := await Backend.fetch_inventory()
+	if not Backend.response_applies(inventory_res, account_epoch):
+		return
 	if inventory_res.ok and typeof(inventory_res.data) == TYPE_ARRAY:
 		_inventory = inventory_res.data
 		GameState.remember_boot_cache({"catalog": _catalog, "inventory": _inventory})

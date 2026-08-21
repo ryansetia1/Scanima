@@ -43,7 +43,8 @@ Di **Settings**:
 
 | Aksi | Fungsi |
 | --- | --- |
-| **Sign in with Google** | Hubungkan guest atau pulihkan Seeker lama |
+| **Sign in with Google** | Masuk terpisah atau pindahkan progres guest |
+| **Sign Out** | Keluar dari Google di perangkat ini dan kembali ke guest |
 | **Music** | Nyalakan atau matikan lagu latar. Default menyala |
 | **Help** | Penjelasan singkat Seeker |
 | **Delete Account** | Hapus seluruh akun secara permanen |
@@ -56,22 +57,39 @@ node Expedition dimulai, dan satu lagu terpisah untuk Boss Seeker. Perpindahan
 memakai crossfade, dan lagu Home melanjutkan dari posisi terakhir sesudah battle
 selesai, bukan mengulang dari awal.
 
-## Google: link atau restore
+## Google: guest terpisah atau pindah progres
 
-Kalau Google itu belum punya Seeker Scanima, **link** mempertahankan semua progres
-guest: Anima, Bits, tas, EXP, dan kemenangan. Akun mendapat **3 Core tambahan
-sekali**, sehingga grant starter lifetime menjadi 4 Core. Ini bukan reset saldo:
-kalau Core guest sudah dipakai untuk Genesis, saldo sesudah link biasanya 3.
+Guest perangkat disimpan tetap pada instalasi ini. Saat menekan **Sign in with
+Google**, pilih salah satu:
 
-Kalau Google itu sudah punya Seeker, game menampilkan peringatan **Restore
-Existing Seeker**. Restore membuka progres akun Google tersebut dan **tidak
-menggabungkan** progres guest di perangkat ini. Pilih Cancel untuk tetap menjadi
-guest.
+- **Keep Guest Separate** — pilihan aman. Google membuka Seeker miliknya sendiri.
+  Nanti **Sign Out** kembali ke guest yang sama beserta Anima, Bits, tas, dan EXP
+  miliknya.
+- **Move Guest Progress** — guest menjadi Seeker Google dengan UID yang sama.
+  Semua progres ikut pindah. Setelah **Sign Out**, perangkat membuat guest baru
+  yang kosong; guest lama hanya bisa dibuka melalui Google tersebut.
+
+Google selalu menampilkan pemilih akun. Kalau akun yang dipilih sudah memiliki
+Seeker, progres guest **tidak pernah digabungkan**. Game hanya menawarkan **Sign
+In Separately** ke Seeker Google itu atau Cancel untuk tetap menjadi guest.
+
+Seeker Google baru mendapat **3 Core tambahan sekali**, sehingga grant starter
+lifetime menjadi 4 Core. Ini bukan reset saldo: kalau Core guest sudah dipakai
+sebelum **Move Guest Progress**, saldo sesudah pindah biasanya 3.
+
+Untuk berpindah dari Google A ke Google B: **Sign Out** dulu ke guest, lalu tekan
+**Sign in with Google** dan pilih Google B. **Sign Out** hanya mencabut sesi di
+perangkat ini; perangkat lain tetap login.
+
+Pergantian akun dan **Delete Account** ditolak sementara Scan, Care, pembelian
+Shop, Battle, Evolution, Synthesis, atau Expedition masih aktif. Selesaikan atau
+tutup aktivitas itu dulu agar intent akun lama tidak terkirim memakai akun baru
+atau berlomba dengan penghapusan permanen.
 
 Kalau browser ditutup atau callback gagal, tap **Sign in with Google** lagi untuk
-mengulang tanpa menunggu; progres guest tetap aman. Link baru dinyatakan selesai
-setelah starter Core tersimpan. Jika sinkronisasi Core gagal, restart game untuk
-mencoba grant yang sama lagi tanpa risiko Core ganda.
+mengulang tanpa menunggu; guest tetap aman. Google baru dinyatakan siap setelah
+starter Core tersimpan. Jika sinkronisasi Core gagal, restart game untuk mencoba
+grant yang sama lagi tanpa risiko Core ganda.
 
 ## Seeker Profile
 
@@ -91,11 +109,16 @@ Portrait memakai companion aktif.
 - Nama Seeker unik untuk pemain; nickname Anima hanya nama monster itu.
 - **Change Seeker Name** punya jeda 30 hari; Rename Anima tidak.
 - Seeker Level hanya kosmetik; Level Anima menumbuhkan attributes.
+- **Sign Out** hanya mengganti akun aktif di perangkat ini.
 - **Delete** di profil Anima menghapus satu monster. **Delete Account** menghapus
-  Seeker, semua Anima, Cores, Bits, tas, dan riwayat Battle.
+  Seeker aktif, semua Anima, Cores, Bits, tas, dan riwayat Battle miliknya.
 
 Penghapusan akun permanen dan tidak memberi refund. Art spesies bersama tetap
-berada di pustaka untuk pemain lain.
+berada di pustaka untuk pemain lain. Jika Seeker Google memakai **Keep Guest
+Separate**, guest perangkat diperiksa dulu lalu dibuka kembali setelah
+penghapusan. Jika guest itu tidak dapat dipulihkan, **Delete Account** dibatalkan.
+Menghapus guest atau Seeker hasil **Move Guest Progress** membuat guest baru yang
+kosong.
 
 ## Lihat juga
 

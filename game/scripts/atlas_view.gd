@@ -319,6 +319,18 @@ func _on_chapter_selected(index: int) -> void:
 	await _load_first_page()
 
 
+func reset_account_context() -> void:
+	set_busy(false)
+	_clear_card_loading()
+	_entries.clear()
+	_selected = {}
+	_cursor = ""
+	_all_entries_cache.clear()
+	_all_cache_loaded = false
+	_all_cache_complete = false
+	_thumb_cache.clear()
+
+
 func _load_first_page() -> void:
 	_entries.clear()
 	_cursor = ""
@@ -333,6 +345,7 @@ func _load_next_page() -> void:
 
 
 func _fetch_page(reset_status: bool) -> void:
+	var account_epoch := GameState.session_epoch
 	if _busy:
 		return
 	set_busy(true)
@@ -348,6 +361,8 @@ func _fetch_page(reset_status: bool) -> void:
 	if _filter == "expedition" and not _chapter_id.is_empty():
 		payload["chapter_id"] = _chapter_id
 	var res := await Backend.atlas("atlas_list", payload)
+	if not Backend.response_applies(res, account_epoch):
+		return
 	set_busy(false)
 	if not res.ok:
 		_status.text = tr("ATLAS_ERROR")
@@ -558,6 +573,7 @@ func _clear_card_loading() -> void:
 
 
 func _open_detail(card: Dictionary, portrait: TextureRect) -> void:
+	var account_epoch := GameState.session_epoch
 	if _busy:
 		return
 	var form_id := str(card.get("form_id", ""))
@@ -566,6 +582,8 @@ func _open_detail(card: Dictionary, portrait: TextureRect) -> void:
 	_set_card_loading(portrait, true)
 	set_busy(true)
 	var res := await Backend.atlas("atlas_detail", {"form_id": form_id})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	_selected = (
 		GameState.as_dict(GameState.as_dict(res.data).get("entry"))
 		if res.ok
@@ -678,6 +696,7 @@ func _on_detail_closed() -> void:
 
 
 func _report_selected() -> void:
+	var account_epoch := GameState.session_epoch
 	if _selected.is_empty() or _busy or not bool(_selected.get("can_report", false)):
 		return
 	var entry_id := str(_selected.get("entry_id", ""))
@@ -685,6 +704,8 @@ func _report_selected() -> void:
 		return
 	set_busy(true)
 	var res := await Backend.atlas("report", {"entry_id": entry_id})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	set_busy(false)
 	if res.ok:
 		toast_requested.emit(tr("ATLAS_REPORTED"), false)
@@ -697,6 +718,7 @@ func _report_selected() -> void:
 
 
 func _entry_texture(entry: Dictionary) -> Texture2D:
+	var account_epoch := GameState.session_epoch
 	var form_id := str(entry.get("form_id", ""))
 	if form_id.is_empty():
 		return null
@@ -717,6 +739,8 @@ func _entry_texture(entry: Dictionary) -> Texture2D:
 	if url.is_empty():
 		return null
 	var res := await Backend.download_url(url)
+	if not Backend.response_applies(res, account_epoch):
+		return null
 	if not res.ok or res.bytes.is_empty():
 		return null
 	var image := Image.new()

@@ -32,7 +32,7 @@ func show_menu(
 	music_enabled: bool = true
 ) -> void:
 	_title.text = tr("SETTINGS_TITLE")
-	_account.text = tr("SEEKER_SIGN_IN_GOOGLE") if anonymous else tr("SEEKER_ACCOUNT_LINKED")
+	_account.text = tr("SEEKER_SIGN_IN_GOOGLE") if anonymous else tr("SEEKER_SIGN_OUT")
 	_delete.visible = true
 	_configuring = true
 	_music.button_pressed = music_enabled

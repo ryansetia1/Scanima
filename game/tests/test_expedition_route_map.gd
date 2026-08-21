@@ -410,6 +410,14 @@ func _check_instant_flow() -> void:
 	)
 
 	var controller: Node = controller_script.new()
+	controller.set("_request_revision", 4)
+	controller.set("_request_in_flight", true)
+	controller.call("reset_account_context")
+	_check(
+		int(controller.get("_request_revision")) == 5
+		and not bool(controller.get("_request_in_flight")),
+		"account reset invalidates an old hub dispatch before the next account loads"
+	)
 	controller.set("_chapter_manifest", _manifest_fixture())
 	controller.set("_chapter_manifest_version", "route-test-version")
 	controller.set("_run", _run_fixture())

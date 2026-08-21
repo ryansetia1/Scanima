@@ -19,6 +19,8 @@ const LEGACY_SPRITE_CACHE_VERSION := 4
 
 ## Runtime saja: {access_token, refresh_token, expires_at, uid, is_anonymous}.
 var session: Dictionary = {}
+## Runtime-only generation for abandoning async callbacks from a previous UID.
+var session_epoch: int = 0
 
 ## {idempotency_key, photo_path, generation_id, anima_id, capture_vibe}. Lihat begin_scan().
 var pending_scan: Dictionary = {}
@@ -54,9 +56,17 @@ var pending_evolution: Dictionary = {}
 ## boleh direplay dengan intent persis sama setelah timeout atau restart.
 var pending_synthesis: Dictionary = {}
 
-## {mode, state, code_verifier, started_at}. Sesi guest tetap aktif sampai
-## exchange berhasil, dan backup token disimpan terpisah di SecureStore.
+## {mode, state, started_at}. Verifier PKCE dan backup token hidup sebagai key
+## SecureStore terpisah; sesi guest tetap aktif sampai exchange berhasil.
 var pending_oauth: Dictionary = {}
+
+## Token guest perangkat hidup di SecureStore. Boolean ini membedakan guest yang
+## memang harus bisa dipulihkan dari akun lama/transfer yang perlu guest baru.
+var device_guest_expected: bool = false
+
+## {from_uid, target, started_at}. Tidak memuat token; marker ini membuat boot
+## dapat menuntaskan pergantian akun jika app mati di antara dua write SecureStore.
+var pending_account_switch: Dictionary = {}
 
 ## Preference lokal yang aman dipersist. Push adalah pilihan per-device karena
 ## izin OS dan FCM topic subscription juga hidup per-device.
@@ -93,6 +103,7 @@ func uid() -> String:
 
 
 func load_state() -> void:
+	var previous_uid := uid()
 	var data: Dictionary = {}
 	if FileAccess.file_exists(path_state):
 		# JSON.new().parse(), bukan JSON.parse_string(): yang kedua mencetak galat
@@ -112,6 +123,8 @@ func load_state() -> void:
 	pending_evolution = as_dict(data.get("pending_evolution"))
 	pending_synthesis = as_dict(data.get("pending_synthesis"))
 	pending_oauth = as_dict(data.get("pending_oauth"))
+	device_guest_expected = bool(data.get("device_guest_expected", false))
+	pending_account_switch = as_dict(data.get("pending_account_switch"))
 	preferences.merge(as_dict(data.get("preferences")), true)
 	last_anima = as_dict(data.get("last_anima"))
 
@@ -130,6 +143,10 @@ func load_state() -> void:
 			session = legacy_session
 	else:
 		session = legacy_session
+	_migrate_device_guest(store)
+	_migrate_oauth_pkce(store)
+	if uid() != previous_uid:
+		session_epoch += 1
 	_load_boot_cache()
 
 
@@ -137,6 +154,12 @@ func load_state() -> void:
 ## device bisa berpindah dari guest ke akun Google, dan roster keduanya berbeda.
 func _load_boot_cache() -> void:
 	boot_cache = {}
+	if (
+		not pending_account_switch.is_empty()
+		or (not pending_oauth.is_empty() and not is_anonymous())
+	):
+		last_anima = {}
+		return
 	if not FileAccess.file_exists(path_boot_cache):
 		return
 	var parsed: Variant = parse_json(FileAccess.get_file_as_string(path_boot_cache))
@@ -181,6 +204,8 @@ func save() -> void:
 		"pending_evolution": pending_evolution,
 		"pending_synthesis": pending_synthesis,
 		"pending_oauth": pending_oauth,
+		"device_guest_expected": device_guest_expected,
+		"pending_account_switch": pending_account_switch,
 		"preferences": preferences,
 		"last_anima": last_anima,
 	}
@@ -207,6 +232,7 @@ func set_session(
 	user_id: String,
 	anonymous: bool = true
 ) -> bool:
+	var previous_uid := uid()
 	var new_session := {
 		"access_token": access_token,
 		"refresh_token": refresh_token,
@@ -215,10 +241,26 @@ func set_session(
 		"is_anonymous": anonymous,
 	}
 	var store := _secure_store()
-	if store == null or not store.save_session(new_session):
+	if store == null:
+		push_error("SecureStore tidak tersedia")
+		return false
+	var previous_guest: Dictionary = as_dict(store.load_device_guest()) if anonymous else {}
+	if anonymous and not store.save_device_guest(new_session):
+		push_error("guest perangkat tidak bisa ditulis ke SecureStore")
+		return false
+	if not store.save_session(new_session):
+		if anonymous:
+			if previous_guest.is_empty():
+				store.clear_device_guest()
+			else:
+				store.save_device_guest(previous_guest)
 		push_error("sesi tidak bisa ditulis ke SecureStore")
 		return false
 	session = new_session
+	if user_id != previous_uid:
+		session_epoch += 1
+	if anonymous:
+		device_guest_expected = true
 	save()
 	return true
 
@@ -227,17 +269,110 @@ func is_anonymous() -> bool:
 	return bool(session.get("is_anonymous", true))
 
 
-func begin_oauth(mode: String, state: String, code_verifier: String) -> void:
+func device_guest_session() -> Dictionary:
+	var store := _secure_store()
+	return as_dict(store.load_device_guest()) if store != null else {}
+
+
+func remember_device_guest() -> bool:
+	if session.is_empty() or not is_anonymous():
+		return false
+	return store_device_guest(session)
+
+
+func store_device_guest(value: Dictionary) -> bool:
+	if (
+		str(value.get("access_token", "")).is_empty()
+		or str(value.get("refresh_token", "")).is_empty()
+		or str(value.get("uid", "")).is_empty()
+		or not bool(value.get("is_anonymous", false))
+	):
+		return false
+	var store := _secure_store()
+	if store == null or not store.save_device_guest(value):
+		return false
+	device_guest_expected = true
+	save()
+	return true
+
+
+func activate_stored_session(value: Dictionary) -> bool:
+	var access_token := str(value.get("access_token", ""))
+	var refresh_token := str(value.get("refresh_token", ""))
+	var user_id := str(value.get("uid", ""))
+	if access_token.is_empty() or refresh_token.is_empty() or user_id.is_empty():
+		return false
+	return set_session(
+		access_token,
+		refresh_token,
+		int(value.get("expires_at", 0)),
+		user_id,
+		bool(value.get("is_anonymous", true))
+	)
+
+
+func mark_device_guest_transferred() -> void:
 	var store := _secure_store()
 	if store != null:
-		store.backup_session(session)
-	pending_oauth = {
-		"mode": mode,
-		"state": state,
-		"code_verifier": code_verifier,
+		store.clear_device_guest()
+	device_guest_expected = false
+	save()
+
+
+func begin_account_switch(target: String) -> void:
+	pending_account_switch = {
+		"from_uid": uid(),
+		"target": target,
 		"started_at": int(Time.get_unix_time_from_system()),
 	}
 	save()
+
+
+func finish_account_switch() -> void:
+	pending_account_switch = {}
+	save()
+
+
+func account_switch_blocked(ignore_oauth: bool = false) -> bool:
+	return (
+		not pending_scan.is_empty()
+		or not pending_care.is_empty()
+		or not pending_battle.is_empty()
+		or not pending_team_battle.is_empty()
+		or not pending_expedition.is_empty()
+		or not pending_purchase.is_empty()
+		or not pending_evolution.is_empty()
+		or not pending_synthesis.is_empty()
+		or (not ignore_oauth and not pending_oauth.is_empty())
+		or not pending_account_switch.is_empty()
+	)
+
+
+func begin_oauth(mode: String, state: String, code_verifier: String) -> bool:
+	var store := _secure_store()
+	if store == null or not store.save_oauth_pkce({
+		"state": state,
+		"code_verifier": code_verifier,
+	}):
+		return false
+	store.backup_session(session)
+	pending_oauth = {
+		"mode": mode,
+		"state": state,
+		"started_at": int(Time.get_unix_time_from_system()),
+	}
+	save()
+	return true
+
+
+func oauth_code_verifier(expected_state: String) -> String:
+	var store := _secure_store()
+	if store == null:
+		return ""
+	var pkce: Dictionary = as_dict(store.load_oauth_pkce())
+	if str(pkce.get("state", "")) != expected_state:
+		return ""
+	return str(pkce.get("code_verifier", ""))
 
 
 func finish_oauth() -> void:
@@ -245,6 +380,7 @@ func finish_oauth() -> void:
 	var store := _secure_store()
 	if store != null:
 		store.clear_backup()
+		store.clear_oauth_pkce()
 	save()
 
 
@@ -258,34 +394,36 @@ func cancel_oauth(restore_backup: bool = false) -> void:
 	pending_oauth = {}
 	if store != null:
 		store.clear_backup()
+		store.clear_oauth_pkce()
 	save()
 
 
-func clear_account_state() -> void:
+func clear_account_state(clear_device_guest: bool = true) -> void:
+	if not session.is_empty():
+		session_epoch += 1
 	session = {}
-	pending_scan = {}
-	pending_care = {}
-	pending_battle = {}
-	pending_team_battle = {}
-	pending_expedition = {}
-	pending_purchase = {}
-	pending_evolution = {}
-	pending_synthesis = {}
-	pending_oauth = {}
-	last_anima = {}
-	profile = {}
-	client_config = {}
-	clear_boot_cache()
+	_clear_account_runtime_state()
+	pending_account_switch = {}
 	var store := _secure_store()
 	if store != null:
 		store.clear_session()
 		store.clear_backup()
+		store.clear_oauth_pkce()
+		if clear_device_guest:
+			store.clear_device_guest()
+	if clear_device_guest:
+		device_guest_expected = false
 	save()
 
 
-func discard_guest_local_state() -> void:
-	# Restore akun yang sudah ada tidak menggabungkan intent atau pilihan guest
-	# dari instalasi ini. Preference device tetap dipertahankan.
+func discard_guest_local_state(preserve_oauth: bool = false) -> void:
+	# Sign-in akun terpisah tidak membawa intent atau pilihan guest ke UID Google.
+	# Sesi guest terenkripsi dan preference device tetap dipertahankan.
+	_clear_account_runtime_state(preserve_oauth)
+	save()
+
+
+func _clear_account_runtime_state(preserve_oauth: bool = false) -> void:
 	pending_scan = {}
 	pending_care = {}
 	pending_battle = {}
@@ -294,11 +432,12 @@ func discard_guest_local_state() -> void:
 	pending_purchase = {}
 	pending_evolution = {}
 	pending_synthesis = {}
+	if not preserve_oauth:
+		pending_oauth = {}
 	last_anima = {}
 	profile = {}
 	client_config = {}
 	clear_boot_cache()
-	save()
 
 
 func set_music_enabled(enabled: bool) -> void:
@@ -340,6 +479,34 @@ func set_expedition_available(available: bool) -> void:
 
 func expedition_available() -> bool:
 	return bool(preferences.get("expedition_available", true))
+
+
+func _migrate_device_guest(store: Node) -> void:
+	if store == null:
+		return
+	var stored_guest: Dictionary = as_dict(store.load_device_guest())
+	if not stored_guest.is_empty():
+		device_guest_expected = true
+		if session.is_empty() and store.save_session(stored_guest):
+			session = stored_guest
+		return
+	if not session.is_empty() and is_anonymous() and store.save_device_guest(session):
+		device_guest_expected = true
+
+
+func _migrate_oauth_pkce(store: Node) -> void:
+	if store == null or pending_oauth.is_empty():
+		return
+	var legacy_verifier := str(pending_oauth.get("code_verifier", ""))
+	if legacy_verifier.is_empty():
+		return
+	if not store.save_oauth_pkce({
+		"state": str(pending_oauth.get("state", "")),
+		"code_verifier": legacy_verifier,
+	}):
+		return
+	pending_oauth.erase("code_verifier")
+	save()
 
 
 func _secure_store() -> Node:

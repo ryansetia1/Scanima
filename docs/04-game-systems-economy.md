@@ -229,11 +229,19 @@ atomik. **Target:** setiap sukses mendebit Core dan memicu generation privat.
 **Historis:** cache hit memakai slot tanpa Core; Genesis gagal yang direfund
 melepaskan slot guest bila tidak ada sukses/pending lain.
 
-Link Google memakai identity linking Supabase sehingga UID dan semua row progres
-tetap sama. `upgrade_seeker_account()` memverifikasi identity Google, memegang
-profile row lock, dan memakai indeks ledger unik agar retry hanya memberi
-pelengkap starter sekali. Sign-in ke Google yang sudah memiliki Seeker adalah
-restore, bukan merge: progres guest instalasi itu tidak dipindahkan.
+Saat Sign in, pemain memilih **separate** atau **transfer**. Transfer memakai
+identity linking Supabase sehingga UID dan semua row progres guest tetap sama;
+sesudah sukses guest lama hanya dapat dibuka lewat Google itu. Separate
+mempertahankan satu session guest terenkripsi per instalasi dan membuka UID
+Google sebagai akun lain. Google yang sudah memiliki Seeker tidak pernah
+di-merge: hanya separate atau batal yang tersedia.
+
+`upgrade_seeker_account()` dijalankan idempoten sesudah kedua jalur Google. Ia
+memverifikasi identity Google, memegang profile row lock, dan memakai indeks
+ledger unik agar retry hanya memberi pelengkap starter sekali. Sign Out memakai
+scope lokal dan kembali ke guest perangkat; setelah transfer, client membuat
+guest baru yang kosong. Pending aksi uang/gameplay memblokir pergantian akun
+agar receipt atau idempotency key tidak menyeberang UID.
 
 `seeker_xp` adalah progression akun yang kosmetik:
 

@@ -49,7 +49,14 @@ func ensure_session() -> Dictionary:
 	if not needs_refresh(GameState.session, int(Time.get_unix_time_from_system())):
 		return {"ok": true, "error": ""}
 	if GameState.session.is_empty():
-		return await sign_in_anonymous()
+		if GameState.device_guest_expected:
+			var guest := GameState.device_guest_session()
+			if guest.is_empty() or not GameState.activate_stored_session(guest):
+				return {"ok": false, "code": 0, "error": "DEVICE_GUEST_RECOVERY_FAILED"}
+			if not needs_refresh(GameState.session, int(Time.get_unix_time_from_system())):
+				return {"ok": true, "error": ""}
+		else:
+			return await sign_in_anonymous()
 	return await refresh_session()
 
 
@@ -66,6 +73,14 @@ static func needs_refresh(session: Dictionary, now_unix: int) -> bool:
 ## saat app pertama kali jalan. Trigger handle_new_user di Postgres yang mengisi
 ## profil beserta saldo awalnya.
 func sign_in_anonymous() -> Dictionary:
+	var prepared := await request_anonymous_session()
+	return _activate_session_candidate(prepared)
+
+
+## Menyiapkan guest tanpa mengganti sesi aktif. Sign Out setelah transfer memakai
+## ini sebelum mencabut Google, jadi kegagalan jaringan tidak meninggalkan app
+## tanpa identitas yang bisa dipulihkan.
+func request_anonymous_session() -> Dictionary:
 	var res := await _send(
 		HTTPClient.METHOD_POST,
 		URL_BASE + "/auth/v1/signup",
@@ -73,16 +88,26 @@ func sign_in_anonymous() -> Dictionary:
 		"{}".to_utf8_buffer(),
 		TIMEOUT_SEC
 	)
-	if not res.ok:
-		return res
-	return _store_session(res.data)
+	return _prepare_session_response(res)
 
 
 func refresh_session() -> Dictionary:
-	var token := str(GameState.session.get("refresh_token", ""))
+	var prepared := await refresh_session_candidate(GameState.session)
+	if not bool(prepared.get("ok", false)):
+		# Sengaja TIDAK membuat akun anonim baru di sini. Sign-in baru akan
+		# membuat app terlihat pulih sementara seluruh Anima pemain tertinggal di
+		# akun yang tidak bisa dijangkau lagi. Gagal yang kelihatan lebih baik
+		# daripada kehilangan data yang tidak kelihatan.
+		return prepared
+	return _activate_session_candidate(prepared)
+
+
+## Refresh token kandidat tanpa menyentuh GameState. Dipakai untuk membuktikan
+## guest perangkat masih hidup sebelum sesi Google lokal dilepas.
+func refresh_session_candidate(candidate: Dictionary) -> Dictionary:
+	var token := str(candidate.get("refresh_token", ""))
 	if token.is_empty():
 		return {"ok": false, "code": 0, "data": null, "error": "sesi tanpa refresh token"}
-
 	var res := await _send(
 		HTTPClient.METHOD_POST,
 		URL_BASE + "/auth/v1/token?grant_type=refresh_token",
@@ -90,36 +115,68 @@ func refresh_session() -> Dictionary:
 		JSON.stringify({"refresh_token": token}).to_utf8_buffer(),
 		TIMEOUT_SEC
 	)
-	if not res.ok:
-		# Sengaja TIDAK membuat akun anonim baru di sini. Sign-in baru akan
-		# membuat app terlihat pulih sementara seluruh Anima pemain tertinggal di
-		# akun yang tidak bisa dijangkau lagi. Gagal yang kelihatan lebih baik
-		# daripada kehilangan data yang tidak kelihatan.
+	return _prepare_session_response(res, str(candidate.get("uid", "")))
+
+
+func sign_out_local() -> Dictionary:
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/auth/v1/logout?scope=local",
+		_headers(true),
+		PackedByteArray(),
+		TIMEOUT_SEC,
+		1
+	)
+
+
+func _prepare_session_response(res: Dictionary, fallback_uid: String = "") -> Dictionary:
+	if not bool(res.get("ok", false)):
 		return res
-	return _store_session(res.data)
+	var prepared := _normalize_session(res.get("data"), fallback_uid)
+	if not bool(prepared.get("ok", false)):
+		return prepared
+	prepared["code"] = int(res.get("code", 200))
+	return prepared
 
 
-func _store_session(data: Variant) -> Dictionary:
+func _normalize_session(data: Variant, fallback_uid: String = "") -> Dictionary:
 	if typeof(data) != TYPE_DICTIONARY:
 		return {"ok": false, "code": 0, "data": data, "error": "balasan auth bukan object"}
 	var body: Dictionary = data
 	var access := str(body.get("access_token", ""))
 	var refresh := str(body.get("refresh_token", ""))
 	var user: Dictionary = GameState.as_dict(body.get("user"))
-	var user_id := str(user.get("id", GameState.uid()))
+	var user_id := str(user.get("id", fallback_uid))
 	if access.is_empty() or refresh.is_empty() or user_id.is_empty():
 		return {"ok": false, "code": 0, "data": data, "error": "balasan auth tidak lengkap"}
+	return {
+		"ok": true,
+		"code": 200,
+		"data": data,
+		"session": {
+			"access_token": access,
+			"refresh_token": refresh,
+			"expires_at": int(Time.get_unix_time_from_system()) + int(body.get("expires_in", 3600)),
+			"uid": user_id,
+			"is_anonymous": bool(user.get("is_anonymous", false)),
+		},
+		"error": "",
+	}
 
-	var umur := int(body.get("expires_in", 3600))
-	if not GameState.set_session(
-		access,
-		refresh,
-		int(Time.get_unix_time_from_system()) + umur,
-		user_id,
-		bool(user.get("is_anonymous", false))
-	):
-		return {"ok": false, "code": 0, "data": data, "error": "secure session storage unavailable"}
-	return {"ok": true, "code": 200, "data": data, "error": ""}
+
+func _activate_session_candidate(prepared: Dictionary) -> Dictionary:
+	if not bool(prepared.get("ok", false)):
+		return prepared
+	if not GameState.activate_stored_session(GameState.as_dict(prepared.get("session"))):
+		return {
+			"ok": false, "code": 0, "data": prepared.get("data"),
+			"error": "secure session storage unavailable",
+		}
+	return prepared
+
+
+func _store_session(data: Variant) -> Dictionary:
+	return _activate_session_candidate(_normalize_session(data))
 
 
 # ------------------------------------------------------------------ data
@@ -489,6 +546,7 @@ func oauth_authorize(link_identity: bool, redirect_to: String, code_challenge: S
 		+ "&scopes=" + "openid email profile".uri_encode()
 		+ "&code_challenge=" + code_challenge.uri_encode()
 		+ "&code_challenge_method=s256"
+		+ "&prompt=select_account"
 		+ "&skip_http_redirect=true"
 	)
 	var auth_url := URL_BASE + endpoint + query
@@ -551,14 +609,15 @@ func _send(
 	timeout: float,
 	retries := 0
 ) -> Dictionary:
-	var response := await _send_attempt(method, url, headers, body, timeout)
+	var expected_uid := GameState.uid() if _has_authorization(headers) else ""
+	var response := await _send_attempt(method, url, headers, body, timeout, expected_uid)
 	var delay := RETRY_BACKOFF_SEC
 	var left := retries
 	while left > 0 and bool(response.get("transport", false)):
 		await get_tree().create_timer(delay).timeout
 		delay = minf(delay * 2.0, RETRY_BACKOFF_MAX_SEC)
 		left -= 1
-		response = await _send_attempt(method, url, headers, body, timeout)
+		response = await _send_attempt(method, url, headers, body, timeout, expected_uid)
 	return response
 
 
@@ -567,20 +626,27 @@ func _send_attempt(
 	url: String,
 	headers: PackedStringArray,
 	body: PackedByteArray,
-	timeout: float
+	timeout: float,
+	expected_uid: String = ""
 ) -> Dictionary:
 	var authenticated := _has_authorization(headers)
+	if authenticated and GameState.uid() != expected_uid:
+		return _stale_account_response()
 	var outgoing_headers := headers
 	if authenticated:
 		var session_result := await ensure_session()
 		if not bool(session_result.get("ok", false)):
 			return session_result
+		if GameState.uid() != expected_uid:
+			return _stale_account_response()
 		outgoing_headers = _with_access_token(
 			headers,
 			str(GameState.session.get("access_token", ""))
 		)
 
 	var response := await _send_once(method, url, outgoing_headers, body, timeout)
+	if authenticated and GameState.uid() != expected_uid:
+		return _stale_account_response()
 	if not authenticated or int(response.get("code", 0)) != 401:
 		return response
 
@@ -589,12 +655,29 @@ func _send_attempt(
 	var refresh_result := await refresh_session()
 	if not bool(refresh_result.get("ok", false)):
 		return response
-	return await _send_once(
+	if GameState.uid() != expected_uid:
+		return _stale_account_response()
+	var retried := await _send_once(
 		method,
 		url,
 		_with_access_token(headers, str(GameState.session.get("access_token", ""))),
 		body,
 		timeout
+	)
+	return _stale_account_response() if GameState.uid() != expected_uid else retried
+
+
+static func _stale_account_response() -> Dictionary:
+	return {
+		"ok": false, "code": 0, "data": null, "bytes": PackedByteArray(),
+		"error": "STALE_ACCOUNT_RESPONSE", "stale": true,
+	}
+
+
+static func response_applies(response: Dictionary, expected_epoch: int) -> bool:
+	return (
+		not bool(response.get("stale", false))
+		and GameState.session_epoch == expected_epoch
 	)
 
 

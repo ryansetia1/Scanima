@@ -44,6 +44,7 @@ var _busy := false
 var _catalog_available := false
 var _request_result: Dictionary = {}
 var _request_in_flight := false
+var _request_revision := 0
 var _preload_running := false
 
 
@@ -77,10 +78,33 @@ func set_roster(roster: Array) -> void:
 	_roster = roster.duplicate(true)
 
 
+func reset_account_context() -> void:
+	_roster.clear()
+	_team = {}
+	_chapters.clear()
+	_run = {}
+	_encounter = {}
+	_art_cache.clear()
+	_chapter_manifest = {}
+	_chapter_manifest_version = ""
+	_busy = false
+	if _view != null:
+		_view.set_busy(false)
+	_catalog_available = false
+	_request_result = {}
+	_request_in_flight = false
+	_request_revision += 1
+	_request_settled.emit()
+	_preload_running = false
+
+
 func discover() -> void:
+	var account_epoch := GameState.session_epoch
 	var pending := not GameState.pending_expedition.is_empty()
 	_battle_view.set_expedition_pending(pending)
 	var res := await Backend.expedition("chapters")
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if res.ok:
 		var chapters := _array(GameState.as_dict(res.data).get("chapters"))
 		_catalog_available = not chapters.is_empty()
@@ -135,6 +159,7 @@ func use_item(item_id: String) -> bool:
 
 
 func resume_pending() -> void:
+	var account_epoch := GameState.session_epoch
 	if _busy:
 		return
 	_set_busy(true)
@@ -146,6 +171,8 @@ func resume_pending() -> void:
 	if not run_id.is_empty():
 		payload["run_id"] = run_id
 	var res := await Backend.expedition("resume", payload)
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		if res.error == "EXPEDITION_RUN_NOT_FOUND":
 			_set_busy(false)
@@ -173,6 +200,7 @@ func resume_pending() -> void:
 
 
 func _load_hub() -> void:
+	var account_epoch := GameState.session_epoch
 	_set_busy(true)
 	_view.set_loading()
 	LoadingScreen.show_screen("EXPEDITION_LOADING")
@@ -184,6 +212,11 @@ func _load_hub() -> void:
 	_dispatch("team", {})
 	var chapters_res := await Backend.expedition("chapters")
 	var team_res := await _await_dispatch()
+	if (
+		not Backend.response_applies(chapters_res, account_epoch)
+		or not Backend.response_applies(team_res, account_epoch)
+	):
+		return
 	if not chapters_res.ok:
 		_view.set_error(chapters_res.error)
 		_set_busy(false)
@@ -211,10 +244,13 @@ func _finish_to_hub() -> void:
 
 
 func _load_chapter(version_id: String) -> void:
+	var account_epoch := GameState.session_epoch
 	if _busy or version_id.is_empty():
 		return
 	_set_busy(true)
 	var res := await Backend.expedition("chapter", {"chapter_version_id": version_id})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if res.ok:
 		var data := GameState.as_dict(res.data)
 		# Manifest chapter membawa roster lawan dan art zona; menyimpannya di sini
@@ -229,10 +265,13 @@ func _load_chapter(version_id: String) -> void:
 
 
 func _save_team(anima_ids: Array[String]) -> void:
+	var account_epoch := GameState.session_epoch
 	if _busy or anima_ids.size() != 4:
 		return
 	_set_busy(true)
 	var res := await Backend.expedition("save_team", {"anima_ids": anima_ids})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if res.ok:
 		_team = GameState.as_dict(GameState.as_dict(res.data).get("team"))
 		_view.set_team(_team)
@@ -321,6 +360,7 @@ func _request_turn(action: String, switch_to_slot: int) -> void:
 
 
 func _forfeit() -> void:
+	var account_epoch := GameState.session_epoch
 	if _busy or _encounter.is_empty():
 		return
 	_view.show_retreat_banner()
@@ -328,6 +368,8 @@ func _forfeit() -> void:
 	var res := await Backend.expedition("forfeit", {
 		"encounter_id": str(_encounter.get("id", "")),
 	})
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if res.ok:
 		var data := GameState.as_dict(res.data)
 		_run = GameState.as_dict(data.get("run"))
@@ -431,19 +473,24 @@ static func _turn_outcome_matches(
 ## Mengirim satu request tanpa menahan pemanggilnya. Setiap `_dispatch()` wajib
 ## dipasangkan dengan tepat satu `_await_dispatch()` sesudahnya.
 func _dispatch(operation: String, payload: Dictionary) -> void:
+	_request_revision += 1
+	var revision := _request_revision
 	_request_in_flight = true
-	_request_result = await Backend.expedition(operation, payload)
-	_request_in_flight = false
+	var result := await Backend.expedition(operation, payload)
+	if revision == _request_revision:
+		_request_result = result
+		_request_in_flight = false
 	_request_settled.emit()
 
 
 func _await_dispatch() -> Dictionary:
-	if _request_in_flight:
+	while _request_in_flight:
 		await _request_settled
 	return _request_result
 
 
 func _submit_pending(pending: Dictionary) -> void:
+	var account_epoch := GameState.session_epoch
 	if pending.is_empty():
 		return
 	var operation := str(pending.get("operation", ""))
@@ -465,6 +512,8 @@ func _submit_pending(pending: Dictionary) -> void:
 		# setelah server memberi version-nya, jadi redupkan lagi kalau masih terbang.
 		_view.set_busy(_request_in_flight)
 	var res := await _await_dispatch()
+	if not Backend.response_applies(res, account_epoch):
+		return
 	if not res.ok:
 		# Turn yang tidak sampai ke server tidak boleh meninggalkan arena di masa
 		# depan: `_encounter` masih memegang state authoritative terakhir.
@@ -539,16 +588,21 @@ func _submit_pending(pending: Dictionary) -> void:
 
 
 func _present() -> void:
+	var account_epoch := GameState.session_epoch
 	if _run.is_empty():
 		await _load_hub()
 		return
 	var art: Dictionary = {}
 	if not _encounter.is_empty():
 		art = await _prepare_active_art(_encounter)
+		if GameState.session_epoch != account_epoch:
+			return
 		if art.is_empty():
 			_view.set_error("TEAM_ART_NOT_READY")
 			return
 	art = await _attach_seeker_art(art)
+	if GameState.session_epoch != account_epoch:
+		return
 	_view.set_run(_run, _encounter, art)
 	if _encounter.is_empty():
 		# Tanpa await: pemain sudah bisa membaca peta sementara art-nya turun.
@@ -679,6 +733,7 @@ func _attach_trophy_art(
 	asset_base_url: String,
 	art: Dictionary
 ) -> Dictionary:
+	var account_epoch := GameState.session_epoch
 	var trophy := GameState.as_dict(reward.get("trophy"))
 	if trophy.is_empty():
 		return art
@@ -695,6 +750,8 @@ func _attach_trophy_art(
 			return art
 		url = "%s/%s" % [base.rstrip("/"), path]
 	var download := await Backend.download_url(url)
+	if not Backend.response_applies(download, account_epoch):
+		return art
 	if not download.ok:
 		return art
 	var image := Image.new()
@@ -707,6 +764,7 @@ func _attach_trophy_art(
 
 
 func _load_seeker_art(seeker: Dictionary) -> Dictionary:
+	var account_epoch := GameState.session_epoch
 	var url := str(seeker.get("sheet_url", "")).strip_edges()
 	if url.is_empty():
 		var base := str(_run.get("asset_base_url", "")).rstrip("/")
@@ -717,6 +775,8 @@ func _load_seeker_art(seeker: Dictionary) -> Dictionary:
 	if url.is_empty() or manifest.is_empty():
 		return {"ok": false}
 	var download := await Backend.download_url(url)
+	if not Backend.response_applies(download, account_epoch):
+		return {"ok": false}
 	if not download.ok:
 		return {"ok": false}
 	var image := Image.new()
@@ -726,12 +786,15 @@ func _load_seeker_art(seeker: Dictionary) -> Dictionary:
 
 
 func _load_arena_background(encounter: Dictionary) -> Texture2D:
+	var account_epoch := GameState.session_epoch
 	var url := str(_run.get("arena_background_url", encounter.get("arena_background_url", "")))
 	if url.is_empty():
 		return null
 	if _art_cache.get(url) is Texture2D:
 		return _art_cache[url]
 	var download := await Backend.download_url(url)
+	if not Backend.response_applies(download, account_epoch):
+		return null
 	if not download.ok:
 		return null
 	var image := Image.new()
@@ -745,6 +808,7 @@ func _load_arena_background(encounter: Dictionary) -> Texture2D:
 
 
 func _load_art(snapshot: Dictionary) -> Dictionary:
+	var account_epoch := GameState.session_epoch
 	if str(snapshot.get("system_asset", "")) == "placeholder":
 		var placeholder := PlaceholderSheet.build()
 		return AnimaLoader.build(
@@ -767,6 +831,8 @@ func _load_art(snapshot: Dictionary) -> Dictionary:
 	if sheet_url.is_empty() or manifest.is_empty():
 		return {"ok": false}
 	var download := await Backend.download_url(sheet_url)
+	if not Backend.response_applies(download, account_epoch):
+		return {"ok": false}
 	if not download.ok:
 		return {"ok": false}
 	var image := Image.new()

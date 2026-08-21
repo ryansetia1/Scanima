@@ -1,21 +1,21 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://ddv1irypiuym2"]
 
-[ext_resource type="Script" path="res://scripts/ui_modal.gd" id="1_modal"]
-[ext_resource type="Theme" path="res://themes/mobile_theme.tres" id="2_theme"]
+[ext_resource type="Script" uid="uid://j7bgmmrt4a38" path="res://scripts/ui_modal.gd" id="1_modal"]
+[ext_resource type="Theme" uid="uid://cbi43xka3xsp5" path="res://themes/mobile_theme.tres" id="2_theme"]
 
-[node name="UiModal" type="Control"]
+[node name="UiModal" type="Control" unique_id=1256776901]
 visible = false
 z_index = 20
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 theme = ExtResource("2_theme")
 script = ExtResource("1_modal")
 
-[node name="Backdrop" type="ColorRect" parent="."]
+[node name="Backdrop" type="ColorRect" parent="." unique_id=525608194]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -25,7 +25,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.004, 0.008, 0.025, 0.84)
 
-[node name="DismissButton" type="Button" parent="."]
+[node name="DismissButton" type="Button" parent="." unique_id=1634507204]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -35,7 +35,7 @@ grow_horizontal = 2
 grow_vertical = 2
 flat = true
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Center" type="CenterContainer" parent="." unique_id=726623276]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -44,25 +44,24 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="ModalPanel" type="PanelContainer" parent="Center"]
+[node name="ModalPanel" type="PanelContainer" parent="Center" unique_id=898697845]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
-mouse_filter = 0
 theme_type_variation = &"ModalPanel"
 
-[node name="Column" type="VBoxContainer" parent="Center/ModalPanel"]
+[node name="Column" type="VBoxContainer" parent="Center/ModalPanel" unique_id=1163043177]
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="ModalTitle" type="Label" parent="Center/ModalPanel/Column"]
+[node name="ModalTitle" type="Label" parent="Center/ModalPanel/Column" unique_id=241732842]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ModalTitle"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ModalHero" type="Label" parent="Center/ModalPanel/Column"]
+[node name="ModalHero" type="Label" parent="Center/ModalPanel/Column" unique_id=1001706636]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -70,14 +69,14 @@ theme_type_variation = &"ModalHero"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ModalBody" type="Label" parent="Center/ModalPanel/Column"]
+[node name="ModalBody" type="Label" parent="Center/ModalPanel/Column" unique_id=495885303]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ModalInput" type="LineEdit" parent="Center/ModalPanel/Column"]
+[node name="ModalInput" type="LineEdit" parent="Center/ModalPanel/Column" unique_id=1233823013]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(0, 96)
@@ -85,20 +84,27 @@ layout_mode = 2
 max_length = 32
 select_all_on_focus = true
 
-[node name="Actions" type="HBoxContainer" parent="Center/ModalPanel/Column"]
+[node name="Actions" type="HBoxContainer" parent="Center/ModalPanel/Column" unique_id=834103103]
 layout_mode = 2
 theme_override_constants/separation = 16
 alignment = 1
 
-[node name="CancelButton" type="Button" parent="Center/ModalPanel/Column/Actions"]
+[node name="CancelButton" type="Button" parent="Center/ModalPanel/Column/Actions" unique_id=1050066081]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="PrimaryButton" type="Button" parent="Center/ModalPanel/Column/Actions"]
+[node name="PrimaryButton" type="Button" parent="Center/ModalPanel/Column/Actions" unique_id=1404541909]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PrimaryButton"
+
+[node name="ChoiceCancelButton" type="Button" parent="Center/ModalPanel/Column" unique_id=798625162]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "ACTION_CANCEL"

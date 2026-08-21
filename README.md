@@ -118,13 +118,19 @@ pending scan/care/battle, Stage, atau inkubator. Seluruh copy memakai katalog
 English Godot-native, theme cyan-violet-gold, dan ikon SVG berlisensi. Onboarding
 nama Seeker tetap muncul sesudah Anima pertama menetas.
 
-**Guest Seeker dan upgrade Google sudah menjadi mekanik live.** Akun anonim baru
+**Guest Seeker, upgrade Google, dan account switching sudah menjadi mekanik live.** Akun anonim baru
 mendapat 1 Core dan satu Scan sukses; Genesis maupun cache hit memakai kesempatan
 guest itu. Sesudahnya CTA Scan menjadi `Sign in to Scan Again`, sementara Care,
-Battle, Shop, dan Collection tetap berjalan. Link Google memakai PKCE dan deep
-link `scanima://auth/callback`, mempertahankan UID/progres, lalu melengkapi grant
-starter menjadi 4 Core lifetime (+3 sekali). Kalau identity Google sudah dimiliki
-akun lain, restore mengganti guest lokal tanpa merge setelah peringatan. Supabase
+Battle, Shop, dan Collection tetap berjalan. Sign in Google memakai PKCE dan deep
+link `scanima://auth/callback`; verifier hanya hidup di SecureStore, dan recovery
+selesai sebelum cold-start callback atau cache Home diproses. Pemain dapat mempertahankan guest perangkat
+terpisah atau memindahkannya lewat identity link same-UID, lalu grant starter
+dilengkapi menjadi 4 Core lifetime (+3 sekali). Google existing tidak pernah
+di-merge; pemain hanya dapat masuk terpisah atau batal. Sign Out scope lokal
+kembali ke guest perangkat, sementara Google A/B dipilih ulang lewat account
+picker dan tidak disimpan sebagai vault token. Mutation pending memblokir switch
+serta Delete Account,
+dan marker nonrahasia menuntaskan urutan yang terputus saat boot. Supabase
 Auth memakai Site URL `scanima://auth/callback` dan allow-list
 `scanima://auth/callback**` karena callback membawa query `state` acak; exact URL
 akan jatuh ke default localhost setelah Google selesai. Server menolak Scan guest
@@ -159,7 +165,7 @@ Pertama, **refresh token yang ditolak tidak dijawab dengan sign-in anonim baru**
 itu akan meninggalkan koleksi di akun yang tidak bisa dijangkau lagi. Kedua,
 **kunci idempotency scan, care, dan Battle bertahan di disk**, sehingga app yang
 mati tidak membayar atau commit dua kali. Transport juga memperbarui access
-token sebelum setiap request terautentikasi. Ini dijaga oleh 74 check di
+token sebelum setiap request terautentikasi. Ini dijaga oleh 196 check di
 `test_client_state.gd`.
 
 **Kamera dan single-photo picker memakai plugin yang sama, bukan `CameraServer`.**
@@ -189,21 +195,21 @@ Yang sudah bisa dijalankan sekarang, gratis:
 
 ```bash
 npm install
-npm run selftest                 # 38 skenario + 12 uji tanda tangan webhook, tanpa API
+npm run selftest                 # 41 skenario + 12 uji tanda tangan webhook, tanpa API
 
 # Godot: 182 pemeriksaan slicing/presenter, tanpa jendela
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_sprite_slicing.gd
 
-# Godot: 151 pemeriksaan sesi, secure token, pending intent, dan cache art
+# Godot: 196 pemeriksaan sesi, secure token, pending intent, dan cache art
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 841 pemeriksaan shell, Atlas, touch, Battle, Seeker, roster, dan motion
+# Godot: 1174 pemeriksaan shell, Atlas, touch, Battle, Seeker, roster, dan motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
 
-# Godot: 4075 pemeriksaan katalog English, referensi key, formatter, dan layout
+# Godot: 4638 pemeriksaan katalog English, referensi key, formatter, dan layout
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_i18n.gd
 
@@ -211,7 +217,7 @@ npm run selftest                 # 38 skenario + 12 uji tanda tangan webhook, ta
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_game_rules.gd
 
-# Godot: 21 pemeriksaan PKCE callback, backup session, dan restore tanpa merge
+# Godot: 63 pemeriksaan PKCE callback, secure verifier, crash recovery, dan no-merge
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_auth_flow.gd
 
@@ -314,7 +320,7 @@ scanima/
 │   │   ├── game_state.gd         # autoload: preference + pending intent
 │   │   ├── backend.gd            # autoload: auth, REST, Storage, functions
 │   │   ├── locale_manager.gd     # autoload: locale, formatter, enum mapping
-│   │   ├── auth_flow.gd          # autoload: Google PKCE + link/restore
+│   │   ├── auth_flow.gd          # autoload: Google PKCE + transfer/separate/sign-out
 │   │   ├── scan_flow.gd          # orkestrasi scan/care/Battle + navigation
 │   │   ├── *_view.gd             # presentation per destination
 │   │   ├── care_rules.gd         # mirror murni decay/sleep untuk preview + test
@@ -331,9 +337,9 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 468 kontrak shell + Battle + Seeker + touch
-│       ├── test_i18n.gd              # 2290 kontrak katalog + key + wrapping
-│       ├── test_game_rules.gd        # 94 kontrak care + EXP/Level + event Battle
+│       ├── test_scan_ui.gd           # 1174 kontrak shell + Battle + Seeker + touch
+│       ├── test_i18n.gd              # 4638 kontrak katalog + key + wrapping
+│       ├── test_game_rules.gd        # 181 kontrak care + EXP/Level + event Battle
 │       ├── test_auth_flow.gd         # PKCE/deep-link/session backup, tanpa jaringan
 │       ├── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003
 │       └── live_battle.gd            # Battle produksi, nol model call
