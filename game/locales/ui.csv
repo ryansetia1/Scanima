@@ -534,7 +534,7 @@ STATUS_ART_DOWNLOAD_ERROR,"The artwork could not be downloaded. Check your conne
 STATUS_ART_SAVE_ERROR,"The artwork could not be saved on this device."
 STATUS_ART_LOAD_ERROR,"The artwork could not be displayed."
 STATUS_HATCHED,"Your Anima has awakened!"
-STATUS_ANIMA_READY,"%s is ready to play."
+STATUS_ANIMA_READY,"%s is ready."
 STATUS_ANIMA_SLEEPING,"%s is sleeping."
 STATUS_INCUBATOR_DEMO,"Shaping a new digital soul…"
 STATUS_HATCH_DEMO_MISSING,"The hatch preview needs a cached Anima."
