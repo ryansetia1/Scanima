@@ -108,6 +108,19 @@ export async function mulaiGeneration(
   return pred.id;
 }
 
+/** Batalkan prediction yatim yang kalah balapan attach DB. */
+export async function batalkanPrediksi(predictionId: string): Promise<void> {
+  const res = await fetch(`${BASE}/predictions/${predictionId}/cancel`, {
+    method: "POST",
+    headers: header(),
+  });
+  // Sudah terminal/hilang sama-sama berarti tidak ada pekerjaan yang bisa
+  // dibatalkan lagi.
+  if (!res.ok && ![404, 409, 422].includes(res.status)) {
+    throw new Error(`batalkan prediction ${predictionId} gagal ${res.status}`);
+  }
+}
+
 // Rahasia penanda tangan webhook diambil dari Replicate, bukan dari secret
 // terpisah yang harus dipasang manual. Satu kredensial lebih sedikit berarti
 // satu langkah setup yang tidak bisa terlupakan, dan nilainya tetap sama untuk

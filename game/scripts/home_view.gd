@@ -104,6 +104,20 @@ func set_anima(row: Dictionary, busy: bool) -> void:
 	_fit_controls_scroll.call_deferred()
 
 
+func set_evolution(row: Dictionary) -> void:
+	_shell_state = &"evolving"
+	_row = row.duplicate(true)
+	_set_headline_wrapping(true)
+	_care_dock.visible = false
+	_set_buttons_disabled(true)
+	_identity.visible = true
+	_primary_action.visible = false
+	_set_loading_layout(false)
+	_anima_name.text = tr("HOME_EVOLUTION_NAME") % LocaleManager.display_name(_row)
+	_anima_meta.text = tr("HOME_EVOLUTION_META")
+	_fit_controls_scroll.call_deferred()
+
+
 func set_shell_state(state: StringName) -> void:
 	_shell_state = state
 	_row = {}

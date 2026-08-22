@@ -6448,16 +6448,21 @@ console.log(
     /changed_dimensions/,
   );
 
+  // `derived_anatomy` adalah pelengkap yang prompt v41 nyatakan boleh kosong,
+  // dan perakit prompt sudah punya kalimat pengganti saat ia kosong. Entri yang
+  // tidak menelusuri anchor-nya karena itu dibuang, bukan menjatuhkan Plan yang
+  // sisanya lolos setiap kontrak lain.
   const untracedAnatomy = structuredClone(v22Raw);
   untracedAnatomy.derived_anatomy[0].derived_from = "unrelated generic energy";
-  assert.throws(
-    () =>
-      validateEvolutionPlan(untracedAnatomy, {
-        targetStage: 2,
-        priorHeightCm: 150,
-        contractVersion: 22,
-      }),
-    /derived_anatomy/,
+  const untracedKept = validateEvolutionPlan(untracedAnatomy, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 22,
+  }).plan.derived_anatomy;
+  assert.equal(untracedKept.length, v22Raw.derived_anatomy.length - 1);
+  assert.ok(
+    !untracedKept.some((item) => item.derived_from === "unrelated generic energy"),
+    "derived_anatomy tanpa anchor harus dibuang, bukan menjatuhkan Plan",
   );
 
   const punctuationOnlyAnatomy = structuredClone(v22Raw);
@@ -6661,16 +6666,24 @@ console.log(
     /minimal tiga Identity Invariants/,
   );
 
+  // Adult hanya punya satu realization_mode sah dan prompt sudah menyebutnya,
+  // jadi server menegakkannya. `evolved_policy` tetap milik model karena ia
+  // menyimpan apa yang boleh terjadi di stage berikutnya.
   const adultTransfigure = structuredClone(v23Raw);
   adultTransfigure.identity_invariants[2].realization_mode = "transfigure";
-  assert.throws(
-    () =>
-      validateEvolutionPlan(adultTransfigure, {
-        targetStage: 2,
-        priorHeightCm: 150,
-        contractVersion: 23,
-      }),
-    /Adult harus preserve/,
+  const adultForced = validateEvolutionPlan(adultTransfigure, {
+    targetStage: 2,
+    priorHeightCm: 150,
+    contractVersion: 23,
+  }).plan.identity_invariants;
+  assert.ok(
+    adultForced.every((item) => item.realization_mode === "preserve"),
+    "Adult harus menegakkan realization_mode preserve",
+  );
+  assert.equal(
+    adultForced[2].evolved_policy,
+    v23Raw.identity_invariants[2].evolved_policy,
+    "evolved_policy tidak boleh ikut ditulis ulang",
   );
 
   assert.throws(
@@ -7184,6 +7197,34 @@ console.log(
   assert.deepEqual(
     adultV25.plan.presence_contract.presence_channels,
     ["silhouette_line", "posture"],
+  );
+
+  // `source_basis` menamai struktur yang terlihat, ia tidak menjelaskannya, jadi
+  // jawaban benarnya memang pendek. Terukur 22 Agustus 2026 pada Hydron:
+  // "stubby legs" hanya 11 karakter, dan plafon 12 menolaknya di enam sampel
+  // Plan berturut-turut — dua ritual penuh mati sebelum satu gambar pun dibuat.
+  const shortSourceBasis = structuredClone(v25Raw);
+  shortSourceBasis.shape_budget_contract.primary_shapes[1].source_basis = "stubby legs";
+  assert.equal(
+    validateEvolutionPlan(shortSourceBasis, {
+      targetStage: 2,
+      priorHeightCm: 150,
+      contractVersion: 25,
+    }).plan.shape_budget_contract.primary_shapes[1].source_basis,
+    "stubby legs",
+    "frasa sumber pendek yang konkret harus diterima",
+  );
+  const stubSourceBasis = structuredClone(v25Raw);
+  stubSourceBasis.shape_budget_contract.primary_shapes[1].source_basis = "rim";
+  assert.throws(
+    () =>
+      validateEvolutionPlan(stubSourceBasis, {
+        targetStage: 2,
+        priorHeightCm: 150,
+        contractVersion: 25,
+      }),
+    /primary_shapes v25/,
+    "lantai frasa sumber tetap ada untuk jawaban yang benar-benar stub",
   );
 
   const promptV25 = assembleEvolvePrompt(
@@ -9200,6 +9241,11 @@ console.log(
     [8, 8],
     "reference evolusi harus crop Idle, bukan seluruh sheet",
   );
+  assert.equal(
+    reference[25],
+    2,
+    "reference GPT Image harus PNG RGB color type 2, bukan RGBA yang membingungkan safety checker",
+  );
   assert.deepEqual(
     [...decodedReference.bitmap.slice(0, 4)],
     [0, 255, 0, 255],
@@ -9233,6 +9279,10 @@ console.log(
     "backend/supabase/migrations/20260817095700_evolution_art_pipeline.sql",
     "utf8",
   );
+  const imageRetryMigSrc = await readFile(
+    "backend/supabase/migrations/20260822121730_evolution_image_retry.sql",
+    "utf8",
+  );
   const goLiveSrc = await readFile(
     "backend/supabase/migrations/20260817200110_evolution_go_live.sql",
     "utf8",
@@ -9258,6 +9308,8 @@ console.log(
   const {
     evolutionWebhookUrl,
     evolutionFinalizeRetryable,
+    evolutionImageSafetyRetryable,
+    evolutionImageSafetyRetryInput,
     evolutionPlanResampleAllowed,
     EVOLUTION_PLAN_MAX_ATTEMPTS,
     EVOLUTION_PLAN_RESAMPLE_DEADLINE_MS,
@@ -9460,12 +9512,66 @@ console.log(
   );
   assert.ok(
     evolveSrc.includes("rejected by the schema validator")
-      && evolveSrc.includes("visionPrompt + koreksi"),
-    "resample wajib membacakan keluhan validator, bukan mengulang buta",
+      && evolveSrc.includes("visionPrompt + koreksi")
+      && evolveSrc.includes("JSON.stringify(rejectedPlan)")
+      && evolveSrc.includes("preserve every already-valid value exactly")
+      && evolveSrc.includes("0.35 + 0.25 * (percobaanPlan - 1)"),
+    "resample wajib membawa plan lama dan MENAIKKAN suhu; suhu yang turun membuat "
+      + "tiga sampel Hydron keluar berbeda satu kata dari 12.105 karakter",
   );
   assert.ok(
     evolveSrc.includes("BIAYA_VISION_USD * (percobaanPlan - 1)"),
     "sampel Vision tambahan wajib ikut dihitung ke spend cap",
+  );
+  const e005 =
+    "Prediction failed: input or output was flagged as sensitive (E005)";
+  assert.ok(
+    evolutionImageSafetyRetryable(e005),
+    "E005 safety false-positive boleh satu redraw",
+  );
+  assert.ok(
+    !evolutionImageSafetyRetryable("E005 unrelated failure"),
+    "kode E005 tanpa alasan safety tidak boleh membuka redraw",
+  );
+  assert.ok(
+    !evolutionImageSafetyRetryable("fetch failed"),
+    "error generik tidak boleh membuka retry image",
+  );
+  const safeRetry = evolutionImageSafetyRetryInput({
+    prompt: "Draw a bottle creature.",
+    input_images: [
+      "https://project.supabase.co/storage/v1/object/sign/anima_sheets/ref.png?token=x",
+    ],
+    quality: "medium",
+    extra_untrusted_key: "drop me",
+  });
+  assert.ok(
+    safeRetry?.prompt.includes("SAFETY RETRY")
+      && safeRetry?.quality === "medium"
+      && !Object.hasOwn(safeRetry, "extra_untrusted_key"),
+    "retry E005 harus memakai allowlist dan konteks family-safe",
+  );
+  assert.equal(
+    evolutionImageSafetyRetryInput({
+      prompt: "x",
+      input_images: ["https://evil.example/ref.png"],
+    }),
+    null,
+    "retry tidak boleh memakai reference di luar private Supabase Storage",
+  );
+  assert.ok(
+    webhookSrc.includes("replace_evolution_prediction")
+      && webhookSrc.includes("evolutionImageSafetyRetryable")
+      && webhookSrc.includes("Number(gen.image_attempts ?? 1) >= 2"),
+    "webhook harus membatasi E005 ke tepat satu retry tanpa Vision",
+  );
+  assert.ok(
+    imageRetryMigSrc.includes("check (image_attempts between 0 and 2)")
+      && imageRetryMigSrc.includes("function public.replace_evolution_prediction")
+      && imageRetryMigSrc.includes(
+        "revoke all on function public.replace_evolution_prediction",
+      ),
+    "retry image harus atomik, terbatas, dan service-role-only",
   );
   assert.ok(
     dispatchDefinitelyNotStarted(

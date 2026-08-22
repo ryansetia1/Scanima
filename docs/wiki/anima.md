@@ -11,7 +11,12 @@ digendong, bukan setinggi anak. Hewan mengikuti tinggi aslinya. Benda yang
 memang besar, atau monster yang siluetnya menjulang, boleh jauh lebih tinggi.
 Ukuran ini dipakai untuk proporsi di Battle: ada Anima yang mungil, normal, atau
 sangat besar. Tingginya mengikuti kartu arena HP, jadi tetap terbaca sama di layar
-tinggi maupun lebar dan tidak memenuhi seluruh layar tinggi. Angkanya belum ditampilkan di Profile dan tidak menambah
+tinggi maupun lebar dan tidak memenuhi seluruh layar tinggi. Home juga memakai
+ukuran yang sama, jadi Anima yang lebih tinggi memang berdiri lebih tinggi di
+lobby — termasuk sesudah Evolve, karena bentuk baru yang bertambah tinggi ikut
+terlihat bertambah besar di sana. Selisihnya sengaja diperhalus di kedua layar:
+naik dua kali lipat dalam sentimeter tidak berarti dua kali lipat di layar.
+Angkanya bisa dilihat di Anima Atlas, belum di Profile, dan tidak menambah
 Health atau damage; ia murni mengatur skala visual yang tetap dibatasi agar HUD
 terbaca.
 
@@ -77,13 +82,17 @@ tercapai pada **860**. Di Level 40, meter menampilkan **MAX**.
 
 Saat Level cukup, Collection menandai kartu **Ready to Evolve** dan profil
 menampilkan tombol **Evolve**. Konfirmasi **Begin Evolution** memasukkan Anima
-ke chamber. Ritual ini **gratis** — tidak memakai Core — dan Anima tidak bisa
+ke chamber lalu membawamu langsung ke **Home**. Home menampilkan nama Anima,
+Evolution Chamber, dan status bahwa form barunya sedang ditempa — bukan pesan
+loading akun. Ritual ini **gratis** — tidak memakai Core — dan Anima tidak bisa
 Battle atau dirawat sampai selesai.
 
 Kalau gagal, dialog **Evolution Failed** memberi tahu apa yang terjadi dan
 menawarkan **Retry** langsung di situ, jadi kamu tidak perlu mencari tombol
 Evolve lagi. Bentuk lama tetap dipakai, tidak ada Core yang terpakai, dan Level
-serta EXP tidak berkurang. Mengulang ritualnya biasanya berhasil.
+serta EXP tidak berkurang. Gangguan safety sesaat saat menggambar otomatis dicoba
+sekali lagi di belakang layar tanpa mengulang perencanaan; kalau tetap gagal,
+barulah dialog muncul. Tidak ada retry tanpa batas.
 
 Sesudah sukses, art-nya berganti, nama Attack/Special bisa berubah, dan jurus
 bisa mendapat efek tambahan di Battle. Game juga mengusulkan **nama baru**

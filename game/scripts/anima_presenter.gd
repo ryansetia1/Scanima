@@ -39,6 +39,7 @@ var _fx: Sprite2D
 var _fx_motion: Dictionary = {}
 var _queued_care: Dictionary = {}
 var _base_position: Vector2 = Vector2.ZERO
+var _reference_height_px := 0.0
 var _current_pose: String = ""
 var _facing_direction := -1.0
 var _victory_loop := false
@@ -61,8 +62,19 @@ func apply(loaded: Dictionary) -> bool:
 	_fx_motion = (loaded.get("fx_motion", {}) as Dictionary).duplicate()
 	_opaque_local_by_pose.clear()
 	_base_position = position
+	var metrics_value: Variant = loaded.get("render_metrics", {})
+	var metrics: Dictionary = metrics_value if typeof(metrics_value) == TYPE_DICTIONARY else {}
+	_reference_height_px = maxf(0.0, float(metrics.get("reference_height_px", 0.0)))
 	set_pose(AnimaLoader.DEFAULT_POSE)
 	return true
+
+
+## Tinggi badan opak yang dicatat manifest, dipakai pemanggil untuk menormalkan
+## skala. Pose-independent, tidak seperti `opaque_local_rect()`: pose tidur lebih
+## pendek daripada idle, jadi mengukurnya per pose akan mengubah ukuran Anima
+## setiap kali ia tertidur. Nol berarti manifest lama tanpa metrik.
+func reference_height_px() -> float:
+	return _reference_height_px
 
 
 func set_pose(pose: String) -> bool:

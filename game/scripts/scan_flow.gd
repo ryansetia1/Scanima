@@ -52,6 +52,14 @@ const BASE_MARGIN := 32.0
 const HUD_TOP_PAD := 24.0
 const HOME_GROUND_PORTRAIT_RATIO := HomeBackground.PLATFORM_TARGET_PORTRAIT_RATIO
 const HOME_GROUND_LANDSCAPE_RATIO := HomeBackground.PLATFORM_TARGET_LANDSCAPE_RATIO
+## Tinggi badan pada tinggi referensi 120 cm, diukur terhadap tinggi art Home.
+## Nilainya dikalibrasi ke apa yang sudah dilihat pemain: Rookie 180 cm terakhir
+## digambar 517 px pada art 1602 px (32%), dan 0,27 x pow(180/120, 0,42) = 0,32.
+## Jadi Anima yang sudah ada tetap seukuran sekarang, yang berubah hanya Anima
+## yang sheet-nya kebetulan beda resolusi.
+const HOME_BODY_SPAN_RATIO := 0.27
+const HOME_BODY_SPAN_MIN_RATIO := 0.12
+const HOME_BODY_SPAN_MAX_RATIO := 0.42
 const TOAST_GAP := 8.0
 const TOAST_MIN_HEIGHT := 76.0
 const SHOP_GAP := 6.0
@@ -145,6 +153,7 @@ var _trophy_icon_cache: Dictionary = {}
 var _expedition_controller: ExpeditionController
 var _music: MusicDirector
 var _home_ground_shadow: Sprite2D
+var _anima_body: Node2D
 var _gallery_status_revision := 0
 var _sleep_completion_timer: Timer = null
 var _sleep_sync_in_flight := false
@@ -203,10 +212,11 @@ func _ready() -> void:
 	_chapter_push.chapter_message_received.connect(_refresh_chapter_announcements)
 	_chapter_push.failed.connect(_on_chapter_push_failed)
 	_chapter_push.configure(GameState.chapter_push_enabled())
-	_home_ground_shadow = _make_home_ground_shadow(_stage)
-	_anima.pose_changed.connect(_sync_home_ground_shadow)
-	_anima.visibility_changed.connect(_sync_home_ground_shadow)
-	_sync_home_ground_shadow()
+	_anima_body = _make_anima_body_anchor()
+	_home_ground_shadow = _make_home_ground_shadow(_anima_body)
+	_anima.pose_changed.connect(_sync_home_body)
+	_anima.visibility_changed.connect(_sync_home_body)
+	_sync_home_body()
 	_team_battle_view.set_thumbnail_provider(_thumbnail_for)
 	_expedition_view.set_thumbnail_provider(_thumbnail_for)
 	_sleep_completion_timer = Timer.new()
@@ -1441,10 +1451,9 @@ func _start_evolution_ritual(row: Dictionary) -> void:
 	_sync_evolution_row(row)
 	if anima_id == str(_current_anima.get("id", "")) and _anima.visible:
 		await _anima.summon_dissolve()
-	_apply_evolution_chamber_for_row(
-		row,
-		anima_id == str(_current_anima.get("id", "")) and _destination == BottomNav.HOME
-	)
+	# Begin Evolution selalu mendarat di lobby Home: chamber adalah status global
+	# yang hidup lebih lama daripada profile tempat ritual dimulai.
+	_switch_destination(BottomNav.HOME)
 	_refresh_stats()
 	_populate_collection()
 	_say(tr("EVOLUTION_STARTED") % LocaleManager.display_name(row), true)
@@ -1529,10 +1538,7 @@ func _resume_pending_evolution(restore_navigation: bool = true) -> void:
 			)
 		return
 	if CareRules.is_evolving(row):
-		_apply_evolution_chamber_for_row(
-			row,
-			anima_id == str(_current_anima.get("id", "")) and _destination == BottomNav.HOME
-		)
+		_apply_evolution_chamber_for_row(row, _destination == BottomNav.HOME)
 	var res := await Backend.evolve_anima(
 		anima_id,
 		str(pending.get("idempotency_key", "")),
@@ -1637,10 +1643,9 @@ func _wait_for_evolution(
 
 	_evolution_poll_in_flight = false
 	_say(tr("EVOLUTION_PENDING"))
-	if anima_id == str(_current_anima.get("id", "")):
-		_apply_evolution_chamber_for_row(
-			_roster_row(anima_id), _destination == BottomNav.HOME
-		)
+	var evolving_row := _roster_row(anima_id)
+	if not evolving_row.is_empty():
+		_apply_evolution_chamber_for_row(evolving_row, _destination == BottomNav.HOME)
 	await get_tree().create_timer(EVOLUTION_POLL_RETRY_SEC).timeout
 	if (
 		_pending_evolution_matches(anima_id)
@@ -1821,7 +1826,7 @@ func _apply_evolution_chamber_for_row(row: Dictionary, on_home: bool) -> void:
 	_stage.visible = _destination == BottomNav.HOME
 	_incubator.align_visual_center(_anima.body_center_global())
 	_incubator.start_evolution()
-	_set_home_shell_state(&"ready")
+	_home_view.set_evolution(row)
 
 
 func _stop_evolution_chamber() -> void:
@@ -1829,8 +1834,11 @@ func _stop_evolution_chamber() -> void:
 		return
 	_evolution_chamber_active = false
 	_incubator.stop()
-	if _destination == BottomNav.HOME and _anima.sprite_frames != null:
-		_anima.visible = true
+	if _destination == BottomNav.HOME:
+		if not _current_anima.is_empty():
+			_home_view.set_anima(_current_anima, _busy)
+		if _anima.sprite_frames != null:
+			_anima.visible = true
 
 
 func _fetch_evolution_row(anima_id: String) -> Dictionary:
@@ -4400,6 +4408,9 @@ func _present(
 		"color_bucket": color_bucket,
 		"stage": stage,
 	}, true)
+	# Sprite dipasang sebelum baris ini, jadi `pose_changed` tadi masih membaca
+	# tinggi Anima sebelumnya. Skalanya disamakan setelah tingginya diketahui.
+	_sync_home_body()
 	GameState.remember_anima({
 		"id": anima_id,
 		"nickname": nickname,
@@ -4793,6 +4804,19 @@ static func _has_timestamp(value: Variant) -> bool:
 	return value != null and not str(value).is_empty()
 
 
+## Anchor yang diskalakan, bukan presenter-nya: `_start_motion()` menulis
+## `scale = Vector2.ONE` setiap ganti pose, jadi skala yang dipasang langsung ke
+## sprite hilang pada napas berikutnya. Arena memakai pola yang sama lewat
+## `_player_anchor`. Dibuat di kode dan hanya membungkus Anima + bayangannya
+## supaya Incubator dan FirstAnimaEffect tetap pada ukuran yang digambar.
+func _make_anima_body_anchor() -> Node2D:
+	var anchor := Node2D.new()
+	anchor.name = "AnimaBody"
+	_stage.add_child(anchor)
+	_anima.reparent(anchor, false)
+	return anchor
+
+
 func _make_home_ground_shadow(anchor: Node2D) -> Sprite2D:
 	var gradient := Gradient.new()
 	gradient.colors = PackedColorArray([
@@ -4816,7 +4840,14 @@ func _make_home_ground_shadow(anchor: Node2D) -> Sprite2D:
 	return shadow
 
 
-func _sync_home_ground_shadow(_pose: StringName = &"") -> void:
+func _sync_home_body(_pose: StringName = &"") -> void:
+	if is_instance_valid(_anima_body):
+		var body_scale := stage_scale_for(
+			float(_current_anima.get("body_height_cm", 0.0)),
+			_anima.reference_height_px(),
+			get_viewport_rect().size
+		)
+		_anima_body.scale = Vector2(body_scale, body_scale)
 	if not is_instance_valid(_home_ground_shadow):
 		return
 	_anima.sync_ground_shadow(_home_ground_shadow)
@@ -4851,6 +4882,7 @@ func _layout_for_viewport() -> void:
 	_sync_shop_chrome()
 	_place_toast(insets)
 	_stage.position = stage_position_for(viewport_size)
+	_sync_home_body()
 
 
 ## Ground line-nya diukur pada art, bukan pada viewport, dan safe area sengaja
@@ -4858,19 +4890,56 @@ func _layout_for_viewport() -> void:
 ## melihat inset, jadi ratio yang dihitung dari viewport meleset sebesar crop-nya
 ## begitu aspect device menjauh dari aspect art — kaki lalu terlihat melayang.
 static func stage_position_for(viewport_size: Vector2) -> Vector2:
-	var landscape := HomeBackground.uses_landscape(viewport_size)
-	var art := HomeBackground.floor_aligned_cover_rect(
+	var art := home_art_rect(viewport_size)
+	var ground_ratio := (
+		HOME_GROUND_LANDSCAPE_RATIO
+		if HomeBackground.uses_landscape(viewport_size)
+		else HOME_GROUND_PORTRAIT_RATIO
+	)
+	return Vector2(viewport_size.x * 0.5, art.position.y + art.size.y * ground_ratio)
+
+
+static func home_art_rect(viewport_size: Vector2) -> Rect2:
+	return HomeBackground.floor_aligned_cover_rect(
 		(
 			HomeBackground.HOME_BACKGROUND_NIGHT_LANDSCAPE
-			if landscape
+			if HomeBackground.uses_landscape(viewport_size)
 			else HomeBackground.HOME_BACKGROUND_NIGHT
 		).get_size(),
 		viewport_size
 	)
-	var ground_ratio := (
-		HOME_GROUND_LANDSCAPE_RATIO if landscape else HOME_GROUND_PORTRAIT_RATIO
+
+
+## Home menggambar sel sheet pada ukuran pikselnya, jadi tanpa normalisasi yang
+## menentukan besar Anima adalah resolusi sheet — bukan tingginya. Terukur 22
+## Agustus 2026: Adult hasil evolusi kembali 312 px sementara Rookie-nya 517 px,
+## jadi tumbuh +25% dalam cm justru menyusut jadi 60% di layar. Membagi dengan
+## `reference_height_px` persis yang sudah dilakukan arena, dan kurvanya dipinjam
+## dari `BattleScale` supaya Anima yang lebih tinggi terlihat lebih tinggi di
+## kedua layar. Nol referensi berarti manifest lama: biarkan apa adanya.
+static func stage_scale_for(
+	body_height_cm: float,
+	reference_height_px: float,
+	viewport_size: Vector2
+) -> float:
+	var art := home_art_rect(viewport_size)
+	if reference_height_px <= 0.0 or art.size.y <= 0.0:
+		return 1.0
+	var height_cm := (
+		body_height_cm if body_height_cm > 0.0 else BattleScale.BODY_HEIGHT_REFERENCE_CM
 	)
-	return Vector2(viewport_size.x * 0.5, art.position.y + art.size.y * ground_ratio)
+	var height_ratio := (
+		BattleScale.anima_display_height_cm(height_cm) / BattleScale.BODY_HEIGHT_REFERENCE_CM
+	)
+	var target := art.size.y * HOME_BODY_SPAN_RATIO * pow(
+		height_ratio, BattleScale.BODY_HEIGHT_CURVE
+	)
+	target = clampf(
+		target,
+		art.size.y * HOME_BODY_SPAN_MIN_RATIO,
+		art.size.y * HOME_BODY_SPAN_MAX_RATIO
+	)
+	return target / reference_height_px
 
 
 func _apply_margins(node: MarginContainer, insets: Vector4, side: float, vertical: float) -> void:
@@ -4945,14 +5014,11 @@ func _switch_destination(
 	)
 	_stage.visible = stage_destination
 	if destination == BottomNav.HOME:
-		if (
-			(
-				CareRules.is_evolving(_current_anima)
-				or _pending_evolution_matches(str(_current_anima.get("id", "")))
-			)
-			and GameState.pending_scan.is_empty()
-		):
-			_apply_evolution_chamber_for_row(_current_anima, true)
+		var evolving_row := _evolving_roster_row()
+		if evolving_row.is_empty() and not GameState.pending_evolution.is_empty():
+			evolving_row = _roster_row(str(GameState.pending_evolution.get("anima_id", "")))
+		if not evolving_row.is_empty() and GameState.pending_scan.is_empty():
+			_apply_evolution_chamber_for_row(evolving_row, true)
 		else:
 			_anima.visible = _anima.sprite_frames != null and not _incubator.is_active()
 	elif destination != BottomNav.SCAN:
@@ -5769,8 +5835,14 @@ func _run_hatch_demo() -> void:
 
 
 func _run_evolve_chamber_demo() -> void:
+	var demo := _current_anima.duplicate(true) if not _current_anima.is_empty() else {
+		"id": "evolve-chamber-demo",
+		"nickname": "Velumi",
+		"status": "evolving",
+	}
+	demo["status"] = "evolving"
 	_switch_destination(BottomNav.HOME)
-	_set_home_shell_state(&"ready")
+	_home_view.set_evolution(demo)
 	_evolution_chamber_active = true
 	_anima.visible = false
 	_stage.visible = true

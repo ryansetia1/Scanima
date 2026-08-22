@@ -824,6 +824,46 @@ func _initialize() -> void:
 			"Home Stage lands on the authored dais row at %s" % size
 		)
 
+	# Home menggambar sel sheet pada ukuran pikselnya, jadi tanpa normalisasi yang
+	# menentukan besar Anima adalah resolusi sheet. Angka di bawah diambil dari
+	# ritual produksi 22 Agustus 2026: Rookie Hydron 180 cm datang 517 px, Adult
+	# Drowake 225 cm datang 312 px, dan Home menggambar Drowake 40% lebih kecil
+	# walau ia 25% lebih tinggi.
+	for size in [Vector2(720, 1602), Vector2(412, 915), Vector2(2340, 1080)]:
+		var rookie_scale: float = script.stage_scale_for(180.0, 517.0, size)
+		var adult_scale: float = script.stage_scale_for(225.0, 312.0, size)
+		var rookie_px := rookie_scale * 517.0
+		var adult_px := adult_scale * 312.0
+		_check(
+			adult_px > rookie_px,
+			"Home draws the taller evolved Anima taller at %s" % size
+		)
+		# Sheet yang resolusinya beda tidak boleh mengubah ukuran di layar sama
+		# sekali; yang boleh mengubahnya hanya tinggi badan.
+		_check(
+			is_equal_approx(
+				script.stage_scale_for(180.0, 517.0, size) * 517.0,
+				script.stage_scale_for(180.0, 312.0, size) * 312.0
+			),
+			"Home size ignores sheet resolution at %s" % size
+		)
+		_check(
+			script.stage_scale_for(240.0, 400.0, size) * 400.0
+			> script.stage_scale_for(120.0, 400.0, size) * 400.0,
+			"Home size still grows with body height at %s" % size
+		)
+		var art: Rect2 = script.home_art_rect(size)
+		_check(
+			rookie_px < art.size.y * 0.42 and rookie_px > art.size.y * 0.12,
+			"Home body stays inside its span clamp at %s" % size
+		)
+	# Manifest lama tanpa render_metrics tidak boleh tiba-tiba diskalakan.
+	_check_eq(
+		script.stage_scale_for(180.0, 0.0, Vector2(720, 1602)),
+		1.0,
+		"Home leaves a metric-less manifest at native size"
+	)
+
 	var incubator := scene.find_child("Incubator", true, false) as Node2D
 	_check(incubator != null, "Stage keeps its Incubator")
 	if incubator != null:
@@ -5157,6 +5197,17 @@ func _test_evolve_profile_cta() -> void:
 		flow_source.find("_evolution_art_error_reported") >= 0,
 		"retry download art evolution tidak menumpuk toast setiap poll"
 	)
+	var ritual_start := flow_source.find("func _start_evolution_ritual")
+	var ritual_end := flow_source.find("\n\nfunc _resume_pending_evolution", ritual_start)
+	var ritual_body := flow_source.substr(
+		ritual_start, ritual_end - ritual_start
+	) if ritual_start >= 0 and ritual_end > ritual_start else ""
+	_check(
+		ritual_body.find("_switch_destination(BottomNav.HOME)") >= 0
+		and flow_source.find("_home_view.set_evolution(row)") >= 0
+		and flow_source.find("var evolving_row := _evolving_roster_row()") >= 0,
+		"Begin Evolution and cold resume land on Home with Evolution-specific chamber state"
+	)
 	_check(
 		flow_source.find("if code == \"FEATURE_DISABLED\":") >= 0
 		and flow_source.find("_resume_server_evolution") >= 0
@@ -5811,6 +5862,7 @@ func _test_home_care_actions() -> void:
 	var identity_row := home.find_child("IdentityRow", true, false) as HBoxContainer
 	var chip_gutter := home.find_child("ChipGutter", true, false) as Control
 	var anima_name := home.find_child("AnimaName", true, false) as Label
+	var anima_meta := home.find_child("AnimaMeta", true, false) as Label
 	var care_summary := home.find_child("CareSummary", true, false) as Label
 	var stage_space := home.find_child("StageSpace", true, false) as Control
 	var stage_footer_space := home.find_child("StageFooterSpace", true, false) as Control
@@ -5937,6 +5989,16 @@ func _test_home_care_actions() -> void:
 		"care": {"hunger": 80.0, "energy": 80.0, "hygiene": 80.0, "bond": 99.0},
 		"care_score": 8,
 	}
+	home.set_evolution(row)
+	_check_eq(home.shell_state(), &"evolving", "Evolution has its own Home state")
+	_check(
+		anima_name.text == tr("HOME_EVOLUTION_NAME") % "Velumi"
+		and anima_meta.text == tr("HOME_EVOLUTION_META")
+		and not primary.visible
+		and stage_space.visible
+		and stage_footer_space.visible,
+		"Evolution Home names the Anima and shows chamber copy instead of boot loading copy"
+	)
 	home.set_anima(row, false)
 	_check_eq(home.shell_state(), &"ready", "loaded companion replaces the empty state")
 	_check(not primary.visible, "ready Home hides its onboarding CTA")

@@ -16,6 +16,8 @@ BITS_INFO_BODY,"Bits buy food and items in the Shop. Winning Battle grants Bits 
 ANIMA_FALLBACK_NAME,"Anima"
 HOME_LOADING_NAME,"Preparing your habitat"
 HOME_LOADING_META,"Connecting your account and collection…"
+HOME_EVOLUTION_NAME,"%s is evolving"
+HOME_EVOLUTION_META,"Forging its next form in the Evolution Chamber…"
 HOME_ERROR_NAME,"Your habitat is offline"
 HOME_ERROR_META,"Your collection could not be loaded. Check your connection and try again."
 HOME_EMPTY_NAME,"Awaken Your First Anima"

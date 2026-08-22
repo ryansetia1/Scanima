@@ -52,14 +52,15 @@ kontradiksi.
 | Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, dan `feature_synthesis` semuanya `true` | matikan per flag |
 
 Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 25,
-`evolve_anima` 11, `replicate_webhook` 14, `battle_anima` 26, `team_battle` 8,
+`evolve_anima` 13, `replicate_webhook` 15, `battle_anima` 26, `team_battle` 8,
 `expedition` 16, `seeker` 6, `gallery` 19, `shop` 4, `care_anima` 9,
 `synthesize_anima` 6.
 
-APK debug 22 Agustus 2026 18:49 sudah di-sideload ke perangkat uji
+APK debug 22 Agustus 2026 19:48 sudah di-sideload ke perangkat uji
 (`com.rekansebangku.scanima` 0.1.0, 54,7 MB), jadi Anima Atlas, gerbang Rename,
 ritual Evolve, client Guided Synthesis, dialog Evolution Failed, dan seluruh
-polish client akhirnya ikut ke build — bukan lagi hidup dari source saja.
+polish client ikut ke build. Build terbaru juga langsung memindahkan **Begin
+Evolution** ke Home dan mengganti boot copy dengan status Evolution Chamber.
 
 Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
 wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
@@ -74,11 +75,45 @@ toast di client, dan ia ikut APK 22 Agustus 2026.
 
 Evolve juga tidak lagi mati karena satu sampel Vision yang buruk. Plan yang
 ditolak validator disampel ulang maksimal tiga kali dengan keluhan validator
-dibacakan kembali ke model, dan percobaan baru hanya dimulai selama masih di
-bawah 50 detik supaya tidak menabrak timeout client 90 detik. Plan berharga
-$0,003 versus ~$0,05 gambar, jadi ini langkah termurah untuk melawan variansi
-model; `evolve_anima` 11 membawanya, pagarnya `evolutionPlanResampleAllowed()`
-di `npm run selftest`.
+dibacakan kembali ke model **bersama JSON plan yang ditolak**, dan suhu **naik**
+0,35→0,60→0,85. Percobaan baru hanya dimulai selama masih di bawah 50 detik
+supaya tidak menabrak timeout client 90 detik. Plan berharga $0,003 versus ~$0,05
+gambar, jadi ini langkah termurah untuk melawan variansi model; pagarnya
+`evolutionPlanResampleAllowed()` di `npm run selftest`.
+
+Suhu itu sempat **turun** 0,35→0,15, dan itu membatalkan seluruh gunanya:
+terukur 22 Agustus 2026, tiga sampel Hydron berturut-turut keluar berbeda **satu
+kata dari 12.105 karakter**, jadi loop-nya membayar tiga panggilan Vision untuk
+nol informasi baru. Sampel ulang harus benar-benar sampel lain. Yang tetap
+berguna adalah koreksinya: attempt yang mengerti keluhannya memang
+memperbaikinya sendiri — satu sampel melunasi `silhouette_break_contract` dengan
+mengganti satu kata.
+
+Yang sebenarnya membunuh dua ritual Hydron itu bukan variansi model melainkan
+**validator yang menolak jawaban benar**. `source_basis` menamai struktur yang
+terlihat, jadi jawaban benarnya memang pendek, sementara lantainya 12 karakter:
+`"stubby legs"` hanya 11, dan ia menggagalkan **enam sampel Plan berturut-turut**
+sebelum satu gambar pun dibuat. Lantai itu sekarang `MIN_SOURCE_PHRASE` 4,
+disamakan dengan `source_detail` di fungsi yang sama. Dua kontrak lain berhenti
+menjatuhkan Plan karena hal yang server sudah tahu jawabannya: entri
+`derived_anatomy` yang tidak menelusuri anchor-nya dibuang (prompt v41 menyatakan
+array itu boleh kosong dan perakit prompt punya kalimat penggantinya), dan
+`realization_mode` di Adult ditegakkan ke `preserve` — satu-satunya nilai sah di
+stage itu — tanpa menyentuh `evolved_policy`. Empat dari enam plan yang ditolak
+produksi lolos setelah perbaikan ini, termasuk attempt terakhir kedua ritual.
+`evolve_anima` 13 membawanya.
+
+GPT Image E005 safety false-positive mendapat tepat **satu** redraw otomatis
+tanpa mengulang Vision. Provenance 22 Agustus 2026: reference Idle valid
+486×535 dikirim sebagai RGBA opak, dan log model mencatat `Unable to infer
+channel dimension format` sebelum output ditolak sensitif setelah 47 detik.
+Reference sekarang PNG RGB color type 2; kalau E005 masih terjadi, webhook
+memakai input allowlist + family-safe suffix dan mengganti prediction secara
+atomik lewat `replace_evolution_prediction`. Hanya exact E005 yang boleh retry,
+dua attempt total disimpan di `generations.image_attempts`, RPC service-role-only,
+dan prediction resmi berstatus failed tidak ditagih menurut dokumentasi
+Replicate. Migration `20260822121730_evolution_image_retry`,
+`replicate_webhook` 15.
 
 Sesudah pagar itu, Evolve yang sama gagal sekali lagi di post-processing, dan
 sebabnya terpisah: `stripWhiteKeylineInPlace()` melahap art putih yang berdiri

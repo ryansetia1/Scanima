@@ -9,13 +9,23 @@
 import { adminClient, json } from "../_shared/supa.ts";
 import { verifikasiTandaTangan } from "../_shared/webhook_signature.ts";
 import { finalizeSheet } from "../_shared/finalize_sheet.ts";
-import { evolutionFinalizeRetryable } from "../_shared/evolution.mjs";
-import { rahasiaWebhook } from "../_shared/replicate.ts";
+import {
+  evolutionFinalizeRetryable,
+  evolutionImageSafetyRetryable,
+  evolutionImageSafetyRetryInput,
+  evolutionWebhookUrl,
+} from "../_shared/evolution.mjs";
+import {
+  batalkanPrediksi,
+  mulaiGeneration,
+  rahasiaWebhook,
+} from "../_shared/replicate.ts";
 
 // Payload yang lolos tanda tangan pun tidak boleh menentukan dari mana kita
 // mengunduh. Kalau suatu hari secret-nya bocor, penyerang masih tidak bisa
 // menyuntikkan gambar dari host miliknya sendiri ke pustaka art bersama.
 const HOST_DIIZINKAN = ["replicate.delivery", "replicate.com"];
+const EVOLUTION_CANCEL_AFTER = "8m";
 
 function hostDiizinkan(url: string): boolean {
   try {
@@ -69,8 +79,66 @@ type GenRow = {
   photo_path: string | null;
   vision_result?: unknown;
   prediction_id?: string | null;
+  model?: string | null;
+  image_attempts?: number | null;
   animas?: unknown;
 };
+
+async function batalkanYatim(predictionId: string): Promise<void> {
+  try {
+    await batalkanPrediksi(predictionId);
+  } catch (e) {
+    console.error(
+      "batalkan retry Evolution yatim",
+      predictionId,
+      e instanceof Error ? e.message : String(e),
+    );
+  }
+}
+
+/**
+ * Satu redraw untuk safety false-positive E005, tanpa mengulang Vision.
+ *
+ * Prediction resmi yang `failed` tidak ditagih Replicate. Input retry memakai
+ * allowlist + family-safe suffix, dan RPC swap menjaga dua callback paralel
+ * tidak bisa menempelkan dua prediction ke generation yang sama.
+ */
+async function cobaRetrySafetyEvolution(
+  db: ReturnType<typeof adminClient>,
+  gen: GenRow,
+  failedPredictionId: string,
+  rawInput: unknown,
+): Promise<boolean> {
+  if (
+    gen.model !== "openai/gpt-image-2"
+    || Number(gen.image_attempts ?? 1) >= 2
+  ) return false;
+  const input = evolutionImageSafetyRetryInput(rawInput);
+  if (!input) return false;
+
+  const base = `${Deno.env.get("SUPABASE_URL")}/functions/v1/replicate_webhook`;
+  const webhook = evolutionWebhookUrl(base, gen.id);
+  const retryPredictionId = await mulaiGeneration(gen.model, input, webhook, {
+    cancelAfter: EVOLUTION_CANCEL_AFTER,
+  });
+  const { data, error } = await db.rpc("replace_evolution_prediction", {
+    p_gen_id: gen.id,
+    p_failed_prediction_id: failedPredictionId,
+    p_retry_prediction_id: retryPredictionId,
+  });
+  if (error) {
+    await batalkanYatim(retryPredictionId);
+    throw new Error(`attach retry Evolution gagal: ${error.message}`);
+  }
+  const result = (data ?? {}) as Record<string, unknown>;
+  if (!result.attached) {
+    await batalkanYatim(retryPredictionId);
+    // Callback duplikat kalah balapan terhadap retry yang sudah aktif. Ia tetap
+    // dianggap tertangani supaya prediction lama tidak menjatuhkan evolution.
+    return Boolean(result.stale);
+  }
+  return true;
+}
 
 async function muatGeneration(
   db: ReturnType<typeof adminClient>,
@@ -81,7 +149,7 @@ async function muatGeneration(
     .from("generations")
     .select(
       "id, owner_id, anima_id, kind, target_stage, status, prompt_version, photo_path, " +
-        "vision_result, prediction_id, " +
+        "vision_result, prediction_id, model, image_attempts, " +
         "animas(id, species_key, color_bucket, stage, sheet_path, typing_version)",
     )
     .eq("prediction_id", predictionId)
@@ -95,7 +163,7 @@ async function muatGeneration(
     .from("generations")
     .select(
       "id, owner_id, anima_id, kind, target_stage, status, prompt_version, photo_path, " +
-        "vision_result, prediction_id, " +
+        "vision_result, prediction_id, model, image_attempts, " +
         "animas(id, species_key, color_bucket, stage, sheet_path, typing_version)",
     )
     .eq("id", generationIdCallback)
@@ -127,7 +195,7 @@ async function muatGeneration(
     .from("generations")
     .select(
       "id, owner_id, anima_id, kind, target_stage, status, prompt_version, photo_path, " +
-        "vision_result, prediction_id, " +
+      "vision_result, prediction_id, model, image_attempts, " +
         "animas(id, species_key, color_bucket, stage, sheet_path, typing_version)",
     )
     .eq("id", row.id)
@@ -158,7 +226,13 @@ Deno.serve(async (req) => {
     return json(401, { error: "tanda tangan webhook tidak sah" });
   }
 
-  let payload: { id?: string; status?: string; output?: unknown; error?: unknown };
+  let payload: {
+    id?: string;
+    status?: string;
+    output?: unknown;
+    error?: unknown;
+    input?: unknown;
+  };
   try {
     payload = JSON.parse(body);
   } catch {
@@ -215,6 +289,27 @@ Deno.serve(async (req) => {
 
   if (alasanGagal) {
     if (isEvolve) {
+      if (
+        payload.status === "failed"
+        && evolutionImageSafetyRetryable(alasanGagal)
+      ) {
+        try {
+          if (await cobaRetrySafetyEvolution(db, gen, predictionId, payload.input)) {
+            return json(200, {
+              evolution_retry: true,
+              alasan: alasanGagal,
+            });
+          }
+        } catch (e) {
+          // Gagal dispatch/attach belum membuktikan retry tidak diterima.
+          // Balas 503 agar webhook lama dicoba lagi, bukan menandai terminal dan
+          // membuka kesempatan pemain memicu job berbayar kedua secara manual.
+          return json(503, {
+            error: e instanceof Error ? e.message : String(e),
+            retry_dispatch: true,
+          });
+        }
+      }
       const { error } = await db.rpc("fail_evolution", {
         p_gen_id: gen.id,
         p_reason: alasanGagal.slice(0, 500),

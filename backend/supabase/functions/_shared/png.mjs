@@ -91,12 +91,12 @@ function paethPredictor(a, b, c) {
  * heuristik baku libpng: jumlah nilai absolut byte hasil filter dibaca sebagai
  * signed, karena nilai yang dekat nol paling murah bagi deflate.
  */
-function applyRowFilter(type, current, previous, dest, stride) {
+function applyRowFilter(type, current, previous, dest, stride, bytesPerPixel) {
   let score = 0;
   for (let x = 0; x < stride; x += 1) {
-    const left = x >= BYTES_PER_PIXEL ? current[x - BYTES_PER_PIXEL] : 0;
+    const left = x >= bytesPerPixel ? current[x - bytesPerPixel] : 0;
     const up = previous[x];
-    const upLeft = x >= BYTES_PER_PIXEL ? previous[x - BYTES_PER_PIXEL] : 0;
+    const upLeft = x >= bytesPerPixel ? previous[x - bytesPerPixel] : 0;
     let value;
     switch (type) {
       case 1:
@@ -126,8 +126,13 @@ function applyRowFilter(type, current, previous, dest, stride) {
  * untuk mendapat filter 0 rata seperti encoder lama, yang lebih kecil pada gambar
  * dengan banyak baris identik.
  */
-export function filterScanlines(bitmap, width, height, { adaptive = true } = {}) {
-  const stride = width * BYTES_PER_PIXEL;
+export function filterScanlines(
+  bitmap,
+  width,
+  height,
+  { adaptive = true, bytesPerPixel = BYTES_PER_PIXEL } = {},
+) {
+  const stride = width * bytesPerPixel;
   const out = new Uint8Array((stride + 1) * height);
   const candidate = adaptive ? new Uint8Array(stride) : null;
   let previous = new Uint8Array(stride);
@@ -141,14 +146,21 @@ export function filterScanlines(bitmap, width, height, { adaptive = true } = {})
     let bestType = 0;
     let bestScore = Infinity;
     for (let type = 0; type <= 4; type += 1) {
-      const score = applyRowFilter(type, current, previous, candidate, stride);
+      const score = applyRowFilter(type, current, previous, candidate, stride, bytesPerPixel);
       if (score < bestScore) {
         bestScore = score;
         bestType = type;
       }
     }
     out[rowStart] = bestType;
-    applyRowFilter(bestType, current, previous, out.subarray(rowStart + 1), stride);
+    applyRowFilter(
+      bestType,
+      current,
+      previous,
+      out.subarray(rowStart + 1),
+      stride,
+      bytesPerPixel,
+    );
     previous = current;
   }
   return out;
@@ -168,12 +180,12 @@ function pngChunk(type, body) {
  * Rangkai IHDR/IDAT/IEND. Tanpa chunk tEXt, jadi piksel yang sama selalu
  * menghasilkan byte yang sama di runtime yang sama.
  */
-export function assemblePng(width, height, deflated) {
+export function assemblePng(width, height, deflated, { colorType = 6 } = {}) {
   const ihdr = new Uint8Array(13);
   const header = new DataView(ihdr.buffer);
   header.setUint32(0, width);
   header.setUint32(4, height);
-  ihdr.set([8, 6, 0, 0, 0], 8);
+  ihdr.set([8, colorType, 0, 0, 0], 8);
 
   const chunks = [
     PNG_SIGNATURE,
@@ -226,6 +238,37 @@ export async function encodeOptimizedPng(bitmap, width, height) {
     deflateBytes(filterScanlines(bitmap, width, height, { adaptive: false })),
   ]);
   return assemblePng(width, height, adaptive.length <= flat.length ? adaptive : flat);
+}
+
+/**
+ * Encode gambar opak sebagai PNG RGB (color type 2), bukan RGBA.
+ *
+ * Reference Idle Evolution sudah diratakan ke chroma green dan alpha-nya selalu
+ * 255. Mengirimnya sebagai RGBA membuat safety checker GPT Image gagal membaca
+ * dimensi channel (`Unable to infer channel dimension format`) sebelum E005.
+ * Membuang byte alpha yang konstan mempertahankan piksel tampak persis sama dan
+ * memberi checker bentuk H×W×3 yang memang ia dukung.
+ */
+export async function encodeOpaqueRgbPng(bitmap, width, height) {
+  const rgb = new Uint8Array(width * height * 3);
+  for (let src = 0, dest = 0; src < bitmap.length; src += 4, dest += 3) {
+    rgb[dest] = bitmap[src];
+    rgb[dest + 1] = bitmap[src + 1];
+    rgb[dest + 2] = bitmap[src + 2];
+  }
+  const [adaptive, flat] = await Promise.all([
+    deflateBytes(filterScanlines(rgb, width, height, { bytesPerPixel: 3 })),
+    deflateBytes(filterScanlines(rgb, width, height, {
+      adaptive: false,
+      bytesPerPixel: 3,
+    })),
+  ]);
+  return assemblePng(
+    width,
+    height,
+    adaptive.length <= flat.length ? adaptive : flat,
+    { colorType: 2 },
+  );
 }
 
 /** Bentuk yang nyaman untuk pemanggil yang sudah memegang Image ImageScript. */

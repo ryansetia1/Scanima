@@ -17,7 +17,7 @@ import {
   VFX_FORMS,
   VFX_MOTIONS,
 } from "./vision.mjs";
-import { encodeImage } from "./png.mjs";
+import { encodeOpaqueRgbPng } from "./png.mjs";
 import {
   EFFECT_UPGRADES,
   EVOLUTION_EFFECT_IDS,
@@ -87,6 +87,13 @@ export const EVOLUTION_PRESENCE_CHANNELS = Object.freeze([
 ]);
 
 const EVOLUTION_SHAPE_ROLES = Object.freeze(["dominant", "support", "counterbalance"]);
+// Field `source_basis` menamai struktur yang terlihat, ia tidak menjelaskannya,
+// jadi jawaban benarnya memang pendek. Terukur 22 Agustus 2026 pada Hydron:
+// "stubby legs" hanya 11 karakter dan plafon 12 menolaknya di enam sampel Plan
+// berturut-turut — dua ritual penuh mati sebelum satu gambar pun dibuat. Lantai
+// ini disamakan dengan `source_detail` di fungsi yang sama, yang sejak awal
+// memakai 4 untuk frasa sejenis.
+const MIN_SOURCE_PHRASE = 4;
 const EVOLUTION_SIMPLIFICATION_ACTIONS = Object.freeze(["merge", "enlarge", "omit"]);
 const EVOLUTION_REPETITION_POLICIES = Object.freeze([
   "none",
@@ -239,9 +246,12 @@ function validateV23IdentityPlan(plan, opts, issues) {
   }
 
   if (opts.targetStage === 2) {
-    if (invariants.some((item) => item.realization_mode !== "preserve")) {
-      issues.push("Adult harus preserve seluruh Identity Invariants");
-    }
+    // Adult punya tepat satu nilai sah, dan prompt sudah menyebutnya "always
+    // preserve for Adult". `evolved_policy` dibiarkan apa adanya karena ia
+    // menyimpan apa yang boleh terjadi nanti; yang ditegakkan di sini hanya
+    // perwujudan stage ini. Kontrak yang jawabannya sudah ditentukan server
+    // tidak perlu menjatuhkan Plan saat model salah menuliskannya.
+    for (const item of invariants) item.realization_mode = "preserve";
     plan.identity_invariants = invariants;
     return;
   }
@@ -453,7 +463,7 @@ function validateV25ShapeClarityPlan(plan, opts, issues) {
   }
   if (
     primaryShapes.some((item) =>
-      item.source_basis.length < 12
+      item.source_basis.length < MIN_SOURCE_PHRASE
       || item.stage_expression.length < 12
       || !EVOLUTION_SHAPE_ROLES.includes(item.visual_role)
     )
@@ -471,7 +481,10 @@ function validateV25ShapeClarityPlan(plan, opts, issues) {
     source_basis: normalizedText(rawMotif.source_basis, 320),
     stage_expression: normalizedText(rawMotif.stage_expression, 360),
   };
-  if (dominantMotif.source_basis.length < 12 || dominantMotif.stage_expression.length < 12) {
+  if (
+    dominantMotif.source_basis.length < MIN_SOURCE_PHRASE
+    || dominantMotif.stage_expression.length < 12
+  ) {
     issues.push("dominant_motif v25 harus punya source dan stage expression");
   }
 
@@ -1079,18 +1092,20 @@ function validateV22SilhouettePlan(plan, opts, issues) {
     issues.push("derived_anatomy harus array dengan maksimal 4 entri");
   } else if (anatomy.some((item) => !item.new_part || !item.derived_from)) {
     issues.push("derived_anatomy harus menautkan new_part ke derived_from");
-  } else if (
-    anatomy.some((item) => {
-      const anchor = anchors[item.source_anchor_index - 1];
-      return !Number.isInteger(item.source_anchor_index)
-        || !anchor
-        || anchor.mode !== "transform"
-        || !tracesLineageAnchor(item.derived_from, anchor.source_feature);
-    })
-  ) {
-    issues.push("derived_anatomy harus menunjuk source_anchor_index transform yang sama dengan derived_from");
   } else {
-    plan.derived_anatomy = anatomy;
+    // Prompt v41 menyatakan array ini boleh kosong dan perakit prompt sudah
+    // punya kalimat pengganti saat ia kosong, jadi entri yang tidak menelusuri
+    // anchor-nya cukup dibuang. Terukur 22 Agustus 2026 pada Hydron: dua dari
+    // tiga entri sah, dan yang ketiga menunjuk sebuah Identity Invariant alih
+    // alih anchor — menjatuhkan seluruh Plan karena satu baris pelengkap berarti
+    // membuang desain yang sisanya lolos setiap kontrak lain.
+    plan.derived_anatomy = anatomy.filter((item) => {
+      const anchor = anchors[item.source_anchor_index - 1];
+      return Number.isInteger(item.source_anchor_index)
+        && anchor
+        && anchor.mode === "transform"
+        && tracesLineageAnchor(item.derived_from, anchor.source_feature);
+    });
   }
 }
 
@@ -1122,7 +1137,7 @@ export async function buildEvolutionIdleReference(pngBuffer, manifest) {
     reference.bitmap[offset + 2] = Math.round(cropped.bitmap[offset + 2] * alpha);
     reference.bitmap[offset + 3] = 255;
   }
-  return await encodeImage(reference);
+  return await encodeOpaqueRgbPng(reference.bitmap, reference.width, reference.height);
 }
 
 /**
@@ -1646,6 +1661,64 @@ export const EVOLUTION_PLAN_RESAMPLE_DEADLINE_MS = 50_000;
 export function evolutionPlanResampleAllowed(attempt, elapsedMs) {
   return attempt < EVOLUTION_PLAN_MAX_ATTEMPTS
     && elapsedMs < EVOLUTION_PLAN_RESAMPLE_DEADLINE_MS;
+}
+
+/**
+ * Hanya safety false-positive GPT Image E005 yang boleh memicu redraw otomatis.
+ *
+ * Replicate tidak menagih prediction resmi yang statusnya `failed`, tetapi itu
+ * bukan izin untuk mengulang semua error. Timeout, transport, dan post-process
+ * punya recovery masing-masing; memperluas predicate ini dapat membuat loop
+ * generation berbayar.
+ */
+export function evolutionImageSafetyRetryable(message) {
+  const msg = String(message ?? "");
+  return /\bE005\b/.test(msg) && /flagged as sensitive/i.test(msg);
+}
+
+const EVOLUTION_IMAGE_RETRY_KEYS = [
+  "aspect_ratio",
+  "background",
+  "input_images",
+  "moderation",
+  "number_of_images",
+  "output_compression",
+  "output_format",
+  "prompt",
+  "quality",
+];
+
+/**
+ * Salin input resmi kita dengan allowlist lalu tambahkan konteks family-safe.
+ * `null` berarti payload webhook tidak cukup aman/lengkap untuk didispatch lagi.
+ */
+export function evolutionImageSafetyRetryInput(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const prompt = typeof raw.prompt === "string" ? raw.prompt.trim() : "";
+  const refs = Array.isArray(raw.input_images) ? raw.input_images : [];
+  if (!prompt || refs.length !== 1 || typeof refs[0] !== "string") return null;
+  try {
+    const ref = new URL(refs[0]);
+    if (
+      ref.protocol !== "https:"
+      || !ref.hostname.endsWith(".supabase.co")
+      || !ref.pathname.includes("/storage/v1/object/sign/anima_sheets/")
+    ) return null;
+  } catch {
+    return null;
+  }
+
+  const input = {};
+  for (const key of EVOLUTION_IMAGE_RETRY_KEYS) {
+    if (Object.hasOwn(raw, key)) input[key] = raw[key];
+  }
+  input.prompt = `${prompt}
+
+SAFETY RETRY — Render only the same fictional non-human creature evolved from
+the safe source shown in the reference. Family-friendly game sprite sheet. No
+people, human anatomy, nudity, sexuality, gore, wounds, realistic violence, or
+disturbing content. Battle effects are abstract elemental shapes only.`;
+  return input;
 }
 
 /** Transient finalize failures should 503 so Replicate retries; QA/postprocess should fail. */

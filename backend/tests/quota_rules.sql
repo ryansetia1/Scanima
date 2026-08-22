@@ -3785,6 +3785,38 @@ begin
     'uji',
     0.001
   );
+  v_j := public.attach_evolution_prediction(v_evolution_gen, 'evolution-image-attempt-1');
+  assert (v_j->>'attached')::boolean
+         and (v_j->>'image_attempts')::int = 1,
+         'prediction image pertama harus tercatat sebagai attempt 1';
+  v_j := public.replace_evolution_prediction(
+    v_evolution_gen,
+    'evolution-image-attempt-1',
+    'evolution-image-attempt-2'
+  );
+  assert (v_j->>'attached')::boolean
+         and (v_j->>'image_attempts')::int = 2
+         and v_j->>'prediction_id' = 'evolution-image-attempt-2',
+         'E005 boleh mengganti prediction tepat satu kali';
+  v_j2 := public.replace_evolution_prediction(
+    v_evolution_gen,
+    'evolution-image-attempt-1',
+    'evolution-image-stale'
+  );
+  assert not (v_j2->>'attached')::boolean
+         and (v_j2->>'stale')::boolean
+         and (select prediction_id from public.generations where id = v_evolution_gen)
+             = 'evolution-image-attempt-2',
+         'callback E005 duplikat tidak boleh menimpa retry yang sudah aktif';
+  v_j2 := public.replace_evolution_prediction(
+    v_evolution_gen,
+    'evolution-image-attempt-2',
+    'evolution-image-attempt-3'
+  );
+  assert not (v_j2->>'attached')::boolean
+         and (v_j2->>'exhausted')::boolean
+         and (select image_attempts from public.generations where id = v_evolution_gen) = 2,
+         'retry image harus berhenti setelah dua attempt total';
   v_j := public.commit_evolution(
     v_evolution_gen,
     u1::text || '/evolution-main/adult.png',
@@ -3887,8 +3919,17 @@ begin
     ok := false;
   exception when insufficient_privilege then ok := true;
   end;
+  begin
+    perform public.replace_evolution_prediction(
+      v_evolution_gen,
+      'forbidden-old',
+      'forbidden-new'
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
   perform set_config('role', 'none', true);
-  assert ok, 'client tidak boleh memanggil RPC evolusi service-role langsung';
+  assert ok, 'client tidak boleh memanggil RPC evolusi termasuk retry image service-role langsung';
 
   insert into public.anima_evolution_locks (
     anima_id, target_stage, sheet_path, manifest, evolution_plan, prompt_version

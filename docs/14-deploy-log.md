@@ -2,6 +2,98 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## "stubby legs" — validator menolak jawaban benar
+
+22 Agustus 2026, `evolve_anima` 12→13. Dua ritual Hydron berikutnya (12:52 dan
+12:53 UTC) mati lagi sebelum satu gambar pun dibuat, dan pembongkarannya memberi
+dua temuan terpisah.
+
+Temuan pertama: **resample versi 12 tidak me-resample apa pun.** Enam prediction
+Gemini diambil ulang dari Replicate dan divalidasi lokal terhadap opsi produksi
+yang direkonstruksi. Ketiga sampel run 12:53 berbeda **satu kata dari 12.105
+karakter** (`derived from a bottle` → `derived from a vessel`); run 12:52 malah
+menghasilkan tiga plan identik. Sebabnya suhu retry yang diturunkan ke 0,15
+digabung dengan JSON plan lama plus perintah "preserve every already-valid value
+exactly" — dekoding jadi nyaris greedy dan model membacakan ulang mode yang sama.
+Tiga panggilan Vision, nol informasi baru. Suhu sekarang **naik**
+0,35→0,60→0,85; korekinya tetap, karena ia terbukti berguna saat model mengerti
+keluhannya: satu attempt melunasi `silhouette_break_contract` sendiri dengan
+mengganti satu kata.
+
+Temuan kedua, yang sebenarnya membunuh kedua ritual: **validator menolak jawaban
+yang benar.** `primary_shapes v25 harus punya source, expression, dan visual_role
+sah` muncul di **enam dari enam** sampel, dan penyebabnya tunggal —
+`source_basis` `"stubby legs"` panjangnya 11 karakter sementara lantainya 12.
+Field itu menamai struktur yang terlihat, ia tidak menjelaskannya, jadi jawaban
+benarnya memang pendek; `source_detail` di fungsi yang sama sudah memakai lantai
+4 sejak awal. Lantai `source_basis` dan `dominant_motif.source_basis` disamakan
+ke `MIN_SOURCE_PHRASE` 4.
+
+Dua kontrak lain berhenti menjatuhkan Plan karena hal yang jawabannya sudah
+ditentukan server. Entri `derived_anatomy` yang tidak menelusuri anchor-nya
+dibuang alih-alih membatalkan seluruh desain — prompt v41 menyatakan array itu
+boleh kosong dan `assembleEvolvePrompt` sudah punya kalimat pengganti untuk
+keadaan itu; pada Hydron dua dari tiga entri sah dan yang ketiga menunjuk sebuah
+Identity Invariant. Dan `realization_mode` di Adult ditegakkan ke `preserve`,
+satu-satunya nilai sah di stage itu dan sudah tertulis di prompt sebagai "always
+preserve for Adult"; `evolved_policy` tidak disentuh karena ia menyimpan apa yang
+boleh terjadi di stage berikutnya.
+
+Verifikasi terhadap keenam plan produksi yang ditolak: empat lolos setelah
+perbaikan, termasuk **attempt terakhir dari kedua ritual**, jadi keduanya akan
+sampai ke image generation. Dua sisanya gagal pada `kind_noun` — persis error
+yang resample terbukti bisa perbaiki sendiri. Pagarnya di `npm run selftest`
+scenario 36: `"stubby legs"` wajib diterima, `"rim"` (3 karakter) wajib tetap
+ditolak, entri `derived_anatomy` tanpa anchor wajib dibuang tanpa melempar, dan
+Adult wajib menegakkan `preserve` tanpa menulis ulang `evolved_policy`.
+Mengembalikan lantai ke 12 membuat selftest gagal dengan pesan produksi yang
+sama persis. 42 skenario + 12 signature check lulus; smoke `evolve_anima` 401.
+
+## E005 satu redraw, Plan membawa koreksi lama, Home bicara Evolution
+
+22 Agustus 2026, `evolve_anima` 11→12 dan `replicate_webhook` 14→15. Attempt
+Hydron pukul 12:05 UTC lolos Vision pada sampel kedua lalu GPT Image berhenti
+47,08 detik kemudian dengan `The input or output was flagged as sensitive
+(E005)`. Output kosong. Log sebelum generation mencatat `NSFW check failed for
+image 0: Unable to infer channel dimension format`; reference privatnya sendiri
+valid PNG 486×535, tetapi opak RGBA 4-channel. `buildEvolutionIdleReference()`
+sekarang mengodekannya sebagai PNG RGB color type 2. Exact E005 masih diberi
+satu redraw dengan allowlist + family-safe suffix, memakai Plan tersimpan dan
+tanpa mengulang Gemini. Batas dua attempt total dijaga kolom
+`generations.image_attempts` dan RPC service-role-only
+`replace_evolution_prediction`; callback paralel yang kalah membatalkan
+prediction yatim. Error lain tidak masuk jalur ini. Dokumentasi billing
+Replicate saat deploy menyatakan official prediction berstatus `failed` tidak
+ditagih.
+
+Attempt berikutnya pukul 12:09 membuktikan pagar Plan versi 11 berjalan tetapi
+konteks koreksinya kurang: tiga Gemini selesai, lalu validator menolak. Attempt
+pertama salah anchor `derived_anatomy`; kedua memperbaikinya tetapi lupa
+`kind_noun`; ketiga memperbaiki kind lalu meregresi invariant Adult ke
+`transfigure` dan merusak anchor lagi. Sebabnya correction hanya membawa pesan
+error sambil menyuruh “keep every other rule”, tetapi tidak membawa JSON yang
+harus dipertahankan. Versi 12 menempelkan JSON plan yang ditolak sebagai data,
+menurunkan suhu retry 0,35→0,15, dan meminta field valid dipertahankan persis.
+Validator tidak dilonggarkan.
+
+Migration `20260822121730_evolution_image_retry` di-push setelah dry-run tunggal,
+`quota_rules.sql` lulus di production, dan probe hak menunjukkan `anon=false`,
+`authenticated=false`, `service_role=true`, serta nol row di atas limit.
+`npm run selftest` lulus 42 skenario + 12 signature check. Smoke deploy:
+`evolve_anima` 401 dengan `verify_jwt=true`; `replicate_webhook` 401 untuk
+signature palsu dengan `verify_jwt=false`.
+
+Client source juga menutup bug terpisah. **Begin Evolution** sekarang langsung
+ke Home, termasuk untuk Anima bench. Home memakai state `evolving` dengan nama
+Anima dan copy Evolution Chamber; sebelumnya chamber memanggil state `ready`
+yang jatuh ke fallback `HOME_LOADING_*`, sehingga menampilkan “Preparing your
+habitat / Connecting your account…” di tengah ritual. Cold resume mencari
+Anima evolving di seluruh roster. Verifikasi: `test_scan_ui` 1269 dan
+`test_i18n` 4759; screenshot 720×1280 menunjukkan chamber, nama, dan copy baru
+tanpa boot loading. APK debug 54,7 MB diverifikasi hanya memuat izin INTERNET +
+CAMERA, plugin kamera ada di DEX, signature v2 sah, lalu terpasang ke perangkat
+uji pukul 19:48 dan cold launch bertahan tanpa crash.
+
 ## Plan Evolve disampel ulang, bukan dijatuhkan (backend)
 
 22 Agustus 2026, `evolve_anima` 10→11. Evolve Hydron gagal untuk ketiga kalinya,
