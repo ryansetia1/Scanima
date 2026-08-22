@@ -161,7 +161,9 @@ var _synthesis_poll_in_flight := false
 var _synthesis_art_error_reported := false
 var _synthesis_return_destination: StringName = BottomNav.COLLECTION
 var _synthesis_history_revision := 0
+var _synthesis_history_texture_cache: Dictionary = {}
 var _queued_synthesis_dialog: Dictionary = {}
+var _queued_evolution_failure: Dictionary = {}
 var _pending_synthesis_payload: Dictionary = {}
 var _active_synthesis_result: Dictionary = {}
 var _pending_retreat := ""
@@ -177,6 +179,13 @@ var _chapter_push: ChapterPush
 
 ## Singleton plugin Android, null di desktop dan di test headless.
 var _picker: Object = null
+
+
+## Relay gulir sentuh dipasang di sini, bukan di `_ready()`: seluruh anak shell
+## sudah masuk pohon sebelum `_ready()` berjalan, jadi memasangnya di sana akan
+## melewatkan setiap Control yang lahir bersama scene.
+func _enter_tree() -> void:
+	UiJuice.install_touch_scroll(get_tree())
 
 
 func _ready() -> void:
@@ -1007,11 +1016,12 @@ func _present_queued_synthesis_dialog() -> void:
 	)
 
 
-func _present_synthesis_dialog_after_modal() -> void:
-	if _queued_synthesis_dialog.is_empty():
+func _present_queued_dialogs_after_modal() -> void:
+	if _queued_synthesis_dialog.is_empty() and _queued_evolution_failure.is_empty():
 		return
 	await get_tree().create_timer(0.20).timeout
 	_present_queued_synthesis_dialog()
+	_present_queued_evolution_failure()
 
 
 func _show_synthesis_result(row: Dictionary) -> void:
@@ -1038,12 +1048,15 @@ func _refresh_synthesis_history() -> void:
 	var row := _profile_anima if not _profile_anima.is_empty() else _current_anima
 	var anima_id := str(row.get("id", ""))
 	var local_history := GameState.as_dict(row.get("synthesis_history"))
+	var textures := _cached_synthesis_history_textures(anima_id)
 	_details_view.set_history_source_names(_history_source_names())
-	_details_view.set_synthesis_history(local_history)
+	_details_view.set_synthesis_history(local_history, textures)
 	if anima_id.is_empty() or local_history.is_empty():
 		_details_view.set_synthesis_history_loading(false)
 		return
-	_details_view.set_synthesis_history_loading(true)
+	# Cache langsung dicat; request ini hanya me-refresh metadata dan mengisi slot
+	# yang belum ada, jadi reopen Profile tidak kembali ke skeleton.
+	_details_view.set_synthesis_history_loading(textures.size() < 2)
 	var account_epoch := GameState.session_epoch
 	var res := await Backend.synthesize_anima("history", {"result_anima_id": anima_id})
 	if not Backend.response_applies(res, account_epoch):
@@ -1057,21 +1070,64 @@ func _refresh_synthesis_history() -> void:
 	if history.is_empty():
 		_details_view.set_synthesis_history_loading(false)
 		return
-	var textures: Dictionary = {}
 	var source_a := GameState.as_dict(history.get("source_a"))
 	var source_b := GameState.as_dict(history.get("source_b"))
-	textures["source_a"] = await _synthesis_history_texture(str(source_a.get("thumbnail_url", "")))
-	textures["source_b"] = await _synthesis_history_texture(str(source_b.get("thumbnail_url", "")))
+	if not textures.has("source_a"):
+		textures["source_a"] = await _synthesis_history_texture(
+			str(source_a.get("thumbnail_url", "")),
+			_synthesis_history_cache_id(anima_id, "source_a")
+		)
+	if not textures.has("source_b"):
+		textures["source_b"] = await _synthesis_history_texture(
+			str(source_b.get("thumbnail_url", "")),
+			_synthesis_history_cache_id(anima_id, "source_b")
+		)
 	if revision == _synthesis_history_revision and anima_id == str(_profile_anima.get("id", "")):
 		_details_view.set_synthesis_history(history, textures)
 		_details_view.set_synthesis_history_loading(false)
 
 
+func _cached_synthesis_history_textures(anima_id: String) -> Dictionary:
+	var textures: Dictionary = {}
+	if anima_id.is_empty():
+		return textures
+	for slot: String in ["source_a", "source_b"]:
+		var cache_id := _synthesis_history_cache_id(anima_id, slot)
+		var texture := _cached_synthesis_history_texture(cache_id)
+		if texture != null:
+			textures[slot] = texture
+	return textures
+
+
+func _cached_synthesis_history_texture(cache_id: String) -> Texture2D:
+	if _synthesis_history_texture_cache.has(cache_id):
+		return _synthesis_history_texture_cache[cache_id] as Texture2D
+	var path := Backend.atlas_thumb_cache_path(cache_id)
+	if not FileAccess.file_exists(path):
+		return null
+	var image := Image.load_from_file(path)
+	if image == null or image.is_empty():
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+		return null
+	var texture := ImageTexture.create_from_image(image)
+	_synthesis_history_texture_cache[cache_id] = texture
+	return texture
+
+
+func _synthesis_history_cache_id(anima_id: String, slot: String) -> String:
+	return "history_%s_%s_%s" % [
+		GameState.uid().sha256_text().left(16),
+		anima_id.sha256_text().left(24),
+		slot,
+	]
+
+
 ## History menerima crop Idle transparan yang sama dengan Atlas. Jangan key ulang
 ## warna di client: chroma reference untuk model bersifat lossy terhadap Anima hijau.
-func _synthesis_history_texture(url: String) -> Texture2D:
-	if url.is_empty():
-		return null
+func _synthesis_history_texture(url: String, cache_id: String) -> Texture2D:
+	var cached := _cached_synthesis_history_texture(cache_id)
+	if cached != null or url.is_empty():
+		return cached
 	var account_epoch := GameState.session_epoch
 	var res := await Backend.download_url(url)
 	if not Backend.response_applies(res, account_epoch):
@@ -1081,7 +1137,10 @@ func _synthesis_history_texture(url: String) -> Texture2D:
 	var image := Image.new()
 	if image.load_png_from_buffer(res.bytes) != OK:
 		return null
-	return ImageTexture.create_from_image(image)
+	Backend.store_atlas_thumb(cache_id, res.bytes)
+	var texture := ImageTexture.create_from_image(image)
+	_synthesis_history_texture_cache[cache_id] = texture
+	return texture
 
 
 func _synthesis_error_key(code: String) -> String:
@@ -1526,7 +1585,12 @@ func _resume_pending_evolution(restore_navigation: bool = true) -> void:
 			"GENERATION_DISPATCH_TIMEOUT",
 		]:
 			_evolution_resume_in_flight = false
-			await _fail_evolution(row, restore_navigation)
+			await _fail_evolution(
+				row,
+				restore_navigation,
+				"EVOLUTION_FAILED_BODY" if code == "EVOLUTION_FAILED"
+					else "EVOLUTION_TIMEOUT_BODY"
+			)
 			return
 	_evolution_resume_in_flight = false
 	await _wait_for_evolution(anima_id, prior_stage, target_stage, restore_navigation)
@@ -1653,7 +1717,11 @@ func _evolution_suggested_name(anima_id: String) -> String:
 	return str(res.data.get("suggested_name", "")).strip_edges()
 
 
-func _fail_evolution(row: Dictionary, restore_navigation: bool) -> void:
+func _fail_evolution(
+	row: Dictionary,
+	restore_navigation: bool,
+	body_key: String = "EVOLUTION_FAILED_BODY"
+) -> void:
 	GameState.finish_evolution()
 	_evolution_art_error_reported = false
 	var anima_id := str(row.get("id", ""))
@@ -1667,7 +1735,49 @@ func _fail_evolution(row: Dictionary, restore_navigation: bool) -> void:
 	elif restore_navigation:
 		_refresh_stats()
 		_populate_collection()
-	_say(tr("EVOLUTION_FAILED") % LocaleManager.display_name(row), true)
+	_queue_evolution_failure_dialog(anima_id, LocaleManager.display_name(row), body_key)
+
+
+# A toast is the wrong shape for this one: the ritual runs for minutes in the
+# background, so the player is rarely looking when it lands, and the only way
+# back in is a button that lives two screens away. The dialog carries the retry.
+func _queue_evolution_failure_dialog(
+	anima_id: String,
+	display_name: String,
+	body_key: String
+) -> void:
+	_queued_evolution_failure = {
+		"anima_id": anima_id,
+		"display_name": display_name,
+		"body_key": body_key,
+	}
+	_present_queued_evolution_failure()
+
+
+func _present_queued_evolution_failure() -> void:
+	if _queued_evolution_failure.is_empty() or _shell_modal.visible:
+		return
+	var queued := _queued_evolution_failure
+	_queued_evolution_failure = {}
+	var anima_id := str(queued.get("anima_id", ""))
+	var row := _roster_row(anima_id)
+	var body := tr(str(queued.get("body_key", "EVOLUTION_FAILED_BODY"))) % str(
+		queued.get("display_name", "")
+	)
+	# Retry only when the server would accept one; otherwise the dialog still
+	# has to explain what happened, just without a button that cannot work.
+	if row.is_empty() or not _evolution_enabled() or not CareRules.evolution_ready(row):
+		_modal_context = &""
+		_shell_modal.open_info(tr("EVOLUTION_FAILED_DIALOG_TITLE"), body, tr("CORE_INFO_CLOSE"))
+		return
+	_pending_evolve_row = row.duplicate(true)
+	_modal_context = &"evolution_failure"
+	_shell_modal.open_confirm(
+		tr("EVOLUTION_FAILED_DIALOG_TITLE"),
+		body,
+		tr("ACTION_RETRY"),
+		tr("ACTION_CANCEL")
+	)
 
 
 func _evolution_success_copy(row: Dictionary) -> String:
@@ -1903,7 +2013,7 @@ func _modal_confirmed(text: String) -> void:
 	match context:
 		&"delete":
 			_delete_confirmed()
-		&"evolve":
+		&"evolve", &"evolution_failure":
 			_evolve_confirmed()
 		&"synthesis_attempt":
 			_synthesis_attempt_confirmed()
@@ -1934,7 +2044,7 @@ func _modal_confirmed(text: String) -> void:
 			var row := _active_synthesis_result
 			_active_synthesis_result = {}
 			_show_synthesis_result(row)
-	call_deferred("_present_synthesis_dialog_after_modal")
+	call_deferred("_present_queued_dialogs_after_modal")
 
 
 func _modal_choice_selected(choice: String) -> void:
@@ -1946,7 +2056,7 @@ func _modal_choice_selected(choice: String) -> void:
 		_start_google_separate()
 	else:
 		_show_transfer_confirmation()
-	call_deferred("_present_synthesis_dialog_after_modal")
+	call_deferred("_present_queued_dialogs_after_modal")
 
 
 func _modal_canceled() -> void:
@@ -1954,7 +2064,7 @@ func _modal_canceled() -> void:
 	_modal_context = &""
 	if context == &"delete":
 		_pending_delete_id = ""
-	elif context == &"evolve":
+	elif context == &"evolve" or context == &"evolution_failure":
 		_pending_evolve_row = {}
 	elif context == &"synthesis_attempt":
 		_pending_synthesis_payload = {}
@@ -1972,7 +2082,7 @@ func _modal_canceled() -> void:
 		_show_next_expedition_level_up()
 	elif context == &"synthesis_success":
 		_active_synthesis_result = {}
-	call_deferred("_present_synthesis_dialog_after_modal")
+	call_deferred("_present_queued_dialogs_after_modal")
 
 
 func _show_details_help(title: String, body: String) -> void:
@@ -2534,6 +2644,7 @@ func _reset_account_presentation() -> void:
 	_profile_anima = {}
 	_roster_error = ""
 	_thumbnail_cache.clear()
+	_synthesis_history_texture_cache.clear()
 	_team_battle_team = {}
 	_team_battle_candidates.clear()
 	_team_battle_daily = {}

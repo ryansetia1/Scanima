@@ -1,6 +1,7 @@
 // Moderation Vision sekali per art_hash. Hanya untuk Edge runtime.
 import { jalankanPrediksi } from "./replicate.ts";
 import { parseModeration } from "./gallery_shared.mjs";
+import { VISION_THINKING } from "./vision.mjs";
 
 const MODEL_VISION = Deno.env.get("VISION_MODEL") ?? "google/gemini-2.5-flash";
 
@@ -39,8 +40,7 @@ export async function moderateSheetImage(signedUrl) {
     temperature: 0.2,
     top_p: 0.9,
     max_output_tokens: 512,
-    thinking_budget: 0,
-    dynamic_thinking: false,
+    ...VISION_THINKING,
   }, 45_000);
   return parseModeration(raw);
 }

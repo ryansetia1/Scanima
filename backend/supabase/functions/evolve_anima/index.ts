@@ -4,12 +4,13 @@
 // without Replicate; otherwise Vision + one image; webhook commits.
 
 import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
-import { extractJson, normalizeSuggestedName } from "../_shared/vision.mjs";
+import { extractJson, normalizeSuggestedName, VISION_THINKING } from "../_shared/vision.mjs";
 import {
   assembleEvolvePrompt,
   buildEvolvePromptContext,
   buildEvolutionIdleReference,
   compactPriorEvolutionDesign,
+  evolutionPlanResampleAllowed,
   evolutionVisionInstruction,
   evolutionWebhookUrl,
   validateEvolutionPlan,
@@ -457,6 +458,7 @@ Deno.serve(async (req) => {
   };
 
   let plan: Record<string, unknown>;
+  let percobaanPlan = 0;
   if (hasStoredPlan) {
     try {
       plan = validateEvolutionPlan(storedPlan, planValidationOptions).plan;
@@ -541,35 +543,61 @@ Deno.serve(async (req) => {
         : "") +
       "Analyse the attached current Idle reference and respond with the Evolution Plan JSON only.";
 
-    let mentah: unknown;
-    try {
-      mentah = await jalankanPrediksi(MODEL_VISION, {
-        prompt: visionPrompt,
-        images: [referenceUrl],
-        system_instruction: evolutionVisionInstruction(
-          prompts.vision_evolve_system,
-          prompts.vision_evolve_schema,
-        ),
-        temperature: 0.35,
-        top_p: 0.95,
-        max_output_tokens: 4096,
-        thinking_budget: 0,
-        dynamic_thinking: false,
-      });
-    } catch (e) {
-      const alasan = e instanceof Error ? e.message : String(e);
-      await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: alasan.slice(0, 500) });
-      return json(502, { error: alasan });
-    }
+    // Satu sampel Vision dulu menentukan nasib seluruh evolusi: begitu validator
+    // menolaknya, pemain harus memulai ritual dari awal. Padahal yang ditolak
+    // adalah langkah termurah di pipeline, dan validator sudah menyebut persis
+    // kontrak mana yang dilanggar. Jadi plan yang ditolak disampel ulang dengan
+    // keluhan validator dibacakan kembali ke model, bukan diulang buta.
+    // Terukur 22 Agustus 2026 pada Hydron: satu attempt melanggar empat kontrak
+    // sekaligus (invariant transfigure di Adult, kind_noun tidak diulang,
+    // kategori lari ke serpentine, derived_anatomy salah anchor) sementara
+    // attempt sebelumnya pada Anima yang sama lolos utuh. Itu variansi model,
+    // dan variansi yang murah dilawan dengan sampel kedua.
+    const mulaiPlan = Date.now();
+    let koreksi = "";
+    for (;;) {
+      percobaanPlan += 1;
+      let mentah: unknown;
+      try {
+        mentah = await jalankanPrediksi(MODEL_VISION, {
+          prompt: visionPrompt + koreksi,
+          images: [referenceUrl],
+          system_instruction: evolutionVisionInstruction(
+            prompts.vision_evolve_system,
+            prompts.vision_evolve_schema,
+          ),
+          temperature: 0.35,
+          top_p: 0.95,
+          // Plan Evolve adalah keluaran Vision terpanjang yang dimiliki game:
+          // terukur 3.230 token teks pada stage 2, dan stage 3 lebih panjang lagi
+          // karena ia menyalin ulang seluruh invariant Adult. 4.096 memuatnya
+          // hanya dengan sisa tipis, sementara token yang tidak ditulis tidak
+          // ditagih — jadi plafonnya dinaikkan, bukan dipepetkan.
+          max_output_tokens: 8192,
+          ...VISION_THINKING,
+        });
+      } catch (e) {
+        const alasan = e instanceof Error ? e.message : String(e);
+        await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: alasan.slice(0, 500) });
+        return json(502, { error: alasan });
+      }
 
-    try {
-      const parsed = extractJson(mentah);
-      const validated = validateEvolutionPlan(parsed, planValidationOptions);
-      plan = validated.plan;
-    } catch (e) {
-      const alasan = e instanceof Error ? e.message : String(e);
-      await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: alasan.slice(0, 500) });
-      return json(502, { error: alasan });
+      try {
+        plan = validateEvolutionPlan(extractJson(mentah), planValidationOptions).plan;
+        break;
+      } catch (e) {
+        const alasan = e instanceof Error ? e.message : String(e);
+        if (!evolutionPlanResampleAllowed(percobaanPlan, Date.now() - mulaiPlan)) {
+          await db.rpc("fail_evolution", {
+            p_gen_id: genId,
+            p_reason: `${alasan} [${percobaanPlan} percobaan plan]`.slice(0, 500),
+          });
+          return json(502, { error: alasan, percobaan_plan: percobaanPlan });
+        }
+        koreksi = "\nYour previous Evolution Plan was rejected by the schema validator: " +
+          `${alasan}.\nReturn a corrected Plan that fixes exactly these problems ` +
+          "while keeping every other rule above satisfied.";
+      }
     }
 
     const { error: errReserve } = await db.rpc("reserve_evolution", {
@@ -578,7 +606,8 @@ Deno.serve(async (req) => {
       p_plan: plan,
       p_prompt_version: activePromptVersion,
       p_model: modelGambar,
-      p_cost: biaya,
+      // `biaya` sudah memuat satu panggilan Vision; sampel ulang menambahnya.
+      p_cost: biaya + BIAYA_VISION_USD * (percobaanPlan - 1),
     });
     if (errReserve) {
       if (errReserve.message.includes("SPEND_CAP")) {

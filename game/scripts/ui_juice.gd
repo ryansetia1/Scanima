@@ -39,6 +39,32 @@ static func install_buttons(root: Node) -> void:
 	_install_recursive(root)
 
 
+## Dipasang di pohon, bukan disapu sekali: baris Collection, item Shop, dan entri
+## Atlas lahir jauh setelah `_ready()`, dan sapuan sekali jalan hanya menyembuhkan
+## layar yang kebetulan sudah ada saat boot.
+static func install_touch_scroll(tree: SceneTree) -> void:
+	var relay := Callable(UiJuice, "relay_touch_scroll")
+	if not tree.node_added.is_connected(relay):
+		tree.node_added.connect(relay)
+
+
+## Godot berhenti di Control ber-`MOUSE_FILTER_STOP` pertama, dan `PanelContainer`
+## maupun `Button` default-nya STOP. Tanpa relay ini jari yang mendarat di kartu
+## mana pun menelan drag-nya, sehingga hanya celah antar-kartu yang bisa digulir.
+## Yang menjaga tap tetap sampai ke tombol adalah `gui/common/default_scroll_deadzone`,
+## bukan STOP: di bawah deadzone gesture masih milik tombol, di atasnya jadi gulir.
+static func relay_touch_scroll(node: Node) -> void:
+	var control := node as Control
+	if control == null or control.mouse_filter != Control.MOUSE_FILTER_STOP:
+		return
+	var ancestor: Node = control.get_parent()
+	while ancestor != null:
+		if ancestor is ScrollContainer:
+			control.mouse_filter = Control.MOUSE_FILTER_PASS
+			return
+		ancestor = ancestor.get_parent()
+
+
 static func install_button(button: Button) -> void:
 	if button.has_meta(META_INSTALLED):
 		return

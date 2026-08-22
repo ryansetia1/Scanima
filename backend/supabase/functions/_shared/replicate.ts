@@ -53,7 +53,7 @@ async function buat(
 
 /**
  * Panggilan yang ditunggu sampai selesai. Hanya untuk Vision: ia selesai dalam
- * hitungan detik pada thinking_budget 0, dan hasilnya dibutuhkan sebelum kita
+ * hitungan detik pada thinking terbatas, dan hasilnya dibutuhkan sebelum kita
  * boleh memutuskan mendebit Genesis Core.
  */
 export async function jalankanPrediksi(

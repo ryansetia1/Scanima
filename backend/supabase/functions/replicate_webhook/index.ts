@@ -26,6 +26,29 @@ function hostDiizinkan(url: string): boolean {
   }
 }
 
+// Biaya generation terkunci saat prediksi selesai, jadi membuang gambarnya
+// bersama kegagalan post-processing berarti membayar dua kali untuk satu Anima.
+// Raw yang disimpan membuat perbaikan pipeline bisa diproses ulang gratis — dua
+// bug 22 Agustus 2026 (thinking budget dan keyline stripper) masing-masing
+// menghanguskan satu sheet berbayar yang sebenarnya masih utuh di memori sini.
+// Gagal menyimpan tidak boleh membatalkan penandaan gagal; ia hanya dicatat.
+//
+// ponytail: satu objek per generation gagal, tanpa TTL. Plafon ~1,3 MB per
+// kegagalan; pasang lifecycle rule di bucket kalau kegagalan pernah rutin.
+async function simpanRawGagal(
+  db: ReturnType<typeof adminClient>,
+  genId: string,
+  rawPng: Uint8Array,
+): Promise<void> {
+  const { error } = await db.storage
+    .from("anima_sheets")
+    .upload(`failed_raw/${genId}.png`, new Blob([rawPng], { type: "image/png" }), {
+      contentType: "image/png",
+      upsert: true,
+    });
+  if (error) console.error("simpan raw gagal", genId, error.message);
+}
+
 function ambilUrlKeluaran(output: unknown): string | null {
   if (typeof output === "string") return output;
   if (Array.isArray(output)) {
@@ -235,10 +258,14 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     const alasan = e instanceof Error ? e.message : String(e);
+    // Raw hanya disimpan untuk kegagalan terminal. Yang transient akan dikirim
+    // ulang Replicate berikut gambarnya, jadi menyimpannya di sini cuma
+    // meninggalkan objek yatim saat percobaan berikutnya berhasil.
+    if ((isEvolve || isSynthesis) && evolutionFinalizeRetryable(alasan)) {
+      return json(503, { error: alasan, transient: true });
+    }
+    await simpanRawGagal(db, gen.id, rawPng);
     if (isEvolve) {
-      if (evolutionFinalizeRetryable(alasan)) {
-        return json(503, { error: alasan, transient: true });
-      }
       const { error } = await db.rpc("fail_evolution", {
         p_gen_id: gen.id,
         p_reason: alasan.slice(0, 500),
@@ -247,9 +274,6 @@ Deno.serve(async (req) => {
       return json(200, { evolution_gagal: true, alasan });
     }
     if (isSynthesis) {
-      if (evolutionFinalizeRetryable(alasan)) {
-        return json(503, { error: alasan, transient: true });
-      }
       const { error } = await db.rpc("fail_synthesis", {
         p_gen_id: gen.id,
         p_reason: alasan.slice(0, 500),

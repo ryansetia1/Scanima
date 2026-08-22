@@ -3676,6 +3676,80 @@ console.log("24. sheet v7 3x3 sembilan sel");
     9,
     "capture v31 boleh punya aksen Happy terlepas",
   );
+
+  // Uang generation sudah keluar sebelum post-processing jalan, jadi sejak v31
+  // bintik melayang dibuang lalu dicatat, bukan dipakai membuang sheet berbayar.
+  const salvaged = await postprocessSheet(sparklyPng, {
+    speciesKey: "selftest_v41_sparkle_repair",
+    promptVersion: "v41",
+    kind: "evolve",
+  });
+  assert.equal(
+    salvaged.manifest.qa.cells_detected,
+    9,
+    "evolve v41 harus menyelamatkan sheet berbayar, bukan menolaknya",
+  );
+  assert.ok(
+    salvaged.manifest.qa.detached_cleanup?.components >= 1,
+    "penyelamatan wajib tercatat di manifest.qa supaya bisa direview",
+  );
+  assert.equal(
+    salvaged.manifest.qa.detached_character.passed,
+    true,
+    "audit harus lolos sesudah fragmen dibuang",
+  );
+
+  // Pagar penyelamatan: fragmen besar berarti segmentasi rusak, dan setengah
+  // monster yang terkirim diam-diam lebih mahal daripada gagal keras.
+  await assert.rejects(
+    () =>
+      postprocessSheet(sparklyPng, {
+        speciesKey: "selftest_v41_sparkle_too_big",
+        promptVersion: "v41",
+        kind: "evolve",
+      }, { ...DEFAULTS, maxRepairableFragmentRatio: 0 }),
+    /detached character components/,
+    "fragmen di atas plafon tetap menolak sheet, bukan dihapus diam-diam",
+  );
+
+  // Sejak v11 prompt melarang keyline putih, jadi putih yang menyentuh
+  // transparansi adalah art. Dua Z tidur yang dimakan stripper pecah menjadi
+  // remah dan menabrak audit detached; itu yang menggagalkan Adult Hydron.
+  const sleepy = await Image.decode(await buildSheet(blobs3, LAYOUT_3X3));
+  const [zCol, zRow] = LAYOUT_3X3.quadrant.sleep;
+  for (const [lx, ly] of [[230, 60], [262, 34]]) {
+    for (let yy = 0; yy < 14; yy++) {
+      for (let xx = 0; xx < 14; xx++) {
+        setPx(sleepy.bitmap, zCol * cell + lx + xx, zRow * cell + ly + yy, [245, 245, 245]);
+      }
+    }
+  }
+  const sleepyPng = await sleepy.encode();
+
+  const zKept = await postprocessSheet(sleepyPng, {
+    speciesKey: "selftest_v41_sleep_z",
+    promptVersion: "v41",
+    kind: "evolve",
+  });
+  assert.equal(
+    zKept.manifest.qa.white_keyline_pixels_stripped,
+    0,
+    "v41 tidak boleh mengupas Z tidur putih sebagai matte",
+  );
+  assert.equal(
+    zKept.manifest.qa.detached_character.passed,
+    true,
+    "dua Z tidur yang utuh harus lolos audit detached",
+  );
+
+  const zStripped = await postprocessSheet(sleepyPng, {
+    speciesKey: "selftest_v10_sleep_z",
+    promptVersion: "v10",
+  });
+  assert.ok(
+    zStripped.manifest.qa.white_keyline_pixels_stripped > 0,
+    "prompt v10 yang memang meminta keyline harus tetap dikupas",
+  );
 }
 
 console.log("25. prompt v7 3x3 plus nama move, species_key tidak berubah");
@@ -9184,6 +9258,9 @@ console.log(
   const {
     evolutionWebhookUrl,
     evolutionFinalizeRetryable,
+    evolutionPlanResampleAllowed,
+    EVOLUTION_PLAN_MAX_ATTEMPTS,
+    EVOLUTION_PLAN_RESAMPLE_DEADLINE_MS,
     buildEvolvePromptContext,
   } = await import("../backend/supabase/functions/_shared/evolution.mjs");
   const { dispatchDefinitelyNotStarted } = await import(
@@ -9361,6 +9438,35 @@ console.log(
     "commit evolution permanen harus fail, bukan mengulang webhook",
   );
   assert.ok(!evolutionFinalizeRetryable("QA: sel ditolak"));
+
+  // Plan yang ditolak validator adalah langkah TERMURAH di pipeline ($0,003
+  // versus ~$0,05 gambar), jadi ia disampel ulang alih-alih menjatuhkan seluruh
+  // evolusi. Yang membatasi waktu, bukan uang: client menyerah pada 90 detik.
+  assert.ok(
+    evolutionPlanResampleAllowed(1, 26_000),
+    "plan ditolak pada percobaan pertama harus disampel ulang",
+  );
+  assert.ok(
+    !evolutionPlanResampleAllowed(EVOLUTION_PLAN_MAX_ATTEMPTS, 1_000),
+    "plafon percobaan harus menghentikan resample walau waktunya masih ada",
+  );
+  assert.ok(
+    !evolutionPlanResampleAllowed(1, EVOLUTION_PLAN_RESAMPLE_DEADLINE_MS),
+    "percobaan baru tidak boleh dimulai kalau client keburu menyerah",
+  );
+  assert.ok(
+    EVOLUTION_PLAN_RESAMPLE_DEADLINE_MS + 20_000 < 90_000,
+    "batas mulai + satu Vision harus tetap di bawah TIMEOUT_FUNGSI_SEC client",
+  );
+  assert.ok(
+    evolveSrc.includes("rejected by the schema validator")
+      && evolveSrc.includes("visionPrompt + koreksi"),
+    "resample wajib membacakan keluhan validator, bukan mengulang buta",
+  );
+  assert.ok(
+    evolveSrc.includes("BIAYA_VISION_USD * (percobaanPlan - 1)"),
+    "sampel Vision tambahan wajib ikut dihitung ke spend cap",
+  );
   assert.ok(
     dispatchDefinitelyNotStarted(
       new Error("openai/gpt-image-2 create 401: bad token"),
@@ -10196,6 +10302,44 @@ console.log("41. Synthesis membayar model hanya sesudah Resonance sukses");
       && labView.includes("0.50"),
     "the balanced inheritance weight must agree across all three copies",
   );
+}
+
+console.log("42. tidak ada panggilan Vision yang mematikan thinking dengan 0");
+{
+  const { readFile } = await import("node:fs/promises");
+  const { VISION_THINKING } = await import(
+    "../backend/supabase/functions/_shared/vision.mjs"
+  );
+
+  // Nilai 0 dibuang wrapper Replicate karena falsy, dan kegagalannya senyap:
+  // prediksi tetap succeeded sementara thinking memakan max_output_tokens
+  // sampai JSON-nya terpotong. Satu-satunya pagar adalah tidak pernah menulis
+  // angka itu lagi di call site mana pun.
+  assert.ok(
+    VISION_THINKING.thinking_budget >= 1 && VISION_THINKING.dynamic_thinking === false,
+    "shared Vision thinking budget must be truthy so Replicate forwards it",
+  );
+
+  for (
+    const relative of [
+      "../backend/supabase/functions/create_anima/index.ts",
+      "../backend/supabase/functions/evolve_anima/index.ts",
+      "../backend/supabase/functions/synthesize_anima/index.ts",
+      "../backend/supabase/functions/_shared/gallery_moderation.mjs",
+      "../backend/tools/chapter_factory/design.mjs",
+      "./run.mjs",
+    ]
+  ) {
+    const source = await readFile(new URL(relative, import.meta.url), "utf8");
+    assert.ok(
+      !/thinking_budget:\s*0\b/.test(source),
+      `${relative} must not pass a falsy thinking_budget that Replicate drops`,
+    );
+    assert.ok(
+      source.includes("...VISION_THINKING"),
+      `${relative} must take its thinking settings from the shared constant`,
+    );
+  }
 }
 
 const emitIdx = process.argv.indexOf("--emit");

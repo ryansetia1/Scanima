@@ -26,6 +26,9 @@ var _item_picker_opens := false
 
 
 func _initialize() -> void:
+	# Jalur yang sama dengan `scan_flow._enter_tree()`; shell di sini hidup di luar
+	# pohon, jadi tanpa ini relay gulir sentuh tidak pernah terpasang saat diuji.
+	UiJuice.install_touch_scroll(self)
 	var packed := load("res://scenes/scan_flow.tscn") as PackedScene
 	_check(packed != null, "scan_flow.tscn must load")
 	if packed == null:
@@ -853,6 +856,7 @@ func _initialize() -> void:
 	await _check_music(scene)
 	_check_home_background(scene)
 
+	_test_synthesis_history_cache(scene)
 	scene.free()
 	await _test_anima_tap_reactions()
 	await _test_shared_components()
@@ -4950,6 +4954,7 @@ func _test_profile_actions_at_size(packed: PackedScene, viewport_size: Vector2i)
 	short_viewport.size = viewport_size
 	root.add_child(short_viewport)
 	var details := packed.instantiate()
+	details.visible = false
 	short_viewport.add_child(details)
 	details.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	details.set_anima(
@@ -4961,13 +4966,52 @@ func _test_profile_actions_at_size(packed: PackedScene, viewport_size: Vector2i)
 			"stage": 1,
 			"care_score": 0,
 			"base_stats": {"hp": 1, "atk": 1, "def": 1, "spd": 1, "special": 1},
+			"synthesis_history": {
+				"mode": "balanced",
+				"resonance": 72,
+				"source_a": {"id": "source-a", "name": "Solin", "selected_stage": 1},
+				"source_b": {"id": "source-b", "name": "Playtron", "selected_stage": 2},
+				"inheritance_summary": {
+					"source_a": "Silhouette",
+					"source_b": "Palette",
+					"coherence": "Shared shape language",
+				},
+			},
 		},
 		null
 	)
 	details.set_synthesis_enabled(true)
 	details.set_gallery_status({"available": true, "published": false})
+	details.visible = true
 	await process_frame
 	await process_frame
+	var profile_scroll := details.find_child("DetailsScroll", true, false) as ScrollContainer
+	var profile_content := details.find_child("DetailsContent", true, false) as Control
+	_check(
+		profile_scroll != null and profile_scroll.size.y > 0.0
+		and profile_content != null and profile_content.size.y > profile_scroll.size.y,
+		"hidden Profile restores a real scroll viewport at %s" % viewport_size
+	)
+	if profile_scroll != null and profile_content != null:
+		_check(
+			_touch_blockers(profile_scroll).is_empty(),
+			"no Profile card swallows the drag at %s, blocked by %s"
+				% [viewport_size, _touch_blockers(profile_scroll)]
+		)
+		_check(
+			profile_scroll.scroll_deadzone > 0.0,
+			"Profile keeps a deadzone so pass-through buttons stay tappable at %s" % viewport_size
+		)
+		var card := _card_under_finger(profile_scroll)
+		_check(card != null, "a Profile card sits under the finger at %s" % viewport_size)
+		var dragged: bool = await _drag_scrolls(short_viewport, profile_scroll, card)
+		_check(
+			dragged,
+			"dragging from Profile card %s scrolls at %s"
+				% ["none" if card == null else String(card.name), viewport_size]
+		)
+		profile_scroll.scroll_vertical = 0
+		await process_frame
 	var menu := details.find_child("ProfileMenuButton", true, false) as Button
 	var popover := details.find_child("ProfileActionPopover", true, false) as Control
 	var panel := details.find_child("ProfileActionPanel", true, false) as Control
@@ -4975,6 +5019,11 @@ func _test_profile_actions_at_size(packed: PackedScene, viewport_size: Vector2i)
 	var delete_button := details.find_child("ProfileActionDelete", true, false) as Button
 	var synthesis := details.find_child("SynthesisAnimaButton", true, false) as Button
 	var gallery := details.find_child("GalleryPublishButton", true, false) as Button
+	var backdrop := details.find_child("ProfileActionBackdrop", true, false) as Control
+	_check(
+		backdrop != null and backdrop.mouse_filter == Control.MOUSE_FILTER_STOP,
+		"the menu backdrop still blocks taps at %s, since it sits outside the scroll" % viewport_size
+	)
 	menu.pressed.emit()
 	await process_frame
 	var panel_rect := Rect2(panel.position, panel.size)
@@ -4987,12 +5036,46 @@ func _test_profile_actions_at_size(packed: PackedScene, viewport_size: Vector2i)
 	delete_button.grab_focus()
 	_check(delete_button.has_focus(), "Profile Delete is focus-reachable at %s" % viewport_size)
 	details.close_action_menu()
+	profile_scroll.scroll_vertical = 0
+	await process_frame
+	await _tap(short_viewport, menu)
+	_check(
+		popover.visible,
+		"a clean tap still opens the Profile menu through the scroll relay at %s" % viewport_size
+	)
+	details.close_action_menu()
+	await process_frame
 	synthesis.grab_focus()
+	await process_frame
 	_check(synthesis.has_focus(), "Synthesize is focus-reachable at %s" % viewport_size)
 	gallery.grab_focus()
 	_check(gallery.has_focus(), "Publish to Atlas is focus-reachable at %s" % viewport_size)
 	short_viewport.queue_free()
 	await process_frame
+
+
+func _test_synthesis_history_cache(scene: Node) -> void:
+	var anima_id := "history-cache-test-%d" % Time.get_ticks_usec()
+	var cache_id := str(scene.call("_synthesis_history_cache_id", anima_id, "source_a"))
+	var backend_script := load("res://scripts/backend.gd") as GDScript
+	var cache_path := str(backend_script.call("atlas_thumb_cache_path", cache_id))
+	var cache_dir := DirAccess.open("user://")
+	if cache_dir != null and not cache_dir.dir_exists("atlas_thumbs"):
+		cache_dir.make_dir("atlas_thumbs")
+	var image := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	image.fill(Color8(32, 184, 72, 255))
+	var file := FileAccess.open(cache_path, FileAccess.WRITE)
+	_check(file != null, "History cache test can create its isolated entry")
+	if file == null:
+		return
+	file.store_buffer(image.save_png_to_buffer())
+	file.close()
+	var textures: Dictionary = scene.call("_cached_synthesis_history_textures", anima_id)
+	_check(textures.get("source_a") is Texture2D, "History paints a cached source without network")
+	_check(not textures.has("source_b"), "History only marks cache slots that exist")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(cache_path))
+	var memory_textures: Dictionary = scene.call("_cached_synthesis_history_textures", anima_id)
+	_check(memory_textures.get("source_a") is Texture2D, "History keeps the decoded texture in memory")
 
 
 func _test_evolve_profile_cta() -> void:
@@ -5083,6 +5166,32 @@ func _test_evolve_profile_cta() -> void:
 			"status == \"ready\" and stage <= prior_stage"
 		) >= 0,
 		"cold-start evolution resumes existing work and detects authoritative rollback"
+	)
+	# Ritual-nya berjalan menit-menit di latar, jadi toast hampir selalu lewat
+	# tanpa dilihat dan pemain ditinggalkan tanpa jalan kembali.
+	_check(
+		flow_source.find("_queue_evolution_failure_dialog(") >= 0
+		and flow_source.find("tr(\"EVOLUTION_FAILED\")") < 0,
+		"kegagalan Evolve mendarat sebagai dialog, bukan toast yang lewat"
+	)
+	_check(
+		flow_source.find("&\"evolve\", &\"evolution_failure\":") >= 0
+		and flow_source.find(
+			"context == &\"evolve\" or context == &\"evolution_failure\""
+		) >= 0,
+		"Retry dialog memakai jalur konfirmasi Evolve yang sama, dan Cancel melepas row-nya"
+	)
+	_check(
+		flow_source.find(
+			"if _queued_evolution_failure.is_empty() or _shell_modal.visible:"
+		) >= 0
+		and flow_source.find("_present_queued_evolution_failure()") >= 0,
+		"dialog kegagalan Evolve mengantre alih-alih menimpa modal yang sedang terbuka"
+	)
+	_check(
+		flow_source.find("\"EVOLUTION_TIMEOUT_BODY\"") >= 0
+		and flow_source.find("not CareRules.evolution_ready(row)") >= 0,
+		"dialog membedakan timeout dari gagal, dan menahan Retry yang pasti ditolak server"
 	)
 	incubator.queue_free()
 	details.queue_free()
@@ -6715,6 +6824,91 @@ func _check_full_rect(node: Control, label: String) -> void:
 	_check_eq(node.offset_top, 0.0, "%s top offset" % label)
 	_check_eq(node.offset_right, 0.0, "%s right offset" % label)
 	_check_eq(node.offset_bottom, 0.0, "%s bottom offset" % label)
+
+
+func _touch_blockers(scroll: ScrollContainer) -> PackedStringArray:
+	var blockers := PackedStringArray()
+	_collect_touch_blockers(scroll, blockers)
+	return blockers
+
+
+func _collect_touch_blockers(node: Node, blockers: PackedStringArray) -> void:
+	for child: Node in node.get_children():
+		var control := child as Control
+		if control != null and control.mouse_filter == Control.MOUSE_FILTER_STOP:
+			blockers.append(control.name)
+		_collect_touch_blockers(child, blockers)
+
+
+## Pada viewport pendek sebagian besar panel berada di luar rect scroll, dan menekan
+## di luar sana tidak mengenai apa pun, jadi kartu ujinya dipilih dari yang benar-benar
+## terlihat alih-alih dipatok namanya.
+func _card_under_finger(scroll: ScrollContainer) -> Control:
+	return _find_card(scroll, scroll.get_global_rect())
+
+
+func _find_card(node: Node, view: Rect2) -> Control:
+	for child: Node in node.get_children():
+		var card := child as PanelContainer
+		if card != null and card.is_visible_in_tree():
+			if card.get_global_rect().intersection(view).size.y >= TOUCH_MIN:
+				return card
+		var nested := _find_card(child, view)
+		if nested != null:
+			return nested
+	return null
+
+
+## Menggulir lewat gesture, bukan dengan menulis `scroll_vertical`: yang rusak di
+## APK adalah jalur input, dan menulis properti langsung tetap lulus walaupun setiap
+## kartu menelan gesture-nya. Android mengubah sentuh menjadi event mouse, dan di
+## situlah ScrollContainer men-drag — bukan dari `InputEventScreenDrag`.
+func _drag_scrolls(viewport: SubViewport, scroll: ScrollContainer, from: Control) -> bool:
+	if from == null:
+		return false
+	var was_emulating := Input.is_emulating_touch_from_mouse()
+	# ScrollContainer menolak men-drag ketika DisplayServer bilang tidak ada layar
+	# sentuh, dan headless memang bilang begitu; Android sebaliknya.
+	Input.set_emulate_touch_from_mouse(true)
+	scroll.scroll_vertical = 0
+	await process_frame
+	var start := from.get_global_rect().intersection(scroll.get_global_rect()).get_center()
+	var press := InputEventMouseButton.new()
+	press.position = start
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	viewport.push_input(press, true)
+	await process_frame
+	for step in range(1, 9):
+		var motion := InputEventMouseMotion.new()
+		motion.position = start - Vector2(0.0, 24.0 * step)
+		motion.relative = Vector2(0.0, -24.0)
+		viewport.push_input(motion, true)
+		await process_frame
+	var scrolled := scroll.scroll_vertical > 0
+	var release := InputEventMouseButton.new()
+	release.position = start - Vector2(0.0, 192.0)
+	release.button_index = MOUSE_BUTTON_LEFT
+	viewport.push_input(release, true)
+	await process_frame
+	Input.set_emulate_touch_from_mouse(was_emulating)
+	return scrolled
+
+
+## Pasangan dari `_drag_scrolls`: menurunkan kartu ke PASS hanya aman selama tap
+## bersih tetap sampai ke tombol di dalamnya.
+func _tap(viewport: SubViewport, target: Control) -> void:
+	var was_emulating := Input.is_emulating_touch_from_mouse()
+	Input.set_emulate_touch_from_mouse(true)
+	var at := target.get_global_rect().get_center()
+	for pressed: bool in [true, false]:
+		var click := InputEventMouseButton.new()
+		click.position = at
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = pressed
+		viewport.push_input(click, true)
+		await process_frame
+	Input.set_emulate_touch_from_mouse(was_emulating)
 
 
 func _check(condition: bool, message: String) -> void:

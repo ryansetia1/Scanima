@@ -160,7 +160,9 @@ History uses `cropIdleThumb()`—the same transparent Idle crop as Atlas. Legacy
 successful Results are repaired lazily on the first History request. Profile
 reserves two fixed-size art slots until those transparent PNGs arrive, but each
 loading pulse is a compact centered squircle rather than a full-width slab. The
-client never reconstructs alpha from green pixels. Profile actions sit directly
+client stores each successful thumbnail in a per-account disk cache, paints that
+cache before revalidating History, and only pulses a slot that is genuinely
+missing. It never reconstructs alpha from green pixels. Profile actions sit directly
 below identity: Evolve keeps its own row, **Synthesize** and **Publish to
 Atlas** share one equal-width row, and a 96px kebab opens an anchored
 **Rename** / **Delete** menu outside the Profile scroll. The menu clamps to the

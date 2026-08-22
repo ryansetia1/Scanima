@@ -6,7 +6,7 @@
 // reopens the pair/mode slot.
 
 import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
-import { extractJson } from "../_shared/vision.mjs";
+import { extractJson, VISION_THINKING } from "../_shared/vision.mjs";
 import { buildEvolutionIdleReference } from "../_shared/evolution.mjs";
 import { cropIdleThumb } from "../_shared/gallery_shared.mjs";
 import {
@@ -594,8 +594,7 @@ Deno.serve(async (req) => {
         temperature: 0.35,
         top_p: 0.95,
         max_output_tokens: 4096,
-        thinking_budget: 0,
-        dynamic_thinking: false,
+        ...VISION_THINKING,
       });
       plan = validateSynthesisPlan(extractJson(raw), validationOptions).plan;
     } catch (error) {

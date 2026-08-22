@@ -19,6 +19,7 @@ const PROFILE_MENU_GAP := 8.0
 const PROFILE_MENU_ICON: Texture2D = preload("res://assets/icons/more-vertical.svg")
 
 @onready var _empty_state: Label = %DetailsEmpty
+@onready var _details_scroll: ScrollContainer = $Column/DetailsScroll
 @onready var _content: Control = %DetailsContent
 @onready var _portrait: TextureRect = %DetailsPortrait
 @onready var _name: Label = %DetailsName
@@ -69,6 +70,7 @@ var _synthesis_history_textures: Dictionary = {}
 var _history_source_names: Dictionary = {}
 var _history_source_a_skeleton: UiSkeleton
 var _history_source_b_skeleton: UiSkeleton
+var _layout_refresh_queued := false
 
 
 func _ready() -> void:
@@ -84,6 +86,8 @@ func _ready() -> void:
 	_about_help.pressed.connect(_show_about_help)
 	_combat_help.pressed.connect(_show_combat_help)
 	_history_help.pressed.connect(_show_history_help)
+	visibility_changed.connect(_queue_layout_refresh)
+	resized.connect(_queue_layout_refresh)
 	UiJuice.install_button(_history_help)
 	UiJuice.install_button(_menu_button)
 	UiJuice.install_button(_action_rename)
@@ -98,12 +102,14 @@ func _ready() -> void:
 		_history_source_b, "SynthesisHistorySourceBSkeleton"
 	)
 	refresh_localized_ui()
+	_queue_layout_refresh()
 
 
 func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 	var next_id := str(row.get("id", ""))
 	if next_id != _anima_id:
 		_synthesis_history_textures.clear()
+		_details_scroll.scroll_vertical = 0
 		close_action_menu(false)
 	_row = row.duplicate(true) if not row.is_empty() else {}
 	if row.is_empty():
@@ -120,6 +126,7 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_synthesis_button.visible = false
 		_synthesis_history.visible = false
 		set_synthesis_history_loading(false)
+		_queue_layout_refresh()
 		return
 
 	_anima_id = str(row.get("id", ""))
@@ -163,6 +170,7 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		GameState.as_dict(row.get("synthesis_history")),
 		_synthesis_history_textures
 	)
+	_queue_layout_refresh()
 
 
 func set_busy(busy: bool) -> void:
@@ -237,11 +245,13 @@ func _apply_synthesis_ui(row: Dictionary) -> void:
 
 func _update_primary_actions_visibility() -> void:
 	_primary_actions.visible = _synthesis_button.visible or _gallery_button.visible
+	_queue_layout_refresh()
 
 
 func _apply_synthesis_history(history: Dictionary, textures: Dictionary) -> void:
 	_synthesis_history.visible = not history.is_empty()
 	if history.is_empty():
+		_queue_layout_refresh()
 		return
 	var source_a := GameState.as_dict(history.get("source_a"))
 	var source_b := GameState.as_dict(history.get("source_b"))
@@ -266,6 +276,7 @@ func _apply_synthesis_history(history: Dictionary, textures: Dictionary) -> void
 	_history_summary.text = tr("SYNTHESIS_HISTORY_SUMMARY") % [note_a, note_b, note_c]
 	_history_summary.visible = false
 	_history_help.visible = not (note_a.is_empty() and note_b.is_empty() and note_c.is_empty())
+	_queue_layout_refresh()
 
 
 ## Root skeleton tetap memenuhi slot 150 px agar layout tidak meloncat, tetapi
@@ -306,6 +317,31 @@ func _apply_evolution_ui(row: Dictionary) -> void:
 		_evolution_status.text = tr("EVOLUTION_CHAMBER_STATUS")
 	elif evolution_ready and not stage3:
 		_evolve_button.text = tr("EVOLVE_ACTION")
+	_queue_layout_refresh()
+
+
+## View yang di-instance tersembunyi dapat kehilangan notifikasi sort pertama.
+## Tanpa refresh sinkron, ScrollContainer tetap setinggi 0 sampai perubahan layout
+## lain kebetulan terjadi, sehingga gesture yang sama terasa acak.
+func _queue_layout_refresh() -> void:
+	if _layout_refresh_queued:
+		return
+	_layout_refresh_queued = true
+	_refresh_layout.call_deferred()
+
+
+func _refresh_layout() -> void:
+	_layout_refresh_queued = false
+	if not is_visible_in_tree():
+		return
+	_sort_container_tree(self)
+
+
+func _sort_container_tree(node: Node) -> void:
+	if node is Container:
+		(node as Container).notification(Container.NOTIFICATION_SORT_CHILDREN)
+	for child: Node in node.get_children():
+		_sort_container_tree(child)
 
 
 func _move_line(row: Dictionary, action: String) -> String:

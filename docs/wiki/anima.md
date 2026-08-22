@@ -78,7 +78,12 @@ tercapai pada **860**. Di Level 40, meter menampilkan **MAX**.
 Saat Level cukup, Collection menandai kartu **Ready to Evolve** dan profil
 menampilkan tombol **Evolve**. Konfirmasi **Begin Evolution** memasukkan Anima
 ke chamber. Ritual ini **gratis** — tidak memakai Core — dan Anima tidak bisa
-Battle atau dirawat sampai selesai. Kalau gagal, bentuk lama tetap dipakai.
+Battle atau dirawat sampai selesai.
+
+Kalau gagal, dialog **Evolution Failed** memberi tahu apa yang terjadi dan
+menawarkan **Retry** langsung di situ, jadi kamu tidak perlu mencari tombol
+Evolve lagi. Bentuk lama tetap dipakai, tidak ada Core yang terpakai, dan Level
+serta EXP tidak berkurang. Mengulang ritualnya biasanya berhasil.
 
 Sesudah sukses, art-nya berganti, nama Attack/Special bisa berubah, dan jurus
 bisa mendapat efek tambahan di Battle. Game juga mengusulkan **nama baru**

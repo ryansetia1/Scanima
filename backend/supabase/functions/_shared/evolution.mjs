@@ -1624,6 +1624,30 @@ export function evolutionWebhookUrl(baseUrl, generationId) {
   return url.toString();
 }
 
+/** Plafon percobaan Evolution Plan, termasuk percobaan pertama. */
+export const EVOLUTION_PLAN_MAX_ATTEMPTS = 3;
+/**
+ * Percobaan baru tidak boleh dimulai lewat batas ini.
+ *
+ * Client memberi 90 detik (`TIMEOUT_FUNGSI_SEC`), satu siklus penuh terukur 26
+ * detik, dan satu panggilan Vision ~19 detik. Percobaan yang dimulai sesudah
+ * 50 detik berisiko selesai setelah client menyerah, dan pemain akan melihat
+ * kegagalan transport padahal server masih bekerja dengan benar.
+ */
+export const EVOLUTION_PLAN_RESAMPLE_DEADLINE_MS = 50_000;
+
+/**
+ * Boleh menyampel ulang Plan yang ditolak validator?
+ *
+ * Plan berharga $0,003 sementara gambarnya ~$0,05, jadi sampel kedua adalah
+ * cara termurah melawan variansi model — yang membatasi di sini waktu, bukan
+ * uang. `attempt` adalah jumlah percobaan yang SUDAH dijalankan.
+ */
+export function evolutionPlanResampleAllowed(attempt, elapsedMs) {
+  return attempt < EVOLUTION_PLAN_MAX_ATTEMPTS
+    && elapsedMs < EVOLUTION_PLAN_RESAMPLE_DEADLINE_MS;
+}
+
 /** Transient finalize failures should 503 so Replicate retries; QA/postprocess should fail. */
 export function evolutionFinalizeRetryable(message) {
   const msg = String(message ?? "");

@@ -9,6 +9,28 @@ import {
   normalizeElement,
 } from "./elements.mjs";
 
+/**
+ * Setelan thinking untuk SETIAP panggilan Vision, dua runtime.
+ *
+ * `thinking_budget: 0` terlihat benar dan terbaca seperti "matikan thinking",
+ * tetapi wrapper Gemini di Replicate memeriksanya sebagai nilai falsy dan
+ * membuangnya — hasilnya identik dengan tidak mengirim parameter itu sama
+ * sekali, yaitu thinking dinamis. Karena thinking dihitung ke dalam
+ * `max_output_tokens` sementara `token_output_count` hanya melaporkan teks,
+ * kegagalannya tak terlihat: prediksi tetap `succeeded`, `error` tetap null,
+ * dan yang terpotong adalah JSON-nya di tengah field.
+ *
+ * Terukur pada prompt Evolve v41 yang sama (input 9.248 token, plafon 4.096):
+ * budget 0 menyisakan 162 token teks dan budget yang dihilangkan menyisakan
+ * 249 — dua-duanya terpotong. Budget 1 menyisakan 2.572 token dan budget 128
+ * menyisakan 3.230; dua-duanya JSON lengkap 28 key. Jadi 1 adalah nilai truthy
+ * terkecil yang benar-benar sampai ke model.
+ */
+export const VISION_THINKING = {
+  thinking_budget: 1,
+  dynamic_thinking: false,
+};
+
 function levenshtein(a, b) {
   const dp = Array.from({ length: b.length + 1 }, (_, i) => i);
   for (let i = 1; i <= a.length; i++) {

@@ -39,6 +39,10 @@ window/handheld/orientation=1
 
 enabled=PackedStringArray("res://addons/DeeplinkPlugin/plugin.cfg", "res://addons/GodotGetImage/plugin.cfg", "res://addons/OAuth2Plugin/plugin.cfg", "res://addons/godotiq/plugin.cfg")
 
+[gui]
+
+common/default_scroll_deadzone=10
+
 [internationalization]
 
 locale/translations=PackedStringArray("res://locales/ui.en.translation")

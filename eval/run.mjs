@@ -33,6 +33,7 @@ import {
   promptMajor,
   spriteSheetTemplate,
   validateVision,
+  VISION_THINKING,
   visionInstruction,
 } from "../backend/supabase/functions/_shared/vision.mjs";
 import { BIAYA_VISION_USD, biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
@@ -163,11 +164,9 @@ async function callVision(photo, systemPrompt, schema) {
     top_p: 0.95,
     max_output_tokens: 4096,
     // Tugas ini ekstraksi terstruktur, bukan penalaran berantai. Thinking
-    // ditagih sebagai token output, jadi mematikannya menekan biaya sekaligus
-    // latensi. dynamic_thinking disebut eksplisit karena kalau true ia
-    // menimpa thinking_budget.
-    thinking_budget: 0,
-    dynamic_thinking: false,
+    // ditagih sebagai token output, jadi menekannya memangkas biaya sekaligus
+    // latensi — tetapi angkanya tidak boleh 0; lihat VISION_THINKING.
+    ...VISION_THINKING,
   };
 
   // Satu percobaan ulang pada temperature 0 kalau JSON-nya rusak. Ini pengganti

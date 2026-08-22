@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { extractJson } from "../../supabase/functions/_shared/vision.mjs";
+import { extractJson, VISION_THINKING } from "../../supabase/functions/_shared/vision.mjs";
 import { BIAYA_VISION_USD } from "../../supabase/functions/_shared/pricing.mjs";
 import { stableStringify } from "../../supabase/functions/_shared/legacy_typing.mjs";
 import { DESIGN_ACK_PREFIX, VISION_MODEL_DEFAULT } from "./constants.mjs";
@@ -62,8 +62,7 @@ async function runVisionPrediction(model, systemInstruction, userPrompt) {
         temperature: 0.2,
         top_p: 0.9,
         max_output_tokens: 8192,
-        thinking_budget: 0,
-        dynamic_thinking: false,
+        ...VISION_THINKING,
       },
     }),
   });

@@ -51,14 +51,43 @@ kontradiksi.
 | Chapter aktif | The Sugarworks v6 | v1–v5 immutable untuk run lama |
 | Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, dan `feature_synthesis` semuanya `true` | matikan per flag |
 
-Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 24,
-`evolve_anima` 9, `replicate_webhook` 12, `battle_anima` 26, `team_battle` 8,
-`expedition` 16, `seeker` 6, `gallery` 18, `shop` 4, `care_anima` 9,
-`synthesize_anima` 5.
+Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 25,
+`evolve_anima` 11, `replicate_webhook` 14, `battle_anima` 26, `team_battle` 8,
+`expedition` 16, `seeker` 6, `gallery` 19, `shop` 4, `care_anima` 9,
+`synthesize_anima` 6.
 
-Yang belum sampai ke pemain adalah **APK baru**. Backend Anima Atlas, gerbang
-Rename, ritual Evolve, dan seluruh polish client sudah production di server,
-tetapi build lama belum memuatnya.
+APK debug 22 Agustus 2026 18:49 sudah di-sideload ke perangkat uji
+(`com.rekansebangku.scanima` 0.1.0, 54,7 MB), jadi Anima Atlas, gerbang Rename,
+ritual Evolve, client Guided Synthesis, dialog Evolution Failed, dan seluruh
+polish client akhirnya ikut ke build — bukan lagi hidup dari source saja.
+
+Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
+wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
+`max_output_tokens` sampai JSON Vision terpotong di tengah field — terukur
+menggagalkan Evolve stage 2 dengan sisa 162 token teks dari plafon 4.096, dan
+meninggalkan tiga kegagalan Synthesis bertanda potongan yang sama. Nilainya
+sekarang satu konstanta `VISION_THINKING` (`thinking_budget: 1`) yang di-spread
+keenam call site, dan plafon Evolve naik ke 8.192; provenance pengukurannya di
+`.cursor/rules/art-and-prompt-pipeline.mdc`, pagarnya skenario 42
+`npm run selftest`. Dialog **Evolution Failed** dengan tombol Retry menggantikan
+toast di client, dan ia ikut APK 22 Agustus 2026.
+
+Evolve juga tidak lagi mati karena satu sampel Vision yang buruk. Plan yang
+ditolak validator disampel ulang maksimal tiga kali dengan keluhan validator
+dibacakan kembali ke model, dan percobaan baru hanya dimulai selama masih di
+bawah 50 detik supaya tidak menabrak timeout client 90 detik. Plan berharga
+$0,003 versus ~$0,05 gambar, jadi ini langkah termurah untuk melawan variansi
+model; `evolve_anima` 11 membawanya, pagarnya `evolutionPlanResampleAllowed()`
+di `npm run selftest`.
+
+Sesudah pagar itu, Evolve yang sama gagal sekali lagi di post-processing, dan
+sebabnya terpisah: `stripWhiteKeylineInPlace()` melahap art putih yang berdiri
+sendiri karena tidak ada dark line art yang menghentikannya, jadi dua Z tidur
+pecah menjadi remah yang lalu ditolak `auditDetachedCharacterComponents` — dua
+pagar di file yang sama saling bertentangan. Stripper sekarang hanya jalan untuk
+`promptMajor < 11`, yaitu versi yang memang meminta keyline; `replicate_webhook`
+13 membawanya. Provenance dan angkanya di
+`.cursor/rules/art-and-prompt-pipeline.mdc`.
 
 Guided Synthesis **live di backend** per 22 Agustus 2026: migration
 `20260821121417_anima_synthesis`,
@@ -75,16 +104,15 @@ membaca generation Synthesis sebagai birth lineage. V44 tetap rollback. V43 sebe
 output token, serta memotong prose valid di trust boundary supaya verbosity
 model tidak menggagalkan attempt yang sudah lolos Resonance. Backend sekarang hanya menerima form committed. Reference chroma
 Planner dan thumbnail History transparan dipisah; History lama diperbaiki malas
-dari sheet Source asli memakai crop Idle Atlas, tanpa panggilan model. Yang belum
-sampai ke pemain adalah **APK** baru: kartu art/picker visual, Incubator Capsule,
-dialog failure/refund, Result reveal animation, dan skeleton History baru hidup
-dari source sampai build didistribusikan. Jalur 1 Core + 250 Bits sudah terbuka
-untuk build source; kalau perlu ditahan, matikan flag-nya.
+dari sheet Source asli memakai crop Idle Atlas, tanpa panggilan model. Sisi
+client-nya — kartu art/picker visual, Incubator Capsule, dialog failure/refund,
+Result reveal animation, dan skeleton History — ikut APK 22 Agustus 2026. Jalur
+1 Core + 250 Bits terbuka; kalau perlu ditahan, matikan flag-nya.
 
 ## Aturan yang tidak bisa dinegosiasikan
 
 1. **API key tidak pernah masuk ke build Godot.** Hanya ada satu, `REPLICATE_API_TOKEN`, dan ia hanya hidup di Supabase Edge Function secrets. Client Godot bicara ke Edge Function, bukan ke Replicate. Satu-satunya pengecualian adalah mode BYOK di mana token milik pemain sendiri disimpan lokal di device.
-2. **Setiap panggilan image generation tetap dipagari sebagai biaya ~\$0.07.** Default-nya GPT Image 2 medium. Snapshot Replicate 13 Agustus 2026 mencantumkan auto $0.128, low $0.012, medium $0.047, dan high $0.128 per output image; generation medium terbaru terukur sekitar $0.05 per sheet, sementara dua run lama $0.068 dan $0.072. `pricing.mjs` sengaja tetap memakai $0.07 untuk spend cap konservatif sampai sampel production berulang membenarkan perubahan. Jangan pernah menulis kode yang bisa memanggil generation dalam loop, retry otomatis tanpa batas, atau tanpa idempotency key. Kalau ragu, jangan panggil.
+2. **Setiap panggilan image generation tetap dipagari sebagai biaya ~\$0.07.** Default-nya GPT Image 2 medium. Snapshot Replicate 13 Agustus 2026 mencantumkan auto $0.128, low $0.012, medium $0.047, dan high $0.128 per output image; generation medium terbaru terukur sekitar $0.05 per sheet, sementara dua run lama $0.068 dan $0.072. `pricing.mjs` sengaja tetap memakai $0.07 untuk spend cap konservatif sampai sampel production berulang membenarkan perubahan. Jangan pernah menulis kode yang bisa memanggil generation dalam loop, retry otomatis tanpa batas, atau tanpa idempotency key. Kalau ragu, jangan panggil. **Biaya itu terkunci saat Replicate menjawab, bukan saat post-processing lulus**, jadi menolak sheet di webhook tidak memperbaiki art apa pun — ia menghapus aset yang sudah dibayar lalu menagih pemain lagi. Sejak 22 Agustus 2026 produksi karena itu **memperbaiki** cacat kosmetik (bintik melayang, bocoran seam) lalu mencatatnya di `manifest.qa`, dan hanya menolak sheet yang keying-nya benar-benar gagal; yang menghakimi art tetap `eval/run.mjs`, tempat penolakan murah dan informatif. Sheet yang tetap gagal disimpan mentah ke `anima_sheets/failed_raw/<generation_id>.png` supaya perbaikan pipeline bisa diproses ulang tanpa membayar generation kedua.
 3. **Semua mata uang bersifat server-authoritative.** Ada tiga: `scan_charges` (batas percobaan Vision), `genesis_cores` (setiap capture yang diterima), `bits` (Shop). Client boleh menampilkan sisanya, tapi keputusan boleh-tidaknya generate hanya diambil di Postgres dalam transaksi yang sama dengan pencatatan debit. Jangan pernah menambah `genesis_cores` dari callback iklan. Akun Google mendapat **1 Genesis Core otomatis setiap 7 hari server**, tanpa catch-up, saat free bank di bawah 3; grant ledger-backed dan guest tidak eligible.
 4. **Jangan commit foto pemain, output generation, atau `.env`.** Foto mentah dihapus dari Storage setelah post-processing selesai.
 5. **Wiki pemain ikut berubah di langkah yang sama.** `docs/wiki/` adalah panduan pemain, bukan spek. Setiap perubahan mekanisme yang pemain rasakan (care, Cores/Bits, Battle, traits/EXP/Level, Summon) wajib meng-update halaman wiki yang kena bersamaan dengan kodenya. Tulis yang live, bukan rencana. Rumus dan nama kolom tetap di `docs/04` / file ini.
@@ -149,7 +177,7 @@ saat build atau push dijalankan.
 - **Izin `INTERNET` MATI secara default di ekspor Android Godot 4, dan ini kegagalan yang paling mahal waktunya.** APK pertama yang dibangun di sini keluar dengan `CAMERA` sebagai satu-satunya izin: ia terpasang, terbuka, lalu mati di sign-in anonim — tanpa dialog izin, tanpa crash, cuma galat jaringan yang menyesatkan, sebab Android menolak socket-nya secara senyap. Preset **wajib** memuat `permissions/internet=true`. `export_presets.cfg` di-gitignore, jadi tidak ada uji di repo yang bisa menjaga ini; catatan ini adalah pagarnya, dan `aapt2 dump permissions` sesudah build adalah pemeriksaannya.
 - **Template Android 4.6.2 mematok Gradle 8.11.1, jadi JDK-nya tidak boleh lebih baru dari 23.** Mesin ini punya JDK 26 dan build-nya berhenti di `Unsupported class file major version 70` sebelum menyentuh kode kita. Yang dipakai: `brew install openjdk@17` — **formula, bukan cask `temurin@17`**, sebab cask memasang ke `/Library/Java/...` dan menuntut sudo sementara formula tidak. JDK 26 **tidak** perlu dihapus walau banyak jawaban forum menyuruhnya: Godot punya setelan `Java SDK Path` sendiri, jadi keduanya hidup berdampingan. Alternatif menaikkan `distributionUrl` di `gradle-wrapper.properties` menukar satu masalah pasti dengan pasangan Gradle/AGP yang tidak diuji siapa pun.
 - **Godot membaca `ANDROID_HOME` tapi TIDAK membaca `JAVA_HOME`.** SDK-nya terdeteksi sendiri; jalur JDK harus ada di `export/android/java_sdk_path` pada `editor_settings-4.6.tres` (nama file-nya per-minor, bukan `editor_settings-4.tres`). Menulisnya lewat file **hanya aman saat editor tertutup** — editor menyimpan setelannya sendiri ketika keluar dan akan menimpa suntingan dari luar. `export/android/debug_keystore` juga sudah diisi sendiri oleh editor ke keystore yang belum ada; ia dibuat lambat memakai `keytool` dari JDK, jadi preset di sini menunjuk `~/.android/debug.keystore` yang nyata ada supaya hasilnya deterministik.
-- **APK sideload memakai native-library compression.** `export_presets.cfg` wajib memuat `gradle_build/compress_native_libraries=true`: pada debug APK, 71,47 MB dari total 76 MB adalah `libgodot_android.so`, dan opsi ini diperkirakan menurunkan berkas transfer ke sekitar 30 MB. Trade-off-nya startup sedikit lebih lambat dan ukuran terpasang tidak banyak berubah; untuk AAB Play Store, evaluasi ulang dan umumnya biarkan library tidak terkompresi.
+- **APK sideload memakai native-library compression.** `export_presets.cfg` wajib memuat `gradle_build/compress_native_libraries=true`: pada debug APK, 71,47 MB dari total 76 MB adalah `libgodot_android.so`, dan opsi ini terukur menurunkan berkas transfer ke 54,7 MB pada build 22 Agustus 2026 — nyata, tetapi jauh dari perkiraan awal ~30 MB, jadi jangan pakai angka itu untuk merencanakan ukuran rilis. Trade-off-nya startup sedikit lebih lambat dan ukuran terpasang tidak banyak berubah; untuk AAB Play Store, evaluasi ulang dan umumnya biarkan library tidak terkompresi.
 
 ## Perintah umum
 
@@ -161,8 +189,8 @@ npm run selftest                       # 41 skenario + 12 uji tanda tangan webho
 godot --headless --path game --script res://tests/test_sprite_slicing.gd # 174 check manifest, loader, presenter, Boss Seeker
 godot --headless --path game --script res://tests/test_auth_flow.gd    # 63 check PKCE secure, restart, transfer/separate, recovery, no-merge
 godot --headless --path game --script res://tests/test_client_state.gd  # 196 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, stale UID, retry transport
-godot --headless --path game --script res://tests/test_scan_ui.gd       # 1177 check shell + Battle + Shop + Bag + komponen + tap + touch + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas + preflight nama + LoadingScreen
-godot --headless --path game --script res://tests/test_i18n.gd          # 4638 check katalog + key + formatter + wrapping
+godot --headless --path game --script res://tests/test_scan_ui.gd       # 1266 check shell + Battle + Shop + Bag + komponen + tap + touch + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas + dialog Evolve gagal + preflight nama + LoadingScreen
+godot --headless --path game --script res://tests/test_i18n.gd          # 4749 check katalog + key + formatter + wrapping
 godot --headless --path game --script res://tests/test_game_rules.gd    # 181 check care + EXP/Level/evolution + kontrak event Battle
 godot --headless --path game --script res://tests/test_expedition_route_map.gd # 91 check route tree + preview/Enter Node + Skip Shop + prediksi turn/Switch/penutup Boss + preload art run
 node backend/tools/emit_sim_vectors.mjs                                 # regen golden vector JS -> GDScript, nol panggilan API

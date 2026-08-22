@@ -2,6 +2,122 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Plan Evolve disampel ulang, bukan dijatuhkan (backend)
+
+22 Agustus 2026, `evolve_anima` 10→11. Evolve Hydron gagal untuk ketiga kalinya,
+kali ini **sebelum** satu dolar pun keluar: `dispatch_started_at` null dan Vision
+mengembalikan JSON lengkap 14.277 karakter, tetapi validator menolak isinya
+karena empat kontrak dilanggar sekaligus — satu Identity Invariant memakai
+`transfigure` padahal stage Adult mewajibkan `preserve`, `kind_noun` "vessel"
+tidak diulang di `source_kind_read`, kategori subjek lari ke bentuk serpentine,
+dan `derived_anatomy` menautkan kaki berkuku ke anchor "ribbed side panels".
+Validator benar di keempatnya; model memang mencoba mengubah botol jadi ular.
+
+Yang salah bukan gerbangnya melainkan ketiadaan percobaan kedua. Prediksi Vision
+pukul 11:04 pada Anima yang sama, dengan pagar thinking dan plafon token yang
+identik, menghasilkan plan yang lolos utuh — jadi ini variansi model, bukan
+regresi. Sampai versi 10 satu sampel menentukan nasib seluruh ritual.
+
+Sejak versi 11 plan yang ditolak disampel ulang sampai tiga kali dengan pesan
+validator ditempelkan ke prompt sebagai instruksi perbaikan. Batasnya waktu,
+bukan uang: plan $0,003 versus gambar ~$0,05, sementara client menyerah pada 90
+detik dan satu siklus terukur 26 detik, jadi percobaan baru hanya dimulai di
+bawah 50 detik. Sampel tambahan ikut dihitung ke spend cap. Aturan berhentinya
+hidup sebagai `evolutionPlanResampleAllowed()` di `_shared/evolution.mjs` supaya
+bisa diuji; pagarnya `npm run selftest`, dan diverifikasi merah saat predikatnya
+dimatikan.
+
+## Sheet berbayar diselamatkan, bukan dibuang (backend)
+
+22 Agustus 2026. Dua kegagalan Evolve berturut-turut memperlihatkan masalah yang
+lebih besar daripada kedua bug-nya sendiri: biaya generation terkunci saat
+Replicate menjawab, sementara seluruh gerbang kita berjalan sesudahnya, jadi
+setiap penolakan post-processing menghapus aset yang sudah dibayar lalu menagih
+satu generation lagi. Terukur di `generations`: $0,073 hangus dari $0,639 total
+belanja, 1 dari 9 generation berbayar.
+
+Dua perubahan, keduanya di jalur yang sudah ada. Pertama, dari lima `throw` di
+`postprocess.mjs` hanya tiga yang benar-benar tidak bisa diselamatkan — semuanya
+soal keying gagal. Dua sisanya kosmetik, dan `clearAlphaComponent()` sudah
+dipakai untuk salah satunya pada capture v31+. `shouldRemoveIdleSeamLeaks()`
+karena itu menjadi `shouldRepairDetachedArtifacts()`, pengecualian `kind !==
+"evolve"` dicabut, dan gerbang `detached character components` mendapat jalur
+perbaikan yang sama. Hasilnya dicatat sebagai `manifest.qa.detached_cleanup`,
+bukan disembunyikan. Pagarnya all-or-nothing terhadap `maxRepairableFragmentRatio`
+0,05: satu fragmen di atas 5% badan pose berarti segmentasi rusak, dan setengah
+monster yang terkirim diam-diam lebih mahal daripada gagal keras. Versi prompt
+lama tetap ketat, dan `eval/run.mjs` tetap tempat menghakimi art.
+
+Kedua, `replicate_webhook` 13→14 menyimpan raw PNG ke
+`anima_sheets/failed_raw/<generation_id>.png` pada kegagalan terminal, sehingga
+perbaikan pipeline berikutnya bisa diproses ulang dengan nol panggilan API.
+Sebelumnya byte-nya diunduh ke memori lalu dibuang bersama kegagalan. Kegagalan
+transient sengaja tidak disimpan karena Replicate mengirim ulang gambarnya.
+
+Diverifikasi pada byte sheet Adult Hydron yang sungguhan: dengan bug keyline
+sengaja dikembalikan, sheet yang sebelumnya hangus tetap lolos 9/9 sel dengan 2
+fragmen/36px dibuang dan tercatat. Pagarnya skenario 24 `npm run selftest`, yang
+juga menuntut fragmen di atas plafon tetap ditolak.
+
+## Keyline stripper dibatasi ke prompt pra-v11 (backend)
+
+22 Agustus 2026. Sesudah pagar thinking dipasang, Evolve Hydron berjalan sampai
+gambar jadi lalu gagal di post-processing dengan `sheet v26 punya detached
+character components: sleep:19px, sleep:17px`. Sebabnya bukan model dan bukan
+audit: `stripWhiteKeylineInPlace()` mengupas putih yang menyentuh transparansi
+sampai bertemu dark line art, jadi ia benar pada matte berbentuk cincin tetapi
+melahap habis bentuk putih yang berdiri sendiri. Yang berdiri sendiri itu art
+yang diminta prompt — v41 baris 350 meminta Z tidur, baris 426 justru melarang
+keyline putih.
+
+Direproduksi lokal pada byte sheet yang sama, nol panggilan API: tanpa stripper
+`sleep` punya 3 komponen (badan 30.114px + Z 218px + Z 146px) dan audit lolos;
+dengan stripper Z pecah menjadi 8 remah (57, 22, 19, 17, 9, 7, 4px) sehingga
+empat melewati `minDetachedCharacterPixels` 16 dan dua terakhir menjadi
+violation — angka yang sama persis dengan produksi. Dari 1.076px yang dikupas,
+727px adalah semprotan air `fx_strike` dan 238px Z tidur; sisanya remah
+anti-alias 6–31px. Model tidak menggambar keyline sama sekali, jadi seluruhnya
+kerusakan sampingan.
+
+`shouldStripWhiteKeyline()` sekarang membatasi stripper ke `promptMajor < 11`,
+batas tempat prompt berhenti meminta keyline 3–5px; sheet tanpa `promptVersion`
+tetap dianggap lama dan tetap dikupas, jadi jalur migrasi dan selftest lama tidak
+berubah. Mematikannya tidak menukar apa pun: residu hijau 0,00365 menjadi
+0,00364 dan tinggi bbox kesembilan pose identik. `replicate_webhook` 13 di-deploy
+dan smoke tanpa tanda tangan menjawab 401. Skenario 24 `npm run selftest`
+menuntut `white_keyline_pixels_stripped === 0` pada v41 dan `> 0` pada v10;
+diverifikasi merah saat perbaikannya dikembalikan. Tidak ada migration dan tidak
+ada perubahan prompt version. `reprocess_species_art` sempat ikut ter-deploy
+sebagai v1 dan langsung dihapus lagi — ia alat migrasi sekali pakai yang memang
+tidak boleh hidup di produksi.
+
+## Pagar thinking Vision (backend)
+
+22 Agustus 2026. Evolve stage 2 milik Hydron gagal dengan Plan terpotong di
+tengah `lineage_anchors`, sementara prediksi Replicate-nya tercatat `succeeded`
+dan `error` null. Sebabnya `thinking_budget: 0`: wrapper Gemini di Replicate
+memeriksanya sebagai nilai falsy dan membuangnya, jadi thinking berjalan dinamis
+dan menghabiskan `max_output_tokens` yang seharusnya menampung JSON. Diukur pada
+prompt yang sama (input 9.248 token, plafon 4.096) — budget 0 menyisakan 162
+token teks, budget dihilangkan 249, budget 1 menyisakan 2.572, budget 128
+menyisakan 3.230; dua yang terakhir JSON lengkap 28 key. Tiga run pada setelan
+produksi baru menghasilkan 2.550 / 2.757 / 2.673 token, semuanya utuh.
+
+Radiusnya bukan hanya Evolve: `generations` menyimpan tiga kegagalan Synthesis
+bertanda `Vision tidak mengembalikan JSON yang bisa diparse`, tanda tangan
+potongan yang sama, jadi batas prose v43 dan penutup fence v45 sebelumnya
+mengobati gejala dari ujung yang salah. Capture lolos 6 dari 6 karena prompt-nya
+lebih pendek, dan moderasi Gallery berplafon 512 token belum kena hanya karena
+baru sekali dipakai.
+
+Perbaikannya satu konstanta `VISION_THINKING` di `_shared/vision.mjs` yang
+di-spread keenam call site, plus plafon Evolve naik ke 8.192. `create_anima` 25,
+`evolve_anima` 10, `synthesize_anima` 6, dan `gallery` 19 di-deploy; smoke tanpa
+JWT menjawab 401 pada keempatnya. Skenario 42 `npm run selftest` gagal kalau
+angka 0 kembali. Tidak ada migration dan tidak ada perubahan prompt version.
+Client mendapat dialog **Evolution Failed** dengan tombol Retry menggantikan
+toast; itu menunggu APK.
+
 ## Synthesis History source names (backend)
 
 22 Agustus 2026. Snapshot History mencari `generations.suggested_name` lalu

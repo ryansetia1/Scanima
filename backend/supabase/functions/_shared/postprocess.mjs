@@ -82,6 +82,12 @@ export const DEFAULTS = {
   // v26 melarang detached mark di character cells selain maksimal dua Z Sleep.
   // Noise anti-alias kecil tetap diabaikan.
   minDetachedCharacterPixels: 16,
+  // Batas atas fragmen yang boleh DIHAPUS saat menyelamatkan sheet berbayar,
+  // relatif terhadap badan pose itu. Bintik melayang aman dibuang; potongan
+  // besar berarti segmentasi atau keying yang rusak, dan mengirim setengah
+  // monster jauh lebih mahal daripada gagal keras. Kasus nyata terbesar yang
+  // pernah tercatat 115px terhadap badan ~30.000px, yaitu 0,4%.
+  maxRepairableFragmentRatio: 0.05,
   // v12 mengizinkan aksen Battle terlepas, tetapi semuanya wajib tinggal di
   // safe envelope selnya. Audit hanya menolak komponen sekunder dekat seam;
   // ia tidak menebak lalu memindahkan piksel ke pose lain.
@@ -591,6 +597,8 @@ export function auditDetachedCharacterComponents(components, opts = DEFAULTS) {
         pose,
         pixels: component.pixels,
         bbox: component.bbox,
+        seed: component.seed,
+        body_pixels: parts[0].pixels,
       });
     }
   }
@@ -716,10 +724,41 @@ function shouldAuditDetachedCharacters(meta) {
   return major >= 26 && major < 31;
 }
 
-function shouldRemoveIdleSeamLeaks(meta, opts) {
+/**
+ * Produksi memperbaiki cacat kosmetik; eval yang menghakimi art.
+ *
+ * Uang generation sudah terkunci saat Replicate menjawab, jadi menolak sheet di
+ * post-processing tidak memperbaiki art apa pun — ia hanya menghapus aset yang
+ * sudah dibayar dan memaksa pemain membayar lagi. Yang pantas menolak adalah
+ * `eval/run.mjs`, tempat penilaian sebuah prompt version memang murah dan
+ * informatif. Karena itu sejak v31 bintik melayang dan bocoran seam dibuang lalu
+ * dicatat di `manifest.qa`, bukan dilempar. Versi lama sengaja tetap ketat
+ * supaya penilaian art yang sudah tercatat tidak berubah surut.
+ */
+function shouldRepairDetachedArtifacts(meta, opts) {
   if (opts.removeIdleSeamLeaks === true) return true;
   if (opts.removeIdleSeamLeaks === false) return false;
-  return meta.kind !== "evolve" && promptMajor(meta.promptVersion) >= 31;
+  return promptMajor(meta.promptVersion) >= 31;
+}
+
+/**
+ * Stripper matte hanya untuk prompt yang benar-benar MEMINTA keyline putih.
+ *
+ * Sampai v10 prompt menyuruh model menggambar keyline solid 3–5px, dan stripper
+ * mengupasnya sampai bertemu dark line art. Sejak v11 prompt melarangnya, jadi
+ * putih yang menyentuh transparansi bukan lagi matte melainkan art: Z tidur yang
+ * diminta sel Sleep, dan semprotan air di sel fx. Keduanya tidak punya dark core
+ * untuk menghentikan pengupasan, jadi stripper melahapnya sampai tinggal remah —
+ * pada sheet Adult Hydron terukur 1.076px art terhapus, 727px di antaranya
+ * semprotan fx_strike, dan dua Z 218px/146px pecah menjadi delapan remah yang
+ * lalu menabrak `auditDetachedCharacterComponents`. Residu hijau tidak berubah
+ * (0,00365 -> 0,00364), jadi mematikannya tidak menukar apa pun.
+ *
+ * Sheet tanpa `promptVersion` dianggap lama dan tetap dikupas.
+ */
+function shouldStripWhiteKeyline(meta, opts) {
+  if (opts.stripWhiteKeyline === false) return false;
+  return promptMajor(meta.promptVersion) < 11;
 }
 
 /**
@@ -757,7 +796,9 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
   }
 
   softenAlphaEdges(bitmap, width, height, opts);
-  const whiteKeylinePixelsStripped = stripWhiteKeylineInPlace(bitmap, width, height, opts);
+  const whiteKeylinePixelsStripped = shouldStripWhiteKeyline(meta, opts)
+    ? stripWhiteKeylineInPlace(bitmap, width, height, opts)
+    : 0;
   // Pengupasan membuka dark line art sebagai tepi baru; haluskan sekali agar
   // outline tidak bergerigi. Tanpa piksel terkelupas, jangan proses tepi dua kali.
   if (whiteKeylinePixelsStripped > 0) softenAlphaEdges(bitmap, width, height, opts);
@@ -774,7 +815,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
     ? auditSourceGridSeams(segmented.components, width, height, layout, opts)
     : null;
   let seamCleanup = null;
-  if (seamAudit && !seamAudit.passed && shouldRemoveIdleSeamLeaks(meta, opts)) {
+  if (seamAudit && !seamAudit.passed && shouldRepairDetachedArtifacts(meta, opts)) {
     let pixels = 0;
     for (const violation of seamAudit.violations) {
       pixels += clearAlphaComponent(
@@ -799,9 +840,34 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       .join(", ");
     throw new Error(`sheet melanggar safe margin v12: ${summary}`);
   }
-  const detachedCharacterAudit = shouldAuditDetachedCharacters(meta)
+  let detachedCharacterAudit = shouldAuditDetachedCharacters(meta)
     ? auditDetachedCharacterComponents(segmented.components, opts)
     : null;
+  let detachedCleanup = null;
+  if (
+    detachedCharacterAudit
+    && !detachedCharacterAudit.passed
+    && shouldRepairDetachedArtifacts(meta, opts)
+  ) {
+    // Semua atau tidak sama sekali: satu fragmen besar berarti sheet-nya memang
+    // rusak, dan menghapus sisanya hanya akan menyamarkan kerusakan itu.
+    const repairable = detachedCharacterAudit.violations.every(
+      (item) => item.pixels <= item.body_pixels * opts.maxRepairableFragmentRatio,
+    );
+    if (repairable) {
+      let pixels = 0;
+      for (const item of detachedCharacterAudit.violations) {
+        pixels += clearAlphaComponent(bitmap, width, height, item.seed, opts.alphaThreshold);
+      }
+      detachedCleanup = {
+        mode: "remove_detached_character_fragments_v1",
+        components: detachedCharacterAudit.violations.length,
+        pixels,
+      };
+      segmented = segmentPosePixels(bitmap, width, height, opts, layout);
+      detachedCharacterAudit = auditDetachedCharacterComponents(segmented.components, opts);
+    }
+  }
   if (detachedCharacterAudit && !detachedCharacterAudit.passed) {
     const summary = detachedCharacterAudit.violations
       .map((item) => `${item.pose}:${item.pixels}px`)
@@ -908,6 +974,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       ...(seamAudit ? { seam_margin: seamAudit } : {}),
       ...(seamCleanup ? { seam_cleanup: seamCleanup } : {}),
       ...(detachedCharacterAudit ? { detached_character: detachedCharacterAudit } : {}),
+      ...(detachedCleanup ? { detached_cleanup: detachedCleanup } : {}),
       source_size: [decoded.width, decoded.height],
       // ponytail: erosi hijau hanya di cincin 1px terluar, bukan despill penuh.
       // Plafon: fringe yang lebih tebal dari 1px tetap lolos, dan itu terjadi

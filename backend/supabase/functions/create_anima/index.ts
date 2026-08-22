@@ -28,6 +28,7 @@ import {
   promptMajor,
   spriteSheetTemplate,
   validateVision,
+  VISION_THINKING,
   visionInstruction,
 } from "../_shared/vision.mjs";
 import { biayaGambarUsd } from "../_shared/pricing.mjs";
@@ -248,8 +249,7 @@ Deno.serve(async (req) => {
         temperature: 0.4,
         top_p: 0.95,
         max_output_tokens: 4096,
-        thinking_budget: 0,
-        dynamic_thinking: false,
+        ...VISION_THINKING,
       });
     } catch (e) {
       await db.rpc("refund_scan_charge", { p_owner: uid, p_reason: "vision_error" });

@@ -12,6 +12,7 @@ eval/results/
 eval/photos/*
 !eval/photos/.gitkeep
 !eval/photos/README.md
+build/
 
 # Godot
 game/.godot/
