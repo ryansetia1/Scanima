@@ -1,18 +1,18 @@
 {
   "slot": "duel_day",
   "status": "succeeded",
-  "prediction_id": "s0xc8g56ddrmr0d042y905mszr",
+  "prediction_id": "j5gddxgy7nrmw0d05d2bz071yc",
   "model": "openai/gpt-image-2",
   "quality": "medium",
   "aspect_ratio": "9:16",
   "prompt_path": "backend/prompts/ui_backgrounds/duel_day.md",
-  "prompt_sha256": "3ef153bb307a1769cb9f9c99bc0d29e131f62d96102162f6967f999a5f09d467",
+  "prompt_sha256": "c6eda1d53feb0236530ac13c35a8ed3632655809e7276988b6f984c1228e2dad",
   "reference_path": "game/assets/backgrounds/duel_background.png",
-  "reference_sha256": "48eba71dff2619324e67f9c60251f152591a29b67d8e3e3334b6e63f3db3e069",
-  "created_at": "2026-08-20T19:53:49.711Z",
-  "updated_at": "2026-08-20T19:54:25.931Z",
-  "raw_sha256": "ada9ad5af058c28db9d4d80ef633e3544479aff60266e38bbb64b8c453f6e536",
-  "output_sha256": "5a5efd5556eefdd52d845eaedb95f77ef17172038d0b6efac378b067ae1fa590",
+  "reference_sha256": "24edfbc1d54a528847c5e8255ac2d56cec9f9f50d73b75c8cddf07033d66c607",
+  "created_at": "2026-08-22T20:57:59.823Z",
+  "updated_at": "2026-08-22T20:58:38.360Z",
+  "raw_sha256": "ca9622d3c8312b1b5185101356d11f7f83d3e37502ba9113202e66bab6e69b79",
+  "output_sha256": "4763defa3013c3e320bea2873367ed5176640df91f6121b29fbfe263a1b4cd9f",
   "source_dimensions": [
     720,
     1602
@@ -23,6 +23,6 @@
   ],
   "raw_path": "backend/generated/ui_backgrounds/raw/duel_day.png",
   "output_path": "game/assets/backgrounds/duel_day_background.png",
-  "seconds": 43,
-  "completed_at": "2026-08-20T19:54:28.788Z"
+  "seconds": 44,
+  "completed_at": "2026-08-22T20:58:40.412Z"
 }

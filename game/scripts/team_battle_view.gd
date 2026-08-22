@@ -28,8 +28,8 @@ const CAMERA_FIGHTER_GAP_RATIO := 0.025
 const CAMERA_BACKGROUND_MAX_SCALE := 1.55
 # Expedition keeps its approved chapter framing. Team Battle's static arena
 # uses a higher foot line and a gentler background crop.
-const TEAM_GROUND_Y_RATIO := 0.82
-const TEAM_BACKGROUND_MAX_SCALE := 1.18
+const TEAM_GROUND_Y_RATIO := BattleScale.GROUND_Y_RATIO
+const TEAM_BACKGROUND_MAX_SCALE := 1.0
 const MIN_TEAM_SIZE := 2
 const MAX_TEAM_SIZE := 4
 const CAMERA_REFIT_SEC := 0.32
@@ -316,7 +316,6 @@ func set_builder(roster: Array, existing_team: Dictionary = {}) -> void:
 	_roster = roster.duplicate(true)
 	_team = existing_team.duplicate(true)
 	_roster_list.clear()
-	var selected_ids := _team_member_ids(_team)
 	for value in _roster:
 		var row := GameState.as_dict(value)
 		if row.is_empty():
@@ -334,12 +333,13 @@ func set_builder(roster: Array, existing_team: Dictionary = {}) -> void:
 		var index := _roster_list.item_count - 1
 		_roster_list.set_item_metadata(index, row)
 		_roster_list.set_item_disabled(index, not unavailable.is_empty())
-		if unavailable.is_empty() and str(row.get("id", "")) in selected_ids:
-			_roster_list.select(index, false)
 		if not unavailable.is_empty():
 			_roster_list.set_item_icon_modulate(index, DIM)
-	if _roster_list.has_method("sync_chosen"):
-		_roster_list.sync_chosen()
+	var roster_list := _roster_list as TeamRosterList
+	if roster_list != null:
+		roster_list.set_chosen_order(
+			roster_list.indices_for_anima_ids(_team_member_ids(_team))
+		)
 	_show_only(_builder)
 	_update_builder()
 
@@ -651,16 +651,22 @@ func _sync_location_chrome() -> void:
 
 func _update_builder() -> void:
 	var count := _selected_roster_ids().size()
-	_builder_meta.text = tr("TEAM_BUILDER_COUNT") % [
-		LocaleManager.format_integer(count),
-		LocaleManager.format_integer(MAX_TEAM_SIZE),
+	_builder_meta.text = tr("TEAM_BUILDER_META") % [
+		tr("TEAM_BUILDER_COUNT") % [
+			LocaleManager.format_integer(count),
+			LocaleManager.format_integer(MAX_TEAM_SIZE),
+		],
+		tr("TEAM_ROSTER_LEAD_HINT"),
 	]
 	_save_button.disabled = _busy or count < MIN_TEAM_SIZE or count > MAX_TEAM_SIZE
 
 
 func _selected_roster_ids() -> Array[String]:
 	var ids: Array[String] = []
-	for index in _roster_list.get_selected_items():
+	var roster_list := _roster_list as TeamRosterList
+	if roster_list == null:
+		return ids
+	for index in roster_list.get_chosen_indices_ordered():
 		var row := GameState.as_dict(_roster_list.get_item_metadata(index))
 		var anima_id := str(row.get("id", ""))
 		if not anima_id.is_empty():
@@ -1257,7 +1263,10 @@ func _apply_result_actions() -> void:
 		return
 	_result_body.text = _result_body_base
 	if not _expedition_mode:
-		_retry.text = tr("TEAM_RETRY")
+		var state_value: Variant = _session.get("state", {})
+		var state: Dictionary = state_value if typeof(state_value) == TYPE_DICTIONARY else {}
+		var status := str(_session.get("status", state.get("status", "")))
+		_retry.text = tr("TEAM_NEXT_BATTLE") if status == "won" else tr("TEAM_RETRY")
 
 
 func _set_result_actions_visible(shown: bool) -> void:

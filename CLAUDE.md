@@ -36,7 +36,7 @@ diskusi arah produk, **bukan** keputusan redesign atau fitur yang sudah dijanjik
 
 ## Status live
 
-Angka di bawah adalah yang **terakhir tercatat** per 22 Agustus 2026. Bagaimana
+Angka di bawah adalah yang **terakhir tercatat** per 23 Agustus 2026. Bagaimana
 tiap baris sampai ke keadaan itu, beserta probe production dan angka yang
 terukur saat rollout, ada di [`docs/14-deploy-log.md`](docs/14-deploy-log.md);
 kalau log menyebut versi yang lebih rendah, itu entri historis, bukan
@@ -57,7 +57,12 @@ Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 25
 `synthesize_anima` 7.
 
 Team Battle/Defense production sekarang menerima **2–4 Anima** dan builder
-selalu muncul sebelum Find Rivals; Expedition tetap tepat 4. Migrasi
+selalu muncul sebelum Find Rivals; Expedition tetap tepat 4. Pilihan roster
+sekarang benar-benar berurutan dengan badge 1–4 (slot 1 aktif), menang memakai
+**Next Battle**, dan hasil lain memakai **Try Again**; keduanya membuka builder
+dengan tim terakhir tetap terpilih. Boundary session Duel membersihkan pelat
+transient lama dan kegagalan start kembali merender lobby, jadi **Retreating**
+tidak bocor ke Anima berikutnya dan kartu Duel tidak menghilang. Migrasi
 `20260822152859_team_battle_variable_roster` membawa kontraknya. Unmapped 500
 Duel dicatat tanpa raw body ke `battle_failures` yang default-deny
 (`20260822155005_battle_failure_log` +
@@ -66,12 +71,13 @@ Evolve/Synthesis lewat helper fail-open agar kegagalan logging tidak menimpa
 response asli. Sugarworks v7 membetulkan copy ace terakhir dari Cotton menjadi
 Nimbelisk tanpa mengubah binary asset atau memanggil model.
 
-APK debug 22 Agustus 2026 23:22 berhasil dibangun
-(`com.rekansebangku.scanima` 0.1.0, 54,7 MB) dan memuat Team builder 2–4,
-outcome FIFO global, Battle di tengah bottom nav, serta framing Duel/Team baru.
-Manifest tepat memuat `INTERNET` + `CAMERA`, class kamera ada di dex, signature
-sah, dan native library terkompresi. Perangkat tidak terhubung saat verifikasi,
-jadi APK ini belum di-sideload; build 19:48 tetap yang terakhir terpasang.
+APK debug 23 Agustus 2026 04:22 berhasil dibangun
+(`com.rekansebangku.scanima` 0.1.0, 54,6 MB) dan memuat ordered Team builder,
+CTA outcome baru, reset lifecycle Duel, serta enam arena reframe. Manifest tepat
+memuat `INTERNET` + `CAMERA`, class kamera ada di dex, signature sah, dan native
+library terkompresi. Device Wi-Fi sempat terlihat tetapi terputus saat install,
+jadi APK ini belum di-sideload; build 19:48 tanggal 22 tetap yang terakhir
+terpasang.
 
 Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
 wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
@@ -193,7 +199,7 @@ Result reveal animation, dan skeleton History — ikut APK 22 Agustus 2026. Jalu
 - Lima autoload, urutannya wajib: `SecureStore` (Keystore/Keychain), `GameState` (preference + pending intent), `Backend` (transport HTTP), `LocaleManager`, lalu `AuthFlow` (PKCE/deep link). Refresh/access token dan verifier PKCE tidak lagi hidup di `state.json`; file itu hanya UID, preference, pilihan Anima, dan pending intent nonrahasia. `Backend` menulis sesi ke `GameState`, `GameState` tidak pernah memanggil `Backend`. Yang mengorkestrasi tetap scene: `await Backend.ensure_session()`.
 - Account switching memakai satu session aktif + satu `scanima:device_guest_session` permanen per instalasi; jangan membuat vault token Google A/B. Separate menyimpan guest lalu authorize Google, transfer memakai identity link same-UID dan baru menghapus slot guest setelah commit. Google existing tidak pernah di-merge. Sign Out menyiapkan guest dulu, memakai `/logout?scope=local`, lalu reset seluruh state/cache UID lama; Delete Account linked juga wajib me-refresh guest terpisah sebelum penghapusan permanen dimulai. Semua mutation pending memblokir switch **dan Delete Account**. `pending_account_switch` nonrahasia menyelesaikan crash, sementara kehilangan guest yang ditandai wajib ada gagal aman tanpa membuat anonymous baru diam-diam. Recovery marker dan cold-start deeplink dijalankan serial sebelum cache Home boleh dicat; boot memegang satu-satunya reload bila OAuth selesai saat cold start. Setiap pergantian UID menaikkan `GameState.session_epoch`; callback UI, download art, dan dispatch Expedition hanya boleh menulis state bila epoch response masih aktif, lalu konteks shell/Atlas/Expedition di-reset bersama saat handoff.
 - Entry point-nya `scenes/scan_flow.tscn`: satu shell persisten yang meng-instance lima child scene `home_view`, `scan_view`, `battle_view`, `collection_view`, dan `anima_details_view`, plus `bottom_nav`. Urutan tab Home, Scan, Battle, Animas, Menu; Battle sengaja ada di tengah. Seluruh tombol memakai ikon di atas label, tinggi 100px, dan bar-nya digambar full-bleed 152px sesuai desain. Pada viewport lebar, backdrop nav menjaga aspect ratio dan row lima tab tetap 674px terpusat, jadi pill dan spacing tidak ikut melar. Tab tidak memakai `change_scene_to_file()`, supaya request, pending scan/care/battle, Stage, dan inkubator tidak di-reset saat pemain berpindah layar. Outcome Level Up, Synthesis, dan Evolution dimiliki shell sebagai FIFO global: hasil menunggu modal aktif, lalu tampil di screen mana pun tanpa saling menimpa; Evolution success menawarkan Summon atau Rename. `scenes/anima_demo.tscn` tetap alat periksa art yang dipanggil eksplisit, dan `scenes/home_demo.tscn` adalah harness layout Home: ia meng-instance `home_view.tscn` yang sama dengan production plus HUD, bottom nav, dan overlay Shop/Bag lalu memberi satu row Anima palsu, jadi layout bisa disetel di editor tanpa jaringan atau akun. Keduanya dev tooling dan tidak pernah masuk jalur pemain.
-- Background Home/Duel mencampur pasangan PNG siang–malam di shader berdasarkan jam lokal absolut: fajar 05:30–06:30, siang penuh sampai 17:30, dan senja 17:30–18:30, disampel tiap detik supaya resume tidak melompat. Home, Duel, dan Team Battle masing-masing punya varian 9:16 dan 16:9 yang dipilih dari aspect viewport. Kaki Home tetap pada ground line 68% portrait / 69% landscape di **rect art dasar**, bukan pada viewport. Karena pasangan portrait day/night menggambar pusat dais pada row berbeda, background portrait diberi overscan 1,11× lalu focal point dais-nya diikat ke Stage; background yang bergerak halus saat blend, bukan Anima. Home juga memberi contact shadow radial yang mengikuti bbox kaki dan visibility pose. Kaki opak Duel/Team dipin ke ground line 82% tinggi arena dan crop background statis dibatasi 1,18×; background statis keduanya dipan vertikal ke `0.88` agar pusat arena turun, sedangkan Expedition/Boss sengaja mempertahankan framing 91% + maksimum 1,55× yang sudah disetujui. Duel memakai dock 2×2, Team menonjolkan Attack/Special di baris dua kolom lalu Guard/Item/Switch/Retreat di baris empat kolom, sedangkan Expedition tetap 3+3. Art Home hidup di root canvas di belakang `Stage`; peta node The Sugarworks memakai top-view sendiri, dan art chapter dari server tetap menang serta tetap center-crop di combat Expedition.
+- Background Home/Duel mencampur pasangan PNG siang–malam di shader berdasarkan jam lokal absolut: fajar 05:30–06:30, siang penuh sampai 17:30, dan senja 17:30–18:30, disampel tiap detik supaya resume tidak melompat. Home, Duel, dan Team Battle masing-masing punya varian 9:16 dan 16:9 yang dipilih dari aspect viewport. Kaki Home tetap pada ground line 68% portrait / 69% landscape di **rect art dasar**, bukan pada viewport. Karena pasangan portrait day/night menggambar pusat dais pada row berbeda, background portrait diberi overscan 1,11× lalu focal point dais-nya diikat ke Stage; background yang bergerak halus saat blend, bukan Anima. Home juga memberi contact shadow radial yang mengikuti bbox kaki dan visibility pose. Enam background statis Duel/Team portrait/landscape day/night sekarang mengomposisi foot-contact baseline 91% seperti Expedition/Boss; runtime memakai cover maksimum 1,0× dan pan vertikal `0.5` agar crop portrait mempertahankan langit, sedangkan background chapter tetap boleh zoom sampai 1,55×. Duel memakai dock 2×2, Team menonjolkan Attack/Special di baris dua kolom lalu Guard/Item/Switch/Retreat di baris empat kolom, sedangkan Expedition tetap 3+3. Art Home hidup di root canvas di belakang `Stage`; peta node The Sugarworks memakai top-view sendiri, dan art chapter dari server tetap menang serta tetap center-crop di combat Expedition.
 - `Backend.gd` satu-satunya tempat yang tahu URL project dan kunci. Kuncinya **publishable** (`sb_publishable_...`) dan memang ikut ke dalam build; yang membatasi akses RLS, bukan kerahasiaannya. Terukur diterima endpoint yang dipakai client: `auth/signup`, `auth/token`, identity authorize/link, REST, Storage, dan `functions/v1` (`create_anima`, `care_anima`, `battle_anima`, `shop`, `seeker`, `gallery`). Yang tidak boleh masuk ke sana sampai kapan pun: `REPLICATE_API_TOKEN` atau service role key.
 - Yang persist hanya sesi aman aktif + guest perangkat + verifier PKCE sementara di SecureStore, marker `pending_oauth`/`pending_account_switch` nonrahasia, scan yang sedang berjalan, satu `pending_care`, satu `pending_battle` berisi session/turn/version + intent + idempotency key, dan satu `pending_purchase`. Saldo, kebutuhan, tas, profil Seeker, dan daftar Anima **selalu** dibaca ulang dari Postgres — server yang berwenang. Pending intent dihapus hanya setelah server menjawab; timeout/restart me-replay key yang sama supaya Bits, damage, reward, atau grant Google tidak commit dua kali.
 

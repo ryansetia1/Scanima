@@ -23,8 +23,11 @@ Change only the time and natural atmosphere:
   glow
 
 Mobile safe zones remain mandatory: two uncluttered fighter spaces in the
-middle-lower frame; lower 24–28% remains one continuous obstacle-free floor;
-upper 18% and lower 16% remain visually quiet for Battle HUD and commands.
+middle-lower frame around 27% and 73% width; foot-contact baselines remain
+exactly 91% from the top; open sky remains 40–45%, middle architecture roughly
+30–35%, and the lower 22–26% remains one continuous obstacle-free floor that
+does not dominate the frame. Upper 16% and lower 9% remain visually quiet for
+Battle HUD and commands.
 Environment art only: no fighters, people, text, logo, watermark, scoreboard,
 health bar, button, HUD, or interface element.
 

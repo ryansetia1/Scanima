@@ -37,7 +37,10 @@ server boleh menjawab expired dan client membersihkan bookmark lokal.
 ### Tim dan lawan
 
 - Builder selalu dibuka sebelum pencarian rival; pemain menyimpan Team Battle
-  berisi 2–4 Anima, baru kemudian meminta candidate.
+  berisi 2–4 Anima, baru kemudian meminta candidate. Roster adalah array
+  berurutan, bukan set: tap pertama menjadi slot aktif **1**, tap berikutnya
+  mengisi bench **2–4**, dan menghapus anggota memadatkan nomor sesudahnya.
+  Builder memulihkan urutan server/lokal yang sama ketika dibuka ulang.
 - Defense Team menerima 2–4 Anima, disimpan terpisah, dan hanya masuk pool lawan
   setelah opt-in.
 - Snapshot Defense tidak membawa owner ID, Seeker Name, atau nickname privat.
@@ -84,7 +87,10 @@ di akhir event log.
 Semua mode Battle memakai warna HP kontinu: merah pada 0%, campuran di tengah,
 dan biru/cyan pada 100%. Angka `current / max` tetap wajib karena status tidak
 boleh bergantung pada warna. Alpha pusat ground shadow arena adalah 0,45 untuk
-Anima pemain, lawan, dan Boss Seeker.
+Anima pemain, lawan, dan Boss Seeker. Duel, Team, Expedition, dan Boss memakai
+ground line kaki bersama di 91% tinggi arena. Backdrop statis Duel/Team sudah
+mengomposisi 40–45% langit dan 22–26% lantai di source art, lalu memakai cover
+normal 1,0×; zoom dinamis sampai 1,55× tetap khusus backdrop chapter.
 
 Menang berarti seluruh roster lawan KO. Saat turn ceiling tercapai, hasil
 ditentukan dari rasio total HP roster yang tersisa; rasio sama menjadi draw dan
@@ -109,6 +115,10 @@ Result memakai `last_reward.anima_exp`, memfilter `exp > 0`, lalu menampilkan
 nama penerima dan Level Up. Payload terminal memulihkan array yang sama dari
 receipt `team_battle_turns.response`, sehingga restart/replay tidak mengubah
 siapa yang ditampilkan.
+
+CTA hasil Team mengikuti outcome: **Next Battle** sesudah menang dan **Try
+Again** sesudah loss/draw/forfeit. Keduanya kembali ke builder dengan roster
+terakhir tetap terpilih; **Return to Lobby** tetap keluar ke hub Team Battle.
 
 ## 3. Expedition
 

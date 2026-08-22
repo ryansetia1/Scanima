@@ -2174,6 +2174,23 @@ func _test_battle_view() -> void:
 	view.set_lobby(anima)
 	_check(not start.disabled, "Hunger 40 remains eligible for Battle")
 
+	view.set_loading("BATTLE_CONNECTING")
+	_check(
+		lobby.visible and not start.visible,
+		"Battle start hides the lobby CTA while connecting"
+	)
+	view.set_error("BATTLE_ERROR_GENERIC")
+	_check(
+		lobby.visible and not start.visible
+		and lobby_name.text == tr("BATTLE_ERROR_TITLE"),
+		"a failed start surfaces the error without leaving the lobby"
+	)
+	view.set_busy(false)
+	_check(
+		lobby.visible and start.visible and not start.disabled,
+		"set_busy(false) restores the Battle Start button after a failed connect"
+	)
+
 	view.set_loading("BATTLE_RESUMING")
 	_check(lobby.visible and start.disabled, "Battle resume exposes a locked loading state")
 
@@ -2315,11 +2332,17 @@ func _test_battle_view() -> void:
 	_check(
 		is_equal_approx(
 			active_ground_y,
-			active_arena_height * float(
-				view.get_script().get_script_constant_map().get("DUEL_GROUND_Y_RATIO", 0.82)
-			)
+			active_arena_height * BATTLE_SCALE.GROUND_Y_RATIO
 		),
-		"Duel fighters plant their opaque feet on the raised arena ground line"
+		"Duel fighters plant their opaque feet on the shared BattleScale ground line"
+	)
+	_check(
+		is_equal_approx(BATTLE_SCALE.STATIC_BACKGROUND_VERTICAL_PAN, 0.5)
+		and is_equal_approx(
+			float(view.get_script().get_script_constant_map().get("DUEL_BACKGROUND_MAX_SCALE", 0.0)),
+			1.0
+		),
+		"static Duel background preserves expanded sky without camera crop"
 	)
 	_check(
 		result.get_parent() == footer and result.z_index > player_anchor.z_index,
@@ -2400,6 +2423,15 @@ func _test_battle_view() -> void:
 		effectiveness.visible and effectiveness_label.text == tr("BATTLE_RETREATING"),
 		"Retreat processing uses the same arena event plate as Super effective"
 	)
+	view.set_loading("BATTLE_RESUMING")
+	_check(not effectiveness.visible, "set_loading clears a stale retreat banner")
+	view.show_retreat_banner()
+	view.set_session(session, loaded, loaded)
+	_check(not effectiveness.visible, "set_session clears a stale retreat banner")
+	view.show_retreat_banner()
+	view.set_lobby(anima)
+	_check(not effectiveness.visible, "set_lobby clears a stale retreat banner")
+	view.set_session(session, loaded, loaded)
 	_check(
 		effectiveness.offset_left >= 15.0
 		and effectiveness.offset_right <= -15.0,
@@ -2816,11 +2848,17 @@ func _test_team_battle_view() -> void:
 	saved_three["members"] = members.slice(0, 3)
 	view.set_builder(roster, saved_three)
 	var roster_list := view.find_child("TeamRosterList", true, false) as ItemList
+	var team_roster := roster_list as TeamRosterList
 	var save := view.find_child("TeamSaveButton", true, false) as Button
+	var builder_meta := view.find_child("TeamBuilderMeta", true, false) as Label
 	_check(roster_list.item_count == 5, "Team builder lists the current roster")
 	_check(
-		roster_list.get_selected_items().size() == 3 and not save.disabled,
-		"a saved three-member team reopens selected and can continue"
+		team_roster.get_chosen_indices_ordered() == [0, 1, 2] and not save.disabled,
+		"a saved three-member team restores pick order and can continue"
+	)
+	_check(
+		builder_meta.text.contains(tr("TEAM_ROSTER_LEAD_HINT")),
+		"Team builder explains that slot 1 leads battle"
 	)
 	_check(roster_list.is_item_disabled(4), "unavailable Anima cannot be selected for a Team")
 	_check(
@@ -2829,46 +2867,78 @@ func _test_team_battle_view() -> void:
 		and roster_list.get_item_text(4).contains(tr("BATTLE_PICK_LOW_ENERGY")),
 		"Team builder shows Anima art and concise readiness"
 	)
-	roster_list.deselect_all()
-	roster_list.call("sync_chosen")
-	_tap_roster_item(roster_list, 0)
-	_check(save.disabled, "one selected Anima does not meet the Team minimum")
+	var cleared: Array[int] = []
+	team_roster.set_chosen_order(cleared)
 	_tap_roster_item(roster_list, 1)
-	_check(not save.disabled, "two selected Anima enable Team Save")
+	_check(
+		team_roster.get_chosen_indices_ordered() == [1] and save.disabled,
+		"one selected Anima does not meet the Team minimum"
+	)
+	_tap_roster_item(roster_list, 0)
+	_check(
+		team_roster.get_chosen_indices_ordered() == [1, 0] and not save.disabled,
+		"two selected Anima enable Team Save in tap order"
+	)
+	var ordered_ids: Array = view.call("_selected_roster_ids")
+	_check(
+		ordered_ids.size() == 2
+		and ordered_ids[0] == str(roster[1].get("id", ""))
+		and ordered_ids[1] == str(roster[0].get("id", "")),
+		"save payload leads with the first tapped Anima"
+	)
 	_tap_roster_item(roster_list, 2)
-	_check(not save.disabled, "three selected Anima keep Team Save enabled")
+	_check(
+		not save.disabled
+		and team_roster.get_chosen_indices_ordered() == [1, 0, 2],
+		"three selected Anima keep Team Save enabled in tap order"
+	)
 	_tap_roster_item(roster_list, 3)
 	var selected_style := roster_list.get_theme_stylebox("selected_focus") as StyleBoxFlat
 	var cursor_style := roster_list.get_theme_stylebox("cursor")
 	_check(
 		not save.disabled
-		and roster_list.get_selected_items().size() == 4
+		and team_roster.get_chosen_indices_ordered() == [1, 0, 2, 3]
 		and roster_list.get_script().resource_path == "res://scripts/team_roster_list.gd"
 		and selected_style.border_color.a > 0.0
 		and roster_list.get_theme_color("font_selected_color").a == 1.0
 		and cursor_style is StyleBoxEmpty
 		and roster_list.get_theme_stylebox("hovered") is StyleBoxEmpty,
-		"four taps keep four checked cards and enable Save without a stale count"
+		"four taps keep four numbered slots and enable Save without a stale count"
 	)
 	_tap_roster_item(roster_list, 4)
+	_check(
+		not save.disabled
+		and team_roster.get_chosen_indices_ordered() == [1, 0, 2, 3],
+		"a blocked Anima never joins the ordered pick"
+	)
 	_tap_roster_item(roster_list, 1)
 	_check(
 		not save.disabled
-		and roster_list.get_selected_items().size() == 3
+		and team_roster.get_chosen_indices_ordered() == [0, 2, 3]
 		and not roster_list.is_selected(1),
-		"three members remain valid and a blocked Anima never joins"
+		"three members remain valid after removing the lead slot"
 	)
 	_tap_roster_item(roster_list, 2)
 	_check(
-		not save.disabled and roster_list.get_selected_items().size() == 2,
+		not save.disabled and team_roster.get_chosen_indices_ordered() == [0, 3],
 		"two members remain a valid Team"
 	)
 	_tap_roster_item(roster_list, 3)
-	_check(save.disabled, "dropping to one member disables Team Save")
+	_check(
+		save.disabled and team_roster.get_chosen_indices_ordered() == [0],
+		"dropping to one member disables Team Save"
+	)
 	_tap_roster_item(roster_list, 1)
-	_check(not save.disabled, "re-tapping restores the two-member minimum")
-	_tap_roster_item(roster_list, 2)
-	_tap_roster_item(roster_list, 3)
+	_check(
+		not save.disabled and team_roster.get_chosen_indices_ordered() == [0, 1],
+		"re-tapping restores the two-member minimum in pick order"
+	)
+	_check(
+		team_roster.has_method("get_chosen_indices_ordered")
+		and team_roster.has_method("set_chosen_order")
+		and team_roster.has_method("indices_for_anima_ids"),
+		"TeamRosterList exposes ordered pick and restore APIs"
+	)
 	var daily := {
 		"earned": 1, "limit": 2, "bits_earned": 8, "bits_limit": 40,
 	}
@@ -3045,11 +3115,13 @@ func _test_team_battle_view() -> void:
 		and not special.disabled
 		and is_equal_approx(
 			player_anchor.position.y,
-			battle_stage.size.y * float(
-				view.get_script().get_script_constant_map().get("TEAM_GROUND_Y_RATIO", 0.82)
-			)
+			battle_stage.size.y * BATTLE_SCALE.GROUND_Y_RATIO
+		)
+		and is_equal_approx(
+			float(view.get_script().get_script_constant_map().get("TEAM_BACKGROUND_MAX_SCALE", 0.0)),
+			1.0
 		),
-		"Team arena emphasizes Attack/Special and raises opaque feet above the dock"
+		"Team arena preserves expanded sky and plants opaque feet on the shared ground line"
 	)
 	_check(
 		player_slots.get_index() < player_name.get_index(),
@@ -3401,11 +3473,22 @@ func _test_team_battle_view() -> void:
 	var team_retries := [0]
 	view.back_requested.connect(func() -> void: team_exits[0] += 1)
 	view.retry_requested.connect(func() -> void: team_retries[0] += 1)
+	var lost_session: Dictionary = session.duplicate(true)
+	lost_session["status"] = "lost"
+	(lost_session["state"] as Dictionary)["status"] = "lost"
+	view.set_session(lost_session, art_cache)
+	_check(team_retry.text == tr("TEAM_RETRY"), "Team loss keeps Try Again on the result CTA")
+	var forfeit_session: Dictionary = session.duplicate(true)
+	forfeit_session["status"] = "forfeited"
+	(forfeit_session["state"] as Dictionary)["status"] = "forfeited"
+	view.set_session(forfeit_session, art_cache)
+	_check(team_retry.text == tr("TEAM_RETRY"), "Team forfeit keeps Try Again on the result CTA")
+	view.set_session(session, art_cache)
 	_check(
 		team_leave != null and team_leave.visible
 		and tr(team_leave.text) == tr("BATTLE_RETURN_LOBBY")
-		and team_retry.text == tr("TEAM_RETRY"),
-		"terminal Team result offers both a rematch and a way out"
+		and team_retry.text == tr("TEAM_NEXT_BATTLE"),
+		"terminal Team win offers Next Battle and a way out"
 	)
 	team_leave.pressed.emit()
 	_check(team_exits[0] == 1, "Team leave button closes the mode")
@@ -3428,9 +3511,9 @@ func _test_team_battle_view() -> void:
 	view.set_session(session, art_cache)
 	view.set_roster(roster)
 	_check(
-		team_retry.text == tr("TEAM_RETRY")
+		team_retry.text == tr("TEAM_NEXT_BATTLE")
 		and not result_body.text.ends_with(team_blocked_line),
-		"swapping the drained member back restores the Team rematch CTA"
+		"swapping the drained member back restores the Team Next Battle CTA"
 	)
 	view.set_expedition_mode(true)
 	_check(
@@ -3844,17 +3927,24 @@ func _test_expedition_view() -> void:
 	roster.append(tired)
 	view.set_builder(roster, {"id": "expedition-team", "members": members})
 	var roster_list := view.find_child("ExpeditionRosterList", true, false) as ItemList
+	var expedition_roster := roster_list as TeamRosterList
 	var save_team := view.find_child("ExpeditionSaveTeam", true, false) as Button
+	var expedition_builder_meta := view.find_child("ExpeditionBuilderMeta", true, false) as Label
 	_check(
 		roster_list.is_item_disabled(4) and not save_team.disabled
 		and roster_list.get_script().resource_path == "res://scripts/team_roster_list.gd"
-		and roster_list.get_theme_color("font_selected_color").a == 1.0,
-		"Expedition Team keeps four visible checked selections and blocks low Energy"
+		and roster_list.get_theme_color("font_selected_color").a == 1.0
+		and expedition_roster.get_chosen_indices_ordered() == [0, 1, 2, 3],
+		"Expedition Team restores four numbered selections and blocks low Energy"
+	)
+	_check(
+		expedition_builder_meta.text.contains(tr("TEAM_ROSTER_LEAD_HINT")),
+		"Expedition builder shares the slot-1 lead hint"
 	)
 	_tap_roster_item(roster_list, 2)
 	_check(
-		save_team.disabled and roster_list.get_selected_items().size() == 3,
-		"Expedition Save follows the tapped selection instead of Godot's raw state"
+		save_team.disabled and expedition_roster.get_chosen_indices_ordered() == [0, 1, 3],
+		"Expedition Save follows ordered picks instead of Godot's index-sorted state"
 	)
 	_tap_roster_item(roster_list, 2)
 	_check(

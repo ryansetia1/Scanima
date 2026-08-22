@@ -36,10 +36,14 @@ const SLOTS = Object.freeze({
   duel: {
     prompt: "duel.md",
     output: "duel_background.png",
+    reference: "game/assets/backgrounds/duel_background.png",
+    snapshotReference: "backend/generated/ui_backgrounds/references/duel_pre_reframe.png",
   },
   team_battle: {
     prompt: "team_battle.md",
     output: "team_battle_background.png",
+    reference: "game/assets/backgrounds/team_battle_background.png",
+    snapshotReference: "backend/generated/ui_backgrounds/references/team_battle_pre_reframe.png",
   },
   home_landscape: {
     prompt: "home_landscape.md",
@@ -257,17 +261,29 @@ async function generate(slot) {
   const promptPath = join(PROMPT_DIR, definition.prompt);
   const prompt = await readFile(promptPath, "utf8");
   const promptHash = sha256(prompt);
-  const reference = definition.reference
-    ? await readFile(join(ROOT, definition.reference))
-    : null;
+  const sourcePath = join(PROVENANCE_DIR, `${slot}.json`);
+  let source = await readJson(sourcePath);
+  let referencePath = definition.reference ?? null;
+  let reference = null;
+  if (definition.snapshotReference) {
+    const snapshotPath = join(ROOT, definition.snapshotReference);
+    if (!(await exists(snapshotPath))) {
+      if (source) throw new Error(`REFERENCE_SNAPSHOT_MISSING:${snapshotPath}`);
+      const original = await readFile(join(ROOT, definition.reference));
+      await mkdir(dirname(snapshotPath), { recursive: true });
+      await writeFile(snapshotPath, original);
+    }
+    referencePath = definition.snapshotReference;
+    reference = await readFile(snapshotPath);
+  } else if (definition.reference) {
+    reference = await readFile(join(ROOT, definition.reference));
+  }
   const aspectRatio = definition.aspectRatio ?? DEFAULT_ASPECT_RATIO;
   const targetWidth = definition.targetWidth ?? DEFAULT_TARGET_WIDTH;
   const targetHeight = definition.targetHeight ?? DEFAULT_TARGET_HEIGHT;
   const referenceHash = reference ? sha256(reference) : null;
-  const sourcePath = join(PROVENANCE_DIR, `${slot}.json`);
   const rawPath = join(RAW_DIR, `${slot}.png`);
   const outputPath = join(OUTPUT_DIR, definition.output);
-  let source = await readJson(sourcePath);
 
   if (source && source.prompt_sha256 !== promptHash) {
     throw new Error(`PROMPT_CHANGED_WITH_EXISTING_PREDICTION:${sourcePath}`);
@@ -303,7 +319,7 @@ async function generate(slot) {
       aspect_ratio: aspectRatio,
       prompt_path: `backend/prompts/ui_backgrounds/${definition.prompt}`,
       prompt_sha256: promptHash,
-      reference_path: definition.reference ?? null,
+      reference_path: referencePath,
       reference_sha256: referenceHash,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -349,6 +365,14 @@ async function check() {
     try {
       const source = await readJson(sourcePath);
       if (source?.status !== "succeeded") throw new Error("provenance is not succeeded");
+      const prompt = await readFile(join(PROMPT_DIR, definition.prompt));
+      if (sha256(prompt) !== source.prompt_sha256) throw new Error("prompt hash mismatch");
+      if (source.reference_path) {
+        const reference = await readFile(join(ROOT, source.reference_path));
+        if (sha256(reference) !== source.reference_sha256) {
+          throw new Error("reference hash mismatch");
+        }
+      }
       const output = await readFile(outputPath);
       const image = await Image.decode(output);
       const targetWidth = definition.targetWidth ?? DEFAULT_TARGET_WIDTH;

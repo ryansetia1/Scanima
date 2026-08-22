@@ -1,20 +1,19 @@
 class_name TeamRosterList
 extends ItemList
 
-## Touch-first multi-pick. Godot's own selection replaces the whole set on a tap
-## without Ctrl, so `_chosen` is the authority and its `selection_changed` is the
-## only signal callers may count from. Reading `multi_selected` instead reports
-## Godot's pre-correction state and desyncs the counter from the checkmarks.
+## Touch-first multi-pick. `_order` is pick/save order (first tap = slot 1 =
+## battle lead). Godot `get_selected_items()` is index-sorted only; callers must
+## use `get_chosen_indices_ordered()` for payloads.
 
 signal selection_changed
 
 const SELECTED_BG := Color(0.055, 0.105, 0.2, 0.96)
 const SELECTED_BORDER := Color(0.42, 0.9, 0.82, 1.0)
 const SELECTED_TEXT := Color(0.9, 0.96, 1.0, 1.0)
-const CHECK_INK := Color(0.025, 0.065, 0.13, 1.0)
+const BADGE_INK := Color(0.025, 0.065, 0.13, 1.0)
 const TEAM_SIZE := 4
 
-var _chosen: Dictionary = {}
+var _order: Array[int] = []
 
 
 func _ready() -> void:
@@ -39,33 +38,66 @@ func _ready() -> void:
 	item_clicked.connect(_on_item_clicked)
 
 
-func sync_chosen() -> void:
-	_chosen.clear()
-	for index in get_selected_items():
-		_chosen[index] = true
+func set_chosen_order(indices: Array[int]) -> void:
+	_order.clear()
+	for index in indices:
+		if _order.size() >= TEAM_SIZE:
+			break
+		if index < 0 or index >= item_count or is_item_disabled(index):
+			continue
+		if index in _order:
+			continue
+		_order.append(index)
 	_apply_chosen()
 
 
+func get_chosen_indices_ordered() -> Array[int]:
+	var result: Array[int] = []
+	for index in _order:
+		if index >= 0 and index < item_count and not is_item_disabled(index):
+			result.append(index)
+	return result
+
+
+func indices_for_anima_ids(anima_ids: Array[String]) -> Array[int]:
+	var result: Array[int] = []
+	for anima_id in anima_ids:
+		if anima_id.is_empty():
+			continue
+		for index in item_count:
+			if is_item_disabled(index):
+				continue
+			var value: Variant = get_item_metadata(index)
+			if typeof(value) != TYPE_DICTIONARY:
+				continue
+			var row: Dictionary = value
+			if str(row.get("id", "")) == anima_id:
+				result.append(index)
+				break
+	return result
+
+
 func _draw() -> void:
-	# `get_item_rect()` mengembalikan koordinat konten dan terukur TIDAK ikut
-	# bergeser saat list di-scroll, jadi offsetnya dikurangi sendiri; tanpa itu
-	# checklist menempel di layar sementara kartunya jalan.
+	# `get_item_rect()` returns content coordinates and does not move when the
+	# list scrolls. Subtracting the scroll keeps slot badges attached to cards.
 	var scroll := get_v_scroll_bar().value
-	for index in item_count:
-		if not is_selected(index):
+	var font := get_theme_font("font")
+	var badge_font_size := mini(get_theme_font_size("font_size"), 24)
+	for slot in _order.size():
+		var index := _order[slot]
+		if is_item_disabled(index) or not is_selected(index):
 			continue
 		var item_rect := get_item_rect(index)
 		var center := Vector2(item_rect.end.x - 28.0, item_rect.position.y + 26.0 - scroll)
 		draw_circle(center, 18.0, SELECTED_BORDER)
-		draw_polyline(
-			PackedVector2Array([
-				center + Vector2(-8.0, 0.0),
-				center + Vector2(-2.0, 6.0),
-				center + Vector2(9.0, -7.0),
-			]),
-			CHECK_INK,
-			4.0,
-			true
+		draw_string(
+			font,
+			Vector2(center.x - 18.0, center.y + badge_font_size * 0.35),
+			str(slot + 1),
+			HORIZONTAL_ALIGNMENT_CENTER,
+			36.0,
+			badge_font_size,
+			BADGE_INK
 		)
 
 
@@ -73,17 +105,21 @@ func _on_item_clicked(index: int, _at: Vector2, mouse_button_index: int) -> void
 	if mouse_button_index != MOUSE_BUTTON_LEFT or is_item_disabled(index):
 		_apply_chosen()
 		return
-	if _chosen.has(index):
-		_chosen.erase(index)
-	elif _chosen.size() < TEAM_SIZE:
-		_chosen[index] = true
+	if index in _order:
+		_order.erase(index)
+	elif _order.size() < TEAM_SIZE:
+		_order.append(index)
 	_apply_chosen()
 	selection_changed.emit()
 
 
 func _apply_chosen() -> void:
+	for order_index in range(_order.size() - 1, -1, -1):
+		var index := _order[order_index]
+		if index < 0 or index >= item_count or is_item_disabled(index):
+			_order.remove_at(order_index)
 	for index in item_count:
-		var keep := _chosen.has(index) and not is_item_disabled(index)
+		var keep := index in _order and not is_item_disabled(index)
 		if keep and not is_selected(index):
 			select(index, false)
 		elif not keep and is_selected(index):

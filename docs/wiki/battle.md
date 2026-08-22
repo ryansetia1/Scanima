@@ -42,8 +42,10 @@ Arena tetap menampilkan satu fighter aktif dari setiap tim.
 
 - Pemilih tim menampilkan pose kebutuhan Anima saat ini. Teks **Ready**, **Low
   Energy**, **Dormant**, atau **Not ready** tetap terlihat agar kesiapan tidak
-  bergantung pada warna saja. Ketuk card untuk menambah atau melepasnya; card
-  yang masuk tim diberi checklist di kanan atas.
+  bergantung pada warna saja. Ketuk card untuk menambah atau melepasnya. Card
+  terpilih diberi nomor sesuai urutan pilihan: **1** adalah Anima yang memulai
+  battle, lalu **2–4** adalah urutan bench. Urutan itu tetap sama saat builder
+  dibuka lagi.
 - Setelah tim disimpan, lobby menawarkan sampai **tiga rival** dengan tier dan
   Bits-nya masing-masing. **Find New Rivals** mengocok ulang pilihannya. Selama
   belum banyak pemain memasang Defense Team, sebagian rival adalah tim sistem.
@@ -339,12 +341,13 @@ redup selama battle atau run masih berjalan.
 
 ## Sesudah battle selesai
 
-Kartu hasil punya dua tombol. Yang besar mengulang battle-nya (**Battle Again**
-di Duel, **Train Again** setelah 3/3, **Try Again** di Team Battle). Yang di
-sebelahnya, **Return to Lobby**, keluar dari battle itu: Duel kembali ke lobby
-Battle, Team Battle kembali ke hub-nya. Tombol Android back melakukan hal yang
-sama. Di Expedition tidak ada tombol kedua, karena **Return to Map** sudah jalan
-keluarnya.
+Kartu hasil punya dua tombol. Di Duel, tombol besar memakai **Battle Again**
+atau **Train Again** setelah 3/3. Di Team Battle, menang memakai **Next Battle**;
+kalah, draw, atau Retreat memakai **Try Again**. Keduanya membuka builder dengan
+urutan tim sebelumnya sudah terpilih, baru lanjut ke rival berikutnya.
+**Return to Lobby** keluar dari battle itu: Duel kembali ke lobby Battle, Team
+Battle kembali ke hub-nya. Tombol Android back melakukan hal yang sama. Di
+Expedition tidak ada tombol kedua, karena **Return to Map** sudah jalan keluarnya.
 
 Kalau Anima yang baru bertarung tidak bisa langsung bertarung lagi, tombol besar
 itu berubah, bukan diam-diam ditolak:

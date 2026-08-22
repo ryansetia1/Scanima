@@ -11,8 +11,11 @@ the added horizontal space with broad architectural shapes. Team scale must
 come from depth and framing, not tiny crowds or repeated detail.
 
 Combat composition contract:
-- both active-fighter foot-contact baselines are exactly 82% from the top
-- one continuous solid arena floor covers the full width below that baseline
+- open night sky occupies 40–45% of the frame and middle architecture roughly
+  30–35%
+- both active-fighter foot-contact baselines are exactly 91% from the top
+- one continuous solid arena floor occupies only the lower 22–26% across the
+  full width and must not dominate the frame
 - reserve broad low-detail fighter spaces around 27% and 73% frame width
 - keep the center open for attacks, Summon, and Switch effects
 - upper 16% and lower 9% remain dark and quiet for Team HUD and six commands

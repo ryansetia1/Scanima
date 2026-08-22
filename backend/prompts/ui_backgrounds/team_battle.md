@@ -1,9 +1,13 @@
 # Scanima — Team Battle Arena Background
 
-Generate one original opaque 9:16 portrait PNG for an active four-versus-four
-Team Battle screen in a mobile anime monster game. Environment art only: no
-fighters, people, text, logo, watermark, scoreboard, health bar, button, HUD, or
-interface element.
+Use the supplied current Team Battle coliseum as a strict visual reference.
+Generate one opaque 9:16 portrait PNG of the SAME squad-versus-squad arena,
+recomposed by extending its open upper vault and night sky so the combat floor
+sits substantially lower in frame. This is an expansion and reframing pass, not
+a redesign. Preserve the coliseum identity, standards, central gate and crest,
+floor markings, camera axis, and perspective. Environment art only: no fighters,
+people, text, logo, watermark, scoreboard, health bar, button, HUD, or interface
+element.
 
 Scene: Scanima's grand team coliseum, visibly broader and more prestigious than
 the Duel arena while still supporting only one active fighter per side. A tall
@@ -13,13 +17,19 @@ inside each side standard, purely architectural and without readable symbols.
 The central stage remains calm and open.
 
 Composition for a tall phone:
-- reserve broad uncluttered fighter spaces in the middle-lower frame, left and
-  right, with clear space for summon and switch effects
-- lower 24–28% is one continuous solid arena floor with a few large geometric
-  lane marks; no obstacles, gaps, liquid, rails, props, or vents under fighters
-- keep the central 55% low-detail; complexity belongs in the outer 20% edges and
-  distant upper-middle architecture
-- keep the upper 18% and lower 16% dark and quiet for Team HUD and six commands
+- open night sky fills 40–45% of the frame, framed by the expanded upper vault
+  and coliseum ribs
+- middle architecture occupies roughly 30–35% without moving or replacing the
+  reference coliseum's major structures
+- lower 22–26% is one continuous solid arena floor with a few large geometric
+  lane marks; it must not dominate the frame
+- both active-fighter foot-contact baselines are exactly 91% from the top,
+  around 27% and 73% frame width, with clear space for Summon and Switch effects
+- keep the upper 16% and lower 9% dark and quiet for Team HUD and six commands
+- do not merely crop, stretch, or slide the supplied image downward; paint the
+  additional upper arena and sky while preserving floor perspective
+- no obstacles, gaps, liquid, rails, props, vents, or stairs under fighters
+- complexity belongs at the outer edges and distant middle architecture
 - communicate larger scale through depth and framing, not through tiny crowds
   or repeated decorative detail
 

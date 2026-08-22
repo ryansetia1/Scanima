@@ -11,8 +11,11 @@ anime environment style. Continue both arena wings naturally into the added
 horizontal space without duplicating landmarks or adding a centered monument.
 
 Combat composition contract:
-- both fighter foot-contact baselines are exactly 82% from the top
-- one continuous solid floor covers the full width beneath that baseline
+- open night sky occupies 40–45% of the frame and middle architecture roughly
+  30–35%
+- both fighter foot-contact baselines are exactly 91% from the top
+- one continuous solid floor occupies only the lower 22–26% across the full
+  width and must not dominate the frame
 - reserve broad low-detail fighter spaces around 27% and 73% frame width
 - keep the central sightline open for attacks and effects
 - upper 16% and lower 9% remain dark and quiet for Battle HUD and commands

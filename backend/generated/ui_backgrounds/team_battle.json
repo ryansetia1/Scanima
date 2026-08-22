@@ -1,16 +1,18 @@
 {
   "slot": "team_battle",
   "status": "succeeded",
-  "prediction_id": "mjjv7eejw1rmr0d042s89vrnqw",
+  "prediction_id": "hj91e5qsv5rmt0d05d1bf08gb4",
   "model": "openai/gpt-image-2",
   "quality": "medium",
   "aspect_ratio": "9:16",
   "prompt_path": "backend/prompts/ui_backgrounds/team_battle.md",
-  "prompt_sha256": "0ec85c20e162571ca14e1de8916ef829df7546d1a5fd1469061f5bfdbe2b1833",
-  "created_at": "2026-08-20T19:43:05.586Z",
-  "updated_at": "2026-08-20T19:43:43.957Z",
-  "raw_sha256": "e346d69574b8490379ed838b0adcfb0888827dff09aa39a51f229c0da67aa540",
-  "output_sha256": "5bc75e0f53650d3b84eb67afe6d3fe5dae7767f15ccc71ba08ea6339f437840a",
+  "prompt_sha256": "adff902bc9702bc09dbd81ded3e433dbbe3f7f0478f5f187b4c17b1376c1c28a",
+  "reference_path": "backend/generated/ui_backgrounds/references/team_battle_pre_reframe.png",
+  "reference_sha256": "5bc75e0f53650d3b84eb67afe6d3fe5dae7767f15ccc71ba08ea6339f437840a",
+  "created_at": "2026-08-22T20:56:44.936Z",
+  "updated_at": "2026-08-22T20:57:27.798Z",
+  "raw_sha256": "ca0f60d7ba8adc5715530595eb11a9e63c1a59e886a6d43b5bdddf925b24e5dd",
+  "output_sha256": "df064ae07561cf189a1a09fca04715bceb13ba6115cc382b87d484d0ac3f21e0",
   "source_dimensions": [
     720,
     1602
@@ -21,6 +23,6 @@
   ],
   "raw_path": "backend/generated/ui_backgrounds/raw/team_battle.png",
   "output_path": "game/assets/backgrounds/team_battle_background.png",
-  "seconds": 42,
-  "completed_at": "2026-08-20T19:43:47.191Z"
+  "seconds": 49,
+  "completed_at": "2026-08-22T20:57:30.270Z"
 }

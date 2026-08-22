@@ -15,8 +15,9 @@ crisp controlled cel-shaded shadows without glare. Keep both arena sides
 distinct and saturated. No night stars, sunset, spotlights, or neon glow.
 
 Combat composition contract remains exact:
-- fighter foot-contact baselines at 82% from the top
-- continuous obstacle-free floor across the full width
+- open sky at 40–45% and middle architecture at roughly 30–35% of the frame
+- fighter foot-contact baselines at 91% from the top
+- continuous obstacle-free floor only across the lower 22–26% of the full width
 - fighter spaces around 27% and 73% frame width
 - central sightline open and low-detail
 - upper 16% and lower 9% quiet for Battle HUD and commands

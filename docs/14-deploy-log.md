@@ -2,6 +2,43 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Ordered Team roster, Duel reset, dan arena sky reframe
+
+23 Agustus 2026, client + enam generation art developer. Keanehan Team picker
+bukan dari backend: `ItemList` multi-select melaporkan state bawaan Godot yang
+diganti oleh satu tap dan selalu mengurutkan hasil berdasarkan indeks card.
+Akibatnya checklist, counter, dan payload dapat menceritakan tiga hal berbeda,
+serta Anima pertama di layar diam-diam menjadi starter. `TeamRosterList`
+sekarang memegang satu array urutan tap; badge 1–4, counter, restore, dan payload
+Team/Expedition semuanya membaca array yang sama. Slot 1 adalah fighter awal.
+
+Result Team sekarang memakai **Next Battle** untuk win dan **Try Again** untuk
+loss/draw/forfeit. Keduanya masuk lagi ke builder dengan roster terakhir
+terpilih; Energy yang sudah kurang tetap mengubah CTA menjadi **Edit Team**.
+Duel juga membersihkan event plate/damage/result/command lock pada
+`set_loading`, `set_session`, dan `set_lobby`. `_apply_lobby()` mengembalikan
+visibility Start sesudah request gagal, jadi `Retreating` tidak bocor ke Anima
+berikutnya dan kartu Duel tidak hilang sesudah **Finding Rival** gagal.
+
+Enam call GPT Image 2 medium—Duel night/day portrait+landscape dan Team
+portrait+landscape—semuanya sukses satu kali dalam 42–49 detik per aset, tanpa
+auto-retry; plafon konservatif batch US$0,42. Raw PNG, prediction ID, prompt,
+reference snapshot, dan hash output hidup di
+`backend/generated/ui_backgrounds/`. Source baru menaruh foot-contact pada 91%
+seperti Expedition, runtime membuang zoom statis 1,18× menjadi 1,0×, dan
+vertical pan 0,5 dipilih setelah screenshot: percobaan 0,96 justru mengunci crop
+portrait ke bawah dan membuang langit yang baru dibuat. Screenshot portrait dan
+1600×900 memastikan Duel/Team menampilkan lebih banyak langit, lantai lebih
+pendek, dan kaki tetap berada di permukaan.
+
+Verifikasi lulus: 42 skenario shared + 12 signature webhook, 1.337 check UI,
+4.793 i18n, provenance background 12/12, 0 parser/convention error, dan 0 orphan
+signal. APK debug 23 Agustus 2026 04:22 WIB berhasil dibangun 54,6 MB; manifest
+tepat `INTERNET` + `CAMERA`, class `GodotGetImage` ada di dex, signature sah,
+dan native library terkompresi 74.945.024 → 27.030.921 byte. Device Wi-Fi
+`23127PN0CG` sempat terlihat sebelum build tetapi terputus saat `adb install -r`,
+jadi APK baru belum tersideload dan device flow belum diuji.
+
 ## Team Battle 2–4, outcome global, dan Sugarworks v7
 
 22 Agustus 2026. Team Battle dan Defense sekarang menerima 2–4 Anima, sementara

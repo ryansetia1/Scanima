@@ -12,8 +12,8 @@ const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
 # The opaque feet stay planted by AnimaPresenter; this line only chooses where
 # that shared anchor sits in Duel's static arena composition.
-const DUEL_GROUND_Y_RATIO := 0.82
-const DUEL_BACKGROUND_MAX_SCALE := 1.18
+const DUEL_GROUND_Y_RATIO := BattleScale.GROUND_Y_RATIO
+const DUEL_BACKGROUND_MAX_SCALE := 1.0
 const CUE_COLOR := Color(0.92, 0.97, 1.0, 1.0)
 const DAMAGE_COLOR := Color(1.0, 0.35, 0.48, 1.0)
 const HP_FULL_COLOR := Color(0.28, 0.90, 1.0, 1.0)
@@ -250,6 +250,7 @@ func is_expedition_mode() -> bool:
 
 
 func set_lobby(row: Dictionary) -> void:
+	_clear_event_plate()
 	_clear_action_commit()
 	_lobby_row = row.duplicate(true)
 	_session = {}
@@ -308,6 +309,7 @@ func _remember_lobby_daily_reward(daily_reward: Dictionary) -> void:
 
 
 func _apply_lobby() -> void:
+	_start_button.visible = true
 	var unavailable_key := _lobby_unavailable_key()
 	var training := _is_training(_lobby_daily_reward)
 	var bits_capped := _is_bits_capped(_lobby_daily_reward)
@@ -360,6 +362,7 @@ func _apply_lobby() -> void:
 
 
 func set_loading(message_key: String = "BATTLE_CONNECTING") -> void:
+	_clear_event_plate()
 	_clear_action_commit()
 	_reward_reset_timer.stop()
 	_result_panel.visible = false
@@ -385,6 +388,7 @@ func set_session(
 	bot_loaded: Dictionary = {},
 	art_cache: Dictionary = {}
 ) -> void:
+	_clear_event_plate()
 	_clear_action_commit()
 	_session = battle_session.duplicate(true)
 	_remember_lobby_daily_reward(_as_dict(_session.get("daily_reward")))
@@ -538,6 +542,16 @@ func _commit_for_action(action: String) -> ColorRect:
 
 func show_retreat_banner() -> void:
 	_show_banner(tr("BATTLE_RETREATING"), CUE_COLOR, false)
+
+
+func _clear_event_plate() -> void:
+	if is_instance_valid(_effectiveness_tween):
+		_effectiveness_tween.kill()
+	_effectiveness_tween = null
+	_effectiveness.visible = false
+	_effectiveness.modulate = Color.WHITE
+	_effectiveness.scale = Vector2.ONE
+	_damage.visible = false
 
 
 func set_error(error_code: String) -> void:

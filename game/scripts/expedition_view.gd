@@ -273,7 +273,6 @@ func set_builder(roster: Array, team: Dictionary = {}) -> void:
 	if not team.is_empty():
 		_team = team.duplicate(true)
 	_roster_list.clear()
-	var selected_ids := _team_member_ids()
 	for value in _roster:
 		var row := GameState.as_dict(value)
 		var unavailable := _member_unavailable(row)
@@ -285,12 +284,13 @@ func set_builder(roster: Array, team: Dictionary = {}) -> void:
 		var index := _roster_list.item_count - 1
 		_roster_list.set_item_metadata(index, row)
 		_roster_list.set_item_disabled(index, not unavailable.is_empty())
-		if unavailable.is_empty() and str(row.get("id", "")) in selected_ids:
-			_roster_list.select(index, false)
 		if not unavailable.is_empty():
 			_roster_list.set_item_icon_modulate(index, DIM)
-	if _roster_list.has_method("sync_chosen"):
-		_roster_list.sync_chosen()
+	var roster_list := _roster_list as TeamRosterList
+	if roster_list != null:
+		roster_list.set_chosen_order(
+			roster_list.indices_for_anima_ids(_team_member_ids())
+		)
 	_show_only(_builder)
 	_update_builder()
 	set_busy(false)
@@ -671,16 +671,22 @@ func _confirm_target() -> void:
 
 func _update_builder() -> void:
 	var count := _selected_roster_ids().size()
-	_builder_meta.text = tr("EXPEDITION_TEAM_COUNT") % [
-		LocaleManager.format_integer(count),
-		LocaleManager.format_integer(4),
+	_builder_meta.text = tr("TEAM_BUILDER_META") % [
+		tr("EXPEDITION_TEAM_COUNT") % [
+			LocaleManager.format_integer(count),
+			LocaleManager.format_integer(4),
+		],
+		tr("TEAM_ROSTER_LEAD_HINT"),
 	]
 	_save_team.disabled = _busy or count != 4
 
 
 func _selected_roster_ids() -> Array[String]:
 	var result: Array[String] = []
-	for index in _roster_list.get_selected_items():
+	var roster_list := _roster_list as TeamRosterList
+	if roster_list == null:
+		return result
+	for index in roster_list.get_chosen_indices_ordered():
 		var row := GameState.as_dict(_roster_list.get_item_metadata(index))
 		var anima_id := str(row.get("id", ""))
 		if not anima_id.is_empty():

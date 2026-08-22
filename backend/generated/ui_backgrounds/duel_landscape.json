@@ -1,18 +1,18 @@
 {
   "slot": "duel_landscape",
   "status": "succeeded",
-  "prediction_id": "qdbv0jdcv9rmw0d044dv7khp6m",
+  "prediction_id": "8pvn09g4w9rmy0d05d2t01s76m",
   "model": "openai/gpt-image-2",
   "quality": "medium",
   "aspect_ratio": "16:9",
   "prompt_path": "backend/prompts/ui_backgrounds/duel_landscape.md",
-  "prompt_sha256": "84458c231d022a36f675f1f10718c83d29936bc4361a8bdd815b3d9ebe9e05cc",
+  "prompt_sha256": "5c2f095e5c3efdaf200622cb24e10d3837843fcceef478f0960d17829eb90900",
   "reference_path": "game/assets/backgrounds/duel_background.png",
-  "reference_sha256": "48eba71dff2619324e67f9c60251f152591a29b67d8e3e3334b6e63f3db3e069",
-  "created_at": "2026-08-20T21:37:37.197Z",
-  "updated_at": "2026-08-20T21:38:13.467Z",
-  "raw_sha256": "de5eea01821b76db4cdd60696f4692ef9ccd3b835ef94f6071acf90c718c5b2b",
-  "output_sha256": "16c1aca81fd26c4fcb49ff5c9ff6810732ac1c915d486ab5cb118363bcad85bb",
+  "reference_sha256": "24edfbc1d54a528847c5e8255ac2d56cec9f9f50d73b75c8cddf07033d66c607",
+  "created_at": "2026-08-22T20:58:58.866Z",
+  "updated_at": "2026-08-22T20:59:36.328Z",
+  "raw_sha256": "25afbd30c63ccc8a5e93e17b0c9ab775be12426cd2b01c04a315c1527c23265d",
+  "output_sha256": "4ed3f8ab5599149fecfa0eebe1ff0408ee1e022b2ab70691f209c07ff9b93af9",
   "source_dimensions": [
     1600,
     900
@@ -23,6 +23,6 @@
   ],
   "raw_path": "backend/generated/ui_backgrounds/raw/duel_landscape.png",
   "output_path": "game/assets/backgrounds/duel_landscape_background.png",
-  "seconds": 44,
-  "completed_at": "2026-08-20T21:38:17.101Z"
+  "seconds": 42,
+  "completed_at": "2026-08-22T20:59:38.380Z"
 }

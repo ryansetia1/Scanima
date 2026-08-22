@@ -87,11 +87,13 @@ rect `cover` dasar. Pada portrait, pusat dais day dan night berbeda sekitar 76
 px; art diberi overscan 1,11× dan focal row masing-masing diikat ke Stage agar
 background—bukan Anima—yang terkoreksi selama daylight blend. Contact shadow
 radial diposisikan dari bbox kaki tiap pose. Kaki opak Duel dan Team Battle
-dipin pada 82% tinggi arena, dengan zoom background statis maksimum 1,18× agar
-lantai tidak mendominasi frame. Expedition dan encounter Boss mempertahankan
-ground line 91% serta zoom maksimum 1,55× yang sudah disetujui; art chapter
-tetap center-crop karena komposisinya datang dari server dan tidak memiliki
-pasangan aspect lokal.
+sekarang dipin pada shared ground line 91% seperti Expedition/Boss. Enam source
+statis Duel night/day dan Team portrait/landscape mengomposisi lebih banyak
+langit serta lantai 22–26%; runtime memakai cover maksimum 1,0× dan center pan
+0,5 agar crop portrait tidak kembali terkunci ke lantai. Expedition dan
+encounter Boss mempertahankan zoom maksimum 1,55× yang sudah disetujui; art
+chapter tetap center-crop karena komposisinya datang dari server dan tidak
+memiliki pasangan aspect lokal.
 
 `BattleScale.shared_scales()` memakai satu kurva tinggi untuk setiap tubuh di
 shot yang sama, termasuk Boss Seeker. Tinggi dikunci ke kartu desain 720×800
@@ -101,8 +103,8 @@ adalah contohnya — mengecilkan kedua Anima bersama supaya muat di 720.
 Seeker memakai back lane terpisah dan tidak ikut mengecil hanya karena Anima
 lebar. Tepi opak kedua Anima dipin 5,5% dari tepi layar; padding transparan
 sel tidak ikut menentukan posisi. `AnimaPresenter.plant_on_anchor()` selalu
-memakai kaki opak, bukan dasar sel kotak; anchor-nya berada pada 82% tinggi
-stage di Duel/Team dan 91% di Expedition/Boss. Itu pola Godot Keep-Width /
+memakai kaki opak, bukan dasar sel kotak; anchor semua mode sekarang berada pada
+91% tinggi stage. Itu pola Godot Keep-Width /
 zoom-to-fit tanpa Camera2D: sumbu pendek (lebar HP) yang membatasi foto tempur,
 ruang vertikal ekstra menjadi latar. Arena yang lebih pendek dari kartu itu tetap
 mengecilkan semua tubuh bersama. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px) di client, karena
