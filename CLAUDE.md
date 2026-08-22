@@ -88,18 +88,32 @@ Header kiri menampilkan nama Seeker
 (`Guest Seeker` untuk guest), dan row resource hanya menyisakan Cores + Bits;
 Collection tetap di tab **Animas**.
 
-APK debug 23 Agustus 2026 05:40 berhasil dibangun
-(`com.rekansebangku.scanima` 0.1.0, 57,3 MB) dan memuat ordered/shared Team
-builder termasuk busy Back guard, CTA outcome, reset lifecycle + picker layer
-Duel, toast compact dengan relayout minimum terbaru, Seeker HUD, enam arena
-reframe, serta jalur sign-in guest untuk Publish to Atlas. Manifest tepat memuat
-`INTERNET` + `CAMERA`, class kamera ada di dex, signature sah, dan native library
-terkompresi. `adb devices -l` butuh 110 detik lalu menjawab kosong — daemon-nya
-lambat, bukan device yang tidak terdeteksi. APK ini belum di-sideload dan build
-19:48 tanggal 22 tetap yang terakhir terpasang, jadi seluruh perilaku client di
-atas masih terverifikasi lewat test headless saja, belum pernah dilihat di
-perangkat. Perbaikan `SELECT_TOGGLE` builder Team datang **sesudah** build itu,
-jadi APK 05:40 masih memuat tap deselect yang menjatuhkan sisa tim.
+APK debug 23 Agustus 2026 **06:41** dibangun dan **terpasang** di perangkat
+(`com.rekansebangku.scanima` 0.1.0, 57.271.703 byte; `lastUpdateTime`
+06:44:39 menggantikan build yang terpasang 04:26). Ia memuat ordered/shared Team
+builder termasuk busy Back guard dan **perbaikan `SELECT_TOGGLE`**, CTA outcome,
+reset lifecycle + picker layer Duel, toast compact dengan relayout minimum
+terbaru, Seeker HUD, enam arena reframe, serta jalur sign-in guest untuk Publish
+to Atlas. Manifest tepat memuat `INTERNET` + `CAMERA`, class kamera ada di dex
+(22 rujukan `GodotGetImage`), dan signature sah. Gradle-nya inkremental: export
+selesai 9 detik, dan bahwa ia benar-benar mengambil source terbaru dibuktikan
+dengan membandingkan `assets/scripts/team_roster_list.gdc` terhadap APK
+sebelumnya (2.386 → 3.367 byte). Script diekspor sebagai `.gdc` tertokenisasi
+penuh, jadi jangan mencari nama identifier di dalam APK — `SELECT_TOGGLE` tidak
+muncul sebagai string bahkan ketika ia benar ada.
+
+Perangkatnya (`23127PN0CG`, HyperOS) tersambung **wireless lewat Tailscale**
+`100.96.188.61:34599`, bukan USB, dan koneksinya putus sendiri di antara
+perintah — `adb connect <ip>:<port>` menyambungkannya kembali dalam 3 detik, jadi
+`no devices/emulators found` di tengah sesi berarti reconnect, bukan kabel. Dua
+hal yang **tidak bisa** dilakukan dari sini: perangkat ini menolak
+`adb shell input` dengan `SecurityException: INJECT_EVENTS` (butuh "USB debugging
+(Security settings)" di HyperOS), jadi layar tidak bisa dibangunkan atau dibuka
+kuncinya secara remote. Konsekuensinya, `monkey` yang meluncurkan app saat layar
+`Dozing` **selalu** gagal dengan `Failed to create vulkan window` /
+`Unable to create DisplayServer` — itu layar mati, bukan APK rusak. Boot di
+perangkat karena itu masih belum pernah dilihat; verifikasi runtime butuh layar
+dibuka tangan.
 
 Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
 wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
