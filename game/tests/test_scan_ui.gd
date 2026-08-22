@@ -841,9 +841,26 @@ func _test_shared_components() -> void:
 	var modal_cancel := modal.find_child("CancelButton", true, false) as Button
 	var modal_primary := modal.find_child("PrimaryButton", true, false) as Button
 	var modal_choice_cancel := modal.find_child("ChoiceCancelButton", true, false) as Button
+	var modal_portrait := modal.find_child("ModalPortrait", true, false) as TextureRect
 	modal.open_info("Info", "Short body", "Got It")
-	_check(modal.visible and not modal_input.visible and not modal_cancel.visible, "UiModal info mode is compact")
+	_check(
+		modal.visible and not modal_input.visible and not modal_cancel.visible
+		and modal_portrait != null and not modal_portrait.visible,
+		"UiModal info mode is compact and leaves no empty portrait slot"
+	)
+	var reveal_image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	reveal_image.fill(Color.CYAN)
+	var reveal_texture := ImageTexture.create_from_image(reveal_image)
+	modal.open_result("Complete", "New Result", "View", "Synthera", reveal_texture)
+	await process_frame
+	await process_frame
+	_check(
+		modal_portrait.visible and modal_portrait.texture == reveal_texture
+		and modal_portrait.scale.x < 0.9 and modal_portrait.modulate.a < 1.0,
+		"UiModal Result mode reveals the generated portrait with entrance motion"
+	)
 	modal.open_confirm("Delete", "Danger body", "Delete", "Cancel", true)
+	_check(not modal_portrait.visible, "non-Result dialogs reset the optional portrait slot")
 	_check(
 		modal_cancel.visible and modal_primary.theme_type_variation == &"DangerButton",
 		"UiModal danger-confirm mode exposes safe cancel and danger action"
@@ -2112,15 +2129,24 @@ func _test_battle_view() -> void:
 		and forfeit.custom_minimum_size.y >= TOUCH_MIN,
 		"active Battle uses a quiet Forfeit action with a full touch target inside its HUD"
 	)
+	var duel_actions := view.find_child("Actions", true, false) as GridContainer
 	_check(
 		not feedback.visible
-		and is_equal_approx(footer.custom_minimum_size.y, 120.0),
-		"Battle command footer keeps the four primary actions without idle copy"
+		and is_equal_approx(footer.custom_minimum_size.y, 216.0)
+		and duel_actions != null
+		and duel_actions.columns == 2
+		and duel_actions.get_child_count() == 4,
+		"Battle command footer uses a readable 2x2 action grid without idle copy"
 	)
 	_check(player_sprite.flip_h and not bot_sprite.flip_h, "Battle fighters face each other")
 	_check(
-		is_equal_approx(active_ground_y, active_arena_height * BATTLE_SCALE.GROUND_Y_RATIO),
-		"Battle fighters stand near the arena floor"
+		is_equal_approx(
+			active_ground_y,
+			active_arena_height * float(
+				view.get_script().get_script_constant_map().get("DUEL_GROUND_Y_RATIO", 0.82)
+			)
+		),
+		"Duel fighters plant their opaque feet on the raised arena ground line"
 	)
 	_check(
 		result.get_parent() == footer and result.z_index > player_anchor.z_index,
@@ -2718,9 +2744,9 @@ func _test_team_battle_view() -> void:
 		and forfeit.custom_minimum_size.y >= TOUCH_MIN
 		and forfeit.get_parent() != null
 		and forfeit.get_parent().name == "SupportRow"
-		and forfeit.get_index() == 2
+		and forfeit.get_index() == 3
 		and not forfeit.flat,
-		"active arena hides page chrome; Retreat is a regular support-row button"
+		"active arena hides page chrome; Retreat closes the Team support row"
 	)
 	_check(
 		arena_hud != null
@@ -2741,15 +2767,25 @@ func _test_team_battle_view() -> void:
 		and shadow_texture.gradient.colors[0].a <= 0.45,
 		"arena ground shadows stay subtle under every fighter"
 	)
+	var primary_row := view.find_child("PrimaryRow", true, false) as HBoxContainer
+	var support_row := view.find_child("SupportRow", true, false) as HBoxContainer
 	view.set_expedition_mode(true)
+	await process_frame
 	view.set_arena_location("The Sugarworks — Zone 1")
 	_check(
 		turn.visible
 		and turn.text.contains("Sugarworks")
-		and arena_hud.offset_top >= 40.0,
-		"Expedition arena shows the chapter-zone label above a lowered HUD"
+		and arena_hud.offset_top >= 40.0
+		and primary_row.get_child_count() == 3
+		and support_row.get_child_count() == 3
+		and is_equal_approx(
+			player_anchor.position.y,
+			battle_stage.size.y * BATTLE_SCALE.GROUND_Y_RATIO
+		),
+		"Expedition keeps its approved 3+3 dock and lower ground line"
 	)
 	view.set_expedition_mode(false)
+	await process_frame
 	view.set_arena_location("")
 	view.call("_show_effectiveness", 1.5)
 	_check(
@@ -2779,8 +2815,6 @@ func _test_team_battle_view() -> void:
 		"Team Retreat processing uses the same arena event plate as Super effective"
 	)
 	var actions := view.find_child("TeamActions", true, false) as VBoxContainer
-	var primary_row := view.find_child("PrimaryRow", true, false) as HBoxContainer
-	var support_row := view.find_child("SupportRow", true, false) as HBoxContainer
 	var switch_panel := view.find_child("TeamSwitchPanel", true, false) as VBoxContainer
 	var special := view.find_child("TeamSpecialButton", true, false) as Button
 	var attack := view.find_child("TeamAttackButton", true, false) as Button
@@ -2791,13 +2825,20 @@ func _test_team_battle_view() -> void:
 		actions.visible
 		and primary_row != null
 		and support_row != null
-		and primary_row.get_child_count() == 3
-		and support_row.get_child_count() == 3
+		and primary_row.get_child_count() == 2
+		and support_row.get_child_count() == 4
+		and support_row.get_child(0) == view.find_child("TeamGuardButton", true, false)
 		and special.theme_type_variation == &""
 		and attack.custom_minimum_size.y >= TOUCH_MIN
 		and special.custom_minimum_size.y >= TOUCH_MIN
-		and not special.disabled,
-		"Team arena uses a balanced 3+3 action grid"
+		and not special.disabled
+		and is_equal_approx(
+			player_anchor.position.y,
+			battle_stage.size.y * float(
+				view.get_script().get_script_constant_map().get("TEAM_GROUND_Y_RATIO", 0.82)
+			)
+		),
+		"Team arena emphasizes Attack/Special and raises opaque feet above the dock"
 	)
 	_check(
 		player_slots.get_index() < player_name.get_index(),
@@ -5126,9 +5167,11 @@ func _test_synthesis_lab_state() -> void:
 	)
 	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
-		flow_source.find("_say(tr(_synthesis_error_key(code)), true)") >= 0
+		flow_source.find("_queue_synthesis_failure_dialog(") >= 0
+		and flow_source.find("_queue_synthesis_success_dialog(row, portrait)") >= 0
+		and flow_source.find("_shell_modal.open_result(") >= 0
 		and flow_source.find("\"SYNTHESIS_FAILED\":") >= 0,
-		"terminal Synthesis failures always surface the correct toast"
+		"terminal Synthesis outcomes use explicit failure and animated success dialogs"
 	)
 	_check(
 		flow_source.find(

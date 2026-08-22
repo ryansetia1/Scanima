@@ -86,8 +86,10 @@ viewport. Stage Home tetap mengambil row 68% portrait / 69% landscape dari
 rect `cover` dasar. Pada portrait, pusat dais day dan night berbeda sekitar 76
 px; art diberi overscan 1,11× dan focal row masing-masing diikat ke Stage agar
 background—bukan Anima—yang terkoreksi selama daylight blend. Contact shadow
-radial diposisikan dari bbox kaki tiap pose. Landscape tetap bottom-pinned;
-kaki Duel dan Team Battle tetap pada 91% tinggi arena. Art chapter Expedition
+radial diposisikan dari bbox kaki tiap pose. Kaki opak Duel dan Team Battle
+dipin pada 82% tinggi arena, dengan zoom background statis maksimum 1,18× agar
+lantai tidak mendominasi frame. Expedition dan encounter Boss mempertahankan
+ground line 91% serta zoom maksimum 1,55× yang sudah disetujui; art chapter
 tetap center-crop karena komposisinya datang dari server dan tidak memiliki
 pasangan aspect lokal.
 
@@ -98,10 +100,11 @@ Tubuh yang lebih lebar dari 50% kartu — Duskadon 326 px pada tinggi 135 cm
 adalah contohnya — mengecilkan kedua Anima bersama supaya muat di 720.
 Seeker memakai back lane terpisah dan tidak ikut mengecil hanya karena Anima
 lebar. Tepi opak kedua Anima dipin 5,5% dari tepi layar; padding transparan
-sel tidak ikut menentukan posisi. Kaki opak, bukan dasar sel kotak, duduk di
-garis tanah 91% tinggi stage. Itu pola Godot Keep-Width / zoom-to-fit tanpa
-Camera2D: sumbu pendek (lebar HP) yang membatasi foto tempur, ruang vertikal
-ekstra menjadi latar. Arena yang lebih pendek dari kartu itu tetap
+sel tidak ikut menentukan posisi. `AnimaPresenter.plant_on_anchor()` selalu
+memakai kaki opak, bukan dasar sel kotak; anchor-nya berada pada 82% tinggi
+stage di Duel/Team dan 91% di Expedition/Boss. Itu pola Godot Keep-Width /
+zoom-to-fit tanpa Camera2D: sumbu pendek (lebar HP) yang membatasi foto tempur,
+ruang vertikal ekstra menjadi latar. Arena yang lebih pendek dari kartu itu tetap
 mengecilkan semua tubuh bersama. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px) di client, karena
 capture 300 px memotong kaki tubuh yang lebih tinggi dari jendela itu. Duel
 memakai wrapper dua tubuh `fighter_pair_scales()`. Sprite lebar tidak dikecilkan

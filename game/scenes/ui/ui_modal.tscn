@@ -61,6 +61,16 @@ theme_type_variation = &"ModalTitle"
 horizontal_alignment = 1
 autowrap_mode = 2
 
+[node name="ModalPortrait" type="TextureRect" parent="Center/ModalPanel/Column" unique_id=1336727535]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
 [node name="ModalHero" type="Label" parent="Center/ModalPanel/Column" unique_id=1001706636]
 unique_name_in_owner = true
 visible = false

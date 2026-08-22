@@ -78,9 +78,13 @@ const CAPTURE_PARENT = new Map([
 const EVOLVE_PARENT = new Map([
   ["v31", "v30"],
   ["v42", "v41"],
+  ["v43", "v41"],
 ]);
-// v42 hanya menambah kontrak Synthesis; capture/evolve tetap byte-identik v41.
+// v42–v43 hanya mengubah Synthesis; capture/evolve tetap byte-identik v41.
 CAPTURE_PARENT.set("v42", "v41");
+CAPTURE_PARENT.set("v43", "v41");
+// v43 memperketat planner saja; prompt sheet berbayar tetap persis v42.
+const SYNTHESIS_SHEET_PARENT = new Map([["v43", "v42"]]);
 
 export async function buildBundle() {
   const versi = (await readdir(DIR_PROMPT, { withFileTypes: true }))
@@ -96,7 +100,9 @@ export async function buildBundle() {
         ? CAPTURE_PARENT.get(v)
         : EVOLVE_KEYS.has(kunci)
           ? EVOLVE_PARENT.get(v)
-          : null;
+          : kunci === "sprite_sheet_synthesis"
+            ? SYNTHESIS_SHEET_PARENT.get(v)
+            : null;
       const jalur = join(DIR_PROMPT, parent ?? v, berkas);
       let isi;
       try {

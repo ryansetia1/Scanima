@@ -161,6 +161,8 @@ var _synthesis_poll_in_flight := false
 var _synthesis_art_error_reported := false
 var _synthesis_return_destination: StringName = BottomNav.COLLECTION
 var _synthesis_history_revision := 0
+var _queued_synthesis_dialog: Dictionary = {}
+var _active_synthesis_result: Dictionary = {}
 var _pending_retreat := ""
 var _modal_context := &""
 var _last_anima_press_ms := -1000
@@ -771,7 +773,13 @@ func _send_pending_synthesis(operation: String) -> void:
 			if _destination == SYNTHESIS_DEST:
 				_synthesis_view.set_rows(_roster)
 				_synthesis_view.show_resonance_failure(body)
-			_say(tr("SYNTHESIS_RESONANCE_FAILED_TOAST"), true)
+			_queue_synthesis_failure_dialog(
+				tr("SYNTHESIS_RESONANCE_FAILED_TITLE"),
+				tr("SYNTHESIS_RESONANCE_FAILED_BODY") % [
+					LocaleManager.format_integer(int(body.get("chance", 0))),
+					LocaleManager.format_integer(int(body.get("calibration", 0))),
+				]
+			)
 			return
 		var generation_id := str(body.get("generation_id", pending.get("generation_id", "")))
 		var result_id := str(body.get("result_anima_id", pending.get("result_anima_id", "")))
@@ -800,10 +808,17 @@ func _send_pending_synthesis(operation: String) -> void:
 			return
 		_apply_profile_refresh(profile_res)
 		_refresh_header()
+		var error_key := _synthesis_error_key(code)
 		if _destination == SYNTHESIS_DEST:
 			_synthesis_view.set_rows(_roster)
-			_synthesis_view.show_error_key(_synthesis_error_key(code))
-		_say(tr(_synthesis_error_key(code)), true)
+			_synthesis_view.show_error_key(error_key)
+		if error_key == "SYNTHESIS_TECHNICAL_FAILURE":
+			_queue_synthesis_failure_dialog(
+				tr("SYNTHESIS_FAILED_DIALOG_TITLE"),
+				tr(error_key)
+			)
+		else:
+			_say(tr(error_key), true)
 	else:
 		if _destination == SYNTHESIS_DEST:
 			_synthesis_view.show_generating(GameState.pending_synthesis)
@@ -888,10 +903,11 @@ func _complete_synthesis(row: Dictionary) -> bool:
 	_refresh_header()
 	_populate_collection()
 	GameState.remember_boot_cache({"roster": _roster, "profile": GameState.profile})
+	var portrait := _thumbnail_for(row)
 	if _destination == SYNTHESIS_DEST:
 		_synthesis_view.set_rows(_roster)
-		_synthesis_view.show_result(row, _thumbnail_for(row))
-	_say(tr("SYNTHESIS_COMPLETE_TOAST") % LocaleManager.display_name(row), true)
+		_synthesis_view.show_result(row, portrait)
+	_queue_synthesis_success_dialog(row, portrait)
 	return true
 
 
@@ -906,7 +922,61 @@ func _fail_synthesis_client() -> void:
 	if _destination == SYNTHESIS_DEST:
 		_synthesis_view.set_rows(_roster)
 		_synthesis_view.show_error_key("SYNTHESIS_TECHNICAL_FAILURE")
-	_say(tr("SYNTHESIS_TECHNICAL_FAILURE"), true)
+	_queue_synthesis_failure_dialog(
+		tr("SYNTHESIS_FAILED_DIALOG_TITLE"),
+		tr("SYNTHESIS_TECHNICAL_FAILURE")
+	)
+
+
+func _queue_synthesis_failure_dialog(title: String, body: String) -> void:
+	_queued_synthesis_dialog = {
+		"kind": "failure",
+		"title": title,
+		"body": body,
+	}
+	_present_queued_synthesis_dialog()
+
+
+func _queue_synthesis_success_dialog(row: Dictionary, portrait: Texture2D) -> void:
+	_queued_synthesis_dialog = {
+		"kind": "success",
+		"row": row.duplicate(true),
+		"portrait": portrait,
+	}
+	_present_queued_synthesis_dialog()
+
+
+func _present_queued_synthesis_dialog() -> void:
+	if _queued_synthesis_dialog.is_empty() or _shell_modal.visible:
+		return
+	var dialog := _queued_synthesis_dialog
+	_queued_synthesis_dialog = {}
+	if str(dialog.get("kind", "")) == "success":
+		var row := GameState.as_dict(dialog.get("row"))
+		_active_synthesis_result = row.duplicate(true)
+		_modal_context = &"synthesis_success"
+		_shell_modal.open_result(
+			tr("SYNTHESIS_COMPLETE_TITLE"),
+			tr("SYNTHESIS_COMPLETE_BODY"),
+			tr("SYNTHESIS_VIEW_RESULT"),
+			LocaleManager.display_name(row),
+			dialog.get("portrait") as Texture2D
+		)
+		return
+	_active_synthesis_result = {}
+	_modal_context = &"synthesis_failure"
+	_shell_modal.open_info(
+		str(dialog.get("title", tr("SYNTHESIS_FAILED_DIALOG_TITLE"))),
+		str(dialog.get("body", tr("SYNTHESIS_TECHNICAL_FAILURE"))),
+		tr("CORE_INFO_CLOSE")
+	)
+
+
+func _present_synthesis_dialog_after_modal() -> void:
+	if _queued_synthesis_dialog.is_empty():
+		return
+	await get_tree().create_timer(0.20).timeout
+	_present_queued_synthesis_dialog()
 
 
 func _show_synthesis_result(row: Dictionary) -> void:
@@ -1803,6 +1873,11 @@ func _modal_confirmed(text: String) -> void:
 				_expedition_controller.abandon()
 		&"expedition_level_up":
 			_show_next_expedition_level_up()
+		&"synthesis_success":
+			var row := _active_synthesis_result
+			_active_synthesis_result = {}
+			_show_synthesis_result(row)
+	call_deferred("_present_synthesis_dialog_after_modal")
 
 
 func _modal_choice_selected(choice: String) -> void:
@@ -1814,6 +1889,7 @@ func _modal_choice_selected(choice: String) -> void:
 		_start_google_separate()
 	else:
 		_show_transfer_confirmation()
+	call_deferred("_present_synthesis_dialog_after_modal")
 
 
 func _modal_canceled() -> void:
@@ -1835,6 +1911,9 @@ func _modal_canceled() -> void:
 		_pending_retreat = ""
 	elif context == &"expedition_level_up":
 		_show_next_expedition_level_up()
+	elif context == &"synthesis_success":
+		_active_synthesis_result = {}
+	call_deferred("_present_synthesis_dialog_after_modal")
 
 
 func _show_details_help(title: String, body: String) -> void:

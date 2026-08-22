@@ -470,9 +470,9 @@ Deno.serve(async (req) => {
           prompts.vision_synthesis_system,
           prompts.vision_synthesis_schema,
         ),
-        temperature: 0.45,
+        temperature: 0.35,
         top_p: 0.95,
-        max_output_tokens: 3072,
+        max_output_tokens: 4096,
         thinking_budget: 0,
         dynamic_thinking: false,
       });

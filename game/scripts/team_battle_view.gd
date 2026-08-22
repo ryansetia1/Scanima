@@ -26,6 +26,10 @@ const CAMERA_TOP_PAD_RATIO := 0.05
 const CAMERA_SIDE_PAD_RATIO := 0.05
 const CAMERA_FIGHTER_GAP_RATIO := 0.025
 const CAMERA_BACKGROUND_MAX_SCALE := 1.55
+# Expedition keeps its approved chapter framing. Team Battle's static arena
+# uses a higher foot line and a gentler background crop.
+const TEAM_GROUND_Y_RATIO := 0.82
+const TEAM_BACKGROUND_MAX_SCALE := 1.18
 const CAMERA_REFIT_SEC := 0.32
 const SEEKER_CAMERA_EDGE_PAD_RATIO := 0.025
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
@@ -195,6 +199,7 @@ func _ready() -> void:
 	for button in _switch_buttons:
 		_switch_meters.append(_make_switch_meter(button))
 	_mount_switch_overlay()
+	_sync_action_layout()
 	_feedback.visible = false
 	_player_portal = _make_portal(_player_anchor)
 	_opponent_portal = _make_portal(_opponent_anchor)
@@ -253,10 +258,28 @@ func set_roster(roster: Array) -> void:
 
 func set_expedition_mode(enabled: bool) -> void:
 	_expedition_mode = enabled
+	_sync_action_layout()
 	_retry.text = tr("EXPEDITION_RETURN_MAP") if enabled else tr("TEAM_RETRY")
 	_leave.visible = _result_actions.visible and not enabled
 	_sync_header()
 	_sync_location_chrome()
+	_position_fighters.call_deferred()
+
+
+func _sync_action_layout() -> void:
+	if not is_instance_valid(_attack_button) or not is_instance_valid(_item_button):
+		return
+	var primary_row := _attack_button.get_parent() as HBoxContainer
+	var support_row := _item_button.get_parent() as HBoxContainer
+	if primary_row == null or support_row == null:
+		return
+	var target := primary_row if _uses_expedition_framing() else support_row
+	if _guard_button.get_parent() != target:
+		_guard_button.reparent(target)
+	if _uses_expedition_framing():
+		target.move_child(_guard_button, -1)
+	else:
+		target.move_child(_guard_button, 0)
 
 
 func set_arena_location(text: String) -> void:
@@ -390,6 +413,7 @@ func set_result_continue_enabled(enabled: bool) -> void:
 
 func set_session(session: Dictionary, art_cache: Dictionary = {}) -> void:
 	_session = session.duplicate(true)
+	_sync_action_layout()
 	_art_cache.merge(art_cache, true)
 	_reset_spoken_if_needed()
 	_sync_background_pan()
@@ -1767,7 +1791,7 @@ func _position_fighters(cancel_transition: bool = true) -> void:
 		return
 	_fighter_layer.position = Vector2.ZERO
 	_fighter_layer.scale = Vector2.ONE
-	var ground_y := _battle_stage.size.y * BattleScale.GROUND_Y_RATIO
+	var ground_y := _battle_stage.size.y * _ground_y_ratio()
 	_player_anchor.position = Vector2(_battle_stage.size.x * BattleScale.PLAYER_SHOT_X, ground_y)
 	_opponent_anchor.position = Vector2(
 		_battle_stage.size.x * BattleScale.OPPONENT_SHOT_X, ground_y
@@ -1806,7 +1830,7 @@ func _apply_dynamic_camera() -> void:
 		return
 	var side_pad := _battle_stage.size.x * CAMERA_SIDE_PAD_RATIO
 	var top_pad := _battle_stage.size.y * CAMERA_TOP_PAD_RATIO
-	var ground_y := _battle_stage.size.y * BattleScale.GROUND_Y_RATIO
+	var ground_y := _battle_stage.size.y * _ground_y_ratio()
 	var fit_zoom := minf(
 		(_battle_stage.size.x - side_pad * 2.0) / bounds.size.x,
 		(ground_y - top_pad) / bounds.size.y
@@ -1829,8 +1853,20 @@ func _apply_dynamic_camera() -> void:
 		ground_y * (1.0 - zoom)
 	)
 	_pin_seeker_to_camera_right(zoom)
-	var background_zoom := lerpf(CAMERA_BACKGROUND_MAX_SCALE, 1.0, size_mix)
+	var background_zoom := lerpf(_background_max_scale(), 1.0, size_mix)
 	_layout_arena_background(background_zoom)
+
+
+func _uses_expedition_framing() -> bool:
+	return _expedition_mode or _is_boss_encounter()
+
+
+func _ground_y_ratio() -> float:
+	return BattleScale.GROUND_Y_RATIO if _uses_expedition_framing() else TEAM_GROUND_Y_RATIO
+
+
+func _background_max_scale() -> float:
+	return CAMERA_BACKGROUND_MAX_SCALE if _uses_expedition_framing() else TEAM_BACKGROUND_MAX_SCALE
 
 
 func _sync_background_pan() -> void:

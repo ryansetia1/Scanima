@@ -254,10 +254,13 @@ backend/prompts/
     ├── vision_evolve_system.md   # anchor utuh; eskalasi di makna morfem
     ├── vision_evolve_schema.json # field naming sementara untuk wire shape
     └── sprite_sheet_evolve.md    # identik v30
-└── v42/                          # Guided Synthesis; capture/evolution diwarisi v41
+├── v42/                          # Guided Synthesis; capture/evolution diwarisi v41
     ├── vision_synthesis_system.md # dua Source -> satu konsep koheren
     ├── vision_synthesis_schema.json # elemen, candidate stat, dan inheritance summary
     └── sprite_sheet_synthesis.md # Result Hatchling 3x3 dari board dua Source
+└── v43/                          # hardening Planner; sheet diwarisi v42
+    ├── vision_synthesis_system.md # JSON ringkas + batas output eksplisit
+    └── vision_synthesis_schema.json # maxLength/maxItems + enum candidate
 ```
 
 ## Provenance v32–v41
@@ -536,3 +539,17 @@ Prompt sprite menerjemahkan referensi Adult/Evolved menjadi Result Hatchling dan
 mempertahankan kontrak grid, facing, silhouette, mobility, face-age, serta
 chroma-key yang sudah terkunci. Bundel prompt mewarisi file capture/evolution
 dari v41 dan diverifikasi oleh selftest agar artefak Edge Function tidak basi.
+
+## V43 — Synthesis Planner hardening
+
+Empat percobaan production pertama yang lolos Resonance semuanya berhenti
+sebelum image dispatch: dua output Gemini tidak menjadi JSON lengkap yang dapat
+diparse, dan dua output valid melewati batas 180 karakter pada ringkasan
+coherence yang belum tercantum di schema v42. Semua debit pemain ter-refund dan
+tidak ada generation gambar yang dipicu.
+
+V43 menambahkan batas `maxLength`/`maxItems`, enum candidate yang eksplisit, dan
+instruksi JSON ringkas. Edge Function menurunkan temperature Planner ke 0,35,
+menaikkan output budget dari 3.072 ke 4.096 token, serta memotong prose valid di
+trust boundary alih-alih menggagalkan seluruh Synthesis. Prompt sheet berbayar
+tetap byte-identik v42; capture dan evolution tetap mewarisi v41.

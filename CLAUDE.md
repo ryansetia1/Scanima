@@ -46,6 +46,7 @@ kontradiksi.
 |---|---|---|
 | `app_config.prompt_version` (capture) | `v41` | `v31`, lalu `v20` |
 | `evolution_prompt_version` | `v41` | `v30` |
+| `synthesis_prompt_version` | `v43` | `v42` |
 | `RULES_VERSION` combat | `3` | snapshot `evolution_version=0` tetap legacy |
 | Chapter aktif | The Sugarworks v6 | v1–v5 immutable untuk run lama |
 | Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, dan `feature_synthesis` semuanya `true` | matikan per flag |
@@ -53,26 +54,25 @@ kontradiksi.
 Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 23,
 `evolve_anima` 7, `replicate_webhook` 12, `battle_anima` 26, `team_battle` 8,
 `expedition` 16, `seeker` 6, `gallery` 18, `shop` 4, `care_anima` 9,
-`synthesize_anima` 1.
+`synthesize_anima` 2.
 
 Yang belum sampai ke pemain adalah **APK baru**. Backend Anima Atlas, gerbang
 Rename, ritual Evolve, dan seluruh polish client sudah production di server,
 tetapi build lama belum memuatnya.
 
 Guided Synthesis **live di backend** per 22 Agustus 2026: migration
-`20260821121417_anima_synthesis` ter-apply, `synthesize_anima` version 1 ACTIVE,
-blok uji Synthesis di `quota_rules.sql` lulus terhadap schema production, dan
-`feature_synthesis` dinyalakan atas keputusan eksplisit. Yang belum sampai ke
-pemain adalah **APK**-nya: build terpasang tidak punya layar Synthesis Lab, jadi
-saat ini flag itu hanya terbuka untuk build yang dijalankan dari source. Begitu
-APK baru terdistribusi, jalur 1 Core + 250 Bits ikut terbuka tanpa langkah
-tambahan — kalau perlu ditahan, matikan flag-nya dulu.
-
-Perubahan follow-up **current-form-only** ada di source tetapi belum production:
-migration `20260821230502_synthesis_committed_form_only` menjaga signature RPC
-lama namun menolak stage selain `animas.stage`; Lab baru menghapus dropdown form
-dan memakai kartu art/picker visual dari cache Collection. Sampai migration dan
-Edge Function itu dideploy, backend live lama masih menerima form historis.
+`20260821121417_anima_synthesis`,
+`20260821230502_synthesis_committed_form_only`, dan
+`20260822001202_synthesis_prompt_v43` ter-apply; `synthesize_anima` version 2
+ACTIVE, blok uji Synthesis di `quota_rules.sql` lulus terhadap schema production,
+`synthesis_prompt_version=v43`, dan `feature_synthesis=true`. V43 mencantumkan
+batas prose Planner, memberi 4.096 output token, serta memotong prose valid di
+trust boundary supaya verbosity model tidak menggagalkan attempt yang sudah
+lolos Resonance. Backend sekarang hanya menerima form committed. Yang belum
+sampai ke pemain adalah **APK** baru: kartu art/picker visual, Incubator Capsule,
+dialog failure/refund, dan Result reveal animation baru hidup dari source sampai
+build didistribusikan. Jalur 1 Core + 250 Bits sudah terbuka untuk build source;
+kalau perlu ditahan, matikan flag-nya.
 
 ## Aturan yang tidak bisa dinegosiasikan
 
@@ -96,7 +96,7 @@ Edge Function itu dideploy, backend live lama masih menerima form historis.
 - Lima autoload, urutannya wajib: `SecureStore` (Keystore/Keychain), `GameState` (preference + pending intent), `Backend` (transport HTTP), `LocaleManager`, lalu `AuthFlow` (PKCE/deep link). Refresh/access token dan verifier PKCE tidak lagi hidup di `state.json`; file itu hanya UID, preference, pilihan Anima, dan pending intent nonrahasia. `Backend` menulis sesi ke `GameState`, `GameState` tidak pernah memanggil `Backend`. Yang mengorkestrasi tetap scene: `await Backend.ensure_session()`.
 - Account switching memakai satu session aktif + satu `scanima:device_guest_session` permanen per instalasi; jangan membuat vault token Google A/B. Separate menyimpan guest lalu authorize Google, transfer memakai identity link same-UID dan baru menghapus slot guest setelah commit. Google existing tidak pernah di-merge. Sign Out menyiapkan guest dulu, memakai `/logout?scope=local`, lalu reset seluruh state/cache UID lama; Delete Account linked juga wajib me-refresh guest terpisah sebelum penghapusan permanen dimulai. Semua mutation pending memblokir switch **dan Delete Account**. `pending_account_switch` nonrahasia menyelesaikan crash, sementara kehilangan guest yang ditandai wajib ada gagal aman tanpa membuat anonymous baru diam-diam. Recovery marker dan cold-start deeplink dijalankan serial sebelum cache Home boleh dicat; boot memegang satu-satunya reload bila OAuth selesai saat cold start. Setiap pergantian UID menaikkan `GameState.session_epoch`; callback UI, download art, dan dispatch Expedition hanya boleh menulis state bila epoch response masih aktif, lalu konteks shell/Atlas/Expedition di-reset bersama saat handoff.
 - Entry point-nya `scenes/scan_flow.tscn`: satu shell persisten yang meng-instance lima child scene `home_view`, `scan_view`, `battle_view`, `collection_view`, dan `anima_details_view`, plus `bottom_nav`. Urutan tab Home, Scan, Animas, Battle, Menu; seluruh tombol memakai ikon di atas label, tinggi 100px, dan bar-nya digambar full-bleed 152px sesuai desain. Pada viewport lebar, backdrop nav menjaga aspect ratio dan row lima tab tetap 674px terpusat, jadi pill dan spacing tidak ikut melar. Tab tidak memakai `change_scene_to_file()`, supaya request, pending scan/care/battle, Stage, dan inkubator tidak di-reset saat pemain berpindah layar. `scenes/anima_demo.tscn` tetap alat periksa art yang dipanggil eksplisit, dan `scenes/home_demo.tscn` adalah harness layout Home: ia meng-instance `home_view.tscn` yang sama dengan production plus HUD, bottom nav, dan overlay Shop/Bag lalu memberi satu row Anima palsu, jadi layout bisa disetel di editor tanpa jaringan atau akun. Keduanya dev tooling dan tidak pernah masuk jalur pemain.
-- Background Home/Duel mencampur pasangan PNG siang–malam di shader berdasarkan jam lokal absolut: fajar 05:30–06:30, siang penuh sampai 17:30, dan senja 17:30–18:30, disampel tiap detik supaya resume tidak melompat. Home, Duel, dan Team Battle masing-masing punya varian 9:16 dan 16:9 yang dipilih dari aspect viewport. Kaki Home tetap pada ground line 68% portrait / 69% landscape di **rect art dasar**, bukan pada viewport. Karena pasangan portrait day/night menggambar pusat dais pada row berbeda, background portrait diberi overscan 1,11× lalu focal point dais-nya diikat ke Stage; background yang bergerak halus saat blend, bukan Anima. Home juga memberi contact shadow radial yang mengikuti bbox kaki dan visibility pose. Landscape tetap bottom-pinned; fighter Duel/Team tetap 91% tinggi arena. Art Home hidup di root canvas di belakang `Stage`; peta node The Sugarworks memakai top-view sendiri, dan art chapter dari server tetap menang serta tetap center-crop di combat Expedition.
+- Background Home/Duel mencampur pasangan PNG siang–malam di shader berdasarkan jam lokal absolut: fajar 05:30–06:30, siang penuh sampai 17:30, dan senja 17:30–18:30, disampel tiap detik supaya resume tidak melompat. Home, Duel, dan Team Battle masing-masing punya varian 9:16 dan 16:9 yang dipilih dari aspect viewport. Kaki Home tetap pada ground line 68% portrait / 69% landscape di **rect art dasar**, bukan pada viewport. Karena pasangan portrait day/night menggambar pusat dais pada row berbeda, background portrait diberi overscan 1,11× lalu focal point dais-nya diikat ke Stage; background yang bergerak halus saat blend, bukan Anima. Home juga memberi contact shadow radial yang mengikuti bbox kaki dan visibility pose. Kaki opak Duel/Team dipin ke ground line 82% tinggi arena dan crop background statis dibatasi 1,18×; Expedition/Boss sengaja mempertahankan framing 91% + maksimum 1,55× yang sudah disetujui. Duel memakai dock 2×2, Team menonjolkan Attack/Special di baris dua kolom lalu Guard/Item/Switch/Retreat di baris empat kolom, sedangkan Expedition tetap 3+3. Art Home hidup di root canvas di belakang `Stage`; peta node The Sugarworks memakai top-view sendiri, dan art chapter dari server tetap menang serta tetap center-crop di combat Expedition.
 - `Backend.gd` satu-satunya tempat yang tahu URL project dan kunci. Kuncinya **publishable** (`sb_publishable_...`) dan memang ikut ke dalam build; yang membatasi akses RLS, bukan kerahasiaannya. Terukur diterima endpoint yang dipakai client: `auth/signup`, `auth/token`, identity authorize/link, REST, Storage, dan `functions/v1` (`create_anima`, `care_anima`, `battle_anima`, `shop`, `seeker`, `gallery`). Yang tidak boleh masuk ke sana sampai kapan pun: `REPLICATE_API_TOKEN` atau service role key.
 - Yang persist hanya sesi aman aktif + guest perangkat + verifier PKCE sementara di SecureStore, marker `pending_oauth`/`pending_account_switch` nonrahasia, scan yang sedang berjalan, satu `pending_care`, satu `pending_battle` berisi session/turn/version + intent + idempotency key, dan satu `pending_purchase`. Saldo, kebutuhan, tas, profil Seeker, dan daftar Anima **selalu** dibaca ulang dari Postgres — server yang berwenang. Pending intent dihapus hanya setelah server menjawab; timeout/restart me-replay key yang sama supaya Bits, damage, reward, atau grant Google tidak commit dua kali.
 

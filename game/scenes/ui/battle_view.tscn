@@ -17,17 +17,6 @@ width = 8
 height = 256
 fill_to = Vector2(0, 1)
 
-[sub_resource type="StyleBoxFlat" id="ArenaDockPlate"]
-content_margin_left = 12.0
-content_margin_top = 12.0
-content_margin_right = 12.0
-content_margin_bottom = 12.0
-bg_color = Color(0.018, 0.03, 0.07, 0.9)
-border_width_top = 1
-border_color = Color(0.278, 0.902, 1, 0.14)
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-
 [sub_resource type="StyleBoxFlat" id="HpBackground"]
 bg_color = Color(0.025, 0.04, 0.09, 0.96)
 corner_radius_top_left = 8
@@ -47,6 +36,17 @@ base_font = ExtResource("9_display")
 variation_opentype = {
 "wght": 800
 }
+
+[sub_resource type="StyleBoxFlat" id="ArenaDockPlate"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.018, 0.03, 0.07, 0.9)
+border_width_top = 1
+border_color = Color(0.278, 0.902, 1, 0.14)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
 
 [node name="BattleView" type="Control" unique_id=1564549033]
 unique_name_in_owner = true
@@ -181,7 +181,7 @@ custom_minimum_size = Vector2(0, 400)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="BattleArenaBackground" type="TextureRect" parent="Column/BattleContent/ArenaPanel/BattleArena"]
+[node name="BattleArenaBackground" type="TextureRect" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=505836325]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -194,7 +194,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="TopScrim" type="TextureRect" parent="Column/BattleContent/ArenaPanel/BattleArena"]
+[node name="TopScrim" type="TextureRect" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=1767960143]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -480,10 +480,10 @@ max_lines_visible = 2
 
 [node name="BattleFooter" type="Control" parent="Column/BattleContent" unique_id=1382603803]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 120)
+custom_minimum_size = Vector2(0, 216)
 layout_mode = 2
 
-[node name="DockFill" type="Panel" parent="Column/BattleContent/BattleFooter"]
+[node name="DockFill" type="Panel" parent="Column/BattleContent/BattleFooter" unique_id=434267468]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -515,96 +515,81 @@ autowrap_mode = 2
 text_overrun_behavior = 3
 max_lines_visible = 1
 
-[node name="Actions" type="HBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter" unique_id=1456702580]
+[node name="Actions" type="GridContainer" parent="Column/BattleContent/BattleFooter/ActionFooter" unique_id=1887825034]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 8
+size_flags_horizontal = 3
+columns = 2
 
-[node name="BattleStrikeButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=2115024021]
+[node name="BattleStrikeButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=2048257738]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BATTLE_ACTION_STRIKE"
 
-[node name="BattleStrikeCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleStrikeButton" unique_id=1637652943]
+[node name="BattleStrikeCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleStrikeButton" unique_id=298144336]
 unique_name_in_owner = true
 visible = false
-layout_mode = 1
-anchors_preset = 12
+layout_mode = 0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = -7.0
-grow_horizontal = 2
-grow_vertical = 0
-pivot_offset = Vector2(84, 3.5)
 mouse_filter = 2
 color = Color(0.28, 0.9, 1, 1)
 
-[node name="BattleSurgeButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=1318290722]
+[node name="BattleSurgeButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=1286779086]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BATTLE_ACTION_SURGE"
 
-[node name="BattleSurgeCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleSurgeButton" unique_id=1554437650]
+[node name="BattleSurgeCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleSurgeButton" unique_id=534064595]
 unique_name_in_owner = true
 visible = false
-layout_mode = 1
-anchors_preset = 12
+layout_mode = 0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = -7.0
-grow_horizontal = 2
-grow_vertical = 0
-pivot_offset = Vector2(84, 3.5)
 mouse_filter = 2
 color = Color(1, 0.82, 0.4, 1)
 
-[node name="BattleGuardButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=1322455566]
+[node name="BattleGuardButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=382400690]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BATTLE_ACTION_GUARD"
 
-[node name="BattleGuardCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleGuardButton" unique_id=91916356]
+[node name="BattleGuardCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleGuardButton" unique_id=1108495948]
 unique_name_in_owner = true
 visible = false
-layout_mode = 1
-anchors_preset = 12
+layout_mode = 0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = -7.0
-grow_horizontal = 2
-grow_vertical = 0
-pivot_offset = Vector2(84, 3.5)
 mouse_filter = 2
 color = Color(0.66, 0.48, 1, 1)
 
-[node name="BattleItemButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=68544465]
+[node name="BattleItemButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=884373222]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BATTLE_ACTION_ITEM"
 
-[node name="BattleItemCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleItemButton" unique_id=427426869]
+[node name="BattleItemCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleItemButton" unique_id=272419287]
 unique_name_in_owner = true
 visible = false
-layout_mode = 1
-anchors_preset = 12
+layout_mode = 0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = -7.0
-grow_horizontal = 2
-grow_vertical = 0
-pivot_offset = Vector2(84, 3.5)
 mouse_filter = 2
 color = Color(1, 0.9, 0.45, 1)
 

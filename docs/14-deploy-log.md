@@ -50,6 +50,33 @@ build dari source yang bisa memanggilnya. Rollback-nya satu baris —
 — dan `attempt_synthesis` maupun `preview_synthesis` langsung menolak dengan
 `FEATURE_DISABLED` tanpa menyentuh saldo.
 
+## Hardening Guided Synthesis v43 (backend production, client APK pending)
+
+Follow-up 22 Agustus 2026 berangkat dari lima attempt production: dua output
+Planner bukan JSON lengkap, dua plan valid melewati batas 180 karakter pada
+`inheritance_summary.coherence`, dan satu benar-benar gagal Resonance. Empat
+kegagalan teknis ter-refund penuh (net 0 Core, net 0 Bits) dan tidak memicu
+image generation; Resonance miss juga tidak mendebit mata uang.
+
+`synthesize_anima` version 2 di-deploy lebih dulu dengan bundle v42 + v43, lalu
+migration `20260821230502_synthesis_committed_form_only` dan
+`20260822001202_synthesis_prompt_v43` di-push. Urutan itu mencegah
+`app_config` menunjuk prompt yang belum tersedia. Production sekarang
+`synthesis_prompt_version = v43`, `feature_synthesis = true`, dan historical
+form ditolak oleh wrapper RPC yang mengunci row Source.
+
+V43 memberi schema maxLength/maxItems dan enum candidate eksplisit; Function
+memakai temperature 0,35, output budget 4.096 token, serta clipping prose valid
+di trust boundary. Prompt sheet berbayar tetap v42. Smoke tanpa JWT menjawab
+401, kedua migration tercatat remote, dan `quota_rules.sql` selesai exit 0
+terhadap production sesudah rollout. Tidak ada panggilan model berbayar yang
+dibuat untuk verifikasi rollout ini.
+
+Client source pada rollout yang sama mengganti terminal toast dengan dialog:
+Resonance miss menjelaskan cooldown/Calibration, kegagalan teknis menegaskan
+refund, dan success menampilkan portrait Result dengan reveal animation serta
+**View Result**. APK terpasang belum membawa perubahan presentation itu.
+
 ## Status deploy Anima Atlas (backend production, APK pending)
 
 Gallery Feed sudah diganti di source dengan **Anima Atlas**: registry

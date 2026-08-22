@@ -49,6 +49,7 @@ godot --path game -- --battle-effective-demo --screenshot=/tmp/battle-effective.
 godot --path game -- --battle-guard-demo --screenshot=/tmp/guard-shimmer.png
 godot --path game -- --battle-result-demo --screenshot=/tmp/battle-result.png
 godot --path game -- --battle-win-demo --screenshot=/tmp/battle-win.png
+godot --path game -- --team-battle-demo --screenshot=/tmp/team-battle.png
 # result yang terpagari Energy: Choose Anima / Edit Team plus alasannya
 godot --path game -- --battle-blocked-demo --screenshot=/tmp/battle-blocked.png
 godot --path game -- --team-result-demo --screenshot=/tmp/team-result.png

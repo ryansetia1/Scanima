@@ -116,11 +116,14 @@ shortcut that preselects Source A:
 4. Review Resonance, its breakdown, likely stat shape, completed modes, and the
    cost of 1 Core + 250 Bits.
 5. Confirm the attempt.
-6. On failure, show the care/cooldown consequence and how to improve Resonance.
+6. On failure, open a dedicated dialog. A Resonance miss shows its chance,
+   care/cooldown consequence, and Calibration; a technical failure explicitly
+   confirms the Core + Bits refund.
 7. On success, replace the editor with a dedicated Incubator Capsule state.
    The unknown private Result forms in the capsule while two compact Source
    cards preserve each Source's art, name, Level, and elements.
-8. Reveal the Result, show attributes and elements, then offer Rename.
+8. When art is ready, open a success dialog and animate the Result portrait into
+   view. **View Result** opens its profile and then offers Rename.
 
 The persistent shell may change tabs while generation runs. Restart replays the
 same idempotency key and resumes the same Result instead of rolling or charging
@@ -161,6 +164,10 @@ Source profiles as separate Atlas entries.
 - A technical LLM, dispatch, webhook, or post-processing failure marks the
   Result failed, refunds Core and Bits exactly once, and reopens the mode. It
   does not increase Calibration.
+- Planner prose is clipped to its documented field limits at the service trust
+  boundary. Prompt v43 also exposes those limits to Vision and gives the larger
+  plan enough output budget, so harmless verbosity no longer converts a paid
+  attempt into a technical failure.
 - Image generation is never retried automatically without the same idempotency
   record and an explicit bounded policy.
 

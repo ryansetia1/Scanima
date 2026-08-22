@@ -1,0 +1,122 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "suggested_name",
+    "color_bucket",
+    "subject_kind",
+    "primary_element",
+    "secondary_element",
+    "stat_archetype",
+    "stat_choices",
+    "height_scale",
+    "creature_brief",
+    "body_plan",
+    "surface_finish",
+    "character_direction",
+    "signature_features",
+    "inheritance_summary",
+    "strike_name",
+    "surge_name",
+    "strike_vfx",
+    "surge_vfx"
+  ],
+  "properties": {
+    "suggested_name": { "type": "string", "maxLength": 24 },
+    "color_bucket": { "type": "string", "maxLength": 40 },
+    "subject_kind": { "type": "string", "enum": ["object", "animal"] },
+    "primary_element": {
+      "type": "string",
+      "enum": [
+        "metal", "wood", "stone", "ceramic", "glass", "plastic", "cloth",
+        "paper", "plant", "food", "fauna", "flow", "spark", "flame",
+        "frost", "air", "toxin", "sound"
+      ]
+    },
+    "secondary_element": {
+      "type": "string",
+      "nullable": true,
+      "maxLength": 16
+    },
+    "stat_archetype": { "type": "string", "maxLength": 80 },
+    "stat_choices": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hp", "atk", "def", "spd", "special"],
+      "properties": {
+        "hp": {
+          "type": "string",
+          "enum": ["source_a", "source_b", "blend", "remix_up", "remix_down"]
+        },
+        "atk": {
+          "type": "string",
+          "enum": ["source_a", "source_b", "blend", "remix_up", "remix_down"]
+        },
+        "def": {
+          "type": "string",
+          "enum": ["source_a", "source_b", "blend", "remix_up", "remix_down"]
+        },
+        "spd": {
+          "type": "string",
+          "enum": ["source_a", "source_b", "blend", "remix_up", "remix_down"]
+        },
+        "special": {
+          "type": "string",
+          "enum": ["source_a", "source_b", "blend", "remix_up", "remix_down"]
+        }
+      }
+    },
+    "height_scale": {
+      "type": "string",
+      "enum": ["smaller", "weighted", "larger"]
+    },
+    "creature_brief": { "type": "string", "maxLength": 320 },
+    "body_plan": { "type": "string", "maxLength": 180 },
+    "surface_finish": { "type": "string", "maxLength": 160 },
+    "character_direction": { "type": "string", "maxLength": 160 },
+    "signature_features": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 6,
+      "items": { "type": "string", "maxLength": 120 }
+    },
+    "inheritance_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_a", "source_b", "coherence"],
+      "properties": {
+        "source_a": { "type": "string", "maxLength": 180 },
+        "source_b": { "type": "string", "maxLength": 180 },
+        "coherence": { "type": "string", "maxLength": 180 }
+      }
+    },
+    "strike_name": { "type": "string", "maxLength": 24 },
+    "surge_name": { "type": "string", "maxLength": 24 },
+    "strike_vfx": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "motion", "brief"],
+      "properties": {
+        "form": { "type": "string", "maxLength": 48 },
+        "motion": {
+          "type": "string",
+          "enum": ["projectile", "sweep", "impact", "bloom"]
+        },
+        "brief": { "type": "string", "maxLength": 160 }
+      }
+    },
+    "surge_vfx": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "motion", "brief"],
+      "properties": {
+        "form": { "type": "string", "maxLength": 48 },
+        "motion": {
+          "type": "string",
+          "enum": ["projectile", "sweep", "impact", "bloom"]
+        },
+        "brief": { "type": "string", "maxLength": 160 }
+      }
+    }
+  }
+}

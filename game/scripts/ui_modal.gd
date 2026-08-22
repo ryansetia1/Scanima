@@ -14,6 +14,7 @@ enum Mode {
 
 @onready var _panel: PanelContainer = %ModalPanel
 @onready var _title: Label = %ModalTitle
+@onready var _portrait: TextureRect = %ModalPortrait
 @onready var _hero: Label = %ModalHero
 @onready var _body: Label = %ModalBody
 @onready var _input: LineEdit = %ModalInput
@@ -24,6 +25,7 @@ enum Mode {
 
 var _mode := Mode.INFO
 var _busy := false
+var _portrait_tween: Tween
 
 
 func _ready() -> void:
@@ -46,6 +48,21 @@ func open_info(
 ) -> void:
 	_configure(Mode.INFO, title_text, body_text, close_text, "", false, hero_text)
 	_show_modal(_primary_button)
+
+
+func open_result(
+	title_text: String,
+	body_text: String,
+	close_text: String,
+	hero_text: String,
+	portrait: Texture2D
+) -> void:
+	_configure(Mode.INFO, title_text, body_text, close_text, "", false, hero_text)
+	_portrait.texture = portrait
+	_portrait.visible = portrait != null
+	_show_modal(_primary_button)
+	if _portrait.visible:
+		_animate_result_portrait()
 
 
 func open_confirm(
@@ -104,6 +121,7 @@ func set_busy(busy: bool) -> void:
 
 
 func close() -> void:
+	_stop_portrait_tween()
 	if visible:
 		UiJuice.hide_overlay(self, _panel)
 
@@ -128,6 +146,12 @@ func _configure(
 	_mode = mode
 	set_busy(false)
 	_title.text = title_text
+	_stop_portrait_tween()
+	_portrait.texture = null
+	_portrait.visible = false
+	_portrait.scale = Vector2.ONE
+	_portrait.rotation = 0.0
+	_portrait.modulate = Color.WHITE
 	_hero.text = hero_text
 	_hero.visible = not hero_text.is_empty()
 	_body.text = body_text
@@ -143,6 +167,32 @@ func _configure(
 func _show_modal(focus_target: Control) -> void:
 	UiJuice.show_overlay(self, _panel)
 	_focus_after_layout(focus_target)
+
+
+func _animate_result_portrait() -> void:
+	await get_tree().process_frame
+	if not visible or not is_instance_valid(_portrait) or _portrait.texture == null:
+		return
+	_stop_portrait_tween()
+	_portrait.pivot_offset = _portrait.size * 0.5
+	_portrait.scale = Vector2(0.52, 0.52)
+	_portrait.rotation = -0.055
+	_portrait.modulate = Color(0.72, 0.92, 1.08, 0.0)
+	_portrait_tween = create_tween().set_parallel(true)
+	_portrait_tween.tween_property(_portrait, "modulate", Color.WHITE, 0.24) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	_portrait_tween.tween_property(_portrait, "scale", Vector2(1.08, 1.08), 0.38) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	_portrait_tween.tween_property(_portrait, "rotation", 0.0, 0.30) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	_portrait_tween.chain().tween_property(_portrait, "scale", Vector2.ONE, 0.14) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+
+
+func _stop_portrait_tween() -> void:
+	if _portrait_tween != null and _portrait_tween.is_valid():
+		_portrait_tween.kill()
+	_portrait_tween = null
 
 
 func _focus_after_layout(target: Control) -> void:

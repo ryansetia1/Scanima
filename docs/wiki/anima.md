@@ -115,10 +115,13 @@ tidak memakai istilah keluarga.
   menekan **Attempt Synthesis**.
 - Kalau Resonance gagal, Core dan Bits tidak dipakai. Energy kedua Source turun
   10, pasangan dan bias itu cooldown satu jam, lalu Calibration menambah peluang
-  percobaan berikutnya.
+  percobaan berikutnya. Dialog hasil menjelaskan kegagalan ini; kegagalan teknis
+  juga memakai dialog dan mengonfirmasi refund Core serta Bits.
 - Kalau berhasil, kedua Source tetap bisa dipakai sementara Result dibuat.
-  Result selalu menetas sebagai **Hatchling Level 1**. Stats-nya adalah build
-  baru dalam kisaran kekuatan kedua Source, bukan bonus power gratis.
+  Setelah inkubasi selesai, dialog sukses memperlihatkan kemunculan Anima baru
+  dan tombol **View Result**. Result selalu menetas sebagai **Hatchling Level
+  1**. Stats-nya adalah build baru dalam kisaran kekuatan kedua Source, bukan
+  bonus power gratis.
 
 Profile Result menampilkan **Synthesis History**: nama dan form aktif kedua
 Source saat percobaan, bias, Resonance yang berhasil, serta ringkasan ciri yang

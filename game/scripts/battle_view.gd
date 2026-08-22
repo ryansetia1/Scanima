@@ -10,6 +10,10 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 const MOMENTUM_MAX := 3
 const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
+# The opaque feet stay planted by AnimaPresenter; this line only chooses where
+# that shared anchor sits in Duel's static arena composition.
+const DUEL_GROUND_Y_RATIO := 0.82
+const DUEL_BACKGROUND_MAX_SCALE := 1.18
 const CUE_COLOR := Color(0.92, 0.97, 1.0, 1.0)
 const DAMAGE_COLOR := Color(1.0, 0.35, 0.48, 1.0)
 const HP_FULL_COLOR := Color(0.28, 0.90, 1.0, 1.0)
@@ -73,7 +77,7 @@ const DUEL_BACKGROUND_NIGHT_LANDSCAPE: Texture2D = preload(
 @onready var _damage: Label = %BattleDamage
 @onready var _effectiveness: Control = %BattleEffectiveness
 @onready var _effectiveness_label: Label = %BattleEffectivenessLabel
-@onready var _actions: HBoxContainer = %Actions
+@onready var _actions: GridContainer = %Actions
 @onready var _strike_button: Button = %BattleStrikeButton
 @onready var _surge_button: Button = %BattleSurgeButton
 @onready var _guard_button: Button = %BattleGuardButton
@@ -1038,7 +1042,7 @@ func _position_fighters() -> void:
 		return
 	_fighter_layer.position = Vector2.ZERO
 	_fighter_layer.scale = Vector2.ONE
-	var ground_y := _arena.size.y * BattleScale.GROUND_Y_RATIO
+	var ground_y := _arena.size.y * DUEL_GROUND_Y_RATIO
 	_player_anchor.position = Vector2(_arena.size.x * BattleScale.PLAYER_SHOT_X, ground_y)
 	_bot_anchor.position = Vector2(_arena.size.x * BattleScale.OPPONENT_SHOT_X, ground_y)
 	var player_snapshot := _as_dict(_session.get("player_snapshot"))
@@ -1085,7 +1089,7 @@ func _position_fighters() -> void:
 		return
 	var fit_zoom := minf(
 		(_arena.size.x * 0.90) / bounds.size.x,
-		(_arena.size.y * (BattleScale.GROUND_Y_RATIO - 0.05)) / bounds.size.y
+		(_arena.size.y * (DUEL_GROUND_Y_RATIO - 0.05)) / bounds.size.y
 	)
 	var tallest := maxf(
 		BattleScale.anima_display_height_cm(player_height),
@@ -1109,7 +1113,7 @@ func _position_fighters() -> void:
 	)
 	_sync_shadow("player")
 	_sync_shadow("bot")
-	var background_zoom := lerpf(TeamBattleView.CAMERA_BACKGROUND_MAX_SCALE, 1.0, size_mix)
+	var background_zoom := lerpf(DUEL_BACKGROUND_MAX_SCALE, 1.0, size_mix)
 	_layout_arena_background(background_zoom)
 
 

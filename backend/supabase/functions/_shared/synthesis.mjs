@@ -63,8 +63,10 @@ function clampInt(value, min, max, fallback) {
 function asShortString(value, field, max = 160) {
   const text = String(value ?? "").trim();
   if (!text) throw new Error(`${field} wajib`);
-  if (text.length > max) throw new Error(`${field} terlalu panjang`);
-  return text;
+  // ponytail: prose Planner yang valid dipotong di trust boundary, bukan
+  // menggagalkan Synthesis berbayar. Plafon: field enum/struktur tetap strict;
+  // naikkan ke schema-native output jika model Replicate kelak mengeksposnya.
+  return text.slice(0, max);
 }
 
 function asShortStringArray(value, field, min = 1, max = 5) {
@@ -72,11 +74,9 @@ function asShortStringArray(value, field, min = 1, max = 5) {
   const out = value
     .map((entry) => String(entry ?? "").trim())
     .filter(Boolean)
-    .slice(0, max);
+    .slice(0, max)
+    .map((entry) => entry.slice(0, 120));
   if (out.length < min) throw new Error(`${field} kurang lengkap`);
-  if (out.some((entry) => entry.length > 120)) {
-    throw new Error(`${field} memuat item terlalu panjang`);
-  }
   return out;
 }
 

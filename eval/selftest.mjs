@@ -9790,6 +9790,27 @@ console.log("40. Guided Synthesis menjaga budget stat dan roster elemen");
   assert.equal(plan.secondary_element, "spark");
   assert.notEqual(plan.strike_effect_id, plan.surge_effect_id);
   assert.doesNotMatch(plan.suggested_name, /mon$/i);
+  const verbosePlan = validateSynthesisPlan({
+    ...raw,
+    signature_features: raw.signature_features.map((value) => value.repeat(8)),
+    inheritance_summary: {
+      ...raw.inheritance_summary,
+      coherence: "One integrated material system. ".repeat(20),
+    },
+  }, {
+    mode: "balanced",
+    sourceA,
+    sourceB,
+  }).plan;
+  assert.equal(
+    verbosePlan.inheritance_summary.coherence.length,
+    180,
+    "valid Planner prose above the display budget must be clipped, not fail paid Synthesis",
+  );
+  assert.ok(
+    verbosePlan.signature_features.every((value) => value.length <= 120),
+    "verbose signature features must be clipped at the Planner trust boundary",
+  );
 
   // reserve_synthesis_plan menolak plan yang totalnya melebihi anggaran yang ia
   // hitung sendiri dari bobot bias. Angka di bawah adalah anggaran itu, jadi
@@ -9844,6 +9865,13 @@ console.log("41. Synthesis membayar model hanya sesudah Resonance sukses");
     ),
     "utf8",
   );
+  const promptV43Migration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260822001202_synthesis_prompt_v43.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   const endpoint = await readFile(
     new URL(
       "../backend/supabase/functions/synthesize_anima/index.ts",
@@ -9869,11 +9897,25 @@ console.log("41. Synthesis membayar model hanya sesudah Resonance sukses");
     new URL("../backend/tests/quota_rules.sql", import.meta.url),
     "utf8",
   );
+  const synthesisSchemaV43 = JSON.parse(await readFile(
+    new URL("../backend/prompts/v43/vision_synthesis_schema.json", import.meta.url),
+    "utf8",
+  ));
 
   assert.ok(
     endpoint.indexOf('db.rpc("attempt_synthesis"')
       < endpoint.indexOf("jalankanPrediksi(MODEL_VISION"),
     "Resonance/database claim must precede every paid Synthesis Vision call",
+  );
+  assert.ok(
+    endpoint.includes("max_output_tokens: 4096")
+      && synthesisSchemaV43.properties.inheritance_summary.properties.coherence.maxLength === 180
+      && synthesisSchemaV43.properties.signature_features.items.maxLength === 120,
+    "Synthesis Planner must have enough output budget and explicit prose bounds",
+  );
+  assert.ok(
+    promptV43Migration.includes("'synthesis_prompt_version', '\"v43\"'::jsonb"),
+    "the hardened Synthesis Planner must have a tracked production rollout",
   );
   assert.match(
     migration,
