@@ -17,12 +17,31 @@ const MODES: Array[String] = ["dominant_a", "balanced", "dominant_b"]
 @onready var _source_b_title: Label = %SynthesisSourceBTitle
 @onready var _mode_title: Label = %SynthesisModeTitle
 @onready var _review_title: Label = %SynthesisReviewTitle
-@onready var _source_a: OptionButton = %SynthesisSourceA
-@onready var _source_a_form: OptionButton = %SynthesisSourceAForm
+@onready var _source_a_card: Button = %SynthesisSourceACard
+@onready var _source_a_portrait: TextureRect = %SynthesisSourceAPortrait
+@onready var _source_a_name: Label = %SynthesisSourceAName
 @onready var _source_a_meta: Label = %SynthesisSourceAMeta
-@onready var _source_b: OptionButton = %SynthesisSourceB
-@onready var _source_b_form: OptionButton = %SynthesisSourceBForm
+@onready var _source_b_card: Button = %SynthesisSourceBCard
+@onready var _source_b_portrait: TextureRect = %SynthesisSourceBPortrait
+@onready var _source_b_name: Label = %SynthesisSourceBName
 @onready var _source_b_meta: Label = %SynthesisSourceBMeta
+@onready var _picker_overlay: Control = %SynthesisPickerOverlay
+@onready var _picker_back: Button = %SynthesisPickerBack
+@onready var _picker_backdrop: Button = %SynthesisPickerBackdrop
+@onready var _picker_title: Label = %SynthesisPickerTitle
+@onready var _picker_list: ItemList = %SynthesisPickerList
+@onready var _editor_scroll: ScrollContainer = %Scroll
+@onready var _incubating_view: Control = %SynthesisIncubatingView
+@onready var _incubating_title: Label = %SynthesisIncubatingTitle
+@onready var _incubating_body: Label = %SynthesisIncubatingBody
+@onready var _incubating_source_a_title: Label = %SynthesisIncubatingSourceATitle
+@onready var _incubating_source_a_portrait: TextureRect = %SynthesisIncubatingSourceAPortrait
+@onready var _incubating_source_a_name: Label = %SynthesisIncubatingSourceAName
+@onready var _incubating_source_a_meta: Label = %SynthesisIncubatingSourceAMeta
+@onready var _incubating_source_b_title: Label = %SynthesisIncubatingSourceBTitle
+@onready var _incubating_source_b_portrait: TextureRect = %SynthesisIncubatingSourceBPortrait
+@onready var _incubating_source_b_name: Label = %SynthesisIncubatingSourceBName
+@onready var _incubating_source_b_meta: Label = %SynthesisIncubatingSourceBMeta
 @onready var _mode_buttons: Array[Button] = [
 	%SynthesisDominantA,
 	%SynthesisBalanced,
@@ -43,7 +62,12 @@ const MODES: Array[String] = ["dominant_a", "balanced", "dominant_b"]
 @onready var _result_meta: Label = %SynthesisResultMeta
 @onready var _result_button: Button = %SynthesisResultButton
 
+var _rows: Array[Dictionary] = []
 var _eligible: Array[Dictionary] = []
+var _source_a_id := ""
+var _source_b_id := ""
+var _picker_slot := ""
+var _thumbnail_provider: Callable
 var _mode := "balanced"
 var _preview: Dictionary = {}
 var _result_row: Dictionary = {}
@@ -56,10 +80,12 @@ var _updating := false
 
 func _ready() -> void:
 	_back_button.pressed.connect(func() -> void: back_requested.emit())
-	_source_a.item_selected.connect(func(_index: int) -> void: _selection_changed(true))
-	_source_b.item_selected.connect(func(_index: int) -> void: _selection_changed(false))
-	_source_a_form.item_selected.connect(func(_index: int) -> void: _invalidate_preview())
-	_source_b_form.item_selected.connect(func(_index: int) -> void: _invalidate_preview())
+	_source_a_card.pressed.connect(_open_source_picker.bind("a"))
+	_source_b_card.pressed.connect(_open_source_picker.bind("b"))
+	_picker_back.pressed.connect(close_picker)
+	_picker_backdrop.pressed.connect(close_picker)
+	_picker_list.item_selected.connect(_on_picker_selected)
+	_picker_list.fixed_icon_size = Vector2i(112, 112)
 	for index in _mode_buttons.size():
 		_mode_buttons[index].pressed.connect(_select_mode.bind(index))
 	_review_button.pressed.connect(_request_preview)
@@ -69,34 +95,36 @@ func _ready() -> void:
 	_select_mode(1)
 
 
+func set_thumbnail_provider(provider: Callable) -> void:
+	_thumbnail_provider = provider
+	_paint_source_cards()
+	_paint_incubating_sources()
+
+
 func set_rows(rows: Array[Dictionary], preselected_a_id: String = "") -> void:
 	# `GameState.pending_synthesis` is the only authority for an in-flight
 	# Synthesis. Accepting it as an argument as well let the outcome panel and the
 	# control lock disagree whenever a caller passed a stale copy.
 	var pending := GameState.pending_synthesis
+	_rows.clear()
 	_eligible.clear()
 	for row in rows:
-		if is_eligible_source(row):
-			_eligible.append(row.duplicate(true))
+		var stored := row.duplicate(true)
+		_rows.append(stored)
+		if is_eligible_source(stored):
+			_eligible.append(stored)
 	_updating = true
-	_fill_source_option(_source_a)
-	_fill_source_option(_source_b)
-	var source_a_id := str(pending.get("source_a_id", preselected_a_id))
-	var source_b_id := str(pending.get("source_b_id", ""))
-	_select_source_id(_source_a, source_a_id)
-	_select_source_id(_source_b, source_b_id)
-	if _source_b.selected == _source_a.selected and _eligible.size() > 1:
-		_source_b.select(1 if _source_a.selected == 0 else 0)
-	_rebuild_form_option(_source_a_form, _selected_row(_source_a))
-	_rebuild_form_option(_source_b_form, _selected_row(_source_b))
-	_select_stage(_source_a_form, int(pending.get("source_a_stage", 0)))
-	_select_stage(_source_b_form, int(pending.get("source_b_stage", 0)))
+	_source_a_id = str(pending.get("source_a_id", preselected_a_id))
+	_source_b_id = str(pending.get("source_b_id", ""))
+	_normalize_source_ids()
 	_mode = str(pending.get("mode", _mode))
 	if not _mode in MODES:
 		_mode = "balanced"
 	_updating = false
 	_paint_mode()
-	_paint_source_meta()
+	_paint_source_cards()
+	if _picker_overlay.visible:
+		_populate_source_picker()
 	if pending.is_empty():
 		_reset_outcome()
 		_invalidate_preview()
@@ -111,7 +139,16 @@ func set_busy(busy: bool) -> void:
 	_update_actions()
 
 
+func close_picker() -> bool:
+	if not _picker_overlay.visible:
+		return false
+	_picker_overlay.visible = false
+	_picker_slot = ""
+	return true
+
+
 func apply_preview(data: Dictionary) -> void:
+	_set_incubating(false)
 	_preview = data.duplicate(true)
 	_outcome_kind = &"preview"
 	_outcome_data = {}
@@ -140,6 +177,7 @@ func apply_preview(data: Dictionary) -> void:
 
 
 func show_error_key(message_key: String) -> void:
+	_set_incubating(false)
 	_preview = {}
 	_outcome_kind = &"error"
 	_outcome_data = {}
@@ -155,6 +193,7 @@ func show_error_key(message_key: String) -> void:
 
 
 func show_resonance_failure(data: Dictionary) -> void:
+	_set_incubating(false)
 	_preview = {}
 	_outcome_kind = &"resonance_failure"
 	_outcome_data = data.duplicate(true)
@@ -178,16 +217,17 @@ func show_generating(_pending: Dictionary) -> void:
 	_outcome_data = {}
 	_error_key = ""
 	_preview_panel.visible = false
-	_outcome_panel.visible = true
-	_outcome_title.text = tr("SYNTHESIS_INCUBATING_TITLE")
-	_outcome_body.text = tr("SYNTHESIS_INCUBATING_BODY")
+	_outcome_panel.visible = false
 	_result_portrait.visible = false
 	_result_meta.visible = false
 	_result_button.visible = false
+	_paint_incubating_sources()
+	_set_incubating(true)
 	_update_actions()
 
 
 func show_result(row: Dictionary, portrait: Texture2D) -> void:
+	_set_incubating(false)
 	_result_row = row.duplicate(true)
 	_preview = {}
 	_outcome_kind = &"result"
@@ -210,21 +250,22 @@ func show_result(row: Dictionary, portrait: Texture2D) -> void:
 
 
 func current_payload() -> Dictionary:
-	var row_a := _selected_row(_source_a)
-	var row_b := _selected_row(_source_b)
+	var row_a := _selected_row(_source_a_id)
+	var row_b := _selected_row(_source_b_id)
 	if row_a.is_empty() or row_b.is_empty():
 		return {}
 	return {
 		"source_a_id": str(row_a.get("id", "")),
-		"source_a_stage": _selected_stage(_source_a_form),
+		"source_a_stage": CareRules.committed_stage(row_a),
 		"source_b_id": str(row_b.get("id", "")),
-		"source_b_stage": _selected_stage(_source_b_form),
+		"source_b_stage": CareRules.committed_stage(row_b),
 		"mode": _mode,
 	}
 
 
 func refresh_localized_ui() -> void:
-	_back_button.text = tr("ACTION_BACK")
+	_back_button.text = ""
+	_back_button.tooltip_text = tr("ACTION_BACK")
 	_title.text = tr("SYNTHESIS_TITLE")
 	_subtitle.text = tr("SYNTHESIS_SUBTITLE")
 	_intro.text = tr("SYNTHESIS_INTRO")
@@ -232,25 +273,24 @@ func refresh_localized_ui() -> void:
 	_source_b_title.text = tr("SYNTHESIS_SOURCE_B")
 	_mode_title.text = tr("SYNTHESIS_MODE_TITLE")
 	_review_title.text = tr("SYNTHESIS_REVIEW_TITLE")
+	_incubating_title.text = tr("SYNTHESIS_INCUBATING_TITLE")
+	_incubating_body.text = tr("SYNTHESIS_INCUBATING_BODY")
+	_incubating_source_a_title.text = tr("SYNTHESIS_SOURCE_A")
+	_incubating_source_b_title.text = tr("SYNTHESIS_SOURCE_B")
 	_mode_buttons[0].text = tr("SYNTHESIS_MODE_DOMINANT_A")
 	_mode_buttons[1].text = tr("SYNTHESIS_MODE_BALANCED")
 	_mode_buttons[2].text = tr("SYNTHESIS_MODE_DOMINANT_B")
 	_review_button.text = tr("SYNTHESIS_REVIEW_ACTION")
 	_confirm_button.text = tr("SYNTHESIS_CONFIRM_ACTION")
 	_result_button.text = tr("SYNTHESIS_VIEW_RESULT")
-	var selection := current_payload()
-	_updating = true
-	_fill_source_option(_source_a)
-	_fill_source_option(_source_b)
-	_select_source_id(_source_a, str(selection.get("source_a_id", "")))
-	_select_source_id(_source_b, str(selection.get("source_b_id", "")))
-	_rebuild_form_option(_source_a_form, _selected_row(_source_a))
-	_rebuild_form_option(_source_b_form, _selected_row(_source_b))
-	_select_stage(_source_a_form, int(selection.get("source_a_stage", 0)))
-	_select_stage(_source_b_form, int(selection.get("source_b_stage", 0)))
-	_updating = false
+	_picker_back.tooltip_text = tr("ACTION_BACK")
+	_source_a_card.tooltip_text = tr("SYNTHESIS_PICK_SOURCE_A")
+	_source_b_card.tooltip_text = tr("SYNTHESIS_PICK_SOURCE_B")
 	_paint_mode()
-	_paint_source_meta()
+	_paint_source_cards()
+	_paint_incubating_sources()
+	if _picker_overlay.visible:
+		_populate_source_picker()
 	match _outcome_kind:
 		&"preview":
 			apply_preview(_preview)
@@ -264,50 +304,163 @@ func refresh_localized_ui() -> void:
 			show_result(_result_row, _result_portrait.texture)
 
 
-func _fill_source_option(option: OptionButton) -> void:
-	option.clear()
-	for row in _eligible:
-		option.add_item(tr("SYNTHESIS_SOURCE_OPTION") % [
-			LocaleManager.display_name(row),
-			LocaleManager.level_label(CareRules.level_from_exp(int(row.get("care_score", 0)))),
-		])
-
-
-func _selection_changed(source_a_changed: bool) -> void:
-	if _updating:
+func _normalize_source_ids() -> void:
+	if not GameState.pending_synthesis.is_empty():
+		if not _row_id_exists(_source_a_id):
+			_source_a_id = ""
+		if not _row_id_exists(_source_b_id):
+			_source_b_id = ""
 		return
-	var source_option := _source_a if source_a_changed else _source_b
-	var form_option := _source_a_form if source_a_changed else _source_b_form
-	_rebuild_form_option(form_option, _selected_row(source_option))
-	if _eligible.size() > 1 and _source_a.selected == _source_b.selected:
-		_source_b.select((_source_a.selected + 1) % _eligible.size())
-		_rebuild_form_option(_source_b_form, _selected_row(_source_b))
-	_paint_source_meta()
-	_invalidate_preview()
+	if not _source_id_exists(_source_a_id):
+		_source_a_id = str(_eligible[0].get("id", "")) if not _eligible.is_empty() else ""
+	if not _source_id_exists(_source_b_id) or _source_b_id == _source_a_id:
+		_source_b_id = ""
+		for row in _eligible:
+			var candidate := str(row.get("id", ""))
+			if candidate != _source_a_id:
+				_source_b_id = candidate
+				break
 
 
-func _rebuild_form_option(option: OptionButton, row: Dictionary) -> void:
-	option.clear()
-	var stage := CareRules.committed_stage(row)
-	for form_stage in range(1, stage + 1):
-		option.add_item(tr(_form_key(form_stage)))
-		option.set_item_metadata(option.item_count - 1, form_stage)
-	if option.item_count > 0:
-		option.select(option.item_count - 1)
+func _row_id_exists(anima_id: String) -> bool:
+	if anima_id.is_empty():
+		return false
+	for row in _rows:
+		if str(row.get("id", "")) == anima_id:
+			return true
+	return false
 
 
-func _paint_source_meta() -> void:
-	_source_a_meta.text = _source_meta(_selected_row(_source_a))
-	_source_b_meta.text = _source_meta(_selected_row(_source_b))
+func _source_id_exists(anima_id: String) -> bool:
+	if anima_id.is_empty():
+		return false
+	for row in _eligible:
+		if str(row.get("id", "")) == anima_id:
+			return true
+	return false
+
+
+func _paint_source_cards() -> void:
+	_paint_source_card(
+		_selected_row(_source_a_id),
+		_source_a_name,
+		_source_a_meta,
+		_source_a_portrait
+	)
+	_paint_source_card(
+		_selected_row(_source_b_id),
+		_source_b_name,
+		_source_b_meta,
+		_source_b_portrait
+	)
+
+
+func _paint_incubating_sources() -> void:
+	_paint_source_card(
+		_selected_row(_source_a_id),
+		_incubating_source_a_name,
+		_incubating_source_a_meta,
+		_incubating_source_a_portrait
+	)
+	_paint_source_card(
+		_selected_row(_source_b_id),
+		_incubating_source_b_name,
+		_incubating_source_b_meta,
+		_incubating_source_b_portrait
+	)
+
+
+func _set_incubating(active: bool) -> void:
+	_editor_scroll.visible = not active
+	_incubating_view.visible = active
+	_subtitle.visible = not active
+	if active and is_visible_in_tree():
+		_back_button.grab_focus()
+
+
+func _paint_source_card(
+	row: Dictionary,
+	name_label: Label,
+	meta_label: Label,
+	portrait: TextureRect
+) -> void:
+	if row.is_empty():
+		name_label.text = tr("SYNTHESIS_SOURCE_NONE")
+		meta_label.text = ""
+		portrait.texture = null
+		return
+	name_label.text = LocaleManager.display_name(row)
+	meta_label.text = _source_meta(row)
+	portrait.texture = _thumbnail_for(row)
 
 
 func _source_meta(row: Dictionary) -> String:
 	if row.is_empty():
 		return tr("SYNTHESIS_SOURCE_NONE")
 	return tr("SYNTHESIS_SOURCE_META") % [
+		LocaleManager.level_label(CareRules.level_from_exp(int(row.get("care_score", 0)))),
 		LocaleManager.element_compact(row),
-		LocaleManager.format_integer(CareRules.committed_stage(row)),
+		tr(_form_key(CareRules.committed_stage(row))),
 	]
+
+
+func _thumbnail_for(row: Dictionary) -> Texture2D:
+	if row.is_empty() or not _thumbnail_provider.is_valid():
+		return null
+	var value: Variant = _thumbnail_provider.call(row)
+	return value as Texture2D if value is Texture2D else null
+
+
+func _open_source_picker(slot: String) -> void:
+	if _busy or not GameState.pending_synthesis.is_empty() or _eligible.is_empty():
+		return
+	_picker_slot = slot
+	_populate_source_picker()
+	_picker_overlay.visible = true
+	_picker_back.grab_focus()
+
+
+func _populate_source_picker() -> void:
+	_picker_list.clear()
+	_picker_title.text = tr(
+		"SYNTHESIS_PICK_SOURCE_A" if _picker_slot == "a" else "SYNTHESIS_PICK_SOURCE_B"
+	)
+	var selected_id := _source_a_id if _picker_slot == "a" else _source_b_id
+	var other_id := _source_b_id if _picker_slot == "a" else _source_a_id
+	var selected_index := -1
+	for row in _eligible:
+		var anima_id := str(row.get("id", ""))
+		var label := tr("SYNTHESIS_PICKER_META") % [
+			LocaleManager.display_name(row),
+			LocaleManager.level_label(CareRules.level_from_exp(int(row.get("care_score", 0)))),
+			LocaleManager.element_compact(row),
+		]
+		_picker_list.add_item(label, _thumbnail_for(row), true)
+		var index := _picker_list.item_count - 1
+		_picker_list.set_item_metadata(index, row)
+		_picker_list.set_item_disabled(index, anima_id == other_id)
+		_picker_list.set_item_tooltip(index, label)
+		if anima_id == selected_id:
+			selected_index = index
+	if selected_index >= 0:
+		_picker_list.select(selected_index)
+		_picker_list.ensure_current_is_visible()
+
+
+func _on_picker_selected(index: int) -> void:
+	if index < 0 or index >= _picker_list.item_count or _picker_list.is_item_disabled(index):
+		return
+	var row := GameState.as_dict(_picker_list.get_item_metadata(index))
+	var anima_id := str(row.get("id", ""))
+	if anima_id.is_empty():
+		return
+	if _picker_slot == "a":
+		_source_a_id = anima_id
+	else:
+		_source_b_id = anima_id
+	close_picker()
+	_paint_source_cards()
+	_invalidate_preview()
 
 
 func _select_mode(index: int) -> void:
@@ -350,6 +503,7 @@ func _invalidate_preview() -> void:
 
 
 func _reset_outcome() -> void:
+	_set_incubating(false)
 	_result_row = {}
 	_outcome_kind = &""
 	_outcome_data = {}
@@ -363,10 +517,10 @@ func _reset_outcome() -> void:
 func _update_actions() -> void:
 	var pending := not GameState.pending_synthesis.is_empty()
 	var locked := _busy or pending
-	_source_a.disabled = locked
-	_source_a_form.disabled = locked
-	_source_b.disabled = locked
-	_source_b_form.disabled = locked
+	if locked:
+		close_picker()
+	_source_a_card.disabled = locked or _eligible.is_empty()
+	_source_b_card.disabled = locked or _eligible.is_empty()
 	for button in _mode_buttons:
 		button.disabled = locked
 	var valid := _selection_valid()
@@ -385,35 +539,13 @@ func _selection_valid() -> bool:
 	)
 
 
-func _selected_row(option: OptionButton) -> Dictionary:
-	var index := option.selected
-	if index < 0 or index >= _eligible.size():
-		return {}
-	return _eligible[index]
-
-
-func _select_source_id(option: OptionButton, anima_id: String) -> void:
+func _selected_row(anima_id: String) -> Dictionary:
 	if anima_id.is_empty():
-		return
-	for index in _eligible.size():
-		if str(_eligible[index].get("id", "")) == anima_id:
-			option.select(index)
-			return
-
-
-func _select_stage(option: OptionButton, stage: int) -> void:
-	if stage <= 0:
-		return
-	for index in option.item_count:
-		if int(option.get_item_metadata(index)) == stage:
-			option.select(index)
-			return
-
-
-func _selected_stage(option: OptionButton) -> int:
-	if option.selected < 0 or option.selected >= option.item_count:
-		return 0
-	return int(option.get_item_metadata(option.selected))
+		return {}
+	for row in _rows:
+		if str(row.get("id", "")) == anima_id:
+			return row
+	return {}
 
 
 func _stat_shape_line(data: Dictionary) -> String:

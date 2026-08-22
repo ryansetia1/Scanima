@@ -87,14 +87,15 @@ theme_override_constants/separation = 8
 
 [node name="Title" type="Label" parent="Column/Scroll/SeekerScrollContent/TrophySection"]
 layout_mode = 2
-theme_type_variation = &"SectionTitleLabel"
+theme_type_variation = &"SectionLabel"
 text = "SEEKER_TROPHY_SHOWCASE"
 
 [node name="TrophyEmpty" type="Label" parent="Column/Scroll/SeekerScrollContent/TrophySection"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 19
 text = "SEEKER_TROPHY_EMPTY"
-horizontal_alignment = 1
 autowrap_mode = 2
 
 [node name="TrophyGrid" type="GridContainer" parent="Column/Scroll/SeekerScrollContent/TrophySection"]

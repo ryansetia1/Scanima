@@ -205,7 +205,7 @@ npm run selftest                 # 41 skenario + 12 uji tanda tangan webhook, ta
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 1174 pemeriksaan shell, Atlas, touch, Battle, Seeker, roster, dan motion
+# Godot: 1177 pemeriksaan shell, Atlas, touch, Battle, Seeker, roster, dan motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
 
@@ -337,7 +337,7 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 1174 kontrak shell + Battle + Seeker + touch
+│       ├── test_scan_ui.gd           # 1177 kontrak shell + Battle + Seeker + touch
 │       ├── test_i18n.gd              # 4638 kontrak katalog + key + wrapping
 │       ├── test_game_rules.gd        # 181 kontrak care + EXP/Level + event Battle
 │       ├── test_auth_flow.gd         # PKCE/deep-link/session backup, tanpa jaringan

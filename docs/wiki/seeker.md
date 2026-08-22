@@ -35,7 +35,7 @@ Tap **Menu** di bottom navigation. Popover berisi:
 
 | Aksi | Fungsi |
 | --- | --- |
-| **Seeker Profile** | Lihat Level, EXP, koleksi, kemenangan, dan tanggal bergabung |
+| **Seeker Profile** | Lihat Level, EXP, koleksi, kemenangan, tanggal bergabung, dan Trophy Showcase |
 | **Anima Atlas** | Lihat form yang sudah kamu Scan atau temui |
 | **Settings** | Buka pengaturan akun dan aplikasi |
 
@@ -101,6 +101,7 @@ grant yang sama lagi tanpa risiko Core ganda.
 | **Species Discovered** | Jumlah spesies unik dalam koleksi |
 | **Enemies Defeated** | Semua duel menang, termasuk Train |
 | **Joined** | Tanggal akun dibuat |
+| **Trophy Showcase** | Semua Core dari chapter Expedition yang sudah kamu selesaikan. Kalau belum ada, profil tetap menampilkan section-nya dengan petunjuk cara mendapatkannya |
 
 Portrait memakai companion aktif.
 

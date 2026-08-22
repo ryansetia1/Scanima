@@ -9837,6 +9837,13 @@ console.log("41. Synthesis membayar model hanya sesudah Resonance sukses");
     ),
     "utf8",
   );
+  const committedFormMigration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260821230502_synthesis_committed_form_only.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   const endpoint = await readFile(
     new URL(
       "../backend/supabase/functions/synthesize_anima/index.ts",
@@ -9910,6 +9917,19 @@ console.log("41. Synthesis membayar model hanya sesudah Resonance sukses");
       && quota.includes("client tidak boleh memanggil RPC Synthesis"),
     "quota_rules must cover free failure, refund, success, and EXECUTE revoke",
   );
+  assert.ok(
+    committedFormMigration.includes("SYNTHESIS_STAGE_MISMATCH")
+      && committedFormMigration.includes("order by id")
+      && committedFormMigration.includes("for update")
+      && committedFormMigration.includes("attempt_synthesis_unrestricted_v1")
+      && committedFormMigration.includes(
+        "from public, anon, authenticated, service_role",
+      )
+      && quota.includes("preview Synthesis wajib menolak form historis")
+      && quota.includes("attempt Synthesis wajib menolak form historis")
+      && quota.includes("retry claim Synthesis harus memakai snapshot lama"),
+    "Synthesis must lock Sources and reject historical forms in preview and attempt",
+  );
   assert.match(
     migration,
     /SYNTHESIS_STALE_RECOVERED[\s\S]*?raise exception 'SYNTHESIS_ALREADY_ACTIVE'/,
@@ -9944,6 +9964,13 @@ console.log("41. Synthesis membayar model hanya sesudah Resonance sukses");
   const sharedModule = await readFile(
     new URL("../backend/supabase/functions/_shared/synthesis.mjs", import.meta.url),
     "utf8",
+  );
+  assert.ok(
+    labView.includes("CareRules.committed_stage(row_a)")
+      && labView.includes("CareRules.committed_stage(row_b)")
+      && !labView.includes("SynthesisSourceAForm")
+      && !labView.includes("SynthesisSourceBForm"),
+    "the Lab must send current committed forms without historical-form controls",
   );
   for (const [mode, sql, mjs, gd] of [
     ["dominant_a", "when 'dominant_a' then 0.70", '"dominant_a") return 0.7;', '0.70 if _mode == "dominant_a"'],

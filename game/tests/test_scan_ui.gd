@@ -80,8 +80,8 @@ func _initialize() -> void:
 		"CollectionNavButton", "MenuNavButton",
 		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "EditAnimaNameButton",
 		"DeleteAnimaButton", "GalleryPublishButton", "EvolveAnimaButton", "SynthesisAnimaButton",
-		"CollectionSynthesisButton", "SynthesisBackButton", "SynthesisSourceA", "SynthesisSourceAForm",
-		"SynthesisSourceB", "SynthesisSourceBForm", "SynthesisDominantA", "SynthesisBalanced",
+		"CollectionSynthesisButton", "SynthesisBackButton", "SynthesisSourceACard",
+		"SynthesisSourceBCard", "SynthesisPickerBack", "SynthesisDominantA", "SynthesisBalanced",
 		"SynthesisDominantB", "SynthesisReviewButton", "SynthesisConfirmButton", "SynthesisResultButton",
 		"AtlasBack", "AtlasLoadMore",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
@@ -1698,6 +1698,20 @@ func _test_seeker_ui() -> void:
 		(profile.find_child("SeekerProfileName", true, false) as Label).text == "Nova_13",
 		"Seeker profile shows the unique name"
 	)
+	profile.set_trophies_loading(true)
+	var trophy_section := profile.find_child("TrophySection", true, false) as VBoxContainer
+	var trophy_skeleton := profile.find_child("TrophySkeleton", true, false) as UiSkeleton
+	var trophy_grid := profile.find_child("TrophyGrid", true, false) as GridContainer
+	var trophy_empty := profile.find_child("TrophyEmpty", true, false) as Label
+	_check(
+		trophy_section.visible
+		and trophy_skeleton.visible
+		and trophy_skeleton.get("_pulse") != null
+		and not trophy_grid.visible
+		and not trophy_empty.visible
+		and trophy_skeleton.get_child(0).get_child_count() == 3,
+		"Trophy Showcase shows a pulsing three-slot skeleton until Cores arrive"
+	)
 	var trophy_rows: Array[Dictionary] = []
 	for index in 4:
 		trophy_rows.append({"expedition_trophies": {
@@ -1705,11 +1719,10 @@ func _test_seeker_ui() -> void:
 			"display_name": "Trail Trophy %d" % (index + 1),
 		}})
 	profile.set_trophies(trophy_rows)
-	var trophy_grid := profile.find_child("TrophyGrid", true, false) as GridContainer
-	var trophy_empty := profile.find_child("TrophyEmpty", true, false) as Label
 	_check(
 		trophy_grid.visible
 		and not trophy_empty.visible
+		and not trophy_skeleton.visible
 		and trophy_grid.get_child_count() == 4,
 		"Trophy Showcase renders one art card per owned Core"
 	)
@@ -1729,9 +1742,23 @@ func _test_seeker_ui() -> void:
 	profile.set_trophy_art("60000000-0000-4000-8000-000000000000", core_art)
 	_check(first_card.texture == core_art, "Core art drops into the card it belongs to")
 	profile.set_trophies([])
+	var trophy_title := trophy_section.find_child("Title", false, false) as Label
 	_check(
-		trophy_empty.visible and not trophy_grid.visible,
+		trophy_empty.visible and not trophy_grid.visible and not trophy_skeleton.visible,
 		"an account without a Core sees the earn-one hint instead of an empty grid"
+	)
+	_check(
+		trophy_title.theme_type_variation == &"SectionLabel"
+		and trophy_empty.theme_type_variation == &"MutedLabel"
+		and trophy_empty.get_theme_font_size(&"font_size")
+			< trophy_title.get_theme_font_size(&"font_size"),
+		"Trophy empty copy is a child caption under the section title"
+	)
+	profile.set_trophies_loading(true)
+	profile.hide_trophies()
+	_check(
+		not trophy_section.visible and not trophy_skeleton.visible,
+		"a failed Core fetch without cache hides Trophy Showcase instead of leaving the skeleton"
 	)
 	profile.set_profile({"seeker_name": null}, null)
 	_check(
@@ -4896,7 +4923,8 @@ func _test_synthesis_lab_state() -> void:
 	for code in [
 		"FEATURE_DISABLED", "SYNTHESIS_LEVEL_TOO_LOW", "SYNTHESIS_COOLDOWN",
 		"SYNTHESIS_MODE_USED", "SYNTHESIS_ALREADY_ACTIVE", "SYNTHESIS_IN_PROGRESS",
-		"SYNTHESIS_FORM_LOCKED", "SYNTHESIS_FORM_INVALID", "ANIMA_DORMANT",
+		"SYNTHESIS_FORM_LOCKED", "SYNTHESIS_FORM_INVALID", "SYNTHESIS_STAGE_MISMATCH",
+		"ANIMA_DORMANT",
 		"ANIMA_IN_ACTIVE_COMBAT", "NO_CORE", "NO_BITS", "SPEND_CAP",
 		"SYNTHESIS_FAILED", "UNMAPPED_SERVER_CODE",
 	]:
@@ -4909,6 +4937,7 @@ func _test_synthesis_lab_state() -> void:
 	view.owner = null
 	_reown_subtree(view, view)
 	root.add_child(view)
+	view.visible = true
 	host.free()
 	await process_frame
 	var game_state := root.get_node_or_null("GameState")
@@ -4926,7 +4955,79 @@ func _test_synthesis_lab_state() -> void:
 			"base_stats": {"hp": 45, "atk": 75, "def": 35, "spd": 80, "special": 65},
 		},
 	]
+	var thumbnail_image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	thumbnail_image.fill(Color("67e8f9"))
+	var source_thumbnail := ImageTexture.create_from_image(thumbnail_image)
+	view.set_thumbnail_provider(
+		func(_row: Dictionary) -> Texture2D: return source_thumbnail
+	)
 	view.set_rows(rows, "synthesis-locale-a")
+	await process_frame
+	var lab_surface := view.find_child("LabSurface", true, false) as PanelContainer
+	var back_button := view.find_child("SynthesisBackButton", true, false) as Button
+	var back_icon := view.find_child("SynthesisBackIcon", true, false) as TextureRect
+	var scroll := view.find_child("Scroll", true, false) as ScrollContainer
+	var content := scroll.get_child(0) as Control if scroll != null else null
+	var source_a_card := view.find_child("SynthesisSourceACard", true, false) as Button
+	var source_b_card := view.find_child("SynthesisSourceBCard", true, false) as Button
+	var source_a_portrait := view.find_child("SynthesisSourceAPortrait", true, false) as TextureRect
+	var source_b_portrait := view.find_child("SynthesisSourceBPortrait", true, false) as TextureRect
+	var picker_overlay := view.find_child("SynthesisPickerOverlay", true, false) as Control
+	var picker_list := view.find_child("SynthesisPickerList", true, false) as ItemList
+	var picker_back := view.find_child("SynthesisPickerBack", true, false) as Button
+	var picker_back_icon := picker_back.get_node_or_null("Icon") as TextureRect
+	_check(
+		lab_surface != null and lab_surface.size.distance_to(view.size) < 0.5,
+		"Synthesis Lab surface fills the destination instead of leaking the Home HUD"
+	)
+	_check(view.clip_contents, "Synthesis Lab clips content inside the shell viewport")
+	_check(
+		back_button != null and back_button.flat and back_button.text.is_empty()
+		and back_button.custom_minimum_size == Vector2(96, 96)
+		and back_icon != null and back_icon.texture != null,
+		"Synthesis Lab uses the same flat 96px chevron pattern as Atlas"
+	)
+	_check(scroll != null and scroll.size.y > 0.0, "Synthesis Lab leaves usable vertical scroll space")
+	_check(
+		content != null and content.size.x <= scroll.size.x + 0.5,
+		"Synthesis Lab content stays inside the right edge"
+	)
+	_check(
+		source_a_card != null and source_b_card != null
+		and source_a_portrait != null and source_a_portrait.texture == source_thumbnail
+		and source_b_portrait != null and source_b_portrait.texture == source_thumbnail,
+		"both Source cards show the selected Anima art"
+	)
+	_check(
+		view.find_child("SynthesisSourceAForm", true, false) == null
+		and view.find_child("SynthesisSourceBForm", true, false) == null,
+		"Synthesis exposes no historical-form selector"
+	)
+	var current_payload := view.current_payload() as Dictionary
+	_check(
+		int(current_payload.get("source_a_stage", 0)) == 2
+		and int(current_payload.get("source_b_stage", 0)) == 1,
+		"Synthesis payload always uses each Source's committed form"
+	)
+	source_a_card.pressed.emit()
+	await process_frame
+	_check(
+		picker_overlay != null and picker_overlay.visible
+		and picker_list != null and picker_list.item_count == 2
+		and picker_list.get_item_icon(0) == source_thumbnail
+		and picker_list.get_item_text(0).find("Lv.") >= 0
+		and picker_list.get_item_text(0).find("Plant") >= 0,
+		"Source card opens an art-first picker with visible Level and elements"
+	)
+	_check(
+		picker_back != null and picker_back.flat
+		and picker_back.custom_minimum_size == Vector2(96, 96)
+		and picker_back_icon != null and picker_back_icon.texture != null,
+		"Source picker repeats the shared flat 96px chevron pattern"
+	)
+	picker_back.pressed.emit()
+	await process_frame
+	_check(not picker_overlay.visible, "Source picker back closes the picker before the Lab")
 	view.apply_preview({
 		"breakdown": {
 			"chance": 72, "base": 40, "level": 10, "care": 12,
@@ -4957,11 +5058,86 @@ func _test_synthesis_lab_state() -> void:
 		tr("SYNTHESIS_TECHNICAL_FAILURE"),
 		"locale refresh repaints the visible Synthesis error"
 	)
+	game_state.set("pending_synthesis", {
+		"source_a_id": "synthesis-locale-a",
+		"source_b_id": "synthesis-locale-b",
+		"mode": "balanced",
+		"idempotency_key": "synthesis-incubating-ui",
+	})
+	view.set_rows(rows)
+	await process_frame
+	var incubating_view := view.find_child("SynthesisIncubatingView", true, false) as Control
+	var incubator_visual := view.find_child("SynthesisIncubatorVisual", true, false) as Control
+	var capsule_icon := view.find_child("SynthesisCapsuleIcon", true, false) as TextureRect
+	var incubating_a := view.find_child(
+		"SynthesisIncubatingSourceAPortrait", true, false
+	) as TextureRect
+	var incubating_b := view.find_child(
+		"SynthesisIncubatingSourceBPortrait", true, false
+	) as TextureRect
+	var incubating_a_name := view.find_child(
+		"SynthesisIncubatingSourceAName", true, false
+	) as Label
+	var incubating_b_name := view.find_child(
+		"SynthesisIncubatingSourceBName", true, false
+	) as Label
+	var incubating_a_meta := view.find_child(
+		"SynthesisIncubatingSourceAMeta", true, false
+	) as Label
+	_check(
+		incubating_view != null and incubating_view.visible
+		and scroll != null and not scroll.visible
+		and lab_surface != null and incubating_view.size.x >= lab_surface.size.x - 48.0,
+		"pending Synthesis replaces the editor with a full-width incubating state"
+	)
+	_check(
+		incubator_visual != null and incubator_visual.is_processing()
+		and incubator_visual.size.y <= 360.0
+		and capsule_icon != null and capsule_icon.texture != null,
+		"the compact capsule is a live indeterminate indicator with a vector icon"
+	)
+	_check(
+		incubating_a != null and incubating_a.texture == source_thumbnail
+		and incubating_b != null and incubating_b.texture == source_thumbnail
+		and incubating_a_name != null and incubating_a_name.text == "Solin"
+		and incubating_b_name != null and incubating_b_name.text == "Mossel"
+		and incubating_a_meta != null and incubating_a_meta.text.find("Lv.") >= 0
+		and incubating_a_meta.text.find("Plant") >= 0,
+		"incubating state keeps both Source art snippets and glanceable identity data"
+	)
+	view.refresh_localized_ui()
+	var incubating_title := view.find_child("SynthesisIncubatingTitle", true, false) as Label
+	_check(
+		incubating_title != null and incubating_title.text == tr("SYNTHESIS_INCUBATING_TITLE"),
+		"locale refresh repaints the dedicated incubating state"
+	)
+	view.visible = false
+	await process_frame
+	_check(not incubator_visual.is_processing(), "changing tabs pauses capsule redraws")
+	view.visible = true
+	await process_frame
+	_check(incubator_visual.is_processing(), "returning to the Lab resumes capsule redraws")
+	game_state.set("pending_synthesis", {})
+	view.set_rows(rows, "synthesis-locale-a")
+	await process_frame
+	_check(
+		not incubating_view.visible and scroll.visible and not incubator_visual.is_processing(),
+		"leaving incubating restores the editor and stops hidden capsule animation"
+	)
 	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
 		flow_source.find("_say(tr(_synthesis_error_key(code)), true)") >= 0
 		and flow_source.find("\"SYNTHESIS_FAILED\":") >= 0,
 		"terminal Synthesis failures always surface the correct toast"
+	)
+	_check(
+		flow_source.find(
+			"_synthesis_resume_in_flight = false\n\tif not Backend.response_applies(res, account_epoch)"
+		) >= 0
+		and flow_source.find(
+			"GameState.session_epoch != account_epoch:\n\t\t\t_synthesis_poll_in_flight = false"
+		) >= 0,
+		"stale Synthesis responses release resume and polling guards"
 	)
 	_check(
 		flow_source.find(

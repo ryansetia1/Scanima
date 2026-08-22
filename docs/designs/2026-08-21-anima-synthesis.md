@@ -20,8 +20,9 @@ used as a Source.
 - Both Source Anima remain playable.
 - Each Source must be ready, not Dormant or evolving, and at least Level 10.
 - The two Source IDs must differ.
-- The player chooses any unlocked form from each Source as the visual reference.
-  Current stage does not restrict combinations.
+- Synthesis always uses each Source's current committed form as its visual and
+  data reference. Historical unlocked forms remain visible elsewhere but cannot
+  be selected for Synthesis.
 - The player chooses **Dominant A**, **Balanced**, or **Dominant B**.
 - One unordered Source pair can succeed once in each mode, for at most three
   Results. A failed attempt does not consume that mode.
@@ -58,14 +59,14 @@ The UI shows the percentage and its breakdown before confirmation. A failure:
 - starts a one-hour cooldown for that pair and mode; and
 - increases Calibration by 5% for its next attempt.
 
-Feature availability, ownership, status, selected forms, balances, spend cap,
-and active-Synthesis limit are checked before the roll. A system rejection is
-not a Resonance failure and applies no penalty.
+Feature availability, ownership, status, current-form parity, balances, spend
+cap, and active-Synthesis limit are checked before the roll. A system rejection
+is not a Resonance failure and applies no penalty.
 
 ## Guided inheritance
 
 The selected mode supplies weights of 70/30, 50/50, or 30/70. A Vision LLM sees
-one private Idle crop from each selected form plus sanitized source metadata and
+one private Idle crop from each current form plus sanitized source metadata and
 returns a validated Synthesis Plan.
 
 ### Visual
@@ -107,32 +108,37 @@ bounded visual property.
 Synthesis Lab is opened from the Collection header or from an Anima Profile
 shortcut that preselects Source A:
 
-1. Choose Source A and one unlocked form.
-2. Choose Source B and one unlocked form.
+1. Tap the Source A visual card and choose from a Collection-style art list that
+   shows art, Level, and elements.
+2. Choose Source B the same way. Both selected current-form artworks remain
+   visible in the Lab; there is no form picker.
 3. Choose Dominant A, Balanced, or Dominant B.
 4. Review Resonance, its breakdown, likely stat shape, completed modes, and the
    cost of 1 Core + 250 Bits.
 5. Confirm the attempt.
 6. On failure, show the care/cooldown consequence and how to improve Resonance.
-7. On success, keep both Sources usable while the private Result incubates.
+7. On success, replace the editor with a dedicated Incubator Capsule state.
+   The unknown private Result forms in the capsule while two compact Source
+   cards preserve each Source's art, name, Level, and elements.
 8. Reveal the Result, show attributes and elements, then offer Rename.
 
 The persistent shell may change tabs while generation runs. Restart replays the
 same idempotency key and resumes the same Result instead of rolling or charging
-again.
+again. The capsule is an indeterminate activity indicator: it never invents a
+percentage or ETA, and its ambient drawing stops while the state is hidden.
 
 ## Synthesis History and Atlas
 
 The Result profile stores a private Synthesis History snapshot containing:
 
 - both Source IDs and generated names;
-- selected form/stage and a small private thumbnail;
+- current form/stage at claim time and a small private thumbnail;
 - mode, successful Resonance, and date; and
 - the validated inheritance summary.
 
 Source rows may later evolve or be deleted without corrupting this record.
 
-Publishing a Result to Atlas also publishes the two names, selected-form
+Publishing a Result to Atlas also publishes the two names, current-form
 thumbnails, and mode as a snapshot attached to that Result. The Publish
 confirmation must explicitly disclose this. It does not publish the complete
 Source profiles as separate Atlas entries.
@@ -143,9 +149,13 @@ Source profiles as separate Atlas entries.
   Resonance, randomness, currencies, cooldown, mode uniqueness, and Result rows.
 - Money RPCs are service-role-only. Public tables have RLS enabled and no client
   write path for Synthesis state.
-- Source art stays private and is read through service-role signed URLs. A
-  private two-source reference board is persisted before temporary Source
-  Delete/Evolve locks are released.
+- Source art stays private and is read through service-role signed URLs. The
+  client reuses the Collection thumbnail cache for selection, while a private
+  two-source reference board is persisted before temporary Source Delete/Evolve
+  locks are released.
+- `preview_synthesis` and `attempt_synthesis` reject any supplied stage that
+  differs from `animas.stage`; old clients cannot restore historical-form
+  selection.
 - One successful attempt creates the Result, generation, Core ledger, Bits
   ledger, and mode lock in one transaction.
 - A technical LLM, dispatch, webhook, or post-processing failure marks the
@@ -181,8 +191,9 @@ Source profiles as separate Atlas entries.
 - Chose creative surprise over Monster Rancher's retirement/offspring loop.
 - Chose persistent Sources to protect attachment and four-Anima rosters.
 - Chose three modes per unordered pair over unlimited rerolls or one fixed mix.
-- Chose a Level 10 gate with independent visual-form selection over stage
-  compatibility rules.
+- Chose a Level 10 gate with the current committed form as an absolute Source
+  invariant; historical-form combinations add ambiguity without improving the
+  experiment.
 - Chose open recursive Synthesis with no generation-depth restriction for the
   simplest player rule; Core, Bits, and per-pair modes remain the cost brakes.
 - Chose visible Resonance that can reach 100% over hidden permanent RNG.
@@ -191,3 +202,6 @@ Source profiles as separate Atlas entries.
 - Chose 1 Core + 250 Bits because every success creates one paid private sheet.
 - Chose public Source snapshots with explicit Result-publish consent over silent
   leakage or automatically publishing full Source profiles.
+- Chose a dedicated Incubator Capsule over leaving the completed editor disabled:
+  it communicates the state clearly, keeps both Source identities visible, and
+  avoids presenting inactive controls as if they still matter.

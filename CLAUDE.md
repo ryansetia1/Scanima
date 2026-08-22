@@ -48,7 +48,7 @@ kontradiksi.
 | `evolution_prompt_version` | `v41` | `v30` |
 | `RULES_VERSION` combat | `3` | snapshot `evolution_version=0` tetap legacy |
 | Chapter aktif | The Sugarworks v6 | v1–v5 immutable untuk run lama |
-| Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push` semuanya `true`; `feature_synthesis` sengaja `false` | matikan per flag |
+| Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, dan `feature_synthesis` semuanya `true` | matikan per flag |
 
 Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 23,
 `evolve_anima` 7, `replicate_webhook` 12, `battle_anima` 26, `team_battle` 8,
@@ -67,6 +67,12 @@ pemain adalah **APK**-nya: build terpasang tidak punya layar Synthesis Lab, jadi
 saat ini flag itu hanya terbuka untuk build yang dijalankan dari source. Begitu
 APK baru terdistribusi, jalur 1 Core + 250 Bits ikut terbuka tanpa langkah
 tambahan — kalau perlu ditahan, matikan flag-nya dulu.
+
+Perubahan follow-up **current-form-only** ada di source tetapi belum production:
+migration `20260821230502_synthesis_committed_form_only` menjaga signature RPC
+lama namun menolak stage selain `animas.stage`; Lab baru menghapus dropdown form
+dan memakai kartu art/picker visual dari cache Collection. Sampai migration dan
+Edge Function itu dideploy, backend live lama masih menerima form historis.
 
 ## Aturan yang tidak bisa dinegosiasikan
 
@@ -148,7 +154,7 @@ npm run selftest                       # 41 skenario + 12 uji tanda tangan webho
 godot --headless --path game --script res://tests/test_sprite_slicing.gd # 174 check manifest, loader, presenter, Boss Seeker
 godot --headless --path game --script res://tests/test_auth_flow.gd    # 63 check PKCE secure, restart, transfer/separate, recovery, no-merge
 godot --headless --path game --script res://tests/test_client_state.gd  # 196 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, stale UID, retry transport
-godot --headless --path game --script res://tests/test_scan_ui.gd       # 1174 check shell + Battle + Shop + Bag + komponen + tap + touch + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas + preflight nama + LoadingScreen
+godot --headless --path game --script res://tests/test_scan_ui.gd       # 1177 check shell + Battle + Shop + Bag + komponen + tap + touch + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas + preflight nama + LoadingScreen
 godot --headless --path game --script res://tests/test_i18n.gd          # 4638 check katalog + key + formatter + wrapping
 godot --headless --path game --script res://tests/test_game_rules.gd    # 181 check care + EXP/Level/evolution + kontrak event Battle
 godot --headless --path game --script res://tests/test_expedition_route_map.gd # 91 check route tree + preview/Enter Node + Skip Shop + prediksi turn/Switch/penutup Boss + preload art run

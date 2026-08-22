@@ -75,6 +75,7 @@ function synthesisError(status: number, error: unknown): Response {
     "FEATURE_DISABLED",
     "SYNTHESIS_SOURCES_SAME",
     "SYNTHESIS_FORM_INVALID",
+    "SYNTHESIS_STAGE_MISMATCH",
     "SYNTHESIS_MODE_INVALID",
     "SYNTHESIS_FORM_LOCKED",
     "SYNTHESIS_LEVEL_TOO_LOW",

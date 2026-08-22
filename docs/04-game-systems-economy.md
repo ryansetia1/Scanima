@@ -177,10 +177,11 @@ berikutnya; kalau tidak ada, Home kembali ke empty state.
 
 Synthesis menerima dua Anima milik pemain sebagai **Source** tanpa mengonsumsi
 keduanya. Masing-masing harus `ready`, tidak Dormant atau sedang Evolve, tidak
-terkunci combat aktif, dan minimal Level 10. Pemain memilih satu form yang sudah
-terbuka dari tiap Source serta mode `dominant_a`, `balanced`, atau `dominant_b`.
-Satu pasangan tak berurutan dapat sukses sekali per mode, sehingga batasnya tiga
-Result berbeda. Result selalu dibuat sebagai Hatchling Level 1.
+terkunci combat aktif, dan minimal Level 10. Setiap Source mutlak memakai form
+committed saat ini (`animas.stage`); form historis tidak dapat dipilih. Pemain
+hanya memilih mode `dominant_a`, `balanced`, atau `dominant_b`. Satu pasangan
+tak berurutan dapat sukses sekali per mode, sehingga batasnya tiga Result
+berbeda. Result selalu dibuat sebagai Hatchling Level 1.
 
 Peluang Resonance server-authoritative:
 
@@ -201,8 +202,10 @@ Hygiene sesudah decay disinkronkan. Affinity membandingkan bentuk lima base stat
 yang dinormalisasi dan overlap elemen. Setiap kegagalan untuk pasangan+mode yang
 sama menambah Calibration 5, maksimal 20.
 
-`attempt_synthesis` memegang lock per owner, memvalidasi feature flag, ownership,
-form, saldo, spend cap, dan batas satu Synthesis aktif, lalu melakukan roll.
+`preview_synthesis` dan `attempt_synthesis` menolak stage kiriman yang berbeda
+dari form committed, termasuk dari client lama. `attempt_synthesis` memegang lock
+per owner, memvalidasi feature flag, ownership, form, saldo, spend cap, dan batas
+satu Synthesis aktif, lalu melakukan roll.
 Roll gagal kembali **sebelum panggilan model dan sebelum debit**: Core/Bits tetap,
 Energy kedua Source -10, cooldown pasangan+mode satu jam. Roll sukses membuat
 Result incubating + generation + debit **1 Genesis Core dan 250 Bits** + ledger

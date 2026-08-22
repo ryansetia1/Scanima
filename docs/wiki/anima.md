@@ -100,9 +100,13 @@ tidak memakai istilah keluarga.
 
 - Buka **Synthesis Lab** dari Collection, atau **Use in Synthesis** dari Profile
   untuk langsung memilih Source A.
+- Tap kartu Source untuk membuka daftar visual seperti Collection. Art, Level,
+  dan elemen setiap Anima terlihat sebelum dipilih; art pilihanmu tetap tampil
+  di Lab.
 - Kedua Source harus ready, tidak Dormant, tidak sedang Evolve, tidak sedang di
-  Battle atau Expedition yang berjalan, dan minimal **Level 10**. Pilih form Hatchling, Adult, atau Evolved yang sudah terbuka
-  sebagai referensi visual; stage Source saat ini tidak membatasi pilihan.
+  Battle atau Expedition yang berjalan, dan minimal **Level 10**. Synthesis
+  selalu memakai form Source yang sedang aktif saat itu; form lama tidak dapat
+  dipilih.
 - Pilih **Dominant A**, **Balanced**, atau **Dominant B**. Dominant lebih
   menekankan bentuk dan stats salah satu Source; Balanced mencampur keduanya
   lebih rata. Satu pasangan dapat berhasil sekali untuk tiap pilihan itu.
@@ -116,9 +120,9 @@ tidak memakai istilah keluarga.
   Result selalu menetas sebagai **Hatchling Level 1**. Stats-nya adalah build
   baru dalam kisaran kekuatan kedua Source, bukan bonus power gratis.
 
-Profile Result menampilkan **Synthesis History**: nama dan form kedua Source,
-bias, Resonance yang berhasil, serta ringkasan ciri yang diwarisi. Result juga
-bisa menjadi Source setelah mencapai Level 10.
+Profile Result menampilkan **Synthesis History**: nama dan form aktif kedua
+Source saat percobaan, bias, Resonance yang berhasil, serta ringkasan ciri yang
+diwarisi. Result juga bisa menjadi Source setelah mencapai Level 10.
 
 | Aksi | EXP | Catatan |
 | --- | --- | --- |

@@ -19,11 +19,13 @@ const TROPHY_CARD_PX := 176.0
 ## jaringan bisa dipasang tanpa membangun ulang grid.
 var _trophy_art: Dictionary = {}
 var _trophy_ids := PackedStringArray()
+var _trophy_skeleton: UiSkeleton
 
 
 func _ready() -> void:
 	%SeekerProfileBack.pressed.connect(func() -> void: back_requested.emit())
 	%RenameSeeker.pressed.connect(func() -> void: rename_requested.emit())
+	_trophy_skeleton = _build_trophy_skeleton()
 
 
 func set_profile(profile: Dictionary, portrait: Texture2D) -> void:
@@ -50,6 +52,7 @@ func set_profile(profile: Dictionary, portrait: Texture2D) -> void:
 ## dibangun ulang kalau daftarnya memang berubah, supaya art yang sudah terpasang
 ## tidak berkedip.
 func set_trophies(rows: Array) -> void:
+	_trophy_skeleton.set_loading(false)
 	_trophy_section.visible = true
 	var trophies := trophy_entries(rows)
 	var ids := PackedStringArray()
@@ -79,7 +82,16 @@ func set_trophy_art(trophy_id: String, texture: Texture2D) -> void:
 		card.texture = texture
 
 
+func set_trophies_loading(loading: bool) -> void:
+	if loading:
+		_trophy_section.visible = true
+		_trophy_empty.visible = false
+		_trophy_grid.visible = false
+	_trophy_skeleton.set_loading(loading)
+
+
 func hide_trophies() -> void:
+	_trophy_skeleton.set_loading(false)
 	_trophy_section.visible = false
 
 
@@ -119,6 +131,26 @@ func _joined_date(value: String) -> String:
 	if date.is_empty():
 		return tr("SEEKER_UNKNOWN")
 	return "%04d-%02d-%02d" % [int(date.year), int(date.month), int(date.day)]
+
+
+## Tiga slot mengikuti grid 3 kolom dan tinggi kartu 176 px, jadi section-nya
+## sudah kelihatan dan layout tidak meloncat ketika Core-nya tiba.
+func _build_trophy_skeleton() -> UiSkeleton:
+	var skeleton := UiSkeleton.new()
+	skeleton.name = "TrophySkeleton"
+	skeleton.visible = false
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	for _index in 3:
+		var slot := ColorRect.new()
+		slot.custom_minimum_size = Vector2(TROPHY_CARD_PX, TROPHY_CARD_PX)
+		slot.color = Color(0.18, 0.5, 0.7, 0.72)
+		slot.mouse_filter = MOUSE_FILTER_IGNORE
+		row.add_child(slot)
+	skeleton.add_child(row)
+	_trophy_section.add_child(skeleton)
+	_trophy_section.move_child(skeleton, 1)
+	return skeleton
 
 
 ## Slot art memakai ukuran tetap sejak kartu dibuat, jadi grid tidak melompat

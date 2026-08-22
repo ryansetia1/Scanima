@@ -3997,6 +3997,53 @@ begin
     '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
   ) returning id into v_synthesis_b;
 
+  -- Historical art may remain available for Collection/Profile, but Synthesis
+  -- must reject it and use only the Source's current committed form.
+  insert into public.anima_forms (
+    anima_id, stage, sheet_path, manifest, body_height_cm
+  ) values (
+    v_synthesis_a,
+    1,
+    u1::text || '/synthesis-source-a/form-1.png',
+    '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb,
+    150
+  );
+  update public.animas
+     set stage = 2,
+         sheet_path = u1::text || '/synthesis-source-a/form-2.png'
+   where id = v_synthesis_a;
+  begin
+    perform public.preview_synthesis(
+      u1, v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'SYNTHESIS_STAGE_MISMATCH');
+  end;
+  assert ok, 'preview Synthesis wajib menolak form historis';
+  begin
+    perform public.attempt_synthesis(
+      u1, 'synthesis-stage-mismatch',
+      v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint,
+      'balanced', 'v42', 'uji'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'SYNTHESIS_STAGE_MISMATCH');
+  end;
+  assert ok, 'attempt Synthesis wajib menolak form historis sebelum debit';
+  v_j := public.preview_synthesis(
+    u1, v_synthesis_a, 2::smallint, v_synthesis_b, 1::smallint, 'balanced'
+  );
+  assert (v_j->'breakdown'->>'chance')::integer = 1,
+         'preview Synthesis wajib menerima form committed saat ini';
+  update public.animas
+     set stage = 1,
+         sheet_path = u1::text || '/synthesis-source-a/sheet.png'
+   where id = v_synthesis_a;
+  delete from public.anima_forms
+   where anima_id = v_synthesis_a and stage = 1;
+  delete from public.storage_cleanup_queue
+   where object_path = u1::text || '/synthesis-source-a/form-1.png';
+
   v_j := public.preview_synthesis(
     u1, v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced'
   );
@@ -4086,6 +4133,10 @@ begin
          and (select count(*) from public.quota_ledger
                where ref_id = v_synthesis_gen and delta < 0) = 2,
          'Resonance sukses harus claim Result + Core + Bits dalam satu transaksi';
+  -- A paid replay is tied to its immutable snapshot. If a Source changes after
+  -- claim, the same key must still resume instead of being rejected as a new
+  -- historical-form request.
+  update public.animas set stage = 2 where id = v_synthesis_a;
   v_j2 := public.attempt_synthesis(
     u1, 'synthesis-technical-fail',
     v_synthesis_a, 1::smallint, v_synthesis_b, 1::smallint, 'balanced', 'v42', 'uji'
@@ -4093,7 +4144,8 @@ begin
   assert (v_j2->>'replayed')::boolean
          and (select count(*) from public.quota_ledger
                where ref_id = v_synthesis_gen and delta < 0) = 2,
-         'retry claim Synthesis tidak boleh mendebit ulang';
+         'retry claim Synthesis harus memakai snapshot lama tanpa mendebit ulang';
+  update public.animas set stage = 1 where id = v_synthesis_a;
   assert (select idempotency_key from public.generations where id = v_synthesis_gen)
            = 'synthesis:synthesis-technical-fail',
          'generation Synthesis wajib menamespace key agar tidak bentrok dengan kind lain';

@@ -254,6 +254,7 @@ func _ready() -> void:
 	_synthesis_view.preview_requested.connect(_preview_synthesis)
 	_synthesis_view.attempt_requested.connect(_attempt_synthesis)
 	_synthesis_view.result_requested.connect(_show_synthesis_result)
+	_synthesis_view.set_thumbnail_provider(_thumbnail_for)
 	_details_view.rename_requested.connect(_show_rename)
 	_details_view.delete_requested.connect(_show_delete_confirmation)
 	_details_view.help_requested.connect(_show_details_help)
@@ -705,6 +706,8 @@ func _open_synthesis_lab(preselected: Dictionary = {}) -> void:
 
 
 func _close_synthesis_lab() -> void:
+	if _synthesis_view.close_picker():
+		return
 	_switch_destination(_synthesis_return_destination)
 
 
@@ -714,9 +717,9 @@ func _preview_synthesis(payload: Dictionary) -> void:
 		return
 	_synthesis_view.set_busy(true)
 	var res := await Backend.synthesize_anima("preview", payload)
+	_synthesis_view.set_busy(false)
 	if not Backend.response_applies(res, account_epoch):
 		return
-	_synthesis_view.set_busy(false)
 	if res.ok and typeof(res.data) == TYPE_DICTIONARY:
 		_synthesis_view.apply_preview(GameState.as_dict(res.data))
 	else:
@@ -757,9 +760,9 @@ func _send_pending_synthesis(operation: String) -> void:
 	_synthesis_resume_in_flight = true
 	var payload := pending.duplicate(true)
 	var res := await Backend.synthesize_anima(operation, payload)
+	_synthesis_resume_in_flight = false
 	if not Backend.response_applies(res, account_epoch):
 		return
-	_synthesis_resume_in_flight = false
 	var body := GameState.as_dict(res.data)
 	if res.ok:
 		if body.has("resonance_succeeded") and not bool(body.get("resonance_succeeded", false)):
@@ -827,10 +830,12 @@ func _wait_for_synthesis(result_anima_id: String) -> void:
 	while remaining > 0.0 and not GameState.pending_synthesis.is_empty():
 		await get_tree().create_timer(SYNTHESIS_POLL_INTERVAL_SEC).timeout
 		if GameState.session_epoch != account_epoch:
+			_synthesis_poll_in_flight = false
 			return
 		remaining -= SYNTHESIS_POLL_INTERVAL_SEC
 		var res := await Backend.fetch_anima(result_anima_id)
 		if not Backend.response_applies(res, account_epoch):
+			_synthesis_poll_in_flight = false
 			return
 		if not res.ok or typeof(res.data) != TYPE_ARRAY:
 			continue
@@ -968,6 +973,8 @@ func _synthesis_error_key(code: String) -> String:
 			return "SYNTHESIS_ALREADY_ACTIVE"
 		"SYNTHESIS_FORM_LOCKED", "SYNTHESIS_FORM_INVALID":
 			return "SYNTHESIS_FORM_LOCKED"
+		"SYNTHESIS_STAGE_MISMATCH":
+			return "SYNTHESIS_STAGE_MISMATCH"
 		"ANIMA_DORMANT":
 			return "SYNTHESIS_ANIMA_DORMANT"
 		"ANIMA_IN_ACTIVE_COMBAT":
@@ -2126,11 +2133,12 @@ func _open_seeker_profile() -> void:
 
 ## Daftar Core berubah paling sering sekali per chapter, jadi kunjungan kedua
 ## tidak boleh menunggu jaringan: nama datang dari boot cache dan art-nya dari
-## disk, keduanya terpasang di frame yang sama dengan pindah layar.
+## disk, keduanya terpasang di frame yang sama dengan pindah layar. Kunjungan
+## tanpa cache menampilkan skeleton di Trophy Showcase sampai server menjawab.
 func _paint_cached_trophies() -> void:
 	var cached: Variant = GameState.boot_cache.get("trophies")
 	if typeof(cached) != TYPE_ARRAY:
-		_seeker_profile_view.hide_trophies()
+		_seeker_profile_view.set_trophies_loading(true)
 		return
 	_seeker_profile_view.set_trophies(cached)
 	for trophy in SeekerProfileView.trophy_entries(cached):
