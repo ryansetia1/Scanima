@@ -685,13 +685,23 @@ theme_override_constants/v_separation = 12
 theme_override_font_sizes/font_size = 25
 select_mode = 1
 allow_reselect = true
-allow_rmb_select = true
 max_columns = 2
 same_column_width = true
 fixed_column_width = 300
 script = ExtResource("5_roster")
 
-[node name="TeamSaveButton" type="Button" parent="Column/TeamBuilderScroll/TeamBuilder" unique_id=1543317786]
+[node name="TeamBuilderActions" type="HBoxContainer" parent="Column/TeamBuilderScroll/TeamBuilder" unique_id=240460211]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TeamBuilderBack" type="Button" parent="Column/TeamBuilderScroll/TeamBuilder/TeamBuilderActions" unique_id=1223096880]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ACTION_BACK"
+
+[node name="TeamSaveButton" type="Button" parent="Column/TeamBuilderScroll/TeamBuilder/TeamBuilderActions" unique_id=1543317786]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2

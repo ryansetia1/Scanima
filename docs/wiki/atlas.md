@@ -50,6 +50,14 @@ Anima tetap privat sampai pemilik akun Google memilih **Publish Lineage to
 Atlas** dari profil Anima dan menyetujui penjelasan privasi. Persetujuan itu
 berlaku untuk seluruh lineage: Hatchling, Adult, dan Evolved.
 
+Guest Seeker tetap melihat tombol **Publish to Atlas**. Menekannya menjelaskan
+apa yang Publish lakukan lalu menawarkan **Sign in with Google**; pilih **Move
+Guest Progress** supaya Anima itu ikut pindah, karena **Keep Guest Separate**
+meninggalkannya di akun guest. Sesudah **Move Guest Progress** selesai, game
+membuka kembali profil Anima itu beserta konfirmasi Publish-nya, jadi kamu tidak
+perlu mencari tombolnya lagi. Kalau kamu memilih **Keep Guest Separate**,
+permintaan Publish itu dibatalkan — Anima-nya tidak ikut ke akun Google.
+
 Kalau Anima itu adalah Result Synthesis, konfirmasi Publish menyebut snapshot
 tambahan yang ikut menjadi publik: nama kedua Source, thumbnail form yang
 dipilih, dan bias **Dominant A / Balanced / Dominant B**. Profil lengkap Source,

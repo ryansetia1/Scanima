@@ -278,10 +278,16 @@ func _initialize() -> void:
 	var background := scene.find_child("Background", true, false) as Node2D
 	_check(background != null and background.get_script() != null, "procedural background remains attached")
 	_check(scene.find_child("TopHud", true, false) is PanelContainer, "compact resource HUD must exist")
-	var animas_chip := scene.find_child("AnimasChip", true, false) as PanelContainer
+	var brand := scene.find_child("Brand", true, false) as Label
+	var resources := scene.find_child("Resources", true, false) as HBoxContainer
 	var cores_chip := scene.find_child("CoresChip", true, false) as PanelContainer
 	var bits_chip := scene.find_child("BitsChip", true, false) as PanelContainer
-	_check(animas_chip != null and animas_chip.get_script() != null, "HUD uses the shared Animas chip")
+	_check(brand != null, "HUD exposes the Seeker identity label")
+	_check(
+		scene.find_child("AnimasChip", true, false) == null
+		and resources != null and resources.get_child_count() == 2,
+		"HUD keeps only Cores and Bits resource chips",
+	)
 	_check(cores_chip != null and cores_chip.get_script() != null, "HUD uses the shared Cores chip")
 	_check(bits_chip != null and bits_chip.get_script() != null, "HUD uses the shared Bits chip")
 	var bottom_nav := scene.find_child("BottomNav", true, false) as BottomNav
@@ -307,11 +313,10 @@ func _initialize() -> void:
 		shop.custom_minimum_size.y >= TOUCH_MIN and bag.custom_minimum_size == shop.custom_minimum_size,
 		"Shop and Bag keep the 96px press target and stay the same size"
 	)
-	# The three HUD badges are the one deliberate exception to the 48dp floor:
+	# The two HUD badges are the one deliberate exception to the 48dp floor:
 	# read-only counters sized to the design, not primary actions.
 	_check(
-		animas_chip.custom_minimum_size.y == 62.0
-		and cores_chip.custom_minimum_size.y == 62.0
+		cores_chip.custom_minimum_size.y == 62.0
 		and bits_chip.custom_minimum_size.y == 62.0,
 		"HUD badges stay compact so the header reads as a bar, not a slab"
 	)
@@ -319,7 +324,7 @@ func _initialize() -> void:
 		bits_chip.custom_minimum_size.y < shop.custom_minimum_size.y,
 		"the compact badges never drag the Shop and Bag press targets down with them"
 	)
-	for chip in [animas_chip, cores_chip, bits_chip, shop, bag]:
+	for chip in [cores_chip, bits_chip, shop, bag]:
 		var column := chip.get_node_or_null("Column") as BoxContainer
 		_check(
 			column != null and column.alignment == BoxContainer.ALIGNMENT_CENTER,
@@ -355,7 +360,7 @@ func _initialize() -> void:
 	# no matter which variation it wears — the assertion would pass on Bits and
 	# fail on Shop for reasons that have nothing to do with either.
 	var chip_theme := load("res://themes/mobile_theme.tres") as Theme
-	for chip in [shop, bag, animas_chip, cores_chip, bits_chip]:
+	for chip in [shop, bag, cores_chip, bits_chip]:
 		var surfaced := not (
 			chip_theme.get_stylebox(&"panel", chip.theme_type_variation) is StyleBoxEmpty
 		)
@@ -372,9 +377,10 @@ func _initialize() -> void:
 		and scene.find_child("ShopGutter", true, false) == null,
 		"non-Home headers do not reserve space for hidden Bag and Shop buttons"
 	)
+	var battle_pick := scene.find_child("BattlePickSheet", true, false) as Control
 	_check(
-		scene.find_child("BattlePickSheet", true, false) != null,
-		"Battle lobby picker lives on the shell overlay"
+		battle_pick != null and battle_pick.z_index >= 20,
+		"Battle picker paints above immersive fighters and terminal result panels"
 	)
 	_check(scene.find_child("ScanCount", true, false) == null, "HUD no longer labels scan charges as a count")
 	_check(scene.find_child("BottomNav", true, false) is PanelContainer, "bottom navigation must exist")
@@ -525,8 +531,9 @@ func _initialize() -> void:
 		"Battle unlocks after the event log so a follow-up Special can send"
 	)
 	_check(
-		shell_source.find("_animas_chip.pressed.connect(_open_collection)") >= 0,
-		"Animas chip navigates to Collection"
+		shell_source.find("_animas_chip") < 0
+		and shell_source.find("_atlas_view.collection_requested.connect(_open_collection)") >= 0,
+		"Collection remains reachable without duplicating it in the top HUD",
 	)
 	_check(
 		shell_source.find("NOTIFICATION_WM_GO_BACK_REQUEST") >= 0
@@ -905,8 +912,11 @@ func _initialize() -> void:
 	_check(first_effect != null and not first_effect.visible, "first-Anima scanner starts hidden")
 	_test_care_feedback_is_immediate()
 	_test_collection_routes_are_explicit()
+	_test_atlas_publish_offers_sign_in()
+	_test_sign_in_choice_follows_guest_roster()
 	_test_hatch_offers_rename()
-	_test_header_uses_ready_roster()
+	_test_header_uses_seeker_identity(scene)
+	await _test_compact_shared_toast(scene)
 	_test_present_toast_respects_sleep()
 	_test_battle_reward_is_authoritative()
 	_test_battle_art_has_no_global_toast()
@@ -2781,6 +2791,14 @@ func _test_team_battle_view() -> void:
 		and hub_body.find("_refresh_team_battle_candidates") < 0,
 		"Team Battle always reviews the saved roster before requesting rivals"
 	)
+	var retry_body := _func_body(flow_source, "func _retry_team_battle(")
+	var candidates_body := _func_body(flow_source, "func _refresh_team_battle_candidates(")
+	_check(
+		retry_body.find("set_builder(_roster, _team_battle_team)") >= 0
+		and retry_body.find("_load_team_battle_hub") < 0
+		and candidates_body.find("set_builder(_roster, _team_battle_team)") >= 0,
+		"Next Battle, Try Again, and empty-team recovery reopen one ordered Team builder",
+	)
 	var back := view.find_child("TeamBackButton", true, false) as Button
 	var back_icon := view.find_child("TeamBackIcon", true, false) as TextureRect
 	_check(
@@ -2951,6 +2969,37 @@ func _test_team_battle_view() -> void:
 	view.set_lobby(team, daily, candidates, false)
 	var rivals := view.find_child("TeamRivalList", true, false) as ItemList
 	var start := view.find_child("TeamStartButton", true, false) as Button
+	var builder_back := view.find_child("TeamBuilderBack", true, false) as Button
+	var lobby_scroll := view.find_child("TeamLobbyScroll", true, false) as ScrollContainer
+	_check(
+		builder_back != null
+		and builder_back.flat
+		and builder_back.custom_minimum_size.y >= 96.0
+		and builder_back.size_flags_horizontal == Control.SIZE_SHRINK_BEGIN
+		and builder_back.get_parent() == save.get_parent(),
+		"Team builder shares Expedition's compact Back-and-Save action row",
+	)
+	view.call("_edit_team")
+	var builder_scroll := view.find_child("TeamBuilderScroll", true, false) as ScrollContainer
+	view.set_busy(true)
+	builder_back.pressed.emit()
+	_check(
+		builder_back.disabled and builder_scroll.visible and not lobby_scroll.visible,
+		"Team builder Back cannot leave while Save is still committing",
+	)
+	view.set_busy(false)
+	_tap_roster_item(roster_list, 0)
+	builder_back.pressed.emit()
+	_check(
+		lobby_scroll.visible and not view.find_child("TeamBuilderScroll", true, false).visible,
+		"Team builder Back returns to the rival lobby instead of closing Team Battle",
+	)
+	view.call("_edit_team")
+	_check(
+		team_roster.get_chosen_indices_ordered() == [0, 1, 2, 3],
+		"reopening Team builder restores the saved order after cancelled edits",
+	)
+	builder_back.pressed.emit()
 	_check(rivals.item_count == 1 and start.disabled, "Team lobby requires a rival selection")
 	view.call("_select_candidate", 0)
 	_check(not start.disabled, "selecting one rival enables Team Battle")
@@ -4187,10 +4236,16 @@ func _test_expedition_view() -> void:
 
 
 func _test_battle_pick_sheet() -> void:
+	var duel_packed := load("res://scenes/ui/battle_view.tscn") as PackedScene
+	var duel := duel_packed.instantiate()
+	root.add_child(duel)
 	var packed := load("res://scenes/ui/battle_pick_sheet.tscn") as PackedScene
 	var sheet := packed.instantiate()
 	root.add_child(sheet)
 	await process_frame
+	var duel_result := duel.find_child("BattleResultPanel", true, false) as Control
+	duel.visible = true
+	duel_result.visible = true
 	var tired := {
 		"id": "active",
 		"nickname": "Velumi",
@@ -4218,6 +4273,10 @@ func _test_battle_pick_sheet() -> void:
 	var panel := sheet.panel() as Control
 	var content_scroll := sheet.find_child("ContentScroll", true, false) as ScrollContainer
 	_check(sheet.visible and list != null and list.item_count == 2, "picker lists the roster")
+	_check(
+		duel_result != null and duel_result.visible and sheet.z_index > duel_result.z_index,
+		"terminal Duel Choose Anima picker paints above the real result overlay",
+	)
 	_check(
 		sheet.scroll_content and content_scroll != null and content_scroll.follow_focus,
 		"Battle picker caps tall rosters in the shared mobile scroll viewport"
@@ -4253,6 +4312,7 @@ func _test_battle_pick_sheet() -> void:
 	await create_timer(0.30).timeout
 	_check(not sheet.visible, "back from the list closes the picker")
 	sheet.queue_free()
+	duel.queue_free()
 	await process_frame
 
 
@@ -4288,6 +4348,93 @@ func _test_collection_routes_are_explicit() -> void:
 	_check(
 		summon_body.find("await _prepare_anima_art") < summon_body.find("GameState.remember_anima"),
 		"Summon prepares art before replacing the active companion"
+	)
+
+
+## `gallery/publish` menolak guest sebelum menyentuh Anima-nya, jadi tap yang
+## dijawab toast menawarkan sesuatu yang tidak pernah bisa terjadi. Guest wajib
+## mendapat penjelasan plus jalan keluarnya, dan jalan keluarnya wajib pilihan
+## sign-in bersama — bukan transfer langsung yang melewati default amannya.
+func _test_atlas_publish_offers_sign_in() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var toggle := _func_body(source, "func _toggle_gallery_publish(")
+	var guest := toggle.find("GameState.is_anonymous()")
+	var consent := toggle.find("&\"atlas_publish\"")
+	_check(
+		guest >= 0
+		and toggle.find("ATLAS_PUBLISH_SIGN_IN_BODY") > guest
+		and consent > guest,
+		"a Guest tapping Publish is told what it does instead of the consent it cannot give"
+	)
+	var confirmed := _func_body(source, "func _modal_confirmed(")
+	var context := confirmed.find("&\"atlas_publish_signin\"")
+	_check(
+		context >= 0 and confirmed.find("_show_sign_in_confirmation()") > context,
+		"that dialog hands off to the shared sign-in choice instead of dead-ending"
+	)
+	_check(
+		toggle.find("\"uid\": GameState.uid()") > guest
+		and _func_body(source, "func _on_auth_succeeded(").find(
+			"_resume_pending_publish()"
+		) >= 0,
+		"the Publish tap survives the OAuth round trip carrying the UID that made it"
+	)
+	# Transfer justru didefinisikan sebagai UID yang tidak berubah, jadi mencocokkan
+	# UID menyatakan "pemilik yang sama" secara langsung; menyimpulkannya dari roster
+	# benar hari ini tapi diam kalau urutan muat berubah. Konsumsi wajib mendahului
+	# pagar, kalau tidak Keep Guest Separate meninggalkan intent terkokang untuk
+	# sign-in berikutnya.
+	var resume := _func_body(source, "func _resume_pending_publish(")
+	var consumed := resume.find("_publish_after_sign_in = {}")
+	_check(
+		consumed >= 0
+		and resume.find("GameState.is_anonymous()") > consumed
+		and resume.find("!= GameState.uid()") > consumed
+		and resume.find("_roster_row(anima_id)") > consumed,
+		"and is consumed before its guards, so a separate account cannot inherit it"
+	)
+
+
+## Keep Guest Separate meninggalkan Anima guest di akun yang tidak lagi terlihat,
+## jadi urutan tombolnya ikut isi roster. Yang berbahaya bukan urutannya melainkan
+## hanyutnya: kalau slot dibalik tanpa handler-nya, Keep Separate mentransfer akun.
+func _test_sign_in_choice_follows_guest_roster() -> void:
+	var script: GDScript = load("res://scripts/scan_flow.gd")
+	_check(
+		script.sign_in_choice_moves_guest("primary", true)
+		and not script.sign_in_choice_moves_guest("secondary", true)
+		and script.sign_in_choice_moves_guest("secondary", false)
+		and not script.sign_in_choice_moves_guest("primary", false),
+		"the sign-in slot that runs Move is the one holding the Move label"
+	)
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var confirm := _func_body(source, "func _show_sign_in_confirmation(")
+	var flag := confirm.find(
+		"_sign_in_move_first = not _roster.is_empty() or _guest_scan_locked()"
+	)
+	_check(
+		flag >= 0,
+		"the button order follows the roster, and a failed load still warns via the scan lock"
+	)
+	_check(
+		confirm.find("if _busy:\n\t\t_say(tr(\"SEEKER_SWITCH_BLOCKED\"), true)") >= 0,
+		"a sign-in tap that lands while the shell is busy answers instead of doing nothing"
+	)
+	_check(
+		confirm.find("var move_label := tr(\"SEEKER_MOVE_GUEST_PROGRESS\")") >= 0
+		and confirm.find("var separate_label := tr(\"SEEKER_KEEP_GUEST_SEPARATE\")") >= 0
+		and confirm.find("move_label if _sign_in_move_first else separate_label") >= 0,
+		"a Guest holding an Anima sees Move Guest Progress first"
+	)
+	_check(
+		confirm.find("SEEKER_SIGN_IN_CHOICE_BODY_ANIMA") > flag,
+		"and is told the Anima stays behind on the guest account"
+	)
+	_check(
+		_func_body(source, "func _modal_choice_selected(").find(
+			"sign_in_choice_moves_guest(choice, _sign_in_move_first)"
+		) >= 0,
+		"the handler reads that same order instead of assuming a fixed one"
 	)
 
 
@@ -4808,35 +4955,94 @@ func _test_hatch_offers_rename() -> void:
 		)
 
 
-func _test_header_uses_ready_roster() -> void:
+func _test_header_uses_seeker_identity(scene: Node) -> void:
 	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
-	var count_start := source.find("func _refresh_anima_count")
-	var count_end := source.find("\n\nfunc _set_busy", count_start)
-	var count_body := source.substr(
-		count_start, count_end - count_start
-	) if count_start >= 0 and count_end > count_start else ""
-	var populate_start := source.find("func _populate_collection")
-	var populate_end := source.find("\n\nfunc _thumbnail_for", populate_start)
-	var populate_body := source.substr(
-		populate_start, populate_end - populate_start
-	) if populate_start >= 0 and populate_end > populate_start else ""
-	var header_start := source.find("func _refresh_header")
-	var header_end := source.find("\n\nfunc _refresh_anima_count", header_start)
-	var header_body := source.substr(
-		header_start, header_end - header_start
-	) if header_start >= 0 and header_end > header_start else ""
+	var identity_body := _func_body(source, "func _seeker_header_text(")
+	var header_body := _func_body(source, "func _refresh_header(")
+	var configure_body := _func_body(source, "func _configure_resource_chips(")
+	var rename_body := _func_body(source, "func _rename_seeker(")
+	var game_state := root.get_node_or_null("GameState")
+	var previous_session: Dictionary = game_state.get("session").duplicate(true)
+	game_state.set("session", {"is_anonymous": true})
+	_check_eq(
+		scene.call("_seeker_header_text", {"seeker_name": "Nova"}),
+		tr("SEEKER_GUEST_LABEL"),
+		"guest HUD ignores stale profile names and shows Guest Seeker",
+	)
+	game_state.set("session", {"is_anonymous": false})
+	_check_eq(
+		scene.call("_seeker_header_text", {"seeker_name": "Nova"}),
+		"Nova",
+		"linked HUD shows the authoritative Seeker name",
+	)
+	_check_eq(
+		scene.call("_seeker_header_text", {}),
+		tr("SEEKER_UNNAMED"),
+		"linked profile without a name keeps the localized fallback",
+	)
+	game_state.set("session", previous_session)
 	_check(
-		count_body.find("LocaleManager.format_integer(_roster.size())") >= 0,
-		"HUD count is derived from the authenticated ready roster"
+		identity_body.find("GameState.is_anonymous()") >= 0
+		and identity_body.find("SEEKER_GUEST_LABEL") >= 0
+		and identity_body.find("seeker_name") >= 0,
+		"HUD uses Seeker name with a dedicated Guest Seeker fallback",
 	)
 	_check(
-		populate_body.find("_refresh_anima_count()") >= 0,
-		"every roster UI refresh also updates the HUD count"
+		header_body.find("_brand.text = _seeker_header_text(p)") >= 0,
+		"every header refresh also refreshes the visible Seeker identity",
 	)
 	_check(
-		header_body.find("scan_charges") < 0,
-		"scan charges remain an economy rule, not the displayed collection count"
+		source.find("_animas_chip") < 0
+		and source.find("func _refresh_anima_count") < 0
+		and configure_body.find("RESOURCE_ANIMAS") < 0,
+		"Animas leave the top HUD while Cores and Bits keep the shared chip path",
 	)
+	_check(
+		rename_body.find("_refresh_header()") > rename_body.find("GameState.profile.merge"),
+		"renaming a Seeker updates the HUD immediately",
+	)
+
+
+func _test_compact_shared_toast(scene: Node) -> void:
+	var toast := scene.find_child("StatusPanel", true, false) as PanelContainer
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var say_body := _func_body(source, "func _say(")
+	var relayout_body := _func_body(source, "func _relayout_toast_after_minimum_update(")
+	var place_body := _func_body(source, "func _place_toast(")
+	_check(
+		toast != null and toast.size.y < 76.0,
+		"the shared toast scene starts at one-line height instead of the old 76px slab",
+	)
+	_check(
+		say_body.find("_relayout_toast_after_minimum_update(revision)") >= 0
+		and relayout_body.find("await get_tree().process_frame") >= 0
+		and relayout_body.find("_layout_for_viewport()")
+			> relayout_body.find("await get_tree().process_frame")
+		and place_body.find("get_combined_minimum_size().y") >= 0
+		and source.find("TOAST_MIN_HEIGHT") < 0,
+		"every _say call waits for the panel's current content height before placement",
+	)
+	var probe := PanelContainer.new()
+	probe.size = Vector2(320.0, 1.0)
+	var label := Label.new()
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	probe.add_child(label)
+	root.add_child(probe)
+	label.text = "Daily Play EXP is complete and every active Anima received this longer status update."
+	await process_frame
+	probe.size.y = probe.get_combined_minimum_size().y
+	var long_height := probe.size.y
+	label.text = "Hydron is ready."
+	await process_frame
+	probe.size.y = probe.get_combined_minimum_size().y
+	var short_height := probe.size.y
+	_check(
+		long_height > short_height
+		and is_equal_approx(short_height, probe.get_combined_minimum_size().y),
+		"minimum-size notification grows and shrinks the shared toast with its text",
+	)
+	probe.queue_free()
+	toast.visible = false
 
 
 func _test_present_toast_respects_sleep() -> void:

@@ -60,14 +60,23 @@ selesai, bukan mengulang dari awal.
 ## Google: guest terpisah atau pindah progres
 
 Guest perangkat disimpan tetap pada instalasi ini. Saat menekan **Sign in with
-Google**, pilih salah satu:
+Google**, pilih salah satu. Tidak ada yang dihapus di kedua pilihan; yang berbeda
+adalah akun mana yang kamu lihat sesudahnya. Kalau guest sudah punya Anima,
+**Move Guest Progress** berdiri lebih dulu karena hanya ia yang membawa Anima itu
+ikut:
 
-- **Keep Guest Separate** — pilihan aman. Google membuka Seeker miliknya sendiri.
-  Nanti **Sign Out** kembali ke guest yang sama beserta Anima, Bits, tas, dan EXP
-  miliknya.
 - **Move Guest Progress** — guest menjadi Seeker Google dengan UID yang sama.
-  Semua progres ikut pindah. Setelah **Sign Out**, perangkat membuat guest baru
-  yang kosong; guest lama hanya bisa dibuka melalui Google tersebut.
+  Semua progres ikut pindah dan layarmu tidak berubah. Setelah **Sign Out**,
+  perangkat membuat guest baru yang kosong; guest lama hanya bisa dibuka melalui
+  Google tersebut.
+- **Keep Guest Separate** — Google membuka Seeker miliknya sendiri, dan Seeker itu
+  mulai dari nol. Anima guest tidak dihapus, tapi ia tinggal di akun guest dan
+  tidak terlihat sampai **Sign Out** mengembalikan guest itu beserta Anima, Bits,
+  tas, dan EXP miliknya.
+
+Guest hanya hidup di perangkat ini dan tidak punya email. Uninstall atau clear
+data menghapus satu-satunya jalan masuk ke akun guest, jadi pilih **Move Guest
+Progress** kalau Anima guest itu ingin kamu simpan untuk seterusnya.
 
 Google selalu menampilkan pemilih akun. Kalau akun yang dipilih sudah memiliki
 Seeker, progres guest **tidak pernah digabungkan**. Game hanya menawarkan **Sign

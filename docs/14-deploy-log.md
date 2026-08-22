@@ -2,6 +2,44 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Resume picker layer, shared Team builder, toast, dan Seeker HUD
+
+23 Agustus 2026, client saja. `BattlePickSheet` sebelumnya tetap di `z_index=0`
+ketika dibuka dari result Duel terminal; fighter, pelat **Retreating**, dan
+`BattleResultPanel` punya layer lebih tinggi, jadi Choose Anima benar-benar
+terbuka tetapi terlihat di belakang dua surface lama. Root sheet sekarang
+`z_index=20`, sama dengan modal shell.
+
+Team dan Expedition sudah memakai `TeamRosterList` yang sama; perbedaan yang
+tersisa ada pada flow builder. Team sekarang juga punya row **Back + Save**.
+Back membatalkan edit lokal dan kembali ke rival lobby, lalu pembukaan berikutnya
+memulihkan urutan tim tersimpan. **Next Battle**, **Try Again**, blocked
+**Edit Team**, dan recovery tanpa team id semuanya membuka
+`set_builder(_roster, _team_battle_team)` tanpa refetch hub atau kehilangan
+argumen restore. Follow-up review menutup race saat Save: Back ikut disabled
+selama `_busy`, dan `_leave_builder()` tetap menolak signal programatis sampai
+commit selesai.
+
+Toast global tetap satu komponen/funnel `_say()`: lantai tetap 76 px dihapus,
+`_place_toast()` memakai minimum content aktual, dan perubahan teks memicu layout
+ulang satu `process_frame` kemudian agar minimum wrapped text sudah terpropagasi.
+Revision guard membuang relayout pesan lama; satu `call_deferred()` yang lebih
+awal terukur masih membaca tinggi pesan sebelumnya. Top HUD mengganti label
+SCANIMA dengan nama Seeker (`Guest Seeker` untuk guest) dan menghapus chip
+Animas; hanya Cores + Bits tersisa, sementara Collection tetap di tab
+**Animas**. Home demo mengikuti struktur production yang sama.
+
+Verifikasi lulus: `test_scan_ui` 1.358 check, `test_i18n` 4.807 check, 0 orphan
+signal, boot Play-mode bersih, serta parser/convention check project tanpa error
+baru. APK debug final 05:26 WIB berhasil dibangun ke `/tmp/scanima.apk`:
+57.268.707 byte, SHA-256
+`115b777503a93b812856e762b68de38b4d6a347822ca9927ddb651ddb15bf8bc`,
+izin tepat INTERNET + CAMERA, 22 string `GodotGetImage` di dex, signature v2
+sah, dan `libgodot_android.so` terkompresi 74.945.024 → 27.030.921 byte.
+Daemon ADB yang macet sudah di-restart; `adb devices -l` kembali selesai normal
+tetapi tidak menemukan device. Sideload dan smoke fisik empat flow ini masih
+menunggu device tersambung lagi.
+
 ## Ordered Team roster, Duel reset, dan arena sky reframe
 
 23 Agustus 2026, client + enam generation art developer. Keanehan Team picker

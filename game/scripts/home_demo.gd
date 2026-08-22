@@ -15,7 +15,7 @@ const FLOW: GDScript = preload("res://scripts/scan_flow.gd")
 
 @onready var _home: HomeView = %HomeView
 @onready var _top_hud: PanelContainer = %TopHud
-@onready var _animas_chip: ResourceChip = %AnimasChip
+@onready var _brand: Label = %Brand
 @onready var _cores_chip: ResourceChip = %CoresChip
 @onready var _bits_chip: ResourceChip = %BitsChip
 @onready var _shop_button: ResourceChip = %ShopButton
@@ -62,10 +62,9 @@ static func demo_row() -> Dictionary:
 
 
 func _configure_chips() -> void:
-	for badge: ResourceChip in [_animas_chip, _cores_chip, _bits_chip]:
+	_brand.text = tr("SEEKER_GUEST_LABEL")
+	for badge: ResourceChip in [_cores_chip, _bits_chip]:
 		badge.set_inline(true)
-	_animas_chip.set_name_text(tr("RESOURCE_ANIMAS"))
-	_animas_chip.set_value_text("4")
 	_cores_chip.set_name_text(tr("RESOURCE_CORES"))
 	_cores_chip.set_value_text("2")
 	_bits_chip.set_name_text(tr("RESOURCE_BITS"))

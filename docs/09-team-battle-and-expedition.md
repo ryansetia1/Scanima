@@ -40,7 +40,9 @@ server boleh menjawab expired dan client membersihkan bookmark lokal.
   berisi 2–4 Anima, baru kemudian meminta candidate. Roster adalah array
   berurutan, bukan set: tap pertama menjadi slot aktif **1**, tap berikutnya
   mengisi bench **2–4**, dan menghapus anggota memadatkan nomor sesudahnya.
-  Builder memulihkan urutan server/lokal yang sama ketika dibuka ulang.
+  Builder memakai row Back + Save seperti Expedition. Back membatalkan edit dan
+  kembali ke rival lobby, tetapi dikunci selama Save masih commit; builder
+  berikutnya memulihkan urutan server/lokal yang sama.
 - Defense Team menerima 2–4 Anima, disimpan terpisah, dan hanya masuk pool lawan
   setelah opt-in.
 - Snapshot Defense tidak membawa owner ID, Seeker Name, atau nickname privat.
@@ -118,7 +120,8 @@ siapa yang ditampilkan.
 
 CTA hasil Team mengikuti outcome: **Next Battle** sesudah menang dan **Try
 Again** sesudah loss/draw/forfeit. Keduanya kembali ke builder dengan roster
-terakhir tetap terpilih; **Return to Lobby** tetap keluar ke hub Team Battle.
+terakhir tetap terpilih tanpa refetch hub; **Return to Lobby** tetap keluar ke
+hub Team Battle.
 
 ## 3. Expedition
 

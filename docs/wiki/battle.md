@@ -45,7 +45,8 @@ Arena tetap menampilkan satu fighter aktif dari setiap tim.
   bergantung pada warna saja. Ketuk card untuk menambah atau melepasnya. Card
   terpilih diberi nomor sesuai urutan pilihan: **1** adalah Anima yang memulai
   battle, lalu **2–4** adalah urutan bench. Urutan itu tetap sama saat builder
-  dibuka lagi.
+  dibuka lagi. **Back** membatalkan perubahan yang belum disimpan dan kembali
+  ke lobby rival; membuka builder lagi memulihkan urutan tim tersimpan.
 - Setelah tim disimpan, lobby menawarkan sampai **tiga rival** dengan tier dan
   Bits-nya masing-masing. **Find New Rivals** mengocok ulang pilihannya. Selama
   belum banyak pemain memasang Defense Team, sebagian rival adalah tim sistem.
@@ -330,8 +331,8 @@ Kalah atau **Retreat** juga nol hadiah. **Retreat** membuka konfirmasi dulu;
 Cancel kembali ke arena. Di Expedition, konfirmasi itu menjelaskan bahwa zona
 saat ini dimulai ulang dari awal. Sesudah kamu konfirmasi, arena menampilkan
 **Retreating** di pelat event yang sama dengan Super effective sampai fight
-berakhir. Saat fight Duel, Team Battle, atau Expedition berjalan, judul
-Scanima, chip resource, dan navigasi bawah hilang — layar jadi arena penuh.
+berakhir. Saat fight Duel, Team Battle, atau Expedition berjalan, nama Seeker,
+chip resource, dan navigasi bawah hilang — layar jadi arena penuh.
 Di Duel, **Retreat** rata kanan di baris atas arena (tanpa nomor
 Turn), dan empat aksi **Attack** / **Special** / **Guard** / **Item** duduk
 di kaki layar. Di Team Battle dan Expedition, **Retreat** ada di paling kanan baris

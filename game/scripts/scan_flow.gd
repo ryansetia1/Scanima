@@ -70,7 +70,6 @@ const HOME_BODY_SPAN_MAX_RATIO := 0.42
 ## 0,62 melebarkannya menjadi 2,4x tanpa menyentuh clamp.
 const HOME_BODY_HEIGHT_CURVE := 0.62
 const TOAST_GAP := 8.0
-const TOAST_MIN_HEIGHT := 76.0
 const SHOP_GAP := 6.0
 const SLEEP_SYNC_RETRY_SEC := 30.0
 const SLEEP_SYNC_EPSILON_SEC := 1.0
@@ -100,7 +99,7 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 @onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _safe_margin: MarginContainer = %SafeMargin
 @onready var _top_hud: PanelContainer = %TopHud
-@onready var _animas_chip = %AnimasChip
+@onready var _brand: Label = %Brand
 @onready var _cores_chip = %CoresChip
 @onready var _bits_chip: ResourceChip = %BitsChip
 @onready var _bag_button: ResourceChip = %BagButton
@@ -135,12 +134,20 @@ var _inventory: Array = []
 var _current_anima: Dictionary = {}
 var _profile_anima: Dictionary = {}
 var _roster_error := ""
+## Urutan tombol pilihan sign-in terakhir; handler-nya butuh tahu aksi mana yang
+## berdiri di slot utama karena urutannya bergantung pada isi roster guest.
+var _sign_in_move_first := false
 var _placeholder_icon: Texture2D = null
 var _thumbnail_cache: Dictionary = {}
 var _destination: StringName = BottomNav.HOME
 var _overlay_return_destination: StringName = BottomNav.HOME
 var _profile_return_destination: StringName = BottomNav.COLLECTION
 var _pending_atlas_publish_id := ""
+## Anima yang menunggu consent Publish di seberang round trip OAuth, beserta UID
+## pemiliknya saat intent dibuat: `{anima_id, uid}`. Sengaja tidak dipersist —
+## kalau app mati saat OAuth, intent-nya gugur dan pemain menekan Publish lagi,
+## lebih baik daripada consent yang muncul entah dari mana.
+var _publish_after_sign_in: Dictionary = {}
 var _toast_revision := 0
 var _expedition_level_queue: Array[Dictionary] = []
 var _expedition_level_sequence_active := false
@@ -303,7 +310,6 @@ func _ready() -> void:
 	_battle_pick_sheet.battle_requested.connect(_battle_pick_start)
 	_photo_source_sheet.camera_requested.connect(_request_camera_photo)
 	_photo_source_sheet.gallery_requested.connect(_request_gallery_photo)
-	_animas_chip.pressed.connect(_open_collection)
 	_cores_chip.pressed.connect(_show_core_info)
 	_bits_chip.pressed.connect(_show_bits_info)
 	_bag_button.pressed.connect(_on_bag_pressed)
@@ -2148,6 +2154,8 @@ func _modal_confirmed(text: String) -> void:
 			_rename_seeker(text)
 		&"atlas_publish":
 			_commit_atlas_publish(_pending_atlas_publish_id, true)
+		&"atlas_publish_signin":
+			_show_sign_in_confirmation()
 		&"chapter_announcement":
 			_ack_chapter_popup(true)
 		&"retreat":
@@ -2185,10 +2193,10 @@ func _modal_choice_selected(choice: String) -> void:
 		return
 	if context != &"sign_in_google":
 		return
-	if choice == "primary":
-		_start_google_separate()
-	else:
+	if sign_in_choice_moves_guest(choice, _sign_in_move_first):
 		_show_transfer_confirmation()
+	else:
+		_start_google_separate()
 	call_deferred("_present_queued_dialogs_after_modal")
 
 
@@ -2212,6 +2220,8 @@ func _modal_canceled() -> void:
 		call_deferred("_maybe_prompt_seeker_onboarding")
 	elif context == &"atlas_publish":
 		_pending_atlas_publish_id = ""
+	elif context == &"atlas_publish_signin":
+		_publish_after_sign_in = {}
 	elif context == &"chapter_announcement":
 		_ack_chapter_popup(false)
 	elif context == &"retreat":
@@ -2395,6 +2405,19 @@ func _open_atlas() -> void:
 func _toggle_gallery_publish(anima_id: String, publish: bool) -> void:
 	if _busy or anima_id.is_empty():
 		return
+	# `gallery/publish` menolak guest sebelum apa pun terjadi, jadi menawarkan
+	# tombolnya lalu menjawab toast adalah jalan buntu. Guest mendapat penjelasan
+	# singkat plus jalan keluarnya; consent asli tetap menunggu akun Google.
+	if publish and GameState.is_anonymous():
+		_publish_after_sign_in = {"anima_id": anima_id, "uid": GameState.uid()}
+		_modal_context = &"atlas_publish_signin"
+		_shell_modal.open_confirm(
+			tr("GALLERY_PUBLISH"),
+			tr("ATLAS_PUBLISH_SIGN_IN_BODY"),
+			tr("SEEKER_SIGN_IN_GOOGLE"),
+			tr("ACTION_CANCEL")
+		)
+		return
 	if publish:
 		_pending_atlas_publish_id = anima_id
 		_modal_context = &"atlas_publish"
@@ -2506,6 +2529,7 @@ func _open_seeker_profile() -> void:
 		return
 	var profile := GameState.as_dict(res.data)
 	GameState.profile.merge(profile, true)
+	_refresh_header()
 	_seeker_profile_view.set_profile(
 		profile,
 		_thumbnail_for(_current_anima) if not _current_anima.is_empty() else null
@@ -2628,6 +2652,7 @@ func _rename_seeker(value: String) -> void:
 		)
 		return
 	GameState.profile.merge(GameState.as_dict(res.data), true)
+	_refresh_header()
 	_say(tr("SEEKER_RENAME_SUCCESS") % str(GameState.profile.get("seeker_name", "")), true)
 	await _open_seeker_profile()
 
@@ -2651,6 +2676,7 @@ func _show_account_action() -> void:
 
 func _show_sign_in_confirmation() -> void:
 	if _busy:
+		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
 		return
 	if not GameState.is_anonymous():
 		_show_account_action()
@@ -2658,14 +2684,35 @@ func _show_sign_in_confirmation() -> void:
 	if GameState.account_switch_blocked(true):
 		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
 		return
+	# Keep Guest Separate tidak menghapus apa pun, tapi ia meninggalkan seluruh Anima
+	# guest di akun yang tidak lagi terlihat — dan guest hanya pernah punya satu Scan,
+	# jadi yang ditinggalkan itu satu-satunya. Saat ada yang dipertaruhkan, Move yang
+	# berdiri di slot utama dan copy-nya menyebut apa yang tertinggal plus jalan pulang.
+	# Roster yang gagal dimuat tidak boleh membungkam peringatan itu, jadi
+	# `guest_scan_used_at` ikut dibaca sebagai bukti kedua bahwa guest pernah punya
+	# Anima; salah memperingatkan jauh lebih murah daripada diam.
+	_sign_in_move_first = not _roster.is_empty() or _guest_scan_locked()
+	var move_label := tr("SEEKER_MOVE_GUEST_PROGRESS")
+	var separate_label := tr("SEEKER_KEEP_GUEST_SEPARATE")
+	var body := (
+		tr("SEEKER_SIGN_IN_CHOICE_BODY_ANIMA") if _sign_in_move_first
+		else tr("SEEKER_SIGN_IN_CHOICE_BODY")
+	)
 	_modal_context = &"sign_in_google"
 	_shell_modal.open_choice(
 		tr("SEEKER_SIGN_IN_TITLE"),
-		tr("SEEKER_SIGN_IN_CHOICE_BODY"),
-		tr("SEEKER_KEEP_GUEST_SEPARATE"),
-		tr("SEEKER_MOVE_GUEST_PROGRESS"),
+		body,
+		move_label if _sign_in_move_first else separate_label,
+		separate_label if _sign_in_move_first else move_label,
 		tr("ACTION_CANCEL")
 	)
+
+
+## Slot utama menampung Move saat guest punya Anima, Keep Separate saat tidak.
+## Dipisah supaya urutan tombol dan aksi yang dijalankan tidak bisa hanyut
+## sendiri-sendiri: membaliknya berarti Keep Separate diam-diam mentransfer akun.
+static func sign_in_choice_moves_guest(choice: String, move_first: bool) -> bool:
+	return (choice == "primary") == move_first
 
 
 func _show_transfer_confirmation() -> void:
@@ -2759,8 +2806,33 @@ func _on_auth_succeeded(mode: String, profile: Dictionary) -> void:
 		_set_home_shell_state(&"empty")
 	_set_busy(false)
 	_say(tr(_account_success_key(mode)), true)
+	_resume_pending_publish()
 	call_deferred("_maybe_prompt_seeker_onboarding")
 	call_deferred("_refresh_chapter_announcements")
+
+
+## Guest yang menekan Publish dikirim ke sign-in, jadi intent-nya harus selamat
+## melewati round trip OAuth. Intent dikonsumsi **sebelum** pagarnya diperiksa —
+## pola `pull` yang sama dipakai redirect pasca-login — supaya tidak ada jalur
+## yang menyisakannya terkokang untuk sign-in berikutnya. UID pembuatnya dibawa
+## serta alih-alih disimpulkan dari roster: transfer justru *didefinisikan*
+## sebagai UID yang tidak berubah (`auth_flow` membatalkan pertukaran token kalau
+## berbeda), jadi kecocokan UID menyatakan langsung "pemiliknya masih orang yang
+## sama" dan `separate` gagal karena konstruksi, bukan karena kebetulan urutan
+## muat roster. Ini kenyamanan UI; yang berwenang tetap `ANIMA_NOT_OWNED` di server.
+func _resume_pending_publish() -> void:
+	var intent := _publish_after_sign_in
+	_publish_after_sign_in = {}
+	if intent.is_empty() or GameState.is_anonymous():
+		return
+	if str(intent.get("uid", "")) != GameState.uid():
+		return
+	var anima_id := str(intent.get("anima_id", ""))
+	var row := _roster_row(anima_id)
+	if anima_id.is_empty() or row.is_empty():
+		return
+	_switch_destination(ANIMA_PROFILE_DEST, row)
+	_toggle_gallery_publish(anima_id, true)
 
 
 static func _account_success_key(mode: String) -> String:
@@ -3660,7 +3732,7 @@ func _refresh_team_battle_candidates(team_id: String = "") -> void:
 	if team_id.is_empty():
 		team_id = str(_team_battle_team.get("id", ""))
 	if team_id.is_empty():
-		_team_battle_view.set_builder(_roster)
+		_team_battle_view.set_builder(_roster, _team_battle_team)
 		return
 	_set_busy(true)
 	_team_battle_view.set_loading("TEAM_FINDING_RIVALS")
@@ -3765,7 +3837,7 @@ func _resume_team_battle() -> void:
 
 func _retry_team_battle() -> void:
 	if GameState.pending_team_battle.is_empty():
-		await _load_team_battle_hub()
+		_team_battle_view.set_builder(_roster, _team_battle_team)
 	else:
 		await _resume_team_battle()
 
@@ -4798,7 +4870,6 @@ func _roster_row(anima_id: String) -> Dictionary:
 
 
 func _populate_collection() -> void:
-	_refresh_anima_count()
 	if not is_instance_valid(_collection_view):
 		return
 	_collection_view.set_evolution_enabled(_evolution_enabled())
@@ -5451,9 +5522,6 @@ func _open_collection() -> void:
 
 
 func _configure_resource_chips() -> void:
-	_animas_chip.set_inline(true)
-	_animas_chip.set_name_text(tr("RESOURCE_ANIMAS"))
-	_animas_chip.set_interactive(true, tr("COLLECTION_TITLE"))
 	_cores_chip.set_inline(true)
 	_cores_chip.set_name_text(tr("RESOURCE_CORES"))
 	_cores_chip.set_interactive(true, tr("CORE_INFO_TITLE"))
@@ -5636,6 +5704,7 @@ func _say(text: String, transient: bool = false) -> void:
 	var revision := _toast_revision
 	_status.text = text
 	_scan_view.set_status(text)
+	_relayout_toast_after_minimum_update(revision)
 	if _destination == BottomNav.SCAN:
 		_status_panel.visible = false
 	else:
@@ -5646,16 +5715,30 @@ func _say(text: String, transient: bool = false) -> void:
 		_hide_toast_later(revision)
 
 
+func _relayout_toast_after_minimum_update(revision: int) -> void:
+	await get_tree().process_frame
+	if revision == _toast_revision and is_instance_valid(_status_panel):
+		_layout_for_viewport()
+
+
 func _hide_toast_later(revision: int) -> void:
 	await get_tree().create_timer(2.8).timeout
 	if revision == _toast_revision and is_instance_valid(_status_panel):
 		_status_panel.visible = false
 
 
+func _seeker_header_text(profile: Dictionary) -> String:
+	if GameState.is_anonymous():
+		return tr("SEEKER_GUEST_LABEL")
+	if profile_value_present(profile, &"seeker_name"):
+		return str(profile.get("seeker_name"))
+	return tr("SEEKER_UNNAMED")
+
+
 func _refresh_header() -> void:
 	var p := GameState.profile
+	_brand.text = _seeker_header_text(p)
 	if p.is_empty():
-		_animas_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		_cores_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		_bits_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		_scan_view.set_cores(-1)
@@ -5701,11 +5784,6 @@ func _ensure_client_version() -> bool:
 		tr("UPDATE_REQUIRED_CLOSE")
 	)
 	return false
-
-
-func _refresh_anima_count() -> void:
-	if is_instance_valid(_animas_chip):
-		_animas_chip.set_value_text(LocaleManager.format_integer(_roster.size()))
 
 
 func _set_busy(busy: bool) -> void:
@@ -5936,7 +6014,7 @@ func _place_toast(insets: Vector4) -> void:
 		else 0.0
 	)
 	var top := HUD_TOP_PAD + insets.y + hud_h + SHOP_GAP + shop_h + TOAST_GAP
-	var height := maxf(TOAST_MIN_HEIGHT, _status_panel.get_combined_minimum_size().y)
+	var height := _status_panel.get_combined_minimum_size().y
 	_status_panel.offset_top = top
 	_status_panel.offset_bottom = top + height
 

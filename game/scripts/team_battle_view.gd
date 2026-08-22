@@ -63,6 +63,7 @@ const COMMIT_COLORS := {
 @onready var _builder: VBoxContainer = %TeamBuilder
 @onready var _builder_meta: Label = %TeamBuilderMeta
 @onready var _roster_list: ItemList = %TeamRosterList
+@onready var _builder_back: Button = %TeamBuilderBack
 @onready var _save_button: Button = %TeamSaveButton
 @onready var _lobby_scroll: ScrollContainer = %TeamLobbyScroll
 @onready var _lobby: VBoxContainer = %TeamLobby
@@ -159,11 +160,15 @@ var _switch_sheet: PanelContainer
 
 func _ready() -> void:
 	_back.tooltip_text = tr("ACTION_BACK")
+	_builder_back.flat = true
+	_builder_back.custom_minimum_size.x = 112.0
+	_builder_back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_roster_list.fixed_icon_size = Vector2i(96, 96)
 	_roster_list.max_columns = 1
 	_roster_list.fixed_column_width = 0
-	_back.pressed.connect(back_requested.emit)
+	_back.pressed.connect(_on_back)
 	_roster_list.connect("selection_changed", _update_builder)
+	_builder_back.pressed.connect(_leave_builder)
 	_save_button.pressed.connect(_save_team)
 	_rival_list.item_selected.connect(_select_candidate)
 	_edit_button.pressed.connect(_edit_team)
@@ -299,10 +304,17 @@ func handle_back() -> bool:
 		return true
 	if _close_switch_picker():
 		return true
+	if _builder.visible:
+		_leave_builder()
+		return true
 	if _session.is_empty() or str(_session.get("status", "")) != "active":
 		back_requested.emit()
 		return true
 	return false
+
+
+func _on_back() -> void:
+	handle_back()
 
 
 func set_loading(message_key: String = "TEAM_LOADING") -> void:
@@ -404,6 +416,7 @@ func set_busy(busy: bool) -> void:
 	if not _busy:
 		_clear_action_commit()
 	_back.disabled = _busy
+	_builder_back.disabled = _busy
 	var selected_count := _selected_roster_ids().size()
 	_save_button.disabled = (
 		_busy or selected_count < MIN_TEAM_SIZE or selected_count > MAX_TEAM_SIZE
@@ -683,6 +696,15 @@ func _save_team() -> void:
 
 func _edit_team() -> void:
 	set_builder(_roster, _team)
+
+
+func _leave_builder() -> void:
+	if _busy:
+		return
+	if str(_team.get("id", "")).is_empty():
+		back_requested.emit()
+		return
+	set_lobby(_team, _daily_reward, _candidates, _defense_published)
 
 
 func _toggle_defense() -> void:

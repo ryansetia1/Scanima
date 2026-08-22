@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://c10np8eypr1bw" path="res://scenes/ui/home_view.tscn" id="5_home"]
 [ext_resource type="PackedScene" uid="uid://10b1ay38emxd" path="res://scenes/ui/bottom_nav.tscn" id="6_nav"]
 [ext_resource type="Script" uid="uid://bfbuujsg42m0" path="res://scripts/home_background.gd" id="7_j1gxg"]
-[ext_resource type="Script" path="res://scripts/anima_presenter.gd" id="8_presenter"]
+[ext_resource type="Script" uid="uid://ctfolp0b4kusd" path="res://scripts/anima_presenter.gd" id="8_presenter"]
 
 [node name="HomeDemo" type="Node2D" unique_id=484570840]
 script = ExtResource("1_demo")
@@ -16,10 +16,10 @@ script = ExtResource("1_demo")
 z_index = -2
 script = ExtResource("2_background")
 
-[node name="Stage" type="Node2D" parent="."]
+[node name="Stage" type="Node2D" parent="." unique_id=1545972889]
 unique_name_in_owner = true
 
-[node name="Anima" type="AnimatedSprite2D" parent="Stage"]
+[node name="Anima" type="AnimatedSprite2D" parent="Stage" unique_id=284428809]
 unique_name_in_owner = true
 script = ExtResource("8_presenter")
 
@@ -54,6 +54,7 @@ layout_mode = 2
 theme_override_constants/separation = 10
 
 [node name="Brand" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row" unique_id=401746231]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"BrandLabel"
@@ -63,11 +64,6 @@ vertical_alignment = 1
 [node name="Resources" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row" unique_id=804738415]
 layout_mode = 2
 theme_override_constants/separation = 6
-
-[node name="AnimasChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=1607473098 instance=ExtResource("4_chip")]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 62)
-layout_mode = 2
 
 [node name="CoresChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=660602528 instance=ExtResource("4_chip")]
 unique_name_in_owner = true
