@@ -106,6 +106,15 @@ Hatchling menjadi Adult di Level 16;
 Adult menjadi Evolved di Level 36. Satu ritual per tahap, berurutan.
 Setiap form yang selesai menjadi entry terpisah di [Anima Atlas](atlas.md).
 
+Sesudah Evolve pertama, Profile Anima menumbuhkan section **Evolution History**
+di antara **Attributes** dan **Synthesis History**. Ia menampilkan seluruh bentuk
+yang pernah dilalui Anima itu, dari kiri ke kanan dengan panah di antaranya:
+bentuk pertama, lalu bentuk sekarang. Tiap bentuk tampil dengan gambarnya, nama
+yang dipakainya saat itu, dan tahapnya — jadi kamu tetap bisa melihat wujud dan
+nama lamanya walaupun Anima-nya sudah berganti rupa dan berganti nama. Sesudah
+Evolve kedua barisnya menjadi tiga bentuk. Anima yang belum pernah Evolve tidak
+menampilkan section ini.
+
 ## Synthesis
 
 **Synthesis Lab** membuat satu Anima baru dari dua **Source Anima** milikmu.

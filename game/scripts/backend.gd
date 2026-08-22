@@ -253,6 +253,21 @@ func evolve_anima(
 	)
 
 
+## Read-only, jadi ia sengaja tidak menerima idempotency key: membaca silsilah
+## bentuk tidak pernah membelanjakan Core, Bits, atau panggilan model.
+func evolution_history(anima_id: String) -> Dictionary:
+	return await _send(
+		HTTPClient.METHOD_POST,
+		URL_BASE + "/functions/v1/evolve_anima",
+		_headers(true, ["content-type: application/json"]),
+		JSON.stringify({
+			"anima_id": anima_id,
+			"operation": "history",
+		}).to_utf8_buffer(),
+		TIMEOUT_FUNGSI_SEC
+	)
+
+
 func synthesize_anima(operation: String, payload: Dictionary = {}) -> Dictionary:
 	var body := payload.duplicate(true)
 	body["operation"] = operation

@@ -911,6 +911,7 @@ func _initialize() -> void:
 	await _test_profile_info_rows()
 	await _test_anima_delete_action()
 	await _test_evolve_profile_cta()
+	await _test_evolution_history_section()
 	await _test_synthesis_lab_state()
 	await _test_synthesis_profile_ui()
 	await _test_home_care_actions()
@@ -5561,6 +5562,106 @@ func _test_synthesis_lab_state() -> void:
 	)
 	game_state.set("pending_synthesis", previous_pending)
 	view.queue_free()
+	await process_frame
+
+
+func _test_evolution_history_section() -> void:
+	var packed := load("res://scenes/ui/anima_details_view.tscn") as PackedScene
+	var details := packed.instantiate()
+	root.add_child(details)
+	await process_frame
+	var panel := details.find_child("EvolutionHistoryPanel", true, false) as PanelContainer
+	var row := details.find_child("EvolutionHistoryRow", true, false) as HBoxContainer
+	var synthesis_panel := details.find_child("SynthesisHistoryPanel", true, false) as Control
+	var combat_panel := details.find_child("CombatPanel", true, false) as PanelContainer
+	_check(panel != null and row != null, "Profile builds an Evolution History section")
+	if panel == null or row == null:
+		details.queue_free()
+		await process_frame
+		return
+	# Urutan yang diminta: Attributes, silsilah, lalu Synthesis History.
+	_check(
+		combat_panel.get_index() < panel.get_index()
+		and panel.get_index() < synthesis_panel.get_index(),
+		"Evolution History sits between Attributes and Synthesis History"
+	)
+	_check(
+		row.alignment == BoxContainer.ALIGNMENT_CENTER,
+		"The lineage is centered in its panel"
+	)
+	var drowake := {
+		"id": "evolution-history-test",
+		"nickname": "Drowake",
+		"element": "aqua",
+		"stage": 2,
+		"rarity": 3,
+		"base_stats": {"hp": 50, "atk": 40, "def": 40, "spd": 40, "special": 40},
+	}
+	details.set_anima(drowake, null)
+	details.set_evolution_history([])
+	_check(not panel.visible, "A single form is not a lineage, so the section stays hidden")
+	details.set_evolution_history([
+		{"stage": 1, "name": "Hydron"},
+		{"stage": 2, "name": "Drowake"},
+	])
+	_check(panel.visible, "Two forms reveal the section")
+	_check(
+		row.get_child_count() == 3,
+		"Two forms draw form, arrow, form — got %d children" % row.get_child_count()
+	)
+	_check(
+		row.get_child(0) is VBoxContainer
+		and row.get_child(1) is TextureRect
+		and row.get_child(2) is VBoxContainer,
+		"The arrow sits between the two forms"
+	)
+	_check(
+		(row.get_child(1) as TextureRect).flip_h,
+		"The reused chevron is flipped so it points at the next form"
+	)
+	_check(
+		(row.get_child(0).get_child(1) as Label).text == "Hydron"
+		and (row.get_child(2).get_child(1) as Label).text == "Drowake",
+		"The lineage reads oldest form first"
+	)
+	details.set_evolution_history([
+		{"stage": 1, "name": "Hydron"},
+		{"stage": 2, "name": "Drowake"},
+		{"stage": 3, "name": "Drowarch"},
+	])
+	_check(
+		row.get_child_count() == 5,
+		"A third form extends the same row — got %d children" % row.get_child_count()
+	)
+	_check(
+		(row.get_child(4).get_child(1) as Label).text == "Drowarch",
+		"The newest form is drawn last"
+	)
+	# Membuka Anima lain tidak boleh meninggalkan silsilah milik Anima sebelumnya.
+	var other := drowake.duplicate(true)
+	other["id"] = "evolution-history-other"
+	other["nickname"] = "Vitrelisk"
+	other["stage"] = 1
+	details.set_anima(other, null)
+	_check(
+		not panel.visible and row.get_child_count() == 0,
+		"Switching Anima clears the previous lineage immediately"
+	)
+	# Stage 1 belum punya bentuk sebelumnya, jadi Profile tidak membangunkan
+	# Edge Function untuknya sama sekali.
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		flow_source.find("CareRules.committed_stage(row) < 2") >= 0,
+		"Stage 1 skips the lineage request entirely"
+	)
+	# Read-only: silsilah tidak boleh ikut jalur yang membelanjakan Core.
+	var backend_source := FileAccess.get_file_as_string("res://scripts/backend.gd")
+	_check(
+		backend_source.find("\"operation\": \"history\"") >= 0
+		and not backend_source.contains("func evolution_history(\n\tanima_id: String,\n\tidempotency_key"),
+		"The lineage request carries no idempotency key"
+	)
+	details.queue_free()
 	await process_frame
 
 

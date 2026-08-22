@@ -17,6 +17,11 @@ const HISTORY_SKELETON_ART_PX := 112.0
 const PROFILE_MENU_MARGIN := 16.0
 const PROFILE_MENU_GAP := 8.0
 const PROFILE_MENU_ICON: Texture2D = preload("res://assets/icons/more-vertical.svg")
+const EVOLUTION_FORM_ART_PX := 96.0
+const EVOLUTION_ARROW_PX := 28.0
+## Chevron kiri satu-satunya panah di aset; dibalik horizontal saat dipasang,
+## jadi silsilah ini tidak menambah ikon baru.
+const EVOLUTION_ARROW_ICON: Texture2D = preload("res://assets/icons/chevron-left.svg")
 
 @onready var _empty_state: Label = %DetailsEmpty
 @onready var _details_scroll: ScrollContainer = $Column/DetailsScroll
@@ -71,6 +76,11 @@ var _history_source_names: Dictionary = {}
 var _history_source_a_skeleton: UiSkeleton
 var _history_source_b_skeleton: UiSkeleton
 var _layout_refresh_queued := false
+var _evolution_history: PanelContainer
+var _evolution_history_title: Label
+var _evolution_history_row: HBoxContainer
+var _evolution_forms: Array = []
+var _evolution_form_textures: Dictionary = {}
 
 
 func _ready() -> void:
@@ -101,6 +111,7 @@ func _ready() -> void:
 	_history_source_b_skeleton = _build_history_art_skeleton(
 		_history_source_b, "SynthesisHistorySourceBSkeleton"
 	)
+	_build_evolution_history()
 	refresh_localized_ui()
 	_queue_layout_refresh()
 
@@ -109,6 +120,11 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 	var next_id := str(row.get("id", ""))
 	if next_id != _anima_id:
 		_synthesis_history_textures.clear()
+		_evolution_forms.clear()
+		_evolution_form_textures.clear()
+		# Digambar ulang saat itu juga: tanpa ini silsilah Anima sebelumnya masih
+		# terpampang sampai permintaan Anima baru dijawab server.
+		_apply_evolution_history()
 		_details_scroll.scroll_vertical = 0
 		close_action_menu(false)
 	_row = row.duplicate(true) if not row.is_empty() else {}
@@ -125,6 +141,7 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_evolution_status.visible = false
 		_synthesis_button.visible = false
 		_synthesis_history.visible = false
+		_apply_evolution_history()
 		set_synthesis_history_loading(false)
 		_queue_layout_refresh()
 		return
@@ -306,6 +323,107 @@ func _build_history_art_skeleton(parent: TextureRect, node_name: String) -> UiSk
 	return skeleton
 
 
+## Dibangun di kode, bukan di scene, karena jumlah bentuknya memang berubah: dua
+## sesudah Evolve pertama, tiga sesudah yang kedua. Panelnya disisipkan tepat
+## sebelum Synthesis History supaya urutan Profile tetap Attributes → Evolution
+## History → Synthesis History walau salah satu section disembunyikan.
+func _build_evolution_history() -> void:
+	var parent := _synthesis_history.get_parent()
+	_evolution_history = PanelContainer.new()
+	_evolution_history.name = "EvolutionHistoryPanel"
+	_evolution_history.theme_type_variation = &"HudSurface"
+	_evolution_history.visible = false
+	parent.add_child(_evolution_history)
+	parent.move_child(_evolution_history, _synthesis_history.get_index())
+
+	var column := VBoxContainer.new()
+	column.name = "EvolutionHistoryColumn"
+	column.add_theme_constant_override("separation", 8)
+	_evolution_history.add_child(column)
+
+	_evolution_history_title = Label.new()
+	_evolution_history_title.name = "EvolutionHistoryTitle"
+	_evolution_history_title.theme_type_variation = &"SectionLabel"
+	column.add_child(_evolution_history_title)
+
+	_evolution_history_row = HBoxContainer.new()
+	_evolution_history_row.name = "EvolutionHistoryRow"
+	_evolution_history_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_evolution_history_row.add_theme_constant_override("separation", 4)
+	column.add_child(_evolution_history_row)
+
+
+func set_evolution_history(forms: Array, textures: Dictionary = {}) -> void:
+	if _row.is_empty():
+		return
+	_evolution_forms = forms.duplicate(true)
+	if not textures.is_empty():
+		_evolution_form_textures = textures.duplicate()
+	_apply_evolution_history()
+
+
+## Satu bentuk bukan silsilah, jadi section-nya baru muncul sesudah Evolve
+## pertama benar-benar tercatat.
+func _apply_evolution_history() -> void:
+	if not is_instance_valid(_evolution_history_row):
+		return
+	_evolution_history.visible = _evolution_forms.size() >= 2
+	# remove_child dulu, bukan queue_free saja: node yang di-queue_free masih
+	# menempel sampai akhir frame, jadi baris akan sempat berisi dua silsilah.
+	for child in _evolution_history_row.get_children():
+		_evolution_history_row.remove_child(child)
+		child.queue_free()
+	if not _evolution_history.visible:
+		_queue_layout_refresh()
+		return
+	for index in _evolution_forms.size():
+		if index > 0:
+			_evolution_history_row.add_child(_build_evolution_arrow())
+		_evolution_history_row.add_child(
+			_build_evolution_form(GameState.as_dict(_evolution_forms[index]))
+		)
+	_queue_layout_refresh()
+
+
+func _build_evolution_form(form: Dictionary) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(EVOLUTION_FORM_ART_PX, EVOLUTION_FORM_ART_PX)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.texture = _evolution_form_textures.get(
+		str(int(form.get("stage", 1)))
+	) as Texture2D
+	box.add_child(art)
+	var form_name := str(form.get("name", "")).strip_edges()
+	var name_label := Label.new()
+	name_label.theme_type_variation = &"StatValueLabel"
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.text = form_name if not form_name.is_empty() else tr("ANIMA_FALLBACK_NAME")
+	box.add_child(name_label)
+	var stage_label := Label.new()
+	stage_label.theme_type_variation = &"StatNameLabel"
+	stage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stage_label.text = tr(_form_key(int(form.get("stage", 1))))
+	box.add_child(stage_label)
+	return box
+
+
+func _build_evolution_arrow() -> Control:
+	var arrow := TextureRect.new()
+	arrow.texture = EVOLUTION_ARROW_ICON
+	arrow.flip_h = true
+	# Tingginya disamakan dengan art, dan ditahan di atas, supaya panahnya sejajar
+	# badan Anima dan tidak melayang turun mengikuti dua baris label di bawahnya.
+	arrow.custom_minimum_size = Vector2(EVOLUTION_ARROW_PX, EVOLUTION_FORM_ART_PX)
+	arrow.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	arrow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	arrow.modulate = Color(0.61, 0.67, 0.8, 0.7)
+	return arrow
+
+
 func _apply_evolution_ui(row: Dictionary) -> void:
 	var evolving := CareRules.is_evolving(row)
 	var evolution_ready := _evolution_enabled and CareRules.evolution_ready(row)
@@ -469,6 +587,8 @@ func refresh_localized_ui() -> void:
 	_synthesis_button.text = tr("SYNTHESIS_USE_SOURCE_ACTION")
 	_history_title.text = tr("SYNTHESIS_HISTORY_TITLE")
 	_history_help.tooltip_text = tr("SYNTHESIS_HISTORY_HELP")
+	_evolution_history_title.text = tr("EVOLUTION_HISTORY_TITLE")
+	_apply_evolution_history()
 	if not _row.is_empty():
 		set_anima(_row, _portrait.texture)
 

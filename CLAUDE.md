@@ -52,7 +52,7 @@ kontradiksi.
 | Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, dan `feature_synthesis` semuanya `true` | matikan per flag |
 
 Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 25,
-`evolve_anima` 13, `replicate_webhook` 15, `battle_anima` 26, `team_battle` 8,
+`evolve_anima` 14, `replicate_webhook` 15, `battle_anima` 26, `team_battle` 8,
 `expedition` 16, `seeker` 6, `gallery` 19, `shop` 4, `care_anima` 9,
 `synthesize_anima` 6.
 
@@ -102,6 +102,22 @@ array itu boleh kosong dan perakit prompt punya kalimat penggantinya), dan
 stage itu — tanpa menyentuh `evolved_policy`. Empat dari enam plan yang ditolak
 produksi lolos setelah perbaikan ini, termasuk attempt terakhir kedua ritual.
 `evolve_anima` 13 membawanya.
+
+Profile punya section **Evolution History** di antara Attributes dan Synthesis
+History: silsilah bentuk Anima dari Rookie ke bentuk sekarang, rata tengah,
+dengan panah di antaranya. Datanya dari `operation: "history"` di `evolve_anima`
+— **read-only**, berdiri sebelum gerbang idempotency karena ia tidak
+membelanjakan apa pun. Bentuk lama dibaca dari `anima_forms` (client tidak bisa:
+RLS aktif tanpa policy, grant hanya `service_role`), dan **namanya diambil dari
+generation yang melahirkannya** lewat `anima_forms.generation_id` →
+`generations.vision_result.suggested_name`, sebab `animas.nickname` sudah
+menjadi nama bentuk terbaru — terukur 22 Agustus 2026: stage 1 menjawab
+`Hydron`, stage 2 `Drowake`. Thumbnail-nya dipotong malas dari sheet yang sudah
+dibayar memakai `cropIdleThumb` yang sama dengan Atlas lalu disimpan di
+`<uid>/<anima_id>/form_history/<stage>.png`, jadi section ini **nol panggilan
+model** berapa kali pun Profile dibuka. Stage 1 tidak pernah memanggil server.
+Panelnya dibangun di kode, bukan scene, karena jumlah bentuknya memang berubah;
+pagarnya `_test_evolution_history_section()` di `test_scan_ui`.
 
 GPT Image E005 safety false-positive mendapat tepat **satu** redraw otomatis
 tanpa mengulang Vision. Provenance 22 Agustus 2026: reference Idle valid

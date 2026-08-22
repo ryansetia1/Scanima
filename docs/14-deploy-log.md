@@ -2,6 +2,50 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Evolution History di Profile
+
+22 Agustus 2026, `evolve_anima` 13→14. Profile mendapat section **Evolution
+History** di antara Attributes dan Synthesis History: silsilah bentuk rata
+tengah dengan panah di antaranya, dua kartu sesudah Evolve pertama dan tiga
+sesudah yang kedua.
+
+Datanya sudah ada seluruhnya, jadi tidak ada migration dan tidak ada kolom baru.
+`anima_forms` menyimpan `stage`, `sheet_path`, dan `manifest` tiap bentuk lama,
+tetapi client tidak bisa membacanya: RLS aktif dengan **nol policy** dan grant
+hanya ke `postgres` + `service_role`. Karena itu jalurnya satu `operation:
+"history"` read-only di `evolve_anima`, ditempatkan **sebelum** gerbang
+idempotency — menuntut kunci untuk request yang tidak membelanjakan apa pun
+hanya akan menolak pembacaan yang sah.
+
+Nama bentuk lama sempat terlihat hilang: `anima_forms` tidak punya kolom nama,
+`evolution_plan` bentuk pertama `null`, dan `animas.nickname` sudah berisi nama
+terbaru. Ia ternyata utuh satu join jauhnya — `anima_forms.generation_id` →
+`generations.vision_result.suggested_name`. Terukur pada Drowake: stage 1
+menjawab `Hydron` (generation `create`), stage 2 `Drowake` (generation `evolve`
+yang sukses). Bentuk sekarang memakai `nickname`, sebab itulah nama yang dikenal
+pemain.
+
+Thumbnail-nya nol panggilan model. `cropIdleThumb` yang sama dengan Atlas
+memotong Idle dari sheet yang **sudah dibayar**, hasilnya disimpan sekali ke
+`<uid>/<anima_id>/form_history/<stage>.png`, dan pembukaan Profile berikutnya
+hanya menandatangani ulang objek itu. Client memakai cache thumb di disk yang
+sudah dipakai Synthesis History; tidak ada cache kedua. Stage 1 tidak pernah
+memanggil server sama sekali — ia belum punya bentuk sebelumnya.
+
+Panelnya dibangun di kode, bukan di `.tscn`, karena jumlah kartunya memang
+berubah dan lima belas scene sedang terbuka di editor saat itu; ia disisipkan
+pada indeks `SynthesisHistoryPanel` supaya urutannya tetap benar walau salah satu
+section disembunyikan. Panahnya `chevron-left.svg` yang sudah ada dengan
+`flip_h`, jadi tidak ada aset baru. Berpindah Anima menghapus silsilah lama saat
+itu juga, bukan menunggu jawaban server.
+
+Pagar: `_test_evolution_history_section()` menambah 14 check di `test_scan_ui`
+(1282→1296), termasuk urutan section, jumlah anak baris untuk dua dan tiga
+bentuk, arah panah, dan urutan nama. Guard-nya diuji negatif — menghapus
+`move_child` menjatuhkan tepat check urutan itu. `test_i18n` 4749→4765 dengan
+`EVOLUTION_HISTORY_TITLE`. `npm run selftest` tetap lulus; smoke `evolve_anima`
+menjawab 401, jadi modulnya mengimpor bersih.
+
 ## "stubby legs" — validator menolak jawaban benar
 
 22 Agustus 2026, `evolve_anima` 12→13. Dua ritual Hydron berikutnya (12:52 dan

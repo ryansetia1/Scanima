@@ -170,6 +170,7 @@ var _synthesis_poll_in_flight := false
 var _synthesis_art_error_reported := false
 var _synthesis_return_destination: StringName = BottomNav.COLLECTION
 var _synthesis_history_revision := 0
+var _evolution_history_revision := 0
 var _synthesis_history_texture_cache: Dictionary = {}
 var _queued_synthesis_dialog: Dictionary = {}
 var _queued_evolution_failure: Dictionary = {}
@@ -1095,6 +1096,44 @@ func _refresh_synthesis_history() -> void:
 	if revision == _synthesis_history_revision and anima_id == str(_profile_anima.get("id", "")):
 		_details_view.set_synthesis_history(history, textures)
 		_details_view.set_synthesis_history_loading(false)
+
+
+## Silsilah bentuk untuk Profile. Thumbnail-nya melewati cache thumb yang sama
+## dengan Synthesis History — keduanya crop Idle transparan per Anima, jadi tidak
+## ada gunanya dua cache. Stage 1 tidak pernah memanggil server: ia belum punya
+## bentuk sebelumnya, dan section-nya memang disembunyikan.
+func _refresh_evolution_history() -> void:
+	_evolution_history_revision += 1
+	var revision := _evolution_history_revision
+	var row := _profile_anima if not _profile_anima.is_empty() else _current_anima
+	var anima_id := str(row.get("id", ""))
+	if anima_id.is_empty() or CareRules.committed_stage(row) < 2:
+		_details_view.set_evolution_history([])
+		return
+	var account_epoch := GameState.session_epoch
+	var res := await Backend.evolution_history(anima_id)
+	if not Backend.response_applies(res, account_epoch):
+		return
+	if revision != _evolution_history_revision or not res.ok:
+		return
+	var forms: Array = GameState.as_dict(res.data).get("forms", [])
+	if forms.size() < 2:
+		_details_view.set_evolution_history([])
+		return
+	var textures: Dictionary = {}
+	for entry: Variant in forms:
+		var form := GameState.as_dict(entry)
+		var stage := int(form.get("stage", 1))
+		var texture := await _synthesis_history_texture(
+			str(form.get("thumbnail_url", "")),
+			_synthesis_history_cache_id(anima_id, "form_%d" % stage)
+		)
+		if texture != null:
+			textures[str(stage)] = texture
+	if revision != _evolution_history_revision:
+		return
+	if anima_id == str(_profile_anima.get("id", "")):
+		_details_view.set_evolution_history(forms, textures)
 
 
 func _cached_synthesis_history_textures(anima_id: String) -> Dictionary:
@@ -2667,6 +2706,7 @@ func _reset_account_presentation() -> void:
 	if is_instance_valid(_atlas_view):
 		_atlas_view.reset_account_context()
 	_synthesis_history_revision += 1
+	_evolution_history_revision += 1
 	_chapter_announcement_revision += 1
 	_gallery_status_revision += 1
 	_chapter_announcement_revision += 1
@@ -5030,6 +5070,7 @@ func _switch_destination(
 		_refresh_stats()
 		call_deferred("_refresh_gallery_status")
 		call_deferred("_refresh_synthesis_history")
+		call_deferred("_refresh_evolution_history")
 	if destination == SYNTHESIS_DEST:
 		_synthesis_view.set_rows(_roster)
 	if destination == ATLAS_DEST:

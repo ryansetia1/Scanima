@@ -82,6 +82,114 @@ async function fetchCaptureVision(animaId: string): Promise<Record<string, unkno
   return vr && typeof vr === "object" ? vr as Record<string, unknown> : null;
 }
 
+async function signSheet(path: string): Promise<string> {
+  if (!path) return "";
+  const { data } = await db.storage
+    .from("anima_sheets")
+    .createSignedUrl(path, TTL_SIGNED_URL);
+  return data?.signedUrl ?? "";
+}
+
+/// Thumbnail tiap form dipotong malas dari sheet yang sudah dibayar, jadi
+/// Evolution History tidak pernah memanggil model — nol biaya, berapa kali pun
+/// Profile dibuka. Sekali dibuat ia dipakai ulang, dan crop-nya sama dengan
+/// Atlas supaya latarnya transparan, bukan chroma hijau.
+async function formThumbUrl(
+  uid: string,
+  animaId: string,
+  stage: number,
+  sheetPath: string,
+  manifest: unknown,
+): Promise<string> {
+  if (!sheetPath) return "";
+  const thumbPath = `${uid}/${animaId}/form_history/${stage}.png`;
+  const cached = await signSheet(thumbPath);
+  if (cached) return cached;
+  const sheetUrl = await signSheet(sheetPath);
+  if (!sheetUrl) return "";
+  const sheet = await fetch(sheetUrl);
+  if (!sheet.ok) return "";
+  const { cropIdleThumb } = await import("../_shared/gallery_shared.mjs");
+  const thumb = await cropIdleThumb(new Uint8Array(await sheet.arrayBuffer()), manifest);
+  const { error } = await db.storage
+    .from("anima_sheets")
+    .upload(thumbPath, new Blob([thumb], { type: "image/png" }), {
+      contentType: "image/png",
+      upsert: true,
+    });
+  if (error) return "";
+  return await signSheet(thumbPath);
+}
+
+/// Silsilah bentuk untuk Profile: form lama dari `anima_forms`, form sekarang
+/// dari `animas`, diurutkan naik per stage. Nama form lama diambil dari
+/// generation yang melahirkannya (`create` atau `evolve` sebelumnya), sebab
+/// `animas.nickname` sudah menjadi nama bentuk terbaru. Read-only: tidak
+/// menyentuh Core, Bits, atau idempotency.
+async function evolutionHistory(uid: string, animaId: string): Promise<Response> {
+  const { data: anima, error } = await db
+    .from("animas")
+    .select("stage, nickname, sheet_path, manifest")
+    .eq("id", animaId)
+    .eq("owner_id", uid)
+    .maybeSingle();
+  if (error) return json(500, { error: error.message });
+  if (!anima) return json(404, { error: "ANIMA_NOT_FOUND" });
+
+  const { data: priorRows, error: errForms } = await db
+    .from("anima_forms")
+    .select("stage, sheet_path, manifest, generation_id")
+    .eq("anima_id", animaId)
+    .order("stage", { ascending: true });
+  if (errForms) return json(500, { error: errForms.message });
+  const priors = priorRows ?? [];
+  // Satu bentuk saja bukan silsilah; client menyembunyikan section-nya.
+  if (priors.length === 0) return json(200, { forms: [] });
+
+  const genIds = priors
+    .map((row) => String(row.generation_id ?? ""))
+    .filter((id) => id.length > 0);
+  const names = new Map<string, string>();
+  if (genIds.length > 0) {
+    const { data: gens } = await db
+      .from("generations")
+      .select("id, vision_result")
+      .in("id", genIds);
+    for (const gen of gens ?? []) {
+      names.set(String(gen.id), suggestedNameOf(gen.vision_result));
+    }
+  }
+
+  const forms: Array<Record<string, unknown>> = [];
+  for (const row of priors) {
+    const stage = Number(row.stage) || 1;
+    forms.push({
+      stage,
+      name: names.get(String(row.generation_id ?? "")) ?? "",
+      thumbnail_url: await formThumbUrl(
+        uid,
+        animaId,
+        stage,
+        String(row.sheet_path ?? ""),
+        row.manifest,
+      ),
+    });
+  }
+  const currentStage = Number(anima.stage) || 1;
+  forms.push({
+    stage: currentStage,
+    name: String(anima.nickname ?? ""),
+    thumbnail_url: await formThumbUrl(
+      uid,
+      animaId,
+      currentStage,
+      String(anima.sheet_path ?? ""),
+      anima.manifest,
+    ),
+  });
+  return json(200, { forms });
+}
+
 async function fetchPriorEvolutionPlan(
   animaId: string,
   priorStage: number,
@@ -111,7 +219,12 @@ Deno.serve(async (req) => {
   const uid = auth?.claims?.sub;
   if (errAuth || typeof uid !== "string") return json(401, { error: "token tidak sah" });
 
-  let body: { anima_id?: string; idempotency_key?: string; resume_only?: boolean };
+  let body: {
+    anima_id?: string;
+    idempotency_key?: string;
+    resume_only?: boolean;
+    operation?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -119,8 +232,11 @@ Deno.serve(async (req) => {
   }
 
   const animaId = body.anima_id ?? "";
-  const kunci = body.idempotency_key ?? "";
   if (!animaId) return json(400, { error: "anima_id wajib" });
+  // Read-only, jadi ia berdiri sebelum gerbang idempotency: membaca silsilah
+  // tidak pernah membelanjakan apa pun dan tidak boleh menuntut kunci.
+  if (body.operation === "history") return await evolutionHistory(uid, animaId);
+  const kunci = body.idempotency_key ?? "";
   if (!kunci || kunci.length > 128) return json(400, { error: "idempotency_key wajib, maks 128 char" });
 
   const { data: konfigRows } = await db
