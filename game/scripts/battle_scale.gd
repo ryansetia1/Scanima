@@ -13,6 +13,7 @@ const GROUND_Y_RATIO := 0.91
 const ANIMA_VISUAL_HEIGHT_CAP_CM := 300.0
 const SEEKER_OVERLAP_RATIO := 0.6
 const BACKGROUND_PAN_EDGE_MARGIN := 0.04
+const STATIC_BACKGROUND_VERTICAL_PAN := 0.88
 
 
 static func anima_display_height_cm(body_height_cm: float) -> float:

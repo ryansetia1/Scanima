@@ -17,6 +17,8 @@ import {
 import { withSignedRoster } from "../_shared/signed_roster.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MIN_TEAM_SIZE = 2;
+const MAX_TEAM_SIZE = 4;
 const TEAM_KINDS = new Set(["team_battle", "defense"]);
 const ACTIONS = new Set(TEAM_ACTIONS);
 const ERROR_STATUS: Record<string, number> = {
@@ -47,6 +49,7 @@ const ERROR_STATUS: Record<string, number> = {
   NO_ITEM: 409,
   ITEM_ALREADY_USED: 409,
   TEAM_REQUIRES_FOUR: 409,
+  TEAM_REQUIRES_TWO_TO_FOUR: 409,
   TEAM_MEMBER_NOT_READY: 409,
   TEAM_MEMBER_UNAVAILABLE: 409,
   TEAM_MEMBER_SLEEPING: 409,
@@ -196,7 +199,12 @@ async function listTeams(ownerId: string): Promise<Response> {
 async function saveTeam(ownerId: string, body: TeamBody): Promise<Response> {
   const kind = typeof body.kind === "string" ? body.kind : "";
   if (!TEAM_KINDS.has(kind)) throw new Error("INVALID_TEAM_KIND");
-  const animaIds = asUuidArray(body.anima_ids, "anima_ids", 4);
+  const animaIds = asUuidArray(
+    body.anima_ids,
+    "anima_ids",
+    MIN_TEAM_SIZE,
+    MAX_TEAM_SIZE,
+  );
   const { data, error } = await db.rpc("save_anima_team", {
     p_owner: ownerId,
     p_kind: kind,
@@ -490,7 +498,10 @@ async function loadTeam(ownerId: string, teamId: string | null, kind: string): P
   if (error) throw error;
   if (!data) throw new Error("TEAM_NOT_FOUND");
   const team = data as unknown as TeamRow;
-  if ((team.anima_team_members ?? []).length !== 4) throw new Error("TEAM_REQUIRES_FOUR");
+  const teamSize = (team.anima_team_members ?? []).length;
+  if (teamSize < MIN_TEAM_SIZE || teamSize > MAX_TEAM_SIZE) {
+    throw new Error("TEAM_REQUIRES_TWO_TO_FOUR");
+  }
   return team;
 }
 
@@ -498,6 +509,8 @@ function teamSnapshot(team: TeamRow, includeName: boolean): Record<string, unkno
   return teamSnapshotFromMembers(
     team.anima_team_members ?? [],
     includeName,
+    MIN_TEAM_SIZE,
+    MAX_TEAM_SIZE,
   ) as Record<string, unknown>[];
 }
 
@@ -568,12 +581,21 @@ function asUuid(value: unknown, field: string): string {
   return value;
 }
 
-function asUuidArray(value: unknown, field: string, length: number): string[] {
-  if (!Array.isArray(value) || value.length !== length) {
+function asUuidArray(
+  value: unknown,
+  field: string,
+  minLength: number,
+  maxLength: number = minLength,
+): string[] {
+  if (
+    !Array.isArray(value) ||
+    value.length < minLength ||
+    value.length > maxLength
+  ) {
     throw new Error(`INVALID_${field.toUpperCase()}`);
   }
   const ids = value.map((entry) => asUuid(entry, field));
-  if (new Set(ids).size !== length) throw new Error(`INVALID_${field.toUpperCase()}`);
+  if (new Set(ids).size !== ids.length) throw new Error(`INVALID_${field.toUpperCase()}`);
   return ids;
 }
 

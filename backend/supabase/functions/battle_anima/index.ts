@@ -7,6 +7,7 @@ import { adminClient, clientVersionGate, json, syncProfileTimezone } from "../_s
 import { signSheetUrl } from "../_shared/signed_roster.ts";
 import {
   BATTLE_ACTIONS,
+  RULES_VERSION,
   baseStatTotal,
   battleRewardPreview,
   createBattleState,
@@ -130,8 +131,8 @@ Deno.serve(async (req) => {
   }
 
   const operation = typeof body.operation === "string" ? body.operation : "";
-  await syncProfileTimezone(db, ownerId, body.timezone_offset_minutes);
   try {
+    await syncProfileTimezone(db, ownerId, body.timezone_offset_minutes);
     if (operation === "status") return await battleStatus(ownerId, body);
     if (operation === "start") return await startBattle(ownerId, body);
     if (operation === "resume") return await resumeBattle(ownerId, body);
@@ -147,9 +148,51 @@ Deno.serve(async (req) => {
     const marker = Object.keys(ERROR_STATUS).find((candidate) => message.includes(candidate));
     if (marker) return json(ERROR_STATUS[marker], { error: marker });
     console.error("battle_anima gagal", error);
+    await recordBattleFailure(ownerId, body, operation, message);
     return json(500, { error: "battle gagal diproses" });
   }
 });
+
+async function recordBattleFailure(
+  ownerId: string,
+  body: BattleBody,
+  operation: string,
+  message: string,
+): Promise<void> {
+  const context: Record<string, unknown> = {};
+  if (
+    operation === "turn"
+    && typeof body.action === "string"
+    && ACTIONS.has(body.action)
+  ) {
+    context.turn_action = body.action;
+  }
+  for (const [key, value] of [
+    ["expected_turn", body.expected_turn],
+    ["expected_version", body.expected_version],
+  ] as const) {
+    const parsed = Number(value);
+    if (Number.isSafeInteger(parsed) && parsed >= 0) context[key] = parsed;
+  }
+  const sessionId = typeof body.session_id === "string" && UUID_RE.test(body.session_id)
+    ? body.session_id
+    : null;
+  try {
+    const { error } = await db.from("battle_failures").insert({
+      owner_id: ownerId,
+      session_id: sessionId,
+      operation: ["status", "start", "resume", "turn", "forfeit"].includes(operation)
+        ? operation
+        : "unknown",
+      rules_version: RULES_VERSION,
+      error: (message || "UNKNOWN_BATTLE_FAILURE").slice(0, 500),
+      context,
+    });
+    if (error) console.error("battle failure log gagal", error);
+  } catch (loggingError) {
+    console.error("battle failure log gagal", loggingError);
+  }
+}
 
 async function battleStatus(ownerId: string, body: BattleBody): Promise<Response> {
   const sessionId = body.session_id === undefined || body.session_id === null

@@ -715,17 +715,17 @@ func _initialize() -> void:
 		and incubator_source.find("Sfx.play(Sfx.CUE_PORTAL)") > incubator_source.find("func start_portal"),
 		"portal SFX stays on start_portal for Summon and Switch"
 	)
-	var celebrate_source := flow_source.find("func _celebrate_level_up")
+	var level_presenter := flow_source.find("func _present_level_up_outcome")
 	_check(
-		celebrate_source >= 0
-		and flow_source.substr(celebrate_source, 400).find("Sfx.play(Sfx.CUE_LEVEL_UP)") >= 0,
-		"Level Up SFX stays on the shell celebration, not a restyled button"
+		level_presenter >= 0
+		and flow_source.substr(level_presenter, 900).find("Sfx.play(Sfx.CUE_LEVEL_UP)") >= 0,
+		"Level Up SFX plays when the queued shell outcome is actually presented"
 	)
-	var synthesis_success_source := flow_source.find("func _present_queued_synthesis_dialog")
+	var outcome_presenter := flow_source.find("func _present_next_outcome_dialog")
 	_check(
-		synthesis_success_source >= 0
-		and flow_source.substr(synthesis_success_source, 700).find("Sfx.play(Sfx.CUE_LEVEL_UP)") >= 0,
-		"Synthesis complete uses the Level Up cue on the success dialog, not View Result"
+		outcome_presenter >= 0
+		and flow_source.substr(outcome_presenter, 2400).find("Sfx.play(Sfx.CUE_LEVEL_UP)") >= 0,
+		"Synthesis complete uses the Level Up cue on the global success dialog"
 	)
 	Sfx.play(Sfx.CUE_STRIKE)
 	var sfx_host := root.get_node_or_null("SfxHost")
@@ -743,9 +743,9 @@ func _initialize() -> void:
 	var celebrate_at := flow_source.find("func _celebrate_level_up")
 	_check(
 		celebrate_at >= 0
-		and flow_source.substr(celebrate_at, 900).find("_show_level_up_stats(") >= 0
+		and flow_source.substr(celebrate_at, 900).find("_enqueue_outcome_dialog(") >= 0
 		and flow_source.find("func _hide_level_up_later") < 0,
-		"Level Up opens its dialog directly instead of waiting on a banner"
+		"Level Up enters the global FIFO instead of a screen-local banner"
 	)
 	_check(
 		flow_source.find(
@@ -982,6 +982,22 @@ func _test_shared_components() -> void:
 	modal_primary.pressed.emit()
 	await create_timer(0.25).timeout
 	_check(not modal.visible, "locked Result dialog still closes from its explicit action")
+	modal.open_result_choice(
+		"Evolution Complete", "New form", "Summon", "Rename", "Drowake", reveal_texture, false
+	)
+	await process_frame
+	_check(
+		modal_primary.visible and modal_primary.text == "Summon"
+		and modal_cancel.visible and modal_cancel.text == "Rename"
+		and not modal_choice_cancel.visible and modal_dismiss.disabled,
+		"result choice exposes exactly Summon and Rename while backdrop stays locked"
+	)
+	modal.request_cancel()
+	await create_timer(0.25).timeout
+	_check(modal.visible, "locked result choice ignores Android Back and backdrop")
+	modal_cancel.pressed.emit()
+	await create_timer(0.25).timeout
+	_check(not modal.visible, "result choice closes from its explicit secondary action")
 	modal.open_info("Failed", "Failure details", "Close", "", false)
 	await process_frame
 	modal.request_cancel()
@@ -993,6 +1009,13 @@ func _test_shared_components() -> void:
 	modal_primary.pressed.emit()
 	await create_timer(0.25).timeout
 	_check(not modal.visible, "locked failure dialog closes from its acknowledgement button")
+	modal.open_confirm("Retry", "Failure body", "Retry", "Close", false, false)
+	modal.request_cancel()
+	await create_timer(0.25).timeout
+	_check(modal.visible, "locked confirm blocks backdrop and Android Back")
+	modal_cancel.pressed.emit()
+	await create_timer(0.25).timeout
+	_check(not modal.visible, "locked confirm still honors its explicit Close button")
 	modal.open_confirm("Delete", "Danger body", "Delete", "Cancel", true)
 	_check(not modal_portrait.visible, "non-Result dialogs reset the optional portrait slot")
 	_check(
@@ -2257,6 +2280,14 @@ func _test_battle_view() -> void:
 		and arena_background.size.y >= arena.size.y,
 		"Duel smoothly blends local daylight while cover-cropping without gaps"
 	)
+	_check(
+		is_equal_approx(
+			arena_background.position.y,
+			-(arena_background.size.y - arena.size.y)
+			* BattleScale.STATIC_BACKGROUND_VERTICAL_PAN
+		),
+		"Duel static art uses the shared lowered framing without moving its ground line"
+	)
 	_check(dock_fill != null, "Duel footer wears the Expedition dock plate")
 	_check(surge.theme_type_variation == &"", "Duel Special is not a PrimaryButton so the four actions match")
 	_check(
@@ -2701,12 +2732,22 @@ func _test_team_battle_view() -> void:
 	var resume_body := flow_source.substr(
 		resume_start, resume_end - resume_start
 	) if resume_start >= 0 and resume_end > resume_start else ""
+	var hub_start := flow_source.find("func _load_team_battle_hub")
+	var hub_end := flow_source.find("\n\nfunc _save_team_battle_roster", hub_start)
+	var hub_body := flow_source.substr(
+		hub_start, hub_end - hub_start
+	) if hub_start >= 0 and hub_end > hub_start else ""
 	_check(
 		resume_body.find('res.error in ["TEAM_BATTLE_NOT_FOUND", "INVALID_SESSION_ID"]') >= 0
 		and resume_body.find("GameState.finish_team_battle()") >= 0
 		and flow_source.find("if _busy or _team_battle_demo_active:") >= 0
 		and flow_source.find("_team_battle_demo_active = true") >= 0,
 		"invalid or demo Team Battle sessions cannot trap the persisted hub state"
+	)
+	_check(
+		hub_body.find("set_builder(_roster, _team_battle_team)") >= 0
+		and hub_body.find("_refresh_team_battle_candidates") < 0,
+		"Team Battle always reviews the saved roster before requesting rivals"
 	)
 	var back := view.find_child("TeamBackButton", true, false) as Button
 	var back_icon := view.find_child("TeamBackIcon", true, false) as TextureRect
@@ -2771,10 +2812,16 @@ func _test_team_battle_view() -> void:
 		"kind": "team_battle",
 		"members": members,
 	}
-	view.set_builder(roster, team)
+	var saved_three := team.duplicate(true)
+	saved_three["members"] = members.slice(0, 3)
+	view.set_builder(roster, saved_three)
 	var roster_list := view.find_child("TeamRosterList", true, false) as ItemList
 	var save := view.find_child("TeamSaveButton", true, false) as Button
 	_check(roster_list.item_count == 5, "Team builder lists the current roster")
+	_check(
+		roster_list.get_selected_items().size() == 3 and not save.disabled,
+		"a saved three-member team reopens selected and can continue"
+	)
 	_check(roster_list.is_item_disabled(4), "unavailable Anima cannot be selected for a Team")
 	_check(
 		roster_list.get_item_icon(0) == thumbnail
@@ -2784,8 +2831,13 @@ func _test_team_battle_view() -> void:
 	)
 	roster_list.deselect_all()
 	roster_list.call("sync_chosen")
-	for index in 4:
-		_tap_roster_item(roster_list, index)
+	_tap_roster_item(roster_list, 0)
+	_check(save.disabled, "one selected Anima does not meet the Team minimum")
+	_tap_roster_item(roster_list, 1)
+	_check(not save.disabled, "two selected Anima enable Team Save")
+	_tap_roster_item(roster_list, 2)
+	_check(not save.disabled, "three selected Anima keep Team Save enabled")
+	_tap_roster_item(roster_list, 3)
 	var selected_style := roster_list.get_theme_stylebox("selected_focus") as StyleBoxFlat
 	var cursor_style := roster_list.get_theme_stylebox("cursor")
 	_check(
@@ -2801,13 +2853,22 @@ func _test_team_battle_view() -> void:
 	_tap_roster_item(roster_list, 4)
 	_tap_roster_item(roster_list, 1)
 	_check(
-		save.disabled
+		not save.disabled
 		and roster_list.get_selected_items().size() == 3
 		and not roster_list.is_selected(1),
-		"tapping again releases a member and a blocked Anima never joins"
+		"three members remain valid and a blocked Anima never joins"
 	)
+	_tap_roster_item(roster_list, 2)
+	_check(
+		not save.disabled and roster_list.get_selected_items().size() == 2,
+		"two members remain a valid Team"
+	)
+	_tap_roster_item(roster_list, 3)
+	_check(save.disabled, "dropping to one member disables Team Save")
 	_tap_roster_item(roster_list, 1)
-	_check(not save.disabled, "re-tapping restores the fourth member")
+	_check(not save.disabled, "re-tapping restores the two-member minimum")
+	_tap_roster_item(roster_list, 2)
+	_tap_roster_item(roster_list, 3)
 	var daily := {
 		"earned": 1, "limit": 2, "bits_earned": 8, "bits_limit": 40,
 	}
@@ -2861,6 +2922,14 @@ func _test_team_battle_view() -> void:
 		and arena_background.size.x >= battle_stage.size.x
 		and arena_background.size.y >= battle_stage.size.y,
 		"Team Battle uses its generated arena and cover-crops it without gaps"
+	)
+	_check(
+		is_equal_approx(
+			arena_background.position.y,
+			-(arena_background.size.y - battle_stage.size.y)
+			* BattleScale.STATIC_BACKGROUND_VERTICAL_PAN
+		),
+		"Team Battle shares the lowered static framing without changing fighter placement"
 	)
 	var header := view.get_node("Column/Header") as Control
 	var turn := view.find_child("TeamTurn", true, false) as Label
@@ -3556,7 +3625,7 @@ func _test_team_battle_view() -> void:
 		"type": "ace_passive",
 		"actor": "opponent",
 		"passive_name": "Final Confection",
-		"copy": "Cotton enters with +1 PP.",
+		"copy": "Nimbelisk enters with +1 PP.",
 	}], ace_session, seeker_art)
 	_check(not dialog.is_open(), "final ace line closes before Summon and passive finish")
 	_check(seeker.animation == "intro_idle", "final ace sequence restores the Seeker idle pose")
@@ -5189,10 +5258,18 @@ func _test_evolve_profile_cta() -> void:
 	_check(not incubator.is_active(), "evolution chamber stop clears the ritual")
 	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
-		flow_source.find("call_deferred(\"_show_rename\", anima_id, suggested)") >= 0
+		flow_source.find("\"suggested_name\": suggested") >= 0
 		and flow_source.find("func _evolution_suggested_name") >= 0
 		and flow_source.find("str(body.get(\"suggested_name\", \"\"))") >= 0,
-		"ritual Evolve menawarkan Rename terisi nama usulan model"
+		"ritual Evolve menyimpan nama usulan model untuk tombol Rename"
+	)
+	_check(
+		flow_source.find("queued[\"session_epoch\"] = GameState.session_epoch") >= 0
+		and flow_source.find(
+			"int(dialog.get(\"session_epoch\", -1)) != GameState.session_epoch"
+		) >= 0
+		and flow_source.find("_outcome_dialog_queue.clear()") >= 0,
+		"outcome FIFO menolak response akun lama dan dibersihkan saat handoff"
 	)
 	_check(
 		flow_source.find("if await _complete_evolution(row, restore_navigation):") >= 0,
@@ -5254,11 +5331,17 @@ func _test_evolve_profile_cta() -> void:
 		"Retry dialog memakai jalur konfirmasi Evolve yang sama, dan Cancel melepas row-nya"
 	)
 	_check(
-		flow_source.find(
-			"if _queued_evolution_failure.is_empty() or _shell_modal.visible:"
-		) >= 0
-		and flow_source.find("_present_queued_evolution_failure()") >= 0,
-		"dialog kegagalan Evolve mengantre alih-alih menimpa modal yang sedang terbuka"
+		flow_source.find("\"kind\": \"evolution_failure\"") >= 0
+		and flow_source.find("_present_evolution_failure_outcome(dialog)") >= 0
+		and flow_source.find("_outcome_dialog_queue.append(queued)") >= 0,
+		"dialog kegagalan Evolve masuk FIFO global alih-alih menimpa modal aktif"
+	)
+	_check(
+		flow_source.find("\"kind\": \"evolution_success\"") >= 0
+		and flow_source.find("_shell_modal.open_result_choice(") >= 0
+		and flow_source.find("await _summon_evolution_outcome(row)") >= 0
+		and flow_source.find("_show_rename(") >= 0,
+		"hasil Evolve menawarkan Summon atau Rename setelah art siap"
 	)
 	_check(
 		flow_source.find("\"EVOLUTION_TIMEOUT_BODY\"") >= 0
@@ -5558,8 +5641,9 @@ func _test_synthesis_lab_state() -> void:
 	_check(
 		flow_source.find("_queue_synthesis_failure_dialog(") >= 0
 		and flow_source.find("_queue_synthesis_success_dialog(row, portrait)") >= 0
-		and flow_source.find("dialog.get(\"portrait\") as Texture2D,\n\t\t\tfalse") >= 0
-		and flow_source.find("tr(\"CORE_INFO_CLOSE\"),\n\t\t\"\",\n\t\tfalse") >= 0
+		and flow_source.find("\"kind\": \"synthesis_success\"") >= 0
+		and flow_source.find("_outcome_dialog_queue.append(queued)") >= 0
+		and flow_source.find("tr(\"CORE_INFO_CLOSE\"),") >= 0
 		and flow_source.find("\"SYNTHESIS_FAILED\":") >= 0
 		and flow_source.find("_clear_synthesis_reference_background") < 0
 		and flow_source.find("set_synthesis_history_loading(true)") >= 0,
@@ -6404,10 +6488,22 @@ func _test_bottom_nav_busy() -> void:
 	)
 	var collection_button := nav.find_child("CollectionNavButton", true, false) as Button
 	_check(
-		collection_button != null and collection_button.get_index() < battle_button.get_index(),
-		"Animas sits between Scan and Battle like the design orders it"
+		battle_button != null and battle_button.get_index() == 2
+		and collection_button != null and collection_button.get_index() == 3,
+		"Battle is the center tab and Animas follows it"
 	)
-	for tab: Button in [home_button, scan_button, collection_button, battle_button, menu_button]:
+	var tapped_destinations: Array[StringName] = []
+	nav.destination_selected.connect(
+		func(destination: StringName) -> void: tapped_destinations.append(destination)
+	)
+	scan_button.pressed.emit()
+	battle_button.pressed.emit()
+	collection_button.pressed.emit()
+	_check(
+		tapped_destinations == [BottomNav.SCAN, BottomNav.BATTLE, BottomNav.COLLECTION],
+		"reordered tab taps still emit their original destination identities"
+	)
+	for tab: Button in [home_button, scan_button, battle_button, collection_button, menu_button]:
 		_check(
 			is_equal_approx(tab.custom_minimum_size.y, 100.0),
 			"%s is 100px tall so the active pill and the idle tabs share one baseline" % tab.name

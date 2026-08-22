@@ -64,7 +64,11 @@ Cangkir cenderung Defense tinggi, Special rendah. Gunting cenderung Attack tingg
 
 Naik Level membuat kelima angka itu tumbuh kira-kira **2% per level**. Lonjakan Adult dan Evolved datang sesudah ritual **Evolve**, bukan otomatis di angka Level itu.
 
-Setiap kali Anima naik Level, satu dialog muncul: judul **{nama} Level Up**, lalu Level barunya sebagai angka besar (**Lv. 4**), lalu kelima stat dengan nilai **lama → baru**.
+Setiap kali Anima naik Level, satu dialog muncul: judul **{nama} Level Up**, lalu
+Level barunya sebagai angka besar (**Lv. 4**), lalu kelima stat dengan nilai
+**lama → baru**. Dialog ini tetap muncul di screen mana pun kamu berada. Kalau
+popup lain sedang terbuka, hasil Level Up menunggu giliran lalu tampil
+berurutan.
 
 ## EXP dan Level
 
@@ -93,15 +97,18 @@ Battle atau dirawat sampai selesai.
 
 Kalau gagal, dialog **Evolution Failed** memberi tahu apa yang terjadi dan
 menawarkan **Retry** langsung di situ, jadi kamu tidak perlu mencari tombol
-Evolve lagi. Bentuk lama tetap dipakai, tidak ada Core yang terpakai, dan Level
-serta EXP tidak berkurang. Gangguan safety sesaat saat menggambar otomatis dicoba
-sekali lagi di belakang layar tanpa mengulang perencanaan; kalau tetap gagal,
-barulah dialog muncul. Tidak ada retry tanpa batas.
+Evolve lagi. Dialog ini tetap muncul di screen mana pun kamu berada. Bentuk lama
+tetap dipakai, tidak ada Core yang terpakai, dan Level serta EXP tidak berkurang.
+Gangguan safety sesaat saat menggambar otomatis dicoba sekali lagi di belakang
+layar tanpa mengulang perencanaan; kalau tetap gagal, barulah dialog muncul.
+Tidak ada retry tanpa batas.
 
 Sesudah sukses, art-nya berganti, nama Attack/Special bisa berubah, dan jurus
-bisa mendapat efek tambahan di Battle. Game juga mengusulkan **nama baru**
-untuk form itu, lalu membuka **Rename** seperti sesudah Scan. **Save Name**
-memakai usulan itu atau suntinganmu. **Cancel** mempertahankan nama lama.
+bisa mendapat efek tambahan di Battle. Dialog hasilnya tetap muncul di screen
+mana pun kamu berada dan menawarkan **Summon** untuk langsung memanggil form
+baru ke Home, atau **Rename** untuk membuka penggantian nickname. Game juga
+mengusulkan nama baru untuk form itu; **Save Name** memakai usulan itu atau
+suntinganmu. **Cancel** mempertahankan nama lama.
 Usulan itu mempertahankan awal nama asli Anima dan hanya mengganti akhirannya,
 jadi satu garis terbaca sebagai satu keluarga — Vitrore menjadi Vitrforge lalu
 Vitrsovran. Kalau kamu sudah memberi nickname sendiri, usulannya tetap mengikuti
@@ -153,6 +160,10 @@ tidak memakai istilah keluarga.
   1**, dengan nama spesies yang dirakit sama seperti hasil Scan — satu kata
   ciptaan, bukan deskripsi Inggris. Stats-nya adalah build baru dalam kisaran
   kekuatan kedua Source, bukan bonus power gratis.
+
+Dialog Synthesis berhasil maupun gagal tetap muncul di screen mana pun kamu
+berada. Jika modal lain sedang aktif, hasilnya menunggu giliran bersama Level Up
+dan Evolution, lalu tampil sesuai urutan selesai.
 
 Profile Result menampilkan **Synthesis History**: potret kedua Source, nama dan
 form yang dipakai saat percobaan, bias, serta Resonance yang berhasil. Catatan

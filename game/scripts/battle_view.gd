@@ -1358,7 +1358,9 @@ func _layout_arena_background(background_zoom: float) -> void:
 	_arena_background.scale = Vector2.ONE
 	_arena_background.size = draw_size
 	var pan := 0.5 if _uses_static_background else _background_pan
-	var vertical_pan := 1.0 if _uses_static_background else 0.5
+	var vertical_pan := (
+		BattleScale.STATIC_BACKGROUND_VERTICAL_PAN if _uses_static_background else 0.5
+	)
 	_arena_background.position = Vector2(
 		-overflow.x * pan,
 		-overflow.y * vertical_pan

@@ -15,8 +15,8 @@ menjelaskan Duel saja.
 2. **Server tetap berwenang.** Client hanya mengirim intent, slot switch, dan
    idempotency key. HP, map, reward, unlock, dan Trophy tidak pernah dipercaya
    dari client.
-3. **Empat anggota, satu aktif.** Team Battle dan Expedition membutuhkan tepat
-   empat Anima, tetapi arena tetap 1 aktif vs 1 aktif.
+3. **Roster terpisah, satu aktif.** Team Battle dan Defense menerima 2–4 Anima;
+   Expedition tetap membutuhkan tepat empat. Arena tetap 1 aktif vs 1 aktif.
 4. **Konten baru tidak membutuhkan update app.** Chapter adalah manifest
    immutable + aset CDN. Mekanik/effect type baru tetap membutuhkan build baru.
 5. **Tidak ada model call saat pemain bermain.** Semua art dan copy chapter
@@ -36,8 +36,10 @@ server boleh menjawab expired dan client membersihkan bookmark lokal.
 
 ### Tim dan lawan
 
-- Pemain menyimpan Team Battle berisi tepat 4 Anima.
-- Defense Team disimpan terpisah dan hanya masuk pool lawan setelah opt-in.
+- Builder selalu dibuka sebelum pencarian rival; pemain menyimpan Team Battle
+  berisi 2–4 Anima, baru kemudian meminta candidate.
+- Defense Team menerima 2–4 Anima, disimpan terpisah, dan hanya masuk pool lawan
+  setelah opt-in.
 - Snapshot Defense tidak membawa owner ID, Seeker Name, atau nickname privat.
 - Mengubah roster pemilik tidak mengubah session yang sudah dimulai.
 - Jika pool pemain kosong, server menyediakan system team.
@@ -51,10 +53,10 @@ sebelum placeholder itu diganti roster/art authored oleh Chapter Factory.
 
 ### Eligibility dan Energy
 
-Keempat anggota pemain harus owned, `ready`, tidak Dormant, dan punya Energy
+Seluruh 2–4 anggota pemain harus owned, `ready`, tidak Dormant, dan punya Energy
 cukup. Companion aktif harus bangun. Anggota Collection boleh tetap memiliki
 penanda tidur server—seperti picker Duel, Energy projected-nya yang menentukan—
-karena membuat empat Anima aktif di Home akan melanggar aturan satu Summon.
+karena membuat seluruh Anima aktif di Home akan melanggar aturan satu Summon.
 Start session baru memotong **10 Energy per anggota** dalam satu transaksi.
 Resume tidak memotong lagi. Hunger dan Hygiene tidak mengunci, tetapi tetap
 menurunkan combat stats melalui formula care yang sama dengan Duel.
@@ -459,20 +461,16 @@ hashes disimpan di Git; binary immutable disimpan di Storage.
 
 ## 9. Rollout dan definition of done
 
-**The Sugarworks v3** adalah version aktif; v1/v2 tetap immutable untuk run lama.
-V3 mengkalibrasi ulang tinggi sembilan Anima berdasarkan stance vertikal, bukan
-panjang atau luas silhouette, serta membetulkan bbox opak The Confectioner.
-Duskadon sekarang 135 cm, Cotton 130 cm, dan The Confectioner 156 cm dengan
-reference metrics 158×282 px. Dialog kontekstual, Cotton sebagai ace terakhir,
-dan Final Confection dari v2 tetap dipertahankan. Seluruh asset berasal dari raw
-yang sudah disetujui dan direprocess tanpa model call. `feature_expedition` dan `feature_chapter_push` aktif. Team Battle juga aktif
-dengan `feature_team_battle=true` untuk device playtest Godot. Jalur announcement
-in-app sudah aktif; push OS pertama masih menunggu konfigurasi FCM sehingga
-belum terkirim.
+**The Sugarworks v7** adalah version aktif; v1–v6 tetap immutable untuk run lama.
+V7 adalah koreksi metadata dari v6: ace terakhir dan copy **Final Confection**
+sekarang konsisten menyebut Nimbelisk. Seluruh asset binary tetap byte-identik,
+jadi koreksi ini tidak memanggil model.
 
-**The Sugarworks v4** masih draft lokal: zona Battle memakai backdrop manual
-baru dan tinggi presentasi The Confectioner dinaikkan menjadi 165 cm. V3 tetap
-authoritative sampai v4 di-review, di-approve, dipublish, dan diaktifkan.
+`feature_expedition`, `feature_chapter_push`, dan `feature_team_battle` aktif.
+Team Battle production menerima roster pemain/Defense 2–4 melalui migration
+`20260822152859_team_battle_variable_roster`; Expedition tetap tepat empat.
+Jalur announcement in-app sudah aktif; push OS pertama masih menunggu
+konfigurasi FCM sehingga belum terkirim.
 
 Untuk chapter atau mode berikutnya, sebelum aktivasi:
 

@@ -15,8 +15,8 @@ Canonical hooks (do not bypass):
 - Feed / battle item → `AnimaPresenter.care_feedback()`
 - Super effective / not very effective → `AnimaPresenter.hit_react(multiplier)`
 - Summon + Switch portal → `IncubatorEffect.start_portal()`
-- Level Up → `scan_flow._celebrate_level_up()`
-- Synthesis complete → `scan_flow._present_queued_synthesis_dialog()` (same cue as Level Up)
+- Level Up → `scan_flow._present_level_up_outcome()` when its FIFO item is shown
+- Synthesis/Evolution complete → `scan_flow._present_next_outcome_dialog()` when a success item is shown (same cue as Level Up)
 - Chrome taps → `UiJuice` (`button_down`)
 
 If you restyle a button or move a dock, leave these helpers in the play path. `test_scan_ui.gd` source-scans the hooks; a missing `Sfx.play` is a failed check, not a later TODO.

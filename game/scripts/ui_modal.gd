@@ -78,12 +78,40 @@ func open_result(
 		_animate_result_portrait()
 
 
+func open_result_choice(
+	title_text: String,
+	body_text: String,
+	primary_text: String,
+	secondary_text: String,
+	hero_text: String,
+	portrait: Texture2D,
+	dismissible: bool = false
+) -> void:
+	_configure(
+		Mode.CHOICE,
+		title_text,
+		body_text,
+		primary_text,
+		secondary_text,
+		false,
+		hero_text,
+		dismissible
+	)
+	_choice_cancel_button.visible = false
+	_portrait.texture = portrait
+	_portrait.visible = portrait != null
+	_show_modal(_primary_button)
+	if _portrait.visible:
+		_animate_result_portrait()
+
+
 func open_confirm(
 	title_text: String,
 	body_text: String,
 	confirm_text: String,
 	cancel_text: String,
-	destructive: bool = false
+	destructive: bool = false,
+	dismissible: bool = true
 ) -> void:
 	_configure(
 		Mode.CONFIRM,
@@ -91,7 +119,9 @@ func open_confirm(
 		body_text,
 		confirm_text,
 		cancel_text,
-		destructive
+		destructive,
+		"",
+		dismissible
 	)
 	_show_modal(_cancel_button)
 
@@ -262,8 +292,13 @@ func _submit() -> void:
 func _on_cancel_button_pressed() -> void:
 	if _mode == Mode.CHOICE:
 		_submit_choice("secondary")
-	else:
-		_cancel()
+		return
+	if _busy:
+		return
+	# A locked outcome still exposes its explicit Close button; only backdrop and
+	# Android Back are blocked by `_dismissible`.
+	close()
+	canceled.emit()
 
 
 func _submit_choice(choice: String) -> void:

@@ -181,10 +181,9 @@ var _synthesis_return_destination: StringName = BottomNav.COLLECTION
 var _synthesis_history_revision := 0
 var _evolution_history_revision := 0
 var _synthesis_history_texture_cache: Dictionary = {}
-var _queued_synthesis_dialog: Dictionary = {}
-var _queued_evolution_failure: Dictionary = {}
+var _outcome_dialog_queue: Array[Dictionary] = []
+var _active_outcome_dialog: Dictionary = {}
 var _pending_synthesis_payload: Dictionary = {}
-var _active_synthesis_result: Dictionary = {}
 var _pending_retreat := ""
 var _modal_context := &""
 var _last_anima_press_ms := -1000
@@ -989,59 +988,88 @@ func _fail_synthesis_client() -> void:
 
 
 func _queue_synthesis_failure_dialog(title: String, body: String) -> void:
-	_queued_synthesis_dialog = {
-		"kind": "failure",
+	_enqueue_outcome_dialog({
+		"kind": "synthesis_failure",
 		"title": title,
 		"body": body,
-	}
-	_present_queued_synthesis_dialog()
+	})
 
 
 func _queue_synthesis_success_dialog(row: Dictionary, portrait: Texture2D) -> void:
-	_queued_synthesis_dialog = {
-		"kind": "success",
+	_enqueue_outcome_dialog({
+		"kind": "synthesis_success",
 		"row": row.duplicate(true),
 		"portrait": portrait,
-	}
-	_present_queued_synthesis_dialog()
+	})
 
 
-func _present_queued_synthesis_dialog() -> void:
-	if _queued_synthesis_dialog.is_empty() or _shell_modal.visible:
+func _enqueue_outcome_dialog(dialog: Dictionary) -> void:
+	var queued := dialog.duplicate(false)
+	queued["session_epoch"] = GameState.session_epoch
+	_outcome_dialog_queue.append(queued)
+	_present_next_outcome_dialog()
+
+
+func _present_next_outcome_dialog() -> void:
+	if _shell_modal.visible:
 		return
-	var dialog := _queued_synthesis_dialog
-	_queued_synthesis_dialog = {}
-	if str(dialog.get("kind", "")) == "success":
-		var row := GameState.as_dict(dialog.get("row"))
-		_active_synthesis_result = row.duplicate(true)
-		_modal_context = &"synthesis_success"
-		Sfx.play(Sfx.CUE_LEVEL_UP)
-		_shell_modal.open_result(
-			tr("SYNTHESIS_COMPLETE_TITLE"),
-			tr("SYNTHESIS_COMPLETE_BODY"),
-			tr("SYNTHESIS_VIEW_RESULT"),
-			LocaleManager.display_name(row),
-			dialog.get("portrait") as Texture2D,
-			false
-		)
-		return
-	_active_synthesis_result = {}
-	_modal_context = &"synthesis_failure"
-	_shell_modal.open_info(
-		str(dialog.get("title", tr("SYNTHESIS_FAILED_DIALOG_TITLE"))),
-		str(dialog.get("body", tr("SYNTHESIS_TECHNICAL_FAILURE"))),
-		tr("CORE_INFO_CLOSE"),
-		"",
-		false
-	)
+	while not _outcome_dialog_queue.is_empty():
+		var dialog: Dictionary = _outcome_dialog_queue.pop_front()
+		if int(dialog.get("session_epoch", -1)) != GameState.session_epoch:
+			continue
+		_active_outcome_dialog = dialog
+		match str(dialog.get("kind", "")):
+			"synthesis_success":
+				var row := GameState.as_dict(dialog.get("row"))
+				_modal_context = &"synthesis_success"
+				Sfx.play(Sfx.CUE_LEVEL_UP)
+				_shell_modal.open_result(
+					tr("SYNTHESIS_COMPLETE_TITLE"),
+					tr("SYNTHESIS_COMPLETE_BODY"),
+					tr("SYNTHESIS_VIEW_RESULT"),
+					LocaleManager.display_name(row),
+					dialog.get("portrait") as Texture2D,
+					false
+				)
+				return
+			"synthesis_failure":
+				_modal_context = &"synthesis_failure"
+				_shell_modal.open_info(
+					str(dialog.get("title", tr("SYNTHESIS_FAILED_DIALOG_TITLE"))),
+					str(dialog.get("body", tr("SYNTHESIS_TECHNICAL_FAILURE"))),
+					tr("CORE_INFO_CLOSE"),
+					"",
+					false
+				)
+				return
+			"evolution_success":
+				var row := GameState.as_dict(dialog.get("row"))
+				_modal_context = &"evolution_success"
+				Sfx.play(Sfx.CUE_LEVEL_UP)
+				_shell_modal.open_result_choice(
+					tr("EVOLUTION_COMPLETE_TITLE"),
+					_evolution_success_copy(row),
+					tr("COLLECTION_SUMMON"),
+					tr("ANIMA_RENAME_ACTION"),
+					LocaleManager.display_name(row),
+					dialog.get("portrait") as Texture2D,
+					false
+				)
+				return
+			"evolution_failure":
+				_present_evolution_failure_outcome(dialog)
+				return
+			"level_up":
+				_present_level_up_outcome(dialog)
+				return
+		_active_outcome_dialog = {}
 
 
 func _present_queued_dialogs_after_modal() -> void:
-	if _queued_synthesis_dialog.is_empty() and _queued_evolution_failure.is_empty():
+	if _outcome_dialog_queue.is_empty():
 		return
 	await get_tree().create_timer(0.20).timeout
-	_present_queued_synthesis_dialog()
-	_present_queued_evolution_failure()
+	_present_next_outcome_dialog()
 
 
 func _show_synthesis_result(row: Dictionary) -> void:
@@ -1711,7 +1739,7 @@ func _wait_for_evolution(
 
 func _complete_evolution(
 	row: Dictionary,
-	restore_navigation: bool
+	_restore_navigation: bool
 ) -> bool:
 	var anima_id := str(row.get("id", ""))
 	var was_active := anima_id == str(_current_anima.get("id", ""))
@@ -1751,11 +1779,13 @@ func _complete_evolution(
 	_refresh_stats()
 	_refresh_care()
 	_populate_collection()
-	if restore_navigation and was_active:
-		_switch_destination(BottomNav.HOME)
-	_say(_evolution_success_copy(row), true)
-	if not suggested.is_empty():
-		call_deferred("_show_rename", anima_id, suggested)
+	_enqueue_outcome_dialog({
+		"kind": "evolution_success",
+		"row": row.duplicate(true),
+		"portrait": _thumbnail_for(row),
+		"suggested_name": suggested,
+		"was_active": was_active,
+	})
 	return true
 
 
@@ -1805,29 +1835,27 @@ func _queue_evolution_failure_dialog(
 	display_name: String,
 	body_key: String
 ) -> void:
-	_queued_evolution_failure = {
+	_enqueue_outcome_dialog({
+		"kind": "evolution_failure",
 		"anima_id": anima_id,
 		"display_name": display_name,
 		"body_key": body_key,
-	}
-	_present_queued_evolution_failure()
+	})
 
 
-func _present_queued_evolution_failure() -> void:
-	if _queued_evolution_failure.is_empty() or _shell_modal.visible:
-		return
-	var queued := _queued_evolution_failure
-	_queued_evolution_failure = {}
+func _present_evolution_failure_outcome(queued: Dictionary) -> void:
 	var anima_id := str(queued.get("anima_id", ""))
 	var row := _roster_row(anima_id)
 	var body := tr(str(queued.get("body_key", "EVOLUTION_FAILED_BODY"))) % str(
 		queued.get("display_name", "")
 	)
-	# Retry only when the server would accept one; otherwise the dialog still
-	# has to explain what happened, just without a button that cannot work.
+	# Retry only when the server would accept one; otherwise the locked outcome
+	# still explains what happened and exposes one explicit Close action.
 	if row.is_empty() or not _evolution_enabled() or not CareRules.evolution_ready(row):
-		_modal_context = &""
-		_shell_modal.open_info(tr("EVOLUTION_FAILED_DIALOG_TITLE"), body, tr("CORE_INFO_CLOSE"))
+		_modal_context = &"evolution_failure_info"
+		_shell_modal.open_info(
+			tr("EVOLUTION_FAILED_DIALOG_TITLE"), body, tr("CORE_INFO_CLOSE"), "", false
+		)
 		return
 	_pending_evolve_row = row.duplicate(true)
 	_modal_context = &"evolution_failure"
@@ -1835,7 +1863,9 @@ func _present_queued_evolution_failure() -> void:
 		tr("EVOLUTION_FAILED_DIALOG_TITLE"),
 		body,
 		tr("ACTION_RETRY"),
-		tr("ACTION_CANCEL")
+		tr("CORE_INFO_CLOSE"),
+		false,
+		false
 	)
 
 
@@ -1860,6 +1890,25 @@ func _evolution_success_copy(row: Dictionary) -> String:
 			]
 		)
 	return "\n".join(parts)
+
+
+func _summon_evolution_outcome(row: Dictionary) -> void:
+	var anima_id := str(row.get("id", ""))
+	if anima_id.is_empty():
+		return
+	if anima_id != _summoned_id():
+		await _activate_anima(row, false, false)
+		return
+	if _busy:
+		return
+	_set_busy(true)
+	_switch_destination(BottomNav.HOME)
+	_anima.visible = false
+	await _incubator.start_portal()
+	await _incubator.burst()
+	await _anima.summon_reveal()
+	_refresh_care()
+	_set_busy(false)
 
 
 func _apply_evolution_chamber_for_row(row: Dictionary, on_home: bool) -> void:
@@ -2071,7 +2120,13 @@ func _anima_rename_error(error: String) -> String:
 
 func _modal_confirmed(text: String) -> void:
 	var context := _modal_context
+	var outcome := _active_outcome_dialog
 	_modal_context = &""
+	if context in [
+		&"level_up", &"expedition_level_up", &"synthesis_success",
+		&"synthesis_failure", &"evolution_failure", &"evolution_failure_info"
+	]:
+		_active_outcome_dialog = {}
 	match context:
 		&"delete":
 			_delete_confirmed()
@@ -2103,15 +2158,31 @@ func _modal_confirmed(text: String) -> void:
 		&"expedition_level_up":
 			_show_next_expedition_level_up()
 		&"synthesis_success":
-			var row := _active_synthesis_result
-			_active_synthesis_result = {}
-			_show_synthesis_result(row)
+			if int(outcome.get("session_epoch", -1)) == GameState.session_epoch:
+				_show_synthesis_result(GameState.as_dict(outcome.get("row")))
 	call_deferred("_present_queued_dialogs_after_modal")
 
 
 func _modal_choice_selected(choice: String) -> void:
 	var context := _modal_context
+	var outcome := _active_outcome_dialog
 	_modal_context = &""
+	if context == &"evolution_success":
+		_active_outcome_dialog = {}
+		if int(outcome.get("session_epoch", -1)) != GameState.session_epoch:
+			call_deferred("_present_queued_dialogs_after_modal")
+			return
+		var row := GameState.as_dict(outcome.get("row"))
+		if choice == "primary":
+			await _summon_evolution_outcome(row)
+			call_deferred("_present_queued_dialogs_after_modal")
+			return
+		await get_tree().create_timer(0.20).timeout
+		_show_rename(
+			str(row.get("id", "")),
+			str(outcome.get("suggested_name", LocaleManager.display_name(row)))
+		)
+		return
 	if context != &"sign_in_google":
 		return
 	if choice == "primary":
@@ -2124,6 +2195,11 @@ func _modal_choice_selected(choice: String) -> void:
 func _modal_canceled() -> void:
 	var context := _modal_context
 	_modal_context = &""
+	if context in [
+		&"level_up", &"expedition_level_up", &"synthesis_success",
+		&"synthesis_failure", &"evolution_failure", &"evolution_failure_info"
+	]:
+		_active_outcome_dialog = {}
 	if context == &"delete":
 		_pending_delete_id = ""
 	elif context == &"evolve" or context == &"evolution_failure":
@@ -2142,8 +2218,6 @@ func _modal_canceled() -> void:
 		_pending_retreat = ""
 	elif context == &"expedition_level_up":
 		_show_next_expedition_level_up()
-	elif context == &"synthesis_success":
-		_active_synthesis_result = {}
 	call_deferred("_present_queued_dialogs_after_modal")
 
 
@@ -2707,6 +2781,13 @@ func _reset_account_presentation() -> void:
 	_roster_error = ""
 	_thumbnail_cache.clear()
 	_synthesis_history_texture_cache.clear()
+	_outcome_dialog_queue.clear()
+	_expedition_level_queue.clear()
+	_expedition_level_sequence_active = false
+	if not _active_outcome_dialog.is_empty() and is_instance_valid(_shell_modal):
+		_shell_modal.close()
+		_modal_context = &""
+	_active_outcome_dialog = {}
 	_team_battle_team = {}
 	_team_battle_candidates.clear()
 	_team_battle_daily = {}
@@ -3501,17 +3582,19 @@ func _load_team_battle_hub() -> void:
 	_team_battle_team = _team_of_kind(teams, "team_battle")
 	var defense := _team_of_kind(teams, "defense")
 	_team_defense_published = bool(defense.get("published", false))
-	if _team_battle_team.is_empty():
-		_team_battle_view.set_builder(_roster)
-		_set_busy(false)
-		return
+	# Team ownership begins in the builder: even a saved roster must be reviewed
+	# before the first rival request, so stale/partial teams can be repaired.
+	_team_battle_view.set_builder(_roster, _team_battle_team)
 	_set_busy(false)
-	await _refresh_team_battle_candidates(str(_team_battle_team.get("id", "")))
 
 
 func _save_team_battle_roster(anima_ids: Array[String]) -> void:
 	var account_epoch := GameState.session_epoch
-	if _busy or anima_ids.size() != 4:
+	if (
+		_busy
+		or anima_ids.size() < TeamBattleView.MIN_TEAM_SIZE
+		or anima_ids.size() > TeamBattleView.MAX_TEAM_SIZE
+	):
 		return
 	_set_busy(true)
 	_team_battle_view.set_loading("TEAM_SAVING")
@@ -3531,7 +3614,11 @@ func _save_team_battle_roster(anima_ids: Array[String]) -> void:
 
 
 func _set_team_defense(publish: bool, anima_ids: Array[String]) -> void:
-	if _busy or anima_ids.size() != 4:
+	if (
+		_busy
+		or anima_ids.size() < TeamBattleView.MIN_TEAM_SIZE
+		or anima_ids.size() > TeamBattleView.MAX_TEAM_SIZE
+	):
 		return
 	_set_busy(true)
 	if publish:
@@ -3907,7 +3994,24 @@ func _apply_team_battle_reward(reward: Dictionary) -> void:
 	var exp_rows := _variant_array(reward.get("anima_exp"))
 	if int(reward.get("bits", 0)) <= 0 and exp_rows.is_empty():
 		return
+	var session := _team_battle_view.session_data()
+	var level_ups := expedition_level_rewards(
+		reward, _variant_array(session.get("player_snapshot"))
+	)
 	await _refresh_team_battle_authority()
+	for item in level_ups:
+		var anima := _roster_row(str(item.get("anima_id", "")))
+		if anima.is_empty():
+			anima = GameState.as_dict(item.get("anima"))
+		if anima.is_empty():
+			continue
+		_celebrate_level_up(
+			int(item.get("level", 1)),
+			int(item.get("previous_level", 1)),
+			int(item.get("previous_score", -1)),
+			int(item.get("new_score", -1)),
+			anima
+		)
 
 
 func _apply_expedition_reward(reward: Dictionary, encounter: Dictionary) -> void:
@@ -5435,15 +5539,46 @@ func _celebrate_level_up(
 	target_anima: Dictionary = {},
 	modal_context: StringName = &"level_up"
 ) -> void:
+	var anima := target_anima if not target_anima.is_empty() else _current_anima
+	if previous_score < 0 or new_score < 0 or anima.is_empty():
+		return
+	_enqueue_outcome_dialog({
+		"kind": "level_up",
+		"level": level,
+		"previous_level": previous_level,
+		"previous_score": previous_score,
+		"new_score": new_score,
+		"target_anima": target_anima.duplicate(true),
+		"modal_context": modal_context,
+	})
+
+
+func _present_level_up_outcome(dialog: Dictionary) -> void:
+	var target := GameState.as_dict(dialog.get("target_anima"))
+	var anima := target if not target.is_empty() else _current_anima
+	if anima.is_empty():
+		_active_outcome_dialog = {}
+		call_deferred("_present_next_outcome_dialog")
+		return
 	_status_panel.visible = false
 	Sfx.play(Sfx.CUE_LEVEL_UP)
-	if target_anima.is_empty():
+	var anima_id := str(anima.get("id", ""))
+	if target.is_empty():
 		_home_view.pulse_progress()
-	if is_instance_valid(_anima) and _anima.visible:
+	if (
+		anima_id == str(_current_anima.get("id", ""))
+		and is_instance_valid(_anima)
+		and _anima.visible
+	):
 		_anima.celebrate_level_up()
 	Input.vibrate_handheld(70)
 	_show_level_up_stats(
-		level, previous_level, previous_score, new_score, target_anima, modal_context
+		int(dialog.get("level", 1)),
+		int(dialog.get("previous_level", 1)),
+		int(dialog.get("previous_score", -1)),
+		int(dialog.get("new_score", -1)),
+		target,
+		StringName(dialog.get("modal_context", &"level_up"))
 	)
 
 
@@ -5469,12 +5604,7 @@ func _show_level_up_stats(
 	var anima := target_anima if not target_anima.is_empty() else _current_anima
 	if previous_score < 0 or new_score < 0 or anima.is_empty():
 		return
-	# ponytail: hide_overlay fades for 0.18 s, so the dialog the player just
-	# dismissed still reports visible while the Expedition queue advances. Plafon:
-	# only the Level Up chain may reopen over itself; other modals still win.
 	var chained := modal_context == &"expedition_level_up"
-	if not chained and is_instance_valid(_shell_modal) and _shell_modal.visible:
-		return
 	var stats := GameState.as_dict(anima.get("base_stats"))
 	var lines: PackedStringArray = []
 	var form_line := _level_up_form_line(level, previous_level, anima)
@@ -6269,7 +6399,7 @@ func _run_team_battle_demo(boss: bool = false) -> Dictionary:
 	var opponent_snapshots: Array[Dictionary] = []
 	var art: Dictionary = {}
 	var player_heights: Array[int] = [175, 90, 50, 75]
-	var boss_names: Array[String] = ["Fudge Fang", "Syrup Sentry", "Gumdrop Grunt", "Cotton"]
+	var boss_names: Array[String] = ["Fudge Fang", "Syrup Sentry", "Gumdrop Grunt", "Nimbelisk"]
 	var boss_heights: Array[int] = [135, 170, 95, 130]
 	for slot in 4:
 		var player_id := "team-demo-player-%d" % slot
@@ -6357,7 +6487,7 @@ func _run_team_battle_demo(boss: bool = false) -> Dictionary:
 			"portrait_pose": "profile",
 			"dialogue": {
 				"boss_intro": "Show me what belongs in the archive.",
-				"last_anima": "Cotton, preserve what the others could not.",
+				"last_anima": "Nimbelisk, preserve what the others could not.",
 				"victory": "Your improvisation belongs in the record.",
 				"defeat": "The archive stands.",
 			},
@@ -6515,7 +6645,7 @@ func _run_boss_ace_demo() -> void:
 		"type": "ace_passive",
 		"actor": "opponent",
 		"passive_name": "Final Confection",
-		"copy": "Final Confection: Cotton enters with +1 PP.",
+		"copy": "Final Confection: Nimbelisk enters with +1 PP.",
 	}], session, art)
 	await get_tree().process_frame
 

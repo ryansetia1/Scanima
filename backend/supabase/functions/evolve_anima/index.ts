@@ -39,6 +39,23 @@ function configString(value: unknown, fallback: string): string {
   return fallback;
 }
 
+async function failEvolutionSafely(generationId: string, reason: unknown): Promise<void> {
+  if (!generationId) {
+    console.error("fail_evolution dilewati: generation_id kosong", reason);
+    return;
+  }
+  const message = reason instanceof Error ? reason.message : String(reason);
+  try {
+    const { error } = await db.rpc("fail_evolution", {
+      p_gen_id: generationId,
+      p_reason: message.slice(0, 500),
+    });
+    if (error) console.error("fail_evolution gagal mencatat terminal state", error);
+  } catch (loggingError) {
+    console.error("fail_evolution gagal mencatat terminal state", loggingError);
+  }
+}
+
 function suggestedNameOf(plan: unknown): string {
   if (!plan || typeof plan !== "object") return "";
   return normalizeSuggestedName(
@@ -394,10 +411,7 @@ Deno.serve(async (req) => {
       p_gen_id: genId,
     });
     if (errLock) {
-      await db.rpc("fail_evolution", {
-        p_gen_id: genId,
-        p_reason: errLock.message.slice(0, 500),
-      });
+      await failEvolutionSafely(genId, errLock.message);
       return json(500, { error: errLock.message });
     }
     const lockResult = (lockRaw ?? {}) as Record<string, unknown>;
@@ -424,6 +438,10 @@ Deno.serve(async (req) => {
     : versiPrompt;
   const prompts = promptBundle[activePromptVersion];
   if (!prompts?.sprite_sheet_evolve || !prompts.vision_evolve_system || !prompts.vision_evolve_schema) {
+    await failEvolutionSafely(
+      genId,
+      `evolution prompt aktif ${activePromptVersion} tidak lengkap di bundel`,
+    );
     return json(500, { error: `evolution prompt aktif ${activePromptVersion} tidak lengkap di bundel` });
   }
   if (!hasStoredPlan && genRow?.vision_started_at) {
@@ -436,10 +454,7 @@ Deno.serve(async (req) => {
         status: "planning",
       });
     }
-    await db.rpc("fail_evolution", {
-      p_gen_id: genId,
-      p_reason: "EVOLUTION_PLAN_TIMEOUT",
-    });
+    await failEvolutionSafely(genId, "EVOLUTION_PLAN_TIMEOUT");
     return json(409, { error: "EVOLUTION_PLAN_TIMEOUT", generation_id: genId });
   }
 
@@ -482,20 +497,14 @@ Deno.serve(async (req) => {
     && typeof priorPlan.shape_budget_contract === "object"
   ) ? priorPlan.shape_budget_contract : null;
   if (targetStage === 3 && contractVersion >= 23 && priorIdentityInvariants.length < 2) {
-    await db.rpc("fail_evolution", {
-      p_gen_id: genId,
-      p_reason: "EVOLUTION_PRIOR_IDENTITY_MISSING",
-    });
+    await failEvolutionSafely(genId, "EVOLUTION_PRIOR_IDENTITY_MISSING");
     return json(409, {
       error: "EVOLUTION_PRIOR_IDENTITY_MISSING",
       generation_id: genId,
     });
   }
   if (targetStage === 3 && contractVersion >= 25 && !priorShapeBudgetContract) {
-    await db.rpc("fail_evolution", {
-      p_gen_id: genId,
-      p_reason: "EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING",
-    });
+    await failEvolutionSafely(genId, "EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING");
     return json(409, {
       error: "EVOLUTION_PRIOR_SHAPE_BUDGET_MISSING",
       generation_id: genId,
@@ -506,7 +515,7 @@ Deno.serve(async (req) => {
     .from("anima_sheets")
     .createSignedUrl(sheetPath, TTL_SIGNED_URL);
   if (errSigned || !signed?.signedUrl) {
-    await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: "sheet_signed_url_failed" });
+    await failEvolutionSafely(genId, "sheet_signed_url_failed");
     return json(404, { error: "sheet tidak bisa diakses" });
   }
 
@@ -523,7 +532,7 @@ Deno.serve(async (req) => {
     );
   } catch (e) {
     const alasan = e instanceof Error ? e.message : String(e);
-    await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: alasan.slice(0, 500) });
+    await failEvolutionSafely(genId, alasan);
     return json(422, { error: alasan });
   }
 
@@ -534,20 +543,17 @@ Deno.serve(async (req) => {
       upsert: true,
     });
   if (errReferenceUpload) {
-    await db.rpc("fail_evolution", {
-      p_gen_id: genId,
-      p_reason: `EVOLUTION_REFERENCE_UPLOAD: ${errReferenceUpload.message}`.slice(0, 500),
-    });
+    await failEvolutionSafely(
+      genId,
+      `EVOLUTION_REFERENCE_UPLOAD: ${errReferenceUpload.message}`,
+    );
     return json(500, { error: "evolution reference tidak bisa disimpan" });
   }
   const { data: referenceSigned, error: errReferenceSigned } = await db.storage
     .from("anima_sheets")
     .createSignedUrl(referencePath, TTL_SIGNED_URL);
   if (errReferenceSigned || !referenceSigned?.signedUrl) {
-    await db.rpc("fail_evolution", {
-      p_gen_id: genId,
-      p_reason: "EVOLUTION_REFERENCE_SIGN_FAILED",
-    });
+    await failEvolutionSafely(genId, "EVOLUTION_REFERENCE_SIGN_FAILED");
     return json(500, { error: "evolution reference tidak bisa diakses" });
   }
   const referenceUrl = referenceSigned.signedUrl;
@@ -580,10 +586,7 @@ Deno.serve(async (req) => {
       plan = validateEvolutionPlan(storedPlan, planValidationOptions).plan;
     } catch (e) {
       const alasan = e instanceof Error ? e.message : String(e);
-      await db.rpc("fail_evolution", {
-        p_gen_id: genId,
-        p_reason: `EVOLUTION_STORED_PLAN_INVALID: ${alasan}`.slice(0, 500),
-      });
+      await failEvolutionSafely(genId, `EVOLUTION_STORED_PLAN_INVALID: ${alasan}`);
       return json(409, { error: "EVOLUTION_STORED_PLAN_INVALID", generation_id: genId });
     }
   } else {
@@ -597,10 +600,10 @@ Deno.serve(async (req) => {
     });
     if (errPre) {
       if (errPre.message.includes("SPEND_CAP")) {
-        await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: "SPEND_CAP" });
+        await failEvolutionSafely(genId, "SPEND_CAP");
         return json(503, { error: "SPEND_CAP" });
       }
-      await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: errPre.message.slice(0, 500) });
+      await failEvolutionSafely(genId, errPre.message);
       return json(500, { error: errPre.message });
     }
     const pre = (preRaw ?? {}) as Record<string, unknown>;
@@ -700,7 +703,7 @@ Deno.serve(async (req) => {
         });
       } catch (e) {
         const alasan = e instanceof Error ? e.message : String(e);
-        await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: alasan.slice(0, 500) });
+        await failEvolutionSafely(genId, alasan);
         return json(502, { error: alasan });
       }
 
@@ -712,10 +715,10 @@ Deno.serve(async (req) => {
       } catch (e) {
         const alasan = e instanceof Error ? e.message : String(e);
         if (!evolutionPlanResampleAllowed(percobaanPlan, Date.now() - mulaiPlan)) {
-          await db.rpc("fail_evolution", {
-            p_gen_id: genId,
-            p_reason: `${alasan} [${percobaanPlan} percobaan plan]`.slice(0, 500),
-          });
+          await failEvolutionSafely(
+            genId,
+            `${alasan} [${percobaanPlan} percobaan plan]`,
+          );
           return json(502, { error: alasan, percobaan_plan: percobaanPlan });
         }
         const rejectedJson = rejectedPlan && typeof rejectedPlan === "object"
@@ -739,10 +742,10 @@ Deno.serve(async (req) => {
     });
     if (errReserve) {
       if (errReserve.message.includes("SPEND_CAP")) {
-        await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: "SPEND_CAP" });
+        await failEvolutionSafely(genId, "SPEND_CAP");
         return json(503, { error: "SPEND_CAP" });
       }
-      await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: errReserve.message.slice(0, 500) });
+      await failEvolutionSafely(genId, errReserve.message);
       return json(500, { error: errReserve.message });
     }
   }
@@ -832,7 +835,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     const alasan = e instanceof Error ? e.message : String(e);
     if (dispatchBegan && dispatchDefinitelyNotStarted(e)) {
-      await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: alasan.slice(0, 500) });
+      await failEvolutionSafely(genId, alasan);
       return json(502, { error: alasan });
     }
     if (dispatchBegan) {
@@ -843,7 +846,7 @@ Deno.serve(async (req) => {
         status: "dispatching",
       });
     }
-    await db.rpc("fail_evolution", { p_gen_id: genId, p_reason: alasan.slice(0, 500) });
+    await failEvolutionSafely(genId, alasan);
     return json(502, { error: alasan });
   }
 });

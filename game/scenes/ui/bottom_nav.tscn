@@ -113,42 +113,6 @@ theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
 text = "NAV_SCAN"
 horizontal_alignment = 1
 
-[node name="CollectionNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=1442979047]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 100)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"NavTabButton"
-toggle_mode = true
-
-[node name="Content" type="VBoxContainer" parent="Bleed/Padding/Buttons/CollectionNavButton" unique_id=470282964]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 7
-alignment = 1
-
-[node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/CollectionNavButton/Content" unique_id=1969600234]
-modulate = Color(1, 1, 1, 0.55)
-custom_minimum_size = Vector2(44, 44)
-layout_mode = 2
-size_flags_horizontal = 4
-mouse_filter = 2
-texture = ExtResource("4_collection")
-expand_mode = 1
-stretch_mode = 5
-
-[node name="Label" type="Label" parent="Bleed/Padding/Buttons/CollectionNavButton/Content" unique_id=1083093041]
-layout_mode = 2
-theme_type_variation = &"NavTabLabel"
-theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
-text = "NAV_COLLECTION"
-horizontal_alignment = 1
-
 [node name="BattleNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=1567234615]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 100)
@@ -203,6 +167,42 @@ theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 18
 text = "CHAPTER_NEW_BADGE"
 horizontal_alignment = 2
+
+[node name="CollectionNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=1442979047]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"NavTabButton"
+toggle_mode = true
+
+[node name="Content" type="VBoxContainer" parent="Bleed/Padding/Buttons/CollectionNavButton" unique_id=470282964]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 7
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Bleed/Padding/Buttons/CollectionNavButton/Content" unique_id=1969600234]
+modulate = Color(1, 1, 1, 0.55)
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+texture = ExtResource("4_collection")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label" type="Label" parent="Bleed/Padding/Buttons/CollectionNavButton/Content" unique_id=1083093041]
+layout_mode = 2
+theme_type_variation = &"NavTabLabel"
+theme_override_colors/font_color = Color(0.561, 0.612, 0.682, 1)
+text = "NAV_COLLECTION"
+horizontal_alignment = 1
 
 [node name="MenuNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=1806523287]
 unique_name_in_owner = true

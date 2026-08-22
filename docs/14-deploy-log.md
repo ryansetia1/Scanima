@@ -2,6 +2,50 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Team Battle 2–4, outcome global, dan Sugarworks v7
+
+22 Agustus 2026. Team Battle dan Defense sekarang menerima 2–4 Anima, sementara
+Expedition tetap tepat empat. Client selalu membuka builder sebelum Find Rivals;
+roster 1/5 ditolak dan 2/3/4 diterima di pagar UI serta backend. Migration
+`20260822152859_team_battle_variable_roster` sudah tercatat production dan
+`team_battle` version 9 ACTIVE.
+
+Level Up, Synthesis success/failure, dan Evolution success/failure sekarang
+masuk satu FIFO milik shell, jadi outcome menunggu modal aktif dan tetap muncul
+di screen mana pun. Evolution success menawarkan **Summon** atau **Rename**.
+Bottom nav menjadi Home, Scan, Battle, Animas, Menu; static backdrop Duel/Team
+dipan vertikal ke 0,88 tanpa mengubah Expedition.
+
+Kegagalan Duel 500 yang tidak punya mapping 4xx/409 dicatat terstruktur tanpa
+raw body melalui `battle_failures`; RLS-nya default-deny dan hanya service role
+yang punya privilege. Migration `20260822155005_battle_failure_log` sudah
+production. Advisor sesudah deploy menemukan kedua FK belum berindeks; migration
+lanjutan `20260822160718_battle_failure_fk_indexes` menutupnya. Terminal failure
+Evolve/Synthesis sesudah row generation ada memakai helper fail-open, sehingga
+logging yang gagal tidak mengganti response asli. Function production:
+`battle_anima` 27, `evolve_anima` 15, dan `synthesize_anima` 7, semuanya ACTIVE
+dan `verify_jwt=true`. Keempat smoke tanpa JWT menjawab 401; blok
+`quota_rules.sql` production selesai tanpa assertion.
+
+Verifikasi client lulus: 42 skenario `npm run selftest` + 12 signature webhook,
+1.323 check UI, 196 client-state, 4.776 i18n, 590 parity combat, 0 error parser,
+0 issue convention, dan 0 orphan signal. Screenshot portrait memastikan Battle
+berada di tengah nav, outcome Level Up menutupi arena sebagai modal global, dan
+fighter Team berdiri pada lantai arena baru.
+
+APK debug 23:22 WIB berhasil dibangun 54,7 MB. Manifest hanya membawa
+`INTERNET` + `CAMERA`, class `GodotGetImage` ditemukan di dex, signature lolos,
+dan `libgodot_android.so` terkompresi 74.945.024 → 27.030.921 byte. Tidak ada
+device pada `adb devices`, jadi sideload dan uji akun
+`ryansetiawan.works@gmail.com` belum dapat dijalankan; build 19:48 tetap yang
+terakhir terpasang.
+
+Sugarworks v7 (`7dae1c10-ffd7-4a26-b3ff-97000fae8060`, manifest
+`f9effb7967c9cc90605f1be41ef5aa87d2756edea7780903a1cdbcf1759fa7ec`) sudah
+di-stage lalu diaktifkan. V7 hanya membetulkan copy `ace_passive` dan
+`last_anima` dari Cotton ke Nimbelisk; asset binary byte-identik dengan v6 dan
+tidak ada model call.
+
 ## Skala Home dikalibrasi ke roster, bukan ke satu sampel
 
 22 Agustus 2026, client saja. Dua laporan pemain sesudah normalisasi tinggi Home

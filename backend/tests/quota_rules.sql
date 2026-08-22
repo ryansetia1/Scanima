@@ -15,6 +15,7 @@ declare
   u2        uuid := '00000000-0000-4000-8000-000000000002';
   u3        uuid := '00000000-0000-4000-8000-000000000003';
   u4        uuid := '00000000-0000-4000-8000-000000000004';
+  u5        uuid := '00000000-0000-4000-8000-000000000005';
   v_spesies text := 'uji_cache_species';
   v_stats   jsonb := '{"hp":100,"atk":40,"def":30,"spd":50,"special":40}'::jsonb;
   v_care    jsonb := '{"hunger":100,"energy":100,"hygiene":100,"bond":0}'::jsonb;
@@ -84,7 +85,7 @@ declare
   ok        bool;
 begin
   -- Idempoten: sisa run yang gagal di tengah tidak boleh menggagalkan run ini.
-  delete from auth.users where id in (u1, u2, u3, u4);
+  delete from auth.users where id in (u1, u2, u3, u4, u5);
   perform set_config('scanima.deleting_profiles', '', true);
   delete from public.species_library where species_key = v_spesies;
   insert into auth.users (id, is_anonymous)
@@ -1833,6 +1834,59 @@ begin
          ),
          'Delete publication harus membersihkan discovery Duel tanpa menghapus form milik owner';
 
+  ----------------------------------------------------------------------------
+  -- Structured failure log Duel: service-role only, no PII/raw request body
+  ----------------------------------------------------------------------------
+  assert to_regclass('public.battle_failures') is not null
+         and (select relrowsecurity
+                from pg_class
+               where oid = 'public.battle_failures'::regclass),
+         'battle_failures harus ada dengan RLS aktif';
+  assert not exists (
+           select 1
+             from pg_policies
+            where schemaname = 'public' and tablename = 'battle_failures'
+         ),
+         'battle_failures harus default-deny tanpa policy client';
+  assert not has_table_privilege('anon', 'public.battle_failures', 'SELECT')
+         and not has_table_privilege('anon', 'public.battle_failures', 'INSERT')
+         and not has_table_privilege('authenticated', 'public.battle_failures', 'SELECT')
+         and not has_table_privilege('authenticated', 'public.battle_failures', 'INSERT')
+         and has_table_privilege('service_role', 'public.battle_failures', 'SELECT')
+         and has_table_privilege('service_role', 'public.battle_failures', 'INSERT'),
+         'battle_failures hanya boleh diakses service_role';
+
+  insert into public.battle_failures (
+    owner_id, session_id, operation, rules_version, error, context
+  ) values (
+    u1, v_battle_session, 'turn', 3, 'uji failure terstruktur',
+    '{"turn_action":"strike","expected_turn":1,"expected_version":1}'::jsonb
+  ) returning id into v_id;
+  delete from public.battle_sessions where id = v_battle_session;
+  assert (select session_id is null from public.battle_failures where id = v_id),
+         'hapus session harus mempertahankan failure row dengan session_id null';
+  begin
+    insert into public.battle_failures (
+      owner_id, operation, rules_version, error, context
+    ) values (
+      u1, 'turn', 3, 'uji context mentah', '{"raw_body":{"token":"x"}}'::jsonb
+    );
+    ok := false;
+  exception when check_violation then ok := true;
+  end;
+  assert ok, 'context battle failure harus menolak field di luar whitelist';
+  delete from public.battle_failures where id = v_id;
+
+  insert into auth.users (id, is_anonymous) values (u5, true);
+  insert into public.battle_failures (
+    owner_id, operation, rules_version, error
+  ) values (
+    u5, 'start', 3, 'uji cascade owner'
+  ) returning id into v_id;
+  delete from auth.users where id = u5;
+  assert not exists (select 1 from public.battle_failures where id = v_id),
+         'hapus profil harus cascade failure log pemilik';
+
   perform set_config('request.jwt.claims',
     json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);
   perform set_config('role', 'authenticated', true);
@@ -1925,10 +1979,45 @@ begin
       u1, 'team-' || gs.n, 'team_species_' || gs.n, 'blue', 'metal', 1,
       v_stats, v_care, 'ready', u1::text || '/team-' || gs.n || '/sheet.png',
       '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
-      from generate_series(1, 4) as gs(n)
+      from generate_series(1, 5) as gs(n)
     returning id, nickname
   )
   select array_agg(id order by nickname) into v_team_ids from inserted;
+
+  begin
+    perform public.save_anima_team(u1, 'team_battle', v_team_ids[1:1]);
+    ok := false;
+  exception when others then ok := (sqlerrm = 'TEAM_REQUIRES_TWO_TO_FOUR');
+  end;
+  assert ok, 'Team Battle satu anggota harus ditolak';
+  v_j := public.save_anima_team(u1, 'team_battle', v_team_ids[1:2]);
+  assert jsonb_array_length(v_j->'members') = 2,
+         'Team Battle dua anggota harus diterima';
+  v_j := public.save_anima_team(u1, 'team_battle', v_team_ids[1:3]);
+  assert jsonb_array_length(v_j->'members') = 3,
+         'Team Battle tiga anggota harus diterima';
+  v_j := public.save_anima_team(u1, 'team_battle', v_team_ids[1:4]);
+  assert jsonb_array_length(v_j->'members') = 4,
+         'Team Battle empat anggota harus tetap diterima';
+  begin
+    perform public.save_anima_team(u1, 'team_battle', v_team_ids);
+    ok := false;
+  exception when others then ok := (sqlerrm = 'TEAM_REQUIRES_TWO_TO_FOUR');
+  end;
+  assert ok, 'Team Battle lima anggota harus ditolak';
+  begin
+    perform public.save_anima_team(u1, 'expedition', v_team_ids[1:2]);
+    ok := false;
+  exception when others then ok := (sqlerrm = 'TEAM_REQUIRES_FOUR');
+  end;
+  assert ok, 'Expedition dua anggota harus tetap ditolak';
+  begin
+    perform public.save_anima_team(u1, 'expedition', v_team_ids[1:3]);
+    ok := false;
+  exception when others then ok := (sqlerrm = 'TEAM_REQUIRES_FOUR');
+  end;
+  assert ok, 'Expedition tiga anggota harus tetap ditolak';
+  v_team_ids := v_team_ids[1:4];
 
   with inserted as (
     insert into public.animas (
@@ -1946,10 +2035,31 @@ begin
 
   v_j := public.save_anima_team(u1, 'team_battle', v_team_ids);
   v_team_id := (v_j->>'id')::uuid;
+  assert jsonb_array_length(v_j->'members') = 4,
+         'save Team empat anggota harus atomik';
+
+  v_j := public.save_anima_team(u2, 'defense', v_defense_ids[1:2]);
+  select jsonb_agg(jsonb_build_object('anima_id', id) order by ordinality)
+    into v_opponent_snapshot
+    from unnest(v_defense_ids[1:2]) with ordinality roster(id, ordinality);
+  v_j := public.publish_defense_team(u2, v_opponent_snapshot, true);
+  assert (v_j->>'published')::boolean
+         and (select jsonb_array_length(snapshot) from public.anima_teams
+               where owner_id = u2 and kind = 'defense') = 2,
+         'Defense dua anggota harus dapat dipublikasikan';
+  v_j := public.save_anima_team(u2, 'defense', v_defense_ids[1:3]);
+  select jsonb_agg(jsonb_build_object('anima_id', id) order by ordinality)
+    into v_opponent_snapshot
+    from unnest(v_defense_ids[1:3]) with ordinality roster(id, ordinality);
+  v_j := public.publish_defense_team(u2, v_opponent_snapshot, true);
+  assert (v_j->>'published')::boolean
+         and (select jsonb_array_length(snapshot) from public.anima_teams
+               where owner_id = u2 and kind = 'defense') = 3,
+         'Defense tiga anggota harus dapat dipublikasikan';
   v_j := public.save_anima_team(u2, 'defense', v_defense_ids);
   v_defense_team_id := (v_j->>'id')::uuid;
   assert jsonb_array_length(v_j->'members') = 4,
-         'save Team harus atomik berisi tepat empat Anima';
+         'Defense empat anggota harus tetap diterima';
 
   select jsonb_agg(jsonb_build_object(
     'anima_id', a.id,
@@ -4554,7 +4664,7 @@ begin
     null;
   end;
 
-  delete from auth.users where id in (u1, u2, u3, u4);
+  delete from auth.users where id in (u1, u2, u3, u4, u5);
   delete from public.species_library where species_key = v_spesies;
   raise notice 'SEMUA UJI LULUS';
 end $uji$;

@@ -4,9 +4,22 @@ import {
   normalizeElement,
 } from "./battle.mjs";
 
-export function teamSnapshotFromMembers(members, includeName = true) {
-  if (!Array.isArray(members) || members.length !== 4) {
-    throw new Error("TEAM_REQUIRES_FOUR");
+export function teamSnapshotFromMembers(
+  members,
+  includeName = true,
+  minMembers = 4,
+  maxMembers = minMembers,
+) {
+  if (
+    !Array.isArray(members) ||
+    members.length < minMembers ||
+    members.length > maxMembers
+  ) {
+    throw new Error(
+      minMembers === 4 && maxMembers === 4
+        ? "TEAM_REQUIRES_FOUR"
+        : "TEAM_REQUIRES_TWO_TO_FOUR",
+    );
   }
   return [...members]
     .sort((left, right) => Number(left.slot) - Number(right.slot))

@@ -30,6 +30,8 @@ const CAMERA_BACKGROUND_MAX_SCALE := 1.55
 # uses a higher foot line and a gentler background crop.
 const TEAM_GROUND_Y_RATIO := 0.82
 const TEAM_BACKGROUND_MAX_SCALE := 1.18
+const MIN_TEAM_SIZE := 2
+const MAX_TEAM_SIZE := 4
 const CAMERA_REFIT_SEC := 0.32
 const SEEKER_CAMERA_EDGE_PAD_RATIO := 0.025
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
@@ -402,7 +404,10 @@ func set_busy(busy: bool) -> void:
 	if not _busy:
 		_clear_action_commit()
 	_back.disabled = _busy
-	_save_button.disabled = _busy or _selected_roster_ids().size() != 4
+	var selected_count := _selected_roster_ids().size()
+	_save_button.disabled = (
+		_busy or selected_count < MIN_TEAM_SIZE or selected_count > MAX_TEAM_SIZE
+	)
 	_update_lobby_actions()
 	_update_arena_actions()
 	if not _busy and _forced_switch():
@@ -648,9 +653,9 @@ func _update_builder() -> void:
 	var count := _selected_roster_ids().size()
 	_builder_meta.text = tr("TEAM_BUILDER_COUNT") % [
 		LocaleManager.format_integer(count),
-		LocaleManager.format_integer(4),
+		LocaleManager.format_integer(MAX_TEAM_SIZE),
 	]
-	_save_button.disabled = _busy or count != 4
+	_save_button.disabled = _busy or count < MIN_TEAM_SIZE or count > MAX_TEAM_SIZE
 
 
 func _selected_roster_ids() -> Array[String]:
@@ -665,7 +670,7 @@ func _selected_roster_ids() -> Array[String]:
 
 func _save_team() -> void:
 	var ids := _selected_roster_ids()
-	if _busy or ids.size() != 4:
+	if _busy or ids.size() < MIN_TEAM_SIZE or ids.size() > MAX_TEAM_SIZE:
 		return
 	save_team_requested.emit(ids)
 
@@ -1238,7 +1243,7 @@ func _show_result(status: String) -> void:
 	_apply_result_actions()
 
 
-## Rematch butuh empat anggota yang masih bisa bertarung. Kalau tidak, CTA-nya
+## Rematch butuh 2–4 anggota yang masih bisa bertarung. Kalau tidak, CTA-nya
 ## menjadi Edit Team plus alasannya. Expedition keluar lewat Return to Map.
 func _apply_result_actions() -> void:
 	var blocked := "" if _expedition_mode else _team_blocked_key()
@@ -1560,6 +1565,7 @@ func _error_copy(code: String) -> String:
 	var key := str({
 		"FEATURE_DISABLED": "TEAM_COMING_SOON",
 		"TEAM_REQUIRES_FOUR": "TEAM_REQUIRES_FOUR_COPY",
+		"TEAM_REQUIRES_TWO_TO_FOUR": "TEAM_REQUIRES_TWO_TO_FOUR_COPY",
 		"TEAM_MEMBER_NOT_READY": "TEAM_MEMBER_NOT_READY_COPY",
 		"TEAM_MEMBER_UNAVAILABLE": "TEAM_MEMBER_UNAVAILABLE_COPY",
 		"TEAM_MEMBER_SLEEPING": "TEAM_MEMBER_SLEEPING_COPY",
@@ -1900,7 +1906,9 @@ func _layout_arena_background(background_zoom: float) -> void:
 	_arena_background.scale = Vector2.ONE
 	_arena_background.size = draw_size
 	var pan := 0.5 if _uses_static_background else _background_pan
-	var vertical_pan := 1.0 if _uses_static_background else 0.5
+	var vertical_pan := (
+		BattleScale.STATIC_BACKGROUND_VERTICAL_PAN if _uses_static_background else 0.5
+	)
 	_arena_background.position = Vector2(
 		-overflow.x * pan,
 		-overflow.y * vertical_pan

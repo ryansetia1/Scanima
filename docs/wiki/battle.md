@@ -36,8 +36,9 @@ tetap dapat kedaluwarsa.
 
 ## Team Battle
 
-Pilih tepat **4 Anima** untuk melawan tim lain berisi 1–4 Anima. Arena tetap
-menampilkan satu fighter aktif dari setiap tim.
+Team Battle selalu membuka pemilih tim lebih dulu. Pilih dan konfirmasi **2–4
+Anima**, baru lanjut ke **Find Rivals** untuk melawan tim lain berisi 1–4 Anima.
+Arena tetap menampilkan satu fighter aktif dari setiap tim.
 
 - Pemilih tim menampilkan pose kebutuhan Anima saat ini. Teks **Ready**, **Low
   Energy**, **Dormant**, atau **Not ready** tetap terlihat agar kesiapan tidak
@@ -96,15 +97,16 @@ menampilkan satu fighter aktif dari setiap tim.
   dari Duel.
 - Kalah, draw, atau Retreat tidak memberi hadiah.
 
-**Defense Team** bersifat opt-in. Saat diaktifkan, snapshot timmu dapat menjadi
-lawan anonim untuk pemain lain; identitas Seeker dan nickname privat tidak ikut
-ditampilkan.
+**Defense Team** bersifat opt-in dan juga menerima 2–4 Anima. Saat diaktifkan,
+snapshot timmu dapat menjadi lawan anonim untuk pemain lain; identitas Seeker
+dan nickname privat tidak ikut ditampilkan.
 
 ## Expedition
 
-**The Sugarworks** adalah chapter Expedition pertama. Pilih tepat **4 Anima**,
-lalu tempuh tiga zona yang masing-masing berisi empat node pilihan. Jalur dapat
-berisi Battle, Elite, Recovery, Cache, Shop, atau Mystery sebelum melawan Boss
+**The Sugarworks** adalah chapter Expedition pertama. Berbeda dari Team Battle,
+Expedition tetap mewajibkan tepat **4 Anima**, lalu tempuh tiga zona yang
+masing-masing berisi empat node pilihan. Jalur dapat berisi Battle, Elite,
+Recovery, Cache, Shop, atau Mystery sebelum melawan Boss
 Seeker.
 
 - Pemilih tim memakai art dan status kesiapan yang sama dengan Team Battle.

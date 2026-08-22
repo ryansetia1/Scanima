@@ -139,6 +139,7 @@ import {
   teamCombatPower,
   teamRewardPreview,
 } from "../backend/supabase/functions/_shared/team_combat.mjs";
+import { teamSnapshotFromMembers } from "../backend/supabase/functions/_shared/team_snapshot.mjs";
 import {
   applyEncounterBoosts,
   applyNodeOption,
@@ -2299,6 +2300,27 @@ console.log(
     ),
     "utf8",
   );
+  const evolveEdge = await readFile(
+    new URL(
+      "../backend/supabase/functions/evolve_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const synthesisEdge = await readFile(
+    new URL(
+      "../backend/supabase/functions/synthesize_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const battleFailureMigration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260822155005_battle_failure_log.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   const tieredExpMigration = await readFile(
     new URL(
       "../backend/supabase/migrations/20260816200507_tiered_exp_and_battle_rewards.sql",
@@ -2337,6 +2359,87 @@ console.log(
   assert.ok(
     battleEdge.includes('"message" in error'),
     "error RPC PostgREST berbentuk object tetap harus terbaca oleh mapper",
+  );
+  const knownBattleError = battleEdge.indexOf(
+    "if (marker) return json(ERROR_STATUS[marker]",
+  );
+  const unexpectedBattleLog = battleEdge.indexOf(
+    "await recordBattleFailure(ownerId, body, operation, message)",
+  );
+  assert.ok(
+    knownBattleError >= 0 && unexpectedBattleLog > knownBattleError,
+    "Battle hanya boleh mencatat kegagalan setelah expected 4xx/409 dipetakan",
+  );
+  assert.ok(
+    battleEdge.includes("&& ACTIONS.has(body.action)")
+      && battleEdge.includes("context.turn_action = body.action")
+      && battleEdge.includes('["expected_turn", body.expected_turn]')
+      && battleEdge.includes('["expected_version", body.expected_version]')
+      && !battleEdge.includes("context: body")
+      && !battleEdge.includes("JSON.stringify(body)"),
+    "Battle failure log harus memakai context whitelist, bukan raw body",
+  );
+  assert.match(
+    battleEdge,
+    /async function recordBattleFailure[\s\S]*try \{[\s\S]*\.from\("battle_failures"\)\.insert[\s\S]*catch \(loggingError\)/,
+    "insert failure log Battle harus fail-open",
+  );
+  assert.ok(
+    battleFailureMigration.includes(
+      "owner_id uuid not null references public.profiles(id) on delete cascade",
+    )
+      && battleFailureMigration.includes(
+        "session_id uuid references public.battle_sessions(id) on delete set null",
+      )
+      && battleFailureMigration.includes(
+        "context - array['turn_action', 'expected_turn', 'expected_version']",
+      )
+      && battleFailureMigration.includes(
+        "revoke all on public.battle_failures from public, anon, authenticated",
+      )
+      && battleFailureMigration.includes(
+        "grant all on public.battle_failures to service_role",
+      ),
+    "migration failure log harus menjaga lifecycle FK, whitelist, dan default-deny",
+  );
+  assert.equal(
+    [...evolveEdge.matchAll(/db\.rpc\("fail_evolution"/g)].length,
+    1,
+    "semua terminal Evolve harus melewati helper non-throwing",
+  );
+  assert.equal(
+    [...synthesisEdge.matchAll(/db\.rpc\("fail_synthesis"/g)].length,
+    1,
+    "semua terminal Synthesis harus melewati helper non-throwing",
+  );
+  assert.match(
+    evolveEdge,
+    /async function failEvolutionSafely[\s\S]*try \{[\s\S]*db\.rpc\("fail_evolution"[\s\S]*catch \(loggingError\)/,
+    "terminal Evolve harus tetap mengembalikan response asli saat logging gagal",
+  );
+  assert.match(
+    synthesisEdge,
+    /async function failSynthesisSafely[\s\S]*try \{[\s\S]*db\.rpc\("fail_synthesis"[\s\S]*catch \(loggingError\)/,
+    "terminal Synthesis harus tetap mengembalikan response asli saat logging gagal",
+  );
+  const beginEvolutionErrors = evolveEdge.slice(
+    evolveEdge.indexOf("if (errBegin)"),
+    evolveEdge.indexOf("const begin = beginRaw as BeginResult"),
+  );
+  const synthesisErrorMapper = synthesisEdge.slice(
+    synthesisEdge.indexOf("function synthesisError"),
+    synthesisEdge.indexOf("async function signedUrl"),
+  );
+  assert.ok(
+    !beginEvolutionErrors.includes("failEvolutionSafely")
+      && !synthesisErrorMapper.includes("failSynthesisSafely")
+      && synthesisEdge.includes(
+        "if (planningError) return synthesisError(409, planningError.message)",
+      )
+      && synthesisEdge.includes(
+        "if (dispatchError) return synthesisError(409, dispatchError.message)",
+      ),
+    "fail_* terminal tidak boleh dipakai pada validasi awal atau lease retryable",
   );
   assert.match(
     battleEdge,
@@ -2458,6 +2561,39 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
     member("p2"),
     member("p3"),
   ];
+  const storedMembers = player.map((entry, slot) => ({
+    slot,
+    animas: {
+      ...entry,
+      id: entry.anima_id,
+      nickname: entry.name,
+      care_score: 0,
+      care: { hunger: 100, hygiene: 100 },
+      sheet_path: `${entry.anima_id}/sheet.png`,
+      manifest: { poses: { idle: { region: [0, 0, 64, 64] } } },
+    },
+  }));
+  assert.equal(teamSnapshotFromMembers(storedMembers).length, 4);
+  assert.throws(
+    () => teamSnapshotFromMembers(storedMembers.slice(0, 3)),
+    /TEAM_REQUIRES_FOUR/,
+    "helper Expedition harus tetap exact-4 secara default",
+  );
+  for (const size of [2, 3, 4]) {
+    assert.equal(
+      teamSnapshotFromMembers(storedMembers.slice(0, size), true, 2, 4).length,
+      size,
+      `helper Team Battle harus menerima ${size} anggota`,
+    );
+  }
+  assert.throws(
+    () => teamSnapshotFromMembers(storedMembers.slice(0, 1), true, 2, 4),
+    /TEAM_REQUIRES_TWO_TO_FOUR/,
+  );
+  assert.throws(
+    () => teamSnapshotFromMembers([...storedMembers, storedMembers[0]], true, 2, 4),
+    /TEAM_REQUIRES_TWO_TO_FOUR/,
+  );
   const opponent = [
     member("o0", { hp: 10, def: 10, spd: 10 }),
     member("o1", { hp: 10, def: 10, spd: 10 }),
@@ -2590,7 +2726,7 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
       type: "bonus_pp",
       value: 1,
       name: "Final Confection",
-      copy: "Cotton enters with +1 PP.",
+      copy: "Nimbelisk enters with +1 PP.",
     },
   });
   assert.equal(
@@ -2705,6 +2841,13 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
   assert.ok(
     teamEdge.includes('"replace_team_battle_candidates"'),
     "refresh rival harus replace atomik lewat RPC",
+  );
+  assert.ok(
+    teamEdge.includes("MIN_TEAM_SIZE = 2") &&
+      teamEdge.includes("MAX_TEAM_SIZE = 4") &&
+      teamEdge.includes("MIN_TEAM_SIZE,") &&
+      teamEdge.includes("MAX_TEAM_SIZE,"),
+    "Edge Team Battle harus menjaga kontrak roster 2-4",
   );
   const signedRoster = await readFile(
     new URL(

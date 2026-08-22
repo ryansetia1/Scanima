@@ -72,6 +72,23 @@ function configString(value: unknown, fallback: string): string {
   return fallback;
 }
 
+async function failSynthesisSafely(generationId: string, reason: unknown): Promise<void> {
+  if (!generationId) {
+    console.error("fail_synthesis dilewati: generation_id kosong", reason);
+    return;
+  }
+  const message = reason instanceof Error ? reason.message : String(reason);
+  try {
+    const { error } = await db.rpc("fail_synthesis", {
+      p_gen_id: generationId,
+      p_reason: message.slice(0, 500),
+    });
+    if (error) console.error("fail_synthesis gagal mencatat terminal state", error);
+  } catch (loggingError) {
+    console.error("fail_synthesis gagal mencatat terminal state", loggingError);
+  }
+}
+
 function synthesisError(status: number, error: unknown): Response {
   const message = error instanceof Error ? error.message : String(error);
   const known = [
@@ -458,10 +475,7 @@ Deno.serve(async (req) => {
   const generationId = String(attempt.generation_id ?? "");
   const resultAnimaId = String(attempt.result_anima_id ?? "");
   if (!generationId || !resultAnimaId) {
-    await db.rpc("fail_synthesis", {
-      p_gen_id: generationId,
-      p_reason: "SYNTHESIS_RESULT_MISSING",
-    });
+    await failSynthesisSafely(generationId, "SYNTHESIS_RESULT_MISSING");
     return json(500, { error: "SYNTHESIS_RESULT_MISSING" });
   }
   if (attempt.generation_status === "succeeded") {
@@ -485,10 +499,7 @@ Deno.serve(async (req) => {
     references = await ensureReferences(uid, generationId, resultAnimaId, slot);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    await db.rpc("fail_synthesis", {
-      p_gen_id: generationId,
-      p_reason: reason.slice(0, 500),
-    });
+    await failSynthesisSafely(generationId, reason);
     return json(502, { error: reason, generation_id: generationId });
   }
 
@@ -536,10 +547,7 @@ Deno.serve(async (req) => {
       const reason = `SYNTHESIS_STORED_PLAN_INVALID: ${
         error instanceof Error ? error.message : String(error)
       }`;
-      await db.rpc("fail_synthesis", {
-        p_gen_id: generationId,
-        p_reason: reason.slice(0, 500),
-      });
+      await failSynthesisSafely(generationId, reason);
       return json(409, { error: "SYNTHESIS_STORED_PLAN_INVALID" });
     }
   } else {
@@ -599,10 +607,7 @@ Deno.serve(async (req) => {
       plan = validateSynthesisPlan(extractJson(raw), validationOptions).plan;
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      await db.rpc("fail_synthesis", {
-        p_gen_id: generationId,
-        p_reason: reason.slice(0, 500),
-      });
+      await failSynthesisSafely(generationId, reason);
       return json(502, { error: reason, generation_id: generationId });
     }
 
@@ -613,10 +618,7 @@ Deno.serve(async (req) => {
       p_reference_paths: references.paths,
     });
     if (reserveError) {
-      await db.rpc("fail_synthesis", {
-        p_gen_id: generationId,
-        p_reason: reserveError.message.slice(0, 500),
-      });
+      await failSynthesisSafely(generationId, reserveError.message);
       return json(500, { error: reserveError.message });
     }
   }
@@ -706,10 +708,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     if (dispatchDefinitelyNotStarted(error)) {
-      await db.rpc("fail_synthesis", {
-        p_gen_id: generationId,
-        p_reason: reason.slice(0, 500),
-      });
+      await failSynthesisSafely(generationId, reason);
       return json(502, { error: reason });
     }
     return json(202, {
