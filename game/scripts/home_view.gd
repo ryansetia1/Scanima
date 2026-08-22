@@ -16,6 +16,8 @@ const VALUE_STAGGER := 0.06
 ## The hold runs from the tap, so the 0,5 s reveal is part of it and the numbers
 ## sit fully lit for about three seconds before letting themselves out.
 const VALUE_HOLD := 3.5
+const CONTROLS_MAX_HEIGHT_RATIO := 0.44
+const CONTROLS_MIN_HEIGHT_PX := 180.0
 
 @onready var _identity_row: HBoxContainer = %IdentityRow
 @onready var _identity: VBoxContainer = %Identity
@@ -24,6 +26,8 @@ const VALUE_HOLD := 3.5
 @onready var _anima_meta: Label = %AnimaMeta
 @onready var _stage_space: Control = %StageSpace
 @onready var _stage_footer_space: Control = %StageFooterSpace
+@onready var _controls_scroll: ScrollContainer = %HomeControlsScroll
+@onready var _controls_content: VBoxContainer = %HomeControlsContent
 @onready var _care_dock: PanelContainer = %CareDock
 @onready var _primary_action: Button = %HomePrimaryAction
 @onready var _care_summary: Label = %CareSummary
@@ -51,6 +55,7 @@ var _values_token := 0
 
 
 func _ready() -> void:
+	resized.connect(_fit_controls_scroll)
 	_feed_button.pressed.connect(_request_feed)
 	_clean_button.pressed.connect(_request_clean)
 	_sleep_button.pressed.connect(_request_sleep_toggle)
@@ -68,6 +73,14 @@ func _ready() -> void:
 	for label in _value_labels():
 		label.modulate.a = 0.0
 	_set_loading_layout(true)
+	_fit_controls_scroll.call_deferred()
+
+
+func _fit_controls_scroll() -> void:
+	var natural_height := _controls_content.get_combined_minimum_size().y
+	var max_height := maxf(CONTROLS_MIN_HEIGHT_PX, size.y * CONTROLS_MAX_HEIGHT_RATIO)
+	_controls_scroll.custom_minimum_size.y = minf(natural_height, max_height)
+	_controls_scroll.visible = natural_height > 0.0
 
 
 func set_anima(row: Dictionary, busy: bool) -> void:
@@ -88,6 +101,7 @@ func set_anima(row: Dictionary, busy: bool) -> void:
 	_identity.visible = true
 	_primary_action.visible = false
 	update_care(_row, busy)
+	_fit_controls_scroll.call_deferred()
 
 
 func set_shell_state(state: StringName) -> void:
@@ -111,6 +125,7 @@ func set_shell_state(state: StringName) -> void:
 		_:
 			_anima_name.text = tr("HOME_LOADING_NAME")
 			_anima_meta.text = tr("HOME_LOADING_META")
+	_fit_controls_scroll.call_deferred()
 
 
 func shell_state() -> StringName:
@@ -194,6 +209,7 @@ func update_care(row: Dictionary, busy: bool) -> void:
 	_play_button.text = tr("CARE_PLAY")
 	_update_action_state(busy)
 	_restart_value_hold()
+	_fit_controls_scroll.call_deferred()
 
 
 func set_busy(busy: bool) -> void:

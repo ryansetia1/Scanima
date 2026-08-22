@@ -12,9 +12,9 @@ const CAMERA_OPTICAL_OFFSET := Vector2(8.0, 24.0)
 
 @onready var _preview_panel: PanelContainer = %PreviewPanel
 @onready var _preview: TextureRect = %PhotoPreview
-@onready var _subtitle: Label = $Column/Subtitle
-@onready var _discovery_space: Control = $Column/DiscoverySpace
-@onready var _idle_graphic: TextureRect = $Column/DiscoverySpace/IdleGraphic
+@onready var _subtitle: Label = %Subtitle
+@onready var _discovery_space: Control = %DiscoverySpace
+@onready var _idle_graphic: TextureRect = %IdleGraphic
 @onready var _scan_overlay: Control = %ScanOverlay
 @onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _phase_badge: Label = %ScanPhase

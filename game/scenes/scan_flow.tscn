@@ -6,7 +6,7 @@
 [ext_resource type="Script" uid="uid://brrftjl02bq63" path="res://scripts/incubator_effect.gd" id="4_incubator"]
 [ext_resource type="Script" uid="uid://dptota5pyehri" path="res://scripts/scanima_background.gd" id="5_background"]
 [ext_resource type="PackedScene" uid="uid://c10np8eypr1bw" path="res://scenes/ui/home_view.tscn" id="6_home"]
-[ext_resource type="PackedScene" path="res://scenes/ui/scan_view.tscn" id="7_scan"]
+[ext_resource type="PackedScene" uid="uid://d0ruwd0fvc0uw" path="res://scenes/ui/scan_view.tscn" id="7_scan"]
 [ext_resource type="PackedScene" uid="uid://c5s7hfsvqq6d5" path="res://scenes/ui/collection_view.tscn" id="8_collection"]
 [ext_resource type="PackedScene" uid="uid://cev7y1wc0rsbu" path="res://scenes/ui/anima_details_view.tscn" id="9_details"]
 [ext_resource type="PackedScene" uid="uid://10b1ay38emxd" path="res://scenes/ui/bottom_nav.tscn" id="10_nav"]
@@ -18,7 +18,7 @@
 [ext_resource type="Texture2D" uid="uid://venrejy6qbty" path="res://assets/icons/chevron-left.svg" id="16_n853h"]
 [ext_resource type="PackedScene" path="res://scenes/ui/shop_sheet.tscn" id="16_shop"]
 [ext_resource type="Script" uid="uid://bhmlhavc7bm1x" path="res://scripts/synthesis_incubator_visual.gd" id="17_8lbk1"]
-[ext_resource type="PackedScene" path="res://scenes/ui/battle_pick_sheet.tscn" id="17_pick"]
+[ext_resource type="PackedScene" uid="uid://bm3iocuxfb50r" path="res://scenes/ui/battle_pick_sheet.tscn" id="17_pick"]
 [ext_resource type="Texture2D" uid="uid://ctdm6hl3fjru4" path="res://assets/icons/sparkles.svg" id="18_mnsj4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/seeker_onboarding_sheet.tscn" id="18_onboarding"]
 [ext_resource type="PackedScene" uid="uid://depjh8tobfvcs" path="res://scenes/ui/seeker_menu_sheet.tscn" id="19_seeker_menu"]
@@ -722,7 +722,15 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 16
 
-[node name="IncubatingColumn" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView" unique_id=572806015]
+[node name="SynthesisIncubatingScroll" type="ScrollContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView" unique_id=1613779701]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="IncubatingColumn" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll" unique_id=572806015]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -730,7 +738,7 @@ mouse_filter = 2
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="SynthesisIncubatingTitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn" unique_id=712320005]
+[node name="SynthesisIncubatingTitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn" unique_id=712320005]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 64)
 layout_mode = 2
@@ -740,7 +748,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="SynthesisIncubatorVisual" type="Control" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn" unique_id=555602585]
+[node name="SynthesisIncubatorVisual" type="Control" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn" unique_id=555602585]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
@@ -748,7 +756,7 @@ size_flags_horizontal = 3
 mouse_filter = 2
 script = ExtResource("17_8lbk1")
 
-[node name="SynthesisCapsuleIcon" type="TextureRect" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatorVisual" unique_id=957805408]
+[node name="SynthesisCapsuleIcon" type="TextureRect" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatorVisual" unique_id=957805408]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 8
@@ -767,7 +775,7 @@ texture = ExtResource("18_mnsj4")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="SynthesisIncubatingSources" type="HBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn" unique_id=2050292386]
+[node name="SynthesisIncubatingSources" type="HBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn" unique_id=2050292386]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
@@ -776,27 +784,27 @@ mouse_filter = 2
 theme_override_constants/separation = 12
 alignment = 1
 
-[node name="SynthesisIncubatingSourceACard" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources" unique_id=1983696410]
+[node name="SynthesisIncubatingSourceACard" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources" unique_id=1983696410]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_type_variation = &"LabPanel"
 
-[node name="Box" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceACard" unique_id=110357548]
+[node name="Box" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceACard" unique_id=110357548]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 5
 alignment = 1
 
-[node name="SynthesisIncubatingSourceATitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceACard/Box" unique_id=271814413]
+[node name="SynthesisIncubatingSourceATitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceACard/Box" unique_id=271814413]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 text = "SYNTHESIS_SOURCE_A"
 horizontal_alignment = 1
 
-[node name="SynthesisIncubatingSourceAPortrait" type="TextureRect" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceACard/Box" unique_id=1738066419]
+[node name="SynthesisIncubatingSourceAPortrait" type="TextureRect" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceACard/Box" unique_id=1738066419]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(92, 92)
 layout_mode = 2
@@ -805,7 +813,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="SynthesisIncubatingSourceAName" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceACard/Box" unique_id=3394899]
+[node name="SynthesisIncubatingSourceAName" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceACard/Box" unique_id=3394899]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"SectionLabel"
@@ -813,34 +821,34 @@ text = "SYNTHESIS_SOURCE_NONE"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="SynthesisIncubatingSourceAMeta" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceACard/Box" unique_id=1414367021]
+[node name="SynthesisIncubatingSourceAMeta" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceACard/Box" unique_id=1414367021]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="SynthesisIncubatingSourceBCard" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources" unique_id=2089171737]
+[node name="SynthesisIncubatingSourceBCard" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources" unique_id=2089171737]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_type_variation = &"LabPanel"
 
-[node name="Box" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceBCard" unique_id=1356447709]
+[node name="Box" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceBCard" unique_id=1356447709]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 5
 alignment = 1
 
-[node name="SynthesisIncubatingSourceBTitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceBCard/Box" unique_id=928882204]
+[node name="SynthesisIncubatingSourceBTitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceBCard/Box" unique_id=928882204]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 text = "SYNTHESIS_SOURCE_B"
 horizontal_alignment = 1
 
-[node name="SynthesisIncubatingSourceBPortrait" type="TextureRect" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceBCard/Box" unique_id=1995606221]
+[node name="SynthesisIncubatingSourceBPortrait" type="TextureRect" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceBCard/Box" unique_id=1995606221]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(92, 92)
 layout_mode = 2
@@ -849,7 +857,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="SynthesisIncubatingSourceBName" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceBCard/Box" unique_id=1920576182]
+[node name="SynthesisIncubatingSourceBName" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceBCard/Box" unique_id=1920576182]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"SectionLabel"
@@ -857,14 +865,14 @@ text = "SYNTHESIS_SOURCE_NONE"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="SynthesisIncubatingSourceBMeta" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceBCard/Box" unique_id=187476288]
+[node name="SynthesisIncubatingSourceBMeta" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn/SynthesisIncubatingSources/SynthesisIncubatingSourceBCard/Box" unique_id=187476288]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="SynthesisIncubatingBody" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/IncubatingColumn" unique_id=1287611804]
+[node name="SynthesisIncubatingBody" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll/IncubatingColumn" unique_id=1287611804]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 104)
 layout_mode = 2
@@ -988,7 +996,6 @@ layout_mode = 3
 
 [node name="BattlePickSheet" parent="UI" unique_id=736464555 instance=ExtResource("17_pick")]
 unique_name_in_owner = true
-layout_mode = 3
 
 [node name="PhotoSourceSheet" parent="UI" unique_id=745998118 instance=ExtResource("22_photo")]
 unique_name_in_owner = true

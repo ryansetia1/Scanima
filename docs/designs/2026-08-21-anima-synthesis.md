@@ -114,8 +114,8 @@ bounded visual property.
 
 ## Player flow
 
-Synthesis Lab is opened from the Collection header or from an Anima Profile
-shortcut that preselects Source A:
+Synthesis Lab is opened from the Collection header or from the **Synthesize**
+action on an Anima Profile, which preselects Source A:
 
 1. Tap the Source A visual card and choose from a Collection-style art list that
    shows art, Level, and elements.
@@ -132,7 +132,9 @@ shortcut that preselects Source A:
    Back/cancel input; only their explicit acknowledgement button closes them.
 7. On success, replace the editor with a dedicated Incubator Capsule state.
    The unknown private Result forms in the capsule while two compact Source
-   cards preserve each Source's art, name, Level, and elements.
+   cards preserve each Source's art, name, Level, and elements. The incubating
+   content has its own vertical scroll fallback on short viewports; the
+   existing editor scroll remains unchanged.
 8. When art is ready, open a success dialog and animate the Result portrait into
    view. **View Result** opens its profile and then offers Rename.
 
@@ -159,8 +161,11 @@ successful Results are repaired lazily on the first History request. Profile
 reserves two fixed-size art slots until those transparent PNGs arrive, but each
 loading pulse is a compact centered squircle rather than a full-width slab. The
 client never reconstructs alpha from green pixels. Profile actions sit directly
-below identity; History and stat cards do not need to be traversed before Use in
-Synthesis, Publish, or Delete.
+below identity: Evolve keeps its own row, **Synthesize** and **Publish to
+Atlas** share one equal-width row, and a 96px kebab opens an anchored
+**Rename** / **Delete** menu outside the Profile scroll. The menu clamps to the
+safe viewport, dismisses on outside tap or Back, and restores focus to its
+trigger. History and stat cards do not need to be traversed before any action.
 
 Publishing a Result to Atlas also publishes the two names, current-form
 thumbnails, and mode as a snapshot attached to that Result. The Publish

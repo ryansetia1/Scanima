@@ -14,6 +14,9 @@ signal help_requested(title: String, body: String)
 const NAME_PATTERN := "^[A-Za-z0-9][A-Za-z0-9 '-]{0,31}$"
 const NAME_MAX_LENGTH := 32
 const HISTORY_SKELETON_ART_PX := 112.0
+const PROFILE_MENU_MARGIN := 16.0
+const PROFILE_MENU_GAP := 8.0
+const PROFILE_MENU_ICON: Texture2D = preload("res://assets/icons/more-vertical.svg")
 
 @onready var _empty_state: Label = %DetailsEmpty
 @onready var _content: Control = %DetailsContent
@@ -33,7 +36,13 @@ const HISTORY_SKELETON_ART_PX := 112.0
 @onready var _stat_special: Label = %StatSpecial
 @onready var _about_help: Button = %AboutHelp
 @onready var _combat_help: Button = %CombatHelp
-@onready var _rename_button: Button = %EditAnimaNameButton
+@onready var _menu_button: Button = %ProfileMenuButton
+@onready var _action_popover: Control = %ProfileActionPopover
+@onready var _action_backdrop: Button = %ProfileActionBackdrop
+@onready var _action_panel: PanelContainer = %ProfileActionPanel
+@onready var _action_rename: Button = %ProfileActionRename
+@onready var _action_delete: Button = %ProfileActionDelete
+@onready var _primary_actions: HBoxContainer = %PrimaryActions
 @onready var _gallery_button: Button = %GalleryPublishButton
 @onready var _evolve_button: Button = %EvolveAnimaButton
 @onready var _evolution_status: Label = %EvolutionStatusLabel
@@ -47,7 +56,6 @@ const HISTORY_SKELETON_ART_PX := 112.0
 @onready var _history_mode: Label = %SynthesisHistoryMode
 @onready var _history_help: Button = %SynthesisHistoryHelp
 @onready var _history_summary: Label = %SynthesisHistorySummary
-@onready var _delete_button: Button = %DeleteAnimaButton
 
 var _anima_id := ""
 var _element_code := ""
@@ -64,15 +72,25 @@ var _history_source_b_skeleton: UiSkeleton
 
 
 func _ready() -> void:
-	_rename_button.pressed.connect(_request_rename)
+	_menu_button.icon = PROFILE_MENU_ICON
+	_menu_button.pressed.connect(_toggle_action_menu)
+	_action_backdrop.pressed.connect(close_action_menu)
+	_action_rename.pressed.connect(_request_rename)
+	_action_delete.pressed.connect(_request_delete)
+	_action_popover.resized.connect(_position_action_menu)
 	_gallery_button.pressed.connect(_request_gallery_toggle)
 	_evolve_button.pressed.connect(_request_evolve)
 	_synthesis_button.pressed.connect(_request_synthesis)
-	_delete_button.pressed.connect(_request_delete)
 	_about_help.pressed.connect(_show_about_help)
 	_combat_help.pressed.connect(_show_combat_help)
 	_history_help.pressed.connect(_show_history_help)
 	UiJuice.install_button(_history_help)
+	UiJuice.install_button(_menu_button)
+	UiJuice.install_button(_action_rename)
+	UiJuice.install_button(_action_delete)
+	_action_delete.add_theme_color_override("font_color", Color("ff667d"))
+	_action_delete.add_theme_color_override("font_hover_color", Color("ff8fa0"))
+	_action_delete.add_theme_color_override("font_pressed_color", Color("ff8fa0"))
 	_history_source_a_skeleton = _build_history_art_skeleton(
 		_history_source_a, "SynthesisHistorySourceASkeleton"
 	)
@@ -86,20 +104,22 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 	var next_id := str(row.get("id", ""))
 	if next_id != _anima_id:
 		_synthesis_history_textures.clear()
+		close_action_menu(false)
 	_row = row.duplicate(true) if not row.is_empty() else {}
 	if row.is_empty():
 		_anima_id = ""
 		_element_code = ""
 		_empty_state.visible = true
 		_content.visible = false
-		_rename_button.disabled = true
+		_menu_button.disabled = true
+		_action_rename.disabled = true
+		_action_delete.disabled = true
 		_gallery_button.disabled = true
 		_evolve_button.visible = false
 		_evolution_status.visible = false
 		_synthesis_button.visible = false
 		_synthesis_history.visible = false
 		set_synthesis_history_loading(false)
-		_delete_button.disabled = true
 		return
 
 	_anima_id = str(row.get("id", ""))
@@ -107,9 +127,13 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 	_empty_state.visible = false
 	_content.visible = true
 	var evolving := CareRules.is_evolving(row)
-	_rename_button.disabled = _busy or _anima_id.is_empty() or evolving
-	_gallery_button.disabled = _busy or _anima_id.is_empty() or not _gallery_available or evolving
-	_delete_button.disabled = _busy or _anima_id.is_empty() or evolving
+	var actions_disabled := _busy or _anima_id.is_empty() or evolving
+	_menu_button.disabled = actions_disabled
+	_action_rename.disabled = actions_disabled
+	_action_delete.disabled = actions_disabled
+	_gallery_button.disabled = actions_disabled or not _gallery_available
+	if actions_disabled:
+		close_action_menu(false)
 	_portrait.texture = portrait
 	_name.text = LocaleManager.display_name(row)
 	var level := CareRules.level_from_exp(int(row.get("care_score", 0)))
@@ -144,9 +168,13 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 func set_busy(busy: bool) -> void:
 	_busy = busy
 	var evolving := CareRules.is_evolving(_row)
-	_rename_button.disabled = _busy or _anima_id.is_empty() or evolving
-	_gallery_button.disabled = _busy or _anima_id.is_empty() or not _gallery_available or evolving
-	_delete_button.disabled = _busy or _anima_id.is_empty() or evolving
+	var actions_disabled := _busy or _anima_id.is_empty() or evolving
+	_menu_button.disabled = actions_disabled
+	_action_rename.disabled = actions_disabled
+	_action_delete.disabled = actions_disabled
+	_gallery_button.disabled = actions_disabled or not _gallery_available
+	if actions_disabled:
+		close_action_menu(false)
 	if not _row.is_empty():
 		_apply_evolution_ui(_row)
 		_apply_synthesis_ui(_row)
@@ -184,14 +212,15 @@ func set_synthesis_history_loading(loading: bool) -> void:
 func set_gallery_status(status: Dictionary) -> void:
 	_gallery_available = bool(status.get("available", false))
 	_gallery_published = bool(status.get("published", false))
-	if not _gallery_available:
-		_gallery_button.visible = false
-		return
-	_gallery_button.visible = true
-	_gallery_button.text = tr("GALLERY_UNPUBLISH") if _gallery_published else tr("GALLERY_PUBLISH")
-	_gallery_button.disabled = (
-		_busy or _anima_id.is_empty() or CareRules.is_evolving(_row)
-	)
+	_gallery_button.visible = _gallery_available
+	if _gallery_available:
+		_gallery_button.text = (
+			tr("GALLERY_UNPUBLISH") if _gallery_published else tr("GALLERY_PUBLISH")
+		)
+		_gallery_button.disabled = (
+			_busy or _anima_id.is_empty() or CareRules.is_evolving(_row)
+		)
+	_update_primary_actions_visibility()
 
 
 func _apply_synthesis_ui(row: Dictionary) -> void:
@@ -203,6 +232,11 @@ func _apply_synthesis_ui(row: Dictionary) -> void:
 	_synthesis_button.tooltip_text = (
 		tr("SYNTHESIS_USE_SOURCE_ACTION") if eligible else tr("SYNTHESIS_SOURCE_INELIGIBLE")
 	)
+	_update_primary_actions_visibility()
+
+
+func _update_primary_actions_visibility() -> void:
+	_primary_actions.visible = _synthesis_button.visible or _gallery_button.visible
 
 
 func _apply_synthesis_history(history: Dictionary, textures: Dictionary) -> void:
@@ -320,7 +354,59 @@ static func is_valid_anima_name(value: String) -> bool:
 	)
 
 
+func is_action_menu_open() -> bool:
+	return _action_popover.visible
+
+
+func close_action_menu(restore_focus: bool = true) -> void:
+	if not _action_popover.visible:
+		return
+	_action_popover.visible = false
+	if restore_focus and _menu_button.is_visible_in_tree() and not _menu_button.disabled:
+		_menu_button.grab_focus()
+
+
+func _toggle_action_menu() -> void:
+	if _menu_button.disabled:
+		return
+	if _action_popover.visible:
+		close_action_menu()
+		return
+	_action_popover.visible = true
+	_position_action_menu()
+	_focus_action_menu.call_deferred()
+
+
+func _position_action_menu() -> void:
+	if not _action_popover.visible:
+		return
+	var anchor_rect := _menu_button.get_global_rect()
+	var to_local := _action_popover.get_global_transform_with_canvas().affine_inverse()
+	var anchor_position := to_local * anchor_rect.position
+	var anchor_end := to_local * anchor_rect.end
+	var anchor_size := anchor_end - anchor_position
+	var panel_size := _action_panel.get_combined_minimum_size()
+	var below_y := anchor_position.y + anchor_size.y + PROFILE_MENU_GAP
+	var above_y := anchor_position.y - panel_size.y - PROFILE_MENU_GAP
+	var max_x := maxf(PROFILE_MENU_MARGIN, _action_popover.size.x - panel_size.x - PROFILE_MENU_MARGIN)
+	var max_y := maxf(PROFILE_MENU_MARGIN, _action_popover.size.y - panel_size.y - PROFILE_MENU_MARGIN)
+	var panel_x := clampf(
+		anchor_position.x + anchor_size.x - panel_size.x,
+		PROFILE_MENU_MARGIN,
+		max_x
+	)
+	var panel_y := below_y if below_y <= max_y else maxf(PROFILE_MENU_MARGIN, above_y)
+	_action_panel.position = Vector2(panel_x, panel_y)
+	_action_panel.size = panel_size
+
+
+func _focus_action_menu() -> void:
+	if _action_popover.visible and not _action_rename.disabled:
+		_action_rename.grab_focus()
+
+
 func _request_rename() -> void:
+	close_action_menu(false)
 	if not _anima_id.is_empty():
 		rename_requested.emit(_anima_id)
 
@@ -332,6 +418,7 @@ func _request_gallery_toggle() -> void:
 
 
 func _request_delete() -> void:
+	close_action_menu(false)
 	if not _anima_id.is_empty():
 		delete_requested.emit(_anima_id)
 
@@ -339,6 +426,9 @@ func _request_delete() -> void:
 func refresh_localized_ui() -> void:
 	_about_help.tooltip_text = tr("DETAILS_TRAITS")
 	_combat_help.tooltip_text = tr("DETAILS_ATTRIBUTES")
+	_menu_button.tooltip_text = tr("ANIMA_PROFILE_MENU")
+	_action_rename.text = tr("ANIMA_RENAME_ACTION")
+	_action_delete.text = tr("ANIMA_DELETE_ACTION")
 	_evolve_button.text = tr("EVOLVE_ACTION")
 	_synthesis_button.text = tr("SYNTHESIS_USE_SOURCE_ACTION")
 	_history_title.text = tr("SYNTHESIS_HISTORY_TITLE")

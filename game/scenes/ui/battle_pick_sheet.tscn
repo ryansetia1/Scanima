@@ -1,22 +1,23 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://bm3iocuxfb50r"]
 
-[ext_resource type="Script" path="res://scripts/battle_pick_sheet.gd" id="1_pick"]
-[ext_resource type="Theme" path="res://themes/mobile_theme.tres" id="2_theme"]
-[ext_resource type="Texture2D" path="res://assets/icons/paw-print.svg" id="3_profile"]
-[ext_resource type="Texture2D" path="res://assets/icons/swords.svg" id="4_battle"]
+[ext_resource type="Script" uid="uid://2gd6sfgv7v4e" path="res://scripts/battle_pick_sheet.gd" id="1_pick"]
+[ext_resource type="Theme" uid="uid://cbi43xka3xsp5" path="res://themes/mobile_theme.tres" id="2_theme"]
+[ext_resource type="Texture2D" uid="uid://cfkja88cd1bcn" path="res://assets/icons/paw-print.svg" id="3_profile"]
+[ext_resource type="Texture2D" uid="uid://b320vpdvsp2s1" path="res://assets/icons/swords.svg" id="4_battle"]
 
-[node name="BattlePickSheet" type="Control"]
+[node name="BattlePickSheet" type="Control" unique_id=364429784]
 visible = false
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 theme = ExtResource("2_theme")
 script = ExtResource("1_pick")
+scroll_content = true
 
-[node name="Backdrop" type="ColorRect" parent="."]
+[node name="Backdrop" type="ColorRect" parent="." unique_id=20009339]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -26,7 +27,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.004, 0.008, 0.025, 0.68)
 
-[node name="DismissButton" type="Button" parent="."]
+[node name="DismissButton" type="Button" parent="." unique_id=1392313045]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -35,7 +36,7 @@ grow_horizontal = 2
 grow_vertical = 2
 flat = true
 
-[node name="Bottom" type="Control" parent="."]
+[node name="Bottom" type="Control" parent="." unique_id=634055524]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -44,45 +45,44 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Panel" type="PanelContainer" parent="Bottom"]
+[node name="Panel" type="PanelContainer" parent="Bottom" unique_id=1466413353]
 layout_mode = 1
 anchors_preset = 12
-anchor_right = 1.0
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = -760.0
 grow_horizontal = 2
 grow_vertical = 0
-mouse_filter = 0
 theme_type_variation = &"BottomSheetPanel"
 
-[node name="Column" type="VBoxContainer" parent="Bottom/Panel"]
+[node name="Column" type="VBoxContainer" parent="Bottom/Panel" unique_id=854057276]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="HandleCenter" type="CenterContainer" parent="Bottom/Panel/Column"]
+[node name="HandleCenter" type="CenterContainer" parent="Bottom/Panel/Column" unique_id=1717108624]
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 mouse_filter = 0
 
-[node name="Handle" type="ColorRect" parent="Bottom/Panel/Column/HandleCenter"]
+[node name="Handle" type="ColorRect" parent="Bottom/Panel/Column/HandleCenter" unique_id=846600877]
 custom_minimum_size = Vector2(84, 7)
 layout_mode = 2
 mouse_filter = 2
 color = Color(0.4, 0.5, 0.68, 0.72)
 
-[node name="ContentSlot" type="VBoxContainer" parent="Bottom/Panel/Column"]
+[node name="ContentSlot" type="VBoxContainer" parent="Bottom/Panel/Column" unique_id=1316488919]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 16
 
-[node name="BattlePickTitle" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="BattlePickTitle" type="Label" parent="Bottom/Panel/Column/ContentSlot" unique_id=1755370705]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PageTitleLabel"
 text = "BATTLE_CHOOSE_ANIMA"
 
-[node name="BattlePickEmpty" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="BattlePickEmpty" type="Label" parent="Bottom/Panel/Column/ContentSlot" unique_id=800553776]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -90,44 +90,44 @@ theme_type_variation = &"BodyLabel"
 text = "BATTLE_NO_ANIMA"
 autowrap_mode = 2
 
-[node name="BattlePickList" type="ItemList" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="BattlePickList" type="ItemList" parent="Bottom/Panel/Column/ContentSlot" unique_id=911124477]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 360)
 layout_mode = 2
 size_flags_vertical = 3
-fixed_icon_size = Vector2i(128, 128)
-fixed_column_width = 290
-icon_mode = 0
-max_columns = 2
-same_column_width = true
-allow_reselect = true
 theme_override_constants/h_separation = 16
 theme_override_constants/v_separation = 16
 theme_override_font_sizes/font_size = 25
+allow_reselect = true
+max_columns = 2
+same_column_width = true
+fixed_column_width = 290
+icon_mode = 0
+fixed_icon_size = Vector2i(128, 128)
 
-[node name="BattlePickDetail" type="VBoxContainer" parent="Bottom/Panel/Column/ContentSlot"]
+[node name="BattlePickDetail" type="VBoxContainer" parent="Bottom/Panel/Column/ContentSlot" unique_id=1624826151]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Header" type="HBoxContainer" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail"]
+[node name="Header" type="HBoxContainer" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail" unique_id=113533053]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="BattlePickPortrait" type="TextureRect" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header"]
+[node name="BattlePickPortrait" type="TextureRect" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header" unique_id=1156169860]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(132, 132)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Identity" type="VBoxContainer" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header"]
+[node name="Identity" type="VBoxContainer" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header" unique_id=751782532]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
-[node name="BattlePickName" type="Label" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header/Identity"]
+[node name="BattlePickName" type="Label" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header/Identity" unique_id=777107142]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"AnimaNameLabel"
@@ -135,7 +135,7 @@ theme_override_font_sizes/font_size = 38
 text = "ANIMA_FALLBACK_NAME"
 text_overrun_behavior = 3
 
-[node name="BattlePickMeta" type="Label" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header/Identity"]
+[node name="BattlePickMeta" type="Label" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header/Identity" unique_id=597403497]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
@@ -143,14 +143,14 @@ theme_override_font_sizes/font_size = 23
 text = "COLLECTION_SHEET_META"
 autowrap_mode = 2
 
-[node name="BattlePickActive" type="Label" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header/Identity"]
+[node name="BattlePickActive" type="Label" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Header/Identity" unique_id=1884498279]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_type_variation = &"EyebrowLabel"
 text = "COLLECTION_ACTIVE"
 
-[node name="BattlePickReason" type="Label" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail"]
+[node name="BattlePickReason" type="Label" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail" unique_id=1679662486]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -158,23 +158,23 @@ theme_type_variation = &"BodyLabel"
 text = "BATTLE_PICK_HUNGRY"
 autowrap_mode = 2
 
-[node name="Actions" type="HBoxContainer" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail"]
+[node name="Actions" type="HBoxContainer" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail" unique_id=1278670164]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="BattlePickProfileButton" type="Button" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Actions"]
+[node name="BattlePickProfileButton" type="Button" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Actions" unique_id=1481321418]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
-icon = ExtResource("3_profile")
 text = "COLLECTION_VIEW_PROFILE"
+icon = ExtResource("3_profile")
 
-[node name="BattlePickBattleButton" type="Button" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Actions"]
+[node name="BattlePickBattleButton" type="Button" parent="Bottom/Panel/Column/ContentSlot/BattlePickDetail/Actions" unique_id=1490606412]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PrimaryButton"
-icon = ExtResource("4_battle")
 text = "BATTLE_START"
+icon = ExtResource("4_battle")

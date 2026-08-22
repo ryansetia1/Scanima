@@ -140,127 +140,6 @@ text = "TEAM_LOADING"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="TeamBuilder" type="VBoxContainer" parent="Column" unique_id=83532293]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 12
-
-[node name="BuilderTitle" type="Label" parent="Column/TeamBuilder" unique_id=1896980644]
-layout_mode = 2
-theme_type_variation = &"SectionLabel"
-text = "TEAM_BUILDER_TITLE"
-
-[node name="TeamBuilderMeta" type="Label" parent="Column/TeamBuilder" unique_id=730897422]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"BodyLabel"
-text = "TEAM_BUILDER_COUNT"
-
-[node name="TeamRosterList" type="ItemList" parent="Column/TeamBuilder" unique_id=916581055]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 480)
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 12
-theme_override_font_sizes/font_size = 25
-select_mode = 1
-allow_reselect = true
-allow_rmb_select = true
-max_columns = 2
-same_column_width = true
-fixed_column_width = 300
-script = ExtResource("5_roster")
-
-[node name="TeamSaveButton" type="Button" parent="Column/TeamBuilder" unique_id=1543317786]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-theme_type_variation = &"PrimaryButton"
-text = "TEAM_SAVE"
-
-[node name="TeamLobby" type="VBoxContainer" parent="Column" unique_id=1119857940]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 12
-
-[node name="TeamCard" type="PanelContainer" parent="Column/TeamLobby" unique_id=498223321]
-layout_mode = 2
-theme_type_variation = &"HudSurface"
-
-[node name="TeamCardColumn" type="VBoxContainer" parent="Column/TeamLobby/TeamCard" unique_id=1159451378]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="TeamLineup" type="Label" parent="Column/TeamLobby/TeamCard/TeamCardColumn" unique_id=1682933578]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"SectionLabel"
-text = "TEAM_LINEUP"
-autowrap_mode = 2
-
-[node name="TeamRewardStatus" type="Label" parent="Column/TeamLobby/TeamCard/TeamCardColumn" unique_id=1108955084]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-text = "BATTLE_DAILY_PROGRESS"
-autowrap_mode = 2
-
-[node name="TeamManagement" type="HBoxContainer" parent="Column/TeamLobby" unique_id=916942965]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="TeamEditButton" type="Button" parent="Column/TeamLobby/TeamManagement" unique_id=2067916347]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "TEAM_EDIT"
-
-[node name="TeamDefenseButton" type="Button" parent="Column/TeamLobby/TeamManagement" unique_id=1879422850]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "TEAM_DEFENSE_PUBLISH"
-
-[node name="RivalTitle" type="Label" parent="Column/TeamLobby" unique_id=2118916722]
-layout_mode = 2
-theme_type_variation = &"SectionLabel"
-text = "TEAM_CHOOSE_RIVAL"
-
-[node name="TeamRivalList" type="ItemList" parent="Column/TeamLobby" unique_id=1136053809]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 330)
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/v_separation = 10
-theme_override_font_sizes/font_size = 26
-allow_reselect = true
-
-[node name="RivalActions" type="HBoxContainer" parent="Column/TeamLobby" unique_id=196407034]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="TeamRefreshButton" type="Button" parent="Column/TeamLobby/RivalActions" unique_id=1313216570]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 2
-text = "TEAM_REFRESH_RIVALS"
-
-[node name="TeamStartButton" type="Button" parent="Column/TeamLobby/RivalActions" unique_id=981749549]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"PrimaryButton"
-text = "TEAM_START"
-
 [node name="TeamArena" type="VBoxContainer" parent="Column" unique_id=1134020524]
 unique_name_in_owner = true
 visible = false
@@ -555,7 +434,6 @@ offset_right = 100.0
 offset_bottom = 40.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
 theme_type_variation = &"AnimaNameLabel"
 theme_override_colors/font_color = Color(1, 0.35, 0.48, 1)
 text = "BATTLE_DAMAGE"
@@ -768,3 +646,144 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PrimaryButton"
 text = "TEAM_FIND_RIVALS"
+
+[node name="TeamBuilderScroll" type="ScrollContainer" parent="Column" unique_id=230808260]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="TeamBuilder" type="VBoxContainer" parent="Column/TeamBuilderScroll" unique_id=83532293]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="BuilderTitle" type="Label" parent="Column/TeamBuilderScroll/TeamBuilder" unique_id=1896980644]
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "TEAM_BUILDER_TITLE"
+
+[node name="TeamBuilderMeta" type="Label" parent="Column/TeamBuilderScroll/TeamBuilder" unique_id=730897422]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "TEAM_BUILDER_COUNT"
+
+[node name="TeamRosterList" type="ItemList" parent="Column/TeamBuilderScroll/TeamBuilder" unique_id=916581055]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 480)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+theme_override_font_sizes/font_size = 25
+select_mode = 1
+allow_reselect = true
+allow_rmb_select = true
+max_columns = 2
+same_column_width = true
+fixed_column_width = 300
+script = ExtResource("5_roster")
+
+[node name="TeamSaveButton" type="Button" parent="Column/TeamBuilderScroll/TeamBuilder" unique_id=1543317786]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "TEAM_SAVE"
+
+[node name="TeamLobbyScroll" type="ScrollContainer" parent="Column" unique_id=128254280]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="TeamLobby" type="VBoxContainer" parent="Column/TeamLobbyScroll" unique_id=1119857940]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="TeamCard" type="PanelContainer" parent="Column/TeamLobbyScroll/TeamLobby" unique_id=498223321]
+layout_mode = 2
+theme_type_variation = &"HudSurface"
+
+[node name="TeamCardColumn" type="VBoxContainer" parent="Column/TeamLobbyScroll/TeamLobby/TeamCard" unique_id=1159451378]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TeamLineup" type="Label" parent="Column/TeamLobbyScroll/TeamLobby/TeamCard/TeamCardColumn" unique_id=1682933578]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "TEAM_LINEUP"
+autowrap_mode = 2
+
+[node name="TeamRewardStatus" type="Label" parent="Column/TeamLobbyScroll/TeamLobby/TeamCard/TeamCardColumn" unique_id=1108955084]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "BATTLE_DAILY_PROGRESS"
+autowrap_mode = 2
+
+[node name="TeamManagement" type="HBoxContainer" parent="Column/TeamLobbyScroll/TeamLobby" unique_id=916942965]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TeamEditButton" type="Button" parent="Column/TeamLobbyScroll/TeamLobby/TeamManagement" unique_id=2067916347]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "TEAM_EDIT"
+
+[node name="TeamDefenseButton" type="Button" parent="Column/TeamLobbyScroll/TeamLobby/TeamManagement" unique_id=1879422850]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "TEAM_DEFENSE_PUBLISH"
+
+[node name="RivalTitle" type="Label" parent="Column/TeamLobbyScroll/TeamLobby" unique_id=2118916722]
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "TEAM_CHOOSE_RIVAL"
+
+[node name="TeamRivalList" type="ItemList" parent="Column/TeamLobbyScroll/TeamLobby" unique_id=1136053809]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 330)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/v_separation = 10
+theme_override_font_sizes/font_size = 26
+allow_reselect = true
+
+[node name="RivalActions" type="HBoxContainer" parent="Column/TeamLobbyScroll/TeamLobby" unique_id=196407034]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TeamRefreshButton" type="Button" parent="Column/TeamLobbyScroll/TeamLobby/RivalActions" unique_id=1313216570]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 2
+text = "TEAM_REFRESH_RIVALS"
+
+[node name="TeamStartButton" type="Button" parent="Column/TeamLobbyScroll/TeamLobby/RivalActions" unique_id=981749549]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "TEAM_START"

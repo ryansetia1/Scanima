@@ -57,6 +57,7 @@ autowrap_mode = 2
 [node name="DetailsScroll" type="ScrollContainer" parent="Column" unique_id=73891605]
 layout_mode = 2
 size_flags_vertical = 3
+follow_focus = true
 horizontal_scroll_mode = 0
 
 [node name="DetailsContent" type="VBoxContainer" parent="Column/DetailsScroll" unique_id=450264152]
@@ -99,7 +100,7 @@ theme_type_variation = &"AnimaNameLabel"
 text = "ANIMA_FALLBACK_NAME"
 autowrap_mode = 2
 
-[node name="EditAnimaNameButton" type="Button" parent="Column/DetailsScroll/DetailsContent/Hero/HeroRow/Identity/NameRow" unique_id=1548698400]
+[node name="ProfileMenuButton" type="Button" parent="Column/DetailsScroll/DetailsContent/Hero/HeroRow/Identity/NameRow" unique_id=1548698400]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
@@ -134,36 +135,25 @@ text = "EVOLUTION_CHAMBER_STATUS"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="SynthesisAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent/ProfileActions" unique_id=1775424145]
+[node name="PrimaryActions" type="HBoxContainer" parent="Column/DetailsScroll/DetailsContent/ProfileActions" unique_id=1166149435]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="SynthesisAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent/ProfileActions/PrimaryActions" unique_id=1775424145]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
+size_flags_horizontal = 3
 text = "SYNTHESIS_USE_SOURCE_ACTION"
 
-[node name="UtilityActions" type="HBoxContainer" parent="Column/DetailsScroll/DetailsContent/ProfileActions" unique_id=270497081]
-layout_mode = 2
-alignment = 1
-
-[node name="GalleryPublishButton" type="Button" parent="Column/DetailsScroll/DetailsContent/ProfileActions/UtilityActions" unique_id=580010579]
+[node name="GalleryPublishButton" type="Button" parent="Column/DetailsScroll/DetailsContent/ProfileActions/PrimaryActions" unique_id=434838186]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"SecondaryButton"
 text = "GALLERY_PUBLISH"
-
-[node name="DeleteAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent/ProfileActions/UtilityActions" unique_id=1216193750]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(176, 96)
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.42, 0.52, 0.88)
-theme_override_colors/font_focus_color = Color(1, 0.72, 0.78, 1)
-theme_override_colors/font_pressed_color = Color(1, 0.82, 0.4, 1)
-theme_override_colors/font_hover_color = Color(1, 0.72, 0.78, 1)
-theme_override_colors/font_disabled_color = Color(0.55, 0.6, 0.72, 0.58)
-theme_override_font_sizes/font_size = 24
-text = "ANIMA_DELETE_ACTION"
-flat = true
 
 [node name="AboutPanel" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent" unique_id=1909310139]
 layout_mode = 2
@@ -565,3 +555,52 @@ layout_mode = 2
 theme_type_variation = &"MutedLabel"
 text = "SYNTHESIS_HISTORY_SUMMARY"
 autowrap_mode = 2
+
+[node name="ProfileActionPopover" type="Control" parent="." unique_id=1700739708]
+unique_name_in_owner = true
+visible = false
+z_index = 20
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="ProfileActionDim" type="ColorRect" parent="ProfileActionPopover" unique_id=82821242]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.36)
+
+[node name="ProfileActionBackdrop" type="Button" parent="ProfileActionPopover" unique_id=2098633147]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+focus_mode = 0
+flat = true
+
+[node name="ProfileActionPanel" type="PanelContainer" parent="ProfileActionPopover" unique_id=991554562]
+unique_name_in_owner = true
+z_index = 1
+custom_minimum_size = Vector2(320, 208)
+layout_mode = 0
+theme_type_variation = &"MenuPopoverPanel"
+
+[node name="ProfileActionColumn" type="VBoxContainer" parent="ProfileActionPopover/ProfileActionPanel" unique_id=1447686043]
+layout_mode = 2
+
+[node name="ProfileActionRename" type="Button" parent="ProfileActionPopover/ProfileActionPanel/ProfileActionColumn" unique_id=1142649233]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MenuRowButton"
+text = "ANIMA_RENAME_ACTION"
+
+[node name="ProfileActionDelete" type="Button" parent="ProfileActionPopover/ProfileActionPanel/ProfileActionColumn" unique_id=888169550]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MenuRowButton"
+text = "ANIMA_DELETE_ACTION"

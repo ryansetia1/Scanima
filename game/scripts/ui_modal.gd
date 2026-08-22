@@ -12,6 +12,9 @@ enum Mode {
 	CHOICE,
 }
 
+const BODY_SCROLL_MAX_RATIO := 0.42
+const BODY_SCROLL_MIN_PX := 96.0
+
 @onready var _panel: PanelContainer = %ModalPanel
 @onready var _title: Label = %ModalTitle
 @onready var _portrait: TextureRect = %ModalPortrait
@@ -27,10 +30,13 @@ var _mode := Mode.INFO
 var _busy := false
 var _dismissible := true
 var _portrait_tween: Tween
+var _body_scroll: ScrollContainer
 
 
 func _ready() -> void:
 	z_index = 20
+	_install_body_scroll()
+	get_viewport().size_changed.connect(_fit_body_scroll)
 	_dismiss_button.pressed.connect(_cancel)
 	_cancel_button.pressed.connect(_on_cancel_button_pressed)
 	_primary_button.pressed.connect(_submit)
@@ -165,6 +171,8 @@ func _configure(
 	_hero.visible = not hero_text.is_empty()
 	_body.text = body_text
 	_body.visible = not body_text.is_empty()
+	_body_scroll.visible = _body.visible
+	_fit_body_scroll.call_deferred()
 	_input.visible = mode == Mode.INPUT
 	_cancel_button.visible = mode != Mode.INFO
 	_choice_cancel_button.visible = mode == Mode.CHOICE
@@ -175,7 +183,34 @@ func _configure(
 
 func _show_modal(focus_target: Control) -> void:
 	UiJuice.show_overlay(self, _panel)
+	_fit_body_scroll.call_deferred()
 	_focus_after_layout(focus_target)
+
+
+func _install_body_scroll() -> void:
+	var column := _body.get_parent()
+	var body_index := _body.get_index()
+	column.remove_child(_body)
+	_body_scroll = ScrollContainer.new()
+	_body_scroll.name = "ModalBodyScroll"
+	_body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_body_scroll.follow_focus = true
+	_body_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(_body_scroll)
+	column.move_child(_body_scroll, body_index)
+	_body_scroll.add_child(_body)
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+func _fit_body_scroll() -> void:
+	if not is_instance_valid(_body_scroll):
+		return
+	if not _body.visible:
+		_body_scroll.custom_minimum_size.y = 0.0
+		return
+	var max_height := maxf(BODY_SCROLL_MIN_PX, get_viewport_rect().size.y * BODY_SCROLL_MAX_RATIO)
+	var natural_height := _body.get_combined_minimum_size().y
+	_body_scroll.custom_minimum_size.y = minf(natural_height, max_height)
 
 
 func _animate_result_portrait() -> void:

@@ -2,7 +2,7 @@
 
 Setiap Anima lahir dari foto satu benda atau hewan non-manusia. Bentuk, jurus,
 dan stats-nya mengikuti subjek itu, lalu tumbuh pelan lewat Level. Art setiap
-Anima unik dan privat kecuali kamu memilih **Publish Lineage to Atlas**.
+Anima unik dan privat kecuali kamu memilih **Publish to Atlas**.
 
 Setiap Anima juga lahir dengan ukuran tubuh khas. Ukurannya berangkat dari
 subjek asli. Benda genggam kecil (konsol, remote, mainan) menjadi Anima
@@ -98,7 +98,7 @@ Setiap form yang selesai menjadi entry terpisah di [Anima Atlas](atlas.md).
 Kedua Source tetap ada dan tetap bisa dimainkan; Synthesis bukan breeding dan
 tidak memakai istilah keluarga.
 
-- Buka **Synthesis Lab** dari Collection, atau **Use in Synthesis** dari Profile
+- Buka **Synthesis Lab** dari Collection, atau **Synthesize** dari Profile
   untuk langsung memilih Source A.
 - Tap kartu Source untuk membuka daftar visual seperti Collection. Art, Level,
   dan elemen setiap Anima terlihat sebelum dipilih; art pilihanmu tetap tampil
@@ -151,16 +151,18 @@ Dormant **tidak** menghapus EXP.
 
 Tap kartu membuka sheet, bukan langsung pindah companion.
 
-- **View Profile** — lihat traits dan attributes, ganti nama, Evolve, buka
-  Synthesis, atur publikasi lineage, atau Delete.
+- **View Profile** — lihat traits dan attributes. **Synthesize** dan **Publish
+  to Atlas** ada langsung di bawah nama; tap menu **⋮** untuk **Rename** atau
+  **Delete**.
 - **Summon** — Anima ini pindah ke Home. Yang tadi di Home tidur. Portalnya mulai
   begitu kamu menekan, bukan sesudah menunggu; kalau pergantiannya gagal, portal
   menutup dan companion lamamu kembali.
 
 Hanya satu companion aktif. Anima di bangku tidur supaya Energy pulih (penuh ~3 jam) dan tidak capek sendiri. Hunger dan Hygiene di Collection turun pelan dan berhenti sebelum lapar atau kotor, jadi merawat tim tidak berarti memberi makan semua orang setiap hari. Yang sudah lapar, kotor, atau Dormant sebelum istirahat tetap begitu sampai di-Summon lalu diurus di Home. Kartu Collection memakai pose-nya: Sleep selama Energy pulih, Idle kalau siap, Damaged kalau Dormant, dan **Ready to Evolve** kalau Level sudah cukup untuk Adult atau Evolved. Setiap kartu juga menandai Level-nya (**Lv. 12**) di pojok kiri atas. Tidak perlu tap dulu supaya kelihatan.
 
-**Delete** ada di profil sebagai teks kecil, bukan tombol besar. Menghapus itu
-permanen: tidak ada refund Core atau Bits. Ini hanya menghapus satu Anima.
+**Delete** ada di menu **⋮** pada profil supaya tidak mudah tertekan tanpa
+sengaja. Menghapus itu permanen: tidak ada refund Core atau Bits. Ini hanya
+menghapus satu Anima.
 **Delete Account** di menu [Seeker](seeker.md) menghapus seluruh akun.
 
 Profil Anima tidak lagi menjadi tab bottom navigation. Buka dari Collection atau

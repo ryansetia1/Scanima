@@ -74,12 +74,48 @@ func _initialize() -> void:
 	_check(details != null and not details.visible, "Details starts hidden")
 	_check(seeker_profile != null and not seeker_profile.visible, "Seeker profile starts hidden")
 	_check(atlas != null and not atlas.visible, "Atlas starts hidden")
+	for scroll_name in [
+		"ScanScroll", "HomeControlsScroll", "DetailsScroll", "SynthesisIncubatingScroll",
+		"BattleLobbyScroll", "TeamBuilderScroll", "TeamLobbyScroll", "ExpeditionMenuScroll",
+	]:
+		_check(
+			scene.find_child(scroll_name, true, false) is ScrollContainer,
+			"%s protects short mobile viewports" % scroll_name
+		)
+	for content_name in [
+		"HomeControlsContent", "LobbyColumn", "TeamBuilder", "TeamLobby",
+		"ExpeditionMenuContent", "IncubatingColumn",
+	]:
+		var scroll_content := scene.find_child(content_name, true, false) as Control
+		_check(
+			scroll_content != null and scroll_content.size_flags_horizontal == Control.SIZE_EXPAND_FILL,
+			"%s fills its vertical scroll viewport" % content_name
+		)
+	var scan_scroll := scene.find_child("ScanScroll", true, false) as ScrollContainer
+	var profile_popover := scene.find_child("ProfileActionPopover", true, false) as Control
+	_check(
+		scan_scroll != null and scan_scroll.anchor_right == 1.0 and scan_scroll.anchor_bottom == 1.0
+		and scan_scroll.offset_right == 0.0 and scan_scroll.offset_bottom == 0.0,
+		"Scan scroll fills the destination instead of collapsing to zero height"
+	)
+	_check(
+		profile_popover != null and profile_popover.anchor_right == 1.0
+		and profile_popover.anchor_bottom == 1.0 and profile_popover.offset_right == 0.0
+		and profile_popover.offset_bottom == 0.0,
+		"Profile popover clamps against the whole safe viewport"
+	)
+	_check(
+		not (scene.find_child("BattleContent", true, false).get_parent() is ScrollContainer)
+		and not (scene.find_child("TeamArena", true, false).get_parent() is ScrollContainer),
+		"active combat arenas stay fixed while menu states scroll"
+	)
 
 	for name in [
 		"ScanButton", "HomeNavButton", "ScanNavButton", "BattleNavButton",
 		"CollectionNavButton", "MenuNavButton",
-		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "EditAnimaNameButton",
-		"DeleteAnimaButton", "GalleryPublishButton", "EvolveAnimaButton", "SynthesisAnimaButton",
+		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "ProfileMenuButton",
+		"ProfileActionRename", "ProfileActionDelete", "GalleryPublishButton",
+		"EvolveAnimaButton", "SynthesisAnimaButton",
 		"CollectionSynthesisButton", "SynthesisBackButton", "SynthesisSourceACard",
 		"SynthesisSourceBCard", "SynthesisPickerBack", "SynthesisDominantA", "SynthesisBalanced",
 		"SynthesisDominantB", "SynthesisReviewButton", "SynthesisConfirmButton", "SynthesisResultButton",
@@ -915,6 +951,16 @@ func _test_shared_components() -> void:
 		modal_input.visible and modal_input.text == "Velumi" and modal_cancel.visible,
 		"UiModal input mode exposes the current value and Cancel"
 	)
+	var modal_body_scroll := modal.find_child("ModalBodyScroll", true, false) as ScrollContainer
+	modal.open_info("Long", "Readable detail\n".repeat(30), "Close")
+	await process_frame
+	await process_frame
+	_check(
+		modal_body_scroll != null
+		and modal_body_scroll.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED
+		and modal_body_scroll.custom_minimum_size.y <= modal.get_viewport_rect().size.y * 0.42 + 1.0,
+		"long modal copy scrolls inside a viewport-capped body while actions stay fixed"
+	)
 	modal.close()
 	await create_timer(0.25).timeout
 	_check(not modal.visible, "UiModal closes after its dismiss animation")
@@ -1404,9 +1450,7 @@ func _test_home_tap_interaction(scene: Node) -> void:
 			control != null and control.mouse_filter == Control.MOUSE_FILTER_IGNORE,
 			"%s stays click-through so stage taps reach the Anima" % String(path).get_file()
 		)
-	var care_dock := scene.get_node_or_null(
-		"UI/SafeMargin/Shell/ViewStack/HomeView/Column/CareDock"
-	) as Control
+	var care_dock := scene.find_child("CareDock", true, false) as Control
 	_check(
 		care_dock != null and care_dock.mouse_filter != Control.MOUSE_FILTER_IGNORE,
 		"care controls still capture their own taps"
@@ -3948,7 +3992,12 @@ func _test_battle_pick_sheet() -> void:
 	var profile_btn := sheet.find_child("BattlePickProfileButton", true, false) as Button
 	var reason := sheet.find_child("BattlePickReason", true, false) as Label
 	var panel := sheet.panel() as Control
+	var content_scroll := sheet.find_child("ContentScroll", true, false) as ScrollContainer
 	_check(sheet.visible and list != null and list.item_count == 2, "picker lists the roster")
+	_check(
+		sheet.scroll_content and content_scroll != null and content_scroll.follow_focus,
+		"Battle picker caps tall rosters in the shared mobile scroll viewport"
+	)
 	_check(
 		panel.theme_type_variation == &"BottomSheetPanel"
 		and list.get_theme_constant("h_separation") == 16
@@ -4189,8 +4238,9 @@ func _test_atlas_view() -> void:
 	_check(
 		sheet != null
 		and is_equal_approx(sheet.anchor_right, 1.0)
-		and is_equal_approx(sheet.anchor_bottom, 1.0),
-		"Atlas detail sheet is a full-rect child of AtlasView"
+		and is_equal_approx(sheet.anchor_bottom, 1.0)
+		and sheet.scroll_content,
+		"Atlas detail sheet is full-rect and scrolls tall mobile profiles"
 	)
 	var atlas_back := view.find_child("AtlasBack", true, false) as Button
 	var atlas_back_icon := view.find_child("AtlasBackIcon", true, false) as TextureRect
@@ -4844,9 +4894,13 @@ func _test_anima_delete_action() -> void:
 	var packed := load("res://scenes/ui/anima_details_view.tscn") as PackedScene
 	var details := packed.instantiate()
 	root.add_child(details)
+	details.visible = true
 	await process_frame
-	var rename := details.find_child("EditAnimaNameButton", true, false) as Button
-	var button := details.find_child("DeleteAnimaButton", true, false) as Button
+	var menu := details.find_child("ProfileMenuButton", true, false) as Button
+	var popover := details.find_child("ProfileActionPopover", true, false) as Control
+	var backdrop := details.find_child("ProfileActionBackdrop", true, false) as Button
+	var rename := details.find_child("ProfileActionRename", true, false) as Button
+	var button := details.find_child("ProfileActionDelete", true, false) as Button
 	_requested_delete_id = ""
 	_requested_rename_id = ""
 	details.rename_requested.connect(_capture_rename_request)
@@ -4863,24 +4917,81 @@ func _test_anima_delete_action() -> void:
 		},
 		null
 	)
-	_check(rename != null and not rename.disabled, "loaded profile enables rename")
-	if rename != null:
-		rename.pressed.emit()
-	_check_eq(_requested_rename_id, "anima-delete-test", "Edit name emits the shown Anima id")
-	_check(button != null and not button.disabled, "loaded profile enables Delete")
+	_check(menu != null and not menu.disabled and not popover.visible, "loaded profile enables a closed action menu")
+	menu.pressed.emit()
+	await process_frame
+	_check(popover.visible and rename.has_focus(), "kebab opens an anchored action menu and focuses Rename")
+	rename.pressed.emit()
+	_check_eq(_requested_rename_id, "anima-delete-test", "Rename emits the shown Anima id")
+	_check(not popover.visible, "choosing Rename closes the profile action menu")
+	menu.pressed.emit()
+	_check(button != null and not button.disabled, "profile action menu enables Delete")
 	_check(
-		button != null
-		and button.flat
-		and button.theme_type_variation != &"DangerButton",
-		"profile Delete is a quiet text action like Forfeit"
+		button != null and button.theme_type_variation != &"DangerButton"
+		and button.get_theme_color("font_color").r > button.get_theme_color("font_color").g,
+		"profile Delete stays a quiet red menu row"
 	)
-	if button != null:
-		button.pressed.emit()
+	button.pressed.emit()
 	_check_eq(_requested_delete_id, "anima-delete-test", "Delete emits only the active Anima id")
+	menu.pressed.emit()
+	backdrop.pressed.emit()
+	_check(not popover.visible, "tapping outside dismisses the profile action menu")
 	details.set_busy(true)
-	_check(rename != null and rename.disabled, "network work disables rename")
-	_check(button != null and button.disabled, "network work disables destructive action")
+	_check(menu.disabled and rename.disabled, "network work disables rename")
+	_check(button.disabled and not popover.visible, "network work disables and closes destructive actions")
 	details.queue_free()
+	await process_frame
+	for viewport_size in [Vector2i(720, 900), Vector2i(900, 480)]:
+		await _test_profile_actions_at_size(packed, viewport_size)
+
+
+func _test_profile_actions_at_size(packed: PackedScene, viewport_size: Vector2i) -> void:
+	var short_viewport := SubViewport.new()
+	short_viewport.size = viewport_size
+	root.add_child(short_viewport)
+	var details := packed.instantiate()
+	short_viewport.add_child(details)
+	details.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	details.set_anima(
+		{
+			"id": "short-profile-test",
+			"nickname": "Velumi",
+			"element": "flow",
+			"rarity": 1,
+			"stage": 1,
+			"care_score": 0,
+			"base_stats": {"hp": 1, "atk": 1, "def": 1, "spd": 1, "special": 1},
+		},
+		null
+	)
+	details.set_synthesis_enabled(true)
+	details.set_gallery_status({"available": true, "published": false})
+	await process_frame
+	await process_frame
+	var menu := details.find_child("ProfileMenuButton", true, false) as Button
+	var popover := details.find_child("ProfileActionPopover", true, false) as Control
+	var panel := details.find_child("ProfileActionPanel", true, false) as Control
+	var rename := details.find_child("ProfileActionRename", true, false) as Button
+	var delete_button := details.find_child("ProfileActionDelete", true, false) as Button
+	var synthesis := details.find_child("SynthesisAnimaButton", true, false) as Button
+	var gallery := details.find_child("GalleryPublishButton", true, false) as Button
+	menu.pressed.emit()
+	await process_frame
+	var panel_rect := Rect2(panel.position, panel.size)
+	_check(
+		popover.visible
+		and Rect2(Vector2.ZERO, details.size).encloses(panel_rect)
+		and rename.has_focus(),
+		"Profile menu stays reachable at %s" % viewport_size
+	)
+	delete_button.grab_focus()
+	_check(delete_button.has_focus(), "Profile Delete is focus-reachable at %s" % viewport_size)
+	details.close_action_menu()
+	synthesis.grab_focus()
+	_check(synthesis.has_focus(), "Synthesize is focus-reachable at %s" % viewport_size)
+	gallery.grab_focus()
+	_check(gallery.has_focus(), "Publish to Atlas is focus-reachable at %s" % viewport_size)
+	short_viewport.queue_free()
 	await process_frame
 
 
@@ -5304,10 +5415,10 @@ func _test_synthesis_profile_ui() -> void:
 	var history_help := details.find_child("SynthesisHistoryHelp", true, false) as Button
 	var history_summary := details.find_child("SynthesisHistorySummary", true, false) as Label
 	var profile_actions := details.find_child("ProfileActions", true, false) as VBoxContainer
-	var utility_actions := details.find_child("UtilityActions", true, false) as HBoxContainer
+	var primary_actions := details.find_child("PrimaryActions", true, false) as HBoxContainer
 	var about_panel := details.find_child("AboutPanel", true, false) as PanelContainer
 	var gallery_button := details.find_child("GalleryPublishButton", true, false) as Button
-	var delete_button := details.find_child("DeleteAnimaButton", true, false) as Button
+	var menu_button := details.find_child("ProfileMenuButton", true, false) as Button
 	var history_source_a := details.find_child("SynthesisHistorySourceA", true, false) as TextureRect
 	var history_source_b := details.find_child("SynthesisHistorySourceB", true, false) as TextureRect
 	var skeleton_a := details.find_child(
@@ -5356,11 +5467,14 @@ func _test_synthesis_profile_ui() -> void:
 	_check(
 		profile_actions != null and profile_actions.get_index() == 1
 		and about_panel != null and about_panel.get_index() == 2
-		and button.get_parent() == profile_actions
-		and utility_actions != null and utility_actions.get_parent() == profile_actions
-		and gallery_button.get_parent() == utility_actions
-		and delete_button.get_parent() == utility_actions,
-		"Profile keeps primary and utility actions directly below identity"
+		and primary_actions != null and primary_actions.get_parent() == profile_actions
+		and button.get_parent() == primary_actions
+		and gallery_button.get_parent() == primary_actions
+		and button.get_index() < gallery_button.get_index()
+		and button.size_flags_horizontal == Control.SIZE_EXPAND_FILL
+		and gallery_button.size_flags_horizontal == Control.SIZE_EXPAND_FILL
+		and menu_button != null,
+		"Profile keeps equal Synthesize and Publish actions beside each other below identity"
 	)
 	_check(history_panel != null and history_panel.visible, "Result profile shows Synthesis History")
 	_check(history_mode != null and history_mode.text.find("72") >= 0, "History shows successful Resonance")

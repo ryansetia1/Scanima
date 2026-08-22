@@ -57,10 +57,12 @@ const COMMIT_COLORS := {
 @onready var _header: HBoxContainer = $Column/Header
 @onready var _loading: VBoxContainer = %TeamLoading
 @onready var _loading_label: Label = %TeamLoadingLabel
+@onready var _builder_scroll: ScrollContainer = %TeamBuilderScroll
 @onready var _builder: VBoxContainer = %TeamBuilder
 @onready var _builder_meta: Label = %TeamBuilderMeta
 @onready var _roster_list: ItemList = %TeamRosterList
 @onready var _save_button: Button = %TeamSaveButton
+@onready var _lobby_scroll: ScrollContainer = %TeamLobbyScroll
 @onready var _lobby: VBoxContainer = %TeamLobby
 @onready var _lineup: Label = %TeamLineup
 @onready var _reward_status: Label = %TeamRewardStatus
@@ -605,6 +607,8 @@ func _apply_effect_hp_event(event: Dictionary) -> void:
 func _show_only(panel: Control) -> void:
 	for child in [_loading, _builder, _lobby, _arena]:
 		(child as Control).visible = child == panel
+	_builder_scroll.visible = panel == _builder
+	_lobby_scroll.visible = panel == _lobby
 	_result.visible = false
 	_set_result_actions_visible(false)
 	_sync_header()

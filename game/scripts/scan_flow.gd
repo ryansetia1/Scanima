@@ -377,6 +377,9 @@ func _ready() -> void:
 			_run_profile_help_demo()
 		if arg == "--synthesis-history-demo":
 			_run_synthesis_history_demo(false)
+		if arg == "--profile-menu-demo":
+			_run_synthesis_history_demo(false)
+			_open_profile_menu_demo.call_deferred()
 		if arg == "--synthesis-history-loading-demo":
 			_run_synthesis_history_demo(false, true)
 		if arg == "--synthesis-history-help-demo":
@@ -4773,6 +4776,7 @@ func _switch_destination(
 ) -> void:
 	_battle_reward_revision += 1
 	_menu_popover.close()
+	_details_view.close_action_menu(false)
 	if destination == ANIMA_PROFILE_DEST and not profile_row.is_empty():
 		_profile_anima = profile_row.duplicate(true)
 	if destination == ANIMA_PROFILE_DEST and not _details_available():
@@ -5425,6 +5429,9 @@ func _handle_back(allow_quit: bool) -> bool:
 		return true
 	if _close_open_bottom_sheet():
 		return true
+	if _destination == ANIMA_PROFILE_DEST and _details_view.is_action_menu_open():
+		_details_view.close_action_menu()
+		return true
 	if _destination == ANIMA_PROFILE_DEST:
 		_switch_destination(_profile_return_destination)
 		return true
@@ -5763,6 +5770,15 @@ func _run_synthesis_history_demo(show_help: bool, scroll_history: bool = false) 
 	_details_view.set_synthesis_enabled(true)
 	_details_view.set_anima(demo, null)
 	call_deferred("_finish_synthesis_history_demo", show_help, scroll_history)
+
+
+func _open_profile_menu_demo() -> void:
+	await get_tree().create_timer(0.5).timeout
+	var demo := _profile_anima.duplicate(true)
+	demo["id"] = "profile-menu-demo"
+	_details_view.set_anima(demo, null)
+	_details_view.set_busy(false)
+	_details_view.call("_toggle_action_menu")
 
 
 func _finish_synthesis_history_demo(show_help: bool, scroll_history: bool) -> void:

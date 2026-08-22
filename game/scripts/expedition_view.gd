@@ -28,6 +28,7 @@ const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
 @onready var _subtitle: Label = %Subtitle
 @onready var _loading: VBoxContainer = %ExpeditionLoading
 @onready var _loading_label: Label = %ExpeditionLoadingLabel
+@onready var _menu_scroll: ScrollContainer = %ExpeditionMenuScroll
 @onready var _catalog: VBoxContainer = %ExpeditionCatalog
 @onready var _chapter_list: ItemList = %ExpeditionChapterList
 @onready var _catalog_meta: Label = %ExpeditionCatalogMeta
@@ -372,6 +373,7 @@ func _show_only(panel: Control) -> void:
 	_emit_combat_open()
 	for child in [_loading, _catalog, _detail, _builder, _map, _choice, _complete]:
 		(child as Control).visible = child == panel
+	_menu_scroll.visible = panel in [_detail, _choice, _complete]
 	_subtitle.visible = panel not in [_map, _choice]
 	_sync_back_chrome()
 
