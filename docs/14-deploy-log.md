@@ -2,6 +2,162 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Kelayakan lawan Duel diputuskan simulasi, bukan taksiran
+
+23 Agustus 2026, `battle_anima` 30 ACTIVE (`verify_jwt=true`, smoke 401); nol
+migrasi, nol perubahan client, nol panggilan model. Kelanjutan langsung dari
+entri di bawah: dua ujung yang dicatat "lolos heuristik walau di luar band even"
+sekarang ditolak.
+
+**Band-nya tidak bisa dikalibrasi ulang, dan itu yang diukur lebih dulu.** Kalau
+`REAL_BALANCE_MIN/MAX` cuma perlu digeser, itu dua konstanta. Sweep atas **552
+pasangan** — seluruh pasangan roster production plus bentuk stat acak termasuk
+hiper-spesialis `95/95/95/10/10` — dengan patokan 512 duel per pasangan
+menunjukkan ketiga kelas saling tumpang tindih sepenuhnya:
+
+| Kelas hasil simulasi | Jumlah | Sebaran rasio taksiran |
+| --- | --- | --- |
+| adil (`tough` / `even`) | 78 | 0,430 – 1,187 |
+| walkover (`favorable`) | 288 | 0,000 – 0,949 |
+| mustahil (`formidable`) | 186 | 0,702 – 16,832 |
+
+Tidak ada satu pun band di 0,30..1,60 yang nol false accept. Band yang dipakai,
+0,53..1,00, meloloskan **70 dari 138** kandidat sebagai duel timpang — win rate
+yang lolos membentang **0,8% sampai 100%**, jadi gate itu praktis dekoratif. Band
+paling ketat yang bisa dicari, 0,765..0,940, masih meloloskan duel 10% sambil
+membuang 42 dari 78 matchup adil: pertukaran yang lebih buruk, bukan lebih baik.
+
+Yang **tidak** diukur sebelumnya: tier lawan terpilih sudah disimulasikan
+`duelWinRate()` untuk `battleRewardPreview()`. Jadi jawaban eksaknya sudah dibayar
+setiap duel dan cuma tidak dipakai untuk memutuskan. Perubahannya karena itu
+memakai ulang yang sudah ada, bukan menambah mesin baru: heuristiknya diturunkan
+menjadi **shortlist** (`isFairRealOpponent()` → `isPlausibleRealOpponent()`; nama
+lamanya adalah akar masalahnya, ia berjanji menilai keadilan padahal cuma
+menaksir), dan `isWinnableDuel()` — tier `tough` atau `even`, ambangnya dari
+`REWARD_TIERS` supaya tidak ada notion ketiga tentang "adil" — yang memutuskan
+atas paling banyak `DUEL_GATE_CANDIDATES = 3` kandidat. Win rate kandidat yang
+lolos diteruskan ke `battleRewardPreview(..., knownWinRate)`, jadi lawan terpilih
+tidak menambah satu simulasi pun.
+
+Band-nya sengaja **tidak digeser**. Untuk peran barunya ia sudah baik: ia
+menaikkan proporsi matchup adil dari 14,1% base rate ke 49,3%, jadi kandidat
+pertama yang disimulasikan biasanya langsung lolos. Melebarkannya ke 0,480..1,190
+menaikkan recall 87,2% → 98,7% tetapi memberi hasil akhir yang identik (10/12
+dapat lawan sungguhan) dengan simulasi lebih banyak, 2,08 versus 1,75 per duel.
+
+Terukur sesudahnya pada roster production 12 Anima:
+
+| | Sebelum | Sesudah |
+| --- | --- | --- |
+| Win rate lawan sungguhan yang diterima | 0,8% – 100% | **41,0% – 86,1%** |
+| Tier yang bisa disajikan Duel | keempatnya | **`even` dan `tough` saja** |
+| Anima yang dapat lawan sungguhan | 12/12 | 10/12 (2 jatuh ke Echo) |
+| Simulasi per duel | 1 (tier saja) | 3,08 |
+| Wall time terburuk, Anima paling tebal | 66,4 ms | **76,8 ms** |
+
+Kasus yang dilaporkan operator: Gearbit Racer vs Veridian (balance 0,941, lolos
+shortlist) disimulasikan **31,3%** → `formidable` → ditolak; VerdantPup vs
+Veridian (balance 0,666) disimulasikan **87,5%** → `favorable` → ditolak.
+Keduanya sekarang mencoba kandidat berikutnya, lalu Echo.
+
+Cap 3 dipilih terukur, bukan ditebak: cap 2 memberi 8/12 lawan sungguhan dan cap
+4 tidak menambah apa pun karena shortlist-nya sendiri sudah habis. 76,8 ms masih
+di bawah plafon ~80 ms yang dicatat `balancedRatio()`; kalau nanti terlewati,
+turunkan `runs` pencarian ke 32, **bukan** cap kandidat — cap yang lebih kecil
+langsung menukar lawan sungguhan dengan Echo.
+
+Derau 64 duel tetap ada di ambang dan sengaja dibiarkan: dua matchup roster yang
+dinilai 78,1% dan 76,6% sebenarnya 86,1% dan 83,8% pada 512 duel. Bayarannya
+tetap jujur sebab tier memakai angka 64 duel yang **sama** dengan gate — pemain
+dibayar sesuai duel yang gate-nya lihat. Menaikkan `runs` menggandakan biaya
+kedua sisi hanya untuk menggeser kasus di ambang.
+
+Skenario 34 `npm run selftest` membawa pagarnya: 12 pasangan fixture yang
+benar-benar lolos shortlist (enam ditolak simulasi, enam diterima), assert bahwa
+Duel tidak pernah menyajikan tier selain `tough`/`even`, assert bahwa
+`battleRewardPreview` identik dengan dan tanpa `knownWinRate`, plus pemeriksaan
+sumber bahwa `startBattle` memanggil `duelWinRate` dan membatasinya dengan cap.
+Monotonisitas tier dipisah ke daftar tanpa filter matchmaker, sebab itu sifat
+`battleRewardPreview` sendiri dan gate baru membuat daftar yang tersaring hanya
+memuat dua tier.
+
+Wiki ikut berubah karena pemain merasakannya: `battle.md` mengganti "menaksir
+dulu" menjadi duel yang benar-benar dimainkan, menyebut Echo akan lebih sering
+muncul, dan mencatat Duel hanya membayar 7–12 Bits (`even`/`tough`) sementara
+Favorable/Formidable tinggal di Team Battle dan Expedition; `economy.md` mengikuti
+rentang Bits itu.
+
+## Anima tanpa consent berhenti menjadi lawan Duel
+
+23 Agustus 2026, `battle_anima` 29 ACTIVE (`verify_jwt=true`, smoke 401); nol
+migrasi, nol perubahan client, nol panggilan model, nol perubahan wiki. Versi 28
+membawa perubahan yang sama, dan 29 hanya membetulkan satu string `console.error`
+yang masih menyebut fallback yang sudah tidak ada.
+
+Operator melaporkan sesuatu yang terasa bertentangan: bermain sebagai guest ia
+bertemu **Veridian** di Duel, tetapi tab **Duel** di Atlas guest itu kosong,
+sementara di akun Google pemiliknya tombol **Publish to Atlas** masih menyala dan
+belum pernah ditekan. Ketiganya benar sekaligus, dan hanya satu di antaranya bug.
+
+Probe production: Veridian (`c80ddef5`) punya **nol** baris `gallery_entries`,
+jadi tombol Publish yang menyala memang jujur. `battle_sessions` mencatat tiga
+sesi dengan `bot_anima_id` Veridian — dua di antaranya milik guest anonim
+`macosm3pro` pada 22 Agustus (00:27 `won`, 22:52 `lost`), dan yang ketiga 20
+Agustus dari akun lain saat Veridian masih dimiliki guest `518a96ab`, jadi bukan
+self-duel. Atlas guest itu hanya punya dua discovery `scanned` dan nol `duel`,
+yang **benar**: trigger `atlas_record_battle_session` sengaja berhenti sebelum
+mencatat kalau bot tidak punya publication published+approved. Atlas kosong
+adalah Atlas yang benar; yang salah adalah matchmaking-nya.
+
+Akarnya pool kedua di `startBattle`. Di samping `gallery_entries` yang
+ber-consent, ada query `animas` `.neq("owner_id", ownerId).eq("status",
+"ready")` yang tidak menyentuh publication sama sekali; satu-satunya saringannya
+apakah `species_key:color_bucket:stage` ada di `species_library`. Penanda itu
+dimaksudkan menandai Anima era pustaka art bersama, tetapi ia tidak menanyakan
+**kapan** Anima dibuat — jadi Anima baru ber-species umum ikut lolos. Terukur:
+5 dari 12 Anima `ready` lolos penanda itu, **4 di antaranya belum pernah
+Publish** (klasik, Mugshots, Playtron, Veridian), dan hanya Deckon yang benar
+published. Sidik jarinya terekam di data: kedua `bot_snapshot` guest itu tidak
+punya field `name` dan memakai `sheet_path`, bukan `sheet_url` — tanda tangan
+jalur legacy, sebab jalur gallery selalu mengisi `display_name` dan
+menandatangani URL.
+
+Menggerbangi pool itu dengan consent hanya menghasilkan pool gallery lagi, jadi
+ia dihapus alih-alih ditambal (−33 baris). Ketersediaan Duel tidak pernah
+bergantung padanya sejak `systemDuelBot()` masuk pada 17 Agustus, dan bot sistem
+justru lebih seimbang: kekuatannya dicari per-Anima ke target 65% menang,
+sedangkan kandidat legacy cuma perlu lolos gate 0,53..1,00.
+
+Diukur dengan resolver production terhadap stat asli, nol panggilan API. Veridian
+(Level 15, total base stat 245, `plant` tunggal) melawan Echo yang dirakit
+untuknya: balance 0,746, menang **65,6%**, tier `even` — tepat di target. Deckon,
+satu-satunya Anima published sekarang, **ditolak** gate sebagai lawan Veridian
+(balance 0,453, walkover 100%), jadi pemiliknya mendapat Echo, bukan duel timpang.
+Kalau Veridian dipublish, 6 dari 11 Anima lain menerimanya sebagai lawan seimbang
+(Chromvein 57,8%, Playtron 59,4%, klasik 42,2%, Deckon 35,9%, Gearbit Racer 31,3%,
+VerdantPup 87,5%) dan lima ditolak dengan benar: Mugshots 0%, Drakabyss 0%,
+Drowake 0%, Padronic 7,8%, dan walkover Sunhound 95,3%. Dua ujung yang lolos —
+Gearbit Racer 31,3% dan VerdantPup 87,5% — duduk di luar band `even` hasil
+simulasi walau lolos heuristik `estimateDuelBalance`; itu imprecision gate yang
+sudah ada sebelumnya, dan labelnya tetap jujur karena tier dihitung dari simulasi,
+bukan dari heuristik itu. Keduanya ditutup hari yang sama oleh `battle_anima` 30
+di entri di atas: heuristiknya diturunkan menjadi shortlist dan simulasi yang
+memutuskan.
+
+Wiki tidak diubah karena ia sudah benar sejak awal: `atlas.md`, `economy.md`,
+dan `battle.md` sama-sama hanya mengenal dua sumber lawan — Anima yang sudah
+Publish, atau lawan sistem Echo. Kodenya yang melanggar dokumen, bukan
+sebaliknya. Konsekuensi yang disengaja: dengan baru satu Anima published,
+hampir semua Duel menjadi Echo sampai lebih banyak pemain Publish; wiki sudah
+menyebut kondisi itu (`selama pemain masih sedikit itu sering terjadi`).
+
+Skenario 23 `npm run selftest` dibalik arahnya. Sebelumnya ia **menuntut**
+fallback legacy ada (`legacyCandidates ... .filter`); sekarang ia menuntut
+`startBattle` menyentuh tabel `animas` tepat sekali, tidak memuat
+`.eq("status", "ready")`, dan mempertahankan ketiga gerbang publication. Pagar itu
+ada karena jalur ini gagal senyap — nol error, cuma art privat di arena orang
+lain.
+
 ## Publish to Atlas berhenti buntu untuk guest
 
 23 Agustus 2026, client saja; nol migrasi, nol Edge Function, nol panggilan

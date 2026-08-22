@@ -22,7 +22,7 @@ import {
   seededRandom,
   toBattleStats,
 } from "./battle.mjs";
-import { REWARD_TIERS } from "./catalog.mjs";
+import { REWARD_TIERS, tierFromWinRate } from "./catalog.mjs";
 import {
   defenseElements,
   dualDefenderMultiplier,
@@ -52,12 +52,46 @@ export const BOT_RATIO_MAX = 1.25;
 // blok stat yang sama.
 export const BOT_RATIO_STEPS = 7;
 
-// Batas penerimaan lawan sungguhan, dalam satuan taksiran turn-to-kill.
-// Dikalibrasi terhadap win rate terukur pada sembilan pasangan production:
-// yang adil (42%..71%) jatuh di 0,56..0,89, walkover (98%..100%) di 0,39..0,50,
-// dan yang mustahil (7%..8%) di 1,22..1,34. Pemisahannya bersih di kedua sisi.
+// Shortlist lawan sungguhan, dalam satuan taksiran turn-to-kill. Ini SHORTLIST,
+// bukan gate: yang memutuskan diterima atau tidak adalah simulasi 64 duel di
+// `isWinnableDuel()`.
+//
+// Band ini pernah dipercaya sebagai gate karena pada sembilan pasangan
+// production pemisahannya tampak bersih — adil (42%..71%) di 0,56..0,89,
+// walkover (98%..100%) di 0,39..0,50, mustahil (7%..8%) di 1,22..1,34. Sembilan
+// pasangan ternyata terlalu sedikit. Disweep 23 Agustus 2026 atas 552 pasangan
+// (seluruh pasangan roster production plus bentuk stat acak termasuk
+// hiper-spesialis), patokan 512 duel, ketiga kelas saling tumpang tindih total:
+// adil 0,430..1,187, walkover 0,000..0,949, formidable 0,702..16,832. Tidak ada
+// satu pun band di 0,30..1,60 yang nol false accept, dan band ini sendiri
+// meloloskan 70 dari 138 kandidat sebagai duel timpang — win rate yang lolos
+// membentang 0,8%..100%. Band paling ketat yang bisa dicari, 0,765..0,940, masih
+// meloloskan duel 10% sambil membuang 42 dari 78 matchup yang benar-benar adil.
+//
+// Angkanya sengaja tidak digeser, sebab untuk peran barunya ia justru sudah
+// baik: ia menaikkan proporsi matchup adil dari 14,1% (base rate) ke 49,3%, jadi
+// kandidat pertama yang disimulasikan biasanya langsung lolos. Melebarkannya ke
+// 0,480..1,190 memang menaikkan recall 87,2% -> 98,7% tetapi hasil akhirnya sama
+// (10/12 dapat lawan sungguhan) dengan simulasi lebih banyak: 2,08 versus 1,75
+// per duel.
 export const REAL_BALANCE_MIN = 0.53;
 export const REAL_BALANCE_MAX = 1.0;
+
+// Berapa kandidat shortlist yang boleh disimulasikan sebelum jatuh ke lawan
+// sistem. Terukur pada roster production: cap 2 memberi 8/12 lawan sungguhan,
+// cap 3 memberi 10/12, dan cap 4 tidak menambah apa pun karena shortlist-nya
+// sendiri sudah habis.
+//
+// ponytail: terburuknya cap simulasi gate habis TERUS jatuh ke lawan sistem.
+// Terukur pada Anima paling tebal di roster (HP 404, pertarungannya menyentuh
+// BATTLE_MAX_TURNS): 76,8 ms versus 66,4 ms sebelum gate ini ada, jadi
+// harganya 10,4 ms dan masih di bawah plafon ~80 ms yang dicatat
+// `balancedRatio()`. Rata-rata jauh lebih murah — 3,08 simulasi per duel pada
+// roster production, dan gate lawan terpilih tidak menambah apa pun sebab
+// `battleRewardPreview` memakai ulang win rate-nya. Kalau nanti plafon itu
+// terlewati, turunkan `runs` pencarian ke 32, bukan cap ini: cap yang lebih
+// kecil langsung menukar lawan sungguhan dengan Echo (cap 2 hanya 8/12).
+export const DUEL_GATE_CANDIDATES = 3;
 
 // Tiga tier hanya menentukan wajah dan nama; kekuatannya selalu dari Level
 // pemain. Batasnya sengaja memakai formFromLevel() supaya tidak ada ambang baru.
@@ -245,9 +279,34 @@ export function estimateDuelBalance(player, bot) {
   return Math.max(0, playerTurns) / Math.max(0.5, botTurns);
 }
 
-export function isFairRealOpponent(player, bot) {
+/**
+ * Layak MASUK shortlist, bukan layak dipakai. Namanya dulu
+ * `isFairRealOpponent()` dan nama itulah akar masalahnya: ia berjanji menilai
+ * keadilan padahal cuma menaksir, jadi tidak ada seorang pun yang merasa perlu
+ * memeriksanya lagi dengan simulasi. Yang memutuskan adalah `isWinnableDuel()`.
+ */
+export function isPlausibleRealOpponent(player, bot) {
   const balance = estimateDuelBalance(player, bot);
   return balance >= REAL_BALANCE_MIN && balance <= REAL_BALANCE_MAX;
+}
+
+/**
+ * Apakah duel dengan peluang menang ini layak dimainkan. Ambangnya memakai
+ * `REWARD_TIERS` supaya tidak ada notion ketiga tentang "adil": yang diterima
+ * tepat matchup yang dibayar `tough` atau `even`, sementara `formidable` (tidak
+ * bisa dimenangkan) dan `favorable` (walkover) ditolak.
+ *
+ * Diukur pada win rate hasil `duelWinRate()` yang sama dengan yang dipakai
+ * `battleRewardPreview()`, jadi gate dan bayaran selalu melihat angka yang
+ * sama. Derau 64 duel tetap ada — terukur dua matchup roster production yang
+ * dinilai 78,1% dan 76,6% sebenarnya 86,1% dan 83,8% pada 512 duel — tetapi
+ * karena tier ikut memakai angka 64 duel itu, pemain dibayar sesuai duel yang
+ * gate-nya lihat. Menaikkan runs menggandakan biaya kedua sisi untuk menggeser
+ * kasus di ambang saja.
+ */
+export function isWinnableDuel(winRate) {
+  const tier = tierFromWinRate(winRate);
+  return tier === "tough" || tier === "even";
 }
 
 const STAT_KEYS = Object.freeze(["hp", "atk", "def", "spd", "special"]);

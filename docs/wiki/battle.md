@@ -231,15 +231,22 @@ kesulitan.
 Yang diutamakan tetap **Anima milik pemain lain** yang sudah dipublikasikan ke
 Anima Atlas. Arena tidak menampilkan identitas pemiliknya; sesudah kamu benar-benar
 melawannya, form itu masuk Atlas dan profilnya dapat menampilkan nama Seeker
-pemilik. Anima itu hanya dipakai kalau duelnya masih terasa seperti pertandingan.
-Server menaksir dulu berapa lama masing-masing sisi butuh untuk menjatuhkan yang
-lain, dengan menghitung Level, sebaran stat, dan elemen sekaligus. Lawan yang
-jelas akan menghabisimu, atau yang jelas akan kamu habisi tanpa perlawanan, tidak
-dipakai.
+pemilik.
+
+Anima itu hanya dipakai kalau duelnya benar-benar pertandingan, dan server
+memastikannya dengan **memainkan duel itu sampai selesai puluhan kali sebelum
+kamu menekan apa pun**. Kalau kamu ternyata hampir selalu menang, atau hampir
+selalu kalah, lawan itu dilewati dan calon berikutnya dicoba. Server sempat
+menilainya cuma dengan taksiran cepat, dan taksiran itu kadang salah cukup jauh
+sampai duel yang sangat berat atau sangat mudah tetap lolos; sejak 23 Agustus
+2026 yang memutuskan adalah hasil duel yang sudah dimainkan, bukan taksirannya.
 
 Kalau tidak ada Anima pemain yang cocok — dan selama pemain masih sedikit itu
 sering terjadi — kamu bertemu **lawan sistem**: **Echo Fledgling**, **Echo
-Warden**, atau **Echo Paragon**, mengikuti bentuk Anima-mu sendiri.
+Warden**, atau **Echo Paragon**, mengikuti bentuk Anima-mu sendiri. Karena
+pemeriksaannya sekarang lebih ketat, kamu akan lebih sering bertemu mereka
+daripada sebelumnya. Itu disengaja: lawan sistem selalu seimbang, sedangkan
+lawan sungguhan yang timpang tidak menyenangkan dari sisi mana pun.
 
 Lawan sistem dirakit supaya adil:
 
@@ -290,8 +297,8 @@ Kalau companion aktif tidak memenuhi syarat, tombolnya jadi **Choose Anima**. Ta
 
 Tiga kemenangan pertama per hari (reset **tengah malam waktu setempat**) adalah Battle berhadiah:
 
-- Bits menurut seberapa berat duelnya (kira-kira 5–16)
-- EXP yang mengikuti Level lawan, selisih Level, dan tier Tough/Formidable
+- Bits menurut seberapa berat duelnya (**7–12** di Duel)
+- EXP yang mengikuti Level lawan, selisih Level, dan tier Tough
 - +1 kemenangan progression pada Anima
 
 Yang menentukan Bits adalah **kesulitan duelnya, bukan angka stat lawan**. Server
@@ -301,6 +308,12 @@ memberi label dari seberapa sering Anima-mu menang: **Favorable** (hampir selalu
 Karena label itu jujur, mengejar lawan berat tidak dirancang lebih untung
 maupun lebih rugi — Bits per kemenangan naik, peluang menang turun, dan
 rata-rata hasilnya kira-kira sama. Pilih yang kamu nikmati.
+
+Di **Duel** kamu hanya akan melihat **Even** dan **Tough**, karena lawan yang
+akan menghabisimu atau yang tidak memberi perlawanan tidak pernah disajikan
+(lihat [Siapa lawanmu di Duel](#siapa-lawanmu-di-duel)). Favorable dan Formidable
+tetap muncul di **Team Battle** dan **Expedition**, yang menilai kekuatan seluruh
+roster dan bukan satu duel.
 
 Menelantarkan Anima **tidak** menaikkan Bits. Duel yang sama dinilai seolah
 Hunger dan Hygiene penuh, jadi Anima kelaparan tidak dihitung sebagai lawan

@@ -52,7 +52,7 @@ kontradiksi.
 | Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, dan `feature_synthesis` semuanya `true` | matikan per flag |
 
 Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 25,
-`evolve_anima` 15, `replicate_webhook` 15, `battle_anima` 27, `team_battle` 9,
+`evolve_anima` 15, `replicate_webhook` 15, `battle_anima` 30, `team_battle` 9,
 `expedition` 16, `seeker` 6, `gallery` 19, `shop` 4, `care_anima` 9,
 `synthesize_anima` 7.
 
@@ -275,7 +275,7 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 41 skenario + 12 uji tanda tangan webhook
+npm run selftest                       # 42 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd # 174 check manifest, loader, presenter, Boss Seeker
 godot --headless --path game --script res://tests/test_auth_flow.gd    # 63 check PKCE secure, restart, transfer/separate, recovery, no-merge
 godot --headless --path game --script res://tests/test_client_state.gd  # 196 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, stale UID, retry transport
@@ -389,7 +389,7 @@ rule-nya, jangan menebak.
 
 | Rule | Dimuat saat menyentuh | Isi |
 |---|---|---|
-| `.cursor/rules/battle-and-expedition.mdc` | script/scene Battle, Team, Expedition, `sim/`, `anima_presenter.gd`, Edge Function battle/team/expedition, `backend/chapters/` | Prediksi turn, PP, initiative, tier hadiah, lawan sistem, ace Boss, skala/framing arena, chapter runtime |
+| `.cursor/rules/battle-and-expedition.mdc` | script/scene Battle, Team, Expedition, `sim/`, `anima_presenter.gd`, Edge Function battle/team/expedition, `backend/chapters/` | Prediksi turn, PP, initiative, tier hadiah, gate lawan Duel, lawan sistem, ace Boss, skala/framing arena, chapter runtime |
 | `.cursor/rules/client-shell-ui.mdc` | `game/scripts/`, `game/scenes/`, theme, shader, locale, test | Theme, komponen, `LoadingScreen`, jebakan Tween, audio, state layar, cache boot, Care Dock/Shop/Bag |
 | `.cursor/rules/backend-guardrails.mdc` | `backend/` | Identitas dan guest, care authoritative, decay, gerbang nama, RLS, advisor yang disengaja, jebakan PostgREST |
 | `.cursor/rules/art-and-prompt-pipeline.mdc` | `backend/prompts/`, `_shared/postprocess`/`vision`/`png`, `create_anima`, `evolve_anima`, `backend/tools/`, `eval/` | Vision dan wrapper Replicate, chroma key, slicing, encoder PNG, latensi model, art direction chapter |
@@ -400,7 +400,7 @@ dan `sfx-presentation.mdc`.
 
 | Dokumen | Isi |
 |---|---|
-| [`docs/14-deploy-log.md`](docs/14-deploy-log.md) | Riwayat rollout: Atlas, Name Lineage v41, gerbang Rename, Capture Vibe, gate IP, Evolution art, Battle polish, daftar migration |
+| [`docs/14-deploy-log.md`](docs/14-deploy-log.md) | Riwayat rollout: Atlas, Name Lineage v41, gerbang Rename, Capture Vibe, gate IP, Evolution art, Battle polish, gate lawan Duel, daftar migration |
 | [`docs/15-commands.md`](docs/15-commands.md) | Katalog `--*-demo`, uji terhadap production, build/verifikasi APK, backend lokal |
 | [`docs/16-prompt-version-history.md`](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v41 dan provenance setiap versi yang ditolak |
 

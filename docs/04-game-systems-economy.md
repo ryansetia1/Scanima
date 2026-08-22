@@ -639,6 +639,9 @@ production saat session dibuat, lalu `tierFromWinRate()` memetakan hasilnya:
 Kolom terakhir adalah alasan tangganya berhenti di angka itu: diukur pada
 matchup yang benar-benar lolos [gate keseimbangan](#gate-keseimbangan-duel),
 nilai harapannya rata, jadi lawan berat adalah pilihan gaya dan bukan pajak.
+Sejak gate itu memakai simulasi, **Duel sendiri hanya pernah menyajikan `even`
+dan `tough`** — dua baris lainnya tetap dipakai Team Battle dan Expedition, yang
+menilai lewat `rewardTierFromRatio` atas combat power roster.
 Roll deterministik ±1 tetap datang dari seed session (bukan dari turn) supaya
 replay tidak mengubah payout, dan payout disimpan di
 `battle_sessions.reward_tier/roll/bits`.
@@ -699,9 +702,9 @@ Lawan Battle:
 
 | | Aturan live | Sebelum 17 Agustus 2026 |
 | --- | --- | --- |
-| Sumber | Publication Atlas approved, lalu legacy privat, lalu bot sistem | Gallery published lalu legacy |
+| Sumber | Publication Atlas approved, lalu bot sistem | Gallery published lalu legacy |
 | Identitas | Tidak pernah `owner_id` / nickname | Sama |
-| Matching | ±15% base stat + **gate keseimbangan**; stage sama diutamakan | ±15% base stat saja |
+| Matching | ±15% base stat + shortlist keseimbangan + **gate simulasi**; stage sama diutamakan | ±15% base stat saja |
 | Pool kosong / tidak ada yang seimbang | **Bot sistem** dari `_shared/duel_bot.mjs` | Error `NO_BATTLE_OPPONENT` |
 
 Detail publish/unpublish lineage dan discovery Atlas: [08](08-private-art-and-gallery.md). PvP
@@ -717,23 +720,61 @@ dimenangkan 7%. Combat power tidak bisa dipakai sebagai gate karena ia
 menjumlahkan stat sementara hasil duel adalah damage **dikali** daya tahan — dua
 Anima ber-combat power identik terukur menang 100% dan 0,3%.
 
-`estimateDuelBalance()` menaksir rasio turn-to-kill kedua sisi: berapa turn
-pemain butuh untuk menjatuhkan lawan dibagi sebaliknya, memakai `computeDamage`
-yang sama, pengali elemen dua arah, pengali care, plus setengah turn untuk sisi
-yang lebih cepat. Di bawah 1 berarti pemain lebih cepat. Kalibrasi terhadap win
-rate hasil resolver:
+Sejak 23 Agustus 2026 penyaringannya **dua langkah**, dan pembagian kerjanya
+adalah intinya: taksiran murah menyusun shortlist atas semua kandidat, lalu
+simulasi duel penuh yang **memutuskan**.
 
-| Rasio taksiran | Win rate terukur | Keputusan |
-| --- | --- | --- |
-| 0,39 – 0,50 | 98% – 100% | ditolak, walkover |
-| **0,53 – 1,00** | **42% – 71%** | **diterima** |
-| 1,22 – 1,34 | 7% – 8% | ditolak, mustahil |
+**Langkah 1, shortlist.** `estimateDuelBalance()` menaksir rasio turn-to-kill
+kedua sisi: berapa turn pemain butuh untuk menjatuhkan lawan dibagi sebaliknya,
+memakai `computeDamage` yang sama, pengali elemen dua arah, pengali care, plus
+setengah turn untuk sisi yang lebih cepat. Di bawah 1 berarti pemain lebih
+cepat. `isPlausibleRealOpponent()` menerima 0,53..1,00.
 
-Kandidat yang lolos diurutkan `stableRank(seed:id)` seperti sebelumnya, jadi
-lawannya tetap bervariasi. Taksiran ini **tidak** dipakai menghitung hadiah:
-gate berjalan atas semua kandidat, jadi ia harus murah, sedangkan tier hanya
-dihitung sekali untuk lawan yang benar-benar dipilih dan karena itu boleh
-disimulasikan penuh (lihat [Hadiah](#hadiah-dan-tempat-battle-dalam-loop)).
+**Angka itu tidak bisa menjadi keputusan akhir, dan itu juga terukur.** Band-nya
+dulu dikalibrasi terhadap sembilan pasangan production dan pemisahannya tampak
+bersih. Disweep atas **552 pasangan** — seluruh pasangan roster production plus
+bentuk stat acak termasuk hiper-spesialis — dengan patokan 512 duel, ketiga kelas
+justru saling tumpang tindih sepenuhnya:
+
+| Kelas hasil simulasi | Sebaran rasio taksiran |
+| --- | --- |
+| adil (`tough` / `even`) | 0,430 – 1,187 |
+| walkover (`favorable`) | 0,000 – 0,949 |
+| mustahil (`formidable`) | 0,702 – 16,832 |
+
+Tidak ada satu pun band di 0,30..1,60 yang nol false accept. Band 0,53..1,00
+sendiri meloloskan **70 dari 138** kandidat sebagai duel timpang, dengan win rate
+yang lolos membentang **0,8% sampai 100%**. Band paling ketat yang bisa dicari,
+0,765..0,940, masih meloloskan duel 10% sambil membuang 42 dari 78 matchup yang
+benar-benar adil. Karena itu band-nya **tidak digeser** — ia diturunkan
+perannya. Untuk peran barunya ia sudah baik: ia menaikkan proporsi matchup adil
+dari 14,1% (base rate) ke 49,3%, jadi kandidat pertama yang disimulasikan
+biasanya langsung lolos.
+
+**Langkah 2, gate.** Kandidat shortlist diurutkan `stableRank(seed:id)` (jadi
+lawannya tetap bervariasi dan urutan simulasinya deterministik per duel), lalu
+paling banyak `DUEL_GATE_CANDIDATES = 3` di antaranya disimulasikan dengan
+`duelWinRate()` yang sama dengan tier. `isWinnableDuel()` menerima hanya tier
+`tough` atau `even`; `formidable` dan `favorable` ditolak dan kandidat berikutnya
+dicoba. Ambangnya memakai `REWARD_TIERS` supaya tidak ada notion ketiga tentang
+"adil". Habis tiga kandidat tanpa yang lolos → lawan sistem.
+
+Konsekuensinya: **Duel tidak pernah lagi menyajikan walkover maupun duel yang
+tidak bisa dimenangkan.** Pada roster production win rate lawan sungguhan yang
+diterima menyempit dari 0,8%..100% menjadi **41,0%..86,1%**, dan 10 dari 12 Anima
+tetap mendapat lawan sungguhan (2 jatuh ke Echo). Dua ujung yang dulu lolos —
+duel 31,3% dan duel 87,5% — sekarang ditolak.
+
+Win rate itu **dipakai ulang** sebagai tier: `battleRewardPreview()` menerima
+parameter `knownWinRate`, jadi gate lawan terpilih tidak menambah satu simulasi
+pun. Biaya bersihnya hanya kandidat yang ditolak, terukur 3,08 simulasi per duel
+pada roster production dan 76,8 ms pada kasus terburuk (Anima paling tebal, cap
+habis, lalu bisection lawan sistem) versus 66,4 ms sebelum gate ini ada.
+
+Derau 64 duel tetap ada di ambang: dua matchup roster yang dinilai 78,1% dan
+76,6% sebenarnya 86,1% dan 83,8% pada 512 duel. Itu tidak membuat bayarannya
+tidak jujur, sebab tier memakai angka 64 duel yang sama — pemain dibayar sesuai
+duel yang gate-nya lihat.
 
 #### Resep lawan sistem
 

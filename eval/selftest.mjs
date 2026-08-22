@@ -126,8 +126,10 @@ import {
 import {
   BOT_RATIO_MAX,
   BOT_RATIO_MIN,
+  DUEL_GATE_CANDIDATES,
   estimateDuelBalance,
-  isFairRealOpponent,
+  isPlausibleRealOpponent,
+  isWinnableDuel,
   neutralBotElements,
   SYSTEM_DUEL_BOTS,
   systemDuelBot,
@@ -2474,15 +2476,59 @@ console.log(
     /gallery_entries/,
     "bot Battle harus memprioritaskan gallery published",
   );
-  assert.match(
-    battleEdge,
-    /legacyCandidates\s*[\s\S]{0,40}\.filter/,
-    "bot Battle harus fallback legacy species_library saat gallery kosong",
+  // Pool lawan pemain wajib ber-consent. Sampai 23 Agustus 2026 ada pool kedua
+  // yang membaca `animas` langsung dengan `species_library` sebagai penanda
+  // "legacy" dan tanpa menyentuh publication; terukur di production, 4 dari 5
+  // Anima ready yang lolos penanda itu belum pernah Publish, dan Veridian
+  // menjadi lawan guest dua kali walau nol baris `gallery_entries`. Skenario ini
+  // sekarang menjaga arah kebalikannya, sebab jalur itu gagal senyap: tidak ada
+  // error, cuma art privat yang tampil di arena orang lain.
+  const startBattleSrc = battleEdge.match(/async function startBattle[\s\S]*?\n}/)?.[0] ?? "";
+  assert.ok(startBattleSrc, "startBattle harus terbaca untuk memeriksa pool lawan");
+  for (const gate of ['.eq("published", true)', '.eq("moderation_status", "approved")', '.eq("auto_hidden", false)']) {
+    assert.ok(
+      startBattleSrc.includes(gate),
+      `pool lawan Duel harus menuntut ${gate}`,
+    );
+  }
+  assert.doesNotMatch(
+    startBattleSrc,
+    /\.eq\("status", "ready"\)/,
+    "pool lawan Duel tidak boleh membaca animas tanpa publication; consent-nya hidup di gallery_entries",
+  );
+  assert.equal(
+    (startBattleSrc.match(/\.from\("animas"\)/g) ?? []).length,
+    1,
+    "startBattle hanya boleh membaca tabel animas untuk Anima pemain sendiri",
   );
   assert.match(
     battleEdge,
-    /isFairRealOpponent/,
-    "lawan Duel sungguhan harus lewat gate keseimbangan, bukan hanya pool ±15%",
+    /isPlausibleRealOpponent/,
+    "lawan Duel sungguhan harus lewat shortlist keseimbangan, bukan hanya pool ±15%",
+  );
+  // Shortlist saja tidak cukup, dan itu terukur: taksirannya meloloskan duel
+  // 31,3% maupun 87,5% pada roster production. Yang memutuskan wajib simulasi.
+  assert.match(
+    battleEdge,
+    /duelWinRate\(playerSnapshot, candidate\.fighter\)/,
+    "kelayakan lawan Duel wajib diputuskan simulasi duel, bukan taksiran turn-to-kill",
+  );
+  assert.match(
+    battleEdge,
+    /if \(isWinnableDuel\(winRate\)\) return/,
+    "gate Duel harus menolak kandidat yang simulasinya walkover atau tidak bisa dimenangkan",
+  );
+  assert.match(
+    battleEdge,
+    /slice\(0, DUEL_GATE_CANDIDATES\)/,
+    "gate Duel wajib dibatasi cap kandidat; tanpa itu satu duel bisa menyimulasikan 200 lawan",
+  );
+  // Win rate gate dipakai ulang sebagai tier. Kalau pemakaian ulang itu hilang,
+  // startBattle membayar 64 duel lagi untuk angka yang sudah dimilikinya.
+  assert.match(
+    battleEdge,
+    /battleRewardPreview\(playerSnapshot, botSnapshot, seed, botWinRate\)/,
+    "tier hadiah harus memakai ulang win rate yang sudah diukur gate",
   );
   assert.match(
     battleEdge,
@@ -2538,8 +2584,8 @@ console.log(
   );
   assert.match(
     battleEdge,
-    /artByKey\.has\(artKey\(row\)\) && row\.sheet_path && row\.manifest/,
-    "fallback legacy hanya boleh memakai kandidat yang sudah punya salinan art privat",
+    /galleryCandidates\s*=[\s\S]{0,200}row\.animas\?\.sheet_path && row\.animas\?\.manifest/,
+    "kandidat lawan hanya boleh dipakai kalau salinan art privatnya benar-benar ada",
   );
 }
 
@@ -5930,8 +5976,9 @@ console.log(
     );
   }
 
-  // Gate lawan sungguhan. `fair` di sini berarti duelnya masih pertandingan;
-  // walkover 98%+ dan duel 8% dua-duanya ditolak.
+  // Shortlist lawan sungguhan. `shortlisted` di sini TIDAK berarti duelnya adil
+  // — hanya bahwa taksiran murahnya belum menolaknya. Yang menilai keadilan
+  // adalah simulasi, dan blok sesudah ini yang mengujinya.
   const matchmakerStats = (bot, player) => {
     const playerTotal = baseStatTotal(player.base_stats);
     if (
@@ -5944,11 +5991,11 @@ console.log(
     };
   };
   const PAIRS = [
-    { player: "klasik", bot: "Hydron", win: 0.07, fair: false },
-    { player: "Mugshots", bot: "Deckon", win: 0.08, fair: false },
-    { player: "Hydron", bot: "Deckon", win: 1.0, fair: false },
-    { player: "klasik", bot: "Veridian", win: 0.42, fair: true },
-    { player: "Sunhound", bot: "Deckon", win: 0.46, fair: true },
+    { player: "klasik", bot: "Hydron", win: 0.07, shortlisted: false },
+    { player: "Mugshots", bot: "Deckon", win: 0.08, shortlisted: false },
+    { player: "Hydron", bot: "Deckon", win: 1.0, shortlisted: false },
+    { player: "klasik", bot: "Veridian", win: 0.42, shortlisted: true },
+    { player: "Sunhound", bot: "Deckon", win: 0.46, shortlisted: true },
   ];
   for (const pair of PAIRS) {
     const player = snap(pair.player);
@@ -5963,19 +6010,99 @@ console.log(
         `kalibrasi band di duel_bot.mjs perlu diukur ulang`,
     );
     assert.equal(
-      isFairRealOpponent(player, bot),
-      pair.fair,
-      `${label}: gate salah menilai duel ${(measured * 100).toFixed(0)}% ` +
+      isPlausibleRealOpponent(player, bot),
+      pair.shortlisted,
+      `${label}: shortlist salah menilai duel ${(measured * 100).toFixed(0)}% ` +
         `(balance ${estimateDuelBalance(player, bot).toFixed(2)})`,
     );
   }
 
-  // Pool ±15% yang lama meloloskan semuanya. Kalau gate ini ikut meloloskan
-  // semuanya, ia tidak mengerjakan apa pun.
+  // Pool ±15% yang lama meloloskan semuanya. Kalau shortlist ini ikut
+  // meloloskan semuanya, ia tidak mengerjakan apa pun.
   assert.ok(
-    PAIRS.some((pair) => !pair.fair) && PAIRS.some((pair) => pair.fair),
-    "fixture gate tidak memuat kedua sisi",
+    PAIRS.some((pair) => !pair.shortlisted) &&
+      PAIRS.some((pair) => pair.shortlisted),
+    "fixture shortlist tidak memuat kedua sisi",
   );
+
+  // Gate sungguhan: simulasi, bukan taksiran.
+  //
+  // Sampai 23 Agustus 2026 shortlist di atas adalah keputusan akhir, dan itu
+  // salah karena taksiran turn-to-kill tidak berkorelasi cukup kuat dengan hasil
+  // duel. Disweep atas 552 pasangan dengan patokan 512 duel, ketiga kelas saling
+  // tumpang tindih: adil 0,430..1,187, walkover 0,000..0,949, formidable
+  // 0,702..16,832 — jadi TIDAK ADA band yang bisa memisahkannya, dan band yang
+  // dipakai meloloskan 70 dari 138 kandidat sebagai duel timpang.
+  //
+  // Fixture di bawah adalah pasangan roster yang benar-benar lolos shortlist:
+  // enam ditolak simulasi, sebelas diterima. Kalau nanti seseorang mengembalikan
+  // keputusan ke heuristik, keenam baris pertama yang gagal lebih dulu.
+  const GATE_PAIRS = [
+    { player: "klasik", bot: "Veridian", tier: "formidable" },
+    { player: "Playtron", bot: "Mugshots", tier: "formidable" },
+    { player: "klasik", bot: "Deckon", tier: "favorable" },
+    { player: "Deckon", bot: "Mugshots", tier: "favorable" },
+    { player: "Deckon", bot: "Sunhound", tier: "favorable" },
+    { player: "Mugshots", bot: "Playtron", tier: "favorable" },
+    { player: "Playtron", bot: "Deckon", tier: "tough" },
+    { player: "Veridian", bot: "Sunhound", tier: "tough" },
+    { player: "Mugshots", bot: "klasik", tier: "tough" },
+    { player: "Playtron", bot: "Veridian", tier: "even" },
+    { player: "klasik", bot: "Playtron", tier: "even" },
+    { player: "klasik", bot: "Mugshots", tier: "even" },
+  ];
+  for (const pair of GATE_PAIRS) {
+    const player = snap(pair.player);
+    const bot = matchmakerStats(snap(pair.bot), player);
+    const label = `${pair.player} vs ${pair.bot}`;
+    assert.ok(
+      isPlausibleRealOpponent(player, bot),
+      `${label}: fixture gate harus lolos shortlist lebih dulu, kalau tidak ia tidak menguji gate`,
+    );
+    const measured = duelWinRate(player, bot);
+    assert.equal(
+      tierFromWinRate(measured),
+      pair.tier,
+      `${label}: simulasi bergeser ke ${
+        (measured * 100).toFixed(1)
+      }%, fixture gate perlu diukur ulang`,
+    );
+    assert.equal(
+      isWinnableDuel(measured),
+      pair.tier === "tough" || pair.tier === "even",
+      `${label}: gate menerima duel ${(measured * 100).toFixed(1)}% (${pair.tier})`,
+    );
+  }
+  assert.ok(
+    GATE_PAIRS.some((pair) => !isWinnableDuel(
+      duelWinRate(snap(pair.player), matchmakerStats(snap(pair.bot), snap(pair.player))),
+    )),
+    "fixture gate tidak memuat satu pun kandidat yang lolos shortlist tapi ditolak simulasi; " +
+      "tanpa itu skenario ini tidak membedakan gate simulasi dari heuristik",
+  );
+
+  // Cap kandidat wajib ada dan wajib kecil: tanpanya satu startBattle bisa
+  // menyimulasikan seluruh pool 200 lawan.
+  assert.ok(
+    Number.isInteger(DUEL_GATE_CANDIDATES) && DUEL_GATE_CANDIDATES >= 1 &&
+      DUEL_GATE_CANDIDATES <= 5,
+    `DUEL_GATE_CANDIDATES ${DUEL_GATE_CANDIDATES} di luar 1..5; ` +
+      "biaya gate adalah cap x 64 duel per startBattle",
+  );
+
+  // Pemakaian ulang win rate gate harus EKSAK, bukan jalan pintas yang
+  // menggeser bayaran. Duelnya deterministik, jadi keduanya wajib identik.
+  for (const pair of GATE_PAIRS.slice(0, 3)) {
+    const player = snap(pair.player);
+    const bot = matchmakerStats(snap(pair.bot), player);
+    const fresh = battleRewardPreview(player, bot, "reuse");
+    const reused = battleRewardPreview(player, bot, "reuse", fresh.win_rate);
+    assert.deepEqual(
+      reused,
+      fresh,
+      `${pair.player} vs ${pair.bot}: battleRewardPreview berbeda saat win rate dipakai ulang`,
+    );
+  }
 
   // Tier hadiah diukur dari matchup-nya, bukan ditaksir dari combat power.
   // Patokan yang menangkap kemunduran: combat power melabeli klasik vs Playtron
@@ -6017,9 +6144,9 @@ console.log(
   );
 
   // Invariant umumnya: duel yang lebih mudah tidak boleh pernah membayar tier
-  // lebih tinggi. Ini yang gagal kalau ambang, urutan, atau sumber tier bergeser.
-  // Hanya lawan yang benar-benar bisa disajikan: lawan sungguhan wajib lolos
-  // gate keseimbangan lebih dulu, dan lawan sistem selalu tersedia.
+  // lebih tinggi. Ini sifat `battleRewardPreview` sendiri, jadi diukur atas
+  // SELURUH matchup roster — termasuk yang tidak akan pernah disajikan Duel —
+  // supaya fixture-nya tetap menjangkau keempat tingkat kesulitan.
   const graded = [];
   for (const name of Object.keys(ROSTER)) {
     const player = snap(name);
@@ -6030,9 +6157,11 @@ console.log(
     });
     for (const other of Object.keys(ROSTER)) {
       if (other === name) continue;
-      const bot = matchmakerStats(snap(other), player);
-      if (!isFairRealOpponent(player, bot)) continue;
-      graded.push({ label: `${name} vs ${other}`, player, bot });
+      graded.push({
+        label: `${name} vs ${other}`,
+        player,
+        bot: matchmakerStats(snap(other), player),
+      });
     }
   }
   for (const row of graded) {
@@ -6058,13 +6187,51 @@ console.log(
     "fixture tier tidak lagi menjangkau beberapa tingkat kesulitan",
   );
 
+  // Lawan yang benar-benar bisa disajikan: sungguhan wajib lolos shortlist DAN
+  // gate simulasi, dan lawan sistem selalu tersedia.
+  const presentable = [];
+  for (const name of Object.keys(ROSTER)) {
+    const player = snap(name);
+    presentable.push({
+      label: `${name} vs sistem`,
+      player,
+      bot: systemDuelBot(player, "grade"),
+    });
+    for (const other of Object.keys(ROSTER)) {
+      if (other === name) continue;
+      const bot = matchmakerStats(snap(other), player);
+      if (!isPlausibleRealOpponent(player, bot)) continue;
+      if (!isWinnableDuel(duelWinRate(player, bot))) continue;
+      presentable.push({ label: `${name} vs ${other}`, player, bot });
+    }
+  }
+  for (const row of presentable) {
+    row.preview = battleRewardPreview(row.player, row.bot, "grade");
+  }
+
+  // Inti perubahan 23 Agustus 2026: Duel tidak pernah lagi menyajikan walkover
+  // maupun duel yang tidak bisa dimenangkan. Sebelumnya taksiran turn-to-kill
+  // yang memutuskan sendirian, dan daftar ini memuat `favorable` maupun
+  // `formidable` — pada roster production terukur duel 87,5% dan 31,3%.
+  const presentedTiers = [...new Set(presentable.map((row) => row.preview.tier))];
+  assert.deepEqual(
+    presentedTiers.filter((tier) => tier !== "tough" && tier !== "even"),
+    [],
+    `Duel menyajikan tier ${presentedTiers.join(", ")}; ` +
+      "gate simulasi berhenti menolak walkover atau duel yang tidak bisa dimenangkan",
+  );
+  assert.ok(
+    presentable.length >= Object.keys(ROSTER).length,
+    "setiap Anima wajib punya minimal satu lawan yang bisa disajikan; lawan sistem adalah jaringnya",
+  );
+
   // Dan tangganya tidak boleh menjadi perangkap: Bits harapan per duel harus
   // rata antar-tier, diukur dari matchup yang benar-benar bisa muncul dan bukan
-  // dari band teoretis (gate keseimbangan tidak pernah menyajikan duel 5%).
-  // Tier lama terukur 8,5 Bits harapan pada duel mudah versus 3,5 pada duel
-  // berat, jadi mengejar lawan kuat justru merugikan.
+  // dari band teoretis (gate tidak pernah menyajikan duel 5%). Tier lama terukur
+  // 8,5 Bits harapan pada duel mudah versus 3,5 pada duel berat, jadi mengejar
+  // lawan kuat justru merugikan.
   const evByTier = new Map();
-  for (const row of graded) {
+  for (const row of presentable) {
     const bucket = evByTier.get(row.preview.tier) ?? [];
     bucket.push(REWARD_TIERS[row.preview.tier].bits * row.preview.win_rate);
     evByTier.set(row.preview.tier, bucket);

@@ -46,8 +46,12 @@ aturan uang, dan perintah deploy tetap di sana.
   membersihkan discovery non-owner; report langsung menyembunyikan lineage dari
   reporter. Tabel `gallery_entries`, `gallery_moderations`, dan slug function
   `/gallery` tetap dipertahankan sebagai consent/moderation/bot-pool wire, bukan
-  feed publik. Battle bot pemain tetap hanya dari publication approved dan wajib
-  punya fallback sistem/legacy.
+  feed publik. Battle bot pemain **hanya** dari publication approved, dan
+  satu-satunya fallback-nya adalah lawan sistem. Fallback legacy yang membaca
+  `animas` langsung sudah **dihapus** sejak `battle_anima` 28 (live 30) — lihat butir lawan
+  Duel di `.cursor/rules/battle-and-expedition.mdc` untuk kenapa penandanya
+  salah sasaran dan apa yang terukur di production. Kandidat yang lolos pool itu
+  masih harus lolos gate simulasi duel sejak `battle_anima` 30.
 
 ## RLS, advisor, dan jebakan PostgREST
 

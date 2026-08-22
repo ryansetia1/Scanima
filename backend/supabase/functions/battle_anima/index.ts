@@ -11,12 +11,18 @@ import {
   baseStatTotal,
   battleRewardPreview,
   createBattleState,
+  duelWinRate,
   levelFromExp,
   normalizeBaseStats,
   normalizeElement,
   resolveTurn,
 } from "../_shared/battle.mjs";
-import { isFairRealOpponent, systemDuelBot } from "../_shared/duel_bot.mjs";
+import {
+  DUEL_GATE_CANDIDATES,
+  isPlausibleRealOpponent,
+  isWinnableDuel,
+  systemDuelBot,
+} from "../_shared/duel_bot.mjs";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIONS = new Set(BATTLE_ACTIONS);
@@ -216,7 +222,7 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
   if (resumeError) throw resumeError;
   if (existing) return json(200, await withFreshBotArt(existing));
 
-  const [{ data: player, error: playerError }, { data: galleryRows, error: galleryError }, { data: legacyBots, error: legacyError }, { data: artRows }] =
+  const [{ data: player, error: playerError }, { data: galleryRows, error: galleryError }, { data: artRows }] =
     await Promise.all([
       db
         .from("animas")
@@ -235,23 +241,14 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
         .eq("auto_hidden", false)
         .neq("owner_id", ownerId)
         .limit(200),
-      db
-        .from("animas")
-        .select(ANIMA_BATTLE_FIELDS + ", sheet_path, manifest")
-        .neq("owner_id", ownerId)
-        .eq("status", "ready")
-        .limit(200),
       db.from("species_library").select("species_key, color_bucket, stage, sheet_path, manifest").limit(1000),
     ]);
   if (playerError) throw playerError;
   if (!player) throw new Error("ANIMA_NOT_FOUND");
   if (galleryError) throw galleryError;
-  if (legacyError) throw legacyError;
 
   const playerRow = player as unknown as AnimaRow;
-  const legacyCandidates = (legacyBots ?? []) as unknown as AnimaRow[];
   const artCandidates = (artRows ?? []) as unknown as ArtRow[];
-  const artByKey = new Map(artCandidates.map((art) => [artKey(art), art]));
   const seed = crypto.randomUUID();
   const galleryCandidates = ((galleryRows ?? []) as unknown as GalleryBotRow[])
     .filter((row) => row.animas?.sheet_path && row.animas?.manifest);
@@ -259,12 +256,25 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
   const playerArt = playerArtSource(playerRow, artCandidates);
   const playerSnapshot = snapshot(playerRow, playerArt, true);
 
-  // Lawan sungguhan tetap diutamakan, tetapi hanya yang taksiran duelnya masih
-  // seimbang. Pool ±15% total base stat saja tidak cukup: ia tidak melihat
-  // Level, bentuk distribusi stat, maupun elemen, dan pada roster production
-  // meloloskan duel 8% sekaligus duel 100%.
+  // `gallery_entries` published+approved adalah SATU-SATUNYA pool lawan pemain,
+  // lalu disaring lagi oleh simulasi duel di `pickFairCandidate()`.
+  //
+  // Sampai 23 Agustus 2026 ada pool kedua yang membaca `animas` langsung dengan
+  // `species_library` sebagai penanda "legacy", tanpa menyentuh publication.
+  // Penandanya salah sasaran: ia menanyakan apakah species Anima kebetulan ada
+  // di pustaka art lama, bukan apakah Anima itu benar-benar dari era itu — jadi
+  // Anima baru ber-species umum ikut lolos. Terukur di production: 4 dari 5
+  // Anima ready yang lolos penanda itu belum pernah Publish, dan Veridian (nol
+  // baris `gallery_entries`) dua kali menjadi lawan guest pada 22 Agustus 2026,
+  // menyajikan art privat pemiliknya ke pemain lain. Menggerbanginya dengan
+  // consent hanya menghasilkan pool gallery lagi, jadi ia dihapus; ketersediaan
+  // Duel tidak pernah bergantung padanya sejak `systemDuelBot()` ada.
   let botSnapshot: Record<string, unknown> | null = null;
   let botAnimaId: string | null = null;
+  // Peluang menang lawan terpilih sudah diukur oleh gate, dan `candidateFighter`
+  // memakai field battle yang sama dengan snapshot arena — jadi tier hadiah
+  // memakainya ulang alih-alih menyimulasikan duel yang identik dua kali.
+  let botWinRate: number | null = null;
 
   const galleryPick = pickFairCandidate(
     seed,
@@ -275,44 +285,20 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
   if (galleryPick) {
     try {
       botSnapshot = await gallerySnapshot(
-        galleryPick.entry!,
+        galleryPick.entry,
         { ...galleryPick.row, base_stats: galleryPick.baseStats },
       );
       botAnimaId = galleryPick.animaId;
+      botWinRate = galleryPick.winRate;
     } catch (error) {
-      console.error("signed art bot Gallery gagal; mencoba legacy", error);
-    }
-  }
-
-  if (!botSnapshot) {
-    // ponytail: species_library hanya menandai bot legacy; bytes memakai salinan privat hasil migrasi.
-    const legacyPick = pickFairCandidate(
-      seed,
-      playerSnapshot,
-      playerRow,
-      legacyCandidates
-        .filter((row) => artByKey.has(artKey(row)) && row.sheet_path && row.manifest)
-        .map((row) => ({ key: row.id, animaId: row.id, row })),
-    );
-    if (legacyPick) {
-      botSnapshot = snapshot(
-        { ...legacyPick.row, base_stats: legacyPick.baseStats },
-        {
-          species_key: legacyPick.row.species_key,
-          color_bucket: legacyPick.row.color_bucket,
-          stage: legacyPick.row.stage,
-          sheet_path: legacyPick.row.sheet_path!,
-          manifest: legacyPick.row.manifest,
-        },
-        false,
-      );
-      botAnimaId = legacyPick.animaId;
+      console.error("signed art bot Gallery gagal; jatuh ke lawan sistem", error);
     }
   }
 
   if (!botSnapshot) {
     botSnapshot = systemDuelBot(playerSnapshot, seed) as Record<string, unknown>;
     botAnimaId = null;
+    botWinRate = null;
   }
 
   const initialState = createBattleState({
@@ -320,7 +306,7 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
     bot: botSnapshot,
     seed,
   });
-  const reward = battleRewardPreview(playerSnapshot, botSnapshot, seed);
+  const reward = battleRewardPreview(playerSnapshot, botSnapshot, seed, botWinRate);
 
   const { data, error } = await db.rpc("start_battle", {
     p_owner: ownerId,
@@ -536,12 +522,51 @@ type RealCandidate = {
   key: string;
   animaId: string;
   row: AnimaRow & { sheet_path?: string; manifest?: unknown };
-  entry?: GalleryBotRow;
+  entry: GalleryBotRow;
+};
+
+type GatedCandidate = RealCandidate & {
+  baseStats: Record<string, number>;
+  fighter: Record<string, unknown>;
+  winRate: number;
 };
 
 /**
- * Buang kandidat yang taksiran duelnya sudah miring, lalu pilih acak di antara
- * yang tersisa supaya lawannya tetap bervariasi antar-duel. Kesegaran stat
+ * Bagian battle-relevant dari kandidat, dalam bentuk yang identik dengan
+ * snapshot arena. `snapshot()` juga tidak pernah menulis `evolution_branch` dan
+ * `duelWinRate()` menetralkan care di kedua sisi, jadi peluang menang yang
+ * diukur di sini adalah peluang menang yang benar-benar akan terjadi — itulah
+ * yang membuat angkanya boleh dipakai ulang sebagai tier hadiah.
+ */
+function candidateFighter(
+  row: AnimaRow,
+  baseStats: Record<string, number>,
+): Record<string, unknown> {
+  return {
+    base_stats: baseStats,
+    stage: row.stage,
+    level: levelFromExp(row.care_score),
+    element: normalizeElement(row.element),
+    secondary_element: readSecondaryElement(row) ?? "",
+    evolution_version: Math.max(0, Math.trunc(Number(row.evolution_version) || 0)),
+    strike_effect_id: String(row.strike_effect_id ?? ""),
+    surge_effect_id: String(row.surge_effect_id ?? ""),
+  };
+}
+
+/**
+ * Pilih lawan sungguhan yang duelnya benar-benar layak dimainkan.
+ *
+ * Dua langkah, dan pembagian kerjanya penting: taksiran murah
+ * (`isPlausibleRealOpponent`) menyusun shortlist atas SEMUA kandidat, lalu
+ * simulasi 64 duel memutuskan — atas paling banyak `DUEL_GATE_CANDIDATES`
+ * kandidat saja. Sebelum 23 Agustus 2026 taksiran itu yang memutuskan sendiri,
+ * dan terukur ia meloloskan duel 31,3% maupun 87,5% pada roster production;
+ * sesudah perubahan ini win rate lawan sungguhan yang diterima tinggal
+ * 41,0%..86,1%.
+ *
+ * Urutannya stable-rank atas seed supaya lawannya tetap bervariasi antar-duel
+ * dan urutan simulasinya tetap deterministik untuk satu duel. Kesegaran stat
  * ditentukan dulu (pakai stat sendiri kalau total-nya dekat, kalau tidak
  * diskalakan ke total pemain), sebab yang dinilai harus stat yang benar-benar
  * dipakai di arena. Signed URL art hanya diambil untuk yang terpilih.
@@ -551,34 +576,26 @@ function pickFairCandidate(
   playerSnapshot: Record<string, unknown>,
   player: AnimaRow,
   candidates: RealCandidate[],
-): (RealCandidate & { baseStats: Record<string, number> }) | null {
+): GatedCandidate | null {
   const playerTotal = baseStatTotal(player.base_stats);
-  const fair = candidates
+  const shortlist = candidates
     .map((candidate) => {
       const close = candidate.row.stage === player.stage &&
         Math.abs(baseStatTotal(candidate.row.base_stats) - playerTotal) <= playerTotal * 0.15;
-      return {
-        ...candidate,
-        baseStats: close
-          ? normalizeStats(candidate.row.base_stats)
-          : normalizeStats(candidate.row.base_stats, playerTotal),
-      };
+      const baseStats = close
+        ? normalizeStats(candidate.row.base_stats)
+        : normalizeStats(candidate.row.base_stats, playerTotal);
+      return { ...candidate, baseStats, fighter: candidateFighter(candidate.row, baseStats) };
     })
-    .filter((candidate) =>
-      isFairRealOpponent(playerSnapshot, {
-        base_stats: candidate.baseStats,
-        stage: candidate.row.stage,
-        level: levelFromExp(candidate.row.care_score),
-        element: normalizeElement(candidate.row.element),
-        secondary_element: readSecondaryElement(candidate.row) ?? "",
-        evolution_version: Math.max(0, Math.trunc(Number(candidate.row.evolution_version) || 0)),
-        strike_effect_id: String(candidate.row.strike_effect_id ?? ""),
-        surge_effect_id: String(candidate.row.surge_effect_id ?? ""),
-      })
-    );
-  if (fair.length === 0) return null;
-  fair.sort((left, right) => stableRank(`${seed}:${left.key}`) - stableRank(`${seed}:${right.key}`));
-  return fair[0];
+    .filter((candidate) => isPlausibleRealOpponent(playerSnapshot, candidate.fighter));
+  shortlist.sort((left, right) =>
+    stableRank(`${seed}:${left.key}`) - stableRank(`${seed}:${right.key}`)
+  );
+  for (const candidate of shortlist.slice(0, DUEL_GATE_CANDIDATES)) {
+    const winRate = duelWinRate(playerSnapshot, candidate.fighter);
+    if (isWinnableDuel(winRate)) return { ...candidate, winRate };
+  }
+  return null;
 }
 
 function readSecondaryElement(row: AnimaRow): string | null {

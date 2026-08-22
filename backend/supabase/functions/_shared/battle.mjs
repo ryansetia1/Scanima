@@ -329,8 +329,12 @@ export function duelWinRate(player, bot, runs = DUEL_DIFFICULTY_RUNS) {
   return wins / total;
 }
 
-export function battleRewardPreview(player, bot, seed) {
-  const winRate = duelWinRate(player, bot);
+// `knownWinRate` dipakai pemanggil yang SUDAH menyimulasikan matchup ini —
+// gate lawan Duel melakukannya untuk memutuskan kelayakan. Duelnya deterministik
+// (seed `duel-difficulty:<i>` konstan), jadi menyimulasikannya ulang di sini
+// hanya membayar 64 duel untuk angka yang sama.
+export function battleRewardPreview(player, bot, seed, knownWinRate = null) {
+  const winRate = Number.isFinite(knownWinRate) ? knownWinRate : duelWinRate(player, bot);
   const tier = tierFromWinRate(winRate);
   const roll = rewardRollFromSeed(seed);
   return {
