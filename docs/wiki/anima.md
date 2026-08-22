@@ -15,7 +15,11 @@ tinggi maupun lebar dan tidak memenuhi seluruh layar tinggi. Home juga memakai
 ukuran yang sama, jadi Anima yang lebih tinggi memang berdiri lebih tinggi di
 lobby — termasuk sesudah Evolve, karena bentuk baru yang bertambah tinggi ikut
 terlihat bertambah besar di sana. Selisihnya sengaja diperhalus di kedua layar:
-naik dua kali lipat dalam sentimeter tidak berarti dua kali lipat di layar.
+naik dua kali lipat dalam sentimeter tidak berarti dua kali lipat di layar. Di
+lobby selisih itu dibiarkan sedikit lebih terasa daripada di Battle, sebab di
+sana hanya ada satu Anima dan tidak ada lawan sebagai pembanding. Kalau beberapa
+Anima terlihat seukuran, biasanya memang tingginya berdekatan — banyak Hatchling
+berada di kisaran yang sama.
 Angkanya bisa dilihat di Anima Atlas, belum di Profile, dan tidak menambah
 Health atau damage; ia murni mengatur skala visual yang tetap dibatasi agar HUD
 terbaca.

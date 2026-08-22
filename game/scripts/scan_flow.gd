@@ -53,13 +53,22 @@ const HUD_TOP_PAD := 24.0
 const HOME_GROUND_PORTRAIT_RATIO := HomeBackground.PLATFORM_TARGET_PORTRAIT_RATIO
 const HOME_GROUND_LANDSCAPE_RATIO := HomeBackground.PLATFORM_TARGET_LANDSCAPE_RATIO
 ## Tinggi badan pada tinggi referensi 120 cm, diukur terhadap tinggi art Home.
-## Nilainya dikalibrasi ke apa yang sudah dilihat pemain: Rookie 180 cm terakhir
-## digambar 517 px pada art 1602 px (32%), dan 0,27 x pow(180/120, 0,42) = 0,32.
-## Jadi Anima yang sudah ada tetap seukuran sekarang, yang berubah hanya Anima
-## yang sheet-nya kebetulan beda resolusi.
-const HOME_BODY_SPAN_RATIO := 0.27
+## Dikalibrasi ke **median roster**, bukan satu sampel: kalibrasi pertama memakai
+## satu Rookie 517 px, dan sheet itu ternyata yang terbesar di seluruh roster —
+## sisanya 219–401 px, median 312. Akibatnya terukur 22 Agustus 2026: delapan
+## dari sembilan Anima membengkak, sampai +81% untuk Drowake. Median tinggi badan
+## roster 90 cm, jadi 0,23 memetakan Anima 90 cm kembali ke ~310 px yang memang
+## sudah dilihat pemain.
+const HOME_BODY_SPAN_RATIO := 0.23
 const HOME_BODY_SPAN_MIN_RATIO := 0.12
 const HOME_BODY_SPAN_MAX_RATIO := 0.42
+## Home memakai kurva sendiri, lebih tegas daripada `BattleScale.BODY_HEIGHT_CURVE`
+## 0,42, dan arena sengaja tidak ikut berubah. Alasannya berbeda: di arena selalu
+## ada lawan sebagai pembanding, sedangkan di lobby hanya ada satu Anima, jadi
+## selisih tinggi harus terbaca tanpa pembanding. Dengan 0,42 rentang nyata
+## 55–225 cm hanya menjadi 1,8x di layar dan enam Anima 55–95 cm tampak seukuran;
+## 0,62 melebarkannya menjadi 2,4x tanpa menyentuh clamp.
+const HOME_BODY_HEIGHT_CURVE := 0.62
 const TOAST_GAP := 8.0
 const TOAST_MIN_HEIGHT := 76.0
 const SHOP_GAP := 6.0
@@ -1110,11 +1119,17 @@ func _refresh_evolution_history() -> void:
 	if anima_id.is_empty() or CareRules.committed_stage(row) < 2:
 		_details_view.set_evolution_history([])
 		return
+	_details_view.set_evolution_history_loading(true)
 	var account_epoch := GameState.session_epoch
 	var res := await Backend.evolution_history(anima_id)
 	if not Backend.response_applies(res, account_epoch):
 		return
-	if revision != _evolution_history_revision or not res.ok:
+	if revision != _evolution_history_revision:
+		return
+	if not res.ok:
+		# Skeleton yang tidak pernah berhenti lebih buruk daripada section yang
+		# absen: ia menjanjikan sesuatu yang tidak akan datang.
+		_details_view.set_evolution_history_loading(false)
 		return
 	var forms: Array = GameState.as_dict(res.data).get("forms", [])
 	if forms.size() < 2:
@@ -4954,9 +4969,9 @@ static func home_art_rect(viewport_size: Vector2) -> Rect2:
 ## menentukan besar Anima adalah resolusi sheet — bukan tingginya. Terukur 22
 ## Agustus 2026: Adult hasil evolusi kembali 312 px sementara Rookie-nya 517 px,
 ## jadi tumbuh +25% dalam cm justru menyusut jadi 60% di layar. Membagi dengan
-## `reference_height_px` persis yang sudah dilakukan arena, dan kurvanya dipinjam
-## dari `BattleScale` supaya Anima yang lebih tinggi terlihat lebih tinggi di
-## kedua layar. Nol referensi berarti manifest lama: biarkan apa adanya.
+## `reference_height_px` persis yang sudah dilakukan arena, tetapi kurvanya milik
+## Home sendiri — lihat `HOME_BODY_HEIGHT_CURVE`. Nol referensi berarti manifest
+## lama: biarkan apa adanya.
 static func stage_scale_for(
 	body_height_cm: float,
 	reference_height_px: float,
@@ -4972,7 +4987,7 @@ static func stage_scale_for(
 		BattleScale.anima_display_height_cm(height_cm) / BattleScale.BODY_HEIGHT_REFERENCE_CM
 	)
 	var target := art.size.y * HOME_BODY_SPAN_RATIO * pow(
-		height_ratio, BattleScale.BODY_HEIGHT_CURVE
+		height_ratio, HOME_BODY_HEIGHT_CURVE
 	)
 	target = clampf(
 		target,

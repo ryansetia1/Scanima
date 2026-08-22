@@ -857,6 +857,26 @@ func _initialize() -> void:
 			rookie_px < art.size.y * 0.42 and rookie_px > art.size.y * 0.12,
 			"Home body stays inside its span clamp at %s" % size
 		)
+		# Kalibrasi pertama memakai satu sheet 517 px yang ternyata terbesar di
+		# roster, jadi delapan dari sembilan Anima membengkak sampai +81%. Anima
+		# setinggi median roster (90 cm) harus kembali ke sekitar 310 px yang
+		# sudah dilihat pemain, bukan melar ke ukuran sheet outlier itu.
+		var median_px: float = script.stage_scale_for(90.0, 312.0, size) * 312.0
+		_check(
+			absf(median_px / art.size.y - 310.0 / 1602.0) < 0.02,
+			"Home keeps a median-height Anima at the size players already saw at %s" % size
+		)
+		# Rentang tinggi nyata 55–225 cm harus tetap terbaca tanpa pembanding di
+		# lobby; kurva arena 0,42 memampatkannya jadi 1,8x dan enam Anima 55–95 cm
+		# tampak seukuran.
+		var tiny_px: float = script.stage_scale_for(55.0, 219.0, size) * 219.0
+		var tall_px: float = script.stage_scale_for(225.0, 312.0, size) * 312.0
+		_check(
+			tall_px / tiny_px > 2.2,
+			"Home spreads the real height range at %s — got %.2fx" % [
+				size, tall_px / tiny_px
+			]
+		)
 	# Manifest lama tanpa render_metrics tidak boleh tiba-tiba diskalakan.
 	_check_eq(
 		script.stage_scale_for(180.0, 0.0, Vector2(720, 1602)),
@@ -5598,6 +5618,16 @@ func _test_evolution_history_section() -> void:
 		"base_stats": {"hp": 50, "atk": 40, "def": 40, "spd": 40, "special": 40},
 	}
 	details.set_anima(drowake, null)
+	# Selama menunggu server, stage Anima sudah cukup untuk memesan jumlah kartu
+	# yang benar, jadi pemain tahu section ini ada dan berapa bentuk yang datang.
+	details.set_evolution_history_loading(true)
+	_check(panel.visible, "The section stands while its lineage is still loading")
+	_check(
+		row.get_child_count() == 3
+		and row.get_child(0) is UiSkeleton
+		and row.get_child(2) is UiSkeleton,
+		"A stage 2 Anima reserves two skeleton cards — got %d children" % row.get_child_count()
+	)
 	details.set_evolution_history([])
 	_check(not panel.visible, "A single form is not a lineage, so the section stays hidden")
 	details.set_evolution_history([
@@ -5618,6 +5648,10 @@ func _test_evolution_history_section() -> void:
 	_check(
 		(row.get_child(1) as TextureRect).flip_h,
 		"The reused chevron is flipped so it points at the next form"
+	)
+	_check(
+		not (row.get_child(0) is UiSkeleton),
+		"Real forms replace the skeleton instead of stacking on it"
 	)
 	_check(
 		(row.get_child(0).get_child(1) as Label).text == "Hydron"
@@ -5646,6 +5680,11 @@ func _test_evolution_history_section() -> void:
 	_check(
 		not panel.visible and row.get_child_count() == 0,
 		"Switching Anima clears the previous lineage immediately"
+	)
+	details.set_evolution_history_loading(true)
+	_check(
+		not panel.visible,
+		"Stage 1 never shows the section, not even as a skeleton"
 	)
 	# Stage 1 belum punya bentuk sebelumnya, jadi Profile tidak membangunkan
 	# Edge Function untuknya sama sekali.

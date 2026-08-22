@@ -2,6 +2,43 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Skala Home dikalibrasi ke roster, bukan ke satu sampel
+
+22 Agustus 2026, client saja. Dua laporan pemain sesudah normalisasi tinggi Home
+menyala: "semua Anima jadi membesar" dan "seperti tidak ada beda tinggi".
+Keduanya benar, dan sebabnya satu — **kalibrasi memakai satu sampel**.
+
+`HOME_BODY_SPAN_RATIO` 0,27 dipas ke satu Rookie yang sheet-nya 517 px, dan
+probe terhadap roster produksi menunjukkan sheet itu **yang terbesar di seluruh
+roster**: sembilan Anima datang di 219–401 px, median 312. Ukuran gambar
+terukur sesudah normalisasi versi pertama: Padronic +42%, VerdantPup +35%,
+Veridian +45%, Drakabyss +76%, Drowake +81%; hanya satu Anima yang mengecil.
+Sekarang 0,23, dipas ke median roster — Anima 90 cm (median tinggi badan)
+kembali ke ~310 px, praktis sama dengan yang sudah dilihat pemain, sementara
+yang tinggi tetap tumbuh.
+
+Keluhan kedua nyata tetapi sebagian memang benar apa adanya: enam dari sembilan
+Anima berada di 55–95 cm, jadi mereka *memang* setinggi itu. Yang bisa
+diperbaiki adalah kompresinya. Kurva arena 0,42 memetakan rentang nyata
+55–225 cm hanya ke 1,81x di layar. Home sekarang memakai
+`HOME_BODY_HEIGHT_CURVE` 0,62 sendiri — 2,40x — karena arena selalu punya lawan
+sebagai pembanding sementara lobby hanya menampilkan satu Anima. **Duel, Team,
+dan Expedition sengaja tidak disentuh**, sesuai keputusan yang sudah disetujui.
+
+Ukuran gambar sesudah perbaikan (px, art 1602): Padronic 227, Sunhound 275,
+VerdantPup 293, klasik 308, Mugshots 308, Deckon 318, Veridian 423,
+Drakabyss 510, Drowake 544.
+
+Dua pagar baru di `test_scan_ui` mengunci keduanya per viewport: median tetap
+~310 px dan rentang 55→225 cm di atas 2,2x. Diuji negatif — mengembalikan 0,27
+dan 0,42 menjatuhkan tepat enam check itu, dan pesannya melaporkan 1,81x
+terukur. Pemeriksaannya memakai probe headless sekali pakai yang memanggil
+`stage_scale_for()` dengan roster asli; probe-nya dibuang setelah angkanya masuk
+ke test.
+
+Evolution History juga mendapat skeleton loading-nya. Section itu sebelumnya
+diam sampai server menjawab, jadi pemain tidak tahu ia ada.
+
 ## Evolution History di Profile
 
 22 Agustus 2026, `evolve_anima` 13→14. Profile mendapat section **Evolution

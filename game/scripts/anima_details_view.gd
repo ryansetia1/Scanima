@@ -81,6 +81,7 @@ var _evolution_history_title: Label
 var _evolution_history_row: HBoxContainer
 var _evolution_forms: Array = []
 var _evolution_form_textures: Dictionary = {}
+var _evolution_history_loading := false
 
 
 func _ready() -> void:
@@ -122,9 +123,7 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_synthesis_history_textures.clear()
 		_evolution_forms.clear()
 		_evolution_form_textures.clear()
-		# Digambar ulang saat itu juga: tanpa ini silsilah Anima sebelumnya masih
-		# terpampang sampai permintaan Anima baru dijawab server.
-		_apply_evolution_history()
+		_evolution_history_loading = false
 		_details_scroll.scroll_vertical = 0
 		close_action_menu(false)
 	_row = row.duplicate(true) if not row.is_empty() else {}
@@ -187,6 +186,9 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		GameState.as_dict(row.get("synthesis_history")),
 		_synthesis_history_textures
 	)
+	# Sesudah `_row` terisi, bukan di blok pergantian id di atas: jumlah kartu
+	# skeleton dibaca dari stage Anima yang sedang dibuka.
+	_apply_evolution_history()
 	_queue_layout_refresh()
 
 
@@ -359,15 +361,27 @@ func set_evolution_history(forms: Array, textures: Dictionary = {}) -> void:
 	_evolution_forms = forms.duplicate(true)
 	if not textures.is_empty():
 		_evolution_form_textures = textures.duplicate()
+	# Jawaban sudah datang, termasuk jawaban kosong, jadi skeleton berhenti.
+	_evolution_history_loading = false
+	_apply_evolution_history()
+
+
+func set_evolution_history_loading(loading: bool) -> void:
+	_evolution_history_loading = loading
 	_apply_evolution_history()
 
 
 ## Satu bentuk bukan silsilah, jadi section-nya baru muncul sesudah Evolve
-## pertama benar-benar tercatat.
+## pertama benar-benar tercatat. Selama menunggu server, stage Anima sudah cukup
+## untuk memesan jumlah kartu yang benar: pemain melihat section ini ada dan
+## berapa bentuk yang akan datang, bukan panel yang tiba-tiba menyeruak.
 func _apply_evolution_history() -> void:
 	if not is_instance_valid(_evolution_history_row):
 		return
-	_evolution_history.visible = _evolution_forms.size() >= 2
+	var stages := CareRules.committed_stage(_row)
+	var lineage := _evolution_forms.size() >= 2
+	var pending := _evolution_history_loading and stages >= 2
+	_evolution_history.visible = lineage or pending
 	# remove_child dulu, bukan queue_free saja: node yang di-queue_free masih
 	# menempel sampai akhir frame, jadi baris akan sempat berisi dua silsilah.
 	for child in _evolution_history_row.get_children():
@@ -376,13 +390,33 @@ func _apply_evolution_history() -> void:
 	if not _evolution_history.visible:
 		_queue_layout_refresh()
 		return
-	for index in _evolution_forms.size():
+	var cells := _evolution_forms.size() if lineage else stages
+	for index in cells:
 		if index > 0:
 			_evolution_history_row.add_child(_build_evolution_arrow())
-		_evolution_history_row.add_child(
-			_build_evolution_form(GameState.as_dict(_evolution_forms[index]))
-		)
+		if lineage:
+			_evolution_history_row.add_child(
+				_build_evolution_form(GameState.as_dict(_evolution_forms[index]))
+			)
+		else:
+			var cell := _build_evolution_skeleton_cell()
+			_evolution_history_row.add_child(cell)
+			# Sesudah masuk pohon: `set_loading()` membuat Tween, dan Tween hanya
+			# bisa dibuat oleh node yang sudah punya SceneTree.
+			cell.set_loading(true)
 	_queue_layout_refresh()
+
+
+func _build_evolution_skeleton_cell() -> UiSkeleton:
+	var skeleton := UiSkeleton.new()
+	skeleton.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	skeleton.add_theme_constant_override("separation", 2)
+	var art := PanelContainer.new()
+	art.custom_minimum_size = Vector2(EVOLUTION_FORM_ART_PX, EVOLUTION_FORM_ART_PX)
+	art.theme_type_variation = &"StatValuePanel"
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	skeleton.add_child(art)
+	return skeleton
 
 
 func _build_evolution_form(form: Dictionary) -> Control:
