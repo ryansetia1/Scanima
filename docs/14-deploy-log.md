@@ -2,6 +2,66 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Publish to Atlas berhenti buntu untuk guest
+
+23 Agustus 2026, client saja; nol migrasi, nol Edge Function, nol panggilan
+model. `gallery/publish` selalu ber-`requireLinkedGoogle`, tetapi
+`_refresh_gallery_status()` hanya memeriksa ready + `typing_v2` + bukan rejected
+— tidak pernah Google. Guest karena itu melihat tombol **Publish to Atlas**,
+menekannya, dan dijawab `GALLERY_LINK_REQUIRED` sesudah request yang tidak
+mungkin berhasil. Servernya benar; UI-nya yang mengiklankan sesuatu yang belum
+bisa dilakukan.
+
+Tombolnya sengaja tetap terlihat karena ia memang mengiklankan fiturnya.
+`_toggle_gallery_publish()` sekarang memeriksa `GameState.is_anonymous()`
+**sebelum** consent asli dan membuka `atlas_publish_signin`: penjelasan singkat
+plus **Sign in with Google**. Konfirmasi itu memanggil
+`_show_sign_in_confirmation()` — choice `Keep Guest Separate` / `Move Guest
+Progress` / Cancel — bukan `_show_transfer_confirmation()` langsung, sebab
+pilihan akun itu invarian dan publish tidak berhak melewatinya.
+
+Intent tap itu selamat melewati round trip OAuth lewat `_publish_after_sign_in`
+berisi `{anima_id, uid}`; `_resume_pending_publish()` di ujung
+`_on_auth_succeeded()` membuka kembali profil Anima beserta consent-nya. Dua
+invarian di sana. Pertama, intent **dikonsumsi sebelum** pagar apa pun diperiksa
+— kalau urutannya dibalik, `separate` meninggalkan intent terkokang dan sign-in
+berikutnya menerbitkan Anima yang tidak pernah diminta. Kedua, UID pembuatnya
+dibawa serta alih-alih disimpulkan dari roster: transfer justru didefinisikan
+sebagai UID yang tidak berubah (`auth_flow.handle_callback_url()` membatalkan
+pertukaran token kalau `new_uid != guest_uid`), jadi kecocokan UID menyatakan
+langsung "pemiliknya masih orang yang sama" dan `separate` gagal karena
+konstruksi. Ini kenyamanan UI, bukan kontrol keamanan: `publishEntry` tetap
+menolak dengan `ANIMA_NOT_OWNED`.
+
+Urutan dua tombol pertama sekarang mengikuti isi roster:
+`_sign_in_move_first = not _roster.is_empty() or _guest_scan_locked()`. Klausa
+kedua ada karena roster yang gagal dimuat akan membungkam peringatan itu tepat
+pada pemain yang paling membutuhkannya — `guest_scan_used_at` adalah bukti kedua
+dari sumber lain, dan salah memperingatkan lebih murah daripada diam.
+`SEEKER_SIGN_IN_CHOICE_BODY` membuang framing "safe default" yang menyesatkan,
+`SEEKER_SIGN_IN_CHOICE_BODY_ANIMA` baru menyebut konsekuensi kedua tombol dengan
+nama, dan tap yang mendarat saat `_busy` menjawab `SEEKER_SWITCH_BLOCKED`
+alih-alih diam.
+
+Satu regresi ditemukan di pekerjaan sendiri: `_check_referenced_keys()` di
+`test_i18n` hanya cocok dengan `tr(\s*"KEY"`, jadi key yang bersembunyi di cabang
+`else` sebuah ternary multi-baris diam-diam kehilangan pemeriksaan
+keberadaannya. Ketiga label dipindah ke variabel lokal sehingga tercakup lagi.
+
+Verifikasi lulus, delapan suite: `test_scan_ui` 1.358, `test_i18n` 4.813,
+`test_client_state` 196, `test_sprite_slicing` 174, `test_auth_flow` 63,
+`test_game_rules` 181, `test_expedition_route_map` 91, dan
+`test_battle_sim_parity` 590 check. APK debug 05:40 WIB berhasil dibangun ke
+`/tmp/scanima.apk`: 57.269.155 byte, SHA-256
+`d4e11d855f92d0652ae1cea8b7c6c709840e8e030c2c8f5a3173b934a06b3beb`, izin tepat
+INTERNET + CAMERA, 22 string `GodotGetImage` di dex, signature sah, dan
+`libgodot_android.so` terkompresi 74.945.024 → 27.030.921 byte. `adb devices -l`
+butuh 110 detik lalu menjawab kosong, jadi sideload dan smoke fisik jalur ini
+masih menunggu device tersambung. Semua pagar di atas adalah source scan: ia
+membuktikan kodenya tersambung, bukan bahwa layarnya benar, dan
+`_resume_pending_publish()` khususnya belum pernah dieksekusi sekali pun. Wiki
+pemain ikut di langkah yang sama: `docs/wiki/atlas.md` dan `docs/wiki/seeker.md`.
+
 ## Resume picker layer, shared Team builder, toast, dan Seeker HUD
 
 23 Agustus 2026, client saja. `BattlePickSheet` sebelumnya tetap di `z_index=0`

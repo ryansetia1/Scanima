@@ -84,15 +84,17 @@ Header kiri menampilkan nama Seeker
 (`Guest Seeker` untuk guest), dan row resource hanya menyisakan Cores + Bits;
 Collection tetap di tab **Animas**.
 
-APK debug 23 Agustus 2026 05:26 berhasil dibangun
+APK debug 23 Agustus 2026 05:40 berhasil dibangun
 (`com.rekansebangku.scanima` 0.1.0, 57,3 MB) dan memuat ordered/shared Team
 builder termasuk busy Back guard, CTA outcome, reset lifecycle + picker layer
-Duel, toast compact dengan relayout minimum terbaru, Seeker HUD, serta enam arena
-reframe. Manifest tepat memuat `INTERNET` + `CAMERA`, class kamera ada di dex,
-signature sah, dan native library terkompresi. Daemon ADB
-yang macet sudah di-restart dan `adb devices -l` kembali normal, tetapi daftar
-device kosong; APK ini belum di-sideload dan build 19:48 tanggal 22 tetap yang
-terakhir terpasang.
+Duel, toast compact dengan relayout minimum terbaru, Seeker HUD, enam arena
+reframe, serta jalur sign-in guest untuk Publish to Atlas. Manifest tepat memuat
+`INTERNET` + `CAMERA`, class kamera ada di dex, signature sah, dan native library
+terkompresi. `adb devices -l` butuh 110 detik lalu menjawab kosong — daemon-nya
+lambat, bukan device yang tidak terdeteksi. APK ini belum di-sideload dan build
+19:48 tanggal 22 tetap yang terakhir terpasang, jadi seluruh perilaku client di
+atas masih terverifikasi lewat test headless saja, belum pernah dilihat di
+perangkat.
 
 Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
 wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
