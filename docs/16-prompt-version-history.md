@@ -261,6 +261,12 @@ backend/prompts/
 └── v43/                          # hardening Planner; sheet diwarisi v42
     ├── vision_synthesis_system.md # JSON ringkas + batas output eksplisit
     └── vision_synthesis_schema.json # maxLength/maxItems + enum candidate
+└── v44/                          # Name Lineage Synthesis; sheet diwarisi v42
+    ├── vision_synthesis_system.md # name_roots v41; tidak boleh suggested_name
+    └── vision_synthesis_schema.json # name_roots wajib, suggested_name dihapus
+└── v45/                          # JSON close; name_roots terakhir
+    ├── vision_synthesis_system.md # evidence 8 kata; name_roots ditulis terakhir
+    └── vision_synthesis_schema.json # propertyOrdering, evidence maxLength 40
 ```
 
 ## Provenance v32–v41
@@ -553,3 +559,28 @@ instruksi JSON ringkas. Edge Function menurunkan temperature Planner ke 0,35,
 menaikkan output budget dari 3.072 ke 4.096 token, serta memotong prose valid di
 trust boundary alih-alih menggagalkan seluruh Synthesis. Prompt sheet berbayar
 tetap byte-identik v42; capture dan evolution tetap mewarisi v41.
+
+## V44 — Synthesis Name Lineage
+
+Result Synthesis v42/v43 memakai `suggested_name` bebas dari Planner. Nama
+production pertama yang lolos — Gearbit Racer, VerdantPup — adalah prosa Inggris
+bergelar atau compound, bukan satu kata spesies v41.
+
+V44 menghapus `suggested_name` dari schema Planner dan mewajibkan `name_roots`
+yang sama dengan capture. `validateSynthesisPlan()` memanggil
+`deriveMorphemeSpeciesName()`. Plan yang sudah di-reserve menjaga nama
+tersimpannya. Evolve membaca generation `kind=synthesis` sebagai birth lineage.
+Prompt sheet tetap v42; capture/evolution tetap v41. Rollback: `v43`.
+
+## V45 — Synthesis JSON close
+
+Paid Planner v44 pada referensi Chromvein + Playtron mengembalikan `name_roots`
+yang sah (`roll`, `gleam`, `pixl`, `keen`) lalu kehabisan output di tengah
+evidence, dengan pagar ```json yang tidak ditutup. `extractJson()` menolak
+seluruh Plan padahal field yang sudah tertulis bisa diselamatkan.
+
+V45 memindahkan `name_roots` ke akhir schema/`propertyOrdering`, memotong
+evidence ke 40 karakter, dan `extractJson()` menutup fence serta kurung yang
+terputus — recovery yang sama dipakai Scan. Field Plan yang sudah lengkap tetap
+valid kalau akar terpotong; nama jatuh ke fallback deterministik. Rollback:
+`v44`.

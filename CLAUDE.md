@@ -46,15 +46,15 @@ kontradiksi.
 |---|---|---|
 | `app_config.prompt_version` (capture) | `v41` | `v31`, lalu `v20` |
 | `evolution_prompt_version` | `v41` | `v30` |
-| `synthesis_prompt_version` | `v43` | `v42` |
+| `synthesis_prompt_version` | `v45` | `v44` |
 | `RULES_VERSION` combat | `3` | snapshot `evolution_version=0` tetap legacy |
 | Chapter aktif | The Sugarworks v6 | v1–v5 immutable untuk run lama |
 | Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, dan `feature_synthesis` semuanya `true` | matikan per flag |
 
-Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 23,
-`evolve_anima` 7, `replicate_webhook` 12, `battle_anima` 26, `team_battle` 8,
+Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 24,
+`evolve_anima` 9, `replicate_webhook` 12, `battle_anima` 26, `team_battle` 8,
 `expedition` 16, `seeker` 6, `gallery` 18, `shop` 4, `care_anima` 9,
-`synthesize_anima` 2.
+`synthesize_anima` 5.
 
 Yang belum sampai ke pemain adalah **APK baru**. Backend Anima Atlas, gerbang
 Rename, ritual Evolve, dan seluruh polish client sudah production di server,
@@ -62,17 +62,24 @@ tetapi build lama belum memuatnya.
 
 Guided Synthesis **live di backend** per 22 Agustus 2026: migration
 `20260821121417_anima_synthesis`,
-`20260821230502_synthesis_committed_form_only`, dan
-`20260822001202_synthesis_prompt_v43` ter-apply; `synthesize_anima` version 2
-ACTIVE, blok uji Synthesis di `quota_rules.sql` lulus terhadap schema production,
-`synthesis_prompt_version=v43`, dan `feature_synthesis=true`. V43 mencantumkan
-batas prose Planner, memberi 4.096 output token, serta memotong prose valid di
-trust boundary supaya verbosity model tidak menggagalkan attempt yang sudah
-lolos Resonance. Backend sekarang hanya menerima form committed. Yang belum
+`20260821230502_synthesis_committed_form_only`,
+`20260822001202_synthesis_prompt_v43`,
+`20260822063112_synthesis_transparent_history_refs`,
+`20260822073538_synthesis_name_lineage_v44`, dan
+`20260822074932_synthesis_json_close_v45` ter-apply; `synthesize_anima` version 5 ACTIVE, `evolve_anima` version 9 ACTIVE, `create_anima` version 24 ACTIVE, blok uji Synthesis di `quota_rules.sql` lulus terhadap schema production,
+`synthesis_prompt_version=v45`, dan `feature_synthesis=true`. V45 menulis
+`name_roots` terakhir dan `extractJson()` menutup JSON/fence yang terpotong
+(Scan memakai parser yang sama). V44 memakai pipeline morfem capture v41:
+Planner mengirim `name_roots`, server merakit nama spesies, dan Evolve
+membaca generation Synthesis sebagai birth lineage. V44 tetap rollback. V43 sebelumnya mencantumkan batas prose Planner, 4.096
+output token, serta memotong prose valid di trust boundary supaya verbosity
+model tidak menggagalkan attempt yang sudah lolos Resonance. Backend sekarang hanya menerima form committed. Reference chroma
+Planner dan thumbnail History transparan dipisah; History lama diperbaiki malas
+dari sheet Source asli memakai crop Idle Atlas, tanpa panggilan model. Yang belum
 sampai ke pemain adalah **APK** baru: kartu art/picker visual, Incubator Capsule,
-dialog failure/refund, dan Result reveal animation baru hidup dari source sampai
-build didistribusikan. Jalur 1 Core + 250 Bits sudah terbuka untuk build source;
-kalau perlu ditahan, matikan flag-nya.
+dialog failure/refund, Result reveal animation, dan skeleton History baru hidup
+dari source sampai build didistribusikan. Jalur 1 Core + 250 Bits sudah terbuka
+untuk build source; kalau perlu ditahan, matikan flag-nya.
 
 ## Aturan yang tidak bisa dinegosiasikan
 

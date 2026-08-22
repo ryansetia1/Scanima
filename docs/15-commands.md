@@ -27,6 +27,9 @@ godot --path game -- --collection-sheet-demo --screenshot=/tmp/collection-sheet.
 godot --path game -- --collection-sheet-loading-demo --screenshot=/tmp/collection-loading.png
 godot --path game -- --profile-demo --screenshot=/tmp/profile.png
 godot --path game -- --profile-help-demo --screenshot=/tmp/profile-help.png
+godot --path game -- --synthesis-history-demo --screenshot=/tmp/synthesis-history.png
+godot --path game -- --synthesis-history-loading-demo --screenshot=/tmp/synthesis-loading.png
+godot --path game -- --synthesis-history-help-demo --screenshot=/tmp/synthesis-history-help.png
 # tap demo mendorong event lewat push_input, jadi log "reaction=(0, -8.9)" adalah
 # bukti routing GUI, sementara "(0, 0)" berarti ada Control yang menelan tapnya
 godot --path game -- --home-tap-demo

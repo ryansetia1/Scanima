@@ -3996,6 +3996,9 @@ begin
     u1::text || '/synthesis-source-b/sheet.png',
     '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
   ) returning id into v_synthesis_b;
+  assert public.synthesis_source_display_name(v_synthesis_a) = 'synthesis-source-a'
+         and public.synthesis_source_display_name(v_synthesis_b) = 'synthesis-source-b',
+         'label Source Synthesis wajib memakai nickname, bukan fallback Anima';
 
   -- Historical art may remain available for Collection/Profile, but Synthesis
   -- must reject it and use only the Source's current committed form.
@@ -4219,8 +4222,10 @@ begin
   perform public.store_synthesis_references(
     u1, v_synthesis_gen,
     jsonb_build_object(
-      'source_a', u1::text || '/synthesis-ref-a.png',
-      'source_b', u1::text || '/synthesis-ref-b.png'
+      'source_a', u1::text || '/synthesis-history-a.png',
+      'source_b', u1::text || '/synthesis-history-b.png',
+      'model_source_a', u1::text || '/synthesis-ref-a.png',
+      'model_source_b', u1::text || '/synthesis-ref-b.png'
     )
   );
   perform public.reserve_synthesis_plan(
@@ -4247,8 +4252,10 @@ begin
       }
     }'::jsonb,
     jsonb_build_object(
-      'source_a', u1::text || '/synthesis-ref-a.png',
-      'source_b', u1::text || '/synthesis-ref-b.png'
+      'source_a', u1::text || '/synthesis-history-a.png',
+      'source_b', u1::text || '/synthesis-history-b.png',
+      'model_source_a', u1::text || '/synthesis-ref-a.png',
+      'model_source_b', u1::text || '/synthesis-ref-b.png'
     )
   );
   v_j := public.complete_synthesis(
@@ -4262,11 +4269,43 @@ begin
          and (select care_score from public.animas where id = v_synthesis_result) = 0
          and (select synthesis_history is not null from public.animas
                where id = v_synthesis_result)
+         and (select synthesis_history->'source_a'->>'name'
+               from public.animas where id = v_synthesis_result)
+              = 'synthesis-source-a'
+         and (select synthesis_history->'source_b'->>'name'
+               from public.animas where id = v_synthesis_result)
+              = 'synthesis-source-b'
          and (select synthesis_history is not null from public.atlas_forms
                where anima_id = v_synthesis_result and stage = 1)
          and (select status from public.anima_synthesis_slots
                where active_generation_id = v_synthesis_gen) = 'succeeded',
          'Result harus lahir Hatchling Lv1 dengan history privat + Atlas snapshot';
+  perform public.store_synthesis_history_references(
+    u1,
+    v_synthesis_result,
+    jsonb_build_object(
+      'source_a', u1::text || '/synthesis-history-a-v2.png',
+      'source_b', u1::text || '/synthesis-history-b-v2.png',
+      'model_source_a', u1::text || '/synthesis-ref-a.png',
+      'model_source_b', u1::text || '/synthesis-ref-b.png'
+    )
+  );
+  assert (select reference_paths->>'source_a'
+            from public.anima_synthesis_slots
+           where result_anima_id = v_synthesis_result)
+              = u1::text || '/synthesis-history-a-v2.png'
+         and (select reference_paths->>'model_source_a'
+                from public.anima_synthesis_slots
+               where result_anima_id = v_synthesis_result)
+              = u1::text || '/synthesis-ref-a.png'
+         and (select synthesis_history->'source_a'->>'thumbnail_path'
+                from public.animas where id = v_synthesis_result)
+              = u1::text || '/synthesis-history-a-v2.png'
+         and (select synthesis_history->'source_b'->>'thumbnail_path'
+                from public.atlas_forms
+               where anima_id = v_synthesis_result and stage = 1)
+              = u1::text || '/synthesis-history-b-v2.png',
+         'History harus bisa berpindah ke crop transparan tanpa mengganti model reference';
   begin
     perform public.attempt_synthesis(
       u1, 'synthesis-mode-reused',
@@ -4323,8 +4362,23 @@ begin
     ok := false;
   exception when insufficient_privilege then ok := true;
   end;
-  perform set_config('role', 'none', true);
   assert ok, 'client tidak boleh memanggil RPC Synthesis service-role langsung';
+  begin
+    perform public.store_synthesis_history_references(
+      u1,
+      v_synthesis_result,
+      jsonb_build_object(
+        'source_a', u1::text || '/forbidden-history-a.png',
+        'source_b', u1::text || '/forbidden-history-b.png',
+        'model_source_a', u1::text || '/forbidden-model-a.png',
+        'model_source_b', u1::text || '/forbidden-model-b.png'
+      )
+    );
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform set_config('role', 'none', true);
+  assert ok, 'client tidak boleh mengganti reference Synthesis History';
 
   update public.app_config config
      set value = saved.value

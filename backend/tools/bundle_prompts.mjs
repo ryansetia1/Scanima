@@ -79,12 +79,20 @@ const EVOLVE_PARENT = new Map([
   ["v31", "v30"],
   ["v42", "v41"],
   ["v43", "v41"],
+  ["v44", "v41"],
+  ["v45", "v41"],
 ]);
-// v42–v43 hanya mengubah Synthesis; capture/evolve tetap byte-identik v41.
+// v42–v45 hanya mengubah Synthesis; capture/evolve tetap byte-identik v41.
 CAPTURE_PARENT.set("v42", "v41");
 CAPTURE_PARENT.set("v43", "v41");
-// v43 memperketat planner saja; prompt sheet berbayar tetap persis v42.
-const SYNTHESIS_SHEET_PARENT = new Map([["v43", "v42"]]);
+CAPTURE_PARENT.set("v44", "v41");
+CAPTURE_PARENT.set("v45", "v41");
+// v43–v45 mengubah planner saja; prompt sheet berbayar tetap persis v42.
+const SYNTHESIS_SHEET_PARENT = new Map([
+  ["v43", "v42"],
+  ["v44", "v42"],
+  ["v45", "v42"],
+]);
 
 export async function buildBundle() {
   const versi = (await readdir(DIR_PROMPT, { withFileTypes: true }))

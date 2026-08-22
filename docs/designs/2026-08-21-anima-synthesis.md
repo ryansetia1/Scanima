@@ -69,6 +69,15 @@ The selected mode supplies weights of 70/30, 50/50, or 30/70. A Vision LLM sees
 one private Idle crop from each current form plus sanitized source metadata and
 returns a validated Synthesis Plan.
 
+### Naming
+
+Result names use the same v41 morpheme pipeline as Scan. The Planner returns
+six ranked `name_roots`; it does not invent the final species word. The server
+keeps the strongest root intact, appends an element tail, stores
+`name_lineage_anchor` on the birth plan, and later Evolve reads that
+synthesis generation as the capture lineage. Stored v42/v43 plans keep the
+name they already reserved.
+
 ### Visual
 
 Dominant mode takes silhouette, mobility, and body structure primarily from the
@@ -113,12 +122,14 @@ shortcut that preselects Source A:
 2. Choose Source B the same way. Both selected current-form artworks remain
    visible in the Lab; there is no form picker.
 3. Choose Dominant A, Balanced, or Dominant B.
-4. Review Resonance, its breakdown, likely stat shape, completed modes, and the
-   cost of 1 Core + 250 Bits.
-5. Confirm the attempt.
+4. Review Resonance as a scannable panel: hero chance, factor chips, and a
+   five-stat grid.
+5. Attempt Synthesis opens a confirmation dialog for the 1 Core + 250 Bits
+   success cost and the miss penalty, then starts the attempt.
 6. On failure, open a dedicated dialog. A Resonance miss shows its chance,
    care/cooldown consequence, and Calibration; a technical failure explicitly
-   confirms the Core + Bits refund.
+   confirms the Core + Bits refund. Terminal dialogs consume backdrop taps and
+   Back/cancel input; only their explicit acknowledgement button closes them.
 7. On success, replace the editor with a dedicated Incubator Capsule state.
    The unknown private Result forms in the capsule while two compact Source
    cards preserve each Source's art, name, Level, and elements.
@@ -134,12 +145,22 @@ percentage or ETA, and its ambient drawing stops while the state is hidden.
 
 The Result profile stores a private Synthesis History snapshot containing:
 
-- both Source IDs and generated names;
+- both Source IDs and display names (nickname first);
 - current form/stage at claim time and a small private thumbnail;
 - mode, successful Resonance, and date; and
-- the validated inheritance summary.
+- the validated inheritance summary, shown only on demand from the
+  Resonance help control.
 
 Source rows may later evolve or be deleted without corrupting this record.
+Model input and History art are stored as separate derivatives from the same
+private Source sheet. The model reference keeps its chroma-green matte, while
+History uses `cropIdleThumb()`—the same transparent Idle crop as Atlas. Legacy
+successful Results are repaired lazily on the first History request. Profile
+reserves two fixed-size art slots until those transparent PNGs arrive, but each
+loading pulse is a compact centered squircle rather than a full-width slab. The
+client never reconstructs alpha from green pixels. Profile actions sit directly
+below identity; History and stat cards do not need to be traversed before Use in
+Synthesis, Publish, or Delete.
 
 Publishing a Result to Atlas also publishes the two names, current-form
 thumbnails, and mode as a snapshot attached to that Result. The Publish

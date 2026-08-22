@@ -72,7 +72,7 @@ async function fetchCaptureVision(animaId: string): Promise<Record<string, unkno
     .from("generations")
     .select("vision_result")
     .eq("anima_id", animaId)
-    .eq("kind", "create")
+    .in("kind", ["create", "synthesis"])
     .eq("status", "succeeded")
     .order("finished_at", { ascending: false })
     .limit(1)

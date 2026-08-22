@@ -8,6 +8,7 @@
 import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
 import { extractJson } from "../_shared/vision.mjs";
 import { buildEvolutionIdleReference } from "../_shared/evolution.mjs";
+import { cropIdleThumb } from "../_shared/gallery_shared.mjs";
 import {
   assembleSynthesisPrompt,
   synthesisVisionInstruction,
@@ -54,6 +55,8 @@ type SourceSnapshot = {
 type SlotRow = {
   id: string;
   status: string;
+  active_generation_id?: string | null;
+  result_anima_id?: string | null;
   source_a_snapshot: SourceSnapshot;
   source_b_snapshot: SourceSnapshot;
   reference_paths?: Record<string, string> | null;
@@ -110,7 +113,7 @@ async function loadSlot(generationId: string): Promise<SlotRow> {
   const { data, error } = await db
     .from("anima_synthesis_slots")
     .select(
-      "id, status, source_a_snapshot, source_b_snapshot, reference_paths, synthesis_plan",
+      "id, status, active_generation_id, result_anima_id, source_a_snapshot, source_b_snapshot, reference_paths, synthesis_plan",
     )
     .eq("active_generation_id", generationId)
     .maybeSingle();
@@ -119,25 +122,12 @@ async function loadSlot(generationId: string): Promise<SlotRow> {
   return data as SlotRow;
 }
 
-async function ensureReferences(
-  uid: string,
-  generationId: string,
-  resultAnimaId: string,
-  slot: SlotRow,
-): Promise<{
-  paths: Record<string, string>;
-  urls: Record<string, string>;
+async function downloadSourceBytes(slot: SlotRow): Promise<{
+  sourceA: SourceSnapshot;
+  sourceB: SourceSnapshot;
+  bytesA: Uint8Array;
+  bytesB: Uint8Array;
 }> {
-  const storedA = String(slot.reference_paths?.source_a ?? "");
-  const storedB = String(slot.reference_paths?.source_b ?? "");
-  if (storedA && storedB) {
-    const [urlA, urlB] = await Promise.all([signedUrl(storedA), signedUrl(storedB)]);
-    return {
-      paths: { source_a: storedA, source_b: storedB },
-      urls: { source_a: urlA, source_b: urlB },
-    };
-  }
-
   const sourceA = slot.source_a_snapshot;
   const sourceB = slot.source_b_snapshot;
   if (!sourceA?.sheet_path || !sourceB?.sheet_path) {
@@ -153,38 +143,88 @@ async function ensureReferences(
       `SYNTHESIS_REFERENCE_DOWNLOAD_${downloadA.status}_${downloadB.status}`,
     );
   }
-  const [referenceA, referenceB] = await Promise.all([
-    buildEvolutionIdleReference(
-      new Uint8Array(await downloadA.arrayBuffer()),
-      sourceA.manifest,
-    ),
-    buildEvolutionIdleReference(
-      new Uint8Array(await downloadB.arrayBuffer()),
-      sourceB.manifest,
-    ),
+  const [bufferA, bufferB] = await Promise.all([
+    downloadA.arrayBuffer(),
+    downloadB.arrayBuffer(),
+  ]);
+  return {
+    sourceA,
+    sourceB,
+    bytesA: new Uint8Array(bufferA),
+    bytesB: new Uint8Array(bufferB),
+  };
+}
+
+async function ensureReferences(
+  uid: string,
+  generationId: string,
+  resultAnimaId: string,
+  slot: SlotRow,
+): Promise<{
+  paths: Record<string, string>;
+  urls: Record<string, string>;
+}> {
+  const storedHistoryA = String(slot.reference_paths?.source_a ?? "");
+  const storedHistoryB = String(slot.reference_paths?.source_b ?? "");
+  const storedModelA = String(
+    slot.reference_paths?.model_source_a ?? storedHistoryA,
+  );
+  const storedModelB = String(
+    slot.reference_paths?.model_source_b ?? storedHistoryB,
+  );
+  if (storedHistoryA && storedHistoryB && storedModelA && storedModelB) {
+    const [urlA, urlB] = await Promise.all([
+      signedUrl(storedModelA),
+      signedUrl(storedModelB),
+    ]);
+    return {
+      paths: {
+        ...(slot.reference_paths ?? {}),
+        source_a: storedHistoryA,
+        source_b: storedHistoryB,
+      },
+      urls: { source_a: urlA, source_b: urlB },
+    };
+  }
+
+  const { sourceA, sourceB, bytesA, bytesB } = await downloadSourceBytes(slot);
+  const [modelA, modelB, historyA, historyB] = await Promise.all([
+    buildEvolutionIdleReference(bytesA, sourceA.manifest),
+    buildEvolutionIdleReference(bytesB, sourceB.manifest),
+    cropIdleThumb(bytesA, sourceA.manifest),
+    cropIdleThumb(bytesB, sourceB.manifest),
   ]);
 
   const base = `${uid}/${resultAnimaId}/synthesis_refs/${generationId}`;
   const paths = {
-    source_a: `${base}_a.png`,
-    source_b: `${base}_b.png`,
+    source_a: `${base}_a_history.png`,
+    source_b: `${base}_b_history.png`,
+    model_source_a: `${base}_a.png`,
+    model_source_b: `${base}_b.png`,
   };
-  const [uploadA, uploadB] = await Promise.all([
-    db.storage.from("anima_sheets").upload(paths.source_a, referenceA, {
+  const uploads = await Promise.all([
+    db.storage.from("anima_sheets").upload(paths.source_a, historyA, {
       contentType: "image/png",
       upsert: true,
     }),
-    db.storage.from("anima_sheets").upload(paths.source_b, referenceB, {
+    db.storage.from("anima_sheets").upload(paths.source_b, historyB, {
+      contentType: "image/png",
+      upsert: true,
+    }),
+    db.storage.from("anima_sheets").upload(paths.model_source_a, modelA, {
+      contentType: "image/png",
+      upsert: true,
+    }),
+    db.storage.from("anima_sheets").upload(paths.model_source_b, modelB, {
       contentType: "image/png",
       upsert: true,
     }),
   ]);
-  if (uploadA.error || uploadB.error) {
-    await db.storage.from("anima_sheets").remove([paths.source_a, paths.source_b]);
+  const uploadError = uploads.find((upload) => upload.error)?.error;
+  if (uploadError) {
+    await db.storage.from("anima_sheets").remove(Object.values(paths));
     throw new Error(
-      `SYNTHESIS_REFERENCE_UPLOAD: ${
-        uploadA.error?.message ?? uploadB.error?.message ?? "unknown"
-      }`,
+      `SYNTHESIS_REFERENCE_UPLOAD: ${uploadError.message}`,
     );
   }
   const { error: storeError } = await db.rpc("store_synthesis_references", {
@@ -193,17 +233,94 @@ async function ensureReferences(
     p_reference_paths: paths,
   });
   if (storeError) {
-    await db.storage.from("anima_sheets").remove([paths.source_a, paths.source_b]);
+    await db.storage.from("anima_sheets").remove(Object.values(paths));
     throw new Error(storeError.message);
   }
   const [urlA, urlB] = await Promise.all([
-    signedUrl(paths.source_a),
-    signedUrl(paths.source_b),
+    signedUrl(paths.model_source_a),
+    signedUrl(paths.model_source_b),
   ]);
   return {
     paths,
     urls: { source_a: urlA, source_b: urlB },
   };
+}
+
+async function ensureTransparentHistoryReferences(
+  uid: string,
+  resultAnimaId: string,
+  history: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { data, error } = await db
+    .from("anima_synthesis_slots")
+    .select(
+      "id, status, active_generation_id, result_anima_id, source_a_snapshot, source_b_snapshot, reference_paths",
+    )
+    .eq("owner_id", uid)
+    .eq("result_anima_id", resultAnimaId)
+    .eq("status", "succeeded")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("SYNTHESIS_SLOT_MISSING");
+  const slot = data as SlotRow;
+  const refs = slot.reference_paths ?? {};
+  if (refs.model_source_a && refs.model_source_b) return history;
+
+  const legacyA = String(refs.source_a ?? "");
+  const legacyB = String(refs.source_b ?? "");
+  const generationId = String(slot.active_generation_id ?? "");
+  if (!legacyA || !legacyB || !generationId) {
+    throw new Error("SYNTHESIS_REFERENCES_INVALID");
+  }
+
+  const { sourceA, sourceB, bytesA, bytesB } = await downloadSourceBytes(slot);
+  const [historyA, historyB] = await Promise.all([
+    cropIdleThumb(bytesA, sourceA.manifest),
+    cropIdleThumb(bytesB, sourceB.manifest),
+  ]);
+  const base = `${uid}/${resultAnimaId}/synthesis_refs/${generationId}`;
+  const paths = {
+    ...refs,
+    source_a: `${base}_a_history.png`,
+    source_b: `${base}_b_history.png`,
+    model_source_a: legacyA,
+    model_source_b: legacyB,
+  };
+  const uploads = await Promise.all([
+    db.storage.from("anima_sheets").upload(paths.source_a, historyA, {
+      contentType: "image/png",
+      upsert: true,
+    }),
+    db.storage.from("anima_sheets").upload(paths.source_b, historyB, {
+      contentType: "image/png",
+      upsert: true,
+    }),
+  ]);
+  const uploadError = uploads.find((upload) => upload.error)?.error;
+  if (uploadError) {
+    throw new Error(`SYNTHESIS_HISTORY_UPLOAD: ${uploadError.message}`);
+  }
+  const { error: storeError } = await db.rpc(
+    "store_synthesis_history_references",
+    {
+      p_owner: uid,
+      p_result_anima_id: resultAnimaId,
+      p_reference_paths: paths,
+    },
+  );
+  if (storeError) throw new Error(storeError.message);
+
+  const output = structuredClone(history);
+  for (const [key, path] of [
+    ["source_a", paths.source_a],
+    ["source_b", paths.source_b],
+  ]) {
+    const source = output[key];
+    if (source && typeof source === "object") {
+      (source as Record<string, unknown>).thumbnail_path = path;
+    }
+  }
+  return output;
 }
 
 async function historyResponse(uid: string, resultAnimaId: string): Promise<Response> {
@@ -220,7 +337,11 @@ async function historyResponse(uid: string, resultAnimaId: string): Promise<Resp
   if (!history || typeof history !== "object") {
     return json(200, { history: null });
   }
-  const output = structuredClone(history) as Record<string, unknown>;
+  const output = await ensureTransparentHistoryReferences(
+    uid,
+    resultAnimaId,
+    structuredClone(history) as Record<string, unknown>,
+  );
   for (const key of ["source_a", "source_b"]) {
     const source = output[key];
     if (!source || typeof source !== "object") continue;

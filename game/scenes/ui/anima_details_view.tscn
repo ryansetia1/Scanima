@@ -115,6 +115,56 @@ theme_type_variation = &"BodyLabel"
 text = "VALUE_UNAVAILABLE"
 autowrap_mode = 2
 
+[node name="ProfileActions" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent" unique_id=859425377]
+layout_mode = 2
+
+[node name="EvolveAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent/ProfileActions" unique_id=1845336871]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "EVOLVE_ACTION"
+
+[node name="EvolutionStatusLabel" type="Label" parent="Column/DetailsScroll/DetailsContent/ProfileActions" unique_id=1161899022]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "EVOLUTION_CHAMBER_STATUS"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="SynthesisAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent/ProfileActions" unique_id=1775424145]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "SYNTHESIS_USE_SOURCE_ACTION"
+
+[node name="UtilityActions" type="HBoxContainer" parent="Column/DetailsScroll/DetailsContent/ProfileActions" unique_id=270497081]
+layout_mode = 2
+alignment = 1
+
+[node name="GalleryPublishButton" type="Button" parent="Column/DetailsScroll/DetailsContent/ProfileActions/UtilityActions" unique_id=580010579]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "GALLERY_PUBLISH"
+
+[node name="DeleteAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent/ProfileActions/UtilityActions" unique_id=1216193750]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(176, 96)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.42, 0.52, 0.88)
+theme_override_colors/font_focus_color = Color(1, 0.72, 0.78, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.82, 0.4, 1)
+theme_override_colors/font_hover_color = Color(1, 0.72, 0.78, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.6, 0.72, 0.58)
+theme_override_font_sizes/font_size = 24
+text = "ANIMA_DELETE_ACTION"
+flat = true
+
 [node name="AboutPanel" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent" unique_id=1909310139]
 layout_mode = 2
 theme_type_variation = &"HudSurface"
@@ -435,6 +485,7 @@ theme_type_variation = &"HudSurface"
 
 [node name="HistoryBox" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent/SynthesisHistoryPanel" unique_id=1509200076]
 layout_mode = 2
+theme_override_constants/separation = 8
 
 [node name="SynthesisHistoryTitle" type="Label" parent="Column/DetailsScroll/DetailsContent/SynthesisHistoryPanel/HistoryBox" unique_id=510047975]
 unique_name_in_owner = true
@@ -483,64 +534,34 @@ text = "SYNTHESIS_SOURCE_B"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="SynthesisHistoryMode" type="Label" parent="Column/DetailsScroll/DetailsContent/SynthesisHistoryPanel/HistoryBox" unique_id=1323910902]
+[node name="ModeRow" type="HBoxContainer" parent="Column/DetailsScroll/DetailsContent/SynthesisHistoryPanel/HistoryBox" unique_id=1849023311]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SynthesisHistoryMode" type="Label" parent="Column/DetailsScroll/DetailsContent/SynthesisHistoryPanel/HistoryBox/ModeRow" unique_id=1323910902]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"BodyLabel"
 text = "SYNTHESIS_HISTORY_MODE"
-horizontal_alignment = 1
+vertical_alignment = 1
 autowrap_mode = 2
+
+[node name="SynthesisHistoryHelp" type="Button" parent="Column/DetailsScroll/DetailsContent/SynthesisHistoryPanel/HistoryBox/ModeRow" unique_id=1849023312]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/icon_normal_color = Color(0.61, 0.67, 0.8, 0.5)
+theme_override_colors/icon_pressed_color = Color(1, 0.86, 0.48, 0.9)
+theme_override_colors/icon_hover_color = Color(0.85, 0.93, 1, 0.85)
+icon = ExtResource("3_help")
+flat = true
 
 [node name="SynthesisHistorySummary" type="Label" parent="Column/DetailsScroll/DetailsContent/SynthesisHistoryPanel/HistoryBox" unique_id=1511134662]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 text = "SYNTHESIS_HISTORY_SUMMARY"
-horizontal_alignment = 1
-autowrap_mode = 2
-
-[node name="SynthesisAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent" unique_id=1775424145]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-text = "SYNTHESIS_USE_SOURCE_ACTION"
-
-[node name="DeleteRow" type="HBoxContainer" parent="Column/DetailsScroll/DetailsContent" unique_id=386888356]
-layout_mode = 2
-alignment = 1
-
-[node name="DeleteAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent/DeleteRow" unique_id=1216193750]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 96)
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.42, 0.52, 0.88)
-theme_override_colors/font_focus_color = Color(1, 0.72, 0.78, 1)
-theme_override_colors/font_pressed_color = Color(1, 0.82, 0.4, 1)
-theme_override_colors/font_hover_color = Color(1, 0.72, 0.78, 1)
-theme_override_colors/font_disabled_color = Color(0.55, 0.6, 0.72, 0.58)
-theme_override_font_sizes/font_size = 24
-text = "ANIMA_DELETE_ACTION"
-flat = true
-
-[node name="GalleryPublishButton" type="Button" parent="Column/DetailsScroll/DetailsContent" unique_id=580010579]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-text = "GALLERY_PUBLISH"
-
-[node name="EvolveAnimaButton" type="Button" parent="Column/DetailsScroll/DetailsContent" unique_id=1845336871]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-theme_type_variation = &"PrimaryButton"
-text = "EVOLVE_ACTION"
-
-[node name="EvolutionStatusLabel" type="Label" parent="Column/DetailsScroll/DetailsContent" unique_id=1161899022]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_type_variation = &"BodyLabel"
-text = "EVOLUTION_CHAMBER_STATUS"
-horizontal_alignment = 1
 autowrap_mode = 2

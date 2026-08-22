@@ -25,6 +25,7 @@ enum Mode {
 
 var _mode := Mode.INFO
 var _busy := false
+var _dismissible := true
 var _portrait_tween: Tween
 
 
@@ -44,9 +45,12 @@ func open_info(
 	title_text: String,
 	body_text: String,
 	close_text: String,
-	hero_text: String = ""
+	hero_text: String = "",
+	dismissible: bool = true
 ) -> void:
-	_configure(Mode.INFO, title_text, body_text, close_text, "", false, hero_text)
+	_configure(
+		Mode.INFO, title_text, body_text, close_text, "", false, hero_text, dismissible
+	)
 	_show_modal(_primary_button)
 
 
@@ -55,9 +59,12 @@ func open_result(
 	body_text: String,
 	close_text: String,
 	hero_text: String,
-	portrait: Texture2D
+	portrait: Texture2D,
+	dismissible: bool = true
 ) -> void:
-	_configure(Mode.INFO, title_text, body_text, close_text, "", false, hero_text)
+	_configure(
+		Mode.INFO, title_text, body_text, close_text, "", false, hero_text, dismissible
+	)
 	_portrait.texture = portrait
 	_portrait.visible = portrait != null
 	_show_modal(_primary_button)
@@ -116,7 +123,7 @@ func set_busy(busy: bool) -> void:
 	_primary_button.disabled = busy
 	_cancel_button.disabled = busy
 	_choice_cancel_button.disabled = busy
-	_dismiss_button.disabled = busy
+	_dismiss_button.disabled = busy or not _dismissible
 	_input.editable = not busy
 
 
@@ -141,9 +148,11 @@ func _configure(
 	primary_text: String,
 	cancel_text: String,
 	destructive: bool,
-	hero_text: String = ""
+	hero_text: String = "",
+	dismissible: bool = true
 ) -> void:
 	_mode = mode
+	_dismissible = dismissible
 	set_busy(false)
 	_title.text = title_text
 	_stop_portrait_tween()
@@ -230,7 +239,7 @@ func _submit_choice(choice: String) -> void:
 
 
 func _cancel() -> void:
-	if _busy:
+	if _busy or not _dismissible:
 		return
 	close()
 	canceled.emit()

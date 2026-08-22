@@ -1090,6 +1090,36 @@ console.log(
     "concat string JS di JSON Vision diperbaiki",
   );
 
+  const truncatedFence = `\`\`\`json
+{
+  "name_roots": [
+    {
+      "root": "roll",
+      "channel": "motion",
+      "evidence": "Integrated wheels."
+    },
+    {
+      "root": "gleam",
+      "channel": "material",
+      "evidence": "Its polished dark plastic body and glowing circ`;
+  const recovered = extractJson(truncatedFence);
+  assert.deepEqual(
+    recovered.name_roots.map((item) => item.root),
+    ["roll", "gleam"],
+    "fence markdown yang tidak ditutup dan string terpotong harus bisa diselamatkan",
+  );
+  assert.match(
+    recovered.name_roots[1].evidence,
+    /polished dark plastic/,
+    "evidence yang terpotong ditutup apa adanya, tidak dikarang ulang",
+  );
+
+  const closedAfterComplete = extractJson(
+    '{"safe":true,"stats":{"hp":50},"name_roots":[{"root":"nox","channel":"material","evidence":"night body"}]',
+  );
+  assert.equal(closedAfterComplete.safe, true);
+  assert.equal(closedAfterComplete.name_roots[0].root, "nox");
+
   for (
     const bad of [
       "",
@@ -9768,6 +9798,14 @@ console.log("40. Guided Synthesis menjaga budget stat dan roster elemen");
       motion: "bloom",
       brief: "A radial canopy of leaf veins and contained sparks.",
     },
+    name_roots: [
+      { root: "frond", channel: "silhouette", evidence: "layered leaf mane on a compact torso" },
+      { root: "lume", channel: "material", evidence: "conductive veins glow through plates" },
+      { root: "poun", channel: "motion", evidence: "short quadruped spring" },
+      { root: "alrt", channel: "temperament", evidence: "forward ears and open face" },
+      { root: "coil", channel: "structure", evidence: "flexible sparking tail" },
+      { root: "bark", channel: "material", evidence: "matte plant armor over fur" },
+    ],
   };
   const { plan } = validateSynthesisPlan(raw, {
     mode: "balanced",
@@ -9790,6 +9828,45 @@ console.log("40. Guided Synthesis menjaga budget stat dan roster elemen");
   assert.equal(plan.secondary_element, "spark");
   assert.notEqual(plan.strike_effect_id, plan.surge_effect_id);
   assert.doesNotMatch(plan.suggested_name, /mon$/i);
+  assert.match(plan.suggested_name, /^[A-Z][a-z]+$/);
+  assert.notEqual(plan.suggested_name, "Verdihoundmon");
+  assert.ok(
+    plan.suggested_name.toLowerCase().startsWith(plan.name_lineage_anchor),
+    "Synthesis Result names must use the v41 morpheme pipeline",
+  );
+  const productName = validateSynthesisPlan({
+    ...raw,
+    suggested_name: "Gearbit Racer",
+  }, {
+    mode: "balanced",
+    sourceA,
+    sourceB,
+  }).plan;
+  assert.notEqual(productName.suggested_name, "Gearbit Racer");
+  assert.doesNotMatch(productName.suggested_name, /\s/);
+  const replayed = validateSynthesisPlan({
+    ...productName,
+  }, {
+    mode: "balanced",
+    sourceA,
+    sourceB,
+    ownerNames: [productName.suggested_name],
+  }).plan;
+  assert.equal(
+    replayed.suggested_name,
+    productName.suggested_name,
+    "reserved Synthesis plans must keep the already-minted species name",
+  );
+  const legacyName = validateSynthesisPlan({
+    ...raw,
+    name_roots: undefined,
+    suggested_name: "Verdihoundmon",
+  }, {
+    mode: "balanced",
+    sourceA,
+    sourceB,
+  }).plan;
+  assert.equal(legacyName.suggested_name, "Verdihoundra");
   const verbosePlan = validateSynthesisPlan({
     ...raw,
     signature_features: raw.signature_features.map((value) => value.repeat(8)),
@@ -9872,6 +9949,34 @@ console.log("41. Synthesis membayar model hanya sesudah Resonance sukses");
     ),
     "utf8",
   );
+  const promptV44Migration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260822073538_synthesis_name_lineage_v44.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const promptV45Migration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260822074932_synthesis_json_close_v45.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const transparentHistoryMigration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260822063112_synthesis_transparent_history_refs.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const historyNameMigration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260822085800_synthesis_history_source_names.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   const endpoint = await readFile(
     new URL(
       "../backend/supabase/functions/synthesize_anima/index.ts",
@@ -9901,6 +10006,35 @@ console.log("41. Synthesis membayar model hanya sesudah Resonance sukses");
     new URL("../backend/prompts/v43/vision_synthesis_schema.json", import.meta.url),
     "utf8",
   ));
+  const synthesisSchemaV44 = JSON.parse(await readFile(
+    new URL("../backend/prompts/v44/vision_synthesis_schema.json", import.meta.url),
+    "utf8",
+  ));
+  const synthesisSchemaV45 = JSON.parse(await readFile(
+    new URL("../backend/prompts/v45/vision_synthesis_schema.json", import.meta.url),
+    "utf8",
+  ));
+  const visionShared = await readFile(
+    new URL(
+      "../backend/supabase/functions/_shared/vision.mjs",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const synthesisShared = await readFile(
+    new URL(
+      "../backend/supabase/functions/_shared/synthesis.mjs",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const evolveAnima = await readFile(
+    new URL(
+      "../backend/supabase/functions/evolve_anima/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
 
   assert.ok(
     endpoint.indexOf('db.rpc("attempt_synthesis"')
@@ -9916,6 +10050,40 @@ console.log("41. Synthesis membayar model hanya sesudah Resonance sukses");
   assert.ok(
     promptV43Migration.includes("'synthesis_prompt_version', '\"v43\"'::jsonb"),
     "the hardened Synthesis Planner must have a tracked production rollout",
+  );
+  assert.ok(
+    synthesisSchemaV44.required.includes("name_roots")
+      && !synthesisSchemaV44.required.includes("suggested_name")
+      && synthesisSchemaV44.properties.name_roots.minItems === 6
+      && promptV44Migration.includes("'synthesis_prompt_version', '\"v44\"'::jsonb"),
+    "Synthesis v44 must mint names through the capture morpheme pipeline",
+  );
+  assert.ok(
+    synthesisSchemaV45.required.at(-1) === "name_roots"
+      && synthesisSchemaV45.propertyOrdering.at(-1) === "name_roots"
+      && synthesisSchemaV45.properties.name_roots.items.properties.evidence.maxLength === 40
+      && promptV45Migration.includes("'synthesis_prompt_version', '\"v45\"'::jsonb")
+      && visionShared.includes("function closeTruncatedJson")
+      && visionShared.includes("function unwrapMarkdownFence")
+      && synthesisShared.includes("Do not wrap the JSON in markdown fences"),
+    "Synthesis v45 must finish required plan fields before name_roots and recover truncated JSON",
+  );
+  assert.ok(
+    evolveAnima.includes('.in("kind", ["create", "synthesis"])'),
+    "Evolve must read the Synthesis birth plan as the lineage capture",
+  );
+  assert.ok(
+    endpoint.includes('import { cropIdleThumb } from "../_shared/gallery_shared.mjs"')
+      && endpoint.includes("model_source_a")
+      && endpoint.includes('db.rpc(\n    "store_synthesis_history_references"')
+      && transparentHistoryMigration.includes(
+        "revoke all on function public.store_synthesis_history_references",
+      )
+      && historyNameMigration.includes("synthesis_source_display_name")
+      && historyNameMigration.includes(
+        "revoke all on function public.synthesis_source_display_name",
+      ),
+    "Synthesis History must reuse the transparent Atlas crop while model refs stay chroma-backed",
   );
   assert.match(
     migration,

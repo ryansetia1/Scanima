@@ -1,7 +1,11 @@
 import { baseStatTotal, normalizeBaseStats } from "./battle.mjs";
 import { ELEMENT_ROSTER, isRosterElement, normalizeElement } from "./elements.mjs";
 import { STRIKE_EFFECT_IDS, SURGE_EFFECT_IDS } from "./move_effects.mjs";
-import { normalizeSuggestedName } from "./vision.mjs";
+import {
+  deriveMorphemeSpeciesName,
+  deriveNameLineageAnchor,
+  normalizeSuggestedName,
+} from "./vision.mjs";
 
 export const SYNTHESIS_MODES = Object.freeze([
   "dominant_a",
@@ -156,6 +160,14 @@ function normalizedVfx(value, field, fallbackMotion) {
   };
 }
 
+function safeLineageAnchor(name) {
+  try {
+    return deriveNameLineageAnchor(name);
+  } catch {
+    return "synth";
+  }
+}
+
 function uniqueSuggestedName(value, takenNames = []) {
   const base = normalizeSuggestedName(value, "Synthera").slice(0, 24);
   const taken = new Set(takenNames.map((name) => String(name ?? "").trim().toLowerCase()));
@@ -166,6 +178,39 @@ function uniqueSuggestedName(value, takenNames = []) {
     if (!taken.has(candidate.toLowerCase())) return candidate;
   }
   return base;
+}
+
+function resolveSynthesisSpeciesName(raw, namingVision, takenNames = []) {
+  const reservedName = String(raw.suggested_name ?? "").trim();
+  // Plan yang sudah di-reserve membawa species_key server. Replay tidak boleh
+  // merakit ulang nama — takenNames sudah memuat nama Result yang baru dicetak.
+  if (
+    String(raw.species_key ?? "").startsWith("synthesis_")
+    && reservedName
+  ) {
+    return {
+      suggested_name: reservedName.slice(0, 24),
+      name_lineage_anchor: raw.name_lineage_anchor
+        || safeLineageAnchor(reservedName),
+      selected_name_root: raw.selected_name_root,
+      name_roots: Array.isArray(raw.name_roots) ? raw.name_roots : undefined,
+    };
+  }
+  if (Array.isArray(raw.name_roots) && raw.name_roots.length === 6) {
+    const generated = deriveMorphemeSpeciesName(
+      { ...namingVision, name_roots: raw.name_roots },
+      takenNames,
+    );
+    return { ...generated, name_roots: raw.name_roots };
+  }
+  if (reservedName) {
+    const suggestedName = uniqueSuggestedName(reservedName, takenNames);
+    return {
+      suggested_name: suggestedName,
+      name_lineage_anchor: safeLineageAnchor(suggestedName),
+    };
+  }
+  return deriveMorphemeSpeciesName(namingVision, takenNames);
 }
 
 function speciesKeyFromName(name) {
@@ -180,7 +225,7 @@ function speciesKeyFromName(name) {
 export function synthesisVisionInstruction(systemPrompt, schema) {
   return `${systemPrompt.trim()}\n\nReturn JSON matching this schema exactly:\n${
     JSON.stringify(schema)
-  }`;
+  }\nDo not wrap the JSON in markdown fences. Write name_roots last.`;
 }
 
 export function validateSynthesisPlan(raw, opts = {}) {
@@ -234,10 +279,23 @@ export function validateSynthesisPlan(raw, opts = {}) {
   if (!(heightScale in HEIGHT_SCALES)) throw new Error("height_scale tidak sah");
   const weightedHeight = sourceHeight(sourceA) * weightA + sourceHeight(sourceB) * (1 - weightA);
   const effects = effectPair(primary, secondary);
-  const suggestedName = uniqueSuggestedName(raw.suggested_name, opts.ownerNames ?? []);
+  const generatedName = resolveSynthesisSpeciesName(raw, {
+    element: primary,
+    secondary_element: secondary || null,
+    subject_kind: raw.subject_kind === "animal" ? "animal" : "object",
+    creature_brief: String(raw.creature_brief ?? ""),
+    signature_features: Array.isArray(raw.signature_features)
+      ? raw.signature_features
+      : [],
+    species_key: `synthesis_${primary}_${secondary || "none"}`,
+  }, opts.ownerNames ?? []);
+  const suggestedName = generatedName.suggested_name;
 
   const plan = {
     suggested_name: suggestedName,
+    name_lineage_anchor: generatedName.name_lineage_anchor,
+    selected_name_root: generatedName.selected_name_root,
+    name_roots: generatedName.name_roots,
     species_key: speciesKeyFromName(suggestedName),
     color_bucket: String(raw.color_bucket ?? "synthesis")
       .trim()

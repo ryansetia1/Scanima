@@ -13,6 +13,7 @@ signal help_requested(title: String, body: String)
 ## sengaja tidak ikut turun ke client — ia berubah tanpa build baru.
 const NAME_PATTERN := "^[A-Za-z0-9][A-Za-z0-9 '-]{0,31}$"
 const NAME_MAX_LENGTH := 32
+const HISTORY_SKELETON_ART_PX := 112.0
 
 @onready var _empty_state: Label = %DetailsEmpty
 @onready var _content: Control = %DetailsContent
@@ -44,6 +45,7 @@ const NAME_MAX_LENGTH := 32
 @onready var _history_source_b: TextureRect = %SynthesisHistorySourceB
 @onready var _history_source_b_label: Label = %SynthesisHistorySourceBLabel
 @onready var _history_mode: Label = %SynthesisHistoryMode
+@onready var _history_help: Button = %SynthesisHistoryHelp
 @onready var _history_summary: Label = %SynthesisHistorySummary
 @onready var _delete_button: Button = %DeleteAnimaButton
 
@@ -56,6 +58,9 @@ var _gallery_available := false
 var _evolution_enabled := false
 var _synthesis_enabled := false
 var _synthesis_history_textures: Dictionary = {}
+var _history_source_names: Dictionary = {}
+var _history_source_a_skeleton: UiSkeleton
+var _history_source_b_skeleton: UiSkeleton
 
 
 func _ready() -> void:
@@ -66,6 +71,14 @@ func _ready() -> void:
 	_delete_button.pressed.connect(_request_delete)
 	_about_help.pressed.connect(_show_about_help)
 	_combat_help.pressed.connect(_show_combat_help)
+	_history_help.pressed.connect(_show_history_help)
+	UiJuice.install_button(_history_help)
+	_history_source_a_skeleton = _build_history_art_skeleton(
+		_history_source_a, "SynthesisHistorySourceASkeleton"
+	)
+	_history_source_b_skeleton = _build_history_art_skeleton(
+		_history_source_b, "SynthesisHistorySourceBSkeleton"
+	)
 	refresh_localized_ui()
 
 
@@ -85,6 +98,7 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_evolution_status.visible = false
 		_synthesis_button.visible = false
 		_synthesis_history.visible = false
+		set_synthesis_history_loading(false)
 		_delete_button.disabled = true
 		return
 
@@ -150,12 +164,21 @@ func set_synthesis_enabled(enabled: bool) -> void:
 		_apply_synthesis_ui(_row)
 
 
+func set_history_source_names(names: Dictionary) -> void:
+	_history_source_names = names.duplicate()
+
+
 func set_synthesis_history(history: Dictionary, textures: Dictionary = {}) -> void:
 	if _row.is_empty():
 		return
 	if not textures.is_empty():
 		_synthesis_history_textures = textures.duplicate()
 	_apply_synthesis_history(history, _synthesis_history_textures)
+
+
+func set_synthesis_history_loading(loading: bool) -> void:
+	_history_source_a_skeleton.set_loading(loading and _history_source_a.texture == null)
+	_history_source_b_skeleton.set_loading(loading and _history_source_b.texture == null)
 
 
 func set_gallery_status(status: Dictionary) -> void:
@@ -191,11 +214,11 @@ func _apply_synthesis_history(history: Dictionary, textures: Dictionary) -> void
 	_history_source_a.texture = textures.get("source_a") as Texture2D
 	_history_source_b.texture = textures.get("source_b") as Texture2D
 	_history_source_a_label.text = tr("SYNTHESIS_HISTORY_SOURCE") % [
-		str(source_a.get("name", tr("ANIMA_FALLBACK_NAME"))),
+		_history_source_name(source_a),
 		tr(_form_key(int(source_a.get("selected_stage", 1)))),
 	]
 	_history_source_b_label.text = tr("SYNTHESIS_HISTORY_SOURCE") % [
-		str(source_b.get("name", tr("ANIMA_FALLBACK_NAME"))),
+		_history_source_name(source_b),
 		tr(_form_key(int(source_b.get("selected_stage", 1)))),
 	]
 	_history_mode.text = tr("SYNTHESIS_HISTORY_MODE") % [
@@ -203,11 +226,39 @@ func _apply_synthesis_history(history: Dictionary, textures: Dictionary) -> void
 		LocaleManager.format_integer(int(history.get("resonance", 0))),
 	]
 	var summary := GameState.as_dict(history.get("inheritance_summary"))
-	_history_summary.text = tr("SYNTHESIS_HISTORY_SUMMARY") % [
-		str(summary.get("source_a", "")),
-		str(summary.get("source_b", "")),
-		str(summary.get("coherence", "")),
-	]
+	var note_a := str(summary.get("source_a", "")).strip_edges()
+	var note_b := str(summary.get("source_b", "")).strip_edges()
+	var note_c := str(summary.get("coherence", "")).strip_edges()
+	_history_summary.text = tr("SYNTHESIS_HISTORY_SUMMARY") % [note_a, note_b, note_c]
+	_history_summary.visible = false
+	_history_help.visible = not (note_a.is_empty() and note_b.is_empty() and note_c.is_empty())
+
+
+## Root skeleton tetap memenuhi slot 150 px agar layout tidak meloncat, tetapi
+## tinta loading-nya hanya satu squircle 112 px di tengah. Mengisi seluruh lebar
+## kolom membuat dua placeholder terbaca sebagai banner kosong, bukan art yang
+## sedang dimuat.
+func _build_history_art_skeleton(parent: TextureRect, node_name: String) -> UiSkeleton:
+	var skeleton := UiSkeleton.new()
+	skeleton.name = node_name
+	skeleton.visible = false
+	skeleton.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(skeleton)
+	skeleton.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	skeleton.add_child(center)
+	var placeholder := PanelContainer.new()
+	placeholder.name = node_name.replace("Skeleton", "Placeholder")
+	placeholder.custom_minimum_size = Vector2(
+		HISTORY_SKELETON_ART_PX, HISTORY_SKELETON_ART_PX
+	)
+	placeholder.theme_type_variation = &"StatValuePanel"
+	placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(placeholder)
+	return skeleton
 
 
 func _apply_evolution_ui(row: Dictionary) -> void:
@@ -291,6 +342,7 @@ func refresh_localized_ui() -> void:
 	_evolve_button.text = tr("EVOLVE_ACTION")
 	_synthesis_button.text = tr("SYNTHESIS_USE_SOURCE_ACTION")
 	_history_title.text = tr("SYNTHESIS_HISTORY_TITLE")
+	_history_help.tooltip_text = tr("SYNTHESIS_HISTORY_HELP")
 	if not _row.is_empty():
 		set_anima(_row, _portrait.texture)
 
@@ -307,6 +359,23 @@ func _show_about_help() -> void:
 			"%s — %s" % [tr("DETAILS_SURGE"), tr("DETAILS_SURGE_HELP")],
 		])
 	)
+
+
+func _show_history_help() -> void:
+	if _history_summary.text.strip_edges().is_empty():
+		return
+	help_requested.emit(tr("SYNTHESIS_HISTORY_TITLE"), _history_summary.text)
+
+
+func _history_source_name(source: Dictionary) -> String:
+	var raw := str(source.get("name", "")).strip_edges()
+	var fallback := tr("ANIMA_FALLBACK_NAME")
+	if not raw.is_empty() and raw != fallback:
+		return raw
+	var resolved := str(_history_source_names.get(str(source.get("id", "")), "")).strip_edges()
+	if not resolved.is_empty():
+		return resolved
+	return raw if not raw.is_empty() else fallback
 
 
 func _show_combat_help() -> void:

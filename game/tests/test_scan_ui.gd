@@ -676,10 +676,17 @@ func _initialize() -> void:
 		and incubator_source.find("Sfx.play(Sfx.CUE_PORTAL)") > incubator_source.find("func start_portal"),
 		"portal SFX stays on start_portal for Summon and Switch"
 	)
+	var celebrate_source := flow_source.find("func _celebrate_level_up")
 	_check(
-		flow_source.find("func _celebrate_level_up") >= 0
-		and flow_source.find("Sfx.play(Sfx.CUE_LEVEL_UP)") > flow_source.find("func _celebrate_level_up"),
+		celebrate_source >= 0
+		and flow_source.substr(celebrate_source, 400).find("Sfx.play(Sfx.CUE_LEVEL_UP)") >= 0,
 		"Level Up SFX stays on the shell celebration, not a restyled button"
+	)
+	var synthesis_success_source := flow_source.find("func _present_queued_synthesis_dialog")
+	_check(
+		synthesis_success_source >= 0
+		and flow_source.substr(synthesis_success_source, 700).find("Sfx.play(Sfx.CUE_LEVEL_UP)") >= 0,
+		"Synthesis complete uses the Level Up cue on the success dialog, not View Result"
 	)
 	Sfx.play(Sfx.CUE_STRIKE)
 	var sfx_host := root.get_node_or_null("SfxHost")
@@ -841,6 +848,7 @@ func _test_shared_components() -> void:
 	var modal_cancel := modal.find_child("CancelButton", true, false) as Button
 	var modal_primary := modal.find_child("PrimaryButton", true, false) as Button
 	var modal_choice_cancel := modal.find_child("ChoiceCancelButton", true, false) as Button
+	var modal_dismiss := modal.find_child("DismissButton", true, false) as Button
 	var modal_portrait := modal.find_child("ModalPortrait", true, false) as TextureRect
 	modal.open_info("Info", "Short body", "Got It")
 	_check(
@@ -851,7 +859,7 @@ func _test_shared_components() -> void:
 	var reveal_image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
 	reveal_image.fill(Color.CYAN)
 	var reveal_texture := ImageTexture.create_from_image(reveal_image)
-	modal.open_result("Complete", "New Result", "View", "Synthera", reveal_texture)
+	modal.open_result("Complete", "New Result", "View", "Synthera", reveal_texture, false)
 	await process_frame
 	await process_frame
 	_check(
@@ -859,6 +867,31 @@ func _test_shared_components() -> void:
 		and modal_portrait.scale.x < 0.9 and modal_portrait.modulate.a < 1.0,
 		"UiModal Result mode reveals the generated portrait with entrance motion"
 	)
+	modal.request_cancel()
+	await create_timer(0.25).timeout
+	var cancel_event := InputEventAction.new()
+	cancel_event.action = &"ui_cancel"
+	cancel_event.pressed = true
+	modal.call("_unhandled_input", cancel_event)
+	await process_frame
+	_check(
+		modal.visible and modal_dismiss != null and modal_dismiss.disabled,
+		"locked Result dialog ignores backdrop, Android Back, and request_cancel"
+	)
+	modal_primary.pressed.emit()
+	await create_timer(0.25).timeout
+	_check(not modal.visible, "locked Result dialog still closes from its explicit action")
+	modal.open_info("Failed", "Failure details", "Close", "", false)
+	await process_frame
+	modal.request_cancel()
+	await create_timer(0.25).timeout
+	_check(
+		modal.visible and modal_dismiss.disabled,
+		"locked failure dialog cannot be skipped by tapping outside"
+	)
+	modal_primary.pressed.emit()
+	await create_timer(0.25).timeout
+	_check(not modal.visible, "locked failure dialog closes from its acknowledgement button")
 	modal.open_confirm("Delete", "Danger body", "Delete", "Cancel", true)
 	_check(not modal_portrait.visible, "non-Result dialogs reset the optional portrait slot")
 	_check(
@@ -5009,8 +5042,11 @@ func _test_synthesis_lab_state() -> void:
 	var back_icon := view.find_child("SynthesisBackIcon", true, false) as TextureRect
 	var scroll := view.find_child("Scroll", true, false) as ScrollContainer
 	var content := scroll.get_child(0) as Control if scroll != null else null
+	var sources := view.find_child("Sources", true, false) as GridContainer
 	var source_a_card := view.find_child("SynthesisSourceACard", true, false) as Button
 	var source_b_card := view.find_child("SynthesisSourceBCard", true, false) as Button
+	var source_a_column := view.find_child("SourceACardColumn", true, false) as VBoxContainer
+	var source_b_column := view.find_child("SourceBCardColumn", true, false) as VBoxContainer
 	var source_a_portrait := view.find_child("SynthesisSourceAPortrait", true, false) as TextureRect
 	var source_b_portrait := view.find_child("SynthesisSourceBPortrait", true, false) as TextureRect
 	var picker_overlay := view.find_child("SynthesisPickerOverlay", true, false) as Control
@@ -5038,6 +5074,26 @@ func _test_synthesis_lab_state() -> void:
 		and source_a_portrait != null and source_a_portrait.texture == source_thumbnail
 		and source_b_portrait != null and source_b_portrait.texture == source_thumbnail,
 		"both Source cards show the selected Anima art"
+	)
+	_check(
+		sources != null and sources.columns == 2
+		and source_a_card.get_parent() == sources and source_b_card.get_parent() == sources
+		and absf(source_a_card.position.y - source_b_card.position.y) < 0.5
+		and source_b_card.position.x >= source_a_card.position.x + source_a_card.size.x + 8.0
+		and view.find_child("SourceAPanel", true, false) == null
+		and view.find_child("SourceBPanel", true, false) == null,
+		"Source A and B are direct, un-nested cards in one side-by-side row"
+	)
+	_check(
+		sources.size.y <= 320.0 and content.size.y <= 720.0
+		and content.get_theme_constant("separation") == 12
+		and sources.get_theme_constant("h_separation") == 12
+		and source_a_column.get_theme_constant("separation") == 8
+		and source_b_column.get_theme_constant("separation") == 8
+		and source_a_column.position.x >= 12.0 and source_a_column.position.y >= 8.0
+		and source_a_column.position.x + source_a_column.size.x <= source_a_card.size.x - 12.0
+		and source_a_column.position.y + source_a_column.size.y <= source_a_card.size.y - 8.0,
+		"compact Source cards keep a breathable 8-point spacing rhythm without overflow"
 	)
 	_check(
 		view.find_child("SynthesisSourceAForm", true, false) == null
@@ -5087,9 +5143,50 @@ func _test_synthesis_lab_state() -> void:
 	)
 	var preview_panel := view.find_child("SynthesisPreviewPanel", true, false) as Control
 	var confirm := view.find_child("SynthesisConfirmButton", true, false) as Button
+	var review_box := preview_panel.get_node_or_null("Box") as VBoxContainer if preview_panel != null else null
+	var chance := view.find_child("SynthesisChance", true, false) as Label
+	var chance_caption := view.find_child("SynthesisChanceCaption", true, false) as Label
+	var breakdown_grid := view.find_child("SynthesisBreakdownGrid", true, false) as GridContainer
+	var stat_grid := view.find_child("SynthesisStatGrid", true, false) as GridContainer
+	var factor_base := breakdown_grid.get_node_or_null("FactorBase/Value") as Label if breakdown_grid != null else null
+	var stat_hp := stat_grid.get_node_or_null("StatHp/Value") as Label if stat_grid != null else null
 	_check(
 		preview_panel != null and preview_panel.visible and confirm != null and not confirm.disabled,
 		"locale refresh preserves the reviewed Resonance preview"
+	)
+	_check(
+		review_box != null and review_box.get_theme_constant("separation") == 16
+		and chance != null and chance.text == "72%"
+		and chance_caption != null and chance_caption.text == tr("SYNTHESIS_CHANCE_CAPTION")
+		and breakdown_grid != null and breakdown_grid.columns == 3 and breakdown_grid.get_child_count() == 6
+		and factor_base != null and factor_base.text == "+40"
+		and stat_grid != null and stat_grid.columns == 5 and stat_grid.get_child_count() == 5
+		and stat_hp != null and not stat_hp.text.is_empty()
+		and view.find_child("Stakes", true, false) == null
+		and view.find_child("SynthesisSuccessLabel", true, false) == null
+		and view.find_child("SynthesisCost", true, false) == null
+		and view.find_child("SynthesisBreakdown", true, false) == null
+		and view.find_child("SynthesisStatShape", true, false) == null,
+		"Resonance Review keeps only the glanceable chance, factors, and likely shape"
+	)
+	var shell_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var attempt_start := shell_source.find("func _attempt_synthesis")
+	var attempt_end := shell_source.find("\n\nfunc _synthesis_attempt_confirmed", attempt_start)
+	var attempt_body := shell_source.substr(
+		attempt_start, attempt_end - attempt_start
+	) if attempt_start >= 0 and attempt_end > attempt_start else ""
+	var confirmed_start := shell_source.find("func _synthesis_attempt_confirmed")
+	var confirmed_end := shell_source.find("\n\nfunc _resume_pending_synthesis", confirmed_start)
+	var confirmed_body := shell_source.substr(
+		confirmed_start, confirmed_end - confirmed_start
+	) if confirmed_start >= 0 and confirmed_end > confirmed_start else ""
+	_check(
+		attempt_body.find("open_confirm") >= 0
+		and attempt_body.find("SYNTHESIS_CONFIRM_BODY") >= 0
+		and attempt_body.find("begin_synthesis") < 0
+		and confirmed_body.find("begin_synthesis") >= 0
+		and shell_source.find("&\"synthesis_attempt\"") >= 0,
+		"Attempt Synthesis asks for cost and miss confirmation before debiting"
 	)
 	view.show_error_key("SYNTHESIS_TECHNICAL_FAILURE")
 	view.refresh_localized_ui()
@@ -5169,9 +5266,12 @@ func _test_synthesis_lab_state() -> void:
 	_check(
 		flow_source.find("_queue_synthesis_failure_dialog(") >= 0
 		and flow_source.find("_queue_synthesis_success_dialog(row, portrait)") >= 0
-		and flow_source.find("_shell_modal.open_result(") >= 0
-		and flow_source.find("\"SYNTHESIS_FAILED\":") >= 0,
-		"terminal Synthesis outcomes use explicit failure and animated success dialogs"
+		and flow_source.find("dialog.get(\"portrait\") as Texture2D,\n\t\t\tfalse") >= 0
+		and flow_source.find("tr(\"CORE_INFO_CLOSE\"),\n\t\t\"\",\n\t\tfalse") >= 0
+		and flow_source.find("\"SYNTHESIS_FAILED\":") >= 0
+		and flow_source.find("_clear_synthesis_reference_background") < 0
+		and flow_source.find("set_synthesis_history_loading(true)") >= 0,
+		"terminal dialogs stay locked and History never re-keys green pixels in the client"
 	)
 	_check(
 		flow_source.find(
@@ -5201,6 +5301,27 @@ func _test_synthesis_profile_ui() -> void:
 	var button := details.find_child("SynthesisAnimaButton", true, false) as Button
 	var history_panel := details.find_child("SynthesisHistoryPanel", true, false) as Control
 	var history_mode := details.find_child("SynthesisHistoryMode", true, false) as Label
+	var history_help := details.find_child("SynthesisHistoryHelp", true, false) as Button
+	var history_summary := details.find_child("SynthesisHistorySummary", true, false) as Label
+	var profile_actions := details.find_child("ProfileActions", true, false) as VBoxContainer
+	var utility_actions := details.find_child("UtilityActions", true, false) as HBoxContainer
+	var about_panel := details.find_child("AboutPanel", true, false) as PanelContainer
+	var gallery_button := details.find_child("GalleryPublishButton", true, false) as Button
+	var delete_button := details.find_child("DeleteAnimaButton", true, false) as Button
+	var history_source_a := details.find_child("SynthesisHistorySourceA", true, false) as TextureRect
+	var history_source_b := details.find_child("SynthesisHistorySourceB", true, false) as TextureRect
+	var skeleton_a := details.find_child(
+		"SynthesisHistorySourceASkeleton", true, false
+	) as UiSkeleton
+	var skeleton_b := details.find_child(
+		"SynthesisHistorySourceBSkeleton", true, false
+	) as UiSkeleton
+	var placeholder_a := details.find_child(
+		"SynthesisHistorySourceAPlaceholder", true, false
+	) as PanelContainer
+	var placeholder_b := details.find_child(
+		"SynthesisHistorySourceBPlaceholder", true, false
+	) as PanelContainer
 	_requested_synthesis_id = ""
 	details.synthesis_requested.connect(_capture_synthesis_request)
 	var row := {
@@ -5217,8 +5338,8 @@ func _test_synthesis_profile_ui() -> void:
 		"synthesis_history": {
 			"mode": "balanced",
 			"resonance": 72,
-			"source_a": {"name": "Solin", "selected_stage": 1},
-			"source_b": {"name": "Mossel", "selected_stage": 2},
+			"source_a": {"id": "source-a", "name": "Solin", "selected_stage": 1},
+			"source_b": {"id": "source-b", "name": "Anima", "selected_stage": 2},
 			"inheritance_summary": {
 				"source_a": "bright crest",
 				"source_b": "stone paws",
@@ -5227,10 +5348,75 @@ func _test_synthesis_profile_ui() -> void:
 		},
 	}
 	details.set_synthesis_enabled(true)
+	details.set_history_source_names({"source-b": "Playtron"})
 	details.set_anima(row, null)
+	details.set_synthesis_history_loading(true)
+	await process_frame
 	_check(button != null and button.visible and not button.disabled, "eligible profile opens Synthesis")
+	_check(
+		profile_actions != null and profile_actions.get_index() == 1
+		and about_panel != null and about_panel.get_index() == 2
+		and button.get_parent() == profile_actions
+		and utility_actions != null and utility_actions.get_parent() == profile_actions
+		and gallery_button.get_parent() == utility_actions
+		and delete_button.get_parent() == utility_actions,
+		"Profile keeps primary and utility actions directly below identity"
+	)
 	_check(history_panel != null and history_panel.visible, "Result profile shows Synthesis History")
 	_check(history_mode != null and history_mode.text.find("72") >= 0, "History shows successful Resonance")
+	var history_source_b_label := details.find_child(
+		"SynthesisHistorySourceBLabel", true, false
+	) as Label
+	_check(
+		history_source_b_label != null and history_source_b_label.text.find("Playtron") >= 0,
+		"History replaces generic Anima with the Source nickname"
+	)
+	_check(
+		history_help != null and history_help.visible
+		and history_help.custom_minimum_size.y >= TOUCH_MIN
+		and history_summary != null and not history_summary.visible,
+		"History keeps inheritance notes behind one 96px help action"
+	)
+	_help_title = ""
+	_help_body = ""
+	details.help_requested.connect(_capture_help_request)
+	history_help.pressed.emit()
+	_check(
+		_help_title == tr("SYNTHESIS_HISTORY_TITLE")
+		and _help_body.find("bright crest") >= 0
+		and _help_body.find("\n\nSource B:") >= 0
+		and _help_body.find("\n\nCoherence:") >= 0,
+		"History help separates the three inheritance notes into paragraphs"
+	)
+	_check(
+		skeleton_a != null and skeleton_a.visible
+		and skeleton_b != null and skeleton_b.visible
+		and skeleton_a.size.is_equal_approx(history_source_a.size)
+		and skeleton_b.size.is_equal_approx(history_source_b.size)
+		and placeholder_a != null
+		and placeholder_b != null
+		and placeholder_a.custom_minimum_size == Vector2(112, 112)
+		and placeholder_b.custom_minimum_size == Vector2(112, 112)
+		and placeholder_a.custom_minimum_size.x < history_source_a.custom_minimum_size.x,
+		"History reserves both art slots but pulses only compact centered placeholders"
+	)
+	var veridian_image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	veridian_image.fill(Color8(32, 184, 72, 255))
+	var veridian_thumbnail := ImageTexture.create_from_image(veridian_image)
+	var history: Dictionary = row["synthesis_history"]
+	details.set_synthesis_history(history, {
+		"source_a": veridian_thumbnail,
+		"source_b": veridian_thumbnail,
+	})
+	details.set_synthesis_history_loading(false)
+	_check(
+		not skeleton_a.visible and not skeleton_b.visible
+		and history_source_a.texture == veridian_thumbnail
+		and history_source_b.texture == veridian_thumbnail
+		and history_source_a.texture.get_image().get_pixel(0, 0).g > 0.7
+		and history_source_a.texture.get_image().get_pixel(0, 0).a > 0.99,
+		"transparent History thumbnails replace skeletons without erasing Veridian green"
+	)
 	button.pressed.emit()
 	_check_eq(_requested_synthesis_id, "anima-synthesis-source", "profile preselects Source A")
 	row["care_score"] = 0

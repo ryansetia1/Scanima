@@ -71,23 +71,81 @@ function parseJsonCandidate(value) {
   }
 }
 
+function unwrapMarkdownFence(text) {
+  const closed = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (closed) return closed[1];
+  const opened = text.match(/```(?:json)?\s*([\s\S]*)$/i);
+  return opened ? opened[1] : text;
+}
+
+function scanJsonClosers(value) {
+  let inString = false;
+  let escaped = false;
+  const stack = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === "\"") inString = false;
+      continue;
+    }
+    if (char === "\"") inString = true;
+    else if (char === "{") stack.push("}");
+    else if (char === "[") stack.push("]");
+    else if ((char === "}" || char === "]") && stack[stack.length - 1] === char) {
+      stack.pop();
+    }
+  }
+  return { inString, stack };
+}
+
+function dropIncompleteJsonTail(value) {
+  return value
+    .replace(/,\s*$/, "")
+    .replace(/,\s*\{\s*$/, "")
+    .replace(/,\s*\[\s*$/, "")
+    .replace(/,\s*"[^"\\]*(?:\\.[^"\\]*)*"\s*:\s*$/, "")
+    .replace(/,\s*"[^"\\]*(?:\\.[^"\\]*)*"\s*$/, "");
+}
+
+function closeTruncatedJson(value) {
+  const start = value.indexOf("{");
+  if (start < 0) return value;
+  let text = value.slice(start);
+  let state = scanJsonClosers(text);
+  if (state.inString) {
+    text += "\"";
+    state = scanJsonClosers(text);
+  }
+  text = dropIncompleteJsonTail(text);
+  state = scanJsonClosers(text);
+  while (state.stack.length) text += state.stack.pop();
+  return text;
+}
+
 export function extractJson(raw) {
   const text = Array.isArray(raw) ? raw.join("") : String(raw ?? "");
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  // ponytail: Gemini kadang menutup string lalu menulis + "lanjutan". Plafon: concat
-  // JS di JSON; upgrade ke schema ketat kalau model masih merusak struktur.
-  const candidate = (fenced ? fenced[1] : text).trim().replace(/"\s*\+\s*"/g, "");
+  // ponytail: Gemini kadang menutup string lalu menulis + "lanjutan", atau
+  // membuka ```json lalu kehabisan output sebelum pagar/kurung tertutup.
+  // Plafon: recovery struktural, bukan mengisi field yang tidak sempat ditulis.
+  const candidate = unwrapMarkdownFence(text).trim().replace(/"\s*\+\s*"/g, "");
 
   try {
     return parseJsonCandidate(candidate);
   } catch {
-    // Model kadang menambah kalimat pengantar meski dilarang. Ambil dari kurung
-    // kurawal pertama sampai yang terakhir.
     const start = candidate.indexOf("{");
     const end = candidate.lastIndexOf("}");
     if (start > -1 && end > start) {
       try {
         return parseJsonCandidate(candidate.slice(start, end + 1));
+      } catch {
+        // jatuh ke penutup JSON terpotong
+      }
+    }
+    if (start > -1) {
+      try {
+        return parseJsonCandidate(closeTruncatedJson(candidate));
       } catch {
         // jatuh ke error di bawah
       }

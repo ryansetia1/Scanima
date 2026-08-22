@@ -50,10 +50,10 @@ const MODES: Array[String] = ["dominant_a", "balanced", "dominant_b"]
 @onready var _review_button: Button = %SynthesisReviewButton
 @onready var _preview_panel: Control = %SynthesisPreviewPanel
 @onready var _chance: Label = %SynthesisChance
-@onready var _breakdown: Label = %SynthesisBreakdown
-@onready var _stat_shape: Label = %SynthesisStatShape
-@onready var _cost: Label = %SynthesisCost
-@onready var _consequence: Label = %SynthesisConsequence
+@onready var _chance_caption: Label = %SynthesisChanceCaption
+@onready var _breakdown_grid: GridContainer = %SynthesisBreakdownGrid
+@onready var _shape_title: Label = %SynthesisShapeTitle
+@onready var _stat_grid: GridContainer = %SynthesisStatGrid
 @onready var _confirm_button: Button = %SynthesisConfirmButton
 @onready var _outcome_panel: Control = %SynthesisOutcomePanel
 @onready var _outcome_title: Label = %SynthesisOutcomeTitle
@@ -154,23 +154,11 @@ func apply_preview(data: Dictionary) -> void:
 	_outcome_data = {}
 	_error_key = ""
 	var breakdown := GameState.as_dict(data.get("breakdown"))
-	var chance := int(breakdown.get("chance", 0))
-	_chance.text = tr("SYNTHESIS_CHANCE_VALUE") % LocaleManager.format_integer(chance)
-	_breakdown.text = tr("SYNTHESIS_BREAKDOWN") % [
-		LocaleManager.format_integer(int(breakdown.get("base", 0))),
-		LocaleManager.format_integer(int(breakdown.get("level", 0))),
-		LocaleManager.format_integer(int(breakdown.get("care", 0))),
-		LocaleManager.format_integer(int(breakdown.get("affinity", 0))),
-		LocaleManager.format_integer(int(breakdown.get("mode", 0))),
-		LocaleManager.format_integer(int(breakdown.get("calibration", 0))),
-	]
-	_stat_shape.text = _stat_shape_line(data)
-	var cost := GameState.as_dict(data.get("cost"))
-	_cost.text = tr("SYNTHESIS_COST") % [
-		LocaleManager.format_integer(int(cost.get("cores", 1))),
-		LocaleManager.format_integer(int(cost.get("bits", 250))),
-	]
-	_consequence.text = tr("SYNTHESIS_FAILURE_CONSEQUENCE")
+	_chance.text = tr("SYNTHESIS_CHANCE_VALUE") % LocaleManager.format_integer(
+		int(breakdown.get("chance", 0))
+	)
+	_paint_review_factors(breakdown)
+	_paint_review_stats(data)
 	_preview_panel.visible = true
 	_outcome_panel.visible = false
 	_update_actions()
@@ -273,6 +261,8 @@ func refresh_localized_ui() -> void:
 	_source_b_title.text = tr("SYNTHESIS_SOURCE_B")
 	_mode_title.text = tr("SYNTHESIS_MODE_TITLE")
 	_review_title.text = tr("SYNTHESIS_REVIEW_TITLE")
+	_chance_caption.text = tr("SYNTHESIS_CHANCE_CAPTION")
+	_shape_title.text = tr("SYNTHESIS_SHAPE_TITLE")
 	_incubating_title.text = tr("SYNTHESIS_INCUBATING_TITLE")
 	_incubating_body.text = tr("SYNTHESIS_INCUBATING_BODY")
 	_incubating_source_a_title.text = tr("SYNTHESIS_SOURCE_A")
@@ -548,16 +538,58 @@ func _selected_row(anima_id: String) -> Dictionary:
 	return {}
 
 
-func _stat_shape_line(data: Dictionary) -> String:
+func _paint_review_factors(breakdown: Dictionary) -> void:
+	var specs: Array[Array] = [
+		["base", "SYNTHESIS_FACTOR_BASE"],
+		["level", "SYNTHESIS_FACTOR_LEVEL"],
+		["care", "SYNTHESIS_FACTOR_CARE"],
+		["affinity", "SYNTHESIS_FACTOR_AFFINITY"],
+		["mode", "SYNTHESIS_FACTOR_BIAS"],
+		["calibration", "SYNTHESIS_FACTOR_CALIBRATION"],
+	]
+	for index in specs.size():
+		var cell := _breakdown_grid.get_child(index) as Control
+		_paint_metric_cell(
+			cell,
+			tr(str(specs[index][1])),
+			tr("SYNTHESIS_FACTOR_VALUE") % LocaleManager.format_integer(
+				int(breakdown.get(str(specs[index][0]), 0))
+			)
+		)
+
+
+func _paint_review_stats(data: Dictionary) -> void:
 	var a := GameState.as_dict(GameState.as_dict(data.get("source_a")).get("base_stats"))
 	var b := GameState.as_dict(GameState.as_dict(data.get("source_b")).get("base_stats"))
 	var weight_a := 0.70 if _mode == "dominant_a" else (0.30 if _mode == "dominant_b" else 0.50)
-	var values: Array[String] = []
-	for key in ["hp", "atk", "def", "spd", "special"]:
-		values.append(LocaleManager.format_integer(roundi(
-			float(a.get(key, 50)) * weight_a + float(b.get(key, 50)) * (1.0 - weight_a)
-		)))
-	return tr("SYNTHESIS_STAT_SHAPE") % values
+	var specs: Array[Array] = [
+		["hp", "STAT_HP"],
+		["atk", "STAT_ATK"],
+		["def", "STAT_DEF"],
+		["spd", "STAT_SPD"],
+		["special", "STAT_SPECIAL"],
+	]
+	for index in specs.size():
+		var key := str(specs[index][0])
+		var cell := _stat_grid.get_child(index) as Control
+		_paint_metric_cell(
+			cell,
+			tr(str(specs[index][1])),
+			LocaleManager.format_integer(roundi(
+				float(a.get(key, 50)) * weight_a + float(b.get(key, 50)) * (1.0 - weight_a)
+			))
+		)
+
+
+func _paint_metric_cell(cell: Control, name_text: String, value_text: String) -> void:
+	if cell == null:
+		return
+	var name_label := cell.get_node_or_null("Name") as Label
+	var value_label := cell.get_node_or_null("Value") as Label
+	if name_label != null:
+		name_label.text = name_text
+	if value_label != null:
+		value_label.text = value_text
 
 
 static func is_eligible_source(row: Dictionary) -> bool:

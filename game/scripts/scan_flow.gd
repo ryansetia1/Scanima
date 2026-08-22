@@ -162,6 +162,7 @@ var _synthesis_art_error_reported := false
 var _synthesis_return_destination: StringName = BottomNav.COLLECTION
 var _synthesis_history_revision := 0
 var _queued_synthesis_dialog: Dictionary = {}
+var _pending_synthesis_payload: Dictionary = {}
 var _active_synthesis_result: Dictionary = {}
 var _pending_retreat := ""
 var _modal_context := &""
@@ -374,6 +375,12 @@ func _ready() -> void:
 			_run_profile_help_demo(false)
 		if arg == "--profile-help-demo":
 			_run_profile_help_demo()
+		if arg == "--synthesis-history-demo":
+			_run_synthesis_history_demo(false)
+		if arg == "--synthesis-history-loading-demo":
+			_run_synthesis_history_demo(false, true)
+		if arg == "--synthesis-history-help-demo":
+			_run_synthesis_history_demo(true)
 		if arg == "--home-tap-demo" and _anima.sprite_frames != null:
 			await _run_home_tap_demo()
 		if arg == "--level-up-demo":
@@ -729,7 +736,28 @@ func _preview_synthesis(payload: Dictionary) -> void:
 
 
 func _attempt_synthesis(payload: Dictionary) -> void:
-	if payload.is_empty() or not _synthesis_enabled():
+	if payload.is_empty() or not _synthesis_enabled() or _busy:
+		return
+	if not GameState.pending_synthesis.is_empty():
+		_say(tr("SYNTHESIS_ALREADY_ACTIVE"), true)
+		return
+	_pending_synthesis_payload = payload.duplicate(true)
+	_modal_context = &"synthesis_attempt"
+	_shell_modal.open_confirm(
+		tr("SYNTHESIS_CONFIRM_TITLE"),
+		tr("SYNTHESIS_CONFIRM_BODY") % [
+			LocaleManager.format_integer(1),
+			LocaleManager.format_integer(250),
+		],
+		tr("SYNTHESIS_CONFIRM_ACTION"),
+		tr("ACTION_CANCEL")
+	)
+
+
+func _synthesis_attempt_confirmed() -> void:
+	var payload := _pending_synthesis_payload.duplicate(true)
+	_pending_synthesis_payload = {}
+	if payload.is_empty() or not _synthesis_enabled() or _busy:
 		return
 	if not GameState.pending_synthesis.is_empty():
 		_say(tr("SYNTHESIS_ALREADY_ACTIVE"), true)
@@ -955,12 +983,14 @@ func _present_queued_synthesis_dialog() -> void:
 		var row := GameState.as_dict(dialog.get("row"))
 		_active_synthesis_result = row.duplicate(true)
 		_modal_context = &"synthesis_success"
+		Sfx.play(Sfx.CUE_LEVEL_UP)
 		_shell_modal.open_result(
 			tr("SYNTHESIS_COMPLETE_TITLE"),
 			tr("SYNTHESIS_COMPLETE_BODY"),
 			tr("SYNTHESIS_VIEW_RESULT"),
 			LocaleManager.display_name(row),
-			dialog.get("portrait") as Texture2D
+			dialog.get("portrait") as Texture2D,
+			false
 		)
 		return
 	_active_synthesis_result = {}
@@ -968,7 +998,9 @@ func _present_queued_synthesis_dialog() -> void:
 	_shell_modal.open_info(
 		str(dialog.get("title", tr("SYNTHESIS_FAILED_DIALOG_TITLE"))),
 		str(dialog.get("body", tr("SYNTHESIS_TECHNICAL_FAILURE"))),
-		tr("CORE_INFO_CLOSE")
+		tr("CORE_INFO_CLOSE"),
+		"",
+		false
 	)
 
 
@@ -987,23 +1019,40 @@ func _show_synthesis_result(row: Dictionary) -> void:
 	call_deferred("_show_rename", str(row.get("id", "")), LocaleManager.display_name(row))
 
 
+func _history_source_names() -> Dictionary:
+	var names := {}
+	for row in _roster:
+		var anima_id := str(row.get("id", ""))
+		if anima_id.is_empty():
+			continue
+		names[anima_id] = LocaleManager.display_name(row)
+	return names
+
+
 func _refresh_synthesis_history() -> void:
 	_synthesis_history_revision += 1
 	var revision := _synthesis_history_revision
 	var row := _profile_anima if not _profile_anima.is_empty() else _current_anima
 	var anima_id := str(row.get("id", ""))
 	var local_history := GameState.as_dict(row.get("synthesis_history"))
+	_details_view.set_history_source_names(_history_source_names())
 	_details_view.set_synthesis_history(local_history)
 	if anima_id.is_empty() or local_history.is_empty():
+		_details_view.set_synthesis_history_loading(false)
 		return
+	_details_view.set_synthesis_history_loading(true)
 	var account_epoch := GameState.session_epoch
 	var res := await Backend.synthesize_anima("history", {"result_anima_id": anima_id})
 	if not Backend.response_applies(res, account_epoch):
 		return
-	if revision != _synthesis_history_revision or not res.ok:
+	if revision != _synthesis_history_revision:
+		return
+	if not res.ok:
+		_details_view.set_synthesis_history_loading(false)
 		return
 	var history := GameState.as_dict(GameState.as_dict(res.data).get("history"))
 	if history.is_empty():
+		_details_view.set_synthesis_history_loading(false)
 		return
 	var textures: Dictionary = {}
 	var source_a := GameState.as_dict(history.get("source_a"))
@@ -1012,8 +1061,11 @@ func _refresh_synthesis_history() -> void:
 	textures["source_b"] = await _synthesis_history_texture(str(source_b.get("thumbnail_url", "")))
 	if revision == _synthesis_history_revision and anima_id == str(_profile_anima.get("id", "")):
 		_details_view.set_synthesis_history(history, textures)
+		_details_view.set_synthesis_history_loading(false)
 
 
+## History menerima crop Idle transparan yang sama dengan Atlas. Jangan key ulang
+## warna di client: chroma reference untuk model bersifat lossy terhadap Anima hijau.
 func _synthesis_history_texture(url: String) -> Texture2D:
 	if url.is_empty():
 		return null
@@ -1850,6 +1902,8 @@ func _modal_confirmed(text: String) -> void:
 			_delete_confirmed()
 		&"evolve":
 			_evolve_confirmed()
+		&"synthesis_attempt":
+			_synthesis_attempt_confirmed()
 		&"rename":
 			_rename_confirmed(text)
 		&"confirm_transfer_guest":
@@ -1899,6 +1953,8 @@ func _modal_canceled() -> void:
 		_pending_delete_id = ""
 	elif context == &"evolve":
 		_pending_evolve_row = {}
+	elif context == &"synthesis_attempt":
+		_pending_synthesis_payload = {}
 	elif context == &"rename":
 		_pending_rename_id = ""
 		_pending_rename_text = ""
@@ -4523,6 +4579,7 @@ func _refresh_stats() -> void:
 	var details_row := _profile_anima if not _profile_anima.is_empty() else _current_anima
 	_details_view.set_evolution_enabled(_evolution_enabled())
 	_details_view.set_synthesis_enabled(_synthesis_enabled())
+	_details_view.set_history_source_names(_history_source_names())
 	_details_view.set_anima(
 		details_row,
 		_thumbnail_for(details_row) if not details_row.is_empty() else null
@@ -5668,6 +5725,60 @@ func _run_home_tap_demo() -> void:
 	get_viewport().push_input(event)
 	await get_tree().create_timer(0.09).timeout
 	print("home tap demo: tap=%s reaction=%s" % [event.position, _anima.position])
+
+
+func _run_synthesis_history_demo(show_help: bool, scroll_history: bool = false) -> void:
+	var history := {
+		"mode": "balanced",
+		"resonance": 74,
+		"source_a": {
+			"id": "history-demo-a", "name": "Chromvein", "selected_stage": 1,
+		},
+		"source_b": {
+			"id": "history-demo-b", "name": "Playtron", "selected_stage": 1,
+		},
+		"inheritance_summary": {
+			"source_a": "Contributes the primary sleek, dark metallic vehicle body silhouette, robust structure, and chrome accents, along with the concept of wheeled mobility.",
+			"source_b": "Provides the distinct digital screen face with pixelated features, the teal color palette for the screen, and the subtle spark/hovering effect.",
+			"coherence": "The creature seamlessly integrates the robust, polished vehicle form with the playful, digital screen face, creating a smart car Hatchling that is both sturdy and expressive.",
+		},
+	}
+	var demo := {
+		"id": "",
+		"nickname": "Gearbit Racer",
+		"species_key": "synthesis_result",
+		"status": "ready",
+		"stage": 1,
+		"element": "metal",
+		"secondary_element": "spark",
+		"rarity": 3,
+		"care_score": 150,
+		"base_stats": {"hp": 50, "atk": 55, "def": 45, "spd": 60, "special": 65},
+		"strike_name": "Chrome Rush",
+		"surge_name": "Pixel Overdrive",
+		"synthesis_history": history,
+	}
+	_switch_destination(ANIMA_PROFILE_DEST, demo)
+	_details_view.set_evolution_enabled(false)
+	_details_view.set_synthesis_enabled(true)
+	_details_view.set_anima(demo, null)
+	call_deferred("_finish_synthesis_history_demo", show_help, scroll_history)
+
+
+func _finish_synthesis_history_demo(show_help: bool, scroll_history: bool) -> void:
+	await get_tree().process_frame
+	_details_view.set_gallery_status({"available": true, "published": false})
+	_details_view.set_synthesis_history_loading(true)
+	if show_help:
+		var help := _details_view.find_child("SynthesisHistoryHelp", true, false) as Button
+		help.pressed.emit()
+	elif scroll_history:
+		await get_tree().process_frame
+		var scroll := _details_view.find_child("DetailsScroll", true, false) as ScrollContainer
+		var history_panel := _details_view.find_child(
+			"SynthesisHistoryPanel", true, false
+		) as Control
+		scroll.scroll_vertical = maxi(0, int(history_panel.position.y) - 24)
 
 
 func _run_profile_help_demo(show_help: bool = true) -> void:

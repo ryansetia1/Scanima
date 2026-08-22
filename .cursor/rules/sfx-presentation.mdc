@@ -16,6 +16,7 @@ Canonical hooks (do not bypass):
 - Super effective / not very effective → `AnimaPresenter.hit_react(multiplier)`
 - Summon + Switch portal → `IncubatorEffect.start_portal()`
 - Level Up → `scan_flow._celebrate_level_up()`
+- Synthesis complete → `scan_flow._present_queued_synthesis_dialog()` (same cue as Level Up)
 - Chrome taps → `UiJuice` (`button_down`)
 
 If you restyle a button or move a dock, leave these helpers in the play path. `test_scan_ui.gd` source-scans the hooks; a missing `Sfx.play` is a failed check, not a later TODO.

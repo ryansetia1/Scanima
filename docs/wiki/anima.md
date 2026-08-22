@@ -110,22 +110,29 @@ tidak memakai istilah keluarga.
 - Pilih **Dominant A**, **Balanced**, atau **Dominant B**. Dominant lebih
   menekankan bentuk dan stats salah satu Source; Balanced mencampur keduanya
   lebih rata. Satu pasangan dapat berhasil sekali untuk tiap pilihan itu.
-- **Review Resonance** menunjukkan peluang sukses, pengaruh Level, Care,
-  kecocokan, bias, Calibration, perkiraan bentuk stats, dan biaya sebelum kamu
-  menekan **Attempt Synthesis**.
+- **Review Resonance** menampilkan angka peluang, chip pengaruh (Level, Care,
+  Affinity, bias, Calibration), dan grid perkiraan stats. **Attempt Synthesis**
+  membuka dialog konfirmasi dengan biaya sukses dan akibat kalau miss, baru
+  memulai percobaan.
 - Kalau Resonance gagal, Core dan Bits tidak dipakai. Energy kedua Source turun
   10, pasangan dan bias itu cooldown satu jam, lalu Calibration menambah peluang
   percobaan berikutnya. Dialog hasil menjelaskan kegagalan ini; kegagalan teknis
-  juga memakai dialog dan mengonfirmasi refund Core serta Bits.
+  juga memakai dialog dan mengonfirmasi refund Core serta Bits. Dialog hasil
+  tidak dapat tertutup karena tap di luar atau tombol Back; tekan tombol di
+  dialog setelah informasinya selesai dibaca.
 - Kalau berhasil, kedua Source tetap bisa dipakai sementara Result dibuat.
   Setelah inkubasi selesai, dialog sukses memperlihatkan kemunculan Anima baru
   dan tombol **View Result**. Result selalu menetas sebagai **Hatchling Level
-  1**. Stats-nya adalah build baru dalam kisaran kekuatan kedua Source, bukan
-  bonus power gratis.
+  1**, dengan nama spesies yang dirakit sama seperti hasil Scan — satu kata
+  ciptaan, bukan deskripsi Inggris. Stats-nya adalah build baru dalam kisaran
+  kekuatan kedua Source, bukan bonus power gratis.
 
-Profile Result menampilkan **Synthesis History**: nama dan form aktif kedua
-Source saat percobaan, bias, Resonance yang berhasil, serta ringkasan ciri yang
-diwarisi. Result juga bisa menjadi Source setelah mencapai Level 10.
+Profile Result menampilkan **Synthesis History**: potret kedua Source, nama dan
+form yang dipakai saat percobaan, bias, serta Resonance yang berhasil. Catatan
+ciri yang diwarisi tidak ditampilkan di kartu — tap tanda tanya di samping
+Resonance kalau mau membacanya. Art Source tampil sebagai crop transparan;
+placeholder berdenyut ditampilkan sementara thumbnail masih dimuat. Result juga
+bisa menjadi Source setelah mencapai Level 10.
 
 | Aksi | EXP | Catatan |
 | --- | --- | --- |
@@ -170,9 +177,11 @@ di awal dan akhir dibuang. Kata kasar dan nama yang menyamar sebagai staf
 (Admin, Moderator, Support, Scanima) ditolak dengan pesan di layar; namanya tidak
 tersimpan dan sheet-nya tetap terbuka supaya kamu bisa mencoba lagi.
 
-Nama hasil Scan dan Evolve berusaha menghindari nama yang sudah ada di
-koleksimu, jadi dua Anima serupa tidak lahir kembar. Kalau pilihannya benar-benar
-habis, nama kembar tetap diberikan — kamu bisa mengganti salah satunya.
+Nama hasil Scan, Evolve, dan Synthesis berusaha menghindari nama yang sudah ada
+di koleksimu, jadi dua Anima serupa tidak lahir kembar. Kalau pilihannya
+benar-benar habis, nama kembar tetap diberikan — kamu bisa mengganti salah
+satunya.
 
 Nickname buatanmu hanya terlihat olehmu. Lawan Battle, Defense Team, dan
-[Anima Atlas](atlas.md) memakai nama spesies hasil Scan, bukan nickname.
+[Anima Atlas](atlas.md) memakai nama spesies hasil Scan, Evolve, atau
+Synthesis, bukan nickname.

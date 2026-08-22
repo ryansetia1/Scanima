@@ -2,6 +2,37 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Synthesis History source names (backend)
+
+22 Agustus 2026. Snapshot History mencari `generations.suggested_name` lalu
+jatuh ke literal `Anima` kalau baris generation tidak ada. Playtron di kartu
+Gearbit Racer kena itu. Migration
+`20260822085800_synthesis_history_source_names` menulis ulang nama Source dari
+nickname, memperbaiki History yang sudah tersimpan, dan mengisi snapshot baru
+lewat trigger. Kartu Profile menyembunyikan catatan inheritance di belakang
+tombol bantuan Resonance; APK lama tetap melihat teks penuh sampai build baru.
+
+## Synthesis JSON close v45 (backend)
+
+22 Agustus 2026. `extractJson()` sekarang menutup pagar markdown yang tidak
+selesai dan JSON yang terpotong di tengah string — recovery yang sama untuk
+Scan dan Synthesis. Planner v45 menulis `name_roots` terakhir supaya field
+wajib Plan tidak ikut hilang. Migration
+`20260822074932_synthesis_json_close_v45` di-push sesudah `create_anima` 24,
+`synthesize_anima` 5, dan `evolve_anima` 9. Rollback `v44`.
+
+## Synthesis Name Lineage v44 (backend)
+
+22 Agustus 2026. Planner Synthesis tidak lagi menulis nama akhir; ia mengirim
+`name_roots` dan server merakit kata spesies lewat `deriveMorphemeSpeciesName()`,
+sama dengan Scan v41. `synthesize_anima` 4 dan `evolve_anima` 8 di-deploy
+dulu (bundle sudah memuat v44), lalu migration
+`20260822073538_synthesis_name_lineage_v44` di-push. Production sekarang
+`synthesis_prompt_version = v44`; rollback-nya `v43`. Evolve membaca
+generation `kind=synthesis` sebagai birth lineage. Smoke tanpa JWT menjawab
+401. Result yang sudah menetas (Gearbit Racer, VerdantPup) tidak di-rename.
+Sheet tetap v42.
+
 ## Status deploy Guided Synthesis (backend production, flag hidup, APK pending)
 
 Rollout 22 Agustus 2026. Migration `20260821121417_anima_synthesis` di-apply
@@ -467,6 +498,26 @@ dijalankan ulang. Hydron (`legacy:ambiguous`), Veridian (`material:plant`), dan
 Sunhound (`subject:animal`) sengaja tetap bertipe tunggal: fungsi yang sama tidak
 menemukan elemen kedua untuk mereka, dan mengarangnya akan mengubah damage tanpa
 bukti dari foto.
+
+## Synthesis History transparan tanpa merusak Veridian (22 Agustus 2026)
+
+Penyebab art Source hijau rusak bukan post-process utama, melainkan History lama
+memakai file reference Planner yang sudah diratakan ke chroma green. Client
+kemudian mencoba merekonstruksi alpha lewat flood-fill; informasi itu sudah
+lossy, jadi material hijau Veridian dapat ikut terhapus.
+
+Migration `20260822063112_synthesis_transparent_history_refs` sudah live dan
+`synthesize_anima` version 3 ACTIVE. Jalur baru membuat dua derivative dari sheet
+privat yang sama: `model_source_a/b` tetap chroma-backed untuk Planner, sedangkan
+`source_a/b` memakai `cropIdleThumb()` transparan yang sama dengan Atlas.
+History sukses lama diperbaiki sekali saat Profile pertama kali meminta History,
+tanpa Vision atau image generation baru. Client tidak lagi melakukan chroma key;
+dua slot art memakai pulse `UiSkeleton` selama PNG diunduh.
+
+`npm run selftest` lulus, `test_scan_ui.gd` lulus 1.205 check, blok
+`quota_rules.sql` production selesai tanpa error, smoke tanpa JWT membalas 401,
+dan daftar Edge Function mengonfirmasi version 3 ACTIVE dengan
+`verify_jwt=true`.
 
 ## Daftar migration yang sudah live
 
