@@ -17,8 +17,14 @@ var _order: Array[int] = []
 
 
 func _ready() -> void:
-	select_mode = SELECT_MULTI
-	allow_reselect = true
+	# Not SELECT_MULTI. Pressing an already-selected item there sets Godot's
+	# `defer_select_single` and returns *before* emitting `item_clicked`, so the
+	# tap never reaches `_on_item_clicked`; the release then runs
+	# `select(i, true)`, which drops every other item. A deselect tap therefore
+	# repainted the list as if that one card were the whole team while `_order`
+	# still held all three. SELECT_TOGGLE flips the pressed item on press and
+	# always emits, which is also the tap-to-toggle contract this list wants.
+	select_mode = SELECT_TOGGLE
 	var selected_style := StyleBoxFlat.new()
 	selected_style.bg_color = SELECTED_BG
 	selected_style.border_color = SELECTED_BORDER

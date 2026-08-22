@@ -2923,6 +2923,7 @@ func _test_team_battle_view() -> void:
 		and roster_list.get_theme_stylebox("hovered") is StyleBoxEmpty,
 		"four taps keep four numbered slots and enable Save without a stale count"
 	)
+	_check_toggle_select_mode(roster_list, "the Team builder")
 	_tap_roster_item(roster_list, 4)
 	_check(
 		not save.disabled
@@ -2957,6 +2958,11 @@ func _test_team_battle_view() -> void:
 		and team_roster.has_method("indices_for_anima_ids"),
 		"TeamRosterList exposes ordered pick and restore APIs"
 	)
+	# Pick order and paint agree only if the tap reaches the list at all. Under
+	# SELECT_MULTI a deselect press was swallowed and the release collapsed the
+	# paint to that single card, so the emitted-signal taps above all passed
+	# while players saw one badge where three had been.
+	await _test_roster_list_real_taps()
 	var daily := {
 		"earned": 1, "limit": 2, "bits_earned": 8, "bits_limit": 40,
 	}
@@ -3986,6 +3992,7 @@ func _test_expedition_view() -> void:
 		and expedition_roster.get_chosen_indices_ordered() == [0, 1, 2, 3],
 		"Expedition Team restores four numbered selections and blocks low Energy"
 	)
+	_check_toggle_select_mode(roster_list, "the Expedition builder")
 	_check(
 		expedition_builder_meta.text.contains(tr("TEAM_ROSTER_LEAD_HINT")),
 		"Expedition builder shares the slot-1 lead hint"
@@ -6942,8 +6949,6 @@ func _live_row_count(list: Node) -> int:
 	return count
 
 
-## Mirrors a real tap: Godot replaces the whole multi-selection, emits
-## multi_selected from that pre-correction state, then emits item_clicked.
 func _boss_seeker_payload() -> Dictionary:
 	return {
 		"id": "confectioner",
@@ -6994,11 +6999,96 @@ func _dismiss_when_open(dialog: BossSeekerDialog) -> void:
 		await process_frame
 
 
+## Team dan Expedition memakai list yang sama, jadi modenya diperiksa pada
+## instance scene masing-masing, bukan pada kelasnya: `_ready()` milik list jalan
+## **sebelum** `_ready()` view-nya, jadi override di scene atau di view akan
+## menang diam-diam — dan SELECT_MULTI adalah tap deselect yang dilaporkan pemain
+## (`_test_roster_list_real_taps()` yang memutar ulang tap-nya).
+func _check_toggle_select_mode(list: ItemList, label: String) -> void:
+	_check(
+		list.select_mode == ItemList.SELECT_TOGGLE,
+		"%s toggles a pick on press instead of collapsing it on release" % label
+	)
+
+
+## Mirrors what SELECT_TOGGLE does to the selection before `item_clicked`
+## reaches the list: it flips the pressed item and leaves the rest alone. Godot
+## swallows a disabled item earlier than this, so tapping one here is the
+## stricter path — it makes the handler's own guard answer for it.
 func _tap_roster_item(list: ItemList, index: int) -> void:
 	if not list.is_item_disabled(index):
-		list.select(index, true)
-		list.multi_selected.emit(index, true)
+		if list.is_selected(index):
+			list.deselect(index)
+			list.multi_selected.emit(index, false)
+		else:
+			list.select(index, false)
+			list.multi_selected.emit(index, true)
 	list.item_clicked.emit(index, Vector2.ZERO, MOUSE_BUTTON_LEFT)
+
+
+## Alasannya sama dengan `_drag_scrolls`: yang rusak di perangkat adalah jalur
+## input, dan `item_clicked.emit()` di atas tetap lulus walau Godot memutuskan
+## hal lain. SELECT_MULTI menunda collapse-to-single sampai jari diangkat dan
+## **tidak pernah** memancarkan `item_clicked` pada press-nya, jadi tap deselect
+## meninggalkan satu kartu tersorot sementara `_order` masih memegang tiga.
+## Listnya dibangun sendiri karena `team_battle_view` di suite ini hidup
+## tersembunyi dan tanpa lebar — jari tidak bisa mendarat di sana.
+func _test_roster_list_real_taps() -> void:
+	var list := TeamRosterList.new()
+	list.max_columns = 1
+	list.size = Vector2(480.0, 480.0)
+	for index in 3:
+		list.add_item("Team %d" % (index + 1))
+	root.add_child(list)
+	# Scene sisa suite lain digambar di atas dan akan memenangkan pick.
+	root.move_child(list, -1)
+	await process_frame
+	var picked: Array[int] = [0, 1, 2]
+	list.set_chosen_order(picked)
+	var changes := [0]
+	list.selection_changed.connect(func() -> void: changes[0] += 1)
+	_check(
+		list.get_chosen_indices_ordered() == [0, 1, 2] and list.is_selected(1),
+		"the roster probe starts with three picked Anima"
+	)
+	await _tap_roster_item_through_viewport(list, 1)
+	_check(
+		list.get_chosen_indices_ordered() == [0, 2]
+		and not list.is_selected(1)
+		and list.is_selected(0)
+		and list.is_selected(2)
+		and changes[0] == 1,
+		"a real deselect tap drops that Anima instead of making it the only pick"
+	)
+	await _tap_roster_item_through_viewport(list, 1)
+	_check(
+		list.get_chosen_indices_ordered() == [0, 2, 1]
+		and list.is_selected(0)
+		and list.is_selected(1)
+		and list.is_selected(2)
+		and changes[0] == 2,
+		"a real tap re-adds an Anima last without clearing the ones already picked"
+	)
+	list.queue_free()
+	await process_frame
+
+
+func _tap_roster_item_through_viewport(list: ItemList, index: int) -> void:
+	# `get_item_rect()` sits in content space, so the scroll offset comes back
+	# out before the press is aimed — the same correction the badges make.
+	var at := (
+		list.get_global_rect().position
+		+ list.get_item_rect(index).get_center()
+		- Vector2(0.0, list.get_v_scroll_bar().value)
+	)
+	for pressed: bool in [true, false]:
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = pressed
+		click.position = at
+		click.global_position = at
+		list.get_viewport().push_input(click, true)
+		await process_frame
 
 
 ## One loading screen serves every screen swap, so the checks that matter are

@@ -151,8 +151,7 @@ size_flags_vertical = 3
 theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 12
 theme_override_font_sizes/font_size = 25
-select_mode = 1
-allow_reselect = true
+select_mode = 2
 max_columns = 2
 same_column_width = true
 fixed_column_width = 300
@@ -204,6 +203,7 @@ autowrap_mode = 2
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
+scroll_deadzone = 10
 
 [node name="ExpeditionRouteMap" type="Control" parent="ExpeditionColumn/ExpeditionMap/MapScroll" unique_id=1950924366]
 unique_name_in_owner = true
@@ -232,6 +232,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 follow_focus = true
 horizontal_scroll_mode = 0
+scroll_deadzone = 10
 
 [node name="ExpeditionMenuContent" type="VBoxContainer" parent="ExpeditionColumn/ExpeditionMenuScroll" unique_id=1645663707]
 unique_name_in_owner = true

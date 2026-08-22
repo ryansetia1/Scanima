@@ -44,8 +44,9 @@ Arena tetap menampilkan satu fighter aktif dari setiap tim.
   Energy**, **Dormant**, atau **Not ready** tetap terlihat agar kesiapan tidak
   bergantung pada warna saja. Ketuk card untuk menambah atau melepasnya. Card
   terpilih diberi nomor sesuai urutan pilihan: **1** adalah Anima yang memulai
-  battle, lalu **2–4** adalah urutan bench. Urutan itu tetap sama saat builder
-  dibuka lagi. **Back** membatalkan perubahan yang belum disimpan dan kembali
+  battle, lalu **2–4** adalah urutan bench. Melepas satu card menomori ulang
+  sisanya tanpa mengubah urutan mereka, dan card yang dipilih lagi masuk di
+  nomor terakhir. Urutan itu tetap sama saat builder dibuka lagi. **Back** membatalkan perubahan yang belum disimpan dan kembali
   ke lobby rival; membuka builder lagi memulihkan urutan tim tersimpan.
 - Setelah tim disimpan, lobby menawarkan sampai **tiga rival** dengan tier dan
   Bits-nya masing-masing. **Find New Rivals** mengocok ulang pilihannya. Selama

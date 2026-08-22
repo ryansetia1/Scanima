@@ -58,7 +58,11 @@ Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 25
 
 Team Battle/Defense production sekarang menerima **2–4 Anima** dan builder
 selalu muncul sebelum Find Rivals; Expedition tetap tepat 4. Pilihan roster
-sekarang benar-benar berurutan dengan badge 1–4 (slot 1 aktif), menang memakai
+sekarang benar-benar berurutan dengan badge 1–4 (slot 1 aktif), dan melepas card
+yang sudah terpilih benar-benar melepasnya: `TeamRosterList` memakai
+`SELECT_TOGGLE`, sebab `SELECT_MULTI` menelan press deselect lalu menjatuhkan
+sisa tim saat jari diangkat — builder Expedition memakai list yang sama, jadi ia
+ikut sembuh. Menang memakai
 **Next Battle**, dan hasil lain memakai **Try Again**; keduanya membuka builder
 dengan tim terakhir tetap terpilih. Builder Team sekarang juga memakai row
 **Back + Save** seperti Expedition: Back membatalkan edit lalu kembali ke rival
@@ -94,7 +98,8 @@ terkompresi. `adb devices -l` butuh 110 detik lalu menjawab kosong — daemon-ny
 lambat, bukan device yang tidak terdeteksi. APK ini belum di-sideload dan build
 19:48 tanggal 22 tetap yang terakhir terpasang, jadi seluruh perilaku client di
 atas masih terverifikasi lewat test headless saja, belum pernah dilihat di
-perangkat.
+perangkat. Perbaikan `SELECT_TOGGLE` builder Team datang **sesudah** build itu,
+jadi APK 05:40 masih memuat tap deselect yang menjatuhkan sisa tim.
 
 Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
 wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
