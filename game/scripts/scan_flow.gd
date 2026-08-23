@@ -282,7 +282,11 @@ func _ready() -> void:
 	_home_view.care_blocked.connect(_on_care_blocked)
 	_home_view.first_scan_requested.connect(_open_scan)
 	_home_view.retry_requested.connect(_retry_roster)
+	_home_view.anima_profile_requested.connect(func() -> void: _show_collection_profile(_current_anima))
+	_brand.mouse_filter = Control.MOUSE_FILTER_STOP
+	_brand.gui_input.connect(_on_brand_input)
 	_collection_view.preview_requested.connect(_sync_collection_preview)
+	_collection_view.atlas_preview_requested.connect(_sync_collection_atlas_preview)
 	_collection_view.profile_requested.connect(_show_collection_profile)
 	_collection_view.summon_requested.connect(_summon_collection_anima)
 	_collection_view.first_scan_requested.connect(_open_scan)
@@ -298,7 +302,7 @@ func _ready() -> void:
 	_details_view.delete_requested.connect(_show_delete_confirmation)
 	_details_view.help_requested.connect(_show_details_help)
 	_details_view.gallery_publish_requested.connect(_toggle_gallery_publish)
-	_details_view.gallery_appeal_requested.connect(_request_gallery_appeal)
+	_details_view.gallery_rejection_info_requested.connect(_show_gallery_rejection_info)
 	_details_view.evolve_requested.connect(_show_evolve_confirmation)
 	_details_view.synthesis_requested.connect(_open_synthesis_lab)
 	_bottom_nav.destination_selected.connect(_on_bottom_nav_destination)
@@ -731,7 +735,7 @@ func _show_collection_profile(row: Dictionary) -> void:
 		return
 	_profile_return_destination = (
 		_destination
-		if _destination in [BottomNav.COLLECTION, BottomNav.BATTLE, SYNTHESIS_DEST]
+		if _destination in [BottomNav.HOME, BottomNav.COLLECTION, BottomNav.BATTLE, SYNTHESIS_DEST]
 		else BottomNav.COLLECTION
 	)
 	_switch_destination(ANIMA_PROFILE_DEST, row)
@@ -2397,6 +2401,14 @@ func _on_bottom_nav_destination(destination: StringName) -> void:
 func _remember_overlay_origin() -> void:
 	if _destination in [BottomNav.HOME, BottomNav.SCAN, BottomNav.BATTLE, BottomNav.COLLECTION]:
 		_overlay_return_destination = _destination
+	# Opening Atlas/Seeker Profile from on top of the Anima Profile isn't a
+	# base destination itself, so without this the return target stayed
+	# whatever base screen was last visited -- which could be a stale
+	# Collection visit from earlier in the session even when this whole chain
+	# actually started at Home. Chaining through Profile's own already-correct
+	# return keeps one Back press landing where the player actually came from.
+	elif _destination == ANIMA_PROFILE_DEST:
+		_overlay_return_destination = _profile_return_destination
 
 
 func _return_from_overlay() -> void:
@@ -2471,10 +2483,16 @@ func _commit_atlas_publish(anima_id: String, publish: bool) -> void:
 	else:
 		_say(_gallery_error(res.error), true)
 		if res.error == "GALLERY_MODERATION_REJECTED":
+			# `appeal_available` must be stated, not left to default: a rejection
+			# that just happened has no appeal on record yet, and defaulting to
+			# false told the player they had "already requested a review" while
+			# hiding the appeal they are in fact entitled to. The next
+			# `my_status` refresh is what corrects it if that ever stops holding.
 			_details_view.set_gallery_status({
 				"available": false,
 				"published": false,
 				"rejected": true,
+				"appeal_available": true,
 			})
 	_details_view.set_gallery_pending(false)
 	_set_busy(false)
@@ -2517,9 +2535,16 @@ func _refresh_gallery_status(anima_id: String = "") -> void:
 		return
 	if revision != _gallery_status_revision:
 		return
+	_details_view.set_gallery_status(_gallery_status_from_response(res))
+
+
+## Bersama oleh Anima Profile (`_refresh_gallery_status`) dan preview sheet
+## Collection (`_sync_collection_atlas_preview`) supaya keduanya membaca
+## `my_status` dengan cara yang sama persis -- dua salinan parsing berarti dua
+## tempat yang bisa diam-diam berbeda kalau bentuk respons berubah.
+func _gallery_status_from_response(res: Dictionary) -> Dictionary:
 	if not res.ok:
-		_details_view.set_gallery_status({"available": false})
-		return
+		return {"available": false}
 	var data := GameState.as_dict(res.data)
 	var entry := GameState.as_dict(data.get("entry"))
 	var moderation_status := str(entry.get("moderation_status", ""))
@@ -2531,25 +2556,72 @@ func _refresh_gallery_status(anima_id: String = "") -> void:
 		and not moderation_rejected
 		and not under_review
 	)
-	_details_view.set_gallery_status({
+	return {
 		"available": available,
 		"published": bool(entry.get("published", false)),
 		"rejected": moderation_rejected,
 		"under_review": under_review,
-	})
+		"reject_category": _json_string_or_empty(entry.get("reject_category")),
+		"reject_note": _json_string_or_empty(entry.get("reject_note")),
+		"appeal_available": bool(entry.get("appeal_available", false)),
+	}
 
 
-func _request_gallery_appeal(anima_id: String) -> void:
+## JSON null harus tetap jadi "" bukan literal "&lt;null&gt;" atau semacamnya --
+## dipakai untuk field opsional dari my_status (reject_category/reject_note).
+func _json_string_or_empty(value: Variant) -> String:
+	return "" if value == null else str(value)
+
+
+func _sync_collection_atlas_preview(row: Dictionary, revision: int) -> void:
+	var anima_id := str(row.get("id", ""))
+	if anima_id.is_empty():
+		return
+	var account_epoch := GameState.session_epoch
+	var res := await Backend.atlas("my_status", {"anima_id": anima_id})
+	if not Backend.response_applies(res, account_epoch):
+		return
+	_collection_view.apply_atlas_status(_gallery_status_from_response(res), row, revision)
+
+
+func _show_gallery_rejection_info(anima_id: String) -> void:
 	if _busy or anima_id.is_empty():
 		return
-	_pending_gallery_appeal_id = anima_id
-	_modal_context = &"gallery_appeal"
-	_shell_modal.open_confirm(
-		tr("GALLERY_APPEAL_TITLE"),
-		tr("GALLERY_APPEAL_BODY"),
-		tr("GALLERY_APPEAL_ACTION"),
-		tr("ACTION_CANCEL")
-	)
+	var info := _details_view.get_gallery_rejection_info()
+	var body := _gallery_reject_message(str(info.get("category", "")))
+	var note := str(info.get("note", ""))
+	if not note.is_empty():
+		body += "\n\n" + tr("GALLERY_REJECT_STAFF_NOTE_LABEL") + " " + note
+	if bool(info.get("appeal_available", false)):
+		_pending_gallery_appeal_id = anima_id
+		_modal_context = &"gallery_appeal"
+		_shell_modal.open_confirm(
+			tr("GALLERY_PUBLISH_REJECTED"),
+			body,
+			tr("GALLERY_APPEAL_ACTION"),
+			tr("ACTION_CANCEL")
+		)
+	else:
+		_modal_context = &"gallery_rejection_info"
+		_shell_modal.open_info(
+			tr("GALLERY_PUBLISH_REJECTED"),
+			body + "\n\n" + tr("GALLERY_APPEAL_ALREADY_USED_INFO"),
+			tr("CORE_INFO_CLOSE")
+		)
+
+
+func _gallery_reject_message(category: String) -> String:
+	match category:
+		"sexual":
+			return tr("GALLERY_REJECT_REASON_SEXUAL")
+		"gore":
+			return tr("GALLERY_REJECT_REASON_GORE")
+		"hate":
+			return tr("GALLERY_REJECT_REASON_HATE")
+		"ip_character":
+			return tr("GALLERY_REJECT_REASON_IP_CHARACTER")
+		_:
+			return tr("GALLERY_REJECT_REASON_GENERIC")
 
 
 func _commit_gallery_appeal(anima_id: String) -> void:
@@ -2584,9 +2656,23 @@ func _open_settings() -> void:
 	)
 
 
+func _on_brand_input(event: InputEvent) -> void:
+	var is_tap: bool = (
+		(event is InputEventScreenTouch and event.pressed)
+		or (
+			event is InputEventMouseButton
+			and event.button_index == MOUSE_BUTTON_LEFT
+			and event.pressed
+		)
+	)
+	if is_tap and not _busy and not GameState.profile.is_empty():
+		_open_seeker_profile()
+
+
 func _open_seeker_profile() -> void:
 	_remember_overlay_origin()
 	_set_busy(true)
+	LoadingScreen.show_screen("SEEKER_PROFILE_LOADING")
 	var account_epoch := GameState.session_epoch
 	var res := await Backend.seeker("profile")
 	if not Backend.response_applies(res, account_epoch):

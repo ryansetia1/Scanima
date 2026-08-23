@@ -27,7 +27,12 @@ var _selected_row: Dictionary = {}
 
 func _ready() -> void:
 	super._ready()
-	_list.item_selected.connect(_on_item_selected)
+	# Not `item_selected`: that fires on PRESS, so every attempt to scroll the
+	# roster opened the detail page for whichever Anima the thumb landed on.
+	UiJuice.install_item_list_touch_scroll(
+		_list, _on_item_selected, _list.deselect_all
+	)
+	set_fill_child(_list)
 	_profile_button.pressed.connect(_on_profile)
 	_battle_button.pressed.connect(_on_battle)
 	dismissed.connect(_reset)
@@ -74,14 +79,25 @@ func _fill_list(rows: Array) -> void:
 		if row.is_empty():
 			continue
 		var anima_name := LocaleManager.display_name(row)
+		var level_label := LocaleManager.level_label(CareRules.level_from_exp(int(row.get("care_score", 0))))
 		var unavailable := CareRules.battle_unavailable_key(row, _active_id, true)
+		# Element is deliberately NOT in the grid row: measured on device,
+		# "Drakabyss · Lv. 6 · Flow · Plant" needs more than the 290 px column,
+		# so it clipped to an ellipsis AND leaked a second line over the art of
+		# the row below. The detail panel already shows the element, and Level is
+		# what the row was missing, so the row keeps name + Level and the reason
+		# when there is one.
+		# Both variants stay at two segments, because three did not fit: measured
+		# on device, "Drowake · Lv. 16 · Sleeping" still wrapped past the 290 px
+		# column and leaked its tail over the row below even with the cell
+		# clipped to one line. An unavailable row leads with the REASON rather
+		# than the Level -- that is the part the player has to act on.
 		var label := (
-			tr("COLLECTION_ITEM_META") % [anima_name, tr(CareRules.battle_pick_reason_key(unavailable))]
-			if not unavailable.is_empty()
-			else tr("COLLECTION_ITEM_META") % [
-				anima_name,
-				LocaleManager.element_compact(row),
+			tr("COLLECTION_ITEM_META") % [
+				anima_name, tr(CareRules.battle_pick_reason_key(unavailable))
 			]
+			if not unavailable.is_empty()
+			else tr("COLLECTION_ITEM_META") % [anima_name, level_label]
 		)
 		var texture: Texture2D = (
 			_thumbnail_provider.call(row) if _thumbnail_provider.is_valid() else null

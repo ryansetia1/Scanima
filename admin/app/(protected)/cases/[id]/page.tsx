@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { requireAccessToken } from "@/lib/session";
 import { callAdminApi, AdminApiError, describeAdminApiError } from "@/lib/admin-api";
-import type { CaseDetailResult, WhoAmI } from "@/lib/types";
+import type { CaseDetailResult, CaseStatus, WhoAmI } from "@/lib/types";
 import { categoryLabel, categoryTextColor, formatDateTime } from "@/lib/ui";
+import { RealtimeRefresh } from "../../_components/realtime-refresh";
 import { ActionPanel } from "./action-panel";
 
 export default async function CaseDetailPage({
@@ -35,6 +36,13 @@ export default async function CaseDetailPage({
 
   return (
     <div className="grid grid-cols-[1fr_320px] gap-6">
+      <RealtimeRefresh
+        watches={[
+          { table: "moderation_cases", filter: `id=eq.${id}` },
+          { table: "moderation_decisions", filter: `case_id=eq.${id}` },
+          { table: "gallery_reports", filter: `entry_id=eq.${entry.id}` },
+        ]}
+      />
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="font-heading text-lg font-semibold text-deck-text">
@@ -132,7 +140,12 @@ export default async function CaseDetailPage({
 
       <div>
         {canDecide ? (
-          <ActionPanel caseId={id} />
+          <ActionPanel
+            caseId={id}
+            entryId={String(entry.id)}
+            status={caseRow.status as CaseStatus}
+            resolvedAt={(caseRow.resolved_at as string | undefined) ?? null}
+          />
         ) : (
           <div className="deck-panel text-sm text-deck-muted">
             Your role ({who?.role ?? "unknown"}) can view this case but cannot take action on it.

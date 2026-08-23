@@ -116,6 +116,13 @@ theme_type_variation = &"BodyLabel"
 text = "VALUE_UNAVAILABLE"
 autowrap_mode = 2
 
+[node name="AtlasStatusBadge" type="Label" parent="Column/DetailsScroll/DetailsContent/Hero/HeroRow/Identity"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "ATLAS_STATUS_PUBLISHED"
+
 [node name="ProfileActions" type="VBoxContainer" parent="Column/DetailsScroll/DetailsContent" unique_id=859425377]
 layout_mode = 2
 
@@ -154,14 +161,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"SecondaryButton"
 text = "GALLERY_PUBLISH"
-
-[node name="GalleryAppealButton" type="Button" parent="Column/DetailsScroll/DetailsContent/ProfileActions" unique_id=573820194]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-theme_type_variation = &"SecondaryButton"
-text = "GALLERY_APPEAL"
 
 [node name="AboutPanel" type="PanelContainer" parent="Column/DetailsScroll/DetailsContent" unique_id=1909310139]
 layout_mode = 2

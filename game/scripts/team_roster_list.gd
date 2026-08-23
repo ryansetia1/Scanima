@@ -41,7 +41,11 @@ func _ready() -> void:
 	add_theme_stylebox_override("hovered", StyleBoxEmpty.new())
 	add_theme_color_override("font_selected_color", SELECTED_TEXT)
 	add_theme_color_override("font_hovered_selected_color", SELECTED_TEXT)
-	item_clicked.connect(_on_item_clicked)
+	# Not `item_clicked`: it fires on PRESS, so dragging to scroll the roster
+	# silently added or dropped whichever Anima the thumb started on. The helper
+	# only reports a pick on release, and repaints from `_order` after a drag so
+	# the highlight ItemList painted on press does not linger.
+	UiJuice.install_item_list_touch_scroll(self, _toggle_index, _apply_chosen)
 
 
 func set_chosen_order(indices: Array[int]) -> void:
@@ -107,8 +111,8 @@ func _draw() -> void:
 		)
 
 
-func _on_item_clicked(index: int, _at: Vector2, mouse_button_index: int) -> void:
-	if mouse_button_index != MOUSE_BUTTON_LEFT or is_item_disabled(index):
+func _toggle_index(index: int) -> void:
+	if index < 0 or index >= item_count or is_item_disabled(index):
 		_apply_chosen()
 		return
 	if index in _order:

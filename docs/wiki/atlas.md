@@ -69,19 +69,23 @@ jadi profil tetap menunjukkan bahwa prosesnya sedang berjalan.
 
 Art diperiksa sebelum dapat masuk pool lawan Duel dan campuran rival Team
 Battle. Moderation dapat menolak konten tidak aman atau art yang terlihat
-menyerupai karakter franchise. Jika ditolak, profil tetap menampilkan **Cannot
-publish to Atlas** dalam keadaan nonaktif agar hasilnya tidak hilang atau tampak
-seperti proses yang macet.
+menyerupai karakter franchise. Jika ditolak, tombol Publish berubah menjadi
+**Cannot publish to Atlas** — tetap bisa ditekan, bukan mati begitu saja.
+Menekannya membuka dialog yang menjelaskan kategori penolakannya (misalnya
+konten tidak aman atau kemiripan karakter) beserta catatan moderator kalau
+staff menulis satu secara manual; tidak pernah menampilkan output mentah
+model AI.
 
 Kadang moderation butuh opini kedua sebelum bisa memutuskan. Selama itu,
 profil menampilkan **Under Review** dalam keadaan nonaktif — Anima-nya tetap
 sepenuhnya bisa dimainkan, hanya publish ke Atlas yang menunggu. Kalau art itu
-akhirnya ditolak, tombol **Request Review** muncul di bawah tombol Publish:
-menekannya meminta moderator manusia melihat ulang tanpa mengulang proses
-moderasi otomatis dari awal. Setiap versi art (setiap kali Anima itu evolve
-atau di-synthesis ulang) mendapat satu kesempatan Request Review; sesudah
-diminta, tombolnya berubah menjadi **Review Requested…** sampai staff
-memutuskan.
+akhirnya ditolak dan belum pernah diminta ditinjau ulang, dialog alasan reject
+itu juga menawarkan **Request Review**: meminta moderator manusia melihat
+ulang tanpa mengulang proses moderasi otomatis dari awal. Setiap versi art
+(setiap kali Anima itu evolve atau di-synthesis ulang) mendapat satu
+kesempatan Request Review; sesudah diminta, tombol Publish berubah menjadi
+**Review Requested…** sampai staff memutuskan, dan dialognya menjelaskan
+kalau kesempatan review untuk versi ini sudah terpakai.
 
 Team Battle selalu merakit rival dengan jumlah anggota yang sama seperti tim
 penantang. **Unpublish Lineage from Atlas** menarik lineage dari pool lawan baru

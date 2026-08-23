@@ -4,7 +4,7 @@ extends Control
 signal delete_requested(anima_id: String)
 signal rename_requested(anima_id: String)
 signal gallery_publish_requested(anima_id: String, publish: bool)
-signal gallery_appeal_requested(anima_id: String)
+signal gallery_rejection_info_requested(anima_id: String)
 signal evolve_requested(row: Dictionary)
 signal synthesis_requested(row: Dictionary)
 signal help_requested(title: String, body: String)
@@ -51,7 +51,7 @@ const EVOLUTION_ARROW_ICON: Texture2D = preload("res://assets/icons/chevron-left
 @onready var _action_delete: Button = %ProfileActionDelete
 @onready var _primary_actions: HBoxContainer = %PrimaryActions
 @onready var _gallery_button: Button = %GalleryPublishButton
-@onready var _gallery_appeal_button: Button = %GalleryAppealButton
+@onready var _atlas_status_badge: Label = %AtlasStatusBadge
 @onready var _evolve_button: Button = %EvolveAnimaButton
 @onready var _evolution_status: Label = %EvolutionStatusLabel
 @onready var _synthesis_button: Button = %SynthesisAnimaButton
@@ -76,6 +76,13 @@ var _gallery_under_review := false
 var _gallery_pending := false
 var _gallery_pending_publish := false
 var _gallery_appeal_pending := false
+## True from the moment a fresh Anima is opened until `set_gallery_status`
+## delivers the server's answer — the button shows a disabled loading state
+## instead of just being invisible while the `my_status` round trip is in flight.
+var _gallery_loading := false
+var _gallery_reject_category := ""
+var _gallery_reject_note := ""
+var _gallery_appeal_available := false
 var _evolution_enabled := false
 var _synthesis_enabled := false
 var _synthesis_history_textures: Dictionary = {}
@@ -99,7 +106,6 @@ func _ready() -> void:
 	_action_delete.pressed.connect(_request_delete)
 	_action_popover.resized.connect(_position_action_menu)
 	_gallery_button.pressed.connect(_request_gallery_toggle)
-	_gallery_appeal_button.pressed.connect(_request_gallery_appeal)
 	_evolve_button.pressed.connect(_request_evolve)
 	_synthesis_button.pressed.connect(_request_synthesis)
 	_about_help.pressed.connect(_show_about_help)
@@ -140,6 +146,7 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_gallery_under_review = false
 		_gallery_pending = false
 		_gallery_appeal_pending = false
+		_gallery_loading = not row.is_empty()
 	_row = row.duplicate(true) if not row.is_empty() else {}
 	if row.is_empty():
 		_anima_id = ""
@@ -150,7 +157,7 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_action_rename.disabled = true
 		_action_delete.disabled = true
 		_gallery_button.disabled = true
-		_gallery_appeal_button.disabled = true
+		_gallery_loading = false
 		_apply_gallery_button()
 		_evolve_button.visible = false
 		_evolution_status.visible = false
@@ -259,8 +266,12 @@ func set_gallery_status(status: Dictionary) -> void:
 	_gallery_published = bool(status.get("published", false))
 	_gallery_rejected = bool(status.get("rejected", false))
 	_gallery_under_review = bool(status.get("under_review", false))
+	_gallery_reject_category = str(status.get("reject_category", ""))
+	_gallery_reject_note = str(status.get("reject_note", ""))
+	_gallery_appeal_available = bool(status.get("appeal_available", false))
 	_gallery_pending = false
 	_gallery_appeal_pending = false
+	_gallery_loading = false
 	_apply_gallery_button()
 	_update_primary_actions_visibility()
 
@@ -276,23 +287,44 @@ func set_gallery_appeal_pending(pending: bool) -> void:
 	_apply_gallery_button()
 
 
+## Read by scan_flow.gd when the rejected button is tapped, so the reason
+## dialog can be built without a second round trip -- `set_gallery_status`
+## already delivered everything it needs.
+func get_gallery_rejection_info() -> Dictionary:
+	return {
+		"category": _gallery_reject_category,
+		"note": _gallery_reject_note,
+		"appeal_available": _gallery_appeal_available,
+	}
+
+
+func _apply_atlas_status_badge() -> void:
+	var applicable := _gallery_available or _gallery_rejected or _gallery_under_review
+	_atlas_status_badge.visible = applicable and not _gallery_loading
+	if _atlas_status_badge.visible:
+		_atlas_status_badge.text = (
+			tr("ATLAS_STATUS_PUBLISHED") if _gallery_published else tr("ATLAS_STATUS_NOT_PUBLISHED")
+		)
+
+
 func _apply_gallery_button() -> void:
+	_apply_atlas_status_badge()
+	if _gallery_loading:
+		_gallery_button.visible = true
+		_gallery_button.text = tr("GALLERY_STATUS_LOADING")
+		_gallery_button.disabled = true
+		return
 	_gallery_button.visible = _gallery_available or _gallery_rejected or _gallery_under_review
-	_gallery_appeal_button.visible = _gallery_rejected
-	if _gallery_appeal_button.visible:
-		_gallery_appeal_button.text = (
-			tr("GALLERY_APPEAL_PENDING") if _gallery_appeal_pending else tr("GALLERY_APPEAL")
-		)
-		_gallery_appeal_button.disabled = (
-			_gallery_appeal_pending or _busy or _anima_id.is_empty()
-		)
 	if _gallery_under_review:
 		_gallery_button.text = tr("GALLERY_UNDER_REVIEW")
 		_gallery_button.disabled = true
 		return
 	if _gallery_rejected:
-		_gallery_button.text = tr("GALLERY_PUBLISH_REJECTED")
-		_gallery_button.disabled = true
+		_gallery_button.text = (
+			tr("GALLERY_APPEAL_PENDING") if _gallery_appeal_pending
+			else tr("GALLERY_PUBLISH_REJECTED")
+		)
+		_gallery_button.disabled = _gallery_appeal_pending or _busy or _anima_id.is_empty()
 		return
 	if not _gallery_available:
 		return
@@ -660,15 +692,12 @@ func _request_rename() -> void:
 
 
 func _request_gallery_toggle() -> void:
-	if _anima_id.is_empty():
-		return
-	gallery_publish_requested.emit(_anima_id, not _gallery_published)
-
-
-func _request_gallery_appeal() -> void:
 	if _anima_id.is_empty() or _gallery_appeal_pending:
 		return
-	gallery_appeal_requested.emit(_anima_id)
+	if _gallery_rejected:
+		gallery_rejection_info_requested.emit(_anima_id)
+		return
+	gallery_publish_requested.emit(_anima_id, not _gallery_published)
 
 
 func _request_delete() -> void:

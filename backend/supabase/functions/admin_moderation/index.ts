@@ -198,15 +198,19 @@ async function queueList(body: Body): Promise<Response> {
   // publish-sourced case) still gets a read-only preview cropped from its
   // full sheet, so the queue stays visually scannable instead of showing a
   // blank tile for exactly the cases staff most need to look at.
-  const cases = await Promise.all((data ?? []).map(async (row) => {
+  const rows = data ?? [];
+  const previews = await previewIdleThumbsFor(rows.map((row) => {
     const entry = asRecord(row.gallery_entries);
     const thumbPath = typeof entry.thumb_path === "string" ? entry.thumb_path : "";
-    const animaId = typeof entry.anima_id === "string" ? entry.anima_id : "";
+    if (thumbPath) return null;
+    return typeof entry.anima_id === "string" ? entry.anima_id : null;
+  }));
+  const cases = rows.map((row, index) => {
+    const entry = asRecord(row.gallery_entries);
+    const thumbPath = typeof entry.thumb_path === "string" ? entry.thumb_path : "";
     const thumbUrl = thumbPath
       ? (thumbUrls.get(thumbPath) ?? "")
-      : animaId
-      ? await previewIdleThumbDataUri(animaId)
-      : "";
+      : previews[index];
     return {
       case_id: row.id,
       entry_id: row.entry_id,
@@ -225,7 +229,7 @@ async function queueList(body: Body): Promise<Response> {
       entry_report_count: entry.report_count ?? 0,
       thumb_url: thumbUrl,
     };
-  }));
+  });
 
   return json(200, { cases, page, per_page: perPage, total: count ?? cases.length });
 }
@@ -376,13 +380,46 @@ async function ensureEntryThumb(caseId: string): Promise<string | null> {
 // idle region from the full sheet but returns it as a data URI instead of
 // writing to gallery_thumbs, since this entry may never be approved and
 // shouldn't leave a storage artifact just for staff to look at it.
+// Each preview downloads and decodes a whole sheet, then base64-inlines it, so
+// a Seeker with a long publication list could turn one page load into dozens of
+// full-sheet fetches. Rows past the budget come back with an empty url and the
+// UI's existing placeholder; staff can still open the case to see the art.
+const PREVIEW_THUMB_BUDGET = 12;
+
+/** Runs the previews in small batches so one page cannot fan out unbounded. */
+async function previewIdleThumbsFor(
+  animaIds: (string | null)[],
+): Promise<string[]> {
+  const out: string[] = new Array(animaIds.length).fill("");
+  let spent = 0;
+  for (let i = 0; i < animaIds.length; i += 4) {
+    const slice = animaIds.slice(i, i + 4);
+    const resolved = await Promise.all(slice.map(async (animaId, offset) => {
+      if (!animaId || spent >= PREVIEW_THUMB_BUDGET) return "";
+      spent += 1;
+      return [offset, await previewIdleThumbDataUri(animaId)] as const;
+    }));
+    for (const entry of resolved) {
+      if (Array.isArray(entry)) out[i + entry[0]] = entry[1];
+    }
+  }
+  return out;
+}
+
+
 async function previewIdleThumbDataUri(animaId: string): Promise<string> {
   const { data: anima, error: animaError } = await db
     .from("animas")
     .select("sheet_path, manifest")
     .eq("id", animaId)
     .maybeSingle();
-  if (animaError) throw animaError;
+  // Fail soft: this is a decorative preview and the UI already renders a
+  // placeholder for an empty url. Throwing here 500'd the entire Seekers page
+  // over one unreadable row.
+  if (animaError) {
+    console.error("previewIdleThumbDataUri lookup gagal", animaError);
+    return "";
+  }
   if (!anima?.sheet_path || !anima?.manifest) return "";
 
   const { data: sheetBlob, error: dlError } = await db.storage
@@ -505,7 +542,7 @@ async function seekerProfile(body: Body): Promise<Response> {
   ] = await Promise.all([
     db.from("profiles").select("id, seeker_name").eq("id", profileId).maybeSingle(),
     db.from("gallery_entries")
-      .select("id, display_name, moderation_status, published, auto_hidden, report_count, published_at")
+      .select("id, anima_id, thumb_path, display_name, moderation_status, published, auto_hidden, report_count, published_at")
       .eq("owner_id", profileId)
       .order("published_at", { ascending: false, nullsFirst: false }),
     db.from("profile_sanctions").select("*").eq("profile_id", profileId)
@@ -533,9 +570,22 @@ async function seekerProfile(body: Body): Promise<Response> {
     reportsDismissed = dismissedCount ?? 0;
   }
 
+  const publicationRows = publications ?? [];
+  const publicationPreviews = await previewIdleThumbsFor(
+    publicationRows.map((row) => (row.thumb_path ? null : row.anima_id ?? null)),
+  );
+  const publicationsWithThumbs = await Promise.all(
+    publicationRows.map(async (row, index) => ({
+      ...row,
+      thumb_url: row.thumb_path
+        ? await signThumbUrl(row.thumb_path)
+        : publicationPreviews[index],
+    })),
+  );
+
   return json(200, {
     profile,
-    publications: publications ?? [],
+    publications: publicationsWithThumbs,
     sanctions: sanctions ?? [],
     reports_upheld: reportsUpheld,
     reports_dismissed: reportsDismissed,

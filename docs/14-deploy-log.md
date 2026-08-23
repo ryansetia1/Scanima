@@ -2,6 +2,43 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## UAT follow-up: thumbnail preview, reject-reason dialog, dan Realtime admin
+
+23 Agustus 2026 malam, UAT pertama di console live menemukan dua hal nyata:
+dialog konfirmasi native `<dialog>` merender di pojok kiri-atas (Tailwind
+preflight me-reset `margin` yang biasanya membuat `<dialog>` center secara
+default — diperbaiki lewat `margin:auto` via fixed+transform di
+`globals.css`), dan entry yang belum pernah disetujui (rejected sebelum
+sempat publish) tidak punya `thumb_path` sama sekali sehingga Idle thumb
+kosong di Queue, Case Detail, dan daftar Publications Seeker (yang sebelumnya
+cuma `JSON.stringify` mentah). `admin_moderation` sekarang crop idle langsung
+dari full sheet sebagai data URI read-only saat `thumb_path` kosong — tidak
+pernah ditulis ke storage karena entry itu mungkin tidak pernah disetujui.
+
+Player sekarang melihat alasan reject: tombol Publish yang ditolak tetap
+bisa ditekan (bukan mati), membuka dialog kategori player-safe (tidak pernah
+teks mentah model) plus catatan moderator kalau staff menulis satu saat
+reject manual, dan tombol Request Review konsisten di dalam dialog yang sama
+selama kesempatan appeal untuk versi art itu belum terpakai. `gallery`
+`my_status` membawa `reject_category`/`reject_note`/`appeal_available` hanya
+untuk entry rejected (nol biaya tambahan di jalur approved/pending).
+`GalleryAppealButton` yang berdiri sendiri dihapus; appeal sekarang satu
+titik interaksi lewat tombol Publish yang sama.
+
+Admin console mendapat Realtime sungguhan (bukan polling): migration
+`20260823160255_atlas_moderation_realtime_rls.sql` menambah RLS SELECT
+policy staff-only (`is_staff(auth.uid())`) pertama di seluruh tabel Atlas
+Moderation Admin — sebelumnya semua default-deny total. Queue dan Case Detail
+subscribe `postgres_changes` di `moderation_cases`/`moderation_decisions`/
+`gallery_reports` lewat publishable key dari browser; payload event tidak
+pernah dipakai untuk render, cuma memicu `router.refresh()` supaya
+`admin_moderation` tetap satu-satunya sumber logika render. `quota_rules.sql`
+diperbarui (RLS moderation_cases kini memberi grant SELECT tapi menyaring
+baris, bukan menolak total) dan lulus dua kali langsung di production,
+termasuk pembuktian nyata: satu case production ("Padronic") ada saat
+diperiksa sebagai service-role, nol baris saat diperiksa sebagai authenticated
+non-staff.
+
 ## Atlas Moderation Admin v2 live: schema, admin_moderation, dan console
 
 23 Agustus 2026, migration `20260823080000_atlas_moderation_v2_schema`

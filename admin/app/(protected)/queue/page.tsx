@@ -1,12 +1,18 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { requireAccessToken } from "@/lib/session";
 import { callAdminApi, AdminApiError, describeAdminApiError } from "@/lib/admin-api";
 import type { CaseSource, CaseStatusFilter, QueueListResult } from "@/lib/types";
-import { ageBorderColor, categoryLabel, categoryTextColor, formatRelativeAge } from "@/lib/ui";
+import {
+  ageBorderColor,
+  categoryLabel,
+  categoryTextColor,
+  formatRelativeAge,
+  statusBadgeColor,
+  statusLabel,
+} from "@/lib/ui";
+import { RealtimeRefresh } from "../_components/realtime-refresh";
+import { QueueFilters } from "./filters";
 
-const STATUSES: CaseStatusFilter[] = ["open", "approved", "rejected", "hidden", "all"];
-const SOURCES: CaseSource[] = ["publish", "report", "appeal", "manual"];
 const PER_PAGE = 24;
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -59,6 +65,7 @@ export default async function QueuePage({
 
   return (
     <div className="flex flex-col gap-6">
+      <RealtimeRefresh watches={[{ table: "moderation_cases" }]} />
       <div>
         <h1 className="font-heading text-lg font-semibold text-deck-text">Moderation queue</h1>
         <p className="text-sm text-deck-muted">
@@ -66,38 +73,7 @@ export default async function QueuePage({
         </p>
       </div>
 
-      <form method="get" className="flex flex-wrap items-end gap-4 rounded-lg border border-deck-border bg-deck-surface p-4">
-        <Field label="Status">
-          <select name="status" defaultValue={status} className="deck-select">
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Source">
-          <select name="source" defaultValue={source ?? ""} className="deck-select">
-            <option value="">all</option>
-            {SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Assigned staff ID">
-          <input
-            name="assigned_staff_id"
-            defaultValue={assignedStaffId ?? ""}
-            placeholder="uuid"
-            className="deck-input w-56 font-data text-xs"
-          />
-        </Field>
-        <button type="submit" className="deck-button-primary">
-          Apply
-        </button>
-      </form>
+      <QueueFilters status={status} source={source} assignedStaffId={assignedStaffId} />
 
       {errorMessage ? (
         <p className="rounded-md border border-deck-danger/40 bg-deck-danger/10 p-4 text-sm text-deck-danger">
@@ -117,8 +93,11 @@ export default async function QueuePage({
                 className={`flex items-center gap-4 rounded-md border border-deck-border border-l-4 bg-deck-surface p-3 transition-colors hover:bg-deck-surface-raised ${ageBorderColor(c.created_at)}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* Empty string is not a missing src -- the browser would
+                    resolve it against the current URL and refetch this page as
+                    an image. The backend returns "" for "no preview". */}
                 <img
-                  src={c.thumb_url ?? undefined}
+                  src={c.thumb_url ? c.thumb_url : undefined}
                   alt=""
                   className="h-12 w-12 rounded bg-deck-bg object-cover"
                 />
@@ -128,6 +107,11 @@ export default async function QueuePage({
                   </span>
                   <span className="font-data text-xs text-deck-muted">{c.entry_id}</span>
                 </div>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusBadgeColor(c.status)}`}
+                >
+                  {statusLabel(c.status)}
+                </span>
                 <span className="text-xs uppercase tracking-wide text-deck-muted">{c.source}</span>
                 <span className={`text-xs font-medium ${categoryTextColor(c.category)}`}>
                   {categoryLabel(c.category)}
@@ -168,14 +152,5 @@ export default async function QueuePage({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1 text-xs text-deck-muted">
-      {label}
-      {children}
-    </label>
   );
 }

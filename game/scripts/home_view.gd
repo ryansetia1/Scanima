@@ -5,6 +5,7 @@ signal care_requested(action: String)
 signal care_blocked(message: String)
 signal first_scan_requested
 signal retry_requested
+signal anima_profile_requested
 
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
@@ -51,6 +52,7 @@ var _row: Dictionary = {}
 var _shell_state := &"loading"
 var _values_shown := false
 var _values_toggled_frame := -1
+var _identity_tapped_frame := -1
 var _values_token := 0
 
 
@@ -70,6 +72,10 @@ func _ready() -> void:
 		# ever responded. Sweeping the subtree keeps the next child honest too.
 		for inner in chip.find_children("*", "Control", true, false):
 			inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_identity.mouse_filter = Control.MOUSE_FILTER_STOP
+	_identity.gui_input.connect(_on_identity_input)
+	for inner in _identity.find_children("*", "Control", true, false):
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for label in _value_labels():
 		label.modulate.a = 0.0
 	_set_loading_layout(true)
@@ -237,6 +243,22 @@ func pulse_progress() -> void:
 	if _care_dock.visible:
 		UiJuice.pop(_care_summary, 1.08)
 		UiJuice.pop(_need_exp, 1.06)
+
+
+func _on_identity_input(event: InputEvent) -> void:
+	if not _is_tap(event) or _shell_state != &"ready" or _row.is_empty():
+		return
+	# Same double-fire as the need chips below: touch emulation hands the finger
+	# over twice, once as a screen touch and once as a synthetic mouse press.
+	# Here the second one is worse than a dead tap -- it re-enters
+	# `_show_collection_profile` while Profile is already the destination, which
+	# resets the remembered origin to Collection and loses the Home entry that
+	# makes one Back land back on Home.
+	var frame := Engine.get_process_frames()
+	if frame == _identity_tapped_frame:
+		return
+	_identity_tapped_frame = frame
+	anima_profile_requested.emit()
 
 
 func _on_need_chip_input(event: InputEvent) -> void:

@@ -15,6 +15,17 @@ Ringkasan yang wajib dipatuhi setiap menyentuh `admin/`:
   dibaca client atau Server Component `admin/`. Setiap operasi privileged
   (baca/tulis moderation, staff, sanction, audit) lewat Edge Function
   `admin_moderation`, bukan query Supabase langsung dari `admin/`.
+- **Satu pengecualian yang disengaja: subscription realtime.**
+  `RealtimeRefresh` (`admin/app/(protected)/_components/realtime-refresh.tsx`)
+  memakai publishable key untuk `postgres_changes` langsung ke
+  `moderation_cases`/`moderation_decisions`/`gallery_reports`, dijaga oleh
+  RLS SELECT policy staff-only (`is_staff(auth.uid())`) dari
+  `20260823160255_atlas_moderation_realtime_rls.sql` — bukan bypass, karena
+  Realtime menghormati RLS sama seperti REST. Payload event-nya TIDAK pernah
+  dipakai langsung untuk render; ia hanya sinyal "ada perubahan" yang memicu
+  `router.refresh()`, supaya `admin_moderation` tetap satu-satunya sumber
+  logika render. Tambahan tabel baru ke daftar realtime butuh policy staff
+  yang sama plus `alter publication supabase_realtime add table`.
 - **`proxy.ts` (konvensi Next.js 16, pengganti `middleware.ts`) hanya untuk
   refresh cookie sesi dan redirect optimistis.** Ia bukan gerbang otorisasi.
   Setiap Server Action dan setiap panggilan ke `admin_moderation` wajib

@@ -31,6 +31,7 @@ var _busy := false
 var _dismissible := true
 var _portrait_tween: Tween
 var _body_scroll: ScrollContainer
+var _fit_revision := 0
 
 
 func _ready() -> void:
@@ -202,7 +203,7 @@ func _configure(
 	_body.text = body_text
 	_body.visible = not body_text.is_empty()
 	_body_scroll.visible = _body.visible
-	_fit_body_scroll.call_deferred()
+	_request_fit_body_scroll()
 	_input.visible = mode == Mode.INPUT
 	_cancel_button.visible = mode != Mode.INFO
 	_choice_cancel_button.visible = mode == Mode.CHOICE
@@ -213,8 +214,26 @@ func _configure(
 
 func _show_modal(focus_target: Control) -> void:
 	UiJuice.show_overlay(self, _panel)
-	_fit_body_scroll.call_deferred()
+	_request_fit_body_scroll()
 	_focus_after_layout(focus_target)
+
+
+## `call_deferred` alone fires before the Label's autowrap has resolved against
+## its real width on a fresh text value, so the very first open of a dialog
+## with new/longer body text can measure too many wrapped lines and lock in a
+## too-tall scroll height that nothing re-triggers afterward -- a reopen with
+## text Godot already wrapped once reads back correctly. Waiting a full frame
+## lets layout settle first, same fix as the toast's `_relayout_toast_after_minimum_update`.
+func _request_fit_body_scroll() -> void:
+	_fit_revision += 1
+	var revision := _fit_revision
+	_fit_body_scroll_after_layout(revision)
+
+
+func _fit_body_scroll_after_layout(revision: int) -> void:
+	await get_tree().process_frame
+	if revision == _fit_revision:
+		_fit_body_scroll()
 
 
 func _install_body_scroll() -> void:

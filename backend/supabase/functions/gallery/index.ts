@@ -747,10 +747,14 @@ async function myStatus(ownerId: string, body: GalleryBody): Promise<Response> {
   const { data: entry } = await db
     .from("gallery_entries")
     .select(
-      "id, moderation_status, published, auto_hidden, published_at, updated_at",
+      "id, art_hash, moderation_status, published, auto_hidden, published_at, updated_at",
     )
     .eq("anima_id", animaId)
     .maybeSingle();
+
+  const rejection = entry && entry.moderation_status === "rejected"
+    ? await rejectionDetails(entry.id, entry.art_hash)
+    : null;
 
   const linked = await hasLinkedGoogle(ownerId);
   return json(200, {
@@ -770,9 +774,73 @@ async function myStatus(ownerId: string, body: GalleryBody): Promise<Response> {
         auto_hidden: entry.auto_hidden,
         published_at: entry.published_at,
         updated_at: entry.updated_at,
+        reject_category: rejection?.category ?? null,
+        reject_note: rejection?.note ?? null,
+        appeal_available: rejection?.appeal_available ?? false,
       }
       : null,
   });
+}
+
+// Player-safe rejection context: a category (mapped client-side to a
+// templated message, never raw model text) plus the staff's own note when a
+// human reviewed it. Only queried for rejected entries — zero extra cost on
+// the common approved/pending path.
+async function rejectionDetails(
+  entryId: string,
+  artHash: string,
+): Promise<{ category: string | null; note: string | null; appeal_available: boolean }> {
+  const [
+    { data: latestCase },
+    { data: modCache },
+    { count: appealCount },
+  ] = await Promise.all([
+    db.from("moderation_cases")
+      .select("id, category")
+      .eq("entry_id", entryId)
+      .eq("art_hash", artHash)
+      .order("resolved_at", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle(),
+    db.from("gallery_moderations")
+      .select("category")
+      .eq("art_hash", artHash)
+      .maybeSingle(),
+    db.from("moderation_cases")
+      .select("id", { count: "exact", head: true })
+      .eq("entry_id", entryId)
+      .eq("art_hash", artHash)
+      .eq("source", "appeal"),
+  ]);
+
+  let note: string | null = null;
+  let reasonCode: string | null = null;
+  if (latestCase?.id) {
+    const { data: decision } = await db
+      .from("moderation_decisions")
+      .select("note, reason_code")
+      .eq("case_id", latestCase.id)
+      .eq("action", "reject")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    note = decision?.note ?? null;
+    reasonCode = decision?.reason_code ?? null;
+  }
+
+  // Case category is null for appeal-sourced cases by design (they never ran
+  // Vision). Staff's own reason_code preset is the only signal left for those
+  // — only ip_character_match maps to a category players see; the rest
+  // (unsafe_content, report_upheld, etc.) don't correspond to one of the
+  // four player-facing categories, so they fall through to the generic copy.
+  const category = latestCase?.category ?? modCache?.category ??
+    (reasonCode === "ip_character_match" ? "ip_character" : null);
+
+  return {
+    category,
+    note,
+    appeal_available: (appealCount ?? 0) === 0,
+  };
 }
 
 async function publishEntry(

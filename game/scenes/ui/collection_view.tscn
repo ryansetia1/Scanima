@@ -132,6 +132,8 @@ theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 12
 theme_override_font_sizes/font_size = 25
 allow_reselect = true
+max_text_lines = 1
+text_overrun_behavior = 3
 max_columns = 2
 same_column_width = true
 fixed_column_width = 290
@@ -235,6 +237,7 @@ text_overrun_behavior = 3
 
 [node name="CollectionSheetMeta" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Header/Identity" unique_id=756076426]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
 theme_override_font_sizes/font_size = 23
@@ -246,6 +249,13 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"EyebrowLabel"
 text = "COLLECTION_ACTIVE"
+
+[node name="CollectionAtlasBadge" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Header/Identity"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "ATLAS_STATUS_PUBLISHED"
 
 [node name="BaseTitle" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column" unique_id=499770867]
 layout_mode = 2

@@ -27,6 +27,10 @@ var _column: VBoxContainer
 var _scroll: ScrollContainer
 var _scroll_body: VBoxContainer
 var _safe_bottom: Control
+var _fill_child: Control
+var _fill_child_floor := 0.0
+var _measured_content: Control
+var _last_fit_width := -1.0
 
 
 func _ready() -> void:
@@ -47,6 +51,22 @@ func _ready() -> void:
 		handle.gui_input.connect(_on_drag_input)
 	if scroll_content:
 		_install_content_scroll(handle)
+	# Autowrap minimum heights are computed against the control's WIDTH, so
+	# every one of them is wrong until the container sort has handed the content
+	# its real width -- a known Godot regression (godotengine/godot#83546),
+	# whose signature symptom is exactly "reopen it and now it fits". Measured
+	# here: the Collection preview's Column sat at its own 350 px minimum inside
+	# a 720 px panel, so a one-line meta label reported a 312 px minimum and the
+	# sheet opened far taller than its content.
+	#
+	# Watched on the CONTENT, not on `_panel`: the panel is anchor-stretched and
+	# its width never changes, so it never reports the moment that actually
+	# matters. Re-fitting when the content's width lands beats guessing how many
+	# frames the sort needs.
+	var measured: Control = _scroll_body if is_instance_valid(_scroll_body) else _column
+	if is_instance_valid(measured):
+		_measured_content = measured
+		measured.resized.connect(_on_content_resized)
 	_install_safe_bottom()
 	if is_inside_tree():
 		get_viewport().size_changed.connect(_on_viewport_size_changed)
@@ -103,18 +123,30 @@ func fit_to_content() -> void:
 	var host_h := host_size.y
 	if host_h < 1.0:
 		return
+	if is_instance_valid(_measured_content):
+		_last_fit_width = _measured_content.size.x
 	_fit_scroll_to_host(host_h)
 	var height := _panel.get_combined_minimum_size().y
-	_panel.offset_left = 0.0
-	_panel.offset_right = 0.0
+	_panel.offset_left = UiJuice.SHEET_SIDE_INSET
+	_panel.offset_right = -UiJuice.SHEET_SIDE_INSET
 	_panel.offset_top = -height
 	_panel.offset_bottom = 0.0
-	var rest := Vector2(0.0, host_h - height)
+	var rest := Vector2(UiJuice.SHEET_SIDE_INSET, host_h - height)
 	_panel.set_meta(UiJuice.META_SHEET_POSITION, rest)
 	var tween: Variant = get_meta(UiJuice.META_TWEEN) if has_meta(UiJuice.META_TWEEN) else null
 	if tween is Tween and is_instance_valid(tween) and (tween as Tween).is_running():
 		return
 	_panel.position = rest
+
+
+## Only a WIDTH change re-fits. Height changes are this sheet's own doing, so
+## reacting to them would re-enter `fit_to_content()` forever.
+func _on_content_resized() -> void:
+	if not visible or not is_instance_valid(_measured_content):
+		return
+	if is_equal_approx(_measured_content.size.x, _last_fit_width):
+		return
+	call_deferred("fit_to_content")
 
 
 func panel() -> Control:
@@ -169,13 +201,37 @@ func _refresh_safe_bottom() -> void:
 	_safe_bottom.visible = inset > 0.5
 
 
+## Nominates one child to absorb whatever height the sheet has left over, so a
+## list does not sit at its scene minimum while the sheet opens at a fraction
+## of the screen. The floor is whatever the scene asked for.
+func set_fill_child(control: Control) -> void:
+	_fill_child = control
+	_fill_child_floor = control.custom_minimum_size.y if control != null else 0.0
+
+
 func _fit_scroll_to_host(host_h: float) -> void:
 	if not is_instance_valid(_scroll) or not is_instance_valid(_scroll_body):
 		return
+	# Both minimums are reset BEFORE measuring, and that ordering is the whole
+	# point: `_panel`'s minimum already contains the scroll's, and the scroll's
+	# already contains the fill child's. Measuring without zeroing them first
+	# and then subtracting a child's own contribution feeds the result back into
+	# the next measurement -- measured, that grew the Battle picker's list to
+	# 1698 px on a 1602 px screen, pushing the panel off the top of the sheet.
 	_scroll.custom_minimum_size.y = 0.0
+	var filling := is_instance_valid(_fill_child) and _fill_child.visible
+	if is_instance_valid(_fill_child):
+		_fill_child.custom_minimum_size.y = _fill_child_floor
 	var chrome_h := _panel.get_combined_minimum_size().y
 	var max_panel_h := host_h * clampf(max_height_ratio, 0.5, 1.0)
 	var available := maxf(MIN_SCROLL_HEIGHT, max_panel_h - chrome_h)
+	if filling:
+		var body_without_fill := (
+			_scroll_body.get_combined_minimum_size().y - _fill_child.custom_minimum_size.y
+		)
+		_fill_child.custom_minimum_size.y = maxf(
+			_fill_child_floor, available - body_without_fill
+		)
 	_scroll.custom_minimum_size.y = minf(_scroll_body.get_combined_minimum_size().y, available)
 
 

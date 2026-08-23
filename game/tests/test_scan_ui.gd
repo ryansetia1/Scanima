@@ -930,6 +930,8 @@ func _initialize() -> void:
 	_test_synthesis_history_cache(scene)
 	scene.free()
 	await _test_anima_tap_reactions()
+	await _test_item_grids_clip_to_one_line()
+	await _test_autowrap_labels_have_wrap_width()
 	await _test_shared_components()
 	await _test_scan_phase_visuals()
 	await _test_seeker_ui()
@@ -952,6 +954,84 @@ func _initialize() -> void:
 	_finish()
 
 
+## Autowrap `Label` minimum heights are computed against the control's WIDTH,
+## and a known Godot regression (godotengine/godot#83546) measures them before
+## the container sort has handed them one -- the label wraps at width ~0 and
+## reports an absurd height, which is why a sheet opens too tall and then "fits
+## after reopening". Measured on the Collection preview: a one-line meta label
+## reported 312 px and pushed the panel minimum to 897 px; with a wrap-width
+## floor it reports 67 px and the panel settles at 660 px.
+##
+## So: an autowrap label that shares a row with a fixed-width sibling must carry
+## a wrap-width floor, and a label that never needs to wrap must not opt into
+## autowrap at all. Both are cheap to get wrong again while adding a badge --
+## which is exactly how this regressed.
+## A grid cell in an `ItemList` has room for exactly the lines it was measured
+## for. Left to its own devices the item text wrapped, got the first line
+## ellipsised, and drew the SECOND line outside the cell, on top of the art of
+## the row underneath -- seen on device as "Drakabyss · Lv. 6 · Flow · …"
+## followed by a stray "lant". Cells that hold player-supplied names must pin
+## themselves to one clipped line so no name length can leak.
+func _test_item_grids_clip_to_one_line() -> void:
+	var offenders: Array[String] = []
+	for scene_path in [
+		"res://scenes/ui/battle_pick_sheet.tscn",
+		"res://scenes/ui/collection_view.tscn",
+	]:
+		var packed := load(scene_path) as PackedScene
+		if packed == null:
+			continue
+		var probe := packed.instantiate()
+		for node in probe.find_children("*", "ItemList", true, false):
+			var list := node as ItemList
+			# Single-column rosters get the full width and are not at risk.
+			if list.max_columns < 2:
+				continue
+			if (
+				list.max_text_lines != 1
+				or list.text_overrun_behavior != TextServer.OVERRUN_TRIM_ELLIPSIS
+			):
+				offenders.append("%s/%s" % [scene_path.get_file(), list.name])
+		probe.queue_free()
+	_check(
+		offenders.is_empty(),
+		"multi-column item grids clip to one ellipsised line, not on %s" % [offenders]
+	)
+	await process_frame
+
+
+func _test_autowrap_labels_have_wrap_width() -> void:
+	var offenders: Array[String] = []
+	for scene_path in [
+		"res://scenes/ui/collection_view.tscn",
+		"res://scenes/ui/battle_pick_sheet.tscn",
+		"res://scenes/ui/anima_details_view.tscn",
+	]:
+		var packed := load(scene_path) as PackedScene
+		if packed == null:
+			continue
+		var probe := packed.instantiate()
+		# Scoped to bottom-sheet panels on purpose: those are sized FROM their
+		# content, so one bad minimum becomes a visibly wrong sheet height. A
+		# full-screen view has a ScrollContainer that absorbs the same mistake.
+		for panel in probe.find_children("*", "PanelContainer", true, false):
+			if (panel as PanelContainer).theme_type_variation != &"BottomSheetPanel":
+				continue
+			for label in panel.find_children("*", "Label", true, false):
+				var text_label := label as Label
+				if text_label.autowrap_mode == TextServer.AUTOWRAP_OFF:
+					continue
+				if text_label.custom_minimum_size.x <= 0.0:
+					offenders.append("%s/%s" % [scene_path.get_file(), text_label.name])
+		probe.queue_free()
+	_check(
+		offenders.is_empty(),
+		"autowrap labels inside a content-sized sheet carry a wrap-width floor, missing on %s"
+			% [offenders]
+	)
+	await process_frame
+
+
 func _test_shared_components() -> void:
 	var modal = (load("res://scenes/ui/ui_modal.tscn") as PackedScene).instantiate()
 	root.add_child(modal)
@@ -972,7 +1052,10 @@ func _test_shared_components() -> void:
 	reveal_image.fill(Color.CYAN)
 	var reveal_texture := ImageTexture.create_from_image(reveal_image)
 	modal.open_result("Complete", "New Result", "View", "Synthera", reveal_texture, false)
-	await process_frame
+	# Satu frame saja -- headless scripting tidak menjamin delta per tick pendek,
+	# jadi menunggu frame kedua untuk menangkap tween "di tengah jalan" rapuh:
+	# delta yang besar bisa membuatnya sudah selesai. Frame pertama sudah cukup
+	# membuktikan entrance-nya dimulai (nilai reveal awal, belum di-tween ke identity).
 	await process_frame
 	_check(
 		modal_portrait.visible and modal_portrait.texture == reveal_texture
@@ -1128,6 +1211,25 @@ func _test_shared_components() -> void:
 	await process_frame
 	sheet.open()
 	_check(sheet.visible, "UiBottomSheet opens through shared chrome")
+	# `BottomSheetPanel` carries 2 px side borders, and a full-bleed panel draws
+	# them in the outermost pixel column where a curved phone screen eats them --
+	# read on device as the sheet being cut off rather than bordered. Checked
+	# AFTER the entrance animation settles on purpose: assigning `position`
+	# rewrites a Control's offsets, so a rest position of x=0 silently undid the
+	# inset once the tween landed, leaving the first frame correct and every
+	# frame after it wrong.
+	await create_timer(0.50).timeout
+	var sheet_panel := sheet.panel() as Control
+	_check(
+		sheet_panel != null
+		and is_equal_approx(sheet_panel.offset_left, UiJuice.SHEET_SIDE_INSET)
+		and is_equal_approx(sheet_panel.offset_right, -UiJuice.SHEET_SIDE_INSET),
+		"the sheet keeps its side inset so its border is not lost off-screen"
+	)
+	_check(
+		sheet_panel != null and is_equal_approx(sheet_panel.position.x, UiJuice.SHEET_SIDE_INSET),
+		"and the entrance animation settles at the inset instead of resetting it to 0"
+	)
 	sheet.close()
 	await create_timer(0.30).timeout
 	_check(not sheet.visible, "UiBottomSheet closes after its dismiss animation")
@@ -2973,6 +3075,7 @@ func _test_team_battle_view() -> void:
 	# paint to that single card, so the emitted-signal taps above all passed
 	# while players saw one badge where three had been.
 	await _test_roster_list_real_taps()
+	await _test_item_list_drag_scroll()
 	var daily := {
 		"earned": 1, "limit": 2, "bits_earned": 8, "bits_limit": 40,
 	}
@@ -4332,6 +4435,101 @@ func _test_battle_pick_sheet() -> void:
 	_check(sheet.handle_back(), "back from the list starts closing the picker")
 	await create_timer(0.30).timeout
 	_check(not sheet.visible, "back from the list closes the picker")
+
+	# The real report: a nine-Anima roster showed four with no way to reach the
+	# rest, and trying to drag picked a card instead of scrolling. Opened for
+	# real, with a real thumbnail provider -- without icons the rows are short
+	# text, nine of them genuinely fit the window, and the bug cannot reproduce.
+	var many: Array = []
+	for index in 9:
+		many.append({
+			"id": "many-%d" % index,
+			"nickname": "Anima %d" % index,
+			"status": "ready",
+			"element": "flow",
+			"rarity": 1,
+			"care_score": 0,
+			"care": {"hunger": 80.0, "energy": 80.0, "hygiene": 80.0, "bond": 0.0},
+		})
+	var swatch := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	swatch.fill(Color.RED)
+	var thumb := ImageTexture.create_from_image(swatch)
+	var provider := func(_row: Dictionary) -> Texture2D: return thumb
+	sheet.open_picker(many, "many-0", provider, false)
+	await create_timer(0.40).timeout
+	_check(
+		sheet.visible and list.item_count == 9,
+		"the picker lists a nine-Anima roster in full"
+	)
+	# The complaint was a picker that opened at roughly a quarter of the screen
+	# with the roster stuck behind a stub-sized window, so what matters is that
+	# the sheet claims real height and that every row is reachable -- whether it
+	# fits outright or needs a scroll depends on the device.
+	var picker_panel: Control = sheet.panel()
+	var host_height: float = sheet.get_viewport_rect().size.y
+	_check(
+		picker_panel != null and picker_panel.size.y > host_height * 0.5,
+		"the picker fills the screen instead of opening as a quarter-height stub"
+	)
+	var last_row_end := list.get_item_rect(list.item_count - 1).end.y
+	_check(
+		last_row_end <= list.size.y + 1.0
+		or list.get_v_scroll_bar().max_value > list.get_v_scroll_bar().page,
+		"every roster row is reachable, on screen or by scrolling"
+	)
+	# The height the sheet hands the list has to be measured with the minimums
+	# zeroed first. Subtracting the list's own contribution from an already
+	# list-inclusive panel minimum feeds each result into the next: measured, it
+	# grew the list to 1698 px on a 1602 px screen, which made the sheet's OWN
+	# scroll overflow and sent the grid sliding off the top the moment a finger
+	# touched it. So: bounded by the host, no rogue scroll outside the list, and
+	# stable no matter how many times the sheet re-fits.
+	_check(
+		list.custom_minimum_size.y <= host_height,
+		"the list window never exceeds the screen it has to fit inside"
+	)
+	var sheet_scroll := sheet.find_child("ContentScroll", true, false) as ScrollContainer
+	_check(
+		sheet_scroll != null
+		and sheet_scroll.get_v_scroll_bar().max_value <= sheet_scroll.get_v_scroll_bar().page + 1.0,
+		"only the list scrolls -- the sheet's own scroll has nothing left to run away with"
+	)
+	var settled_height := list.custom_minimum_size.y
+	for _refit in 3:
+		sheet.fit_to_content()
+		await process_frame
+	_check(
+		is_equal_approx(list.custom_minimum_size.y, settled_height),
+		"re-fitting the sheet does not grow the list a little further each time"
+	)
+	# Dragging across the roster must scroll it, not open a detail page.
+	var was_emulating := Input.is_emulating_touch_from_mouse()
+	Input.set_emulate_touch_from_mouse(true)
+	var from := list.get_global_rect().position + list.get_item_rect(0).get_center()
+	var down := InputEventMouseButton.new()
+	down.position = from
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	list.get_viewport().push_input(down, true)
+	await process_frame
+	for step in range(1, 6):
+		var motion := InputEventMouseMotion.new()
+		motion.position = from - Vector2(0.0, 24.0 * step)
+		motion.relative = Vector2(0.0, -24.0)
+		motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+		list.get_viewport().push_input(motion, true)
+		await process_frame
+	var up := InputEventMouseButton.new()
+	up.position = from - Vector2(0.0, 120.0)
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.pressed = false
+	list.get_viewport().push_input(up, true)
+	await process_frame
+	_check(
+		not detail.visible,
+		"scrolling the roster does not open a detail page for the card under the thumb"
+	)
+	Input.set_emulate_touch_from_mouse(was_emulating)
 	sheet.queue_free()
 	duel.queue_free()
 	await process_frame
@@ -4420,10 +4618,10 @@ func _test_atlas_publish_offers_sign_in() -> void:
 		and commit.find("\"rejected\": true") >= 0,
 		"a moderation rejection becomes a persistent disabled Profile state"
 	)
-	var refresh := _func_body(source, "func _refresh_gallery_status(")
+	var status_parse := _func_body(source, "func _gallery_status_from_response(")
 	_check(
-		refresh.find("moderation_rejected") >= 0
-		and refresh.find("\"rejected\": moderation_rejected") >= 0,
+		status_parse.find("moderation_rejected") >= 0
+		and status_parse.find("\"rejected\": moderation_rejected") >= 0,
 		"reopening that Profile restores the same rejected state from the server"
 	)
 
@@ -5426,13 +5624,12 @@ func _test_anima_delete_action() -> void:
 	var rename := details.find_child("ProfileActionRename", true, false) as Button
 	var button := details.find_child("ProfileActionDelete", true, false) as Button
 	var gallery_button := details.find_child("GalleryPublishButton", true, false) as Button
-	var gallery_appeal_button := details.find_child("GalleryAppealButton", true, false) as Button
 	_requested_delete_id = ""
 	_requested_rename_id = ""
 	_requested_gallery_appeal_id = ""
 	details.rename_requested.connect(_capture_rename_request)
 	details.delete_requested.connect(_capture_delete_request)
-	details.gallery_appeal_requested.connect(_capture_gallery_appeal_request)
+	details.gallery_rejection_info_requested.connect(_capture_gallery_appeal_request)
 	details.set_anima(
 		{
 			"id": "anima-delete-test",
@@ -5473,8 +5670,9 @@ func _test_anima_delete_action() -> void:
 	next_row["id"] = "anima-gallery-next"
 	details.set_anima(next_row, null)
 	_check(
-		not gallery_button.visible,
-		"opening another profile hides the previous Anima's Atlas state until status arrives"
+		gallery_button.visible and gallery_button.disabled
+		and gallery_button.text == tr("GALLERY_STATUS_LOADING"),
+		"opening another profile shows a disabled loading state until Atlas status arrives"
 	)
 	details.set_gallery_status({"available": true, "published": false})
 	details.set_gallery_pending(true, true)
@@ -5486,30 +5684,33 @@ func _test_anima_delete_action() -> void:
 	details.set_gallery_status({"available": false, "under_review": true})
 	_check(
 		gallery_button.visible and gallery_button.disabled
-		and gallery_button.text == tr("GALLERY_UNDER_REVIEW")
-		and not gallery_appeal_button.visible,
-		"moderation under review shows a disabled state and no appeal action yet"
+		and gallery_button.text == tr("GALLERY_UNDER_REVIEW"),
+		"moderation under review shows a disabled state"
 	)
-	details.set_gallery_status({"available": false, "rejected": true})
+	details.set_gallery_status({
+		"available": false, "rejected": true,
+		"reject_category": "ip_character", "reject_note": "looks like a mascot",
+		"appeal_available": true,
+	})
 	_check(
-		gallery_button.visible and gallery_button.disabled
+		gallery_button.visible and not gallery_button.disabled
 		and gallery_button.text == tr("GALLERY_PUBLISH_REJECTED"),
-		"moderation rejection remains visible instead of making Publish disappear"
+		"a rejected entry stays tappable instead of a dead disabled state"
 	)
-	_check(
-		gallery_appeal_button.visible and not gallery_appeal_button.disabled
-		and gallery_appeal_button.text == tr("GALLERY_APPEAL"),
-		"a rejected entry offers a working appeal action"
+	_check_eq(
+		details.call("get_gallery_rejection_info"),
+		{"category": "ip_character", "note": "looks like a mascot", "appeal_available": true},
+		"the rejected button's tap target reads back exactly what set_gallery_status delivered"
 	)
-	gallery_appeal_button.pressed.emit()
+	gallery_button.pressed.emit()
 	_check_eq(
 		_requested_gallery_appeal_id, "anima-gallery-next",
-		"Appeal emits the shown Anima id"
+		"tapping the rejected button asks scan_flow to show the reason, keyed to the shown Anima id"
 	)
 	details.set_gallery_appeal_pending(true)
 	_check(
-		gallery_appeal_button.disabled and gallery_appeal_button.text == tr("GALLERY_APPEAL_PENDING"),
-		"appeal shows a disabled progress cue while the request is in flight"
+		gallery_button.disabled and gallery_button.text == tr("GALLERY_APPEAL_PENDING"),
+		"requesting a review shows a disabled progress cue on the same button, not a second one"
 	)
 	details.set_gallery_appeal_pending(false)
 	details.set_busy(true)
@@ -7154,10 +7355,14 @@ func _check_toggle_select_mode(list: ItemList, label: String) -> void:
 	)
 
 
-## Mirrors what SELECT_TOGGLE does to the selection before `item_clicked`
-## reaches the list: it flips the pressed item and leaves the rest alone. Godot
-## swallows a disabled item earlier than this, so tapping one here is the
-## stricter path — it makes the handler's own guard answer for it.
+## Mirrors what SELECT_TOGGLE does to the selection before the tap is reported:
+## it flips the pressed item and leaves the rest alone. Godot swallows a
+## disabled item earlier than this, so tapping one here is the stricter path —
+## it makes the handler's own guard answer for it.
+##
+## The pick itself is delivered through `_toggle_index`, not `item_clicked`:
+## picks moved to release-with-no-travel so that dragging to scroll stops
+## editing the roster, and `item_clicked` is no longer listened to at all.
 func _tap_roster_item(list: ItemList, index: int) -> void:
 	if not list.is_item_disabled(index):
 		if list.is_selected(index):
@@ -7166,7 +7371,7 @@ func _tap_roster_item(list: ItemList, index: int) -> void:
 		else:
 			list.select(index, false)
 			list.multi_selected.emit(index, true)
-	list.item_clicked.emit(index, Vector2.ZERO, MOUSE_BUTTON_LEFT)
+	list.call("_toggle_index", index)
 
 
 ## Alasannya sama dengan `_drag_scrolls`: yang rusak di perangkat adalah jalur
@@ -7213,6 +7418,123 @@ func _test_roster_list_real_taps() -> void:
 		"a real tap re-adds an Anima last without clearing the ones already picked"
 	)
 	list.queue_free()
+	await process_frame
+
+
+## `ItemList` scrolls nothing by itself: a scripted drag over a populated list
+## leaves its own scrollbar at 0, so a roster taller than its window was
+## unreachable -- the Battle picker showed four of nine Anima. And because
+## `ItemList` selects on PRESS, every attempt to scroll also picked whichever
+## card the thumb started on, which in the Team builder silently edited the
+## roster. Both halves are driven through real mouse-emulated-as-touch input
+## (same technique as `_drag_scrolls`), because what broke on the device was the
+## input path, not the arithmetic.
+func _test_item_list_drag_scroll() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(800, 700)
+	root.add_child(viewport)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(700.0, 300.0)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var body := VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Icon-sized rows, like the real roster cards: short text alone fits nine
+	# rows inside the window and would not reproduce the overflow at all.
+	var list := ItemList.new()
+	list.max_columns = 2
+	list.fixed_icon_size = Vector2i(128, 128)
+	list.custom_minimum_size = Vector2(600.0, 360.0)
+	var swatch := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	swatch.fill(Color.RED)
+	var icon := ImageTexture.create_from_image(swatch)
+	for index in 9:
+		list.add_item("Item %d" % index, icon, true)
+	scroll.add_child(body)
+	body.add_child(list)
+	viewport.add_child(scroll)
+	var taps: Array[int] = []
+	var drag_ends := [0]
+	UiJuice.install_item_list_touch_scroll(
+		list,
+		func(index: int) -> void: taps.append(index),
+		func() -> void: drag_ends[0] += 1
+	)
+	await process_frame
+	await process_frame
+	_check(
+		list.get_v_scroll_bar().max_value > list.get_v_scroll_bar().page,
+		"the probe list really does hide content behind its own window"
+	)
+	var was_emulating := Input.is_emulating_touch_from_mouse()
+	Input.set_emulate_touch_from_mouse(true)
+
+	# A drag must scroll the list and pick nothing.
+	var start := Vector2(300.0, 250.0)
+	var press := InputEventMouseButton.new()
+	press.position = start
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	viewport.push_input(press, true)
+	await process_frame
+	for step in range(1, 6):
+		var motion := InputEventMouseMotion.new()
+		motion.position = start - Vector2(0.0, 24.0 * step)
+		motion.relative = Vector2(0.0, -24.0)
+		motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+		viewport.push_input(motion, true)
+		await process_frame
+	_check(
+		list.get_v_scroll_bar().value > 0.0,
+		"dragging over the list scrolls it past what fit on one screen"
+	)
+	_check(
+		list.get_selected_items().is_empty(),
+		"no card lights up mid-scroll, not even before the finger comes up"
+	)
+	var release := InputEventMouseButton.new()
+	release.position = start - Vector2(0.0, 120.0)
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	viewport.push_input(release, true)
+	await process_frame
+	_check(
+		taps.is_empty() and drag_ends[0] == 1,
+		"a scroll drag reports no pick at all, only a drag end"
+	)
+	# `ItemList` highlights on press, so a scroll used to light up whatever card
+	# the thumb started from and only get corrected once the finger came up.
+	# The press is swallowed now, so nothing may be selected at any point of a
+	# drag -- checked mid-gesture below as well, since correcting it on release
+	# is exactly the bug that shipped.
+	_check(
+		list.get_selected_items().is_empty(),
+		"a scroll drag never leaves a selection ring behind"
+	)
+	# The chrome around the list must not have moved with it.
+	_check(
+		scroll.scroll_vertical == 0,
+		"the list scrolls inside its own window instead of dragging the chrome"
+	)
+
+	# A deliberate tap still picks, and picks the row under the finger.
+	list.get_v_scroll_bar().value = 0.0
+	await process_frame
+	var target := 1
+	var at := list.get_global_rect().position + list.get_item_rect(target).get_center()
+	for pressed: bool in [true, false]:
+		var click := InputEventMouseButton.new()
+		click.position = at
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = pressed
+		viewport.push_input(click, true)
+		await process_frame
+	_check(
+		taps == [target] and drag_ends[0] == 1,
+		"a clean tap picks exactly the row under the finger"
+	)
+
+	Input.set_emulate_touch_from_mouse(was_emulating)
+	viewport.queue_free()
 	await process_frame
 
 

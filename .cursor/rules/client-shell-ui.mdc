@@ -103,3 +103,86 @@ Godot/GDScript dan aturan uang tetap di sana.
 - **Node autoload SUDAH ada dalam mode `--script`, tetapi nama globalnya belum.** Menulis `GameState` di skrip yang dijalankan `--script` gagal saat kompilasi dengan `Identifier not found`, sebab skrip itu dikompilasi sebelum autoload terdaftar sebagai global — sementara node-nya sendiri terpasang di bawah root dan bisa diambil dengan `get_root().get_node("GameState")`. Itu yang dipakai `tests/test_client_state.gd`, `tests/live_scan.gd`, dan `tests/live_battle.gd`. Konstanta dan fungsi statis diambil dari `get_script()`, bukan dari instance-nya.
 - **Skrip `--script` jalan lebih awal daripada saat node autoload benar-benar masuk tree.** `HTTPRequest` yang ditambahkan di titik itu menolak dengan `ERR_UNCONFIGURED` (`Condition "!is_inside_tree()" is true`). Satu `await process_frame` di awal harness menyelesaikannya; scene sungguhan tidak pernah kena karena `_ready()` jalan setelah tree berdiri.
 - **Balasan biner tidak boleh dikonversi ke String untuk dicoba jadi JSON.** Sheet 1 MB dari CDN yang dipaksa lewat `get_string_from_utf8()` memberi `Unicode parsing error` plus galat parser JSON di log setiap unduhan, dan menyalin satu megabyte tanpa guna, padahal pemanggilnya memakai `bytes`. `Backend._maybe_json()` memeriksa byte pertama dulu.
+
+## Layout diukur sebelum settle — prosedur wajib, bukan saran
+
+Kelas bug ini terjadi **berulang kali** dalam satu sesi UAT (dialog `UiModal`
+terlalu tinggi, bottom sheet Battle picker menyusut lalu meluncur, sheet preview
+Collection terlalu tinggi), dan tiap kali dugaan pertama saya salah. Gejala,
+penyebab, dan urutan penanganannya sekarang ditulis di sini supaya tidak
+di-diagnosis ulang dari nol.
+
+**Gejala penentu: "benar setelah dibuka/diklik kedua kali."** Itu bukan bug
+acak dan bukan alasan untuk menunggu N frame. Itu artinya sesuatu diukur
+sebelum nilainya sah. Jangan menambal dengan `await` sampai kebetulan cukup;
+temukan nilai apa yang belum selesai.
+
+Empat sumber yang sudah terbukti di repo ini:
+
+1. **Minimum autowrap `Label` dihitung terhadap LEBAR**, dan Godot bisa
+   mengukurnya sebelum container memberi lebar — label membungkus di lebar ~0
+   lalu melapor tinggi absurd. Ini regresi engine yang terdokumentasi,
+   [godotengine/godot#83546](https://github.com/godotengine/godot/issues/83546),
+   dan gejala khasnya persis "buka ulang jadi benar". Terukur di sheet preview
+   Collection: label meta satu baris melapor **312 px** dan mendorong minimum
+   panel ke **897 px**; dengan lantai lebar wrap ia melapor **67 px** dan panel
+   turun ke **660 px**.
+   - Label di dalam surface yang diukur dari kontennya (bottom sheet) **wajib**
+     punya `custom_minimum_size.x`. Pagarnya
+     `_test_autowrap_labels_have_wrap_width()` di `test_scan_ui`.
+   - Label satu baris pendek (badge status) **jangan** memakai autowrap sama
+     sekali. Dua badge Atlas yang ditambahkan sesi ini melakukannya dan
+     memperburuk tinggi sheet-nya sendiri.
+2. **Jangan menghitung sisa ruang dengan mengurangi kontribusi anak dari
+   minimum induk yang sudah memuat anak itu.** Hasilnya masuk ke pengukuran
+   berikutnya dan divergen: terukur list Battle picker tumbuh ke **1698 px di
+   layar 1602 px**, membuat `ContentScroll` sheet-nya sendiri overflow dan
+   grid-nya meluncur keluar begitu disentuh. Pola yang benar ada di
+   `UiBottomSheet._fit_scroll_to_host()`: **nol-kan dulu** minimum anak, baru
+   ukur induknya. Kalau butuh satu anak menyerap sisa tinggi, pakai
+   `set_fill_child()` — jangan tulis aritmetika sendiri di tempat lain.
+3. **Control yang belum terlihat melapor angka sampah.** `ItemList`
+   tersembunyi mengembalikan last-item rect 4 px dan scrollbar 100 px.
+   Menuliskannya sebagai minimum membuat sheet menyusut jadi sesobek di
+   pembukaan pertama. Ukur hanya bila `is_visible_in_tree()`, atau ukur dari
+   nilai yang tidak bergantung layout (minimum size, ukuran viewport).
+4. **`scrollbar.max_value` di-clamp ke `page`**, jadi ia tidak bisa dipakai
+   membaca tinggi konten sesudah sebuah control pernah ditumbuhkan — dua kartu
+   melapor 652 px padahal kontennya 136 px. Pakai
+   `get_item_rect(item_count - 1).end.y`.
+
+**Prosedurnya, dan urutannya mengikat:**
+
+1. **Ukur dulu, jangan menebak.** Tulis probe headless: `SubViewport`
+   **720×1602** (basis perangkat, bukan 64×64 default headless), instance scene
+   sungguhannya, lalu `print` rantai lebar/tinggi — `panel.size`,
+   `column.size`, `label.size.x`, `get_combined_minimum_size()`,
+   `scrollbar.max_value` vs `page`. Angka yang aneh langsung menunjuk sumbernya;
+   tiga percobaan pertama pada bug Battle picker gagal justru karena dilewati.
+2. **Probe wajib memakai kondisi yang mereproduksi.** Row `ItemList` harus
+   **ber-ikon** dan pakai thumbnail provider sungguhan — sembilan row teks
+   pendek memang muat dan tidak mereproduksi apa pun. Satu test end-to-end
+   sesi ini sempat **lolos-palsu** karena ini.
+3. **Perbaiki di tempat otoritasnya.** Kalau `UiBottomSheet` sudah punya
+   perhitungan tinggi, jangan tulis versi kedua di subclass-nya.
+4. **Test wajib menguji keadaan yang salah, bukan hanya keadaan akhir.**
+   Periksa **di tengah** gesture (kartu tidak boleh tersorot saat digulir,
+   bukan hanya sesudah jari diangkat) dan **idempotensi** (tinggi tidak berubah
+   sesudah tiga kali `fit_to_content()`). Bug divergen dan bug
+   perbaiki-saat-release lolos dari test yang cuma melihat hasil akhir.
+5. **Kalau dua percobaan sudah gagal, riset ke luar sebelum mencoba yang
+   ketiga** — dokumentasi Godot untuk versi project, lalu issue tracker
+   `godotengine/godot`. Bug autowrap di atas adalah bug engine, dan dua
+   percobaan pertama habis untuk menebak. Aturan lengkapnya ada di `CLAUDE.md`
+   bagian "Dua percobaan gagal".
+6. **Lantai lebar wrap punya biaya: ia menaikkan minimum LEBAR konten.**
+   `custom_minimum_size.x` bukan gratis — ia ikut menentukan minimum lebar
+   panel, dan sheet yang isinya lebih lebar dari layar akan terpotong karena
+   scroll horizontalnya mati. Sesudah menambah lantai, ukur
+   `_scroll_body.get_combined_minimum_size().x` terhadap lebar panel yang
+   tersedia, dan ingat **child yang `visible = false` tidak menyumbang minimum**
+   — jadi ukur dengan badge/label opsionalnya dinyalakan, bukan pada keadaan
+   default.
+7. **Sesudah menambah widget ke sheet, jalankan `test_scan_ui`** — pagar
+   autowrap dan pagar tinggi sheet ada di sana, dan keduanya lahir dari
+   regresi yang ditambahkan tanpa sadar.

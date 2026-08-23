@@ -4719,6 +4719,15 @@ begin
   -- Atlas Moderation Admin v2: default-deny, staff role gate, idempotent
   -- case-open, thumb-required approve/restore, decision+audit atomicity,
   -- report quarantine with category mapping, and sanction lifecycle.
+  --
+  -- moderation_cases/moderation_decisions/gallery_reports are the one
+  -- deliberate exception: 20260823160255_atlas_moderation_realtime_rls.sql
+  -- grants authenticated SELECT (needed for the admin console's Realtime
+  -- subscriptions) but gates every row behind a staff-only RLS policy, so a
+  -- non-staff session succeeds with zero rows instead of erroring. A 0-row
+  -- result only proves anything once real rows exist, so those three are
+  -- asserted further down, right after this block's own fixture has created
+  -- cases, decisions and reports -- not here, where a fresh database has none.
   perform set_config('role', 'authenticated', true);
   begin
     perform 1 from public.staff_accounts;
@@ -4726,18 +4735,6 @@ begin
   exception when insufficient_privilege then ok := true;
   end;
   assert ok, 'staff_accounts tidak boleh dibaca client';
-  begin
-    perform 1 from public.moderation_cases;
-    ok := false;
-  exception when insufficient_privilege then ok := true;
-  end;
-  assert ok, 'moderation_cases tidak boleh dibaca client';
-  begin
-    perform 1 from public.moderation_decisions;
-    ok := false;
-  exception when insufficient_privilege then ok := true;
-  end;
-  assert ok, 'moderation_decisions tidak boleh dibaca client';
   begin
     perform 1 from public.profile_sanctions;
     ok := false;
@@ -4923,6 +4920,46 @@ begin
             where profile_id = u4 and scope = 'atlas_publish' and revoked_at is null
          ) = 1,
          'hanya boleh ada satu sanction aktif per profile+scope';
+
+  -- The staff-gated-but-granted trio, now that the fixture above has left real
+  -- cases, decisions and reports behind: a 0-row result proves nothing on an
+  -- empty table, so existence is asserted first as the unrestricted role.
+  assert (select count(*) from public.moderation_cases) >= 1,
+         'fixture harus meninggalkan moderation_cases nyata sebelum menguji RLS-nya';
+  assert (select count(*) from public.moderation_decisions) >= 1,
+         'fixture harus meninggalkan moderation_decisions nyata sebelum menguji RLS-nya';
+  assert (select count(*) from public.gallery_reports) >= 1,
+         'fixture harus meninggalkan gallery_reports nyata sebelum menguji RLS-nya';
+
+  -- Both directions, each under an identity this block states outright.
+  -- Inheriting whatever `request.jwt.claims` an earlier block happened to
+  -- leave set is how the older version of this check passed for the wrong
+  -- reason: u1 is made an admin above, so a "sees nothing" assertion running
+  -- as u1 was exercising the staff path while claiming to prove the player
+  -- one. u4's staff row was granted and then revoked above, so it is a
+  -- genuine non-staff authenticated session.
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', u4::text, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  assert (select count(*) from public.moderation_cases) = 0,
+         'RLS harus menyembunyikan seluruh moderation_cases dari authenticated non-staff, walau grant SELECT ada untuk Realtime';
+  assert (select count(*) from public.moderation_decisions) = 0,
+         'RLS harus menyembunyikan seluruh moderation_decisions dari authenticated non-staff';
+  assert (select count(*) from public.gallery_reports) = 0,
+         'RLS harus menyembunyikan seluruh gallery_reports dari authenticated non-staff';
+
+  -- And the staff side must actually be readable, otherwise the console's
+  -- Realtime subscriptions would deliver nothing and a policy that denied
+  -- everyone would still pass the checks above.
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', u1::text, 'role', 'authenticated')::text, true);
+  assert (select count(*) from public.moderation_cases) >= 1,
+         'staff harus tetap bisa membaca moderation_cases, kalau tidak Realtime admin mati';
+  assert (select count(*) from public.moderation_decisions) >= 1,
+         'staff harus tetap bisa membaca moderation_decisions';
+  assert (select count(*) from public.gallery_reports) >= 1,
+         'staff harus tetap bisa membaca gallery_reports';
+  perform set_config('role', 'none', true);
 
   v_j := public.moderation_analytics_summary(now() - interval '1 day');
   assert (v_j->>'open_cases')::int >= 1,

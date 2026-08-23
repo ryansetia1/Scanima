@@ -3995,8 +3995,39 @@ console.log("23e. admin_moderation staff-gated dan tidak membocorkan kredensial"
   );
   assert.match(
     adminEdge,
-    /thumbPath\s*\n?\s*\?[\s\S]{0,40}thumbUrls\.get\(thumbPath\)[\s\S]{0,80}:\s*\n?\s*animaId\s*\n?\s*\?\s*await previewIdleThumbDataUri\(animaId\)/,
+    /thumbPath\s*\n?\s*\?[\s\S]{0,40}thumbUrls\.get\(thumbPath\)[\s\S]{0,60}:\s*\n?\s*previews\[index\]/,
     "queue_list harus fallback ke preview on-the-fly saat thumb_path kosong",
+  );
+  // Setiap preview mengunduh dan men-decode satu sheet penuh lalu
+  // meng-inline-nya sebagai base64, jadi satu halaman tidak boleh fan-out
+  // sebanyak barisnya; dan kegagalan lookup-nya wajib fail-soft, karena
+  // sebelumnya satu baris tak terbaca men-500-kan seluruh halaman Seekers.
+  assert.match(
+    adminEdge,
+    /const PREVIEW_THUMB_BUDGET = \d+;/,
+    "preview thumbnail wajib punya plafon per request, bukan fan-out sebanyak baris",
+  );
+  assert.match(
+    adminEdge,
+    /spent >= PREVIEW_THUMB_BUDGET/,
+    "plafon preview harus benar-benar dipakai untuk menghentikan pekerjaan",
+  );
+  // Dipersempit ke fungsi preview-nya saja: `ensureEntryThumb` di file yang
+  // sama SENGAJA throw, karena approve/restore tidak boleh diam-diam
+  // menerbitkan entry tanpa thumbnail.
+  const previewBody = adminEdge.slice(
+    adminEdge.indexOf("async function previewIdleThumbDataUri"),
+    adminEdge.indexOf("async function restoreEntry"),
+  );
+  assert.doesNotMatch(
+    previewBody,
+    /throw animaError/,
+    "lookup preview yang gagal harus fail-soft, bukan men-500-kan halaman",
+  );
+  assert.match(
+    previewBody,
+    /console\.error\("previewIdleThumbDataUri lookup gagal"/,
+    "kegagalan lookup preview harus tetap tercatat, bukan ditelan diam-diam",
   );
 }
 
@@ -4119,6 +4150,62 @@ console.log("23f. moderation v2: sanction enforcement dan pemetaan kategori repo
   assert.ok(
     revokeExistsIdx >= 0 && revokeAlreadyIdx > revokeExistsIdx,
     "moderation_revoke_sanction harus mengecek idempotency_key SEBELUM guard SANCTION_ALREADY_REVOKED",
+  );
+}
+
+console.log("23g. realtime admin: RLS staff-only, bukan bypass service-role");
+{
+  const { readFile } = await import("node:fs/promises");
+  const realtimeMigration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260823160255_atlas_moderation_realtime_rls.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const realtimeComponent = await readFile(
+    new URL(
+      "../admin/app/(protected)/_components/realtime-refresh.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(
+    realtimeMigration,
+    /create or replace function public\.is_staff\(p_user_id uuid\)[\s\S]*?security definer/,
+    "is_staff harus SECURITY DEFINER supaya bisa membaca staff_accounts yang RLS-nya sendiri default-deny",
+  );
+  assert.match(
+    realtimeMigration,
+    /revoke all on function public\.is_staff\(uuid\) from public, anon, authenticated/,
+    "is_staff tidak boleh dipanggil bebas sebelum grant eksplisit",
+  );
+  for (
+    const table of ["moderation_cases", "moderation_decisions", "gallery_reports"]
+  ) {
+    assert.match(
+      realtimeMigration,
+      new RegExp(
+        `create policy staff_can_read_${table}\\s*\\n\\s*on public\\.${table} for select\\s*\\n\\s*to authenticated\\s*\\n\\s*using \\(public\\.is_staff\\(auth\\.uid\\(\\)\\)\\)`,
+      ),
+      `${table} harus punya policy select staff-only, bukan grant terbuka`,
+    );
+    assert.match(
+      realtimeMigration,
+      new RegExp(`alter publication supabase_realtime add table public\\.${table}`),
+      `${table} harus terdaftar di publication supabase_realtime`,
+    );
+  }
+  assert.doesNotMatch(
+    realtimeComponent,
+    /service_role|SUPABASE_SERVICE_ROLE_KEY/,
+    "subscription realtime di client harus tetap memakai publishable key, bukan service role",
+  );
+  assert.match(
+    realtimeComponent,
+    /router\.refresh\(\)/,
+    "event realtime harus cuma memicu refresh lewat admin_moderation, bukan merender payload mentah",
   );
 }
 

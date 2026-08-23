@@ -1,4 +1,4 @@
-import type { CaseCategory } from "./types";
+import type { CaseCategory, CaseStatus } from "./types";
 
 /** Left-border color for a queue row, structural (age), not decorative. */
 export function ageBorderColor(createdAt: string): string {
@@ -33,6 +33,31 @@ export function categoryTextColor(category: CaseCategory): string {
       return "text-deck-secondary";
     default:
       return "text-deck-muted";
+  }
+}
+
+export function statusLabel(status: CaseStatus): string {
+  switch (status) {
+    case "open":
+      return "Open";
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "hidden":
+      return "Hidden";
+  }
+}
+
+export function statusBadgeColor(status: CaseStatus): string {
+  switch (status) {
+    case "open":
+      return "border-deck-secondary/40 text-deck-secondary";
+    case "approved":
+      return "border-deck-gold/40 text-deck-gold";
+    case "rejected":
+    case "hidden":
+      return "border-deck-danger/40 text-deck-danger";
   }
 }
 

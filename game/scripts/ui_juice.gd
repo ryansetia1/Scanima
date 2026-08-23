@@ -9,6 +9,17 @@ const META_INSTALLED := &"_scanima_juice_installed"
 const META_TWEEN := &"_scanima_juice_tween"
 const META_METER_TWEEN := &"_scanima_meter_tween"
 const META_SHEET_POSITION := &"_scanima_sheet_position"
+const META_LIST_SCROLL := &"_scanima_list_scroll"
+## `BottomSheetPanel` carries 2 px borders on its left and right, so a
+## full-bleed sheet draws them in the outermost column of pixels -- where a
+## phone with curved display edges simply eats them, and the sheet reads as
+## cut off rather than bordered. The stylebox has no bottom border and square
+## bottom corners, so it stays flush at the bottom on purpose; only the sides
+## are inset.
+const SHEET_SIDE_INSET := 12.0
+## Below this much vertical travel a gesture is still a tap, above it the
+## finger was scrolling and must not pick anything.
+const ITEM_LIST_TAP_SLOP := 12.0
 const PLAYER_NAME := &"UiClickPlayer"
 const CUE_TAP := &"tap"
 const CUE_CARE := &"care"
@@ -57,12 +68,108 @@ static func relay_touch_scroll(node: Node) -> void:
 	var control := node as Control
 	if control == null or control.mouse_filter != Control.MOUSE_FILTER_STOP:
 		return
+	# Lists that scroll their own bounded viewport opt out: at PASS the outer
+	# ScrollContainer would answer the same drag and both would move, which is
+	# how the Team builder scrolled its title and its Back/Save row along with
+	# the roster. Only those lists -- not every `ItemList` -- are skipped, since
+	# e.g. the Expedition chapter list has no inner scroll of its own and still
+	# needs the relay to be reachable at all.
+	if control.has_meta(META_LIST_SCROLL):
+		return
 	var ancestor: Node = control.get_parent()
 	while ancestor != null:
 		if ancestor is ScrollContainer:
 			control.mouse_filter = Control.MOUSE_FILTER_PASS
 			return
 		ancestor = ancestor.get_parent()
+
+
+## `ItemList` scrolls nothing by itself. Unlike `ScrollContainer` it never binds
+## drag-to-scroll to its own scrollbar (measured: a scripted drag over a
+## populated list leaves `v_scroll_bar.value` at 0), so a list taller than its
+## own window was simply unreachable -- the Battle picker showed four of nine
+## Anima with no way to reach the rest.
+##
+## Forwarding the drag here, rather than growing the list so an outer
+## `ScrollContainer` can own it, is what keeps the surrounding chrome still:
+## the list is the only thing that moves, so a builder's title and its
+## Back/Save row stay where the thumb expects them.
+##
+## The other half is that a drag must not count as a pick. `ItemList` selects
+## on PRESS, so every attempted scroll also chose whatever card the thumb
+## started on -- in the Team builder that silently edited the roster. The press
+## is therefore swallowed outright and a pick is reported on RELEASE, only when
+## the gesture never travelled past `ITEM_LIST_TAP_SLOP`. That leaves the
+## selection ring entirely to the caller, which is what stops a card lighting
+## up mid-scroll; `on_drag_end` is where a caller repaints after an abandoned
+## gesture.
+##
+## ponytail: swallowing the press also stops the list taking focus on click, and
+## picks no longer come from `item_selected`, so keyboard/gamepad selection on
+## these lists is gone. Plafonnya: tidak ada yang pernah memberi fokus ke
+## ketiganya dan `TeamRosterList` justru mengosongkan stylebox cursor/fokusnya,
+## jadi jalur itu memang belum pernah dirancang. Kalau navigasi keyboard
+## benar-benar ditambahkan, arahkan `item_activated` ke `on_tap` -- bukan
+## `item_selected`, yang akan mengembalikan seleksi-saat-press.
+static func install_item_list_touch_scroll(
+	list: ItemList, on_tap: Callable, on_drag_end := Callable()
+) -> void:
+	if list.has_meta(META_LIST_SCROLL):
+		return
+	list.set_meta(META_LIST_SCROLL, true)
+	# Set explicitly, not left to the scene: `relay_touch_scroll` may already
+	# have flipped this list to PASS on node_added, before this ran.
+	list.mouse_filter = Control.MOUSE_FILTER_STOP
+	var gesture := {"pressed": false, "index": -1, "origin": 0.0, "travel": 0.0}
+	list.gui_input.connect(
+		_on_item_list_gesture.bind(list, on_tap, on_drag_end, gesture)
+	)
+
+
+static func _on_item_list_gesture(
+	event: InputEvent,
+	list: ItemList,
+	on_tap: Callable,
+	on_drag_end: Callable,
+	gesture: Dictionary
+) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			gesture["pressed"] = true
+			gesture["origin"] = event.position.y
+			gesture["travel"] = 0.0
+			gesture["index"] = list.get_item_at_position(event.position, true)
+			# Swallow the press so `ItemList` never runs its own selection.
+			# `Control` emits this signal BEFORE calling `_gui_input`, and
+			# `accept_event()` marks the input handled, so the built-in handler
+			# is skipped entirely. Without this the card under the thumb lights
+			# up the moment the finger lands and only gets corrected on release
+			# -- every attempt to scroll flashed a selection ring on whatever it
+			# started from. Selection is now entirely the caller's to paint.
+			list.accept_event()
+			return
+		if not bool(gesture["pressed"]):
+			return
+		gesture["pressed"] = false
+		var index := int(gesture["index"])
+		if float(gesture["travel"]) < ITEM_LIST_TAP_SLOP and index >= 0:
+			if on_tap.is_valid():
+				on_tap.call(index)
+		elif on_drag_end.is_valid():
+			on_drag_end.call()
+		return
+	if event is InputEventMouseMotion and bool(gesture["pressed"]):
+		list.get_v_scroll_bar().value -= event.relative.y
+		# Displacement from where the finger landed, NOT the sum of per-event
+		# deltas: touch jitter during a long stationary press would accumulate
+		# past the slop and throw a real tap away.
+		#
+		# Measured in the list's own coordinates, which do not move when it
+		# scrolls. Adding the scroll offset to make this "content space" looks
+		# tempting and is exactly wrong: a drag that scrolls the list under the
+		# finger keeps the finger over the same content, so the displacement
+		# cancels to zero and every scroll reads as a tap.
+		gesture["travel"] = absf(event.position.y - float(gesture["origin"]))
 
 
 static func install_button(button: Button) -> void:
@@ -208,17 +315,20 @@ static func sheet_host_size(overlay: Control, panel: Control) -> Vector2:
 	return size
 
 
+## X is the side inset, not 0: assigning `position` rewrites a Control's offsets,
+## so a rest position of x=0 would quietly undo the inset every time the sheet
+## animated into place.
 static func sheet_rest_position(overlay: Control, panel: Control) -> Vector2:
 	var height := maxf(panel.get_combined_minimum_size().y, 1.0)
-	return Vector2(0.0, sheet_host_size(overlay, panel).y - height)
+	return Vector2(SHEET_SIDE_INSET, sheet_host_size(overlay, panel).y - height)
 
 
 static func show_bottom_sheet(overlay: Control, panel: Control) -> void:
 	_kill_tween(overlay)
 	overlay.visible = true
 	var height := maxf(panel.get_combined_minimum_size().y, 1.0)
-	panel.offset_left = 0.0
-	panel.offset_right = 0.0
+	panel.offset_left = SHEET_SIDE_INSET
+	panel.offset_right = -SHEET_SIDE_INSET
 	panel.offset_top = -height
 	panel.offset_bottom = 0.0
 	var target := sheet_rest_position(overlay, panel)

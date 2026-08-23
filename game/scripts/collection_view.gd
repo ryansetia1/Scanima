@@ -2,6 +2,11 @@ class_name CollectionView
 extends Control
 
 signal preview_requested(row: Dictionary, revision: int)
+## Separate from `preview_requested`: that one is skipped whenever care data is
+## already cached from an earlier open this session, to avoid a redundant care
+## sync -- but Atlas/Gallery status has no such cache and should still refresh
+## every time the sheet opens for a (non-evolving) Anima.
+signal atlas_preview_requested(row: Dictionary, revision: int)
 signal profile_requested(row: Dictionary)
 signal summon_requested(row: Dictionary, care_synced: bool)
 signal first_scan_requested
@@ -20,6 +25,7 @@ const BADGE_FONT_SIZE := 20
 @onready var _sheet_name: Label = %CollectionSheetName
 @onready var _sheet_meta: Label = %CollectionSheetMeta
 @onready var _active_badge: Label = %CollectionActiveBadge
+@onready var _atlas_badge: Label = %CollectionAtlasBadge
 @onready var _condition_status: Label = %CollectionConditionStatus
 @onready var _condition_skeleton = %ConditionSkeleton
 @onready var _care_rows: VBoxContainer = %CareRows
@@ -58,7 +64,12 @@ var _eligible_synthesis_sources := 0
 func _ready() -> void:
 	%CollectionAtlasTab.pressed.connect(func() -> void: atlas_requested.emit())
 	_synthesis_button.pressed.connect(func() -> void: synthesis_requested.emit({}))
-	_list.item_selected.connect(_on_item_selected)
+	# Not `item_selected`: it fires on PRESS, so dragging to scroll a long
+	# roster popped open the preview sheet for whichever card the thumb started
+	# on. Same reason the Battle picker and the Team builder moved off it.
+	UiJuice.install_item_list_touch_scroll(
+		_list, _on_row_tapped, _restore_highlight
+	)
 	_list.draw.connect(_draw_level_badges)
 	_empty_action.pressed.connect(_on_empty_action)
 	_sheet.dismissed.connect(_on_sheet_dismissed)
@@ -77,6 +88,12 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 	_thumbnail_provider = thumbnail_provider
 	_list.clear()
 	var selected := -1
+	# `_list.clear()` wipes native selection along with every item, so it must
+	# be re-picked below -- and this runs on every background care sync, not
+	# just first load. Defaulting that to `active_id` every time snapped the
+	# ring back to the Home anima the instant a sync landed, even while a
+	# DIFFERENT card's preview sheet was the one actually open on screen.
+	var highlight_id := _highlight_id()
 	_eligible_synthesis_sources = 0
 	for row in rows:
 		if SynthesisLabView.is_eligible_source(row):
@@ -102,7 +119,7 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 				LocaleManager.format_integer(int(row.get("rarity", 1))),
 			]
 		)
-		if id == active_id:
+		if id == highlight_id:
 			selected = index
 	if selected >= 0:
 		_list.select(selected)
@@ -184,6 +201,7 @@ func show_preview(row: Dictionary, request_sync: bool = true) -> void:
 	_fill_identity()
 	_fill_base_stats()
 	_update_active_state()
+	_atlas_badge.visible = false
 
 	var anima_id := str(_selected_row.get("id", ""))
 	if CareRules.is_evolving(_selected_row):
@@ -198,6 +216,8 @@ func show_preview(row: Dictionary, request_sync: bool = true) -> void:
 	else:
 		_set_condition_loading()
 		preview_requested.emit(_selected_row.duplicate(true), _revision)
+	if not CareRules.is_evolving(_selected_row):
+		atlas_preview_requested.emit(_selected_row.duplicate(true), _revision)
 	call_deferred("_reveal_sheet", _revision)
 
 
@@ -214,6 +234,28 @@ func apply_care_sync(row: Dictionary, revision: int) -> bool:
 	_selected_row = normalized
 	_fill_identity()
 	_apply_condition(normalized, true)
+	_sheet.fit_to_content()
+	return true
+
+
+## Mirrors `apply_care_sync`: the sheet opens instantly from the local roster
+## row, which carries no Atlas/Gallery publish state at all, so this arrives
+## a beat later from `Backend.atlas("my_status", ...)` -- badge stays hidden
+## (not a wrong guess) until it does.
+func apply_atlas_status(status: Dictionary, row: Dictionary, revision: int) -> bool:
+	if not _selection_matches(row, revision):
+		return false
+	var applicable := (
+		bool(status.get("available", false))
+		or bool(status.get("rejected", false))
+		or bool(status.get("under_review", false))
+	)
+	_atlas_badge.visible = applicable
+	if applicable:
+		_atlas_badge.text = (
+			tr("ATLAS_STATUS_PUBLISHED") if bool(status.get("published", false))
+			else tr("ATLAS_STATUS_NOT_PUBLISHED")
+		)
 	_sheet.fit_to_content()
 	return true
 
@@ -240,6 +282,36 @@ func _on_sheet_dismissed() -> void:
 func set_sheet_busy(busy: bool) -> void:
 	_busy = busy
 	_update_action_state()
+
+
+## Which card wears the ring: the one whose preview sheet is open, else the
+## Anima on the Home stage. Shared so a repaint after a scroll cannot disagree
+## with what `set_rows()` would have painted.
+## The press is swallowed so a scroll cannot light a card up, which also means
+## nothing paints the ring on a real tap any more -- the tapped row is selected
+## here so the ring lands immediately instead of waiting for the next sync.
+func _on_row_tapped(index: int) -> void:
+	_on_item_selected(index)
+	if index >= 0 and index < _list.item_count:
+		_list.select(index)
+
+
+func _highlight_id() -> String:
+	return str(_selected_row.get("id", "")) if _sheet.visible else _active_id
+
+
+## `ItemList` highlights on press, so an aborted scroll leaves the wrong card
+## ringed. Clearing it outright was worse: it wiped the active-Anima ring after
+## every scroll, so the ring is repainted from the rule above instead.
+func _restore_highlight() -> void:
+	var target := _highlight_id()
+	for index in _list.item_count:
+		var row := GameState.as_dict(_list.get_item_metadata(index))
+		var keep := not target.is_empty() and str(row.get("id", "")) == target
+		if keep and not _list.is_selected(index):
+			_list.select(index)
+		elif not keep and _list.is_selected(index):
+			_list.deselect(index)
 
 
 func _on_item_selected(index: int) -> void:

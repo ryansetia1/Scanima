@@ -1,6 +1,7 @@
 import { requireAccessToken } from "@/lib/session";
 import { callAdminApi, AdminApiError, describeAdminApiError } from "@/lib/admin-api";
 import type { SeekerProfileResult, WhoAmI } from "@/lib/types";
+import { formatDateTime } from "@/lib/ui";
 import { SanctionPanel } from "./sanction-panel";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -86,10 +87,41 @@ export default async function SeekersPage({
               {profile.publications.length === 0 ? (
                 <p className="text-sm text-deck-muted">No published entries.</p>
               ) : (
-                <ul className="flex flex-col gap-1 font-data text-xs text-deck-muted">
+                <ul className="flex flex-col gap-2">
                   {profile.publications.map((p, i) => (
-                    <li key={i} className="truncate rounded border border-deck-border p-2">
-                      {JSON.stringify(p)}
+                    <li
+                      key={i}
+                      className="flex items-center gap-3 rounded-md border border-deck-border p-2 text-sm"
+                    >
+                      {/* An empty string is not a missing src: the browser
+                          resolves src="" against the current URL and refetches
+                          the page itself as an image. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={
+                          typeof p.thumb_url === "string" && p.thumb_url.length > 0
+                            ? p.thumb_url
+                            : undefined
+                        }
+                        alt=""
+                        className="h-12 w-12 shrink-0 rounded bg-deck-bg object-cover"
+                      />
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate font-medium text-deck-text">
+                          {typeof p.display_name === "string" ? p.display_name : "Untitled entry"}
+                        </span>
+                        <span className="text-xs text-deck-muted">
+                          {String(p.moderation_status ?? "unknown")}
+                          {p.published ? " · published" : ""}
+                          {p.auto_hidden ? " · hidden" : ""}
+                          {typeof p.report_count === "number" && p.report_count > 0
+                            ? ` · ${p.report_count} reports`
+                            : ""}
+                        </span>
+                      </div>
+                      <span className="shrink-0 text-xs text-deck-muted">
+                        {typeof p.published_at === "string" ? formatDateTime(p.published_at) : "never published"}
+                      </span>
                     </li>
                   ))}
                 </ul>
