@@ -7,7 +7,7 @@ Collection, lalu ajak Battle.
 Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). Angka dan rumus untuk developer ada di [docs/04](../04-game-systems-economy.md).
 
 Game langsung berjalan sebagai **guest Seeker** tanpa login. Bottom navigation
-berisi lima tab berurutan: **HOME, SCAN, ANIMAS, BATTLE, MENU**. Tab **ANIMAS**
+berisi lima tab berurutan: **HOME, SCAN, BATTLE, ANIMAS, MENU**. Tab **ANIMAS**
 adalah Collection, dan di dalamnya ada tab Collection dan Atlas; tombol **MENU**
 tetap menjadi shortcut untuk Seeker Profile, Anima Atlas, dan Settings. Tab yang
 sedang dibuka ditandai kotak biru dan tulisan cyan. Kalau **SCAN** tampak redup,
@@ -23,8 +23,9 @@ memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
    yang unik.
 2. **Home** — rawat companion yang sedang di-Summon.
 3. **Animas** — lihat semua Anima. Tap kartu, lalu **Summon** untuk membawanya ke Home.
-4. **Battle** — mainkan Duel, Team Battle dengan 4 Anima, atau Expedition **The
-   Sugarworks**. Lapar atau kotor tidak mengunci battle, tapi stats turun.
+4. **Battle** — mainkan Duel, Team Battle dengan 2–4 Anima melawan rival
+   berjumlah sama, atau Expedition **The Sugarworks** dengan tepat 4 Anima.
+   Lapar atau kotor tidak mengunci battle, tapi stats turun.
 5. **Animas** — kelola Anima milikmu, buka **Synthesis Lab** setelah punya dua
    Anima Level 10+, atau pindah ke tab **Atlas** di dalamnya.
 6. **Menu** — buka Seeker Profile, shortcut **Anima Atlas**, atau Settings.
@@ -40,7 +41,7 @@ memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
 | [Seeker](seeker.md) | Guest perangkat, Google, Sign Out, ganti akun, profil, Trophy Showcase, onboarding, Settings, hapus akun |
 | [Anima](anima.md) | Traits, attributes, EXP, Level, Evolve, Synthesis, Collection, Summon, aturan nama |
 | [Battle](battle.md) | Duel, cara lawan dipilih, Team Battle, Expedition The Sugarworks, Boss Seeker, perintah, PP, hadiah, kartu hasil |
-| [Anima Atlas](atlas.md) | Scanned, Expedition, Duel, siluet, Publish Lineage, Report, dan privasi |
+| [Anima Atlas](atlas.md) | Scanned, Expedition, Duel, siluet, Publish Lineage, moderation, Report, dan privasi |
 
 ## Yang perlu diingat
 

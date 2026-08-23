@@ -2440,6 +2440,7 @@ func _commit_atlas_publish(anima_id: String, publish: bool) -> void:
 	if _busy or anima_id.is_empty():
 		return
 	_pending_atlas_publish_id = ""
+	_details_view.set_gallery_pending(true, publish)
 	_set_busy(true)
 	var operation := "publish" if publish else "unpublish"
 	var target := _roster_row(anima_id)
@@ -2449,12 +2450,21 @@ func _commit_atlas_publish(anima_id: String, publish: bool) -> void:
 	var account_epoch := GameState.session_epoch
 	var res := await Backend.atlas(operation, payload)
 	if not Backend.response_applies(res, account_epoch):
+		_details_view.set_gallery_pending(false)
+		_set_busy(false)
 		return
 	if res.ok:
 		_say(tr("GALLERY_PUBLISHED") if publish else tr("GALLERY_UNPUBLISHED"), false)
 		await _refresh_gallery_status(anima_id)
 	else:
 		_say(_gallery_error(res.error), true)
+		if res.error == "GALLERY_MODERATION_REJECTED":
+			_details_view.set_gallery_status({
+				"available": false,
+				"published": false,
+				"rejected": true,
+			})
+	_details_view.set_gallery_pending(false)
 	_set_busy(false)
 
 
@@ -2494,14 +2504,16 @@ func _refresh_gallery_status(anima_id: String = "") -> void:
 		return
 	var data := GameState.as_dict(res.data)
 	var entry := GameState.as_dict(data.get("entry"))
+	var moderation_rejected := str(entry.get("moderation_status", "")) == "rejected"
 	var available := (
 		bool(data.get("ready", false))
 		and bool(data.get("typing_v2", false))
-		and str(entry.get("moderation_status", "")) != "rejected"
+		and not moderation_rejected
 	)
 	_details_view.set_gallery_status({
 		"available": available,
 		"published": bool(entry.get("published", false)),
+		"rejected": moderation_rejected,
 	})
 
 
@@ -5919,7 +5931,11 @@ static func profile_value_present(profile: Dictionary, key: StringName) -> bool:
 func _is_immersive_arena() -> bool:
 	if not is_instance_valid(_battle_view) or not _battle_view.visible:
 		return false
-	if is_instance_valid(_expedition_view) and _expedition_view.is_combat_open():
+	if (
+		is_instance_valid(_expedition_view)
+		and _expedition_view.visible
+		and _expedition_view.is_combat_open()
+	):
 		return true
 	if (
 		is_instance_valid(_team_battle_view)
@@ -5931,19 +5947,22 @@ func _is_immersive_arena() -> bool:
 
 
 func _music_cue() -> StringName:
-	if _destination != BottomNav.BATTLE:
+	if _destination != BottomNav.BATTLE or not _is_immersive_arena():
 		return &"lobby"
 	if (
 		is_instance_valid(_expedition_view)
+		and _expedition_view.visible
 		and _expedition_view.is_combat_open()
 		and is_instance_valid(_expedition_controller)
 	):
 		return &"boss" if _expedition_controller.encounter_kind() == "boss" else &"battle"
-	if is_instance_valid(_team_battle_view) and _team_battle_view.is_arena_open():
+	if (
+		is_instance_valid(_team_battle_view)
+		and _team_battle_view.visible
+		and _team_battle_view.is_arena_open()
+	):
 		return &"boss" if _team_battle_view.session_kind() == "boss" else &"battle"
-	if is_instance_valid(_battle_view) and _battle_view.has_session():
-		return &"battle"
-	return &"lobby"
+	return &"battle"
 
 
 func _on_immersive_arena_changed(_open: bool) -> void:

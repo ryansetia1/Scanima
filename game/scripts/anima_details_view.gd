@@ -69,6 +69,9 @@ var _row: Dictionary = {}
 var _busy := false
 var _gallery_published := false
 var _gallery_available := false
+var _gallery_rejected := false
+var _gallery_pending := false
+var _gallery_pending_publish := false
 var _evolution_enabled := false
 var _synthesis_enabled := false
 var _synthesis_history_textures: Dictionary = {}
@@ -126,6 +129,10 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_evolution_history_loading = false
 		_details_scroll.scroll_vertical = 0
 		close_action_menu(false)
+		_gallery_available = false
+		_gallery_published = false
+		_gallery_rejected = false
+		_gallery_pending = false
 	_row = row.duplicate(true) if not row.is_empty() else {}
 	if row.is_empty():
 		_anima_id = ""
@@ -136,6 +143,7 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_action_rename.disabled = true
 		_action_delete.disabled = true
 		_gallery_button.disabled = true
+		_apply_gallery_button()
 		_evolve_button.visible = false
 		_evolution_status.visible = false
 		_synthesis_button.visible = false
@@ -155,6 +163,7 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 	_action_rename.disabled = actions_disabled
 	_action_delete.disabled = actions_disabled
 	_gallery_button.disabled = actions_disabled or not _gallery_available
+	_apply_gallery_button()
 	if actions_disabled:
 		close_action_menu(false)
 	_portrait.texture = portrait
@@ -200,6 +209,7 @@ func set_busy(busy: bool) -> void:
 	_action_rename.disabled = actions_disabled
 	_action_delete.disabled = actions_disabled
 	_gallery_button.disabled = actions_disabled or not _gallery_available
+	_apply_gallery_button()
 	if actions_disabled:
 		close_action_menu(false)
 	if not _row.is_empty():
@@ -239,15 +249,38 @@ func set_synthesis_history_loading(loading: bool) -> void:
 func set_gallery_status(status: Dictionary) -> void:
 	_gallery_available = bool(status.get("available", false))
 	_gallery_published = bool(status.get("published", false))
-	_gallery_button.visible = _gallery_available
-	if _gallery_available:
-		_gallery_button.text = (
-			tr("GALLERY_UNPUBLISH") if _gallery_published else tr("GALLERY_PUBLISH")
-		)
-		_gallery_button.disabled = (
-			_busy or _anima_id.is_empty() or CareRules.is_evolving(_row)
-		)
+	_gallery_rejected = bool(status.get("rejected", false))
+	_gallery_pending = false
+	_apply_gallery_button()
 	_update_primary_actions_visibility()
+
+
+func set_gallery_pending(pending: bool, publish: bool = false) -> void:
+	_gallery_pending = pending
+	_gallery_pending_publish = publish
+	_apply_gallery_button()
+
+
+func _apply_gallery_button() -> void:
+	_gallery_button.visible = _gallery_available or _gallery_rejected
+	if _gallery_rejected:
+		_gallery_button.text = tr("GALLERY_PUBLISH_REJECTED")
+		_gallery_button.disabled = true
+		return
+	if not _gallery_available:
+		return
+	if _gallery_pending:
+		_gallery_button.text = tr(
+			"GALLERY_PUBLISHING" if _gallery_pending_publish else "GALLERY_UNPUBLISHING"
+		)
+		_gallery_button.disabled = true
+		return
+	_gallery_button.text = (
+		tr("GALLERY_UNPUBLISH") if _gallery_published else tr("GALLERY_PUBLISH")
+	)
+	_gallery_button.disabled = (
+		_busy or _anima_id.is_empty() or CareRules.is_evolving(_row)
+	)
 
 
 func _apply_synthesis_ui(row: Dictionary) -> void:
@@ -623,6 +656,7 @@ func refresh_localized_ui() -> void:
 	_history_help.tooltip_text = tr("SYNTHESIS_HISTORY_HELP")
 	_evolution_history_title.text = tr("EVOLUTION_HISTORY_TITLE")
 	_apply_evolution_history()
+	_apply_gallery_button()
 	if not _row.is_empty():
 		set_anima(_row, _portrait.texture)
 

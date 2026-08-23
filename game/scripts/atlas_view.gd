@@ -367,8 +367,8 @@ func _fetch_page(reset_status: bool) -> void:
 	if not res.ok:
 		_status.text = tr("ATLAS_ERROR")
 		_status.visible = true
-		_scroll.visible = false
-		_load_more.visible = false
+		_scroll.visible = not _entries.is_empty()
+		_load_more.visible = not _entries.is_empty() and not _cursor.is_empty()
 		return
 	var data := GameState.as_dict(res.data)
 	if not bool(data.get("feature_enabled", true)):
@@ -387,7 +387,10 @@ func _fetch_page(reset_status: bool) -> void:
 	for row in batch:
 		if typeof(row) == TYPE_DICTIONARY:
 			_entries.append(GameState.as_dict(row))
-	_cursor = str(data.get("next_cursor", ""))
+	var next_cursor: Variant = data.get("next_cursor")
+	_cursor = (next_cursor as String) if typeof(next_cursor) == TYPE_STRING else ""
+	if batch.is_empty():
+		_cursor = ""
 	if reset_status and _filter == "all":
 		_all_entries_cache.assign(_entries)
 		_all_cache_loaded = true

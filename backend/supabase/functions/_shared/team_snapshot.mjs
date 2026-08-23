@@ -57,6 +57,60 @@ export function snapshotAnima(row, includeName = true) {
   return result;
 }
 
+export function atlasRosterSources(entries, teamSize, seed, maxSources = 24) {
+  if (!Array.isArray(entries) || teamSize < 2 || teamSize > 4) return [];
+  const pool = entries
+    .filter((entry) =>
+      entry && typeof entry === "object" &&
+      typeof entry.source_id === "string" &&
+      typeof entry.owner_id === "string" &&
+      entry.snapshot && typeof entry.snapshot === "object"
+    )
+    .sort((left, right) =>
+      stableRank(`${seed}:${left.source_id}`) -
+      stableRank(`${seed}:${right.source_id}`)
+    );
+  if (pool.length < teamSize) return [];
+
+  const rosters = [];
+  const seen = new Set();
+  for (let start = 0; start < pool.length && rosters.length < maxSources; start++) {
+    const selected = [];
+    const selectedIds = new Set();
+    const owners = new Set();
+    for (let offset = 0; offset < pool.length && selected.length < teamSize; offset++) {
+      const entry = pool[(start + offset) % pool.length];
+      if (selectedIds.has(entry.source_id) || owners.has(entry.owner_id)) continue;
+      selected.push(entry);
+      selectedIds.add(entry.source_id);
+      owners.add(entry.owner_id);
+    }
+    for (let offset = 0; offset < pool.length && selected.length < teamSize; offset++) {
+      const entry = pool[(start + offset) % pool.length];
+      if (selectedIds.has(entry.source_id)) continue;
+      selected.push(entry);
+      selectedIds.add(entry.source_id);
+    }
+    if (selected.length !== teamSize) continue;
+    const signature = selected.map((entry) => entry.source_id).sort().join(":");
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    rosters.push({
+      source_id: `atlas:${signature}`,
+      snapshot: selected.map((entry) => entry.snapshot),
+    });
+  }
+  return rosters;
+}
+
+function stableRank(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index++) {
+    hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+  }
+  return hash >>> 0;
+}
+
 export function asSnapshotArray(value) {
   if (!Array.isArray(value) || value.length < 1 || value.length > 4) return null;
   if (value.some((member) =>

@@ -82,8 +82,6 @@ func _ready() -> void:
 	_back.tooltip_text = tr("ACTION_BACK")
 	_choice_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_builder_back.flat = true
-	_builder_back.custom_minimum_size.x = 112.0
-	_builder_back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_roster_list.fixed_icon_size = Vector2i(96, 96)
 	_roster_list.max_columns = 1
 	_roster_list.fixed_column_width = 0
@@ -278,6 +276,9 @@ func set_builder(roster: Array, team: Dictionary = {}) -> void:
 		var unavailable := _member_unavailable(row)
 		_roster_list.add_item(tr("TEAM_ROSTER_ROW") % [
 			LocaleManager.display_name(row),
+			LocaleManager.level_label(
+				CareRules.level_from_exp(int(row.get("care_score", 0)))
+			),
 			tr(_member_status_key(unavailable)),
 			LocaleManager.element_compact(row),
 		], _thumbnail_provider.call(row) if _thumbnail_provider.is_valid() else null)

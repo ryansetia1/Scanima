@@ -52,27 +52,43 @@ kontradiksi.
 | Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, dan `feature_synthesis` semuanya `true` | matikan per flag |
 
 Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 25,
-`evolve_anima` 15, `replicate_webhook` 15, `battle_anima` 30, `team_battle` 9,
+`evolve_anima` 15, `replicate_webhook` 15, `battle_anima` 30, `team_battle` 10,
 `expedition` 16, `seeker` 6, `gallery` 19, `shop` 4, `care_anima` 9,
 `synthesize_anima` 7.
 
-Team Battle/Defense production sekarang menerima **2–4 Anima** dan builder
-selalu muncul sebelum Find Rivals; Expedition tetap tepat 4. Pilihan roster
-sekarang benar-benar berurutan dengan badge 1–4 (slot 1 aktif), dan melepas card
+Team Battle production menerima **2–4 Anima** dan rival selalu persis sebesar
+roster pemain. Candidate pemain dirakit dari publication Atlas approved beberapa
+Seeker, boleh bercampur pemilik tanpa owner/nickname privat; template sistem
+dipotong ke ukuran yang sama lalu balancing combat power lama tetap memilih
+tiga yang terdekat. Tidak ada lagi UI **Publish Defense** — Publish to Atlas
+adalah consent-nya. RPC Defense legacy tetap wire-compatible untuk rollback,
+tetapi tidak dibaca candidate baru. Migration
+`20260823003917_atlas_team_rivals` membawa source `atlas` dan pagar exact-size;
+`20260823073500_fix_veridian_public_name` memperbaiki projection Veridian di
+Gallery/Atlas/snapshot Duel tanpa menyentuh Rename privat.
+
+Builder selalu muncul sebelum Find Rivals; Expedition tetap tepat 4. Pilihan
+roster benar-benar berurutan dengan badge 1–4 (slot 1 aktif), dan melepas card
 yang sudah terpilih benar-benar melepasnya: `TeamRosterList` memakai
 `SELECT_TOGGLE`, sebab `SELECT_MULTI` menelan press deselect lalu menjatuhkan
 sisa tim saat jari diangkat — builder Expedition memakai list yang sama, jadi ia
-ikut sembuh. Menang memakai
-**Next Battle**, dan hasil lain memakai **Try Again**; keduanya membuka builder
-dengan tim terakhir tetap terpilih. Builder Team sekarang juga memakai row
-**Back + Save** seperti Expedition: Back membatalkan edit lalu kembali ke rival
-lobby, tetapi Back dikunci selama Save masih commit; semua jalur reopen
-memulihkan urutan tersimpan tanpa hub round trip.
-Boundary session Duel membersihkan pelat
-transient lama dan kegagalan start kembali merender lobby, jadi **Retreating**
-tidak bocor ke Anima berikutnya dan kartu Duel tidak menghilang. Migrasi
-`20260822152859_team_battle_variable_roster` membawa kontraknya. Unmapped 500
-Duel dicatat tanpa raw body ke `battle_failures` yang default-deny
+ikut sembuh. Picker keduanya sekarang juga menulis Level. **Back + Save Team**
+berbagi lebar 50/50; Back membatalkan edit lalu kembali ke rival lobby dan tetap
+dikunci selama Save commit. Menang memakai **Next Battle**, hasil lain memakai
+**Try Again**, dan semua jalur reopen memulihkan urutan tersimpan tanpa hub round
+trip.
+
+Boundary session Duel membersihkan pelat transient lama dan kegagalan start
+kembali merender lobby, jadi **Retreating** tidak bocor ke Anima berikutnya dan
+kartu Duel tidak menghilang. HUD nama/HP Duel sekarang dibungkus satu pelat, dan
+music cue membaca arena yang benar-benar terlihat supaya session Duel/Team yang
+tersembunyi tidak menahan musik battle di mode lobby lain. Atlas memberi
+**Publishing…/Unpublishing…**, membersihkan state publication Anima sebelumnya
+sebelum status baru tiba, dan mempertahankan penolakan moderation sebagai tombol
+disabled **Cannot publish to Atlas** alih-alih menghilangkannya. Pagination tetap
+mempertahankan grid saat page terakhir kosong dan menyembunyikan Load More saat
+cursor habis. Unmapped 500 Duel dicatat tanpa
+raw body ke `battle_failures` yang default-deny
 (`20260822155005_battle_failure_log` +
 `20260822160718_battle_failure_fk_indexes`), sementara terminal failure
 Evolve/Synthesis lewat helper fail-open agar kegagalan logging tidak menimpa
@@ -88,25 +104,33 @@ Header kiri menampilkan nama Seeker
 (`Guest Seeker` untuk guest), dan row resource hanya menyisakan Cores + Bits;
 Collection tetap di tab **Animas**.
 
-APK debug 23 Agustus 2026 **06:41** dibangun dan **terpasang** di perangkat
-(`com.rekansebangku.scanima` 0.1.0, 57.271.703 byte; `lastUpdateTime`
-06:44:39 menggantikan build yang terpasang 04:26). Ia memuat ordered/shared Team
-builder termasuk busy Back guard dan **perbaikan `SELECT_TOGGLE`**, CTA outcome,
-reset lifecycle + picker layer Duel, toast compact dengan relayout minimum
-terbaru, Seeker HUD, enam arena reframe, serta jalur sign-in guest untuk Publish
-to Atlas. Manifest tepat memuat `INTERNET` + `CAMERA`, class kamera ada di dex
-(22 rujukan `GodotGetImage`), dan signature sah. Gradle-nya inkremental: export
-selesai 9 detik, dan bahwa ia benar-benar mengambil source terbaru dibuktikan
-dengan membandingkan `assets/scripts/team_roster_list.gdc` terhadap APK
-sebelumnya (2.386 → 3.367 byte). Script diekspor sebagai `.gdc` tertokenisasi
-penuh, jadi jangan mencari nama identifier di dalam APK — `SELECT_TOGGLE` tidak
-muncul sebagai string bahkan ketika ia benar ada.
+APK debug 23 Agustus 2026 **08:03** dibangun dan **terpasang** di perangkat
+(`com.rekansebangku.scanima` 0.1.0, 57.273.971 byte; `lastUpdateTime`
+08:10:05 menggantikan build 06:44). Ia memuat feedback Publish Atlas, pagination
+akhir, Level picker, builder 50/50 tanpa Publish Defense, rival exact-size,
+perbaikan nama Veridian, pelat HUD + musik lobby Duel, serta seluruh perubahan
+build sebelumnya. Manifest tepat memuat `INTERNET` + `CAMERA`, class kamera ada
+di dex (22 rujukan `GodotGetImage`), dan signature v2 sah. Export inkremental
+selesai 9,8 detik; enam script client yang berubah terukur ada sebagai `.gdc` di
+APK. Script itu tertokenisasi penuh, jadi jangan mencari nama identifier di
+dalam APK.
+
+APK follow-up UAT **12:55** (57.276.155 byte) sudah dibangun dan diverifikasi:
+`INTERNET` + `CAMERA`, signature v2, serta `anima_details_view.gdc`,
+`scan_flow.gdc`, dan `test_scan_ui.gdc` ada. Build ini membawa state moderation
+Atlas yang tidak menghilang/berkedip serta musik lobby sesudah keluar Team
+Battle. Ia **terpasang** pukul 13:10:50 (`com.rekansebangku.scanima` 0.1.0)
+setelah endpoint Wireless debugging berpindah ke `100.96.188.61:42349`;
+streaming install pertama putus tanpa diagnostic, lalu `--no-streaming`
+mendorong 57 MB lewat DERP selama 200 detik dan sukses.
 
 Perangkatnya (`23127PN0CG`, HyperOS) tersambung **wireless lewat Tailscale**
-`100.96.188.61:34599`, bukan USB, dan koneksinya putus sendiri di antara
-perintah — `adb connect <ip>:<port>` menyambungkannya kembali dalam 3 detik, jadi
-`no devices/emulators found` di tengah sesi berarti reconnect, bukan kabel. Dua
-hal yang **tidak bisa** dilakukan dari sini: perangkat ini menolak
+`100.96.188.61:<port>`, bukan USB; port-nya berubah saat Wireless debugging
+diaktifkan ulang (terakhir `42349`) dan koneksinya putus sendiri di antara
+perintah. Selama endpoint aktif, `adb connect <ip>:<port>` menyambungkannya
+kembali; `Connection refused` walau `tailscale ping` masih membalas berarti
+endpoint ADB mati atau port berubah dan perlu dibuka lagi di perangkat. Dua hal
+yang **tidak bisa** dilakukan dari sini: perangkat ini menolak
 `adb shell input` dengan `SecurityException: INJECT_EVENTS` (butuh "USB debugging
 (Security settings)" di HyperOS), jadi layar tidak bisa dibangunkan atau dibuka
 kuncinya secara remote. Konsekuensinya, `monkey` yang meluncurkan app saat layar
@@ -293,8 +317,8 @@ npm run selftest                       # 42 skenario + 12 uji tanda tangan webho
 godot --headless --path game --script res://tests/test_sprite_slicing.gd # 174 check manifest, loader, presenter, Boss Seeker
 godot --headless --path game --script res://tests/test_auth_flow.gd    # 63 check PKCE secure, restart, transfer/separate, recovery, no-merge
 godot --headless --path game --script res://tests/test_client_state.gd  # 196 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, stale UID, retry transport
-godot --headless --path game --script res://tests/test_scan_ui.gd       # 1363 check shell + Battle + Shop + Bag + komponen + tap + touch + press/release roster sungguhan + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas + dialog Evolve gagal + preflight nama + LoadingScreen
-godot --headless --path game --script res://tests/test_i18n.gd          # 4749 check katalog + key + formatter + wrapping
+godot --headless --path game --script res://tests/test_scan_ui.gd       # 1378 check shell + Battle + Shop + Bag + komponen + tap + touch + press/release roster sungguhan + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas + dialog Evolve gagal + preflight nama + LoadingScreen
+godot --headless --path game --script res://tests/test_i18n.gd          # 4827 check katalog + key + formatter + wrapping
 godot --headless --path game --script res://tests/test_game_rules.gd    # 181 check care + EXP/Level/evolution + kontrak event Battle
 godot --headless --path game --script res://tests/test_expedition_route_map.gd # 91 check route tree + preview/Enter Node + Skip Shop + prediksi turn/Switch/penutup Boss + preload art run
 node backend/tools/emit_sim_vectors.mjs                                 # regen golden vector JS -> GDScript, nol panggilan API

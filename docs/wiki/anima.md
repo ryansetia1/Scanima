@@ -222,6 +222,6 @@ di koleksimu, jadi dua Anima serupa tidak lahir kembar. Kalau pilihannya
 benar-benar habis, nama kembar tetap diberikan — kamu bisa mengganti salah
 satunya.
 
-Nickname buatanmu hanya terlihat olehmu. Lawan Battle, Defense Team, dan
-[Anima Atlas](atlas.md) memakai nama spesies hasil Scan, Evolve, atau
+Nickname buatanmu hanya terlihat olehmu. Lawan Duel, campuran rival Team Battle,
+dan [Anima Atlas](atlas.md) memakai nama spesies hasil Scan, Evolve, atau
 Synthesis, bukan nickname.

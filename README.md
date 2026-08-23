@@ -9,6 +9,23 @@ Art style: 2D anime creature cel-shading — clean bold linework, flat colors, c
 
 ## Status
 
+**Atlas Team rivals dan battle polish, 23 Agustus 2026.** Team Battle production
+sekarang merakit rival 2–4 anggota dari publication Atlas beberapa Seeker,
+selalu persis sebesar roster pemain dan tetap melewati balancing combat power;
+template sistem exact-size menjadi fallback. Tidak ada lagi Publish Defense
+terpisah. Migration Atlas rival + perbaikan public name Veridian sudah live,
+`team_battle` 10 ACTIVE, dan APK debug yang memuat feedback Publishing, Level
+picker, tombol builder 50/50, pagination Atlas, pelat HUD Duel, serta perbaikan
+musik lobby sudah terpasang di perangkat playtest. UAT perangkat meluluskan
+pagination, builder, rival exact-size, picker Expedition, nama Veridian, dan
+pelat HUD; dua follow-up client yang ditemukannya dicatat di bawah.
+
+Follow-up UAT membersihkan state publication lama saat berpindah profil,
+mempertahankan penolakan moderation sebagai **Cannot publish to Atlas**, dan
+mengembalikan musik lobby saat arena Team tersembunyi sesudah Retreat. APK
+57.276.155 byte dibangun dan diverifikasi pukul 12:55, lalu terpasang di
+perangkat playtest pukul 13:10 lewat endpoint Wireless debugging barunya.
+
 **Anima Atlas build candidate, 18 Agustus 2026.** Gallery Feed sudah diganti
 secara lokal dengan registry form + discovery ledger server-authoritative,
 backfill owned/Duel/Expedition, satu grid All/Scanned/Expedition/Duel, siluet
@@ -205,11 +222,11 @@ npm run selftest                 # 41 skenario + 12 uji tanda tangan webhook, ta
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_client_state.gd
 
-# Godot: 1177 pemeriksaan shell, Atlas, touch, Battle, Seeker, roster, dan motion
+# Godot: 1378 pemeriksaan shell, Atlas, touch, Battle, Seeker, roster, dan motion
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_scan_ui.gd
 
-# Godot: 4638 pemeriksaan katalog English, referensi key, formatter, dan layout
+# Godot: 4822 pemeriksaan katalog English, referensi key, formatter, dan layout
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path game \
     --script res://tests/test_i18n.gd
 
@@ -337,8 +354,8 @@ scanima/
 │   └── tests/
 │       ├── test_sprite_slicing.gd    # headless, gratis
 │       ├── test_client_state.gd      # headless, gratis, tanpa jaringan
-│       ├── test_scan_ui.gd           # 1177 kontrak shell + Battle + Seeker + touch
-│       ├── test_i18n.gd              # 4638 kontrak katalog + key + wrapping
+│       ├── test_scan_ui.gd           # 1369 kontrak shell + Battle + Seeker + touch
+│       ├── test_i18n.gd              # 4822 kontrak katalog + key + wrapping
 │       ├── test_game_rules.gd        # 181 kontrak care + EXP/Level + event Battle
 │       ├── test_auth_flow.gd         # PKCE/deep-link/session backup, tanpa jaringan
 │       ├── live_scan.gd              # jalur sungguhan ke produksi, ~$0.003

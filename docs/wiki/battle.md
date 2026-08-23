@@ -37,20 +37,25 @@ tetap dapat kedaluwarsa.
 ## Team Battle
 
 Team Battle selalu membuka pemilih tim lebih dulu. Pilih dan konfirmasi **2–4
-Anima**, baru lanjut ke **Find Rivals** untuk melawan tim lain berisi 1–4 Anima.
-Arena tetap menampilkan satu fighter aktif dari setiap tim.
+Anima**, baru lanjut ke **Find Rivals**. Setiap rival selalu membawa jumlah
+Anima yang sama dengan timmu: 2 lawan 2, 3 lawan 3, atau 4 lawan 4. Arena tetap
+menampilkan satu fighter aktif dari setiap tim.
 
-- Pemilih tim menampilkan pose kebutuhan Anima saat ini. Teks **Ready**, **Low
-  Energy**, **Dormant**, atau **Not ready** tetap terlihat agar kesiapan tidak
-  bergantung pada warna saja. Ketuk card untuk menambah atau melepasnya. Card
-  terpilih diberi nomor sesuai urutan pilihan: **1** adalah Anima yang memulai
+- Pemilih tim menampilkan pose, Level, dan kebutuhan Anima saat ini. Teks
+  **Ready**, **Low Energy**, **Dormant**, atau **Not ready** tetap terlihat agar
+  kesiapan tidak bergantung pada warna saja. Ketuk card untuk menambah atau
+  melepasnya. Card terpilih diberi nomor sesuai urutan pilihan: **1** adalah Anima yang memulai
   battle, lalu **2–4** adalah urutan bench. Melepas satu card menomori ulang
   sisanya tanpa mengubah urutan mereka, dan card yang dipilih lagi masuk di
-  nomor terakhir. Urutan itu tetap sama saat builder dibuka lagi. **Back** membatalkan perubahan yang belum disimpan dan kembali
-  ke lobby rival; membuka builder lagi memulihkan urutan tim tersimpan.
+  nomor terakhir. Urutan itu tetap sama saat builder dibuka lagi. **Back** dan
+  **Save Team** berbagi lebar baris yang sama. Back membatalkan perubahan yang
+  belum disimpan dan kembali ke lobby rival; membuka builder lagi memulihkan
+  urutan tim tersimpan.
 - Setelah tim disimpan, lobby menawarkan sampai **tiga rival** dengan tier dan
-  Bits-nya masing-masing. **Find New Rivals** mengocok ulang pilihannya. Selama
-  belum banyak pemain memasang Defense Team, sebagian rival adalah tim sistem.
+  Bits-nya masing-masing. **Find New Rivals** mengocok ulang pilihannya. Rival
+  pemain dirakit dari Anima yang sudah **Publish to Atlas** dan dapat
+  mencampurkan Anima dari beberapa Seeker tanpa menampilkan identitas pemilik.
+  Kalau publication yang cocok belum cukup, rival berasal dari tim sistem.
 - Memulai battle memakai **10 Energy dari setiap anggota**.
 - Attack, Special, Guard, dan Item bekerja seperti Duel. **Super effective!**
   dan **Not very effective.** tampil besar di arena, tepat di bawah HUD. Pelat
@@ -101,9 +106,10 @@ Arena tetap menampilkan satu fighter aktif dari setiap tim.
   dari Duel.
 - Kalah, draw, atau Retreat tidak memberi hadiah.
 
-**Defense Team** bersifat opt-in dan juga menerima 2–4 Anima. Saat diaktifkan,
-snapshot timmu dapat menjadi lawan anonim untuk pemain lain; identitas Seeker
-dan nickname privat tidak ikut ditampilkan.
+Tidak ada langkah **Publish Defense** terpisah. Memilih **Publish to Atlas**
+adalah izin yang dipakai sistem untuk memasukkan Anima itu ke rival Team Battle
+baru. Unpublish menariknya dari pilihan rival berikutnya; nickname privat,
+identitas Seeker, dan session yang sudah berjalan tidak ikut berubah.
 
 ## Expedition
 
@@ -113,7 +119,8 @@ masing-masing berisi empat node pilihan. Jalur dapat berisi Battle, Elite,
 Recovery, Cache, Shop, atau Mystery sebelum melawan Boss
 Seeker.
 
-- Pemilih tim memakai art dan status kesiapan yang sama dengan Team Battle.
+- Pemilih tim memakai art, Level, dan status kesiapan yang sama dengan Team
+  Battle.
 - Peta zona berupa jalur bercabang. Ikon menunjukkan jenis node: pedang untuk
   Battle, pedang berkilau untuk Elite, peti untuk Cache, hati untuk Recovery,
   tanda tanya untuk Mystery, dan pedang bersilang untuk Boss. Ketuk node yang

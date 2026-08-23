@@ -64,9 +64,19 @@ dipilih, dan bias **Dominant A / Balanced / Dominant B**. Profil lengkap Source,
 Care, dan stats Source tetap privat. Membatalkan konfirmasi tidak menerbitkan
 apa pun.
 
-Art diperiksa sebelum dapat masuk pool lawan Duel. **Unpublish Lineage from
-Atlas** menarik lineage dari pool lawan baru dan menghapus entry-nya dari Atlas
-Seeker lain. Delete Anima melakukan hal yang sama.
+Sesudah konfirmasi, tombol berubah menjadi **Publishing…** sampai server selesai,
+jadi profil tetap menunjukkan bahwa prosesnya sedang berjalan.
+
+Art diperiksa sebelum dapat masuk pool lawan Duel dan campuran rival Team
+Battle. Moderation dapat menolak konten tidak aman atau art yang terlihat
+menyerupai karakter franchise. Jika ditolak, profil tetap menampilkan **Cannot
+publish to Atlas** dalam keadaan nonaktif agar hasilnya tidak hilang atau tampak
+seperti proses yang macet.
+
+Team Battle selalu merakit rival dengan jumlah anggota yang sama seperti tim
+penantang. **Unpublish Lineage from Atlas** menarik lineage dari pool lawan baru
+dan menghapus entry-nya dari Atlas Seeker lain. Delete Anima melakukan hal yang
+sama.
 
 Pada profil Anima pemain lain, **Report** menghapus lineage itu dari Atlas-mu.
 Jika laporan mencapai batas moderation, lineage ikut disembunyikan dari pemain

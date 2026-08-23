@@ -2105,6 +2105,38 @@ begin
   assert (v_j->>'published')::boolean,
          'Defense Team harus opt-in sebelum masuk pool';
 
+  begin
+    perform public.replace_team_battle_candidates(
+      u1,
+      v_team_id,
+      jsonb_build_array(jsonb_build_object(
+        'opponent_source', 'atlas',
+        'opponent_team_id', null,
+        'opponent_snapshot', v_opponent_snapshot - 3,
+        'reward_tier', 'even',
+        'reward_roll', 0,
+        'reward_bits', 8
+      ))
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'INVALID_TEAM_CANDIDATES');
+  end;
+  assert ok, 'rival Atlas harus persis sebesar roster pemain';
+  v_j := public.replace_team_battle_candidates(
+    u1,
+    v_team_id,
+    jsonb_build_array(jsonb_build_object(
+      'opponent_source', 'atlas',
+      'opponent_team_id', null,
+      'opponent_snapshot', v_opponent_snapshot,
+      'reward_tier', 'even',
+      'reward_roll', 0,
+      'reward_bits', 8
+    ))
+  );
+  assert v_j->0->>'opponent_source' = 'atlas',
+         'rival campuran dari publication Atlas harus diterima';
+
   v_j := public.replace_team_battle_candidates(
     u1,
     v_team_id,

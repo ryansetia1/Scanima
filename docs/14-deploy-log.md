@@ -2,6 +2,83 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Follow-up UAT state Publish Atlas dan musik Retreat Team
+
+23 Agustus 2026 pukul 12:40 WIB, UAT membuktikan dua bug client dan satu hasil
+moderation yang sah. Probe production menemukan Padronic dan Drakabyss tersimpan
+`rejected` dengan alasan model bahwa art tampak seperti karakter/creature
+franchise yang dapat dikenali. VerdantPup, klasik, dan Sunhound tersimpan
+`approved`. Pagar moderation tidak dibypass dan tidak ada perubahan backend,
+migration, maupun panggilan model tambahan.
+
+Profile sebelumnya masih membawa status publication Anima lama selama request
+`my_status` berikutnya terbang, sehingga **Unpublish from Atlas** sempat
+berkedip menjadi **Publish to Atlas**. Sekarang pergantian `anima_id`
+membersihkan state itu lebih dulu. Rejection dari response Publish maupun status
+server berikutnya tetap terlihat sebagai tombol disabled **Cannot publish to
+Atlas**, bukan membuat tombol hilang; toast juga menjelaskan kategori konten
+tidak aman/franchise tanpa membocorkan output model mentah.
+
+Team Battle menyembunyikan view setelah hasil Retreat, tetapi arena terminalnya
+sengaja tetap tersimpan untuk reopen. `music_cue` sebelumnya membaca arena
+internal itu tanpa memeriksa visibility. Ia sekarang memakai gate immersive
+yang sama dengan shell chrome: hanya arena Duel, Team, atau Expedition yang
+benar-benar terlihat yang dapat meminta musik Battle/Boss.
+
+Pagar gratis lulus: 42 skenario shared + 12 signature webhook, **1.378** check
+UI, dan **4.827** i18n; linter serta compile check tiga GDScript bersih. APK
+debug 57.276.155 byte dibangun pukul 12:55, memuat `INTERNET` + `CAMERA`,
+signature v2 sah, dan ketiga script yang berubah ada sebagai `.gdc`. Install
+selesai pukul 13:10:50 setelah Wireless debugging memberi endpoint baru
+`100.96.188.61:42349`; streamed install pertama putus tanpa diagnostic, lalu
+`--no-streaming` mendorong 57 MB lewat DERP selama 200 detik dan sukses.
+
+## Rival Team dari Atlas, public name Veridian, dan client battle polish
+
+23 Agustus 2026, migration `20260823003917_atlas_team_rivals` dan
+`20260823073500_fix_veridian_public_name` ter-apply tanpa drift; blok
+`quota_rules.sql` lulus sesudahnya. `team_battle` 10 ACTIVE,
+`verify_jwt=true`, dan smoke tanpa token menjawab 401
+`UNAUTHORIZED_NO_AUTH_HEADER`.
+
+Team Battle tidak lagi membaca Defense Team yang harus dipublish manual.
+`createCandidates` membaca publication Atlas yang published + approved +
+tidak auto-hidden, menetralkan care snapshot, lalu merakit kombinasi unik tepat
+sebesar roster pemain (2, 3, atau 4). Kombinasi mengutamakan pemilik berbeda,
+tetapi boleh memakai dua publication pemilik yang sama bila jumlah Seeker belum
+cukup; `owner_id` dan nickname privat tidak masuk snapshot. Template sistem
+dipotong ke ukuran yang sama, lalu pipeline combat-power tier yang sudah ada
+tetap memilih sampai tiga candidate paling dekat. RPC replace dan start session
+sama-sama menolak jumlah anggota berbeda. Probe production sesudah deploy
+menemukan 2 publication Team yang eligible dan 3 template sistem aktif yang
+masing-masing berisi 4 anggota, jadi roster 3/4 tetap punya fallback exact-size.
+
+Migration kedua memperbaiki hanya projection legacy Veridian
+`c80ddef5-533d-4f36-9f26-7f449981e996` yang masih generik. Probe sesudah apply:
+`gallery_entries.display_name = Veridian`,
+`atlas_forms.display_name = Veridian`, dan nol snapshot Duel Veridian tersisa
+dengan nama kosong/`Anima`. Rename privat tidak disentuh.
+
+Client build yang sama membawa:
+
+- **Publishing… / Unpublishing…** dan lock tombol selama request Atlas;
+- pagination Atlas yang mempertahankan grid lama dan menyembunyikan **Load
+  More** setelah cursor habis;
+- Level di picker Team/Expedition serta row **Back + Save Team** dengan lebar
+  50/50;
+- hilangnya **Publish Defense**;
+- pelat gelap berbingkai cyan yang membungkus nama/HP kedua fighter Duel;
+- cue musik yang membaca arena Duel yang benar-benar terlihat, bukan session
+  lama yang tersembunyi saat masuk mode lobby lain.
+
+Pagar gratis lulus: 42 skenario shared + 12 signature webhook, 1.369 check UI,
+dan 4.822 i18n. Deno CLI tidak terpasang di mesin ini, tetapi deploy bundling
+Edge Function sukses. APK debug 57.273.971 byte dibangun dalam 9,8 detik,
+memuat tepat `INTERNET` + `CAMERA`, 22 referensi `GodotGetImage`, dan signature
+v2 sah. Install wireless ke `23127PN0CG` sukses pukul 08:10:05 WIB. Layar
+perangkat masih `Dozing` dan HyperOS tetap menolak input injection, jadi boot
+dan tap flow client baru masih menunggu layar dibuka manual.
+
 ## Kelayakan lawan Duel diputuskan simulasi, bukan taksiran
 
 23 Agustus 2026, `battle_anima` 30 ACTIVE (`verify_jwt=true`, smoke 401); nol

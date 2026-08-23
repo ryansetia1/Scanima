@@ -161,8 +161,7 @@ var _switch_sheet: PanelContainer
 func _ready() -> void:
 	_back.tooltip_text = tr("ACTION_BACK")
 	_builder_back.flat = true
-	_builder_back.custom_minimum_size.x = 112.0
-	_builder_back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_save_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_roster_list.fixed_icon_size = Vector2i(96, 96)
 	_roster_list.max_columns = 1
 	_roster_list.fixed_column_width = 0
@@ -172,7 +171,7 @@ func _ready() -> void:
 	_save_button.pressed.connect(_save_team)
 	_rival_list.item_selected.connect(_select_candidate)
 	_edit_button.pressed.connect(_edit_team)
-	_defense_button.pressed.connect(_toggle_defense)
+	_defense_button.visible = false
 	_refresh_button.pressed.connect(_refresh_candidates)
 	_start_button.pressed.connect(_start_candidate)
 	_attack_button.pressed.connect(_request_action.bind("strike", -1))
@@ -335,6 +334,9 @@ func set_builder(roster: Array, existing_team: Dictionary = {}) -> void:
 		var unavailable := _team_member_unavailable(row)
 		var label := tr("TEAM_ROSTER_ROW") % [
 			LocaleManager.display_name(row),
+			LocaleManager.level_label(
+				CareRules.level_from_exp(int(row.get("care_score", 0)))
+			),
 			tr(_team_member_status_key(unavailable)),
 			LocaleManager.element_compact(row),
 		]

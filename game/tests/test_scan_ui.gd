@@ -2018,6 +2018,8 @@ func _test_battle_view() -> void:
 	var feedback := view.find_child("BattleFeedback", true, false) as Label
 	var effectiveness := view.find_child("BattleEffectiveness", true, false) as Control
 	var event_plate := view.find_child("BattleEventPlate", true, false) as PanelContainer
+	var fighter_hud_plate := view.find_child("FighterHudPlate", true, false) as PanelContainer
+	var fighter_hud := view.find_child("FighterHud", true, false) as HBoxContainer
 	var effectiveness_label := view.find_child(
 		"BattleEffectivenessLabel", true, false
 	) as Label
@@ -2030,6 +2032,13 @@ func _test_battle_view() -> void:
 	var player_sprite := view.find_child("BattlePlayerSprite", true, false) as AnimaPresenter
 	var bot_sprite := view.find_child("BattleBotSprite", true, false) as AnimaPresenter
 
+	_check(
+		fighter_hud_plate != null
+		and fighter_hud != null
+		and fighter_hud.get_parent() == fighter_hud_plate
+		and fighter_hud_plate.has_theme_stylebox_override(&"panel"),
+		"Duel wraps both fighter names and HP bars in one readable arena plate"
+	)
 	_check(
 		team_button.visible and not team_button.disabled,
 		"Team entry is ready immediately from last-known availability"
@@ -2981,9 +2990,10 @@ func _test_team_battle_view() -> void:
 		builder_back != null
 		and builder_back.flat
 		and builder_back.custom_minimum_size.y >= 96.0
-		and builder_back.size_flags_horizontal == Control.SIZE_SHRINK_BEGIN
+		and builder_back.size_flags_horizontal == Control.SIZE_EXPAND_FILL
+		and save.size_flags_horizontal == Control.SIZE_EXPAND_FILL
 		and builder_back.get_parent() == save.get_parent(),
-		"Team builder shares Expedition's compact Back-and-Save action row",
+		"Team builder gives Back and Save equal full-width shares",
 	)
 	view.call("_edit_team")
 	var builder_scroll := view.find_child("TeamBuilderScroll", true, false) as ScrollContainer
@@ -4011,8 +4021,11 @@ func _test_expedition_view() -> void:
 	)
 	var builder_back := view.find_child("ExpeditionBuilderBack", true, false) as Button
 	_check(
-		builder_back.flat and builder_back.size_flags_horizontal != Control.SIZE_EXPAND_FILL,
-		"Expedition Back stays compact while preserving its touch height"
+		builder_back.flat
+		and builder_back.size_flags_horizontal == Control.SIZE_EXPAND_FILL
+		and save_team.size_flags_horizontal == Control.SIZE_EXPAND_FILL
+		and builder_back.get_parent() == save_team.get_parent(),
+		"Expedition builder gives Back and Save equal full-width shares"
 	)
 	var run := {
 		"id": "expedition-run",
@@ -4400,6 +4413,18 @@ func _test_atlas_publish_offers_sign_in() -> void:
 		and resume.find("_roster_row(anima_id)") > consumed,
 		"and is consumed before its guards, so a separate account cannot inherit it"
 	)
+	var commit := _func_body(source, "func _commit_atlas_publish(")
+	_check(
+		commit.find("res.error == \"GALLERY_MODERATION_REJECTED\"") >= 0
+		and commit.find("\"rejected\": true") >= 0,
+		"a moderation rejection becomes a persistent disabled Profile state"
+	)
+	var refresh := _func_body(source, "func _refresh_gallery_status(")
+	_check(
+		refresh.find("moderation_rejected") >= 0
+		and refresh.find("\"rejected\": moderation_rejected") >= 0,
+		"reopening that Profile restores the same rejected state from the server"
+	)
 
 
 ## Keep Guest Separate meninggalkan Anima guest di akun yang tidak lagi terlihat,
@@ -4657,7 +4682,30 @@ func _test_atlas_view() -> void:
 	for node_name: String in ["AtlasAll", "AtlasScanned", "AtlasExpedition", "AtlasDuel"]:
 		_check(view.find_child(node_name, true, false) is Button, "%s filter exists" % node_name)
 	var atlas_grid := view.find_child("AtlasGrid", true, false) as GridContainer
+	var load_more := view.find_child("AtlasLoadMore", true, false) as Button
 	_check(atlas_grid != null and atlas_grid.columns == 3, "Atlas uses a compact three-column grid")
+	var final_page_entries: Array[Dictionary] = [{
+		"form_id": "final-page-form",
+		"discovered": true,
+		"display_name": "Final Sprig",
+		"element": "plant",
+		"stage": 1,
+	}]
+	view.set("_entries", final_page_entries)
+	view.set("_cursor", "")
+	view.call("_present_entries")
+	await process_frame
+	_check(
+		atlas_grid.get_child_count() == 1 and not load_more.visible,
+		"Atlas keeps its final entries while hiding Load More after the cursor ends"
+	)
+	var atlas_source := FileAccess.get_file_as_string("res://scripts/atlas_view.gd")
+	var fetch_page := _func_body(atlas_source, "func _fetch_page(")
+	_check(
+		fetch_page.find("typeof(next_cursor) == TYPE_STRING") >= 0
+		and fetch_page.find("if batch.is_empty():\n\t\t_cursor = \"\"") >= 0,
+		"Atlas normalizes a null or empty final cursor instead of requesting a blank page"
+	)
 	var discovered := view.call("_make_card", {
 		"form_id": "form-discovered",
 		"discovered": true,
@@ -5338,6 +5386,7 @@ func _test_anima_delete_action() -> void:
 	var backdrop := details.find_child("ProfileActionBackdrop", true, false) as Button
 	var rename := details.find_child("ProfileActionRename", true, false) as Button
 	var button := details.find_child("ProfileActionDelete", true, false) as Button
+	var gallery_button := details.find_child("GalleryPublishButton", true, false) as Button
 	_requested_delete_id = ""
 	_requested_rename_id = ""
 	details.rename_requested.connect(_capture_rename_request)
@@ -5373,6 +5422,31 @@ func _test_anima_delete_action() -> void:
 	menu.pressed.emit()
 	backdrop.pressed.emit()
 	_check(not popover.visible, "tapping outside dismisses the profile action menu")
+	details.set_gallery_status({"available": true, "published": true})
+	_check(
+		gallery_button.visible and gallery_button.text == tr("GALLERY_UNPUBLISH"),
+		"the current Anima can show its approved published state"
+	)
+	var next_row: Dictionary = details.get("_row").duplicate(true)
+	next_row["id"] = "anima-gallery-next"
+	details.set_anima(next_row, null)
+	_check(
+		not gallery_button.visible,
+		"opening another profile hides the previous Anima's Atlas state until status arrives"
+	)
+	details.set_gallery_status({"available": true, "published": false})
+	details.set_gallery_pending(true, true)
+	_check(
+		gallery_button.visible and gallery_button.disabled
+		and gallery_button.text == tr("GALLERY_PUBLISHING"),
+		"Atlas publish keeps a visible disabled progress cue"
+	)
+	details.set_gallery_status({"available": false, "rejected": true})
+	_check(
+		gallery_button.visible and gallery_button.disabled
+		and gallery_button.text == tr("GALLERY_PUBLISH_REJECTED"),
+		"moderation rejection remains visible instead of making Publish disappear"
+	)
 	details.set_busy(true)
 	_check(menu.disabled and rename.disabled, "network work disables rename")
 	_check(button.disabled and not popover.visible, "network work disables and closes destructive actions")
@@ -7426,6 +7500,72 @@ func _check_music(scene: Node) -> void:
 	# The shell picks the cue; the director only obeys. Off-tree the battle views
 	# are null, which is exactly the state a boot before the first frame is in.
 	_check_eq(scene.call("_music_cue"), &"lobby", "a shell outside Battle asks for lobby music")
+
+	var battle_view: Variant = (load("res://scenes/ui/battle_view.tscn") as PackedScene).instantiate()
+	root.add_child(battle_view)
+	await process_frame
+	var battle_view_before: Variant = scene.get("_battle_view")
+	var destination_before := int(scene.get("_destination"))
+	scene.set("_battle_view", battle_view)
+	scene.set("_destination", BottomNav.BATTLE)
+	battle_view.visible = true
+	battle_view.show_duel_mode()
+	battle_view.set_session({
+		"id": "music-duel",
+		"status": "active",
+		"turn_number": 1,
+		"player_snapshot": {"name": "Velumi", "element": "spark", "stage": 1},
+		"bot_snapshot": {"name": "Veridian", "element": "flow", "stage": 1},
+		"state": {
+			"player": {"hp": 100, "max_hp": 100, "momentum": 0, "spd": 10},
+			"bot": {"hp": 100, "max_hp": 100, "momentum": 0, "spd": 10},
+		},
+	})
+	_check_eq(scene.call("_music_cue"), &"battle", "a visible Duel arena asks for battle music")
+	battle_view.show_team_mode()
+	_check(
+		battle_view.has_session() and not battle_view.is_duel_arena_open(),
+		"switching modes can leave a stale Duel session hidden behind the Battle lobby"
+	)
+	_check_eq(
+		scene.call("_music_cue"),
+		&"lobby",
+		"a hidden stale Duel session cannot keep battle music in the mode lobby"
+	)
+	battle_view.show_duel_mode()
+	battle_view.set_lobby({})
+
+	var team_view: Variant = (
+		load("res://scenes/ui/team_battle_view.tscn") as PackedScene
+	).instantiate()
+	root.add_child(team_view)
+	await process_frame
+	var team_view_before: Variant = scene.get("_team_battle_view")
+	scene.set("_team_battle_view", team_view)
+	team_view.set("_session", {"id": "music-team", "status": "lost"})
+	var team_arena := team_view.find_child("TeamArena", true, false) as Control
+	team_view.visible = true
+	team_arena.visible = true
+	_check_eq(
+		scene.call("_music_cue"),
+		&"battle",
+		"a visible Team Battle arena asks for battle music"
+	)
+	team_view.close_mode()
+	_check(
+		team_view.is_arena_open() and not team_view.visible,
+		"leaving a terminal Team Battle can hide the mode while its arena state remains"
+	)
+	_check_eq(
+		scene.call("_music_cue"),
+		&"lobby",
+		"a hidden Team Battle arena cannot keep music after returning to the lobby"
+	)
+	scene.set("_team_battle_view", team_view_before)
+	team_view.queue_free()
+	scene.set("_battle_view", battle_view_before)
+	scene.set("_destination", destination_before)
+	battle_view.queue_free()
 
 	var music := MusicDirector.new()
 	root.add_child(music)

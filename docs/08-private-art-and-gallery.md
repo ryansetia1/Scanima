@@ -18,7 +18,7 @@ unik dan privat.
 | Reuse art antar pemain | **Tidak** — tidak ada cache hit Discovery Scan; dua pemain memfoto objek sama tetap masing-masing membayar generation |
 | Visibilitas default | **Privat** — hanya pemilik (dan sistem otoritatif) melihat sheet/manifest penuh |
 | Anima Atlas | Discovery log form Scanned/Expedition/Duel; publikasi lineage pemain bersifat opt-in |
-| Bot Battle | Hanya Anima yang **published ke Atlas** masuk pool lawan pemain; fallback sistem jika pool kosong |
+| Bot Battle | Hanya Anima yang **published ke Atlas** masuk pool lawan Duel/Team; fallback sistem jika pool kosong |
 
 Motivasi ekonomi: biaya generation (~$0.07 per capture diterima) harus selalu tertutup Core; biaya Vision (~$0.003) dibatasi Scan Charge agar percobaan gate tidak meledak tanpa batas.
 
@@ -79,7 +79,7 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | Sheet RGBA + manifest penuh | Row `animas` / storage path scoped `owner_id` | Hanya `auth.uid() = owner_id` | Tidak |
 | Thumbnail publikasi (jika publish) | Sistem + referensi ke generation | Tidak (baca lewat endpoint Atlas) | Ya, moderated |
-| Metadata Battle bot (snapshot) | Derived dari publish | Lawan duel: snapshot anonim | Tidak identitas |
+| Metadata Battle bot (snapshot) | Derived dari publish | Lawan Duel/Team: snapshot anonim | Tidak identitas |
 | Registry form Atlas | `atlas_forms` | Tidak langsung; Edge Function service-role | Hanya subset hasil discovery |
 | Discovery Seeker | `seeker_atlas_discoveries` | Tidak langsung; ditulis trigger authoritative | Hanya milik Seeker lewat endpoint |
 
@@ -110,9 +110,10 @@ encounter authoritative.
 2. Aksi **Publish Lineage to Atlas** menjelaskan bahwa generated profile, form
    yang ditemui, dan nama Seeker saat ini dapat terlihat.
 3. Server enqueue moderation (otomatis + manual jika flag).
-4. Setelah `approved`, lineage masuk pool Duel.
+4. Setelah `approved`, lineage masuk pool Duel dan campuran rival Team Battle.
 5. Battle session authoritative mencatat form lawan ke Atlas penantang.
-6. **Unpublish** menarik lineage dari pool dan menghapus discovery non-owner.
+6. **Unpublish** menarik lineage dari pool session baru dan menghapus discovery
+   non-owner.
 
 Moderation memeriksa thumbnail yang sama seperti gate capture: tidak manusia, tidak NSFW, tidak simbol terlarang. Reject tidak menghapus Anima privat pemain.
 
@@ -146,6 +147,13 @@ graph TD
 
 Ini memberi insentif publish tanpa memaksa: duel tetap jalan lewat fallback, tetapi variasi art lawan datang dari komunitas yang opt-in.
 
+Team Battle memakai publication yang sama tanpa **Publish Defense** kedua.
+Server mengacak publication milik Seeker lain menjadi roster unik berisi tepat
+sebanyak roster penantang (2–4), lalu menilai combat power total seperti
+sebelumnya. Kalau pool Atlas tidak cukup, template sistem dipotong ke ukuran
+yang sama. Candidate dan start session sama-sama menolak snapshot dengan jumlah
+anggota berbeda.
+
 ## 7. Implikasi biaya (live vs historis)
 
 | Metrik | Model historis (shared cache) | Target (privat) |
@@ -161,7 +169,7 @@ Angka historis cache hit (50% → $0.038 blended, dll.) tetap berguna sebagai ca
 ## 8. Batas implementasi yang sengaja ditunda
 
 - IAP, rewarded ads, BYOK — tetap di roadmap; kontrak Core/Scan tidak menunggu monetisasi final.
-- PvP ranked, tim multi-Anima, item drop — di luar scope dokumen ini.
+- PvP ranked dan item drop — di luar scope dokumen ini.
 - Migrasi data: Anima lama di pustaka bersama membutuhkan rencana transisi terpisah (freeze publish, tidak dijelaskan di sini).
 
 ## 9. Pemeriksaan kontrak
@@ -170,11 +178,11 @@ Saat implementasi, verifikasi minimal:
 
 - Dua akun memfoto objek identik → dua generation terpisah, dua debit Core, tidak share `sheet_path`.
 - Guest / linked: aturan slot guest dan grant starter tetap; grant mingguan hanya linked, interval 7 hari server, saldo gratis ≤ 3.
-- Battle tanpa publication → fallback sistem, bukan error.
+- Duel/Team Battle tanpa publication yang cukup → fallback sistem, bukan error.
 - Atlas: detail Duel hanya mengembalikan nama Seeker; tidak ada nickname, care,
   account ID, foto, atau link profil.
-- Unpublish/Delete/auto-hide → hilang dari Atlas non-owner dan pool bot session
-  berikutnya.
+- Unpublish/Delete/auto-hide → hilang dari Atlas non-owner dan pool Duel/Team
+  session berikutnya.
 - Report → lineage hilang dari Atlas reporter.
 
 Rincian rumus Battle (18 elemen, Attack/Special element) ada di [04 §5](04-game-systems-economy.md).

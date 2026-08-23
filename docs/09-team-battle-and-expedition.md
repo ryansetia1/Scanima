@@ -1,12 +1,9 @@
 # 09 — Team Battle, Expedition, dan Chapter Factory
 
-Dokumen ini adalah spesifikasi target untuk dua mode setelah Duel 1v1:
-**Team Battle** async dan **Expedition** bercabang. Keduanya memakai formula
-combat Scanima yang sama, tetapi state, reward, dan rollout-nya terpisah dari
-Duel yang sudah live.
-
-Sampai feature flag terkait aktif, panduan pemain di `docs/wiki/` tetap
-menjelaskan Duel saja.
+Dokumen ini adalah spesifikasi production untuk **Team Battle** async dan
+**Expedition** bercabang. Keduanya memakai formula combat Scanima yang sama,
+tetapi state, reward, dan rollout-nya terpisah dari Duel. Feature flag keduanya
+aktif; perilaku pemain yang live diringkas di `docs/wiki/battle.md`.
 
 ## 1. Prinsip
 
@@ -15,8 +12,8 @@ menjelaskan Duel saja.
 2. **Server tetap berwenang.** Client hanya mengirim intent, slot switch, dan
    idempotency key. HP, map, reward, unlock, dan Trophy tidak pernah dipercaya
    dari client.
-3. **Roster terpisah, satu aktif.** Team Battle dan Defense menerima 2–4 Anima;
-   Expedition tetap membutuhkan tepat empat. Arena tetap 1 aktif vs 1 aktif.
+3. **Roster terpisah, satu aktif.** Team Battle menerima 2–4 Anima; Expedition
+   tetap membutuhkan tepat empat. Arena tetap 1 aktif vs 1 aktif.
 4. **Konten baru tidak membutuhkan update app.** Chapter adalah manifest
    immutable + aset CDN. Mekanik/effect type baru tetap membutuhkan build baru.
 5. **Tidak ada model call saat pemain bermain.** Semua art dan copy chapter
@@ -43,18 +40,23 @@ server boleh menjawab expired dan client membersihkan bookmark lokal.
   Builder memakai row Back + Save seperti Expedition. Back membatalkan edit dan
   kembali ke rival lobby, tetapi dikunci selama Save masih commit; builder
   berikutnya memulihkan urutan server/lokal yang sama.
-- Defense Team menerima 2–4 Anima, disimpan terpisah, dan hanya masuk pool lawan
-  setelah opt-in.
-- Snapshot Defense tidak membawa owner ID, Seeker Name, atau nickname privat.
+- Pool pemain dibentuk dari Anima yang publication Atlas-nya masih published,
+  approved, tidak auto-hidden, ready, dan dimiliki Seeker lain. Satu rival dapat
+  mencampurkan publication beberapa pemilik; Anima yang sama tidak boleh masuk
+  dua kali.
+- Snapshot rival memakai nama species publik dari publication. Ia tidak membawa
+  owner ID, Seeker Name, atau nickname privat.
 - Mengubah roster pemilik tidak mengubah session yang sudah dimulai.
 - Jika pool pemain kosong, server menyediakan system team.
 
 Lobby menawarkan tiga candidate: **Favorable**, **Even**, dan **Tough**.
-Kekuatan dibandingkan dari total combat power roster, bukan jumlah anggota.
-Lawan boleh membawa 1–4 Anima; satu lawan sangat kuat sah menjadi mini-boss.
-Fresh database mempunyai satu system team placeholder supaya lobby tidak
-dead-end sebelum Defense opt-in tersedia. Feature flag tidak boleh aktif luas
-sebelum placeholder itu diganti roster/art authored oleh Chapter Factory.
+Setiap candidate wajib memiliki jumlah anggota yang persis sama dengan roster
+pemain; RPC penyimpan candidate dan RPC start sama-sama menolak ukuran berbeda.
+Kekuatan kemudian dibandingkan dari total combat power kedua roster. System team
+dipotong ke ukuran yang sama sebelum masuk penilaian. Fresh database mempunyai
+satu system team placeholder supaya lobby tidak dead-end sebelum publication
+Atlas cukup banyak. Feature flag tidak boleh aktif luas sebelum placeholder itu
+diganti roster/art authored oleh Chapter Factory.
 
 ### Eligibility dan Energy
 
@@ -404,9 +406,10 @@ combat encounter per owner mencegah Duel/Team/Expedition berjalan bersamaan,
 tetapi run Expedition boleh disimpan di antara node saat pemain memakai mode
 lain.
 
-Anima yang terikat active zone/encounter tidak boleh dihapus. Defense snapshot
-yang kehilangan sumber art dinonaktifkan dari candidate pool. Chapter version
-yang masih dipakai active run tidak boleh dibersihkan.
+Anima yang terikat active zone/encounter tidak boleh dihapus. Publication Atlas
+yang di-unpublish, di-auto-hide, atau kehilangan sumber art tidak ikut candidate
+baru; snapshot session yang sudah dimulai tetap immutable. Chapter version yang
+masih dipakai active run tidak boleh dibersihkan.
 
 RLS aktif pada seluruh row pemain. RPC yang mengubah Energy, Bits, EXP, Tokens,
 checkpoint, atau Trophy dicabut dari `public`, `anon`, dan `authenticated`, lalu
@@ -480,8 +483,9 @@ sekarang konsisten menyebut Nimbelisk. Seluruh asset binary tetap byte-identik,
 jadi koreksi ini tidak memanggil model.
 
 `feature_expedition`, `feature_chapter_push`, dan `feature_team_battle` aktif.
-Team Battle production menerima roster pemain/Defense 2–4 melalui migration
-`20260822152859_team_battle_variable_roster`; Expedition tetap tepat empat.
+Team Battle menerima roster pemain 2–4 melalui migration
+`20260822152859_team_battle_variable_roster`; candidate dari Atlas wajib sama
+besar melalui `20260823003917_atlas_team_rivals`. Expedition tetap tepat empat.
 Jalur announcement in-app sudah aktif; push OS pertama masih menunggu
 konfigurasi FCM sehingga belum terkirim.
 

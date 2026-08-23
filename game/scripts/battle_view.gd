@@ -1136,9 +1136,9 @@ func _sprite_for(actor: String) -> AnimaPresenter:
 
 
 func _fighter_title(snapshot: Dictionary, fallback_name: String = "") -> String:
-	var anima_name := fallback_name
+	var anima_name := str(snapshot.get("name", "")).strip_edges()
 	if anima_name.is_empty():
-		anima_name = str(snapshot.get("name", tr("ANIMA_FALLBACK_NAME")))
+		anima_name = fallback_name if not fallback_name.is_empty() else tr("ANIMA_FALLBACK_NAME")
 	var level := int(snapshot.get("level", 0))
 	if level <= 0:
 		level = CareRules.level_from_exp(int(snapshot.get("care_score", 0)))

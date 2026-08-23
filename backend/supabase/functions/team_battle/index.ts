@@ -12,6 +12,8 @@ import {
 } from "../_shared/team_combat.mjs";
 import {
   asSnapshotArray,
+  atlasRosterSources,
+  snapshotAnima,
   teamSnapshotFromMembers,
 } from "../_shared/team_snapshot.mjs";
 import { withSignedRoster } from "../_shared/signed_roster.ts";
@@ -122,7 +124,7 @@ type TeamRow = {
 };
 
 type CandidateSource = {
-  source: "defense" | "system";
+  source: "atlas" | "defense" | "system";
   source_id: string;
   opponent_team_id: string | null;
   snapshot: Record<string, unknown>[];
@@ -243,52 +245,80 @@ async function createCandidates(ownerId: string, body: TeamBody): Promise<Respon
     : asUuid(body.team_id, "team_id");
   const playerTeam = await loadTeam(ownerId, teamId, "team_battle");
   const playerSnapshot = teamSnapshot(playerTeam, true);
+  const teamSize = playerSnapshot.length;
+  const seed = crypto.randomUUID();
 
-  const [{ data: defenses, error: defenseError }, { data: systems, error: systemError }] =
+  const [{ data: publications, error: publicationError }, { data: systems, error: systemError }] =
     await Promise.all([
       db
-        .from("anima_teams")
-        .select("id, owner_id, snapshot")
-        .eq("kind", "defense")
+        .from("gallery_entries")
+        .select(
+          "id, owner_id, display_name, stage, "
+          + "animas!inner(id, owner_id, species_key, color_bucket, stage, element, "
+          + "secondary_element, base_stats, body_height_cm, care_score, status, "
+          + "strike_name, surge_name, evolution_version, strike_effect_id, "
+          + "surge_effect_id, sheet_path, manifest)",
+        )
         .eq("published", true)
+        .eq("moderation_status", "approved")
+        .eq("auto_hidden", false)
         .neq("owner_id", ownerId)
-        .not("snapshot", "is", null)
-        .limit(100),
+        .eq("animas.status", "ready")
+        .limit(200),
       db
         .from("system_team_templates")
         .select("id, roster_snapshot")
         .eq("active", true)
         .limit(50),
     ]);
-  if (defenseError) throw defenseError;
+  if (publicationError) throw publicationError;
   if (systemError) throw systemError;
 
   const sources: CandidateSource[] = [];
-  for (const row of defenses ?? []) {
-    const snapshot = asSnapshotArray(row.snapshot);
-    if (snapshot) {
-      sources.push({
-        source: "defense",
-        source_id: row.id,
-        opponent_team_id: row.id,
-        snapshot,
-      });
-    }
+  const atlasEntries = [];
+  for (const row of publications ?? []) {
+    const anima = row.animas as unknown as AnimaRow;
+    if (
+      !anima ||
+      Number(row.stage) !== Number(anima.stage) ||
+      !anima.sheet_path ||
+      !anima.manifest
+    ) continue;
+    const snapshot = snapshotAnima({
+      ...anima,
+      care: { hunger: 100, hygiene: 100 },
+    }, false) as Record<string, unknown>;
+    snapshot.name = typeof row.display_name === "string" && row.display_name.trim()
+      ? row.display_name.trim().slice(0, 48)
+      : "Anima";
+    atlasEntries.push({
+      source_id: row.id,
+      owner_id: row.owner_id,
+      snapshot,
+    });
+  }
+  for (const source of atlasRosterSources(atlasEntries, teamSize, seed)) {
+    sources.push({
+      source: "atlas",
+      source_id: source.source_id,
+      opponent_team_id: null,
+      snapshot: source.snapshot,
+    });
   }
   for (const row of systems ?? []) {
     const snapshot = asSnapshotArray(row.roster_snapshot);
-    if (snapshot) {
+    const exactSnapshot = snapshot?.slice(0, teamSize);
+    if (exactSnapshot?.length === teamSize) {
       sources.push({
         source: "system",
         source_id: row.id,
         opponent_team_id: null,
-        snapshot,
+        snapshot: exactSnapshot,
       });
     }
   }
   if (sources.length === 0) throw new Error("NO_TEAM_OPPONENT");
 
-  const seed = crypto.randomUUID();
   const targets = [0.9, 1.0, 1.15];
   const selected: Array<CandidateSource & { reward: ReturnType<typeof teamRewardPreview> }> = [];
   for (const target of targets) {
@@ -383,6 +413,9 @@ async function startTeamBattle(ownerId: string, body: TeamBody): Promise<Respons
   if (!opponentSnapshot) throw new Error("INVALID_TEAM_SNAPSHOT");
 
   const playerSnapshot = teamSnapshot(team, true);
+  if (opponentSnapshot.length !== playerSnapshot.length) {
+    throw new Error("INVALID_TEAM_SNAPSHOT");
+  }
   const seed = crypto.randomUUID();
   const initialState = createTeamBattleState({
     player: playerSnapshot,

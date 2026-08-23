@@ -867,10 +867,14 @@ rumus combat bergeser, kalibrasinya gagal di sana.
 ### Team Battle dan Expedition
 
 Team Battle tidak mengubah economy Duel. Ia mempunyai cap account-wide sendiri:
-baseline **2 rewarded wins** dan **40 Bits per hari sipil lokal**. Empat anggota
-membayar 10 Energy saat session baru dibuat. Level lawan memakai rata-rata
-roster snapshot yang dibulatkan; setiap anggota memakai Level snapshot-nya
-sendiri. `full_yield` memakai formula Duel, lalu fighter hidup yang pernah aktif
+baseline **2 rewarded wins** dan **40 Bits per hari sipil lokal**. Setiap anggota
+roster pemain yang berisi 2–4 Anima membayar 10 Energy saat session baru dibuat.
+Rival pemain dirakit dari publication Atlas approved milik Seeker lain; satu
+roster boleh mencampurkan beberapa pemilik, tetapi ukurannya wajib persis sama
+dengan roster pemain. Rival sistem dipotong ke ukuran yang sama. Sesudah itu
+balancing tetap membandingkan combat power total kedua roster. Level lawan
+memakai rata-rata roster snapshot yang dibulatkan; setiap anggota memakai Level
+snapshot-nya sendiri. `full_yield` memakai formula Duel, lalu fighter hidup yang pernah aktif
 mendapat `ceil(full_yield / 2)`, bench hidup mendapat
 `ceil(full_yield / 4)`, dan KO mendapat 0. Loss, draw, dan forfeit nol.
 Result memfilter `anima_exp` ke row `exp > 0`, menampilkan nama penerima serta

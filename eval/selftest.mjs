@@ -141,7 +141,10 @@ import {
   teamCombatPower,
   teamRewardPreview,
 } from "../backend/supabase/functions/_shared/team_combat.mjs";
-import { teamSnapshotFromMembers } from "../backend/supabase/functions/_shared/team_snapshot.mjs";
+import {
+  atlasRosterSources,
+  teamSnapshotFromMembers,
+} from "../backend/supabase/functions/_shared/team_snapshot.mjs";
 import {
   applyEncounterBoosts,
   applyNodeOption,
@@ -2640,6 +2643,38 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
     () => teamSnapshotFromMembers([...storedMembers, storedMembers[0]], true, 2, 4),
     /TEAM_REQUIRES_TWO_TO_FOUR/,
   );
+  const atlasEntries = [
+    ["a", "owner-a"],
+    ["b", "owner-b"],
+    ["c", "owner-c"],
+    ["d", "owner-d"],
+    ["e", "owner-a"],
+  ].map(([sourceId, ownerId]) => ({
+    source_id: sourceId,
+    owner_id: ownerId,
+    snapshot: member(`atlas-${sourceId}`),
+  }));
+  for (const size of [2, 3, 4]) {
+    const atlasSources = atlasRosterSources(
+      atlasEntries,
+      size,
+      `atlas-size-${size}`,
+    );
+    assert.ok(atlasSources.length > 0);
+    assert.ok(
+      atlasSources.every((source) => source.snapshot.length === size),
+      `setiap rival Atlas harus tepat ${size} anggota`,
+    );
+    assert.ok(
+      new Set(atlasSources[0].snapshot.map((entry) => entry.anima_id)).size === size,
+      "rival Atlas tidak boleh memakai Anima yang sama dua kali",
+    );
+  }
+  assert.deepEqual(
+    atlasRosterSources(atlasEntries.slice(0, 2), 3, "too-small"),
+    [],
+    "pool Atlas yang kurang tidak boleh menghasilkan tim parsial",
+  );
   const opponent = [
     member("o0", { hp: 10, def: 10, spd: 10 }),
     member("o1", { hp: 10, def: 10, spd: 10 }),
@@ -2894,6 +2929,28 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
       teamEdge.includes("MIN_TEAM_SIZE,") &&
       teamEdge.includes("MAX_TEAM_SIZE,"),
     "Edge Team Battle harus menjaga kontrak roster 2-4",
+  );
+  const candidateHandler = teamEdge.slice(
+    teamEdge.indexOf("async function createCandidates"),
+    teamEdge.indexOf("async function teamStatus"),
+  );
+  assert.ok(
+    candidateHandler.includes('.from("gallery_entries")') &&
+      candidateHandler.includes('.eq("published", true)') &&
+      candidateHandler.includes('.eq("moderation_status", "approved")') &&
+      candidateHandler.includes('.eq("auto_hidden", false)') &&
+      candidateHandler.includes('source: "atlas"'),
+    "rival Team pemain harus berasal dari publication Atlas yang aktif",
+  );
+  assert.ok(
+    !candidateHandler.includes('.from("anima_teams")') &&
+      candidateHandler.includes("atlasRosterSources(atlasEntries, teamSize, seed)") &&
+      candidateHandler.includes("snapshot?.slice(0, teamSize)"),
+    "Defense manual harus diganti roster Atlas/system tepat sebesar tim pemain",
+  );
+  assert.ok(
+    teamEdge.includes("opponentSnapshot.length !== playerSnapshot.length"),
+    "start Team Battle harus menolak kandidat yang ukurannya tidak sama",
   );
   const signedRoster = await readFile(
     new URL(
