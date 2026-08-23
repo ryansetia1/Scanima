@@ -152,3 +152,8 @@ text = "ATLAS_FILTER_DUEL"
 unique_name_in_owner = true
 layout_mode = 1
 scroll_content = true
+
+[node name="AtlasReportSheet" parent="." unique_id=204304677 instance=ExtResource("3_sheet")]
+unique_name_in_owner = true
+layout_mode = 1
+scroll_content = true

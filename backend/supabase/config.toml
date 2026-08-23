@@ -57,6 +57,13 @@ import_map = "./functions/import_map.json"
 verify_jwt = false
 import_map = "./functions/import_map.json"
 
+# Staff-only. verify_jwt=true confirms the caller has a real Supabase session
+# (the admin app's Google-authenticated user), but the actual authorization —
+# is this subject in staff_accounts — happens inside the function itself.
+[functions.admin_moderation]
+verify_jwt = true
+import_map = "./functions/import_map.json"
+
 [api]
 enabled = true
 # Port to use for the API URL.

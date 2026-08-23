@@ -49,12 +49,29 @@ kontradiksi.
 | `synthesis_prompt_version` | `v45` | `v44` |
 | `RULES_VERSION` combat | `3` | snapshot `evolution_version=0` tetap legacy |
 | Chapter aktif | The Sugarworks v7 | v1–v6 immutable untuk run lama |
-| Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, dan `feature_synthesis` semuanya `true` | matikan per flag |
+| Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, `feature_synthesis`, dan `feature_atlas_moderation_v2` semuanya `true` | matikan per flag |
 
 Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 25,
 `evolve_anima` 15, `replicate_webhook` 15, `battle_anima` 30, `team_battle` 10,
 `expedition` 16, `seeker` 6, `gallery` 19, `shop` 4, `care_anima` 9,
-`synthesize_anima` 7.
+`synthesize_anima` 7, `admin_moderation` (staff-only, tanpa rate limit publik).
+
+Atlas Moderation Admin v2 live 23 Agustus 2026: migration
+`20260823080000_atlas_moderation_v2_schema` ter-apply, `admin_moderation`
+dan `gallery` (moderasi dua-pass) dideploy, admin pertama
+(`ryansetiawan.works@gmail.com`) sudah di-bootstrap sebagai `admin` di
+`staff_accounts`, dan `feature_atlas_moderation_v2=true`. Redirect
+`http://localhost:3000/auth/callback**` ditambahkan ke allowlist Auth lewat
+Management API secara surgical (PATCH hanya field `uri_allow_list`, bukan
+`supabase config push` — file `config.toml` lokal punya entri
+`https://127.0.0.1:3000` yang TIDAK pernah benar-benar live di remote, dan
+section Google OAuth-nya memakai placeholder `env(...)` yang akan menimpa
+client secret asli kalau di-push utuh). Setelah apply migration,
+`staff_accounts` dan tabel baru lain sempat menjawab 500 dari
+`admin_moderation` karena cache schema PostgREST belum reload untuk tabel
+yang baru dibuat; `notify pgrst, 'reload schema'` memperbaikinya seketika —
+kalau tabel baru menjawab lewat SQL langsung tapi tidak lewat `.from()`
+client, ini pagarnya.
 
 Team Battle production menerima **2–4 Anima** dan rival selalu persis sebesar
 roster pemain. Candidate pemain dirakit dari publication Atlas approved beberapa
@@ -124,9 +141,18 @@ setelah endpoint Wireless debugging berpindah ke `100.96.188.61:42349`;
 streaming install pertama putus tanpa diagnostic, lalu `--no-streaming`
 mendorong 57 MB lewat DERP selama 200 detik dan sukses.
 
+APK debug 23 Agustus 2026 **22:24** (54,6 MB) dibangun dan **terpasang**
+membawa seluruh client Atlas Moderation Admin v2: tombol **Under Review**,
+**Request Review** (appeal, satu kali per versi art), dan category sheet
+Report (character/sexual/gore/hate/other) menggantikan one-tap report lama.
+`INTERNET` + `CAMERA` tepat dua izin, 22 rujukan `GodotGetImage` di dex,
+signature v2 sah. Endpoint Wireless debugging pindah ke `100.96.188.61:34921`
+untuk build ini; streaming install langsung sukses tanpa perlu
+`--no-streaming`.
+
 Perangkatnya (`23127PN0CG`, HyperOS) tersambung **wireless lewat Tailscale**
 `100.96.188.61:<port>`, bukan USB; port-nya berubah saat Wireless debugging
-diaktifkan ulang (terakhir `42349`) dan koneksinya putus sendiri di antara
+diaktifkan ulang (terakhir `34921`) dan koneksinya putus sendiri di antara
 perintah. Selama endpoint aktif, `adb connect <ip>:<port>` menyambungkannya
 kembali; `Connection refused` walau `tailscale ping` masih membalas berarti
 endpoint ADB mati atau port berubah dan perlu dibuka lagi di perangkat. Dua hal
@@ -262,6 +288,18 @@ Result reveal animation, dan skeleton History — ikut APK 22 Agustus 2026. Jalu
 - Background Home/Duel mencampur pasangan PNG siang–malam di shader berdasarkan jam lokal absolut: fajar 05:30–06:30, siang penuh sampai 17:30, dan senja 17:30–18:30, disampel tiap detik supaya resume tidak melompat. Home, Duel, dan Team Battle masing-masing punya varian 9:16 dan 16:9 yang dipilih dari aspect viewport. Kaki Home tetap pada ground line 68% portrait / 69% landscape di **rect art dasar**, bukan pada viewport. Karena pasangan portrait day/night menggambar pusat dais pada row berbeda, background portrait diberi overscan 1,11× lalu focal point dais-nya diikat ke Stage; background yang bergerak halus saat blend, bukan Anima. Home juga memberi contact shadow radial yang mengikuti bbox kaki dan visibility pose. Enam background statis Duel/Team portrait/landscape day/night sekarang mengomposisi foot-contact baseline 91% seperti Expedition/Boss; runtime memakai cover maksimum 1,0× dan pan vertikal `0.5` agar crop portrait mempertahankan langit, sedangkan background chapter tetap boleh zoom sampai 1,55×. Duel memakai dock 2×2, Team menonjolkan Attack/Special di baris dua kolom lalu Guard/Item/Switch/Retreat di baris empat kolom, sedangkan Expedition tetap 3+3. Art Home hidup di root canvas di belakang `Stage`; peta node The Sugarworks memakai top-view sendiri, dan art chapter dari server tetap menang serta tetap center-crop di combat Expedition.
 - `Backend.gd` satu-satunya tempat yang tahu URL project dan kunci. Kuncinya **publishable** (`sb_publishable_...`) dan memang ikut ke dalam build; yang membatasi akses RLS, bukan kerahasiaannya. Terukur diterima endpoint yang dipakai client: `auth/signup`, `auth/token`, identity authorize/link, REST, Storage, dan `functions/v1` (`create_anima`, `care_anima`, `battle_anima`, `shop`, `seeker`, `gallery`). Yang tidak boleh masuk ke sana sampai kapan pun: `REPLICATE_API_TOKEN` atau service role key.
 - Yang persist hanya sesi aman aktif + guest perangkat + verifier PKCE sementara di SecureStore, marker `pending_oauth`/`pending_account_switch` nonrahasia, scan yang sedang berjalan, satu `pending_care`, satu `pending_battle` berisi session/turn/version + intent + idempotency key, dan satu `pending_purchase`. Saldo, kebutuhan, tas, profil Seeker, dan daftar Anima **selalu** dibaca ulang dari Postgres — server yang berwenang. Pending intent dihapus hanya setelah server menjawab; timeout/restart me-replay key yang sama supaya Bits, damage, reward, atau grant Google tidak commit dua kali.
+
+## Konvensi admin console
+
+`admin/` adalah workspace npm terpisah: Next.js 16 App Router, local-only,
+untuk staff moderasi Atlas (queue, reports, appeals, decisions, sanctions,
+staff, audit, analytics). Browser hanya memegang Supabase URL + publishable
+key; setiap operasi privileged lewat Edge Function `admin_moderation` yang
+memverifikasi role dari `staff_accounts`, bukan dari `proxy.ts` (konvensi
+Next.js 16 pengganti `middleware.ts`, dipakai hanya untuk refresh cookie).
+Detail lengkap dan state machine moderasi di
+[`docs/designs/2026-08-23-atlas-moderation-admin.md`](docs/designs/2026-08-23-atlas-moderation-admin.md);
+pagar Next.js-nya di `.cursor/rules/admin-guardrails.mdc`.
 
 ## Konvensi backend
 
@@ -420,7 +458,7 @@ Tandai penyederhanaan yang disengaja dengan komentar `ponytail:` yang menyebut p
 
 ## Di mana sisanya hidup
 
-Lima rule di bawah `alwaysApply: false` dan hanya masuk konteks saat file yang
+Enam rule di bawah `alwaysApply: false` dan hanya masuk konteks saat file yang
 cocok dengan glob-nya disentuh. Isinya dipindahkan verbatim dari file ini, jadi
 angka terukurnya tidak berubah — kalau butuh detail satu domain, buka
 rule-nya, jangan menebak.
@@ -432,6 +470,7 @@ rule-nya, jangan menebak.
 | `.cursor/rules/backend-guardrails.mdc` | `backend/` | Identitas dan guest, care authoritative, decay, gerbang nama, RLS, advisor yang disengaja, jebakan PostgREST |
 | `.cursor/rules/art-and-prompt-pipeline.mdc` | `backend/prompts/`, `_shared/postprocess`/`vision`/`png`, `create_anima`, `evolve_anima`, `backend/tools/`, `eval/` | Vision dan wrapper Replicate, chroma key, slicing, encoder PNG, latensi model, art direction chapter |
 | `.cursor/rules/android-and-plugins.mdc` | `game/android/`, `game/addons/`, preset export, `scan_flow.gd`, `auth_flow.gd` | Plugin kamera, OAuth/deep link, sinyal plugin, verifikasi APK |
+| `.cursor/rules/admin-guardrails.mdc` | `admin/**` | `proxy.ts` bukan gerbang otorisasi, staff role hanya dari `staff_accounts`, larangan service-role di browser, scope moderasi-only |
 
 Dua rule lain sudah ada sejak sebelumnya: `player-wiki.mdc` (`alwaysApply: true`)
 dan `sfx-presentation.mdc`.

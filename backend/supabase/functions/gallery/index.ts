@@ -24,8 +24,10 @@ const OPERATIONS = new Set([
   "publish",
   "unpublish",
   "report",
+  "appeal",
   "my_status",
 ]);
+const REPORT_CATEGORIES = new Set(["character", "sexual", "gore", "hate", "other"]);
 const FILTERS = new Set(["all", "scanned", "expedition", "duel"]);
 const LIST_LIMIT_DEFAULT = 24;
 const LIST_LIMIT_MAX = 48;
@@ -54,6 +56,12 @@ const ERROR_STATUS: Record<string, number> = {
   VISION_MODERATION_FAILED: 502,
   ATLAS_FORM_NOT_FOUND: 404,
   SYNTHESIS_CONSENT_REQUIRED: 409,
+  INVALID_REPORT_CATEGORY: 400,
+  INVALID_REPORT_NOTE: 400,
+  ENTRY_NOT_REJECTED: 409,
+  APPEAL_ALREADY_USED: 409,
+  ATLAS_PUBLISH_SUSPENDED: 409,
+  ATLAS_REPORT_SUSPENDED: 409,
 };
 
 type GalleryBody = {
@@ -66,6 +74,8 @@ type GalleryBody = {
   cursor?: unknown;
   limit?: unknown;
   synthesis_source_consent?: unknown;
+  category?: unknown;
+  note?: unknown;
 };
 
 const db = adminClient();
@@ -123,6 +133,7 @@ Deno.serve(async (req) => {
     if (operation === "publish") return await publishEntry(ownerId, body);
     if (operation === "unpublish") return await unpublishEntry(ownerId, body);
     if (operation === "report") return await reportEntry(ownerId, body);
+    if (operation === "appeal") return await appealEntry(ownerId, body);
     if (operation === "hide") return await hideEntry(ownerId, body);
     return json(400, { error: "operation tidak dikenal" });
   } catch (error) {
@@ -164,6 +175,27 @@ async function galleryFeatureEnabled(): Promise<boolean> {
   if (typeof data?.value === "boolean") return data.value;
   if (typeof data?.value === "string") return data.value === "true";
   return false;
+}
+
+let moderationV2Cache: boolean | null = null;
+let moderationV2CacheUntil = 0;
+
+async function moderationV2Enabled(): Promise<boolean> {
+  const now = Date.now();
+  if (moderationV2Cache !== null && now < moderationV2CacheUntil) {
+    return moderationV2Cache;
+  }
+  const { data } = await db.from("app_config").select("value").eq(
+    "key",
+    "feature_atlas_moderation_v2",
+  ).maybeSingle();
+  moderationV2Cache = typeof data?.value === "boolean"
+    ? data.value
+    : typeof data?.value === "string"
+    ? data.value === "true"
+    : false;
+  moderationV2CacheUntil = now + FEATURE_CACHE_MS;
+  return moderationV2Cache;
 }
 
 async function listLegacyEntries(
@@ -731,6 +763,9 @@ async function myStatus(ownerId: string, body: GalleryBody): Promise<Response> {
       ? {
         id: entry.id,
         moderation_status: entry.moderation_status,
+        status: entry.moderation_status === "pending"
+          ? "under_review"
+          : entry.moderation_status,
         published: entry.published,
         auto_hidden: entry.auto_hidden,
         published_at: entry.published_at,
@@ -745,6 +780,7 @@ async function publishEntry(
   body: GalleryBody,
 ): Promise<Response> {
   await requireLinkedGoogle(ownerId);
+  await requireNoActiveSanction(ownerId, "atlas_publish", "ATLAS_PUBLISH_SUSPENDED");
   const animaId = asUuid(body.anima_id, "anima_id");
 
   const { data: anima, error: animaError } = await db
@@ -766,7 +802,7 @@ async function publishEntry(
   const [
     { normalizeSuggestedName },
     { cropIdleThumb },
-    { moderateSheetImage },
+    moderationModule,
   ] = await Promise.all([
     import("../_shared/vision.mjs"),
     import("../_shared/gallery_shared.mjs"),
@@ -797,43 +833,11 @@ async function publishEntry(
   const sheetBytes = new Uint8Array(await sheetBlob.arrayBuffer());
   const artHash = await sha256Hex(sheetBytes);
 
-  let moderationStatus = "pending";
-  let rejectReason: string | null = null;
-
-  const { data: cachedMod } = await db
-    .from("gallery_moderations")
-    .select("status, reject_reason")
-    .eq("art_hash", artHash)
-    .maybeSingle();
-
-  if (cachedMod) {
-    moderationStatus = cachedMod.status === "approved"
-      ? "approved"
-      : "rejected";
-    rejectReason = cachedMod.reject_reason ?? null;
-  } else {
-    const { data: signed } = await db.storage
-      .from("anima_sheets")
-      .createSignedUrl(anima.sheet_path, BATTLE_SHEET_SIGNED_TTL);
-    if (!signed?.signedUrl) throw new Error("VISION_MODERATION_FAILED");
-
-    let moderation;
-    try {
-      moderation = await moderateSheetImage(signed.signedUrl);
-    } catch (e) {
-      console.error("gallery moderation vision gagal", e);
-      throw new Error("VISION_MODERATION_FAILED");
-    }
-
-    moderationStatus = moderation.safe ? "approved" : "rejected";
-    rejectReason = moderation.reject_reason;
-    const { error: modError } = await db.from("gallery_moderations").insert({
-      art_hash: artHash,
-      status: moderationStatus,
-      reject_reason: rejectReason,
-    });
-    if (modError && !modError.message.includes("duplicate")) throw modError;
-  }
+  const v2 = await moderationV2Enabled();
+  const outcome = v2
+    ? await resolveModerationV2(moderationModule, artHash, anima.sheet_path)
+    : await resolveModerationV1(moderationModule, artHash, anima.sheet_path);
+  const moderationStatus = outcome.status;
 
   if (moderationStatus === "rejected") {
     const { error: rejectedError } = await db.from("gallery_entries").upsert({
@@ -854,6 +858,60 @@ async function publishEntry(
     }, { onConflict: "anima_id" });
     if (rejectedError) throw rejectedError;
     throw new Error("GALLERY_MODERATION_REJECTED");
+  }
+
+  if (moderationStatus === "pending") {
+    // v2 only: pass 2 stayed uncertain. Reversible, not a dead end — a
+    // manual case is opened for staff instead of a hard rejection.
+    const { data: pendingRow, error: pendingError } = await db
+      .from("gallery_entries")
+      .upsert({
+        owner_id: ownerId,
+        anima_id: animaId,
+        art_hash: artHash,
+        display_name: displayName,
+        element: anima.element,
+        secondary_element: anima.secondary_element,
+        stage: anima.stage,
+        thumb_path: null,
+        moderation_status: "pending",
+        published: false,
+        auto_hidden: false,
+        report_count: 0,
+        published_at: null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "anima_id" })
+      .select("id")
+      .single();
+    if (pendingError) throw pendingError;
+
+    const { error: caseError } = await db.rpc("moderation_open_case_for_entry", {
+      p_entry_id: pendingRow.id,
+      p_art_hash: artHash,
+      p_source: "publish",
+      p_category: outcome.category ?? null,
+      p_confidence: outcome.confidence ?? null,
+      p_reason_code: outcome.reason_code ?? "pass2_uncertain",
+    });
+    if (caseError) {
+      // The entry upsert above already committed "pending" — if opening the
+      // case then fails, that would strand the entry in "under review"
+      // forever with no case for staff to ever find. Fail closed instead:
+      // fall back to "rejected" (still appealable, which reopens a case) so
+      // a transient RPC failure can never produce an invisible dead end.
+      await db.from("gallery_entries").update({
+        moderation_status: "rejected",
+        updated_at: new Date().toISOString(),
+      }).eq("id", pendingRow.id);
+      throw caseError;
+    }
+
+    return json(200, {
+      entry_id: pendingRow.id,
+      published: false,
+      moderation_status: "pending",
+      display_name: displayName,
+    });
   }
 
   const thumbBytes = await cropIdleThumb(sheetBytes, anima.manifest);
@@ -928,6 +986,161 @@ async function publishEntry(
   });
 }
 
+type ModerationOutcome = {
+  status: "approved" | "rejected" | "pending";
+  reject_reason: string | null;
+  category?: string | null;
+  confidence?: string | null;
+  reason_code?: string;
+};
+
+// deno-lint-ignore no-explicit-any
+async function resolveModerationV1(
+  mod: any,
+  artHash: string,
+  sheetPath: string,
+): Promise<ModerationOutcome> {
+  const { data: cachedMod } = await db
+    .from("gallery_moderations")
+    .select("status, reject_reason")
+    .eq("art_hash", artHash)
+    .maybeSingle();
+  if (cachedMod) {
+    return {
+      status: cachedMod.status === "approved" ? "approved" : "rejected",
+      reject_reason: cachedMod.reject_reason ?? null,
+    };
+  }
+
+  const { data: signed } = await db.storage
+    .from("anima_sheets")
+    .createSignedUrl(sheetPath, BATTLE_SHEET_SIGNED_TTL);
+  if (!signed?.signedUrl) throw new Error("VISION_MODERATION_FAILED");
+
+  let moderation;
+  try {
+    moderation = await mod.moderateSheetImage(signed.signedUrl);
+  } catch (e) {
+    console.error("gallery moderation vision gagal", e);
+    throw new Error("VISION_MODERATION_FAILED");
+  }
+
+  const status = moderation.safe ? "approved" : "rejected";
+  const { error: modError } = await db.from("gallery_moderations").insert({
+    art_hash: artHash,
+    status,
+    reject_reason: moderation.reject_reason,
+  });
+  if (modError && !modError.message.includes("duplicate")) throw modError;
+  return { status, reject_reason: moderation.reject_reason };
+}
+
+// deno-lint-ignore no-explicit-any
+async function resolveModerationV2(
+  mod: any,
+  artHash: string,
+  sheetPath: string,
+): Promise<ModerationOutcome> {
+  const { data: cachedMod } = await db
+    .from("gallery_moderations")
+    .select("status, reject_reason, policy_version")
+    .eq("art_hash", artHash)
+    .maybeSingle();
+  if (cachedMod && cachedMod.policy_version === mod.MODERATION_POLICY_VERSION) {
+    return {
+      status: cachedMod.status === "approved" ? "approved" : "rejected",
+      reject_reason: cachedMod.reject_reason ?? null,
+    };
+  }
+
+  const { data: signed } = await db.storage
+    .from("anima_sheets")
+    .createSignedUrl(sheetPath, BATTLE_SHEET_SIGNED_TTL);
+  if (!signed?.signedUrl) throw new Error("VISION_MODERATION_FAILED");
+
+  let pass1;
+  try {
+    pass1 = await mod.moderateSheetPass(signed.signedUrl, 1);
+  } catch (e) {
+    console.error("gallery moderation vision gagal (pass1)", e);
+    throw new Error("VISION_MODERATION_FAILED");
+  }
+  await recordModerationRun(artHash, 1, pass1, mod);
+
+  if (pass1.category !== "ip_character") {
+    // hard safety categories and a clean "none" are both final at pass 1.
+    return await finalizeModerationV2(artHash, pass1, mod, 1);
+  }
+
+  // Soft IP uncertainty gets exactly one automated second opinion, never a
+  // third pass.
+  let pass2;
+  try {
+    pass2 = await mod.moderateSheetPass(signed.signedUrl, 2);
+  } catch (e) {
+    console.error("gallery moderation vision gagal (pass2)", e);
+    throw new Error("VISION_MODERATION_FAILED");
+  }
+  await recordModerationRun(artHash, 2, pass2, mod);
+
+  const decision = mod.moderationPassDecision(2, pass2);
+  if (decision !== "uncertain") {
+    return await finalizeModerationV2(artHash, pass2, mod, 2);
+  }
+  return {
+    status: "pending",
+    reject_reason: null,
+    category: pass2.category === "none" ? null : pass2.category,
+    confidence: pass2.confidence,
+    reason_code: pass2.reason_code,
+  };
+}
+
+// deno-lint-ignore no-explicit-any
+async function recordModerationRun(
+  artHash: string,
+  pass: number,
+  result: { category: string; confidence: string; reason_code: string; matched_name: string | null; model: string },
+  mod: any,
+): Promise<void> {
+  const { error } = await db.from("gallery_moderation_runs").insert({
+    art_hash: artHash,
+    pass,
+    decision: mod.moderationPassDecision(pass, result),
+    category: result.category === "none" ? null : result.category,
+    confidence: result.confidence,
+    reason_code: result.reason_code,
+    evidence: result.matched_name ? { matched_name: result.matched_name } : {},
+    model: result.model,
+    policy_version: mod.MODERATION_POLICY_VERSION,
+  });
+  if (error) throw error;
+}
+
+async function finalizeModerationV2(
+  artHash: string,
+  result: { category: string; confidence: string; reason_code: string; matched_name: string | null; model: string },
+  // deno-lint-ignore no-explicit-any
+  mod: any,
+  passCount: number,
+): Promise<ModerationOutcome> {
+  const status = result.category === "none" ? "approved" : "rejected";
+  const rejectReason = status === "rejected" ? result.reason_code : null;
+  const { error } = await db.from("gallery_moderations").upsert({
+    art_hash: artHash,
+    status,
+    reject_reason: rejectReason,
+    category: result.category === "none" ? null : result.category,
+    confidence: result.confidence,
+    evidence: result.matched_name ? { matched_name: result.matched_name } : {},
+    model: result.model,
+    policy_version: mod.MODERATION_POLICY_VERSION,
+    pass_count: passCount,
+  }, { onConflict: "art_hash" });
+  if (error) throw error;
+  return { status, reject_reason: rejectReason };
+}
+
 async function unpublishEntry(
   ownerId: string,
   body: GalleryBody,
@@ -983,10 +1196,13 @@ async function reportEntry(
   ownerId: string,
   body: GalleryBody,
 ): Promise<Response> {
+  await requireNoActiveSanction(ownerId, "atlas_report", "ATLAS_REPORT_SUSPENDED");
   const entryId = asUuid(body.entry_id, "entry_id");
+  const category = parseReportCategory(body.category);
+  const note = parseReportNote(body.note);
   const { data: entry, error } = await db
     .from("gallery_entries")
-    .select("id, owner_id, published, auto_hidden, report_count")
+    .select("id, owner_id, published, auto_hidden")
     .eq("id", entryId)
     .maybeSingle();
   if (error) throw error;
@@ -997,40 +1213,73 @@ async function reportEntry(
     throw new Error("GALLERY_ENTRY_NOT_FOUND");
   }
 
-  const { error: reportError } = await db.from("gallery_reports").insert({
-    entry_id: entryId,
-    reporter_id: ownerId,
-  });
-  if (reportError && !reportError.message.includes("duplicate")) {
-    throw reportError;
-  }
-
-  const { count } = await db
-    .from("gallery_reports")
-    .select("id", { count: "exact", head: true })
-    .eq("entry_id", entryId);
-  const reportCount = count ?? entry.report_count;
-  let autoHidden = entry.auto_hidden;
-  if (reportCount >= GALLERY_REPORT_AUTO_HIDE && !autoHidden) {
-    autoHidden = true;
-    await db.from("gallery_entries").update({
-      auto_hidden: true,
-      report_count: reportCount,
-      updated_at: new Date().toISOString(),
-    }).eq("id", entryId);
-  } else if (reportCount !== entry.report_count) {
-    await db.from("gallery_entries").update({
-      report_count: reportCount,
-      updated_at: new Date().toISOString(),
-    }).eq("id", entryId);
-  }
+  const { data: result, error: rpcError } = await db.rpc(
+    "moderation_report_and_maybe_case",
+    {
+      p_entry_id: entryId,
+      p_reporter_id: ownerId,
+      p_category: category,
+      p_note: note,
+      p_auto_hide_threshold: GALLERY_REPORT_AUTO_HIDE,
+    },
+  );
+  if (rpcError) throw rpcError;
 
   return json(200, {
     reported: true,
     entry_id: entryId,
-    auto_hidden: autoHidden,
-    report_count: reportCount,
+    auto_hidden: Boolean(result?.newly_hidden),
+    report_count: Number(result?.report_count ?? 0),
   });
+}
+
+async function appealEntry(
+  ownerId: string,
+  body: GalleryBody,
+): Promise<Response> {
+  const animaId = asUuid(body.anima_id, "anima_id");
+  const note = parseReportNote(body.note);
+  const { data: entry, error } = await db
+    .from("gallery_entries")
+    .select("id, owner_id")
+    .eq("anima_id", animaId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!entry || entry.owner_id !== ownerId) {
+    throw new Error("GALLERY_ENTRY_NOT_FOUND");
+  }
+
+  const { data: caseId, error: rpcError } = await db.rpc(
+    "moderation_file_appeal",
+    { p_entry_id: entry.id, p_owner_id: ownerId, p_note: note },
+  );
+  if (rpcError) {
+    const message = rpcError.message ?? "";
+    if (message.includes("ENTRY_NOT_REJECTED")) {
+      throw new Error("ENTRY_NOT_REJECTED");
+    }
+    if (message.includes("APPEAL_ALREADY_USED")) {
+      throw new Error("APPEAL_ALREADY_USED");
+    }
+    throw rpcError;
+  }
+
+  return json(200, { appealed: true, entry_id: entry.id, case_id: caseId });
+}
+
+function parseReportCategory(value: unknown): string {
+  if (value === undefined || value === null || value === "") return "other";
+  if (typeof value !== "string" || !REPORT_CATEGORIES.has(value)) {
+    throw new Error("INVALID_REPORT_CATEGORY");
+  }
+  return value;
+}
+
+function parseReportNote(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string") throw new Error("INVALID_REPORT_NOTE");
+  const trimmed = value.trim().slice(0, 280);
+  return trimmed || null;
 }
 
 async function hideEntry(
@@ -1088,6 +1337,25 @@ async function requireLinkedGoogle(ownerId: string): Promise<void> {
     identity.provider === "google"
   );
   if (!hasGoogle) throw new Error("GOOGLE_IDENTITY_REQUIRED");
+}
+
+async function requireNoActiveSanction(
+  ownerId: string,
+  scope: "atlas_publish" | "atlas_report",
+  errorCode: string,
+): Promise<void> {
+  const { data, error } = await db
+    .from("profile_sanctions")
+    .select("id, expires_at")
+    .eq("profile_id", ownerId)
+    .eq("scope", scope)
+    .is("revoked_at", null);
+  if (error) throw error;
+  const now = Date.now();
+  const active = (data ?? []).some((row) =>
+    !row.expires_at || Date.parse(row.expires_at) > now
+  );
+  if (active) throw new Error(errorCode);
 }
 
 function asUuid(value: unknown, field: string): string {

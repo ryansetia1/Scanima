@@ -27,6 +27,14 @@ const STAT_KEYS := {
 	"spd": "STAT_SPD",
 	"special": "STAT_SPECIAL",
 }
+const REPORT_CATEGORIES := ["character", "sexual", "gore", "hate", "other"]
+const REPORT_CATEGORY_KEYS := {
+	"character": "ATLAS_REPORT_CATEGORY_CHARACTER",
+	"sexual": "ATLAS_REPORT_CATEGORY_SEXUAL",
+	"gore": "ATLAS_REPORT_CATEGORY_GORE",
+	"hate": "ATLAS_REPORT_CATEGORY_HATE",
+	"other": "ATLAS_REPORT_CATEGORY_OTHER",
+}
 
 @onready var _status: Label = %AtlasStatus
 @onready var _grid: GridContainer = %AtlasGrid
@@ -35,6 +43,7 @@ const STAT_KEYS := {
 @onready var _filters: HBoxContainer = %AtlasFilters
 @onready var _chapter: OptionButton = %AtlasChapter
 @onready var _detail_sheet: UiBottomSheet = %AtlasDetailSheet
+@onready var _report_sheet: UiBottomSheet = %AtlasReportSheet
 
 var _entries: Array[Dictionary] = []
 var _chapters: Array[Dictionary] = []
@@ -47,6 +56,11 @@ var _detail_portrait: TextureRect
 var _detail_name: Label
 var _detail_meta: Label
 var _detail_report: Button
+var _report_entry_id := ""
+var _report_category_buttons: Dictionary = {}
+var _report_sheet_cancel: Button
+var _report_sheet_title: Label
+var _report_sheet_body: Label
 var _detail_owner_cell: PanelContainer
 var _detail_discovery_grid: GridContainer
 var _detail_values: Dictionary = {}
@@ -70,6 +84,7 @@ func _ready() -> void:
 	%AtlasCollectionTab.pressed.connect(func() -> void: collection_requested.emit())
 	_load_more.pressed.connect(_load_next_page)
 	_detail_sheet.dismissed.connect(_on_detail_closed)
+	_report_sheet.dismissed.connect(_on_report_sheet_closed)
 	_chapter.item_selected.connect(_on_chapter_selected)
 	for filter_name: String in FILTERS:
 		var button := get_node("%%%s" % FILTER_BUTTONS[filter_name]) as Button
@@ -79,6 +94,7 @@ func _ready() -> void:
 	column.move_child(_filters, tabs.get_index() + 1)
 	column.move_child(_chapter, _filters.get_index() + 1)
 	_build_detail_sheet()
+	_build_report_sheet()
 	_sync_filter_buttons()
 
 
@@ -166,8 +182,54 @@ func _build_detail_sheet() -> void:
 	_detail_report.add_theme_color_override("font_focus_color", Color(1, 0.72, 0.78, 1))
 	_detail_report.add_theme_color_override("font_pressed_color", Color(1, 0.82, 0.4, 1))
 	_detail_report.add_theme_font_size_override("font_size", 24)
-	_detail_report.pressed.connect(_report_selected)
+	_detail_report.pressed.connect(_open_report_sheet)
 	report_row.add_child(_detail_report)
+
+
+func _build_report_sheet() -> void:
+	var slot := _report_sheet.get_node("%ContentSlot") as VBoxContainer
+	for child in slot.get_children():
+		slot.remove_child(child)
+		child.queue_free()
+	_report_category_buttons.clear()
+	var column := VBoxContainer.new()
+	column.name = "AtlasReportSheetColumn"
+	column.add_theme_constant_override("separation", 12)
+	slot.add_child(column)
+
+	_report_sheet_title = Label.new()
+	_report_sheet_title.name = "AtlasReportSheetTitle"
+	_report_sheet_title.theme_type_variation = &"PageTitleLabel"
+	_report_sheet_title.text = tr("ATLAS_REPORT_SHEET_TITLE")
+	_report_sheet_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_report_sheet_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_report_sheet_title)
+
+	_report_sheet_body = Label.new()
+	_report_sheet_body.name = "AtlasReportSheetBody"
+	_report_sheet_body.theme_type_variation = &"BodyLabel"
+	_report_sheet_body.text = tr("ATLAS_REPORT_SHEET_BODY")
+	_report_sheet_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_report_sheet_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_report_sheet_body)
+
+	for category: String in REPORT_CATEGORIES:
+		var button := Button.new()
+		button.name = "AtlasReportCategory%s" % category.capitalize()
+		button.custom_minimum_size = Vector2(0, 96)
+		button.theme_type_variation = &"SecondaryButton"
+		button.text = tr(REPORT_CATEGORY_KEYS[category])
+		button.pressed.connect(_submit_report.bind(category))
+		column.add_child(button)
+		_report_category_buttons[category] = button
+
+	_report_sheet_cancel = Button.new()
+	_report_sheet_cancel.name = "AtlasReportSheetCancel"
+	_report_sheet_cancel.custom_minimum_size = Vector2(0, 72)
+	_report_sheet_cancel.flat = true
+	_report_sheet_cancel.text = tr("ACTION_CANCEL")
+	_report_sheet_cancel.pressed.connect(func() -> void: _report_sheet.close())
+	column.add_child(_report_sheet_cancel)
 
 
 func _make_detail_section(parent: VBoxContainer, node_name: String, title_key: String) -> VBoxContainer:
@@ -260,6 +322,8 @@ func set_busy(busy: bool) -> void:
 		(get_node("%%%s" % FILTER_BUTTONS[filter_name]) as Button).disabled = busy
 	if is_instance_valid(_detail_report):
 		_detail_report.disabled = busy
+	for category: String in _report_category_buttons:
+		(_report_category_buttons[category] as Button).disabled = busy
 
 
 func refresh_localized_ui() -> void:
@@ -272,6 +336,14 @@ func refresh_localized_ui() -> void:
 		button.text = tr("ATLAS_FILTER_%s" % filter_name.to_upper())
 	if is_instance_valid(_detail_report):
 		_detail_report.text = tr("ATLAS_REPORT")
+	if is_instance_valid(_report_sheet_cancel):
+		_report_sheet_title.text = tr("ATLAS_REPORT_SHEET_TITLE")
+		_report_sheet_body.text = tr("ATLAS_REPORT_SHEET_BODY")
+		for category: String in _report_category_buttons:
+			(_report_category_buttons[category] as Button).text = tr(
+				REPORT_CATEGORY_KEYS[category]
+			)
+		_report_sheet_cancel.text = tr("ACTION_CANCEL")
 	_populate_chapter_picker()
 	if not _entries.is_empty():
 		_rebuild_grid()
@@ -698,21 +770,37 @@ func _on_detail_closed() -> void:
 	_selected = {}
 
 
-func _report_selected() -> void:
-	var account_epoch := GameState.session_epoch
+func _open_report_sheet() -> void:
 	if _selected.is_empty() or _busy or not bool(_selected.get("can_report", false)):
 		return
 	var entry_id := str(_selected.get("entry_id", ""))
 	if entry_id.is_empty():
 		return
+	# `_detail_sheet.close()` fires `dismissed` -> `_on_detail_closed()`, which
+	# clears `_selected` — the entry id is captured first so the category
+	# sheet still knows what it's reporting.
+	_report_entry_id = entry_id
+	_detail_sheet.close()
+	_report_sheet.open()
+
+
+func _on_report_sheet_closed() -> void:
+	_report_entry_id = ""
+
+
+func _submit_report(category: String) -> void:
+	var account_epoch := GameState.session_epoch
+	var entry_id := _report_entry_id
+	if entry_id.is_empty() or _busy:
+		return
+	_report_sheet.close()
 	set_busy(true)
-	var res := await Backend.atlas("report", {"entry_id": entry_id})
+	var res := await Backend.atlas("report", {"entry_id": entry_id, "category": category})
 	if not Backend.response_applies(res, account_epoch):
 		return
 	set_busy(false)
 	if res.ok:
 		toast_requested.emit(tr("ATLAS_REPORTED"), false)
-		_detail_sheet.close()
 		_all_cache_loaded = false
 		await _load_first_page()
 	else:

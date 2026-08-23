@@ -12,6 +12,7 @@ var _requested_delete_id := ""
 var _requested_evolve_row: Dictionary = {}
 var _requested_synthesis_id := ""
 var _requested_rename_id := ""
+var _requested_gallery_appeal_id := ""
 var _requested_profile_id := ""
 var _requested_summon_id := ""
 var _requested_summon_synced := false
@@ -4831,6 +4832,44 @@ func _test_atlas_view() -> void:
 		report != null and report.flat and report.custom_minimum_size.y >= TOUCH_MIN,
 		"Atlas Report is a touch-safe secondary action"
 	)
+	view.set("_selected", {"entry_id": "atlas-entry-report-test", "can_report": true})
+	report.pressed.emit()
+	await process_frame
+	var report_sheet := view.find_child("AtlasReportSheet", true, false) as UiBottomSheet
+	_check(
+		report_sheet != null and report_sheet.visible,
+		"tapping Report opens a dedicated category sheet instead of reporting instantly"
+	)
+	await _await_juice_settled(sheet)
+	_check(
+		not sheet.visible,
+		"opening the report category sheet closes the entry detail sheet behind it"
+	)
+	var category_keys := {
+		"AtlasReportCategoryCharacter": "ATLAS_REPORT_CATEGORY_CHARACTER",
+		"AtlasReportCategorySexual": "ATLAS_REPORT_CATEGORY_SEXUAL",
+		"AtlasReportCategoryGore": "ATLAS_REPORT_CATEGORY_GORE",
+		"AtlasReportCategoryHate": "ATLAS_REPORT_CATEGORY_HATE",
+		"AtlasReportCategoryOther": "ATLAS_REPORT_CATEGORY_OTHER",
+	}
+	var categories_ok := true
+	for node_name in category_keys:
+		var category_button := report_sheet.find_child(node_name, true, false) as Button
+		if (
+			category_button == null
+			or category_button.text != tr(category_keys[node_name])
+			or category_button.custom_minimum_size.y < TOUCH_MIN
+		):
+			categories_ok = false
+	_check(
+		categories_ok,
+		"the report sheet offers all five touch-safe categories, replacing the one-tap report"
+	)
+	report_sheet.close()
+	_check(
+		view.get("_report_entry_id") == "",
+		"dismissing the category sheet without choosing clears the pending report target"
+	)
 	var detail_text := ""
 	for label_node in view.find_children("*", "Label", true, false):
 		detail_text += " " + (label_node as Label).text
@@ -5387,10 +5426,13 @@ func _test_anima_delete_action() -> void:
 	var rename := details.find_child("ProfileActionRename", true, false) as Button
 	var button := details.find_child("ProfileActionDelete", true, false) as Button
 	var gallery_button := details.find_child("GalleryPublishButton", true, false) as Button
+	var gallery_appeal_button := details.find_child("GalleryAppealButton", true, false) as Button
 	_requested_delete_id = ""
 	_requested_rename_id = ""
+	_requested_gallery_appeal_id = ""
 	details.rename_requested.connect(_capture_rename_request)
 	details.delete_requested.connect(_capture_delete_request)
+	details.gallery_appeal_requested.connect(_capture_gallery_appeal_request)
 	details.set_anima(
 		{
 			"id": "anima-delete-test",
@@ -5441,12 +5483,35 @@ func _test_anima_delete_action() -> void:
 		and gallery_button.text == tr("GALLERY_PUBLISHING"),
 		"Atlas publish keeps a visible disabled progress cue"
 	)
+	details.set_gallery_status({"available": false, "under_review": true})
+	_check(
+		gallery_button.visible and gallery_button.disabled
+		and gallery_button.text == tr("GALLERY_UNDER_REVIEW")
+		and not gallery_appeal_button.visible,
+		"moderation under review shows a disabled state and no appeal action yet"
+	)
 	details.set_gallery_status({"available": false, "rejected": true})
 	_check(
 		gallery_button.visible and gallery_button.disabled
 		and gallery_button.text == tr("GALLERY_PUBLISH_REJECTED"),
 		"moderation rejection remains visible instead of making Publish disappear"
 	)
+	_check(
+		gallery_appeal_button.visible and not gallery_appeal_button.disabled
+		and gallery_appeal_button.text == tr("GALLERY_APPEAL"),
+		"a rejected entry offers a working appeal action"
+	)
+	gallery_appeal_button.pressed.emit()
+	_check_eq(
+		_requested_gallery_appeal_id, "anima-gallery-next",
+		"Appeal emits the shown Anima id"
+	)
+	details.set_gallery_appeal_pending(true)
+	_check(
+		gallery_appeal_button.disabled and gallery_appeal_button.text == tr("GALLERY_APPEAL_PENDING"),
+		"appeal shows a disabled progress cue while the request is in flight"
+	)
+	details.set_gallery_appeal_pending(false)
 	details.set_busy(true)
 	_check(menu.disabled and rename.disabled, "network work disables rename")
 	_check(button.disabled and not popover.visible, "network work disables and closes destructive actions")
@@ -6321,6 +6386,10 @@ func _capture_delete_request(anima_id: String) -> void:
 
 func _capture_rename_request(anima_id: String) -> void:
 	_requested_rename_id = anima_id
+
+
+func _capture_gallery_appeal_request(anima_id: String) -> void:
+	_requested_gallery_appeal_id = anima_id
 
 
 func _capture_profile_request(row: Dictionary) -> void:

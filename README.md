@@ -312,13 +312,14 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 | [docs/14-deploy-log.md](docs/14-deploy-log.md) | Riwayat rollout production: Atlas, Name Lineage v41, gerbang Rename, Capture Vibe, gate IP, Evolution art, Battle polish, daftar migration |
 | [docs/15-commands.md](docs/15-commands.md) | Katalog demo visual `--*-demo`, uji terhadap production, build dan verifikasi APK, backend lokal |
 | [docs/16-prompt-version-history.md](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v42 dan provenance setiap versi prompt yang ditolak |
+| [docs/designs/2026-08-23-atlas-moderation-admin.md](docs/designs/2026-08-23-atlas-moderation-admin.md) | Kontrak moderation v2 dua-pass, role matrix, kebijakan report, dan console admin `admin/` |
 | [docs/designs/2026-08-21-anima-synthesis.md](docs/designs/2026-08-21-anima-synthesis.md) | Kontrak Guided Synthesis: Source tetap ada, Resonance, inheritance, biaya, recovery, dan snapshot Atlas |
 | [docs/designs/2026-08-17-evolution-identity-invariants-v23.md](docs/designs/2026-08-17-evolution-identity-invariants-v23.md) | Desain v23 untuk mengunci identity/soul lintas Adult dan Evolved tanpa mengorbankan perubahan siluet |
 | [docs/designs/2026-08-17-evolution-maturity-apex-presence-v24.md](docs/designs/2026-08-17-evolution-maturity-apex-presence-v24.md) | Desain v24 untuk kematangan wajah/tubuh, apex presence, aura-safe, dan payoff final evolution |
 | [docs/designs/2026-08-17-evolution-pokemon-clarity-v25.md](docs/designs/2026-08-17-evolution-pokemon-clarity-v25.md) | Desain v25 untuk Shape Budget, anatomy-agnostic maturity, Pokémon-like clarity, dan VFX-only supernatural power |
 | [docs/monster_camera_anime_cel_shaded_style_guide.md](docs/monster_camera_anime_cel_shaded_style_guide.md) | Sumber art direction v2: linework, cel shading, transformasi objek, pose, dan negative style |
 | [CLAUDE.md](CLAUDE.md) | Konteks dan konvensi untuk AI coding agent; peta ke rule per-domain |
-| [.cursor/rules/](.cursor/rules/) | Lima rule ber-glob yang dimuat sendiri saat file domainnya disentuh: Battle/Expedition, shell client, pagar backend, pipeline art, plugin Android |
+| [.cursor/rules/](.cursor/rules/) | Enam rule ber-glob yang dimuat sendiri saat file domainnya disentuh: Battle/Expedition, shell client, pagar backend, pipeline art, plugin Android, admin console |
 
 ## Struktur repo
 

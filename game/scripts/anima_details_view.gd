@@ -4,6 +4,7 @@ extends Control
 signal delete_requested(anima_id: String)
 signal rename_requested(anima_id: String)
 signal gallery_publish_requested(anima_id: String, publish: bool)
+signal gallery_appeal_requested(anima_id: String)
 signal evolve_requested(row: Dictionary)
 signal synthesis_requested(row: Dictionary)
 signal help_requested(title: String, body: String)
@@ -50,6 +51,7 @@ const EVOLUTION_ARROW_ICON: Texture2D = preload("res://assets/icons/chevron-left
 @onready var _action_delete: Button = %ProfileActionDelete
 @onready var _primary_actions: HBoxContainer = %PrimaryActions
 @onready var _gallery_button: Button = %GalleryPublishButton
+@onready var _gallery_appeal_button: Button = %GalleryAppealButton
 @onready var _evolve_button: Button = %EvolveAnimaButton
 @onready var _evolution_status: Label = %EvolutionStatusLabel
 @onready var _synthesis_button: Button = %SynthesisAnimaButton
@@ -70,8 +72,10 @@ var _busy := false
 var _gallery_published := false
 var _gallery_available := false
 var _gallery_rejected := false
+var _gallery_under_review := false
 var _gallery_pending := false
 var _gallery_pending_publish := false
+var _gallery_appeal_pending := false
 var _evolution_enabled := false
 var _synthesis_enabled := false
 var _synthesis_history_textures: Dictionary = {}
@@ -95,6 +99,7 @@ func _ready() -> void:
 	_action_delete.pressed.connect(_request_delete)
 	_action_popover.resized.connect(_position_action_menu)
 	_gallery_button.pressed.connect(_request_gallery_toggle)
+	_gallery_appeal_button.pressed.connect(_request_gallery_appeal)
 	_evolve_button.pressed.connect(_request_evolve)
 	_synthesis_button.pressed.connect(_request_synthesis)
 	_about_help.pressed.connect(_show_about_help)
@@ -132,7 +137,9 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_gallery_available = false
 		_gallery_published = false
 		_gallery_rejected = false
+		_gallery_under_review = false
 		_gallery_pending = false
+		_gallery_appeal_pending = false
 	_row = row.duplicate(true) if not row.is_empty() else {}
 	if row.is_empty():
 		_anima_id = ""
@@ -143,6 +150,7 @@ func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 		_action_rename.disabled = true
 		_action_delete.disabled = true
 		_gallery_button.disabled = true
+		_gallery_appeal_button.disabled = true
 		_apply_gallery_button()
 		_evolve_button.visible = false
 		_evolution_status.visible = false
@@ -250,7 +258,9 @@ func set_gallery_status(status: Dictionary) -> void:
 	_gallery_available = bool(status.get("available", false))
 	_gallery_published = bool(status.get("published", false))
 	_gallery_rejected = bool(status.get("rejected", false))
+	_gallery_under_review = bool(status.get("under_review", false))
 	_gallery_pending = false
+	_gallery_appeal_pending = false
 	_apply_gallery_button()
 	_update_primary_actions_visibility()
 
@@ -261,8 +271,25 @@ func set_gallery_pending(pending: bool, publish: bool = false) -> void:
 	_apply_gallery_button()
 
 
+func set_gallery_appeal_pending(pending: bool) -> void:
+	_gallery_appeal_pending = pending
+	_apply_gallery_button()
+
+
 func _apply_gallery_button() -> void:
-	_gallery_button.visible = _gallery_available or _gallery_rejected
+	_gallery_button.visible = _gallery_available or _gallery_rejected or _gallery_under_review
+	_gallery_appeal_button.visible = _gallery_rejected
+	if _gallery_appeal_button.visible:
+		_gallery_appeal_button.text = (
+			tr("GALLERY_APPEAL_PENDING") if _gallery_appeal_pending else tr("GALLERY_APPEAL")
+		)
+		_gallery_appeal_button.disabled = (
+			_gallery_appeal_pending or _busy or _anima_id.is_empty()
+		)
+	if _gallery_under_review:
+		_gallery_button.text = tr("GALLERY_UNDER_REVIEW")
+		_gallery_button.disabled = true
+		return
 	if _gallery_rejected:
 		_gallery_button.text = tr("GALLERY_PUBLISH_REJECTED")
 		_gallery_button.disabled = true
@@ -636,6 +663,12 @@ func _request_gallery_toggle() -> void:
 	if _anima_id.is_empty():
 		return
 	gallery_publish_requested.emit(_anima_id, not _gallery_published)
+
+
+func _request_gallery_appeal() -> void:
+	if _anima_id.is_empty() or _gallery_appeal_pending:
+		return
+	gallery_appeal_requested.emit(_anima_id)
 
 
 func _request_delete() -> void:

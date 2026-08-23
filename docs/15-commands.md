@@ -127,3 +127,43 @@ $A install -r /tmp/scanima.apk && $A logcat -s godot:V
 cd backend && supabase start
 supabase functions serve create_anima --env-file .env.local
 ```
+
+## Admin console (`admin/`)
+
+Workspace npm terpisah, lokal saja. Detail kontrak di
+[`docs/designs/2026-08-23-atlas-moderation-admin.md`](designs/2026-08-23-atlas-moderation-admin.md)
+dan pagar Next.js di `.cursor/rules/admin-guardrails.mdc`.
+
+```bash
+cd admin && npm install
+npm run dev                      # http://localhost:3000, staff login via Google
+npm run lint && npx tsc --noEmit # gratis, jalankan sebelum push
+npm run build                    # gerbang wajib sebelum deploy admin_moderation
+npx playwright test              # keyboard/responsive/visual smoke 1440/1024/768px
+
+# admin_moderation dideploy seperti Edge Function lain, lihat CLAUDE.md
+export SUPABASE_ACCESS_TOKEN=sbp_...
+cd backend && supabase functions deploy admin_moderation \
+  --project-ref kgcaisvmmpxswevjvgft
+
+# smoke check: 401 tanpa JWT = fungsi boot dan pagar staff berdiri
+F=https://kgcaisvmmpxswevjvgft.supabase.co/functions/v1
+curl -sS -X POST $F/admin_moderation -d '{}'
+```
+
+Bootstrap admin pertama (satu kali, manual, SQL only — tidak ada RPC untuk ini
+karena belum ada admin yang bisa memanggilnya). Jalankan HANYA setelah
+`ryansetiawan.works@gmail.com` sudah pernah sign in sekali lewat admin app,
+supaya baris `auth.users`-nya sungguh ada:
+
+```sql
+insert into public.staff_accounts (user_id, role)
+select id, 'admin'
+from auth.users
+where email = 'ryansetiawan.works@gmail.com'
+  and exists (
+    select 1 from auth.identities
+    where user_id = auth.users.id and provider = 'google'
+  )
+on conflict (user_id) do update set role = 'admin';
+```

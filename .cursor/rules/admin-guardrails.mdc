@@ -1,0 +1,37 @@
+---
+description: Pagar Next.js 16 admin console Scanima — proxy.ts, Supabase SSR, staff authorization server-side, dan larangan service-role di browser
+globs: admin/**
+alwaysApply: false
+---
+
+# Pagar admin console
+
+Konteks lengkap ada di
+[`docs/designs/2026-08-23-atlas-moderation-admin.md`](../../docs/designs/2026-08-23-atlas-moderation-admin.md).
+Ringkasan yang wajib dipatuhi setiap menyentuh `admin/`:
+
+- **Browser hanya boleh memegang Supabase URL dan publishable key.** Tidak ada
+  service role key, tidak ada `REPLICATE_API_TOKEN`, di env apa pun yang
+  dibaca client atau Server Component `admin/`. Setiap operasi privileged
+  (baca/tulis moderation, staff, sanction, audit) lewat Edge Function
+  `admin_moderation`, bukan query Supabase langsung dari `admin/`.
+- **`proxy.ts` (konvensi Next.js 16, pengganti `middleware.ts`) hanya untuk
+  refresh cookie sesi dan redirect optimistis.** Ia bukan gerbang otorisasi.
+  Setiap Server Action dan setiap panggilan ke `admin_moderation` wajib
+  diverifikasi ulang staff role-nya di sisi server — jangan percaya hasil
+  `proxy.ts` sebagai bukti akses sah.
+- **Role staff resmi hanya `staff_accounts` di Postgres, dikunci ke
+  `auth.users.id` yang terverifikasi.** Jangan pernah membaca role dari
+  `user_metadata`, email claim JWT, atau state client. Non-staff harus
+  menerima 403 dari `admin_moderation`, bukan UI yang disembunyikan di client
+  saja.
+- **Redirect Google PKCE admin (`http://localhost:3000/auth/callback`)
+  ditambahkan ke allowlist Supabase tanpa mengubah
+  `scanima://auth/callback**` milik game.** Jangan menyentuh redirect URL
+  client di project Auth settings saat mengerjakan admin.
+- **Admin scope terbatas ke moderasi**: queue, reports, appeals, decisions,
+  restoration, sanction Atlas publish/report, staff, audit, analytics. Ia
+  tidak pernah mengedit saldo, stat Anima, atau art — kalau sebuah fitur
+  butuh itu, itu di luar scope `admin/`.
+- Server Components/Actions dulu; client component hanya untuk filter,
+  confirmation dialog, inspeksi art, dan chart.

@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --color-deck-bg: #0f172a;
+  --color-deck-surface: #141f38;
+  --color-deck-surface-raised: #1a2744;
+  --color-deck-border: #263355;
+  --color-deck-primary: #7c3aed;
+  --color-deck-primary-hover: #8f56f0;
+  --color-deck-secondary: #0891b2;
+  --color-deck-gold: #d4a64a;
+  --color-deck-danger: #dc2626;
+  --color-deck-danger-hover: #ef4444;
+  --color-deck-text: #e2e8f0;
+  --color-deck-muted: #8ea0c2;
+
+  --font-heading: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-fira-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-data: var(--font-fira-code), ui-monospace, monospace;
+}
+
+body {
+  background: var(--color-deck-bg);
+  color: var(--color-deck-text);
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: var(--color-deck-primary);
+  color: white;
+}
+
+@layer components {
+  .deck-select,
+  .deck-input {
+    @apply rounded-md border border-deck-border bg-deck-bg px-2 py-1.5 text-sm text-deck-text placeholder:text-deck-muted;
+  }
+  .deck-button-primary {
+    @apply rounded-md bg-deck-primary px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-deck-primary-hover disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .deck-button-secondary {
+    @apply rounded-md border border-deck-border px-4 py-1.5 text-sm text-deck-text transition-colors hover:border-deck-secondary hover:text-deck-secondary disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .deck-button-danger {
+    @apply rounded-md bg-deck-danger px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-deck-danger-hover disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .deck-panel {
+    @apply rounded-lg border border-deck-border bg-deck-surface p-4;
+  }
+}
+
+/* Native <dialog> backdrop, kept minimal and theme-consistent. */
+dialog::backdrop {
+  background: rgba(6, 10, 22, 0.72);
+}
+
+/* Tailwind's preflight resets margin to 0 on every element, which silently
+ * breaks the browser's default `margin: auto` centering for <dialog>'s top
+ * layer -- without this it renders pinned to the top-left corner instead of
+ * centered. Fixed + transform centering doesn't depend on that UA default
+ * surviving the reset. */
+dialog[open] {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+}

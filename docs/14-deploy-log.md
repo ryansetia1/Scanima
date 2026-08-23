@@ -2,6 +2,41 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## Atlas Moderation Admin v2 live: schema, admin_moderation, dan console
+
+23 Agustus 2026, migration `20260823080000_atlas_moderation_v2_schema`
+ter-apply ke production tanpa drift; `quota_rules.sql` (termasuk blok baru
+untuk staff role gate, idempotent case-open, thumb-required approve/restore,
+report quarantine dengan pemetaan kategori, dan sanction lifecycle) lulus dua
+kali berturut-turut langsung di remote. `admin_moderation` dan `gallery`
+(moderasi dua-pass) dideploy; keduanya menjawab 401 tanpa JWT, menandakan
+modul boot dan pagar berdiri. Console `admin/` (Next.js 16, Control Deck)
+dijalankan lokal terhadap production dengan kredensial publishable asli.
+
+Redirect `http://localhost:3000/auth/callback**` ditambahkan ke Auth
+allowlist lewat PATCH Management API pada field `uri_allow_list` saja —
+bukan `supabase config push`, karena `config.toml` lokal membawa entri
+`https://127.0.0.1:3000` yang ternyata tidak pernah live di remote (dicek
+lewat GET sebelum PATCH) dan section `[auth.external.google]`-nya memakai
+placeholder `env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID/SECRET)` yang kalau
+di-push utuh akan menimpa client secret Google asli dengan string kosong.
+Diverifikasi sesudahnya: `external_google_enabled`,
+`external_anonymous_users_enabled`, dan `security_manual_linking_enabled`
+semua tidak berubah.
+
+Sign-in pertama `ryansetiawan.works@gmail.com` sempat menjawab 500
+`admin_moderation gagal diproses` dari operation `whoami` — bukan 403
+`STAFF_FORBIDDEN` yang diharapkan sebelum bootstrap. Query SQL langsung ke
+`staff_accounts` untuk uid yang sama berhasil nol baris tanpa galat, tapi
+panggilan lewat REST (`.from("staff_accounts")`, jalur yang dipakai
+`admin_moderation`) tetap gagal — cache schema PostgREST belum tahu tabel
+baru dari migration yang baru saja ter-apply. `notify pgrst, 'reload
+schema';` memperbaikinya seketika; diverifikasi lewat REST langsung ke tujuh
+tabel baru dan satu RPC, semuanya 200 sesudah reload. Bootstrap admin lewat
+snippet SQL di `docs/15-commands.md` sesudah itu berhasil di percobaan
+pertama, console termuat penuh, dan `feature_atlas_moderation_v2` di-flip ke
+`true`.
+
 ## Follow-up UAT state Publish Atlas dan musik Retreat Team
 
 23 Agustus 2026 pukul 12:40 WIB, UAT membuktikan dua bug client dan satu hasil

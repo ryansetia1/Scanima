@@ -83,6 +83,16 @@ declare
   v         int;
   n         int;
   ok        bool;
+  v_mod_anima uuid;
+  v_mod_entry uuid;
+  v_mod_art_hash text;
+  v_mod_case uuid;
+  v_mod_case2 uuid;
+  v_sanction_id uuid;
+  v_sanction_id2 uuid;
+  v_rep_c uuid;
+  v_decision_count int;
+  v_audit_count int;
 begin
   -- Idempoten: sisa run yang gagal di tengah tidak boleh menggagalkan run ini.
   delete from auth.users where id in (u1, u2, u3, u4, u5);
@@ -1808,8 +1818,8 @@ begin
   update public.gallery_entries set published = true, moderation_status = 'approved'
    where anima_id = v_battle_bot;
   perform public._atlas_upsert_discovery(u1, v_atlas_form, 'duel', now(), 11);
-  insert into public.gallery_reports (entry_id, reporter_id)
-  select id, u1 from public.gallery_entries where anima_id = v_battle_bot;
+  insert into public.gallery_reports (entry_id, reporter_id, art_hash)
+  select id, u1, art_hash from public.gallery_entries where anima_id = v_battle_bot;
   assert not exists (
            select 1 from public.seeker_atlas_discoveries
             where owner_id = u1 and form_id = v_atlas_form
@@ -2504,6 +2514,15 @@ begin
             where oid = 'public.gallery_entries'::regclass
          ),
          'gallery_entries harus RLS aktif';
+  assert (
+           select bool_and(relrowsecurity) from pg_class
+            where oid = any(array[
+              'public.staff_accounts', 'public.profile_sanctions',
+              'public.admin_audit_log', 'public.moderation_cases',
+              'public.moderation_decisions', 'public.gallery_moderation_runs'
+            ]::regclass[])
+         ),
+         'seluruh tabel Atlas Moderation Admin v2 harus RLS aktif';
   assert exists (
            select 1 from information_schema.tables
             where table_schema = 'public' and table_name = 'atlas_forms'
@@ -4695,6 +4714,233 @@ begin
   exception when sqlstate 'ZX003' then
     null;
   end;
+
+  ----------------------------------------------------------------------------
+  -- Atlas Moderation Admin v2: default-deny, staff role gate, idempotent
+  -- case-open, thumb-required approve/restore, decision+audit atomicity,
+  -- report quarantine with category mapping, and sanction lifecycle.
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform 1 from public.staff_accounts;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'staff_accounts tidak boleh dibaca client';
+  begin
+    perform 1 from public.moderation_cases;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'moderation_cases tidak boleh dibaca client';
+  begin
+    perform 1 from public.moderation_decisions;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'moderation_decisions tidak boleh dibaca client';
+  begin
+    perform 1 from public.profile_sanctions;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'profile_sanctions tidak boleh dibaca client';
+  begin
+    perform 1 from public.admin_audit_log;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'admin_audit_log tidak boleh dibaca client';
+  begin
+    perform 1 from public.gallery_moderation_runs;
+    ok := false;
+  exception when insufficient_privilege then ok := true;
+  end;
+  assert ok, 'gallery_moderation_runs tidak boleh dibaca client';
+  assert not pg_catalog.has_function_privilege(
+    'authenticated', 'public.moderation_decide_case(uuid,uuid,text,text,text,text,text)', 'EXECUTE'
+  ), 'client tidak boleh memanggil moderation_decide_case langsung';
+  assert not pg_catalog.has_function_privilege(
+    'authenticated', 'public.moderation_set_sanction(uuid,uuid,text,text,text,timestamptz,text)', 'EXECUTE'
+  ), 'client tidak boleh memanggil moderation_set_sanction langsung';
+  assert not pg_catalog.has_function_privilege(
+    'authenticated', 'public.admin_set_staff_role(uuid,text,uuid,text)', 'EXECUTE'
+  ), 'client tidak boleh memanggil admin_set_staff_role langsung';
+  perform set_config('role', 'none', true);
+
+  -- Staff setup: u1 admin, u2 moderator (both already real profiles from
+  -- earlier in this suite; neither was ever deleted).
+  insert into public.staff_accounts (user_id, role) values (u1, 'admin');
+  insert into public.staff_accounts (user_id, role) values (u2, 'moderator');
+
+  begin
+    perform public.admin_set_staff_role(u1, 'moderator', u1, 'selftest-self-demote');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'CANNOT_REVOKE_SELF');
+  end;
+  assert ok, 'admin tidak boleh menurunkan role dirinya sendiri, bukan cuma tidak boleh revoke penuh';
+
+  begin
+    perform public.admin_set_staff_role(u4, 'viewer', u2, 'selftest-mod-cannot-staff');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'STAFF_ROLE_INSUFFICIENT');
+  end;
+  assert ok, 'moderator tidak boleh mengelola staff_accounts';
+
+  perform public.admin_set_staff_role(u4, 'viewer', u1, 'selftest-grant-viewer');
+  assert (select role from public.staff_accounts where user_id = u4) = 'viewer',
+         'admin harus bisa memberi role staff';
+  perform public.admin_set_staff_role(u4, 'revoked', u1, 'selftest-revoke-viewer');
+  assert not exists (select 1 from public.staff_accounts where user_id = u4),
+         'admin harus bisa mencabut role staff';
+
+  -- Fixture: an entry with no thumbnail, simulating a pass-2-uncertain
+  -- publish that returned into "pending" before gallery/index.ts's thumb
+  -- crop+upload step ever ran.
+  v_mod_art_hash := repeat('m', 64);
+  insert into public.animas (
+    owner_id, nickname, species_key, color_bucket, element, rarity,
+    base_stats, care, status, sheet_path, manifest
+  ) values (
+    u4, 'mod-fixture', 'mod_fixture_species', 'blue', 'metal', 1,
+    v_stats, v_care, 'ready', u4::text || '/mod-fixture/sheet.png',
+    '{"poses":{"idle":{"region":[0,0,64,64]}}}'::jsonb
+  ) returning id into v_mod_anima;
+  insert into public.gallery_entries (
+    owner_id, anima_id, art_hash, display_name, element, secondary_element,
+    stage, thumb_path, moderation_status, published, auto_hidden,
+    report_count, published_at
+  ) values (
+    u4, v_mod_anima, v_mod_art_hash, 'Mod Fixture', 'metal', null,
+    1, null, 'pending', false, false, 0, null
+  ) returning id into v_mod_entry;
+
+  v_mod_case := public.moderation_open_case_for_entry(
+    v_mod_entry, v_mod_art_hash, 'publish', 'ip_character', 'low', 'pass2_uncertain'
+  );
+  v_mod_case2 := public.moderation_open_case_for_entry(
+    v_mod_entry, v_mod_art_hash, 'publish', 'ip_character', 'low', 'pass2_uncertain'
+  );
+  assert v_mod_case = v_mod_case2,
+         'membuka case yang sama dua kali harus mengembalikan case_id yang sama';
+  assert (
+           select count(*) from public.moderation_cases
+            where entry_id = v_mod_entry and art_hash = v_mod_art_hash
+         ) = 1,
+         'tidak boleh ada dua case aktif untuk entry+art_hash yang sama';
+
+  begin
+    perform public.moderation_decide_case(
+      v_mod_case, u2, 'approve', 'ip_character_match', null, 'selftest-approve-no-thumb'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'THUMB_REQUIRED');
+  end;
+  assert ok, 'approve tanpa thumbnail siap harus ditolak THUMB_REQUIRED, bukan menerbitkan entry tanpa gambar';
+
+  v_j := public.moderation_decide_case(
+    v_mod_case, u2, 'approve', 'ip_character_match', 'looks fine on review',
+    'selftest-approve-1', u4::text || '/mod-fixture/thumb.png'
+  );
+  assert (v_j->>'case_status') = 'approved', 'approve harus mengembalikan case_status approved';
+  assert (
+           select published and moderation_status = 'approved' and thumb_path is not null
+             from public.gallery_entries where id = v_mod_entry
+         ),
+         'approve harus menerbitkan entry dan mengisi thumb_path dalam transaksi yang sama';
+  select count(*) into v_decision_count from public.moderation_decisions where case_id = v_mod_case;
+  assert v_decision_count = 1, 'approve harus menulis tepat satu baris moderation_decisions';
+  select count(*) into v_audit_count from public.admin_audit_log
+   where target_type = 'moderation_case' and target_id = v_mod_case::text;
+  assert v_audit_count = 1, 'approve harus menulis tepat satu baris admin_audit_log';
+
+  v_j := public.moderation_decide_case(
+    v_mod_case, u2, 'approve', 'ip_character_match', 'looks fine on review',
+    'selftest-approve-1', u4::text || '/mod-fixture/thumb.png'
+  );
+  assert (v_j->>'idempotent_replay')::bool, 'replay idempotency_key yang sama harus dikenali, bukan diproses ulang';
+  select count(*) into v_decision_count from public.moderation_decisions where case_id = v_mod_case;
+  assert v_decision_count = 1, 'replay tidak boleh menggandakan moderation_decisions';
+
+  begin
+    perform public.moderation_decide_case(
+      v_mod_case, u2, 'reject', 'unsafe_content', null, 'selftest-reject-after-approve'
+    );
+    ok := false;
+  exception when others then ok := (sqlerrm = 'CASE_ALREADY_RESOLVED');
+  end;
+  assert ok, 'case yang sudah resolved tidak boleh diputuskan lagi walau dengan idempotency_key baru';
+
+  -- Report quarantine: three distinct non-owner reporters, category
+  -- "character" must map into the automated "ip_character" vocabulary
+  -- instead of violating moderation_cases' CHECK constraint.
+  v_rep_c := gen_random_uuid();
+  insert into auth.users (id, is_anonymous) values (v_rep_c, true);
+  perform public.moderation_report_and_maybe_case(v_mod_entry, u1, 'character', null, 3);
+  assert (select report_count from public.gallery_entries where id = v_mod_entry) = 1,
+         'report pertama harus menghitung report_count = 1';
+  assert not (select auto_hidden from public.gallery_entries where id = v_mod_entry),
+         'satu laporan belum boleh mencapai ambang auto-hide';
+  perform public.moderation_report_and_maybe_case(v_mod_entry, u2, 'character', null, 3);
+  v_j := public.moderation_report_and_maybe_case(v_mod_entry, v_rep_c, 'character', null, 3);
+  assert (v_j->>'newly_hidden')::bool, 'laporan ketiga harus melewati ambang auto-hide';
+  assert (select auto_hidden from public.gallery_entries where id = v_mod_entry),
+         'entry harus auto-hidden setelah ambang tercapai';
+  assert exists (
+           select 1 from public.moderation_cases
+            where entry_id = v_mod_entry and source = 'report'
+              and category = 'ip_character' and status = 'open'
+         ),
+         'quarantine harus membuka case dengan kategori report dipetakan ke kosakata otomatis, bukan mentah';
+
+  -- Sanctions: set, one-active-per-scope, revoke, idempotent revoke, and a
+  -- second set on the same profile+scope creates a fresh row.
+  v_sanction_id := public.moderation_set_sanction(
+    u4, u2, 'atlas_publish', 'report_upheld', 'selftest sanction', null, 'selftest-sanction-1'
+  );
+  assert exists (
+           select 1 from public.profile_sanctions
+            where id = v_sanction_id and profile_id = u4 and scope = 'atlas_publish'
+              and revoked_at is null
+         ),
+         'set_sanction harus membuat baris sanction aktif';
+  perform public.moderation_revoke_sanction(v_sanction_id, u2, 'owner_appeal_valid', 'selftest-sanction-revoke-1');
+  assert (select revoked_at from public.profile_sanctions where id = v_sanction_id) is not null,
+         'revoke_sanction harus menandai revoked_at';
+  perform public.moderation_revoke_sanction(v_sanction_id, u2, 'owner_appeal_valid', 'selftest-sanction-revoke-1');
+  begin
+    perform public.moderation_revoke_sanction(v_sanction_id, u2, 'owner_appeal_valid', 'selftest-sanction-revoke-2');
+    ok := false;
+  exception when others then ok := (sqlerrm = 'SANCTION_ALREADY_REVOKED');
+  end;
+  assert ok, 'me-revoke sanction yang sudah revoked dengan idempotency_key baru harus ditolak';
+
+  v_sanction_id2 := public.moderation_set_sanction(
+    u4, u1, 'atlas_publish', 'unsafe_content', null, null, 'selftest-sanction-2'
+  );
+  assert v_sanction_id2 <> v_sanction_id, 'set_sanction berikutnya harus membuat baris baru, bukan reuse';
+  assert (
+           select count(*) from public.profile_sanctions
+            where profile_id = u4 and scope = 'atlas_publish' and revoked_at is null
+         ) = 1,
+         'hanya boleh ada satu sanction aktif per profile+scope';
+
+  v_j := public.moderation_analytics_summary(now() - interval '1 day');
+  assert (v_j->>'open_cases')::int >= 1,
+         'analytics harus menghitung case report yang baru dibuka';
+  assert (v_j->'manual_outcomes'->>'approved')::int >= 1,
+         'analytics harus menghitung outcome approved dari case publish di atas';
+  assert (v_j->'decisions_by_action'->>'approve')::int >= 1,
+         'analytics harus membaca moderation_decisions, bukan tabel kosong';
+
+  -- Cleanup: tabel baru ini di-reference dari auth.users TANPA cascade
+  -- (moderation_decisions.staff_id, admin_audit_log, dan profile_sanctions
+  -- sengaja immutable/RESTRICT), jadi harus dibersihkan sebelum delete
+  -- auth.users di akhir file atau delete itu sendiri akan gagal
+  -- foreign_key_violation -- terukur nyata saat menguji ini lokal.
+  delete from public.moderation_decisions where staff_id in (u1, u2);
+  delete from public.admin_audit_log where actor_id in (u1, u2);
+  delete from public.profile_sanctions where created_by in (u1, u2) or revoked_by in (u1, u2);
+  delete from auth.users where id = v_rep_c;
 
   delete from auth.users where id in (u1, u2, u3, u4, u5);
   delete from public.species_library where species_key = v_spesies;

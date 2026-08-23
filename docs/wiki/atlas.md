@@ -73,11 +73,25 @@ menyerupai karakter franchise. Jika ditolak, profil tetap menampilkan **Cannot
 publish to Atlas** dalam keadaan nonaktif agar hasilnya tidak hilang atau tampak
 seperti proses yang macet.
 
+Kadang moderation butuh opini kedua sebelum bisa memutuskan. Selama itu,
+profil menampilkan **Under Review** dalam keadaan nonaktif — Anima-nya tetap
+sepenuhnya bisa dimainkan, hanya publish ke Atlas yang menunggu. Kalau art itu
+akhirnya ditolak, tombol **Request Review** muncul di bawah tombol Publish:
+menekannya meminta moderator manusia melihat ulang tanpa mengulang proses
+moderasi otomatis dari awal. Setiap versi art (setiap kali Anima itu evolve
+atau di-synthesis ulang) mendapat satu kesempatan Request Review; sesudah
+diminta, tombolnya berubah menjadi **Review Requested…** sampai staff
+memutuskan.
+
 Team Battle selalu merakit rival dengan jumlah anggota yang sama seperti tim
 penantang. **Unpublish Lineage from Atlas** menarik lineage dari pool lawan baru
 dan menghapus entry-nya dari Atlas Seeker lain. Delete Anima melakukan hal yang
 sama.
 
-Pada profil Anima pemain lain, **Report** menghapus lineage itu dari Atlas-mu.
-Jika laporan mencapai batas moderation, lineage ikut disembunyikan dari pemain
-lain. Atlas tidak memiliki feed, like, komentar, follow, DM, atau profil publik.
+Pada profil Anima pemain lain, **Report** membuka pilihan kategori: karakter
+yang bisa dikenali, konten seksual/tidak pantas, gore/mengganggu, kebencian/
+pelecehan, atau lainnya. Memilih salah satu langsung menghapus lineage itu
+dari Atlas-mu. Jika laporan dari beberapa Seeker berbeda mencapai batas
+moderation, lineage ikut disembunyikan dari pemain lain sambil menunggu staff
+meninjau — bukan keputusan final tanpa peninjauan. Atlas tidak memiliki feed,
+like, komentar, follow, DM, atau profil publik.

@@ -143,6 +143,7 @@ var _destination: StringName = BottomNav.HOME
 var _overlay_return_destination: StringName = BottomNav.HOME
 var _profile_return_destination: StringName = BottomNav.COLLECTION
 var _pending_atlas_publish_id := ""
+var _pending_gallery_appeal_id := ""
 ## Anima yang menunggu consent Publish di seberang round trip OAuth, beserta UID
 ## pemiliknya saat intent dibuat: `{anima_id, uid}`. Sengaja tidak dipersist —
 ## kalau app mati saat OAuth, intent-nya gugur dan pemain menekan Publish lagi,
@@ -297,6 +298,7 @@ func _ready() -> void:
 	_details_view.delete_requested.connect(_show_delete_confirmation)
 	_details_view.help_requested.connect(_show_details_help)
 	_details_view.gallery_publish_requested.connect(_toggle_gallery_publish)
+	_details_view.gallery_appeal_requested.connect(_request_gallery_appeal)
 	_details_view.evolve_requested.connect(_show_evolve_confirmation)
 	_details_view.synthesis_requested.connect(_open_synthesis_lab)
 	_bottom_nav.destination_selected.connect(_on_bottom_nav_destination)
@@ -2156,6 +2158,8 @@ func _modal_confirmed(text: String) -> void:
 			_commit_atlas_publish(_pending_atlas_publish_id, true)
 		&"atlas_publish_signin":
 			_show_sign_in_confirmation()
+		&"gallery_appeal":
+			_commit_gallery_appeal(_pending_gallery_appeal_id)
 		&"chapter_announcement":
 			_ack_chapter_popup(true)
 		&"retreat":
@@ -2222,6 +2226,8 @@ func _modal_canceled() -> void:
 		_pending_atlas_publish_id = ""
 	elif context == &"atlas_publish_signin":
 		_publish_after_sign_in = {}
+	elif context == &"gallery_appeal":
+		_pending_gallery_appeal_id = ""
 	elif context == &"chapter_announcement":
 		_ack_chapter_popup(false)
 	elif context == &"retreat":
@@ -2454,7 +2460,13 @@ func _commit_atlas_publish(anima_id: String, publish: bool) -> void:
 		_set_busy(false)
 		return
 	if res.ok:
-		_say(tr("GALLERY_PUBLISHED") if publish else tr("GALLERY_UNPUBLISHED"), false)
+		var result := GameState.as_dict(res.data)
+		if publish and str(result.get("moderation_status", "")) == "pending":
+			# v2 dua-pass: masih tidak pasti sesudah opini kedua, bukan galat —
+			# masuk antrean manual, bukan langsung terbit atau ditolak.
+			_say(tr("GALLERY_SUBMITTED_FOR_REVIEW"), false)
+		else:
+			_say(tr("GALLERY_PUBLISHED") if publish else tr("GALLERY_UNPUBLISHED"), false)
 		await _refresh_gallery_status(anima_id)
 	else:
 		_say(_gallery_error(res.error), true)
@@ -2478,6 +2490,12 @@ func _gallery_error(code: String) -> String:
 			return tr("ATLAS_DISABLED")
 		"ANIMA_NOT_TYPING_V2", "ANIMA_NOT_READY", "ANIMA_NO_ART":
 			return tr("GALLERY_PUBLISH_UNAVAILABLE")
+		"ENTRY_NOT_REJECTED":
+			return tr("GALLERY_APPEAL_NOT_REJECTED")
+		"APPEAL_ALREADY_USED":
+			return tr("GALLERY_APPEAL_ALREADY_USED")
+		"ATLAS_PUBLISH_SUSPENDED":
+			return tr("GALLERY_PUBLISH_SUSPENDED")
 		_:
 			var key := "ERROR_%s" % code
 			return tr(key) if tr(key) != key else tr("ATLAS_ERROR")
@@ -2504,17 +2522,55 @@ func _refresh_gallery_status(anima_id: String = "") -> void:
 		return
 	var data := GameState.as_dict(res.data)
 	var entry := GameState.as_dict(data.get("entry"))
-	var moderation_rejected := str(entry.get("moderation_status", "")) == "rejected"
+	var moderation_status := str(entry.get("moderation_status", ""))
+	var moderation_rejected := moderation_status == "rejected"
+	var under_review := moderation_status == "pending"
 	var available := (
 		bool(data.get("ready", false))
 		and bool(data.get("typing_v2", false))
 		and not moderation_rejected
+		and not under_review
 	)
 	_details_view.set_gallery_status({
 		"available": available,
 		"published": bool(entry.get("published", false)),
 		"rejected": moderation_rejected,
+		"under_review": under_review,
 	})
+
+
+func _request_gallery_appeal(anima_id: String) -> void:
+	if _busy or anima_id.is_empty():
+		return
+	_pending_gallery_appeal_id = anima_id
+	_modal_context = &"gallery_appeal"
+	_shell_modal.open_confirm(
+		tr("GALLERY_APPEAL_TITLE"),
+		tr("GALLERY_APPEAL_BODY"),
+		tr("GALLERY_APPEAL_ACTION"),
+		tr("ACTION_CANCEL")
+	)
+
+
+func _commit_gallery_appeal(anima_id: String) -> void:
+	_pending_gallery_appeal_id = ""
+	if _busy or anima_id.is_empty():
+		return
+	_details_view.set_gallery_appeal_pending(true)
+	_set_busy(true)
+	var account_epoch := GameState.session_epoch
+	var res := await Backend.atlas("appeal", {"anima_id": anima_id})
+	if not Backend.response_applies(res, account_epoch):
+		_details_view.set_gallery_appeal_pending(false)
+		_set_busy(false)
+		return
+	if res.ok:
+		_say(tr("GALLERY_APPEAL_SUBMITTED"), false)
+		await _refresh_gallery_status(anima_id)
+	else:
+		_say(_gallery_error(res.error), true)
+	_details_view.set_gallery_appeal_pending(false)
+	_set_busy(false)
 
 
 func _open_settings() -> void:

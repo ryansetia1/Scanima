@@ -3800,6 +3800,328 @@ console.log("23c. Anima Atlas memakai consent/moderasi Gallery");
   );
 }
 
+console.log("23d. moderation v2: parsing fail-closed dan tabel keputusan dua-pass");
+{
+  const { parseModerationPass, moderationPassDecision } = await import(
+    "../backend/supabase/functions/_shared/gallery_shared.mjs"
+  );
+
+  const clean = parseModerationPass('{"category":"none","confidence":"high"}', 1);
+  assert.equal(clean.category, "none");
+  assert.equal(moderationPassDecision(1, clean), "approve");
+
+  const hate = parseModerationPass('{"category":"hate","confidence":"low"}', 1);
+  assert.equal(
+    moderationPassDecision(1, hate),
+    "reject",
+    "kategori hard safety final di pass 1 walau confidence low",
+  );
+
+  const softIp = parseModerationPass(
+    '{"category":"ip_character","confidence":"low","reason":"looks like a generic mascot"}',
+    1,
+  );
+  assert.equal(
+    moderationPassDecision(1, softIp),
+    "uncertain",
+    "kecurigaan IP generik di pass 1 harus ke pass 2, bukan hard reject langsung",
+  );
+
+  const concreteMatch = parseModerationPass(
+    '{"category":"ip_character","confidence":"high","matched_name":"Pikachu"}',
+    2,
+  );
+  assert.equal(
+    moderationPassDecision(2, concreteMatch),
+    "reject",
+    "match konkret + confidence high di pass 2 baru final reject",
+  );
+
+  const genericSuspicionPass2 = parseModerationPass(
+    '{"category":"ip_character","confidence":"low","reason":"looks like a mascot style"}',
+    2,
+  );
+  assert.equal(
+    moderationPassDecision(2, genericSuspicionPass2),
+    "uncertain",
+    "kriteria generik tanpa match konkret tidak boleh jadi hard IP rejection, bahkan di pass 2",
+  );
+
+  const highConfidenceNoName = parseModerationPass(
+    '{"category":"ip_character","confidence":"high"}',
+    2,
+  );
+  assert.equal(
+    moderationPassDecision(2, highConfidenceNoName),
+    "uncertain",
+    "confidence high tanpa matched_name konkret tetap uncertain -> manual case",
+  );
+
+  const clearedAtPass2 = parseModerationPass('{"category":"none","confidence":"high"}', 2);
+  assert.equal(moderationPassDecision(2, clearedAtPass2), "approve");
+
+  // extractJson melempar untuk teks yang sama sekali bukan JSON (ditangani di
+  // gallery/index.ts sebagai VISION_MODERATION_FAILED, bukan verdict diam-diam).
+  // Yang diuji di sini adalah JSON valid tapi tidak sesuai schema -- category
+  // hilang atau nilainya di luar enum -- yang HARUS tetap fail-closed.
+  const missingCategory = parseModerationPass("{}", 1);
+  assert.equal(
+    missingCategory.category,
+    "ip_character",
+    "category yang hilang harus fail-closed ke ip_character, bukan diam-diam none/approve",
+  );
+  assert.equal(missingCategory.confidence, "low");
+  assert.equal(
+    moderationPassDecision(1, missingCategory),
+    "uncertain",
+    "schema tidak lengkap di pass 1 harus tetap lanjut ke pass 2, tidak pernah approve diam-diam",
+  );
+
+  const invalidCategory = parseModerationPass(
+    '{"category":"totally_safe","confidence":"high"}',
+    2,
+  );
+  assert.equal(
+    moderationPassDecision(2, invalidCategory),
+    "uncertain",
+    "category di luar enum di pass 2 harus ke manual case, tidak pernah approve atau reject diam-diam",
+  );
+}
+
+console.log("23e. admin_moderation staff-gated dan tidak membocorkan kredensial");
+{
+  const { readFile } = await import("node:fs/promises");
+  const adminEdge = await readFile(
+    new URL("../backend/supabase/functions/admin_moderation/index.ts", import.meta.url),
+    "utf8",
+  );
+  const adminAuth = await readFile(
+    new URL("../backend/supabase/functions/_shared/admin_auth.ts", import.meta.url),
+    "utf8",
+  );
+  const configToml = await readFile(
+    new URL("../backend/supabase/config.toml", import.meta.url),
+    "utf8",
+  );
+  const schemaMigration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260823080000_atlas_moderation_v2_schema.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  for (
+    const op of [
+      "whoami",
+      "queue_list",
+      "case_detail",
+      "reports_list",
+      "decide",
+      "restore_entry",
+      "sanction_set",
+      "sanction_revoke",
+      "sanctions_list",
+      "seeker_profile",
+      "staff_list",
+      "staff_set_role",
+      "audit_list",
+      "analytics",
+    ]
+  ) {
+    assert.ok(adminEdge.includes(`"${op}"`), `admin_moderation operation ${op} harus ada`);
+  }
+
+  assert.match(
+    adminAuth,
+    /staff_accounts/,
+    "otorisasi staff harus membaca staff_accounts, bukan user_metadata",
+  );
+  assert.doesNotMatch(
+    adminAuth,
+    /user_metadata/,
+    "role staff tidak boleh pernah dibaca dari user_metadata",
+  );
+  assert.doesNotMatch(
+    adminEdge,
+    /REPLICATE_API_TOKEN|SUPABASE_SERVICE_ROLE_KEY/,
+    "admin_moderation tidak boleh menyentuh kredensial mentah secara langsung",
+  );
+  assert.match(
+    adminEdge,
+    /requireStaff\(db, req, "admin"\)/,
+    "staff_set_role dan staff_list harus menuntut role admin",
+  );
+  assert.match(
+    configToml,
+    /\[functions\.admin_moderation\][\s\S]*?verify_jwt = true/,
+    "admin_moderation harus tetap verify_jwt=true seperti fungsi lain",
+  );
+  assert.match(
+    schemaMigration,
+    /revoke all on public\.staff_accounts from public, anon, authenticated/,
+    "staff_accounts harus default-deny seperti tabel lain",
+  );
+  assert.match(
+    schemaMigration,
+    /revoke all on function public\.moderation_decide_case[\s\S]*?from public, anon, authenticated/,
+    "RPC keputusan staff harus dicabut dari public/anon/authenticated",
+  );
+  assert.match(
+    schemaMigration,
+    /grant select, insert on public\.admin_audit_log to service_role/,
+    "admin_audit_log harus immutable: service_role hanya dapat select+insert",
+  );
+  assert.doesNotMatch(
+    schemaMigration,
+    /grant (all|update|delete) on public\.admin_audit_log/,
+    "admin_audit_log tidak boleh punya grant update/delete apa pun",
+  );
+
+  // Entry yang belum pernah disetujui (rejected langsung, atau case publish
+  // yang masih open) tidak punya thumb_path -- queue dan case detail harus
+  // tetap menunjukkan art-nya lewat crop idle on-the-fly dari full sheet,
+  // bukan kotak kosong "No image available" untuk kasus yang justru paling
+  // butuh dilihat staff.
+  assert.match(
+    adminEdge,
+    /async function previewIdleThumbDataUri/,
+    "harus ada preview thumbnail on-the-fly untuk entry yang belum punya thumb_path",
+  );
+  assert.match(
+    adminEdge,
+    /entry\.thumb_path\s*\n?\s*\?\s*signThumbUrl\(entry\.thumb_path\)\s*\n?\s*:\s*previewIdleThumbDataUri\(entry\.anima_id\)/,
+    "case_detail harus fallback ke preview on-the-fly saat thumb_path kosong",
+  );
+  assert.match(
+    adminEdge,
+    /thumbPath\s*\n?\s*\?[\s\S]{0,40}thumbUrls\.get\(thumbPath\)[\s\S]{0,80}:\s*\n?\s*animaId\s*\n?\s*\?\s*await previewIdleThumbDataUri\(animaId\)/,
+    "queue_list harus fallback ke preview on-the-fly saat thumb_path kosong",
+  );
+}
+
+console.log("23f. moderation v2: sanction enforcement dan pemetaan kategori report");
+{
+  const { readFile } = await import("node:fs/promises");
+  const galleryEdge = await readFile(
+    new URL("../backend/supabase/functions/gallery/index.ts", import.meta.url),
+    "utf8",
+  );
+  const schemaMigration = await readFile(
+    new URL(
+      "../backend/supabase/migrations/20260823080000_atlas_moderation_v2_schema.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(
+    galleryEdge,
+    /async function publishEntry[\s\S]*?requireNoActiveSanction\(ownerId, "atlas_publish"/,
+    "publish harus menegakkan sanction atlas_publish -- fitur sanction pernah sama sekali tidak berefek",
+  );
+  assert.match(
+    galleryEdge,
+    /async function reportEntry[\s\S]*?requireNoActiveSanction\(ownerId, "atlas_report"/,
+    "report harus menegakkan sanction atlas_report",
+  );
+  assert.match(
+    galleryEdge,
+    /function requireNoActiveSanction[\s\S]*?\.eq\("scope", scope\)[\s\S]*?\.is\("revoked_at", null\)/,
+    "pengecekan sanction harus membaca profile_sanctions yang belum di-revoke",
+  );
+
+  // gallery_reports.category (5 nilai player-facing, termasuk "character" dan
+  // default "other") pernah dikirim mentah sebagai p_category ke
+  // moderation_open_case_for_entry, yang CHECK constraint-nya cuma menerima
+  // 4 nilai kosakata Vision otomatis (tidak ada "character"/"other") --
+  // laporan apa pun yang menembus ambang auto-hide dengan kategori itu akan
+  // melanggar constraint dan gagal 500. Pastikan pemetaannya masih ada.
+  assert.match(
+    schemaMigration,
+    /v_case_category text := case p_category[\s\S]*?when 'character' then 'ip_character'[\s\S]*?else null[\s\S]*?end;/,
+    "report category harus dipetakan ke kosakata moderation_cases sebelum membuka case, bukan dikirim mentah",
+  );
+  assert.match(
+    schemaMigration,
+    /moderation_open_case_for_entry\(\s*p_entry_id, v_art_hash, 'report', v_case_category,/,
+    "moderation_report_and_maybe_case harus memakai kategori yang sudah dipetakan, bukan p_category mentah",
+  );
+
+  // Approve DAN restore pada case yang berasal dari publish pass-2-uncertain
+  // tidak pernah melewati thumb crop+upload gallery/index.ts -- RPC harus
+  // menolak keduanya tanpa thumbnail alih-alih menerbitkan entry tanpa gambar.
+  const thumbGuardCount = (
+    schemaMigration.match(
+      /if v_entry\.thumb_path is null and p_thumb_path is null then\s*\n\s*raise exception 'THUMB_REQUIRED'/g,
+    ) ?? []
+  ).length;
+  assert.equal(
+    thumbGuardCount, 2,
+    "approve DAN restore harus sama-sama menolak case tanpa thumbnail siap, bukan menerbitkan entry tanpa gambar",
+  );
+  const adminModeration = await readFile(
+    new URL(
+      "../backend/supabase/functions/admin_moderation/index.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(
+    adminModeration,
+    /action === "approve" \|\| action === "restore"[\s\S]*?ensureEntryThumb\(caseId\)/,
+    "decide() harus menyiapkan thumbnail untuk approve MAUPUN restore, bukan cuma approve",
+  );
+  assert.match(
+    adminModeration,
+    /async function restoreEntry[\s\S]*?ensureEntryThumb\(caseId\)/,
+    "restore_entry (case baru untuk entry tanpa case terbuka) juga harus menyiapkan thumbnail",
+  );
+
+  // Admin terakhir tidak boleh bisa mengunci diri sendiri keluar dari console.
+  assert.match(
+    schemaMigration,
+    /if p_target_user_id = p_staff_id and p_role <> 'admin' then[\s\S]*?raise exception 'CANNOT_REVOKE_SELF'/,
+    "admin tidak boleh bisa menurunkan role dirinya sendiri dari admin",
+  );
+
+  // moderation_decisions dibuat lengkap dengan RLS/index/dibaca oleh
+  // moderation_analytics_summary, tapi moderation_decide_case sendiri pernah
+  // tidak pernah menulis ke sana -- riwayat keputusan di case detail admin
+  // dan breakdown decisions_by_action di analytics akan selalu kosong.
+  assert.match(
+    schemaMigration,
+    /insert into public\.admin_audit_log[\s\S]*?insert into public\.moderation_decisions\s*\n\s*\(case_id, staff_id, action, reason_code, note, idempotency_key\)/,
+    "moderation_decide_case harus benar-benar menulis baris ke moderation_decisions, bukan cuma admin_audit_log",
+  );
+
+  // Retry dengan idempotency_key yang sama HARUS dikenali sebelum guard
+  // "sudah resolved/revoked" -- guard itu jadi true JUSTRU karena attempt
+  // pertama sukses, jadi kalau dicek lebih dulu, retry yang sah malah dibalas
+  // galat membingungkan alih-alih idempotent_replay.
+  const decideExistsIdx = schemaMigration.indexOf(
+    "if exists (\n    select 1 from public.admin_audit_log\n     where actor_id = p_staff_id and action = 'moderation_' || p_action",
+  );
+  const decideResolvedIdx = schemaMigration.indexOf(
+    "if p_action <> 'assign' and v_case.status <> 'open' then",
+  );
+  assert.ok(
+    decideExistsIdx >= 0 && decideResolvedIdx > decideExistsIdx,
+    "moderation_decide_case harus mengecek idempotency_key SEBELUM guard CASE_ALREADY_RESOLVED",
+  );
+
+  const revokeExistsIdx = schemaMigration.indexOf(
+    "if exists (\n    select 1 from public.admin_audit_log\n     where actor_id = p_staff_id and action = 'sanction_revoke'",
+  );
+  const revokeAlreadyIdx = schemaMigration.lastIndexOf(
+    "if v_sanction.revoked_at is not null then",
+  );
+  assert.ok(
+    revokeExistsIdx >= 0 && revokeAlreadyIdx > revokeExistsIdx,
+    "moderation_revoke_sanction harus mengecek idempotency_key SEBELUM guard SANCTION_ALREADY_REVOKED",
+  );
+}
+
 console.log("24. sheet v7 3x3 sembilan sel");
 {
   const blobs3 = {
