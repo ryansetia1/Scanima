@@ -923,6 +923,7 @@ func _initialize() -> void:
 	_test_battle_art_has_no_global_toast()
 	_test_battle_turn_prediction(scene)
 	_test_home_tap_interaction(scene)
+	_test_wake_tap_gesture(scene)
 
 	await _check_music(scene)
 	_check_home_background(scene)
@@ -933,6 +934,7 @@ func _initialize() -> void:
 	await _test_item_grids_clip_to_one_line()
 	await _test_autowrap_labels_have_wrap_width()
 	await _test_shared_components()
+	await _test_fly_to_animation()
 	await _test_scan_phase_visuals()
 	await _test_seeker_ui()
 	await _test_battle_view()
@@ -1396,6 +1398,46 @@ func _test_shared_components() -> void:
 		_sheet_button_labels(shop_sheet).find(tr("SHOP_USE")) < 0,
 		"Shop sells items without a Use action"
 	)
+
+	# Loading state + anti-spam for a purchase: the row being bought reads
+	# "Buying...", every other Buy button and both tabs lock with it, and the
+	# icon snapshot the fly-to-Bag animation needs is still readable before any
+	# of that happens.
+	var pulse_snapshot: Dictionary = shop_sheet.icon_snapshot_for("pulse_cell")
+	_check(
+		pulse_snapshot.get("texture") is Texture2D
+		and (pulse_snapshot.get("rect", Rect2()) as Rect2).size.x > 0.0,
+		"icon_snapshot_for hands back a real rect and texture while the row is still on screen"
+	)
+	_check(
+		shop_sheet.icon_snapshot_for("does-not-exist").is_empty(),
+		"icon_snapshot_for returns nothing for an item that isn't on screen"
+	)
+	shop_sheet.set_pending("pulse_cell")
+	await process_frame
+	var buy_buttons: Array[Button] = []
+	for node in shop_list.find_children("*", "Button", true, false):
+		var buy := node as Button
+		if buy != null and not buy.is_queued_for_deletion():
+			buy_buttons.append(buy)
+	var buying_count := 0
+	var all_disabled := true
+	for buy in buy_buttons:
+		if buy.text == tr("SHOP_BUYING"):
+			buying_count += 1
+		all_disabled = all_disabled and buy.disabled
+	_check(
+		buying_count == 1 and all_disabled and buy_buttons.size() == 2,
+		"exactly the item being bought reads Buying..., and every Buy button locks with it"
+	)
+	_check(food_tab.disabled and item_tab.disabled, "tabs stay locked while a purchase is in flight")
+	shop_sheet.set_pending("")
+	await process_frame
+	_check(
+		not food_tab.disabled and not item_tab.disabled,
+		"tabs unlock again once the purchase settles"
+	)
+
 	shop_sheet.open_bag("food")
 	await process_frame
 	_check(
@@ -1546,15 +1588,90 @@ func _test_care_feedback_is_immediate() -> void:
 		"Bits and bag quantity move before the purchase response"
 	)
 	_check(
-		tap_body.find("_say(tr(\"FEEDBACK_PURCHASE\"), true)") >= 0,
-		"purchase feedback is transient instead of persisting above the Shop"
+		tap_body.find("_say(tr(\"FEEDBACK_PURCHASE\"), true)") < 0,
+		"the optimistic purchase path shows the fly-to-Bag animation instead of a toast"
 	)
 	_check(
 		tap_body.find("GameState.profile[\"bits\"] = bits_before") >= 0,
 		"a rejected purchase puts the Bits it predicted back"
 	)
+	var resume_purchase_start := source.find("func _resume_pending_purchase")
+	var resume_purchase_end := source.find("func _send_pending_purchase", resume_purchase_start)
+	var resume_purchase_body := (
+		source.substr(resume_purchase_start, resume_purchase_end - resume_purchase_start)
+		if resume_purchase_start >= 0 and resume_purchase_end > resume_purchase_start
+		else ""
+	)
+	_check(
+		resume_purchase_body.find("_say(tr(\"FEEDBACK_PURCHASE\"), true)") >= 0,
+		"a purchase resumed after a restart still toasts -- there's no sheet or icon left to animate"
+	)
 	_test_optimistic_care()
 	_test_summon_overlaps_portal()
+	_test_sleeping_consume_guard()
+
+
+## Feed dan Use Item tidak boleh diam-diam mengonsumsi item saat Anima tidur --
+## Bag memanggil `_commit_care` langsung tanpa lewat Care Dock, jadi gerbangnya
+## harus duduk di sana, dan `_use_catalog_item` harus memeriksanya sebelum
+## menutup sheet supaya toast-nya tidak muncul sesudah sheet-nya sudah hilang.
+func _test_sleeping_consume_guard() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var commit_start := source.find("func _commit_care")
+	var commit_end := source.find("\n\nfunc _resume_pending_care", commit_start)
+	var commit_body := (
+		source.substr(commit_start, commit_end - commit_start)
+		if commit_start >= 0 and commit_end > commit_start
+		else ""
+	)
+	var guard_at := commit_body.find(
+		"(action == \"feed\" or action == \"use_item\") and _is_sleeping(_current_anima)"
+	)
+	_check(guard_at >= 0, "_commit_care refuses feed/use_item on a sleeping Anima, and only those two")
+	_check(
+		guard_at >= 0 and commit_body.find("tr(\"ERROR_SLEEPING_CONSUME\")", guard_at) > guard_at,
+		"the sleeping guard tells the player to wake the Anima first"
+	)
+	_check(
+		guard_at >= 0 and commit_body.find("GameState.begin_care", guard_at) > guard_at,
+		"the sleeping guard runs before any care request is queued"
+	)
+
+	var use_start := source.find("func _use_catalog_item")
+	var use_end := source.find("\n\nfunc _resume_pending_purchase", use_start)
+	var use_body := (
+		source.substr(use_start, use_end - use_start)
+		if use_start >= 0 and use_end > use_start
+		else ""
+	)
+	var use_guard_at := use_body.find("_is_sleeping(_current_anima)")
+	var use_close_at := use_body.find("_shop_sheet.close()")
+	_check(
+		use_guard_at >= 0 and use_close_at > use_guard_at,
+		"Bag checks the sleeping guard before closing the sheet, so the toast has somewhere to land"
+	)
+
+	# _fly_purchased_item must restore _bag_button.z_index to the constant 0,
+	# not to a `previous_z` captured at call time -- a second purchase's
+	# animation can start before the first one lands (the network round trip
+	# can resolve faster than the 0,4 s flight), and capturing z_index then
+	# would capture the first animation's 61, permanently stranding the Bag
+	# icon above the rest of the chrome once both callbacks have fired.
+	var fly_start := source.find("func _fly_purchased_item")
+	var fly_end := source.find("\n\nfunc ", fly_start)
+	var fly_body := (
+		source.substr(fly_start, fly_end - fly_start)
+		if fly_start >= 0 and fly_end > fly_start
+		else ""
+	)
+	_check(
+		fly_body.find("var previous_z") < 0,
+		"the z_index restore doesn't capture a value that a second purchase could race"
+	)
+	_check(
+		fly_body.find("_bag_button.z_index = 0") >= 0,
+		"the z_index restore always lands on the known-good constant"
+	)
 
 
 ## Mengganti companion memutar dissolve dan portal lebih dulu, jadi round trip
@@ -1658,6 +1775,103 @@ func _test_home_tap_interaction(scene: Node) -> void:
 	)
 
 
+## Tap-to-wake: satu cara kedua membangunkan Anima selain tombol Wake, dengan
+## target acak 3-6 yang di-roll ulang tiap sesi tidur. Diam total (tidak
+## menghitung, bukan hanya menolak) selama evolving/dormant/pending_care lain
+## masih terbang -- sama seperti gerbang yang sudah dipegang `_commit_care`.
+func _test_wake_tap_gesture(scene: Node) -> void:
+	var previous_anima: Dictionary = scene.get("_current_anima")
+	var previous_taps: int = scene.get("_wake_taps")
+	var previous_target: int = scene.get("_wake_taps_target")
+
+	scene.set("_wake_taps", 0)
+	scene.set("_wake_taps_target", 0)
+	scene.set("_current_anima", {"id": "wake-tap-test", "status": "ready"})
+	_check(
+		not bool(scene.call("_register_sleep_tap")) and int(scene.get("_wake_taps")) == 0,
+		"an awake Anima never starts counting wake taps"
+	)
+
+	var sleeping_row: Dictionary = (scene.get("_current_anima") as Dictionary).duplicate(true)
+	sleeping_row["sleep_started_at"] = "2026-08-24T00:00:00+00:00"
+	scene.set("_current_anima", sleeping_row)
+
+	var taps := 0
+	var woke := false
+	while taps < 20 and not woke:
+		woke = bool(scene.call("_register_sleep_tap"))
+		taps += 1
+	_check(woke, "enough taps on a sleeping Anima eventually wake it")
+	_check(taps >= 3 and taps <= 6, "the wake target lands in 3-6 (got %d)" % taps)
+	_check(
+		int(scene.get("_wake_taps")) == 0 and int(scene.get("_wake_taps_target")) == 0,
+		"the counter and its rolled target both clear the instant the target is hit"
+	)
+
+	# RNG isn't seeded here, so both ends of the range must be sampled directly
+	# rather than trusted from one roll -- an off-by-one would only ever miss
+	# one edge of 3..6, not the middle.
+	var seen_targets: Dictionary = {}
+	for _i in 80:
+		scene.set("_wake_taps", 0)
+		scene.set("_wake_taps_target", 0)
+		var t := 0
+		var reached := false
+		while t < 20 and not reached:
+			reached = bool(scene.call("_register_sleep_tap"))
+			t += 1
+		seen_targets[t] = true
+	for target in seen_targets.keys():
+		_check(target >= 3 and target <= 6, "no roll lands outside 3-6 (got %d)" % target)
+	_check(seen_targets.has(3), "the roll can land on the minimum of 3 taps")
+	_check(seen_targets.has(6), "the roll can land on the maximum of 6 taps")
+
+	scene.set("_current_anima", sleeping_row)
+	scene.set("_wake_taps", 0)
+	scene.set("_wake_taps_target", 0)
+	var evolving_row := sleeping_row.duplicate(true)
+	evolving_row["status"] = "evolving"
+	scene.set("_current_anima", evolving_row)
+	_check(
+		not bool(scene.call("_register_sleep_tap")) and int(scene.get("_wake_taps")) == 0,
+		"a tap during evolution never counts toward waking"
+	)
+
+	var dormant_row := sleeping_row.duplicate(true)
+	dormant_row["dormant_since"] = "2026-08-20T00:00:00+00:00"
+	scene.set("_current_anima", dormant_row)
+	_check(
+		not bool(scene.call("_register_sleep_tap")) and int(scene.get("_wake_taps")) == 0,
+		"a tap on a Dormant Anima never counts toward waking"
+	)
+
+	scene.set("_current_anima", sleeping_row)
+	# GameState is an autoload, unresolvable as a bare identifier from this
+	# script -- it's the `--script` entry point itself, compiled before
+	# autoloads exist. Same workaround as test_client_state.gd: fetch the
+	# running node instead of naming the global.
+	var game_state := get_root().get_node("GameState")
+	var pending_before: Variant = game_state.get("pending_care")
+	game_state.set("pending_care", {"anima_id": "someone-else", "action": "feed"})
+	_check(
+		not bool(scene.call("_register_sleep_tap")) and int(scene.get("_wake_taps")) == 0,
+		"a tap while another care action is in flight never counts toward waking"
+	)
+	game_state.set("pending_care", pending_before)
+
+	scene.set("_wake_taps", 2)
+	scene.set("_wake_taps_target", 5)
+	scene.call("_reset_wake_taps")
+	_check(
+		int(scene.get("_wake_taps")) == 0 and int(scene.get("_wake_taps_target")) == 0,
+		"_reset_wake_taps clears both the count and its rolled target"
+	)
+
+	scene.set("_current_anima", previous_anima)
+	scene.set("_wake_taps", previous_taps)
+	scene.set("_wake_taps_target", previous_target)
+
+
 func _test_anima_tap_reactions() -> void:
 	var presenter = load("res://scripts/anima_presenter.gd").new()
 	root.add_child(presenter)
@@ -1708,6 +1922,70 @@ func _lowest_sample(seconds: float, sampler: Callable) -> float:
 		await process_frame
 		lowest = minf(lowest, sampler.call())
 	return lowest
+
+
+## Satu ikon terbang sekali pakai: berpindah dari titik awal ke pusat target,
+## memanggil `on_arrive` tepat sekali, lalu membuang dirinya. Payoff-nya di
+## Bag bergantung pada busur ini benar-benar sampai, bukan cuma spawn lalu diam.
+func _test_fly_to_animation() -> void:
+	var host := Control.new()
+	host.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(host)
+	await process_frame
+
+	var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	image.fill(Color.WHITE)
+	var texture := ImageTexture.create_from_image(image)
+	var from_rect := Rect2(Vector2(20.0, 20.0), Vector2(72.0, 72.0))
+	var to_rect := Rect2(Vector2(400.0, 500.0), Vector2(48.0, 48.0))
+	var target_center := to_rect.get_center()
+
+	var arrived := [0]
+	UiJuice.fly_to(host, texture, from_rect, to_rect, func() -> void: arrived[0] += 1)
+	await process_frame
+
+	var flyer: TextureRect = null
+	for child in host.get_children():
+		if child is TextureRect:
+			flyer = child
+	_check(flyer != null, "fly_to spawns its one-shot flyer under the host")
+	_check(
+		flyer != null and flyer.z_index > 0,
+		"the flyer draws above the sheet chrome it flies past"
+	)
+
+	# A plain `_lowest_sample` callable would still be invoked once more the
+	# frame the flyer frees itself -- Godot logs a hard engine error when a
+	# lambda's captured Node has been freed, even guarded by
+	# `is_instance_valid()` inside the body. The while-guard here checks
+	# `arrived[0]` before ever touching `flyer` again, so a freed node is
+	# never passed to a lambda call in the first place.
+	var closest := INF
+	var sample_deadline := Time.get_ticks_msec() + 700
+	while Time.get_ticks_msec() < sample_deadline and arrived[0] == 0:
+		await process_frame
+		if arrived[0] == 0 and is_instance_valid(flyer):
+			closest = minf(closest, (flyer.position + flyer.size * 0.5).distance_to(target_center))
+	# The sample one frame before arrival is the closest reachable without
+	# racing the freed node (see the comment above), not the true t=1 position
+	# -- headless frame steps land it a few px short of the target, measured at
+	# ~19 px for this rect pair. 30 px keeps real regressions caught without
+	# being brittle to frame-step timing.
+	_check(closest < 30.0, "the flyer's visual center actually converges on the target's center")
+	_check(arrived[0] == 1, "fly_to calls its arrival callback exactly once")
+	_check(
+		not is_instance_valid(flyer) or flyer.is_queued_for_deletion(),
+		"the flyer frees itself once it lands"
+	)
+
+	host.queue_free()
+
+	var missing_arrived := [0]
+	UiJuice.fly_to(host, null, from_rect, to_rect, func() -> void: missing_arrived[0] += 1)
+	_check(
+		missing_arrived[0] == 1,
+		"a missing texture or a freed host still resolves the arrival callback instead of hanging"
+	)
 
 
 func _test_scan_phase_visuals() -> void:

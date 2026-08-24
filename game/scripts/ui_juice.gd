@@ -253,6 +253,56 @@ static func pop(control: Control, strength: float = 1.045) -> void:
 	control.set_meta(META_TWEEN, tween)
 
 
+## Berapa lama satu ikon terbang dari Shop ke Bag butuh untuk sampai.
+const FLY_TO_SEC := 0.4
+
+
+## Satu TextureRect sekali pakai yang terbang dari `from_global` ke pusat
+## `to_global`, lalu memanggil `on_arrive` tepat sekali dan membuang dirinya.
+## `host` adalah induk sementara si flyer -- biasanya node `UI` di root shell,
+## supaya ia menggambar di atas seluruh chrome termasuk scrim bottom sheet.
+## Kedua rect diharapkan dari `get_global_rect()`; keduanya dikonversi ke ruang
+## lokal `host` di sini, pola yang sama dengan `scan_flow._place_shop()`.
+static func fly_to(
+	host: Control,
+	texture: Texture2D,
+	from_global: Rect2,
+	to_global: Rect2,
+	on_arrive: Callable = Callable()
+) -> void:
+	if texture == null or not is_instance_valid(host):
+		if on_arrive.is_valid():
+			on_arrive.call()
+		return
+	var to_local := host.get_global_transform_with_canvas().affine_inverse()
+	var from_rect := Rect2(to_local * from_global.position, from_global.size)
+	var to_rect := Rect2(to_local * to_global.position, to_global.size)
+
+	var flyer := TextureRect.new()
+	flyer.texture = texture
+	flyer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flyer.z_index = 60
+	flyer.size = from_rect.size
+	flyer.pivot_offset = from_rect.size * 0.5
+	flyer.position = from_rect.position
+	host.add_child(flyer)
+
+	var target_position := to_rect.position + to_rect.size * 0.5 - from_rect.size * 0.5
+	var tween := flyer.create_tween().set_parallel(true)
+	tween.tween_property(flyer, "position", target_position, FLY_TO_SEC) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(flyer, "scale", Vector2(0.55, 0.55), FLY_TO_SEC) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(flyer, "modulate:a", 0.85, FLY_TO_SEC) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
+	tween.chain().tween_callback(func() -> void:
+		flyer.queue_free()
+		if on_arrive.is_valid():
+			on_arrive.call()
+	)
+
+
 static func show_overlay(overlay: Control, panel: Control) -> void:
 	if overlay.visible and overlay.modulate.a >= 0.99:
 		return

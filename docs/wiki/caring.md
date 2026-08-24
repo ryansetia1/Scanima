@@ -53,6 +53,7 @@ memakai makanan dan Energy yang sudah ada.
 - **Bag** tab **Food**: makanan yang kamu punya. Tap **Feed** untuk memberi makan.
 - **Bag** tab **Items**: Pulse Cell / Reactor Pack punya tombol **Use**. Item Battle tidak — itu dipakai dari tombol **Item** di arena.
 - Tas menumpuk sampai 999. Bits kurang atau tas penuh: pembelian ditolak, tidak terpotong dua kali kalau sinyal putus.
+- Tombol **Buy** yang ditekan berubah jadi **Buying...** dan seluruh tombol beli lain ikut mati sampai pembelian itu selesai, jadi tap ganda tidak memesan dua kali. Ikon barangnya terbang ke **Bag** dan Bag memberi pop kecil begitu sampai.
 
 ## Feed
 
@@ -88,7 +89,9 @@ Anima tidur untuk mengisi Energy.
 
 Hunger dan Hygiene **tetap turun** selama tidur di Home. Anima di Collection turun jauh lebih pelan dan tidak sampai lapar atau kotor — mereka istirahat aman sampai di-Summon. Bangun pagi di Home tetap perlu makan.
 
-Kalau kamu bangunin sebelum penuh, Energy yang sudah pulih tetap ada, tapi bonus +5 EXP tidak didapat.
+Kalau kamu bangunin sebelum penuh, Energy yang sudah pulih tetap ada, tapi bonus +5 EXP tidak didapat. Membangunkan bisa lewat tombol **Wake** di Care Dock, atau tap Anima-nya langsung beberapa kali — jumlah tepatnya acak (3 sampai 6 tap) setiap kali ia tidur, jadi tidak bisa dihafal.
+
+Anima yang sedang tidur menolak **Feed** dan **Use** item Energy dari Bag: muncul pesan singkat memintamu membangunkannya dulu, makanan atau itemnya tidak ikut terpakai.
 
 **Pulse Cell** (+20) dan **Reactor Pack** (+50) mengisi Energy dari **Bag** (tab Items) tanpa menunggu tidur. Beli dulu di Shop. Meter yang sudah penuh menolaknya, dan keduanya **tidak** memberi EXP.
 

@@ -73,6 +73,10 @@ const TOAST_GAP := 8.0
 const SHOP_GAP := 6.0
 const SLEEP_SYNC_RETRY_SEC := 30.0
 const SLEEP_SYNC_EPSILON_SEC := 1.0
+## Tap-to-wake: cara kedua membangunkan Anima selain tombol Wake, dengan target
+## acak per sesi tidur supaya tidak bisa dihafal.
+const WAKE_TAPS_MIN := 3
+const WAKE_TAPS_MAX := 6
 const STAT_ORDER := ["hp", "atk", "def", "spd", "special"]
 const STAT_LABEL_KEYS := {
 	"hp": "STAT_HP",
@@ -196,6 +200,8 @@ var _pending_retreat := ""
 var _modal_context := &""
 var _last_anima_press_ms := -1000
 var _last_anima_press_position := Vector2(-1000.0, -1000.0)
+var _wake_taps := 0
+var _wake_taps_target := 0
 var _last_known_cores := -1
 var _update_required := false
 var _chapter_announcements: Dictionary = {}
@@ -3193,6 +3199,9 @@ func _commit_care(action: String, item_id: String = "") -> void:
 	if CareRules.is_evolving(_current_anima):
 		_say(tr("EVOLUTION_CARE_BLOCKED"), true)
 		return
+	if (action == "feed" or action == "use_item") and _is_sleeping(_current_anima):
+		_say(tr("ERROR_SLEEPING_CONSUME"), true)
+		return
 	if not GameState.pending_care.is_empty():
 		_say(tr("ERROR_CARE_PENDING"), true)
 		return
@@ -4793,6 +4802,9 @@ func _present(
 		"color_bucket": color_bucket,
 		"stage": stage,
 	}, true)
+	# Progres tap milik identitas yang tampil sebelumnya, jadi Anima/akun baru
+	# selalu mulai dari nol taps ke arah wake meskipun kebetulan juga tidur.
+	_reset_wake_taps()
 	# Sprite dipasang sebelum baris ini, jadi `pose_changed` tadi masih membaca
 	# tinggi Anima sebelumnya. Skalanya disamakan setelah tingginya diketahui.
 	_sync_home_body()
@@ -5118,6 +5130,8 @@ func _refresh_care() -> void:
 
 	var sleeping := _is_sleeping(_current_anima)
 	var dormant := _has_timestamp(_current_anima.get("dormant_since"))
+	if not sleeping:
+		_reset_wake_taps()
 	_home_view.update_care(_current_anima, _busy)
 	if _battle_view.session_data().is_empty():
 		_battle_view.set_lobby(_current_anima)
@@ -5348,6 +5362,7 @@ func _switch_destination(
 	var previous := _destination
 	if previous == BottomNav.HOME and destination != BottomNav.HOME:
 		_stop_evolution_chamber()
+		_reset_wake_taps()
 	if previous == BottomNav.COLLECTION and destination != BottomNav.COLLECTION:
 		_collection_view.close_sheet()
 	if previous == BottomNav.BATTLE and destination != BottomNav.BATTLE:
@@ -5531,22 +5546,35 @@ func _buy_catalog_item(item: Dictionary) -> void:
 		return
 	var item_id := str(item.get("id", ""))
 	var price := int(item.get("price", 0))
+	# Rect ikonnya diambil sebelum apa pun merombak baris ShopSheet --
+	# `_apply_optimistic_purchase` di bawah memanggil `set_catalog`, yang
+	# `queue_free()` seluruh baris lama termasuk ikon yang mau diterbangkan.
+	var icon_snapshot: Dictionary = _shop_sheet.icon_snapshot_for(item_id)
+	_shop_sheet.set_pending(item_id)
 	var pending := GameState.begin_purchase(item_id, price)
 	var bits_before := int(GameState.profile.get("bits", 0))
 	var inventory_before := _inventory.duplicate(true)
 	_apply_optimistic_purchase(item_id, price)
+	_fly_purchased_item(icon_snapshot)
 	if not await _send_pending_purchase(pending):
 		if GameState.session_epoch != account_epoch:
 			return
+		_shop_sheet.set_pending("")
 		GameState.profile["bits"] = bits_before
 		_inventory = inventory_before
 		_refresh_header()
 		_shop_sheet.set_catalog(_catalog, _inventory, bits_before)
+		return
+	if GameState.session_epoch == account_epoch:
+		_shop_sheet.set_pending("")
 
 
 ## Saldo dan jumlah tas bergerak di frame yang sama dengan tap. Server tetap
 ## otoritas: `purchase_catalog_item` menimpa keduanya beberapa ratus milidetik
 ## kemudian, dan `_buy_catalog_item` mengembalikannya kalau pembelian ditolak.
+## Toast transient sengaja dibuang di sini -- animasi terbang + pop Bag sudah
+## memberi feedback yang sama, dan toast digambar tepat di atas Bag yang
+## sedang jadi target animasi itu.
 func _apply_optimistic_purchase(item_id: String, price: int) -> void:
 	var bits := maxi(0, int(GameState.profile.get("bits", 0)) - maxi(0, price))
 	GameState.profile["bits"] = bits
@@ -5555,10 +5583,45 @@ func _apply_optimistic_purchase(item_id: String, price: int) -> void:
 	)
 	_refresh_header()
 	_shop_sheet.set_catalog(_catalog, _inventory, bits)
-	_say(tr("FEEDBACK_PURCHASE"), true)
+
+
+## Ikon baris yang baru dibeli terbang ke Bag lalu memberinya pop terisi.
+## `_bag_button`'s parent (`ChipLayer`) sudah dipakai sebagai host konversi
+## koordinat yang sama oleh `_place_shop()`, dan sudah menggambar di atas
+## seluruh chrome lain lewat z_index -- menaikkannya sementara di sini supaya
+## payoff-nya tidak tenggelam di balik scrim ShopSheet yang masih terbuka.
+## Restore-nya ke konstanta 0, bukan ke z_index yang ditangkap sebelum
+## dinaikkan -- tap beli kedua bisa lolos sebelum flyer pertama mendarat
+## (network round trip lebih cepat dari animasi 0,4 s), dan menangkap z_index
+## saat itu berarti menangkap 61 milik animasi pertama, lalu me-restore-nya
+## sesudah animasi kedua justru mengunci Bag di 61 selamanya.
+func _fly_purchased_item(icon_snapshot: Dictionary) -> void:
+	var texture := icon_snapshot.get("texture") as Texture2D
+	if texture == null or not is_instance_valid(_bag_button) or not _bag_button.visible:
+		return
+	var host := _bag_button.get_parent() as Control
+	if host == null:
+		return
+	var from_rect: Rect2 = icon_snapshot.get("rect", Rect2())
+	var to_rect := _bag_button.get_global_rect()
+	_bag_button.z_index = 61
+	UiJuice.fly_to(host, texture, from_rect, to_rect, func() -> void:
+		if not is_instance_valid(_bag_button):
+			return
+		_bag_button.z_index = 0
+		if _bag_button.visible:
+			UiJuice.pop(_bag_button, 1.18)
+			Sfx.play(Sfx.CUE_ITEM)
+	)
 
 
 func _use_catalog_item(item: Dictionary) -> void:
+	if (
+		(Catalog.is_food(item) or Catalog.is_energy(item))
+		and _is_sleeping(_current_anima)
+	):
+		_say(tr("ERROR_SLEEPING_CONSUME"), true)
+		return
 	_shop_sheet.close()
 	if Catalog.is_food(item):
 		await _commit_care("feed", str(item.get("id", "")))
@@ -6206,6 +6269,37 @@ func _try_home_anima_tap(event: InputEvent) -> void:
 	if _anima.hit_test(press_position):
 		_anima.react_to_tap()
 		get_viewport().set_input_as_handled()
+		if _register_sleep_tap():
+			await _commit_care("wake")
+
+
+## Cara kedua membangunkan Anima selain tombol Wake: sejumlah tap acak (3–6,
+## di-roll ulang tiap sesi tidur supaya tidak bisa dihafal) di atas sprite.
+## Mengembalikan true tepat pada tap yang membangunkan. Diam total selama
+## evolving/dormant/`pending_care` masih terbang, supaya tap berulang tidak
+## memuntahkan toast "care pending" di atas toast wake yang sedang jalan.
+func _register_sleep_tap() -> bool:
+	if not _is_sleeping(_current_anima):
+		_reset_wake_taps()
+		return false
+	if (
+		CareRules.is_evolving(_current_anima)
+		or _has_timestamp(_current_anima.get("dormant_since"))
+		or not GameState.pending_care.is_empty()
+	):
+		return false
+	_wake_taps += 1
+	if _wake_taps_target <= 0:
+		_wake_taps_target = randi_range(WAKE_TAPS_MIN, WAKE_TAPS_MAX)
+	if _wake_taps < _wake_taps_target:
+		return false
+	_reset_wake_taps()
+	return true
+
+
+func _reset_wake_taps() -> void:
+	_wake_taps = 0
+	_wake_taps_target = 0
 
 
 ## Kilau Guard hidup sekitar satu detik sementara --screenshot menunggu tiga,

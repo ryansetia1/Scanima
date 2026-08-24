@@ -24,6 +24,7 @@ var _catalog: Array = []
 var _inventory: Array = []
 var _bits := 0
 var _busy := false
+var _pending_item_id := ""
 
 
 func _ready() -> void:
@@ -43,6 +44,28 @@ func set_catalog(catalog: Array, inventory: Array, bits: int) -> void:
 func set_busy(busy: bool) -> void:
 	_busy = busy
 	_rebuild()
+
+
+## Item sedang dibeli: baris itu berlabel "Buying...", dan seluruh tombol Buy
+## lain mati sampai round trip selesai -- satu pembelian in-flight per waktu,
+## dan sekarang terlihat, bukan cuma diam-diam ditolak.
+func set_pending(item_id: String) -> void:
+	_pending_item_id = item_id
+	_rebuild()
+
+
+## Rect global dan tekstur ikon baris SHOP untuk item_id, dipanggil sebelum
+## `_rebuild()` mana pun menghapus baris itu -- animasi terbang butuh titik
+## berangkat sebelum optimistic purchase mengecat ulang daftarnya.
+func icon_snapshot_for(item_id: String) -> Dictionary:
+	for row in _list.get_children():
+		if str(row.get_meta("item_id", "")) != item_id:
+			continue
+		var icon := row.get_child(0) as TextureRect
+		if icon == null:
+			return {}
+		return {"rect": icon.get_global_rect(), "texture": icon.texture}
+	return {}
 
 
 func open_shop(tab: String = "food") -> void:
@@ -99,8 +122,8 @@ func _show_tab(tab: String) -> void:
 func _rebuild() -> void:
 	_title.text = tr(_title_key())
 	_tabs.visible = _mode == Mode.SHOP or _mode == Mode.BAG
-	_food_tab.disabled = _busy
-	_item_tab.disabled = _busy
+	_food_tab.disabled = _busy or not _pending_item_id.is_empty()
+	_item_tab.disabled = _busy or not _pending_item_id.is_empty()
 	_food_tab.theme_type_variation = &"PrimaryButton" if _tab == "food" else &""
 	_item_tab.theme_type_variation = &"PrimaryButton" if _tab == "item" else &""
 	_food_tab.self_modulate = Color.WHITE
@@ -160,7 +183,9 @@ func _visible_rows() -> Array[Dictionary]:
 
 
 func _make_row(item: Dictionary) -> Control:
+	var item_id := str(item.get("id", ""))
 	var row := HBoxContainer.new()
+	row.set_meta("item_id", item_id)
 	row.add_theme_constant_override("separation", 12)
 	var icon := TextureRect.new()
 	icon.custom_minimum_size = Vector2(72, 72)
@@ -186,10 +211,14 @@ func _make_row(item: Dictionary) -> Control:
 	if _mode == Mode.SHOP:
 		var buy := Button.new()
 		var price := int(item.get("price", 0))
+		var is_pending := not _pending_item_id.is_empty() and item_id == _pending_item_id
 		buy.custom_minimum_size = Vector2(148, 96)
 		buy.theme_type_variation = "PrimaryButton"
-		buy.disabled = _busy or _bits < price
-		buy.text = tr("SHOP_BUY") % LocaleManager.format_integer(price)
+		buy.disabled = _busy or not _pending_item_id.is_empty() or _bits < price
+		buy.text = (
+			tr("SHOP_BUYING") if is_pending
+			else tr("SHOP_BUY") % LocaleManager.format_integer(price)
+		)
 		buy.pressed.connect(func() -> void: buy_requested.emit(item))
 		actions.add_child(buy)
 	elif _can_use(item):
