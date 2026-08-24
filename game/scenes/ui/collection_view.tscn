@@ -59,16 +59,17 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 16
 
-[node name="Header" type="HBoxContainer" parent="Column" unique_id=146289533]
+[node name="Header" type="MarginContainer" parent="Column" unique_id=146289533]
 layout_mode = 2
-theme_override_constants/separation = 0
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_bottom = 2
 
 [node name="Titles" type="VBoxContainer" parent="Column/Header" unique_id=1589636606]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 0
+theme_override_constants/separation = 4
 
 [node name="Title" type="Label" parent="Column/Header/Titles" unique_id=1877488212]
 layout_mode = 2
@@ -77,34 +78,35 @@ text = "COLLECTION_TITLE"
 
 [node name="Subtitle" type="Label" parent="Column/Header/Titles" unique_id=907641306]
 layout_mode = 2
-theme_type_variation = &"BodyLabel"
+theme_type_variation = &"MutedLabel"
 text = "COLLECTION_SUBTITLE"
 autowrap_mode = 2
-
-[node name="CollectionSynthesisButton" type="Button" parent="Column/Header" unique_id=1148474385]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(220, 96)
-layout_mode = 2
-theme_type_variation = &"PrimaryButton"
-text = "SYNTHESIS_LAB_ACTION"
 
 [node name="CollectionTabs" type="HBoxContainer" parent="Column" unique_id=720371244]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 8
 
 [node name="CollectionCollectionTab" type="Button" parent="Column/CollectionTabs" unique_id=405298624]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
+custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
 button_pressed = true
 text = "COLLECTION_TAB_COLLECTION"
 
+[node name="CollectionSynthesisTab" type="Button" parent="Column/CollectionTabs" unique_id=1148474385]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "COLLECTION_TAB_SYNTHESIS"
+
 [node name="CollectionAtlasTab" type="Button" parent="Column/CollectionTabs" unique_id=1449293194]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
+custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true

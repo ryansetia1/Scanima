@@ -120,10 +120,10 @@ func _initialize() -> void:
 		"FeedButton", "CleanButton", "SleepButton", "PlayButton", "ProfileMenuButton",
 		"ProfileActionRename", "ProfileActionDelete", "GalleryPublishButton",
 		"EvolveAnimaButton", "SynthesisAnimaButton",
-		"CollectionSynthesisButton", "SynthesisBackButton", "SynthesisSourceACard",
+		"SynthesisSourceACard",
 		"SynthesisSourceBCard", "SynthesisPickerBack", "SynthesisDominantA", "SynthesisBalanced",
 		"SynthesisDominantB", "SynthesisReviewButton", "SynthesisConfirmButton", "SynthesisResultButton",
-		"AtlasBack", "AtlasLoadMore",
+		"AtlasLoadMore",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
 		"CollectionSummonButton", "BattlePickProfileButton", "BattlePickBattleButton",
 		"BattleStartButton", "BattleTeamButton", "BattleExpeditionButton", "BattleStrikeButton",
@@ -5259,20 +5259,30 @@ func _test_collection_bottom_sheet() -> void:
 	var collection_tab := collection.find_child(
 		"CollectionCollectionTab", true, false
 	) as Button
+	var synthesis_tab := collection.find_child(
+		"CollectionSynthesisTab", true, false
+	) as Button
 	var atlas_tab := collection.find_child("CollectionAtlasTab", true, false) as Button
 	_check(
 		collection_tab != null
+		and synthesis_tab != null
 		and atlas_tab != null
 		and collection_tab.button_pressed
+		and not synthesis_tab.button_pressed
 		and not atlas_tab.button_pressed
-		and collection_tab.custom_minimum_size.y >= TOUCH_MIN
-		and atlas_tab.custom_minimum_size.y >= TOUCH_MIN,
-		"Collection exposes touch-safe Collection and Atlas tabs with Collection active"
+		and collection_tab.custom_minimum_size.y >= 72.0
+		and synthesis_tab.custom_minimum_size.y >= 72.0
+		and atlas_tab.custom_minimum_size.y >= 72.0,
+		"Collection exposes touch-safe Collection, Synthesis, and Atlas tabs with Collection active"
 	)
 	var atlas_requests := [0]
+	var synthesis_requests := [0]
 	collection.atlas_requested.connect(func() -> void: atlas_requests[0] += 1)
+	collection.synthesis_requested.connect(func(_p: Dictionary) -> void: synthesis_requests[0] += 1)
 	atlas_tab.pressed.emit()
 	_check_eq(atlas_requests[0], 1, "Collection Atlas tab emits its shell navigation intent")
+	synthesis_tab.pressed.emit()
+	_check_eq(synthesis_requests[0], 1, "Collection Synthesis tab emits its shell navigation intent")
 	var row := {
 		"id": "sheet-test",
 		"nickname": "Velumi",
@@ -5426,33 +5436,26 @@ func _test_atlas_view() -> void:
 		and sheet.scroll_content,
 		"Atlas detail sheet is full-rect and scrolls tall mobile profiles"
 	)
-	var atlas_back := view.find_child("AtlasBack", true, false) as Button
-	var atlas_back_icon := view.find_child("AtlasBackIcon", true, false) as TextureRect
+	var atlas_title := view.find_child("AtlasTitle", true, false) as Label
+	var atlas_subtitle := view.find_child("AtlasSubtitle", true, false) as Label
 	_check(
-		atlas_back != null
-		and atlas_back.get_index() == 0
-		and atlas_back.flat
-		and atlas_back.text.is_empty()
-		and atlas_back.custom_minimum_size == Vector2(96, 96)
-		and atlas_back_icon != null
-		and atlas_back_icon.texture != null
-		and absf(
-			atlas_back_icon.position.y
-			+ atlas_back_icon.size.y * 0.5
-			- atlas_back.size.y * 0.5
-		) < 1.0,
-		"Atlas header uses the shared touch-safe left chevron before its title"
+		atlas_title != null and atlas_subtitle != null,
+		"Atlas header includes title and subtitle for unified UI consistency"
 	)
 	var atlas_collection_tab := view.find_child("AtlasCollectionTab", true, false) as Button
+	var atlas_synthesis_tab := view.find_child("AtlasSynthesisTab", true, false) as Button
 	var atlas_tab := view.find_child("AtlasAtlasTab", true, false) as Button
 	_check(
 		atlas_collection_tab != null
+		and atlas_synthesis_tab != null
 		and atlas_tab != null
 		and not atlas_collection_tab.button_pressed
+		and not atlas_synthesis_tab.button_pressed
 		and atlas_tab.button_pressed
-		and atlas_collection_tab.custom_minimum_size.y >= TOUCH_MIN
-		and atlas_tab.custom_minimum_size.y >= TOUCH_MIN,
-		"Atlas exposes the same touch-safe tab pair with Atlas active"
+		and atlas_collection_tab.custom_minimum_size.y >= 72.0
+		and atlas_synthesis_tab.custom_minimum_size.y >= 72.0
+		and atlas_tab.custom_minimum_size.y >= 72.0,
+		"Atlas exposes the same touch-safe tab trio with Atlas active"
 	)
 	var collection_requests := [0]
 	view.collection_requested.connect(func() -> void: collection_requests[0] += 1)
@@ -6638,8 +6641,6 @@ func _test_synthesis_lab_state() -> void:
 	view.set_rows(rows, "synthesis-locale-a")
 	await process_frame
 	var lab_surface := view.find_child("LabSurface", true, false) as PanelContainer
-	var back_button := view.find_child("SynthesisBackButton", true, false) as Button
-	var back_icon := view.find_child("SynthesisBackIcon", true, false) as TextureRect
 	var scroll := view.find_child("Scroll", true, false) as ScrollContainer
 	var content := scroll.get_child(0) as Control if scroll != null else null
 	var sources := view.find_child("Sources", true, false) as GridContainer
@@ -6658,11 +6659,11 @@ func _test_synthesis_lab_state() -> void:
 		"Synthesis Lab surface fills the destination instead of leaking the Home HUD"
 	)
 	_check(view.clip_contents, "Synthesis Lab clips content inside the shell viewport")
+	var synthesis_title := view.find_child("SynthesisTitle", true, false) as Label
+	var synthesis_subtitle := view.find_child("SynthesisSubtitle", true, false) as Label
 	_check(
-		back_button != null and back_button.flat and back_button.text.is_empty()
-		and back_button.custom_minimum_size == Vector2(96, 96)
-		and back_icon != null and back_icon.texture != null,
-		"Synthesis Lab uses the same flat 96px chevron pattern as Atlas"
+		synthesis_title != null and synthesis_subtitle != null,
+		"Synthesis Lab uses the unified title and subtitle header"
 	)
 	_check(scroll != null and scroll.size.y > 0.0, "Synthesis Lab leaves usable vertical scroll space")
 	_check(

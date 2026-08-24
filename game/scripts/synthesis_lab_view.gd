@@ -2,6 +2,8 @@ class_name SynthesisLabView
 extends Control
 
 signal back_requested
+signal collection_requested
+signal atlas_requested
 signal preview_requested(payload: Dictionary)
 signal attempt_requested(payload: Dictionary)
 signal result_requested(row: Dictionary)
@@ -9,7 +11,9 @@ signal result_requested(row: Dictionary)
 const MIN_LEVEL := 10
 const MODES: Array[String] = ["dominant_a", "balanced", "dominant_b"]
 
-@onready var _back_button: Button = %SynthesisBackButton
+@onready var _collection_tab: Button = %SynthesisCollectionTab
+@onready var _synthesis_tab: Button = %SynthesisSynthesisTab
+@onready var _atlas_tab: Button = %SynthesisAtlasTab
 @onready var _title: Label = %SynthesisTitle
 @onready var _subtitle: Label = %SynthesisSubtitle
 @onready var _intro: Label = %SynthesisIntro
@@ -79,7 +83,8 @@ var _updating := false
 
 
 func _ready() -> void:
-	_back_button.pressed.connect(func() -> void: back_requested.emit())
+	_collection_tab.pressed.connect(func() -> void: collection_requested.emit())
+	_atlas_tab.pressed.connect(func() -> void: atlas_requested.emit())
 	_source_a_card.pressed.connect(_open_source_picker.bind("a"))
 	_source_b_card.pressed.connect(_open_source_picker.bind("b"))
 	_picker_back.pressed.connect(close_picker)
@@ -102,6 +107,9 @@ func set_thumbnail_provider(provider: Callable) -> void:
 
 
 func set_rows(rows: Array[Dictionary], preselected_a_id: String = "") -> void:
+	_collection_tab.button_pressed = false
+	_synthesis_tab.button_pressed = true
+	_atlas_tab.button_pressed = false
 	# `GameState.pending_synthesis` is the only authority for an in-flight
 	# Synthesis. Accepting it as an argument as well let the outcome panel and the
 	# control lock disagree whenever a caller passed a stale copy.
@@ -135,7 +143,6 @@ func set_rows(rows: Array[Dictionary], preselected_a_id: String = "") -> void:
 
 func set_busy(busy: bool) -> void:
 	_busy = busy
-	_back_button.disabled = false
 	_update_actions()
 
 
@@ -252,8 +259,9 @@ func current_payload() -> Dictionary:
 
 
 func refresh_localized_ui() -> void:
-	_back_button.text = ""
-	_back_button.tooltip_text = tr("ACTION_BACK")
+	_collection_tab.text = tr("COLLECTION_TAB_COLLECTION")
+	_synthesis_tab.text = tr("COLLECTION_TAB_SYNTHESIS")
+	_atlas_tab.text = tr("COLLECTION_TAB_ATLAS")
 	_title.text = tr("SYNTHESIS_TITLE")
 	_subtitle.text = tr("SYNTHESIS_SUBTITLE")
 	_intro.text = tr("SYNTHESIS_INTRO")
@@ -365,7 +373,7 @@ func _set_incubating(active: bool) -> void:
 	_incubating_view.visible = active
 	_subtitle.visible = not active
 	if active and is_visible_in_tree():
-		_back_button.grab_focus()
+		_collection_tab.grab_focus()
 
 
 func _paint_source_card(

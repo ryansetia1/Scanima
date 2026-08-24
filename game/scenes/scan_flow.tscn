@@ -207,42 +207,29 @@ grow_vertical = 2
 script = ExtResource("15_ybfop")
 
 [node name="LabSurface" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView" unique_id=310146439]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_type_variation = &"LabPanel"
 
 [node name="Column" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface" unique_id=1767398524]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_constants/separation = 16
 
-[node name="Header" type="HBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column" unique_id=1758307349]
-custom_minimum_size = Vector2(0, 112)
+[node name="Header" type="MarginContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column" unique_id=1758307349]
 layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="SynthesisBackButton" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/Header" unique_id=1249564813]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 96)
-layout_mode = 2
-flat = true
-
-[node name="SynthesisBackIcon" type="TextureRect" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/Header/SynthesisBackButton" unique_id=18217596]
-custom_minimum_size = Vector2(32, 32)
-layout_mode = 0
-offset_left = 32.0
-offset_top = 32.0
-offset_right = 64.0
-offset_bottom = 64.0
-mouse_filter = 2
-texture = ExtResource("16_n853h")
-expand_mode = 1
-stretch_mode = 5
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_bottom = 2
 
 [node name="Titles" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/Header" unique_id=1240826467]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 4
 
 [node name="SynthesisTitle" type="Label" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/Header/Titles" unique_id=1285197153]
 unique_name_in_owner = true
@@ -256,7 +243,36 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"MutedLabel"
 text = "SYNTHESIS_SUBTITLE"
-autowrap_mode = 2
+
+[node name="CollectionTabs" type="HBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column" unique_id=1240826999]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="SynthesisCollectionTab" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/CollectionTabs" unique_id=1240827001]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "COLLECTION_TAB_COLLECTION"
+
+[node name="SynthesisSynthesisTab" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/CollectionTabs" unique_id=1240827002]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_pressed = true
+text = "COLLECTION_TAB_SYNTHESIS"
+
+[node name="SynthesisAtlasTab" type="Button" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/CollectionTabs" unique_id=1240827003]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "COLLECTION_TAB_ATLAS"
 
 [node name="Scroll" type="ScrollContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column" unique_id=1522983980]
 unique_name_in_owner = true

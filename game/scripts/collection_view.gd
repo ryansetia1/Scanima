@@ -31,7 +31,7 @@ const BADGE_FONT_SIZE := 20
 @onready var _care_rows: VBoxContainer = %CareRows
 @onready var _profile_button: Button = %CollectionProfileButton
 @onready var _summon_button: Button = %CollectionSummonButton
-@onready var _synthesis_button: Button = %CollectionSynthesisButton
+@onready var _synthesis_tab: Button = %CollectionSynthesisTab
 
 @onready var _base_values := {
 	"hp": %SheetStatHp,
@@ -63,7 +63,7 @@ var _eligible_synthesis_sources := 0
 
 func _ready() -> void:
 	%CollectionAtlasTab.pressed.connect(func() -> void: atlas_requested.emit())
-	_synthesis_button.pressed.connect(func() -> void: synthesis_requested.emit({}))
+	_synthesis_tab.pressed.connect(func() -> void: synthesis_requested.emit({}))
 	# Not `item_selected`: it fires on PRESS, so dragging to scroll a long
 	# roster popped open the preview sheet for whichever card the thumb started
 	# on. Same reason the Battle picker and the Team builder moved off it.
@@ -79,8 +79,8 @@ func _ready() -> void:
 
 func refresh_localized_ui() -> void:
 	%CollectionCollectionTab.text = tr("COLLECTION_TAB_COLLECTION")
+	_synthesis_tab.text = tr("COLLECTION_TAB_SYNTHESIS")
 	%CollectionAtlasTab.text = tr("COLLECTION_TAB_ATLAS")
-	_synthesis_button.text = tr("SYNTHESIS_LAB_ACTION")
 
 
 func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Callable) -> void:
@@ -88,11 +88,6 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 	_thumbnail_provider = thumbnail_provider
 	_list.clear()
 	var selected := -1
-	# `_list.clear()` wipes native selection along with every item, so it must
-	# be re-picked below -- and this runs on every background care sync, not
-	# just first load. Defaulting that to `active_id` every time snapped the
-	# ring back to the Home anima the instant a sync landed, even while a
-	# DIFFERENT card's preview sheet was the one actually open on screen.
 	var highlight_id := _highlight_id()
 	_eligible_synthesis_sources = 0
 	for row in rows:
@@ -119,10 +114,12 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 				LocaleManager.format_integer(int(row.get("rarity", 1))),
 			]
 		)
-		if id == highlight_id:
+		if not highlight_id.is_empty() and id == highlight_id:
 			selected = index
 	if selected >= 0:
 		_list.select(selected)
+	else:
+		_list.deselect_all()
 	_list.visible = not rows.is_empty()
 	_status.text = (
 		tr("COLLECTION_EMPTY")
@@ -171,18 +168,19 @@ func set_synthesis_enabled(enabled: bool) -> void:
 
 
 func _update_synthesis_state() -> void:
-	_synthesis_button.visible = _synthesis_enabled
-	_synthesis_button.disabled = _busy or _eligible_synthesis_sources < 2
-	_synthesis_button.tooltip_text = (
-		tr("SYNTHESIS_NEEDS_TWO_SOURCES")
-		if _eligible_synthesis_sources < 2
-		else tr("SYNTHESIS_LAB_ACTION")
-	)
+	_synthesis_tab.visible = _synthesis_enabled
+	_synthesis_tab.disabled = _busy
+	_synthesis_tab.tooltip_text = tr("COLLECTION_TAB_SYNTHESIS")
 
 
 func begin_visit() -> void:
 	_care_cache.clear()
+	_selected_row.clear()
 	close_sheet()
+	_list.deselect_all()
+	%CollectionCollectionTab.button_pressed = true
+	%CollectionSynthesisTab.button_pressed = false
+	%CollectionAtlasTab.button_pressed = false
 
 
 func is_sheet_open() -> bool:
@@ -277,6 +275,7 @@ func close_sheet() -> void:
 func _on_sheet_dismissed() -> void:
 	_revision += 1
 	_condition_skeleton.set_loading(false)
+	_restore_highlight()
 
 
 func set_sheet_busy(busy: bool) -> void:
@@ -284,9 +283,7 @@ func set_sheet_busy(busy: bool) -> void:
 	_update_action_state()
 
 
-## Which card wears the ring: the one whose preview sheet is open, else the
-## Anima on the Home stage. Shared so a repaint after a scroll cannot disagree
-## with what `set_rows()` would have painted.
+## Which card wears the ring: the one whose preview sheet is open.
 ## The press is swallowed so a scroll cannot light a card up, which also means
 ## nothing paints the ring on a real tap any more -- the tapped row is selected
 ## here so the ring lands immediately instead of waiting for the next sync.
@@ -297,17 +294,19 @@ func _on_row_tapped(index: int) -> void:
 
 
 func _highlight_id() -> String:
-	return str(_selected_row.get("id", "")) if _sheet.visible else _active_id
+	return str(_selected_row.get("id", "")) if _sheet.visible else ""
 
 
-## `ItemList` highlights on press, so an aborted scroll leaves the wrong card
-## ringed. Clearing it outright was worse: it wiped the active-Anima ring after
-## every scroll, so the ring is repainted from the rule above instead.
+## Restores the selection highlight to the active preview card, or clears all
+## highlights if no preview sheet is currently open.
 func _restore_highlight() -> void:
 	var target := _highlight_id()
+	if target.is_empty():
+		_list.deselect_all()
+		return
 	for index in _list.item_count:
 		var row := GameState.as_dict(_list.get_item_metadata(index))
-		var keep := not target.is_empty() and str(row.get("id", "")) == target
+		var keep := str(row.get("id", "")) == target
 		if keep and not _list.is_selected(index):
 			_list.select(index)
 		elif not keep and _list.is_selected(index):

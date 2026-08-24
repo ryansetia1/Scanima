@@ -315,6 +315,8 @@ func _ready() -> void:
 	_collection_view.atlas_requested.connect(_open_atlas)
 	_collection_view.synthesis_requested.connect(_open_synthesis_lab)
 	_synthesis_view.back_requested.connect(_close_synthesis_lab)
+	_synthesis_view.collection_requested.connect(func() -> void: _switch_destination(BottomNav.COLLECTION))
+	_synthesis_view.atlas_requested.connect(_open_atlas)
 	_synthesis_view.preview_requested.connect(_preview_synthesis)
 	_synthesis_view.attempt_requested.connect(_attempt_synthesis)
 	_synthesis_view.result_requested.connect(_show_synthesis_result)
@@ -355,6 +357,7 @@ func _ready() -> void:
 	_seeker_profile_view.rename_requested.connect(_show_rename_seeker)
 	_atlas_view.back_requested.connect(_return_from_overlay)
 	_atlas_view.collection_requested.connect(_open_collection)
+	_atlas_view.synthesis_requested.connect(_open_synthesis_lab)
 	_atlas_view.toast_requested.connect(_say)
 	AuthFlow.auth_succeeded.connect(_on_auth_succeeded)
 	AuthFlow.auth_failed.connect(_on_auth_failed)
@@ -5538,6 +5541,7 @@ func _switch_destination(
 	if destination == SYNTHESIS_DEST:
 		_synthesis_view.set_rows(_roster)
 	if destination == ATLAS_DEST:
+		_atlas_view.set_synthesis_enabled(_synthesis_enabled())
 		_atlas_view.begin_visit()
 	if destination == BottomNav.HOME:
 		call_deferred("_maybe_show_chapter_popup")

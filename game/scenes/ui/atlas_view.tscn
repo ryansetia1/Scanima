@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://b6dh2wgry11bl" path="res://scripts/atlas_view.gd" id="1_script"]
 [ext_resource type="Theme" uid="uid://cbi43xka3xsp5" path="res://themes/mobile_theme.tres" id="2_theme"]
-[ext_resource type="Texture2D" uid="uid://venrejy6qbty" path="res://assets/icons/chevron-left.svg" id="3_kk8vk"]
 [ext_resource type="PackedScene" path="res://scenes/ui/ui_bottom_sheet.tscn" id="3_sheet"]
 
 [node name="AtlasView" type="Control" unique_id=774355143]
@@ -25,49 +24,55 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 
-[node name="Header" type="HBoxContainer" parent="Column" unique_id=2131230726]
+[node name="Header" type="MarginContainer" parent="Column" unique_id=2131230726]
 layout_mode = 2
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_bottom = 2
 
-[node name="AtlasBack" type="Button" parent="Column/Header" unique_id=1249790985]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 96)
-layout_mode = 2
-flat = true
-
-[node name="AtlasBackIcon" type="TextureRect" parent="Column/Header/AtlasBack" unique_id=1140538587]
-layout_mode = 0
-offset_left = 32.0
-offset_top = 32.0
-offset_right = 64.0
-offset_bottom = 64.0
-mouse_filter = 2
-texture = ExtResource("3_kk8vk")
-expand_mode = 1
-stretch_mode = 5
-
-[node name="Title" type="Label" parent="Column/Header" unique_id=582564211]
+[node name="Titles" type="VBoxContainer" parent="Column/Header" unique_id=1589636607]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="AtlasTitle" type="Label" parent="Column/Header/Titles" unique_id=582564211]
+unique_name_in_owner = true
+layout_mode = 2
 theme_type_variation = &"PageTitleLabel"
 text = "ATLAS_TITLE"
+
+[node name="AtlasSubtitle" type="Label" parent="Column/Header/Titles" unique_id=582564212]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "ATLAS_SUBTITLE"
+autowrap_mode = 2
 
 [node name="CollectionTabs" type="HBoxContainer" parent="Column" unique_id=901226947]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 8
 
 [node name="AtlasCollectionTab" type="Button" parent="Column/CollectionTabs" unique_id=1884624665]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
+custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
 text = "COLLECTION_TAB_COLLECTION"
 
+[node name="AtlasSynthesisTab" type="Button" parent="Column/CollectionTabs" unique_id=1884624999]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "COLLECTION_TAB_SYNTHESIS"
+
 [node name="AtlasAtlasTab" type="Button" parent="Column/CollectionTabs" unique_id=201830710]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
+custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true

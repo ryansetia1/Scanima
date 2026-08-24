@@ -3,6 +3,7 @@ extends Control
 
 signal back_requested
 signal collection_requested
+signal synthesis_requested
 signal toast_requested(message: String, is_error: bool)
 
 const CARD_MIN := Vector2(208, 280)
@@ -78,10 +79,8 @@ var _all_cache_at_msec := 0
 
 
 func _ready() -> void:
-	var back_button := %AtlasBack as Button
-	back_button.tooltip_text = tr("ACTION_BACK")
-	back_button.pressed.connect(func() -> void: back_requested.emit())
 	%AtlasCollectionTab.pressed.connect(func() -> void: collection_requested.emit())
+	%AtlasSynthesisTab.pressed.connect(func() -> void: synthesis_requested.emit())
 	_load_more.pressed.connect(_load_next_page)
 	_detail_sheet.dismissed.connect(_on_detail_closed)
 	_report_sheet.dismissed.connect(_on_report_sheet_closed)
@@ -281,6 +280,9 @@ func begin_visit() -> void:
 	_filter = "all"
 	_chapter_id = ""
 	_selected = {}
+	%AtlasAtlasTab.button_pressed = true
+	%AtlasCollectionTab.button_pressed = false
+	%AtlasSynthesisTab.button_pressed = false
 	if _detail_sheet.visible:
 		_detail_sheet.close()
 	if (
@@ -296,6 +298,10 @@ func begin_visit() -> void:
 	_sync_filter_buttons()
 	_chapter.visible = false
 	_load_first_page()
+
+
+func set_synthesis_enabled(enabled: bool) -> void:
+	%AtlasSynthesisTab.visible = enabled
 
 
 func show_demo(rows: Array[Dictionary], texture: Texture2D) -> void:
@@ -327,8 +333,10 @@ func set_busy(busy: bool) -> void:
 
 
 func refresh_localized_ui() -> void:
-	%AtlasBack.tooltip_text = tr("ACTION_BACK")
+	%AtlasTitle.text = tr("ATLAS_TITLE")
+	%AtlasSubtitle.text = tr("ATLAS_SUBTITLE")
 	%AtlasCollectionTab.text = tr("COLLECTION_TAB_COLLECTION")
+	%AtlasSynthesisTab.text = tr("COLLECTION_TAB_SYNTHESIS")
 	%AtlasAtlasTab.text = tr("COLLECTION_TAB_ATLAS")
 	_load_more.text = tr("ATLAS_LOAD_MORE")
 	for filter_name: String in FILTERS:

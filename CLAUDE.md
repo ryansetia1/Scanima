@@ -553,6 +553,17 @@ Layar loading (`LoadingScreen` / `ScanimaBackground`):
 - Teks loading (`LoadingMessage`) dan loading sweep progress bar (`LoadingSweep`)
   ditempatkan di tengah layar via `CenterContainer` penuh.
 
+Relayout Navigasi Tabbing Animas & Unifikasi UI Sub-tab:
+- Tombol **Synthesis Lab** di header `CollectionView` dihapus dan dipindahkan menjadi sub-tab di antara **Collection** dan **Atlas** (`CollectionTabs`: `Collection` | `Synthesis` | `Atlas`), dengan label ringkas `Synthesis` (`COLLECTION_TAB_SYNTHESIS`).
+- Sub-tab tiga serangkai (`Collection`, `Synthesis`, `Atlas`) distandarisasi di seluruh `CollectionView`, `AtlasView`, dan `SynthesisLabView`, memungkinkan navigasi langsung bolak-balik antartab di seluruh sub-page Animas.
+- **Unifikasi Header & Breathing Room**:
+  - Chevron back (`<`) pada Atlas (`AtlasBack`) dan Synthesis (`SynthesisBackButton`) dihapus total karena alur navigasi kini sepenuhnya berbasis tab.
+  - Subtitle deskriptif ditambahkan ke Atlas (`ATLAS_SUBTITLE`: "Discover, track, and explore every known Anima.") di bawah `AtlasTitle`, sehingga ketiga sub-tab memiliki struktur header yang seragam (`Titles` VBox: `Title` + `Subtitle`).
+  - Tinggi tombol tab diseragamkan menjadi 72px (`custom_minimum_size = Vector2(0, 72)`) dengan spacing dan breathing room yang proporsional, bersih, dan konsisten tanpa frame/border yang mengganggu.
+- **Selection Ring Fix**: Selection ring emas (`ItemSelected`) yang sebelumnya nyangkut/terpilih terus pada kartu di `CollectionView` saat berpindah tabbing atau saat sheet ditutup telah diperbaiki: `_highlight_id()` kini hanya mengembalikan ID Anima ketika preview sheet benar-benar sedang terbuka (`_sheet.visible`), dan `_restore_highlight()` / `close_sheet()` / `begin_visit()` membersihkan seleksi saat sheet tidak aktif sehingga grid tampil bersih tanpa ring nyangkut.
+
+
+
 Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
 wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
 `max_output_tokens` sampai JSON Vision terpotong di tengah field — terukur
