@@ -105,7 +105,7 @@ mouse_filter = 2
 
 [node name="StageFooterSpace" type="Control" parent="Column" unique_id=1170166537]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 34)
+custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 mouse_filter = 2
 
@@ -137,7 +137,7 @@ theme_type_variation = &"CareDock"
 
 [node name="CareColumn" type="VBoxContainer" parent="Column/HomeControlsScroll/HomeControlsContent/CareDock" unique_id=765864279]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 18
 
 [node name="CareHeader" type="HBoxContainer" parent="Column/HomeControlsScroll/HomeControlsContent/CareDock/CareColumn" unique_id=536502767]
 layout_mode = 2
