@@ -539,6 +539,12 @@ Seluruh toast/banner kini diposisikan pada **30% dari atas layar** (golden focal
   (`BattleArena` / `TeamBattleStage`), duduk pas di bawah HP bar fighter dan di atas
   animasi pertarungan.
 
+Layar loading (`LoadingScreen` / `ScanimaBackground`):
+- Animasi chamber cincin berputar diposisikan tepat di tengah layar (`CHAMBER_Y = 0.5`).
+- Elips glow biru terang di bawah cincin chamber dihapus agar tampilan lebih bersih dan modern.
+- Teks loading (`LoadingMessage`) dan loading sweep progress bar (`LoadingSweep`)
+  ditempatkan di tengah layar via `CenterContainer` penuh.
+
 Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
 wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
 `max_output_tokens` sampai JSON Vision terpotong di tengah field — terukur

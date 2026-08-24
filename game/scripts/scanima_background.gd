@@ -16,7 +16,7 @@ const REDRAW_INTERVAL_SEC := 1.0 / 15.0
 const VIGNETTE_TOP_PX := 170.0
 const VIGNETTE_BOTTOM_PX := 330.0
 const VIGNETTE_BANDS := 18
-const CHAMBER_Y := 0.43
+const CHAMBER_Y := 0.5
 
 var _phase: float = 0.0
 var _redraw_accumulator: float = 0.0
@@ -94,15 +94,6 @@ func _draw_chamber(center: Vector2, size: Vector2) -> void:
 			true
 		)
 
-	var floor_center := center + Vector2(0.0, 250.0)
-	for glow in 5:
-		var width := 250.0 - float(glow) * 24.0
-		var alpha := 0.018 + float(glow) * 0.008
-		draw_colored_polygon(
-			_ellipse_points(floor_center, width, 42.0 - float(glow) * 4.0, 64),
-			Color(CYAN, alpha)
-		)
-
 
 func _draw_particles(size: Vector2) -> void:
 	for i in 26:
@@ -166,11 +157,3 @@ func _draw_vignette_band(
 			Rect2(0.0, minf(y, y + step), width, absf(step) + 1.0),
 			Color(tint, vignette_alpha(peak, float(band + 1) / float(VIGNETTE_BANDS)))
 		)
-
-
-func _ellipse_points(center: Vector2, radius_x: float, radius_y: float, count: int) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	for i in count:
-		var angle := TAU * float(i) / float(count)
-		points.append(center + Vector2(cos(angle) * radius_x, sin(angle) * radius_y))
-	return points
