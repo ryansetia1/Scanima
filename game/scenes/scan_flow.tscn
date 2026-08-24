@@ -31,7 +31,6 @@
 [ext_resource type="Script" uid="uid://bfbuujsg42m0" path="res://scripts/home_background.gd" id="26_0wixs"]
 [ext_resource type="Texture2D" uid="uid://dcmoq8khu8xnx" path="res://assets/icons/settings.svg" id="26_menu_settings"]
 
-
 [sub_resource type="StyleBoxFlat" id="SynthesisPanelStyle"]
 content_margin_left = 12.0
 content_margin_top = 12.0
@@ -171,17 +170,11 @@ custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
 theme_type_variation = &"GhostChip"
 
-[node name="Value" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons/ShopButton/Column"]
-theme_type_variation = &"GhostChipValueLabel"
-
 [node name="BagButton" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons" unique_id=61296367 instance=ExtResource("13_chip")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
 theme_type_variation = &"GhostChip"
-
-[node name="Value" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons/BagButton/Column"]
-theme_type_variation = &"GhostChipValueLabel"
 
 [node name="ViewStack" type="Control" parent="UI/SafeMargin/Shell" unique_id=1504614856]
 layout_mode = 2
@@ -285,7 +278,7 @@ size_flags_horizontal = 3
 toggle_mode = true
 text = "COLLECTION_TAB_ATLAS"
 
-[node name="SynthesisPanel" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column"]
+[node name="SynthesisPanel" type="PanelContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/Column" unique_id=1199383369]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3

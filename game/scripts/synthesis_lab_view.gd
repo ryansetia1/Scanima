@@ -35,6 +35,7 @@ const MODES: Array[String] = ["dominant_a", "balanced", "dominant_b"]
 @onready var _picker_title: Label = %SynthesisPickerTitle
 @onready var _picker_list: ItemList = %SynthesisPickerList
 @onready var _editor_scroll: ScrollContainer = %Scroll
+@onready var _synthesis_panel: PanelContainer = %SynthesisPanel
 @onready var _incubating_view: Control = %SynthesisIncubatingView
 @onready var _incubating_title: Label = %SynthesisIncubatingTitle
 @onready var _incubating_body: Label = %SynthesisIncubatingBody
@@ -74,12 +75,24 @@ var _picker_slot := ""
 var _thumbnail_provider: Callable
 var _mode := "balanced"
 var _preview: Dictionary = {}
+# ponytail: cache preview/error per mode key ("dominant_a", "balanced", "dominant_b")
+# so switching inheritance bias doesn't force a redundant Review Resonance call.
+# Each entry is {"kind": &"preview"|&"error", "data": Dictionary, "error_key": String}.
+var _preview_cache: Dictionary = {}
+# Modes whose server response was SYNTHESIS_MODE_USED — disable button.
+var _used_modes: Dictionary = {}
 var _result_row: Dictionary = {}
 var _outcome_kind: StringName = &""
 var _outcome_data: Dictionary = {}
 var _error_key := ""
 var _busy := false
 var _updating := false
+# Loading indicator nodes created in code — matching LoadingScreen's looping sweep.
+var _loading_panel: PanelContainer
+var _loading_label: Label
+var _loading_track: Control
+var _loading_spark: ColorRect
+var _loading_sweep: Tween
 
 
 func _ready() -> void:
@@ -96,6 +109,7 @@ func _ready() -> void:
 	_review_button.pressed.connect(_request_preview)
 	_confirm_button.pressed.connect(_request_attempt)
 	_result_button.pressed.connect(_request_result)
+	_build_loading_panel()
 	refresh_localized_ui()
 	_select_mode(1)
 
@@ -135,7 +149,7 @@ func set_rows(rows: Array[Dictionary], preselected_a_id: String = "") -> void:
 		_populate_source_picker()
 	if pending.is_empty():
 		_reset_outcome()
-		_invalidate_preview()
+		_invalidate_all()
 	else:
 		show_generating(pending)
 	_update_actions()
@@ -143,6 +157,11 @@ func set_rows(rows: Array[Dictionary], preselected_a_id: String = "") -> void:
 
 func set_busy(busy: bool) -> void:
 	_busy = busy
+	_loading_panel.visible = busy
+	if busy:
+		_start_loading_sweep()
+	else:
+		_stop_loading_sweep()
 	_update_actions()
 
 
@@ -160,6 +179,8 @@ func apply_preview(data: Dictionary) -> void:
 	_outcome_kind = &"preview"
 	_outcome_data = {}
 	_error_key = ""
+	# Cache result for the current mode so switching bias and returning restores it.
+	_preview_cache[_mode] = {"kind": &"preview", "data": _preview}
 	var breakdown := GameState.as_dict(data.get("breakdown"))
 	_chance.text = tr("SYNTHESIS_CHANCE_VALUE") % LocaleManager.format_integer(
 		int(breakdown.get("chance", 0))
@@ -177,6 +198,10 @@ func show_error_key(message_key: String) -> void:
 	_outcome_kind = &"error"
 	_outcome_data = {}
 	_error_key = message_key
+	# Cache error per mode — especially SYNTHESIS_MODE_USED so the button gets disabled.
+	_preview_cache[_mode] = {"kind": &"error", "error_key": message_key}
+	if message_key == "SYNTHESIS_MODE_USED":
+		_used_modes[_mode] = true
 	_preview_panel.visible = false
 	_outcome_panel.visible = true
 	_outcome_title.text = tr("SYNTHESIS_UNAVAILABLE_TITLE")
@@ -370,6 +395,8 @@ func _paint_incubating_sources() -> void:
 
 func _set_incubating(active: bool) -> void:
 	_editor_scroll.visible = not active
+	if is_instance_valid(_synthesis_panel):
+		_synthesis_panel.visible = not active
 	_incubating_view.visible = active
 	_subtitle.visible = not active
 	if active and is_visible_in_tree():
@@ -458,7 +485,7 @@ func _on_picker_selected(index: int) -> void:
 		_source_b_id = anima_id
 	close_picker()
 	_paint_source_cards()
-	_invalidate_preview()
+	_invalidate_all()
 
 
 func _select_mode(index: int) -> void:
@@ -466,7 +493,11 @@ func _select_mode(index: int) -> void:
 		return
 	_mode = MODES[index]
 	_paint_mode()
-	_invalidate_preview()
+	# Restore cached state for this mode if it exists; otherwise show clean state.
+	if _preview_cache.has(_mode):
+		_restore_cached_mode(_preview_cache[_mode])
+	else:
+		_clear_mode_local()
 
 
 func _paint_mode() -> void:
@@ -491,13 +522,36 @@ func _request_result() -> void:
 		result_requested.emit(_result_row.duplicate(true))
 
 
-func _invalidate_preview() -> void:
+## Clear only the current mode's local display — does NOT touch _preview_cache.
+## Called when switching to a mode with no cached data.
+func _clear_mode_local() -> void:
 	if _updating:
 		return
 	_preview = {}
 	_preview_panel.visible = false
 	_reset_outcome()
 	_update_actions()
+
+
+## Full invalidation: clears all caches + display. Called when sources change.
+func _invalidate_all() -> void:
+	if _updating:
+		return
+	_preview = {}
+	_preview_cache.clear()
+	_used_modes.clear()
+	_preview_panel.visible = false
+	_reset_outcome()
+	_update_actions()
+
+
+## Restore a cached mode state (preview or error).
+func _restore_cached_mode(entry: Dictionary) -> void:
+	var kind: StringName = entry.get("kind", &"")
+	if kind == &"preview":
+		apply_preview(entry.get("data", {}))
+	elif kind == &"error":
+		show_error_key(str(entry.get("error_key", "")))
 
 
 func _reset_outcome() -> void:
@@ -519,9 +573,13 @@ func _update_actions() -> void:
 		close_picker()
 	_source_a_card.disabled = locked or _eligible.is_empty()
 	_source_b_card.disabled = locked or _eligible.is_empty()
-	for button in _mode_buttons:
-		button.disabled = locked
+	# Disable mode buttons when locked OR when that mode has been used for this pair.
+	for index in _mode_buttons.size():
+		_mode_buttons[index].disabled = locked or _used_modes.has(MODES[index])
 	var valid := _selection_valid()
+	# Hide Review button when a preview, error, or loading state is already visible.
+	var has_content := not _preview.is_empty() or _outcome_panel.visible or _busy
+	_review_button.visible = not has_content
 	_review_button.disabled = locked or not valid
 	_confirm_button.disabled = locked or not valid or _preview.is_empty()
 
@@ -598,6 +656,77 @@ func _paint_metric_cell(cell: Control, name_text: String, value_text: String) ->
 		name_label.text = name_text
 	if value_label != null:
 		value_label.text = value_text
+
+
+## ponytail: build loading panel in code matching LoadingScreen's indeterminate sweep
+## with a centered vertical layout for the spacious review area.
+func _build_loading_panel() -> void:
+	_loading_panel = PanelContainer.new()
+	_loading_panel.theme_type_variation = &"HudSurface"
+	_loading_panel.visible = false
+	_loading_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_loading_panel.custom_minimum_size = Vector2(0, 220)
+
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 24)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+
+	_loading_label = Label.new()
+	_loading_label.text = tr("SYNTHESIS_LOADING_REVIEW")
+	_loading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_loading_label.add_theme_font_size_override("font_size", 22)
+	vbox.add_child(_loading_label)
+
+	_loading_track = Control.new()
+	_loading_track.clip_contents = true
+	_loading_track.custom_minimum_size = Vector2(360, 6)
+	_loading_track.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+
+	var track_bg := ColorRect.new()
+	track_bg.color = Color(0.08, 0.14, 0.26, 0.75)
+	track_bg.anchor_right = 1.0
+	track_bg.anchor_bottom = 1.0
+	track_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_loading_track.add_child(track_bg)
+
+	_loading_spark = ColorRect.new()
+	_loading_spark.color = Color(0.278, 0.902, 1.0)
+	_loading_spark.size = Vector2(100, 6)
+	_loading_spark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_loading_track.add_child(_loading_spark)
+
+	vbox.add_child(_loading_track)
+	center.add_child(vbox)
+	_loading_panel.add_child(center)
+
+	# Insert after the review button in the same VBox parent.
+	var parent := _review_button.get_parent()
+	parent.add_child(_loading_panel)
+	parent.move_child(_loading_panel, _review_button.get_index() + 1)
+
+
+func _start_loading_sweep() -> void:
+	_stop_loading_sweep()
+	if _loading_track == null or _loading_spark == null:
+		return
+	var track_width := maxf(_loading_track.size.x, _loading_track.custom_minimum_size.x)
+	var spark_width := _loading_spark.size.x
+	var start_x := -spark_width
+	var end_x := track_width
+	_loading_spark.position.x = start_x
+	_loading_sweep = create_tween().set_loops()
+	_loading_sweep.tween_property(_loading_spark, "position:x", end_x, 1.2) \
+		.from(start_x).set_trans(Tween.TRANS_LINEAR)
+
+
+func _stop_loading_sweep() -> void:
+	if _loading_sweep != null and _loading_sweep.is_valid():
+		_loading_sweep.kill()
+	_loading_sweep = null
 
 
 static func is_eligible_source(row: Dictionary) -> bool:

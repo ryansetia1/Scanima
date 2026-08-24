@@ -921,3 +921,20 @@ dan `sfx-presentation.mdc`.
 
 Indeks dokumen selengkapnya ada di [README.md](README.md); panduan pemain di
 [`docs/wiki/`](docs/wiki/README.md).
+
+## Perbaikan UI & State Caching Synthesis (25 Agustus 2026)
+
+1. **State Caching per Bias Mode**: Hasil review resonance (`_preview`) dan error (termasuk `SYNTHESIS_MODE_USED`) sekarang di-cache per bias mode (`dominant_a`, `balanced`, `dominant_b`) menggunakan `_preview_cache` dalam `SynthesisLabView`. Ketika player berpindah tab bias inheritance dan kembali, hasil review yang sama langsung terpulihkan secara local tanpa hit backend ulang. Caching sepenuhnya dibersihkan (`_invalidate_all()`) ketika player mengubah source Anima A atau B.
+2. **Redundant Button Hidden**: Tombol `Review Resonance` disembunyikan secara dinamis ketika preview hasil review, pesan error, atau loading state sedang aktif.
+3. **Loading State Review**: Indikator loading pada review area mengadopsi pola looping sweep linear milik `LoadingScreen` (`_loading_track` berlatar gelap dan `_loading_spark` cyan yang meluncur maju secara berulang via `Tween.set_loops()`), diposisikan center vertically dengan ketinggian 220px agar mengisi ruang lapang area review secara seimbang.
+4. **Pencegahan Opsi Terpakai (SYNTHESIS_MODE_USED)**: Mode bias yang sudah pernah diselesaikan untuk pasangan Source tersebut ditandai ke `_used_modes` ketika server mengembalikan error, kemudian tombol mode bias tersebut dinonaktifkan (`disabled = true`) agar player tidak memicu review berulang.
+5. **Warna Banner/Toast Battle (Complete & KO)**: 
+   - Banner `finished` (`Battle complete.`): Biru (`COMPLETE_COLOR` + `ToastType.GENERAL`) dengan teks dan panel toast biru untuk semua hasil (menang/kalah).
+   - Banner `knockout` (`[Anima] is knockout`): Hijau (`WIN_COLOR` + `ToastType.SUCCESS`) jika yang KO adalah musuh/lawan, merah (`DAMAGE_COLOR` + `ToastType.ERROR`) jika yang KO adalah Anima pemain.
+6. **Incubating Layout Clean**: Pada state `_set_incubating(true)`, `_synthesis_panel` (`SynthesisPanel`) disembunyikan bersama `_editor_scroll` sehingga tidak meninggalkan panel kosong di atas tampilan visual inkubasi.
+7. **Uji Otomatis**: Memperbaiki `test_scan_ui.gd` agar mencari container `Column` yang dipromosikan (bukan `LabSurface` yang sudah dideprecate) untuk pengujian kecocokan dimensi viewport, sehingga seluruh 1467 checks client UI test suite kembali hijau / lulus 100%.
+
+
+
+
+

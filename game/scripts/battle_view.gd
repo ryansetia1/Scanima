@@ -21,6 +21,8 @@ const HP_WARNING_COLOR := Color(1.0, 0.58, 0.20, 1.0)
 const HP_EMPTY_COLOR := DAMAGE_COLOR
 const EFFECTIVE_COLOR := Color(1.0, 0.82, 0.4, 1.0)
 const RESISTED_COLOR := Color(0.55, 0.68, 0.9, 1.0)
+const WIN_COLOR := Color(0.36, 1.0, 0.72, 1.0)
+const COMPLETE_COLOR := Color(0.32, 0.82, 1.0, 1.0)
 enum ToastType { GENERAL, SUCCESS, WARNING, ERROR }
 const TOAST_STYLES := {
 	ToastType.GENERAL: preload("res://themes/toast/toast_panel_general.tres"),
@@ -617,18 +619,24 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 				var defeated := _sprite_for(defeated_side)
 				if is_instance_valid(defeated):
 					defeated.set_pose("defeated")
+				var player_ko := defeated_side == "player"
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(defeated_side),
-					DAMAGE_COLOR,
+					DAMAGE_COLOR if player_ko else WIN_COLOR,
 					true,
-					ToastType.ERROR if defeated_side == "player" else ToastType.SUCCESS
+					ToastType.ERROR if player_ko else ToastType.SUCCESS
 				)
 				await _hide_effectiveness()
 			"timeout":
 				await _present_banner(tr("BATTLE_EVENT_TIMEOUT"), DAMAGE_COLOR, false, ToastType.WARNING)
 				await _hide_effectiveness()
 			"finished":
-				await _present_banner(tr("BATTLE_EVENT_FINISHED"), DAMAGE_COLOR, false, ToastType.ERROR)
+				await _present_banner(
+					tr("BATTLE_EVENT_FINISHED"),
+					COMPLETE_COLOR,
+					false,
+					ToastType.GENERAL
+				)
 				await _hide_effectiveness()
 			"move_effect", "status_tick", "status_expired":
 				_apply_effect_hp_event(event)

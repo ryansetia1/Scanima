@@ -579,17 +579,26 @@ func play_events(
 			"knockout":
 				var side := str(event.get("actor", ""))
 				_faint(side)
+				var player_ko := side == "player"
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(side),
-					BattleView.DAMAGE_COLOR,
+					BattleView.DAMAGE_COLOR if player_ko else BattleView.WIN_COLOR,
 					true,
-					BattleView.ToastType.ERROR if side == "player" else BattleView.ToastType.SUCCESS
+					BattleView.ToastType.ERROR if player_ko else BattleView.ToastType.SUCCESS
 				)
 				# Hold the faint so a KO is readable before the replacement picker.
 				await _event_pause(1.2)
 				await _hide_effectiveness()
 			"timeout":
 				await _present_banner(tr("BATTLE_EVENT_TIMEOUT"), BattleView.DAMAGE_COLOR, false, BattleView.ToastType.WARNING)
+				await _hide_effectiveness()
+			"finished":
+				await _present_banner(
+					tr("BATTLE_EVENT_FINISHED"),
+					BattleView.COMPLETE_COLOR,
+					false,
+					BattleView.ToastType.GENERAL
+				)
 				await _hide_effectiveness()
 			"move_effect", "status_tick", "status_expired":
 				var normalized := BATTLE_EVENT.normalized(event)

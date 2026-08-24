@@ -6640,7 +6640,7 @@ func _test_synthesis_lab_state() -> void:
 	)
 	view.set_rows(rows, "synthesis-locale-a")
 	await process_frame
-	var lab_surface := view.find_child("LabSurface", true, false) as PanelContainer
+	var lab_surface := view.find_child("Column", true, false) as VBoxContainer
 	var scroll := view.find_child("Scroll", true, false) as ScrollContainer
 	var content := scroll.get_child(0) as Control if scroll != null else null
 	var sources := view.find_child("Sources", true, false) as GridContainer
