@@ -6361,9 +6361,15 @@ func _sync_shop_chrome() -> void:
 func _place_toast(insets: Vector4) -> void:
 	if not is_instance_valid(_status_panel) or not is_instance_valid(_top_hud):
 		return
+	var viewport_h := get_viewport().get_visible_rect().size.y
 	var hud_h := maxf(_top_hud.size.y, _top_hud.get_combined_minimum_size().y)
-	var top := HUD_TOP_PAD + insets.y + hud_h + TOAST_GAP
+	var top_edge := HUD_TOP_PAD + insets.y + hud_h + TOAST_GAP
+	var bottom_edge := viewport_h - insets.w
+	if is_instance_valid(_bottom_nav) and _bottom_nav.visible:
+		bottom_edge = viewport_h - insets.w - maxf(_bottom_nav.size.y, _bottom_nav.get_combined_minimum_size().y)
 	var height := _status_panel.get_combined_minimum_size().y
+	var target_y := viewport_h * 0.30
+	var top := clampf(target_y - height * 0.5, top_edge, maxf(top_edge, bottom_edge - height))
 	_status_panel.offset_top = top
 	_status_panel.offset_bottom = top + height
 

@@ -518,6 +518,15 @@ event banner / toast di `BattleView` dan `TeamBattleView` lewat
 `WARNING` untuk Not Effective / Timeout / Retreating, `ERROR` untuk Defeat /
 Player KO, dan `GENERAL` untuk Initiative / Attack / Move Effects.
 
+Seluruh toast/banner kini diposisikan pada **30% dari atas layar** (golden focal zone):
+- **Shell toast** (`StatusPanel` / `_place_toast`): ditargetkan pada `viewport_h * 0.30`
+  dengan boundary clamping antara batas bawah TopHud dan batas atas BottomNav / sheet,
+  sehingga nyaman di mata tanpa tertutup atau menabrak HUD.
+- **Battle banners** (`BattleEffectiveness` / `TeamEffectiveness`): anchor diatur
+  ke `anchor_top = 0.3`, `anchor_bottom = 0.3` di dalam arena
+  (`BattleArena` / `TeamBattleStage`), duduk pas di bawah HP bar fighter dan di atas
+  animasi pertarungan.
+
 Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
 wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
 `max_output_tokens` sampai JSON Vision terpotong di tengah field — terukur
