@@ -21,6 +21,13 @@ const HP_WARNING_COLOR := Color(1.0, 0.58, 0.20, 1.0)
 const HP_EMPTY_COLOR := DAMAGE_COLOR
 const EFFECTIVE_COLOR := Color(1.0, 0.82, 0.4, 1.0)
 const RESISTED_COLOR := Color(0.55, 0.68, 0.9, 1.0)
+enum ToastType { GENERAL, SUCCESS, WARNING, ERROR }
+const TOAST_STYLES := {
+	ToastType.GENERAL: preload("res://themes/toast/toast_panel_general.tres"),
+	ToastType.SUCCESS: preload("res://themes/toast/toast_panel_success.tres"),
+	ToastType.WARNING: preload("res://themes/toast/toast_panel_warning.tres"),
+	ToastType.ERROR: preload("res://themes/toast/toast_panel_error.tres"),
+}
 
 signal start_requested
 signal choose_anima_requested
@@ -76,6 +83,7 @@ const DUEL_BACKGROUND_NIGHT_LANDSCAPE: Texture2D = preload(
 @onready var _feedback: Label = %BattleFeedback
 @onready var _damage: Label = %BattleDamage
 @onready var _effectiveness: Control = %BattleEffectiveness
+@onready var _event_plate: PanelContainer = %BattleEventPlate
 @onready var _effectiveness_label: Label = %BattleEffectivenessLabel
 @onready var _actions: GridContainer = %Actions
 @onready var _strike_button: Button = %BattleStrikeButton
@@ -541,7 +549,7 @@ func _commit_for_action(action: String) -> ColorRect:
 
 
 func show_retreat_banner() -> void:
-	_show_banner(tr("BATTLE_RETREATING"), CUE_COLOR, false)
+	_show_banner(tr("BATTLE_RETREATING"), CUE_COLOR, false, ToastType.WARNING)
 
 
 func _clear_event_plate() -> void:
@@ -596,7 +604,8 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 				await _present_banner(
 					tr("BATTLE_EVENT_GUARD") % _actor_name(guard_side),
 					CUE_COLOR,
-					false
+					false,
+					ToastType.SUCCESS
 				)
 				await _hide_effectiveness()
 			"item":
@@ -611,20 +620,21 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(defeated_side),
 					DAMAGE_COLOR,
-					true
+					true,
+					ToastType.ERROR if defeated_side == "player" else ToastType.SUCCESS
 				)
 				await _hide_effectiveness()
 			"timeout":
-				await _present_banner(tr("BATTLE_EVENT_TIMEOUT"), DAMAGE_COLOR, false)
+				await _present_banner(tr("BATTLE_EVENT_TIMEOUT"), DAMAGE_COLOR, false, ToastType.WARNING)
 				await _hide_effectiveness()
 			"finished":
-				await _present_banner(tr("BATTLE_EVENT_FINISHED"), DAMAGE_COLOR, false)
+				await _present_banner(tr("BATTLE_EVENT_FINISHED"), DAMAGE_COLOR, false, ToastType.ERROR)
 				await _hide_effectiveness()
 			"move_effect", "status_tick", "status_expired":
 				_apply_effect_hp_event(event)
 				var plate := BATTLE_EVENT.plate_text(event)
 				if not plate.is_empty():
-					await _present_banner(plate, CUE_COLOR, false)
+					await _present_banner(plate, CUE_COLOR, false, ToastType.GENERAL)
 					await _hide_effectiveness()
 	set_session(next_session)
 	set_busy(false)
@@ -652,7 +662,8 @@ func _play_item(event: Dictionary) -> void:
 	await _present_banner(
 		tr("BATTLE_EVENT_ITEM") % _actor_name(actor_name),
 		CUE_COLOR,
-		false
+		false,
+		ToastType.GENERAL
 	)
 	var actor := _sprite_for(actor_name)
 	if is_instance_valid(actor):
@@ -664,7 +675,7 @@ func _play_item(event: Dictionary) -> void:
 		_player_hp_value.text = LocaleManager.format_ratio(
 			int(event.get("hp", _player_hp.value)), int(_player_hp.max_value)
 		)
-	await _present_banner(item_banner_text(event), EFFECTIVE_COLOR, true)
+	await _present_banner(item_banner_text(event), EFFECTIVE_COLOR, true, ToastType.SUCCESS)
 	await _hide_effectiveness()
 
 
@@ -682,7 +693,8 @@ func _play_attack(event: Dictionary) -> void:
 	await _present_banner(
 		tr("BATTLE_EVENT_ATTACK") % [_actor_name(actor_name), action_label],
 		CUE_COLOR,
-		false
+		false,
+		ToastType.GENERAL
 	)
 	await _hide_effectiveness()
 	if is_instance_valid(attacker):
@@ -729,16 +741,18 @@ func _play_attack(event: Dictionary) -> void:
 	_damage.modulate = Color.WHITE
 	_damage.visible = false
 	if not effect_key.is_empty():
+		var eff_type := ToastType.SUCCESS if effect_key == "BATTLE_EFFECTIVE" else ToastType.WARNING
 		await _present_banner(
 			tr(effect_key),
 			EFFECTIVE_COLOR if effect_key == "BATTLE_EFFECTIVE" else RESISTED_COLOR,
-			effect_key == "BATTLE_EFFECTIVE"
+			effect_key == "BATTLE_EFFECTIVE",
+			eff_type
 		)
 	await _hide_effectiveness()
 
 
-func _present_banner(text: String, color: Color, big: bool = true) -> void:
-	_show_banner(text, color, big)
+func _present_banner(text: String, color: Color, big: bool = true, type: ToastType = ToastType.GENERAL) -> void:
+	_show_banner(text, color, big, type)
 	if is_instance_valid(_effectiveness_tween):
 		await _effectiveness_tween.finished
 	await _readability_pause()
@@ -747,20 +761,25 @@ func _present_banner(text: String, color: Color, big: bool = true) -> void:
 func _show_effectiveness(multiplier: float) -> void:
 	var key := effectiveness_key(multiplier)
 	var color := DAMAGE_COLOR
+	var type := ToastType.GENERAL
 	if key == "BATTLE_EFFECTIVE":
 		color = EFFECTIVE_COLOR
+		type = ToastType.SUCCESS
 	elif key == "BATTLE_NOT_EFFECTIVE":
 		color = RESISTED_COLOR
-	_show_banner(tr(key) if not key.is_empty() else "", color, key == "BATTLE_EFFECTIVE")
+		type = ToastType.WARNING
+	_show_banner(tr(key) if not key.is_empty() else "", color, key == "BATTLE_EFFECTIVE", type)
 
 
-func _show_banner(text: String, color: Color, big: bool = true) -> void:
+func _show_banner(text: String, color: Color, big: bool = true, type: ToastType = ToastType.GENERAL) -> void:
 	if is_instance_valid(_effectiveness_tween):
 		_effectiveness_tween.kill()
 	_effectiveness.visible = not text.is_empty()
 	if not _effectiveness.visible:
 		_damage.add_theme_color_override("font_color", color)
 		return
+	if is_instance_valid(_event_plate) and TOAST_STYLES.has(type):
+		_event_plate.add_theme_stylebox_override("panel", TOAST_STYLES[type])
 	_effectiveness.modulate = Color.WHITE
 	_effectiveness.scale = Vector2.ONE
 	_effectiveness.pivot_offset = _effectiveness.size * 0.5

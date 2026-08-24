@@ -510,6 +510,14 @@ dan diperbaiki:
    Control full-screen non-container yang duduk di canvas root di atas seluruh
    sheet), dengan fallback `_safe_margin`.
 
+Desain toast 4-state (`GENERAL`, `SUCCESS`, `WARNING`, `ERROR`) berbasis
+`StyleBoxTexture` (`toast_panel_*.tres`) sekarang distandarisasi ke seluruh
+event banner / toast di `BattleView` dan `TeamBattleView` lewat
+`_event_plate.add_theme_stylebox_override("panel", TOAST_STYLES[type])`:
+`SUCCESS` untuk Super Effective / Guard / Item / Win KO / Ace Passive,
+`WARNING` untuk Not Effective / Timeout / Retreating, `ERROR` untuk Defeat /
+Player KO, dan `GENERAL` untuk Initiative / Attack / Move Effects.
+
 Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
 wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
 `max_output_tokens` sampai JSON Vision terpotong di tengah field — terukur
