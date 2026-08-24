@@ -35,10 +35,11 @@ const ITEM_BOB_HEIGHT_PX := 6.0
 const ITEM_BOB_RISE_SEC := 0.10
 const ITEM_BOB_FALL_SEC := 0.12
 const ITEM_BOB_HOLD_SEC := 0.02
-## Burst partikel dampak Feed/Item -- lihat `_burst()`.
+## Burst partikel dampak Feed/Item/Clean -- lihat `_burst()`.
 const BURST_LIFETIME_SEC := 0.55
 const BURST_AMOUNT_FEED := 24
 const BURST_AMOUNT_ITEM := 30
+const BURST_AMOUNT_CLEAN := 22
 
 var _motion: Tween
 var _feedback: Tween
@@ -604,6 +605,7 @@ func care_feedback(action: String) -> void:
 	match action:
 		"clean":
 			tint = Color(0.55, 1.2, 1.35, 1.0)
+			_burst("clean")
 		"sleep":
 			tint = Color(0.72, 0.78, 1.08, 1.0)
 		"wake":
@@ -645,8 +647,6 @@ func _burst(kind: String) -> void:
 		_burst_particles.z_index = 8
 		_burst_particles.one_shot = true
 		_burst_particles.explosiveness = 1.0
-		_burst_particles.texture = _spark_texture()
-		_burst_particles.gravity = Vector2.ZERO
 		_burst_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
 		# Alpha meluruh ke 0 sepanjang umur partikel -- tanpa ini partikel
 		# one-shot berhenti mendadak (pop) tepat saat lifetime habis, bukan
@@ -665,6 +665,10 @@ func _burst(kind: String) -> void:
 		bounds.size * 0.5 if bounds.size != Vector2.ZERO else Vector2(32.0, 40.0)
 	)
 	if kind == "item":
+		_burst_particles.texture = _spark_texture()
+		_burst_particles.gravity = Vector2.ZERO
+		_burst_particles.orbit_velocity_min = 0.0
+		_burst_particles.orbit_velocity_max = 0.0
 		_burst_particles.amount = BURST_AMOUNT_ITEM
 		_burst_particles.lifetime = BURST_LIFETIME_SEC
 		_burst_particles.direction = Vector2.UP
@@ -676,7 +680,32 @@ func _burst(kind: String) -> void:
 		_burst_particles.scale_amount_min = 1.0
 		_burst_particles.scale_amount_max = 2.0
 		_burst_particles.color = Color(0.45, 1.15, 1.70, 1.0)
+	elif kind == "clean":
+		# Gelembung sabun: naik lambat lewat gravity NEGATIF (daya apung),
+		# nol angular_velocity (ring radial-simetris tidak menampakkan rotasi),
+		# dan orbit_velocity kecil untuk goyangan ke samping ala gelembung
+		# nyata -- feed/item sengaja tidak memakainya karena percikan mereka
+		# lurus dan tajam, bukan mengambang.
+		_burst_particles.texture = _bubble_texture()
+		_burst_particles.gravity = Vector2(0.0, -18.0)
+		_burst_particles.orbit_velocity_min = -0.12
+		_burst_particles.orbit_velocity_max = 0.12
+		_burst_particles.amount = BURST_AMOUNT_CLEAN
+		_burst_particles.lifetime = BURST_LIFETIME_SEC * 1.6
+		_burst_particles.direction = Vector2.UP
+		_burst_particles.spread = 65.0
+		_burst_particles.initial_velocity_min = 30.0
+		_burst_particles.initial_velocity_max = 70.0
+		_burst_particles.angular_velocity_min = 0.0
+		_burst_particles.angular_velocity_max = 0.0
+		_burst_particles.scale_amount_min = 0.6
+		_burst_particles.scale_amount_max = 1.5
+		_burst_particles.color = Color(0.70, 1.30, 1.45, 1.0)
 	else:
+		_burst_particles.texture = _spark_texture()
+		_burst_particles.gravity = Vector2.ZERO
+		_burst_particles.orbit_velocity_min = 0.0
+		_burst_particles.orbit_velocity_max = 0.0
 		_burst_particles.amount = BURST_AMOUNT_FEED
 		_burst_particles.lifetime = BURST_LIFETIME_SEC * 1.15
 		_burst_particles.direction = Vector2.UP
@@ -715,6 +744,39 @@ static func _spark_texture() -> GradientTexture2D:
 	texture.width = 28
 	texture.height = 28
 	_spark_texture_cache = texture
+	return texture
+
+
+static var _bubble_texture_cache: GradientTexture2D = null
+
+
+## Cincin putih dengan pusat transparan, bukan bercak penuh seperti
+## `_spark_texture()` -- itu yang membuatnya terbaca sebagai gelembung sabun
+## (rim terang, isi tembus pandang) alih-alih percikan padat.
+static func _bubble_texture() -> GradientTexture2D:
+	if _bubble_texture_cache != null:
+		return _bubble_texture_cache
+	var gradient := Gradient.new()
+	# Both endpoints set BEFORE add_point() below -- Gradient.new() starts with
+	# exactly 2 points at index 0/1, and add_point() inserts keeping offset
+	# order, which shifts later indices. Calling set_color(1, ...) after
+	# add_point() would silently hit the wrong (inserted) point and leave
+	# Gradient's own default endpoint -- opaque white -- on the real offset
+	# 1.0 point, which is what rendered as a solid white square past the
+	# ring's radius.
+	gradient.set_color(0, Color(1.0, 1.0, 1.0, 0.0))
+	gradient.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	gradient.add_point(0.58, Color(1.0, 1.0, 1.0, 0.0))
+	gradient.add_point(0.74, Color(1.0, 1.0, 1.0, 0.55))
+	gradient.add_point(0.88, Color(1.0, 1.0, 1.0, 0.9))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
+	texture.width = 48
+	texture.height = 48
+	_bubble_texture_cache = texture
 	return texture
 
 

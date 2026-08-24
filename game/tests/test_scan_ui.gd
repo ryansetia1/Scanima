@@ -2129,6 +2129,42 @@ func _test_consumable_flight_to_anima() -> void:
 		item_burst != null and item_burst.color != feed_color,
 		"item's burst is tinted differently from feed's"
 	)
+	# Snapshot value-typed color and the shared texture resource NOW -- both
+	# `feed_burst`/`item_burst` alias the same reused `_burst_particles` node,
+	# so reading `.color`/`.texture` off them after clean() reassigns those
+	# properties would silently read clean's own values back.
+	var item_color: Color = item_burst.color if item_burst != null else Color.BLACK
+	var feed_texture: Texture2D = feed_burst.texture if feed_burst != null else null
+
+	await create_timer(0.5).timeout
+
+	presenter.care_feedback("clean")
+	var clean_burst: CPUParticles2D = null
+	for child in anchor.get_children():
+		if child is CPUParticles2D:
+			clean_burst = child
+	_check(
+		clean_burst != null and clean_burst.emitting and clean_burst.color != feed_color
+		and clean_burst.color != item_color,
+		"clean fires its own tinted burst, distinct from feed and item"
+	)
+	_check(
+		clean_burst != null and clean_burst.texture != feed_texture,
+		"clean's bubble burst uses a ring texture, not feed/item's solid spark"
+	)
+	_check(
+		clean_burst != null and clean_burst.gravity.y < 0.0,
+		"clean's bubbles float upward (negative gravity) instead of falling like feed/item's sparks"
+	)
+	# Regression pin: a stray Gradient point index once left the ring
+	# texture's true offset-1.0 point at Gradient's own default (opaque
+	# white), which rendered as a solid white square behind the ring instead
+	# of a transparent corner.
+	var bubble_image: Image = clean_burst.texture.get_image() if clean_burst != null else null
+	_check(
+		bubble_image != null and bubble_image.get_pixel(0, 0).a < 0.02,
+		"the bubble texture's corners are transparent, not a leftover opaque square"
+	)
 
 	presenter.queue_free()
 	anchor.queue_free()
