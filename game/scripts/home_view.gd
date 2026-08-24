@@ -343,6 +343,9 @@ func _request_play() -> void:
 	if _play_capped():
 		care_blocked.emit(tr("ERROR_PLAY_CAPPED"))
 		return
+	if _play_energy_low():
+		care_blocked.emit(tr("ERROR_NO_ENERGY"))
+		return
 	care_requested.emit("play")
 
 
@@ -381,7 +384,7 @@ func _update_action_state(disabled: bool) -> void:
 		Color(1, 1, 1, 0.42) if not disabled and CARE_RULES.need_is_full(_row.get("care"), "hygiene") else Color.WHITE
 	)
 	_play_button.self_modulate = (
-		Color(1, 1, 1, 0.42) if not disabled and _play_capped() else Color.WHITE
+		Color(1, 1, 1, 0.42) if not disabled and (_play_capped() or _play_energy_low()) else Color.WHITE
 	)
 	if is_instance_valid(_care_actions):
 		_care_actions.columns = 1 if sleeping else 4
@@ -389,6 +392,11 @@ func _update_action_state(disabled: bool) -> void:
 
 func _play_capped() -> bool:
 	return CARE_RULES.play_exp_remaining(_row) <= 0
+
+
+func _play_energy_low() -> bool:
+	var care: Dictionary = CARE_RULES.normalized_care(_row.get("care"))
+	return float(care.get("energy", 0.0)) < CARE_RULES.PLAY_ENERGY_COST
 
 
 static func _set_need_alert(chip: PanelContainer, low: bool) -> void:

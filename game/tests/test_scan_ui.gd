@@ -7243,6 +7243,17 @@ func _test_home_care_actions() -> void:
 
 	_home_care_blocked = ""
 	_home_care_action = ""
+	row["play_score_today"] = 0
+	row["care"]["energy"] = 4.0
+	home.update_care(row, false)
+	_check(not play.disabled, "Play stays clickable at low Energy")
+	_check(play.self_modulate.a < 1.0, "Play looks disabled below the Energy cost")
+	play.pressed.emit()
+	_check_eq(_home_care_blocked, tr("ERROR_NO_ENERGY"), "low-Energy Play explains the limit with a toast")
+	_check_eq(_home_care_action, "", "low-Energy Play does not send a care request, so the happy animation never plays")
+
+	_home_care_blocked = ""
+	_home_care_action = ""
 	row["care"]["hunger"] = 80.0
 	row["care"]["hygiene"] = 100.0
 	home.update_care(row, false)
