@@ -84,11 +84,15 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"HudSurface"
 
-[node name="Row" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud" unique_id=1688193779]
+[node name="Column" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Row" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column" unique_id=1688193779]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Brand" type="Label" parent="UI/SafeMargin/Shell/TopHud/Row" unique_id=101928770]
+[node name="Brand" type="Label" parent="UI/SafeMargin/Shell/TopHud/Column/Row" unique_id=101928770]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -96,19 +100,71 @@ theme_type_variation = &"BrandLabel"
 text = "APP_NAME"
 vertical_alignment = 1
 
-[node name="Resources" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row" unique_id=1847110908]
+[node name="Resources" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column/Row" unique_id=1847110908]
 layout_mode = 2
+size_flags_vertical = 4
 theme_override_constants/separation = 6
 
-[node name="CoresChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=1733062678 instance=ExtResource("13_chip")]
+[node name="CoresChip" parent="UI/SafeMargin/Shell/TopHud/Column/Row/Resources" unique_id=1733062678 instance=ExtResource("13_chip")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 62)
+custom_minimum_size = Vector2(124, 59)
 layout_mode = 2
 
-[node name="BitsChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=1416032062 instance=ExtResource("13_chip")]
+[node name="BitsChip" parent="UI/SafeMargin/Shell/TopHud/Column/Row/Resources" unique_id=1416032062 instance=ExtResource("13_chip")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 62)
+custom_minimum_size = Vector2(124, 59)
 layout_mode = 2
+
+[node name="BottomSection" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AnimaInfo" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 4
+
+[node name="HudAnimaName" type="Label" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/AnimaInfo"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+theme_override_font_sizes/font_size = 34
+clip_text = true
+
+[node name="HudAnimaMeta" type="Label" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/AnimaInfo"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 24
+clip_text = true
+
+[node name="RightButtons" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="ShopButton" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons" unique_id=345871826 instance=ExtResource("13_chip")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+theme_type_variation = &"GhostChip"
+
+[node name="BagButton" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons" unique_id=61296367 instance=ExtResource("13_chip")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+theme_type_variation = &"GhostChip"
+
+[node name="Value" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons/BagButton/Column"]
+theme_type_variation = &"GhostChipValueLabel"
+
+[node name="Value" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons/ShopButton/Column"]
+theme_type_variation = &"GhostChipValueLabel"
 
 [node name="ViewStack" type="Control" parent="UI/SafeMargin/Shell" unique_id=1504614856]
 layout_mode = 2
@@ -964,29 +1020,6 @@ max_text_lines = 3
 [node name="BottomNav" parent="UI/SafeMargin/Shell" unique_id=377546388 instance=ExtResource("10_nav")]
 unique_name_in_owner = true
 layout_mode = 2
-
-[node name="ChipLayer" type="Control" parent="UI" unique_id=1122334455]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="BagButton" parent="UI/ChipLayer" unique_id=61296367 instance=ExtResource("13_chip")]
-unique_name_in_owner = true
-layout_mode = 0
-offset_right = 108.0
-offset_bottom = 96.0
-theme_type_variation = &"GhostChip"
-
-[node name="ShopButton" parent="UI/ChipLayer" unique_id=345871826 instance=ExtResource("13_chip")]
-unique_name_in_owner = true
-layout_mode = 0
-offset_right = 108.0
-offset_bottom = 96.0
-theme_type_variation = &"GhostChip"
 
 [node name="ShopSheet" parent="UI" unique_id=1915279003 instance=ExtResource("16_shop")]
 unique_name_in_owner = true

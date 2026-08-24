@@ -77,21 +77,25 @@ func _configure_chips() -> void:
 	_bag_button.set_name_text("")
 
 
-# Mirrors `ScanFlow._place_shop`: Shop and Bag keep their own 48dp press target
-# instead of copying the Bits badge, and the gutter they claim is what keeps the
-# nickname from running under them.
+# This harness still floats its own Shop/Bag overlay for quick layout tweaks;
+# the shipped HUD in scan_flow.tscn now lays them out as real row children
+# instead (see TopHud/Column/BottomSection/RightButtons).
+const _CHIP_INSET := 2.0
+const _SHOP_GAP := 6.0
+
+
 func _place_chips() -> void:
 	var hud := _top_hud.get_global_rect()
 	var chip := _shop_button.get_combined_minimum_size()
 	if hud.size.y <= 0.0 or chip.x <= 0.0:
 		return
-	var gutter := chip.x * 2.0 + FLOW.SHOP_GAP
-	var top := hud.position.y + hud.size.y + FLOW.SHOP_GAP
-	_shop_button.position = Vector2(hud.end.x - gutter, top)
+	var right := hud.end.x - _CHIP_INSET
+	var bottom := hud.end.y - _CHIP_INSET - chip.y
+	var gutter := chip.x * 2.0 + _SHOP_GAP
+	_shop_button.position = Vector2(right - gutter, bottom)
 	_shop_button.size = chip
-	_bag_button.position = Vector2(hud.end.x - chip.x, top)
+	_bag_button.position = Vector2(right - chip.x, bottom)
 	_bag_button.size = chip
-	_home.set_chip_gutter(gutter)
 
 
 func _place_stage() -> void:

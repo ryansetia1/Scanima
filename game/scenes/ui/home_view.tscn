@@ -64,6 +64,7 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -95,12 +96,6 @@ layout_mode = 2
 theme_type_variation = &"BodyLabel"
 text = "HOME_LOADING_META"
 autowrap_mode = 2
-
-[node name="ChipGutter" type="Control" parent="Column/IdentityRow" unique_id=1521569028]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(222, 0)
-layout_mode = 2
-mouse_filter = 2
 
 [node name="StageSpace" type="Control" parent="Column" unique_id=1484051595]
 unique_name_in_owner = true
@@ -146,12 +141,7 @@ theme_override_constants/separation = 10
 
 [node name="CareHeader" type="HBoxContainer" parent="Column/HomeControlsScroll/HomeControlsContent/CareDock/CareColumn" unique_id=536502767]
 layout_mode = 2
-
-[node name="NeedsTitle" type="Label" parent="Column/HomeControlsScroll/HomeControlsContent/CareDock/CareColumn/CareHeader" unique_id=1310948168]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"SectionLabel"
-text = "HOME_NEEDS_TITLE"
+alignment = 2
 
 [node name="SummaryColumn" type="VBoxContainer" parent="Column/HomeControlsScroll/HomeControlsContent/CareDock/CareColumn/CareHeader" unique_id=1529520028]
 layout_mode = 2

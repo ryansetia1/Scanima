@@ -5,7 +5,6 @@ signal care_requested(action: String)
 signal care_blocked(message: String)
 signal first_scan_requested
 signal retry_requested
-signal anima_profile_requested
 
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
@@ -22,7 +21,6 @@ const CONTROLS_MIN_HEIGHT_PX := 180.0
 
 @onready var _identity_row: HBoxContainer = %IdentityRow
 @onready var _identity: VBoxContainer = %Identity
-@onready var _chip_gutter: Control = %ChipGutter
 @onready var _anima_name: Label = %AnimaName
 @onready var _anima_meta: Label = %AnimaMeta
 @onready var _stage_space: Control = %StageSpace
@@ -52,12 +50,21 @@ var _row: Dictionary = {}
 var _shell_state := &"loading"
 var _values_shown := false
 var _values_toggled_frame := -1
-var _identity_tapped_frame := -1
 var _values_token := 0
 
 
 func _ready() -> void:
 	resized.connect(_fit_controls_scroll)
+	# HomeView keeps its layout while hidden -- Godot does not resize an
+	# invisible Control -- so a HUD height change made on another tab (the
+	# Home-only background growing/shrinking TopHud) never reaches
+	# `_fit_controls_scroll()` until Home is shown again. Deferred so it runs
+	# after the tab switch's own layout changes have settled.
+	visibility_changed.connect(
+		func() -> void:
+			if visible:
+				_fit_controls_scroll.call_deferred()
+	)
 	_feed_button.pressed.connect(_request_feed)
 	_clean_button.pressed.connect(_request_clean)
 	_sleep_button.pressed.connect(_request_sleep_toggle)
@@ -72,10 +79,6 @@ func _ready() -> void:
 		# ever responded. Sweeping the subtree keeps the next child honest too.
 		for inner in chip.find_children("*", "Control", true, false):
 			inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_identity.mouse_filter = Control.MOUSE_FILTER_STOP
-	_identity.gui_input.connect(_on_identity_input)
-	for inner in _identity.find_children("*", "Control", true, false):
-		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for label in _value_labels():
 		label.modulate.a = 0.0
 	_set_loading_layout(true)
@@ -104,7 +107,11 @@ func set_anima(row: Dictionary, busy: bool) -> void:
 		LocaleManager.element_compact(_row),
 	]
 	_set_loading_layout(false)
-	_identity.visible = true
+	# The compact name+level line now lives in the HUD under Brand instead of
+	# beside the Stage, so the ready state hides this row entirely and gives
+	# that space back to the Stage. Loading/error/empty/evolution still use it
+	# for their sentence-length centered headline.
+	_identity_row.visible = false
 	_primary_action.visible = false
 	update_care(_row, busy)
 	_fit_controls_scroll.call_deferred()
@@ -116,6 +123,7 @@ func set_evolution(row: Dictionary) -> void:
 	_set_headline_wrapping(true)
 	_care_dock.visible = false
 	_set_buttons_disabled(true)
+	_identity_row.visible = true
 	_identity.visible = true
 	_primary_action.visible = false
 	_set_loading_layout(false)
@@ -130,6 +138,7 @@ func set_shell_state(state: StringName) -> void:
 	_set_headline_wrapping(true)
 	_care_dock.visible = false
 	_set_buttons_disabled(true)
+	_identity_row.visible = true
 	_identity.visible = true
 	_primary_action.visible = state == &"empty" or state == &"error"
 	_set_loading_layout(state == &"loading")
@@ -150,10 +159,6 @@ func set_shell_state(state: StringName) -> void:
 
 func shell_state() -> StringName:
 	return _shell_state
-
-
-func set_chip_gutter(width: float) -> void:
-	_chip_gutter.custom_minimum_size.x = maxf(width, 0.0)
 
 
 # A nickname stays on one line next to the chips, but loading, empty, and error
@@ -192,7 +197,7 @@ func update_care(row: Dictionary, busy: bool) -> void:
 		_set_buttons_disabled(true)
 		return
 	if reveal:
-		UiJuice.reveal(_care_dock)
+		UiJuice.reveal_from_bottom(_care_dock)
 
 	var care: Dictionary = CARE_RULES.normalized_care(_row.get("care"))
 	UiJuice.tween_meter(_need_hunger, care["hunger"])
@@ -238,27 +243,11 @@ func set_busy(busy: bool) -> void:
 
 
 func pulse_progress() -> void:
-	if _identity.visible:
+	if _identity_row.visible:
 		UiJuice.pop(_anima_meta, 1.05)
 	if _care_dock.visible:
 		UiJuice.pop(_care_summary, 1.08)
 		UiJuice.pop(_need_exp, 1.06)
-
-
-func _on_identity_input(event: InputEvent) -> void:
-	if not _is_tap(event) or _shell_state != &"ready" or _row.is_empty():
-		return
-	# Same double-fire as the need chips below: touch emulation hands the finger
-	# over twice, once as a screen touch and once as a synthetic mouse press.
-	# Here the second one is worse than a dead tap -- it re-enters
-	# `_show_collection_profile` while Profile is already the destination, which
-	# resets the remembered origin to Collection and loses the Home entry that
-	# makes one Back land back on Home.
-	var frame := Engine.get_process_frames()
-	if frame == _identity_tapped_frame:
-		return
-	_identity_tapped_frame = frame
-	anima_profile_requested.emit()
 
 
 func _on_need_chip_input(event: InputEvent) -> void:

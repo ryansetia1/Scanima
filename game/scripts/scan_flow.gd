@@ -70,7 +70,6 @@ const HOME_BODY_SPAN_MAX_RATIO := 0.42
 ## 0,62 melebarkannya menjadi 2,4x tanpa menyentuh clamp.
 const HOME_BODY_HEIGHT_CURVE := 0.62
 const TOAST_GAP := 8.0
-const SHOP_GAP := 6.0
 const SLEEP_SYNC_RETRY_SEC := 30.0
 const SLEEP_SYNC_EPSILON_SEC := 1.0
 ## Tap-to-wake: cara kedua membangunkan Anima selain tombol Wake, dengan target
@@ -103,6 +102,10 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 @onready var _status_panel: PanelContainer = %StatusPanel
 @onready var _safe_margin: MarginContainer = %SafeMargin
 @onready var _top_hud: PanelContainer = %TopHud
+@onready var _hud_anima_name: Label = %HudAnimaName
+@onready var _hud_anima_meta: Label = %HudAnimaMeta
+@onready var _bottom_section: HBoxContainer = %BottomSection
+@onready var _anima_info: VBoxContainer = %AnimaInfo
 @onready var _brand: Label = %Brand
 @onready var _cores_chip = %CoresChip
 @onready var _bits_chip: ResourceChip = %BitsChip
@@ -129,6 +132,7 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 @onready var _bottom_nav: BottomNav = %BottomNav
 
 var _busy := false
+var _hud_anima_tapped_frame := -1
 var _booting := true
 var _boot_auth_success_mode := ""
 var _roster: Array[Dictionary] = []
@@ -288,9 +292,12 @@ func _ready() -> void:
 	_home_view.care_blocked.connect(_on_care_blocked)
 	_home_view.first_scan_requested.connect(_open_scan)
 	_home_view.retry_requested.connect(_retry_roster)
-	_home_view.anima_profile_requested.connect(func() -> void: _show_collection_profile(_current_anima))
 	_brand.mouse_filter = Control.MOUSE_FILTER_STOP
 	_brand.gui_input.connect(_on_brand_input)
+	_anima_info.mouse_filter = Control.MOUSE_FILTER_STOP
+	_anima_info.gui_input.connect(_on_hud_anima_input)
+	for inner in _anima_info.find_children("*", "Control", true, false):
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_collection_view.preview_requested.connect(_sync_collection_preview)
 	_collection_view.atlas_preview_requested.connect(_sync_collection_atlas_preview)
 	_collection_view.profile_requested.connect(_show_collection_profile)
@@ -1952,6 +1959,7 @@ func _apply_evolution_chamber_for_row(row: Dictionary, on_home: bool) -> void:
 	_incubator.align_visual_center(_anima.body_center_global())
 	_incubator.start_evolution()
 	_home_view.set_evolution(row)
+	_update_hud_identity()
 
 
 func _stop_evolution_chamber() -> void:
@@ -1962,6 +1970,7 @@ func _stop_evolution_chamber() -> void:
 	if _destination == BottomNav.HOME:
 		if not _current_anima.is_empty():
 			_home_view.set_anima(_current_anima, _busy)
+			_update_hud_identity()
 		if _anima.sprite_frames != null:
 			_anima.visible = true
 
@@ -2677,6 +2686,30 @@ func _on_brand_input(event: InputEvent) -> void:
 	)
 	if is_tap and not _busy and not GameState.profile.is_empty():
 		_open_seeker_profile()
+
+
+## Same double-fire as need chips elsewhere: touch emulation hands the finger
+## over twice, once as a screen touch and once as a synthetic mouse press. The
+## second one is worse than a dead tap here -- it re-enters
+## `_show_collection_profile` while Profile is already the destination, which
+## resets the remembered origin and loses the Home entry that makes one Back
+## land back on Home.
+func _on_hud_anima_input(event: InputEvent) -> void:
+	var is_tap: bool = (
+		(event is InputEventScreenTouch and event.pressed)
+		or (
+			event is InputEventMouseButton
+			and event.button_index == MOUSE_BUTTON_LEFT
+			and event.pressed
+		)
+	)
+	if not is_tap or _current_anima.is_empty():
+		return
+	var frame := Engine.get_process_frames()
+	if frame == _hud_anima_tapped_frame:
+		return
+	_hud_anima_tapped_frame = frame
+	_show_collection_profile(_current_anima)
 
 
 func _open_seeker_profile() -> void:
@@ -5119,6 +5152,28 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 	return _placeholder_icon
 
 
+## The HUD's own copy of the compact identity line, sitting under Brand instead
+## of beside the Stage. Mirrors exactly what `HomeView.set_anima()` renders,
+## but only for the "ready" state -- loading/error/empty/evolution keep their
+## sentence-length copy in the Stage-centered headline, which would not fit
+## the HUD's own bar.
+func _update_hud_identity() -> void:
+	var show_identity := (
+		_destination == BottomNav.HOME
+		and not _current_anima.is_empty()
+		and _home_view.shell_state() == &"ready"
+	)
+	_hud_anima_name.visible = show_identity
+	_hud_anima_meta.visible = show_identity
+	if not show_identity:
+		return
+	_hud_anima_name.text = LocaleManager.display_name(_current_anima)
+	_hud_anima_meta.text = tr("HOME_IDENTITY_META") % [
+		LocaleManager.level_label(CARE_RULES.level_from_exp(int(_current_anima.get("care_score", 0)))),
+		LocaleManager.element_compact(_current_anima),
+	]
+
+
 func _refresh_stats() -> void:
 	var details_row := _profile_anima if not _profile_anima.is_empty() else _current_anima
 	_details_view.set_evolution_enabled(_evolution_enabled())
@@ -5129,6 +5184,7 @@ func _refresh_stats() -> void:
 		_thumbnail_for(details_row) if not details_row.is_empty() else null
 	)
 	_home_view.set_anima(_current_anima, _busy)
+	_update_hud_identity()
 	if _battle_view.session_data().is_empty():
 		_battle_view.set_lobby(_current_anima)
 	else:
@@ -5139,6 +5195,7 @@ func _refresh_stats() -> void:
 
 func _set_home_shell_state(state: StringName) -> void:
 	_home_view.set_shell_state(state)
+	_update_hud_identity()
 	_first_anima_effect.set_active(state == &"empty")
 	if state != &"ready":
 		_anima.visible = false
@@ -5149,6 +5206,7 @@ func _refresh_care() -> void:
 	var has_care := typeof(_current_anima.get("care")) == TYPE_DICTIONARY
 	if not has_care:
 		_home_view.set_anima(_current_anima, _busy)
+		_update_hud_identity()
 		return
 
 	var sleeping := _is_sleeping(_current_anima)
@@ -5156,6 +5214,7 @@ func _refresh_care() -> void:
 	if not sleeping:
 		_reset_wake_taps()
 	_home_view.update_care(_current_anima, _busy)
+	_update_hud_identity()
 	if _battle_view.session_data().is_empty():
 		_battle_view.set_lobby(_current_anima)
 	else:
@@ -5398,6 +5457,16 @@ func _switch_destination(
 		if profile_row.is_empty():
 			_profile_anima = _current_anima.duplicate(true)
 	_destination = destination
+	# The raised-tab HUD art and the compact identity line under Brand are a
+	# Home-only look; every other tab keeps the plain HudSurface bar until it
+	# gets a background sized for its own layout. This has to land before
+	# HomeView becomes visible below: HomeView fills whatever room ViewStack
+	# has left under the HUD, so if the HUD grew after HomeView already
+	# measured itself, HomeView is left holding a stale, too-tall layout.
+	_top_hud.theme_type_variation = (
+		&"HomeHudSurface" if destination == BottomNav.HOME else &"HudSurface"
+	)
+	_update_hud_identity()
 	_home_view.visible = destination == BottomNav.HOME
 	_home_background.visible = destination == BottomNav.HOME
 	_scan_view.visible = destination == BottomNav.SCAN
@@ -5609,10 +5678,11 @@ func _apply_optimistic_purchase(item_id: String, price: int) -> void:
 
 
 ## Ikon baris yang baru dibeli terbang ke Bag lalu memberinya pop terisi.
-## `_bag_button`'s parent (`ChipLayer`) sudah dipakai sebagai host konversi
-## koordinat yang sama oleh `_place_shop()`, dan sudah menggambar di atas
-## seluruh chrome lain lewat z_index -- menaikkannya sementara di sini supaya
-## payoff-nya tidak tenggelam di balik scrim ShopSheet yang masih terbuka.
+## `_bag_button`'s parent (`RightButtons`, di dalam TopHud) dipakai sebagai
+## host konversi koordinat -- z_index tetap relatif terhadap root canvas
+## selama tidak ada leluhur yang menimpanya, jadi menaikkannya sementara
+## di sini tetap menang di atas seluruh chrome lain, supaya payoff-nya
+## tidak tenggelam di balik scrim ShopSheet yang masih terbuka.
 ## Restore-nya ke konstanta 0, bukan ke z_index yang ditangkap sebelum
 ## dinaikkan -- tap beli kedua bisa lolos sebelum flyer pertama mendarat
 ## (network round trip lebih cepat dari animasi 0,4 s), dan menangkap z_index
@@ -5648,7 +5718,7 @@ func _fly_purchased_item(icon_snapshot: Dictionary) -> void:
 ## memanggil `care_feedback()` langsung. `to_rect` sudah dalam ruang canvas
 ## yang sama dengan Control manapun di bawah `UI` (CanvasLayer-nya identity),
 ## persis seperti `_fly_purchased_item` di atas menyeberang dari ShopSheet ke
-## ChipLayer tanpa konversi tambahan -- lihat body_viewport_rect().
+## RightButtons tanpa konversi tambahan -- lihat body_viewport_rect().
 func _fly_consumable_to_anima(icon_snapshot: Dictionary, kind: String) -> void:
 	var texture := icon_snapshot.get("texture") as Texture2D
 	var host := _bag_button.get_parent() as Control if is_instance_valid(_bag_button) else null
@@ -6244,6 +6314,8 @@ func _sync_shop_chrome() -> void:
 		_bottom_nav.visible = not immersive
 	var show_chrome := _destination == BottomNav.HOME and not immersive
 	var shop_locked := GameState.shop_locked()
+	if is_instance_valid(_bottom_section):
+		_bottom_section.visible = show_chrome
 	if is_instance_valid(_bag_button):
 		_bag_button.visible = show_chrome
 	_shop_button.visible = show_chrome
@@ -6254,49 +6326,13 @@ func _sync_shop_chrome() -> void:
 		and (not show_chrome or (shop_locked and _shop_sheet.is_shop_open()))
 	):
 		_shop_sheet.close()
-	if show_chrome:
-		_place_shop()
-
-
-func _place_shop() -> void:
-	if not is_instance_valid(_shop_button) or not is_instance_valid(_top_hud):
-		return
-	if not _shop_button.visible:
-		return
-	var hud: Rect2 = _top_hud.get_global_rect()
-	# Shop and Bag keep the 48dp press target that the compact HUD badges give
-	# up, so they size themselves instead of copying the Bits badge.
-	var chip: Vector2 = _shop_button.get_combined_minimum_size()
-	if hud.size.y <= 0.0 or chip.x <= 0.0:
-		return
-	var parent := _shop_button.get_parent() as Control
-	if parent == null:
-		return
-	var to_local := parent.get_global_transform_with_canvas().affine_inverse()
-	var hud_bottom := hud.position.y + hud.size.y
-	var gutter := chip.x * 2.0 + SHOP_GAP
-	var origin: Vector2 = to_local * Vector2(hud.end.x - gutter, hud_bottom)
-	_shop_button.position = origin + Vector2(0.0, SHOP_GAP)
-	_shop_button.size = chip
-	if is_instance_valid(_home_view):
-		_home_view.set_chip_gutter(gutter)
-	if not is_instance_valid(_bag_button) or not _bag_button.visible:
-		return
-	var bag_origin: Vector2 = to_local * Vector2(hud.end.x - chip.x, hud_bottom)
-	_bag_button.position = bag_origin + Vector2(0.0, SHOP_GAP)
-	_bag_button.size = chip
 
 
 func _place_toast(insets: Vector4) -> void:
 	if not is_instance_valid(_status_panel) or not is_instance_valid(_top_hud):
 		return
 	var hud_h := maxf(_top_hud.size.y, _top_hud.get_combined_minimum_size().y)
-	var shop_h := (
-		_shop_button.get_combined_minimum_size().y
-		if is_instance_valid(_shop_button) and _shop_button.visible
-		else 0.0
-	)
-	var top := HUD_TOP_PAD + insets.y + hud_h + SHOP_GAP + shop_h + TOAST_GAP
+	var top := HUD_TOP_PAD + insets.y + hud_h + TOAST_GAP
 	var height := _status_panel.get_combined_minimum_size().y
 	_status_panel.offset_top = top
 	_status_panel.offset_bottom = top + height
@@ -6421,6 +6457,7 @@ func _run_evolve_chamber_demo() -> void:
 	demo["status"] = "evolving"
 	_switch_destination(BottomNav.HOME)
 	_home_view.set_evolution(demo)
+	_update_hud_identity()
 	_evolution_chamber_active = true
 	_anima.visible = false
 	_stage.visible = true

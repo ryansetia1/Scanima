@@ -303,12 +303,12 @@ func _initialize() -> void:
 	_check(
 		shop.get_parent() != bits_chip.get_parent()
 		and shop.get_parent() != null
-		and String(shop.get_parent().name) == "ChipLayer",
-		"Shop overlays below Bits instead of splitting the HUD resource row"
+		and String(shop.get_parent().name) == "RightButtons",
+		"Shop sits in the HUD's own bottom row instead of splitting the resource row"
 	)
 	_check(
 		bag.get_parent() == shop.get_parent(),
-		"Bag sits on the same overlay row as Shop"
+		"Bag sits on the same row as Shop"
 	)
 	_check(
 		shop.custom_minimum_size.y >= TOUCH_MIN and bag.custom_minimum_size == shop.custom_minimum_size,
@@ -317,8 +317,8 @@ func _initialize() -> void:
 	# The two HUD badges are the one deliberate exception to the 48dp floor:
 	# read-only counters sized to the design, not primary actions.
 	_check(
-		cores_chip.custom_minimum_size.y == 62.0
-		and bits_chip.custom_minimum_size.y == 62.0,
+		cores_chip.custom_minimum_size.y == 59.0
+		and bits_chip.custom_minimum_size.y == 59.0,
 		"HUD badges stay compact so the header reads as a bar, not a slab"
 	)
 	_check(
@@ -402,9 +402,18 @@ func _initialize() -> void:
 	# Shop and Bag used to share the toast layer, which meant the sheet's own
 	# backdrop dimmed the whole shell except the two buttons that opened it.
 	# They need opposite sides of the sheet: chips under it, toast over it.
+	# Shop now lives several rows deep inside TopHud instead of a flat overlay,
+	# so this walks up to whichever ancestor is a direct sibling of the sheet.
+	var shop_shell_ancestor := shop.get_parent()
+	while (
+		shop_shell_ancestor != null
+		and shop_shell_ancestor.get_parent() != shop_sheet.get_parent()
+	):
+		shop_shell_ancestor = shop_shell_ancestor.get_parent()
 	_check(
-		shop.get_parent().get_parent() == shop_sheet.get_parent()
-		and shop.get_parent().get_index() < shop_sheet.get_index(),
+		shop_shell_ancestor != null
+		and shop_shell_ancestor.get_parent() == shop_sheet.get_parent()
+		and shop_shell_ancestor.get_index() < shop_sheet.get_index(),
 		"the sheet backdrop dims Shop and Bag along with the rest of the shell"
 	)
 	# The flip side of that order: every sheet now paints over the chips, so a
@@ -499,12 +508,21 @@ func _initialize() -> void:
 		and shell_source.find("show_retreat_banner()") >= 0,
 		"Bag and Shop only appear on Home, Shop locks mid-run, and Retreat asks first"
 	)
+	var anima_info := scene.find_child("AnimaInfo", true, false) as VBoxContainer
+	var right_buttons := scene.find_child("RightButtons", true, false) as HBoxContainer
 	_check(
-		shell_source.find("var gutter := chip.x * 2.0 + SHOP_GAP") >= 0
-		and shell_source.find("to_local * Vector2(hud.end.x - gutter, hud_bottom)") >= 0
-		and shell_source.find("to_local * Vector2(hud.end.x - chip.x, hud_bottom)") >= 0
-		and shell_source.find("_home_view.set_chip_gutter(gutter)") >= 0,
-		"Bag and Shop share the HUD's right edge and reserve that width beside the name"
+		anima_info != null
+		and right_buttons != null
+		and anima_info.size_flags_horizontal & Control.SIZE_EXPAND != 0
+		and right_buttons.get_parent() == anima_info.get_parent(),
+		"Anima info expands so Bag and Shop are pinned to the HUD's own right edge"
+	)
+	_check(
+		anima_info != null
+		and shell_source.find("_anima_info.mouse_filter = Control.MOUSE_FILTER_STOP") >= 0
+		and shell_source.find("_anima_info.gui_input.connect(_on_hud_anima_input)") >= 0
+		and shell_source.find("_show_collection_profile(_current_anima)") >= 0,
+		"tapping the HUD's anima name opens its Profile, same as before it moved off the Stage"
 	)
 	var boot_start := shell_source.find("func _boot()")
 	var boot_end := shell_source.find("\n\nfunc _reload_roster", boot_start)
@@ -7277,7 +7295,6 @@ func _test_home_care_actions() -> void:
 	var primary := home.find_child("HomePrimaryAction", true, false) as Button
 	var identity := home.find_child("Identity", true, false) as VBoxContainer
 	var identity_row := home.find_child("IdentityRow", true, false) as HBoxContainer
-	var chip_gutter := home.find_child("ChipGutter", true, false) as Control
 	var anima_name := home.find_child("AnimaName", true, false) as Label
 	var anima_meta := home.find_child("AnimaMeta", true, false) as Label
 	var care_summary := home.find_child("CareSummary", true, false) as Label
@@ -7339,29 +7356,19 @@ func _test_home_care_actions() -> void:
 			> care_theme.get_constant(&"icon_max_width", &"Button"),
 			"%s gives the illustration more room than a line glyph needs" % variation
 		)
-	var dock_box := care_theme.get_stylebox(&"panel", &"CareDock") as StyleBoxFlat
+	var dock_box := care_theme.get_stylebox(&"panel", &"CareDock") as StyleBoxTexture
 	_check(
-		dock_box != null and dock_box.border_width_top == 0,
-		"the care panel reads as one surface instead of wearing a lit top edge"
+		dock_box != null and dock_box.texture != null,
+		"the care panel lost its Needs dock artwork and fell back to a flat surface"
 	)
 	_check(
-		identity_row != null
-		and chip_gutter != null
-		and identity.get_parent() == identity_row
-		and chip_gutter.get_parent() == identity_row
-		and chip_gutter.get_index() > identity.get_index(),
-		"Home identity shares one row with the gutter that Bag and Shop overlay"
+		identity_row != null and identity.get_parent() == identity_row,
+		"Home identity fills its row now that Bag and Shop live inside the HUD"
 	)
 	_check(
 		anima_name != null
-		and anima_name.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT
-		and chip_gutter.custom_minimum_size.x > 0.0,
-		"the name reads from the left and stops before the top-right chips"
-	)
-	home.set_chip_gutter(240.0)
-	_check(
-		is_equal_approx(chip_gutter.custom_minimum_size.x, 240.0),
-		"the shell resizes the gutter from the chips it just measured"
+		and anima_name.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT,
+		"the name still reads from the left"
 	)
 	# Autowrap and ellipsis trimming together make Label height-aware, and the
 	# identity row only reserves one line, so the headline renders empty.

@@ -63,16 +63,17 @@ vertical_alignment = 1
 
 [node name="Resources" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Row" unique_id=804738415]
 layout_mode = 2
+size_flags_vertical = 4
 theme_override_constants/separation = 6
 
 [node name="CoresChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=660602528 instance=ExtResource("4_chip")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 62)
+custom_minimum_size = Vector2(124, 59)
 layout_mode = 2
 
 [node name="BitsChip" parent="UI/SafeMargin/Shell/TopHud/Row/Resources" unique_id=2119267053 instance=ExtResource("4_chip")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 62)
+custom_minimum_size = Vector2(124, 59)
 layout_mode = 2
 
 [node name="ViewStack" type="Control" parent="UI/SafeMargin/Shell" unique_id=1567127329]
@@ -108,6 +109,12 @@ layout_mode = 0
 offset_right = 108.0
 offset_bottom = 96.0
 theme_type_variation = &"GhostChip"
+
+[node name="Value" parent="UI/Overlay/ShopButton/Column"]
+theme_type_variation = &"GhostChipValueLabel"
+
+[node name="Value" parent="UI/Overlay/BagButton/Column"]
+theme_type_variation = &"GhostChipValueLabel"
 
 [node name="HomeBackground" type="TextureRect" parent="." unique_id=2009106401]
 unique_name_in_owner = true

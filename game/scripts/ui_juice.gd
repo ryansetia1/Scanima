@@ -223,6 +223,24 @@ static func reveal(control: Control, delay: float = 0.0) -> void:
 	control.set_meta(META_TWEEN, tween)
 
 
+## Like `reveal`, but pivots at the bottom edge and squashes vertically first,
+## so the control feels like it is drawn up out of whatever sits below it
+## (e.g. the Needs dock rising from the bottom nav) instead of popping from center.
+static func reveal_from_bottom(control: Control, delay: float = 0.0) -> void:
+	_kill_tween(control)
+	control.visible = true
+	control.pivot_offset = Vector2(control.size.x * 0.5, control.size.y)
+	control.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	control.scale = Vector2(1.0, 0.08)
+	var tween := control.create_tween().set_parallel(true)
+	tween.set_meta("owner_control", control)
+	tween.tween_property(control, "modulate", Color.WHITE, 0.22) \
+		.set_delay(delay).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(control, "scale", Vector2.ONE, 0.42) \
+		.set_delay(delay).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	control.set_meta(META_TWEEN, tween)
+
+
 ## The counterpart of `reveal` for a control that has to keep its slot in a
 ## container. It fades the ink and never touches `visible`, because hiding a
 ## Label collapses its width and drags every sibling still on screen with it.
