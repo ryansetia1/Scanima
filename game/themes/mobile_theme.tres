@@ -298,6 +298,10 @@ corner_radius_bottom_left = 14
 
 [sub_resource type="StyleBoxEmpty" id="Empty"]
 
+[sub_resource type="StyleBoxEmpty" id="GhostChipPanel"]
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
 [sub_resource type="StyleBoxFlat" id="Separator"]
 content_margin_top = 1.0
 content_margin_bottom = 1.0
@@ -978,10 +982,20 @@ EyebrowLabel/base_type = &"Label"
 EyebrowLabel/colors/font_color = Color(0.278, 0.902, 1, 0.88)
 EyebrowLabel/font_sizes/font_size = 21
 GhostChip/base_type = &"PanelContainer"
-GhostChip/styles/panel = SubResource("Empty")
+GhostChip/styles/panel = SubResource("GhostChipPanel")
+GhostChipNameLabel/base_type = &"Label"
+GhostChipNameLabel/colors/font_color = Color(0.24, 0.32, 0.44, 1)
+GhostChipNameLabel/colors/font_shadow_color = Color(0, 0, 0, 0)
+GhostChipNameLabel/constants/shadow_offset_x = 0
+GhostChipNameLabel/constants/shadow_offset_y = 0
+GhostChipNameLabel/constants/shadow_outline_size = 0
+GhostChipNameLabel/font_sizes/font_size = 22
 GhostChipValueLabel/base_type = &"Label"
 GhostChipValueLabel/colors/font_color = Color(0.094, 0.196, 0.365, 1)
 GhostChipValueLabel/colors/font_shadow_color = Color(0, 0, 0, 0)
+GhostChipValueLabel/constants/shadow_offset_x = 0
+GhostChipValueLabel/constants/shadow_offset_y = 0
+GhostChipValueLabel/constants/shadow_outline_size = 0
 GhostChipValueLabel/font_sizes/font_size = 30
 GhostChipValueLabel/fonts/font = ExtResource("2_display")
 HSeparator/styles/separator = SubResource("Separator")

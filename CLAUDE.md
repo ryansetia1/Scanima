@@ -510,6 +510,18 @@ dan diperbaiki:
    Control full-screen non-container yang duduk di canvas root di atas seluruh
    sheet), dengan fallback `_safe_margin`.
 
+Label tombol `ShopButton` dan `BagButton` pada `RightButtons` (TopHud) yang
+berada di atas surface terang memakai `GhostChipValueLabel` (warna font gelap
+navy/slate `Color(0.094, 0.196, 0.365, 1)` tanpa font shadow `Color(0, 0, 0, 0)`)
+agar terbaca tajam dan bersih. Dimensi `TopHud` dan tombol dipertahankan pada
+ukuran aslinya (`custom_minimum_size = Vector2(96, 96)`) agar garis divider dan
+background 9-patch `HomeHudSurface` (`home_top_container_bg.png`, 203px) tidak
+terdistorsi. Ikon dan label diturunkan secara presisi di dalam chip menggunakan
+`_column.alignment = BoxContainer.ALIGNMENT_END`, `Icon` `Vector2(46, 46)`, dan
+`ICON_SEPARATION = 8`. Interaksi pada `ResourceChip` diberi full feedback juice
+(squish `0.90` saat ditekan dengan micro-tilt & brightness, spring bounce `TRANS_BACK`
+saat dilepas, serta pop overshoot `1.08` saat tap).
+
 Desain toast 4-state (`GENERAL`, `SUCCESS`, `WARNING`, `ERROR`) berbasis
 `StyleBoxTexture` (`toast_panel_*.tres`) sekarang distandarisasi ke seluruh
 event banner / toast di `BattleView` dan `TeamBattleView` lewat

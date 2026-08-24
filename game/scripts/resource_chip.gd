@@ -15,8 +15,64 @@ const INLINE_SEPARATION := 8
 
 
 func _ready() -> void:
-	_action_button.pressed.connect(pressed.emit)
-	UiJuice.install_button(_action_button)
+	_action_button.pressed.connect(_on_action_pressed)
+	_action_button.button_down.connect(_on_action_button_down)
+	_action_button.button_up.connect(_on_action_button_up)
+	_action_button.mouse_entered.connect(_on_action_hover.bind(true))
+	_action_button.mouse_exited.connect(_on_action_hover.bind(false))
+	_action_button.focus_entered.connect(_on_action_hover.bind(true))
+	_action_button.focus_exited.connect(_on_action_hover.bind(false))
+	resized.connect(_update_pivot)
+	_update_pivot()
+	if theme_type_variation == &"GhostChip":
+		_value_label.theme_type_variation = &"GhostChipValueLabel"
+		_name_label.theme_type_variation = &"GhostChipNameLabel"
+		_column.alignment = BoxContainer.ALIGNMENT_END
+
+
+func _update_pivot() -> void:
+	pivot_offset = size * 0.5
+
+
+func _on_action_button_down() -> void:
+	UiJuice.play_button(_action_button)
+	_update_pivot()
+	var tilt := -0.025 if get_instance_id() % 2 == 0 else 0.025
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(self, "scale", Vector2(0.90, 0.90), 0.08) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(self, "rotation", tilt, 0.08)
+	tween.tween_property(self, "modulate", Color(1.15, 1.15, 1.15, 1.0), 0.08)
+
+
+func _on_action_button_up() -> void:
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(self, "scale", Vector2.ONE, 0.28) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(self, "rotation", 0.0, 0.20) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(self, "modulate", Color.WHITE, 0.20)
+
+
+func _on_action_hover(hovered: bool) -> void:
+	if not _action_button.visible or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		return
+	_update_pivot()
+	var target_scale := Vector2(1.05, 1.05) if hovered else Vector2.ONE
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(self, "scale", target_scale, 0.16) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(
+		self,
+		"modulate",
+		Color(1.06, 1.06, 1.06, 1.0) if hovered else Color.WHITE,
+		0.16
+	)
+
+
+func _on_action_pressed() -> void:
+	UiJuice.pop(self, 1.08)
+	pressed.emit()
 
 
 func set_icon(texture: Texture2D) -> void:

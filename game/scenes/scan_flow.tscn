@@ -145,7 +145,7 @@ clip_text = true
 [node name="RightButtons" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection" unique_id=1480291924]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_vertical = 4
+size_flags_vertical = 8
 theme_override_constants/separation = 6
 
 [node name="ShopButton" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons" unique_id=345871826 instance=ExtResource("13_chip")]
@@ -154,11 +154,17 @@ custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
 theme_type_variation = &"GhostChip"
 
+[node name="Value" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons/ShopButton/Column"]
+theme_type_variation = &"GhostChipValueLabel"
+
 [node name="BagButton" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons" unique_id=61296367 instance=ExtResource("13_chip")]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
 theme_type_variation = &"GhostChip"
+
+[node name="Value" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons/BagButton/Column"]
+theme_type_variation = &"GhostChipValueLabel"
 
 [node name="ViewStack" type="Control" parent="UI/SafeMargin/Shell" unique_id=1504614856]
 layout_mode = 2
