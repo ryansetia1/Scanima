@@ -335,6 +335,11 @@ static func fly_to(
 	# to occupy. `_make_row()`'s row icon sets this for the same reason.
 	flyer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# top_level = true prevents parent Containers (such as MarginContainer,
+	# HBoxContainer, etc.) from resizing the flyer to their inner box or
+	# overriding flyer.global_position during NOTIFICATION_SORT_CHILDREN,
+	# and frees it from parent clipping so it renders freely at canvas root.
+	flyer.top_level = true
 	flyer.z_index = 60
 	flyer.size = from_global.size
 	flyer.pivot_offset = from_global.size * 0.5

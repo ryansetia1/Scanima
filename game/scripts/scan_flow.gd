@@ -107,6 +107,7 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 @onready var _status: Label = %Status
 @onready var _dialog: FileDialog = %PhotoDialog
 @onready var _status_panel: PanelContainer = %StatusPanel
+@onready var _toast_layer: Control = %ToastLayer
 @onready var _safe_margin: MarginContainer = %SafeMargin
 @onready var _top_hud: PanelContainer = %TopHud
 @onready var _hud_anima_name: Label = %HudAnimaName
@@ -5692,11 +5693,12 @@ func _apply_optimistic_purchase(item_id: String, price: int) -> void:
 
 
 ## Ikon baris yang baru dibeli terbang ke Bag lalu memberinya pop terisi.
-## `_bag_button`'s parent (`RightButtons`, di dalam TopHud) dipakai sebagai
-## host konversi koordinat -- z_index tetap relatif terhadap root canvas
-## selama tidak ada leluhur yang menimpanya, jadi menaikkannya sementara
-## di sini tetap menang di atas seluruh chrome lain, supaya payoff-nya
-## tidak tenggelam di balik scrim ShopSheet yang masih terbuka.
+## Host flyer-nya `_safe_margin` (full-screen MarginContainer), bukan
+## `_bag_button.get_parent()` (`RightButtons`) -- setelah HUD restructure
+## RightButtons duduk di dalam TopHud PanelContainer yang clip children,
+## jadi flyer yang dimulai dari posisi ShopSheet tidak terlihat selama
+## penerbangan. `_safe_margin` berada di canvas yang sama (`UI`
+## CanvasLayer identity), jadi `global_position` tetap konsisten.
 ## Restore-nya ke konstanta 0, bukan ke z_index yang ditangkap sebelum
 ## dinaikkan -- tap beli kedua bisa lolos sebelum flyer pertama mendarat
 ## (network round trip lebih cepat dari animasi 0,4 s), dan menangkap z_index
@@ -5706,7 +5708,7 @@ func _fly_purchased_item(icon_snapshot: Dictionary) -> void:
 	var texture := icon_snapshot.get("texture") as Texture2D
 	if texture == null or not is_instance_valid(_bag_button) or not _bag_button.visible:
 		return
-	var host := _bag_button.get_parent() as Control
+	var host: Control = _toast_layer if is_instance_valid(_toast_layer) else _safe_margin
 	if host == null:
 		return
 	var from_rect: Rect2 = icon_snapshot.get("rect", Rect2())
@@ -5731,11 +5733,12 @@ func _fly_purchased_item(icon_snapshot: Dictionary) -> void:
 ## frame tap -- itulah alasan `_commit_care` menerima `on_react` daripada
 ## memanggil `care_feedback()` langsung. `to_rect` sudah dalam ruang canvas
 ## yang sama dengan Control manapun di bawah `UI` (CanvasLayer-nya identity),
-## persis seperti `_fly_purchased_item` di atas menyeberang dari ShopSheet ke
-## RightButtons tanpa konversi tambahan -- lihat body_viewport_rect().
+## persis seperti `_fly_purchased_item` di atas -- keduanya memakai
+## `_toast_layer` (overlay full-screen di canvas root) sebagai host.
+## Lihat body_viewport_rect().
 func _fly_consumable_to_anima(icon_snapshot: Dictionary, kind: String) -> void:
 	var texture := icon_snapshot.get("texture") as Texture2D
-	var host := _bag_button.get_parent() as Control if is_instance_valid(_bag_button) else null
+	var host: Control = _toast_layer if is_instance_valid(_toast_layer) else _safe_margin
 	var to_rect := _anima.body_viewport_rect() if is_instance_valid(_anima) else Rect2()
 	if texture == null or host == null or to_rect.size == Vector2.ZERO or not _anima.visible:
 		if is_instance_valid(_anima):

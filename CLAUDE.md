@@ -497,6 +497,19 @@ kuncinya secara remote. Konsekuensinya, `monkey` yang meluncurkan app saat layar
 perangkat karena itu masih belum pernah dilihat; verifikasi runtime butuh layar
 dibuka tangan.
 
+Animasi ikon terbang saat feeding dan buying di Shop **menghilang** setelah HUD
+restructure memindahkan `BagButton`/`ShopButton` dari `ChipLayer` ke
+`TopHud/Column/BottomSection/RightButtons`. Dua penyebab utama teridentifikasi
+dan diperbaiki:
+1. `UiJuice.fly_to()` membutuhkan `flyer.top_level = true`: tanpa flag ini,
+   ketika host flyer berada di bawah `Container` (seperti `MarginContainer` atau
+   `HBoxContainer`), Godot mereset `flyer.position` dan memperbesar `flyer.size`
+   ke dimensi container pada `NOTIFICATION_SORT_CHILDREN` (terukur: `(72, 72)`
+   didorong menjadi `(688, 1576)` dan posisinya melenceng keluar layar).
+2. Host flyer di `scan_flow.gd` diarahkan ke `_toast_layer` (`ToastLayer`,
+   Control full-screen non-container yang duduk di canvas root di atas seluruh
+   sheet), dengan fallback `_safe_margin`.
+
 Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
 wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
 `max_output_tokens` sampai JSON Vision terpotong di tengah field — terukur
