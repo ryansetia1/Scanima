@@ -30,6 +30,7 @@ const ICON_UNAVAILABLE := Color(1.0, 1.0, 1.0, 0.22)
 }
 
 var _active: StringName = HOME
+var _overlay_open := false
 var _scan_available := true
 
 
@@ -44,8 +45,22 @@ func set_active(destination: StringName) -> void:
 	if not _buttons.has(destination):
 		return
 	_active = destination
+	_overlay_open = false
 	for key: StringName in _buttons:
 		(_buttons[key] as Button).button_pressed = key == destination
+		_paint(key)
+
+
+## A full-screen overlay (Anima/Seeker Profile, Atlas) is covering
+## `base_destination`'s tab. Keeps that tab lit so it still reads as "you are
+## here", but marks the state as an overlay so `_select()` stops treating a tap
+## on it as a no-op repeat of the already-active tab — otherwise tapping Home
+## while Anima Profile (opened from Home) is open would silently do nothing.
+func mark_overlay_active(base_destination: StringName) -> void:
+	_active = base_destination
+	_overlay_open = true
+	for key: StringName in _buttons:
+		(_buttons[key] as Button).button_pressed = key == base_destination
 		_paint(key)
 
 
@@ -71,7 +86,7 @@ func _select(destination: StringName) -> void:
 		set_active(_active)
 		destination_selected.emit(destination)
 		return
-	if destination == _active:
+	if destination == _active and not _overlay_open:
 		set_active(destination)
 		return
 	set_active(destination)

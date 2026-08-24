@@ -37,7 +37,7 @@ var _fit_revision := 0
 func _ready() -> void:
 	z_index = 20
 	_install_body_scroll()
-	get_viewport().size_changed.connect(_fit_body_scroll)
+	get_viewport().size_changed.connect(_request_fit_body_scroll)
 	_dismiss_button.pressed.connect(_cancel)
 	_cancel_button.pressed.connect(_on_cancel_button_pressed)
 	_primary_button.pressed.connect(_submit)

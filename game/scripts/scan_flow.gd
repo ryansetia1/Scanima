@@ -5478,6 +5478,13 @@ func _switch_destination(
 	_atlas_view.visible = destination == ATLAS_DEST
 	if destination not in [SEEKER_PROFILE_DEST, ANIMA_PROFILE_DEST, ATLAS_DEST, SYNTHESIS_DEST]:
 		_bottom_nav.set_active(destination)
+	else:
+		var overlay_base := (
+			_profile_return_destination
+			if destination == ANIMA_PROFILE_DEST
+			else _overlay_return_destination
+		)
+		_bottom_nav.mark_overlay_active(overlay_base)
 	if destination != BottomNav.HOME:
 		_toast_revision += 1
 		_status_panel.visible = false

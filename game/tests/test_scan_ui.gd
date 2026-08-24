@@ -1164,6 +1164,13 @@ func _test_shared_components() -> void:
 		and modal_body_scroll.custom_minimum_size.y <= modal.get_viewport_rect().size.y * 0.42 + 1.0,
 		"long modal copy scrolls inside a viewport-capped body while actions stay fixed"
 	)
+	var revision_before_resize: int = modal.get("_fit_revision")
+	modal.get_viewport().size_changed.emit()
+	await process_frame
+	_check(
+		int(modal.get("_fit_revision")) > revision_before_resize,
+		"a viewport resize while the modal is open re-fits through the guarded async path, not a synchronous race"
+	)
 	modal.close()
 	await create_timer(0.25).timeout
 	_check(not modal.visible, "UiModal closes after its dismiss animation")
@@ -5132,6 +5139,17 @@ func _test_collection_routes_are_explicit() -> void:
 		summon_body.find("await _prepare_anima_art") < summon_body.find("GameState.remember_anima"),
 		"Summon prepares art before replacing the active companion"
 	)
+	var switch_start := source.find("func _switch_destination(")
+	var switch_end := source.find("\nfunc _active_view(", switch_start)
+	var switch_body := (
+		source.substr(switch_start, switch_end - switch_start)
+		if switch_start >= 0 and switch_end > switch_start
+		else ""
+	)
+	_check(
+		switch_body.find("_bottom_nav.mark_overlay_active(overlay_base)") >= 0,
+		"opening an overlay destination still updates BottomNav instead of leaving its prior tab stale"
+	)
 
 
 ## `gallery/publish` menolak guest sebelum menyentuh Anima-nya, jadi tap yang
@@ -7789,6 +7807,24 @@ func _test_bottom_nav_busy() -> void:
 	_check(menu_button.disabled, "Menu launcher blocks concurrent profile and Atlas requests while busy")
 	nav.set_busy(false, false)
 	_check(not menu_button.disabled, "Menu launcher becomes available after busy clears")
+	nav.set_active(BottomNav.HOME)
+	var overlay_emit_start := tapped_destinations.size()
+	home_button.pressed.emit()
+	_check(
+		tapped_destinations.size() == overlay_emit_start,
+		"tapping the already-active tab is still a no-op with no overlay open"
+	)
+	nav.mark_overlay_active(BottomNav.HOME)
+	_check(
+		home_button.button_pressed,
+		"the tab underneath an open overlay still reads as active"
+	)
+	home_button.pressed.emit()
+	_check(
+		tapped_destinations.size() == overlay_emit_start + 1
+		and tapped_destinations[-1] == BottomNav.HOME,
+		"tapping the tab underneath an open overlay closes it instead of no-op'ing"
+	)
 	nav.queue_free()
 	await process_frame
 
