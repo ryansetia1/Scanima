@@ -212,6 +212,8 @@ halaman yang sama — tidak pernah terasa diam; `ActionPanel` juga menambah
 indikator **Working…** saat `pending`. APK debug 24 Agustus 2026 **00:29**
 membawa keenamnya dan terpasang di perangkat yang sama.
 
+Tiga tab Anima (Collection, Synthesis, Atlas) diseragamkan dengan menghapus PanelContainer `LabSurface` (`LabPanel`) dari `SynthesisLabView` di `scan_flow.tscn`, menyatukan struktur layout VBoxContainer `Column` di ketiga tab sebagai anak langsung Control view masing-masing dengan anchors fill (`layout_mode=1`, `anchors_preset=15`). Untuk meredam gangguan visual animasi background, dibuat PanelContainer baru (`SynthesisPanel` dan `AtlasPanel`) dengan style box flat gelap semi-transparan (`Color(0.025, 0.04, 0.095, 0.74)` dengan border 1px dan corner radius 18) untuk membungkus kontainer scroll utama di Synthesis dan Atlas. Bug transisi Synthesis diselesaikan dengan menambahkan case `SYNTHESIS_DEST` pada `_active_view()` di `scan_flow.gd` agar mengembalikan `_synthesis_view` secara tepat (sebelumnya fallback ke `_home_view`, yang memicu penayangan needs panel/CareDock secara keliru dan melewatkan animasi kemunculan Synthesis).
+
 "Battle picker cuma menampilkan 4 Anima" butuh **empat** percobaan; tiga yang
 pertama dicatat di sini justru supaya tidak diulang, karena masing-masing
 terdengar masuk akal.

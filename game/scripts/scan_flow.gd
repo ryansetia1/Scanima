@@ -5568,6 +5568,8 @@ func _active_view() -> Control:
 			return _seeker_profile_view
 		ATLAS_DEST:
 			return _atlas_view
+		SYNTHESIS_DEST:
+			return _synthesis_view
 		_:
 			return _home_view
 
