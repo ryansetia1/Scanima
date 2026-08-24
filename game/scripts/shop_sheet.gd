@@ -61,10 +61,13 @@ func icon_snapshot_for(item_id: String) -> Dictionary:
 	for row in _list.get_children():
 		if str(row.get_meta("item_id", "")) != item_id:
 			continue
-		var icon := row.get_child(0) as TextureRect
-		if icon == null:
-			return {}
-		return {"rect": icon.get_global_rect(), "texture": icon.texture}
+		# By type, not `get_child(0)`: `_make_row()` happens to add the icon
+		# first today, but a badge/overlay added ahead of it later would
+		# silently point this at the wrong node without ever erroring.
+		for child in row.get_children():
+			if child is TextureRect:
+				return {"rect": child.get_global_rect(), "texture": child.texture}
+		return {}
 	return {}
 
 

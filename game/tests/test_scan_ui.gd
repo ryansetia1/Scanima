@@ -1170,6 +1170,11 @@ func _test_shared_components() -> void:
 	var chip_column := chip.get_node_or_null("Column") as BoxContainer
 	_check(chip_icon != null and chip_icon.visible and chip_icon.texture != null, "ResourceChip can show a Shop icon")
 	_check(
+		chip.get_global_rect().encloses(chip.icon_global_rect())
+		and chip.icon_global_rect().size != chip.get_global_rect().size,
+		"icon_global_rect() targets the icon's own smaller box, not the whole chip -- Shop/Bag reserve room below it for a label"
+	)
+	_check(
 		chip_column != null and chip_column.get_theme_constant("separation") >= 8,
 		"Shop icon keeps a gap above the label"
 	)
@@ -1672,6 +1677,12 @@ func _test_sleeping_consume_guard() -> void:
 		fly_body.find("_bag_button.z_index = 0") >= 0,
 		"the z_index restore always lands on the known-good constant"
 	)
+	_check(
+		fly_body.find("_bag_button.icon_global_rect()") >= 0
+		and fly_body.find("_bag_button.get_global_rect()") < 0,
+		"landing targets the chip's icon, not its full rect -- the chip reaches" +
+		" well past the icon to make room for the label under it"
+	)
 
 
 ## Mengganti companion memutar dissolve dan portal lebih dulu, jadi round trip
@@ -1933,7 +1944,17 @@ func _test_fly_to_animation() -> void:
 	root.add_child(host)
 	await process_frame
 
-	var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	# 341x341 on purpose, matching CatalogAtlas.CELL: the real bug this guards
+	# only shows up when the texture's NATIVE size is bigger than the
+	# requested display box. An 8x8 texture (smaller than the 72x72 box) would
+	# never trigger TextureRect's minimum-size clamp and would have let this
+	# regression straight through, which is exactly how it shipped the first
+	# time -- confirmed by reproducing it directly: without
+	# `expand_mode = EXPAND_IGNORE_SIZE`, requesting (72, 96) on a texture this
+	# size renders at (341, 341) instead, because `Control.size`'s setter
+	# clamps up to `get_minimum_size()`, which for a plain TextureRect defaults
+	# to the texture's own size.
+	var image := Image.create(341, 341, false, Image.FORMAT_RGBA8)
 	image.fill(Color.WHITE)
 	var texture := ImageTexture.create_from_image(image)
 	var from_rect := Rect2(Vector2(20.0, 20.0), Vector2(72.0, 72.0))
@@ -1950,6 +1971,10 @@ func _test_fly_to_animation() -> void:
 			flyer = child
 	_check(flyer != null, "fly_to spawns its one-shot flyer under the host")
 	_check(
+		flyer != null and flyer.size == from_rect.size,
+		"the flyer renders at the requested box size, not clamped up to the texture's native size"
+	)
+	_check(
 		flyer != null and flyer.z_index > 0,
 		"the flyer draws above the sheet chrome it flies past"
 	)
@@ -1961,18 +1986,45 @@ func _test_fly_to_animation() -> void:
 	# `arrived[0]` before ever touching `flyer` again, so a freed node is
 	# never passed to a lambda call in the first place.
 	var closest := INF
+	var peak_scale := 0.0
+	var last_scale := 1.0
 	var sample_deadline := Time.get_ticks_msec() + 700
 	while Time.get_ticks_msec() < sample_deadline and arrived[0] == 0:
 		await process_frame
 		if arrived[0] == 0 and is_instance_valid(flyer):
-			closest = minf(closest, (flyer.position + flyer.size * 0.5).distance_to(target_center))
+			# `global_position` here, not `position`: the tween drives
+			# `global_position` directly (see fly_to's docstring for why), and
+			# reading `.position` right back lags a frame behind it -- Control
+			# only recomputes its cached local position lazily, so sampling
+			# `.position` on the same frame the tween just wrote
+			# `global_position` measures stale data, not what's actually drawn.
+			closest = minf(
+				closest, (flyer.global_position + flyer.size * 0.5).distance_to(target_center)
+			)
+			peak_scale = maxf(peak_scale, flyer.scale.x)
+			last_scale = flyer.scale.x
 	# The sample one frame before arrival is the closest reachable without
-	# racing the freed node (see the comment above), not the true t=1 position
-	# -- headless frame steps land it a few px short of the target, measured at
-	# ~19 px for this rect pair. 30 px keeps real regressions caught without
-	# being brittle to frame-step timing.
-	_check(closest < 30.0, "the flyer's visual center actually converges on the target's center")
+	# racing the freed node (see the comment above), not the true t=1 position,
+	# and headless frame steps track real wall-clock deltas -- how many frames
+	# land before arrival (and therefore how close the last one gets) varies
+	# run to run with machine load. A fixed pixel threshold measured on one run
+	# already flaked on a second run (0.7 px vs 12.5 px for the same rects), so
+	# the bound here is relative to how far the flyer actually had to travel,
+	# not an absolute pixel count tuned to whichever frame happened to land.
+	var initial_distance := from_rect.get_center().distance_to(target_center)
+	_check(
+		closest < initial_distance * 0.1,
+		"the flyer's visual center actually converges on the target's center"
+	)
 	_check(arrived[0] == 1, "fly_to calls its arrival callback exactly once")
+	_check(
+		peak_scale > 1.15,
+		"the flyer bulges up mid-flight instead of just shrinking in a straight line (peak %.2f)" % peak_scale
+	)
+	_check(
+		last_scale < 0.7,
+		"the flyer has shrunk back down toward its landing scale by the time it arrives (last %.2f)" % last_scale
+	)
 	_check(
 		not is_instance_valid(flyer) or flyer.is_queued_for_deletion(),
 		"the flyer frees itself once it lands"

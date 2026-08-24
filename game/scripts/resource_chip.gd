@@ -57,3 +57,12 @@ func set_interactive(interactive: bool, tooltip: String = "") -> void:
 
 func value_label() -> Label:
 	return _value_label
+
+
+## Chip's icon sits centered in the upper part of the column, above Value/Name
+## -- the chip's own global rect is noticeably taller (it reserves room for
+## that label underneath), so its center lands well below the icon glyph.
+## Callers that need to point at the icon itself (not the whole chip) want
+## this, not `get_global_rect()`.
+func icon_global_rect() -> Rect2:
+	return _icon.get_global_rect()

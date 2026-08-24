@@ -255,14 +255,32 @@ static func pop(control: Control, strength: float = 1.045) -> void:
 
 ## Berapa lama satu ikon terbang dari Shop ke Bag butuh untuk sampai.
 const FLY_TO_SEC := 0.4
+## Mid-flight bulge sebelum menyusut masuk ke Bag -- naik dulu ke 2,5x supaya
+## busurnya terasa dilempar, bukan cuma diseret lurus dari titik A ke titik B.
+const FLY_TO_MID_SCALE := 2.5
+const FLY_TO_LAND_SCALE := 0.55
 
 
 ## Satu TextureRect sekali pakai yang terbang dari `from_global` ke pusat
 ## `to_global`, lalu memanggil `on_arrive` tepat sekali dan membuang dirinya.
 ## `host` adalah induk sementara si flyer -- biasanya node `UI` di root shell,
 ## supaya ia menggambar di atas seluruh chrome termasuk scrim bottom sheet.
-## Kedua rect diharapkan dari `get_global_rect()`; keduanya dikonversi ke ruang
-## lokal `host` di sini, pola yang sama dengan `scan_flow._place_shop()`.
+## Kedua rect diharapkan dari `get_global_rect()`.
+##
+## Posisi awal dipasang lewat `global_position`, dan tween-nya men-tween
+## `global_position` langsung -- BUKAN `position` hasil konversi manual lewat
+## `to_local * from_global.position` yang dicoba pertama kali. Versi manual itu
+## terukur benar di headless (transform di sana selalu identity, jadi
+## bug-nya tidak pernah kena) tapi salah di perangkat: project ini memakai
+## `window/stretch/mode="canvas_items"`, dan begitu skala device != 1,
+## `get_global_rect()` mengembalikan `size` yang TIDAK ikut diskalakan oleh
+## transform yang sama dengan `position`-nya -- meng-konversi `.position` lewat
+## `affine_inverse()` lalu menyalin `.size` mentah-mentah mencampur dua unit
+## berbeda dalam satu Rect2. `size` di sini aman dipakai apa adanya karena ia
+## jadi ukuran LOKAL milik `flyer` (node baru di bawah `host`, canvas yang
+## sama), bukan sesuatu yang perlu dikonversi lintas ruang koordinat; hanya
+## posisi origin-nya yang perlu itu, dan `global_position` sudah menghitungnya
+## dengan benar lewat mesin Godot sendiri, bukan re-implementasi manual.
 static func fly_to(
 	host: Control,
 	texture: Texture2D,
@@ -274,26 +292,29 @@ static func fly_to(
 		if on_arrive.is_valid():
 			on_arrive.call()
 		return
-	var to_local := host.get_global_transform_with_canvas().affine_inverse()
-	var from_rect := Rect2(to_local * from_global.position, from_global.size)
-	var to_rect := Rect2(to_local * to_global.position, to_global.size)
-
 	var flyer := TextureRect.new()
 	flyer.texture = texture
 	flyer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# Without this, TextureRect's minimum size defaults to the TEXTURE's own
+	# native size (341x341 for a catalog atlas cell), and Control.size's setter
+	# silently clamps any smaller size UP to that minimum -- confirmed by
+	# measuring it directly: requesting (72, 96) rendered at (341, 341)
+	# regardless. The flyer would always render at native atlas-cell size no
+	# matter what from_global/to_global said, both oversized and with its
+	# pivot-based visual center thrown off from the box it was actually meant
+	# to occupy. `_make_row()`'s row icon sets this for the same reason.
+	flyer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flyer.z_index = 60
-	flyer.size = from_rect.size
-	flyer.pivot_offset = from_rect.size * 0.5
-	flyer.position = from_rect.position
+	flyer.size = from_global.size
+	flyer.pivot_offset = from_global.size * 0.5
 	host.add_child(flyer)
+	flyer.global_position = from_global.position
 
-	var target_position := to_rect.position + to_rect.size * 0.5 - from_rect.size * 0.5
+	var target_global := to_global.position + to_global.size * 0.5 - from_global.size * 0.5
 	var tween := flyer.create_tween().set_parallel(true)
-	tween.tween_property(flyer, "position", target_position, FLY_TO_SEC) \
+	tween.tween_property(flyer, "global_position", target_global, FLY_TO_SEC) \
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
-	tween.tween_property(flyer, "scale", Vector2(0.55, 0.55), FLY_TO_SEC) \
-		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
 	tween.tween_property(flyer, "modulate:a", 0.85, FLY_TO_SEC) \
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
 	tween.chain().tween_callback(func() -> void:
@@ -301,6 +322,19 @@ static func fly_to(
 		if on_arrive.is_valid():
 			on_arrive.call()
 	)
+
+	# Scale runs on its OWN Tween, not folded into the one above: a `.chain()`
+	# step only starts once every member of the PRECEDING parallel group has
+	# finished -- including `global_position`'s full `FLY_TO_SEC` -- so a
+	# grow-then-shrink pair chained after it would sit at full bulge for the
+	# whole flight and only shrink once the flyer had already arrived. Two
+	# independent Tweens on the same node don't have that coupling; both still
+	# add up to `FLY_TO_SEC` total and start on the same frame.
+	var scale_tween := flyer.create_tween()
+	scale_tween.tween_property(flyer, "scale", Vector2.ONE * FLY_TO_MID_SCALE, FLY_TO_SEC * 0.5) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	scale_tween.tween_property(flyer, "scale", Vector2.ONE * FLY_TO_LAND_SCALE, FLY_TO_SEC * 0.5) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
 
 
 static func show_overlay(overlay: Control, panel: Control) -> void:

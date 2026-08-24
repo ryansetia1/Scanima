@@ -5603,7 +5603,10 @@ func _fly_purchased_item(icon_snapshot: Dictionary) -> void:
 	if host == null:
 		return
 	var from_rect: Rect2 = icon_snapshot.get("rect", Rect2())
-	var to_rect := _bag_button.get_global_rect()
+	# The chip's own rect reaches well below its icon to make room for the
+	# "Open" label under it -- landing on that rect's center misses the icon
+	# by a good 20 px and looks like it lands between the icon and the label.
+	var to_rect := _bag_button.icon_global_rect()
 	_bag_button.z_index = 61
 	UiJuice.fly_to(host, texture, from_rect, to_rect, func() -> void:
 		if not is_instance_valid(_bag_button):
