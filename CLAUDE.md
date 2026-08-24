@@ -516,7 +516,14 @@ navy/slate `Color(0.094, 0.196, 0.365, 1)` tanpa font shadow `Color(0, 0, 0, 0)`
 agar terbaca tajam dan bersih. Dimensi `TopHud` dan tombol dipertahankan pada
 ukuran aslinya (`custom_minimum_size = Vector2(96, 96)`) agar garis divider dan
 background 9-patch `HomeHudSurface` (`home_top_container_bg.png`, 203px) tidak
-terdistorsi. Ikon dan label diturunkan secara presisi di dalam chip menggunakan
+terdistorsi. Non-Home tab (Scan, Battle, Anima, dll.) memakai `CompactHudSurface`
+(`compact_top_container_bg.png`, 82×82 px downsampled dari export 3x Figma) sebagai `StyleBoxTexture` NinePatch —
+stretch margin 23 px di semua sisi (corner radius 23 px presisi sesuai canvas Figma), content margin 16/10 px —
+menampung nama Seeker dan tombol Core + Bits. Asset disalin ke
+`assets/ui/compact_top_container_bg.png`, didefinisikan sebagai `ext_resource` id
+`7_compact_hud_bg` dan subresource `CompactHudSurface` di `mobile_theme.tres`, dan
+dipasang via `theme_type_variation` di `_go_to()` dalam `scan_flow.gd`.
+Ikon dan label diturunkan secara presisi di dalam chip menggunakan
 `_column.alignment = BoxContainer.ALIGNMENT_END`, `Icon` `Vector2(46, 46)`, dan
 `ICON_SEPARATION = 8`. Interaksi pada `ResourceChip` diberi full feedback juice
 (squish `0.90` saat ditekan dengan micro-tilt & brightness, spring bounce `TRANS_BACK`

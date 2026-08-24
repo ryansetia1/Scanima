@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://bgjip8f71401d" path="res://assets/ui/nav_tab_selected.png" id="3_nav_tab"]
 [ext_resource type="Texture2D" uid="uid://t17lecg2kbcj" path="res://assets/ui/needs_dock_bg.png" id="4_needs_bg"]
 [ext_resource type="Texture2D" uid="uid://dj0uitu2opd83" path="res://assets/ui/home_top_container_bg.png" id="5_top_hud_bg"]
+[ext_resource type="Texture2D" uid="uid://compact_top_bg_v1" path="res://assets/ui/compact_top_container_bg.png" id="7_compact_hud_bg"]
 [ext_resource type="StyleBox" path="res://themes/toast/toast_panel_general.tres" id="6_toast_general"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_joq8t"]
@@ -317,6 +318,17 @@ texture_margin_left = 25.0
 texture_margin_top = 25.0
 texture_margin_right = 268.0
 texture_margin_bottom = 127.0
+
+[sub_resource type="StyleBoxTexture" id="CompactHudSurface"]
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+texture = ExtResource("7_compact_hud_bg")
+texture_margin_left = 23.0
+texture_margin_top = 23.0
+texture_margin_right = 23.0
+texture_margin_bottom = 23.0
 
 [sub_resource type="StyleBoxFlat" id="HudSurface"]
 content_margin_left = 14.0
@@ -999,6 +1011,8 @@ GhostChipValueLabel/constants/shadow_outline_size = 0
 GhostChipValueLabel/font_sizes/font_size = 30
 GhostChipValueLabel/fonts/font = ExtResource("2_display")
 HSeparator/styles/separator = SubResource("Separator")
+CompactHudSurface/base_type = &"PanelContainer"
+CompactHudSurface/styles/panel = SubResource("CompactHudSurface")
 HomeHudSurface/base_type = &"PanelContainer"
 HomeHudSurface/styles/panel = SubResource("HomeHudSurface")
 HudSurface/base_type = &"PanelContainer"

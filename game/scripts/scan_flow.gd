@@ -5465,14 +5465,12 @@ func _switch_destination(
 		if profile_row.is_empty():
 			_profile_anima = _current_anima.duplicate(true)
 	_destination = destination
-	# The raised-tab HUD art and the compact identity line under Brand are a
-	# Home-only look; every other tab keeps the plain HudSurface bar until it
-	# gets a background sized for its own layout. This has to land before
-	# HomeView becomes visible below: HomeView fills whatever room ViewStack
-	# has left under the HUD, so if the HUD grew after HomeView already
-	# measured itself, HomeView is left holding a stale, too-tall layout.
+	# Home uses the raised-tab art (HomeHudSurface). Every other tab uses the
+	# compact-top-container NinePatch texture (CompactHudSurface) — seeker
+	# name + Core/Bits chips sit inside it. This must land before HomeView
+	# becomes visible so HomeView measures the HUD's final size correctly.
 	_top_hud.theme_type_variation = (
-		&"HomeHudSurface" if destination == BottomNav.HOME else &"HudSurface"
+		&"HomeHudSurface" if destination == BottomNav.HOME else &"CompactHudSurface"
 	)
 	_update_hud_identity()
 	_home_view.visible = destination == BottomNav.HOME
