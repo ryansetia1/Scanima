@@ -547,6 +547,7 @@ Seluruh toast/banner kini diposisikan pada **30% dari atas layar** (golden focal
   animasi pertarungan.
 
 Layar loading (`LoadingScreen` / `ScanimaBackground`):
+- Engine boot splash image Godot dimatikan (`application/boot_splash/show_image=false`, `boot_splash/bg_color=Color(0.018, 0.026, 0.07, 1)`, `boot_splash/minimum_display_time=0`) agar startup langsung meluncur mulus ke loading screen Scanima tanpa jeda/logo engine.
 - Animasi chamber cincin berputar diposisikan tepat di tengah layar (`CHAMBER_Y = 0.5`).
 - Elips glow biru terang di bawah cincin chamber dihapus agar tampilan lebih bersih dan modern.
 - Teks loading (`LoadingMessage`) dan loading sweep progress bar (`LoadingSweep`)
