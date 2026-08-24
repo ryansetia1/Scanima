@@ -29,13 +29,25 @@ const OPAQUE_ALPHA_MIN := 0.12
 ## (BattleView.ACTION_CUE_SEC) supaya kilaunya selesai sementara copy-nya masih
 ## terbaca, bukan tertinggal sampai animasi turn berikutnya.
 const GUARD_SHIMMER_SEC := 1.05
+## Dua bob rendah untuk item energi -- beda ritme dari satu hop tinggi Feed,
+## supaya keduanya terasa berbeda tanpa membaca warna kilaunya.
+const ITEM_BOB_HEIGHT_PX := 6.0
+const ITEM_BOB_RISE_SEC := 0.10
+const ITEM_BOB_FALL_SEC := 0.12
+const ITEM_BOB_HOLD_SEC := 0.02
+## Burst partikel dampak Feed/Item -- lihat `_burst()`.
+const BURST_LIFETIME_SEC := 0.55
+const BURST_AMOUNT_FEED := 24
+const BURST_AMOUNT_ITEM := 30
 
 var _motion: Tween
 var _feedback: Tween
+var _care_tint: Tween
 var _fx_tween: Tween
 var _shimmer: Tween
 var _shimmer_material: ShaderMaterial
 var _fx: Sprite2D
+var _burst_particles: CPUParticles2D
 var _fx_motion: Dictionary = {}
 var _queued_care: Dictionary = {}
 var _base_position: Vector2 = Vector2.ZERO
@@ -145,6 +157,20 @@ func plant_on_anchor() -> void:
 ## Pusat massa opak pose saat ini, bukan pusat sel sheet (banyak padding).
 func body_center_global() -> Vector2:
 	return to_global(_body_center_local())
+
+
+## Kotak badan opak pose sekarang dalam ruang viewport, siap jadi target
+## `UiJuice.fly_to()`. Ukurannya ikut skala `AnimaBody` (parent anchor), jadi
+## dihitung lewat transform kanvas milik engine -- bukan `opaque_local_rect()`
+## mentah, yang masih dalam ruang lokal sprite sebelum skala Home diterapkan.
+func body_viewport_rect() -> Rect2:
+	var bounds := opaque_local_rect()
+	if bounds.size == Vector2.ZERO:
+		return Rect2()
+	var xf := get_global_transform_with_canvas()
+	var size: Vector2 = (xf * Rect2(Vector2.ZERO, bounds.size)).size
+	var center: Vector2 = xf * _body_center_local()
+	return Rect2(center - size * 0.5, size)
 
 
 func opaque_local_rect() -> Rect2:
@@ -542,6 +568,9 @@ func _bounce(
 	return tween
 
 
+## `_feedback` memegang gerak (position/scale), `_care_tint` memegang warna
+## (modulate) -- dua slot terpisah supaya Feed dan Item bisa punya bob DAN
+## kilau sekaligus tanpa satu tween menimpa handle milik yang lain.
 func care_feedback(action: String) -> void:
 	if action == "feed":
 		Sfx.play(Sfx.CUE_FEED)
@@ -550,34 +579,159 @@ func care_feedback(action: String) -> void:
 	if _feedback != null and _feedback.is_valid():
 		_feedback.kill()
 	_feedback = null
+	if _care_tint != null and _care_tint.is_valid():
+		_care_tint.kill()
+	_care_tint = null
 	position = _base_position
 	if action == "play":
 		set_pose("happy")
 		play_bounce()
 		return
+	if action == "feed":
+		hop()
+		_care_tint = _flash(Color(0.72, 1.30, 0.86, 1.0), false)
+		_burst("feed")
+		return
+	if action == "item":
+		_feedback = _bounce(
+			2, ITEM_BOB_HEIGHT_PX, ITEM_BOB_RISE_SEC, ITEM_BOB_FALL_SEC,
+			ITEM_BOB_HOLD_SEC, Tween.TRANS_QUAD
+		)
+		_care_tint = _flash(Color(0.45, 1.15, 1.70, 1.0), true)
+		_burst("item")
+		return
 	var tint := Color.WHITE
 	match action:
-		"feed":
-			hop()
-			return
 		"clean":
 			tint = Color(0.55, 1.2, 1.35, 1.0)
-		"item":
-			tint = Color(1.55, 1.38, 0.55, 1.0)
 		"sleep":
 			tint = Color(0.72, 0.78, 1.08, 1.0)
 		"wake":
 			tint = Color(1.14, 1.08, 0.72, 1.0)
 		_:
 			return
+	_care_tint = _flash(tint, false)
 
-	_feedback = create_tween()
-	_feedback.tween_property(self, "modulate", tint, 0.08)
-	if action == "item":
-		_feedback.tween_property(self, "modulate", Color.WHITE, 0.12)
-		_feedback.tween_property(self, "modulate", tint, 0.08)
-	_feedback.tween_property(self, "modulate", Color.WHITE, 0.22) \
+
+## Kilau modulate sekali (single blip) atau dua kali (double blip untuk Item).
+func _flash(tint: Color, double_blip: bool) -> Tween:
+	var tween := create_tween()
+	tween.tween_property(self, "modulate", tint, 0.08)
+	if double_blip:
+		tween.tween_property(self, "modulate", Color.WHITE, 0.12)
+		tween.tween_property(self, "modulate", tint, 0.08)
+	tween.tween_property(self, "modulate", Color.WHITE, 0.22) \
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	return tween
+
+
+## Percikan dampak Feed/Item. `CPUParticles2D`, bukan GPU: burst sekali-jalan
+## berjumlah kecil sudah terdokumentasi lebih stabil di CPU pada mobile --
+## GPUParticles2D bergantung compute path yang bisa flicker/berhenti render di
+## sebagian GPU Android. Bukan procedural `_draw()` seperti tiga efek lain di
+## proyek ini (incubator/first-anima/synthesis) karena itu efek TERSTRUKTUR
+## (cincin, scanline) yang memang butuh kontrol penuh; sebaran acak sekali
+## pakai lebih pendek sebagai node bawaan engine.
+##
+## `emission_shape = EMISSION_SHAPE_RECTANGLE` seukuran bounding box opak
+## Anima -- percikan lahir menyebar di seluruh siluet badan, bukan cuma dari
+## satu koordinat tengah, yang terasa jauh lebih kecil dari yang seharusnya.
+func _burst(kind: String) -> void:
+	if sprite_frames == null or not visible:
+		return
+	var host := get_parent() if get_parent() != null else self
+	if _burst_particles == null or not is_instance_valid(_burst_particles):
+		_burst_particles = CPUParticles2D.new()
+		_burst_particles.z_index = 8
+		_burst_particles.one_shot = true
+		_burst_particles.explosiveness = 1.0
+		_burst_particles.texture = _spark_texture()
+		_burst_particles.gravity = Vector2.ZERO
+		_burst_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+		# Alpha meluruh ke 0 sepanjang umur partikel -- tanpa ini partikel
+		# one-shot berhenti mendadak (pop) tepat saat lifetime habis, bukan
+		# memudar.
+		_burst_particles.color_ramp = _burst_fade_ramp()
+		host.add_child(_burst_particles)
+	elif _burst_particles.get_parent() != host:
+		_burst_particles.reparent(host)
+	_burst_particles.position = (
+		host.to_local(body_center_global()) if host is Node2D else body_center_global()
+	)
+	var bounds := opaque_local_rect()
+	# Fallback kotak sedang kalau posenya belum termuat, supaya burst tidak
+	# pernah menciut jadi satu titik.
+	_burst_particles.emission_rect_extents = (
+		bounds.size * 0.5 if bounds.size != Vector2.ZERO else Vector2(32.0, 40.0)
+	)
+	if kind == "item":
+		_burst_particles.amount = BURST_AMOUNT_ITEM
+		_burst_particles.lifetime = BURST_LIFETIME_SEC
+		_burst_particles.direction = Vector2.UP
+		_burst_particles.spread = 150.0
+		_burst_particles.initial_velocity_min = 90.0
+		_burst_particles.initial_velocity_max = 190.0
+		_burst_particles.angular_velocity_min = -240.0
+		_burst_particles.angular_velocity_max = 240.0
+		_burst_particles.scale_amount_min = 1.0
+		_burst_particles.scale_amount_max = 2.0
+		_burst_particles.color = Color(0.45, 1.15, 1.70, 1.0)
+	else:
+		_burst_particles.amount = BURST_AMOUNT_FEED
+		_burst_particles.lifetime = BURST_LIFETIME_SEC * 1.15
+		_burst_particles.direction = Vector2.UP
+		_burst_particles.spread = 90.0
+		_burst_particles.initial_velocity_min = 55.0
+		_burst_particles.initial_velocity_max = 130.0
+		_burst_particles.angular_velocity_min = -160.0
+		_burst_particles.angular_velocity_max = 160.0
+		_burst_particles.scale_amount_min = 0.85
+		_burst_particles.scale_amount_max = 1.7
+		_burst_particles.color = Color(1.75, 1.55, 0.25, 1.0)
+	# `restart()` sendiri tidak menyalakan `emitting` -- untuk one_shot yang
+	# sudah selesai, toggle emitting saja (tanpa restart) juga tidak memutar
+	# ulang siklusnya. Keduanya wajib bersama untuk burst kedua dan seterusnya.
+	_burst_particles.restart()
+	_burst_particles.emitting = true
+
+
+static var _spark_texture_cache: GradientTexture2D = null
+
+
+## Bercak bundar putih->transparan dibangun di kode, bukan aset baru: ukuran
+## kecil (dipakai sebagai satu titik percikan) tidak butuh import step apa pun,
+## dan glyph outline `sparkles.svg` yang ada terbaca buruk di skala partikel.
+static func _spark_texture() -> GradientTexture2D:
+	if _spark_texture_cache != null:
+		return _spark_texture_cache
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
+	gradient.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
+	texture.width = 28
+	texture.height = 28
+	_spark_texture_cache = texture
+	return texture
+
+
+static var _burst_fade_ramp_cache: Gradient = null
+
+
+## Putih->transparan sepanjang lifetime partikel, terpisah dari alpha radial
+## `_spark_texture()` sendiri: yang ini mengontrol PELURUHAN dari waktu ke
+## waktu (fade-out), bukan bentuk satu percikan.
+static func _burst_fade_ramp() -> Gradient:
+	if _burst_fade_ramp_cache != null:
+		return _burst_fade_ramp_cache
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
+	gradient.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	_burst_fade_ramp_cache = gradient
+	return gradient
 
 
 func apply_care_state(sleeping: bool, dormant: bool, care: Variant = {}) -> void:

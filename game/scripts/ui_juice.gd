@@ -259,6 +259,12 @@ const FLY_TO_SEC := 0.4
 ## busurnya terasa dilempar, bukan cuma diseret lurus dari titik A ke titik B.
 const FLY_TO_MID_SCALE := 2.5
 const FLY_TO_LAND_SCALE := 0.55
+## Alpha akhir default: ikon Shop mendarat di Bag dan masih terlihat sesaat
+## sebelum `pop()` Bag mengambil alih. Jalur yang benar-benar diserap tubuh
+## (Feed/Item ke Anima) melewatkan 0,0 supaya tidak ada kedip menghilang.
+const FLY_TO_FADE_A := 0.85
+## Tinggi lob untuk penerbangan consumable dari sheet ke tubuh Anima.
+const FLY_TO_ARC_PX := 160.0
 
 
 ## Satu TextureRect sekali pakai yang terbang dari `from_global` ke pusat
@@ -281,12 +287,18 @@ const FLY_TO_LAND_SCALE := 0.55
 ## sama), bukan sesuatu yang perlu dikonversi lintas ruang koordinat; hanya
 ## posisi origin-nya yang perlu itu, dan `global_position` sudah menghitungnya
 ## dengan benar lewat mesin Godot sendiri, bukan re-implementasi manual.
+##
+## `arc_px` melengkungkan JALUR-nya, bukan ruang koordinatnya: bezier kuadratik
+## tetap menugaskan `global_position` di setiap langkah, jadi seluruh alasan di
+## atas masih berlaku apa adanya. 0,0 memakai tween lurus yang lama.
 static func fly_to(
 	host: Control,
 	texture: Texture2D,
 	from_global: Rect2,
 	to_global: Rect2,
-	on_arrive: Callable = Callable()
+	on_arrive: Callable = Callable(),
+	arc_px: float = 0.0,
+	fade_to: float = FLY_TO_FADE_A
 ) -> void:
 	if texture == null or not is_instance_valid(host):
 		if on_arrive.is_valid():
@@ -313,9 +325,22 @@ static func fly_to(
 
 	var target_global := to_global.position + to_global.size * 0.5 - from_global.size * 0.5
 	var tween := flyer.create_tween().set_parallel(true)
-	tween.tween_property(flyer, "global_position", target_global, FLY_TO_SEC) \
-		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
-	tween.tween_property(flyer, "modulate:a", 0.85, FLY_TO_SEC) \
+	if arc_px > 0.0:
+		# Bezier kuadratik satu titik kontrol, diangkat di atas garis lurus
+		# start->target -- parameterisasi bezier sendiri sudah melambat masuk
+		# apex dan mempercepat keluar darinya, jadi TRANS_LINEAR di sini tidak
+		# datar; menambah easing lagi di atasnya cuma menghitung dua kali.
+		var start := flyer.global_position
+		var control := (start + target_global) * 0.5 - Vector2(0.0, arc_px)
+		tween.tween_method(
+			func(t: float) -> void:
+				flyer.global_position = start.lerp(control, t).lerp(control.lerp(target_global, t), t),
+			0.0, 1.0, FLY_TO_SEC
+		).set_trans(Tween.TRANS_LINEAR)
+	else:
+		tween.tween_property(flyer, "global_position", target_global, FLY_TO_SEC) \
+			.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(flyer, "modulate:a", fade_to, FLY_TO_SEC) \
 		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
 	tween.chain().tween_callback(func() -> void:
 		flyer.queue_free()

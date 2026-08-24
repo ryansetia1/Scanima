@@ -935,6 +935,7 @@ func _initialize() -> void:
 	await _test_autowrap_labels_have_wrap_width()
 	await _test_shared_components()
 	await _test_fly_to_animation()
+	await _test_consumable_flight_to_anima()
 	await _test_scan_phase_visuals()
 	await _test_seeker_ui()
 	await _test_battle_view()
@@ -1552,6 +1553,18 @@ func _test_care_feedback_is_immediate() -> void:
 		and body.find("GameState.begin_care") > body.find("GameState.pending_care.is_empty()"),
 		"a second care action is refused where every caller passes, including Bag"
 	)
+	# Bag opens straight from BagButton without passing through Care Dock's
+	# own need_is_full check (home_view.gd _request_feed) -- the guard has to
+	# live here too, or a full need still fires the flight animation and hits
+	# the server for nothing, even though the server itself rejects the write.
+	var hunger_guard := body.find("CareRules.need_is_full(_current_anima.get(\"care\"), \"hunger\")")
+	var energy_guard := body.find("CareRules.need_is_full(_current_anima.get(\"care\"), \"energy\")")
+	_check(
+		hunger_guard >= 0 and energy_guard >= 0
+		and hunger_guard < body.find("GameState.begin_care")
+		and energy_guard < body.find("GameState.begin_care"),
+		"feeding or using an item when its need is already full is refused before anything flies or hits the server"
+	)
 	var send_start := source.find("func _send_pending_care")
 	var send_end := source.find("func _sync_active_care", send_start)
 	var send_body := (
@@ -2037,6 +2050,173 @@ func _test_fly_to_animation() -> void:
 	_check(
 		missing_arrived[0] == 1,
 		"a missing texture or a freed host still resolves the arrival callback instead of hanging"
+	)
+
+
+## Feed dan item energi masing-masing terbang lewat arc dari sheet yang baru
+## menutup, diserap ke tubuh Anima, dan HANYA di titik itu bob/kilau/burst-nya
+## menyala -- beda untuk keduanya supaya tidak terasa seperti animasi yang
+## sama dipakai ulang.
+func _test_consumable_flight_to_anima() -> void:
+	# body_viewport_rect(): satu-satunya penyeberangan Node2D -> ruang
+	# viewport yang disahkan untuk Anima. Anchor terpisah dengan skala
+	# terkendali, sama seperti `AnimaBody` di scan_flow.gd, supaya assert skala
+	# di bawah benar-benar menguji transform kanvas, bukan sekadar "non-zero".
+	var anchor := Node2D.new()
+	root.add_child(anchor)
+	var presenter = load("res://scripts/anima_presenter.gd").new()
+	anchor.add_child(presenter)
+	await process_frame
+
+	var image := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	image.fill(Color.WHITE)
+	var texture := ImageTexture.create_from_image(image)
+	var frames := SpriteFrames.new()
+	frames.add_animation(&"idle")
+	frames.add_frame(&"idle", texture)
+	presenter.sprite_frames = frames
+	presenter.set_pose("idle")
+	presenter.visible = true
+
+	anchor.scale = Vector2.ONE
+	var rect_1x: Rect2 = presenter.body_viewport_rect()
+	anchor.scale = Vector2(2.0, 2.0)
+	var rect_2x: Rect2 = presenter.body_viewport_rect()
+	anchor.scale = Vector2.ONE
+	_check(rect_1x.size != Vector2.ZERO, "body_viewport_rect returns a real box for a loaded pose")
+	_check(
+		is_equal_approx(rect_2x.size.x, rect_1x.size.x * 2.0),
+		"body_viewport_rect scales with the Home body anchor -- a raw opaque_local_rect() would not"
+	)
+
+	# Feed: satu hop tinggi (HOP_HEIGHT_PX). Item: dua bob rendah. Different
+	# depth AND rhythm, both checked, because matching just one would let a
+	# regression collapse them back into the same reaction.
+	presenter.care_feedback("feed")
+	# Checked before the sample wait below: the tint tween is a short single
+	# blip (0.30s total) that can finish and go invalid before a 0.35s hop
+	# sample loop returns, which would fail this for timing, not for logic.
+	_check(
+		presenter.get("_care_tint") != null and presenter.get("_care_tint").is_valid(),
+		"feed leaves a live tint tween of its own -- not just the hop"
+	)
+	var feed_hop: float = await _lowest_sample(0.35, func() -> float: return presenter.position.y)
+	_check(feed_hop < -4.0, "feeding hops the Anima")
+	var feed_burst: CPUParticles2D = null
+	for child in anchor.get_children():
+		if child is CPUParticles2D:
+			feed_burst = child
+	_check(feed_burst != null and feed_burst.emitting, "feed fires an impact burst")
+	var feed_color: Color = feed_burst.color if feed_burst != null else Color.BLACK
+
+	await create_timer(0.5).timeout
+
+	presenter.care_feedback("item")
+	var item_bob: float = await _lowest_sample(0.35, func() -> float: return presenter.position.y)
+	_check(item_bob < -2.0, "using an energy item bobs the Anima")
+	_check(
+		feed_hop < item_bob - 1.0,
+		(
+			"feed's single hop reaches noticeably deeper than item's low bobs (feed %.2f vs item %.2f)"
+			% [feed_hop, item_bob]
+		)
+	)
+	var item_burst: CPUParticles2D = null
+	for child in anchor.get_children():
+		if child is CPUParticles2D:
+			item_burst = child
+	_check(
+		item_burst != null and item_burst.color != feed_color,
+		"item's burst is tinted differently from feed's"
+	)
+
+	presenter.queue_free()
+	anchor.queue_free()
+	await process_frame
+
+	# arc_px bends fly_to's PATH, not its coordinate space -- straight flights
+	# (arc_px = 0, the default) must be untouched, which is why
+	# _test_fly_to_animation()'s assertions above still hold unmodified.
+	var arc_host := Control.new()
+	arc_host.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(arc_host)
+	await process_frame
+	var arc_image := Image.create(341, 341, false, Image.FORMAT_RGBA8)
+	arc_image.fill(Color.WHITE)
+	var arc_texture := ImageTexture.create_from_image(arc_image)
+	var arc_from := Rect2(Vector2(40.0, 900.0), Vector2(72.0, 72.0))
+	var arc_to := Rect2(Vector2(340.0, 300.0), Vector2(96.0, 96.0))
+	var arc_target := arc_to.get_center()
+	var arc_start := arc_from.get_center()
+	var straight_len := arc_start.distance_to(arc_target)
+	var arc_arrived := [0]
+	UiJuice.fly_to(
+		arc_host, arc_texture, arc_from, arc_to,
+		func() -> void: arc_arrived[0] += 1,
+		UiJuice.FLY_TO_ARC_PX, 0.0
+	)
+	await process_frame
+	var arc_flyer: TextureRect = null
+	for child in arc_host.get_children():
+		if child is TextureRect:
+			arc_flyer = child
+	_check(arc_flyer != null, "an arced flight still spawns its one-shot flyer")
+
+	var max_deviation := 0.0
+	var arc_closest := INF
+	var arc_last_alpha := 1.0
+	var deadline := Time.get_ticks_msec() + 700
+	while Time.get_ticks_msec() < deadline and arc_arrived[0] == 0:
+		await process_frame
+		if arc_arrived[0] == 0 and is_instance_valid(arc_flyer):
+			var center: Vector2 = arc_flyer.global_position + arc_flyer.size * 0.5
+			# Perpendicular distance from the straight start->target segment --
+			# a real lob bulges away from that line at its apex; a straight
+			# tween never leaves it (up to floating-point noise).
+			var along := arc_target - arc_start
+			var t := (center - arc_start).dot(along) / (straight_len * straight_len)
+			var closest_on_line: Vector2 = arc_start + along * clampf(t, 0.0, 1.0)
+			max_deviation = maxf(max_deviation, center.distance_to(closest_on_line))
+			arc_closest = minf(arc_closest, center.distance_to(arc_target))
+			arc_last_alpha = arc_flyer.modulate.a
+	_check(
+		max_deviation > 20.0,
+		"an arced flight actually bulges off the straight line (peak deviation %.1f px)" % max_deviation
+	)
+	_check(
+		arc_closest < straight_len * 0.1,
+		"an arced flight still converges on the target despite the detour"
+	)
+	_check(arc_arrived[0] == 1, "an arced flight calls its arrival callback exactly once")
+	_check(
+		arc_last_alpha < 0.2,
+		"fade_to = 0.0 genuinely absorbs the icon instead of parking it at fly_to's default 0.85 alpha"
+	)
+	_check(
+		not is_instance_valid(arc_flyer) or arc_flyer.is_queued_for_deletion(),
+		"an arced flight's flyer frees itself once it lands"
+	)
+	arc_host.queue_free()
+
+	# Source scan: the snapshot has to happen before the sheet frees the row
+	# it lives on, and both non-battle branches must defer their reaction to
+	# the flight landing rather than firing it at tap time.
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var use_body := _func_body(flow_source, "func _use_catalog_item(")
+	_check(
+		use_body.find("icon_snapshot_for(") >= 0
+		and use_body.find("icon_snapshot_for(") < use_body.find("_shop_sheet.close()"),
+		"the row's icon is snapshotted before the sheet closes and frees it"
+	)
+	_check(
+		use_body.find("_fly_consumable_to_anima(icon_snapshot, \"feed\")") >= 0
+		and use_body.find("_fly_consumable_to_anima(icon_snapshot, \"item\")") >= 0,
+		"both Feed and energy-item branches hand their reaction to the flight, not care_feedback directly"
+	)
+	var commit_body := _func_body(flow_source, "func _commit_care(")
+	_check(
+		commit_body.find("on_react: Callable") >= 0 and commit_body.find("on_react.call()") >= 0,
+		"_commit_care can defer its reaction to a caller-supplied hook"
 	)
 
 

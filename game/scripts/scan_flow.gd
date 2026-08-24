@@ -432,6 +432,10 @@ func _ready() -> void:
 			_run_synthesis_history_demo(true)
 		if arg == "--home-tap-demo" and _anima.sprite_frames != null:
 			await _run_home_tap_demo()
+		if arg == "--feed-fly-demo":
+			await _run_feed_fly_demo("feed")
+		if arg == "--item-fly-demo":
+			await _run_feed_fly_demo("item")
 		if arg == "--level-up-demo":
 			if _current_anima.is_empty():
 				_current_anima = {
@@ -3191,7 +3195,12 @@ func _perform_care(action: String) -> void:
 ## sebagai loading. Yang menjaga jalur uang tetap satu adalah `pending_care` —
 ## dan pemeriksaannya duduk di sini, bukan di pemanggil, sebab Bag memanggil
 ## `_commit_care` langsung tanpa lewat Care Dock.
-func _commit_care(action: String, item_id: String = "") -> void:
+##
+## `on_react`, kalau diisi, menggantikan `care_feedback()` langsung -- dipakai
+## Bag supaya reaksi (bob/kilau/burst) menunggu ikon MENDARAT di tubuh Anima,
+## bukan tampil di frame yang sama dengan sheet mulai menutup. Guard di atas
+## tetap jalan lebih dulu, jadi aksi yang ditolak tidak menerbangkan apa pun.
+func _commit_care(action: String, item_id: String = "", on_react: Callable = Callable()) -> void:
 	var account_epoch := GameState.session_epoch
 	var anima_id := str(_current_anima.get("id", ""))
 	if anima_id.is_empty():
@@ -3202,11 +3211,25 @@ func _commit_care(action: String, item_id: String = "") -> void:
 	if (action == "feed" or action == "use_item") and _is_sleeping(_current_anima):
 		_say(tr("ERROR_SLEEPING_CONSUME"), true)
 		return
+	# Care Dock sudah menolak ini sebelum sheet-nya kebuka (home_view.gd
+	# _request_feed), tapi Bag dibuka lewat BagButton juga tanpa lewat Care
+	# Dock -- pagarnya harus di sini juga supaya kedua jalur benar-benar
+	# tertutup, bukan cuma salah satunya. Tanpa ini animasi terbang tetap
+	# main walau server menolak dan quantity tidak berkurang.
+	if action == "feed" and CareRules.need_is_full(_current_anima.get("care"), "hunger"):
+		_say(tr("ERROR_NEED_FULL"), true)
+		return
+	if action == "use_item" and CareRules.need_is_full(_current_anima.get("care"), "energy"):
+		_say(tr("ERROR_NEED_FULL"), true)
+		return
 	if not GameState.pending_care.is_empty():
 		_say(tr("ERROR_CARE_PENDING"), true)
 		return
 	var pending := GameState.begin_care(anima_id, action, item_id)
-	_anima.care_feedback("feed" if action == "use_item" else action)
+	if on_react.is_valid():
+		on_react.call()
+	else:
+		_anima.care_feedback("item" if action == "use_item" else action)
 	var care_before: Variant = _current_anima.get("care")
 	_apply_optimistic_care(action, item_id)
 	var committed := await _send_pending_care(pending, true)
@@ -5618,6 +5641,31 @@ func _fly_purchased_item(icon_snapshot: Dictionary) -> void:
 	)
 
 
+## Ikon Feed/Item terbang lewat arc dari sheet yang baru menutup, lalu diserap
+## (fade ke 0, bukan berhenti di 0,85 seperti pendaratan Bag) ke tubuh Anima.
+## Reaksi presenter (bob/kilau/burst) menunggu `on_arrive` alih-alih tampil di
+## frame tap -- itulah alasan `_commit_care` menerima `on_react` daripada
+## memanggil `care_feedback()` langsung. `to_rect` sudah dalam ruang canvas
+## yang sama dengan Control manapun di bawah `UI` (CanvasLayer-nya identity),
+## persis seperti `_fly_purchased_item` di atas menyeberang dari ShopSheet ke
+## ChipLayer tanpa konversi tambahan -- lihat body_viewport_rect().
+func _fly_consumable_to_anima(icon_snapshot: Dictionary, kind: String) -> void:
+	var texture := icon_snapshot.get("texture") as Texture2D
+	var host := _bag_button.get_parent() as Control if is_instance_valid(_bag_button) else null
+	var to_rect := _anima.body_viewport_rect() if is_instance_valid(_anima) else Rect2()
+	if texture == null or host == null or to_rect.size == Vector2.ZERO or not _anima.visible:
+		if is_instance_valid(_anima):
+			_anima.care_feedback(kind)
+		return
+	UiJuice.fly_to(
+		host, texture, icon_snapshot.get("rect", Rect2()), to_rect,
+		func() -> void:
+			if is_instance_valid(_anima):
+				_anima.care_feedback(kind),
+		UiJuice.FLY_TO_ARC_PX, 0.0
+	)
+
+
 func _use_catalog_item(item: Dictionary) -> void:
 	if (
 		(Catalog.is_food(item) or Catalog.is_energy(item))
@@ -5625,12 +5673,20 @@ func _use_catalog_item(item: Dictionary) -> void:
 	):
 		_say(tr("ERROR_SLEEPING_CONSUME"), true)
 		return
+	var item_id := str(item.get("id", ""))
+	# Sebelum close(): sheet men-queue_free() barisnya begitu ditutup, jadi
+	# ikonnya ikut hilang -- sama seperti snapshot pembelian di _buy_catalog_item.
+	var icon_snapshot: Dictionary = _shop_sheet.icon_snapshot_for(item_id)
 	_shop_sheet.close()
 	if Catalog.is_food(item):
-		await _commit_care("feed", str(item.get("id", "")))
+		await _commit_care(
+			"feed", item_id, func() -> void: _fly_consumable_to_anima(icon_snapshot, "feed")
+		)
 		return
 	if Catalog.is_energy(item):
-		await _commit_care("use_item", str(item.get("id", "")))
+		await _commit_care(
+			"use_item", item_id, func() -> void: _fly_consumable_to_anima(icon_snapshot, "item")
+		)
 		return
 	if Catalog.is_battle(item):
 		if _busy:
@@ -6437,6 +6493,30 @@ func _run_home_tap_demo() -> void:
 	get_viewport().push_input(event)
 	await get_tree().create_timer(0.09).timeout
 	print("home tap demo: tap=%s reaction=%s" % [event.position, _anima.position])
+
+
+## Membuka Bag lalu mensimulasikan tap "Feed"/"Use" pada baris pertama yang
+## cocok, lewat `_use_catalog_item()` yang sama dengan tap sungguhan --
+## sengaja bukan mensintesis tap tombol, supaya jalur snapshot-ikon dan
+## penutupan sheet ikut teruji apa adanya. Alat verifikasi visual: perangkat
+## uji layarnya mati dan `adb shell input` diblokir HyperOS, jadi flag ini
+## plus `--screenshot` adalah satu-satunya cara melihat animasi ini mendarat
+## sebelum masuk APK.
+func _run_feed_fly_demo(kind: String) -> void:
+	_switch_destination(BottomNav.HOME)
+	await get_tree().process_frame
+	_open_bag("food" if kind == "feed" else "item")
+	await get_tree().create_timer(0.3).timeout
+	var predicate := (
+		Callable(Catalog, "is_food") if kind == "feed" else Callable(Catalog, "is_energy")
+	)
+	for row in _catalog:
+		var item: Dictionary = row if typeof(row) == TYPE_DICTIONARY else {}
+		if predicate.call(item):
+			await _use_catalog_item(item)
+			print("%s fly demo: used item_id=%s" % [kind, item.get("id", "")])
+			return
+	print("%s fly demo: no matching catalog item loaded" % kind)
 
 
 func _run_synthesis_history_demo(show_help: bool, scroll_history: bool = false) -> void:
