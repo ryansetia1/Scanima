@@ -1631,7 +1631,7 @@ func _test_care_feedback_is_immediate() -> void:
 		"Bits and bag quantity move before the purchase response"
 	)
 	_check(
-		tap_body.find("_say(tr(\"FEEDBACK_PURCHASE\"), true)") < 0,
+		tap_body.find("_say_success(tr(\"FEEDBACK_PURCHASE\"), true)") < 0,
 		"the optimistic purchase path shows the fly-to-Bag animation instead of a toast"
 	)
 	_check(
@@ -1646,7 +1646,7 @@ func _test_care_feedback_is_immediate() -> void:
 		else ""
 	)
 	_check(
-		resume_purchase_body.find("_say(tr(\"FEEDBACK_PURCHASE\"), true)") >= 0,
+		resume_purchase_body.find("_say_success(tr(\"FEEDBACK_PURCHASE\"), true)") >= 0,
 		"a purchase resumed after a restart still toasts -- there's no sheet or icon left to animate"
 	)
 	_test_optimistic_care()
@@ -5230,7 +5230,7 @@ func _test_sign_in_choice_follows_guest_roster() -> void:
 		"the button order follows the roster, and a failed load still warns via the scan lock"
 	)
 	_check(
-		confirm.find("if _busy:\n\t\t_say(tr(\"SEEKER_SWITCH_BLOCKED\"), true)") >= 0,
+		confirm.find("if _busy:\n\t\t_say_warning(tr(\"SEEKER_SWITCH_BLOCKED\"), true)") >= 0,
 		"a sign-in tap that lands while the shell is busy answers instead of doing nothing"
 	)
 	_check(

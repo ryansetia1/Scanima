@@ -70,6 +70,13 @@ const HOME_BODY_SPAN_MAX_RATIO := 0.42
 ## 0,62 melebarkannya menjadi 2,4x tanpa menyentuh clamp.
 const HOME_BODY_HEIGHT_CURVE := 0.62
 const TOAST_GAP := 8.0
+enum ToastType { GENERAL, SUCCESS, WARNING, ERROR }
+const TOAST_STYLES := {
+	ToastType.GENERAL: preload("res://themes/toast/toast_panel_general.tres"),
+	ToastType.SUCCESS: preload("res://themes/toast/toast_panel_success.tres"),
+	ToastType.WARNING: preload("res://themes/toast/toast_panel_warning.tres"),
+	ToastType.ERROR: preload("res://themes/toast/toast_panel_error.tres"),
+}
 const SLEEP_SYNC_RETRY_SEC := 30.0
 const SLEEP_SYNC_EPSILON_SEC := 1.0
 ## Tap-to-wake: cara kedua membangunkan Anima selain tombol Wake, dengan target
@@ -374,7 +381,7 @@ func _ready() -> void:
 	await _boot()
 	_booting = false
 	if not _boot_auth_success_mode.is_empty():
-		_say(tr(_account_success_key(_boot_auth_success_mode)), true)
+		_say_success(tr(_account_success_key(_boot_auth_success_mode)), true)
 		_boot_auth_success_mode = ""
 
 	# Memeriksa layar sungguhan tanpa membuka editor:
@@ -567,7 +574,7 @@ func _boot() -> void:
 		print("session error: %s" % sesi.error)
 		if not from_cache:
 			_set_home_shell_state(&"error")
-		_say(tr("STATUS_ACCOUNT_ERROR"))
+		_say_error(tr("STATUS_ACCOUNT_ERROR"))
 		_set_busy(false)
 		return
 	_apply_cached_mode_availability()
@@ -627,7 +634,7 @@ func _boot() -> void:
 		# penyegarannya, dan angkanya sudah diproyeksikan dari sync terakhir.
 		if not from_cache:
 			_set_home_shell_state(&"error")
-		_say(tr("STATUS_ROSTER_ERROR"))
+		_say_error(tr("STATUS_ROSTER_ERROR"))
 	elif not _roster.is_empty():
 		var active := _active_row()
 		if active.is_empty():
@@ -760,7 +767,7 @@ func _show_collection_profile(row: Dictionary) -> void:
 
 func _open_synthesis_lab(preselected: Dictionary = {}) -> void:
 	if not _synthesis_enabled():
-		_say(tr("SYNTHESIS_FEATURE_DISABLED"), true)
+		_say_warning(tr("SYNTHESIS_FEATURE_DISABLED"), true)
 		return
 	if _destination != SYNTHESIS_DEST:
 		_synthesis_return_destination = (
@@ -799,7 +806,7 @@ func _attempt_synthesis(payload: Dictionary) -> void:
 	if payload.is_empty() or not _synthesis_enabled() or _busy:
 		return
 	if not GameState.pending_synthesis.is_empty():
-		_say(tr("SYNTHESIS_ALREADY_ACTIVE"), true)
+		_say_warning(tr("SYNTHESIS_ALREADY_ACTIVE"), true)
 		return
 	_pending_synthesis_payload = payload.duplicate(true)
 	_modal_context = &"synthesis_attempt"
@@ -820,7 +827,7 @@ func _synthesis_attempt_confirmed() -> void:
 	if payload.is_empty() or not _synthesis_enabled() or _busy:
 		return
 	if not GameState.pending_synthesis.is_empty():
-		_say(tr("SYNTHESIS_ALREADY_ACTIVE"), true)
+		_say_warning(tr("SYNTHESIS_ALREADY_ACTIVE"), true)
 		return
 	var pending := GameState.begin_synthesis(
 		str(payload.get("source_a_id", "")),
@@ -906,7 +913,7 @@ func _send_pending_synthesis(operation: String) -> void:
 				tr(error_key)
 			)
 		else:
-			_say(tr(error_key), true)
+			_say_error(tr(error_key), true)
 	else:
 		if _destination == SYNTHESIS_DEST:
 			_synthesis_view.show_generating(GameState.pending_synthesis)
@@ -977,7 +984,7 @@ func _complete_synthesis(row: Dictionary) -> bool:
 		# tapi toast-nya sekali saja: Result sudah ada di server, dan mengulang
 		# pesan yang sama tiap 5 detik hanya menutupi layar.
 		if not _synthesis_art_error_reported:
-			_say(tr("STATUS_ART_DOWNLOAD_ERROR"), true)
+			_say_error(tr("STATUS_ART_DOWNLOAD_ERROR"), true)
 			_synthesis_art_error_reported = true
 		return false
 	_synthesis_art_error_reported = false
@@ -1304,10 +1311,10 @@ func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> b
 	if row.is_empty() or _busy:
 		return false
 	if not GameState.pending_evolution.is_empty():
-		_say(tr("EVOLUTION_ALREADY_ACTIVE"), true)
+		_say_warning(tr("EVOLUTION_ALREADY_ACTIVE"), true)
 		return false
 	if not GameState.pending_care.is_empty():
-		_say(tr("ERROR_CARE_PENDING"), true)
+		_say_warning(tr("ERROR_CARE_PENDING"), true)
 		return false
 	_set_busy(true)
 	if not stay_on_tab:
@@ -1367,7 +1374,7 @@ func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> b
 	if not care_synced:
 		await _sync_active_care(false)
 	_set_busy(false)
-	_say(tr("COLLECTION_SUMMON_SUCCESS") % LocaleManager.display_name(_current_anima), true)
+	_say_success(tr("COLLECTION_SUMMON_SUCCESS") % LocaleManager.display_name(_current_anima), true)
 	return true
 
 
@@ -1448,7 +1455,7 @@ func _retry_roster() -> void:
 		_set_home_shell_state(&"empty")
 	else:
 		_set_home_shell_state(&"error")
-		_say(tr("STATUS_ROSTER_ERROR"))
+		_say_error(tr("STATUS_ROSTER_ERROR"))
 	_set_busy(false)
 
 
@@ -1486,7 +1493,7 @@ func _delete_confirmed() -> void:
 		return
 	if not res.ok or typeof(res.data) != TYPE_ARRAY or (res.data as Array).is_empty():
 		_set_busy(false)
-		_say(tr("ANIMA_DELETE_ERROR"), true)
+		_say_error(tr("ANIMA_DELETE_ERROR"), true)
 		return
 
 	var kept: Array[Dictionary] = []
@@ -1513,7 +1520,7 @@ func _delete_confirmed() -> void:
 		_populate_collection()
 		_switch_destination(BottomNav.COLLECTION)
 	_set_busy(false)
-	_say(tr("ANIMA_DELETE_SUCCESS") % deleted_name, true)
+	_say_success(tr("ANIMA_DELETE_SUCCESS") % deleted_name, true)
 
 
 func _show_evolve_confirmation(row: Dictionary) -> void:
@@ -1525,7 +1532,7 @@ func _show_evolve_confirmation(row: Dictionary) -> void:
 	):
 		return
 	if not GameState.pending_evolution.is_empty():
-		_say(tr("EVOLUTION_ALREADY_ACTIVE"), true)
+		_say_warning(tr("EVOLUTION_ALREADY_ACTIVE"), true)
 		return
 	_pending_evolve_row = row.duplicate(true)
 	_modal_context = &"evolve"
@@ -1543,7 +1550,7 @@ func _evolve_confirmed() -> void:
 	if row.is_empty() or not _evolution_enabled() or not CareRules.evolution_ready(row):
 		return
 	if not GameState.pending_evolution.is_empty():
-		_say(tr("EVOLUTION_ALREADY_ACTIVE"), true)
+		_say_warning(tr("EVOLUTION_ALREADY_ACTIVE"), true)
 		return
 	await _start_evolution_ritual(row)
 
@@ -1555,7 +1562,7 @@ func _start_evolution_ritual(row: Dictionary) -> void:
 	var prior_stage := CareRules.committed_stage(row)
 	var pending := GameState.begin_evolution(anima_id, prior_stage)
 	if pending.is_empty():
-		_say(tr("EVOLUTION_ALREADY_ACTIVE"), true)
+		_say_warning(tr("EVOLUTION_ALREADY_ACTIVE"), true)
 		return
 	_evolution_art_error_reported = false
 	row["status"] = "evolving"
@@ -1578,7 +1585,7 @@ func _start_evolution_ritual(row: Dictionary) -> void:
 		if code == "FEATURE_DISABLED":
 			GameState.finish_evolution()
 			_stop_evolution_chamber()
-			_say(tr("EVOLUTION_FEATURE_DISABLED"), true)
+			_say_warning(tr("EVOLUTION_FEATURE_DISABLED"), true)
 			await _restore_evolution_after_abort(anima_id)
 			return
 		var confirmed := await _fetch_evolution_row(anima_id)
@@ -1594,7 +1601,7 @@ func _start_evolution_ritual(row: Dictionary) -> void:
 			if not CareRules.is_evolving(confirmed):
 				GameState.finish_evolution()
 				_stop_evolution_chamber()
-				_say(tr("EVOLUTION_START_ERROR"), true)
+				_say_error(tr("EVOLUTION_START_ERROR"), true)
 				await _restore_evolution_after_abort(anima_id)
 				return
 		# Transport/5xx can arrive after begin_evolution committed. Keep the same
@@ -1669,7 +1676,7 @@ func _resume_pending_evolution(restore_navigation: bool = true) -> void:
 			_evolution_resume_in_flight = false
 			GameState.finish_evolution()
 			_stop_evolution_chamber()
-			_say(tr("EVOLUTION_FEATURE_DISABLED"), true)
+			_say_warning(tr("EVOLUTION_FEATURE_DISABLED"), true)
 			await _restore_evolution_after_abort(anima_id)
 			return
 		if code == "EVOLUTION_NOT_FOUND":
@@ -1787,7 +1794,7 @@ func _complete_evolution(
 	)
 	if not bool(loaded.get("ok", false)):
 		if not _evolution_art_error_reported:
-			_say(tr("STATUS_ART_DOWNLOAD_ERROR"), true)
+			_say_error(tr("STATUS_ART_DOWNLOAD_ERROR"), true)
 			_evolution_art_error_reported = true
 		if chamber_active:
 			_apply_evolution_chamber_for_row(row, _destination == BottomNav.HOME)
@@ -2097,11 +2104,11 @@ func _rename_confirmed(submitted_text: String) -> void:
 	if anima_id.is_empty() or anima_id != str(target.get("id", "")):
 		return
 	if nickname.is_empty():
-		_say(tr("ANIMA_RENAME_EMPTY"), true)
+		_say_error(tr("ANIMA_RENAME_EMPTY"), true)
 		call_deferred("_popup_rename")
 		return
 	if not AnimaDetailsView.is_valid_anima_name(nickname):
-		_say(tr("ANIMA_RENAME_INVALID"), true)
+		_say_error(tr("ANIMA_RENAME_INVALID"), true)
 		call_deferred("_popup_rename")
 		return
 	if _busy:
@@ -2115,7 +2122,7 @@ func _rename_confirmed(submitted_text: String) -> void:
 		return
 	if not res.ok or typeof(res.data) != TYPE_ARRAY or (res.data as Array).is_empty():
 		_set_busy(false)
-		_say(_anima_rename_error(str(res.error)), true)
+		_say_error(_anima_rename_error(str(res.error)), true)
 		call_deferred("_popup_rename")
 		return
 
@@ -2133,7 +2140,7 @@ func _rename_confirmed(submitted_text: String) -> void:
 	_refresh_stats()
 	_populate_collection()
 	_set_busy(false)
-	_say(tr("ANIMA_RENAME_SUCCESS") % nickname, true)
+	_say_success(tr("ANIMA_RENAME_SUCCESS") % nickname, true)
 	call_deferred("_maybe_prompt_seeker_onboarding")
 
 
@@ -2402,7 +2409,7 @@ func _complete_seeker_profile(
 	GameState.profile.merge(GameState.as_dict(res.data), true)
 	_seeker_onboarding_sheet.close()
 	_refresh_header()
-	_say(tr("SEEKER_CREATED"), true)
+	_say_success(tr("SEEKER_CREATED"), true)
 	call_deferred("_maybe_show_chapter_popup")
 
 
@@ -2495,12 +2502,12 @@ func _commit_atlas_publish(anima_id: String, publish: bool) -> void:
 		if publish and str(result.get("moderation_status", "")) == "pending":
 			# v2 dua-pass: masih tidak pasti sesudah opini kedua, bukan galat —
 			# masuk antrean manual, bukan langsung terbit atau ditolak.
-			_say(tr("GALLERY_SUBMITTED_FOR_REVIEW"), false)
+			_say_success(tr("GALLERY_SUBMITTED_FOR_REVIEW"), false)
 		else:
-			_say(tr("GALLERY_PUBLISHED") if publish else tr("GALLERY_UNPUBLISHED"), false)
+			_say_success(tr("GALLERY_PUBLISHED") if publish else tr("GALLERY_UNPUBLISHED"), false)
 		await _refresh_gallery_status(anima_id)
 	else:
-		_say(_gallery_error(res.error), true)
+		_say_error(_gallery_error(res.error), true)
 		if res.error == "GALLERY_MODERATION_REJECTED":
 			# `appeal_available` must be stated, not left to default: a rejection
 			# that just happened has no appeal on record yet, and defaulting to
@@ -2656,10 +2663,10 @@ func _commit_gallery_appeal(anima_id: String) -> void:
 		_set_busy(false)
 		return
 	if res.ok:
-		_say(tr("GALLERY_APPEAL_SUBMITTED"), false)
+		_say_success(tr("GALLERY_APPEAL_SUBMITTED"), false)
 		await _refresh_gallery_status(anima_id)
 	else:
-		_say(_gallery_error(res.error), true)
+		_say_error(_gallery_error(res.error), true)
 	_details_view.set_gallery_appeal_pending(false)
 	_set_busy(false)
 
@@ -2722,7 +2729,7 @@ func _open_seeker_profile() -> void:
 		return
 	_set_busy(false)
 	if not res.ok:
-		_say(tr("SEEKER_PROFILE_ERROR"), true)
+		_say_error(tr("SEEKER_PROFILE_ERROR"), true)
 		return
 	var profile := GameState.as_dict(res.data)
 	GameState.profile.merge(profile, true)
@@ -2832,7 +2839,7 @@ func _show_rename_seeker() -> void:
 
 func _rename_seeker(value: String) -> void:
 	if not SeekerOnboardingSheet.is_valid_seeker_name(value):
-		_say(tr("SEEKER_NAME_INVALID"), true)
+		_say_error(tr("SEEKER_NAME_INVALID"), true)
 		return
 	_set_busy(true)
 	var account_epoch := GameState.session_epoch
@@ -2841,7 +2848,7 @@ func _rename_seeker(value: String) -> void:
 		return
 	_set_busy(false)
 	if not res.ok:
-		_say(
+		_say_error(
 			tr("SEEKER_RENAME_COOLDOWN")
 			if res.error == "SEEKER_NAME_COOLDOWN"
 			else _seeker_error(res.error),
@@ -2850,7 +2857,7 @@ func _rename_seeker(value: String) -> void:
 		return
 	GameState.profile.merge(GameState.as_dict(res.data), true)
 	_refresh_header()
-	_say(tr("SEEKER_RENAME_SUCCESS") % str(GameState.profile.get("seeker_name", "")), true)
+	_say_success(tr("SEEKER_RENAME_SUCCESS") % str(GameState.profile.get("seeker_name", "")), true)
 	await _open_seeker_profile()
 
 
@@ -2860,7 +2867,7 @@ func _show_account_action() -> void:
 		_show_sign_in_confirmation()
 		return
 	if GameState.account_switch_blocked():
-		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
+		_say_warning(tr("SEEKER_SWITCH_BLOCKED"), true)
 		return
 	_modal_context = &"sign_out"
 	_shell_modal.open_confirm(
@@ -2873,13 +2880,13 @@ func _show_account_action() -> void:
 
 func _show_sign_in_confirmation() -> void:
 	if _busy:
-		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
+		_say_warning(tr("SEEKER_SWITCH_BLOCKED"), true)
 		return
 	if not GameState.is_anonymous():
 		_show_account_action()
 		return
 	if GameState.account_switch_blocked(true):
-		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
+		_say_warning(tr("SEEKER_SWITCH_BLOCKED"), true)
 		return
 	# Keep Guest Separate tidak menghapus apa pun, tapi ia meninggalkan seluruh Anima
 	# guest di akun yang tidak lagi terlihat — dan guest hanya pernah punya satu Scan,
@@ -2926,13 +2933,13 @@ func _show_transfer_confirmation() -> void:
 func _start_google_separate() -> void:
 	var res := await AuthFlow.start_google_separate()
 	if not bool(res.get("ok", false)):
-		_say(_account_switch_error(str(res.get("error", ""))), true)
+		_say_error(_account_switch_error(str(res.get("error", ""))), true)
 
 
 func _start_google_transfer() -> void:
 	var res := await AuthFlow.start_google_transfer()
 	if not bool(res.get("ok", false)):
-		_say(_account_switch_error(str(res.get("error", ""))), true)
+		_say_error(_account_switch_error(str(res.get("error", ""))), true)
 
 
 func _start_google_link() -> void:
@@ -2958,7 +2965,7 @@ func _sign_out() -> void:
 	var res := await AuthFlow.sign_out_to_guest()
 	if not bool(res.get("ok", false)):
 		_set_busy(false)
-		_say(_account_switch_error(str(res.get("error", ""))), true)
+		_say_error(_account_switch_error(str(res.get("error", ""))), true)
 
 
 func _account_switch_error(error: String) -> String:
@@ -3002,7 +3009,7 @@ func _on_auth_succeeded(mode: String, profile: Dictionary) -> void:
 		_current_anima = {}
 		_set_home_shell_state(&"empty")
 	_set_busy(false)
-	_say(tr(_account_success_key(mode)), true)
+	_say_success(tr(_account_success_key(mode)), true)
 	_resume_pending_publish()
 	call_deferred("_maybe_prompt_seeker_onboarding")
 	call_deferred("_refresh_chapter_announcements")
@@ -3087,7 +3094,7 @@ func _reset_account_presentation() -> void:
 
 func _on_auth_failed(error: String) -> void:
 	print("oauth error: %s" % error)
-	_say(
+	_say_error(
 		tr("SEEKER_UPGRADE_PENDING")
 		if error == "OAUTH_UPGRADE_PENDING"
 		else _account_switch_error(error),
@@ -3098,7 +3105,7 @@ func _on_auth_failed(error: String) -> void:
 func _show_delete_account_confirmation() -> void:
 	_seeker_menu_sheet.close()
 	if GameState.account_switch_blocked():
-		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
+		_say_warning(tr("SEEKER_SWITCH_BLOCKED"), true)
 		return
 	_modal_context = &"delete_account"
 	_shell_modal.open_confirm(
@@ -3112,7 +3119,7 @@ func _show_delete_account_confirmation() -> void:
 
 func _delete_account() -> void:
 	if GameState.account_switch_blocked():
-		_say(tr("SEEKER_SWITCH_BLOCKED"), true)
+		_say_warning(tr("SEEKER_SWITCH_BLOCKED"), true)
 		return
 	_set_busy(true)
 	var preserve_guest := not GameState.is_anonymous() and GameState.device_guest_expected
@@ -3121,20 +3128,20 @@ func _delete_account() -> void:
 		var prepared := await AuthFlow.prepare_device_guest()
 		if not bool(prepared.get("ok", false)):
 			_set_busy(false)
-			_say(tr("SEEKER_GUEST_RECOVERY_ERROR"), true)
+			_say_error(tr("SEEKER_GUEST_RECOVERY_ERROR"), true)
 			return
 		guest = GameState.as_dict(prepared.get("session"))
 	var res := await Backend.seeker("delete_account", {"confirmation": "DELETE"})
 	if not res.ok:
 		_set_busy(false)
-		_say(tr("ACCOUNT_DELETE_ERROR"), true)
+		_say_error(tr("ACCOUNT_DELETE_ERROR"), true)
 		return
 	if preserve_guest:
 		if guest.is_empty() or not GameState.activate_stored_session(guest):
 			GameState.clear_account_state(false)
 			_reset_account_presentation()
 			_set_busy(false)
-			_say(tr("SEEKER_GUEST_RECOVERY_ERROR"), true)
+			_say_error(tr("SEEKER_GUEST_RECOVERY_ERROR"), true)
 			return
 		GameState.discard_guest_local_state()
 	else:
@@ -3143,7 +3150,7 @@ func _delete_account() -> void:
 		if not bool(signed_in.get("ok", false)):
 			_reset_account_presentation()
 			_set_busy(false)
-			_say(tr("STATUS_ACCOUNT_ERROR"), true)
+			_say_error(tr("STATUS_ACCOUNT_ERROR"), true)
 			return
 	await _on_auth_succeeded("guest", {})
 
@@ -3175,7 +3182,7 @@ func _on_chapter_push_enabled(enabled: bool) -> void:
 
 func _on_chapter_push_failed() -> void:
 	GameState.set_chapter_push_enabled(false)
-	_say(tr("CHAPTER_PUSH_ERROR"), true)
+	_say_error(tr("CHAPTER_PUSH_ERROR"), true)
 
 
 func _seeker_error(error: String) -> String:
@@ -3205,17 +3212,17 @@ func _present_row(row: Dictionary) -> void:
 
 
 func _on_care_blocked(message: String) -> void:
-	_say(message, true)
+	_say_warning(message, true)
 
 
 func _perform_care(action: String) -> void:
 	if _busy or _current_anima.is_empty():
 		return
 	if CareRules.is_evolving(_current_anima):
-		_say(tr("EVOLUTION_CARE_BLOCKED"), true)
+		_say_warning(tr("EVOLUTION_CARE_BLOCKED"), true)
 		return
 	if not GameState.pending_care.is_empty():
-		_say(tr("ERROR_CARE_PENDING"), true)
+		_say_warning(tr("ERROR_CARE_PENDING"), true)
 		return
 	if action == "feed":
 		_open_feed_picker()
@@ -3239,10 +3246,10 @@ func _commit_care(action: String, item_id: String = "", on_react: Callable = Cal
 	if anima_id.is_empty():
 		return
 	if CareRules.is_evolving(_current_anima):
-		_say(tr("EVOLUTION_CARE_BLOCKED"), true)
+		_say_warning(tr("EVOLUTION_CARE_BLOCKED"), true)
 		return
 	if (action == "feed" or action == "use_item") and _is_sleeping(_current_anima):
-		_say(tr("ERROR_SLEEPING_CONSUME"), true)
+		_say_warning(tr("ERROR_SLEEPING_CONSUME"), true)
 		return
 	# Care Dock sudah menolak ini sebelum sheet-nya kebuka (home_view.gd
 	# _request_feed), tapi Bag dibuka lewat BagButton juga tanpa lewat Care
@@ -3250,13 +3257,13 @@ func _commit_care(action: String, item_id: String = "", on_react: Callable = Cal
 	# tertutup, bukan cuma salah satunya. Tanpa ini animasi terbang tetap
 	# main walau server menolak dan quantity tidak berkurang.
 	if action == "feed" and CareRules.need_is_full(_current_anima.get("care"), "hunger"):
-		_say(tr("ERROR_NEED_FULL"), true)
+		_say_warning(tr("ERROR_NEED_FULL"), true)
 		return
 	if action == "use_item" and CareRules.need_is_full(_current_anima.get("care"), "energy"):
-		_say(tr("ERROR_NEED_FULL"), true)
+		_say_warning(tr("ERROR_NEED_FULL"), true)
 		return
 	if not GameState.pending_care.is_empty():
-		_say(tr("ERROR_CARE_PENDING"), true)
+		_say_warning(tr("ERROR_CARE_PENDING"), true)
 		return
 	var pending := GameState.begin_care(anima_id, action, item_id)
 	if on_react.is_valid():
@@ -3340,7 +3347,7 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> bool:
 			if action == "feed" or action == "use_item":
 				_refresh_inventory()
 			if show_feedback and not _shell_modal.visible:
-				_say(_care_success_message(action), show_feedback)
+				_say_success(_care_success_message(action), show_feedback)
 			return true
 		return false
 
@@ -3348,7 +3355,7 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> bool:
 	# selamanya akan mengunci semua tombol care walau saldo/kondisinya berubah.
 	if res.code >= 400 and res.code < 500:
 		GameState.finish_care()
-	_say(_care_error_message(res.error))
+	_say_error(_care_error_message(res.error))
 	return false
 
 
@@ -3364,7 +3371,7 @@ func _sync_active_care(show_error: bool) -> void:
 		_apply_care_response(GameState.as_dict(res.data))
 	elif show_error:
 		print("care sync error: %s" % res.error)
-		_say(tr("ERROR_CARE_SYNC"), true)
+		_say_error(tr("ERROR_CARE_SYNC"), true)
 
 
 func _summon_current_anima() -> void:
@@ -4568,13 +4575,13 @@ func _on_pick_pressed() -> void:
 	if _busy or _update_required:
 		return
 	if not GameState.pending_evolution.is_empty():
-		_say(tr("EVOLUTION_ALREADY_ACTIVE"), true)
+		_say_warning(tr("EVOLUTION_ALREADY_ACTIVE"), true)
 		return
 	if _guest_scan_locked():
 		_show_sign_in_confirmation()
 		return
 	if _cores_remaining() == 0:
-		_say(tr("STATUS_NEED_CORE"), true)
+		_say_warning(tr("STATUS_NEED_CORE"), true)
 		return
 	_switch_destination(BottomNav.SCAN)
 	if _picker == null:
@@ -4608,7 +4615,7 @@ func _on_photo_taken(images: Dictionary) -> void:
 		if buffer is PackedByteArray and not (buffer as PackedByteArray).is_empty():
 			_scan_bytes(buffer, "jpg")
 			return
-	_say(tr("STATUS_CAMERA_READ_ERROR"))
+	_say_error(tr("STATUS_CAMERA_READ_ERROR"))
 
 
 func _on_camera_denied(_permission: String) -> void:
@@ -4617,12 +4624,12 @@ func _on_camera_denied(_permission: String) -> void:
 	# menempel pada getCameraImage() berikutnya — jadi menekan tombolnya lagi
 	# memang jalan pemulihannya, dan pemain harus diberi tahu itu. Tanpa kalimat
 	# ini, satu penolakan terlihat seperti tombol yang rusak permanen.
-	_say(tr("STATUS_CAMERA_PERMISSION"))
+	_say_warning(tr("STATUS_CAMERA_PERMISSION"))
 
 
 func _on_picker_error(message: String) -> void:
 	print("camera error: %s" % message)
-	_say(tr("STATUS_CAMERA_ERROR"))
+	_say_error(tr("STATUS_CAMERA_ERROR"))
 
 
 ## Jalur desktop. Tidak ada resize di sini, dan itu disengaja: FileDialog memberi
@@ -4631,7 +4638,7 @@ func _scan_file(path: String) -> void:
 	var bytes := FileAccess.get_file_as_bytes(path)
 	if bytes.is_empty():
 		print("photo read error: %s" % path)
-		_say(tr("STATUS_PHOTO_READ_ERROR"))
+		_say_error(tr("STATUS_PHOTO_READ_ERROR"))
 		return
 	_scan_bytes(bytes, path.get_extension().to_lower())
 
@@ -4648,7 +4655,7 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 	if bytes.size() > MAX_FOTO_BYTE:
 		# Ditolak di sini juga, bukan hanya oleh bucket: 6 MB yang ditolak setelah
 		# terkirim adalah kuota data pemain yang terbuang tanpa alasan.
-		_say(tr("STATUS_PHOTO_TOO_LARGE") % LocaleManager.format_megabytes(bytes.size()))
+		_say_warning(tr("STATUS_PHOTO_TOO_LARGE") % LocaleManager.format_megabytes(bytes.size()))
 		_set_busy(false)
 		return
 
@@ -4666,7 +4673,7 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 	if not up.ok:
 		GameState.finish_scan()
 		print("upload error: %s" % up.error)
-		_say(tr("STATUS_UPLOAD_ERROR"))
+		_say_error(tr("STATUS_UPLOAD_ERROR"))
 		_restore_previous_anima()
 		_set_busy(false)
 		return
@@ -4699,23 +4706,23 @@ func _handle_create_result(res: Dictionary, account_epoch: int) -> void:
 	if not res.ok:
 		match res.error:
 			"GUEST_SCAN_USED":
-				_say(tr("STATUS_SIGN_IN_TO_SCAN"), true)
+				_say_warning(tr("STATUS_SIGN_IN_TO_SCAN"), true)
 			"NO_SCAN_CHARGE":
-				_say(tr("STATUS_NO_SCAN_CHARGE"))
+				_say_warning(tr("STATUS_NO_SCAN_CHARGE"))
 			"NO_CORE":
 				# Hasil Vision sudah dibayar dan disimpan server sebagai Temuan
 				# Tertunda, jadi ini bukan kerugian — pemain tidak perlu memfoto
 				# ulang benda yang mungkin sudah tidak ada di dekatnya.
-				_say(tr("STATUS_NO_CORE"))
+				_say_warning(tr("STATUS_NO_CORE"))
 			"SPEND_CAP":
-				_say(tr("STATUS_SPEND_CAP"))
+				_say_warning(tr("STATUS_SPEND_CAP"))
 			"VIBE_UNAVAILABLE":
-				_say(tr("STATUS_VIBE_UNAVAILABLE"), true)
+				_say_warning(tr("STATUS_VIBE_UNAVAILABLE"), true)
 			"INVALID_VIBE":
-				_say(tr("STATUS_VIBE_UNAVAILABLE"), true)
+				_say_warning(tr("STATUS_VIBE_UNAVAILABLE"), true)
 			_:
 				print("create_anima error: %s" % res.error)
-				_say(tr("STATUS_SCAN_ERROR"))
+				_say_error(tr("STATUS_SCAN_ERROR"))
 		GameState.finish_scan()
 		_restore_previous_anima()
 		return
@@ -4723,7 +4730,7 @@ func _handle_create_result(res: Dictionary, account_epoch: int) -> void:
 	var data := GameState.as_dict(res.data)
 
 	if str(data.get("gate", "")) == "rejected":
-		_say(
+		_say_warning(
 			tr("STATUS_GATE_REJECTED") % LocaleManager.gate_reason(str(data.get("reason", "")))
 		)
 		GameState.finish_scan()
@@ -4754,7 +4761,7 @@ func _handle_create_result(res: Dictionary, account_epoch: int) -> void:
 		return
 
 	if anima_id.is_empty():
-		_say(tr("STATUS_MISSING_ANIMA_ID"))
+		_say_error(tr("STATUS_MISSING_ANIMA_ID"))
 		_restore_previous_anima()
 		return
 
@@ -4802,7 +4809,7 @@ func _wait_for_hatch(anima_id: String) -> void:
 				return
 			"failed":
 				# Server sudah mengembalikan Core-nya sendiri lewat refund_generation.
-				_say(tr("STATUS_GENERATION_FAILED"))
+				_say_error(tr("STATUS_GENERATION_FAILED"))
 				var profile_res := await Backend.fetch_profile()
 				if not Backend.response_applies(profile_res, account_epoch):
 					return
@@ -4914,7 +4921,7 @@ func _prepare_anima_art(
 	var account_epoch := GameState.session_epoch
 	if species_key.is_empty() or color_bucket.is_empty():
 		if report_status:
-			_say(tr("STATUS_SPECIES_DATA_ERROR"))
+			_say_error(tr("STATUS_SPECIES_DATA_ERROR"))
 		return {"ok": false}
 
 	var use_anima_cache := not anima_id.is_empty()
@@ -4936,7 +4943,7 @@ func _prepare_anima_art(
 		if not art.ok or typeof(art.data) != TYPE_ARRAY or (art.data as Array).is_empty():
 			print("art library error: %s" % art.error)
 			if report_status:
-				_say(tr("STATUS_ART_LIBRARY_ERROR"))
+				_say_error(tr("STATUS_ART_LIBRARY_ERROR"))
 			return {"ok": false}
 		var row := GameState.as_dict((art.data as Array)[0])
 		sheet_path = str(row.get("sheet_path", ""))
@@ -4957,7 +4964,7 @@ func _prepare_anima_art(
 	if not download.ok:
 		print("art download error: %s" % download.error)
 		if report_status:
-			_say(tr("STATUS_ART_DOWNLOAD_ERROR"))
+			_say_error(tr("STATUS_ART_DOWNLOAD_ERROR"))
 		return {"ok": false}
 
 	var stored: Dictionary
@@ -4973,14 +4980,14 @@ func _prepare_anima_art(
 	if not stored.ok:
 		print("art save error: %s" % stored.error)
 		if report_status:
-			_say(tr("STATUS_ART_SAVE_ERROR"))
+			_say_error(tr("STATUS_ART_SAVE_ERROR"))
 		return {"ok": false}
 
 	var loaded := AnimaLoader.load_from_manifest(manifest_path)
 	if not loaded.get("ok", false):
 		print("art load error: %s" % loaded.get("error", "?"))
 		if report_status:
-			_say(tr("STATUS_ART_LOAD_ERROR"))
+			_say_error(tr("STATUS_ART_LOAD_ERROR"))
 	return loaded
 
 
@@ -5598,7 +5605,7 @@ func _open_shop(tab: String = "food") -> void:
 	if _destination != BottomNav.HOME:
 		return
 	if GameState.shop_locked():
-		_say(tr("ERROR_SHOP_IN_BATTLE"), true)
+		_say_warning(tr("ERROR_SHOP_IN_BATTLE"), true)
 		return
 	if _shop_sheet.is_shop_open() and tab == "food":
 		return
@@ -5641,7 +5648,7 @@ func _buy_catalog_item(item: Dictionary) -> void:
 	if _busy or not GameState.pending_purchase.is_empty():
 		return
 	if GameState.shop_locked():
-		_say(tr("ERROR_SHOP_IN_BATTLE"), true)
+		_say_warning(tr("ERROR_SHOP_IN_BATTLE"), true)
 		return
 	var item_id := str(item.get("id", ""))
 	var price := int(item.get("price", 0))
@@ -5748,7 +5755,7 @@ func _use_catalog_item(item: Dictionary) -> void:
 		(Catalog.is_food(item) or Catalog.is_energy(item))
 		and _is_sleeping(_current_anima)
 	):
-		_say(tr("ERROR_SLEEPING_CONSUME"), true)
+		_say_warning(tr("ERROR_SLEEPING_CONSUME"), true)
 		return
 	var item_id := str(item.get("id", ""))
 	# Sebelum close(): sheet men-queue_free() barisnya begitu ditutup, jadi
@@ -5802,7 +5809,7 @@ func _resume_pending_purchase() -> void:
 	if pending.is_empty():
 		return
 	if await _send_pending_purchase(pending):
-		_say(tr("FEEDBACK_PURCHASE"), true)
+		_say_success(tr("FEEDBACK_PURCHASE"), true)
 
 
 func _send_pending_purchase(pending: Dictionary) -> bool:
@@ -5830,7 +5837,7 @@ func _send_pending_purchase(pending: Dictionary) -> bool:
 		return true
 	if res.code >= 400 and res.code < 500:
 		GameState.finish_purchase()
-	_say(_care_error_message(str(res.error)), true)
+	_say_error(_care_error_message(str(res.error)), true)
 	return false
 
 
@@ -6052,10 +6059,11 @@ func _show_level_up_stats(
 	)
 
 
-func _say(text: String, transient: bool = false) -> void:
+func _say(text: String, transient: bool = false, type: ToastType = ToastType.GENERAL) -> void:
 	_toast_revision += 1
 	var revision := _toast_revision
 	_status.text = text
+	_status_panel.add_theme_stylebox_override("panel", TOAST_STYLES[type])
 	_scan_view.set_status(text)
 	_relayout_toast_after_minimum_update(revision)
 	if _destination == BottomNav.SCAN:
@@ -6066,6 +6074,18 @@ func _say(text: String, transient: bool = false) -> void:
 	print(text)
 	if transient and _status_panel.visible:
 		_hide_toast_later(revision)
+
+
+func _say_success(text: String, transient: bool = false) -> void:
+	_say(text, transient, ToastType.SUCCESS)
+
+
+func _say_warning(text: String, transient: bool = false) -> void:
+	_say(text, transient, ToastType.WARNING)
+
+
+func _say_error(text: String, transient: bool = false) -> void:
+	_say(text, transient, ToastType.ERROR)
 
 
 func _relayout_toast_after_minimum_update(revision: int) -> void:
@@ -6116,7 +6136,7 @@ func _apply_profile_refresh(profile_res: Dictionary) -> void:
 	var current := int(GameState.profile.get("genesis_cores", 0))
 	var previous := int(profile_res.get("previous_genesis_cores", _last_known_cores))
 	if previous >= 0 and current > previous:
-		_say(tr("FEEDBACK_WEEKLY_CORE") % LocaleManager.format_integer(current - previous), true)
+		_say_success(tr("FEEDBACK_WEEKLY_CORE") % LocaleManager.format_integer(current - previous), true)
 	_last_known_cores = current
 
 
@@ -6441,7 +6461,7 @@ func _capture_and_quit(path: String) -> void:
 
 func _run_hatch_demo() -> void:
 	if _anima.sprite_frames == null:
-		_say(tr("STATUS_HATCH_DEMO_MISSING"))
+		_say_error(tr("STATUS_HATCH_DEMO_MISSING"))
 		return
 	_switch_destination(BottomNav.SCAN)
 	_set_busy(true)
@@ -6452,7 +6472,7 @@ func _run_hatch_demo() -> void:
 	await _incubator.burst()
 	await _anima.hatch_reveal()
 	_set_busy(false)
-	_say(tr("STATUS_HATCH_DEMO_DONE"), true)
+	_say_success(tr("STATUS_HATCH_DEMO_DONE"), true)
 
 
 func _run_evolve_chamber_demo() -> void:
@@ -6499,7 +6519,7 @@ func _run_evolve_demo() -> void:
 	_switch_destination(ANIMA_PROFILE_DEST)
 	_details_view.set_evolution_enabled(true)
 	_details_view.set_anima(demo, _thumbnail_for(demo))
-	_say(tr("COLLECTION_READY_EVOLVE"), true)
+	_say_success(tr("COLLECTION_READY_EVOLVE"), true)
 
 
 func _run_collection_sheet_demo(show_loading: bool = false) -> void:
@@ -6732,7 +6752,7 @@ func _run_empty_demo() -> void:
 
 func _run_summon_demo() -> void:
 	if _anima.sprite_frames == null:
-		_say(tr("STATUS_HATCH_DEMO_MISSING"))
+		_say_error(tr("STATUS_HATCH_DEMO_MISSING"))
 		return
 	_switch_destination(BottomNav.HOME)
 	_set_busy(true)

@@ -84,7 +84,7 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"HudSurface"
 
-[node name="Column" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud"]
+[node name="Column" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud" unique_id=1638741850]
 layout_mode = 2
 theme_override_constants/separation = 20
 
@@ -115,34 +115,34 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(124, 59)
 layout_mode = 2
 
-[node name="BottomSection" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column"]
+[node name="BottomSection" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column" unique_id=748251911]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="AnimaInfo" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection"]
+[node name="AnimaInfo" type="VBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection" unique_id=1050601278]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_constants/separation = 4
 
-[node name="HudAnimaName" type="Label" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/AnimaInfo"]
+[node name="HudAnimaName" type="Label" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/AnimaInfo" unique_id=966117280]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
 theme_override_font_sizes/font_size = 34
 clip_text = true
 
-[node name="HudAnimaMeta" type="Label" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/AnimaInfo"]
+[node name="HudAnimaMeta" type="Label" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/AnimaInfo" unique_id=1651176920]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 24
 clip_text = true
 
-[node name="RightButtons" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection"]
+[node name="RightButtons" type="HBoxContainer" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection" unique_id=1480291924]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
@@ -159,12 +159,6 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
 theme_type_variation = &"GhostChip"
-
-[node name="Value" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons/BagButton/Column"]
-theme_type_variation = &"GhostChipValueLabel"
-
-[node name="Value" parent="UI/SafeMargin/Shell/TopHud/Column/BottomSection/RightButtons/ShopButton/Column"]
-theme_type_variation = &"GhostChipValueLabel"
 
 [node name="ViewStack" type="Control" parent="UI/SafeMargin/Shell" unique_id=1504614856]
 layout_mode = 2
@@ -265,7 +259,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 follow_focus = true
 horizontal_scroll_mode = 0
-scroll_deadzone = 10
 
 [node name="Content" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/Scroll" unique_id=1286419490]
 layout_mode = 2
@@ -782,7 +775,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 follow_focus = true
 horizontal_scroll_mode = 0
-scroll_deadzone = 10
 
 [node name="IncubatingColumn" type="VBoxContainer" parent="UI/SafeMargin/Shell/ViewStack/SynthesisLabView/LabSurface/Column/SynthesisIncubatingView/SynthesisIncubatingScroll" unique_id=572806015]
 layout_mode = 2
