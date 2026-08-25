@@ -78,11 +78,10 @@ func open() -> void:
 	visible = true
 	_pin_full_rect()
 	modulate.a = 0.0
-	# Dynamic rows and queue_free() settle at frame end. Starting the tween
-	# sooner captures yesterday's panel height; its deferred relayout then moves
-	# the anchors under the running tween, leaving the first open floating.
-	# Hidden instances also report size 0 until laid out; Android can need a
-	# second frame before FULL_RECT fills the host.
+	# Dynamic rows dan queue_free() settle di frame end. Tween yang dimulai terlalu
+	# awal membaca panel height "kemarin" sehingga panel berangkat dari posisi salah
+	# (terlalu tinggi/terlalu rendah — symptom "terbang ke atas"). Menunggu satu
+	# frame penuh dan memverifikasi size ≥ 1 memastikan layout sudah settle.
 	if is_inside_tree():
 		await get_tree().process_frame
 		if token != _open_token or not is_instance_valid(self) or not visible:
@@ -130,8 +129,7 @@ func fit_to_content() -> void:
 	_panel.offset_left = UiJuice.SHEET_SIDE_INSET
 	_panel.offset_right = -UiJuice.SHEET_SIDE_INSET
 	_panel.offset_top = -height
-	_panel.offset_bottom = 0.0
-	var rest := Vector2(UiJuice.SHEET_SIDE_INSET, host_h - height)
+	var rest := UiJuice.sheet_rest_position(self, _panel)
 	_panel.set_meta(UiJuice.META_SHEET_POSITION, rest)
 	var tween: Variant = get_meta(UiJuice.META_TWEEN) if has_meta(UiJuice.META_TWEEN) else null
 	if tween is Tween and is_instance_valid(tween) and (tween as Tween).is_running():

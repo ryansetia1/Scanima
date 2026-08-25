@@ -34,16 +34,17 @@ mouse_filter = 2
 
 [node name="Column" type="VBoxContainer" parent="LoadingScreenRoot/Center"]
 layout_mode = 2
-theme_override_constants/separation = 28
+theme_override_constants/separation = 18
+alignment = 1
 
-[node name="LoadingMessage" type="Label" parent="LoadingScreenRoot/Center/Column"]
+[node name="BrandTitle" type="Label" parent="LoadingScreenRoot/Center/Column"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(480, 0)
 layout_mode = 2
-theme_type_variation = &"PageTitleLabel"
-text = "STATUS_LOADING"
+theme_type_variation = &"BrandLabel"
+theme_override_colors/font_color = Color(0.82, 0.97, 1, 1)
+theme_override_font_sizes/font_size = 40
+text = "APP_NAME"
 horizontal_alignment = 1
-autowrap_mode = 2
 
 [node name="LoadingSweep" type="Control" parent="LoadingScreenRoot/Center/Column"]
 unique_name_in_owner = true
@@ -59,6 +60,17 @@ offset_right = 100.0
 offset_bottom = 6.0
 mouse_filter = 2
 color = Color(0.278, 0.902, 1, 1)
+
+[node name="LoadingMessage" type="Label" parent="LoadingScreenRoot/Center/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+theme_type_variation = &"PageTitleLabel"
+theme_override_colors/font_color = Color(0.68, 0.82, 0.98, 0.9)
+theme_override_font_sizes/font_size = 22
+text = "STATUS_LOADING"
+horizontal_alignment = 1
+autowrap_mode = 2
 
 [node name="ShowDelay" type="Timer" parent="."]
 unique_name_in_owner = true

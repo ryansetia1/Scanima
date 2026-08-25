@@ -548,12 +548,14 @@ Seluruh toast/banner kini diposisikan pada **30% dari atas layar** (golden focal
   (`BattleArena` / `TeamBattleStage`), duduk pas di bawah HP bar fighter dan di atas
   animasi pertarungan.
 
-Layar loading (`LoadingScreen` / `ScanimaBackground`):
+Layar loading (`LoadingScreen` / `ScanimaBackground` / Web Shell):
 - Engine boot splash image Godot dimatikan (`application/boot_splash/show_image=false`, `boot_splash/bg_color=Color(0.018, 0.026, 0.07, 1)`, `boot_splash/minimum_display_time=0`) agar startup langsung meluncur mulus ke loading screen Scanima tanpa jeda/logo engine.
 - Animasi chamber cincin berputar diposisikan tepat di tengah layar (`CHAMBER_Y = 0.5`).
 - Elips glow biru terang di bawah cincin chamber dihapus agar tampilan lebih bersih dan modern.
-- Teks loading (`LoadingMessage`) dan loading sweep progress bar (`LoadingSweep`)
-  ditempatkan di tengah layar via `CenterContainer` penuh.
+- Teks judul brand "SCANIMA" (`BrandTitle`), loading sweep progress bar (`LoadingSweep`), dan teks loading (`LoadingMessage`) disusun rapi berurutan tepat di tengah layar (`CenterContainer` penuh).
+- Web HTML export shell template (`game/web_shell.html` dan `build/web/index.html`) diperbarui dengan judul neon glowing "SCANIMA" dan loading bar presisi di tengah viewport sebelum engine WASM selesai diunduh.
+- Jembatan foto Web (`_request_web_photo` di `scan_flow.gd`) disederhanakan ke pemilih berkas murni (`accept="image/*"`) tanpa modal webcam WebRTC yang rentan masalah izin pada desktop browser, sambil tetap membuka kamera/galeri secara native pada mobile browser.
+- Perbaikan Bottom Sheet fly-up bug di `ui_bottom_sheet.gd`: `open()` kini memvalidasi `_panel.get_combined_minimum_size().y >= 1.0` dan menunggu layout settle penuh sebelum memulai animasi kemunculan agar panel tidak beranjak dari posisi salah yang membuatnya seolah terbang ke atas.
 
 Relayout Navigasi Tabbing Animas & Unifikasi UI Sub-tab:
 - Tombol **Synthesis Lab** di header `CollectionView` dihapus dan dipindahkan menjadi sub-tab di antara **Collection** dan **Atlas** (`CollectionTabs`: `Collection` | `Synthesis` | `Atlas`), dengan label ringkas `Synthesis` (`COLLECTION_TAB_SYNTHESIS`).
@@ -943,3 +945,4 @@ Indeks dokumen selengkapnya ada di [README.md](README.md); panduan pemain di
 5. **Perjelas Copy Vibe**: `SCAN_VIBE_TITLE` diperbarui menjadi **"Choose Your Anima Vibe"** pada `locales/ui.csv`.
 6. **Home Single CTA Fix**: `_primary_action.visible` pada `home_view.gd` diatur hanya aktif pada state `error`, sehingga pada state `empty` hanya tombol `ScanCtaButton` di tengah `StageSpace` yang tampil, menghilangkan tombol kembar di bagian bawah Home.
 7. **UiModal Autowrap Fit-to-Content**: Diberikan lantai lebar wrap `custom_minimum_size.x = 520.0` pada `ModalBody` (`ui_modal.tscn` dan `ui_modal.gd`) untuk mencegah regresi pengukuran autowrap Godot (godotengine/godot#83546) yang sebelumnya menyebabkan dialog melapor tinggi absurd dan memanjang kosong. Dialog kini pas dan rapat membungkus kontennya.
+8. **Web Build Native Camera & Desktop Webcam Support**: Ditambahkan jembatan `JavaScriptBridge` pada `scan_flow.gd` (`_request_web_photo` dan `_on_web_file_selected`) saat `OS.has_feature("web")`. Pada browser mobile (iOS/Android), digunakan HTML `<input type="file" accept="image/*" capture="environment">` untuk membuka kamera bawaan HP; pada browser desktop (MacBook/PC), digunakan modal WebRTC `getUserMedia` (`Webcam Viewfinder`) live stream dengan preview mirrored dan tombol "Take Photo" un-mirrored, dilengkapi auto-resize canvas client-side ke `FOTO_MAX_PX` (1280px, JPEG 85%). Alur Android native APK (`GodotGetImage`) tetap tidak tersentuh.

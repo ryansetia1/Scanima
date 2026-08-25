@@ -49,6 +49,7 @@ const SWEEP_SEC := 1.2
 static var _singleton: LoadingScreen
 
 @onready var _screen: Control = %LoadingScreenRoot
+@onready var _brand_title: Label = %BrandTitle
 @onready var _message: Label = %LoadingMessage
 @onready var _track: Control = %LoadingSweep
 @onready var _spark: ColorRect = %LoadingSpark
@@ -105,6 +106,8 @@ static func _instance() -> LoadingScreen:
 func _ready() -> void:
 	_screen.visible = false
 	_screen.modulate.a = 0.0
+	if _brand_title != null:
+		_brand_title.text = tr("APP_NAME")
 	_delay.timeout.connect(_paint)
 
 

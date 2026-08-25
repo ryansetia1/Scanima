@@ -235,6 +235,7 @@ var _chapter_push: ChapterPush
 
 ## Singleton plugin Android, null di desktop dan di test headless.
 var _picker: Object = null
+var _web_file_callback: JavaScriptObject = null
 
 
 ## Relay gulir sentuh dipasang di sini, bukan di `_ready()`: seluruh anak shell
@@ -4572,6 +4573,13 @@ func _setup_picker() -> void:
 	_dialog.title = tr("FILE_DIALOG_TITLE")
 	_dialog.ok_button_text = tr("FILE_DIALOG_ACCEPT")
 	_dialog.filters = PackedStringArray(["*.jpg,*.jpeg,*.png ; %s" % tr("FILE_DIALOG_FILTER")])
+	if OS.has_feature("web"):
+		if _web_file_callback == null:
+			_web_file_callback = JavaScriptBridge.create_callback(_on_web_file_selected)
+			var window := JavaScriptBridge.get_interface("window")
+			if window != null:
+				window.scanima_on_photo_selected = _web_file_callback
+		return
 	if _picker != null:
 		return
 	if not Engine.has_singleton("GodotGetImage"):
@@ -4613,6 +4621,12 @@ func _on_pick_pressed() -> void:
 		_say_warning(tr("STATUS_NEED_CORE"), true)
 		return
 	_switch_destination(BottomNav.SCAN)
+	if OS.has_feature("web"):
+		if is_instance_valid(_photo_source_sheet):
+			_photo_source_sheet.open_chooser()
+		else:
+			_request_web_photo()
+		return
 	if _picker == null:
 		_dialog.popup_centered_ratio(0.9)
 		return
@@ -4626,15 +4640,114 @@ func _on_pick_pressed() -> void:
 
 
 func _request_camera_photo() -> void:
+	if OS.has_feature("web"):
+		_request_web_photo()
+		return
 	if _picker == null:
 		return
 	_picker.getCameraImage()
 
 
 func _request_gallery_photo() -> void:
+	if OS.has_feature("web"):
+		_request_web_photo()
+		return
 	if _picker == null:
 		return
 	_picker.getGalleryImage()
+
+
+func _request_web_photo() -> void:
+	if not OS.has_feature("web"):
+		return
+	# Desktop browser tidak mendukung 'capture=environment' dan webcam modal sering
+	# bermasalah dengan izin perangkat/WebRTC. Gunakan file picker murni (accept='image/*')
+	# yang di mobile tetap otomatis menawarkan kamera & galeri, dan di desktop membuka
+	# pemilih berkas/galeri secara instan.
+	var js_template := """
+		(function() {
+			var maxPx = __MAX_PX__;
+			var quality = __QUALITY__;
+			var input = document.getElementById('scanima_file_input');
+			if (!input) {
+				input = document.createElement('input');
+				input.id = 'scanima_file_input';
+				input.type = 'file';
+				input.style.display = 'none';
+				document.body.appendChild(input);
+			}
+			input.accept = 'image/*';
+			input.removeAttribute('capture');
+			input.value = '';
+			input.onchange = function(e) {
+				var file = e.target.files && e.target.files[0];
+				if (!file) return;
+				var reader = new FileReader();
+				reader.onload = function(evt) {
+					var rawDataUrl = evt.target.result;
+					var img = new Image();
+					img.onload = function() {
+						try {
+							var width = img.width;
+							var height = img.height;
+							if (width > maxPx || height > maxPx) {
+								if (width > height) {
+									height = Math.round((height * maxPx) / width);
+									width = maxPx;
+								} else {
+									width = Math.round((width * maxPx) / height);
+									height = maxPx;
+								}
+							}
+							var canvas = document.createElement('canvas');
+							canvas.width = width;
+							canvas.height = height;
+							var ctx = canvas.getContext('2d');
+							ctx.drawImage(img, 0, 0, width, height);
+							var resizedUrl = canvas.toDataURL('image/jpeg', quality);
+							if (window.scanima_on_photo_selected) {
+								window.scanima_on_photo_selected(resizedUrl);
+							}
+						} catch (err) {
+							if (window.scanima_on_photo_selected) {
+								window.scanima_on_photo_selected(rawDataUrl);
+							}
+						}
+					};
+					img.onerror = function() {
+						if (window.scanima_on_photo_selected) {
+							window.scanima_on_photo_selected(rawDataUrl);
+						}
+					};
+					img.src = rawDataUrl;
+				};
+				reader.readAsDataURL(file);
+			};
+			input.click();
+		})();
+	"""
+	var js_code := js_template \
+		.replace("__MAX_PX__", str(FOTO_MAX_PX)) \
+		.replace("__QUALITY__", str(float(FOTO_QUALITY) / 100.0))
+	JavaScriptBridge.eval(js_code, true)
+
+
+func _on_web_file_selected(args: Array) -> void:
+	if args.is_empty():
+		return
+	var data_url := str(args[0])
+	var comma_idx := data_url.find(",")
+	if comma_idx == -1:
+		_say_error(tr("STATUS_PHOTO_READ_ERROR"))
+		return
+	var header := data_url.substr(0, comma_idx)
+	var base64_data := data_url.substr(comma_idx + 1)
+	var is_png := header.contains("image/png")
+	var bytes := Marshalls.base64_to_raw(base64_data)
+	if bytes.is_empty():
+		_say_error(tr("STATUS_PHOTO_READ_ERROR"))
+		return
+	_scan_bytes(bytes, "png" if is_png else "jpg")
 
 
 ## Dictionary karena metode yang sama melayani pilih-banyak gambar. Isinya bisa

@@ -451,8 +451,10 @@ static func sheet_host_size(overlay: Control, panel: Control) -> Vector2:
 ## so a rest position of x=0 would quietly undo the inset every time the sheet
 ## animated into place.
 static func sheet_rest_position(overlay: Control, panel: Control) -> Vector2:
+	var host_h := sheet_host_size(overlay, panel).y
 	var height := maxf(panel.get_combined_minimum_size().y, 1.0)
-	return Vector2(SHEET_SIDE_INSET, sheet_host_size(overlay, panel).y - height)
+	var rest_y := maxf(host_h * 0.06, host_h - height)
+	return Vector2(SHEET_SIDE_INSET, rest_y)
 
 
 static func show_bottom_sheet(overlay: Control, panel: Control) -> void:
