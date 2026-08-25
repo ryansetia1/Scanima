@@ -129,6 +129,7 @@ func fit_to_content() -> void:
 	_panel.offset_left = UiJuice.SHEET_SIDE_INSET
 	_panel.offset_right = -UiJuice.SHEET_SIDE_INSET
 	_panel.offset_top = -height
+	_panel.offset_bottom = 0.0
 	var rest := UiJuice.sheet_rest_position(self, _panel)
 	_panel.set_meta(UiJuice.META_SHEET_POSITION, rest)
 	var tween: Variant = get_meta(UiJuice.META_TWEEN) if has_meta(UiJuice.META_TWEEN) else null

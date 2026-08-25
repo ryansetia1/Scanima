@@ -40,6 +40,8 @@ const EVOLUTION_POLL_RETRY_SEC := 15.0
 const SYNTHESIS_POLL_INTERVAL_SEC := 5.0
 const SYNTHESIS_POLL_TIMEOUT_SEC := 10.0 * 60.0
 const SYNTHESIS_POLL_RETRY_SEC := 15.0
+const SYNTHESIS_CORE_COST := 1
+const SYNTHESIS_BITS_COST := 250
 const MAX_FOTO_BYTE := 6 * 1024 * 1024
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 
@@ -836,13 +838,24 @@ func _attempt_synthesis(payload: Dictionary) -> void:
 	if not GameState.pending_synthesis.is_empty():
 		_say_warning(tr("SYNTHESIS_ALREADY_ACTIVE"), true)
 		return
+	# Root-cause gate: the server debits Core+Bits atomically in attempt_synthesis
+	# and only then reports NO_CORE/NO_BITS, so without this check the client
+	# already committed to the incubating/generating UI before learning it was
+	# always going to fail. Checked before the cost confirmation dialog opens,
+	# so a doomed attempt never even offers it.
+	if int(GameState.profile.get("genesis_cores", 0)) < SYNTHESIS_CORE_COST:
+		_say_warning(tr("STATUS_NEED_CORE"), true)
+		return
+	if int(GameState.profile.get("bits", 0)) < SYNTHESIS_BITS_COST:
+		_say_warning(tr("ERROR_NO_BITS"), true)
+		return
 	_pending_synthesis_payload = payload.duplicate(true)
 	_modal_context = &"synthesis_attempt"
 	_shell_modal.open_confirm(
 		tr("SYNTHESIS_CONFIRM_TITLE"),
 		tr("SYNTHESIS_CONFIRM_BODY") % [
-			LocaleManager.format_integer(1),
-			LocaleManager.format_integer(250),
+			LocaleManager.format_integer(SYNTHESIS_CORE_COST),
+			LocaleManager.format_integer(SYNTHESIS_BITS_COST),
 		],
 		tr("SYNTHESIS_CONFIRM_ACTION"),
 		tr("ACTION_CANCEL")
@@ -4871,10 +4884,19 @@ func _handle_create_result(res: Dictionary, account_epoch: int) -> void:
 
 	var data := GameState.as_dict(res.data)
 
-	if str(data.get("gate", "")) == "rejected":
-		_say_warning(
-			tr("STATUS_GATE_REJECTED") % LocaleManager.gate_reason(str(data.get("reason", "")))
-		)
+	var is_rejected := (
+		str(data.get("gate", "")) == "rejected"
+		or (data.has("safe") and not bool(data.get("safe", true)))
+		or (not str(data.get("reject_reason", "")).is_empty() and str(data.get("reject_reason", "")) != "none")
+	)
+
+	if is_rejected:
+		var raw_reason := str(data.get("reason", data.get("reject_reason", "unknown"))).strip_edges()
+		if raw_reason.is_empty():
+			raw_reason = "unknown"
+		var friendly_reason := LocaleManager.gate_reason(raw_reason)
+		_say_warning(tr("STATUS_GATE_REJECTED") % friendly_reason)
+		_show_scan_rejected_dialog(raw_reason, friendly_reason)
 		GameState.finish_scan()
 		_restore_previous_anima()
 		return
@@ -4908,6 +4930,16 @@ func _handle_create_result(res: Dictionary, account_epoch: int) -> void:
 		return
 
 	await _wait_for_hatch(anima_id)
+
+
+func _show_scan_rejected_dialog(raw_reason: String, friendly_reason: String) -> void:
+	_modal_context = &"scan_rejected"
+	var body := tr("SCAN_REJECTED_BODY") % [friendly_reason, raw_reason]
+	_shell_modal.open_info(
+		tr("SCAN_REJECTED_TITLE"),
+		body,
+		tr("SCAN_REJECTED_CLOSE")
+	)
 
 
 # ---------------------------------------------------------------- inkubasi

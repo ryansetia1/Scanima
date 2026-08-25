@@ -995,6 +995,7 @@ func _initialize() -> void:
 	await _test_fly_to_animation()
 	await _test_consumable_flight_to_anima()
 	await _test_scan_phase_visuals()
+	await _test_scan_rejection_dialog()
 	await _test_seeker_ui()
 	await _test_battle_view()
 	await _test_team_battle_view()
@@ -2450,6 +2451,43 @@ func _test_scan_phase_visuals() -> void:
 	_check_eq(sign_in_requests.size(), 1, "guest Scan CTA requests sign-in instead of camera")
 
 	view.queue_free()
+	await process_frame
+
+
+func _test_scan_rejection_dialog() -> void:
+	var packed := load("res://scenes/scan_flow.tscn") as PackedScene
+	var scene := packed.instantiate()
+	root.add_child(scene)
+	await process_frame
+
+	var modal := scene.find_child("ShellModal", true, false) as UiModal
+	_check(modal != null, "ShellModal exists in scan_flow")
+	if modal != null:
+		var modal_title := modal.find_child("ModalTitle", true, false) as Label
+		var modal_body := modal.find_child("ModalBody", true, false) as Label
+		var modal_primary := modal.find_child("PrimaryButton", true, false) as Button
+
+		# Pemicuan scan rejection dialog dengan contoh reason "human_face"
+		var test_reason := "human_face"
+		var locale_manager := root.get_node("LocaleManager")
+		var friendly: String = locale_manager.gate_reason(test_reason)
+		scene.call("_show_scan_rejected_dialog", test_reason, friendly)
+		await process_frame
+
+		_check(modal.visible, "Scan rejection dialog opens modal")
+		_check_eq(modal_title.text, tr("SCAN_REJECTED_TITLE"), "Scan rejection dialog shows correct title")
+		_check(
+			modal_body.text.find(friendly) >= 0 and modal_body.text.find(test_reason) >= 0,
+			"Scan rejection dialog body explains both friendly message and LLM reason code"
+		)
+		_check_eq(modal_primary.text, tr("SCAN_REJECTED_CLOSE"), "Scan rejection dialog close button uses Got It")
+
+		# Tutup modal
+		modal_primary.pressed.emit()
+		await create_timer(0.25).timeout
+		_check(not modal.visible, "Scan rejection dialog closes on action button press")
+
+	scene.queue_free()
 	await process_frame
 
 
@@ -6829,6 +6867,14 @@ func _test_synthesis_lab_state() -> void:
 		and shell_source.find("&\"synthesis_attempt\"") >= 0,
 		"Attempt Synthesis asks for cost and miss confirmation before debiting"
 	)
+	var open_confirm_idx := attempt_body.find("open_confirm")
+	var core_gate_idx := attempt_body.find("genesis_cores")
+	var bits_gate_idx := attempt_body.find("\"bits\"")
+	_check(
+		open_confirm_idx > 0 and core_gate_idx >= 0 and bits_gate_idx >= 0
+		and core_gate_idx < open_confirm_idx and bits_gate_idx < open_confirm_idx,
+		"Attempt Synthesis blocks on insufficient Core/Bits before offering the cost confirmation"
+	)
 	view.show_error_key("SYNTHESIS_TECHNICAL_FAILURE")
 	view.refresh_localized_ui()
 	var outcome_body := view.find_child("SynthesisOutcomeBody", true, false) as Label
@@ -7785,7 +7831,12 @@ func _test_bottom_nav_busy() -> void:
 		)
 	# The bar's texture is authored art pulled from the design, not something
 	# drawn here — a gradient StyleBox would drift from it on every retouch.
-	var backdrop := nav.find_child("Backdrop", true, false) as TextureRect
+	# The corner art reads fine plainly scaled at the widths this bar actually
+	# renders at, so it's a NinePatchRect with zero patch margin (a full-region
+	# uniform stretch) rather than a 9-sliced corner-preserving stretch — 9-slicing
+	# the corner made it render far rounder than the source art, since the corner's
+	# native pixel size doesn't track this control's own logical scale.
+	var backdrop := nav.find_child("Backdrop", true, false) as NinePatchRect
 	_check(
 		backdrop != null and backdrop.texture != null,
 		"the nav bar wears the design's own background image"
@@ -7795,15 +7846,17 @@ func _test_bottom_nav_busy() -> void:
 			backdrop.texture.resource_path == "res://assets/ui/bottom_nav_bg.png",
 			"that image is the committed asset rather than a runtime redraw"
 		)
-		_check_eq(
-			backdrop.stretch_mode,
-			TextureRect.STRETCH_KEEP_ASPECT_CENTERED,
-			"wide nav keeps the authored backdrop ratio instead of stretching it"
+		_check(
+			is_equal_approx(backdrop.patch_margin_left, 0.0)
+			and is_equal_approx(backdrop.patch_margin_top, 0.0)
+			and is_equal_approx(backdrop.patch_margin_right, 0.0)
+			and is_equal_approx(backdrop.patch_margin_bottom, 0.0),
+			"the backdrop stretches plainly instead of over-preserving an oversized corner"
 		)
 		_check(
 			is_equal_approx(buttons.custom_minimum_size.x, 674.0)
-			and buttons.size_flags_horizontal == Control.SIZE_SHRINK_CENTER,
-			"wide nav keeps the five-tab row centered at its 720px design width"
+			and buttons.size_flags_horizontal == Control.SIZE_FILL + Control.SIZE_EXPAND,
+			"the five-tab row floors at its 720px design width but spreads evenly on wider viewports"
 		)
 		_check(
 			backdrop.get_index() < buttons.get_parent().get_index(),

@@ -20,13 +20,11 @@ theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = -32
 theme_override_constants/margin_bottom = -24
 
-[node name="Backdrop" type="TextureRect" parent="Bleed" unique_id=1993022411]
+[node name="Backdrop" type="NinePatchRect" parent="Bleed" unique_id=1993022411]
 unique_name_in_owner = true
 layout_mode = 2
-mouse_filter = 2
 texture = ExtResource("7_backdrop")
-expand_mode = 1
-stretch_mode = 5
+region_rect = Rect2(0, 0, 1440, 304)
 
 [node name="Padding" type="MarginContainer" parent="Bleed" unique_id=1071350044]
 layout_mode = 2
@@ -39,7 +37,7 @@ theme_override_constants/margin_bottom = 26
 [node name="Buttons" type="HBoxContainer" parent="Bleed/Padding" unique_id=158985613]
 custom_minimum_size = Vector2(674, 0)
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 theme_override_constants/separation = 25
 
 [node name="HomeNavButton" type="Button" parent="Bleed/Padding/Buttons" unique_id=189627668]

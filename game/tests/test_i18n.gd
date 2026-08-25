@@ -46,6 +46,9 @@ const REQUIRED_KEYS := [
 	"STATUS_GATE_REJECTED",
 	"STATUS_VIBE_UNAVAILABLE",
 	"GATE_HUMAN_FACE",
+	"SCAN_REJECTED_TITLE",
+	"SCAN_REJECTED_BODY",
+	"SCAN_REJECTED_CLOSE",
 	"ELEMENT_FLOW",
 	"ELEMENT_PAIR",
 	"ELEMENT_WOOD",
@@ -77,6 +80,7 @@ const REQUIRED_KEYS := [
 const GATE_REASON_CODES := [
 	"human_face",
 	"human_body",
+	"live_animal",
 	"unsafe_content",
 	"personal_info",
 	"too_unclear",
