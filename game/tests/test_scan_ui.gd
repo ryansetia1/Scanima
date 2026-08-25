@@ -7458,8 +7458,13 @@ func _test_home_care_actions() -> void:
 		and stage_footer_space.visible,
 		"non-loading Home restores its normal stage layout"
 	)
-	_check(primary.visible and not primary.disabled, "empty Home exposes its first-scan CTA")
-	primary.pressed.emit()
+	var scan_cta_btn := home.find_child("ScanCtaButton", true, false) as Button
+	_check(
+		scan_cta_btn != null and scan_cta_btn.is_visible_in_tree() and not scan_cta_btn.disabled,
+		"empty Home exposes its first-scan CTA"
+	)
+	if scan_cta_btn != null:
+		scan_cta_btn.pressed.emit()
 	_check_eq(_home_action, "scan", "empty Home routes its CTA to Scan")
 	home.set_shell_state(&"error")
 	primary.pressed.emit()

@@ -34,27 +34,45 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="Title" type="Label" parent="ScanScroll/Column" unique_id=373433317]
+
+
+[node name="DiscoverySpace" type="Control" parent="ScanScroll/Column" unique_id=456067685]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 320)
 layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="ScanTitle" type="Label" parent="ScanScroll/Column/DiscoverySpace" unique_id=373433317]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+offset_bottom = 60.0
+grow_horizontal = 2
+grow_vertical = 1
 theme_type_variation = &"PageTitleLabel"
 text = "SCAN_TITLE"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="Subtitle" type="Label" parent="ScanScroll/Column" unique_id=1189229473]
+[node name="Subtitle" type="Label" parent="ScanScroll/Column/DiscoverySpace" unique_id=1189229473]
 unique_name_in_owner = true
-layout_mode = 2
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+grow_horizontal = 2
 theme_type_variation = &"BodyLabel"
 text = "SCAN_SUBTITLE"
 horizontal_alignment = 1
 autowrap_mode = 2
-
-[node name="DiscoverySpace" type="Control" parent="ScanScroll/Column" unique_id=456067685]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 180)
-layout_mode = 2
-size_flags_vertical = 3
-mouse_filter = 2
 
 [node name="IdleGraphic" type="TextureRect" parent="ScanScroll/Column/DiscoverySpace" unique_id=632276068]
 unique_name_in_owner = true
@@ -125,6 +143,7 @@ autowrap_mode = 2
 
 [node name="ScanPhaseHint" type="Label" parent="ScanScroll/Column/StatusPanel/StatusColumn" unique_id=1524779418]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 text = "SCAN_CAMERA_HINT"
@@ -221,3 +240,8 @@ theme_override_font_sizes/font_size = 20
 text = "SCAN_PRIVACY_HINT"
 horizontal_alignment = 1
 autowrap_mode = 2
+
+[node name="BottomSpacer" type="Control" parent="ScanScroll/Column" unique_id=987654321]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+mouse_filter = 2

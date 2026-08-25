@@ -6,9 +6,8 @@ signal sign_in_requested
 
 const VIBES: PackedStringArray = ["natural", "cute", "brave", "wild", "sinister"]
 const DEFAULT_VIBE := "natural"
-# Lucide camera flash sits above and left of the body; (8, 24) is the optical
-# center at 172px. Revisit if the glyph changes.
-const CAMERA_OPTICAL_OFFSET := Vector2(8.0, 24.0)
+# Camera icon is centered exactly on the background chamber animation.
+const CAMERA_OPTICAL_OFFSET := Vector2.ZERO
 
 @onready var _preview_panel: PanelContainer = %PreviewPanel
 @onready var _preview: TextureRect = %PhotoPreview
@@ -132,10 +131,11 @@ func _refresh_lock() -> void:
 
 func _refresh_idle_copy() -> void:
 	var idle := _phase == &"idle"
-	_subtitle.visible = false
+	if is_instance_valid(_subtitle):
+		_subtitle.visible = false
 	_phase_badge.visible = not idle
 	_status.visible = not idle
-	_hint.visible = not idle or not _sign_in_required
+	_hint.visible = not idle
 	_status_panel.visible = _phase_badge.visible or _status.visible or _hint.visible
 
 
@@ -158,6 +158,11 @@ func _align_idle_graphic() -> void:
 	_idle_graphic.offset_top = -half.y + delta.y
 	_idle_graphic.offset_right = half.x + delta.x
 	_idle_graphic.offset_bottom = half.y + delta.y
+
+	var scan_title := space.get_node_or_null("ScanTitle") as Label
+	if is_instance_valid(scan_title):
+		scan_title.offset_top = maxf(16.0, local.y - 290.0)
+		scan_title.offset_bottom = scan_title.offset_top + 60.0
 
 
 func _refresh_vibe_ui() -> void:

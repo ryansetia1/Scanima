@@ -45,6 +45,9 @@ const CONTROLS_MIN_HEIGHT_PX := 180.0
 @onready var _clean_button: Button = %CleanButton
 @onready var _sleep_button: Button = %SleepButton
 @onready var _play_button: Button = %PlayButton
+@onready var _scan_cta_container: VBoxContainer = %ScanCtaContainer
+@onready var _scan_cta_ring: Control = %ScanCtaRing
+@onready var _scan_cta_button: Button = %ScanCtaButton
 
 var _row: Dictionary = {}
 var _shell_state := &"loading"
@@ -70,6 +73,7 @@ func _ready() -> void:
 	_sleep_button.pressed.connect(_request_sleep_toggle)
 	_play_button.pressed.connect(_request_play)
 	_primary_action.pressed.connect(_request_primary_action)
+	_scan_cta_button.pressed.connect(_request_primary_action)
 	for chip in _need_chips():
 		chip.mouse_filter = Control.MOUSE_FILTER_STOP
 		chip.gui_input.connect(_on_need_chip_input)
@@ -113,6 +117,8 @@ func set_anima(row: Dictionary, busy: bool) -> void:
 	# for their sentence-length centered headline.
 	_identity_row.visible = false
 	_primary_action.visible = false
+	_scan_cta_container.visible = false
+	_scan_cta_ring.set_active(false)
 	update_care(_row, busy)
 	_fit_controls_scroll.call_deferred()
 
@@ -142,7 +148,9 @@ func set_shell_state(state: StringName) -> void:
 	# IdentityRow di HomeView disembunyikan agar tidak dobel di bawah panel.
 	_identity_row.visible = state != &"empty"
 	_identity.visible = state != &"empty"
-	_primary_action.visible = state == &"empty" or state == &"error"
+	_primary_action.visible = state == &"error"
+	_scan_cta_container.visible = state == &"empty"
+	_scan_cta_ring.set_active(state == &"empty")
 	_set_loading_layout(state == &"loading")
 	match state:
 		&"error":
@@ -152,7 +160,7 @@ func set_shell_state(state: StringName) -> void:
 		&"empty":
 			_anima_name.text = tr("HOME_EMPTY_NAME")
 			_anima_meta.text = tr("HOME_EMPTY_META")
-			_primary_action.text = tr("HOME_EMPTY_CTA")
+			_scan_cta_button.text = tr("HOME_EMPTY_CTA")
 		_:
 			_anima_name.text = tr("HOME_LOADING_NAME")
 			_anima_meta.text = tr("HOME_LOADING_META")
@@ -241,6 +249,7 @@ func update_care(row: Dictionary, busy: bool) -> void:
 
 func set_busy(busy: bool) -> void:
 	_primary_action.disabled = busy
+	_scan_cta_button.disabled = busy
 	_update_action_state(busy or typeof(_row.get("care")) != TYPE_DICTIONARY)
 
 

@@ -249,6 +249,7 @@ func _install_body_scroll() -> void:
 	column.move_child(_body_scroll, body_index)
 	_body_scroll.add_child(_body)
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_body.custom_minimum_size.x = 520.0
 
 
 func _fit_body_scroll() -> void:
@@ -257,6 +258,7 @@ func _fit_body_scroll() -> void:
 	if not _body.visible:
 		_body_scroll.custom_minimum_size.y = 0.0
 		return
+	_body.custom_minimum_size.x = 520.0
 	var max_height := maxf(BODY_SCROLL_MIN_PX, get_viewport_rect().size.y * BODY_SCROLL_MAX_RATIO)
 	var natural_height := _body.get_combined_minimum_size().y
 	_body_scroll.custom_minimum_size.y = minf(natural_height, max_height)

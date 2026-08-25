@@ -934,8 +934,12 @@ Indeks dokumen selengkapnya ada di [README.md](README.md); panduan pemain di
    - Banner `knockout` (`[Anima] is knockout`): Hijau (`WIN_COLOR` + `ToastType.SUCCESS`) jika yang KO adalah musuh/lawan, merah (`DAMAGE_COLOR` + `ToastType.ERROR`) jika yang KO adalah Anima pemain.
 6. **Incubating Layout Clean**: Pada state `_set_incubating(true)`, `_synthesis_panel` (`SynthesisPanel`) disembunyikan bersama `_editor_scroll` sehingga tidak meninggalkan panel kosong di atas tampilan visual inkubasi.
 7. **Uji Otomatis**: Memperbaiki `test_scan_ui.gd` agar mencari container `Column` yang dipromosikan (bukan `LabSurface` yang sudah dideprecate) untuk pengujian kecocokan dimensi viewport, sehingga seluruh 1467 checks client UI test suite kembali hijau / lulus 100%.
+## Perbaikan UI Scan View, Home CTA, & Modal Fit-to-Content (25 Agustus 2026)
 
-
-
-
-
+1. **Title Dynamic Alignment**: `ScanTitle` ("Discover a New Anima") diposisikan secara dinamis pada `_align_idle_graphic` tepat di atas animasi cincin chamber di area tengah layar (`local.y - 290px`), menghilangkan gap kosong di bawah HUD.
+2. **Icon Camera Centering**: `CAMERA_OPTICAL_OFFSET` pada `ScanView` dinormalkan ke `Vector2.ZERO`, sehingga icon kamera duduk presisi tepat di titik pusat matematis animasi cincin chamber yang berputar.
+3. **Vibe & CTA Section Lift (+30%)**: Ditambahkan `BottomSpacer` pada `scan_view.tscn` sehingga seluruh blok "Choose Your Anima Vibe", opsi vibe, tombol "Scan Real Object", dan privacy hint terangkat ~30% ke atas, tidak lagi menempel ketat di navigation bar bawah.
+4. **Pembersihan Copy Hint**: Teks "Center one clear object in the frame." (`SCAN_CAMERA_HINT`) pada `StatusPanel` disembunyikan saat idle agar pemain tidak mengira kamera sedang loading di layar.
+5. **Perjelas Copy Vibe**: `SCAN_VIBE_TITLE` diperbarui menjadi **"Choose Your Anima Vibe"** pada `locales/ui.csv`.
+6. **Home Single CTA Fix**: `_primary_action.visible` pada `home_view.gd` diatur hanya aktif pada state `error`, sehingga pada state `empty` hanya tombol `ScanCtaButton` di tengah `StageSpace` yang tampil, menghilangkan tombol kembar di bagian bawah Home.
+7. **UiModal Autowrap Fit-to-Content**: Diberikan lantai lebar wrap `custom_minimum_size.x = 520.0` pada `ModalBody` (`ui_modal.tscn` dan `ui_modal.gd`) untuk mencegah regresi pengukuran autowrap Godot (godotengine/godot#83546) yang sebelumnya menyebabkan dialog melapor tinggi absurd dan memanjang kosong. Dialog kini pas dan rapat membungkus kontennya.
