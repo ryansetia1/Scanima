@@ -1,6 +1,6 @@
 // POST /shop { item_id, expected_price, idempotency_key }
 
-import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, corsPreflight, json } from "../_shared/supa.ts";
 
 const ITEM_RE = /^[a-z][a-z0-9_]{1,62}$/;
 
@@ -23,6 +23,8 @@ type ShopBody = {
 const db = adminClient();
 
 Deno.serve(async (req) => {
+  const preflight = corsPreflight(req);
+  if (preflight) return preflight;
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);
   if (versionError) return versionError;

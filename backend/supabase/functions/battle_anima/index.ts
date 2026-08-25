@@ -3,7 +3,7 @@
 // Body: { operation: status|start|resume|turn|forfeit, ... }
 // Combat runs in battle.mjs. Postgres alone commits turn order and rewards.
 
-import { adminClient, clientVersionGate, json, syncProfileTimezone } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, corsPreflight, json, syncProfileTimezone } from "../_shared/supa.ts";
 import { signSheetUrl } from "../_shared/signed_roster.ts";
 import {
   BATTLE_ACTIONS,
@@ -120,6 +120,8 @@ const normalizeStats = normalizeBaseStats as unknown as (
 const db = adminClient();
 
 Deno.serve(async (req) => {
+  const preflight = corsPreflight(req);
+  if (preflight) return preflight;
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);
   if (versionError) return versionError;

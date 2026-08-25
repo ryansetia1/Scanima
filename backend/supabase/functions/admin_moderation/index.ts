@@ -4,7 +4,7 @@
 // user_metadata or an email claim — and every privileged RPC it calls
 // re-checks the role again server-side (moderation_require_role) as
 // defense-in-depth. See docs/designs/2026-08-23-atlas-moderation-admin.md.
-import { adminClient, json } from "../_shared/supa.ts";
+import { adminClient, corsPreflight, json } from "../_shared/supa.ts";
 import { requireStaff, StaffAuthError } from "../_shared/admin_auth.ts";
 import { THUMB_SIGNED_TTL } from "../_shared/gallery_constants.mjs";
 
@@ -73,6 +73,8 @@ type Body = Record<string, any>;
 const db = adminClient();
 
 Deno.serve(async (req) => {
+  const preflight = corsPreflight(req);
+  if (preflight) return preflight;
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
 
   let body: Body;

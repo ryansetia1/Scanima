@@ -3,7 +3,7 @@
 // Private evolution art: no Core, no original photo. Locked sheets commit
 // without Replicate; otherwise Vision + one image; webhook commits.
 
-import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, corsPreflight, json } from "../_shared/supa.ts";
 import { extractJson, normalizeSuggestedName, VISION_THINKING } from "../_shared/vision.mjs";
 import {
   assembleEvolvePrompt,
@@ -227,6 +227,8 @@ async function fetchPriorEvolutionPlan(
 }
 
 Deno.serve(async (req) => {
+  const preflight = corsPreflight(req);
+  if (preflight) return preflight;
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);
   if (versionError) return versionError;

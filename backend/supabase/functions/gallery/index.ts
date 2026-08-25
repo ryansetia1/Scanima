@@ -4,6 +4,7 @@
 import {
   adminClient,
   clientVersionGate,
+  corsPreflight,
   json,
   sha256Hex,
 } from "../_shared/supa.ts";
@@ -83,6 +84,8 @@ let featureCache: boolean | null = null;
 let featureCacheUntil = 0;
 
 Deno.serve(async (req) => {
+  const preflight = corsPreflight(req);
+  if (preflight) return preflight;
   const requestStarted = performance.now();
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);

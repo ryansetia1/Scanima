@@ -4,7 +4,7 @@
 // memverifikasi identitas dari JWT, memvalidasi bentuk request, lalu meneruskan
 // uid tersebut ke RPC service-role. Client tidak pernah boleh memilih owner_id.
 
-import { adminClient, clientVersionGate, json, syncProfileTimezone } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, corsPreflight, json, syncProfileTimezone } from "../_shared/supa.ts";
 
 const ACTIONS = new Set(["sync", "feed", "clean", "sleep", "wake", "play", "summon", "use_item"]);
 const MUTATING = new Set(["feed", "clean", "sleep", "wake", "play", "summon", "use_item"]);
@@ -42,6 +42,8 @@ type CareBody = {
 const db = adminClient();
 
 Deno.serve(async (req) => {
+  const preflight = corsPreflight(req);
+  if (preflight) return preflight;
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);
   if (versionError) return versionError;

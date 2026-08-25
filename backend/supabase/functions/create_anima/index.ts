@@ -19,7 +19,7 @@
 // Menulis endpoint penerbit signed URL berarti menulis ulang pagar yang sudah
 // disediakan platform.
 
-import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, corsPreflight, json } from "../_shared/supa.ts";
 import {
   assemblePrompt,
   extractJson,
@@ -75,6 +75,8 @@ type Vision = {
 };
 
 Deno.serve(async (req) => {
+  const preflight = corsPreflight(req);
+  if (preflight) return preflight;
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);
   if (versionError) return versionError;

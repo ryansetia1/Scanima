@@ -705,6 +705,13 @@ func _send_once(
 ) -> Dictionary:
 	var http := HTTPRequest.new()
 	http.timeout = timeout
+	# Browser fetch() sudah mendekompresi body gzip secara transparan sebelum
+	# WASM melihatnya, tapi header Content-Encoding tetap apa adanya — kalau
+	# accept_gzip default true, HTTPRequest mencoba gunzip body yang sudah
+	# plain itu lagi dan gagal (stream_peer_gzip.cpp), merusak respons besar
+	# (mis. Collection berisi) sementara respons kecil/kosong tidak kena.
+	if OS.has_feature("web"):
+		http.accept_gzip = false
 	add_child(http)
 
 	var started := http.request_raw(url, headers, method, body)

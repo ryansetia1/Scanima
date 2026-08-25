@@ -180,6 +180,46 @@ func _initialize() -> void:
 		and scan_flow.find("_populate_collection()") >= 0,
 		"Collection thumbnails project Sleep, Hungry, Dirty, or Idle when the tab opens"
 	)
+	_check(
+		scan_flow.find("_queue_thumbnail_backfill(row, anima_id, stage)") >= 0
+		and scan_flow.find("_thumbnail_backfill_seen.has(cache_key)") >= 0,
+		"a roster row with no cached art queues a background backfill instead of staying placeholder forever"
+	)
+	var backfill_start := scan_flow.find("func _run_thumbnail_backfill")
+	var backfill_end := scan_flow.find("func _update_hud_identity", backfill_start)
+	var backfill_body := (
+		scan_flow.substr(backfill_start, backfill_end - backfill_start)
+		if backfill_start >= 0 and backfill_end > backfill_start
+		else ""
+	)
+	_check(
+		backfill_body.find("await _prepare_anima_art(") >= 0
+		and backfill_body.find("_populate_collection()") >= 0
+		and backfill_body.find("GameState.session_epoch != account_epoch") >= 0,
+		"backfill downloads real art serially, repopulates on arrival, and abandons on account switch"
+	)
+	_check(
+		scan_flow.find("_thumbnail_backfill_queue.clear()") >= 0
+		and scan_flow.find("_thumbnail_backfill_seen.clear()") >= 0,
+		"account reset clears the backfill queue so a new account doesn't inherit stale attempts"
+	)
+	var present_start := scan_flow.find("func _present(")
+	var present_merge_end := scan_flow.find("}, true)", present_start)
+	var present_merge_body := (
+		scan_flow.substr(present_start, present_merge_end - present_start)
+		if present_start >= 0 and present_merge_end > present_start
+		else ""
+	)
+	_check(
+		present_merge_body.find("\"sheet_path\": sheet_path") >= 0,
+		"Discovery Scan (cache_hit) carries sheet_path into _current_anima, or Collection can never find its art"
+	)
+	_check(
+		scan_flow.find("_warn_if_boot_is_slow()") >= 0
+		and scan_flow.find("func _warn_if_boot_is_slow") >= 0
+		and scan_flow.find("STATUS_LOADING_SLOW") >= 0,
+		"a slow boot swaps the Loading screen to a still-connecting hint instead of a silent indefinite spinner"
+	)
 	var active_start := scan_flow.find("func _active_row")
 	var active_end := scan_flow.find("func _sync_collection_preview", active_start)
 	var active_body := (

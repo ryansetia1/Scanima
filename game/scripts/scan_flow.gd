@@ -30,6 +30,10 @@ signal _summon_settled
 
 const POLL_INTERVAL_SEC := 2.0
 const POLL_TIMEOUT_SEC := 180.0
+## Boot lokal-first biasanya selesai dalam beberapa detik atau kurang. Kalau
+## masih di layar Loading setelah ini, itu tandanya jaringan lambat/bermasalah
+## (bukan macet), dan pemain layak tahu bedanya alih-alih menatap spinner bisu.
+const SLOW_BOOT_HINT_SEC := 6.0
 const EVOLUTION_POLL_INTERVAL_SEC := 5.0
 const EVOLUTION_POLL_TIMEOUT_SEC := 10.0 * 60.0
 const EVOLUTION_POLL_RETRY_SEC := 15.0
@@ -155,6 +159,14 @@ var _roster_error := ""
 var _sign_in_move_first := false
 var _placeholder_icon: Texture2D = null
 var _thumbnail_cache: Dictionary = {}
+## Collection pasif: satu-satunya yang pernah mengunduh art adalah Summon/
+## Synthesis/Evolve/capture, bukan Collection sendiri. Anima yang tidak pernah
+## diaktifkan sejak install/login baru karena itu tetap placeholder selamanya.
+## Antrean serial ini mengisi celah itu tanpa toast dan tanpa membanjiri
+## jaringan dengan unduhan paralel.
+var _thumbnail_backfill_queue: Array[Dictionary] = []
+var _thumbnail_backfill_seen: Dictionary = {}
+var _thumbnail_backfill_running := false
 var _destination: StringName = BottomNav.HOME
 var _overlay_return_destination: StringName = BottomNav.HOME
 var _profile_return_destination: StringName = BottomNav.COLLECTION
@@ -563,6 +575,7 @@ func _notification(what: int) -> void:
 
 func _boot() -> void:
 	_set_busy(true)
+	_warn_if_boot_is_slow()
 	# Layar Loading boot sudah dibuka di `_ready()` dan tetap menutupi keduanya.
 	# Yang membedakan cache adalah state Home di bawahnya: yang sudah tercat tidak
 	# dikosongkan, sebab refresh-nya menimpa angkanya sendiri saat Postgres
@@ -682,6 +695,16 @@ func _boot() -> void:
 	# Boot tidak mengambil alih Home atau me-replay intent jaringan secara otomatis.
 	if GameState.pending_scan.is_empty():
 		call_deferred("_maybe_prompt_seeker_onboarding")
+
+
+## Dipanggil tanpa await: berjalan lepas dari `_boot()` dan cuma menukar teks
+## layar Loading yang sudah tampil kalau boot ternyata masih berjalan setelah
+## SLOW_BOOT_HINT_SEC. Kalau boot sudah selesai (`_busy` balik false) atau
+## layarnya sudah tertutup duluan, ini no-op murni.
+func _warn_if_boot_is_slow() -> void:
+	await get_tree().create_timer(SLOW_BOOT_HINT_SEC).timeout
+	if _busy and LoadingScreen.is_showing():
+		LoadingScreen.show_screen("STATUS_LOADING_SLOW")
 
 
 func _reload_roster() -> bool:
@@ -3060,6 +3083,8 @@ func _reset_account_presentation() -> void:
 	_profile_anima = {}
 	_roster_error = ""
 	_thumbnail_cache.clear()
+	_thumbnail_backfill_queue.clear()
+	_thumbnail_backfill_seen.clear()
 	_synthesis_history_texture_cache.clear()
 	_outcome_dialog_queue.clear()
 	_expedition_level_queue.clear()
@@ -4868,6 +4893,11 @@ func _present(
 		"species_key": species_key,
 		"color_bucket": color_bucket,
 		"stage": stage,
+		# Discovery Scan (cache_hit) mengirim anima_data berbentuk Vision, yang
+		# tidak punya sheet_path sama sekali -- tanpanya _thumbnail_for()
+		# menganggap baris ini tidak punya art tersimpan dan selalu placeholder.
+		"sheet_path": sheet_path,
+		"manifest": manifest,
 	}, true)
 	# Progres tap milik identitas yang tampil sebelumnya, jadi Anima/akun baru
 	# selalu mulai dari nol taps ke arah wake meskipun kebetulan juga tidur.
@@ -5090,7 +5120,12 @@ func _upsert_roster(row: Dictionary) -> void:
 		return
 	for i in _roster.size():
 		if str(_roster[i].get("id", "")) == id:
-			_roster[i] = row
+			# Merge, bukan timpa mentah: sebagian caller (mis. hasil poll yang
+			# dipangkas) tidak membawa setiap kolom, dan menimpa penuh akan
+			# menghapus sheet_path/manifest lama yang sebenarnya masih benar.
+			var merged: Dictionary = _roster[i].duplicate(true)
+			merged.merge(row, true)
+			_roster[i] = merged
 			return
 	_roster.push_front(row)
 
@@ -5154,6 +5189,10 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 							_thumbnail_cache[cache_key] = texture
 							return texture
 
+	if not _thumbnail_backfill_seen.has(cache_key):
+		_thumbnail_backfill_seen[cache_key] = true
+		_queue_thumbnail_backfill(row, anima_id, stage)
+
 	if _placeholder_icon == null:
 		var placeholder := Image.create_empty(
 			THUMBNAIL_SIZE, THUMBNAIL_SIZE, false, Image.FORMAT_RGBA8
@@ -5163,19 +5202,65 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 	return _placeholder_icon
 
 
+func _queue_thumbnail_backfill(row: Dictionary, anima_id: String, stage: int) -> void:
+	_thumbnail_backfill_queue.append({
+		"row": row.duplicate(true), "anima_id": anima_id, "stage": stage,
+	})
+	if not _thumbnail_backfill_running:
+		_run_thumbnail_backfill()
+
+
+## Serial dengan sengaja: satu unduhan sheet berjalan sekaligus, bukan satu
+## per Anima yang hilang art-nya. Roster besar karena itu mengisi dirinya
+## pelan-pelan, tapi tidak pernah membanjiri jaringan atau server dengan
+## puluhan request paralel saat Collection pertama kali dibuka di device baru.
+func _run_thumbnail_backfill() -> void:
+	_thumbnail_backfill_running = true
+	var account_epoch := GameState.session_epoch
+	while not _thumbnail_backfill_queue.is_empty():
+		var item: Dictionary = _thumbnail_backfill_queue.pop_front()
+		var row: Dictionary = item.get("row", {})
+		var anima_id := str(item.get("anima_id", ""))
+		var stage := int(item.get("stage", 1))
+		if not anima_id.is_empty() and GameState.has_sprite_for_anima(anima_id, stage):
+			continue
+		var loaded := await _prepare_anima_art(
+			str(row.get("species_key", "")),
+			str(row.get("color_bucket", "")),
+			stage,
+			str(row.get("sheet_path", "")),
+			GameState.as_dict(row.get("manifest")),
+			false,
+			anima_id,
+			stage
+		)
+		if GameState.session_epoch != account_epoch:
+			break
+		if bool(loaded.get("ok", false)):
+			_populate_collection()
+	_thumbnail_backfill_running = false
+
+
 ## The HUD's own copy of the compact identity line, sitting under Brand instead
 ## of beside the Stage. Mirrors exactly what `HomeView.set_anima()` renders,
 ## but only for the "ready" state -- loading/error/empty/evolution keep their
 ## sentence-length copy in the Stage-centered headline, which would not fit
 ## the HUD's own bar.
 func _update_hud_identity() -> void:
-	var show_identity := (
+	var shell := _home_view.shell_state()
+	var show_ready := (
 		_destination == BottomNav.HOME
 		and not _current_anima.is_empty()
-		and _home_view.shell_state() == &"ready"
+		and shell == &"ready"
 	)
+	var show_empty := _destination == BottomNav.HOME and shell == &"empty"
+	var show_identity := show_ready or show_empty
 	_hud_anima_name.visible = show_identity
 	_hud_anima_meta.visible = show_identity
+	if show_empty:
+		_hud_anima_name.text = tr("HOME_EMPTY_NAME")
+		_hud_anima_meta.text = tr("HOME_EMPTY_META")
+		return
 	if not show_identity:
 		return
 	_hud_anima_name.text = LocaleManager.display_name(_current_anima)

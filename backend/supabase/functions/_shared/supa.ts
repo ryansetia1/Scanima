@@ -84,10 +84,23 @@ export async function clientVersionGate(
   return null;
 }
 
+// Browser (web export) preflights every POST with a non-simple Content-Type.
+// Native mobile clients skip CORS entirely, so this went unnoticed until web.
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, apikey, content-type, x-scanima-build, x-scanima-platform",
+};
+
+export function corsPreflight(req: Request): Response | null {
+  return req.method === "OPTIONS" ? new Response(null, { status: 204, headers: CORS_HEADERS }) : null;
+}
+
 export function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
   });
 }
 

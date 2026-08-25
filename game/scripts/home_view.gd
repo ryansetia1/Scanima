@@ -138,8 +138,10 @@ func set_shell_state(state: StringName) -> void:
 	_set_headline_wrapping(true)
 	_care_dock.visible = false
 	_set_buttons_disabled(true)
-	_identity_row.visible = true
-	_identity.visible = true
+	# "empty" teks sudah ditampilkan di HUD panel (BottomSection), jadi
+	# IdentityRow di HomeView disembunyikan agar tidak dobel di bawah panel.
+	_identity_row.visible = state != &"empty"
+	_identity.visible = state != &"empty"
 	_primary_action.visible = state == &"empty" or state == &"error"
 	_set_loading_layout(state == &"loading")
 	match state:

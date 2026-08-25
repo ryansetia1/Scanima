@@ -5,7 +5,7 @@
 // Vision or image generation. A technical failure refunds Core + Bits and
 // reopens the pair/mode slot.
 
-import { adminClient, clientVersionGate, json } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, corsPreflight, json } from "../_shared/supa.ts";
 import { extractJson, VISION_THINKING } from "../_shared/vision.mjs";
 import { buildEvolutionIdleReference } from "../_shared/evolution.mjs";
 import { cropIdleThumb } from "../_shared/gallery_shared.mjs";
@@ -371,6 +371,8 @@ async function historyResponse(uid: string, resultAnimaId: string): Promise<Resp
 }
 
 Deno.serve(async (req) => {
+  const preflight = corsPreflight(req);
+  if (preflight) return preflight;
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);
   if (versionError) return versionError;

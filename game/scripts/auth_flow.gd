@@ -17,6 +17,7 @@ var _startup_pending := true
 var _cold_start_checked := true
 var _oauth_in_flight := false
 var _queued_deeplink_url := ""
+var _expected_callback_prefix := CALLBACK_BASE
 
 
 func _ready() -> void:
@@ -28,6 +29,15 @@ func _ready() -> void:
 		_deeplink.set("path_prefix", "/callback")
 		add_child(_deeplink)
 		_deeplink.connect("deeplink_received", _on_deeplink_received)
+	elif OS.has_feature("web"):
+		# Web tidak punya deep link: OAuth kembali lewat navigasi top-level ke
+		# halaman ini sendiri, jadi "cold start" web berarti reboot WASM
+		# dengan ?state=... di URL saat ini alih-alih deep link dari OS.
+		_expected_callback_prefix = _web_callback_url()
+		var current_url := str(JavaScriptBridge.eval("window.location.href", true))
+		if parse_callback_params(current_url).has("state"):
+			_cold_start_checked = false
+			_queued_deeplink_url = current_url
 	_recovery_pending = (
 		not GameState.pending_account_switch.is_empty()
 		or (not GameState.pending_oauth.is_empty() and not GameState.is_anonymous())
@@ -143,7 +153,7 @@ func _recover_account_switch() -> void:
 func handle_callback_url(url: String) -> void:
 	if GameState.pending_oauth.is_empty():
 		return
-	if not url.begins_with(CALLBACK_BASE):
+	if not url.begins_with(_expected_callback_prefix):
 		return
 
 	var params := parse_callback_params(url)
@@ -307,7 +317,11 @@ func _start(mode: String) -> Dictionary:
 	var verifier := _random_urlsafe(48)
 	var state := _random_urlsafe(24)
 	var challenge := _sha256_urlsafe(verifier)
-	var redirect_to := CALLBACK_BASE + "?state=" + state.uri_encode()
+	# Custom scheme (scanima://) hanya bisa ditangkap DeeplinkPlugin di
+	# Android/iOS. Browser tidak punya handler untuk scheme itu, jadi web
+	# butuh redirect_to yang benar-benar http(s) menuju halaman kita sendiri.
+	_expected_callback_prefix = _web_callback_url() if OS.has_feature("web") else CALLBACK_BASE
+	var redirect_to := _expected_callback_prefix + "?state=" + state.uri_encode()
 	if not GameState.begin_oauth(mode, state, verifier):
 		return {"ok": false, "error": "OAUTH_SECURE_STORE_UNAVAILABLE"}
 
@@ -320,11 +334,33 @@ func _start(mode: String) -> Dictionary:
 		GameState.cancel_oauth()
 		return {"ok": false, "error": "OAUTH_URL_MISSING"}
 	auth_started.emit(mode)
+	if OS.has_feature("web"):
+		# COOP: same-origin (wajib untuk WASM threads) memutus window.opener
+		# ke popup cross-origin manapun, jadi popup+postMessage tidak pernah
+		# bisa kembali. Navigasi top-level satu tab ke Google, lalu reboot
+		# WASM di halaman ini sendiri saat Google/Supabase meredirect balik.
+		JavaScriptBridge.eval("window.location.href = " + JSON.stringify(auth_url), true)
+		return {"ok": true, "error": ""}
 	var open_error := OS.shell_open(auth_url)
 	if open_error != OK:
 		GameState.cancel_oauth()
 		return {"ok": false, "error": "OAUTH_BROWSER_FAILED"}
 	return {"ok": true, "error": ""}
+
+
+## redirect_to web wajib http(s) menuju halaman kita sendiri (bukan scheme
+## kustom scanima://, yang cuma bisa ditangkap DeeplinkPlugin native), dan
+## dihitung dari lokasi saat ini supaya otomatis benar di itch.io atau dev lokal.
+func _web_callback_url() -> String:
+	var href := str(JavaScriptBridge.eval("window.location.href", true))
+	var query_start := href.find("?")
+	var fragment_start := href.find("#")
+	var cut := href.length()
+	if query_start >= 0:
+		cut = query_start
+	elif fragment_start >= 0:
+		cut = fragment_start
+	return href.substr(0, cut)
 
 
 func _cancel_stale_oauth() -> void:

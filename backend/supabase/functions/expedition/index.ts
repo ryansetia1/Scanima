@@ -3,7 +3,7 @@
 // Run: save_team | start_run | checkpoint_choice | start_zone | resume |
 //      enter_node | choose | refresh_shop | turn | forfeit | abandon
 
-import { adminClient, clientVersionGate, json, syncProfileTimezone } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, corsPreflight, json, syncProfileTimezone } from "../_shared/supa.ts";
 import {
   applyEncounterBoosts,
   applyNodeOption,
@@ -201,6 +201,8 @@ let featureCache = false;
 let featureCacheUntil = 0;
 
 Deno.serve(async (req) => {
+  const preflight = corsPreflight(req);
+  if (preflight) return preflight;
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);
   if (versionError) return versionError;

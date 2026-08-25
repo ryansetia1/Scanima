@@ -3,7 +3,7 @@
 // teams | save_team | publish_defense | candidates | status |
 // start | resume | turn | forfeit
 
-import { adminClient, clientVersionGate, json, syncProfileTimezone } from "../_shared/supa.ts";
+import { adminClient, clientVersionGate, corsPreflight, json, syncProfileTimezone } from "../_shared/supa.ts";
 import {
   TEAM_ACTIONS,
   createTeamBattleState,
@@ -141,6 +141,8 @@ let featureCache = false;
 let featureCacheUntil = 0;
 
 Deno.serve(async (req) => {
+  const preflight = corsPreflight(req);
+  if (preflight) return preflight;
   if (req.method !== "POST") return json(405, { error: "hanya POST" });
   const versionError = await clientVersionGate(req, db);
   if (versionError) return versionError;
