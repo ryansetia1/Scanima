@@ -1,13 +1,33 @@
 # CLAUDE.md — konteks untuk AI coding agent
 
-Baca file ini sebelum menyentuh kode Scanima. Update file ini setiap ada perubahan signifikan pada stack, konvensi, atau keputusan arsitektur.
+Baca file ini sebelum menyentuh kode Scanima.
 
-File ini sengaja pendek karena ia ikut ke **setiap** request. Yang tinggal di
-sini hanya yang berlaku lintas domain atau menyangkut uang; detail per-domain
-hidup di lima rule ber-glob `.cursor/rules/` yang dimuat sendiri saat file yang
-cocok disentuh, dan riwayat hidup di `docs/`. Peta lengkapnya di bagian
-terakhir. Fakta baru masuk ke rule atau docs yang tepat, dan hanya naik ke file
-ini kalau ia tidak punya glob — bukan karena ia terasa penting.
+File ini sengaja pendek karena ia ikut ke **setiap** request — setiap baris di
+sini dibayar sebagai token di setiap pesan, selamanya, bukan sekali saja.
+Sebelum menambah apa pun ke sini, jawab dulu tiga pertanyaan berurutan:
+
+1. **Riwayat, atau fakta yang berlaku sekarang?** Log build APK (byte count,
+   timestamp install, port ADB), cerita debugging berlapis ("percobaan
+   1/2/3 gagal karena..."), dan angka yang terukur saat satu rollout tertentu
+   **selalu** masuk [`docs/14-deploy-log.md`](docs/14-deploy-log.md) — tidak
+   pernah ke sini, walau ceritanya baru saja terjadi atau terasa penting saat
+   itu. Kalau ragu, tanya: "apakah ini masih relevan kalau baris ini
+   dihapus besok?" — kalau tidak, itu riwayat.
+2. **Spesifik ke satu domain, atau lintas domain?** Kalau spesifik (battle/
+   expedition, UI shell Godot, backend Postgres/Edge Function, art/prompt
+   pipeline, Android/plugin, admin console), masuk ke rule ber-glob yang
+   cocok di `.cursor/rules/*.mdc` — file itu hanya dimuat saat file yang
+   cocok disentuh, jadi detailnya gratis kalau sedang tidak relevan. Peta
+   lengkapnya di bagian "Di mana sisanya hidup" pada akhir file ini.
+3. **Baru kalau jawabannya "fakta sekarang" DAN "lintas domain atau soal
+   uang"**, ia boleh naik ke sini — sebagai satu-dua kalimat status, bukan
+   paragraf narasi.
+
+Saat nilai di tabel "Status live" berubah (versi prompt, feature flag, function
+version), update tabelnya di tempat. Jangan menambahkan paragraf cerita di
+bawah tabel itu — kalau perlu menjelaskan *bagaimana* nilai baru itu tercapai,
+tulis di `docs/14-deploy-log.md` dan cukup tunjuk dari sini kalau memang
+lintas domain.
 
 Turn Battle sekarang **local-first**: client menyimulasikan turn dengan aturan
 yang identik lalu menganimasikannya sementara request-nya terbang, dan hasil
@@ -36,10 +56,10 @@ diskusi arah produk, **bukan** keputusan redesign atau fitur yang sudah dijanjik
 
 ## Status live
 
-Angka di bawah adalah yang **terakhir tercatat** per 23 Agustus 2026. Bagaimana
-tiap baris sampai ke keadaan itu, beserta probe production dan angka yang
-terukur saat rollout, ada di [`docs/14-deploy-log.md`](docs/14-deploy-log.md);
-kalau log menyebut versi yang lebih rendah, itu entri historis, bukan
+Angka di bawah adalah yang **berlaku sekarang**. Bagaimana tiap baris sampai ke
+keadaan itu — rollout, bug yang ditemukan UAT, build APK, angka yang terukur
+saat itu — ada di [`docs/14-deploy-log.md`](docs/14-deploy-log.md), bukan di
+sini; kalau log menyebut versi yang lebih rendah, itu entri historis, bukan
 kontradiksi.
 
 | Yang live | Nilai | Rollback |
@@ -56,615 +76,49 @@ Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 25
 `expedition` 16, `seeker` 6, `gallery` 19, `shop` 4, `care_anima` 9,
 `synthesize_anima` 7, `admin_moderation` (staff-only, tanpa rate limit publik).
 
-Atlas Moderation Admin v2 live 23 Agustus 2026: migration
-`20260823080000_atlas_moderation_v2_schema` ter-apply, `admin_moderation`
-dan `gallery` (moderasi dua-pass) dideploy, admin pertama
-(`ryansetiawan.works@gmail.com`) sudah di-bootstrap sebagai `admin` di
-`staff_accounts`, dan `feature_atlas_moderation_v2=true`. Redirect
-`http://localhost:3000/auth/callback**` ditambahkan ke allowlist Auth lewat
-Management API secara surgical (PATCH hanya field `uri_allow_list`, bukan
-`supabase config push` — file `config.toml` lokal punya entri
-`https://127.0.0.1:3000` yang TIDAK pernah benar-benar live di remote, dan
-section Google OAuth-nya memakai placeholder `env(...)` yang akan menimpa
-client secret asli kalau di-push utuh). Setelah apply migration,
-`staff_accounts` dan tabel baru lain sempat menjawab 500 dari
-`admin_moderation` karena cache schema PostgREST belum reload untuk tabel
-yang baru dibuat; `notify pgrst, 'reload schema'` memperbaikinya seketika —
-kalau tabel baru menjawab lewat SQL langsung tapi tidak lewat `.from()`
-client, ini pagarnya.
+Fakta arsitektur yang berlaku sekarang (bukan riwayat — riwayatnya di
+`docs/14-deploy-log.md`):
 
-Team Battle production menerima **2–4 Anima** dan rival selalu persis sebesar
-roster pemain. Candidate pemain dirakit dari publication Atlas approved beberapa
-Seeker, boleh bercampur pemilik tanpa owner/nickname privat; template sistem
-dipotong ke ukuran yang sama lalu balancing combat power lama tetap memilih
-tiga yang terdekat. Tidak ada lagi UI **Publish Defense** — Publish to Atlas
-adalah consent-nya. RPC Defense legacy tetap wire-compatible untuk rollback,
-tetapi tidak dibaca candidate baru. Migration
-`20260823003917_atlas_team_rivals` membawa source `atlas` dan pagar exact-size;
-`20260823073500_fix_veridian_public_name` memperbaiki projection Veridian di
-Gallery/Atlas/snapshot Duel tanpa menyentuh Rename privat.
-
-Builder selalu muncul sebelum Find Rivals; Expedition tetap tepat 4. Pilihan
-roster benar-benar berurutan dengan badge 1–4 (slot 1 aktif), dan melepas card
-yang sudah terpilih benar-benar melepasnya: `TeamRosterList` memakai
-`SELECT_TOGGLE`, sebab `SELECT_MULTI` menelan press deselect lalu menjatuhkan
-sisa tim saat jari diangkat — builder Expedition memakai list yang sama, jadi ia
-ikut sembuh. Picker keduanya sekarang juga menulis Level. **Back + Save Team**
-berbagi lebar 50/50; Back membatalkan edit lalu kembali ke rival lobby dan tetap
-dikunci selama Save commit. Menang memakai **Next Battle**, hasil lain memakai
-**Try Again**, dan semua jalur reopen memulihkan urutan tersimpan tanpa hub round
-trip.
-
-Boundary session Duel membersihkan pelat transient lama dan kegagalan start
-kembali merender lobby, jadi **Retreating** tidak bocor ke Anima berikutnya dan
-kartu Duel tidak menghilang. HUD nama/HP Duel sekarang dibungkus satu pelat, dan
-music cue membaca arena yang benar-benar terlihat supaya session Duel/Team yang
-tersembunyi tidak menahan musik battle di mode lobby lain. Atlas memberi
-**Publishing…/Unpublishing…**, membersihkan state publication Anima sebelumnya
-sebelum status baru tiba, dan mempertahankan penolakan moderation sebagai tombol
-disabled **Cannot publish to Atlas** alih-alih menghilangkannya. Pagination tetap
-mempertahankan grid saat page terakhir kosong dan menyembunyikan Load More saat
-cursor habis. Unmapped 500 Duel dicatat tanpa
-raw body ke `battle_failures` yang default-deny
-(`20260822155005_battle_failure_log` +
-`20260822160718_battle_failure_fk_indexes`), sementara terminal failure
-Evolve/Synthesis lewat helper fail-open agar kegagalan logging tidak menimpa
-response asli. Sugarworks v7 membetulkan copy ace terakhir dari Cotton menjadi
-Nimbelisk tanpa mengubah binary asset atau memanggil model.
-
-Choose Anima dari result Duel terminal sekarang membuka `BattlePickSheet` pada
-`z_index=20`, jadi sheet berada di atas fighter, pelat Retreating, dan kartu
-hasil. Toast shell tetap satu funnel `_say()` tetapi tingginya sekarang mengikuti
-minimum teks, bukan slab tetap 76 px; relayout-nya menunggu satu frame agar
-minimum wrapped text sudah aktual dan menolak callback pesan lama lewat revision.
-Header kiri menampilkan nama Seeker
-(`Guest Seeker` untuk guest), dan row resource hanya menyisakan Cores + Bits;
-Collection tetap di tab **Animas**.
-
-APK debug 23 Agustus 2026 **08:03** dibangun dan **terpasang** di perangkat
-(`com.rekansebangku.scanima` 0.1.0, 57.273.971 byte; `lastUpdateTime`
-08:10:05 menggantikan build 06:44). Ia memuat feedback Publish Atlas, pagination
-akhir, Level picker, builder 50/50 tanpa Publish Defense, rival exact-size,
-perbaikan nama Veridian, pelat HUD + musik lobby Duel, serta seluruh perubahan
-build sebelumnya. Manifest tepat memuat `INTERNET` + `CAMERA`, class kamera ada
-di dex (22 rujukan `GodotGetImage`), dan signature v2 sah. Export inkremental
-selesai 9,8 detik; enam script client yang berubah terukur ada sebagai `.gdc` di
-APK. Script itu tertokenisasi penuh, jadi jangan mencari nama identifier di
-dalam APK.
-
-APK follow-up UAT **12:55** (57.276.155 byte) sudah dibangun dan diverifikasi:
-`INTERNET` + `CAMERA`, signature v2, serta `anima_details_view.gdc`,
-`scan_flow.gdc`, dan `test_scan_ui.gdc` ada. Build ini membawa state moderation
-Atlas yang tidak menghilang/berkedip serta musik lobby sesudah keluar Team
-Battle. Ia **terpasang** pukul 13:10:50 (`com.rekansebangku.scanima` 0.1.0)
-setelah endpoint Wireless debugging berpindah ke `100.96.188.61:42349`;
-streaming install pertama putus tanpa diagnostic, lalu `--no-streaming`
-mendorong 57 MB lewat DERP selama 200 detik dan sukses.
-
-APK debug 23 Agustus 2026 **22:24** (54,6 MB) dibangun dan **terpasang**
-membawa seluruh client Atlas Moderation Admin v2: tombol **Under Review**,
-**Request Review** (appeal, satu kali per versi art), dan category sheet
-Report (character/sexual/gore/hate/other) menggantikan one-tap report lama.
-`INTERNET` + `CAMERA` tepat dua izin, 22 rujukan `GodotGetImage` di dex,
-signature v2 sah. Endpoint Wireless debugging pindah ke `100.96.188.61:34921`
-untuk build ini; streaming install langsung sukses tanpa perlu
-`--no-streaming`.
-
-Dua bug lanjutan dari UAT build itu sendiri: dialog reject player selalu
-menampilkan pesan generik meski staff mengisi reason/note spesifik. Sebabnya
-dua lapis. Pertama, `scan_flow.gd`'s `_refresh_gallery_status()` tidak pernah
-meneruskan `reject_category`/`reject_note`/`appeal_available` dari respons
-`my_status` ke dict yang dikirim ke `set_gallery_status()` — backend dan
-`anima_details_view.gd` sudah benar, tapi jembatan di `scan_flow.gd` bolong.
-Kedua, `rejectionDetails()` di `gallery/index.ts` hanya membaca
-`moderation_cases.category`, yang selalu `null` untuk case dari appeal
-(appeal tidak pernah menjalankan Vision) — staff punya `reason_code` sendiri
-(preset seperti `ip_character_match`) yang tidak pernah dipetakan balik ke
-kategori pemain. Diverifikasi lewat kasus nyata "Padronic":
-`case_category: null`, `reason_code: 'ip_character_match'`, note "Looks like
-playstation" — pemain tetap melihat pesan generik. Fix: `rejectionDetails()`
-sekarang fallback ke `category = 'ip_character'` saat `reason_code ===
-'ip_character_match'` dan case/cache category null; kategori lain
-(`unsafe_content`, `report_upheld`, dst.) tidak punya pemetaan satu-satu ke
-salah satu dari empat kategori pemain, jadi tetap jatuh ke pesan generik.
-`gallery` di-deploy ulang. APK debug 23 Agustus 2026 **23:48** (54,6 MB)
-membawa fix `scan_flow.gd` dan terpasang di perangkat yang sama.
-
-UAT lanjutan menemukan lima hal lagi, semuanya di-root-cause sebelum ditambal.
-Tombol Publish/Cannot Publish di Profile tidak muncul sama sekali selama
-round trip `my_status` (tidak ada gambaran error, tapi juga tidak ada gambaran
-loading), lalu tiba-tiba muncul setelah beberapa detik — `anima_details_view.gd`
-sekarang punya state `_gallery_loading` terpisah yang menampilkan tombol
-disabled bertuliskan **Checking Atlas status…** sejak `set_anima()` dipanggil,
-bukan menyembunyikannya sampai jawaban server tiba. Dialog manapun yang isinya
-teks panjang/baru kadang terlalu tinggi tepat di pembukaan **pertama**, dan
-baru pas sesudah dibuka ulang: `ui_modal.gd`'s `_fit_body_scroll()` dipanggil
-lewat `call_deferred()`, yang jalan **sebelum** `Label` ber-autowrap sempat
-menghitung ulang wrap line-nya untuk lebar sebenarnya, sehingga height yang
-terukur salah dan tidak pernah dihitung ulang. Diganti pola yang sama dengan
-toast (`_relayout_toast_after_minimum_update`): menunggu satu
-`await get_tree().process_frame` penuh, dijaga revision counter supaya dua
-pemanggilan berturut (dari `_configure()` dan `_show_modal()`) tidak saling
-menimpa. `BattlePickSheet`'s daftar Anima cuma menampilkan sekitar 4 Anima dan
-Team Battle roster builder terasa tidak bisa digulir sama sekali — akar
-masalahnya sama untuk keduanya: `UiJuice.relay_touch_scroll()` (dipasang
-global sejak boot untuk meneruskan drag ke `ScrollContainer` leluhur) menyapu
-**semua** Control ber-`mouse_filter=STOP`, termasuk `ItemList`, yang sudah
-punya scrollbar dan penanganan drag-nya sendiri. Membalik `ItemList` ke PASS
-membuat drag yang sama diperebutkan `ItemList` dan `ScrollContainer` pembungkus
-sekaligus, dan di layar sentuh nyata itu terasa seperti "tidak bisa digulir
-sama sekali". Fix-nya satu guard `if control is ItemList or control is Tree:
-return` di `relay_touch_scroll`, menyembuhkan `BattlePickSheet` maupun
-`TeamRosterList` (dipakai builder Team Battle dan Expedition) sekaligus karena
-keduanya lewat fungsi bersama yang sama. `BattlePickSheet` juga mendapat Level
-di baris daftarnya (`BATTLE_PICK_ITEM_META`, sebelumnya cuma nama + elemen).
-Profile sekarang punya badge **Published to Atlas** / **Not published to
-Atlas** di sebelah nama, dan nama Seeker di Top HUD serta nama+meta Anima di
-Home kini bisa disentuh untuk membuka Seeker Profile / Anima Profile masing-
-masing (`_on_brand_input` di `scan_flow.gd`, `anima_profile_requested` baru
-di `home_view.gd`), tanpa mengubah kontrak signal yang sudah ada.
-`test_scan_ui` naik ke 1386 check, `test_i18n` ke 4965. Di sisi admin,
-dropdown Status/Source di Queue sekarang auto-navigate lewat `router.push` di
-komponen client `QueueFilters` (bukan submit form manual), dan setiap route
-`(protected)/*` punya `loading.tsx` sendiri (skeleton spinner bersama
-`PageLoading`) supaya navigasi App Router — termasuk ganti query param di
-halaman yang sama — tidak pernah terasa diam; `ActionPanel` juga menambah
-indikator **Working…** saat `pending`. APK debug 24 Agustus 2026 **00:29**
-membawa keenamnya dan terpasang di perangkat yang sama.
-
-Tiga tab Anima (Collection, Synthesis, Atlas) diseragamkan dengan menghapus PanelContainer `LabSurface` (`LabPanel`) dari `SynthesisLabView` di `scan_flow.tscn`, menyatukan struktur layout VBoxContainer `Column` di ketiga tab sebagai anak langsung Control view masing-masing dengan anchors fill (`layout_mode=1`, `anchors_preset=15`). Untuk meredam gangguan visual animasi background, dibuat PanelContainer baru (`SynthesisPanel` dan `AtlasPanel`) dengan style box flat gelap semi-transparan (`Color(0.025, 0.04, 0.095, 0.74)` dengan border 1px dan corner radius 18) untuk membungkus kontainer scroll utama di Synthesis dan Atlas. Bug transisi Synthesis diselesaikan dengan menambahkan case `SYNTHESIS_DEST` pada `_active_view()` di `scan_flow.gd` agar mengembalikan `_synthesis_view` secara tepat (sebelumnya fallback ke `_home_view`, yang memicu penayangan needs panel/CareDock secara keliru dan melewatkan animasi kemunculan Synthesis).
-
-"Battle picker cuma menampilkan 4 Anima" butuh **empat** percobaan; tiga yang
-pertama dicatat di sini justru supaya tidak diulang, karena masing-masing
-terdengar masuk akal.
-
-1. Mengecualikan `ItemList` dari `UiJuice.relay_touch_scroll()`, dengan asumsi
-   `ItemList` punya drag-to-scroll native yang diperebutkan `ScrollContainer`
-   pembungkus. Ia tidak punya.
-2. Meneruskan drag ke `get_v_scroll_bar()` milik list sendiri. Ini **sudah
-   benar secara mekanis** dan terukur menggerakkan scrollbar-nya, tetapi tetap
-   terasa rusak di perangkat karena penyebab sebenarnya belum tersentuh.
-3. Menumbuhkan list ke tinggi konten penuh supaya `ScrollContainer` luar yang
-   menggulir. Ini memang membuat sembilan Anima terlihat, tapi menukar satu bug
-   dengan tiga: bottom sheet menyusut jadi sesobek pada pembukaan pertama
-   (mengukur list yang belum terlihat — `ItemList` tersembunyi menjawab
-   last-item rect 4 px dan scrollbar 100 px), list menyimpan ekor kosong saat
-   diisi ulang dengan lebih sedikit item (`scrollbar.max_value` di-clamp ke
-   `page`, jadi dua kartu menjawab 652 px padahal kontennya 136 px), dan
-   builder Team/Expedition ikut menggulirkan judul serta baris Back/Save-nya.
-
-Penyebab sebenarnya, yang membuat percobaan 2 terasa gagal padahal jalan:
-**`ItemList` memilih pada PRESS**, jadi setiap usaha menggulir sekaligus
-memilih kartu tempat jari mendarat. Di Battle picker itu membuka halaman detail
-di tengah gerakan gulir; di builder Team itu **diam-diam mengubah roster**.
-Selama itu belum diperbaiki, scroll yang berfungsi pun tetap terasa mustahil
-dipakai.
-
-Bentuk akhirnya `UiJuice.install_item_list_touch_scroll(list, on_tap,
-on_drag_end)`: list tetap dibatasi tingginya dan menggulir **viewport-nya
-sendiri**, sehingga chrome di sekelilingnya tidak bergerak (itu yang
-memperbaiki keluhan builder), dan pilihan dilaporkan pada **RELEASE** saja,
-hanya bila jari tidak melewati `ITEM_LIST_TAP_SLOP`. `on_drag_end` dipakai
-pemanggil untuk membatalkan sorot yang sudah dilukis pada press. Dipasang di
-`BattlePickSheet`, `TeamRosterList` (builder Team dan Expedition), dan
-`CollectionView` — Collection punya bug identik yang belum dilaporkan: drag di
-roster panjang membuka sheet preview kartu yang tersentuh.
-
-Dua pagar yang lahir dari kesalahan di jalur ini:
-
-- **`relay_touch_scroll` mengecualikan list yang opt-in saja**, lewat
-  `META_LIST_SCROLL`, bukan setiap `ItemList`. Pengecualian menyeluruh
-  sempat ditulis dan akan membuat regresi baru: `_chapter_list` Expedition
-  tidak punya scroll internal dan justru **bergantung** pada relay itu untuk
-  bisa dijangkau sama sekali.
-- **Slop diukur sebagai displacement dari titik press di koordinat list**,
-  bukan akumulasi delta (jitter pada press lama akan melampaui slop dan
-  membuang tap yang sah) dan bukan di ruang konten. Menambahkan offset scroll
-  supaya "content space" terdengar lebih benar justru **fatal**: drag yang
-  menggulir list di bawah jari membuat jari tetap di atas konten yang sama,
-  displacement-nya saling menghilangkan, dan setiap gulir kembali terbaca
-  sebagai tap. Versi itu sempat ditulis dan ditangkap `test_scan_ui`.
-
-Pagarnya `_test_item_list_drag_scroll()` — drag sungguhan lewat harness
-`_drag_scrolls`, memeriksa list bergulir, chrome **tidak** bergulir, drag tidak
-melaporkan pilihan apa pun, dan tap bersih memilih tepat baris di bawah jari —
-plus satu pagar end-to-end di `_test_battle_pick_sheet()` yang membuka picker
-sungguhan berisi sembilan Anima lalu men-drag di atasnya. Kedua probe **wajib**
-memakai row ber-ikon dan thumbnail provider sungguhan, bukan `Callable()`:
-sembilan row teks pendek memang muat dalam jendelanya dan tidak mereproduksi
-bug-nya sama sekali — test end-to-end saya sempat lolos-palsu karena ini.
-
-UAT atas bentuk akhir itu menyisakan dua hal, dan keduanya konsekuensi yang
-terlewat, bukan penyebab baru:
-
-- **Picker terbuka hanya sekitar seperempat layar.** `custom_minimum_size`
-  360 px di scene adalah satu-satunya tinggi yang list minta, jadi sheet-nya
-  mengukur diri terhadap stub itu — roster-nya bisa digulir, tapi jendelanya
-  memang kecil. `BattlePickSheet._size_list_window()` sekarang menumbuhkan
-  jendela itu ke ruang yang benar-benar bisa ditawarkan sheet
-  (`host * max_height_ratio` dikurangi chrome-nya, dengan nilai scene sebagai
-  lantai). Ini dihitung dari **minimum size dan viewport saja**, bukan dari
-  internal `ItemList`, jadi aman dipanggil sebelum sheet tampil — pelajaran
-  dari percobaan ke-3, di mana mengukur konten list yang belum terlihat
-  membuat sheet menyusut. Efek sampingnya: di 720×1602 kesembilan Anima
-  sekarang muat tanpa perlu digulir sama sekali, sehingga assertion lama
-  ("wajib overflow") jadi salah dan diganti dua yang benar — panel wajib
-  melampaui separuh tinggi host, dan baris terakhir wajib terjangkau entah
-  karena muat atau karena bisa digulir.
-- **Kartu tersorot saat jari cuma hendak menggulir.** `on_drag_end` hanya
-  membetulkannya **sesudah** jari diangkat, jadi ring tetap berkedip selama
-  gerakan. Sekarang press-nya ditelan langsung: `Control` memancarkan sinyal
-  `gui_input` **sebelum** memanggil `_gui_input`, jadi `accept_event()` di
-  handler membuat seleksi bawaan `ItemList` tidak pernah jalan. Konsekuensinya
-  ring sepenuhnya milik pemanggil — `CollectionView` karena itu melukis sendiri
-  baris yang di-tap (`_on_row_tapped`), yang tanpa itu tidak akan pernah
-  tersorot. Pagarnya memeriksa **di tengah** gesture, bukan hanya sesudahnya,
-  karena "membetulkan pada release" persis bug yang sudah terkirim.
-
-Lalu fix tinggi itu sendiri **membuat bug ketiga**, dan ini yang paling penting
-dicatat: menyentuh sheet membuat grid Anima meluncur ke atas tak terkendali.
-Sebabnya matematika `chrome` saya sendiri. `_size_list_window()` menghitung
-`chrome = panel.get_combined_minimum_size().y - list.custom_minimum_size.y`,
-padahal minimum panel **sudah memuat** minimum scroll yang **sudah memuat**
-minimum list — dan scroll itu meng-clamp-nya. Jadi setiap pemanggilan
-memasukkan hasilnya sendiri ke pengukuran berikutnya: terukur, list tumbuh ke
-**1698 px di layar 1602 px**, sehingga `ContentScroll` milik sheet **sendiri**
-jadi punya overflow (max 1756 > page 1338) dan panel-nya terdorong keluar dari
-atas sheet.
-
-`UiBottomSheet._fit_scroll_to_host()` sudah punya trik yang benar dan saya
-tidak memakainya: ia **menol-kan** `_scroll.custom_minimum_size.y` dulu, lalu
-mengukur, sehingga `chrome_h` bersih dari kontribusi anaknya. Perhitungannya
-karena itu dipindahkan ke sana lewat `set_fill_child()`: satu anak dinominasikan
-menyerap sisa tinggi, minimumnya di-reset ke lantai scene sebelum tiap
-pengukuran, jadi hasilnya idempoten. Terukur sesudahnya di 720×1602: list
-1278,8 px, panel 1473 px (tepat di bawah plafon 1474), `ContentScroll` sheet
-**tanpa** overflow, posisi panel konvergen persis ke 129 px, dan mode detail
-kembali kompak ke 633 px lalu pulih saat kembali ke list. Pagarnya memeriksa
-ketiganya sekaligus: window tidak melampaui host, scroll sheet tidak punya sisa
-untuk digulir, dan tinggi list **tidak berubah** setelah tiga kali `fit_to_content()`
-— divergensi itu yang membuat gejalanya baru muncul saat disentuh.
-
-Sheet preview Collection lalu ketahuan terbuka terlalu tinggi dan baru pas saat
-dibuka ulang — dan penyebabnya bukan lagi aritmetika kita, melainkan **regresi
-engine**: minimum autowrap `Label` dihitung terhadap lebar, dan Godot bisa
-mengukurnya sebelum container sort memberi lebar, sehingga label membungkus di
-lebar ~0 dan melapor tinggi absurd
-([godotengine/godot#83546](https://github.com/godotengine/godot/issues/83546),
-gejala khasnya memang "buka ulang jadi benar"). Terukur di 720×1602: `Column`
-duduk di minimum 350 px di dalam panel 720 px, label meta satu baris melapor
-**312 px**, dan minimum panel jadi **897 px**.
-
-Dua hal memperbaikinya, dan yang pertama adalah kesalahan sesi ini sendiri:
-badge **CollectionAtlasBadge** dan **AtlasStatusBadge** yang ditambahkan tadi
-memakai autowrap padahal isinya satu baris pendek, jadi keduanya ikut melapor
-tinggi palsu — autowrap-nya dibuang. Lalu label meta yang memang bisa
-membungkus (`CollectionSheetMeta`, `BattlePickMeta`, `BattlePickReason`,
-`BattlePickEmpty`) diberi lantai lebar wrap `custom_minimum_size.x = 300`,
-sesuai workaround yang dianjurkan komunitas: minimum dihormati container bahkan
-saat sort-nya masih basi, jadi wrap terburuknya dua baris, bukan sembilan.
-Terukur sesudahnya: label meta **67 px**, minimum panel **660 px**, stabil di
-setiap pembukaan. `UiBottomSheet` juga sekarang me-refit saat lebar **konten**
-berubah (bukan lebar panel, yang anchor-stretched dan tidak pernah berubah),
-supaya sort yang datang terlambat menyembuhkan dirinya sendiri.
-
-Pagarnya `_test_autowrap_labels_have_wrap_width()`, dibatasi pada label di
-dalam `PanelContainer` ber-variation `BottomSheetPanel` — surface yang diukur
-dari kontennya. Layar penuh punya `ScrollContainer` yang menyerap salah-ukur
-yang sama, jadi memagari semuanya hanya menghasilkan kebisingan.
-
-Prosedur lengkap untuk seluruh kelas bug ini (gejala, empat sumber terukur, dan
-urutan penanganan yang mengikat) hidup di `.cursor/rules/client-shell-ui.mdc`
-bagian "Layout diukur sebelum settle", dengan penunjuk di bagian sendiri di
-file ini. Ia ditulis karena kelas ini terulang **empat kali** dalam satu sesi
-UAT dan dugaan pertama selalu salah.
-
-Level yang ditambahkan ke baris Battle picker lalu **merusak grid-nya**, dan ini
-ditemukan hanya karena screenshot perangkat: teks tiap sel membungkus, baris
-pertamanya di-ellipsis, dan baris **kedua** tetap tergambar di luar sel — menimpa
-art baris di bawahnya, terlihat sebagai "Drakabyss · Lv. 6 · Flow · …" diikuti
-"lant" yang menggantung. Sel `ItemList` hanya punya ruang untuk baris yang ikut
-diukur, jadi keduanya dipagari sekarang: `max_text_lines = 1` +
-`text_overrun_behavior = 3` pada `BattlePickList` dan `AnimaList` (nama Anima
-berasal dari pemain, jadi panjangnya tidak bisa diasumsikan), dan **element
-dibuang dari baris grid** karena "Drakabyss · Lv. 6 · Flow · Plant" memang tidak
-muat di kolom 290 px sementara panel detail sudah menampilkan element-nya.
-Pagarnya `_test_item_grids_clip_to_one_line()`, dibatasi pada grid multi-kolom —
-roster satu kolom dapat lebar penuh dan tidak berisiko.
-
-Dua koreksi lanjutan sesudah screenshot perangkat kedua. Pertama,
-`max_text_lines = 1` **tidak cukup**: baris "tidak bisa dipakai"
-(`Drowake · Lv. 16 · Sleeping`) tetap membungkus dan membocorkan ekornya walau
-selnya sudah dikunci satu baris ber-ellipsis. Baris itu sekarang juga dua
-segmen dan **dipimpin alasannya**, bukan Level — alasan itu yang harus
-ditindak pemain, Level ada di panel detail; key `BATTLE_PICK_ITEM_META`
-tiga-slot jadi yatim dan dihapus. Kedua, keluhan "terpotong ke kiri" sejak awal
-ternyata **bukan** konten meluber melainkan **border sheet yang hilang**:
-`BottomSheetPanel` punya border kiri/kanan 2 px, tapi panel digambar full-bleed
-sehingga garis itu jatuh di kolom piksel terluar dan dimakan lengkung layar
-perangkat. `UiJuice.SHEET_SIDE_INSET` (12 px) memberi inset samping; bawahnya
-tetap rapat karena stylebox-nya tidak punya border bawah dan sudut bawahnya
-kotak. Jebakannya dicatat di kode: `sheet_rest_position()` wajib mengembalikan
-x = inset, **bukan 0** — menetapkan `position` menulis ulang offset Control,
-jadi rest x=0 akan membatalkan inset itu setiap kali sheet beranimasi masuk,
-bug yang hanya muncul sesudah animasi dan bukan saat frame pertama.
-
-Dua pelajaran metode dari babak ini, keduanya sudah masuk rule ber-glob:
-**lantai lebar wrap tidak gratis** (ia menaikkan minimum lebar konten, dan
-sheet yang lebih lebar dari layar terpotong karena scroll horizontalnya mati),
-dan **child `visible = false` tidak menyumbang minimum** — jadi mengukur lebar
-wajib dilakukan dengan badge opsionalnya dinyalakan. Yang paling menentukan:
-pengukuran headless saya sempat memburu surface yang salah dan menyimpulkan
-"muat" (448 px di ruang 720 px) sementara yang rusak adalah grid picker. Satu
-`adb exec-out screencap` menyelesaikannya; layar perangkat harus menyala lebih
-dulu karena `adb shell input` diblokir di HyperOS ini.
-
-Ring sorot Collection juga melompat kembali ke Anima yang sedang di lobby tiap
-kali sheet preview Anima lain dibuka. `_list.clear()` di `set_rows()` ikut
-menghapus selection native, jadi selection harus dipilih ulang — dan
-`set_rows()` jalan di **setiap** care sync latar, bukan hanya muat pertama.
-Karena default-nya selalu `active_id`, satu sync yang mendarat saat sheet Anima
-lain terbuka menarik ring itu balik ke Anima Home. Aturannya sekarang satu
-fungsi, `_highlight_id()`, dipakai bersama `set_rows()` dan repaint sesudah
-gulir; `on_drag_end` Collection **tidak** boleh `deselect_all` (versi pertama
-memakai itu dan menghapus ring Anima aktif setiap kali roster digulir).
-
-Back dari Anima Profile yang dibuka lewat tap nama di Home tadinya mendarat di
-Collection, sebab whitelist `_show_collection_profile()` cuma mengizinkan
-Collection/Battle/Synthesis sebagai asal — Home baru ditambahkan sesi ini
-lewat fitur tap-nama dan lupa didaftarkan. Membuka Atlas/Seeker Profile dari
-atas Anima Profile (mis. lewat Menu) juga bisa mendarat di tujuan basi, sebab
-`_remember_overlay_origin()` cuma mengenali empat tujuan dasar dan diam kalau
-`_destination` sedang `ANIMA_PROFILE_DEST` — sekarang ia merantai lewat
-`_profile_return_destination` Profile sendiri, jadi satu kali Back dari Atlas
-tetap mendarat di layar tempat rantainya benar-benar dimulai. Membuka Seeker
-Profile lewat tap nama juga diam total selama round trip `seeker/profile`;
-`LoadingScreen.show_screen("SEEKER_PROFILE_LOADING")` sekarang menutupinya,
-konsisten dengan `BATTLE_CONNECTING`/`TEAM_STARTING`. Bottom sheet preview
-Collection (kartu Anima yang di-tap dari grid) tidak pernah tahu status
-publish sama sekali — beda dari Anima Profile, ia dibangun instan dari roster
-lokal tanpa panggilan `my_status`. Parsing responsnya dipisah ke
-`_gallery_status_from_response()` yang dipakai bersama oleh Profile dan sheet
-baru ini, dan sheet mendapat sinyal terpisah `atlas_preview_requested` (bukan
-numpang `preview_requested`, yang sengaja dilewati saat care data sudah
-ter-cache supaya tidak sync ulang) supaya badge publish tetap refresh setiap
-sheet dibuka.
-
-`test_scan_ui` berakhir di 1402 check, `test_i18n` 4970 dan dijalankan berulang untuk memastikan
-stabil; satu check lain (`UiBottomSheet closes after its dismiss animation`)
-memang **flaky** karena bergantung timer animasi, bukan regresi. `test_i18n`
-4974, `test_game_rules` 181, `test_client_state` 196,
-`test_expedition_route_map` 91, `test_auth_flow` 63, `test_sprite_slicing` 174,
-`npm run selftest` lulus, dan `quota_rules.sql` lulus terhadap production.
-`admin_moderation` dideploy ulang (smoke 401 = boot benar). APK debug
-24 Agustus 2026 **04:17** membawa semuanya dan terpasang di perangkat yang sama.
-Verifikasi visualnya **belum** dilakukan: layar perangkat kembali `Dozing` dan
-`adb shell input` diblokir HyperOS, jadi baris Drowake dan border samping sheet
-masih menunggu satu screenshot dengan layar menyala.
-
-Code review atas semuanya menemukan lima cacat lain yang semuanya lahir di sesi
-ini, jadi keduanya dicatat bersama pagarnya:
-
-- **Tap nama di Home memancar dua kali** (emulasi touch menyerahkan jari yang
-  sama sebagai screen touch dan mouse press). Chip kebutuhan di file yang sama
-  sudah punya guard per-frame; tap identitas belum. Di sini pancaran kedua lebih
-  buruk daripada tap mati: ia masuk lagi ke `_show_collection_profile()` saat
-  Profile **sudah** jadi tujuan, sehingga asal yang diingat di-reset ke
-  Collection dan justru membatalkan Back-ke-Home yang baru diperbaiki.
-- **Jalur `GALLERY_MODERATION_REJECTED` tidak menyatakan `appeal_available`.**
-  Penolakan yang baru terjadi belum punya appeal tercatat, tapi default `false`
-  memberi tahu pemain bahwa ia "sudah meminta review" sekaligus menyembunyikan
-  appeal yang sebenarnya jadi haknya.
-- **`previewIdleThumbDataUri()` throw dan fan-out tak terbatas.** Setiap preview
-  mengunduh lalu men-decode satu sheet penuh dan meng-inline-nya sebagai base64;
-  satu Seeker dengan banyak publication mengubah satu page load menjadi puluhan
-  fetch, dan satu baris tak terbaca men-500-kan seluruh halaman Seekers. Sekarang
-  fail-soft (tetap dicatat ke log) dengan plafon `PREVIEW_THUMB_BUDGET` per
-  request; barisnya jatuh ke placeholder yang sudah ada. `ensureEntryThumb()` di
-  file yang sama **tetap** throw dengan sengaja — approve/restore tidak boleh
-  diam-diam menerbitkan entry tanpa thumbnail, dan pagar selftest-nya karena itu
-  dipersempit ke fungsi preview saja.
-- **`src=""` bukan src kosong.** Browser me-resolve string kosong terhadap URL
-  saat ini dan mengambil ulang halamannya sendiri sebagai gambar. Queue dan
-  Seekers memakai `?? undefined`/`typeof === "string"` yang meloloskan `""`;
-  Case Detail sudah aman karena memakai truthiness.
-- **Assertion RLS `moderation_cases` lolos karena alasan yang salah.** Ia
-  mewarisi `request.jwt.claims` yang ditinggalkan blok sebelumnya, dan `u1`
-  **menjadi admin** di tengah fixture — jadi assertion "tidak melihat baris"
-  sebenarnya menguji jalur staff. Memindahkannya ke sesudah fixture (supaya
-  hasil 0-baris tidak lolos hampa di database kosong) membongkar ini. Sekarang
-  kedua arah diuji dengan identitas yang dinyatakan eksplisit: `u4` (staff-nya
-  sudah di-revoke) wajib melihat nol baris, `u1` wajib tetap bisa membaca —
-  kalau tidak, kebijakan yang menolak semua orang pun akan lolos. `gallery_reports`
-  yang sebelumnya tidak punya assertion ikut ditambahkan.
-
-Perangkatnya (`23127PN0CG`, HyperOS) tersambung **wireless lewat Tailscale**
-`100.96.188.61:<port>`, bukan USB; port-nya berubah saat Wireless debugging
-diaktifkan ulang (terakhir `34921`) dan koneksinya putus sendiri di antara
-perintah. Per 24 Agustus 2026 endpoint Tailscale itu berhenti menjawab dan
-`adb kill-server` malah menabrak daemon yang masih hidup
-(`could not install *smartsocket* listener: Address already in use`), tetapi
-perangkatnya tetap terdaftar lewat mDNS sebagai
-`adb-407f470f-SpxqzU (2)._adb-tls-connect._tcp` dan `adb install` ke sana
-berhasil tanpa `adb connect` sama sekali — jadi periksa `adb devices` dulu
-sebelum menyimpulkan perangkatnya lepas. Selama endpoint aktif, `adb connect <ip>:<port>` menyambungkannya
-kembali; `Connection refused` walau `tailscale ping` masih membalas berarti
-endpoint ADB mati atau port berubah dan perlu dibuka lagi di perangkat. Dua hal
-yang **tidak bisa** dilakukan dari sini: perangkat ini menolak
-`adb shell input` dengan `SecurityException: INJECT_EVENTS` (butuh "USB debugging
-(Security settings)" di HyperOS), jadi layar tidak bisa dibangunkan atau dibuka
-kuncinya secara remote. Konsekuensinya, `monkey` yang meluncurkan app saat layar
-`Dozing` **selalu** gagal dengan `Failed to create vulkan window` /
-`Unable to create DisplayServer` — itu layar mati, bukan APK rusak. Boot di
-perangkat karena itu masih belum pernah dilihat; verifikasi runtime butuh layar
-dibuka tangan.
-
-Animasi ikon terbang saat feeding dan buying di Shop **menghilang** setelah HUD
-restructure memindahkan `BagButton`/`ShopButton` dari `ChipLayer` ke
-`TopHud/Column/BottomSection/RightButtons`. Dua penyebab utama teridentifikasi
-dan diperbaiki:
-1. `UiJuice.fly_to()` membutuhkan `flyer.top_level = true`: tanpa flag ini,
-   ketika host flyer berada di bawah `Container` (seperti `MarginContainer` atau
-   `HBoxContainer`), Godot mereset `flyer.position` dan memperbesar `flyer.size`
-   ke dimensi container pada `NOTIFICATION_SORT_CHILDREN` (terukur: `(72, 72)`
-   didorong menjadi `(688, 1576)` dan posisinya melenceng keluar layar).
-2. Host flyer di `scan_flow.gd` diarahkan ke `_toast_layer` (`ToastLayer`,
-   Control full-screen non-container yang duduk di canvas root di atas seluruh
-   sheet), dengan fallback `_safe_margin`.
-
-Label tombol `ShopButton` dan `BagButton` pada `RightButtons` (TopHud) yang
-berada di atas surface terang memakai `GhostChipValueLabel` (warna font gelap
-navy/slate `Color(0.094, 0.196, 0.365, 1)` tanpa font shadow `Color(0, 0, 0, 0)`)
-agar terbaca tajam dan bersih. Dimensi `TopHud` dan tombol dipertahankan pada
-ukuran aslinya (`custom_minimum_size = Vector2(96, 96)`) agar garis divider dan
-background 9-patch `HomeHudSurface` (`home_top_container_bg.png`, 203px) tidak
-terdistorsi. Non-Home tab (Scan, Battle, Anima, dll.) memakai `CompactHudSurface`
-(`compact_top_container_bg.png`, 82×82 px downsampled dari export 3x Figma) sebagai `StyleBoxTexture` NinePatch —
-stretch margin 23 px di semua sisi (corner radius 23 px presisi sesuai canvas Figma), content margin 16/10 px —
-menampung nama Seeker dan tombol Core + Bits. Asset disalin ke
-`assets/ui/compact_top_container_bg.png`, didefinisikan sebagai `ext_resource` id
-`7_compact_hud_bg` dan subresource `CompactHudSurface` di `mobile_theme.tres`, dan
-dipasang via `theme_type_variation` di `_go_to()` dalam `scan_flow.gd`.
-Ikon dan label diturunkan secara presisi di dalam chip menggunakan
-`_column.alignment = BoxContainer.ALIGNMENT_END`, `Icon` `Vector2(46, 46)`, dan
-`ICON_SEPARATION = 8`. Interaksi pada `ResourceChip` diberi full feedback juice
-(squish `0.90` saat ditekan dengan micro-tilt & brightness, spring bounce `TRANS_BACK`
-saat dilepas, serta pop overshoot `1.08` saat tap).
-
-Desain toast 4-state (`GENERAL`, `SUCCESS`, `WARNING`, `ERROR`) berbasis
-`StyleBoxTexture` (`toast_panel_*.tres`) sekarang distandarisasi ke seluruh
-event banner / toast di `BattleView` dan `TeamBattleView` lewat
-`_event_plate.add_theme_stylebox_override("panel", TOAST_STYLES[type])`:
-`SUCCESS` untuk Super Effective / Guard / Item / Win KO / Ace Passive,
-`WARNING` untuk Not Effective / Timeout / Retreating, `ERROR` untuk Defeat /
-Player KO, dan `GENERAL` untuk Initiative / Attack / Move Effects.
-
-Seluruh toast/banner kini diposisikan pada **30% dari atas layar** (golden focal zone):
-- **Shell toast** (`StatusPanel` / `_place_toast`): ditargetkan pada `viewport_h * 0.30`
-  dengan boundary clamping antara batas bawah TopHud dan batas atas BottomNav / sheet,
-  sehingga nyaman di mata tanpa tertutup atau menabrak HUD.
-- **Battle banners** (`BattleEffectiveness` / `TeamEffectiveness`): anchor diatur
-  ke `anchor_top = 0.3`, `anchor_bottom = 0.3` di dalam arena
-  (`BattleArena` / `TeamBattleStage`), duduk pas di bawah HP bar fighter dan di atas
-  animasi pertarungan.
-
-Layar loading (`LoadingScreen` / `ScanimaBackground` / Web Shell):
-- Engine boot splash image Godot dimatikan (`application/boot_splash/show_image=false`, `boot_splash/bg_color=Color(0.018, 0.026, 0.07, 1)`, `boot_splash/minimum_display_time=0`) agar startup langsung meluncur mulus ke loading screen Scanima tanpa jeda/logo engine.
-- Animasi chamber cincin berputar diposisikan tepat di tengah layar (`CHAMBER_Y = 0.5`).
-- Elips glow biru terang di bawah cincin chamber dihapus agar tampilan lebih bersih dan modern.
-- Teks judul brand "SCANIMA" (`BrandTitle`), loading sweep progress bar (`LoadingSweep`), dan teks loading (`LoadingMessage`) disusun rapi berurutan tepat di tengah layar (`CenterContainer` penuh).
-- Web HTML export shell template (`game/web_shell.html` dan `build/web/index.html`) diperbarui dengan judul neon glowing "SCANIMA" dan loading bar presisi di tengah viewport sebelum engine WASM selesai diunduh.
-- Jembatan foto Web (`_request_web_photo` di `scan_flow.gd`) disederhanakan ke pemilih berkas murni (`accept="image/*"`) tanpa modal webcam WebRTC yang rentan masalah izin pada desktop browser, sambil tetap membuka kamera/galeri secara native pada mobile browser.
-- Perbaikan Bottom Sheet fly-up bug di `ui_bottom_sheet.gd`: `open()` kini memvalidasi `_panel.get_combined_minimum_size().y >= 1.0` dan menunggu layout settle penuh sebelum memulai animasi kemunculan agar panel tidak beranjak dari posisi salah yang membuatnya seolah terbang ke atas.
-
-Relayout Navigasi Tabbing Animas & Unifikasi UI Sub-tab:
-- Tombol **Synthesis Lab** di header `CollectionView` dihapus dan dipindahkan menjadi sub-tab di antara **Collection** dan **Atlas** (`CollectionTabs`: `Collection` | `Synthesis` | `Atlas`), dengan label ringkas `Synthesis` (`COLLECTION_TAB_SYNTHESIS`).
-- Sub-tab tiga serangkai (`Collection`, `Synthesis`, `Atlas`) distandarisasi di seluruh `CollectionView`, `AtlasView`, dan `SynthesisLabView`, memungkinkan navigasi langsung bolak-balik antartab di seluruh sub-page Animas.
-- **Unifikasi Header & Breathing Room**:
-  - Chevron back (`<`) pada Atlas (`AtlasBack`) dan Synthesis (`SynthesisBackButton`) dihapus total karena alur navigasi kini sepenuhnya berbasis tab.
-  - Subtitle deskriptif ditambahkan ke Atlas (`ATLAS_SUBTITLE`: "Discover, track, and explore every known Anima.") di bawah `AtlasTitle`, sehingga ketiga sub-tab memiliki struktur header yang seragam (`Titles` VBox: `Title` + `Subtitle`).
-  - Tinggi tombol tab diseragamkan menjadi 72px (`custom_minimum_size = Vector2(0, 72)`) dengan spacing dan breathing room yang proporsional, bersih, dan konsisten tanpa frame/border yang mengganggu.
-- **Selection Ring Fix**: Selection ring emas (`ItemSelected`) yang sebelumnya nyangkut/terpilih terus pada kartu di `CollectionView` saat berpindah tabbing atau saat sheet ditutup telah diperbaiki: `_highlight_id()` kini hanya mengembalikan ID Anima ketika preview sheet benar-benar sedang terbuka (`_sheet.visible`), dan `_restore_highlight()` / `close_sheet()` / `begin_visit()` membersihkan seleksi saat sheet tidak aktif sehingga grid tampil bersih tanpa ring nyangkut.
-
-
-
-Pagar thinking Vision live per 22 Agustus 2026: `thinking_budget: 0` dibuang
-wrapper Replicate sebagai nilai falsy, jadi thinking berjalan dinamis dan memakan
-`max_output_tokens` sampai JSON Vision terpotong di tengah field — terukur
-menggagalkan Evolve stage 2 dengan sisa 162 token teks dari plafon 4.096, dan
-meninggalkan tiga kegagalan Synthesis bertanda potongan yang sama. Nilainya
-sekarang satu konstanta `VISION_THINKING` (`thinking_budget: 1`) yang di-spread
-keenam call site, dan plafon Evolve naik ke 8.192; provenance pengukurannya di
-`.cursor/rules/art-and-prompt-pipeline.mdc`, pagarnya skenario 42
-`npm run selftest`. Dialog **Evolution Failed** dengan tombol Retry menggantikan
-toast di client, dan ia ikut APK 22 Agustus 2026.
-
-Evolve juga tidak lagi mati karena satu sampel Vision yang buruk. Plan yang
-ditolak validator disampel ulang maksimal tiga kali dengan keluhan validator
-dibacakan kembali ke model **bersama JSON plan yang ditolak**, dan suhu **naik**
-0,35→0,60→0,85. Percobaan baru hanya dimulai selama masih di bawah 50 detik
-supaya tidak menabrak timeout client 90 detik. Plan berharga $0,003 versus ~$0,05
-gambar, jadi ini langkah termurah untuk melawan variansi model; pagarnya
-`evolutionPlanResampleAllowed()` di `npm run selftest`.
-
-Suhu itu sempat **turun** 0,35→0,15, dan itu membatalkan seluruh gunanya:
-terukur 22 Agustus 2026, tiga sampel Hydron berturut-turut keluar berbeda **satu
-kata dari 12.105 karakter**, jadi loop-nya membayar tiga panggilan Vision untuk
-nol informasi baru. Sampel ulang harus benar-benar sampel lain. Yang tetap
-berguna adalah koreksinya: attempt yang mengerti keluhannya memang
-memperbaikinya sendiri — satu sampel melunasi `silhouette_break_contract` dengan
-mengganti satu kata.
-
-Yang sebenarnya membunuh dua ritual Hydron itu bukan variansi model melainkan
-**validator yang menolak jawaban benar**. `source_basis` menamai struktur yang
-terlihat, jadi jawaban benarnya memang pendek, sementara lantainya 12 karakter:
-`"stubby legs"` hanya 11, dan ia menggagalkan **enam sampel Plan berturut-turut**
-sebelum satu gambar pun dibuat. Lantai itu sekarang `MIN_SOURCE_PHRASE` 4,
-disamakan dengan `source_detail` di fungsi yang sama. Dua kontrak lain berhenti
-menjatuhkan Plan karena hal yang server sudah tahu jawabannya: entri
-`derived_anatomy` yang tidak menelusuri anchor-nya dibuang (prompt v41 menyatakan
-array itu boleh kosong dan perakit prompt punya kalimat penggantinya), dan
-`realization_mode` di Adult ditegakkan ke `preserve` — satu-satunya nilai sah di
-stage itu — tanpa menyentuh `evolved_policy`. Empat dari enam plan yang ditolak
-produksi lolos setelah perbaikan ini, termasuk attempt terakhir kedua ritual.
-`evolve_anima` 13 membawanya.
-
-Profile punya section **Evolution History** di antara Attributes dan Synthesis
-History: silsilah bentuk Anima dari Rookie ke bentuk sekarang, rata tengah,
-dengan panah di antaranya. Datanya dari `operation: "history"` di `evolve_anima`
-— **read-only**, berdiri sebelum gerbang idempotency karena ia tidak
-membelanjakan apa pun. Bentuk lama dibaca dari `anima_forms` (client tidak bisa:
-RLS aktif tanpa policy, grant hanya `service_role`), dan **namanya diambil dari
-generation yang melahirkannya** lewat `anima_forms.generation_id` →
-`generations.vision_result.suggested_name`, sebab `animas.nickname` sudah
-menjadi nama bentuk terbaru — terukur 22 Agustus 2026: stage 1 menjawab
-`Hydron`, stage 2 `Drowake`. Thumbnail-nya dipotong malas dari sheet yang sudah
-dibayar memakai `cropIdleThumb` yang sama dengan Atlas lalu disimpan di
-`<uid>/<anima_id>/form_history/<stage>.png`, jadi section ini **nol panggilan
-model** berapa kali pun Profile dibuka. Stage 1 tidak pernah memanggil server.
-Panelnya dibangun di kode, bukan scene, karena jumlah bentuknya memang berubah;
-pagarnya `_test_evolution_history_section()` di `test_scan_ui`.
-
-GPT Image E005 safety false-positive mendapat tepat **satu** redraw otomatis
-tanpa mengulang Vision. Provenance 22 Agustus 2026: reference Idle valid
-486×535 dikirim sebagai RGBA opak, dan log model mencatat `Unable to infer
-channel dimension format` sebelum output ditolak sensitif setelah 47 detik.
-Reference sekarang PNG RGB color type 2; kalau E005 masih terjadi, webhook
-memakai input allowlist + family-safe suffix dan mengganti prediction secara
-atomik lewat `replace_evolution_prediction`. Hanya exact E005 yang boleh retry,
-dua attempt total disimpan di `generations.image_attempts`, RPC service-role-only,
-dan prediction resmi berstatus failed tidak ditagih menurut dokumentasi
-Replicate. Migration `20260822121730_evolution_image_retry`,
-`replicate_webhook` 15.
-
-Sesudah pagar itu, Evolve yang sama gagal sekali lagi di post-processing, dan
-sebabnya terpisah: `stripWhiteKeylineInPlace()` melahap art putih yang berdiri
-sendiri karena tidak ada dark line art yang menghentikannya, jadi dua Z tidur
-pecah menjadi remah yang lalu ditolak `auditDetachedCharacterComponents` — dua
-pagar di file yang sama saling bertentangan. Stripper sekarang hanya jalan untuk
-`promptMajor < 11`, yaitu versi yang memang meminta keyline; `replicate_webhook`
-13 membawanya. Provenance dan angkanya di
-`.cursor/rules/art-and-prompt-pipeline.mdc`.
-
-Guided Synthesis **live di backend** per 22 Agustus 2026: migration
-`20260821121417_anima_synthesis`,
-`20260821230502_synthesis_committed_form_only`,
-`20260822001202_synthesis_prompt_v43`,
-`20260822063112_synthesis_transparent_history_refs`,
-`20260822073538_synthesis_name_lineage_v44`, dan
-`20260822074932_synthesis_json_close_v45` ter-apply; `synthesize_anima` version 5 ACTIVE, `evolve_anima` version 9 ACTIVE, `create_anima` version 24 ACTIVE, blok uji Synthesis di `quota_rules.sql` lulus terhadap schema production,
-`synthesis_prompt_version=v45`, dan `feature_synthesis=true`. V45 menulis
-`name_roots` terakhir dan `extractJson()` menutup JSON/fence yang terpotong
-(Scan memakai parser yang sama). V44 memakai pipeline morfem capture v41:
-Planner mengirim `name_roots`, server merakit nama spesies, dan Evolve
-membaca generation Synthesis sebagai birth lineage. V44 tetap rollback. V43 sebelumnya mencantumkan batas prose Planner, 4.096
-output token, serta memotong prose valid di trust boundary supaya verbosity
-model tidak menggagalkan attempt yang sudah lolos Resonance. Backend sekarang hanya menerima form committed. Reference chroma
-Planner dan thumbnail History transparan dipisah; History lama diperbaiki malas
-dari sheet Source asli memakai crop Idle Atlas, tanpa panggilan model. Sisi
-client-nya — kartu art/picker visual, Incubator Capsule, dialog failure/refund,
-Result reveal animation, dan skeleton History — ikut APK 22 Agustus 2026. Jalur
-1 Core + 250 Bits terbuka; kalau perlu ditahan, matikan flag-nya.
+- **Atlas Moderation Admin v2** live: `admin_moderation` + `gallery` (moderasi
+  dua-pass), RLS staff-only lewat `staff_accounts`.
+- **Team Battle** menerima 2–4 Anima; rival selalu persis sebesar roster
+  pemain, dirakit dari publication Atlas approved (boleh campur pemilik, tanpa
+  owner/nickname privat). Tidak ada UI Publish Defense — Publish to Atlas
+  adalah consent-nya; RPC Defense legacy tetap wire-compatible untuk rollback.
+- **Expedition** tetap tepat 4 Anima. Roster picker (Team/Expedition) memakai
+  `TeamRosterList` dengan `SELECT_TOGGLE` (bukan `SELECT_MULTI`) supaya urutan
+  tap dan deselect konsisten.
+- **`ItemList` Godot memilih pada PRESS, bukan RELEASE.** List yang perlu
+  di-drag-scroll di touch UI wajib lewat
+  `UiJuice.install_item_list_touch_scroll(list, on_tap, on_drag_end)` —
+  tanpanya, drag scroll diam-diam ikut memilih/mengubah item di bawah jari.
+  Dipakai `BattlePickSheet`, `TeamRosterList`, `CollectionView`. Detail dan
+  pagar di `.cursor/rules/client-shell-ui.mdc`.
+- **Duel/Team/Expedition arena**: session boundary membersihkan pelat
+  transient lama saat start baru; music cue hanya membaca arena yang benar-benar
+  terlihat (session tersembunyi tidak menahan musik battle).
+- Kegagalan Duel 500 tanpa mapping 4xx/409 dicatat ke `battle_failures`
+  (default-deny, service-role only); Evolve/Synthesis pakai helper fail-open
+  supaya kegagalan logging tidak menimpa response asli.
+- Tiga tab Anima — **Collection / Synthesis / Atlas** — satu struktur header
+  dan navigasi tab langsung (tanpa chevron back).
+- **Vision thinking budget** dikunci konstanta `VISION_THINKING = 1` (di-spread
+  ke enam call site) — `thinking_budget: 0` dibuang sebagai nilai falsy oleh
+  wrapper Replicate dan bikin thinking berjalan tak terbatas sampai JSON
+  terpotong. Plafon output Evolve 8.192 token.
+- **Evolve plan resample**: sampai 3x saat validator menolak, suhu naik
+  0,35→0,60→0,85, dibatasi <50 detik biar tidak menabrak timeout client 90
+  detik. Validator floor `MIN_SOURCE_PHRASE = 4`; `derived_anatomy` tanpa
+  anchor dibuang (bukan menggagalkan plan); Adult selalu menegakkan
+  `realization_mode: preserve`.
+- **GPT Image E005** (false-positive safety) dapat tepat satu redraw otomatis
+  tanpa mengulang Vision; dua attempt total, RPC `replace_evolution_prediction`
+  service-role-only.
+- Profile punya section **Evolution History** (silsilah bentuk Anima, nol
+  panggilan model tambahan — thumbnail dipotong malas dari sheet yang sudah
+  dibayar) dan badge **Published to Atlas** / **Not published to Atlas**.
+- **Guided Synthesis** live di backend, `synthesis_prompt_version=v45`,
+  `feature_synthesis=true`, jalur 1 Core + 250 Bits.
 
 ## Aturan yang tidak bisa dinegosiasikan
 
@@ -925,24 +379,3 @@ dan `sfx-presentation.mdc`.
 Indeks dokumen selengkapnya ada di [README.md](README.md); panduan pemain di
 [`docs/wiki/`](docs/wiki/README.md).
 
-## Perbaikan UI & State Caching Synthesis (25 Agustus 2026)
-
-1. **State Caching per Bias Mode**: Hasil review resonance (`_preview`) dan error (termasuk `SYNTHESIS_MODE_USED`) sekarang di-cache per bias mode (`dominant_a`, `balanced`, `dominant_b`) menggunakan `_preview_cache` dalam `SynthesisLabView`. Ketika player berpindah tab bias inheritance dan kembali, hasil review yang sama langsung terpulihkan secara local tanpa hit backend ulang. Caching sepenuhnya dibersihkan (`_invalidate_all()`) ketika player mengubah source Anima A atau B.
-2. **Redundant Button Hidden**: Tombol `Review Resonance` disembunyikan secara dinamis ketika preview hasil review, pesan error, atau loading state sedang aktif.
-3. **Loading State Review**: Indikator loading pada review area mengadopsi pola looping sweep linear milik `LoadingScreen` (`_loading_track` berlatar gelap dan `_loading_spark` cyan yang meluncur maju secara berulang via `Tween.set_loops()`), diposisikan center vertically dengan ketinggian 220px agar mengisi ruang lapang area review secara seimbang.
-4. **Pencegahan Opsi Terpakai (SYNTHESIS_MODE_USED)**: Mode bias yang sudah pernah diselesaikan untuk pasangan Source tersebut ditandai ke `_used_modes` ketika server mengembalikan error, kemudian tombol mode bias tersebut dinonaktifkan (`disabled = true`) agar player tidak memicu review berulang.
-5. **Warna Banner/Toast Battle (Complete & KO)**: 
-   - Banner `finished` (`Battle complete.`): Biru (`COMPLETE_COLOR` + `ToastType.GENERAL`) dengan teks dan panel toast biru untuk semua hasil (menang/kalah).
-   - Banner `knockout` (`[Anima] is knockout`): Hijau (`WIN_COLOR` + `ToastType.SUCCESS`) jika yang KO adalah musuh/lawan, merah (`DAMAGE_COLOR` + `ToastType.ERROR`) jika yang KO adalah Anima pemain.
-6. **Incubating Layout Clean**: Pada state `_set_incubating(true)`, `_synthesis_panel` (`SynthesisPanel`) disembunyikan bersama `_editor_scroll` sehingga tidak meninggalkan panel kosong di atas tampilan visual inkubasi.
-7. **Uji Otomatis**: Memperbaiki `test_scan_ui.gd` agar mencari container `Column` yang dipromosikan (bukan `LabSurface` yang sudah dideprecate) untuk pengujian kecocokan dimensi viewport, sehingga seluruh 1467 checks client UI test suite kembali hijau / lulus 100%.
-## Perbaikan UI Scan View, Home CTA, & Modal Fit-to-Content (25 Agustus 2026)
-
-1. **Title Dynamic Alignment**: `ScanTitle` ("Discover a New Anima") diposisikan secara dinamis pada `_align_idle_graphic` tepat di atas animasi cincin chamber di area tengah layar (`local.y - 290px`), menghilangkan gap kosong di bawah HUD.
-2. **Icon Camera Centering**: `CAMERA_OPTICAL_OFFSET` pada `ScanView` dinormalkan ke `Vector2.ZERO`, sehingga icon kamera duduk presisi tepat di titik pusat matematis animasi cincin chamber yang berputar.
-3. **Vibe & CTA Section Lift (+30%)**: Ditambahkan `BottomSpacer` pada `scan_view.tscn` sehingga seluruh blok "Choose Your Anima Vibe", opsi vibe, tombol "Scan Real Object", dan privacy hint terangkat ~30% ke atas, tidak lagi menempel ketat di navigation bar bawah.
-4. **Pembersihan Copy Hint**: Teks "Center one clear object in the frame." (`SCAN_CAMERA_HINT`) pada `StatusPanel` disembunyikan saat idle agar pemain tidak mengira kamera sedang loading di layar.
-5. **Perjelas Copy Vibe**: `SCAN_VIBE_TITLE` diperbarui menjadi **"Choose Your Anima Vibe"** pada `locales/ui.csv`.
-6. **Home Single CTA Fix**: `_primary_action.visible` pada `home_view.gd` diatur hanya aktif pada state `error`, sehingga pada state `empty` hanya tombol `ScanCtaButton` di tengah `StageSpace` yang tampil, menghilangkan tombol kembar di bagian bawah Home.
-7. **UiModal Autowrap Fit-to-Content**: Diberikan lantai lebar wrap `custom_minimum_size.x = 520.0` pada `ModalBody` (`ui_modal.tscn` dan `ui_modal.gd`) untuk mencegah regresi pengukuran autowrap Godot (godotengine/godot#83546) yang sebelumnya menyebabkan dialog melapor tinggi absurd dan memanjang kosong. Dialog kini pas dan rapat membungkus kontennya.
-8. **Web Build Native Camera & Desktop Webcam Support**: Ditambahkan jembatan `JavaScriptBridge` pada `scan_flow.gd` (`_request_web_photo` dan `_on_web_file_selected`) saat `OS.has_feature("web")`. Pada browser mobile (iOS/Android), digunakan HTML `<input type="file" accept="image/*" capture="environment">` untuk membuka kamera bawaan HP; pada browser desktop (MacBook/PC), digunakan modal WebRTC `getUserMedia` (`Webcam Viewfinder`) live stream dengan preview mirrored dan tombol "Take Photo" un-mirrored, dilengkapi auto-resize canvas client-side ke `FOTO_MAX_PX` (1280px, JPEG 85%). Alur Android native APK (`GodotGetImage`) tetap tidak tersentuh.
