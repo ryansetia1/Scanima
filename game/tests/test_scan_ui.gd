@@ -182,7 +182,7 @@ func _initialize() -> void:
 	)
 	_check(
 		scan_flow.find("_queue_thumbnail_backfill(row, anima_id, stage)") >= 0
-		and scan_flow.find("_thumbnail_backfill_seen.has(cache_key)") >= 0,
+		and scan_flow.find("_thumbnail_backfill_inflight.has(art_key)") >= 0,
 		"a roster row with no cached art queues a background backfill instead of staying placeholder forever"
 	)
 	var backfill_start := scan_flow.find("func _run_thumbnail_backfill")
@@ -194,13 +194,13 @@ func _initialize() -> void:
 	)
 	_check(
 		backfill_body.find("await _prepare_anima_art(") >= 0
-		and backfill_body.find("_populate_collection()") >= 0
+		and backfill_body.find("_populate_collection.call_deferred()") >= 0
 		and backfill_body.find("GameState.session_epoch != account_epoch") >= 0,
 		"backfill downloads real art serially, repopulates on arrival, and abandons on account switch"
 	)
 	_check(
 		scan_flow.find("_thumbnail_backfill_queue.clear()") >= 0
-		and scan_flow.find("_thumbnail_backfill_seen.clear()") >= 0,
+		and scan_flow.find("_thumbnail_backfill_inflight.clear()") >= 0,
 		"account reset clears the backfill queue so a new account doesn't inherit stale attempts"
 	)
 	var present_start := scan_flow.find("func _present(")
@@ -1002,6 +1002,7 @@ func _initialize() -> void:
 	await _test_expedition_view()
 	await _test_battle_pick_sheet()
 	await _test_collection_bottom_sheet()
+	await _test_collection_row_hygiene()
 	await _test_atlas_view()
 	await _test_profile_info_rows()
 	await _test_anima_delete_action()
@@ -1769,7 +1770,7 @@ func _test_sleeping_consume_guard() -> void:
 ## ditukar sebelum server mengizinkan.
 func _test_summon_overlaps_portal() -> void:
 	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
-	var start := source.find("func _activate_anima")
+	var start := source.find("func _activate_anima_inner(")
 	var end := source.find("\n\n\n", start)
 	var body := source.substr(start, end - start) if start >= 0 and end > start else ""
 	var dispatch := body.find("_dispatch_summon(")
@@ -5495,6 +5496,80 @@ func _test_collection_bottom_sheet() -> void:
 	)
 	collection.queue_free()
 	await process_frame
+
+
+## Pagar RC4/RC5 dari docs/designs/2026-08-26-collection-ghost-art-cards.md:
+## set_rows() harus tahan terhadap id kembar/kosong/"<null>" dan terhadap
+## thumbnail provider yang memanggil set_rows() lagi dari dalam loopnya
+## sendiri -- reproduksi langsung dari kartu hantu yang dilaporkan pemain.
+func _test_collection_row_hygiene() -> void:
+	var packed := load("res://scenes/ui/collection_view.tscn") as PackedScene
+	var collection := packed.instantiate()
+	root.add_child(collection)
+	await process_frame
+
+	var dup_rows: Array[Dictionary] = [
+		{"id": "hygiene-a", "nickname": "A", "element": "spark"},
+		{"id": "", "nickname": "Empty", "element": "spark"},
+		{"id": "<null>", "nickname": "Nullish", "element": "spark"},
+		{"id": "hygiene-a", "nickname": "A dup", "element": "spark"},
+		{"id": "hygiene-b", "nickname": "B", "element": "spark"},
+	]
+	collection.set_rows(dup_rows, "", func(_row: Dictionary) -> Texture2D: return null)
+	await process_frame
+	var list: ItemList = collection.find_child("AnimaList", true, false) as ItemList
+	_check_eq(
+		list.item_count, 2,
+		"set_rows dedupes by id and rejects empty/\"<null>\" ids (RC5 null guard)"
+	)
+
+	# Reproduksi langkah 5 rantai RC4: thumbnail_provider re-entrant memanggil
+	# set_rows() lagi selagi loop luar masih berjalan. Sebelum Phase 4 ini
+	# menghasilkan item_count == N + (N - k) alih-alih N.
+	var reentered := [false]
+	var reentrant_rows: Array[Dictionary] = [
+		{"id": "reentrant-a", "nickname": "A", "element": "spark"},
+		{"id": "reentrant-b", "nickname": "B", "element": "spark"},
+		{"id": "reentrant-c", "nickname": "C", "element": "spark"},
+	]
+	var provider := func(row: Dictionary) -> Texture2D:
+		if not reentered[0] and str(row.get("id", "")) == "reentrant-c":
+			reentered[0] = true
+			collection.set_rows(
+				reentrant_rows, "", func(_r: Dictionary) -> Texture2D: return null
+			)
+		return null
+	collection.set_rows(reentrant_rows, "", provider)
+	await process_frame
+	_check(reentered[0], "re-entrant thumbnail provider fired mid-loop")
+	_check_eq(
+		list.item_count, reentrant_rows.size(),
+		"set_rows survives a thumbnail provider that re-enters it mid-loop (RC4)"
+	)
+
+	collection.queue_free()
+	await process_frame
+
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		flow_source.find("_thumbnail_backfill_inflight.erase(art_key)") >= 0,
+		"backfill in-flight entries are erased on completion, not left as a permanent latch"
+	)
+	var dispatch_start := flow_source.find("func _dispatch_summon(")
+	var dispatch_body := flow_source.substr(dispatch_start, 260)
+	_check(
+		dispatch_start >= 0
+		and dispatch_body.find("_summon_in_flight = false") < dispatch_body.find("_summon_settled.emit()"),
+		"_dispatch_summon resets _summon_in_flight before emitting _summon_settled"
+	)
+	var activate_start := flow_source.find("func _activate_anima(")
+	var activate_end := flow_source.find("func _activate_anima_inner(")
+	var activate_body := flow_source.substr(activate_start, activate_end - activate_start)
+	_check(
+		activate_start >= 0 and activate_end > activate_start
+		and activate_body.count("_set_busy(false)") == 1,
+		"_activate_anima has exactly one teardown point for _busy"
+	)
 
 
 func _test_atlas_view() -> void:

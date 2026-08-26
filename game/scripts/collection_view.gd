@@ -53,6 +53,12 @@ var _thumbnail_provider: Callable
 var _care_cache: Dictionary = {}
 var _revision := 0
 var _busy := false
+## Asuransi kedua terhadap re-entrancy (RC4): thumbnail_provider bisa memicu
+## repaint dari luar sebelum loop di bawah ini selesai. Panggilan yang masuk
+## ulang selagi _populating true di-coalesce jadi satu repaint susulan alih-
+## alih memanggil _list.clear() di tengah loop yang masih berjalan.
+var _populating := false
+var _pending_set_rows_args: Array = []
 var _condition_loading := false
 var _condition_synced := false
 var _empty_mode := &"scan"
@@ -84,16 +90,33 @@ func refresh_localized_ui() -> void:
 
 
 func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Callable) -> void:
+	if _populating:
+		_pending_set_rows_args = [rows, active_id, thumbnail_provider]
+		return
+	_populating = true
+	_set_rows_now(rows, active_id, thumbnail_provider)
+	_populating = false
+	if not _pending_set_rows_args.is_empty():
+		var args := _pending_set_rows_args
+		_pending_set_rows_args = []
+		set_rows(args[0], args[1], args[2])
+
+
+func _set_rows_now(rows: Array[Dictionary], active_id: String, thumbnail_provider: Callable) -> void:
 	_active_id = active_id
 	_thumbnail_provider = thumbnail_provider
 	_list.clear()
 	var selected := -1
 	var highlight_id := _highlight_id()
 	_eligible_synthesis_sources = 0
+	var seen_ids := {}
 	for row in rows:
+		var id := str(row.get("id", ""))
+		if id.is_empty() or id == "<null>" or seen_ids.has(id):
+			continue
+		seen_ids[id] = true
 		if SynthesisLabView.is_eligible_source(row):
 			_eligible_synthesis_sources += 1
-		var id := str(row.get("id", ""))
 		var name := LocaleManager.display_name(row)
 		if CareRules.is_evolving(row):
 			name += " · " + tr("COLLECTION_EVOLVING")
@@ -120,15 +143,20 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 		_list.select(selected)
 	else:
 		_list.deselect_all()
-	_list.visible = not rows.is_empty()
+	if rows.size() != _list.item_count:
+		print(
+			"CollectionView.set_rows re-entrancy or dedup: rows=%d item_count=%d"
+			% [rows.size(), _list.item_count]
+		)
+	_list.visible = _list.item_count > 0
 	_status.text = (
 		tr("COLLECTION_EMPTY")
-		if rows.is_empty()
-		else tr("COLLECTION_COUNT") % LocaleManager.format_integer(rows.size())
+		if _list.item_count == 0
+		else tr("COLLECTION_COUNT") % LocaleManager.format_integer(_list.item_count)
 	)
 	_empty_mode = &"scan"
 	_empty_action.text = tr("COLLECTION_START_SCAN")
-	_empty_action.visible = rows.is_empty()
+	_empty_action.visible = _list.item_count == 0
 	_update_synthesis_state()
 	if not _selected_row.is_empty():
 		var selected_id := str(_selected_row.get("id", ""))
@@ -276,11 +304,6 @@ func _on_sheet_dismissed() -> void:
 	_revision += 1
 	_condition_skeleton.set_loading(false)
 	_restore_highlight()
-
-
-func set_sheet_busy(busy: bool) -> void:
-	_busy = busy
-	_update_action_state()
 
 
 ## Which card wears the ring: the one whose preview sheet is open.

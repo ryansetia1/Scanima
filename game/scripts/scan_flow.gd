@@ -167,7 +167,15 @@ var _thumbnail_cache: Dictionary = {}
 ## Antrean serial ini mengisi celah itu tanpa toast dan tanpa membanjiri
 ## jaringan dengan unduhan paralel.
 var _thumbnail_backfill_queue: Array[Dictionary] = []
-var _thumbnail_backfill_seen: Dictionary = {}
+## Set in-flight, bukan latch permanen: entrinya dihapus begitu percobaan itu
+## selesai (sukses maupun gagal), supaya kegagalan sementara bisa dicoba lagi
+## alih-alih menjadi kotak abu permanen untuk sisa sesi.
+var _thumbnail_backfill_inflight: Dictionary = {}
+## ponytail: plafon 3 percobaan per unit art per kunjungan tab Collection,
+## direset di begin_visit(); upgrade ke retry-with-backoff kalau 3x masih
+## sering gagal untuk koneksi lambat.
+const THUMBNAIL_ART_ATTEMPT_CAP := 3
+var _thumbnail_art_attempts: Dictionary = {}
 var _thumbnail_backfill_running := false
 var _destination: StringName = BottomNav.HOME
 var _overlay_return_destination: StringName = BottomNav.HOME
@@ -724,7 +732,8 @@ func _reload_roster() -> bool:
 	var ready: Array[Dictionary] = []
 	for value in rows:
 		var row := GameState.as_dict(value)
-		if not str(row.get("id", "")).is_empty():
+		var id := str(row.get("id", ""))
+		if not id.is_empty() and id != "<null>":
 			ready.append(_overlay_pending_evolution(row))
 	_roster = ready
 	if is_instance_valid(_expedition_controller):
@@ -1357,9 +1366,18 @@ func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> b
 	if not GameState.pending_care.is_empty():
 		_say_warning(tr("ERROR_CARE_PENDING"), true)
 		return false
+	# Satu titik teardown untuk semua jalur di dalam (sukses, gagal, ditolak
+	# server): galat runtime di tengah coroutine sebelumnya bisa membatalkannya
+	# tanpa pernah mencapai teardown-nya, mengunci grid Collection selamanya.
 	_set_busy(true)
+	var ok := await _activate_anima_inner(row, care_synced, stay_on_tab)
+	_set_busy(false)
+	return ok
+
+
+func _activate_anima_inner(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> bool:
 	if not stay_on_tab:
-		_collection_view.set_sheet_busy(true)
+		_collection_view.set_busy(true)
 	var anima_id := str(row.get("id", ""))
 	var loaded := await _prepare_anima_art(
 		str(row.get("species_key", "")),
@@ -1372,21 +1390,18 @@ func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> b
 	)
 	if not bool(loaded.get("ok", false)):
 		if not stay_on_tab:
-			_collection_view.set_sheet_busy(false)
-		_set_busy(false)
+			_collection_view.set_busy(false)
 		return false
 	var pending := GameState.begin_care(anima_id, "summon")
 
 	if stay_on_tab:
 		if not await _send_pending_care(pending, false):
-			_set_busy(false)
 			return false
 		_adopt_companion(_roster_row(anima_id), row)
 		_anima.apply(loaded)
 		_refresh_care()
 		if not care_synced:
 			await _sync_active_care(false)
-		_set_busy(false)
 		return true
 
 	# Portal menyala sementara request terbang. Art-nya sudah ada di cache lokal,
@@ -1397,13 +1412,12 @@ func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> b
 	await _anima.summon_dissolve()
 	await _incubator.start_portal()
 	if not await _await_summon():
-		_collection_view.set_sheet_busy(false)
+		_collection_view.set_busy(false)
 		await _incubator.burst()
 		await _anima.summon_reveal()
 		# Companion lama bisa saja sedang tidur atau Dormant; reveal mengembalikan
 		# transform-nya, `_refresh_care()` yang mengembalikan pose-nya.
 		_refresh_care()
-		_set_busy(false)
 		return false
 
 	_adopt_companion(_roster_row(anima_id), row)
@@ -1414,7 +1428,6 @@ func _activate_anima(row: Dictionary, care_synced: bool, stay_on_tab: bool) -> b
 	_refresh_care()
 	if not care_synced:
 		await _sync_active_care(false)
-	_set_busy(false)
 	_say_success(tr("COLLECTION_SUMMON_SUCCESS") % LocaleManager.display_name(_current_anima), true)
 	return true
 
@@ -1444,9 +1457,23 @@ func _dispatch_summon(pending: Dictionary) -> void:
 	_summon_settled.emit()
 
 
+## ponytail: 15s deadline, bukan retry-with-backoff. Kalau coroutine
+## _dispatch_summon() dibatalkan Godot di tengah (mis. node di-free saat
+## await) `_summon_settled` tidak pernah dipancarkan dan `await` telanjang
+## memblokir Collection selamanya -- poll ini menjamin caller selalu lanjut.
+const SUMMON_AWAIT_TIMEOUT_SEC := 15.0
+
+
 func _await_summon() -> bool:
+	if not _summon_in_flight:
+		return _summon_result
+	var deadline := Time.get_ticks_msec() + int(SUMMON_AWAIT_TIMEOUT_SEC * 1000.0)
+	while _summon_in_flight and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
 	if _summon_in_flight:
-		await _summon_settled
+		print("summon dispatch tidak menjawab dalam %.0fs, membatalkan" % SUMMON_AWAIT_TIMEOUT_SEC)
+		_summon_in_flight = false
+		_summon_result = false
 	return _summon_result
 
 
@@ -1531,6 +1558,11 @@ func _delete_confirmed() -> void:
 	var account_epoch := GameState.session_epoch
 	var res := await Backend.delete_anima(anima_id)
 	if not Backend.response_applies(res, account_epoch):
+		# Stale karena akun berganti di tengah request, bukan berhasil ditolak
+		# server -- tapi _busy tetap milik akun BARU sekarang (di-reset oleh
+		# _reset_account_presentation()), jadi meninggalkannya di sini akan
+		# mengunci grid Collection akun baru itu, bukan cuma respons basi ini.
+		_set_busy(false)
 		return
 	if not res.ok or typeof(res.data) != TYPE_ARRAY or (res.data as Array).is_empty():
 		_set_busy(false)
@@ -3098,7 +3130,13 @@ func _reset_account_presentation() -> void:
 	_roster_error = ""
 	_thumbnail_cache.clear()
 	_thumbnail_backfill_queue.clear()
-	_thumbnail_backfill_seen.clear()
+	_thumbnail_backfill_inflight.clear()
+	_thumbnail_art_attempts.clear()
+	# Dispatcher Summon akun lama tidak relevan lagi buat akun baru; membiarkan
+	# `_summon_in_flight` menempel true mengunci `_await_summon()` selamanya
+	# untuk akun berikutnya.
+	_summon_in_flight = false
+	_summon_result = false
 	_synthesis_history_texture_cache.clear()
 	_outcome_dialog_queue.clear()
 	_expedition_level_queue.clear()
@@ -5087,6 +5125,31 @@ func _present(
 		call_deferred("_show_rename", anima_id)
 
 
+## "Art ada" berarti "art bisa dimuat", bukan "manifest bisa di-parse dan
+## sheet-nya eksis" -- has_sprite_*() cuma memeriksa itu, dan tetap percaya
+## bundel yang region-nya keluar batas atau PNG-nya terpotong selamanya.
+## Bundel yang gagal dimuat AnimaLoader dihapus di sini supaya unduhan
+## berikutnya benar-benar menggantinya, bukan gagal diam-diam lagi.
+func _load_cached_art(anima_id: String, species_key: String, color_bucket: String, stage: int) -> Dictionary:
+	if not anima_id.is_empty():
+		var manifest_path := GameState.manifest_path_for_anima(anima_id, stage)
+		if GameState.has_sprite_for_anima(anima_id, stage):
+			var loaded := AnimaLoader.load_from_manifest(manifest_path)
+			if bool(loaded.get("ok", false)):
+				return loaded
+			print("cached art rejected, will redownload: id=%s stage=%d error=%s" % [anima_id, stage, loaded.get("error", "?")])
+			DirAccess.remove_absolute(manifest_path)
+		return {"ok": false}
+	var legacy_manifest_path := GameState.manifest_path(species_key, color_bucket, stage)
+	if GameState.has_sprite(species_key, color_bucket, stage):
+		var loaded := AnimaLoader.load_from_manifest(legacy_manifest_path)
+		if bool(loaded.get("ok", false)):
+			return loaded
+		print("cached art rejected, will redownload: species=%s color=%s stage=%d error=%s" % [species_key, color_bucket, stage, loaded.get("error", "?")])
+		DirAccess.remove_absolute(legacy_manifest_path)
+	return {"ok": false}
+
+
 func _prepare_anima_art(
 	species_key: String,
 	color_bucket: String,
@@ -5105,12 +5168,9 @@ func _prepare_anima_art(
 
 	var use_anima_cache := not anima_id.is_empty()
 	var art_stage := cache_stage if cache_stage > 0 else stage
-	if use_anima_cache and GameState.has_sprite_for_anima(anima_id, art_stage):
-		return AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id, art_stage))
-	if not use_anima_cache and GameState.has_sprite(species_key, color_bucket, stage):
-		return AnimaLoader.load_from_manifest(
-			GameState.manifest_path(species_key, color_bucket, stage)
-		)
+	var cached := _load_cached_art(anima_id, species_key, color_bucket, art_stage if use_anima_cache else stage)
+	if bool(cached.get("ok", false)):
+		return cached
 
 	if report_status:
 		_say(tr("STATUS_DOWNLOADING_ART"))
@@ -5190,7 +5250,8 @@ func _paint_boot_cache() -> bool:
 	var rows: Array[Dictionary] = []
 	for value in roster:
 		var row := GameState.as_dict(value)
-		if not str(row.get("id", "")).is_empty():
+		var id := str(row.get("id", ""))
+		if not id.is_empty() and id != "<null>":
 			rows.append(row)
 	if rows.is_empty():
 		return false
@@ -5259,9 +5320,18 @@ func _show_cached_anima() -> void:
 	_refresh_care()
 
 
+## Field yang boleh membawa NULL/kosong dari sumber yang tidak lengkap (RPC
+## care/summon lewat `select *` sungguhan mengirim NULL untuk sheet_path/
+## manifest Anima yang art-nya masih dari pustaka species; poll yang dipangkas
+## tidak membawa nickname) tapi tidak boleh menimpa nilai lama yang masih benar.
+const ROSTER_MERGE_PRESERVE_IF_BLANK: PackedStringArray = [
+	"sheet_path", "manifest", "species_key", "color_bucket", "nickname",
+]
+
+
 func _upsert_roster(row: Dictionary) -> void:
 	var id := str(row.get("id", ""))
-	if id.is_empty():
+	if id.is_empty() or id == "<null>":
 		return
 	for i in _roster.size():
 		if str(_roster[i].get("id", "")) == id:
@@ -5269,7 +5339,12 @@ func _upsert_roster(row: Dictionary) -> void:
 			# dipangkas) tidak membawa setiap kolom, dan menimpa penuh akan
 			# menghapus sheet_path/manifest lama yang sebenarnya masih benar.
 			var merged: Dictionary = _roster[i].duplicate(true)
-			merged.merge(row, true)
+			var incoming := row.duplicate(true)
+			for field in ROSTER_MERGE_PRESERVE_IF_BLANK:
+				var incoming_value: Variant = incoming.get(field)
+				if incoming_value == null or (typeof(incoming_value) == TYPE_STRING and (incoming_value as String).is_empty()):
+					incoming.erase(field)
+			merged.merge(incoming, true)
 			_roster[i] = merged
 			return
 	_roster.push_front(row)
@@ -5291,6 +5366,12 @@ func _populate_collection() -> void:
 	# sekitar 100 Anima lokal; kalau roster nyata melewatinya, simpan thumbnail
 	# 128px terpisah saat sheet diunduh dan virtualisasikan daftar.
 	_collection_view.set_rows(_roster, _summoned_id(), _thumbnail_for)
+	# Jaring pengaman: coroutine backfill yang ditinggalkan (mis. node ini
+	# di-free saat await) meninggalkan antrean tidak kosong tapi
+	# _thumbnail_backfill_running tetap true selamanya. Repaint apa pun boleh
+	# menyalakannya ulang.
+	if not _thumbnail_backfill_queue.is_empty() and not _thumbnail_backfill_running:
+		_run_thumbnail_backfill.call_deferred()
 
 
 func _thumbnail_for(row: Dictionary) -> Texture2D:
@@ -5334,10 +5415,17 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 							_thumbnail_cache[cache_key] = texture
 							return texture
 
-	if not _thumbnail_backfill_seen.has(cache_key):
-		_thumbnail_backfill_seen[cache_key] = true
-		_queue_thumbnail_backfill(row, anima_id, stage)
+	var art_key := "%s|%d" % [anima_id, stage] if use_anima else "%s|%s|%d" % [species, color, stage]
+	if not _thumbnail_backfill_inflight.has(art_key):
+		var attempts := int(_thumbnail_art_attempts.get(art_key, 0))
+		if attempts < THUMBNAIL_ART_ATTEMPT_CAP:
+			_thumbnail_backfill_inflight[art_key] = true
+			_queue_thumbnail_backfill(row, anima_id, stage)
 
+	print(
+		"thumbnail placeholder: id=%s stage=%d pose=%s reason=%s"
+		% [anima_id, stage, pose, "no sheet_path" if manifest_path.is_empty() and sheet_path.is_empty() else "art di disk gagal dimuat"]
+	)
 	if _placeholder_icon == null:
 		var placeholder := Image.create_empty(
 			THUMBNAIL_SIZE, THUMBNAIL_SIZE, false, Image.FORMAT_RGBA8
@@ -5351,8 +5439,11 @@ func _queue_thumbnail_backfill(row: Dictionary, anima_id: String, stage: int) ->
 	_thumbnail_backfill_queue.append({
 		"row": row.duplicate(true), "anima_id": anima_id, "stage": stage,
 	})
+	# Deferred: _thumbnail_for() dipanggil dari dalam loop CollectionView.set_rows(),
+	# jadi memulai drain sinkron di sini bisa memicu _populate_collection() ->
+	# set_rows() lagi sementara loop luar masih berjalan (RC4).
 	if not _thumbnail_backfill_running:
-		_run_thumbnail_backfill()
+		_run_thumbnail_backfill.call_deferred()
 
 
 ## Serial dengan sengaja: satu unduhan sheet berjalan sekaligus, bukan satu
@@ -5367,22 +5458,36 @@ func _run_thumbnail_backfill() -> void:
 		var row: Dictionary = item.get("row", {})
 		var anima_id := str(item.get("anima_id", ""))
 		var stage := int(item.get("stage", 1))
-		if not anima_id.is_empty() and GameState.has_sprite_for_anima(anima_id, stage):
-			continue
-		var loaded := await _prepare_anima_art(
-			str(row.get("species_key", "")),
-			str(row.get("color_bucket", "")),
-			stage,
-			str(row.get("sheet_path", "")),
-			GameState.as_dict(row.get("manifest")),
-			false,
-			anima_id,
-			stage
-		)
-		if GameState.session_epoch != account_epoch:
-			break
-		if bool(loaded.get("ok", false)):
-			_populate_collection()
+		var species := str(row.get("species_key", ""))
+		var color := str(row.get("color_bucket", ""))
+		var use_anima := not anima_id.is_empty() and not str(row.get("sheet_path", "")).is_empty()
+		var art_key := "%s|%d" % [anima_id, stage] if use_anima else "%s|%s|%d" % [species, color, stage]
+		var cached := _load_cached_art(anima_id if use_anima else "", species, color, stage)
+		var ok := bool(cached.get("ok", false))
+		if not ok:
+			var loaded := await _prepare_anima_art(
+				species,
+				color,
+				stage,
+				str(row.get("sheet_path", "")),
+				GameState.as_dict(row.get("manifest")),
+				false,
+				anima_id,
+				stage
+			)
+			if GameState.session_epoch != account_epoch:
+				_thumbnail_backfill_inflight.clear()
+				_thumbnail_art_attempts.clear()
+				_thumbnail_backfill_queue.clear()
+				break
+			ok = bool(loaded.get("ok", false))
+		_thumbnail_backfill_inflight.erase(art_key)
+		_thumbnail_art_attempts[art_key] = int(_thumbnail_art_attempts.get(art_key, 0)) + 1
+		if ok:
+			# Repaint juga deferred: sudah pasti dijalankan dari luar set_rows() di
+			# sini (drain-nya sendiri deferred), tapi tetap dipertahankan supaya
+			# tidak ada jalur baru yang diam-diam memanggilnya secara sinkron lagi.
+			_populate_collection.call_deferred()
 	_thumbnail_backfill_running = false
 
 
@@ -5693,6 +5798,9 @@ func _switch_destination(
 			_battle_pick_sheet.close()
 	if destination == BottomNav.COLLECTION and previous != BottomNav.COLLECTION:
 		_collection_view.begin_visit()
+		# Membuka tab lagi memberi kesempatan baru tanpa restart -- lihat
+		# THUMBNAIL_ART_ATTEMPT_CAP.
+		_thumbnail_art_attempts.clear()
 		_populate_collection()
 	if destination == ANIMA_PROFILE_DEST:
 		if profile_row.is_empty():

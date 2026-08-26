@@ -58,6 +58,7 @@ func _initialize() -> void:
 	_test_kunci_purchase()
 	_test_state_rusak()
 	_test_cache_art()
+	_test_cache_art_rejected_by_loader()
 	_test_cache_anima_id()
 	_test_pending_evolution()
 	_test_pending_synthesis()
@@ -685,6 +686,41 @@ func _test_cache_art() -> void:
 	_check(
 		not GameState.has_sprite("uji_kotak", "cool_blue", 2),
 		"stage berbeda harus dianggap art berbeda"
+	)
+
+
+## Pagar RC1 (docs/designs/2026-08-26-collection-ghost-art-cards.md): "art ada"
+## di GameState hanya berarti manifest bisa di-parse dan file sheet-nya eksis
+## -- ia tidak memvalidasi apa pun yang bisa ditolak AnimaLoader.build() (region
+## keluar batas, PNG terpotong). Bundel begini WAJIB dilaporkan "tidak
+## tersedia" oleh jalur art (scan_flow._load_cached_art()), bukan dipercaya
+## selamanya -- tes ini mengunci kontrak has_sprite()==true DAN loader.ok==false
+## yang jadi dasar keputusan itu.
+func _test_cache_art_rejected_by_loader() -> void:
+	print("9. bundel art rusak di disk terdeteksi, bukan dipercaya selamanya")
+	var anima_id := "uji-corrupt-art"
+	var built := PlaceholderSheet.build()
+	var manifest: Dictionary = built["manifest"].duplicate(true)
+	var png: PackedByteArray = (built["image"] as Image).save_png_to_buffer()
+	# Region pose idle dipaksa keluar batas sheet -- AnimaLoader.build() menolak
+	# ini secara eksplisit (lihat anima_loader.gd), tapi manifest tetap valid
+	# JSON dan sheet-nya tetap ada di disk.
+	var poses: Dictionary = manifest["poses"]
+	var idle: Dictionary = poses["idle"]
+	idle["region"] = [0, 0, 99999, 99999]
+	poses["idle"] = idle
+	manifest["poses"] = poses
+
+	var simpan: Dictionary = GameState.store_sprite_for_anima(anima_id, manifest, png, 1)
+	_check(simpan.get("ok", false), "store_sprite_for_anima harus berhasil menulis bundel (isinya yang rusak)")
+	_check(
+		GameState.has_sprite_for_anima(anima_id, 1),
+		"has_sprite_for_anima() hanya memeriksa file eksis -- tetap true untuk bundel rusak (RC1)"
+	)
+	var loaded := AnimaLoader.load_from_manifest(GameState.manifest_path_for_anima(anima_id, 1))
+	_check(
+		not bool(loaded.get("ok", false)),
+		"AnimaLoader wajib menolak region yang keluar dari batas sheet: %s" % loaded.get("error", "")
 	)
 
 

@@ -176,6 +176,20 @@ func _load_boot_cache() -> void:
 func remember_boot_cache(values: Dictionary) -> void:
 	if uid().is_empty():
 		return
+	# `fetch_animas()` (Backend.gd) memfilter status=in.(ready,evolving); cache
+	# ini wajib menegakkan filter yang sama, atau Anima berstatus lain (atau
+	# yang sudah dihapus tapi sempat didorong lokal) tercat ulang ke roster
+	# di cold start berikutnya dan tidak pernah hilang lagi.
+	if values.has("roster"):
+		var roster_value: Variant = values.get("roster")
+		var filtered: Array[Dictionary] = []
+		if typeof(roster_value) == TYPE_ARRAY:
+			for value in (roster_value as Array):
+				var row := as_dict(value)
+				if str(row.get("status", "")) in ["ready", "evolving"]:
+					filtered.append(row)
+		values = values.duplicate(true)
+		values["roster"] = filtered
 	boot_cache.merge(values, true)
 	boot_cache["uid"] = uid()
 	boot_cache["saved_at"] = Time.get_unix_time_from_system()
