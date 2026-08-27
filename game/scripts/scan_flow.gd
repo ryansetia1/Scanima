@@ -719,9 +719,11 @@ func _warn_if_boot_is_slow() -> void:
 
 
 func _reload_roster() -> bool:
+	print("_reload_roster: called, previous roster=%d" % _roster.size())
 	var account_epoch := GameState.session_epoch
 	var res := await Backend.fetch_animas()
 	if not Backend.response_applies(res, account_epoch):
+		print("_reload_roster: response did not apply (stale/epoch mismatch), roster untouched")
 		return false
 	if not res.ok or typeof(res.data) != TYPE_ARRAY:
 		_roster_error = res.error if not res.error.is_empty() else "balasan koleksi tidak sah"
@@ -735,6 +737,9 @@ func _reload_roster() -> bool:
 		var id := str(row.get("id", ""))
 		if not id.is_empty() and id != "<null>":
 			ready.append(_overlay_pending_evolution(row))
+	print("_reload_roster: server returned %d rows, %d survive the id guard (roster was %d)" % [
+		rows.size(), ready.size(), _roster.size(),
+	])
 	_roster = ready
 	if is_instance_valid(_expedition_controller):
 		_expedition_controller.set_roster(_roster)
@@ -5332,6 +5337,9 @@ const ROSTER_MERGE_PRESERVE_IF_BLANK: PackedStringArray = [
 func _upsert_roster(row: Dictionary) -> void:
 	var id := str(row.get("id", ""))
 	if id.is_empty() or id == "<null>":
+		print("_upsert_roster: REJECTED row with empty/<null> id, status=%s keys=%s" % [
+			row.get("status", "?"), row.keys(),
+		])
 		return
 	for i in _roster.size():
 		if str(_roster[i].get("id", "")) == id:
@@ -5346,8 +5354,14 @@ func _upsert_roster(row: Dictionary) -> void:
 					incoming.erase(field)
 			merged.merge(incoming, true)
 			_roster[i] = merged
+			print("_upsert_roster: merged %s (status=%s), roster=%d" % [
+				id.left(8), merged.get("status", "?"), _roster.size(),
+			])
 			return
 	_roster.push_front(row)
+	print("_upsert_roster: pushed NEW %s (status=%s), roster=%d" % [
+		id.left(8), row.get("status", "?"), _roster.size(),
+	])
 
 
 func _roster_row(anima_id: String) -> Dictionary:
@@ -5360,6 +5374,10 @@ func _roster_row(anima_id: String) -> Dictionary:
 func _populate_collection() -> void:
 	if not is_instance_valid(_collection_view):
 		return
+	print("_populate_collection: roster=%d ids=%s" % [
+		_roster.size(),
+		_roster.map(func(r): return str(r.get("id", "")).left(8)),
+	])
 	_collection_view.set_evolution_enabled(_evolution_enabled())
 	_collection_view.set_synthesis_enabled(_synthesis_enabled())
 	# ponytail: pass pertama membuat thumbnail cached secara sinkron. Plafon
