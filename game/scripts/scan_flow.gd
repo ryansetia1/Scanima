@@ -5371,6 +5371,7 @@ func _populate_collection() -> void:
 	# _thumbnail_backfill_running tetap true selamanya. Repaint apa pun boleh
 	# menyalakannya ulang.
 	if not _thumbnail_backfill_queue.is_empty() and not _thumbnail_backfill_running:
+		_thumbnail_backfill_running = true
 		_run_thumbnail_backfill.call_deferred()
 
 
@@ -5442,7 +5443,16 @@ func _queue_thumbnail_backfill(row: Dictionary, anima_id: String, stage: int) ->
 	# Deferred: _thumbnail_for() dipanggil dari dalam loop CollectionView.set_rows(),
 	# jadi memulai drain sinkron di sini bisa memicu _populate_collection() ->
 	# set_rows() lagi sementara loop luar masih berjalan (RC4).
+	#
+	# Flag-nya WAJIB dinyalakan di sini, sinkron -- bukan di baris pertama
+	# _run_thumbnail_backfill(). call_deferred() tidak jalan sampai frame
+	# berikutnya, jadi kalau flag-nya baru dinyalakan di sana, satu set_rows()
+	# yang memproses beberapa baris tanpa art dalam satu frame yang sama akan
+	# melihat _thumbnail_backfill_running masih false di SETIAP baris dan
+	# menjadwalkan _run_thumbnail_backfill.call_deferred() berkali-kali --
+	# beberapa coroutine backfill berjalan bersamaan, berebut queue yang sama.
 	if not _thumbnail_backfill_running:
+		_thumbnail_backfill_running = true
 		_run_thumbnail_backfill.call_deferred()
 
 
@@ -5451,7 +5461,6 @@ func _queue_thumbnail_backfill(row: Dictionary, anima_id: String, stage: int) ->
 ## pelan-pelan, tapi tidak pernah membanjiri jaringan atau server dengan
 ## puluhan request paralel saat Collection pertama kali dibuka di device baru.
 func _run_thumbnail_backfill() -> void:
-	_thumbnail_backfill_running = true
 	var account_epoch := GameState.session_epoch
 	while not _thumbnail_backfill_queue.is_empty():
 		var item: Dictionary = _thumbnail_backfill_queue.pop_front()

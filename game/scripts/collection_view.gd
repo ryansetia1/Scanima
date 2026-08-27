@@ -53,12 +53,6 @@ var _thumbnail_provider: Callable
 var _care_cache: Dictionary = {}
 var _revision := 0
 var _busy := false
-## Asuransi kedua terhadap re-entrancy (RC4): thumbnail_provider bisa memicu
-## repaint dari luar sebelum loop di bawah ini selesai. Panggilan yang masuk
-## ulang selagi _populating true di-coalesce jadi satu repaint susulan alih-
-## alih memanggil _list.clear() di tengah loop yang masih berjalan.
-var _populating := false
-var _pending_set_rows_args: Array = []
 var _condition_loading := false
 var _condition_synced := false
 var _empty_mode := &"scan"
@@ -89,20 +83,12 @@ func refresh_localized_ui() -> void:
 	%CollectionAtlasTab.text = tr("COLLECTION_TAB_ATLAS")
 
 
+## RC4 (kartu hantu setelah Summon) ditutup di sisi pemanggil: scan_flow.gd
+## menjadwalkan drain thumbnail backfill dan repaint susulannya lewat
+## call_deferred(), jadi tidak ada jalur lagi yang bisa memanggil set_rows()
+## ini secara sinkron dari dalam thumbnail_provider di bawah. Dedup dan
+## penolakan id kosong/"<null>" di loop ini tetap berdiri sebagai pagar kedua.
 func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Callable) -> void:
-	if _populating:
-		_pending_set_rows_args = [rows, active_id, thumbnail_provider]
-		return
-	_populating = true
-	_set_rows_now(rows, active_id, thumbnail_provider)
-	_populating = false
-	if not _pending_set_rows_args.is_empty():
-		var args := _pending_set_rows_args
-		_pending_set_rows_args = []
-		set_rows(args[0], args[1], args[2])
-
-
-func _set_rows_now(rows: Array[Dictionary], active_id: String, thumbnail_provider: Callable) -> void:
 	_active_id = active_id
 	_thumbnail_provider = thumbnail_provider
 	_list.clear()

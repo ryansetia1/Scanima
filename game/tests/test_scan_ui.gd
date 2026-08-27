@@ -5499,9 +5499,15 @@ func _test_collection_bottom_sheet() -> void:
 
 
 ## Pagar RC4/RC5 dari docs/designs/2026-08-26-collection-ghost-art-cards.md:
-## set_rows() harus tahan terhadap id kembar/kosong/"<null>" dan terhadap
-## thumbnail provider yang memanggil set_rows() lagi dari dalam loopnya
-## sendiri -- reproduksi langsung dari kartu hantu yang dilaporkan pemain.
+## set_rows() harus tahan terhadap id kembar/kosong/"<null>". Perlindungan
+## re-entrancy RC4 sendiri hidup satu lapis di atas (scan_flow.gd men-defer
+## _run_thumbnail_backfill()/_populate_collection() supaya thumbnail_provider
+## tidak pernah lagi bisa memanggil set_rows() ini secara sinkron) -- lihat
+## pagar grep di bawah, bukan diuji di sini dengan re-entrancy paksa lewat
+## CollectionView, sebab set_rows() sendiri sengaja tidak lagi punya flag
+## re-entrancy: flag begitu bisa nyangkut permanen (set_rows berhenti
+## menggambar apa pun) kalau satu baris di tengah rendering error, dan itu
+## risiko lebih buruk daripada re-entrancy yang sudah ditutup di sumbernya.
 func _test_collection_row_hygiene() -> void:
 	var packed := load("res://scenes/ui/collection_view.tscn") as PackedScene
 	var collection := packed.instantiate()
@@ -5523,37 +5529,39 @@ func _test_collection_row_hygiene() -> void:
 		"set_rows dedupes by id and rejects empty/\"<null>\" ids (RC5 null guard)"
 	)
 
-	# Reproduksi langkah 5 rantai RC4: thumbnail_provider re-entrant memanggil
-	# set_rows() lagi selagi loop luar masih berjalan. Sebelum Phase 4 ini
-	# menghasilkan item_count == N + (N - k) alih-alih N.
-	var reentered := [false]
-	var reentrant_rows: Array[Dictionary] = [
-		{"id": "reentrant-a", "nickname": "A", "element": "spark"},
-		{"id": "reentrant-b", "nickname": "B", "element": "spark"},
-		{"id": "reentrant-c", "nickname": "C", "element": "spark"},
-	]
-	var provider := func(row: Dictionary) -> Texture2D:
-		if not reentered[0] and str(row.get("id", "")) == "reentrant-c":
-			reentered[0] = true
-			collection.set_rows(
-				reentrant_rows, "", func(_r: Dictionary) -> Texture2D: return null
-			)
-		return null
-	collection.set_rows(reentrant_rows, "", provider)
-	await process_frame
-	_check(reentered[0], "re-entrant thumbnail provider fired mid-loop")
-	_check_eq(
-		list.item_count, reentrant_rows.size(),
-		"set_rows survives a thumbnail provider that re-enters it mid-loop (RC4)"
-	)
-
 	collection.queue_free()
 	await process_frame
 
+	var view_source := FileAccess.get_file_as_string("res://scripts/collection_view.gd")
+	_check(
+		view_source.find("var _populating") < 0,
+		"CollectionView no longer carries a re-entrancy latch that can wedge stuck"
+	)
 	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
 		flow_source.find("_thumbnail_backfill_inflight.erase(art_key)") >= 0,
 		"backfill in-flight entries are erased on completion, not left as a permanent latch"
+	)
+	var queue_start := flow_source.find("func _queue_thumbnail_backfill(")
+	var queue_end := flow_source.find("func _run_thumbnail_backfill(")
+	var queue_body := (
+		flow_source.substr(queue_start, queue_end - queue_start)
+		if queue_start >= 0 and queue_end > queue_start
+		else ""
+	)
+	_check(
+		queue_start >= 0 and queue_end > queue_start
+		and queue_body.find("_run_thumbnail_backfill.call_deferred()") >= 0,
+		"the thumbnail backfill drain is deferred so it can never be entered from inside set_rows()"
+	)
+	var queue_code_start := queue_body.find("if not _thumbnail_backfill_running:")
+	var queue_code := queue_body.substr(queue_code_start) if queue_code_start >= 0 else ""
+	_check(
+		queue_code_start >= 0
+		and queue_code.find("_thumbnail_backfill_running = true") >= 0
+		and queue_code.find("_thumbnail_backfill_running = true") < queue_code.find(".call_deferred()"),
+		"the running flag is set synchronously before scheduling the deferred drain -- " +
+		"otherwise several rows needing backfill in one set_rows() pass each schedule their own coroutine"
 	)
 	var dispatch_start := flow_source.find("func _dispatch_summon(")
 	var dispatch_body := flow_source.substr(dispatch_start, 260)
