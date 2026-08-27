@@ -150,7 +150,16 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 		if replacement.is_empty():
 			close_sheet()
 		else:
-			_selected_row = replacement
+			# _row_with_id() returns the live Dictionary from `rows` (== _roster
+			# in scan_flow.gd) by reference, not a copy. Aliasing _selected_row to
+			# it directly meant begin_visit()'s `_selected_row.clear()` -- an
+			# in-place Dictionary mutation -- wiped the actual roster entry too,
+			# blanking its "id" and every other field. That's the root cause of
+			# Anima disappearing from Collection one by one after repeated
+			# Summons: whichever card had its sheet opened (and therefore its
+			# _selected_row reconciled here) got its roster row cleared the next
+			# time the player navigated back into the Collection tab.
+			_selected_row = replacement.duplicate(true)
 			_fill_identity()
 			_update_active_state()
 
@@ -189,7 +198,11 @@ func _update_synthesis_state() -> void:
 
 func begin_visit() -> void:
 	_care_cache.clear()
-	_selected_row.clear()
+	# Reassign, not `.clear()`: _selected_row can be reconciled to the live
+	# roster Dictionary from set_rows() (see the comment there), and an
+	# in-place clear would wipe that shared object instead of just detaching
+	# from it.
+	_selected_row = {}
 	close_sheet()
 	_list.deselect_all()
 	%CollectionCollectionTab.button_pressed = true

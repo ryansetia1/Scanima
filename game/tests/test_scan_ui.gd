@@ -5529,6 +5529,32 @@ func _test_collection_row_hygiene() -> void:
 		"set_rows dedupes by id and rejects empty/\"<null>\" ids (RC5 null guard)"
 	)
 
+	# Reproduksi bug "Anima menghilang dari Collection satu per satu setelah
+	# Summon" (dilaporkan pemain 2026-08-27): set_rows() tidak menduplikasi
+	# array `rows` yang diterima, jadi _row_with_id() mengembalikan Dictionary
+	# ASLI milik pemanggil (== _roster di scan_flow.gd) secara referensi.
+	# show_preview() lalu set_rows() lagi meng-alias _selected_row ke row itu,
+	# dan begin_visit() sebelumnya memanggil _selected_row.clear() -- mutasi
+	# in-place yang ikut mengosongkan row ASLI si pemanggil.
+	var caller_owned_rows: Array[Dictionary] = [
+		{"id": "alias-guard", "nickname": "AliasGuard", "element": "spark"},
+	]
+	collection.set_rows(caller_owned_rows, "", func(_row: Dictionary) -> Texture2D: return null)
+	await process_frame
+	collection.show_preview(caller_owned_rows[0], false)
+	await process_frame
+	# Reconciliation block in set_rows() aliases _selected_row to the row
+	# passed in -- fire it again while the sheet is open, same as a repaint
+	# during a Summon would.
+	collection.set_rows(caller_owned_rows, "", func(_row: Dictionary) -> Texture2D: return null)
+	await process_frame
+	collection.begin_visit()
+	await process_frame
+	_check_eq(
+		str(caller_owned_rows[0].get("id", "")), "alias-guard",
+		"begin_visit() must not clear the caller's own roster Dictionary through an aliased _selected_row"
+	)
+
 	collection.queue_free()
 	await process_frame
 
