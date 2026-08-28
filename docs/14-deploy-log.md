@@ -1763,6 +1763,107 @@ dua slot art memakai pulse `UiSkeleton` selama PNG diunduh.
 dan daftar Edge Function mengonfirmasi version 3 ACTIVE dengan
 `verify_jwt=true`.
 
+## Kartu hantu Collection dan bug susulannya: Anima menghilang setelah Summon (26–28 Agustus 2026)
+
+Tiga hari, empat commit, satu root cause yang **bukan** di commit pertama.
+Ditulis panjang dengan sengaja karena kelasnya (reference aliasing GDScript,
+bukan sekadar `null` yang lolos guard) belum pernah tercatat di sini, dan
+biaya menemukannya (dua putaran instrumentasi produksi) layak diingat supaya
+tidak diulang. Pagar teknisnya sudah dipindah ke
+`.cursor/rules/client-shell-ui.mdc`; bagian ini riwayatnya.
+
+**Gejala awal (26 Agustus):** Anima kehilangan art di Collection sesudah
+Summon — kotak abu kosong yang tidak bisa di-tap, kadang bertambah satu slot
+tanpa pemilik, kadang seluruh grid mati sampai app di-restart. Root cause
+analysis lengkap (lima penyebab berbeda, terkonfirmasi baca kode) dan
+rencana perbaikan enam fase ada di
+[`docs/designs/2026-08-26-collection-ghost-art-cards.md`](designs/2026-08-26-collection-ghost-art-cards.md).
+Fix-nya menutup latch permanen `_thumbnail_backfill_seen`, `_busy`, dan
+`_summon_in_flight`, plus menutup re-entrancy `CollectionView.set_rows()`
+lewat `call_deferred()`, plus guard dedup id kosong/`"<null>"`. Diverifikasi
+lewat test suite (1485+ check) sebelum dianggap selesai.
+
+**Regresi (27 Agustus):** APK baru diuji, dan muncul perilaku baru yang
+justru lebih parah — Summon satu Anima membuat Anima itu **hilang total**
+dari grid Collection, bukan cuma kehilangan art. Ulangi untuk Anima
+berikutnya, dan berikutnya, sampai grid kosong dan CTA "Start First Scan"
+muncul di akun yang sudah punya empat Anima. Dua percobaan pertama
+menerka dari membaca kode (race kondisi `_thumbnail_backfill_running`,
+latch `_populating` di `CollectionView` yang bisa nyangkut kalau satu
+baris error saat render) — keduanya nyata sebagai bug tapi **tidak**
+terbukti sebagai penyebab lewat repro sintetis yang mensimulasikan seluruh
+alur Summon dengan Backend di-mock. Diperbaiki dan di-ship, tapi user
+melaporkan gejalanya **masih persis sama** di Godot editor preview.
+
+**Cara menemukannya:** tebakan dihentikan, diganti print di setiap titik
+yang menyentuh `_roster` (`_populate_collection`, `_upsert_roster`,
+`_reload_roster`), lalu user mereproduksi ulang dan menempelkan Output
+panel Godot editor-nya secara langsung — sesuatu yang tidak bisa didapat
+dari APK tanpa `adb logcat`. Log pertama membuktikan `_roster.size()`
+**tidak pernah berubah** (tetap 4 sepanjang sesi) tapi `id` salah satu
+entrinya berubah jadi string kosong tepat sesudah toast "X answered your
+summon" — dan entri yang kosong itu selalu persis Anima yang baru saja
+di-Summon. `_upsert_roster()` sendiri terbukti bersih: print di dalamnya
+selalu menunjukkan `id` yang benar tepat sesudah merge. Berarti sesuatu
+menulis ke Dictionary itu **in-place**, sesudah `_upsert_roster()` selesai,
+tanpa lewat fungsi manapun yang sudah diberi print.
+
+Putaran kedua menambah pemeriksaan `is_same()` (identity check Godot,
+bukan `==` yang membandingkan isi) di setiap kandidat alias —
+`_current_anima`, `_profile_anima`, roster melawan dirinya sendiri — dan
+semuanya `false`. Ini yang akhirnya mengarahkan pencarian ke tempat yang
+benar: bukan `_current_anima`/`_roster`, tapi **`CollectionView`'s
+`_selected_row`**, yang tidak pernah diperiksa `is_same()` sebab tidak ada
+getter untuk membacanya dari luar. Grep manual atas setiap penulisan
+`_selected_row` menemukan `begin_visit()` memanggil `_selected_row.clear()`
+— dan `_row_with_id()`, dipakai `set_rows()` untuk merekonsiliasi kartu yang
+sheet-nya sedang terbuka, mengembalikan Dictionary `_roster` **tanpa
+duplicate**. `_selected_row = replacement` di titik rekonsiliasi itu berarti
+"kartu yang lagi dibuka" dan "baris roster-nya" jadi **objek yang sama
+persis** di memori. Rantainya: pemain tap kartu (sheet terbuka, alias
+terbentuk) → Summon → server menjawab, `_populate_collection()` jalan
+beberapa kali, tiap kali merekonsiliasi ulang alias ke row `_roster` yang
+baru di-merge → pemain balik ke tab Collection buat Summon Anima
+berikutnya → `begin_visit()` (dipanggil **setiap kali** tab Collection
+dibuka, termasuk sesudah tiap Summon karena Summon pindah ke Home)
+memanggil `.clear()` pada Dictionary yang ternyata **adalah** baris roster
+itu sendiri. Guard dedup id-kosong dari fix hari sebelumnya lalu
+correctly membuang baris yang idnya sudah kosong itu dari grid — bug
+kartu hantu dan bug kartu hilang sebenarnya berbagi satu guard yang sama,
+cuma dipicu penyebab yang berlawanan arah.
+
+Repro sintetis yang **akhirnya** berhasil butuh tiga elemen yang absen di
+percobaan sebelumnya sekaligus: Backend di-mock (supaya jalan tanpa
+jaringan sungguhan), `show_preview()` dipanggil sebelum tiap Summon (supaya
+alias-nya benar-benar terbentuk), **dan** `_switch_destination(&"collection")`
+dipanggil sebelum tiap Summon (supaya `begin_visit()` benar-benar
+memicu `.clear()`-nya) — tanpa unsur ketiga itu, alias terbentuk tapi tidak
+pernah dipicu, dan roster tetap terlihat sehat.
+
+**Perbaikan:** dua baris. `_selected_row = replacement.duplicate(true)`
+saat rekonsiliasi (memutus alias di sumbernya), dan `_selected_row = {}`
+menggantikan `_selected_row.clear()` di `begin_visit()` (reassign, bukan
+mutasi in-place — pagar kedua kalau ada alias lain yang belum ketemu).
+Regression test mereproduksi rantai persis `set_rows → show_preview →
+set_rows lagi → begin_visit` dan memastikan Dictionary milik pemanggil
+selamat; dikonfirmasi gagal di kode sebelum-fix dan lulus sesudahnya.
+Semua print diagnostik dan pemeriksaan `is_same()` dibuang sesudah root
+cause terkonfirmasi — nilainya cuma untuk investigasi, bukan untuk tetap
+hidup di kode production.
+
+**Pelajaran untuk lain kali**, ditulis di
+`.cursor/rules/client-shell-ui.mdc` supaya termuat otomatis saat
+menyentuh `game/scripts/`: `Dictionary`/`Array` GDScript adalah reference
+type. Fungsi apa pun yang mengembalikan row dari `_roster` tanpa
+`.duplicate(true)` — `_roster_row()`, `_active_row()`,
+`_evolving_roster_row()` semuanya begini — menyerahkan objek yang sama
+persis ke pemanggilnya. Aman selama pemanggil hanya membaca atau
+melewatkannya lagi; berbahaya begitu pemanggil menaruhnya di state lokal
+lalu memanggil `.clear()`/`.erase()`/`[key] = value` di atasnya alih-alih
+`.merge()` atau reassignment — itu menulis ke `_roster` tanpa lewat
+`_upsert_roster()`, diam-diam, dan gejalanya muncul di layar yang sama
+sekali tidak terlihat terkait dengan baris kode yang salah.
+
 ## Daftar migration yang sudah live
 
 - Migration Battle `20260813103446_battle_vertical_slice`, indeks bot `20260813105258_index_battle_bot_anima`, cap reward `20260813174007_limit_daily_battle_rewards`, indeks unik ledger `20260813174454_index_battle_reward_ledger_ref`, perbaikan status `20260813180241_refine_battle_reward_status`, guard Energy `20260813193612_require_battle_energy`, decay realtime + biaya Energy Battle `20260813195613_decay_realtime_and_battle_energy`, EXP/Level tanpa Bond `20260813201820_exp_level_growth`, gerbang Feed/Clean penuh `20260813220036_reject_full_feed_clean`, dan tidur Anima yang tidak di-Summon `20260813220954_bench_unsummoned_sleep` + `20260813221113_apply_care_bench_summon` + Energy bangku 3 jam `20260813224221_bench_sleep_faster` + gerbang Hunger Battle `20260814043053_reject_hungry_battle` (sudah di-drop: lapar tidak mengunci Bits) + reset hari sipil lokal `20260814064443_local_day_reset` + `20260814064550_local_day_reset_status` + `20260814064614_local_day_reset_care` sudah live. Lapar tidak mengunci Battle: `20260814101323_allow_hungry_battle`. Clean gratis: `20260814104237_free_clean`. Shop live: `20260814082442_shop_inventory_bits` + `20260814082512_shop_inventory_rpcs` + `20260814082545_shop_apply_care` + `20260814082612_shop_battle_rewards` + `20260814082658_shop_commit_battle_turn`. Guest Seeker/Google live lewat `20260814153135_seeker_google_accounts`; guard guest sebelum Vision lewat `20260814172154_guard_guest_scan_before_vision`. Capture/private art live lewat `20260814215746_capture_foundations`; Gallery lewat `20260814215801_gallery`. Tinggi kanonis live lewat `20260815214409_anima_body_height`; kalibrasi tinggi/metrics lewat `20260815225656_recalibrate_anima_heights_and_metrics`; prompt production v18 lewat `20260815225859_prompt_version_v18`. Tinggi Veridian 150 cm lewat `20260815234322_lower_veridian_height`. Starter lifetime 4 + Care rebalance live lewat `20260816074701_starter_four_and_care_rebalance`. Floor bangku / well_cared aktif-only live lewat `20260816082652_bench_care_safe_rest`. Tiered EXP, reward Battle berskala, cap Sleep harian, dan budget Expedition 30 live lewat `20260816200507_tiered_exp_and_battle_rewards`. Lawan Duel sistem live lewat `20260817072847_system_duel_opponents`. Typing kanonis Playtron + sinkron proyeksi Atlas live lewat `20260820134728_backfill_legacy_handheld_typing`. `shop` version 4, `care_anima` version 9, `battle_anima` version 26, `create_anima` version 22, `seeker` version 5, `replicate_webhook` version 10, `gallery` version 2, `team_battle` version 8, dan `expedition` version 16 ACTIVE; semua kecuali webhook memakai `verify_jwt=true`. `create_anima` membundel seluruh versi lokal; `app_config.prompt_version = "v31"` production, v20 rollback capture tanpa Vibe, v19 rollback gate, v18 rollback kebijakan tinggi handheld, v17 rollback kebijakan tinggi awal, v15 rollback art, dan v13 rollback kontrak capture. Tujuh Anima ready production sudah dibackfill `body_height_cm` dan `render_metrics` hasil ukur sheet privat. Enam Anima ready legacy sudah dipindahkan ke `anima_sheets`, diretype v2, dan bucket `sheets` dibuat privat. `apply_care()` menolak Hunger/Hygiene >= 99.5 dengan `NEED_FULL`. `Summon` menulis `profiles.active_anima_id` dan menidurkan sisanya. `care_anima` menyimpan `timezone_offset_minutes` lewat `set_profile_timezone` sebelum RPC; snapshot player/bot membawa `level` dari `care_score`, `body_height_cm`, plus `strike_name`/`surge_name`, dan `createFighter` memakai growth multiplier. Error boundary tetap membaca `message` dari object PostgREST, bukan hanya instance `Error`; tanpa itu exception RPC yang dikenal jatuh menjadi 500 generik. Probe SQL production membuktikan win ketiga dibayar dan win keempat menjadi Training tanpa satu pun mutation progression.

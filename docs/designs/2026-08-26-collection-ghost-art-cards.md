@@ -2,6 +2,8 @@
 
 Status: **dieksekusi 26 Agustus 2026.** Phase 0–5 selesai; lihat commit untuk diff. Semua uji Godot yang tersentuh lulus (`test_client_state.gd` 199 check, `test_scan_ui.gd` 1485 check minus 3 kegagalan pra-ada yang tidak terkait perubahan ini).
 
+**Regresi ditemukan dan diperbaiki 27–28 Agustus 2026:** fix di sini membuat Anima **hilang** (bukan lagi kotak abu) dari Collection satu per satu setelah Summon berulang, sampai grid kosong. Root cause bukan di rencana Phase 0–5 manapun di atas — reference aliasing GDScript di `CollectionView._selected_row`, tidak terkait guard dedup id yang ditambahkan di sini (guard itu justru yang membuat gejalanya kelihatan sebagai "hilang", bukan "duplikat" seperti kartu hantu). Kronologi lengkap dan pelajarannya ada di [`docs/14-deploy-log.md`](../14-deploy-log.md#kartu-hantu-collection-dan-bug-susulannya-anima-menghilang-setelah-summon-26–28-agustus-2026); pagar teknisnya di `.cursor/rules/client-shell-ui.mdc`.
+
 ## Gejala yang dilaporkan
 
 1. Sesudah Summon, satu-dua Anima di Collection kehilangan art — jadi kotak abu
