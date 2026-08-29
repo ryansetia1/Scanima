@@ -3,6 +3,7 @@ extends Control
 
 signal care_requested(action: String)
 signal care_blocked(message: String)
+signal evolve_requested(row: Dictionary)
 signal first_scan_requested
 signal retry_requested
 
@@ -48,8 +49,10 @@ const CONTROLS_MIN_HEIGHT_PX := 180.0
 @onready var _scan_cta_container: VBoxContainer = %ScanCtaContainer
 @onready var _scan_cta_ring: Control = %ScanCtaRing
 @onready var _scan_cta_button: Button = %ScanCtaButton
+@onready var _evolve_button: Button = %HomeEvolveButton
 
 var _row: Dictionary = {}
+var _evolve_available := false
 var _shell_state := &"loading"
 var _values_shown := false
 var _values_toggled_frame := -1
@@ -74,6 +77,7 @@ func _ready() -> void:
 	_play_button.pressed.connect(_request_play)
 	_primary_action.pressed.connect(_request_primary_action)
 	_scan_cta_button.pressed.connect(_request_primary_action)
+	_evolve_button.pressed.connect(_request_evolve)
 	for chip in _need_chips():
 		chip.mouse_filter = Control.MOUSE_FILTER_STOP
 		chip.gui_input.connect(_on_need_chip_input)
@@ -360,6 +364,11 @@ func _request_primary_action() -> void:
 		first_scan_requested.emit()
 
 
+func set_evolution_available(available: bool) -> void:
+	_evolve_available = available
+	_update_evolve_button()
+
+
 func _set_buttons_disabled(disabled: bool) -> void:
 	_update_action_state(disabled)
 
@@ -388,6 +397,7 @@ func _update_action_state(disabled: bool) -> void:
 	)
 	if is_instance_valid(_care_actions):
 		_care_actions.columns = 1 if sleeping else 4
+	_update_evolve_button()
 
 
 func _play_capped() -> bool:
@@ -397,6 +407,19 @@ func _play_capped() -> bool:
 func _play_energy_low() -> bool:
 	var care: Dictionary = CARE_RULES.normalized_care(_row.get("care"))
 	return float(care.get("energy", 0.0)) < CARE_RULES.PLAY_ENERGY_COST
+
+
+func _update_evolve_button() -> void:
+	if not is_instance_valid(_evolve_button):
+		return
+	var has_care := typeof(_row.get("care")) == TYPE_DICTIONARY
+	var sleeping := has_care and _has_timestamp(_row.get("sleep_started_at"))
+	_evolve_button.visible = _evolve_available and has_care and not sleeping
+
+
+func _request_evolve() -> void:
+	if not _row.is_empty():
+		evolve_requested.emit(_row.duplicate(true))
 
 
 static func _set_need_alert(chip: PanelContainer, low: bool) -> void:

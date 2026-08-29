@@ -374,3 +374,12 @@ size_flags_horizontal = 3
 theme_type_variation = &"CarePlayButton"
 text = "CARE_PLAY"
 icon = ExtResource("5_play")
+
+[node name="HomeEvolveButton" type="Button" parent="Column/HomeControlsScroll/HomeControlsContent/CareDock/CareColumn" unique_id=1818514700]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "EVOLVE_ACTION"
+

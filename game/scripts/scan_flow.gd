@@ -323,6 +323,7 @@ func _ready() -> void:
 	_home_view.care_blocked.connect(_on_care_blocked)
 	_home_view.first_scan_requested.connect(_open_scan)
 	_home_view.retry_requested.connect(_retry_roster)
+	_home_view.evolve_requested.connect(_show_evolve_confirmation)
 	_brand.mouse_filter = Control.MOUSE_FILTER_STOP
 	_brand.gui_input.connect(_on_brand_input)
 	_anima_info.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -5539,6 +5540,9 @@ func _refresh_stats() -> void:
 		_thumbnail_for(details_row) if not details_row.is_empty() else null
 	)
 	_home_view.set_anima(_current_anima, _busy)
+	_home_view.set_evolution_available(
+		_evolution_enabled() and CareRules.evolution_ready(_current_anima)
+	)
 	_update_hud_identity()
 	if _battle_view.session_data().is_empty():
 		_battle_view.set_lobby(_current_anima)
@@ -5569,6 +5573,9 @@ func _refresh_care() -> void:
 	if not sleeping:
 		_reset_wake_taps()
 	_home_view.update_care(_current_anima, _busy)
+	_home_view.set_evolution_available(
+		_evolution_enabled() and CareRules.evolution_ready(_current_anima)
+	)
 	_update_hud_identity()
 	if _battle_view.session_data().is_empty():
 		_battle_view.set_lobby(_current_anima)
@@ -6665,8 +6672,10 @@ func _is_immersive_arena() -> bool:
 
 
 func _music_cue() -> StringName:
-	if _destination != BottomNav.BATTLE or not _is_immersive_arena():
+	if _destination != BottomNav.BATTLE:
 		return &"lobby"
+	# Check active combat first — these run even when _battle_view is not
+	# visible (web build uses team_battle_view directly without the duel shell).
 	if (
 		is_instance_valid(_expedition_view)
 		and _expedition_view.visible
@@ -6680,7 +6689,10 @@ func _music_cue() -> StringName:
 		and _team_battle_view.is_arena_open()
 	):
 		return &"boss" if _team_battle_view.session_kind() == "boss" else &"battle"
-	return &"battle"
+	# Fallback: duel arena or lobby screen within the battle tab.
+	if _is_immersive_arena():
+		return &"battle"
+	return &"lobby"
 
 
 func _on_immersive_arena_changed(_open: bool) -> void:

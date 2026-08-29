@@ -33,7 +33,7 @@ func show_menu(
 ) -> void:
 	_title.text = tr("SETTINGS_TITLE")
 	_account.text = tr("SEEKER_SIGN_IN_GOOGLE") if anonymous else tr("SEEKER_SIGN_OUT")
-	_delete.visible = true
+	_delete.visible = not anonymous
 	_configuring = true
 	_music.button_pressed = music_enabled
 	_chapter_push.visible = push_available
