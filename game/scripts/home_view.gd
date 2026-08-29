@@ -150,8 +150,10 @@ func set_shell_state(state: StringName) -> void:
 	_set_buttons_disabled(true)
 	# "empty" teks sudah ditampilkan di HUD panel (BottomSection), jadi
 	# IdentityRow di HomeView disembunyikan agar tidak dobel di bawah panel.
-	_identity_row.visible = state != &"empty"
-	_identity.visible = state != &"empty"
+	# "loading" juga disembunyikan agar teks "Preparing your habitat" tidak
+	# sempat terbaca sekilas saat sign out atau perpindahan akun.
+	_identity_row.visible = state != &"empty" and state != &"loading"
+	_identity.visible = state != &"empty" and state != &"loading"
 	_primary_action.visible = state == &"error"
 	_scan_cta_container.visible = state == &"empty"
 	_scan_cta_ring.set_active(state == &"empty")
