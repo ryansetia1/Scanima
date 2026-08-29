@@ -150,16 +150,19 @@ func _fit_catalog_viewport() -> void:
 	if not _catalog_scroll.visible:
 		_catalog_scroll.custom_minimum_size.y = 0.0
 		return
+	# Reset before measuring — sama seperti _fit_scroll_to_host di UiBottomSheet.
+	# Kalau tidak di-reset, chrome_h berikutnya sudah mengandung minimum lama
+	# sehingga tumbuh terus setiap kali fit dipanggil (bug "terbang ke atas").
 	_catalog_scroll.custom_minimum_size.y = 0.0
-	var sheet_panel := panel()
-	var host := sheet_panel.get_parent() as Control
-	var host_h := host.size.y if host != null else size.y
-	if host_h < 1.0 and is_inside_tree():
-		host_h = get_viewport_rect().size.y
-	if host_h < 1.0:
+	# Gunakan sheet_host_size() dikurangi bottom_inset agar konsisten dengan
+	# fit_to_content() — raw host_h tanpa inset membuat scroll lebih tinggi
+	# dari area yang tersedia setelah BottomNav diperhitungkan.
+	var raw_host_h := UiJuice.sheet_host_size(self, panel()).y
+	if raw_host_h < 1.0:
 		_catalog_scroll.custom_minimum_size.y = CATALOG_VIEWPORT_HEIGHT
 		return
-	var chrome_h := sheet_panel.get_combined_minimum_size().y
+	var host_h := maxf(1.0, raw_host_h - bottom_inset)
+	var chrome_h := panel().get_combined_minimum_size().y
 	_catalog_scroll.custom_minimum_size.y = minf(
 		CATALOG_VIEWPORT_HEIGHT,
 		maxf(0.0, host_h * max_height_ratio - chrome_h)

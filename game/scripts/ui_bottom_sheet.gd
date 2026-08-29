@@ -15,6 +15,10 @@ const MIN_SCROLL_HEIGHT := 192.0
 @export var scroll_content := false
 @export var respect_safe_bottom := true
 @export_range(0.5, 1.0, 0.01) var max_height_ratio := 0.92
+## Berapa px di bawah sheet yang diambil UI lain (mis. BottomNav).
+## Set ini dari scan_flow setelah BottomNav ready agar rest_y tidak
+## menempatkan panel di balik BottomNav di APK build.
+@export var bottom_inset: float = 0.0
 
 @onready var _panel: Control = get_node(panel_path) as Control
 @onready var _dismiss_button: Button = get_node(dismiss_button_path) as Button
@@ -119,8 +123,11 @@ func fit_to_content() -> void:
 		return
 	_refresh_safe_bottom()
 	var host_size := UiJuice.sheet_host_size(self, _panel)
-	var host_h := host_size.y
-	if host_h < 1.0:
+	# Kurangi bottom_inset (mis. BottomNav height) agar rest_y tidak menaruh
+	# panel di balik nav bar — masalah ini hanya terlihat di APK karena di
+	# editor BottomNav tidak mengambil ruang di luar SafeMargin.
+	var host_h := maxf(1.0, host_size.y - bottom_inset)
+	if host_size.y < 1.0:
 		return
 	if is_instance_valid(_measured_content):
 		_last_fit_width = _measured_content.size.x
@@ -130,7 +137,7 @@ func fit_to_content() -> void:
 	_panel.offset_right = -UiJuice.SHEET_SIDE_INSET
 	_panel.offset_top = -height
 	_panel.offset_bottom = 0.0
-	var rest := UiJuice.sheet_rest_position(self, _panel)
+	var rest := UiJuice.sheet_rest_position_with_inset(self, _panel, bottom_inset)
 	_panel.set_meta(UiJuice.META_SHEET_POSITION, rest)
 	var tween: Variant = get_meta(UiJuice.META_TWEEN) if has_meta(UiJuice.META_TWEEN) else null
 	if tween is Tween and is_instance_valid(tween) and (tween as Tween).is_running():

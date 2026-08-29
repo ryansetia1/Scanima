@@ -451,7 +451,17 @@ static func sheet_host_size(overlay: Control, panel: Control) -> Vector2:
 ## so a rest position of x=0 would quietly undo the inset every time the sheet
 ## animated into place.
 static func sheet_rest_position(overlay: Control, panel: Control) -> Vector2:
-	var host_h := sheet_host_size(overlay, panel).y
+	return sheet_rest_position_with_inset(overlay, panel, 0.0)
+
+
+## Varian sheet_rest_position yang memperhitungkan `bottom_inset` px di bawah
+## sheet (mis. BottomNav). Tanpa ini, panel rest di y = host_h − height, yang
+## menaruhnya tepat di bottom edge viewport — di balik BottomNav di APK build.
+static func sheet_rest_position_with_inset(
+	overlay: Control, panel: Control, bottom_inset: float
+) -> Vector2:
+	var raw_host_h := sheet_host_size(overlay, panel).y
+	var host_h := maxf(1.0, raw_host_h - bottom_inset)
 	var height := maxf(panel.get_combined_minimum_size().y, 1.0)
 	var rest_y := maxf(host_h * 0.06, host_h - height)
 	return Vector2(SHEET_SIDE_INSET, rest_y)
@@ -465,8 +475,15 @@ static func show_bottom_sheet(overlay: Control, panel: Control) -> void:
 	panel.offset_right = -SHEET_SIDE_INSET
 	panel.offset_top = -height
 	panel.offset_bottom = 0.0
-	var target := sheet_rest_position(overlay, panel)
-	panel.set_meta(META_SHEET_POSITION, target)
+	# Gunakan META_SHEET_POSITION yang sudah dihitung fit_to_content() (dengan
+	# bottom_inset yang benar). Kalau belum ada, hitung sendiri sebagai fallback.
+	# JANGAN timpa dengan sheet_rest_position() biasa — ia tidak tahu bottom_inset.
+	var target: Vector2
+	if panel.has_meta(META_SHEET_POSITION):
+		target = panel.get_meta(META_SHEET_POSITION)
+	else:
+		target = sheet_rest_position(overlay, panel)
+		panel.set_meta(META_SHEET_POSITION, target)
 	overlay.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	panel.position = target + Vector2(0.0, height + 24.0)
 	panel.modulate = Color(0.84, 0.94, 1.08, 1.0)

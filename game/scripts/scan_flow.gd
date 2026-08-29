@@ -5718,6 +5718,9 @@ func _layout_for_viewport() -> void:
 	_place_toast(insets)
 	_stage.position = stage_position_for(viewport_size)
 	_sync_home_body()
+	# Perbarui bottom_inset sheet setelah layout settle sehingga rest_y tidak
+	# menaruh panel di balik BottomNav di APK build.
+	_sync_sheet_insets.call_deferred()
 
 
 ## Ground line-nya diukur pada art, bukan pada viewport, dan safe area sengaja
@@ -6707,6 +6710,24 @@ func _sync_shop_chrome() -> void:
 		and (not show_chrome or (shop_locked and _shop_sheet.is_shop_open()))
 	):
 		_shop_sheet.close()
+
+
+## Ukur tinggi aktual BottomNav setelah layout dan set ke bottom_inset ShopSheet
+## sehingga rest_y dihitung dengan benar dan panel tidak muncul di balik BottomNav
+## di APK build. Dipanggil deferred dari _layout_for_viewport() agar size sudah
+## settled setelah margin dan margin override diapply.
+func _sync_sheet_insets() -> void:
+	if not is_instance_valid(_shop_sheet) or not is_instance_valid(_bottom_nav):
+		return
+	# BottomNav ada di SafeMargin/Shell. Inset yang relevan adalah:
+	# tinggi BottomNav + bottom margin SafeMargin.
+	var nav_h := _bottom_nav.size.y
+	if nav_h < 1.0:
+		nav_h = _bottom_nav.get_combined_minimum_size().y
+	var safe_bottom_margin := float(
+		_safe_margin.get_theme_constant("margin_bottom") if is_instance_valid(_safe_margin) else 0
+	)
+	_shop_sheet.bottom_inset = nav_h + safe_bottom_margin
 
 
 func _place_toast(insets: Vector4) -> void:
