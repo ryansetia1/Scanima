@@ -11208,6 +11208,7 @@ console.log("42. tidak ada panggilan Vision yang mematikan thinking dengan 0");
       "../backend/supabase/functions/evolve_anima/index.ts",
       "../backend/supabase/functions/synthesize_anima/index.ts",
       "../backend/supabase/functions/_shared/gallery_moderation.mjs",
+      "../backend/supabase/functions/replicate_webhook/index.ts",
       "../backend/tools/chapter_factory/design.mjs",
       "./run.mjs",
     ]
@@ -11220,6 +11221,145 @@ console.log("42. tidak ada panggilan Vision yang mematikan thinking dengan 0");
     assert.ok(
       source.includes("...VISION_THINKING"),
       `${relative} must take its thinking settings from the shared constant`,
+    );
+  }
+}
+
+console.log("43. facing audit: flip involutif, keputusan dua pass, sel yang boleh diaudit");
+{
+  const { flipQuadrantInPlace, LAYOUT_3X3 } = await import(
+    "../backend/supabase/functions/_shared/postprocess.mjs"
+  );
+  const {
+    auditableCells,
+    decideFacingFlips,
+    parseFacingVerdict,
+  } = await import("../backend/supabase/functions/_shared/facing_audit.mjs");
+
+  // 1. flipQuadrantInPlace involutif, dan hanya menyentuh selnya sendiri.
+  {
+    const grid = 3;
+    const width = 9;
+    const height = 9;
+    const bitmap = new Uint8Array(width * height * 4);
+    for (let i = 0; i < bitmap.length; i++) bitmap[i] = (i * 37) % 256;
+    const original = Uint8Array.from(bitmap);
+
+    flipQuadrantInPlace(bitmap, width, height, [1, 1], grid); // sel tengah
+    assert.ok(
+      !bitmap.every((v, i) => v === original[i]),
+      "flip sekali harus mengubah byte sel yang diflip",
+    );
+    // Delapan sel lain tidak boleh berubah.
+    for (const [col, row] of LAYOUT_3X3.poses.map((p) => LAYOUT_3X3.quadrant[p])) {
+      if (col === 1 && row === 1) continue;
+      const cellW = Math.floor(width / grid);
+      const cellH = Math.floor(height / grid);
+      const left = col * cellW;
+      const top = row * cellH;
+      const right = col === grid - 1 ? width : (col + 1) * cellW;
+      const bottom = row === grid - 1 ? height : (row + 1) * cellH;
+      for (let y = top; y < bottom; y++) {
+        for (let x = left; x < right; x++) {
+          const p = (y * width + x) * 4;
+          assert.ok(
+            bitmap[p] === original[p] && bitmap[p + 1] === original[p + 1]
+              && bitmap[p + 2] === original[p + 2] && bitmap[p + 3] === original[p + 3],
+            `flip sel [1,1] tidak boleh menyentuh sel [${col},${row}]`,
+          );
+        }
+      }
+    }
+
+    flipQuadrantInPlace(bitmap, width, height, [1, 1], grid);
+    assert.ok(
+      bitmap.every((v, i) => v === original[i]),
+      "flip dua kali harus mengembalikan byte yang identik (involutif)",
+    );
+  }
+
+  // 2. decideFacingFlips — tabel kasus.
+  {
+    const allowed = ["idle", "sleep"];
+    const kedua = decideFacingFlips(
+      { idle: "right", sleep: "left" },
+      { idle: "right", sleep: "left" },
+      allowed,
+    );
+    assert.deepEqual(kedua.flipped, ["idle"], "kedua pass 'right' pada pose yang sama harus di-flip");
+
+    const hanyaPass1 = decideFacingFlips(
+      { idle: "right" },
+      { idle: "left" },
+      allowed,
+    );
+    assert.deepEqual(hanyaPass1.flipped, [], "hanya pass1 'right' tidak boleh flip");
+
+    const unclearDiSalahSatu = decideFacingFlips(
+      { idle: "right" },
+      { idle: "unclear" },
+      allowed,
+    );
+    assert.deepEqual(unclearDiSalahSatu.flipped, [], "unclear di pass mana pun tidak boleh flip");
+
+    const pass2Null = decideFacingFlips({ idle: "right" }, null, allowed);
+    assert.deepEqual(pass2Null.flipped, [], "pass2 null (tidak dijalankan) tidak boleh flip");
+
+    const kunciDiluarAllowed = decideFacingFlips(
+      { idle: "right", attack: "right" },
+      { idle: "right", attack: "right" },
+      ["idle"],
+    );
+    assert.deepEqual(
+      kunciDiluarAllowed.flipped,
+      ["idle"],
+      "kunci di luar `allowed` (attack) harus diabaikan",
+    );
+  }
+
+  // 3. auditableCells — fx_strike/fx_surge hanya untuk motion projectile/sweep.
+  {
+    assert.ok(
+      auditableCells(LAYOUT_3X3, { fx_strike: "projectile" }).includes("fx_strike"),
+      "fx_strike masuk saat motion projectile",
+    );
+    assert.ok(
+      auditableCells(LAYOUT_3X3, { fx_strike: "sweep" }).includes("fx_strike"),
+      "fx_strike masuk saat motion sweep",
+    );
+    assert.ok(
+      !auditableCells(LAYOUT_3X3, { fx_strike: "impact" }).includes("fx_strike"),
+      "fx_strike tidak masuk saat motion impact",
+    );
+    assert.ok(
+      !auditableCells(LAYOUT_3X3, { fx_strike: "bloom" }).includes("fx_strike"),
+      "fx_strike tidak masuk saat motion bloom",
+    );
+    assert.ok(
+      !auditableCells(LAYOUT_3X3, {}).includes("fx_strike"),
+      "fx_strike tidak masuk saat motion tidak ada",
+    );
+    for (const pose of ["idle", "attack", "sleep", "happy", "hungry", "dirty", "defeated"]) {
+      assert.ok(
+        auditableCells(LAYOUT_3X3, {}).includes(pose),
+        `sel karakter ${pose} selalu boleh diaudit`,
+      );
+    }
+  }
+
+  // 4. parseFacingVerdict menolak nilai di luar tiga enum tanpa melempar.
+  {
+    const raw = JSON.stringify({
+      top_left: "left",
+      top_middle: "right",
+      top_right: "sideways", // nilai tidak sah, harus dibuang diam-diam
+      middle_left: "unclear",
+    });
+    const verdict = parseFacingVerdict(raw, ["idle", "attack", "sleep", "happy"]);
+    assert.deepEqual(
+      verdict,
+      { idle: "left", attack: "right", happy: "unclear" },
+      "nilai enum tidak sah dibuang, nilai sah dipetakan balik ke pose",
     );
   }
 }

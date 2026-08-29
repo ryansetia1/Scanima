@@ -35,11 +35,17 @@ export type BarisAnima = {
   typing_version?: number;
 };
 
+export type FacingAuditResult = {
+  flipped: string[];
+  record: Record<string, unknown>;
+};
+
 export async function finalizeSheet(
   db: SupabaseClient,
   gen: BarisGeneration,
   anima: BarisAnima,
   rawPng: Uint8Array,
+  facing?: FacingAuditResult,
 ) {
   const isEvolve = gen.kind === "evolve";
   const isSynthesis = gen.kind === "synthesis";
@@ -56,8 +62,10 @@ export async function finalizeSheet(
       fx_strike: gen.vision_result?.strike_vfx?.motion,
       fx_surge: gen.vision_result?.surge_vfx?.motion,
     },
+    flipPoses: facing?.flipped,
   });
   const msPostprocess = Date.now() - t0;
+  if (facing) manifest.qa.facing = facing.record;
 
   const hash = await sha256Hex(png);
   const isPrivateCapture = isEvolve || (anima.typing_version ?? 1) >= 2;

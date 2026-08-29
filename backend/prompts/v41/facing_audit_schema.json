@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "description": "Facing verdict per 3x3 grid position. Only the positions you were asked about need to be present.",
+  "properties": {
+    "top_left": { "type": "string", "enum": ["left", "right", "unclear"] },
+    "top_middle": { "type": "string", "enum": ["left", "right", "unclear"] },
+    "top_right": { "type": "string", "enum": ["left", "right", "unclear"] },
+    "middle_left": { "type": "string", "enum": ["left", "right", "unclear"] },
+    "middle_middle": { "type": "string", "enum": ["left", "right", "unclear"] },
+    "middle_right": { "type": "string", "enum": ["left", "right", "unclear"] },
+    "bottom_left": { "type": "string", "enum": ["left", "right", "unclear"] },
+    "bottom_middle": { "type": "string", "enum": ["left", "right", "unclear"] },
+    "bottom_right": { "type": "string", "enum": ["left", "right", "unclear"] }
+  }
+}

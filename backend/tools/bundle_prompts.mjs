@@ -40,6 +40,8 @@ const BERKAS = {
   sprite_sheet_synthesis: "sprite_sheet_synthesis.md",
   sprite_sheet_fauna: "sprite_sheet_fauna.md",
   vibe_directions: "vibe_directions.json",
+  facing_audit: "facing_audit.md",
+  facing_audit_schema: "facing_audit_schema.json",
 };
 
 const OPSIONAL = new Set([
@@ -50,12 +52,16 @@ const OPSIONAL = new Set([
   "vision_synthesis_schema",
   "sprite_sheet_synthesis",
   "vibe_directions",
+  "facing_audit",
+  "facing_audit_schema",
 ]);
 const CAPTURE_KEYS = new Set([
   "vision_system",
   "vision_schema",
   "sprite_sheet",
   "sprite_sheet_fauna",
+  "facing_audit",
+  "facing_audit_schema",
 ]);
 const EVOLVE_KEYS = new Set([
   "vision_evolve_system",

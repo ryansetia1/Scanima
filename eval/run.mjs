@@ -37,6 +37,13 @@ import {
   visionInstruction,
 } from "../backend/supabase/functions/_shared/vision.mjs";
 import { BIAYA_VISION_USD, biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
+import {
+  FACING_GRID,
+  auditableCells,
+  decideFacingFlips,
+  facingInstruction,
+  parseFacingVerdict,
+} from "../backend/supabase/functions/_shared/facing_audit.mjs";
 
 export { assemblePrompt, extractJson, validateVision };
 
@@ -188,6 +195,57 @@ async function callVision(photo, systemPrompt, schema) {
   throw lastError;
 }
 
+// ------------------------------------------------------------ facing audit
+
+/** Dua pass independen; nol panggilan kalau prompt/schema absen untuk versi ini. */
+async function callFacingAudit(pngBuffer, promptVersion, vfxMotion, facingSystem, facingSchema) {
+  if (!facingSystem || !facingSchema) {
+    return {
+      calls: 0,
+      flipped: [],
+      record: { status: "unavailable", flipped: [], pass1: {}, pass2: null, reason: "prompt_absent" },
+    };
+  }
+
+  const layout = layoutForPrompt(promptVersion);
+  const allowed = auditableCells(layout, vfxMotion);
+  const systemInstruction = facingInstruction(facingSystem, facingSchema);
+  const dataUri = `data:image/png;base64,${Buffer.from(pngBuffer).toString("base64")}`;
+  let calls = 0;
+
+  const raw1 = await runPrediction(VISION_MODEL, {
+    prompt: `Judge facing for grid positions: ${allowed.map((p) => FACING_GRID[p]).join(", ")}. ` +
+      "Respond with the JSON object only.",
+    images: [dataUri],
+    system_instruction: systemInstruction,
+    temperature: 0.2,
+    top_p: 0.9,
+    max_output_tokens: 512,
+    ...VISION_THINKING,
+  }, VISION_POLL_MS);
+  calls++;
+  const pass1 = parseFacingVerdict(raw1.output, allowed);
+
+  const flaggedPass1 = allowed.filter((pose) => pass1[pose] === "right");
+  let pass2 = null;
+  if (flaggedPass1.length > 0) {
+    const raw2 = await runPrediction(VISION_MODEL, {
+      prompt: "Give your independent second opinion on grid positions: " +
+        `${flaggedPass1.map((p) => FACING_GRID[p]).join(", ")}. Respond with the JSON object only.`,
+      images: [dataUri],
+      system_instruction: systemInstruction,
+      temperature: 0.45,
+      top_p: 0.9,
+      max_output_tokens: 512,
+      ...VISION_THINKING,
+    }, VISION_POLL_MS);
+    calls++;
+    pass2 = parseFacingVerdict(raw2.output, flaggedPass1);
+  }
+
+  return { calls, ...decideFacingFlips(pass1, pass2, allowed) };
+}
+
 // ---------------------------------------------------------------- gambar
 
 export function imageInputForModel(model, prompt, dataUri, quality = "medium") {
@@ -293,6 +351,7 @@ function contactSheetHtml(setName, promptVersion, rows, totals) {
               ${r.seconds ? `· ${r.seconds}s` : ""}</div>` : ""}
             ${r.manifest?.qa.warnings?.length ? `<ul class="warn">${r.manifest.qa.warnings
               .map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}
+            ${r.facing?.flipped?.length ? `<div class="flip">FACING FLIPPED: ${esc(r.facing.flipped.join(", "))}</div>` : ""}
             ${r.error ? `<pre class="err">${esc(r.error)}</pre>` : ""}
             <label>True to Object <input type="range" min="1" max="5" value="3"></label>
             <label>Konsistensi gaya <input type="range" min="1" max="5" value="3"></label>
@@ -323,7 +382,7 @@ function contactSheetHtml(setName, promptVersion, rows, totals) {
   .stats span{display:inline-block;margin-right:12px;color:#9aa3b2}
   .qa{color:#8b94a5;font-size:12px;margin-top:8px}
   .issues,.warn{margin:8px 0;padding-left:18px;font-size:12px}
-  .issues{color:#e8c37a}.warn{color:#f0a0a8}
+  .issues{color:#e8c37a}.warn{color:#f0a0a8}.flip{color:#7fc4e0;font-size:12px;margin-top:8px}
   .ok{background:#1f4535;color:#7fe0b0;padding:2px 8px;border-radius:99px;font-size:12px}
   .gate{background:#3a3520;color:#e8c37a;padding:2px 8px;border-radius:99px;font-size:12px}
   .err{background:#3a2226;color:#f0a0a8;padding:2px 8px;border-radius:99px;font-size:12px}
@@ -375,6 +434,15 @@ async function main() {
     throw error;
   });
   const vibeDirections = vibeDirectionsRaw ? JSON.parse(vibeDirectionsRaw) : null;
+  const facingAuditSystem = await readFile(join(pdir, "facing_audit.md"), "utf8").catch((error) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  const facingAuditSchemaRaw = await readFile(join(pdir, "facing_audit_schema.json"), "utf8").catch((error) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  const facingAuditSchema = facingAuditSchemaRaw ? JSON.parse(facingAuditSchemaRaw) : null;
   const schema = JSON.parse(schemaRaw);
   const prompts = { sprite_sheet: template, sprite_sheet_fauna: faunaTemplate };
   const useV13 = promptMajor(args.promptVersion) >= 13;
@@ -406,7 +474,11 @@ async function main() {
 
   const willGenerate = args.visionOnly || args.reprocess ? 0 : items.filter((it) => !it.expect_reject).length;
   const willVision = args.reprocess || args.visionFile ? 0 : items.length;
-  const estimate = willGenerate * COST_PER_IMAGE_USD + willVision * COST_PER_VISION_USD;
+  // Perkiraan minimum: pass 2 (opini kedua) hanya jalan kalau pass 1 menandai
+  // sesuatu, jadi total sungguhan bisa sampai 2x ini untuk sheet yang kena flag.
+  // totals.costUsd di ringkasan akhir tetap menghitung panggilan sungguhan.
+  const willFacing = args.visionOnly || args.reprocess ? 0 : willGenerate;
+  const estimate = willGenerate * COST_PER_IMAGE_USD + (willVision + willFacing) * COST_PER_VISION_USD;
 
   console.log(`set        : ${args.set ?? "single"} (${items.length} foto)`);
   console.log(`prompt     : ${args.promptVersion}`);
@@ -450,6 +522,7 @@ async function main() {
     generated: 0,
     visionCalls: 0,
     visionRepaired: 0,
+    facingCalls: 0,
     costUsd: 0,
     gateCorrect: 0,
     gateExpected: 0,
@@ -568,9 +641,20 @@ async function main() {
       }
 
       let gen;
+      let facing;
       if (args.reprocess) {
         process.stdout.write(`${label} reproses... `);
         gen = { png: new Uint8Array(await readFile(join(outDir, `${name}.raw.png`))), seconds: 0 };
+        // Run sebelum fitur ini ada tidak punya facing.json — reprocess run lama
+        // itu tetap harus jalan, hanya tanpa data facing (flipped: []).
+        const facingRaw = await readFile(join(outDir, `${name}.facing.json`), "utf8").catch((error) => {
+          if (error.code === "ENOENT") return null;
+          throw error;
+        });
+        const facingRecord = facingRaw
+          ? JSON.parse(facingRaw)
+          : { status: "unavailable", flipped: [], pass1: {}, pass2: null, reason: "facing_json_absent" };
+        facing = { flipped: facingRecord.flipped, record: facingRecord };
       } else {
         const prompt = assemblePrompt(
           spriteSheetTemplate(prompts, checked.vision.subject_kind),
@@ -584,6 +668,21 @@ async function main() {
         gen = await callImageModel(prompt, photo);
         totals.costUsd += COST_PER_IMAGE_USD;
         await writeFile(join(outDir, `${name}.raw.png`), gen.png);
+
+        process.stdout.write("facing... ");
+        facing = await callFacingAudit(
+          gen.png,
+          args.promptVersion,
+          {
+            fx_strike: checked.vision.strike_vfx?.motion,
+            fx_surge: checked.vision.surge_vfx?.motion,
+          },
+          facingAuditSystem,
+          facingAuditSchema,
+        );
+        totals.facingCalls += facing.calls;
+        totals.costUsd += facing.calls * COST_PER_VISION_USD;
+        await writeFile(join(outDir, `${name}.facing.json`), JSON.stringify(facing.record, null, 2));
       }
       totals.generated++;
       row.seconds = gen.seconds;
@@ -598,12 +697,15 @@ async function main() {
           fx_strike: checked.vision.strike_vfx?.motion,
           fx_surge: checked.vision.surge_vfx?.motion,
         },
+        flipPoses: facing.flipped,
       });
+      manifest.qa.facing = facing.record;
       await writeFile(join(outDir, `${name}.png`), png);
       await writeFile(join(outDir, `${name}.json`), JSON.stringify(manifest, null, 2));
 
       row.status = "ok";
       row.manifest = manifest;
+      row.facing = facing.record;
       row.sheetFile = `${name}.png`;
       if (manifest.qa.cells_detected === layoutForPrompt(args.promptVersion).poses.length) {
         totals.fullSheets++;
@@ -633,6 +735,7 @@ async function main() {
 
   console.log(`\n${"-".repeat(58)}`);
   console.log(`vision          : ${totals.visionCalls} panggilan, ${totals.visionRepaired} perlu diulang`);
+  console.log(`facing audit    : ${totals.facingCalls} panggilan`);
   console.log(`generation      : ${totals.generated}`);
   console.log(`biaya           : ~$${totals.costUsd.toFixed(3)}`);
   console.log(`gate benar      : ${totals.gateCorrect}/${totals.gateExpected}`);

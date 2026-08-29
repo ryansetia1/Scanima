@@ -8,7 +8,17 @@
 
 import { adminClient, json } from "../_shared/supa.ts";
 import { verifikasiTandaTangan } from "../_shared/webhook_signature.ts";
-import { finalizeSheet } from "../_shared/finalize_sheet.ts";
+import { finalizeSheet, type FacingAuditResult } from "../_shared/finalize_sheet.ts";
+import { layoutForPrompt } from "../_shared/postprocess.mjs";
+import {
+  FACING_GRID,
+  auditableCells,
+  decideFacingFlips,
+  facingInstruction,
+  parseFacingVerdict,
+} from "../_shared/facing_audit.mjs";
+import { VISION_THINKING } from "../_shared/vision.mjs";
+import PROMPTS from "../_shared/prompts.generated.ts";
 import {
   evolutionFinalizeRetryable,
   evolutionImageSafetyRetryable,
@@ -17,9 +27,18 @@ import {
 } from "../_shared/evolution.mjs";
 import {
   batalkanPrediksi,
+  jalankanPrediksi,
   mulaiGeneration,
   rahasiaWebhook,
 } from "../_shared/replicate.ts";
+
+const MODEL_VISION = Deno.env.get("VISION_MODEL") ?? "google/gemini-2.5-flash";
+
+function configBool(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value === "true";
+  return false;
+}
 
 // Payload yang lolos tanda tangan pun tidak boleh menentukan dari mana kita
 // mengunduh. Kalau suatu hari secret-nya bocor, penyerang masih tidak bisa
@@ -66,6 +85,93 @@ function ambilUrlKeluaran(output: unknown): string | null {
     return typeof pertama === "string" ? pertama : null;
   }
   return null;
+}
+
+async function featureFacingAuditOn(db: ReturnType<typeof adminClient>): Promise<boolean> {
+  const { data } = await db
+    .from("app_config")
+    .select("value")
+    .eq("key", "feature_facing_audit")
+    .maybeSingle();
+  return configBool(data?.value);
+}
+
+const promptBundleFacing = PROMPTS as Record<
+  string,
+  { facing_audit?: string; facing_audit_schema?: unknown }
+>;
+
+/**
+ * Dua pass independen menilai arah hadap; flip hanya kalau keduanya setuju.
+ * Fail-open selalu — setiap kegagalan menghasilkan flipped: [] dan status yang
+ * menjelaskan sebabnya. Sheet berbayar tidak pernah gagal karena audit ini.
+ */
+async function auditFacing(
+  url: string,
+  gen: GenRow,
+  featureOn: boolean,
+): Promise<FacingAuditResult> {
+  if (!featureOn) {
+    return {
+      flipped: [],
+      record: { status: "skipped", flipped: [], pass1: {}, pass2: null, reason: "feature_flag_off" },
+    };
+  }
+  const prompts = promptBundleFacing[gen.prompt_version];
+  if (!prompts?.facing_audit || !prompts.facing_audit_schema) {
+    return {
+      flipped: [],
+      record: { status: "unavailable", flipped: [], pass1: {}, pass2: null, reason: "prompt_absent" },
+    };
+  }
+
+  try {
+    const vision = gen.vision_result as
+      | { strike_vfx?: { motion?: string }; surge_vfx?: { motion?: string } }
+      | null;
+    const layout = layoutForPrompt(gen.prompt_version);
+    const allowed = auditableCells(layout, {
+      fx_strike: vision?.strike_vfx?.motion,
+      fx_surge: vision?.surge_vfx?.motion,
+    });
+    const systemInstruction = facingInstruction(prompts.facing_audit, prompts.facing_audit_schema);
+
+    const raw1 = await jalankanPrediksi(MODEL_VISION, {
+      prompt: `Judge facing for grid positions: ${allowed.map((p) => FACING_GRID[p]).join(", ")}. ` +
+        "Respond with the JSON object only.",
+      images: [url],
+      system_instruction: systemInstruction,
+      temperature: 0.2,
+      top_p: 0.9,
+      max_output_tokens: 512,
+      ...VISION_THINKING,
+    }, 45_000);
+    const pass1 = parseFacingVerdict(raw1, allowed);
+
+    const flaggedPass1 = allowed.filter((pose) => pass1[pose] === "right");
+    let pass2: Record<string, string> | null = null;
+    if (flaggedPass1.length > 0) {
+      const raw2 = await jalankanPrediksi(MODEL_VISION, {
+        prompt: "Give your independent second opinion on grid positions: " +
+          `${flaggedPass1.map((p) => FACING_GRID[p]).join(", ")}. Respond with the JSON object only.`,
+        images: [url],
+        system_instruction: systemInstruction,
+        temperature: 0.45,
+        top_p: 0.9,
+        max_output_tokens: 512,
+        ...VISION_THINKING,
+      }, 45_000);
+      pass2 = parseFacingVerdict(raw2, flaggedPass1);
+    }
+
+    return decideFacingFlips(pass1, pass2, allowed);
+  } catch (e) {
+    const reason = `vision_error: ${e instanceof Error ? e.message : String(e)}`;
+    return {
+      flipped: [],
+      record: { status: "unavailable", flipped: [], pass1: {}, pass2: null, reason },
+    };
+  }
 }
 
 type GenRow = {
@@ -336,7 +442,11 @@ Deno.serve(async (req) => {
     return json(200, { direfund: true, alasan: alasanGagal });
   }
 
-  const unduh = await fetch(urlKeluaran!);
+  const facingOn = await featureFacingAuditOn(db);
+  const [unduh, facing] = await Promise.all([
+    fetch(urlKeluaran!),
+    auditFacing(urlKeluaran!, gen, facingOn),
+  ]);
   if (!unduh.ok) {
     // Sengaja 503, bukan refund: gagal mengunduh belum berarti model gagal, dan
     // gambarnya sudah dibayar. Biarkan Replicate mencoba lagi.
@@ -345,7 +455,7 @@ Deno.serve(async (req) => {
   const rawPng = new Uint8Array(await unduh.arrayBuffer());
 
   try {
-    const hasil = await finalizeSheet(db, gen, anima!, rawPng);
+    const hasil = await finalizeSheet(db, gen, anima!, rawPng, facing);
     return json(200, {
       sheet: hasil.sheetPath,
       sel: hasil.manifest.qa.cells_detected,

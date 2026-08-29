@@ -209,7 +209,7 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 
 ```bash
 # gratis, jalankan ini dulu
-npm run selftest                       # 42 skenario + 12 uji tanda tangan webhook
+npm run selftest                       # 43 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd # 174 check manifest, loader, presenter, Boss Seeker
 godot --headless --path game --script res://tests/test_auth_flow.gd    # 63 check PKCE secure, restart, transfer/separate, recovery, no-merge
 godot --headless --path game --script res://tests/test_client_state.gd  # 196 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, stale UID, retry transport

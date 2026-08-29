@@ -187,6 +187,35 @@ export function isKeyContaminatedEdge(r, g, b) {
   return g >= EDGE_GREEN_MIN && g - Math.max(r, b) >= EDGE_GREEN_DOMINANCE;
 }
 
+/**
+ * Cerminkan piksel kiri-kanan di dalam satu sel grid. Involutif: flip dua kali
+ * mengembalikan byte yang identik. Dipanggil sebelum chromaKeyInPlace supaya
+ * bbox, ownership, dan blit di bawahnya menghitung angka yang sudah benar
+ * sejak awal — lihat facing_audit.mjs untuk siapa yang memutuskan flip mana.
+ */
+export function flipQuadrantInPlace(bitmap, width, height, quadrant, grid) {
+  const [col, row] = quadrant;
+  const cellW = Math.floor(width / grid);
+  const cellH = Math.floor(height / grid);
+  const left = col * cellW;
+  const top = row * cellH;
+  const right = col === grid - 1 ? width : (col + 1) * cellW;
+  const bottom = row === grid - 1 ? height : (row + 1) * cellH;
+  const cellWidth = right - left;
+
+  for (let y = top; y < bottom; y++) {
+    for (let x = 0; x < Math.floor(cellWidth / 2); x++) {
+      const a = (y * width + left + x) * 4;
+      const b = (y * width + right - 1 - x) * 4;
+      for (let c = 0; c < 4; c++) {
+        const tmp = bitmap[a + c];
+        bitmap[a + c] = bitmap[b + c];
+        bitmap[b + c] = tmp;
+      }
+    }
+  }
+}
+
 /** Nolkan alpha di piksel berwarna kunci. Mengubah bitmap di tempat. */
 export function chromaKeyInPlace(bitmap, opts = DEFAULTS) {
   let keyed = 0;
@@ -779,6 +808,14 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
   const bitmap = work.bitmap;
   const { width, height } = work;
 
+  // Layout dibutuhkan di sini (bukan hanya di segmentasi di bawah) supaya
+  // flip pose bisa jalan sebelum chromaKeyInPlace, tepat sesudah decode+resize.
+  const layout = layoutForPrompt(meta.promptVersion);
+  for (const pose of meta.flipPoses ?? []) {
+    if (!layout.quadrant[pose]) continue;
+    flipQuadrantInPlace(bitmap, width, height, layout.quadrant[pose], layout.grid);
+  }
+
   const keyedPixels = chromaKeyInPlace(bitmap, opts);
   const keyedRatio = keyedPixels / (bitmap.length / 4);
 
@@ -806,7 +843,6 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
   // Segmentasi komponen terhubung membiarkan anggota tubuh melewati garis sel
   // tanpa ikut mencopy monster tetangga. Sel grid hanya menentukan pose pemilik,
   // bukan menjadi batas crop.
-  const layout = layoutForPrompt(meta.promptVersion);
   const cellW = Math.floor(width / layout.grid);
   const cellH = Math.floor(height / layout.grid);
   const quadrantArea = cellW * cellH;
