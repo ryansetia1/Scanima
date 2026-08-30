@@ -2,6 +2,54 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 30 Agustus 2026: kurva Level tajam + band Level matchmaking Duel
+
+Latar belakang penuh dan keputusan arah ada di
+[`docs/designs/2026-08-30-level-curve-and-duel-matchmaking.md`](designs/2026-08-30-level-curve-and-duel-matchmaking.md).
+Ringkas: pemain melaporkan Duel Lv 13 HP 292 melawan bot Lv 4 HP 240 terasa
+seperti underdog match padahal Level-nya jauh — terukur win rate pemain 40,6%,
+bukan walkover seperti dijanjikan angka Level. Akar masalahnya tiga lapis:
+`GROWTH_PER_LEVEL` lama (`0,02`) membuat Level nyaris tidak berarti (satu poin
+base stat Vision ≈ 1,13 Level), matchmaking Duel buta Level dan malah
+menyamakan base stat lawan ke anggaran pemain, dan keduanya saling menutupi.
+
+Perubahan: `GROWTH_PER_LEVEL` naik ke `0,09` (Lv 40 ×4,51). Ini merusak pacing
+turn kalau berdiri sendiri (`100/(100+DEF)` tidak skala-invarian, Lv 40 mirror
+duel jadi 10,2 turn) — perbaikan wajibnya `mitigationBase(level) = 100 ×
+growthMultiplier(level)` dipakai sebagai basis mitigasi `computeDamage`,
+disimpan per-fighter di `mitigation_base` saat `createFighter`. Session lama
+(TTL 30 menit) tanpa field itu jatuh ke default `100`, jadi **tidak perlu
+menaikkan `RULES_VERSION`**. Sesudah perbaikan, mirror duel Lv 1/13/40 kembali
+ke ~4 turn.
+
+Matchmaking Duel (`pickFairCandidate`) diberi band Level `±30% (minimum ±3)`
+sebelum shortlist taksiran; base stat lawan tidak lagi direscale ke anggaran
+pemain — yang disetel adalah Level efektifnya (`refitLevel`), dipakai untuk
+stat maupun tampilan HUD. Team Battle mendapat perlakuan sama: tiga template
+sistem (`scrap-scavengers` Lv 2, `starter-sentinels` Lv 4, `vault-wardens` Lv
+7) sekarang direfit ke rata-rata Level roster pemain di `createCandidates()`,
+sebab Level tetapnya jadi latihan sasaran begitu kurva menajam.
+
+**Tidak dikerjakan dalam rollout ini:** Expedition The Sugarworks (70 lawan
+chapter v1–v7 semuanya `level: 12`) belum mendapat chapter v8 dengan ramp Level
+per zona. Pada kurva baru level 12 tetap (×1,99) melayani rentang pemain yang
+jauh lebih sempit daripada sebelumnya (×1,22) — pemain Lv 4 nyaris tanpa
+peluang, pemain Lv 30 menang tanpa perlawanan. Membuat versi chapter baru
+menyalin ~57 MB aset per versi dan menyentuh pipeline `chapter_factory`
+(ledger, manifest hash) yang belum divalidasi untuk perubahan level-only;
+ditunda sebagai pekerjaan terpisah alih-alih dipaksakan lewat penyalinan file
+manual.
+
+Golden vector diregenerasi (`node backend/tools/emit_sim_vectors.mjs`); tiga
+fixture team battle (`team-basic`, `team-voluntary-switch`, `team-long-grind`)
+diperpanjang supaya total turn yang terekam tetap ≥60 setelah battle-battle
+mismatch-level (crusher vs bossPack) selesai lebih cepat di bawah kurva baru.
+Fixture `selftest.mjs` skenario 34 (roster production win rate) dan skenario
+38 (`duelWinRate(adult, hatchling)`) diukur ulang terhadap resolver production,
+bukan ditebak — beberapa pasangan pilihan (mis. klasik vs Playtron) berubah
+plausibility-nya di bawah kurva baru dan diganti pasangan lain yang tetap lolos
+shortlist.
+
 ## APK 23-24 Agustus: Publish Atlas UI, reject-reason dialog, dan saga ItemList touch scroll
 
 APK debug 23 Agustus 2026 **08:03** dibangun dan **terpasang** di perangkat

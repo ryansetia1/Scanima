@@ -7,11 +7,14 @@ import { adminClient, clientVersionGate, corsPreflight, json, syncProfileTimezon
 import { signSheetUrl } from "../_shared/signed_roster.ts";
 import {
   BATTLE_ACTIONS,
+  GROWTH_PER_LEVEL,
+  LEVEL_CAP,
   RULES_VERSION,
   baseStatTotal,
   battleRewardPreview,
   createBattleState,
   duelWinRate,
+  growthMultiplier,
   levelFromExp,
   normalizeBaseStats,
   normalizeElement,
@@ -289,6 +292,7 @@ async function startBattle(ownerId: string, body: BattleBody): Promise<Response>
       botSnapshot = await gallerySnapshot(
         galleryPick.entry,
         { ...galleryPick.row, base_stats: galleryPick.baseStats },
+        galleryPick.refitLevel,
       );
       botAnimaId = galleryPick.animaId;
       botWinRate = galleryPick.winRate;
@@ -410,13 +414,14 @@ function snapshot(
   includeName: boolean,
   displayName = "",
   sheetUrl = "",
+  levelOverride: number | null = null,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {
     anima_id: row.id,
     species_key: row.species_key,
     color_bucket: row.color_bucket,
     stage: row.stage,
-    level: levelFromExp(row.care_score),
+    level: levelOverride ?? levelFromExp(row.care_score),
     element: normalizeElement(row.element),
     base_stats: normalizeStats(row.base_stats),
     body_height_cm: Math.min(2000, Math.max(20, Math.trunc(Number(row.body_height_cm) || 120))),
@@ -447,6 +452,7 @@ function snapshot(
 async function gallerySnapshot(
   entry: GalleryBotRow,
   botRow: AnimaRow & { sheet_path: string; manifest: unknown },
+  refitLevel: number,
 ): Promise<Record<string, unknown>> {
   const sheetUrl = await signSheetUrl(db, botRow.sheet_path);
   if (!sheetUrl) throw new Error("BOT_NOT_FOUND");
@@ -462,6 +468,7 @@ async function gallerySnapshot(
     false,
     entry.display_name,
     sheetUrl,
+    refitLevel,
   );
 }
 
@@ -529,6 +536,7 @@ type RealCandidate = {
 
 type GatedCandidate = RealCandidate & {
   baseStats: Record<string, number>;
+  refitLevel: number;
   fighter: Record<string, unknown>;
   winRate: number;
 };
@@ -543,11 +551,12 @@ type GatedCandidate = RealCandidate & {
 function candidateFighter(
   row: AnimaRow,
   baseStats: Record<string, number>,
+  refitLevel: number,
 ): Record<string, unknown> {
   return {
     base_stats: baseStats,
     stage: row.stage,
-    level: levelFromExp(row.care_score),
+    level: refitLevel,
     element: normalizeElement(row.element),
     secondary_element: readSecondaryElement(row) ?? "",
     evolution_version: Math.max(0, Math.trunc(Number(row.evolution_version) || 0)),
@@ -568,10 +577,12 @@ function candidateFighter(
  * 41,0%..86,1%.
  *
  * Urutannya stable-rank atas seed supaya lawannya tetap bervariasi antar-duel
- * dan urutan simulasinya tetap deterministik untuk satu duel. Kesegaran stat
- * ditentukan dulu (pakai stat sendiri kalau total-nya dekat, kalau tidak
- * diskalakan ke total pemain), sebab yang dinilai harus stat yang benar-benar
- * dipakai di arena. Signed URL art hanya diambil untuk yang terpilih.
+ * dan urutan simulasinya tetap deterministik untuk satu duel. Base stat lawan
+ * tetap utuh (identitas Anima-nya, hasil roll Vision pemiliknya) — yang
+ * disetel adalah Level efektifnya, supaya Level yang tampil di HUD adalah
+ * Level yang benar-benar menghasilkan stat itu. Kandidat yang band Level-nya
+ * (setelah refit) keluar dari band pemain dibuang. Signed URL art hanya
+ * diambil untuk yang terpilih.
  */
 function pickFairCandidate(
   seed: string,
@@ -579,16 +590,28 @@ function pickFairCandidate(
   player: AnimaRow,
   candidates: RealCandidate[],
 ): GatedCandidate | null {
+  const playerLevel = levelFromExp(player.care_score);
   const playerTotal = baseStatTotal(player.base_stats);
+  const band = Math.max(3, Math.round(playerLevel * 0.30));
   const shortlist = candidates
+    .filter((candidate) => Math.abs(levelFromExp(candidate.row.care_score) - playerLevel) <= band)
     .map((candidate) => {
-      const close = candidate.row.stage === player.stage &&
-        Math.abs(baseStatTotal(candidate.row.base_stats) - playerTotal) <= playerTotal * 0.15;
-      const baseStats = close
-        ? normalizeStats(candidate.row.base_stats)
-        : normalizeStats(candidate.row.base_stats, playerTotal);
-      return { ...candidate, baseStats, fighter: candidateFighter(candidate.row, baseStats) };
+      const baseStats = normalizeStats(candidate.row.base_stats);
+      const candidateTotal = baseStatTotal(baseStats);
+      const gNeeded = growthMultiplier(playerLevel, {
+        rulesVersion: RULES_VERSION,
+        evolutionVersion: Math.max(0, Math.trunc(Number(candidate.row.evolution_version) || 0)),
+        stage: candidate.row.stage,
+      }) * (playerTotal / candidateTotal);
+      const refitLevel = clampInt(Math.round(1 + (gNeeded - 1) / GROWTH_PER_LEVEL), 1, LEVEL_CAP);
+      return {
+        ...candidate,
+        baseStats,
+        refitLevel,
+        fighter: candidateFighter(candidate.row, baseStats, refitLevel),
+      };
     })
+    .filter((candidate) => Math.abs(candidate.refitLevel - playerLevel) <= band)
     .filter((candidate) => isPlausibleRealOpponent(playerSnapshot, candidate.fighter));
   shortlist.sort((left, right) =>
     stableRank(`${seed}:${left.key}`) - stableRank(`${seed}:${right.key}`)
@@ -598,6 +621,10 @@ function pickFairCandidate(
     if (isWinnableDuel(winRate)) return { ...candidate, winRate };
   }
   return null;
+}
+
+function clampInt(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function readSecondaryElement(row: AnimaRow): string | null {

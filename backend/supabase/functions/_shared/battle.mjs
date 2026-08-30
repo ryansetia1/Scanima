@@ -54,6 +54,7 @@ export const DIRTY_NEED = 50;
 export const HUNGRY_COMBAT_FLOOR = 0.6;
 export const DIRTY_COMBAT_FLOOR = 0.7;
 export const CARE_COMBAT_FLOOR = 0.5;
+export const GROWTH_PER_LEVEL = 0.09;   // ponytail: satu tuas. Turunkan ke 0.05 kalau playtest bilang terlalu tajam.
 
 const STAT_KEYS = Object.freeze(["hp", "atk", "def", "spd", "special"]);
 
@@ -101,7 +102,7 @@ export function growthMultiplier(level, opts = {}) {
   const evolutionVersion = Math.trunc(Number(opts.evolutionVersion ?? 0));
   const stage = Math.trunc(Number(opts.stage ?? 1));
   const lv = clampInt(level, 1, LEVEL_CAP);
-  let mult = 1 + 0.02 * (lv - 1);
+  let mult = 1 + GROWTH_PER_LEVEL * (lv - 1);
   if (usesEvolutionCombat(rulesVersion, evolutionVersion)) {
     mult *= formMultiplier(stage);
   } else {
@@ -109,6 +110,10 @@ export function growthMultiplier(level, opts = {}) {
     if (lv >= EVOLVED_LEVEL) mult += 0.20;
   }
   return mult;
+}
+
+export function mitigationBase(level, opts = {}) {
+  return 100 * growthMultiplier(level, opts);
 }
 
 export function stageMultipliers(stage, branch = "") {
@@ -205,8 +210,10 @@ export function computeDamage({
   crit = false,
   variance = 1.0,
   guarding = false,
+  mitigationBase: mitigationBaseArg = 100,
 }) {
-  const mitigation = 100 / (100 + Math.max(0, Number(defense) || 0));
+  const base = Math.max(1, Number(mitigationBaseArg) || 100);
+  const mitigation = base / (base + Math.max(0, Number(defense) || 0));
   const critical = crit ? 1.8 : 1.0;
   const guard = guarding ? 0.5 : 1.0;
   const raw =
@@ -269,6 +276,7 @@ export function bestDuelAction(state) {
       defense: effectiveDef(foe),
       power: 50,
       element: dualDefenderMultiplier(me.element, foe.element, foe.secondary_element),
+      mitigationBase: foe.mitigation_base,
     });
     const surge = computeDamage({
       attack: me.special * (me.special_mult || 1),
@@ -279,6 +287,7 @@ export function bestDuelAction(state) {
         foe.element,
         foe.secondary_element,
       ),
+      mitigationBase: foe.mitigation_base,
     });
     return surge > strike ? "surge" : "strike";
   }
@@ -462,12 +471,18 @@ export function createFighter(input, rulesVersion = RULES_VERSION) {
     input?.level,
     { rulesVersion: version, evolutionVersion },
   );
+  const mitigation_base = mitigationBase(input?.level ?? 1, {
+    rulesVersion: version,
+    evolutionVersion,
+    stage,
+  });
   const hunger = input?.hunger ?? input?.care?.hunger;
   const hygiene = input?.hygiene ?? input?.care?.hygiene;
   const stats = scaleCombatStats(grown, careCombatMultiplier(hunger, hygiene));
   const fighter = {
     ...stats,
     hp: stats.max_hp,
+    mitigation_base,
     momentum: MOMENTUM_START,
     momentum_max: MOMENTUM_MAX,
     guarding: false,
@@ -599,6 +614,7 @@ export function resolveCombatAttack({
     crit,
     variance: 0.92 + random() * 0.16,
     guarding,
+    mitigationBase: target.mitigation_base,
   });
   damage = applyBarrierToDamage(target, damage, rulesVersion, effectEvents, targetSide, targetSlot);
   damage = applyIncomingModifiers(target, damage);

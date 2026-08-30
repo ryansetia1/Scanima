@@ -18,6 +18,7 @@ import {
   duelWinRate,
   formFromLevel,
   LEVEL_CAP,
+  mitigationBase,
   normalizeBaseStats,
   seededRandom,
   toBattleStats,
@@ -333,6 +334,10 @@ function estimateFighter(snapshot) {
     secondary_element: snapshot?.secondary_element
       ? normalizeElement(snapshot.secondary_element, "")
       : "",
+    mitigation_base: mitigationBase(snapshot?.level, {
+      evolutionVersion: Math.trunc(Number(snapshot?.evolution_version) || 0),
+      stage: snapshot?.stage,
+    }),
   };
 }
 
@@ -342,6 +347,7 @@ function strikeDamage(actor, target) {
     defense: target.def,
     power: 50,
     element: dualDefenderMultiplier(actor.element, target.element, target.secondary_element),
+    mitigationBase: target.mitigation_base,
   });
 }
 
@@ -355,6 +361,7 @@ function surgeDamage(actor, target) {
       target.element,
       target.secondary_element,
     ),
+    mitigationBase: target.mitigation_base,
   });
 }
 

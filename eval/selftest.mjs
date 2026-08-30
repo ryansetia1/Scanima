@@ -97,6 +97,7 @@ import {
   expForLevel,
   expToNextLevel,
   formFromLevel,
+  GROWTH_PER_LEVEL,
   growthMultiplier,
   hungerCombatMultiplier,
   HUNGRY_COMBAT_FLOOR,
@@ -1962,21 +1963,21 @@ console.log(
   assert.equal(formFromLevel(16), "adult");
   assert.equal(formFromLevel(36), "evolved");
   assert.equal(growthMultiplier(1), 1);
-  assert.equal(Number(growthMultiplier(16).toFixed(2)), 1.45);
-  assert.ok(Math.abs(growthMultiplier(36) - 2.05) < 1e-9);
+  assert.equal(Number(growthMultiplier(16).toFixed(2)), 2.5);
+  assert.ok(Math.abs(growthMultiplier(36) - 4.5) < 1e-9);
   assert.deepEqual(toBattleStats(base, 1, "", 16), {
-    max_hp: 310,
-    atk: 72,
-    def: 72,
-    spd: 72,
-    special: 72,
+    max_hp: 519,
+    atk: 124,
+    def: 124,
+    spd: 124,
+    special: 124,
   });
   assert.deepEqual(toBattleStats(base, 1, "", 36), {
-    max_hp: 430,
-    atk: 102,
-    def: 102,
-    spd: 102,
-    special: 102,
+    max_hp: 920,
+    atk: 225,
+    def: 225,
+    spd: 225,
+    special: 225,
   });
   for (const element of ELEMENT_ROSTER) {
     const strengths = ELEMENT_STRENGTHS[element];
@@ -2119,8 +2120,8 @@ console.log(
     seed: "level-growth",
   });
   assert.equal(grown.player.level, 16);
-  assert.equal(grown.player.max_hp, 310);
-  assert.equal(grown.player.atk, 72);
+  assert.equal(grown.player.max_hp, 519);
+  assert.equal(grown.player.atk, 124);
   assert.equal(grown.bot.max_hp, 220);
   assert.equal(hungerCombatMultiplier(40), 1);
   assert.equal(hungerCombatMultiplier(20), 0.8);
@@ -2448,8 +2449,8 @@ console.log(
   );
   assert.match(
     battleEdge,
-    /level:\s*levelFromExp\(row\.care_score\)/,
-    "snapshot Battle harus membawa level dari care_score",
+    /level:\s*levelOverride\s*\?\?\s*levelFromExp\(row\.care_score\)/,
+    "snapshot Battle harus membawa level dari care_score, kecuali di-refit gate lawan",
   );
   assert.ok(
     battleEdge.includes("strike_name: row.strike_name"),
@@ -5891,6 +5892,7 @@ console.log(
     [battleSim, "SURGE_POWER", 75],
     [battleSim, "VARIANCE_MIN", 0.92],
     [battleSim, "VARIANCE_SPAN", 0.16],
+    [battleSim, "GROWTH_PER_LEVEL", GROWTH_PER_LEVEL],
     [teamSim, "TEAM_MAX_TURNS", TEAM_MAX_TURNS],
     [elementRules, "MATCHUP_STRONG", MATCHUP_STRONG],
     [elementRules, "MATCHUP_WEAK", MATCHUP_WEAK],
@@ -6464,11 +6466,11 @@ console.log(
     };
   };
   const PAIRS = [
-    { player: "klasik", bot: "Hydron", win: 0.07, shortlisted: false },
-    { player: "Mugshots", bot: "Deckon", win: 0.08, shortlisted: false },
+    { player: "klasik", bot: "Hydron", win: 0.01, shortlisted: false },
+    { player: "Mugshots", bot: "Deckon", win: 0.43, shortlisted: false },
     { player: "Hydron", bot: "Deckon", win: 1.0, shortlisted: false },
-    { player: "klasik", bot: "Veridian", win: 0.42, shortlisted: true },
-    { player: "Sunhound", bot: "Deckon", win: 0.46, shortlisted: true },
+    { player: "klasik", bot: "Veridian", win: 0.28, shortlisted: false },
+    { player: "Sunhound", bot: "Deckon", win: 0.59, shortlisted: true },
   ];
   for (const pair of PAIRS) {
     const player = snap(pair.player);
@@ -6508,21 +6510,22 @@ console.log(
   // dipakai meloloskan 70 dari 138 kandidat sebagai duel timpang.
   //
   // Fixture di bawah adalah pasangan roster yang benar-benar lolos shortlist:
-  // enam ditolak simulasi, sebelas diterima. Kalau nanti seseorang mengembalikan
-  // keputusan ke heuristik, keenam baris pertama yang gagal lebih dulu.
+  // tiga ditolak simulasi (favorable), sembilan diterima (tough/even). Kalau
+  // nanti seseorang mengembalikan keputusan ke heuristik, ketiga baris
+  // `favorable` yang gagal lebih dulu.
   const GATE_PAIRS = [
-    { player: "klasik", bot: "Veridian", tier: "formidable" },
-    { player: "Playtron", bot: "Mugshots", tier: "formidable" },
-    { player: "klasik", bot: "Deckon", tier: "favorable" },
-    { player: "Deckon", bot: "Mugshots", tier: "favorable" },
+    { player: "klasik", bot: "Deckon", tier: "even" },
+    { player: "klasik", bot: "Mugshots", tier: "tough" },
+    { player: "Deckon", bot: "klasik", tier: "even" },
+    { player: "Deckon", bot: "Playtron", tier: "even" },
     { player: "Deckon", bot: "Sunhound", tier: "favorable" },
+    { player: "Veridian", bot: "Sunhound", tier: "even" },
+    { player: "Playtron", bot: "Deckon", tier: "even" },
+    { player: "Playtron", bot: "Veridian", tier: "tough" },
+    { player: "Playtron", bot: "Sunhound", tier: "favorable" },
+    { player: "Mugshots", bot: "klasik", tier: "even" },
     { player: "Mugshots", bot: "Playtron", tier: "favorable" },
-    { player: "Playtron", bot: "Deckon", tier: "tough" },
-    { player: "Veridian", bot: "Sunhound", tier: "tough" },
-    { player: "Mugshots", bot: "klasik", tier: "tough" },
-    { player: "Playtron", bot: "Veridian", tier: "even" },
-    { player: "klasik", bot: "Playtron", tier: "even" },
-    { player: "klasik", bot: "Mugshots", tier: "even" },
+    { player: "Sunhound", bot: "Deckon", tier: "tough" },
   ];
   for (const pair of GATE_PAIRS) {
     const player = snap(pair.player);
@@ -6578,18 +6581,19 @@ console.log(
   }
 
   // Tier hadiah diukur dari matchup-nya, bukan ditaksir dari combat power.
-  // Patokan yang menangkap kemunduran: combat power melabeli klasik vs Playtron
-  // `formidable` 15 Bits padahal duel itu dimenangkan sekitar tiga dari empat
-  // kali, sementara Veridian vs Sunhound yang benar-benar seimbang dilabeli
-  // `favorable` 6 Bits. Keduanya sekarang harus terbalik urutannya.
+  // Patokan yang menangkap kemunduran: combat power bisa melabeli duel yang
+  // nyaris tidak pernah kalah sama beratnya dengan duel yang benar-benar
+  // coinflip. Deckon vs Sunhound menang ~95% (walkover); Playtron vs Mugshots
+  // menang ~52% (coinflip beneran) — keduanya harus terbalik urutannya kalau
+  // tier hanya menaksir dari combat power.
   const TIER_RANK = { favorable: 0, even: 1, tough: 2, formidable: 3 };
   const walkover = {
-    player: snap("klasik"),
-    bot: matchmakerStats(snap("Playtron"), snap("klasik")),
+    player: snap("Deckon"),
+    bot: matchmakerStats(snap("Sunhound"), snap("Deckon")),
   };
   const coinFlip = {
-    player: snap("Veridian"),
-    bot: matchmakerStats(snap("Sunhound"), snap("Veridian")),
+    player: snap("Playtron"),
+    bot: matchmakerStats(snap("Mugshots"), snap("Playtron")),
   };
   const walkoverPreview = battleRewardPreview(
     walkover.player,
@@ -6603,7 +6607,7 @@ console.log(
   );
   assert.ok(
     walkoverPreview.win_rate > coinFlipPreview.win_rate,
-    "fixture salah: klasik vs Playtron seharusnya lebih mudah daripada Veridian vs Sunhound",
+    "fixture salah: Deckon vs Sunhound seharusnya lebih mudah daripada Playtron vs Mugshots",
   );
   assert.ok(
     TIER_RANK[coinFlipPreview.tier] > TIER_RANK[walkoverPreview.tier],
@@ -10390,6 +10394,7 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
   const {
     chooseBotAction,
     duelWinRate,
+    GROWTH_PER_LEVEL: growthPerLevel,
     growthMultiplier,
     createFighter,
     resolveTurn,
@@ -10411,7 +10416,7 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
     evolutionVersion: 0,
   });
   assert.ok(
-    Math.abs(legacyLv16 - 1.45) < 1e-9,
+    Math.abs(legacyLv16 - 2.5) < 1e-9,
     "evolution_version=0 keeps legacy +0.15",
   );
   const adultCommitted = growthMultiplier(16, {
@@ -10420,7 +10425,7 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
     stage: 2,
   });
   assert.ok(
-    Math.abs(adultCommitted - (1 + 0.02 * 15) * ADULT_FORM_MULT) < 1e-9,
+    Math.abs(adultCommitted - (1 + growthPerLevel * 15) * ADULT_FORM_MULT) < 1e-9,
     "committed Adult uses form multiplier",
   );
 
@@ -10435,7 +10440,7 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
   };
   const hatchling = {
     ...base,
-    level: 11,
+    level: 15,
     stage: 1,
     evolution_version: 1,
     element: "metal",
@@ -10604,7 +10609,7 @@ console.log("38. move effects catalog, growth v3, and evolution calibration");
       base_stats: { hp: 40, atk: 10, def: 10, spd: 10, special: 10 },
       element: "metal",
       level: 5,
-      current_hp: 35,
+      current_hp: 70,
       anima_id: "victim-0",
       name: "Victim",
     }, {

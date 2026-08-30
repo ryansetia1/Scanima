@@ -62,7 +62,10 @@ Lima angka tempur. Vision membaca foto, lalu Level mengalikannya sedikit.
 
 Cangkir cenderung Defense tinggi, Special rendah. Gunting cenderung Attack tinggi. Remote cenderung Special tinggi. Bukan bug kalau Attack lebih besar dari Special — itu sifat bendanya.
 
-Naik Level membuat kelima angka itu tumbuh kira-kira **2% per level**. Lonjakan Adult dan Evolved datang sesudah ritual **Evolve**, bukan otomatis di angka Level itu.
+Naik Level membuat kelima angka itu tumbuh kira-kira **9% per level** — Level
+sekarang tuas kekuatan utama, bukan sekadar penanda umur. Anima Lv. 40 kira-kira
+4,5× lebih kuat daripada Lv. 1 di kelima stat itu. Lonjakan Adult dan Evolved
+datang sesudah ritual **Evolve**, bukan otomatis di angka Level itu.
 
 Setiap kali Anima naik Level, satu dialog muncul: judul **{nama} Level Up**, lalu
 Level barunya sebagai angka besar (**Lv. 4**), lalu kelima stat dengan nilai

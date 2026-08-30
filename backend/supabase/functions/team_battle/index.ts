@@ -4,6 +4,7 @@
 // start | resume | turn | forfeit
 
 import { adminClient, clientVersionGate, corsPreflight, json, syncProfileTimezone } from "../_shared/supa.ts";
+import { LEVEL_CAP } from "../_shared/battle.mjs";
 import {
   TEAM_ACTIONS,
   createTeamBattleState,
@@ -307,9 +308,25 @@ async function createCandidates(ownerId: string, body: TeamBody): Promise<Respon
       snapshot: source.snapshot,
     });
   }
+  // Template sistem (`scrap-scavengers` dkk) menyimpan Level tetap dari saat
+  // dibuat. Sejak GROWTH_PER_LEVEL naik ke 0.09, Level tetap yang rendah tidak
+  // lagi cukup kuat untuk roster pemain manapun yang sudah naik level — mereka
+  // jadi latihan sasaran, bukan tiga tier favorable/even/formidable. Level
+  // efektifnya karena itu dicerminkan ke rata-rata Level roster pemain, persis
+  // seperti systemDuelBot() mencerminkan Level pemain di Duel; base stat
+  // template (identitas relatifnya) tetap utuh.
+  const avgPlayerLevel = clampInt(
+    Math.round(
+      playerSnapshot.reduce((sum, member) => sum + Number(member.level ?? 1), 0)
+        / Math.max(1, playerSnapshot.length),
+    ),
+    1,
+    LEVEL_CAP,
+  );
   for (const row of systems ?? []) {
     const snapshot = asSnapshotArray(row.roster_snapshot);
-    const exactSnapshot = snapshot?.slice(0, teamSize);
+    const exactSnapshot = snapshot?.slice(0, teamSize)
+      .map((member) => ({ ...member, level: avgPlayerLevel }));
     if (exactSnapshot?.length === teamSize) {
       sources.push({
         source: "system",
@@ -614,6 +631,10 @@ function asUuid(value: unknown, field: string): string {
     throw new Error(`INVALID_${field.toUpperCase()}`);
   }
   return value;
+}
+
+function clampInt(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function asUuidArray(

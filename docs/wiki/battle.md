@@ -240,6 +240,15 @@ Anima Atlas. Arena tidak menampilkan identitas pemiliknya; sesudah kamu benar-be
 melawannya, form itu masuk Atlas dan profilnya dapat menampilkan nama Seeker
 pemilik.
 
+Sejak Level jadi tuas kekuatan utama Anima (lihat halaman Anima), lawan
+sungguhan disaring dulu lewat **band Level**: hanya Anima lain yang Level-nya
+tidak jauh dari Level-mu (kira-kira ±30%, minimum ±3 Level) yang dilirik sama
+sekali. Kalau Level asli lawan tidak pas dengan stat-nya untuk band itu, server
+menghitung ulang Level tampilan lawan supaya HUD selalu menampilkan angka yang
+benar-benar menghasilkan HP dan stat yang kamu lihat — tidak ada lagi "Lv 4"
+dengan HP setebal Lv 13. Stat dasar lawan (hasil roll Vision pemiliknya) tidak
+pernah disentuh; yang disetel hanya Level efektifnya.
+
 Anima itu hanya dipakai kalau duelnya benar-benar pertandingan, dan server
 memastikannya dengan **memainkan duel itu sampai selesai puluhan kali sebelum
 kamu menekan apa pun**. Kalau kamu ternyata hampir selalu menang, atau hampir

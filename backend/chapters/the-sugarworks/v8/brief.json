@@ -1,0 +1,18 @@
+{
+  "boss_seeker": "The Confectioner",
+  "cast_count": 9,
+  "content_version": 8,
+  "asset_source_version": 5,
+  "description": "Follow syrup rivers, elite taffy crews, and the Confectioner boss. Opponent Level now ramps per zone instead of a flat Lv 12, matching the sharper Level curve (GROWTH_PER_LEVEL 0.09).",
+  "sequence": 1,
+  "slug": "the-sugarworks",
+  "theme": "candy factory / confectionery",
+  "title": "The Sugarworks",
+  "tone": "bright anime adventure without parodying other monster franchises",
+  "trophy": "Sugarfold Core",
+  "zones": [
+    "Gumdrop Yard — introductory battles and recovery",
+    "Caramel Foundry — elite teams and shop nodes",
+    "Peppermint Furnace — miniboss pressure before the boss gate"
+  ]
+}

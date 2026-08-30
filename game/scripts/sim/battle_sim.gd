@@ -33,6 +33,7 @@ const GUARD_MULTIPLIER := 0.5
 const VARIANCE_MIN := 0.92
 const VARIANCE_SPAN := 0.16
 const SHIELD_MULTIPLIER := 0.2
+const GROWTH_PER_LEVEL := 0.09
 const STAT_KEYS: PackedStringArray = ["hp", "atk", "def", "spd", "special"]
 
 
@@ -86,7 +87,7 @@ static func growth_multiplier(level: Variant, opts: Dictionary = {}) -> float:
 	var evolution_version := int(js_number_or_zero(opts.get("evolution_version", 0)))
 	var stage := int(js_number_or_zero(opts.get("stage", 1)))
 	var lv := clamp_int(level, 1, LEVEL_CAP, 1)
-	var mult := 1.0 + 0.02 * float(lv - 1)
+	var mult := 1.0 + GROWTH_PER_LEVEL * float(lv - 1)
 	if MoveEffects.uses_evolution_combat(rules_version, evolution_version):
 		mult *= MoveEffects.form_multiplier(stage)
 	else:
@@ -95,6 +96,10 @@ static func growth_multiplier(level: Variant, opts: Dictionary = {}) -> float:
 		if lv >= CareRules.EVOLVED_LEVEL:
 			mult += 0.20
 	return mult
+
+
+static func mitigation_base(level: Variant, opts: Dictionary = {}) -> float:
+	return 100.0 * growth_multiplier(level, opts)
 
 
 static func to_battle_stats(
@@ -183,6 +188,10 @@ static func create_fighter(input: Variant, rules_version: int = RULES_VERSION) -
 	var stats := _scale_combat_stats(
 		grown, care_combat_multiplier(_care_meter(source, "hunger"), _care_meter(source, "hygiene"))
 	)
+	var fighter_mitigation_base := mitigation_base(
+		_field(source, "level"),
+		{"rules_version": version, "evolution_version": evolution_version, "stage": stage}
+	)
 	var secondary_raw: Variant = source.get("secondary_element", null)
 	var has_secondary := secondary_raw != null and not str(secondary_raw).is_empty()
 	var fighter := {
@@ -192,6 +201,7 @@ static func create_fighter(input: Variant, rules_version: int = RULES_VERSION) -
 		"spd": stats["spd"],
 		"special": stats["special"],
 		"hp": stats["max_hp"],
+		"mitigation_base": fighter_mitigation_base,
 		"momentum": MOMENTUM_START,
 		"momentum_max": MOMENTUM_MAX,
 		"guarding": false,
@@ -231,9 +241,12 @@ static func compute_damage(
 	element: float = 1.0,
 	crit: bool = false,
 	variance: float = 1.0,
-	guarding: bool = false
+	guarding: bool = false,
+	mitigation_base_value: float = 100.0
 ) -> int:
-	var mitigation := 100.0 / (100.0 + maxf(0.0, js_number_or_zero(defense)))
+	var mit_base_raw := mitigation_base_value if (is_finite(mitigation_base_value) and mitigation_base_value != 0.0) else 100.0
+	var mit_base := maxf(1.0, mit_base_raw)
+	var mitigation := mit_base / (mit_base + maxf(0.0, js_number_or_zero(defense)))
 	var critical := CRIT_MULTIPLIER if crit else 1.0
 	var guard := GUARD_MULTIPLIER if guarding else 1.0
 	var raw := (
@@ -380,7 +393,8 @@ static func _score_action_value(
 		elem,
 		false,
 		1.0,
-		bool(pre["guarding"])
+		bool(pre["guarding"]),
+		js_number_or_zero(preview_target.get("mitigation_base", 100.0))
 	)
 	var barrier: Variant = preview_target.get("barrier", null)
 	if typeof(barrier) == TYPE_DICTIONARY:
@@ -473,7 +487,8 @@ static func resolve_combat_attack(
 		elem,
 		crit,
 		VARIANCE_MIN + rng.next_float() * VARIANCE_SPAN,
-		bool(pre["guarding"])
+		bool(pre["guarding"]),
+		js_number_or_zero(target.get("mitigation_base", 100.0))
 	)
 	damage = MoveEffects.apply_barrier_to_damage(
 		target, damage, rules_version, effect_events, target_side, target_slot

@@ -254,13 +254,13 @@ const TEAM_ROSTERS = {
 
 const TEAM_CASES = [
   { name: "team-basic", player: "squad", opponent: "rivals", seed: "team-basic",
-    steps: [["strike"], ["guard"], ["surge"], ["strike"]] },
+    steps: [["strike"], ["guard"], ["surge"], ["strike"], ["strike"], ["guard"], ["surge"], ["strike"]] },
   { name: "team-voluntary-switch", player: "squad", opponent: "rivals", seed: "team-switch",
-    steps: [["switch", "", 2], ["strike"], ["switch", "", 0]] },
+    steps: [["switch", "", 2], ["strike"], ["switch", "", 0], ["strike"], ["strike"]] },
   { name: "team-invalid-switch", player: "squad", opponent: "rivals", seed: "team-bad-switch",
     steps: [["switch", "", 0]] },
   { name: "team-long-grind", player: "squad", opponent: "rivals", seed: "team-grind",
-    steps: Array.from({ length: 24 }, () => ["strike"]) },
+    steps: Array.from({ length: 40 }, () => ["strike"]) },
   { name: "boss-reserve-ace", player: "crushers", opponent: "bossPack", seed: "team-boss",
     kind: "boss",
     acePassive: { type: "bonus_pp", value: 2, name: "Overdrive", copy: "The ace surges." },

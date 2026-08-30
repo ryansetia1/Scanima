@@ -460,6 +460,7 @@ export function scoreActionValue({
     crit: false,
     variance: 1.0,
     guarding,
+    mitigationBase: previewTarget.mitigation_base,
   });
   if (previewTarget.barrier?.uses_remaining > 0) {
     const reduction = Number(previewTarget.barrier.reduction) || 0;

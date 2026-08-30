@@ -704,11 +704,38 @@ Lawan Battle:
 | --- | --- | --- |
 | Sumber | Publication Atlas approved, lalu bot sistem | Gallery published lalu legacy |
 | Identitas | Tidak pernah `owner_id` / nickname | Sama |
-| Matching | ±15% base stat + shortlist keseimbangan + **gate simulasi**; stage sama diutamakan | ±15% base stat saja |
+| Matching | **band Level** (±30%, minimum ±3) + shortlist keseimbangan + **gate simulasi**; stage sama diutamakan | ±15% base stat saja |
 | Pool kosong / tidak ada yang seimbang | **Bot sistem** dari `_shared/duel_bot.mjs` | Error `NO_BATTLE_OPPONENT` |
 
 Detail publish/unpublish lineage dan discovery Atlas: [08](08-private-art-and-gallery.md). PvP
 real-time, ranked, dan item drop tetap ditunda.
+
+#### Kurva Level (`GROWTH_PER_LEVEL`)
+
+Sejak 30 Agustus 2026 pertumbuhan stat per Level naik dari `+2%` menjadi
+`+9%` (linear, `mult = 1 + 0,09 × (level − 1)`) — Lv 40 sekarang ×4,51,
+bukan ×1,78. Sebelumnya Level nyaris tidak berarti: satu poin base stat hasil
+roll Vision (10–95 per stat) bernilai lebih dari satu Level penuh, jadi Anima
+Lv 1 bertubuh tebal bisa mengalahkan Anima Lv 40 bertubuh rapuh pada HP.
+
+Kurva setajam ini merusak pacing turn kalau dibiarkan begitu saja, sebab
+`100/(100+DEF)` tidak skala-invarian: menaikkan ATK/DEF/HP sama rata membuat
+jumlah turn bertumbuh linear terhadap Level (Lv 40 mirror duel terukur 10,2
+turn tanpa perbaikan, menabrak pagar pacing 6–10 turn). Perbaikannya
+`mitigationBase(level) = 100 × growthMultiplier(level)`, dipakai sebagai basis
+`computeDamage` menggantikan konstanta `100`. Basis mitigasi defender ikut naik
+bersama growth-nya sendiri — persis cara Pokémon menjaga pacing lewat suku
+`2·Level/5 + 2` di pembilang damage. Dengan perbaikan ini mirror duel Lv 1/13/40
+semuanya kembali ke ~4 turn.
+
+Karena Level sekarang benar-benar menentukan kekuatan, matchmaking Duel diberi
+**band Level** (±30% dari Level pemain, minimum ±3) di samping gate simulasi di
+atas. Kandidat yang Level aslinya cocok dengan stage tapi refit stat-nya jatuh
+di luar band dibuang; kandidat yang lolos mendapat **Level efektif** yang
+dihitung dari stat aslinya (`refitLevel`, dibulatkan dari `growthMultiplier`
+yang dibutuhkan supaya total stat lawan setara pemain), dan Level itulah yang
+dipakai baik untuk stat pertarungan maupun yang tampil di HUD — tidak ada lagi
+Level yang tidak cocok dengan HP yang ditampilkannya.
 
 #### Gate keseimbangan Duel
 

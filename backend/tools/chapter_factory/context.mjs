@@ -123,7 +123,7 @@ function optionPools(zoneIndex) {
   };
 }
 
-export function rosterMember(ctx, animaId) {
+export function rosterMember(ctx, animaId, level = 12) {
   const source = ctx.getCastMember(animaId);
   const stats = normalizeBaseStats(source.base_stats);
   return {
@@ -131,7 +131,7 @@ export function rosterMember(ctx, animaId) {
     species_key: source.species_key,
     color_bucket: source.color_bucket,
     stage: 2,
-    level: 12,
+    level,
     ...(ctx.contentVersion >= 2 ? { body_height_cm: Number(source.body_height_cm || 120) } : {}),
     element: normalizeElement(source.element),
     secondary_element: normalizeElement(source.secondary_element, ""),
@@ -161,7 +161,7 @@ export function buildGameplayManifest(ctx) {
   const opponents = design.opponents.map((opponent) => ({
     id: opponent.id,
     title_key: opponent.title_key,
-    roster: opponent.roster.map((animaId) => rosterMember(ctx, animaId)),
+    roster: opponent.roster.map((animaId) => rosterMember(ctx, animaId, opponent.level ?? 12)),
   }));
   return {
     schema_version: 1,

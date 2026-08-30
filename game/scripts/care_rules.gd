@@ -39,6 +39,7 @@ const EXP_PER_LEVEL := 5
 const EXP_MAX := 860
 const ADULT_LEVEL := 16
 const EVOLVED_LEVEL := 36
+const GROWTH_PER_LEVEL := 0.09
 
 
 static func normalized_care(value: Variant) -> Dictionary:
@@ -355,7 +356,7 @@ static func form_key_for_row(row: Dictionary) -> String:
 
 static func growth_multiplier_for_row(row: Dictionary) -> float:
 	var level := level_from_exp(int(row.get("care_score", 0)))
-	var mult := 1.0 + 0.02 * float(clampi(level, 1, LEVEL_CAP) - 1)
+	var mult := 1.0 + GROWTH_PER_LEVEL * float(clampi(level, 1, LEVEL_CAP) - 1)
 	if evolution_version(row) >= 1:
 		match committed_stage(row):
 			3:
@@ -405,7 +406,7 @@ static func fighter_status_summary(fighter: Dictionary) -> String:
 
 static func growth_multiplier(level: int) -> float:
 	var lv := clampi(level, 1, LEVEL_CAP)
-	var mult := 1.0 + 0.02 * float(lv - 1)
+	var mult := 1.0 + GROWTH_PER_LEVEL * float(lv - 1)
 	if lv >= ADULT_LEVEL:
 		mult += 0.15
 	if lv >= EVOLVED_LEVEL:

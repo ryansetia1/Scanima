@@ -106,9 +106,9 @@ func _initialize() -> void:
 	_check_eq(CareRules.form_key(16), "adult", "Lv 16 Adult")
 	_check_eq(CareRules.form_key(36), "evolved", "Lv 36 Evolved")
 	_check_eq(CareRules.growth_multiplier(1), 1.0, "Lv 1 tidak mengubah stat")
-	_check(is_equal_approx(CareRules.growth_multiplier(16), 1.45), "Lv 16 lompat +0.15")
-	_check(is_equal_approx(CareRules.growth_multiplier(36), 2.05), "Lv 36 lompat kedua")
-	_check_eq(CareRules.grown_stat(50, 150), 72, "stat Adult tumbuh terpotong ke bawah")
+	_check(is_equal_approx(CareRules.growth_multiplier(16), 2.5), "Lv 16 lompat +0.15")
+	_check(is_equal_approx(CareRules.growth_multiplier(36), 4.5), "Lv 36 lompat kedua")
+	_check_eq(CareRules.grown_stat(50, 150), 124, "stat Adult tumbuh terpotong ke bawah")
 	_check_eq(CareRules.leveled_up(4, 5), 2, "5 EXP menyeberang ke Lv 2")
 	_check_eq(CareRules.leveled_up(4, 4), 0, "EXP sama bukan naik level")
 	_check_eq(CareRules.leveled_up(149, 150), 16, "150 EXP menyeberang ke Adult")
@@ -410,7 +410,7 @@ func _initialize() -> void:
 	}
 	_check_eq(
 		CareRules.grown_stat_for_row(100, adult_committed),
-		int(100.0 * (1.0 + 0.02 * 15.0) * 1.06),
+		int(100.0 * (1.0 + CareRules.GROWTH_PER_LEVEL * 15.0) * 1.06),
 		"committed Adult memakai multiplier 1.06"
 	)
 	_check_eq(
