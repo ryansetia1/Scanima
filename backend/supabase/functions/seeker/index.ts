@@ -107,6 +107,8 @@ Deno.serve(async (req) => {
     }
 
     if (body.confirmation !== "DELETE") return json(400, { error: "DELETE_CONFIRMATION_REQUIRED" });
+    const { data: userRow } = await db.auth.admin.getUserById(ownerId);
+    if (userRow.user?.is_anonymous) throw new Error("ACCOUNT_STILL_ANONYMOUS");
     const { error } = await db.auth.admin.deleteUser(ownerId);
     if (error) throw error;
     return json(200, { deleted: true });

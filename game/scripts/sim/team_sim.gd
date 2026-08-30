@@ -248,8 +248,6 @@ static func _validate_player_intent(
 	party: Dictionary, action: String, item_id: String, switch_to_slot: Variant
 ) -> String:
 	if action == "item":
-		if bool(party.get("item_used", false)):
-			return "ITEM_ALREADY_USED"
 		if item_id.is_empty():
 			return "INVALID_ITEM"
 	elif not item_id.is_empty():

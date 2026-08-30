@@ -484,8 +484,6 @@ func _on_retry_pressed() -> void:
 func _request_item() -> void:
 	if _busy:
 		return
-	if _item_already_used():
-		return
 	item_picker_requested.emit()
 
 
@@ -1042,7 +1040,6 @@ func _update_action_state() -> void:
 	var active := str(_session.get("status", state.get("status", ""))) == "active"
 	var momentum := int(player.get("momentum", 0))
 	var momentum_max := int(player.get("momentum_max", MOMENTUM_MAX))
-	var item_used := _item_already_used()
 	var committed := _busy and not _queued_action.is_empty()
 	_strike_button.disabled = not active or (_busy and not committed)
 	_guard_button.disabled = not active or (_busy and not committed)
@@ -1072,9 +1069,6 @@ func _update_action_state() -> void:
 		LocaleManager.format_integer(momentum_max),
 	]
 	_item_button.text = tr("BATTLE_ACTION_ITEM")
-	_item_button.self_modulate = (
-		Color(1, 1, 1, 0.42) if item_used and not committed else Color.WHITE
-	)
 	_forfeit_button.disabled = _busy or not active
 
 
@@ -1299,16 +1293,6 @@ static func _as_dict(value: Variant) -> Dictionary:
 	if typeof(value) == TYPE_DICTIONARY:
 		return value
 	return {}
-
-
-func _item_already_used() -> bool:
-	# Payload session selalu membawa item_used_id: null. str(null) == "<null>".
-	var used_id: Variant = _session.get("item_used_id")
-	if used_id != null:
-		var text := str(used_id).strip_edges()
-		if not text.is_empty() and text != "<null>":
-			return true
-	return bool(_as_dict(_as_dict(_session.get("state")).get("player")).get("item_used", false))
 
 
 func _emit_arena_open() -> void:

@@ -1245,9 +1245,7 @@ func _update_arena_actions() -> void:
 		or (locked and not committed)
 	)
 	_guard_button.disabled = not active or (locked and not committed)
-	_item_button.disabled = (
-		not active or _item_already_used() or (locked and not committed)
-	)
+	_item_button.disabled = not active or (locked and not committed)
 	_switch_button.disabled = (
 		not active or not _has_living_bench() or (locked and not committed)
 	)
@@ -1511,13 +1509,6 @@ func _living_switch_slots() -> Array[int]:
 
 func _has_living_bench() -> bool:
 	return not _living_switch_slots().is_empty()
-
-
-func _item_already_used() -> bool:
-	var used: Variant = _session.get("item_used_id")
-	return (
-		used != null and not str(used).is_empty() and str(used) != "<null>"
-	) or bool(_party("player").get("item_used", false))
 
 
 func _total_reward_exp(reward: Dictionary) -> int:

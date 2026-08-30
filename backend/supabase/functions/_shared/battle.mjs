@@ -384,10 +384,7 @@ export function chooseBotAction(fighter, random, foe = null, rulesVersion = RULE
 export function resolveTurn(previousState, playerAction, idempotencyKey = "", itemId = "") {
   if (previousState?.status !== "active") throw battleError("BATTLE_FINISHED");
   if (!BATTLE_ACTIONS.includes(playerAction)) throw battleError("INVALID_ACTION");
-  if (playerAction === "item") {
-    if (previousState.player?.item_used) throw battleError("ITEM_ALREADY_USED");
-    if (!isBattleItem(itemId)) throw battleError("INVALID_ITEM");
-  }
+  if (playerAction === "item" && !isBattleItem(itemId)) throw battleError("INVALID_ITEM");
 
   const state = structuredClone(previousState);
   const random = seededRandom(turnSeed(state, idempotencyKey));

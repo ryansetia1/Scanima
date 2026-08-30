@@ -1708,7 +1708,7 @@ begin
   assert ok, 'Bits kurang harus menolak pembelian';
 
   ----------------------------------------------------------------------------
-  -- Satu item per Battle, dan cap 100 Bits Training
+  -- Item Battle dibatasi stok, bukan sekali per encounter, dan cap 100 Bits Training
   ----------------------------------------------------------------------------
   update public.profiles set bits = 50 where id = u1;
   insert into public.player_inventory (owner_id, item_id, quantity)
@@ -1744,12 +1744,30 @@ begin
          'item Battle harus tercatat di session';
   assert (select quantity from public.player_inventory
            where owner_id = u1 and item_id = 'vital_patch') = 1,
-         'item Battle harus dikonsumsi sekali';
+         'item Battle harus dikonsumsi sekali per use';
+  v_j := public.commit_battle_turn(
+    u1, v_battle_session, 2, 2, 'battle-turn-item-2', 'item',
+    jsonb_build_object(
+      'status', 'active', 'turn', 3, 'seed', 'battle-item',
+      'player', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3, 'item_used', true),
+      'bot', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3)
+    ),
+    '[{"type":"item","actor":"player","item_id":"vital_patch"}]'::jsonb,
+    'strike',
+    'vital_patch'
+  );
+  assert (v_j #>> '{session,item_used_id}') = 'vital_patch',
+         'item Battle boleh dipakai lagi turn berikutnya selama stok masih ada';
+  assert not exists (
+           select 1 from public.player_inventory
+            where owner_id = u1 and item_id = 'vital_patch'
+         ),
+         'stok habis harus menghapus baris inventory, bukan menyisakan quantity 0';
   begin
     perform public.commit_battle_turn(
-      u1, v_battle_session, 2, 2, 'battle-turn-item-2', 'item',
+      u1, v_battle_session, 3, 3, 'battle-turn-item-3', 'item',
       jsonb_build_object(
-        'status', 'active', 'turn', 3, 'seed', 'battle-item',
+        'status', 'active', 'turn', 4, 'seed', 'battle-item',
         'player', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3, 'item_used', true),
         'bot', jsonb_build_object('hp', 220, 'max_hp', 220, 'momentum', 3)
       ),
@@ -1758,12 +1776,9 @@ begin
       'vital_patch'
     );
     ok := false;
-  exception when others then ok := (sqlerrm = 'ITEM_ALREADY_USED');
+  exception when others then ok := (sqlerrm = 'NO_ITEM');
   end;
-  assert ok, 'item kedua dalam Battle yang sama harus ditolak';
-  assert (select quantity from public.player_inventory
-           where owner_id = u1 and item_id = 'vital_patch') = 1,
-         'item yang ditolak tidak boleh dikonsumsi';
+  assert ok, 'item Battle tanpa stok tersisa harus ditolak NO_ITEM';
   perform public.forfeit_battle(u1, v_battle_session);
 
   insert into public.quota_ledger (owner_id, currency, delta, reason, ref_id, created_at)

@@ -2596,8 +2596,8 @@ func _test_seeker_ui() -> void:
 		"OS chapter push is an explicit opt-in shown only when its native adapter exists"
 	)
 	_check(
-		(menu.find_child("DeleteAccount", true, false) as Button).visible,
-		"guest can delete the anonymous account and its data"
+		not (menu.find_child("DeleteAccount", true, false) as Button).visible,
+		"guest cannot delete the anonymous account (prevents free Core/Bits reset abuse)"
 	)
 	var delete_account := menu.find_child("DeleteAccount", true, false) as Button
 	_check(
@@ -2617,8 +2617,8 @@ func _test_seeker_ui() -> void:
 		"linked account action is Sign Out while Delete Account remains separate"
 	)
 	_check(
-		delete_account.theme_type_variation == &"DangerButton",
-		"Sign Out does not replace or soften the permanent Delete Account action"
+		delete_account.visible and delete_account.theme_type_variation == &"DangerButton",
+		"a linked account can delete itself; Sign Out does not replace or soften that action"
 	)
 	menu.show_menu(true, false, false, false)
 	_check(
@@ -2629,6 +2629,10 @@ func _test_seeker_ui() -> void:
 	_check(
 		not (menu.find_child("MusicEnabled", true, false) as CheckButton).button_pressed,
 		"a muted player reopens Settings with music still off"
+	)
+	_check(
+		not delete_account.visible,
+		"switching back to a guest hides Delete Account again"
 	)
 
 	var profile = (load("res://scenes/ui/seeker_profile_view.tscn") as PackedScene).instantiate()
@@ -3005,15 +3009,14 @@ func _test_battle_view() -> void:
 	view.item_picker_requested.connect(func() -> void: _item_picker_opens = true)
 	view.call("_request_item")
 	_check(not item.disabled, "unused Item stays enabled")
-	_check(item.self_modulate.a > 0.9, "JSON null item_used_id does not dim Item")
 	_check(_item_picker_opens, "unused Item opens the battle picker")
 	session["item_used_id"] = "power_chip"
 	view.set_session(session, loaded, loaded)
 	_item_picker_opens = false
 	view.call("_request_item")
 	_check(
-		item.self_modulate.a < 0.5 and not _item_picker_opens,
-		"a real item_used_id dims Item and blocks a second use"
+		not item.disabled and _item_picker_opens,
+		"item stays reusable every turn; a past item_used_id no longer blocks it"
 	)
 	session.erase("item_used_id")
 	view.set_session(session, loaded, loaded)
@@ -7789,7 +7792,9 @@ func _test_home_care_actions() -> void:
 	# headless DisplayServer reports garbage for, and every pick silently misses.
 	var hunger_bar := home.find_child("NeedHunger", true, false) as Control
 	# Scenes other suites left in this shared root are drawn over Home and would
-	# win the pick, so Home goes to the front for the duration of this one check.
+	# win the pick — including the LoadingScreen singleton that expedition tests
+	# leave attached to root. Evict it before the viewport pick so only Home answers.
+	_dismiss_loading_screen_singleton()
 	root.move_child(home, -1)
 	await process_frame
 	var pick := InputEventMouseButton.new()
@@ -8201,7 +8206,9 @@ func _test_roster_list_real_taps() -> void:
 	for index in 3:
 		list.add_item("Team %d" % (index + 1))
 	root.add_child(list)
-	# Scene sisa suite lain digambar di atas dan akan memenangkan pick.
+	# Scene sisa suite lain digambar di atas dan akan memenangkan pick —
+	# termasuk singleton LoadingScreen yang ditinggal test expedition.
+	_dismiss_loading_screen_singleton()
 	root.move_child(list, -1)
 	await process_frame
 	var picked: Array[int] = [0, 1, 2]
@@ -8349,6 +8356,18 @@ func _test_item_list_drag_scroll() -> void:
 	Input.set_emulate_touch_from_mouse(was_emulating)
 	viewport.queue_free()
 	await process_frame
+
+
+## Evicts the LoadingScreen singleton from the shared root so viewport input
+## picks land on the intended target instead of the loading overlay.
+## The singleton is re-created on demand the next time show_screen is called,
+## so this does not break _test_loading_screen which runs after all pick tests.
+func _dismiss_loading_screen_singleton() -> void:
+	for child in root.get_children():
+		if child is LoadingScreen:
+			child.queue_free()
+			await process_frame
+			break
 
 
 func _tap_roster_item_through_viewport(list: ItemList, index: int) -> void:

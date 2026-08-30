@@ -599,11 +599,8 @@ static func resolve_turn(
 	if not player_action in ACTIONS:
 		return _error("INVALID_ACTION")
 	var player_before: Dictionary = previous_state.get("player", {})
-	if player_action == "item":
-		if bool(player_before.get("item_used", false)):
-			return _error("ITEM_ALREADY_USED")
-		if not is_battle_item(item_id, catalog):
-			return _error("INVALID_ITEM")
+	if player_action == "item" and not is_battle_item(item_id, catalog):
+		return _error("INVALID_ITEM")
 	if player_action == "surge" and int(player_before.get("momentum", 0)) < SURGE_COST:
 		return _error("NO_MOMENTUM")
 

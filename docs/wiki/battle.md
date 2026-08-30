@@ -395,9 +395,9 @@ tenang lalu kembali diam, bukan melompat.
 | **Attack** | Pukulan biasa. Memakai stat Attack. Power 50. Defense lawan penuh. |
 | **Special** | Jurus lebih berat. Memakai stat Special. Power 75. Defense lawan dihitung setengah. Memakan 1 PP. |
 | **Guard** | Bertahan (damage masuk dikurangi). Mengembalikan 1 PP. |
-| **Item** | Satu item dari tas, mengganti aksi turn itu. Hanya sekali per duel. |
+| **Item** | Satu item dari tas, mengganti aksi turn itu. Bisa dipakai lagi turn mana pun, dibatasi stok di tas — bukan sekali per duel. |
 
-Item Battle dibeli di Shop. Picker hanya menampilkan tujuh item tempur (bukan makanan atau Energy). Di **Bag** item itu kelihatan tapi tanpa tombol Use. Saat dipakai, label besar di arena menulis efeknya (misalnya **Attack +35%!**), dan Anima berkilat. Sesudah terpakai, tombol **Item** meredup sampai duel selesai.
+Item Battle dibeli di Shop. Picker hanya menampilkan tujuh item tempur (bukan makanan atau Energy). Di **Bag** item itu kelihatan tapi tanpa tombol Use. Saat dipakai, label besar di arena menulis efeknya (misalnya **Attack +35%!**), dan Anima berkilat. Selama stoknya masih ada, tombol **Item** tetap aktif sepanjang duel.
 
 | Item | Efek singkat |
 | --- | --- |

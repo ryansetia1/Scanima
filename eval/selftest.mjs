@@ -2785,11 +2785,16 @@ console.log("23a. Team Battle roster, switch, KO, dan EXP participation");
     "item-key",
     "vital_patch",
   );
-  assert.equal(usedItem.state.player.item_used, true);
-  assert.throws(
-    () => resolveTeamTurn(usedItem.state, "item", "second-item", "vital_patch"),
-    /ITEM_ALREADY_USED/,
-    "satu item berlaku untuk seluruh encounter, bukan per fighter",
+  const secondItem = resolveTeamTurn(
+    usedItem.state,
+    "item",
+    "second-item",
+    "vital_patch",
+  );
+  assert.equal(
+    secondItem.events.some((event) => event.type === "item"),
+    true,
+    "item battle bisa dipakai lagi turn berikutnya, dibatasi stok bukan sekali per encounter",
   );
 
   const bossOpponent = [
@@ -4909,9 +4914,11 @@ console.log("27. katalog, reward tier, item Battle, dan sheet toko");
   assert.equal(healed.events[0].effect, "heal_hp_pct");
   assert.equal(healed.events[0].effect_value, 30);
   assert.equal(healed.events[0].hp, 100 + Math.trunc(hurt.player.max_hp * 0.3));
-  assert.throws(
-    () => resolveTurn(healed.state, "item", "second", "vital_patch"),
-    /ITEM_ALREADY_USED/,
+  const healedAgain = resolveTurn(healed.state, "item", "second", "vital_patch");
+  assert.equal(
+    healedAgain.events[0]?.type,
+    "item",
+    "item battle bisa dipakai lagi turn berikutnya, dibatasi stok bukan sekali per encounter",
   );
 
   const power = resolveTurn(

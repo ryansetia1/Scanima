@@ -228,7 +228,6 @@ export function createTeamParty(roster, player = false, options = {}, rulesVersi
 
 function validatePlayerIntent(party, action, itemId, switchToSlot) {
   if (action === "item") {
-    if (party.item_used) throw battleError("ITEM_ALREADY_USED");
     if (!itemId) throw battleError("INVALID_ITEM");
   } else if (itemId) {
     throw battleError("INVALID_ITEM");
