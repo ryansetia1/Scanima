@@ -4635,8 +4635,9 @@ func _test_expedition_view() -> void:
 	)
 	_check(
 		controller_script.should_resume_error("STALE_EXPEDITION_ENCOUNTER")
+		and controller_script.should_resume_error("NO_ITEM")
 		and not controller_script.should_resume_error("NO_SUPPLIES"),
-		"only stale or terminal encounter errors enter the bounded resume path"
+		"stale/terminal encounter errors and an empty item stock enter the bounded resume path, not the fatal one"
 	)
 	var flow_script := load("res://scripts/scan_flow.gd") as GDScript
 	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")

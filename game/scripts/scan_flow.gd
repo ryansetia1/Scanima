@@ -3798,6 +3798,11 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 		# depan: tap berikutnya akan mengirim nomor turn yang belum pernah ada.
 		if not predicted.is_empty() and not session_before.is_empty():
 			_battle_view.set_session(session_before)
+		if res.error == "NO_ITEM":
+			_set_busy(false)
+			_say_warning(tr("ERROR_NO_ITEM"), true)
+			await _resume_battle()
+			return
 		if res.error == "STALE_BATTLE" or res.error == "BATTLE_FINISHED":
 			_set_busy(false)
 			await _resume_battle()
@@ -4241,6 +4246,11 @@ func _submit_pending_team_battle(pending: Dictionary) -> void:
 		# depan: tap berikutnya akan mengirim nomor turn yang belum pernah ada.
 		if not predicted.is_empty() and not session_before.is_empty():
 			_team_battle_view.set_session(session_before, _team_art_cache.duplicate())
+		if res.error == "NO_ITEM":
+			_set_busy(false)
+			_say_warning(tr("ERROR_NO_ITEM"), true)
+			await _resume_team_battle()
+			return
 		if res.error in ["STALE_TEAM_BATTLE", "TEAM_BATTLE_FINISHED"]:
 			_set_busy(false)
 			await _resume_team_battle()

@@ -870,6 +870,7 @@ static func should_resume_error(error_code: String) -> bool:
 		"STALE_EXPEDITION_ENCOUNTER",
 		"EXPEDITION_ENCOUNTER_FINISHED",
 		"EXPEDITION_ENCOUNTER_EXPIRED",
+		"NO_ITEM",
 	]
 
 
