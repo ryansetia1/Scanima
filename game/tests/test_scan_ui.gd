@@ -423,6 +423,11 @@ func _initialize() -> void:
 		battle_pick != null and battle_pick.z_index >= 20,
 		"Battle picker paints above immersive fighters and terminal result panels"
 	)
+	var shop_sheet_node := scene.find_child("ShopSheet", true, false) as Control
+	_check(
+		shop_sheet_node != null and shop_sheet_node.z_index >= 20,
+		"ShopSheet (battle item picker) paints above Anima sprites (z_index 3 & 2)"
+	)
 	_check(scene.find_child("ScanCount", true, false) == null, "HUD no longer labels scan charges as a count")
 	_check(scene.find_child("BottomNav", true, false) is PanelContainer, "bottom navigation must exist")
 	var toast := scene.find_child("StatusPanel", true, false) as PanelContainer
