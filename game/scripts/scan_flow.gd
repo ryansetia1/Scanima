@@ -1131,11 +1131,12 @@ func _present_next_outcome_dialog() -> void:
 				return
 			"evolution_success":
 				var row := GameState.as_dict(dialog.get("row"))
+				var suggested := str(dialog.get("suggested_name", "")).strip_edges()
 				_modal_context = &"evolution_success"
 				Sfx.play(Sfx.CUE_LEVEL_UP)
 				_shell_modal.open_result_choice(
 					tr("EVOLUTION_COMPLETE_TITLE"),
-					_evolution_success_copy(row),
+					_evolution_success_copy(row, suggested),
 					tr("COLLECTION_SUMMON"),
 					tr("ANIMA_RENAME_ACTION"),
 					LocaleManager.display_name(row),
@@ -1979,13 +1980,25 @@ func _present_evolution_failure_outcome(queued: Dictionary) -> void:
 	)
 
 
-func _evolution_success_copy(row: Dictionary) -> String:
-	var parts: PackedStringArray = [
-		tr("EVOLUTION_SUCCESS") % [
-			LocaleManager.display_name(row),
-			LocaleManager.form_name_for_row(row),
-		]
-	]
+func _evolution_success_copy(row: Dictionary, suggested: String = "") -> String:
+	var current_name := LocaleManager.display_name(row)
+	var stage_name := LocaleManager.form_name_for_row(row)
+	var parts: PackedStringArray = []
+	if not suggested.is_empty() and suggested.to_lower() != current_name.to_lower():
+		parts.append(
+			tr("EVOLUTION_SUCCESS_NEW_FORM") % [
+				current_name,
+				stage_name,
+				suggested,
+			]
+		)
+	else:
+		parts.append(
+			tr("EVOLUTION_SUCCESS") % [
+				current_name,
+				stage_name,
+			]
+		)
 	var strike := LocaleManager.move_name(row, "strike")
 	var surge := LocaleManager.move_name(row, "surge")
 	var strike_fx := str(row.get("strike_effect_id", "")).strip_edges()
