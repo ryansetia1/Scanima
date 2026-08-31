@@ -884,7 +884,7 @@ async function publishEntry(
     .from("generations")
     .select("vision_result")
     .eq("anima_id", animaId)
-    .eq("status", "succeeded")
+    .in("status", ["succeeded", "cache_hit"])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
