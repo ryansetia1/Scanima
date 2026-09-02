@@ -1253,6 +1253,7 @@ func _test_autowrap_labels_have_wrap_width() -> void:
 		"res://scenes/ui/collection_view.tscn",
 		"res://scenes/ui/battle_pick_sheet.tscn",
 		"res://scenes/ui/anima_details_view.tscn",
+		"res://scenes/ui/seeker_profile_view.tscn",
 	]:
 		var packed := load(scene_path) as PackedScene
 		if packed == null:
@@ -2804,7 +2805,7 @@ func _test_seeker_ui() -> void:
 		"species_count": 2,
 		"battle_victories": 4,
 		"created_at": "2026-08-14T00:00:00Z",
-	}, null)
+	})
 	var rows := profile.find_child("SeekerRows", true, false) as VBoxContainer
 	_check_eq(rows.get_child_count(), 6, "Seeker profile shows six server-authoritative stats")
 	_check(
@@ -2873,7 +2874,7 @@ func _test_seeker_ui() -> void:
 		not trophy_section.visible and not trophy_skeleton.visible,
 		"a failed Core fetch without cache hides Trophy Showcase instead of leaving the skeleton"
 	)
-	profile.set_profile({"seeker_name": null}, null)
+	profile.set_profile({"seeker_name": null})
 	_check(
 		(profile.find_child("SeekerProfileName", true, false) as Label).text
 			== tr("SEEKER_UNNAMED"),
@@ -2885,6 +2886,7 @@ func _test_seeker_ui() -> void:
 	profile.queue_free()
 	await process_frame
 	await _test_seeker_account_actions()
+	await _test_seeker_avatar_choice()
 
 
 ## Sign in with Google, Sign Out, dan Delete Account pindah dari Settings ke
@@ -2959,6 +2961,140 @@ func _test_seeker_account_actions() -> void:
 	)
 	host.queue_free()
 	await process_frame
+
+
+## Tiga hal yang pemain rasakan, diperiksa pada scene Profile sungguhan: potret
+## itu dirinya dan memakai pose profil (bukan pose idle yang dipakai arena),
+## picker menandai figur yang sedang ia pakai, dan penggantian terlihat tanpa
+## membuka ulang layar.
+func _test_seeker_avatar_choice() -> void:
+	var host := SubViewport.new()
+	host.size = Vector2i(720, 1602)
+	root.add_child(host)
+	var profile = (load("res://scenes/ui/seeker_profile_view.tscn") as PackedScene).instantiate()
+	host.add_child(profile)
+	profile.visible = true
+	profile.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await process_frame
+	var portrait := profile.find_child("SeekerPortrait", true, false) as TextureRect
+
+	# `null` berarti belum memilih, dan yang tergambar tetap seseorang.
+	profile.set_profile({"seeker_name": "Nova_13", "seeker_avatar": null})
+	var pose_index := SeekerSheet.KNOWN_POSES.find("profile")
+	var profile_cell := Vector2(
+		float((pose_index % 3) * SeekerRoster.CELL),
+		float((pose_index / 3) * SeekerRoster.CELL)
+	)
+	var atlas := portrait.texture as AtlasTexture
+	_check(
+		atlas != null and atlas.region.position == profile_cell,
+		"the Profile portrait draws a Seeker Avatar in its profile pose"
+	)
+	_check(
+		portrait.texture == SeekerRoster.portrait(SeekerRoster.DEFAULT_SLUG)
+		and profile.avatar_slug() == SeekerRoster.DEFAULT_SLUG,
+		"a Seeker who has not chosen yet still gets the default figure drawn"
+	)
+
+	var kebab := profile.find_child("SeekerProfileMenu", true, false) as Button
+	var change := profile.find_child("SeekerActionAvatar", true, false) as Button
+	var sheet := profile.find_child("SeekerAvatarSheet", true, false) as UiBottomSheet
+	var grid := profile.find_child("SeekerAvatarGrid", true, false) as GridContainer
+	kebab.pressed.emit()
+	await process_frame
+	change.pressed.emit()
+	await process_frame
+	await process_frame
+	_check(
+		sheet.visible and not profile.is_action_menu_open(),
+		"Change Seeker Avatar opens the picker from the kebab it lives in"
+	)
+	_check_eq(
+		_live_row_count(grid),
+		SeekerRoster.SLUGS.size(),
+		"the picker shows every roster figure at once, so they can be compared"
+	)
+	_check(
+		_marked_avatar_slugs(grid) == PackedStringArray([SeekerRoster.DEFAULT_SLUG]),
+		"the picker marks exactly the figure the Seeker is wearing"
+	)
+
+	# Stands in for the shell's optimistic half: `_change_seeker_avatar()` paints
+	# before it awaits anything, and the source scan at the end of this test is
+	# what pins that it still does. Wired BEFORE the tap on purpose, so the
+	# repaint below is driven by the tap rather than by the test reaching for the
+	# setter afterwards -- the latter would pass even if tapping did nothing.
+	#
+	# Dictionary, not a String: GDScript lambdas capture locals by value, so a
+	# captured String would record the tap into a copy the test cannot read.
+	var chosen := {"slug": ""}
+	profile.avatar_chosen.connect(func(slug: String) -> void:
+		chosen.slug = slug
+		profile.set_avatar(slug)
+	)
+	var second := grid.get_child(1) as Button
+	var second_slug := str(second.get_meta("avatar", ""))
+	# Mirrors what Godot does to a toggle button on a real tap: the pressed state
+	# flips first and the tap is reported after, so the handler is handed a moment
+	# where two figures are marked and has to tidy it up.
+	second.button_pressed = true
+	second.pressed.emit()
+	await process_frame
+	_check(
+		str(chosen.slug) == second_slug and not second_slug.is_empty(),
+		"tapping a figure asks the shell to write that slug"
+	)
+	# The point of the optimistic paint: the Profile is still the screen the
+	# player is looking at, and it already shows the new figure. Exactly one
+	# figure may be marked -- the toggle Godot flipped on tap must not survive
+	# alongside the mark the handler sets.
+	_check(
+		portrait.texture == SeekerRoster.portrait(second_slug)
+		and _marked_avatar_slugs(grid) == PackedStringArray([second_slug]),
+		"the tap alone moves the portrait and the mark, without reopening the screen"
+	)
+
+	# What the shell does when the write turns out not to have landed: the same
+	# setter, handed the value it started from.
+	profile.set_avatar(null)
+	_check(
+		portrait.texture == SeekerRoster.portrait(SeekerRoster.DEFAULT_SLUG)
+		and _marked_avatar_slugs(grid) == PackedStringArray([SeekerRoster.DEFAULT_SLUG]),
+		"a rejected write puts the previous figure back on the portrait and in the picker"
+	)
+
+	# Nothing here may spend anything, so nothing here may dim the screen: the
+	# rollback is what makes the optimistic paint honest, not a busy state.
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var change_body := _func_body(flow_source, "func _change_seeker_avatar(")
+	_check(
+		change_body.find("_set_busy(") < 0
+		and change_body.find("LoadingScreen.show_screen(") < 0
+		and change_body.find("set_avatar(previous)") >= 0
+		and change_body.find("gender") < 0
+		and change_body.find("birth_year") < 0,
+		"changing an avatar stays optimistic, rolls back, and never touches demographics"
+	)
+	host.queue_free()
+	await process_frame
+
+
+## Satu figur boleh tertandai, dan "tertandai" menuntut kedua penandanya sepakat.
+## Plat terpilih tanpa state toggle (atau sebaliknya) tetap terbaca salah oleh
+## pemain, jadi ia masuk daftar dengan namanya sendiri dan menggagalkan
+## perbandingan alih-alih lolos diam-diam.
+func _marked_avatar_slugs(grid: GridContainer) -> PackedStringArray:
+	var marked := PackedStringArray()
+	for child in grid.get_children():
+		var button := child as Button
+		if button == null:
+			continue
+		var slug := str(button.get_meta("avatar", ""))
+		if button.button_pressed != (button.theme_type_variation == &"VibeSelected"):
+			marked.append("%s (half-marked)" % slug)
+		elif button.button_pressed:
+			marked.append(slug)
+	return marked
 
 
 func _test_battle_view() -> void:

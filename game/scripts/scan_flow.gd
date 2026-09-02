@@ -377,6 +377,7 @@ func _ready() -> void:
 	_seeker_profile_view.back_requested.connect(_return_from_overlay)
 	_seeker_profile_view.help_requested.connect(_show_details_help)
 	_seeker_profile_view.rename_requested.connect(_show_rename_seeker)
+	_seeker_profile_view.avatar_chosen.connect(_change_seeker_avatar)
 	_seeker_profile_view.account_requested.connect(_show_account_action)
 	_seeker_profile_view.delete_account_requested.connect(_show_delete_account_confirmation)
 	_atlas_view.back_requested.connect(_return_from_overlay)
@@ -492,6 +493,8 @@ func _ready() -> void:
 			LoadingScreen.show_screen("STATUS_LOADING", true)
 		if arg == "--trophy-demo":
 			_run_trophy_demo()
+		if arg == "--seeker-avatar-demo":
+			_run_seeker_avatar_demo()
 		if arg == "--atlas-demo":
 			_run_atlas_demo()
 		if arg == "--empty-demo":
@@ -2820,10 +2823,7 @@ func _open_seeker_profile() -> void:
 	var profile := GameState.as_dict(res.data)
 	GameState.profile.merge(profile, true)
 	_refresh_header()
-	_seeker_profile_view.set_profile(
-		profile,
-		_thumbnail_for(_current_anima) if not _current_anima.is_empty() else null
-	)
+	_seeker_profile_view.set_profile(profile)
 	_seeker_profile_view.set_account(GameState.is_anonymous())
 	_paint_cached_trophies()
 	_switch_destination(SEEKER_PROFILE_DEST)
@@ -2946,6 +2946,42 @@ func _rename_seeker(value: String) -> void:
 	_refresh_header()
 	_say_success(tr("SEEKER_RENAME_SUCCESS") % str(GameState.profile.get("seeker_name", "")), true)
 	await _open_seeker_profile()
+
+
+## Kosmetik, gratis, dan tanpa masa tunggu, jadi ia mengikuti pola optimistis
+## Care dan Shop alih-alih `_set_busy()`: potret berganti di frame yang sama
+## dengan tap dan hanya kembali kalau server menolak. Tidak ada `LoadingScreen`
+## dan tidak ada panel yang diredupkan — yang diredupkan hanya jalur yang bisa
+## membelanjakan sesuatu.
+##
+## Seeker Demographics tidak ikut (ADR-0001): payload-nya tepat satu kolom, dan
+## rename yang punya cooldown 30 hari tetap jalur terpisah karena nama Seeker
+## unik dan publik sementara avatar tidak keduanya.
+func _change_seeker_avatar(slug: String) -> void:
+	var previous: Variant = GameState.profile.get("seeker_avatar")
+	# Dibandingkan mentah, bukan lewat `normalize()`: pemain yang belum pernah
+	# memilih (`null`) tetap boleh menetapkan figur default secara eksplisit,
+	# dan itulah yang membedakan "memilih default" dari "membiarkannya".
+	if typeof(previous) == TYPE_STRING and str(previous) == slug:
+		return
+	GameState.profile["seeker_avatar"] = slug
+	_seeker_profile_view.set_avatar(slug)
+	var account_epoch := GameState.session_epoch
+	var res := await Backend.set_seeker_avatar(slug)
+	if not Backend.response_applies(res, account_epoch):
+		return
+	# 200 dengan representasi kosong berarti nol row berubah — tulisan yang tidak
+	# mendarat, bukan tulisan yang berhasil. Tanpa pemeriksaan ini potret akan
+	# terus membohongi pemain sampai profil di-fetch lagi.
+	var rows: Variant = res.data
+	if res.ok and typeof(rows) == TYPE_ARRAY and not (rows as Array).is_empty():
+		return
+	if previous == null:
+		GameState.profile.erase("seeker_avatar")
+	else:
+		GameState.profile["seeker_avatar"] = previous
+	_seeker_profile_view.set_avatar(previous)
+	_say_error(tr("SEEKER_AVATAR_ERROR"), true)
 
 
 func _show_account_action() -> void:
@@ -5824,6 +5860,7 @@ func _switch_destination(
 	_menu_popover.close()
 	_details_view.close_action_menu(false)
 	_seeker_profile_view.close_action_menu(false)
+	_seeker_profile_view.close_avatar_picker()
 	if destination == ANIMA_PROFILE_DEST and not profile_row.is_empty():
 		_profile_anima = profile_row.duplicate(true)
 	if destination == ANIMA_PROFILE_DEST and not _details_available():
@@ -7084,6 +7121,16 @@ func _run_profile_help_demo(show_help: bool = true) -> void:
 		_show_details_help(tr("STAT_SPD"), tr("STAT_SPD_HELP"))
 
 
+## Art roster ikut ter-bundel, jadi picker figur bisa diperiksa tanpa jaringan
+## dan tanpa akun — yang perlu dipalsukan hanya profilnya.
+func _run_seeker_avatar_demo() -> void:
+	_seeker_profile_view.set_profile(GameState.profile)
+	_seeker_profile_view.set_account(GameState.is_anonymous())
+	_seeker_profile_view.hide_trophies()
+	_switch_destination(SEEKER_PROFILE_DEST)
+	_seeker_profile_view.open_avatar_picker()
+
+
 func _run_atlas_demo() -> void:
 	var rows: Array[Dictionary] = [
 		{
@@ -7144,7 +7191,7 @@ func _run_trophy_demo() -> void:
 			"id": "trophy-demo-%d" % index,
 			"display_name": "Sugarfold Core %d" % (index + 1),
 		}})
-	_seeker_profile_view.set_profile(GameState.profile, null)
+	_seeker_profile_view.set_profile(GameState.profile)
 	_seeker_profile_view.set_account(GameState.is_anonymous())
 	_seeker_profile_view.set_trophies(rows)
 	var swatch := Image.create(240, 240, false, Image.FORMAT_RGBA8)

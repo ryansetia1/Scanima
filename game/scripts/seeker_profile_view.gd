@@ -4,11 +4,13 @@ extends Control
 signal back_requested
 signal help_requested(title: String, body: String)
 signal rename_requested
+signal avatar_chosen(slug: String)
 signal account_requested
 signal delete_account_requested
 
 const INFO_ROW := preload("res://scenes/ui/info_value_row.tscn")
 const TROPHY_CARD_PX := 176.0
+const AVATAR_CARD_PX := 240.0
 const MENU_ICON: Texture2D = preload("res://assets/icons/more-vertical.svg")
 
 @onready var _name: Label = %SeekerProfileName
@@ -22,13 +24,18 @@ const MENU_ICON: Texture2D = preload("res://assets/icons/more-vertical.svg")
 @onready var _action_popover: Control = %SeekerActionPopover
 @onready var _action_panel: PanelContainer = %SeekerActionPanel
 @onready var _action_rename: Button = %SeekerActionRename
+@onready var _action_avatar: Button = %SeekerActionAvatar
 @onready var _action_delete: Button = %SeekerActionDelete
+@onready var _avatar_sheet: UiBottomSheet = %SeekerAvatarSheet
+@onready var _avatar_grid: GridContainer = %SeekerAvatarGrid
 
 ## trophy_id -> TextureRect kartunya, supaya art yang menyusul dari disk atau
 ## jaringan bisa dipasang tanpa membangun ulang grid.
 var _trophy_art: Dictionary = {}
 var _trophy_ids := PackedStringArray()
 var _trophy_skeleton: UiSkeleton
+var _avatar := SeekerRoster.DEFAULT_SLUG
+var _avatar_buttons: Array[Button] = []
 
 
 func _ready() -> void:
@@ -39,9 +46,11 @@ func _ready() -> void:
 	%SeekerActionBackdrop.pressed.connect(close_action_menu)
 	_action_popover.resized.connect(_position_action_menu)
 	_action_rename.pressed.connect(_request_rename)
+	_action_avatar.pressed.connect(open_avatar_picker)
 	_action_delete.pressed.connect(_request_delete_account)
 	UiJuice.install_button(_menu_button)
 	UiJuice.install_button(_action_rename)
+	UiJuice.install_button(_action_avatar)
 	UiJuice.install_button(_action_delete)
 	UiJuice.mark_destructive_row(_action_delete)
 	_trophy_skeleton = _build_trophy_skeleton()
@@ -56,14 +65,14 @@ func set_account(anonymous: bool) -> void:
 	_action_delete.visible = not anonymous
 
 
-func set_profile(profile: Dictionary, portrait: Texture2D) -> void:
+func set_profile(profile: Dictionary) -> void:
 	var seeker_name: Variant = profile.get("seeker_name")
 	_name.text = (
 		seeker_name
 		if typeof(seeker_name) == TYPE_STRING and not str(seeker_name).is_empty()
 		else tr("SEEKER_UNNAMED")
 	)
-	_portrait.texture = portrait
+	set_avatar(profile.get("seeker_avatar"))
 	for child in _rows.get_children():
 		child.queue_free()
 	var xp := maxi(0, int(profile.get("seeker_xp", 0)))
@@ -73,6 +82,30 @@ func set_profile(profile: Dictionary, portrait: Texture2D) -> void:
 	_add_row("SEEKER_SPECIES_COUNT", LocaleManager.format_integer(int(profile.get("species_count", 0))))
 	_add_row("SEEKER_VICTORIES", LocaleManager.format_integer(int(profile.get("battle_victories", 0))))
 	_add_row("SEEKER_JOINED", _joined_date(str(profile.get("created_at", ""))))
+
+
+## Slot potret adalah pemain, bukan Anima-nya: ia menggambar Seeker Avatar
+## terpilih pada pose profil dari sheet yang ikut ter-bundel. Dipanggil tiga kali
+## sepanjang satu penggantian — sekali dari profil server, sekali optimistis di
+## frame yang sama dengan tap, dan sekali lagi dengan nilai lama kalau server
+## menolak — jadi ia sengaja murah dan tanpa state busy.
+func set_avatar(value: Variant) -> void:
+	_avatar = SeekerRoster.normalize(value)
+	_portrait.texture = SeekerRoster.portrait(_avatar)
+	_refresh_avatar_choices()
+
+
+func avatar_slug() -> String:
+	return _avatar
+
+
+func is_avatar_picker_open() -> bool:
+	return _avatar_sheet.visible
+
+
+func close_avatar_picker() -> void:
+	if _avatar_sheet.visible:
+		_avatar_sheet.close()
 
 
 ## Setiap Core yang dimiliki tampil sebagai kartu art bernama. Dipanggil dua kali
@@ -187,6 +220,62 @@ func _request_rename() -> void:
 func _request_delete_account() -> void:
 	close_action_menu(false)
 	delete_account_requested.emit()
+
+
+## Keempat figur dibangun sekali, saat picker pertama kali dibuka. Membangunnya
+## di `_ready()` akan men-decode empat sheet 1024px saat shell boot demi layar
+## yang mungkin tidak pernah dikunjungi.
+func open_avatar_picker() -> void:
+	close_action_menu(false)
+	if _avatar_buttons.is_empty():
+		_build_avatar_choices()
+	_avatar_sheet.open()
+
+
+## Dibangun dari `SeekerRoster.SLUGS`, bukan dari baris scene, jadi figur kelima
+## nanti cukup satu sheet dan satu slug (ADR-0002) tanpa menyentuh layar ini.
+func _build_avatar_choices() -> void:
+	for slug in SeekerRoster.SLUGS:
+		var button := Button.new()
+		button.name = "SeekerAvatar%s" % slug.capitalize()
+		button.custom_minimum_size = Vector2(0, AVATAR_CARD_PX)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.toggle_mode = true
+		button.tooltip_text = tr("SEEKER_AVATAR_PICK")
+		button.set_meta("avatar", slug)
+		var art := TextureRect.new()
+		art.name = "Art"
+		art.texture = SeekerRoster.portrait(slug)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(art)
+		art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 12)
+		button.pressed.connect(_choose_avatar.bind(slug))
+		UiJuice.install_button(button)
+		_avatar_grid.add_child(button)
+		_avatar_buttons.append(button)
+	_refresh_avatar_choices()
+
+
+## Pola yang sama dengan chip Vibe: satu kartu tertandai, sisanya kembali ke
+## style default. `set_pressed_no_signal` dipakai karena toggle yang ditulis
+## ulang di sini bukan tap pemain.
+func _refresh_avatar_choices() -> void:
+	for button in _avatar_buttons:
+		var selected := str(button.get_meta("avatar", "")) == _avatar
+		button.set_pressed_no_signal(selected)
+		button.theme_type_variation = &"VibeSelected" if selected else &""
+
+
+## Gratis dan tanpa masa tunggu, jadi tap menutup picker lalu menyerahkan
+## penulisannya ke shell. Tanda dipulihkan lebih dulu supaya toggle yang baru
+## saja dibalik Godot tidak meninggalkan dua kartu tertandai selama request
+## terbang; `set_avatar()` yang menentukan tanda akhirnya, termasuk saat rollback.
+func _choose_avatar(slug: String) -> void:
+	_refresh_avatar_choices()
+	_avatar_sheet.close()
+	avatar_chosen.emit(slug)
 
 
 func _add_row(label_key: String, value: String, help_key: String = "") -> void:

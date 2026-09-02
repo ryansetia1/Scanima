@@ -58,3 +58,28 @@ static func load_sheet(slug: String) -> Dictionary:
 	var path := sheet_path(slug)
 	var texture: Texture2D = ResourceLoader.load(path) if ResourceLoader.exists(path) else null
 	return SeekerSheet.build(texture, manifest())
+
+
+## `profiles.seeker_avatar` nullable, jadi nilainya datang sebagai Variant: `null`
+## berarti belum memilih dan digambar sebagai figur default. Slug di luar roster
+## diperlakukan sama, supaya build lama yang belum mengenal figur kelima tetap
+## menggambar seseorang alih-alih slot kosong.
+static func normalize(value: Variant) -> String:
+	var slug := str(value) if typeof(value) == TYPE_STRING else ""
+	return slug if SLUGS.has(slug) else DEFAULT_SLUG
+
+
+## slug -> pose profil. Art roster sama untuk setiap akun, jadi cache ini sengaja
+## tidak ikut dibuang saat akun berganti.
+static var _portraits: Dictionary = {}
+
+
+## Pose profil dari sheet yang sudah ter-bundel — nol panggilan jaringan dan nol
+## panggilan model. Di-cache karena `build()` men-decode sheet 1024px lalu
+## memindai sembilan region, sementara potret Profile digambar setiap kunjungan
+## dan picker membuka seluruh roster sekaligus.
+static func portrait(value: Variant) -> Texture2D:
+	var slug := normalize(value)
+	if not _portraits.has(slug):
+		_portraits[slug] = SeekerSheet.portrait(load_sheet(slug))
+	return _portraits[slug]

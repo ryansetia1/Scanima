@@ -36,6 +36,7 @@ godot --path game -- --home-tap-demo
 godot --path game -- --level-up-demo --screenshot=/tmp/level-up.png
 godot --path game -- --loading-demo --screenshot=/tmp/loading.png
 godot --path game -- --trophy-demo --screenshot=/tmp/trophy.png
+godot --path game -- --seeker-avatar-demo --screenshot=/tmp/seeker-avatar.png
 godot --path game -- --atlas-demo --screenshot=/tmp/atlas.png
 godot --path game -- --empty-demo --screenshot=/tmp/empty.png
 godot --path game -- --summon-demo

@@ -290,6 +290,26 @@ func rename_anima(anima_id: String, nickname: String) -> Dictionary:
 	)
 
 
+## Avatar bukan mata uang, jadi ia ditulis langsung ke row profil sendiri di
+## bawah RLS: tidak ada RPC dan tidak ada operasi Edge Function untuk ini, dan
+## alasannya ditulis panjang di migrasi `seeker_avatar_choice`. `CHECK` di kolom
+## itu yang menolak slug di luar Seeker Roster.
+##
+## Filter `id` sengaja ditulis walau RLS sudah mengunci row-nya — beda dengan
+## `fetch_animas()` yang membaca, ini menulis, jadi selisih satu policy tidak
+## boleh menjadi selisih "berapa row yang berubah". Representasi yang kembali
+## dipakai pemanggil untuk membedakan tulisan yang mendarat dari nol row.
+func set_seeker_avatar(slug: String) -> Dictionary:
+	return await _send(
+		HTTPClient.METHOD_PATCH,
+		"%s/rest/v1/profiles?id=eq.%s&select=seeker_avatar"
+		% [URL_BASE, GameState.uid().uri_encode()],
+		_headers(true, ["content-type: application/json", "Prefer: return=representation"]),
+		JSON.stringify({"seeker_avatar": slug}).to_utf8_buffer(),
+		TIMEOUT_SEC
+	)
+
+
 func delete_anima(anima_id: String) -> Dictionary:
 	return await _send(
 		HTTPClient.METHOD_DELETE,

@@ -105,8 +105,8 @@ grant yang sama lagi tanpa risiko Core ganda.
 
 Tombol besar di bawah namamu adalah aksi akun: **Sign in with Google** saat
 kamu masih guest, **Sign Out** saat Google sudah terhubung. Ikon titik tiga di
-kanan judul membuka **Change Seeker Name** dan — hanya untuk akun yang sudah
-terhubung Google — **Delete Account**.
+kanan judul membuka **Change Seeker Name**, **Change Seeker Avatar**, dan —
+hanya untuk akun yang sudah terhubung Google — **Delete Account**.
 
 | Baris | Artinya |
 | --- | --- |
@@ -118,7 +118,20 @@ terhubung Google — **Delete Account**.
 | **Joined** | Tanggal akun dibuat |
 | **Trophy Showcase** | Semua Core dari chapter Expedition yang sudah kamu selesaikan. Kalau belum ada, profil tetap menampilkan section-nya dengan petunjuk cara mendapatkannya |
 
-Portrait memakai companion aktif.
+## Seeker Avatar
+
+Potret di atas namamu adalah **kamu**, bukan Anima yang sedang di-Summon. Buka
+ikon titik tiga lalu **Change Seeker Avatar**: pickernya menampilkan keempat
+figur sekaligus dan menandai yang sedang kamu pakai.
+
+- Gratis, tanpa masa tunggu, dan boleh diganti kapan saja. Potretnya berganti di
+  ketukan yang sama; kalau server menolak, figur sebelumnya kembali sendiri.
+- Murni kosmetik. Ia tidak menyentuh stat, hadiah, maupun **Gender** dan **Birth
+  Year** yang kamu isi di **Create Your Seeker** — keduanya tidak saling
+  mengikuti, jadi figur mana pun boleh dipakai siapa pun.
+- Belum pernah memilih berarti kamu memakai figur default.
+- Untuk sekarang avatar hanya terlihat di Seeker Profile. Top HUD tetap
+  menampilkan nama Seeker sebagai teks biasa.
 
 ## Seeker dan Anima berbeda
 
