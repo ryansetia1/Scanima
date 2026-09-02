@@ -143,6 +143,9 @@ func set_rows(rows: Array[Dictionary], active_id: String, thumbnail_provider: Ca
 			"CollectionView.set_rows re-entrancy or dedup: rows=%d item_count=%d"
 			% [rows.size(), _list.item_count]
 		)
+	# Jumlah kolom ikut jumlah kartu, jadi ia harus di-fit ulang di sini dan
+	# tidak cukup saat `resized` saja.
+	_fit_columns()
 	_list.visible = _list.item_count > 0
 	_status.text = (
 		tr("COLLECTION_EMPTY")

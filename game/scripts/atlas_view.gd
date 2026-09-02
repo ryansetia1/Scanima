@@ -6,8 +6,9 @@ signal collection_requested
 signal synthesis_requested
 signal toast_requested(message: String, is_error: bool)
 
+## `x` adalah lantai lebar kolom yang dipakai `_fit_columns()`, `y` tinggi kartu.
 const CARD_MIN := Vector2(208, 280)
-const CARD_PORTRAIT_MIN := Vector2(196, 196)
+const CARD_PORTRAIT_HEIGHT := 196.0
 const VISIT_CACHE_TTL_MSEC := 60_000
 const LOADING_SHIMMER_SEC := 0.72
 const DETAIL_IDLE_SEC := 1.6
@@ -95,7 +96,7 @@ func _ready() -> void:
 	_build_detail_sheet()
 	_build_report_sheet()
 	_sync_filter_buttons()
-	_grid.resized.connect(_fit_columns)
+	_scroll.resized.connect(_fit_columns)
 	_fit_columns()
 
 
@@ -104,14 +105,27 @@ func _ready() -> void:
 ## ada; kartunya sendiri `SIZE_EXPAND_FILL`, jadi sisa yang tidak genap satu
 ## kolom dibagi rata alih-alih menumpuk di tepi.
 func _fit_columns() -> void:
-	# Sama seperti `UiJuice.fit_item_grid()`: grid yang belum di-layout melapor
-	# lebar 0, dan menerapkannya berarti satu kolom pada grid yang scene-nya
-	# menggambar tiga. Atlas hidden sampai tab-nya dibuka, jadi itu justru
-	# keadaan awalnya.
-	if _grid.size.x <= 0.0:
+	# Diukur dari ScrollContainer, bukan dari grid-nya sendiri. `AtlasScroll`
+	# mematikan scroll horizontal, dan `ScrollContainer` yang begitu mengangkat
+	# minimum width anaknya menjadi minimum-nya sendiri. Mengukur `_grid.size.x`
+	# karena itu membaca kembali angka yang fungsi ini sendiri tetapkan: kolom
+	# naik -> grid menuntut `columns x CARD_MIN.x` -> lebar grid tidak pernah
+	# bisa turun lagi saat jendela menyempit, jadi kolomnya terkunci di layar
+	# terlebar yang pernah dilihat dan seluruh view melewati tepi layar. Lebar
+	# di sini datang dari atas, dan kartunya hanya memesan tinggi.
+	# Ruang scrollbar dipesan tanpa syarat, sama seperti `fit_item_grid()`.
+	var inner := _scroll.size.x - _scroll.get_v_scroll_bar().get_combined_minimum_size().x
+	# Grid kosong tidak punya apa pun untuk dibagi; nilai scene-nya dibiarkan.
+	if inner <= 0.0 or _grid.get_child_count() == 0:
 		return
-	_grid.columns = UiJuice.grid_columns_for(
-		_grid.size.x, CARD_MIN.x, float(_grid.get_theme_constant(&"h_separation"))
+	# Dibatasi jumlah kartu: kolom kosong tetap mengambil bagiannya dari lebar,
+	# jadi tanpa batas ini empat form di layar lebar berkumpul di kiri. Dengan
+	# batas ini kartunya `SIZE_EXPAND_FILL` membagi seluruh lebar rata.
+	_grid.columns = mini(
+		UiJuice.grid_columns_for(
+			inner, CARD_MIN.x, float(_grid.get_theme_constant(&"h_separation"))
+		),
+		_grid.get_child_count()
 	)
 
 
@@ -572,6 +586,9 @@ func _rebuild_grid() -> void:
 	_clear_grid()
 	for entry in _entries:
 		_grid.add_child(_make_card(entry))
+	# Jumlah kolom dibatasi jumlah kartu, jadi ia berubah saat isinya berubah —
+	# bukan hanya saat layarnya berubah ukuran.
+	_fit_columns()
 
 
 func _clear_grid() -> void:
@@ -583,7 +600,11 @@ func _clear_grid() -> void:
 func _make_card(entry: Dictionary) -> Control:
 	var discovered := bool(entry.get("discovered", false))
 	var button := Button.new()
-	button.custom_minimum_size = CARD_MIN
+	# Hanya tinggi yang dipesan. `CARD_MIN.x` tetap dipakai, tapi sebagai lantai
+	# lebar *kolom* di `_fit_columns()` — memesannya di kartu juga membuat grid
+	# menuntut `columns x CARD_MIN.x` lewat ScrollContainer yang scroll
+	# horizontalnya mati, dan itu yang mengunci kolomnya.
+	button.custom_minimum_size = Vector2(0.0, CARD_MIN.y)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.flat = true
 	button.disabled = not discovered
@@ -593,7 +614,7 @@ func _make_card(entry: Dictionary) -> Control:
 	column.add_theme_constant_override("separation", 8)
 	button.add_child(column)
 	var portrait := TextureRect.new()
-	portrait.custom_minimum_size = CARD_PORTRAIT_MIN
+	portrait.custom_minimum_size = Vector2(0.0, CARD_PORTRAIT_HEIGHT)
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE

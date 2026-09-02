@@ -115,6 +115,8 @@ func _fill_list(rows: Array) -> void:
 		_list.set_item_metadata(index, row)
 		if not unavailable.is_empty():
 			_list.set_item_icon_modulate(index, DIM)
+	# Kolomnya ikut jumlah kartu, jadi `resized` saja tidak cukup.
+	_fit_columns()
 	_empty.visible = _list.item_count == 0
 	_list.visible = _list.item_count > 0
 

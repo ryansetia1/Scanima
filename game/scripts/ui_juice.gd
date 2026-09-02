@@ -184,8 +184,15 @@ static func grid_columns_for(available: float, min_column_width: float, gap: flo
 	return maxi(1, floori((available + gap) / (min_column_width + gap)))
 
 
-## Pasangan `ItemList`-nya: sesudah kolomnya dihitung, lebar selnya dibagi rata
-## sehingga baris berakhir tepat di tepi list alih-alih menyisakan celah.
+## Pasangan `ItemList`-nya. Ia **tidak** boleh memakai `grid_columns_for()`:
+## `ItemList` menambahkan `h_separation` ke setiap sel termasuk yang terakhir
+## (`item_list.cpp`: `minsize.x += h_separation`, lalu `ofs.x +=
+## rect_cache.size.x`), jadi satu kolom memakan `fixed_column_width + gap` —
+## bukan gap hanya di antara kolom seperti `GridContainer`. Salah konvensi
+## sebesar satu gap saja sudah cukup untuk merusaknya, karena `ItemList`
+## **membuang satu kolom sendiri** begitu baris melewati lebarnya
+## (`current_columns = MAX(col, 1)`) tanpa mengecilkan selnya — sisa selebar
+## satu kartu penuh lalu menumpuk di kanan.
 static func fit_item_grid(list: ItemList, min_column_width: float) -> void:
 	var panel := list.get_theme_stylebox(&"panel")
 	var inner := list.size.x - (panel.get_minimum_size().x if panel != null else 0.0)
@@ -198,14 +205,19 @@ static func fit_item_grid(list: ItemList, min_column_width: float) -> void:
 	# sudah menggambar dua. Shell menyimpan Collection dan Battle picker dalam
 	# keadaan hidden sampai dibuka, jadi keadaan inilah yang pertama terlihat.
 	# Biarkan nilai scene berdiri sampai `resized` membawa lebar sungguhan.
-	if inner <= 0.0:
+	# List kosong tidak punya apa pun untuk dibagi; nilai scene-nya dibiarkan.
+	if inner <= 0.0 or list.item_count == 0:
 		return
 	var gap := float(list.get_theme_constant(&"h_separation"))
-	var columns := grid_columns_for(inner, min_column_width, gap)
-	list.max_columns = columns
-	list.fixed_column_width = maxi(
-		int(min_column_width), floori((inner - gap * (columns - 1)) / float(columns))
+	# Kolomnya tidak boleh lebih banyak daripada kartunya. Kolom kosong tetap
+	# memakan bagiannya dari lebar, jadi tanpa batas ini empat Anima di layar
+	# lebar berkumpul di kiri dan sisa lebarnya menganggur di kanan. Dengan
+	# batas ini sisa itu dibagi ke sel yang benar-benar ada — tersebar rata.
+	var columns := mini(
+		maxi(1, floori(inner / maxf(1.0, min_column_width + gap))), list.item_count
 	)
+	list.max_columns = columns
+	list.fixed_column_width = maxi(1, floori(inner / float(columns)) - int(gap))
 
 
 static func install_button(button: Button) -> void:

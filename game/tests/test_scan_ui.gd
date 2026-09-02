@@ -1090,18 +1090,21 @@ func _test_item_grids_clip_to_one_line() -> void:
 ## screen unused on its right, so the roster reads as shoved against the left
 ## edge. Reported from a 633x1024 desktop window, which resolves to a ~990 px
 ## logical viewport on the 720x1602 base: Collection filled two 290 px columns
-## of ~930 px and Atlas three 208 px ones. Both grids now derive their columns
-## from the width they really have, and the remainder is split across the cells
-## instead of pooling at the edge.
+## of ~930 px and Atlas three 208 px ones.
+##
+## Deriving the columns from the real width is only half of it, because both
+## controls punish the obvious arithmetic, each in its own way. This test walks
+## one viewport narrow -> wide -> narrow, because the second narrow pass is the
+## only place a latched column count shows up.
 func _test_card_grids_fill_width() -> void:
-	# The gap sits between columns only, so a width holding n cells plus n-1
-	# gaps must report exactly n -- one pixel short of that must report n-1.
+	# GridContainer puts the gap between columns, so a width holding n cells
+	# plus n-1 gaps must report exactly n -- one pixel short must report n-1.
 	_check_eq(UiJuice.grid_columns_for(290.0, 290.0, 12.0), 1, "a lone cell needs no gap")
 	_check_eq(UiJuice.grid_columns_for(591.0, 290.0, 12.0), 1, "a cell without its gap does not count")
 	_check_eq(UiJuice.grid_columns_for(592.0, 290.0, 12.0), 2, "two cells and one gap fit exactly")
 	_check_eq(UiJuice.grid_columns_for(0.0, 290.0, 12.0), 1, "an unsized grid still reports one column")
 
-	# ...but a list that has never been laid out must keep what the scene drew.
+	# A list that has never been laid out must keep what the scene drew.
 	# Collection and the Battle picker both sit hidden until opened, so width 0
 	# is the state the fit runs in first, and answering it would collapse a
 	# two-column grid to one.
@@ -1118,59 +1121,77 @@ func _test_card_grids_fill_width() -> void:
 	var swatch := Image.create(8, 8, false, Image.FORMAT_RGBA8)
 	swatch.fill(Color.RED)
 	var icon := ImageTexture.create_from_image(swatch)
-	var demo_rows: Array[Dictionary] = []
-	for index in 8:
-		demo_rows.append({
+	var atlas_rows: Array[Dictionary] = []
+	var roster: Array[Dictionary] = []
+	for index in 12:
+		atlas_rows.append({
 			"form_id": "grid-fill-%d" % index,
 			"discovered": true,
 			"display_name": "Card %d" % index,
 			"element": "plant",
 			"stage": 1,
 		})
+		roster.append({
+			"id": "grid-fill-%d" % index,
+			"nickname": "Card %d" % index,
+			"element": "spark",
+		})
+
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(720, 1602)
+	root.add_child(viewport)
+	var collection := (
+		load("res://scenes/ui/collection_view.tscn") as PackedScene
+	).instantiate() as Control
+	viewport.add_child(collection)
+	collection.visible = true
+	collection.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	collection.set_rows(roster, "", func(_row: Dictionary) -> Texture2D: return icon)
+	var atlas := (
+		load("res://scenes/ui/atlas_view.tscn") as PackedScene
+	).instantiate() as Control
+	viewport.add_child(atlas)
+	atlas.visible = true
+	atlas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	atlas.show_demo(atlas_rows, icon)
+	var list := collection.find_child("AnimaList", true, false) as ItemList
+	var grid := atlas.find_child("AtlasGrid", true, false) as GridContainer
+
 	var collection_columns: Array[int] = []
 	var atlas_columns: Array[int] = []
-	for width: int in [720, 1440]:
-		var viewport := SubViewport.new()
+	for width: int in [720, 1440, 720]:
 		viewport.size = Vector2i(width, 1602)
-		root.add_child(viewport)
-		var collection := (
-			load("res://scenes/ui/collection_view.tscn") as PackedScene
-		).instantiate() as Control
-		viewport.add_child(collection)
-		collection.visible = true
-		collection.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		var atlas := (
-			load("res://scenes/ui/atlas_view.tscn") as PackedScene
-		).instantiate() as Control
-		viewport.add_child(atlas)
-		atlas.visible = true
-		atlas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		atlas.show_demo(demo_rows, icon)
-		await process_frame
-		await process_frame
+		# Columns feed a grid's height, height decides whether the scroll bar
+		# shows, and the bar takes width back -- so let the fit settle, and
+		# fail if it never does rather than sampling mid-trade.
+		for _settle in 5:
+			await process_frame
 
-		var list := collection.find_child("AnimaList", true, false) as ItemList
-		collection_columns.append(list.max_columns)
-		var gap := float(list.get_theme_constant(&"h_separation"))
-		# Same chrome the fit subtracts: the list draws inside its panel, and
-		# the scrollbar lane is reserved whether or not the bar is showing.
-		var chrome := (
-			list.get_theme_stylebox(&"panel").get_minimum_size().x
-			+ list.get_v_scroll_bar().get_combined_minimum_size().x
+		# Not `max_columns`: that is only an upper bound. ItemList drops
+		# `current_columns` on its own when a row overflows by even a pixel,
+		# and it keeps the oversized cells while doing so -- which is what
+		# pooled a whole card's worth of width at the right edge. Read the row
+		# it actually drew, by counting the items sharing the first item's y.
+		var drawn := 1
+		while drawn < list.item_count and is_equal_approx(
+			list.get_item_rect(drawn).position.y, list.get_item_rect(0).position.y
+		):
+			drawn += 1
+		collection_columns.append(drawn)
+		_check_eq(
+			drawn, list.max_columns,
+			"Collection draws every column it asked for at %d px" % width
 		)
-		var span := (
-			list.max_columns * list.fixed_column_width + (list.max_columns - 1) * gap
-		)
+		# Whatever is left at the right must be too small for one more card,
+		# measured off the drawn row rather than off the fit's own arithmetic.
+		var right_gap := list.size.x - list.get_item_rect(drawn - 1).end.x
 		_check(
-			span <= list.size.x - chrome
-			and span > list.size.x - chrome - float(list.max_columns),
-			(
-				"Collection cells divide the whole list width at %d px "
-				+ "(spanned %.1f of %.1f)"
-			) % [width, span, list.size.x - chrome]
+			right_gap < float(list.fixed_column_width),
+			"Collection leaves under one card unused at %d px (%.1f of %d)" % [
+				width, right_gap, list.fixed_column_width
+			]
 		)
 
-		var grid := atlas.find_child("AtlasGrid", true, false) as GridContainer
 		atlas_columns.append(grid.columns)
 		var last_in_row := grid.get_child(grid.columns - 1) as Control
 		_check(
@@ -1178,25 +1199,52 @@ func _test_card_grids_fill_width() -> void:
 			and last_in_row.position.x + last_in_row.size.x >= grid.size.x - 1.0,
 			"Atlas cards stretch to the grid's right edge at %d px" % width
 		)
-		# Columns feed the grid's height, height decides whether the scroll bar
-		# shows, and the bar takes width back -- so the fit has to settle rather
-		# than trade columns for a bar forever.
-		for _settle in 3:
-			await process_frame
+		# `AtlasScroll` disables horizontal scrolling, so the grid's minimum
+		# width climbs to `columns x CARD_MIN.x` and propagates up. Measured on
+		# `Column`, not on the view root: the root is a plain Control, which
+		# never aggregates a child's minimum, while a Container clamps itself up
+		# to it and spills past the screen -- filters and tabs clipped on both
+		# edges, exactly as reported.
+		var column := atlas.get_node("Column") as Control
 		_check(
-			list.max_columns == collection_columns[-1] and grid.columns == atlas_columns[-1],
-			"both grids settle instead of trading columns against their scroll bar at %d px" % width
+			column.size.x <= float(width),
+			"Atlas fits the viewport at %d px (content is %.0f wide)" % [width, column.size.x]
 		)
-		viewport.queue_free()
+	_check(
+		collection_columns[1] > collection_columns[0]
+		and collection_columns[2] == collection_columns[0],
+		"Collection follows the width both ways, got %s" % [collection_columns]
+	)
+	_check(
+		atlas_columns[1] > atlas_columns[0] and atlas_columns[2] == atlas_columns[0],
+		"Atlas follows the width both ways, got %s" % [atlas_columns]
+	)
+
+	# Fewer cards than the screen has room for. An empty column still takes its
+	# share of the width, so columns capped only by the width leave a roster of
+	# four huddled at the left with the rest of the screen idle -- the same
+	# complaint, arriving from the other direction. Capping the columns at the
+	# card count hands that width to the cells that exist instead.
+	viewport.size = Vector2i(1440, 1602)
+	collection.set_rows(
+		roster.slice(0, 4), "", func(_row: Dictionary) -> Texture2D: return icon
+	)
+	atlas.show_demo(atlas_rows.slice(0, 4), icon)
+	for _settle in 5:
 		await process_frame
+	_check_eq(list.max_columns, 4, "Collection spreads a short roster over one row")
 	_check(
-		collection_columns.size() == 2 and collection_columns[1] > collection_columns[0],
-		"Collection gains columns on a wider screen, got %s" % [collection_columns]
+		list.size.x - list.get_item_rect(3).end.x < float(list.fixed_column_width),
+		"a short Collection roster still reaches the right edge"
 	)
+	_check_eq(grid.columns, 4, "Atlas spreads a short library over one row")
+	var last_card := grid.get_child(3) as Control
 	_check(
-		atlas_columns.size() == 2 and atlas_columns[1] > atlas_columns[0],
-		"Atlas gains columns on a wider screen, got %s" % [atlas_columns]
+		last_card.position.x + last_card.size.x >= grid.size.x - 1.0,
+		"a short Atlas library still reaches the right edge"
 	)
+	viewport.queue_free()
+	await process_frame
 
 
 func _test_autowrap_labels_have_wrap_width() -> void:
