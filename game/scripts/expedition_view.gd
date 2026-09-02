@@ -21,7 +21,7 @@ signal combat_open_changed(open: bool)
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
 const SHOP_SKIP_OPTION_ID := "shop-skip"
 const BOSS_SEEKER_DIALOG := preload("res://scripts/boss_seeker_dialog.gd")
-const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
+const SEEKER_SHEET := preload("res://scripts/seeker_sheet.gd")
 
 @onready var _column: VBoxContainer = %ExpeditionColumn
 @onready var _back: Button = %ExpeditionBack
@@ -930,7 +930,7 @@ func _begin_chapter_intro(art_cache: Dictionary) -> void:
 	await _seeker_dialog.present(
 		str(seeker.get("display_name", "")),
 		line,
-		BOSS_SEEKER_SHEET.portrait(
+		SEEKER_SHEET.portrait(
 			GameState.as_dict(art_cache.get("boss_seeker")),
 			str(seeker.get("portrait_pose", "profile"))
 		)

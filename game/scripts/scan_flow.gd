@@ -7341,9 +7341,9 @@ func _run_team_battle_demo(boss: bool = false) -> Dictionary:
 		var seeker_texture := frames.get_frame_texture("idle", 0)
 		var seeker_size := Vector2i(seeker_texture.get_size())
 		var seeker_poses: Dictionary = {}
-		for pose in BossSeekerSheet.KNOWN_POSES:
+		for pose in SeekerSheet.KNOWN_POSES:
 			seeker_poses[pose] = {"region": [0, 0, seeker_size.x, seeker_size.y]}
-		art["boss_seeker"] = BossSeekerSheet.build(seeker_texture, {
+		art["boss_seeker"] = SeekerSheet.build(seeker_texture, {
 			"version": 1,
 			"frame_size": [seeker_size.x, seeker_size.y],
 			"poses": seeker_poses,
@@ -7516,7 +7516,7 @@ func _load_local_seeker_sheet(chapter_dir: String) -> Dictionary:
 	var texture := AnimaLoader.load_sheet_texture(sheet_path)
 	if texture == null:
 		return {}
-	return BossSeekerSheet.build(texture, parsed)
+	return SeekerSheet.build(texture, parsed)
 
 
 func _run_boss_ace_demo() -> void:

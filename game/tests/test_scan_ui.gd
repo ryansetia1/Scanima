@@ -8384,7 +8384,7 @@ func _boss_seeker_loaded() -> Dictionary:
 		var y := row * 341
 		image.fill_rect(Rect2i(x, y, 300, 300), Color(0.25, 0.2, 0.7, 1))
 		poses[names[index]] = {"region": [x, y, 300, 300]}
-	return BossSeekerSheet.build(
+	return SeekerSheet.build(
 		ImageTexture.create_from_image(image),
 		{"version": 1, "frame_size": [300, 300], "poses": poses}
 	)

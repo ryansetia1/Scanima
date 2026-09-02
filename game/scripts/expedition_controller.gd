@@ -18,7 +18,7 @@ signal _request_settled
 signal _preload_settled
 
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
-const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
+const SEEKER_SHEET := preload("res://scripts/seeker_sheet.gd")
 
 ## Hanya operasi yang memang menggantikan seluruh konteks layar memakai panel
 ## loading. Masuk node, pilihan node, checkpoint, Shop, dan mulai zona
@@ -782,7 +782,7 @@ func _load_seeker_art(seeker: Dictionary) -> Dictionary:
 	var image := Image.new()
 	if image.load_png_from_buffer(download.bytes) != OK:
 		return {"ok": false}
-	return BOSS_SEEKER_SHEET.build(ImageTexture.create_from_image(image), manifest)
+	return SEEKER_SHEET.build(ImageTexture.create_from_image(image), manifest)
 
 
 func _load_arena_background(encounter: Dictionary) -> Texture2D:

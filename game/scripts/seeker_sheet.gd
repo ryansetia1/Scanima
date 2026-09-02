@@ -1,8 +1,8 @@
-class_name BossSeekerSheet
+class_name SeekerSheet
 extends RefCounted
 
-## SpriteFrames for a chapter Boss Seeker 3×3 sheet. Pose names are not Anima
-## poses, so this stays separate from AnimaLoader.
+## SpriteFrames for a Seeker 3×3 sheet. Pose names are not Anima poses, so this
+## stays separate from AnimaLoader.
 
 const MANIFEST_VERSION := 1
 const DEFAULT_POSE := "intro_idle"

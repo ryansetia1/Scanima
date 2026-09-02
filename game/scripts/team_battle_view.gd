@@ -44,9 +44,9 @@ const TEAM_BACKGROUND_LANDSCAPE: Texture2D = preload(
 	"res://assets/backgrounds/team_battle_landscape_background.png"
 )
 const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
-const BOSS_SEEKER_PRESENTER := preload("res://scripts/boss_seeker_presenter.gd")
+const SEEKER_PRESENTER := preload("res://scripts/seeker_presenter.gd")
 const BOSS_SEEKER_DIALOG := preload("res://scripts/boss_seeker_dialog.gd")
-const BOSS_SEEKER_SHEET := preload("res://scripts/boss_seeker_sheet.gd")
+const SEEKER_SHEET := preload("res://scripts/seeker_sheet.gd")
 const COMMIT_COLORS := {
 	"strike": Color(0.28, 0.9, 1.0, 1.0),
 	"surge": Color(1.0, 0.82, 0.4, 1.0),
@@ -140,7 +140,7 @@ var _player_portal: IncubatorEffect
 var _opponent_portal: IncubatorEffect
 var _player_shadow: Sprite2D
 var _opponent_shadow: Sprite2D
-var _seeker: BOSS_SEEKER_PRESENTER
+var _seeker: SEEKER_PRESENTER
 var _seeker_shadow: Sprite2D
 var _fighter_layer: Node2D
 var _background_session_id := ""
@@ -214,7 +214,7 @@ func _ready() -> void:
 	_opponent_portal = _make_portal(_opponent_anchor)
 	_player_shadow = _make_ground_shadow(_player_anchor)
 	_opponent_shadow = _make_ground_shadow(_opponent_anchor)
-	_seeker = BOSS_SEEKER_PRESENTER.new()
+	_seeker = SEEKER_PRESENTER.new()
 	_seeker.name = "BossSeeker"
 	_fighter_layer = Node2D.new()
 	_fighter_layer.name = "FighterLayer"
@@ -2357,7 +2357,7 @@ func _speak_seeker(
 		await _seeker_dialog.present(
 			str(seeker.get("display_name", "")),
 			line,
-			BOSS_SEEKER_SHEET.portrait(
+			SEEKER_SHEET.portrait(
 				GameState.as_dict(_art_cache.get("boss_seeker")),
 				str(seeker.get("portrait_pose", "profile"))
 			)

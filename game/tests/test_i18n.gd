@@ -104,6 +104,8 @@ const PLAYER_UI_FILES := [
 	"res://scripts/atlas_view.gd",
 	"res://scripts/menu_popover.gd",
 	"res://scripts/seeker_menu_sheet.gd",
+	"res://scripts/seeker_profile_view.gd",
+	"res://scripts/seeker_onboarding_sheet.gd",
 	"res://scripts/shop_sheet.gd",
 	"res://scripts/battle_pick_sheet.gd",
 	"res://scripts/element_catalog.gd",
@@ -121,6 +123,8 @@ const PLAYER_UI_FILES := [
 	"res://scenes/ui/anima_details_view.tscn",
 	"res://scenes/ui/atlas_view.tscn",
 	"res://scenes/ui/seeker_menu_sheet.tscn",
+	"res://scenes/ui/seeker_profile_view.tscn",
+	"res://scenes/ui/seeker_onboarding_sheet.tscn",
 	"res://scenes/ui/shop_sheet.tscn",
 	"res://scenes/ui/battle_pick_sheet.tscn",
 	"res://scenes/ui/bottom_nav.tscn",
@@ -212,8 +216,9 @@ func _check_referenced_keys(keys: Dictionary) -> void:
 		"(?:tr\\(|set_loading\\(|show_screen\\(|text = |title = |ok_button_text = )"
 		+ "\\s*\\\"([A-Z][A-Z0-9_]+)\\\""
 	)
+	# `[^"]` lets `.text = ""` through: clearing a label writes no copy.
 	var direct_text := RegEx.new()
-	direct_text.compile("\\.text\\s*=\\s*\\\"")
+	direct_text.compile("\\.text\\s*=\\s*\\\"[^\\\"]")
 	for path in PLAYER_UI_FILES:
 		var source := FileAccess.get_file_as_string(path)
 		_check(not source.is_empty(), "%s must be readable" % path)

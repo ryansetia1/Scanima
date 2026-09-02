@@ -483,7 +483,7 @@ func _test_boss_seeker_sheet() -> void:
 			Color(0.2, 0.3, 0.8, 1)
 		)
 		poses[names[index]] = {"region": [x, y, 300, 300]}
-	var loaded := BossSeekerSheet.build(
+	var loaded := SeekerSheet.build(
 		ImageTexture.create_from_image(image),
 		{"version": 1, "frame_size": [300, 300], "poses": poses}
 	)
@@ -491,7 +491,7 @@ func _test_boss_seeker_sheet() -> void:
 	var frames: SpriteFrames = loaded.get("frames")
 	_check(frames != null and frames.has_animation("intro_idle"), "seeker wajib punya intro_idle")
 	_check(frames.has_animation("profile") and not frames.has_animation("idle"), "seeker tidak memakai pose Anima")
-	_check(BossSeekerSheet.portrait(loaded, "profile") != null, "portrait seeker turun dari sheet yang sama")
+	_check(SeekerSheet.portrait(loaded, "profile") != null, "portrait seeker turun dari sheet yang sama")
 	var pose_offsets: Dictionary = loaded.get("pose_ground_offsets", {})
 	_check_eq(
 		pose_offsets.get("intro_idle"),
@@ -503,7 +503,7 @@ func _test_boss_seeker_sheet() -> void:
 		Vector2(0.0, 341.0 * 0.5 - 260.0),
 		"pose victory yang lebih pendek turun sampai kaki menyentuh anchor"
 	)
-	var seeker := BossSeekerPresenter.new()
+	var seeker := SeekerPresenter.new()
 	root.add_child(seeker)
 	seeker.apply(loaded)
 	seeker.set_pose("victory")
@@ -520,7 +520,7 @@ func _test_boss_seeker_sheet() -> void:
 	)
 	seeker.free()
 	_check(
-		not bool(BossSeekerSheet.build(ImageTexture.create_from_image(image), {
+		not bool(SeekerSheet.build(ImageTexture.create_from_image(image), {
 			"version": 1,
 			"frame_size": [300, 300],
 			"poses": {"profile": {"region": [682, 682, 300, 300]}},

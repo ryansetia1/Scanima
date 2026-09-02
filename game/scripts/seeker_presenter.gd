@@ -1,4 +1,4 @@
-class_name BossSeekerPresenter
+class_name SeekerPresenter
 extends AnimatedSprite2D
 
 var _rest_position := Vector2.ZERO
