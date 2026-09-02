@@ -175,6 +175,7 @@ create table profiles (
   genesis_cores  int  not null default 1,        -- Guest Seeker
   bits           int  not null default 50,       -- starter care pack
   seeker_name    text,                            -- unik case-insensitive
+  seeker_avatar  text,                            -- slug Seeker Roster; null = belum memilih
   birth_year     smallint,                        -- opsional, 13+
   gender         text,                            -- opsional
   seeker_xp      int not null default 0,
@@ -365,7 +366,7 @@ RLS aktif di semua tabel. Pemain hanya bisa membaca miliknya sendiri dan **tidak
 Bentuk yang benar-benar ter-apply ada di [`backend/supabase/migrations/20260812172744_rls_and_guards.sql`](../backend/supabase/migrations/20260812172744_rls_and_guards.sql). Blok di bawah adalah rancangannya, dan empat hal berubah saat implementasi karena rancangan ini kurang ketat:
 
 1. Semua policy memakai `(select auth.uid())` dan `to authenticated`. Sub-select membuat Postgres mengevaluasinya sekali per query, bukan sekali per baris.
-2. **Hak kolom Postgres, bukan trigger, yang menjadi lapis utama.** `revoke update on profiles` lalu `grant update (display_name, last_seen_at)` membuat client secara struktural tidak punya privilege menulis kolom mata uang, dan kolom baru apa pun di masa depan otomatis tertutup. Trigger tetap ada sebagai lapis kedua.
+2. **Hak kolom Postgres, bukan trigger, yang menjadi lapis utama.** `revoke update on profiles` lalu `grant update (display_name, last_seen_at)` membuat client secara struktural tidak punya privilege menulis kolom mata uang, dan kolom baru apa pun di masa depan otomatis tertutup. Trigger tetap ada sebagai lapis kedua. Kolom kosmetik yang ditambahkan sesudahnya memakai `grant update (<kolom>)` **aditif** — tanpa `revoke` tingkat tabel, karena revoke itu ikut mencabut hak kolom yang sudah ada dan mengharuskan pemberian ulang. Yang client-writable hari ini: `display_name`, `last_seen_at`, dan `seeker_avatar`.
 3. `app_config` ikut RLS **tanpa policy sama sekali**, plus `revoke all`, karena sakelar biaya bukan urusan client. Advisor Supabase melaporkan ini sebagai INFO `rls_enabled_no_policy`; itu memang yang kita inginkan.
 4. Keempat fungsi kuota SECURITY DEFINER dicabut EXECUTE-nya dari `anon` dan `authenticated`. Tanpa itu, Postgres memberi EXECUTE ke PUBLIC dan `refund_generation` menjadi endpoint publik di `/rest/v1/rpc/` — pemain bisa mengembalikan Core-nya sendiri sementara gambarnya tetap kita bayar.
 
@@ -417,9 +418,9 @@ begin
   -- yang berubah", jadi menambah kolom mata uang baru tidak perlu mengingat
   -- untuk memperbarui trigger ini.
   if current_role not in ('service_role', 'postgres', 'supabase_admin')
-     and (to_jsonb(new) - 'display_name' - 'last_seen_at')
-         is distinct from (to_jsonb(old) - 'display_name' - 'last_seen_at') then
-    raise exception 'hanya display_name dan last_seen_at yang boleh diubah client';
+     and (to_jsonb(new) - 'display_name' - 'last_seen_at' - 'seeker_avatar')
+         is distinct from (to_jsonb(old) - 'display_name' - 'last_seen_at' - 'seeker_avatar') then
+    raise exception 'hanya display_name, last_seen_at, dan seeker_avatar yang boleh diubah client';
   end if;
   return new;
 end $$;
@@ -429,6 +430,8 @@ create trigger guard_profiles before update on profiles
 ```
 
 Dua detail di trigger itu berbeda dari rancangan awal dan keduanya penting. Ia memeriksa `current_role`, bukan `request.jwt.claim.role`, karena klaim JWT adalah data request yang bisa hilang atau dipalsukan konteksnya sementara peran koneksi tidak. Dan ia berupa whitelist: daftar kolom mata uang yang harus diingat manusia adalah daftar yang cepat atau lambat ketinggalan satu kolom.
+
+`seeker_avatar` adalah nama ketiga di whitelist itu, dan satu-satunya yang ditambahkan sesudah rancangan awal. Ia pilihan kosmetik dari Seeker Roster yang ter-bundel di build, bukan mata uang: nilainya dibatasi `CHECK` terhadap daftar slug roster dan RLS sudah mengunci pemain ke row-nya sendiri, sehingga tidak ada RPC maupun operasi Edge Function untuk menulisnya.
 
 Aksi perawatan **tidak lagi client-writable**. Feed memakai inventory, Clean memakai Bits, dan semua aksi bisa menaikkan `care_score`, jadi kebutuhan ikut menjadi bagian transaksi ekonomi. Hak UPDATE client pada `animas` sekarang hanya `nickname`; `care`, `care_synced_at`, sleep, counter harian, Dormant, dan `care_score` hanya berubah lewat `apply_care()` service-role.
 

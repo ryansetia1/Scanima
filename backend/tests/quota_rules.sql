@@ -666,6 +666,37 @@ begin
   assert (select display_name from public.profiles where id = u1) = 'nama baru',
          'kolom kosmetik harus tetap bisa diubah client';
 
+  -- Seeker Avatar adalah pilihan kosmetik, jadi hak tulisnya diberikan sebagai
+  -- kolom ketiga di atas dua yang sudah ada — bukan dengan mencabut hak tabel
+  -- lalu memberikannya ulang. Dua baris berikut yang membuktikan penambahan itu
+  -- benar-benar aditif: kalau migrasi avatar memakai `revoke update on
+  -- profiles`, display_name di atas dan last_seen_at di sini yang mati lebih
+  -- dulu, dan matinya diam-diam.
+  update public.profiles set last_seen_at = now() where id = u1;
+  get diagnostics n = row_count;
+  assert n = 1, 'hak kolom last_seen_at hilang saat hak avatar ditambahkan';
+
+  update public.profiles set seeker_avatar = 'automaton' where id = u1;
+  assert (select seeker_avatar from public.profiles where id = u1) = 'automaton',
+         'pemain harus bisa memilih Seeker Avatar-nya sendiri tanpa RPC';
+
+  -- Yang membatasi nilainya adalah CHECK terhadap Seeker Roster, bukan UI.
+  begin
+    update public.profiles set seeker_avatar = 'wizard' where id = u1;
+    ok := false;
+  exception when check_violation then ok := true;
+  end;
+  assert ok, 'avatar di luar Seeker Roster harus ditolak database';
+  assert (select seeker_avatar from public.profiles where id = u1) = 'automaton',
+         'avatar yang ditolak tidak boleh mengubah pilihan yang sudah tersimpan';
+
+  -- RLS, bukan hak kolom, yang menahan tulisan lintas pemain: hak UPDATE
+  -- avatar memang dimiliki setiap authenticated. Row pemain lain karena itu
+  -- tidak terlihat dan tidak tersentuh, bukan menghasilkan galat privilege.
+  update public.profiles set seeker_avatar = 'masculine' where id = u2;
+  get diagnostics n = row_count;
+  assert n = 0, 'RLS tidak boleh membiarkan pemain menulis avatar pemain lain';
+
   begin
     update public.profiles set active_anima_id = v_delete_own where id = u1;
     ok := false;
@@ -734,6 +765,12 @@ begin
          'generation audit harus dipertahankan dengan anima_id null';
   assert not exists (select 1 from public.care_events where anima_id = v_delete_own),
          'care_events milik Anima terhapus harus ikut cascade';
+  -- Row u2 hanya terbaca dari luar RLS, jadi bukti bahwa tulisan avatar lintas
+  -- pemain di atas benar-benar tidak mendarat harus diambil di sini. Tanpa ini,
+  -- `row_count = 0` juga akan lulus kalau policy-nya hilang tetapi baris u2
+  -- kebetulan tidak cocok dengan predikat lain.
+  assert (select seeker_avatar is null from public.profiles where id = u2),
+         'avatar pemain lain berubah walau update-nya melaporkan 0 baris';
   grant update on public.profiles to authenticated;
   perform set_config('role', 'authenticated', true);
   begin
@@ -742,9 +779,12 @@ begin
   exception when others then ok := (sqlerrm like 'hanya display_name%');
   end;
   perform set_config('role', 'none', true);
-  -- Revoke tingkat tabel juga mencabut hak kolom, jadi hak kolomnya diberikan ulang.
+  -- Revoke tingkat tabel juga mencabut hak kolom, jadi hak kolomnya diberikan
+  -- ulang — ketiganya. Blok ini commit kalau lulus, jadi kolom yang lupa
+  -- disebut di sini kehilangan hak tulisnya di production, dan yang gagal
+  -- adalah pemain, bukan uji ini.
   revoke update on public.profiles from authenticated;
-  grant update (display_name, last_seen_at) on public.profiles to authenticated;
+  grant update (display_name, last_seen_at, seeker_avatar) on public.profiles to authenticated;
   assert ok, 'trigger guard harus menolak perubahan mata uang oleh non-service role';
 
   ----------------------------------------------------------------------------
@@ -2503,6 +2543,14 @@ begin
          and coalesce((v_j->'client_config'->'min_client_version'->>'ios')::int, -1) >= 0
          and coalesce((v_j->'client_config'->'min_client_version'->>'desktop')::int, -1) >= 0,
          'profile bootstrap harus membawa min_client_version yang client-safe';
+  -- Avatar pulang lewat ringkasan yang sama dengan saldo dan statistik, jadi
+  -- client tidak butuh round trip kedua untuk satu string. Nilainya dipilih u1
+  -- di bagian 8; `is not null` yang membuat uji ini gagal keras kalau tulisan
+  -- itu hilang, alih-alih lulus dengan membandingkan dua null.
+  assert (v_j->>'seeker_avatar') is not null
+         and (v_j->>'seeker_avatar')
+             = (select seeker_avatar from public.profiles where id = u1),
+         'ringkasan profil Seeker harus membawa Seeker Avatar yang tersimpan';
   assert exists (
            select 1 from storage.buckets
             where id = 'anima_sheets' and not public
