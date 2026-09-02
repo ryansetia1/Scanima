@@ -22,6 +22,7 @@ func _initialize() -> void:
 	_test_partial_poses()
 	await _test_presenter()
 	_test_boss_seeker_sheet()
+	_test_seeker_roster_sheets()
 	_test_real_sheet_if_given()
 
 	print("")
@@ -529,6 +530,141 @@ func _test_boss_seeker_sheet() -> void:
 	)
 
 
+## Pemeriksaan paling penting dari Seeker Avatar: art-nya ter-bundel (ADR-0002),
+## jadi tidak ada unduhan yang bisa gagal — dan karena begitu, satu-satunya cara
+## sebuah figur menghilang adalah sheet-nya lenyap dari build atau slug baru
+## ditambahkan tanpa art. Keduanya gagal senyap di tangan pemain; di sini
+## keduanya merah.
+func _test_seeker_roster_sheets() -> void:
+	print("9. Seeker Roster: tiap slug punya sheet ter-bundel yang lolos sembilan pose")
+	# Batas atasnya bukan gaya-gayaan: art ter-bundel berhenti gratis untuk
+	# ditumbuhkan, dan di atas sekitar enam figur biaya APK melewati kerumitan
+	# yang dibelinya, jadi pengiriman art harus pindah ke pola aset chapter
+	# (ADR-0002). Figur kelima tetap cuma satu sheet dan satu slug baru.
+	var size := SeekerRoster.SLUGS.size()
+	_check(
+		size >= 4 and size <= 6,
+		"roster berisi 4–6 figur; %d berarti ADR-0002 harus diubah dulu" % size
+	)
+	_check(
+		SeekerRoster.SLUGS.has(SeekerRoster.DEFAULT_SLUG),
+		"figur default wajib anggota roster, bukan slug di luar daftar"
+	)
+	for slug in SeekerRoster.SLUGS:
+		var path := SeekerRoster.sheet_path(slug)
+		_check(ResourceLoader.exists(path), "sheet %s wajib ter-bundel di %s" % [slug, path])
+		var loaded := SeekerRoster.load_sheet(slug)
+		_check(
+			bool(loaded.get("ok", false)),
+			"sheet %s harus dibangun: %s" % [slug, loaded.get("error", "")]
+		)
+		if not bool(loaded.get("ok", false)):
+			continue
+		var poses: PackedStringArray = loaded.get("poses", PackedStringArray())
+		_check_eq(poses.size(), SeekerSheet.KNOWN_POSES.size(), "sheet %s lolos sembilan pose" % slug)
+		for pose in SeekerSheet.KNOWN_POSES:
+			_check(poses.has(pose), "sheet %s kehilangan pose %s" % [slug, pose])
+		_check(
+			SeekerSheet.portrait(loaded, "profile") != null,
+			"potret %s turun dari sheet yang sama" % slug
+		)
+		# Penanda indeks pose duduk di dalam badan, bukan di margin sel: kalau ia
+		# bergeser ke luar, bbox opak intro_idle ikut membesar dan skala arena
+		# mengukur penanda alih-alih tinggi badan.
+		var metrics: Dictionary = loaded.get("render_metrics", {})
+		var reference_height := int(metrics.get("reference_height_px", 0))
+		_check(
+			reference_height >= 240 and reference_height <= SeekerRoster.CELL,
+			"tinggi referensi %s (%d px) harus tinggi badan, bukan sel penuh" % [slug, reference_height]
+		)
+		_check_cells_are_distinct(slug, loaded)
+
+
+## Sembilan sel yang saling berbeda adalah yang membuat pemetaan pose tertukar
+## terlihat mata: sheet yang menyalin satu pose ke pose lain merah walau
+## kesembilan selnya terisi.
+##
+## Dibandingkan sebagai siluet, bukan byte demi byte. Perbandingan byte terlihat
+## lebih ketat tapi justru buta: `process/fix_alpha_border=true` di .import
+## menulis ulang RGB piksel transparan dari tetangganya, jadi dua sel yang
+## identik di PNG sumber tiba setelah impor dengan ~54 byte berbeda — terukur,
+## dan cukup untuk membuat pemeriksaan kesamaan-persis selalu lulus.
+##
+## Cakupan alpha per petak tidak melihat perubahan RGB transparan itu sama
+## sekali. Terukur pada keempat sheet rilis, pasangan termirip 61–92 sementara
+## satu sel yang benar-benar disalin 0, jadi ambang 12 punya margin 5× ke pose
+## sungguhan yang paling mirip dan tetap menangkap salinan.
+const CELL_FINGERPRINT := 8
+const CELL_TWIN_TOLERANCE := 12
+
+
+## Cakupan alpha rata-rata per petak, dihitung sendiri alih-alih lewat
+## Image.resize(): menyusutkan 341px menjadi 8 petak adalah pengecilan 42×, dan
+## interpolasi bilinear pada rasio itu praktis menjadi point-sample — tangan
+## setebal 20px bisa hilang sama sekali dari sidik jarinya, terukur membuat dua
+## pose yang jelas berbeda terbaca kembar. Rata-rata kotak melihat setiap piksel.
+func _cell_fingerprint(image: Image, region: Rect2i) -> PackedFloat32Array:
+	var cell := image.get_region(region)
+	var data := cell.get_data()
+	var width := cell.get_width()
+	var height := cell.get_height()
+	var sums := PackedFloat32Array()
+	sums.resize(CELL_FINGERPRINT * CELL_FINGERPRINT)
+	var counts := PackedFloat32Array()
+	counts.resize(CELL_FINGERPRINT * CELL_FINGERPRINT)
+	for y in height:
+		var by := mini(y * CELL_FINGERPRINT / height, CELL_FINGERPRINT - 1)
+		for x in width:
+			var bx := mini(x * CELL_FINGERPRINT / width, CELL_FINGERPRINT - 1)
+			var bucket := by * CELL_FINGERPRINT + bx
+			sums[bucket] += float(data[(y * width + x) * 4 + 3])
+			counts[bucket] += 1.0
+	for i in sums.size():
+		sums[i] = sums[i] / maxf(counts[i], 1.0)
+	return sums
+
+
+## Rect tiap pose dibaca dari AtlasTexture yang sudah dibangun, bukan dihitung
+## ulang dari grid: yang dinilai jadi persis piksel yang digambar presenter,
+## termasuk 41px bawah yang dipulihkan _full_grid_cell untuk kaki.
+func _check_cells_are_distinct(slug: String, loaded: Dictionary) -> void:
+	var frames: SpriteFrames = loaded.get("frames")
+	if frames == null:
+		return
+	var prints: Dictionary = {}
+	var tightest := 255.0
+	var tightest_pair := ""
+	for pose in SeekerSheet.KNOWN_POSES:
+		var atlas: AtlasTexture = frames.get_frame_texture(pose, 0)
+		if atlas == null:
+			continue
+		var image := atlas.atlas.get_image()
+		var rect := Rect2i(atlas.region)
+		_check(
+			image.get_region(rect).get_used_rect().size.x > 0,
+			"sel %s pada %s tidak boleh kosong" % [pose, slug]
+		)
+		var signature := _cell_fingerprint(image, rect)
+		var twin := ""
+		for other: String in prints:
+			var spread := 0.0
+			for k in signature.size():
+				spread = maxf(spread, absf(signature[k] - prints[other][k]))
+			if spread < tightest:
+				tightest = spread
+				tightest_pair = "%s vs %s" % [other, pose]
+			if spread < CELL_TWIN_TOLERANCE:
+				twin = other
+				break
+		_check(twin.is_empty(), "sel %s pada %s kembar dengan %s" % [pose, slug, twin])
+		prints[pose] = signature
+	# Marginnya dicetak, bukan cuma diassert: siapa pun yang menambah figur nanti
+	# bisa melihat seberapa dekat sheet-nya ke ambang sebelum ia benar-benar merah.
+	print("   %s: pasangan termirip %.0f (%s), ambang %d" % [
+		slug, tightest, tightest_pair, CELL_TWIN_TOLERANCE
+	])
+
+
 ## Memeriksa sheet sungguhan yang dihasilkan pipeline Node, kalau path-nya
 ## diberikan. Ini satu-satunya test yang membuktikan kontrak antara
 ## backend/supabase/functions/_shared/postprocess.mjs dan AnimaLoader benar-benar cocok, bukan hanya cocok
@@ -544,10 +680,10 @@ func _test_real_sheet_if_given() -> void:
 			manifest_path = arg.trim_prefix("--manifest=")
 
 	if manifest_path.is_empty():
-		print("9. sheet nyata: dilewati (tidak ada --manifest=)")
+		print("10. sheet nyata: dilewati (tidak ada --manifest=)")
 		return
 
-	print("9. sheet nyata dari pipeline Node: %s" % manifest_path)
+	print("10. sheet nyata dari pipeline Node: %s" % manifest_path)
 	var loaded: Dictionary = AnimaLoader.load_from_manifest(manifest_path)
 	_check(loaded.get("ok", false), "sheet pipeline harus dimuat: %s" % loaded.get("error", ""))
 	if not loaded.get("ok", false):

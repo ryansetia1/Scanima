@@ -28,6 +28,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const COMMITTED_PNG_TARGETS = [
   "game/assets/catalog/food_sheet.png",
   "game/assets/catalog/item_sheet.png",
+  "game/assets/seekers/androgynous.png",
+  "game/assets/seekers/masculine.png",
+  "game/assets/seekers/feminine.png",
+  "game/assets/seekers/automaton.png",
   "backend/tools/chapter_factory/static/point-hex-vessel.png",
 ];
 
