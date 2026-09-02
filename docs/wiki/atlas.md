@@ -7,7 +7,9 @@ menjadi shortcut langsung ke tab yang sama.
 Server Atlas sudah aktif. Layar ini muncul setelah pemain memasang APK baru;
 build lama tetap menampilkan Gallery selama masa pembaruan.
 
-Atlas memakai satu grid tiga kolom dengan filter:
+Atlas memakai satu grid kartu dengan filter. Di layar ponsel biasa grid itu tiga
+kolom; layar yang lebih lebar menambah kolom sendiri supaya kartunya mengisi
+lebar layar, bukan menumpuk di sisi kiri.
 
 - **All** — semua form yang sudah tercatat, ditambah siluet Expedition yang
   sudah tersedia untuk chapter terbuka.
@@ -15,8 +17,7 @@ Atlas memakai satu grid tiga kolom dengan filter:
 - **Expedition** — Anima yang benar-benar sudah muncul di arena Expedition.
 - **Duel** — Anima pemain lain yang sudah kamu lawan.
 
-Kartu grid hanya menampilkan nama dan elemen agar tiga kolom tetap mudah
-dipindai. Form Hatchling, Adult, atau Evolved tampil setelah profil dibuka.
+Kartu grid hanya menampilkan nama dan elemen agar grid tetap mudah dipindai. Form Hatchling, Adult, atau Evolved tampil setelah profil dibuka.
 
 Hatchling, Adult, dan Evolved adalah entry terpisah. Scan langsung mencatat
 Hatchling milikmu; ritual **Evolve** mencatat form baru setelah art-nya berhasil

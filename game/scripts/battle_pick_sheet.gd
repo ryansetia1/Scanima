@@ -5,6 +5,8 @@ signal profile_requested(row: Dictionary)
 signal battle_requested(row: Dictionary)
 
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
+## Sama dengan Collection: lantai lebar kartu, bukan jumlah kolom yang dipatok.
+const CARD_MIN_WIDTH := 290.0
 
 @onready var _title: Label = %BattlePickTitle
 @onready var _empty: Label = %BattlePickEmpty
@@ -33,9 +35,15 @@ func _ready() -> void:
 		_list, _on_item_selected, _list.deselect_all
 	)
 	set_fill_child(_list)
+	_list.resized.connect(_fit_columns)
+	_fit_columns()
 	_profile_button.pressed.connect(_on_profile)
 	_battle_button.pressed.connect(_on_battle)
 	dismissed.connect(_reset)
+
+
+func _fit_columns() -> void:
+	UiJuice.fit_item_grid(_list, CARD_MIN_WIDTH)
 
 
 func open_picker(

@@ -4,9 +4,12 @@ extends Control
 signal back_requested
 signal help_requested(title: String, body: String)
 signal rename_requested
+signal account_requested
+signal delete_account_requested
 
 const INFO_ROW := preload("res://scenes/ui/info_value_row.tscn")
 const TROPHY_CARD_PX := 176.0
+const MENU_ICON: Texture2D = preload("res://assets/icons/more-vertical.svg")
 
 @onready var _name: Label = %SeekerProfileName
 @onready var _portrait: TextureRect = %SeekerPortrait
@@ -14,6 +17,12 @@ const TROPHY_CARD_PX := 176.0
 @onready var _trophy_section: VBoxContainer = %TrophySection
 @onready var _trophy_empty: Label = %TrophyEmpty
 @onready var _trophy_grid: GridContainer = %TrophyGrid
+@onready var _account: Button = %SeekerAccount
+@onready var _menu_button: Button = %SeekerProfileMenu
+@onready var _action_popover: Control = %SeekerActionPopover
+@onready var _action_panel: PanelContainer = %SeekerActionPanel
+@onready var _action_rename: Button = %SeekerActionRename
+@onready var _action_delete: Button = %SeekerActionDelete
 
 ## trophy_id -> TextureRect kartunya, supaya art yang menyusul dari disk atau
 ## jaringan bisa dipasang tanpa membangun ulang grid.
@@ -24,8 +33,27 @@ var _trophy_skeleton: UiSkeleton
 
 func _ready() -> void:
 	%SeekerProfileBack.pressed.connect(func() -> void: back_requested.emit())
-	%RenameSeeker.pressed.connect(func() -> void: rename_requested.emit())
+	_account.pressed.connect(func() -> void: account_requested.emit())
+	_menu_button.icon = MENU_ICON
+	_menu_button.pressed.connect(_toggle_action_menu)
+	%SeekerActionBackdrop.pressed.connect(close_action_menu)
+	_action_popover.resized.connect(_position_action_menu)
+	_action_rename.pressed.connect(_request_rename)
+	_action_delete.pressed.connect(_request_delete_account)
+	UiJuice.install_button(_menu_button)
+	UiJuice.install_button(_action_rename)
+	UiJuice.install_button(_action_delete)
+	UiJuice.mark_destructive_row(_action_delete)
 	_trophy_skeleton = _build_trophy_skeleton()
+
+
+## Identitas hidup di profil, preference hidup di Settings — jadi Sign in with
+## Google / Sign Out berdiri sebagai aksi utama di sini. Delete tetap milik akun
+## tertaut saja: guest yang bisa menghapus dirinya sendiri berarti Core dan Bits
+## gratisnya bisa di-reset berulang.
+func set_account(anonymous: bool) -> void:
+	_account.text = tr("SEEKER_SIGN_IN_GOOGLE") if anonymous else tr("SEEKER_SIGN_OUT")
+	_action_delete.visible = not anonymous
 
 
 func set_profile(profile: Dictionary, portrait: Texture2D) -> void:
@@ -108,11 +136,57 @@ static func trophy_entries(rows: Array) -> Array[Dictionary]:
 
 func set_busy(busy: bool) -> void:
 	%SeekerProfileBack.disabled = busy
-	%RenameSeeker.disabled = busy
+	_menu_button.disabled = busy
+	_account.disabled = busy
+	if busy:
+		close_action_menu(false)
+
+
+func is_action_menu_open() -> bool:
+	return _action_popover.visible
+
+
+func close_action_menu(restore_focus: bool = true) -> void:
+	if not _action_popover.visible:
+		return
+	_action_popover.visible = false
+	if restore_focus and _menu_button.is_visible_in_tree() and not _menu_button.disabled:
+		_menu_button.grab_focus()
 
 
 static func level_from_xp(xp: int) -> int:
 	return 1 + int(floor(sqrt(float(maxi(0, xp)) / 5.0)))
+
+
+func _toggle_action_menu() -> void:
+	if _menu_button.disabled:
+		return
+	if _action_popover.visible:
+		close_action_menu()
+		return
+	_action_popover.visible = true
+	_position_action_menu()
+	_focus_action_menu.call_deferred()
+
+
+func _position_action_menu() -> void:
+	if _action_popover.visible:
+		UiJuice.place_popover_panel(_action_panel, _menu_button, _action_popover)
+
+
+func _focus_action_menu() -> void:
+	if _action_popover.visible and not _action_rename.disabled:
+		_action_rename.grab_focus()
+
+
+func _request_rename() -> void:
+	close_action_menu(false)
+	rename_requested.emit()
+
+
+func _request_delete_account() -> void:
+	close_action_menu(false)
+	delete_account_requested.emit()
 
 
 func _add_row(label_key: String, value: String, help_key: String = "") -> void:

@@ -117,9 +117,7 @@ func _ready() -> void:
 	UiJuice.install_button(_menu_button)
 	UiJuice.install_button(_action_rename)
 	UiJuice.install_button(_action_delete)
-	_action_delete.add_theme_color_override("font_color", Color("ff667d"))
-	_action_delete.add_theme_color_override("font_hover_color", Color("ff8fa0"))
-	_action_delete.add_theme_color_override("font_pressed_color", Color("ff8fa0"))
+	UiJuice.mark_destructive_row(_action_delete)
 	_history_source_a_skeleton = _build_history_art_skeleton(
 		_history_source_a, "SynthesisHistorySourceASkeleton"
 	)
@@ -660,24 +658,9 @@ func _toggle_action_menu() -> void:
 func _position_action_menu() -> void:
 	if not _action_popover.visible:
 		return
-	var anchor_rect := _menu_button.get_global_rect()
-	var to_local := _action_popover.get_global_transform_with_canvas().affine_inverse()
-	var anchor_position := to_local * anchor_rect.position
-	var anchor_end := to_local * anchor_rect.end
-	var anchor_size := anchor_end - anchor_position
-	var panel_size := _action_panel.get_combined_minimum_size()
-	var below_y := anchor_position.y + anchor_size.y + PROFILE_MENU_GAP
-	var above_y := anchor_position.y - panel_size.y - PROFILE_MENU_GAP
-	var max_x := maxf(PROFILE_MENU_MARGIN, _action_popover.size.x - panel_size.x - PROFILE_MENU_MARGIN)
-	var max_y := maxf(PROFILE_MENU_MARGIN, _action_popover.size.y - panel_size.y - PROFILE_MENU_MARGIN)
-	var panel_x := clampf(
-		anchor_position.x + anchor_size.x - panel_size.x,
-		PROFILE_MENU_MARGIN,
-		max_x
+	UiJuice.place_popover_panel(
+		_action_panel, _menu_button, _action_popover, PROFILE_MENU_MARGIN, PROFILE_MENU_GAP
 	)
-	var panel_y := below_y if below_y <= max_y else maxf(PROFILE_MENU_MARGIN, above_y)
-	_action_panel.position = Vector2(panel_x, panel_y)
-	_action_panel.size = panel_size
 
 
 func _focus_action_menu() -> void:

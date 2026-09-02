@@ -33,6 +33,14 @@ size_flags_horizontal = 3
 theme_type_variation = &"PageTitleLabel"
 text = "SEEKER_PROFILE_TITLE"
 
+[node name="SeekerProfileMenu" type="Button" parent="Column/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+tooltip_text = "SEEKER_ACCOUNT_TITLE"
+mouse_default_cursor_shape = 2
+flat = true
+
 [node name="SeekerProfileBack" type="Button" parent="Column/Header"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(128, 96)
@@ -57,11 +65,11 @@ theme_type_variation = &"PageTitleLabel"
 text = "SEEKER_UNNAMED"
 horizontal_alignment = 1
 
-[node name="RenameSeeker" type="Button" parent="Column"]
+[node name="SeekerAccount" type="Button" parent="Column"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
-text = "SEEKER_RENAME"
+text = "SEEKER_SIGN_IN_GOOGLE"
 
 [node name="Scroll" type="ScrollContainer" parent="Column"]
 layout_mode = 2
@@ -104,3 +112,53 @@ layout_mode = 2
 theme_override_constants/h_separation = 16
 theme_override_constants/v_separation = 16
 columns = 3
+
+[node name="SeekerActionPopover" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 20
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="SeekerActionDim" type="ColorRect" parent="SeekerActionPopover"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.36)
+
+[node name="SeekerActionBackdrop" type="Button" parent="SeekerActionPopover"]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+focus_mode = 0
+flat = true
+
+[node name="SeekerActionPanel" type="PanelContainer" parent="SeekerActionPopover"]
+unique_name_in_owner = true
+z_index = 1
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 0
+theme_type_variation = &"MenuPopoverPanel"
+
+[node name="SeekerActionColumn" type="VBoxContainer" parent="SeekerActionPopover/SeekerActionPanel"]
+layout_mode = 2
+
+[node name="SeekerActionRename" type="Button" parent="SeekerActionPopover/SeekerActionPanel/SeekerActionColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MenuRowButton"
+text = "SEEKER_RENAME"
+
+[node name="SeekerActionDelete" type="Button" parent="SeekerActionPopover/SeekerActionPanel/SeekerActionColumn"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(320, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MenuRowButton"
+text = "ACCOUNT_DELETE"

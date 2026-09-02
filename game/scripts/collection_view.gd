@@ -16,6 +16,9 @@ signal synthesis_requested(preselected: Dictionary)
 
 const BADGE_INSET := Vector2(10.0, 8.0)
 const BADGE_FONT_SIZE := 20
+## Lantai lebar kartu, sama dengan `fixed_column_width` yang digambar scene.
+## Kolom di atas dua baru muncul kalau layarnya memang memberi ruang segini.
+const CARD_MIN_WIDTH := 290.0
 
 @onready var _status: Label = %CollectionStatus
 @onready var _list: ItemList = %AnimaList
@@ -71,10 +74,16 @@ func _ready() -> void:
 		_list, _on_row_tapped, _restore_highlight
 	)
 	_list.draw.connect(_draw_level_badges)
+	_list.resized.connect(_fit_columns)
+	_fit_columns()
 	_empty_action.pressed.connect(_on_empty_action)
 	_sheet.dismissed.connect(_on_sheet_dismissed)
 	_profile_button.pressed.connect(_view_profile)
 	_summon_button.pressed.connect(_summon)
+
+
+func _fit_columns() -> void:
+	UiJuice.fit_item_grid(_list, CARD_MIN_WIDTH)
 
 
 func refresh_localized_ui() -> void:

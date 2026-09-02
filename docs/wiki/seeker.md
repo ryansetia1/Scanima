@@ -35,19 +35,20 @@ Tap **Menu** di bottom navigation. Popover berisi:
 
 | Aksi | Fungsi |
 | --- | --- |
-| **Seeker Profile** | Lihat Level, EXP, koleksi, kemenangan, tanggal bergabung, dan Trophy Showcase |
+| **Seeker Profile** | Identitas akunmu: sign in, Level, EXP, koleksi, kemenangan, tanggal bergabung, dan Trophy Showcase |
 | **Anima Atlas** | Lihat form yang sudah kamu Scan atau temui |
-| **Settings** | Buka pengaturan akun dan aplikasi |
+| **Settings** | Pengaturan aplikasi |
 
 Di **Settings**:
 
 | Aksi | Fungsi |
 | --- | --- |
-| **Sign in with Google** | Masuk terpisah atau pindahkan progres guest |
-| **Sign Out** | Keluar dari Google di perangkat ini dan kembali ke guest |
 | **Music** | Nyalakan atau matikan lagu latar. Default menyala |
 | **Help** | Penjelasan singkat Seeker |
-| **Delete Account** | Hapus seluruh akun secara permanen |
+
+Aksi akun tidak ada di Settings. **Sign in with Google**, **Sign Out**,
+**Change Seeker Name**, dan **Delete Account** semuanya hidup di
+**Seeker Profile**.
 
 Music adalah setting perangkat dan tetap tersimpan saat kamu berganti akun.
 
@@ -101,6 +102,11 @@ starter Core tersimpan. Jika sinkronisasi Core gagal, restart game untuk mencoba
 grant yang sama lagi tanpa risiko Core ganda.
 
 ## Seeker Profile
+
+Tombol besar di bawah namamu adalah aksi akun: **Sign in with Google** saat
+kamu masih guest, **Sign Out** saat Google sudah terhubung. Ikon titik tiga di
+kanan judul membuka **Change Seeker Name** dan — hanya untuk akun yang sudah
+terhubung Google — **Delete Account**.
 
 | Baris | Artinya |
 | --- | --- |

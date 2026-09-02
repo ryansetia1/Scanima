@@ -370,15 +370,15 @@ func _ready() -> void:
 	_menu_popover.profile_requested.connect(_open_seeker_profile)
 	_menu_popover.atlas_requested.connect(_open_atlas)
 	_menu_popover.settings_requested.connect(_open_settings)
-	_seeker_menu_sheet.account_requested.connect(_show_account_action)
 	_seeker_menu_sheet.help_requested.connect(_show_seeker_help)
-	_seeker_menu_sheet.delete_account_requested.connect(_show_delete_account_confirmation)
 	_seeker_menu_sheet.music_changed.connect(_set_music_enabled)
 	_seeker_menu_sheet.chapter_push_changed.connect(_set_chapter_push)
 	_seeker_onboarding_sheet.submit_requested.connect(_complete_seeker_profile)
 	_seeker_profile_view.back_requested.connect(_return_from_overlay)
 	_seeker_profile_view.help_requested.connect(_show_details_help)
 	_seeker_profile_view.rename_requested.connect(_show_rename_seeker)
+	_seeker_profile_view.account_requested.connect(_show_account_action)
+	_seeker_profile_view.delete_account_requested.connect(_show_delete_account_confirmation)
 	_atlas_view.back_requested.connect(_return_from_overlay)
 	_atlas_view.collection_requested.connect(_open_collection)
 	_atlas_view.synthesis_requested.connect(_open_synthesis_lab)
@@ -2762,7 +2762,6 @@ func _open_settings() -> void:
 	if _busy:
 		return
 	_seeker_menu_sheet.show_menu(
-		GameState.is_anonymous(),
 		ChapterPush.available(),
 		GameState.chapter_push_enabled(),
 		GameState.music_enabled()
@@ -2825,6 +2824,7 @@ func _open_seeker_profile() -> void:
 		profile,
 		_thumbnail_for(_current_anima) if not _current_anima.is_empty() else null
 	)
+	_seeker_profile_view.set_account(GameState.is_anonymous())
 	_paint_cached_trophies()
 	_switch_destination(SEEKER_PROFILE_DEST)
 	await _load_seeker_trophies()
@@ -2949,7 +2949,6 @@ func _rename_seeker(value: String) -> void:
 
 
 func _show_account_action() -> void:
-	_seeker_menu_sheet.close()
 	if GameState.is_anonymous():
 		_show_sign_in_confirmation()
 		return
@@ -3198,7 +3197,6 @@ func _on_auth_failed(error: String) -> void:
 
 
 func _show_delete_account_confirmation() -> void:
-	_seeker_menu_sheet.close()
 	if GameState.account_switch_blocked():
 		_say_warning(tr("SEEKER_SWITCH_BLOCKED"), true)
 		return
@@ -5825,6 +5823,7 @@ func _switch_destination(
 	_battle_reward_revision += 1
 	_menu_popover.close()
 	_details_view.close_action_menu(false)
+	_seeker_profile_view.close_action_menu(false)
 	if destination == ANIMA_PROFILE_DEST and not profile_row.is_empty():
 		_profile_anima = profile_row.duplicate(true)
 	if destination == ANIMA_PROFILE_DEST and not _details_available():
@@ -6633,6 +6632,9 @@ func _handle_back(allow_quit: bool) -> bool:
 	if _destination == ANIMA_PROFILE_DEST and _details_view.is_action_menu_open():
 		_details_view.close_action_menu()
 		return true
+	if _destination == SEEKER_PROFILE_DEST and _seeker_profile_view.is_action_menu_open():
+		_seeker_profile_view.close_action_menu()
+		return true
 	if _destination == ANIMA_PROFILE_DEST:
 		_switch_destination(_profile_return_destination)
 		return true
@@ -7143,6 +7145,7 @@ func _run_trophy_demo() -> void:
 			"display_name": "Sugarfold Core %d" % (index + 1),
 		}})
 	_seeker_profile_view.set_profile(GameState.profile, null)
+	_seeker_profile_view.set_account(GameState.is_anonymous())
 	_seeker_profile_view.set_trophies(rows)
 	var swatch := Image.create(240, 240, false, Image.FORMAT_RGBA8)
 	swatch.fill(Color(0.52, 0.24, 0.34))

@@ -172,6 +172,42 @@ static func _on_item_list_gesture(
 		gesture["travel"] = absf(event.position.y - float(gesture["origin"]))
 
 
+## Grid kartu Anima rata kiri di layar lebar karena `ItemList` maupun
+## `GridContainer` hanya memakai kolom selebar kartunya lalu meninggalkan sisa
+## lebar kosong di kanan. Terukur pada jendela desktop 633x1024 (viewport
+## logical ~990 px pada basis 720x1602): Collection memakai 2x290 px dari ~930
+## px yang ada, Atlas 3x208 px. Jumlah kolom karena itu dihitung dari lebar yang
+## benar-benar tersedia, bukan dipatok di scene.
+static func grid_columns_for(available: float, min_column_width: float, gap: float) -> int:
+	if min_column_width <= 0.0:
+		return 1
+	return maxi(1, floori((available + gap) / (min_column_width + gap)))
+
+
+## Pasangan `ItemList`-nya: sesudah kolomnya dihitung, lebar selnya dibagi rata
+## sehingga baris berakhir tepat di tepi list alih-alih menyisakan celah.
+static func fit_item_grid(list: ItemList, min_column_width: float) -> void:
+	var panel := list.get_theme_stylebox(&"panel")
+	var inner := list.size.x - (panel.get_minimum_size().x if panel != null else 0.0)
+	# Ruang scrollbar dipesan walau barnya sedang tersembunyi. Menguranginya
+	# hanya saat terlihat berarti sel yang melebar bisa menyembunyikan bar, yang
+	# melebarkan list, yang memunculkan bar itu lagi.
+	inner -= list.get_v_scroll_bar().get_combined_minimum_size().x
+	# Sebuah list yang belum pernah di-layout melapor lebar 0, dan menerapkan
+	# jawaban untuk lebar itu berarti menulis satu kolom ke grid yang scene-nya
+	# sudah menggambar dua. Shell menyimpan Collection dan Battle picker dalam
+	# keadaan hidden sampai dibuka, jadi keadaan inilah yang pertama terlihat.
+	# Biarkan nilai scene berdiri sampai `resized` membawa lebar sungguhan.
+	if inner <= 0.0:
+		return
+	var gap := float(list.get_theme_constant(&"h_separation"))
+	var columns := grid_columns_for(inner, min_column_width, gap)
+	list.max_columns = columns
+	list.fixed_column_width = maxi(
+		int(min_column_width), floori((inner - gap * (columns - 1)) / float(columns))
+	)
+
+
 static func install_button(button: Button) -> void:
 	if button.has_meta(META_INSTALLED):
 		return
@@ -429,6 +465,47 @@ static func hide_overlay(overlay: Control, panel: Control) -> void:
 	if is_instance_valid(panel):
 		panel.scale = Vector2.ONE
 		panel.modulate = Color.WHITE
+
+
+## Baris destruktif di dalam popover kebab: merah tenang, bukan `DangerButton`
+## lebar penuh. Warnanya dipusatkan bersama penempatan panelnya supaya dua kebab
+## tidak bisa memerah berbeda; konfirmasinya tetap modal destruktif.
+const DESTRUCTIVE_INK := Color("ff667d")
+const DESTRUCTIVE_INK_BRIGHT := Color("ff8fa0")
+
+
+static func mark_destructive_row(button: Button) -> void:
+	button.add_theme_color_override("font_color", DESTRUCTIVE_INK)
+	button.add_theme_color_override("font_hover_color", DESTRUCTIVE_INK_BRIGHT)
+	button.add_theme_color_override("font_pressed_color", DESTRUCTIVE_INK_BRIGHT)
+
+
+## Panel kebab digantung di bawah anchor-nya, pindah ke atas kalau ruang bawah
+## habis, dan selalu di-clamp ke dalam `host`. Dipakai Anima Profile dan Seeker
+## Profile: satu matematika supaya popover kedua tidak menepi berbeda dari yang
+## pertama. `host` bukan viewport — ia Control popover-nya sendiri, jadi panel
+## tetap benar walau shell menggeser koordinatnya.
+static func place_popover_panel(
+	panel: Control,
+	anchor: Control,
+	host: Control,
+	margin: float = 16.0,
+	gap: float = 8.0
+) -> void:
+	var anchor_rect := anchor.get_global_rect()
+	var to_local := host.get_global_transform_with_canvas().affine_inverse()
+	var anchor_position := to_local * anchor_rect.position
+	var anchor_size := (to_local * anchor_rect.end) - anchor_position
+	var panel_size := panel.get_combined_minimum_size()
+	var below_y := anchor_position.y + anchor_size.y + gap
+	var above_y := anchor_position.y - panel_size.y - gap
+	var max_x := maxf(margin, host.size.x - panel_size.x - margin)
+	var max_y := maxf(margin, host.size.y - panel_size.y - margin)
+	panel.position = Vector2(
+		clampf(anchor_position.x + anchor_size.x - panel_size.x, margin, max_x),
+		below_y if below_y <= max_y else maxf(margin, above_y)
+	)
+	panel.size = panel_size
 
 
 # ponytail: hidden full-rect hosts can still report size 0 before their first

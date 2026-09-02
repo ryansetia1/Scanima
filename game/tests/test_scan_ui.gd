@@ -97,6 +97,7 @@ func _initialize() -> void:
 		)
 	var scan_scroll := scene.find_child("ScanScroll", true, false) as ScrollContainer
 	var profile_popover := scene.find_child("ProfileActionPopover", true, false) as Control
+	var seeker_popover := scene.find_child("SeekerActionPopover", true, false) as Control
 	_check(
 		scan_scroll != null and scan_scroll.anchor_right == 1.0 and scan_scroll.anchor_bottom == 1.0
 		and scan_scroll.offset_right == 0.0 and scan_scroll.offset_bottom == 0.0,
@@ -107,6 +108,12 @@ func _initialize() -> void:
 		and profile_popover.anchor_bottom == 1.0 and profile_popover.offset_right == 0.0
 		and profile_popover.offset_bottom == 0.0,
 		"Profile popover clamps against the whole safe viewport"
+	)
+	_check(
+		seeker_popover != null and seeker_popover.anchor_right == 1.0
+		and seeker_popover.anchor_bottom == 1.0 and seeker_popover.offset_right == 0.0
+		and seeker_popover.offset_bottom == 0.0,
+		"Seeker Profile popover clamps against the whole safe viewport"
 	)
 	_check(
 		not (scene.find_child("BattleContent", true, false).get_parent() is ScrollContainer)
@@ -135,9 +142,10 @@ func _initialize() -> void:
 		"TeamSwitchSlot0", "TeamSwitchSlot1", "TeamSwitchSlot2", "TeamSwitchSlot3",
 		"TeamRetryButton", "TeamLeaveButton",
 		"ExpeditionChoiceAbandon",
-		"OnboardingSubmit", "SeekerProfileBack", "RenameSeeker",
+		"OnboardingSubmit", "SeekerProfileBack", "SeekerProfileMenu",
+		"SeekerActionRename", "SeekerActionDelete",
 		"ChapterPush", "MenuProfile", "MenuAtlas", "MenuSettings",
-		"SeekerAccount", "SeekerHelp", "DeleteAccount",
+		"SeekerAccount", "SeekerHelp",
 	]:
 		var button := scene.find_child(name, true, false) as Button
 		_check(button != null, "%s must exist" % name)
@@ -164,7 +172,7 @@ func _initialize() -> void:
 	var list := scene.find_child("AnimaList", true, false) as ItemList
 	_check(list != null, "AnimaList must exist")
 	if list != null:
-		_check_eq(list.max_columns, 2, "collection uses two columns")
+		_check(list.max_columns >= 2, "collection keeps at least two columns")
 		_check_eq(list.fixed_icon_size, Vector2i(128, 128), "collection thumbnails are 128 px")
 	var scan_flow := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	var backend_flow := FileAccess.get_file_as_string("res://scripts/backend.gd")
@@ -609,6 +617,15 @@ func _initialize() -> void:
 		and shell_source.find("STATUS_NEED_CORE") >= 0,
 		"Android back closes Atlas and every remaining visible bottom sheet"
 	)
+	# Both kebabs are overlays the shell owns the exit for. A popover left open
+	# while the player leaves the screen paints over whatever comes next, and
+	# that is invisible to the views themselves.
+	_check(
+		shell_source.find("_seeker_profile_view.is_action_menu_open()") >= 0
+		and shell_source.find("_details_view.close_action_menu(false)") >= 0
+		and shell_source.find("_seeker_profile_view.close_action_menu(false)") >= 0,
+		"Android back and destination changes close both Profile kebabs"
+	)
 	_check(
 		shell_source.find("_shell_modal.open_input(") >= 0
 		and shell_source.find("tr(\"ACTION_CANCEL\")") >= 0
@@ -995,6 +1012,7 @@ func _initialize() -> void:
 	scene.free()
 	await _test_anima_tap_reactions()
 	await _test_item_grids_clip_to_one_line()
+	await _test_card_grids_fill_width()
 	await _test_autowrap_labels_have_wrap_width()
 	await _test_shared_components()
 	await _test_fly_to_animation()
@@ -1066,6 +1084,119 @@ func _test_item_grids_clip_to_one_line() -> void:
 		"multi-column item grids clip to one ellipsised line, not on %s" % [offenders]
 	)
 	await process_frame
+
+
+## A card grid with a pinned column count leaves the extra width of a wide
+## screen unused on its right, so the roster reads as shoved against the left
+## edge. Reported from a 633x1024 desktop window, which resolves to a ~990 px
+## logical viewport on the 720x1602 base: Collection filled two 290 px columns
+## of ~930 px and Atlas three 208 px ones. Both grids now derive their columns
+## from the width they really have, and the remainder is split across the cells
+## instead of pooling at the edge.
+func _test_card_grids_fill_width() -> void:
+	# The gap sits between columns only, so a width holding n cells plus n-1
+	# gaps must report exactly n -- one pixel short of that must report n-1.
+	_check_eq(UiJuice.grid_columns_for(290.0, 290.0, 12.0), 1, "a lone cell needs no gap")
+	_check_eq(UiJuice.grid_columns_for(591.0, 290.0, 12.0), 1, "a cell without its gap does not count")
+	_check_eq(UiJuice.grid_columns_for(592.0, 290.0, 12.0), 2, "two cells and one gap fit exactly")
+	_check_eq(UiJuice.grid_columns_for(0.0, 290.0, 12.0), 1, "an unsized grid still reports one column")
+
+	# ...but a list that has never been laid out must keep what the scene drew.
+	# Collection and the Battle picker both sit hidden until opened, so width 0
+	# is the state the fit runs in first, and answering it would collapse a
+	# two-column grid to one.
+	var unsized := ItemList.new()
+	unsized.max_columns = 2
+	unsized.fixed_column_width = 290
+	UiJuice.fit_item_grid(unsized, 290.0)
+	_check(
+		unsized.max_columns == 2 and unsized.fixed_column_width == 290,
+		"an unsized list keeps the scene's columns instead of collapsing to one"
+	)
+	unsized.free()
+
+	var swatch := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	swatch.fill(Color.RED)
+	var icon := ImageTexture.create_from_image(swatch)
+	var demo_rows: Array[Dictionary] = []
+	for index in 8:
+		demo_rows.append({
+			"form_id": "grid-fill-%d" % index,
+			"discovered": true,
+			"display_name": "Card %d" % index,
+			"element": "plant",
+			"stage": 1,
+		})
+	var collection_columns: Array[int] = []
+	var atlas_columns: Array[int] = []
+	for width: int in [720, 1440]:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(width, 1602)
+		root.add_child(viewport)
+		var collection := (
+			load("res://scenes/ui/collection_view.tscn") as PackedScene
+		).instantiate() as Control
+		viewport.add_child(collection)
+		collection.visible = true
+		collection.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		var atlas := (
+			load("res://scenes/ui/atlas_view.tscn") as PackedScene
+		).instantiate() as Control
+		viewport.add_child(atlas)
+		atlas.visible = true
+		atlas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		atlas.show_demo(demo_rows, icon)
+		await process_frame
+		await process_frame
+
+		var list := collection.find_child("AnimaList", true, false) as ItemList
+		collection_columns.append(list.max_columns)
+		var gap := float(list.get_theme_constant(&"h_separation"))
+		# Same chrome the fit subtracts: the list draws inside its panel, and
+		# the scrollbar lane is reserved whether or not the bar is showing.
+		var chrome := (
+			list.get_theme_stylebox(&"panel").get_minimum_size().x
+			+ list.get_v_scroll_bar().get_combined_minimum_size().x
+		)
+		var span := (
+			list.max_columns * list.fixed_column_width + (list.max_columns - 1) * gap
+		)
+		_check(
+			span <= list.size.x - chrome
+			and span > list.size.x - chrome - float(list.max_columns),
+			(
+				"Collection cells divide the whole list width at %d px "
+				+ "(spanned %.1f of %.1f)"
+			) % [width, span, list.size.x - chrome]
+		)
+
+		var grid := atlas.find_child("AtlasGrid", true, false) as GridContainer
+		atlas_columns.append(grid.columns)
+		var last_in_row := grid.get_child(grid.columns - 1) as Control
+		_check(
+			last_in_row != null
+			and last_in_row.position.x + last_in_row.size.x >= grid.size.x - 1.0,
+			"Atlas cards stretch to the grid's right edge at %d px" % width
+		)
+		# Columns feed the grid's height, height decides whether the scroll bar
+		# shows, and the bar takes width back -- so the fit has to settle rather
+		# than trade columns for a bar forever.
+		for _settle in 3:
+			await process_frame
+		_check(
+			list.max_columns == collection_columns[-1] and grid.columns == atlas_columns[-1],
+			"both grids settle instead of trading columns against their scroll bar at %d px" % width
+		)
+		viewport.queue_free()
+		await process_frame
+	_check(
+		collection_columns.size() == 2 and collection_columns[1] > collection_columns[0],
+		"Collection gains columns on a wider screen, got %s" % [collection_columns]
+	)
+	_check(
+		atlas_columns.size() == 2 and atlas_columns[1] > atlas_columns[0],
+		"Atlas gains columns on a wider screen, got %s" % [atlas_columns]
+	)
 
 
 func _test_autowrap_labels_have_wrap_width() -> void:
@@ -2580,47 +2711,31 @@ func _test_seeker_ui() -> void:
 	var menu = (load("res://scenes/ui/seeker_menu_sheet.tscn") as PackedScene).instantiate()
 	root.add_child(menu)
 	await process_frame
-	menu.show_menu(true, true, true, true)
+	menu.show_menu(true, true, true)
 	_check(
 		(menu.find_child("SeekerMenuTitle", true, false) as Label).text == tr("SETTINGS_TITLE"),
 		"Settings menu uses the shared title"
-	)
-	_check(
-		(menu.find_child("SeekerAccount", true, false) as Button).text
-			== tr("SEEKER_SIGN_IN_GOOGLE"),
-		"guest account action offers Google sign-in"
 	)
 	_check(
 		(menu.find_child("ChapterPush", true, false) as CheckButton).visible
 		and (menu.find_child("ChapterPush", true, false) as CheckButton).button_pressed,
 		"OS chapter push is an explicit opt-in shown only when its native adapter exists"
 	)
+	# Settings is preference-only now; account identity lives on Seeker Profile.
 	_check(
-		not (menu.find_child("DeleteAccount", true, false) as Button).visible,
-		"guest cannot delete the anonymous account (prevents free Core/Bits reset abuse)"
+		menu.find_child("SeekerAccount", true, false) == null
+		and menu.find_child("DeleteAccount", true, false) == null,
+		"Settings carries no account action to sit oddly beside Music"
 	)
-	var delete_account := menu.find_child("DeleteAccount", true, false) as Button
 	_check(
-		menu.find_child("ContentScroll", true, false) is ScrollContainer
-		and menu.find_child("DangerDivider", true, false) is HSeparator
-		and delete_account.theme_type_variation == &"DangerButton",
-		"Seeker menu scrolls safely and separates the destructive account action"
+		menu.find_child("ContentScroll", true, false) is ScrollContainer,
+		"Seeker menu still scrolls safely on short screens"
 	)
 	_check(
 		(menu.find_child("MusicEnabled", true, false) as CheckButton).button_pressed,
 		"music plays by default and can be turned off from Settings"
 	)
-	menu.show_menu(false, false, false, false)
-	_check(
-		(menu.find_child("SeekerAccount", true, false) as Button).text
-			== tr("SEEKER_SIGN_OUT"),
-		"linked account action is Sign Out while Delete Account remains separate"
-	)
-	_check(
-		delete_account.visible and delete_account.theme_type_variation == &"DangerButton",
-		"a linked account can delete itself; Sign Out does not replace or soften that action"
-	)
-	menu.show_menu(true, false, false, false)
+	menu.show_menu(false, false, false)
 	_check(
 		(menu.find_child("SeekerMenuTitle", true, false) as Label).text
 			== tr("SETTINGS_TITLE"),
@@ -2629,10 +2744,6 @@ func _test_seeker_ui() -> void:
 	_check(
 		not (menu.find_child("MusicEnabled", true, false) as CheckButton).button_pressed,
 		"a muted player reopens Settings with music still off"
-	)
-	_check(
-		not delete_account.visible,
-		"switching back to a guest hides Delete Account again"
 	)
 
 	var profile = (load("res://scenes/ui/seeker_profile_view.tscn") as PackedScene).instantiate()
@@ -2724,6 +2835,81 @@ func _test_seeker_ui() -> void:
 	onboarding.queue_free()
 	menu.queue_free()
 	profile.queue_free()
+	await process_frame
+	await _test_seeker_account_actions()
+
+
+## Sign in with Google, Sign Out, dan Delete Account pindah dari Settings ke
+## sini: yang dijaga adalah dua invarian yang selamat dari pindah rumah — guest
+## tidak boleh bisa menghapus akunnya sendiri (Core dan Bits gratis akan bisa
+## di-reset berulang), dan panel kebab tidak boleh keluar dari layar.
+func _test_seeker_account_actions() -> void:
+	var host := SubViewport.new()
+	host.size = Vector2i(720, 1602)
+	root.add_child(host)
+	var profile = (load("res://scenes/ui/seeker_profile_view.tscn") as PackedScene).instantiate()
+	host.add_child(profile)
+	profile.visible = true
+	profile.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await process_frame
+	var account := profile.find_child("SeekerAccount", true, false) as Button
+	var menu_button := profile.find_child("SeekerProfileMenu", true, false) as Button
+	var popover := profile.find_child("SeekerActionPopover", true, false) as Control
+	var panel := profile.find_child("SeekerActionPanel", true, false) as Control
+	var rename := profile.find_child("SeekerActionRename", true, false) as Button
+	var delete_button := profile.find_child("SeekerActionDelete", true, false) as Button
+	var backdrop := profile.find_child("SeekerActionBackdrop", true, false) as Control
+	profile.set_account(true)
+	_check(
+		account.text == tr("SEEKER_SIGN_IN_GOOGLE") and not delete_button.visible,
+		"a guest sees Google sign-in and cannot delete the anonymous account"
+	)
+	profile.set_account(false)
+	_check(
+		account.text == tr("SEEKER_SIGN_OUT") and delete_button.visible,
+		"a linked account swaps to Sign Out and keeps Delete Account reachable"
+	)
+	_check(
+		delete_button.get_theme_color(&"font_color") != rename.get_theme_color(&"font_color"),
+		"Delete Account reads as the destructive row, not another neutral one"
+	)
+	var requested := {"account": 0, "rename": 0, "delete": 0}
+	profile.account_requested.connect(func() -> void: requested.account += 1)
+	profile.rename_requested.connect(func() -> void: requested.rename += 1)
+	profile.delete_account_requested.connect(func() -> void: requested.delete += 1)
+	account.pressed.emit()
+	_check_eq(requested.account, 1, "the account row asks the shell once per tap")
+	menu_button.pressed.emit()
+	await process_frame
+	_check(
+		popover.visible
+		and Rect2(Vector2.ZERO, profile.size).encloses(Rect2(panel.position, panel.size)),
+		"the Seeker kebab panel stays inside the screen it is anchored to"
+	)
+	_check(
+		backdrop != null and backdrop.mouse_filter == Control.MOUSE_FILTER_STOP,
+		"an outside tap can dismiss the Seeker kebab"
+	)
+	rename.pressed.emit()
+	_check(
+		requested.rename == 1 and not popover.visible,
+		"choosing Rename closes the kebab instead of leaving it over the modal"
+	)
+	menu_button.pressed.emit()
+	await process_frame
+	delete_button.pressed.emit()
+	_check(
+		requested.delete == 1 and not popover.visible,
+		"choosing Delete Account closes the kebab before the confirmation opens"
+	)
+	menu_button.pressed.emit()
+	await process_frame
+	profile.set_busy(true)
+	_check(
+		not popover.visible and menu_button.disabled and account.disabled,
+		"a request in flight closes the kebab and locks both account entry points"
+	)
+	host.queue_free()
 	await process_frame
 
 
@@ -5663,7 +5849,10 @@ func _test_atlas_view() -> void:
 		_check(view.find_child(node_name, true, false) is Button, "%s filter exists" % node_name)
 	var atlas_grid := view.find_child("AtlasGrid", true, false) as GridContainer
 	var load_more := view.find_child("AtlasLoadMore", true, false) as Button
-	_check(atlas_grid != null and atlas_grid.columns == 3, "Atlas uses a compact three-column grid")
+	_check(
+		atlas_grid != null and atlas_grid.columns >= 3,
+		"Atlas keeps at least the compact three-column grid"
+	)
 	var final_page_entries: Array[Dictionary] = [{
 		"form_id": "final-page-form",
 		"discovered": true,

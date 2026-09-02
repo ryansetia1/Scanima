@@ -64,7 +64,8 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
   `Train` dengan copy Bits-only sampai cap 100; sesudah 100/100 Training nol hadiah.
   Kemenangan ketiga tetap result Battle berhadiah (`Progress 3/3`). Client refresh dari `server_now`/`reset_at` saat timer atau
   app resume, bukan dari jam device.
-- **Collection:** roster dua kolom; tap langsung membuka bottom sheet identity +
+- **Collection:** roster dua kolom di lebar ponsel dan lebih banyak kolom saat
+  layar melebar; tap langsung membuka bottom sheet identity +
   base stats. Condition memakai skeleton sampai care authoritative tersedia,
   dengan aksi `View Profile` dan `Summon`. Thumbnail hanya dari cache.
 - **Anima Profile:** overlay yang hanya dibuka dari Collection atau picker

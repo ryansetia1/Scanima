@@ -95,6 +95,24 @@ func _ready() -> void:
 	_build_detail_sheet()
 	_build_report_sheet()
 	_sync_filter_buttons()
+	_grid.resized.connect(_fit_columns)
+	_fit_columns()
+
+
+## Tiga kolom yang dipatok scene meninggalkan sisa lebar kosong di kanan begitu
+## layarnya lebih lebar dari basis 720 px. Kolomnya dihitung dari lebar yang
+## ada; kartunya sendiri `SIZE_EXPAND_FILL`, jadi sisa yang tidak genap satu
+## kolom dibagi rata alih-alih menumpuk di tepi.
+func _fit_columns() -> void:
+	# Sama seperti `UiJuice.fit_item_grid()`: grid yang belum di-layout melapor
+	# lebar 0, dan menerapkannya berarti satu kolom pada grid yang scene-nya
+	# menggambar tiga. Atlas hidden sampai tab-nya dibuka, jadi itu justru
+	# keadaan awalnya.
+	if _grid.size.x <= 0.0:
+		return
+	_grid.columns = UiJuice.grid_columns_for(
+		_grid.size.x, CARD_MIN.x, float(_grid.get_theme_constant(&"h_separation"))
+	)
 
 
 func _build_detail_sheet() -> void:
@@ -566,6 +584,7 @@ func _make_card(entry: Dictionary) -> Control:
 	var discovered := bool(entry.get("discovered", false))
 	var button := Button.new()
 	button.custom_minimum_size = CARD_MIN
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.flat = true
 	button.disabled = not discovered
 	var column := VBoxContainer.new()
