@@ -2471,13 +2471,18 @@ func _maybe_prompt_seeker_onboarding() -> void:
 		or _seeker_onboarding_sheet.visible
 	):
 		return
-	_seeker_onboarding_sheet.show_for_profile()
+	_seeker_onboarding_sheet.show_for_profile(GameState.profile.get("seeker_avatar"))
 
 
+## Satu submit menuliskan nama, Seeker Demographics opsional, dan figur opsional
+## sekaligus. Figur ikut sebagai argumen keempat alih-alih PATCH kedua supaya
+## pemain baru tidak bisa berakhir dengan nama tersimpan dan figur tidak, dan
+## `null` di situ berarti "biarkan apa adanya", bukan "kosongkan".
 func _complete_seeker_profile(
 	seeker_name: String,
 	birth_year: Variant,
-	gender: Variant
+	gender: Variant,
+	avatar: Variant
 ) -> void:
 	if _busy:
 		return
@@ -2487,6 +2492,7 @@ func _complete_seeker_profile(
 		"seeker_name": seeker_name,
 		"birth_year": birth_year,
 		"gender": gender,
+		"seeker_avatar": avatar,
 	})
 	if not Backend.response_applies(res, account_epoch):
 		return

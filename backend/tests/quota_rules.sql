@@ -206,8 +206,12 @@ begin
                where owner_id = u4 and reason = 'starter_team') = 1,
          'retry legacy tidak boleh menggandakan starter_team';
 
-  v_j := public.complete_seeker_profile(u1, 'TestSeeker', 2000, null);
+  -- Nama dan figur mendarat lewat satu submit, jadi pemain baru tidak bisa
+  -- berakhir dengan yang satu tersimpan dan yang lain tidak.
+  v_j := public.complete_seeker_profile(u1, 'TestSeeker', 2000, null, 'feminine');
   assert v_j->>'seeker_name' = 'TestSeeker', 'profil Seeker harus tersimpan';
+  assert v_j->>'seeker_avatar' = 'feminine',
+         'figur yang dipilih saat onboarding harus ikut tersimpan';
   begin
     perform public.complete_seeker_profile(u2, 'Has Space', null, null);
     ok := false;
@@ -220,7 +224,20 @@ begin
   exception when others then ok := (sqlerrm = 'SEEKER_NAME_TAKEN');
   end;
   assert ok, 'nama Seeker harus unik tanpa membedakan huruf besar kecil';
-  perform public.complete_seeker_profile(u2, 'GuestTwo', null, 'prefer_not_to_say');
+  -- Picker onboarding selalu punya figur default terpilih, jadi ia tidak boleh
+  -- punya kuasa menahan pemain di luar namanya sendiri: slug asing diabaikan
+  -- seperti `SeekerRoster.normalize()` mengabaikannya di client.
+  perform public.complete_seeker_profile(u2, 'GuestTwo', null, 'prefer_not_to_say', 'wizard');
+  assert (select seeker_name = 'GuestTwo' and seeker_avatar is null
+            from public.profiles where id = u2),
+         'figur di luar roster harus diabaikan tanpa ikut menggagalkan nama';
+  -- Argumen kelima yang hilang berarti "biarkan apa adanya", bukan
+  -- "kosongkan" — pemain yang sempat memilih dari Profile sebelum menamai
+  -- dirinya tidak boleh kehilangan figurnya karena picker tidak disentuh.
+  update public.profiles set seeker_avatar = 'automaton' where id = u4;
+  perform public.complete_seeker_profile(u4, 'LegacyFour', null, null);
+  assert (select seeker_avatar from public.profiles where id = u4) = 'automaton',
+         'onboarding tanpa menyentuh picker tidak boleh menghapus figur yang sudah ada';
   begin
     perform public.rename_seeker(u1, 'RenamedSeeker');
     ok := false;

@@ -1914,6 +1914,28 @@ sekali tidak terlihat terkait dengan baris kode yang salah.
 
 ## Daftar migration yang sudah live
 
+- Seeker Avatar ikut submit onboarding live 3 September 2026 lewat
+  `20260903043000_seeker_avatar_at_onboarding` + `seeker` version 9. Ini satu
+  dari sedikit migrasi yang **drop lalu create** alih-alih `create or replace`:
+  parameter kelima berarti signature baru, dan `create or replace` akan
+  meninggalkan overload 4-argumen di sebelahnya sehingga panggilan bernama
+  PostgREST menjadi ambigu. Konsekuensi yang tidak boleh dilupakan adalah drop
+  itu ikut membuang revoke/grant milik fungsi lama, dan fungsi baru lahir dengan
+  EXECUTE untuk PUBLIC — pada fungsi SECURITY DEFINER yang menerima `p_owner`,
+  membiarkannya berarti siapa pun boleh menamai profil pemain lain lewat
+  `/rest/v1/rpc`. Probe production sesudah apply: tepat satu
+  `complete_seeker_profile(uuid,text,integer,text,text)` ada, dan ACL-nya persis
+  `postgres=X/postgres | service_role=X/postgres` — nol `anon`, nol
+  `authenticated`. `quota_rules.sql` lengkap lulus terhadap production dengan
+  tiga pemeriksaan baru: figur yang dipilih ikut tersimpan bersama nama, slug di
+  luar roster diabaikan tanpa menggagalkan nama, dan argumen kelima yang hilang
+  tidak menghapus figur yang sudah dipilih. Argumen kelima itu sengaja
+  **mengabaikan** nilai asing alih-alih menolaknya seperti `p_gender`: gender
+  adalah jawaban pemain tentang dirinya sehingga menyimpan yang salah berarti
+  menyimpan kebohongan, sedangkan figur cuma kosmetik yang bisa diganti gratis —
+  dan kalau ia boleh menggagalkan transaksi, satu baris picker yang selalu punya
+  pilihan default jadi bisa mengunci pemain di luar namanya sendiri. Delapan
+  suite Godot dan `npm run selftest` tetap hijau.
 - Penyimpanan Seeker Avatar live 3 September 2026 lewat
   `20260903032000_seeker_avatar_choice`, di-push dengan `supabase db push
   --linked --workdir backend` sesudah satu dry-run, jadi tidak ada drift nama

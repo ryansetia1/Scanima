@@ -2698,10 +2698,28 @@ func _test_seeker_ui() -> void:
 	await process_frame
 	var submitted: Array[Dictionary] = []
 	onboarding.submit_requested.connect(
-		func(name: String, birth_year: Variant, gender: Variant) -> void:
-			submitted.append({"name": name, "birth_year": birth_year, "gender": gender})
+		func(name: String, birth_year: Variant, gender: Variant, avatar: Variant) -> void:
+			submitted.append({
+				"name": name,
+				"birth_year": birth_year,
+				"gender": gender,
+				"avatar": avatar,
+			})
 	)
 	onboarding.show_for_profile()
+	# The figure is decided in the same sheet as the name, as one row inside the
+	# one submit -- and it opens already answered, so a Seeker who does not care
+	# about it can go straight back to their first Anima.
+	var avatar_row := onboarding.find_child("SeekerAvatar", true, false) as SeekerAvatarPicker
+	_check_eq(
+		_live_row_count(avatar_row),
+		SeekerRoster.SLUGS.size(),
+		"onboarding shows the whole Seeker Roster in one row of the sheet it already had"
+	)
+	_check(
+		_marked_avatar_slugs(avatar_row) == PackedStringArray([SeekerRoster.DEFAULT_SLUG]),
+		"the onboarding picker opens with the default figure already chosen"
+	)
 	var onboarding_panel := onboarding.panel() as Control
 	var onboarding_scroll := onboarding.find_child("ContentScroll", true, false) as ScrollContainer
 	_check(
@@ -2756,6 +2774,65 @@ func _test_seeker_ui() -> void:
 		_check_eq(submitted[0].name, "Nova_13", "Seeker name reaches the server boundary")
 		_check_eq(submitted[0].birth_year, 2000, "optional birth year remains numeric")
 		_check_eq(submitted[0].gender, "man", "optional gender uses the server enum")
+		# Untouched means unanswered, exactly like a blank birth year: the figure
+		# travels as null so the server can tell "chose the default" apart from
+		# "left it alone" -- and, either way, the name still lands.
+		_check(
+			typeof(submitted[0].avatar) == TYPE_NIL,
+			"submitting without touching the picker still completes, and sends no figure"
+		)
+
+	# Gender and the figure are separate answers and must stay that way
+	# (ADR-0001). Checked in both directions -- either one alone would still let
+	# an appearance be derived from what the player said about themselves.
+	var gender_select := onboarding.find_child("Gender", true, false) as OptionButton
+	gender_select.select(1)
+	gender_select.item_selected.emit(1)
+	_check(
+		_marked_avatar_slugs(avatar_row) == PackedStringArray([SeekerRoster.DEFAULT_SLUG]),
+		"answering Gender never moves the figure the Seeker is about to submit"
+	)
+	var other := avatar_row.get_child(SeekerRoster.SLUGS.size() - 1) as Button
+	var other_slug := str(other.get_meta("avatar", ""))
+	# Mirrors a real tap on a toggle: Godot flips pressed first and reports the
+	# tap after, so the row is handed a moment with two figures marked.
+	other.button_pressed = true
+	other.pressed.emit()
+	_check(
+		gender_select.selected == 1
+		and _marked_avatar_slugs(avatar_row) == PackedStringArray([other_slug])
+		and not other_slug.is_empty(),
+		"picking a figure marks that one alone and leaves the Gender answer alone"
+	)
+	onboarding_submit.pressed.emit()
+	_check_eq(submitted.size(), 2, "the figure rides the same single submit, with no extra step")
+	if submitted.size() > 1:
+		_check_eq(submitted[1].avatar, other_slug, "the figure the Seeker picked is what is sent")
+		_check_eq(submitted[1].gender, "woman", "the Gender answer still travels in its own field")
+	onboarding.set_busy(true)
+	_check(
+		other.disabled,
+		"a submit in flight locks the figure row with the rest of the form"
+	)
+	onboarding.set_busy(false)
+
+	# A Seeker can reach Profile and pick a figure before ever naming themselves,
+	# and then the sheet has to open on the figure they are already wearing --
+	# otherwise the default would sit there ready to overwrite their choice. It
+	# still counts as untouched, so leaving it alone sends null and the server
+	# keeps what it has.
+	onboarding.show_for_profile(other_slug)
+	_check(
+		_marked_avatar_slugs(avatar_row) == PackedStringArray([other_slug]),
+		"reopening seeds the picker with the figure already stored, not the default"
+	)
+	onboarding_submit.pressed.emit()
+	_check_eq(submitted.size(), 3, "the seeded sheet still submits")
+	if submitted.size() > 2:
+		_check(
+			typeof(submitted[2].avatar) == TYPE_NIL,
+			"a seeded figure left untouched is not resent, so the stored one survives"
+		)
 
 	var menu = (load("res://scenes/ui/seeker_menu_sheet.tscn") as PackedScene).instantiate()
 	root.add_child(menu)

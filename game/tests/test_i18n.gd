@@ -106,6 +106,7 @@ const PLAYER_UI_FILES := [
 	"res://scripts/seeker_menu_sheet.gd",
 	"res://scripts/seeker_profile_view.gd",
 	"res://scripts/seeker_onboarding_sheet.gd",
+	"res://scripts/seeker_avatar_picker.gd",
 	"res://scripts/shop_sheet.gd",
 	"res://scripts/battle_pick_sheet.gd",
 	"res://scripts/element_catalog.gd",

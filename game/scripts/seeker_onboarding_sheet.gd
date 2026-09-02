@@ -1,7 +1,12 @@
 class_name SeekerOnboardingSheet
 extends UiBottomSheet
 
-signal submit_requested(seeker_name: String, birth_year: Variant, gender: Variant)
+signal submit_requested(
+	seeker_name: String,
+	birth_year: Variant,
+	gender: Variant,
+	avatar: Variant
+)
 
 const NAME_PATTERN := "^[A-Za-z][A-Za-z0-9_]{2,15}$"
 const FIELD_NAME := &"name"
@@ -9,6 +14,7 @@ const FIELD_BIRTH_YEAR := &"birth_year"
 
 @onready var _name: LineEdit = %SeekerName
 @onready var _name_label: Label = %NameLabel
+@onready var _avatar: SeekerAvatarPicker = %SeekerAvatar
 @onready var _birth_year: LineEdit = %BirthYear
 @onready var _birth_label: Label = %BirthLabel
 @onready var _gender: OptionButton = %Gender
@@ -16,6 +22,7 @@ const FIELD_BIRTH_YEAR := &"birth_year"
 @onready var _submit: Button = %OnboardingSubmit
 
 var _error_field := &""
+var _avatar_touched := false
 
 
 func _ready() -> void:
@@ -29,6 +36,7 @@ func _ready() -> void:
 	_gender.add_item(tr("SEEKER_GENDER_ANOTHER"), 4)
 	_gender.add_item(tr("SEEKER_GENDER_PREFER_NOT"), 5)
 	_submit.pressed.connect(_submit_form)
+	_avatar.chosen.connect(func(_slug: String) -> void: _avatar_touched = true)
 	_name.text_submitted.connect(func(_value: String) -> void: _submit_form())
 	_name.text_changed.connect(func(_value: String) -> void: _clear_error_for(FIELD_NAME))
 	_birth_year.text_changed.connect(
@@ -36,8 +44,17 @@ func _ready() -> void:
 	)
 
 
-func show_for_profile() -> void:
+## `avatar` adalah nilai profil yang sudah tersimpan, dan hampir selalu `null` di
+## sini — pemain sampai ke sheet ini justru karena profilnya belum lengkap.
+## `SeekerRoster.normalize()` memetakannya ke figur default, jadi satu kartu
+## selalu tertandai saat sheet terbuka dan picker tidak pernah bisa menahan
+## pemain yang cuma ingin menekan Create Seeker. Yang sudah pernah memilih dari
+## Profile lebih dulu melihat figurnya sendiri, bukan default yang akan menimpanya.
+func show_for_profile(avatar: Variant = null) -> void:
 	_clear_error()
+	_avatar_touched = false
+	_avatar.set_slug(avatar)
+	_avatar.build()
 	_submit.disabled = false
 	open()
 	_name.grab_focus()
@@ -48,6 +65,7 @@ func set_busy(busy: bool) -> void:
 	_name.editable = not busy
 	_birth_year.editable = not busy
 	_gender.disabled = busy
+	_avatar.set_disabled(busy)
 
 
 func show_error(message: String, field: StringName = FIELD_NAME) -> void:
@@ -91,7 +109,17 @@ func _submit_form() -> void:
 		"another_identity",
 		"prefer_not_to_say",
 	]
-	submit_requested.emit(seeker_name, year, genders[_gender.selected])
+	# Figur yang tidak disentuh dikirim sebagai `null`, sama seperti birth year
+	# dan gender yang dibiarkan kosong: itu yang membedakan pemain yang memilih
+	# figur default dari pemain yang membiarkannya, dan yang membuat argumen ini
+	# benar-benar opsional. Gender diambil dari kolomnya sendiri dan tidak pernah
+	# ikut menentukan figur (ADR-0001).
+	submit_requested.emit(
+		seeker_name,
+		year,
+		genders[_gender.selected],
+		_avatar.slug() if _avatar_touched else null
+	)
 
 
 func _clear_error_for(field: StringName) -> void:

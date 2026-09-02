@@ -25,6 +25,7 @@ type SeekerBody = {
   seeker_name?: unknown;
   birth_year?: unknown;
   gender?: unknown;
+  seeker_avatar?: unknown;
   confirmation?: unknown;
 };
 
@@ -89,11 +90,19 @@ Deno.serve(async (req) => {
       if (!Number.isInteger(birthYear) && birthYear !== null) {
         return json(400, { error: "INVALID_BIRTH_YEAR" });
       }
+      // Kosmetik dan opsional: null berarti pemain tidak menyentuh picker, dan
+      // RPC memperlakukannya sebagai "biarkan apa adanya". Nilai di luar Seeker
+      // Roster diabaikan di sana, bukan ditolak, supaya satu figur asing tidak
+      // bisa menahan pemain di luar namanya sendiri.
+      const avatar = typeof body.seeker_avatar === "string" && body.seeker_avatar !== ""
+        ? body.seeker_avatar
+        : null;
       return await rpc("complete_seeker_profile", {
         p_owner: ownerId,
         p_name: seekerName,
         p_birth_year: birthYear,
         p_gender: gender,
+        p_avatar: avatar,
       });
     }
     if (operation === "rename") {

@@ -23,8 +23,15 @@ Sesudah Anima pertama menetas, sheet **Create Your Seeker** meminta:
 
 - **Seeker Name** — wajib, unik, dan tanpa spasi. Panjangnya 3–16 karakter;
   mulai dengan huruf, lalu boleh memakai huruf, angka, atau `_`.
+- **Seeker Avatar** — barisan empat figur. Satu figur sudah terpilih saat sheet
+  terbuka, jadi kamu boleh langsung menekan **Create Seeker** tanpa
+  menyentuhnya. Ia bisa diganti kapan saja nanti, gratis.
 - **Birth Year** — opsional, untuk pemain usia 13+.
 - **Gender** — opsional dan boleh dilewati.
+
+Semuanya tersimpan sekali lewat **Create Seeker**; tidak ada langkah lanjutan.
+Jawaban **Gender** tidak menentukan figur mana yang terpilih, dan memilih figur
+tidak mengubah jawaban **Gender** — keduanya pertanyaan yang berbeda.
 
 Sheet boleh ditutup dulu. Selama nama belum dibuat, game akan menawarkannya lagi.
 **Change Seeker Name** tersedia sesudahnya, dengan jeda 30 hari antarperubahan.
@@ -120,12 +127,16 @@ hanya untuk akun yang sudah terhubung Google — **Delete Account**.
 
 ## Seeker Avatar
 
-Potret di atas namamu adalah **kamu**, bukan Anima yang sedang di-Summon. Buka
-ikon titik tiga lalu **Change Seeker Avatar**: pickernya menampilkan keempat
-figur sekaligus dan menandai yang sedang kamu pakai.
+Potret di atas namamu adalah **kamu**, bukan Anima yang sedang di-Summon.
 
-- Gratis, tanpa masa tunggu, dan boleh diganti kapan saja. Potretnya berganti di
-  ketukan yang sama; kalau server menolak, figur sebelumnya kembali sendiri.
+Figurnya kamu pilih pertama kali di **Create Your Seeker**, di sheet yang sama
+tempat kamu menamai dirimu. Sesudah itu, buka ikon titik tiga lalu **Change
+Seeker Avatar**: pickernya menampilkan keempat figur sekaligus dan menandai yang
+sedang kamu pakai.
+
+- Gratis, tanpa masa tunggu, dan boleh diganti sesering yang kamu mau. Potretnya
+  berganti di ketukan yang sama; kalau server menolak, figur sebelumnya kembali
+  sendiri.
 - Murni kosmetik. Ia tidak menyentuh stat, hadiah, maupun **Gender** dan **Birth
   Year** yang kamu isi di **Create Your Seeker** — keduanya tidak saling
   mengikuti, jadi figur mana pun boleh dipakai siapa pun.

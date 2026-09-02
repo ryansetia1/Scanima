@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/seeker_onboarding_sheet.gd" id="1_script"]
 [ext_resource type="Theme" path="res://themes/mobile_theme.tres" id="2_theme"]
+[ext_resource type="Script" path="res://scripts/seeker_avatar_picker.gd" id="3_picker"]
 
 [node name="SeekerOnboardingSheet" type="Control"]
 visible = false
@@ -98,6 +99,26 @@ custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 placeholder_text = "SEEKER_NAME_PLACEHOLDER"
 clear_button_enabled = true
+
+[node name="AvatarLabel" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "SEEKER_AVATAR_LABEL"
+
+[node name="AvatarHint" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "SEEKER_AVATAR_HINT"
+autowrap_mode = 2
+
+[node name="SeekerAvatar" type="GridContainer" parent="Bottom/Panel/Column/ContentSlot"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 16
+columns = 4
+script = ExtResource("3_picker")
+card_height = 176.0
 
 [node name="BirthLabel" type="Label" parent="Bottom/Panel/Column/ContentSlot"]
 unique_name_in_owner = true
