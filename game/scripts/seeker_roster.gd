@@ -69,17 +69,26 @@ static func normalize(value: Variant) -> String:
 	return slug if SLUGS.has(slug) else DEFAULT_SLUG
 
 
-## slug -> pose profil. Art roster sama untuk setiap akun, jadi cache ini sengaja
-## tidak ikut dibuang saat akun berganti.
+## slug -> sheet terbangun, slug -> pose profil. Art roster sama untuk setiap
+## akun, jadi kedua cache ini sengaja tidak ikut dibuang saat akun berganti.
+static var _sheets: Dictionary = {}
 static var _portraits: Dictionary = {}
 
 
-## Pose profil dari sheet yang sudah ter-bundel — nol panggilan jaringan dan nol
-## panggilan model. Di-cache karena `build()` men-decode sheet 1024px lalu
-## memindai sembilan region, sementara potret Profile digambar setiap kunjungan
-## dan picker membuka seluruh roster sekaligus.
+## Sheet yang sudah ter-bundel — nol panggilan jaringan dan nol panggilan model.
+## Di-cache karena `build()` men-decode sheet 1024px lalu memindai sembilan
+## region, sementara pemanggilnya berulang: picker membuka seluruh roster
+## sekaligus, potret Profile digambar setiap kunjungan, dan arena menyegarkan
+## figurnya setiap kali profil berubah.
+static func sheet(value: Variant) -> Dictionary:
+	var slug := normalize(value)
+	if not _sheets.has(slug):
+		_sheets[slug] = load_sheet(slug)
+	return _sheets[slug]
+
+
 static func portrait(value: Variant) -> Texture2D:
 	var slug := normalize(value)
 	if not _portraits.has(slug):
-		_portraits[slug] = SeekerSheet.portrait(load_sheet(slug))
+		_portraits[slug] = SeekerSheet.portrait(sheet(slug))
 	return _portraits[slug]

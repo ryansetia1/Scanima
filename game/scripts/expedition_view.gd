@@ -139,6 +139,10 @@ func set_thumbnail_provider(provider: Callable) -> void:
 	_thumbnail_provider = provider
 
 
+func set_player_avatar(loaded: Dictionary) -> void:
+	_combat.set_player_avatar(loaded)
+
+
 func has_active_encounter() -> bool:
 	return (
 		_combat.visible

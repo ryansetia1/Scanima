@@ -2972,6 +2972,7 @@ func _change_seeker_avatar(slug: String) -> void:
 		return
 	GameState.profile["seeker_avatar"] = slug
 	_seeker_profile_view.set_avatar(slug)
+	_sync_seeker_avatar()
 	var account_epoch := GameState.session_epoch
 	var res := await Backend.set_seeker_avatar(slug)
 	if not Backend.response_applies(res, account_epoch):
@@ -2987,6 +2988,7 @@ func _change_seeker_avatar(slug: String) -> void:
 	else:
 		GameState.profile["seeker_avatar"] = previous
 	_seeker_profile_view.set_avatar(previous)
+	_sync_seeker_avatar()
 	_say_error(tr("SEEKER_AVATAR_ERROR"), true)
 
 
@@ -6540,6 +6542,7 @@ func _seeker_header_text(profile: Dictionary) -> String:
 func _refresh_header() -> void:
 	var p := GameState.profile
 	_brand.text = _seeker_header_text(p)
+	_sync_seeker_avatar()
 	if p.is_empty():
 		_cores_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
 		_bits_chip.set_value_text(tr("VALUE_UNAVAILABLE"))
@@ -6557,6 +6560,17 @@ func _refresh_header() -> void:
 		cores > 0 and not sign_in_required and _destination != BottomNav.BATTLE and not _update_required
 	)
 	UiJuice.pop(_top_hud, 1.012)
+
+
+## Figur arena mengikuti akun yang aktif dengan menumpang funnel profil yang
+## sudah ada, jadi pergantian akun dan penggantian avatar tidak butuh jalur
+## kedua. Art-nya ter-bundel dan di-cache (ADR-0002), sehingga pemanggilan
+## berulang ini nol unduhan dan nol decode ulang; view sendiri mengabaikan sheet
+## yang sudah terpasang supaya pose tidak ter-reset di tengah turn.
+func _sync_seeker_avatar() -> void:
+	var loaded := SeekerRoster.sheet(GameState.profile.get("seeker_avatar"))
+	_team_battle_view.set_player_avatar(loaded)
+	_expedition_view.set_player_avatar(loaded)
 
 
 func _apply_profile_refresh(profile_res: Dictionary) -> void:

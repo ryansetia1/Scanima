@@ -20,6 +20,18 @@ signal _boss_result_settled
 const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
 const SEEKER_SHOT_X := 0.83
+## Figur pemain berdiri sejauh dari tepinya seperti Boss Seeker berdiri dari
+## tepi seberang, jadi angkanya diturunkan alih-alih ditulis ulang.
+const PLAYER_SEEKER_SHOT_X := 1.0 - SEEKER_SHOT_X
+## Seeker Avatar bukan petarung, jadi ia tidak punya `body_height_cm`
+## authoritative. 165 cm adalah tinggi manusia yang dipakai catatan skala arena,
+## dan `fighter_scale()` menormalkan ke tinggi layar — figur pemain dan Boss
+## Seeker setinggi 165 cm karena itu digambar sama besar walau sheet-nya beda.
+##
+## ponytail: satu tinggi untuk seluruh roster. Plafonnya figur yang memang
+## dimaksudkan beda tinggi (automaton jangkung, figur anak); kalau itu datang,
+## taruh tingginya di manifest `SeekerRoster` dan baca dari sana, bukan di sini.
+const PLAYER_SEEKER_HEIGHT_CM := 165.0
 const CAMERA_MIN_ZOOM := 0.30
 const CAMERA_MAX_ZOOM := 1.30
 const CAMERA_TOP_PAD_RATIO := 0.05
@@ -142,6 +154,9 @@ var _player_shadow: Sprite2D
 var _opponent_shadow: Sprite2D
 var _seeker: SEEKER_PRESENTER
 var _seeker_shadow: Sprite2D
+var _player_seeker: SEEKER_PRESENTER
+var _player_seeker_shadow: Sprite2D
+var _player_seeker_loaded: Dictionary = {}
 var _fighter_layer: Node2D
 var _background_session_id := ""
 var _background_pan := 0.5
@@ -223,6 +238,20 @@ func _ready() -> void:
 	_player_anchor.reparent(_fighter_layer)
 	_fighter_layer.add_child(_seeker)
 	_seeker_shadow = _make_ground_shadow(_fighter_layer)
+	_player_seeker = SEEKER_PRESENTER.new()
+	_player_seeker.name = "PlayerSeeker"
+	# Sheet Seeker digambar menghadap kiri, arah Boss Seeker memandang dari sisi
+	# seberang. Figur pemain berdiri di sisi kiri, jadi ia dibalik supaya
+	# komposisinya terbaca sebagai dua pihak yang berhadapan.
+	_player_seeker.flip_h = true
+	# Di bawah lantai z petarung mana pun (`_set_fighter_z` tidak pernah memberi
+	# angka di bawah 1), jadi ia tidak bisa menutupi Anima pemain.
+	_player_seeker.z_index = 0
+	_fighter_layer.add_child(_player_seeker)
+	# Dua bayangan bersaudara di layer yang sama; tanpa nama sendiri yang kedua
+	# di-serialkan diam-diam jadi "GroundShadow2".
+	_player_seeker_shadow = _make_ground_shadow(_fighter_layer)
+	_player_seeker_shadow.name = "PlayerSeekerShadow"
 	_seeker_dialog = BOSS_SEEKER_DIALOG.new()
 	_seeker_dialog.name = "BossSeekerDialog"
 	add_child(_seeker_dialog)
@@ -263,6 +292,24 @@ func set_roster(roster: Array) -> void:
 	_roster = roster.duplicate(true)
 	if _result_actions.visible and not _session.is_empty():
 		_apply_result_actions()
+
+
+## Seeker Avatar pemain: cermin Boss Seeker di sisi pemain, tanpa panel dialog —
+## ia hadir, tapi tidak pernah bicara.
+##
+## Art-nya ter-bundel (ADR-0002), jadi tidak ada unduhan yang bisa gagal dan
+## `SeekerRoster` mengembalikan `SpriteFrames` yang sama untuk slug yang sama.
+## Perbandingan itulah yang membuat pemanggilan ulang — shell menyegarkan figur
+## ini setiap kali profil berubah, termasuk saat Bits bergerak — tidak me-reset
+## pose di tengah turn.
+func set_player_avatar(loaded: Dictionary) -> void:
+	if not is_instance_valid(_player_seeker):
+		return
+	if _player_seeker.has_sheet() and _player_seeker.sprite_frames == loaded.get("frames"):
+		return
+	_player_seeker_loaded = loaded.duplicate(true) if bool(loaded.get("ok", false)) else {}
+	_player_seeker.apply(loaded)
+	_position_player_seeker()
 
 
 func set_expedition_mode(enabled: bool) -> void:
@@ -559,8 +606,12 @@ func play_events(
 				var switch_actor := str(event.get("actor", ""))
 				if switch_actor == "opponent" and not _final_ace_pending:
 					await _cue_seeker_command("first_switch", "switch_command")
+				elif switch_actor == "player":
+					_set_player_seeker_pose("switch_command")
 				await _play_switch(event)
-				if switch_actor == "opponent" and not _final_ace_pending:
+				if switch_actor == "player":
+					_restore_player_seeker_idle()
+				elif switch_actor == "opponent" and not _final_ace_pending:
 					_restore_seeker_idle()
 			"ace_passive":
 				await _play_ace_passive(event)
@@ -568,14 +619,23 @@ func play_events(
 				_restore_seeker_idle()
 			"attack":
 				var attack_actor := str(event.get("actor", ""))
+				var attack_action := str(event.get("action", ""))
+				var command_pose := (
+					"special_command" if attack_action == "surge" else "attack_command"
+				)
 				if attack_actor == "opponent":
-					var action := str(event.get("action", ""))
 					await _cue_seeker_command(
-						"first_special" if action == "surge" else "first_attack",
-						"special_command" if action == "surge" else "attack_command"
+						"first_special" if attack_action == "surge" else "first_attack",
+						command_pose
 					)
+				elif attack_actor == "player":
+					_set_player_seeker_pose(command_pose)
 				await _play_attack(event)
+				# Keduanya: penyerangnya memegang pose perintah dan yang diserang
+				# memegang pose khawatir, jadi satu serangan selalu menyisakan dua
+				# figur yang harus tenang lagi.
 				_restore_seeker_idle()
+				_restore_player_seeker_idle()
 			"knockout":
 				var side := str(event.get("actor", ""))
 				_faint(side)
@@ -905,6 +965,10 @@ func _apply_session_state() -> void:
 	_apply_side(_session, "player", true)
 	_apply_side(_session, "opponent", true, not _intro_pending_summon)
 	_position_fighters()
+	_set_player_seeker_pose(
+		"intro_idle" if status == "active"
+		else ("victory" if status == "won" else "defeat")
+	)
 	_player_slots.text = _slots_text("player")
 	_opponent_slots.text = _slots_text("opponent")
 	_forfeit.visible = status == "active"
@@ -1046,6 +1110,10 @@ func _fighter_layout() -> Dictionary:
 		"seeker_scale": _seeker.scale,
 		"seeker_shadow_position": _seeker_shadow.position,
 		"seeker_shadow_scale": _seeker_shadow.scale,
+		"player_seeker_position": _player_seeker.position,
+		"player_seeker_scale": _player_seeker.scale,
+		"player_seeker_shadow_position": _player_seeker_shadow.position,
+		"player_seeker_shadow_scale": _player_seeker_shadow.scale,
 		"background_position": _arena_background.position,
 		"background_size": _arena_background.size,
 	}
@@ -1062,6 +1130,14 @@ func _apply_fighter_layout(layout: Dictionary) -> void:
 	_seeker.scale = layout.get("seeker_scale", _seeker.scale)
 	_seeker_shadow.position = layout.get("seeker_shadow_position", _seeker_shadow.position)
 	_seeker_shadow.scale = layout.get("seeker_shadow_scale", _seeker_shadow.scale)
+	_player_seeker.position = layout.get("player_seeker_position", _player_seeker.position)
+	_player_seeker.scale = layout.get("player_seeker_scale", _player_seeker.scale)
+	_player_seeker_shadow.position = layout.get(
+		"player_seeker_shadow_position", _player_seeker_shadow.position
+	)
+	_player_seeker_shadow.scale = layout.get(
+		"player_seeker_shadow_scale", _player_seeker_shadow.scale
+	)
 	_arena_background.position = layout.get("background_position", _arena_background.position)
 	_arena_background.size = layout.get("background_size", _arena_background.size)
 
@@ -1096,6 +1172,21 @@ func _tween_fighter_layout(target: Dictionary) -> Tween:
 	)
 	_layout_tween.tween_property(
 		_seeker_shadow, "scale", target["seeker_shadow_scale"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_player_seeker, "position", target["player_seeker_position"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_player_seeker, "scale", target["player_seeker_scale"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_player_seeker_shadow,
+		"position",
+		target["player_seeker_shadow_position"],
+		CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_property(
+		_player_seeker_shadow, "scale", target["player_seeker_shadow_scale"], CAMERA_REFIT_SEC
 	)
 	_layout_tween.tween_property(
 		_arena_background, "position", target["background_position"], CAMERA_REFIT_SEC
@@ -1140,6 +1231,7 @@ func _play_attack(event: Dictionary) -> void:
 		_opponent_hp_value.text = LocaleManager.format_ratio(hp, int(_opponent_hp.max_value))
 	if is_instance_valid(target):
 		_react_seeker_attack(event)
+		_react_player_seeker_attack(event)
 		target.hit_react(element_multiplier)
 		target.modulate = Color(1.65, 0.45, 0.55, 1.0)
 		var flash := create_tween()
@@ -1781,17 +1873,28 @@ func _fit_sprite_opaque_height(sprite: AnimaPresenter, anchor: Node2D, target_px
 
 
 func _sync_seeker_shadow() -> void:
-	if not is_instance_valid(_seeker_shadow):
+	_sync_shadow_to_seeker(_seeker, _seeker_shadow, _seeker_loaded)
+	_sync_shadow_to_seeker(_player_seeker, _player_seeker_shadow, _player_seeker_loaded)
+
+
+func _sync_shadow_to_seeker(
+	presenter: SEEKER_PRESENTER,
+	shadow: Sprite2D,
+	loaded: Dictionary
+) -> void:
+	if not is_instance_valid(shadow):
 		return
-	if not is_instance_valid(_seeker) or not _seeker.has_sheet():
-		_seeker_shadow.visible = false
+	if not is_instance_valid(presenter) or not presenter.has_sheet():
+		shadow.visible = false
 		return
-	var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
-	var width := maxf(1.0, float(metrics.get("reference_width_px", 158.0))) * absf(_seeker.scale.x)
-	_seeker_shadow.visible = true
-	_seeker_shadow.z_index = _seeker.z_index
-	_seeker_shadow.position = _seeker.position
-	_seeker_shadow.scale = Vector2(clampf(width / 130.0, 0.9, 3.0), 1.15)
+	var metrics := GameState.as_dict(loaded.get("render_metrics"))
+	var width := (
+		maxf(1.0, float(metrics.get("reference_width_px", 158.0))) * absf(presenter.scale.x)
+	)
+	shadow.visible = true
+	shadow.z_index = presenter.z_index
+	shadow.position = presenter.position
+	shadow.scale = Vector2(clampf(width / 130.0, 0.9, 3.0), 1.15)
 
 
 func _sync_shadow(side: String) -> void:
@@ -1854,6 +1957,7 @@ func _position_fighters(cancel_transition: bool = true) -> void:
 	)
 	_apply_fighter_scales(_session)
 	_position_seeker()
+	_position_player_seeker()
 	_match_anima_opaque_to_seeker()
 	_player_sprite.plant_on_anchor()
 	_opponent_sprite.plant_on_anchor()
@@ -1909,6 +2013,7 @@ func _apply_dynamic_camera() -> void:
 		ground_y * (1.0 - zoom)
 	)
 	_pin_seeker_to_camera_right(zoom)
+	_pin_player_seeker_to_camera_left(zoom)
 	var background_zoom := lerpf(_background_max_scale(), 1.0, size_mix)
 	_layout_arena_background(background_zoom)
 
@@ -1961,26 +2066,61 @@ func _layout_arena_background(background_zoom: float) -> void:
 	)
 
 
+## Lebar sel sheet Seeker; padding transparannya tidak boleh ikut menentukan
+## komposisi, jadi ia selalu dipasangkan dengan `_seeker_opaque_center()`.
+static func _seeker_frame_width(loaded: Dictionary) -> float:
+	var frame_value: Variant = loaded.get("frame_size", Vector2i(341, 341))
+	if typeof(frame_value) == TYPE_VECTOR2I:
+		return float((frame_value as Vector2i).x)
+	if typeof(frame_value) == TYPE_VECTOR2:
+		return (frame_value as Vector2).x
+	return 341.0
+
+
+## Jarak pusat badan yang benar-benar tergambar dari origin sprite, dalam piksel
+## sheet. `flip_h` mencerminkan sel terhadap origin itu, jadi figur yang dibalik
+## memakai angka yang sama dengan tanda terbalik.
+static func _seeker_opaque_center(loaded: Dictionary) -> float:
+	var metrics := GameState.as_dict(loaded.get("render_metrics"))
+	var frame_w := _seeker_frame_width(loaded)
+	var width := float(metrics.get("reference_width_px", 158.0))
+	var min_x := float(metrics.get("reference_min_x_px", (frame_w - width) * 0.5))
+	return min_x + width * 0.5 - frame_w * 0.5
+
+
 func _pin_seeker_to_camera_right(camera_zoom: float) -> void:
 	if not is_instance_valid(_seeker) or not _seeker.has_sheet() or camera_zoom <= 0.0:
 		return
 	var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
-	var frame_value: Variant = _seeker_loaded.get("frame_size", Vector2i(341, 341))
-	var frame_w := 341.0
-	if typeof(frame_value) == TYPE_VECTOR2I:
-		frame_w = float((frame_value as Vector2i).x)
-	elif typeof(frame_value) == TYPE_VECTOR2:
-		frame_w = (frame_value as Vector2).x
 	var width := float(metrics.get("reference_width_px", 158.0))
-	var min_x := float(metrics.get("reference_min_x_px", (frame_w - width) * 0.5))
-	var opaque_center := min_x + width * 0.5 - frame_w * 0.5
 	var screen_width := width * absf(_seeker.scale.x) * camera_zoom
 	var target_center := (
 		_battle_stage.size.x * (1.0 - SEEKER_CAMERA_EDGE_PAD_RATIO) - screen_width * 0.5
 	)
 	_seeker.position.x = (
 		(target_center - _fighter_layer.position.x) / camera_zoom
-		- opaque_center * absf(_seeker.scale.x)
+		- _seeker_opaque_center(_seeker_loaded) * absf(_seeker.scale.x)
+	)
+
+
+## Cermin dari `_pin_seeker_to_camera_right()`: sesudah kamera memilih zoom-nya,
+## figur pemain dijepit ke tepi sisi pemain dengan pad yang sama.
+func _pin_player_seeker_to_camera_left(camera_zoom: float) -> void:
+	if (
+		not is_instance_valid(_player_seeker)
+		or not _player_seeker.has_sheet()
+		or camera_zoom <= 0.0
+	):
+		return
+	var metrics := GameState.as_dict(_player_seeker_loaded.get("render_metrics"))
+	var width := float(metrics.get("reference_width_px", 158.0))
+	var screen_width := width * absf(_player_seeker.scale.x) * camera_zoom
+	var target_center := (
+		_battle_stage.size.x * SEEKER_CAMERA_EDGE_PAD_RATIO + screen_width * 0.5
+	)
+	_player_seeker.position.x = (
+		(target_center - _fighter_layer.position.x) / camera_zoom
+		+ _seeker_opaque_center(_player_seeker_loaded) * absf(_player_seeker.scale.x)
 	)
 
 
@@ -1989,19 +2129,17 @@ func _fighter_shot_bounds() -> Rect2:
 	var player_rect := _anima_shot_rect(_player_sprite, _player_anchor, ground_y)
 	var opponent_rect := _anima_shot_rect(_opponent_sprite, _opponent_anchor, ground_y)
 	var bounds := player_rect.merge(opponent_rect)
+	# Figur pemain sengaja tidak ikut: ia dijepit ke tepi kamera sesudah zoom
+	# dipilih, jadi memasukkannya hanya akan mengecilkan setiap arena Team
+	# Battle yang selama ini tidak punya figur sama sekali.
 	if is_instance_valid(_seeker) and _seeker.has_sheet():
 		var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
-		var frame_value: Variant = _seeker_loaded.get("frame_size", Vector2i(341, 341))
-		var frame_w := 341.0
-		if typeof(frame_value) == TYPE_VECTOR2I:
-			frame_w = float((frame_value as Vector2i).x)
-		elif typeof(frame_value) == TYPE_VECTOR2:
-			frame_w = (frame_value as Vector2).x
 		var width := float(metrics.get("reference_width_px", 158.0)) * absf(_seeker.scale.x)
 		var height := float(metrics.get("reference_height_px", 282.0)) * absf(_seeker.scale.y)
-		var min_x := float(metrics.get("reference_min_x_px", (frame_w - width) * 0.5))
-		var left := _seeker.position.x + (min_x - frame_w * 0.5) * absf(_seeker.scale.x)
-		bounds = bounds.merge(Rect2(left, ground_y - height, width, height))
+		var center := _seeker_opaque_center(_seeker_loaded) * absf(_seeker.scale.x)
+		bounds = bounds.merge(
+			Rect2(_seeker.position.x + center - width * 0.5, ground_y - height, width, height)
+		)
 	return bounds
 
 
@@ -2144,22 +2282,40 @@ func _position_seeker() -> void:
 	if scales.size() < 3:
 		return
 	var seeker_scale := scales[2]
-	var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
-	var seeker_width := float(metrics.get("reference_width_px", 240.0))
-	var frame_value: Variant = _seeker_loaded.get("frame_size", Vector2i(341, 341))
-	var frame_w := 341.0
-	if typeof(frame_value) == TYPE_VECTOR2I:
-		frame_w = float((frame_value as Vector2i).x)
-	elif typeof(frame_value) == TYPE_VECTOR2:
-		frame_w = (frame_value as Vector2).x
-	var min_x := float(metrics.get("reference_min_x_px", (frame_w - seeker_width) * 0.5))
-	var opaque_center := min_x + seeker_width * 0.5 - frame_w * 0.5
 	# The camera owns the final fit. Place the visible body in the shot first;
 	# transparent 3×3 cell padding must not affect composition.
-	var x := _battle_stage.size.x * SEEKER_SHOT_X - opaque_center * seeker_scale
-	var y := _opponent_anchor.position.y
-	_seeker.set_layout(Vector2(x, y), seeker_scale)
-	_sync_seeker_shadow()
+	var x := (
+		_battle_stage.size.x * SEEKER_SHOT_X
+		- _seeker_opaque_center(_seeker_loaded) * seeker_scale
+	)
+	_seeker.set_layout(Vector2(x, _opponent_anchor.position.y), seeker_scale)
+	_sync_shadow_to_seeker(_seeker, _seeker_shadow, _seeker_loaded)
+
+
+## Cermin `_position_seeker()`: sisi pemain, ground line yang sama, dan tanda
+## `_seeker_opaque_center()` terbalik karena figurnya di-`flip_h`. Skalanya
+## sengaja berdiri sendiri alih-alih ikut `_arena_scales()` — Team Battle biasa
+## tidak punya Seeker sama sekali di sana, dan menambahkannya akan mengubah
+## ukuran setiap Anima yang sudah dikalibrasi.
+func _position_player_seeker() -> void:
+	if not is_instance_valid(_player_seeker) or not _player_seeker.has_sheet():
+		if is_instance_valid(_player_seeker_shadow):
+			_player_seeker_shadow.visible = false
+		return
+	var avatar_scale := BattleScale.fighter_scale(
+		PLAYER_SEEKER_HEIGHT_CM, _player_seeker_loaded, _battle_stage.size
+	)
+	var x := (
+		_battle_stage.size.x * PLAYER_SEEKER_SHOT_X
+		+ _seeker_opaque_center(_player_seeker_loaded) * avatar_scale
+	)
+	_player_seeker.set_layout(Vector2(x, _player_anchor.position.y), avatar_scale)
+	# Zoom yang sedang berlaku, bukan yang akan datang: dipanggil dari
+	# `_position_fighters()` layer-nya baru di-reset ke 1.0 dan `_apply_dynamic_camera()`
+	# menjepit ulang sesudahnya, sementara dipanggil dari `set_player_avatar()`
+	# kamera sudah final dan figur baru harus langsung mendarat di tepinya.
+	_pin_player_seeker_to_camera_left(_fighter_layer.scale.x)
+	_sync_shadow_to_seeker(_player_seeker, _player_seeker_shadow, _player_seeker_loaded)
 
 
 func _play_damage(amount: int, multiplier: float) -> void:
@@ -2334,6 +2490,24 @@ func _play_ace_passive(event: Dictionary) -> void:
 func _restore_seeker_idle() -> void:
 	if is_instance_valid(_seeker) and str(_session.get("status", "")) == "active":
 		_seeker.set_pose("intro_idle")
+
+
+## Pemetaan pose sisi pemain dimiliki view, sama seperti pemisahan yang sudah
+## berlaku untuk Boss Seeker: perintah saat Attack/Special/Switch, khawatir saat
+## Anima pemain kena, menang atau kalah di penutup, idle di antaranya.
+func _set_player_seeker_pose(pose: String) -> void:
+	if is_instance_valid(_player_seeker) and _player_seeker.has_sheet():
+		_player_seeker.set_pose(pose)
+
+
+func _restore_player_seeker_idle() -> void:
+	if str(_session.get("status", "")) == "active":
+		_set_player_seeker_pose("intro_idle")
+
+
+func _react_player_seeker_attack(event: Dictionary) -> void:
+	if str(event.get("target", "")) == "player":
+		_set_player_seeker_pose("concern_hit")
 
 
 func _speak_seeker(

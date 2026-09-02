@@ -4428,9 +4428,9 @@ func _test_team_battle_view() -> void:
 		"all generated Battle shadows use their node position as the visual center"
 	)
 	_check(
-		team_source.find("_seeker_shadow.position = _seeker.position") >= 0
+		team_source.find("shadow.position = presenter.position") >= 0
 		and team_source.find("_seeker.position + Vector2(0.0, 4.0)") < 0,
-		"Boss Seeker lowest opaque pixel meets the vertical center of its shadow"
+		"either Seeker's lowest opaque pixel meets the vertical center of its shadow"
 	)
 	var attack_fn := team_source.substr(team_source.find("func _play_attack"), 3600)
 	_check(
@@ -4986,6 +4986,118 @@ func _test_team_battle_view() -> void:
 	}], ace_session, seeker_art)
 	_check(not dialog.is_open(), "final ace line closes before Summon and passive finish")
 	_check(seeker.animation == "intro_idle", "final ace sequence restores the Seeker idle pose")
+
+	# Figur pemain: cermin Boss Seeker di sisi seberang. Fixture in-memory yang
+	# sama dipakai untuk keduanya, jadi geometri yang diperiksa di bawah datang
+	# dari sheet yang sudah terbukti alih-alih dari art roster yang ter-bundel.
+	var avatar_camera_before := camera_layer.scale
+	var avatar_loaded := _boss_seeker_loaded()
+	view.set_player_avatar(avatar_loaded)
+	await process_frame
+	var avatar := view.find_child("PlayerSeeker", true, false) as AnimatedSprite2D
+	var avatar_shadow := view.find_child("PlayerSeekerShadow", true, false) as Sprite2D
+	_check(
+		avatar != null and avatar.visible and avatar.sprite_frames != null
+		and avatar.flip_h
+		and avatar.get_parent() == camera_layer
+		and avatar_shadow != null and avatar_shadow.visible,
+		"the player's Seeker Avatar stands in the arena facing the opponent"
+	)
+	_check(
+		avatar.position.y == giant_anchor.position.y
+		and avatar.position.y == seeker.position.y,
+		"both Seeker figures stand on the one ground line the fighters use"
+	)
+	_check(
+		avatar.z_index < giant_anchor.z_index
+		and avatar.z_index < opponent_giant_anchor.z_index
+		and avatar_shadow.z_index == avatar.z_index,
+		"the player figure draws behind its own Anima, never over it"
+	)
+	# Struktural, jadi ia berlaku di portrait maupun landscape: figur hidup di
+	# dalam stage, dan stage digambar sebelum dock aksi di kolom arena yang sama.
+	var arena_column := stage.get_parent()
+	_check(
+		camera_layer.get_parent() == stage
+		and stage.get_index() < arena_column.get_node("TeamDock").get_index(),
+		"the player figure can never cover the action dock, at any aspect"
+	)
+	_check(
+		camera_layer.scale.is_equal_approx(avatar_camera_before),
+		"adding the player figure never re-zooms the arena its Animas already framed"
+	)
+	# Dihitung ulang di sini alih-alih dibaca dari view: kalau rumus jepitnya
+	# bergeser, angka yang diharapkan tidak ikut bergeser diam-diam.
+	var avatar_frame := float((avatar_loaded.get("frame_size", Vector2i(341, 341)) as Vector2i).x)
+	var avatar_width := float(seeker_metrics.get("reference_width_px", 0.0))
+	var avatar_body := (
+		float(seeker_metrics.get("reference_min_x_px", 0.0))
+		+ avatar_width * 0.5
+		- avatar_frame * 0.5
+	)
+	# `flip_h` mencerminkan sel terhadap origin, jadi pusat badan pindah tanda.
+	var avatar_center_x := camera_layer.position.x + (
+		avatar.position.x - avatar_body * absf(avatar.scale.x)
+	) * camera_layer.scale.x
+	var avatar_screen_w := avatar_width * absf(avatar.scale.x) * camera_layer.scale.x
+	_check(
+		camera_layer.scale.x < 1.0
+		and avatar_width > 1.0
+		and absf(avatar_center_x - (stage.size.x * 0.025 + avatar_screen_w * 0.5)) < 1.0
+		and avatar_center_x < stage.size.x * 0.5,
+		"a zoomed-out arena pins the player figure to its own screen edge"
+	)
+
+	# Pose sisi pemain hidup di tengah `play_events()` lalu kembali idle, jadi
+	# nilai akhirnya saja tidak membuktikan apa pun. Kolektor jalan berdampingan.
+	_dismiss_when_open(dialog)
+	var avatar_poses := {}
+	_collect_poses(avatar, avatar_poses)
+	await view.play_events([{
+		"type": "switch",
+		"actor": "player",
+		"to_slot": 1,
+		"name": str(ace_session["state"]["player"]["roster"][1].get("name", "")),
+	}, {
+		"type": "attack",
+		"actor": "player",
+		"target": "opponent",
+		"action": "surge",
+		"target_hp": 20,
+		"element_multiplier": 1.0,
+	}, {
+		"type": "attack",
+		"actor": "player",
+		"target": "opponent",
+		"action": "strike",
+		"target_hp": 10,
+		"element_multiplier": 1.0,
+	}, {
+		"type": "attack",
+		"actor": "opponent",
+		"target": "player",
+		"action": "strike",
+		"target_hp": 20,
+		"element_multiplier": 1.0,
+	}], ace_session, seeker_art)
+	avatar_poses["stop"] = true
+	_check(
+		avatar_poses.has("switch_command")
+		and avatar_poses.has("special_command")
+		and avatar_poses.has("attack_command")
+		and avatar_poses.has("concern_hit"),
+		"the player figure commands its own Switch, Attack, and Special, and worries when hit"
+	)
+	_check(
+		avatar.animation == "intro_idle",
+		"the player figure settles back to idle between turns"
+	)
+	_check(
+		not dialog.is_open()
+		and view.find_children("*", "BossSeekerDialog", true, false).size() == 1,
+		"the player figure is present without a dialog panel of its own"
+	)
+
 	var won := ace_session.duplicate(true)
 	won["status"] = "won"
 	won["state"]["status"] = "won"
@@ -5003,6 +5115,7 @@ func _test_team_battle_view() -> void:
 	await process_frame
 	_check(dialog.is_open(), "player win opens the Seeker victory line")
 	_check(seeker.animation == "defeat", "player win uses the Seeker defeat pose")
+	_check(avatar.animation == "victory", "player win puts the player's own figure in victory")
 	dialog.dismiss()
 	await process_frame
 	var trophy_line := dialog.find_child("SeekerLine", true, false) as Label
@@ -5027,8 +5140,42 @@ func _test_team_battle_view() -> void:
 		not dialog.is_open(),
 		"a replayed terminal session never announces the same Trophy twice"
 	)
+	var lost := ace_session.duplicate(true)
+	lost["id"] = "boss-lost-1"
+	lost["status"] = "lost"
+	lost["state"]["status"] = "lost"
+	lost["last_reward"] = {}
+	view.set_session(lost, seeker_art)
+	await process_frame
+	_check(avatar.animation == "defeat", "a lost Battle leaves the player's figure defeated")
+
+	# Shell adalah satu-satunya yang tahu akun mana yang aktif, jadi ia yang
+	# menyuapkan figurnya — lewat funnel profil yang sudah ada, bukan jalur kedua,
+	# dan dari roster yang ter-bundel (ADR-0002), bukan dari unduhan.
+	var arena_flow := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var sync_body := _func_body(arena_flow, "func _sync_seeker_avatar(")
+	_check(
+		sync_body.find("SeekerRoster.sheet(GameState.profile.get(\"seeker_avatar\"))") >= 0
+		and sync_body.find("_team_battle_view.set_player_avatar(") >= 0
+		and sync_body.find("_expedition_view.set_player_avatar(") >= 0
+		and _func_body(arena_flow, "func _refresh_header(").find("_sync_seeker_avatar()") >= 0
+		and _func_body(arena_flow, "func _change_seeker_avatar(").find("_sync_seeker_avatar()") >= 0,
+		"the shell feeds the chosen figure to both arenas whenever the profile moves"
+	)
 	view.queue_free()
 	await process_frame
+
+
+## Pose berubah di tengah `play_events()` dan kembali idle di akhirnya, jadi
+## pembacaan sesudah `await` selalu melihat idle. Kolektor ini jalan berdampingan
+## dengan event-nya — pola yang sama dengan `_dismiss_when_open()` — dan berhenti
+## saat pemanggilnya menaruh `stop`.
+func _collect_poses(sprite: AnimatedSprite2D, seen: Dictionary) -> void:
+	while not seen.get("stop", false):
+		if not is_instance_valid(sprite):
+			return
+		seen[str(sprite.animation)] = true
+		await process_frame
 
 
 func _test_expedition_view() -> void:
@@ -5460,6 +5607,18 @@ func _test_expedition_view() -> void:
 		str(view.call("_location_text", {}))
 		== tr("EXPEDITION_ARENA_LOCATION") % ["ById Trail", "2"],
 		"Expedition chapter title matches catalog id"
+	)
+	# Expedition bertarung di TeamBattleView yang sama, jadi ia hanya perlu
+	# meneruskan figurnya — tanpa itu Expedition diam-diam jadi satu-satunya arena
+	# tanpa pemain di dalamnya.
+	view.set_player_avatar(_boss_seeker_loaded())
+	await process_frame
+	var expedition_avatar := view.find_child("PlayerSeeker", true, false) as AnimatedSprite2D
+	_check(
+		expedition_avatar != null
+		and expedition_avatar.sprite_frames != null
+		and expedition_avatar.flip_h,
+		"Expedition forwards the chosen figure into the arena it shares with Team Battle"
 	)
 	view.queue_free()
 	await process_frame
