@@ -2,6 +2,37 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 3 September 2026: tiga eval grounding v46 — belum dipromosikan
+
+Tepat tiga generation `openai/gpt-image-2` medium dijalankan tanpa Vision baru
+dan tanpa retry: object dari foto/hasil Vision stock vehicle v41 (50 detik),
+Fauna dari foto/hasil Vision Golden Retriever v15 (54 detik), dan Synthesis
+Chromquartz dari Gearbit Racer + Chromvein memakai Plan production tersimpan
+dengan bias `dominant_b` (~55 detik). Ketiganya menghasilkan 9/9 sel. Biaya
+plafon konservatif tepat **$0.21**.
+
+Metrik `qa.idle_grounding.second_shallow_minimum_gap_ratio` berubah:
+object **4,2% → 2,9%** (membaik), fauna **2,7% → 4,3%** (memburuk tipis), dan
+Chromquartz **11,8% → 8,9%** (membaik tetapi masih jauh dari accepted
+Sunhound 2,7%). Contact fraction masing-masing berubah 19,9%→21,9%,
+18,8%→14,6%, dan 18,8%→16,0%. Semua angka hanya observability; Veridian broad
+base tetap membuktikan bahwa threshold otomatis tidak aman. Warning lain:
+object Idle/Attack 26% + residu hijau 0,56%, fauna residu 0,61%, Synthesis
+Idle/Attack 16% + residu 0,30%.
+
+Hasil visual dan Idle crop ada di `/tmp/anima-grounding/v46-*-before-after.png`;
+raw/processed eval ada di `eval/results/v46/` dan tidak masuk git. **V46 belum
+live dan tidak ada deploy/config/database write.** Operator kemudian menilai
+Chromvein bagus, Fauna lebih buruk, dan Chromquartz terlihat sama saja.
+Keputusan: **v46 REJECTED**, tidak ada rollout; production tetap v41 Capture dan
+v45 Synthesis. Metrik QA serta pagar biaya eval dipertahankan karena keduanya
+tidak mengubah art pemain.
+
+Percobaan command pertama berhenti di `PAID_ACK_REQUIRED` sebelum request:
+double quote membuat zsh mengekspansi `$0` di `US$0.07`. Semua contoh command
+ack di repo diganti menjadi single quote (`'--ack=US$0.07'`) agar teks yang
+disalin benar-benar sama dengan nilai pagar.
+
 ## 3 September 2026: `seekers/v2` — pose hit yang tercermin dan roster sebaya
 
 Enam generation berbayar, $0.42 pada plafon konservatif `pricing.mjs` ($0,07)
@@ -78,7 +109,7 @@ memulihkannya kalau perlu dibandingkan.
 
 Empat generation `openai/gpt-image-2` medium, satu per figur, tanpa retry
 otomatis, lewat `backend/tools/generate_seeker_art.mjs <slug> --paid --apply
-"--ack=US$0.07"`. Angka ack-nya dibaca dari `pricing.mjs`, jadi ia plafon
+'--ack=US$0.07'`. Angka ack-nya dibaca dari `pricing.mjs`, jadi ia plafon
 konservatif $0,07 per gambar, bukan harga medium terukur ~$0,05. Prompt
 `seekers/v1`: satu kontrak bersama
 `backend/prompts/seekers/roster_sheet.md` plus empat arahan per figur di
@@ -2037,6 +2068,37 @@ sekali tidak terlihat terkait dengan baris kode yang salah.
 
 ## Daftar migration yang sudah live
 
+- Grounded-pose prompt live 3 September 2026 lewat
+  `20260903145920_prompt_grounding_v47_v48`: `prompt_version=v47`,
+  `evolution_prompt_version=v47`, dan `synthesis_prompt_version=v48`.
+  Rollback-nya v41/v41/v45. Bundle baru dideploy lebih dulu supaya config tidak
+  pernah menunjuk versi yang belum tersedia: `create_anima` 28,
+  `evolve_anima` 19, dan `synthesize_anima` 10, semuanya ACTIVE dengan
+  `verify_jwt=true`; POST tanpa JWT ke ketiganya tetap menjawab 401.
+  `replicate_webhook` 18 kemudian membawa bundle yang sama karena facing audit
+  membaca prompt berdasarkan `generation.prompt_version`; tanpa deploy ini
+  v47/v48 akan fail-open sebagai `prompt_absent`. Smoke signature palsu tetap
+  401. Query sesudah perbaikan menemukan nol row generation v47/v48, jadi tidak
+  ada generation pemain yang melewati audit pada jendela rollout itu.
+
+  Provenance berbayarnya dibatasi eksplisit. V47 memakai empat image generation
+  ($0,28 konservatif), nol Vision, nol retry: object 4,2%→5,8%, Fauna
+  2,7%→2,0%, Chromquartz Synthesis 11,8%→10,0%, dan Sunhound Evolution
+  3,8%→2,7% pada `second_shallow_minimum_gap_ratio`; semuanya 9/9 sel.
+  Operator menerima Capture/Evolution tetapi menolak Synthesis v47 karena
+  Chromquartz masih tampak miring dan glow menjadi kontak palsu. V48 karena itu
+  mengubah Synthesis saja: setiap support terlihat harus menapak lewat piksel
+  tubuh solid, offset support jauh maksimal setengah ukurannya, sementara depth
+  natural dipertahankan. Satu image generation tambahan ($0,07), juga tanpa
+  Vision/retry, menurunkan Chromquartz 11,8%→6,4%, menghapus warning beda skala,
+  dan disetujui operator. Total eksperimen sesi v47/v48: lima image call,
+  maksimum konservatif $0,35.
+
+  Seluruh prompt assembly lulus dry-run, bundle check mutakhir, `npm run
+  selftest` lengkap hijau, dan migrasi di-preview dengan `db push --dry-run`
+  sebelum apply. Warning cache katalog setelah apply hanya karena Docker daemon
+  lokal mati; migration sendiri selesai dan query production membuktikan tiga
+  nilai config baru aktif.
 - Figur pemilik di sheet detail Atlas live 3 September 2026 lewat `gallery`
   version 25, **tanpa migrasi**: `profiles.seeker_avatar` sudah ada sejak
   `20260903032000_seeker_avatar_choice`, jadi rollout ini cuma satu kolom

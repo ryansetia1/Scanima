@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Art final Seeker Roster: satu Seeker Sheet berbayar per figur.
 //
-//   node backend/tools/generate_seeker_art.mjs <slug> --paid --apply "--ack=US$0.07"
+//   node backend/tools/generate_seeker_art.mjs <slug> --paid --apply '--ack=US$0.07'
 //   node backend/tools/generate_seeker_art.mjs --reprocess <slug> [--apply]  # nol API
 //   node backend/tools/generate_seeker_art.mjs --check                        # nol API
 //   node backend/tools/generate_seeker_art.mjs --strip                        # nol API
@@ -193,7 +193,7 @@ async function generate(slug) {
   const args = new Set(process.argv.slice(2));
   if (!args.has("--paid") || !args.has("--apply") || !args.has(`--ack=${COST_ACK}`)) {
     throw new Error(
-      `PAID_ACK_REQUIRED: gunakan --paid --apply "--ack=${COST_ACK}" untuk satu ${MODEL} ${QUALITY}`,
+      `PAID_ACK_REQUIRED: gunakan --paid --apply '--ack=${COST_ACK}' untuk satu ${MODEL} ${QUALITY}`,
     );
   }
   loadEnv();

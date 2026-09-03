@@ -4,7 +4,7 @@ Pohon `backend/prompts/` lengkap beserta provenance setiap versi yang ditolak, d
 
 Alasan versi ditolak disimpan karena empat mekanisme berbeda pernah mendarat di band hasil yang sama — tanpa catatannya, revisi berikutnya mengulang percobaan yang sudah dibayar.
 
-Yang dicatat di sini hanya pohon bernomor `v1`–`v45` untuk capture, evolution, dan synthesis. Namespace prompt lain diversikan sendiri di luar penomoran itu — `backend/prompts/seekers/` ada di `seekers/v2`, dan riwayatnya (termasuk kenapa `seekers/v1` menggambar tiga pose hit yang tercermin) hidup di [`14-deploy-log.md`](14-deploy-log.md).
+Yang dicatat di sini hanya pohon bernomor `v1`–`v48` untuk capture, evolution, dan synthesis. Namespace prompt lain diversikan sendiri di luar penomoran itu — `backend/prompts/seekers/` ada di `seekers/v2`, dan riwayatnya (termasuk kenapa `seekers/v1` menggambar tiga pose hit yang tercermin) hidup di [`14-deploy-log.md`](14-deploy-log.md).
 
 ## Pohon versi
 
@@ -248,7 +248,7 @@ backend/prompts/
     ├── vision_evolve_system.md   # identik v39
     ├── vision_evolve_schema.json # field naming sementara untuk wire shape
     └── sprite_sheet_evolve.md    # identik v30
-├── v41/                          # production capture/evolution: Name Lineage
+├── v41/                          # Name Lineage; rollback Capture/Evolution
     ├── vision_system.md          # enam morfem 3–5 huruf + kalibrasi register
     ├── vision_schema.json        # root morfem terbaca, bukan seed acak
     ├── sprite_sheet*.md          # identik v31
@@ -269,6 +269,17 @@ backend/prompts/
 └── v45/                          # JSON close; name_roots terakhir
     ├── vision_synthesis_system.md # evidence 8 kata; name_roots ditulis terakhir
     └── vision_synthesis_schema.json # propertyOrdering, evidence maxLength 40
+└── v46/                          # REJECTED: grounding multi-support tidak konsisten
+    ├── sprite_sheet.md           # object v41 + kamera dangkal/kontak jamak
+    ├── sprite_sheet_fauna.md     # fauna v41 + kontak quadruped
+    └── sprite_sheet_synthesis.md # sheet v42 + kontak Result; planner diwarisi v45
+└── v47/                          # LIVE Capture/Evolution: ground plane semua body plan
+    ├── sprite_sheet.md           # object v41 + near-eye-level/grounded poses
+    ├── sprite_sheet_fauna.md     # fauna v41 + kontrak yang sama
+    ├── sprite_sheet_evolve.md    # evolve v41 + kontrak yang sama
+    └── sprite_sheet_synthesis.md # kandidat ditolak; planner diwarisi v45
+└── v48/                          # LIVE Synthesis: solid support contact
+    └── sprite_sheet_synthesis.md # v47 + semua support solid; planner diwarisi v45
 ```
 
 ## Provenance v32–v41
@@ -586,3 +597,67 @@ evidence ke 40 karakter, dan `extractJson()` menutup fence serta kurung yang
 terputus — recovery yang sama dipakai Scan. Field Plan yang sudah lengkap tetap
 valid kalau akar terpotong; nama jatuh ke fallback deterministik. Rollback:
 `v44`.
+
+## V46 — REJECTED: grounding multi-support tidak konsisten
+
+V46 menargetkan satu cacat art: tubuh darat dengan empat atau lebih tumpuan
+kadang digambar dari sudut terlalu tinggi sehingga satu kaki atau roda depan
+menjadi satu-satunya titik terendah, sementara tumpuan lain tampak melayang saat
+bbox ditanam ke lantai Home/Battle. Kamera tetap forward-left three-quarter dari
+sedikit atas, tetapi elevasinya dibuat dangkal. Minimal dua tumpuan yang
+berjauhan harus terbaca pada satu band kontak bawah yang sempit tanpa memaksa
+semua kaki ke satu baris piksel.
+
+Aturan hanya berlaku pada body plan grounded dengan empat atau lebih tumpuan.
+Biped, alas lebar, pot/rooted, serpentine, satu kaki, serta bentuk yang memang
+melayang atau terbang dikecualikan. V46 mengubah tiga template gambar saja:
+object Capture, Fauna Capture, dan Synthesis Result. Vision capture, capture
+vibe, facing audit, dan seluruh Evolution tetap diwarisi dari v41; planner dan
+schema Synthesis tetap diwarisi dari v45. Rollback yang direncanakan adalah v41
+untuk Capture dan v45 untuk Synthesis. V46 belum live sebelum tiga generation
+manual disetujui operator.
+
+Tiga generation 3 September selesai 9/9 sel tanpa Vision baru: second shallow
+minimum object membaik 4,2%→2,9%, Fauna memburuk 2,7%→4,3%, dan Chromquartz
+Synthesis membaik 11,8%→8,9%. Jadi wording v46 belum terbukti konsisten:
+ia memperbaiki dua objek tetapi menggeser control fauna ke arah yang salah, dan
+Chromquartz masih lebih tinggi daripada accepted Sunhound 2,7%. Status tetap
+**REJECTED** setelah penilaian visual operator: Chromvein terlihat bagus, Fauna
+lebih buruk, dan Chromquartz terlihat sama saja. Config production tidak berubah;
+rollback efektif tetap v41 Capture dan v45 Synthesis karena v46 tidak pernah
+dipromosikan.
+
+## V47 — LIVE: ground plane untuk semua body plan darat
+
+V47 mengganti aturan empat-support v46 dengan kontrak semua body plan darat dan
+memindahkan kamera ke forward-left three-quarter dari dekat eye-level.
+Idle/Happy/Hungry/Dirty/Damaged wajib grounded, Sleep beristirahat di bidang
+yang sama, dan Battle hanya boleh lepas saat aksinya jelas melompat atau
+terbang. Jika anatomi punya support depan dan belakang, minimal satu support
+dari tiap bagian harus mencapai band kontak dangkal yang sama; biped, alas
+lebar, rooted, serpentine, dan satu kaki memakai kontak yang sesuai anatominya.
+
+Empat image generation 3 September memakai input dan Plan tersimpan, tanpa
+Vision dan tanpa retry. Semua lolos 9/9 sel. Second shallow minimum berubah:
+object 4,2%→5,8%, Fauna 2,7%→2,0%, Chromquartz Synthesis 11,8%→10,0%, dan
+Sunhound Evolution 3,8%→2,7%. Metrik tetap advisory: operator menerima hasil
+Object, Fauna, dan Evolution secara visual, tetapi menolak Synthesis karena
+support Chromquartz masih tampak miring dan glow ikut terbaca sebagai kontak.
+V47 dipromosikan 3 September untuk Capture dan Evolution saja. Rollback:
+`v41`.
+
+## V48 — LIVE: solid support contact untuk Synthesis
+
+V48 mewarisi Capture/Evolution v47 dan planner/schema Synthesis v45; hanya
+`sprite_sheet_synthesis.md` yang berubah. Setiap support penahan bobot yang
+terlihat wajib berakhir pada piksel tubuh solid dengan tangent rata atau
+kompresi bobot kecil. Glow, aura, sparks, debu, debris, trail, puddle, floor
+mark, dan shadow tidak dihitung sebagai kontak. Depth three-quarter tetap
+natural, tetapi offset support jauh dibatasi maksimal setengah tinggi atau
+radius support itu sendiri.
+
+Satu generation Chromquartz dengan Plan v45 dan Source yang sama selesai 9/9
+sel, tanpa Vision/retry. Second shallow minimum turun dari production 11,8%
+menjadi 6,4% (v47 10,0%); empat support Idle berupa tubuh solid, warning skala
+hilang, dan operator menyetujui hasil visual. V48 dipromosikan 3 September untuk
+Synthesis. Rollback: `v45`.

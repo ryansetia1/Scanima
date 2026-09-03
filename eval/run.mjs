@@ -2,9 +2,9 @@
 // Harness evaluasi prompt Scanima: foto -> Vision LLM -> GPT Image 2 ->
 // post-processing -> contact sheet HTML.
 //
-//   node eval/run.mjs --set smoke              # 5 foto, ~$0.23
-//   node eval/run.mjs --set full               # 20 foto, ~$1.32
-//   node eval/run.mjs --photo eval/photos/mouse.jpg
+//   node eval/run.mjs --set smoke --paid --apply '--ack=US$0.21'
+//   node eval/run.mjs --set full --paid --apply '--ack=US$1.26'
+//   node eval/run.mjs --photo eval/photos/mouse.jpg --paid --apply '--ack=US$0.07'
 //   node eval/run.mjs --set smoke --dry-run    # gratis: cek foto & prompt saja
 //   node eval/run.mjs --set smoke --vision-only  # murah: gate + stat saja
 //   node eval/run.mjs --set smoke --reprocess  # gratis: susun ulang dari raw.png
@@ -37,6 +37,7 @@ import {
   visionInstruction,
 } from "../backend/supabase/functions/_shared/vision.mjs";
 import { BIAYA_VISION_USD, biayaGambarUsd } from "../backend/supabase/functions/_shared/pricing.mjs";
+import { buildBundle } from "../backend/tools/bundle_prompts.mjs";
 import {
   FACING_GRID,
   auditableCells,
@@ -62,6 +63,7 @@ const PHOTO_MAX_SIDE = 1024;
 const POLL_INTERVAL_MS = 2000;
 const VISION_POLL_MS = 700; // panggilan teks selesai dalam hitungan detik
 const POLL_TIMEOUT_MS = 180_000;
+const COST_ACK = `US$${COST_PER_IMAGE_USD.toFixed(2)}`;
 
 // ---------------------------------------------------------------- argumen
 
@@ -75,6 +77,10 @@ function parseArgs(argv) {
     dryRun: false,
     visionOnly: false,
     reprocess: false,
+    skipFacing: false,
+    paid: false,
+    apply: false,
+    ack: null,
   };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
@@ -86,6 +92,10 @@ function parseArgs(argv) {
     else if (a === "--dry-run") args.dryRun = true;
     else if (a === "--vision-only") args.visionOnly = true;
     else if (a === "--reprocess") args.reprocess = true;
+    else if (a === "--skip-facing") args.skipFacing = true;
+    else if (a === "--paid") args.paid = true;
+    else if (a === "--apply") args.apply = true;
+    else if (a.startsWith("--ack=")) args.ack = a.slice("--ack=".length);
     else if (a === "--help" || a === "-h") args.help = true;
     else throw new Error(`argumen tidak dikenal: ${a}`);
   }
@@ -133,7 +143,7 @@ async function loadPhoto(path) {
  * Vision dan image generation memakai fungsi yang sama supaya penanganan error,
  * timeout, dan status hanya ada di satu tempat.
  */
-async function runPrediction(model, input, pollMs = POLL_INTERVAL_MS) {
+export async function runPrediction(model, input, pollMs = POLL_INTERVAL_MS) {
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) throw new Error("REPLICATE_API_TOKEN belum di-set (taruh di .env)");
 
@@ -348,6 +358,12 @@ function contactSheetHtml(setName, promptVersion, rows, totals) {
               · sel ${r.manifest.qa.cells_detected}/${layoutForPrompt(promptVersion).poses.length}
               · residu hijau ${(r.manifest.qa.green_residue_ratio * 100).toFixed(3)}%
               · skala Idle/Attack ${(r.manifest.qa.standing_height_variance * 100).toFixed(1)}%
+              ${r.manifest.qa.idle_grounding
+                ? `· kontak bawah ${(r.manifest.qa.idle_grounding.contact_fraction * 100).toFixed(1)}%
+                   · minimum kedua ${r.manifest.qa.idle_grounding.second_shallow_minimum_gap_ratio == null
+                     ? "—"
+                     : `${(r.manifest.qa.idle_grounding.second_shallow_minimum_gap_ratio * 100).toFixed(1)}%`}`
+                : ""}
               ${r.seconds ? `· ${r.seconds}s` : ""}</div>` : ""}
             ${r.manifest?.qa.warnings?.length ? `<ul class="warn">${r.manifest.qa.warnings
               .map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}
@@ -415,35 +431,24 @@ async function main() {
   --dry-run               tidak memanggil API sama sekali
   --vision-only           panggil Vision saja, tanpa image generation
   --reprocess             susun ulang sheet dari raw.png hasil run sebelumnya,
-                          nol panggilan API, untuk menguji post-processing`);
+                          nol panggilan API, untuk menguji post-processing
+  --skip-facing           jangan panggil audit Vision setelah generation
+  --paid --apply '--ack=US$X.XX'
+                          wajib untuk image generation; X.XX = jumlah sheet × harga`);
     return;
   }
 
-  const pdir = join(REPO, "backend/prompts", args.promptVersion);
-  const [systemPrompt, schemaRaw, template, faunaTemplate] = await Promise.all([
-    readFile(join(pdir, "vision_system.md"), "utf8"),
-    readFile(join(pdir, "vision_schema.json"), "utf8"),
-    readFile(join(pdir, "sprite_sheet.md"), "utf8"),
-    readFile(join(pdir, "sprite_sheet_fauna.md"), "utf8").catch((error) => {
-      if (error.code === "ENOENT") return null;
-      throw error;
-    }),
-  ]);
-  const vibeDirectionsRaw = await readFile(join(pdir, "vibe_directions.json"), "utf8").catch((error) => {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  });
-  const vibeDirections = vibeDirectionsRaw ? JSON.parse(vibeDirectionsRaw) : null;
-  const facingAuditSystem = await readFile(join(pdir, "facing_audit.md"), "utf8").catch((error) => {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  });
-  const facingAuditSchemaRaw = await readFile(join(pdir, "facing_audit_schema.json"), "utf8").catch((error) => {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  });
-  const facingAuditSchema = facingAuditSchemaRaw ? JSON.parse(facingAuditSchemaRaw) : null;
-  const schema = JSON.parse(schemaRaw);
+  // Eval membaca resolver sumber yang sama dengan bundler production. Versi
+  // parsial seperti v46 tetap menguji file lokal + parent-nya, bukan salinan.
+  const promptBundle = (await buildBundle())[args.promptVersion];
+  if (!promptBundle) throw new Error(`prompt version tidak ada: ${args.promptVersion}`);
+  const systemPrompt = promptBundle.vision_system;
+  const schema = promptBundle.vision_schema;
+  const template = promptBundle.sprite_sheet;
+  const faunaTemplate = promptBundle.sprite_sheet_fauna ?? null;
+  const vibeDirections = promptBundle.vibe_directions ?? null;
+  const facingAuditSystem = promptBundle.facing_audit ?? null;
+  const facingAuditSchema = promptBundle.facing_audit_schema ?? null;
   const prompts = { sprite_sheet: template, sprite_sheet_fauna: faunaTemplate };
   const useV13 = promptMajor(args.promptVersion) >= 13;
 
@@ -477,8 +482,21 @@ async function main() {
   // Perkiraan minimum: pass 2 (opini kedua) hanya jalan kalau pass 1 menandai
   // sesuatu, jadi total sungguhan bisa sampai 2x ini untuk sheet yang kena flag.
   // totals.costUsd di ringkasan akhir tetap menghitung panggilan sungguhan.
-  const willFacing = args.visionOnly || args.reprocess ? 0 : willGenerate;
+  const willFacing = args.visionOnly || args.reprocess || args.skipFacing ? 0 : willGenerate;
   const estimate = willGenerate * COST_PER_IMAGE_USD + (willVision + willFacing) * COST_PER_VISION_USD;
+  const expectedAck = willGenerate === 1
+    ? COST_ACK
+    : `US$${(willGenerate * COST_PER_IMAGE_USD).toFixed(2)}`;
+
+  if (
+    !args.dryRun
+    && willGenerate > 0
+    && (!args.paid || !args.apply || args.ack !== expectedAck)
+  ) {
+    throw new Error(
+      `PAID_ACK_REQUIRED: gunakan --paid --apply '--ack=${expectedAck}' untuk ${willGenerate} generation`,
+    );
+  }
 
   console.log(`set        : ${args.set ?? "single"} (${items.length} foto)`);
   console.log(`prompt     : ${args.promptVersion}`);
@@ -495,16 +513,29 @@ async function main() {
   console.log("");
 
   if (args.dryRun) {
-    // Verifikasi template bisa terisi tanpa placeholder tersisa, memakai data
-    // Vision palsu. Gratis, dan menangkap template rusak sebelum bayar apa pun.
-    const fake = {
-      creature_brief: "Sebuah tubuh uji berbentuk kotak dengan dua mata di depan.",
-      signature_features: ["tombol jadi mata", "kabel jadi ekor"],
-      strike_name: "Click Snap",
-      surge_name: "Cable Lash",
-    };
-    assemblePrompt(template, fake, args.vibe, vibeDirections);
-    if (faunaTemplate) assemblePrompt(faunaTemplate, fake, args.vibe, vibeDirections);
+    // Dengan --vision-file, cek prompt persis milik specimen; tanpa itu cek
+    // kedua template dengan data palsu seperti harness lama.
+    if (args.visionFile) {
+      if (items.length !== 1) throw new Error("--vision-file --dry-run hanya untuk satu --photo");
+      const stored = JSON.parse(await readFile(args.visionFile, "utf8"));
+      const vision = stored.vision ?? stored;
+      assemblePrompt(
+        spriteSheetTemplate(prompts, vision.subject_kind),
+        vision,
+        args.vibe,
+        vibeDirections,
+      );
+      console.log(`template nyata ${vision.subject_kind ?? "object"} terisi untuk ${vision.species_key}`);
+    } else {
+      const fake = {
+        creature_brief: "Sebuah tubuh uji berbentuk kotak dengan dua mata di depan.",
+        signature_features: ["tombol jadi mata", "kabel jadi ekor"],
+        strike_name: "Click Snap",
+        surge_name: "Cable Lash",
+      };
+      assemblePrompt(template, fake, args.vibe, vibeDirections);
+      if (faunaTemplate) assemblePrompt(faunaTemplate, fake, args.vibe, vibeDirections);
+    }
     console.log(
       `template ${args.promptVersion}${faunaTemplate ? " object + fauna" : ""} terisi tanpa placeholder sisa`
     );
@@ -664,22 +695,46 @@ async function main() {
         );
         await writeFile(join(outDir, `${name}.prompt.txt`), prompt);
 
+        const rawPath = join(outDir, `${name}.raw.png`);
+        await access(rawPath)
+          .then(() => {
+            throw new Error(
+              `OUTPUT_ALREADY_EXISTS: ${rawPath}; hapus hanya jika operator menyetujui generation baru`,
+            );
+          })
+          .catch((error) => {
+            if (error.code !== "ENOENT") throw error;
+          });
         process.stdout.write(`${label} generate... `);
         gen = await callImageModel(prompt, photo);
         totals.costUsd += COST_PER_IMAGE_USD;
-        await writeFile(join(outDir, `${name}.raw.png`), gen.png);
+        await writeFile(rawPath, gen.png);
 
-        process.stdout.write("facing... ");
-        facing = await callFacingAudit(
-          gen.png,
-          args.promptVersion,
-          {
-            fx_strike: checked.vision.strike_vfx?.motion,
-            fx_surge: checked.vision.surge_vfx?.motion,
-          },
-          facingAuditSystem,
-          facingAuditSchema,
-        );
+        if (args.skipFacing) {
+          facing = {
+            calls: 0,
+            flipped: [],
+            record: {
+              status: "skipped_explicitly",
+              flipped: [],
+              pass1: {},
+              pass2: null,
+              reason: "eval_zero_vision_budget",
+            },
+          };
+        } else {
+          process.stdout.write("facing... ");
+          facing = await callFacingAudit(
+            gen.png,
+            args.promptVersion,
+            {
+              fx_strike: checked.vision.strike_vfx?.motion,
+              fx_surge: checked.vision.surge_vfx?.motion,
+            },
+            facingAuditSystem,
+            facingAuditSchema,
+          );
+        }
         totals.facingCalls += facing.calls;
         totals.costUsd += facing.calls * COST_PER_VISION_USD;
         await writeFile(join(outDir, `${name}.facing.json`), JSON.stringify(facing.record, null, 2));
@@ -742,7 +797,10 @@ async function main() {
   console.log(`sheet lengkap  : ${totals.fullSheets}/${totals.generated}`);
   console.log(`species unik    : ${unique.size} dari ${keys.length} foto`);
   const failed = rows.filter((r) => r.status === "error");
-  if (failed.length) console.log(`gagal           : ${failed.map((r) => r.file).join(", ")}`);
+  if (failed.length) {
+    console.log(`gagal           : ${failed.map((r) => r.file).join(", ")}`);
+    process.exitCode = 1;
+  }
   console.log(`\ncontact sheet   : ${join(outDir, "index.html")}`);
   console.log("Beri skor True to Object dan konsistensi gaya sambil melihatnya.");
 }

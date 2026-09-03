@@ -57,6 +57,18 @@ Manifest adalah satu-satunya hal yang menghubungkan backend dan Godot soal geome
       "idle": { "opaque_pixels": 58320, "cross_boundary_pixels": 0 },
       "attack": { "opaque_pixels": 61210, "cross_boundary_pixels": 813 }
     },
+    "idle_grounding": {
+      "version": 1,
+      "method": "bottom_column_profile_v1",
+      "alpha_min": 0.12,
+      "body_span_px": { "width": 290, "height": 288 },
+      "contact_band_px": 8,
+      "contact_fraction": 0.166,
+      "contact_run_widths_px": [48],
+      "shallow_local_minima_depths_px": [0, 12, 29],
+      "second_shallow_minimum_gap_px": 12,
+      "second_shallow_minimum_gap_ratio": 0.042
+    },
     "cells_detected": 4,
     "warnings": []
   }
@@ -121,6 +133,22 @@ hanya untuk silhouette yang memang towering atau massive. Angka ini hanya
 presentasi, bukan combat stat.
 
 Blok `qa` tidak dipakai game, tapi ikut disimpan agar sheet yang buruk bisa ditemukan lewat query alih-alih laporan pemain. `pose_ownership.cross_boundary_pixels` mengukur bagian pose yang melewati center seam pada PNG mentah tetapi berhasil dipertahankan oleh segmentasi; nilainya bukan error selama sel tetap terpisah.
+
+`qa.idle_grounding` v1 membaca profil alpha bawah dari **sheet hasil akhir** pada
+ambang `0.12`, sama dengan `AnimaPresenter`. Ia mencatat berapa banyak kolom
+silhouette mencapai band kontak bawah, lebar run kontak, dan kedalaman minimum
+lokal kedua. Angka itu murni observability: piksel tidak dapat membedakan kaki,
+roda, ekor, pot, atau alas lebar secara aman, jadi metrik ini tidak menambah
+warning, tidak menolak atau memperbaiki sheet, dan tidak pernah memicu retry
+generation. Visual review tetap menjadi keputusan akhir.
+
+Prompt live Capture/Evolution v47 memindahkan kamera ke near-eye-level dan
+mewajibkan support depan/belakang tubuh darat berbagi bidang kontak dangkal.
+Synthesis v48 lebih keras: setiap support terlihat harus menapak lewat piksel
+tubuh solid; glow/debris tidak boleh menjadi kontak palsu, sementara offset
+perspektif support jauh tetap boleh sampai setengah ukuran support. Ini kontrak
+generation, bukan koreksi runtime: Godot tetap menanam bottom-center bbox seperti
+sebelumnya dan tidak mendistorsi kaki Anima yang sudah tersimpan.
 
 Manifest v12 menambah dua field opsional tanpa menaikkan `version`:
 

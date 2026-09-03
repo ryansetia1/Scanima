@@ -64,17 +64,17 @@ kontradiksi.
 
 | Yang live | Nilai | Rollback |
 |---|---|---|
-| `app_config.prompt_version` (capture) | `v41` | `v31`, lalu `v20` |
-| `evolution_prompt_version` | `v41` | `v30` |
-| `synthesis_prompt_version` | `v45` | `v44` |
+| `app_config.prompt_version` (capture) | `v47` | `v41`, lalu `v31` |
+| `evolution_prompt_version` | `v47` | `v41`, lalu `v30` |
+| `synthesis_prompt_version` | `v48` | `v45` |
 | `RULES_VERSION` combat | `3` | snapshot `evolution_version=0` tetap legacy |
 | Chapter aktif | The Sugarworks v8 | v1–v7 immutable untuk run lama |
 | Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, `feature_synthesis`, dan `feature_atlas_moderation_v2` semuanya `true` | matikan per flag |
 
-Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 25,
-`evolve_anima` 15, `replicate_webhook` 15, `battle_anima` 31, `team_battle` 13,
-`expedition` 16, `seeker` 9, `gallery` 25, `shop` 4, `care_anima` 9,
-`synthesize_anima` 7, `admin_moderation` (staff-only, tanpa rate limit publik).
+Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 28,
+`evolve_anima` 19, `replicate_webhook` 18, `battle_anima` 33, `team_battle` 13,
+`expedition` 18, `seeker` 9, `gallery` 25, `shop` 5, `care_anima` 10,
+`synthesize_anima` 10, `admin_moderation` 5 (staff-only, tanpa rate limit publik).
 
 Fakta arsitektur yang berlaku sekarang (bukan riwayat — riwayatnya di
 `docs/14-deploy-log.md`):
@@ -117,7 +117,10 @@ Fakta arsitektur yang berlaku sekarang (bukan riwayat — riwayatnya di
 - Profile punya section **Evolution History** (silsilah bentuk Anima, nol
   panggilan model tambahan — thumbnail dipotong malas dari sheet yang sudah
   dibayar) dan badge **Published to Atlas** / **Not published to Atlas**.
-- **Guided Synthesis** live di backend, `synthesis_prompt_version=v45`,
+- **Grounded-pose art v47/v48** live: Capture dan Evolution memakai kamera
+  near-eye-level + kontrak bidang tanah v47; Synthesis v48 menuntut setiap
+  support terlihat menapak lewat piksel tubuh solid sambil menjaga depth natural.
+- **Guided Synthesis** live di backend, `synthesis_prompt_version=v48`,
   `feature_synthesis=true`, jalur 1 Core + 250 Bits.
 
 ## Aturan yang tidak bisa dinegosiasikan
@@ -179,11 +182,12 @@ pagar Next.js-nya di `.cursor/rules/admin-guardrails.mdc`.
 Prompt hidup di `backend/prompts/<version>/` sebagai file teks, bukan string literal di dalam kode.
 
 Pohon versi lengkap beserta provenance setiap versi yang ditolak ada di
-[`docs/16-prompt-version-history.md`](docs/16-prompt-version-history.md). Yang
-production sekarang **v41** untuk capture maupun evolution; kontrak siluet,
-mobility, dan face-age v29 serta art v30 tetap berlaku di dalamnya, dan v31/v30
-adalah rollback. Adult Veridian v26, Adult Sunhound v28, Evolved Sunhound v29,
-serta Adult+Evolved Playtron v29 terkunci per Anima lewat
+[`docs/16-prompt-version-history.md`](docs/16-prompt-version-history.md).
+Production sekarang **v47** untuk Capture/Evolution dan **v48** untuk
+Synthesis; kontrak siluet, mobility, face-age, dan nama v41 tetap diwarisi,
+sedangkan grounding near-eye-level menjadi delta art-nya. Rollback art adalah
+v41 Capture/Evolution dan v45 Synthesis. Adult Veridian v26, Adult Sunhound v28,
+Evolved Sunhound v29, serta Adult+Evolved Playtron v29 terkunci per Anima lewat
 `anima_evolution_locks`; lock Plan membawa `suggested_name` operator.
 
 **Prompt tidak bisa dibaca sebagai file di Edge Function.** `Deno.readTextFile()` gagal untuk file pendamping yang dideploy lewat MCP, jadi `backend/tools/bundle_prompts.mjs` membundel semua versi menjadi `functions/_shared/prompts.generated.ts` yang diimpor sebagai modul. Sumbernya tetap file `.md` di git; artefaknya turunan. Setelah mengubah prompt: `node backend/tools/bundle_prompts.mjs`. Skenario 17 di `npm run selftest` gagal kalau bundelnya basi, jadi kelupaan ketangkap gratis, bukan saat art produksi ternyata berbeda dari art yang sudah disetujui.
@@ -239,9 +243,9 @@ godot --headless --path game --script res://tests/test_sprite_slicing.gd \
     -- --manifest=/tmp/scanima_e2e/manifest.json
 
 # eval prompt, BERBIAYA
-node eval/run.mjs --set smoke --vision-only  # gate + stat saja, ~$0.015
-node eval/run.mjs --set smoke                # 5 foto, ~$0.225, untuk iterasi
-node eval/run.mjs --set full                 # 20 foto, ~$1.32, gerbang penerimaan
+node eval/run.mjs --set smoke --vision-only  # gate + stat saja, 6 foto, ~$0.018
+node eval/run.mjs --set smoke --paid --apply '--ack=US$0.21' # 3 sheet + Vision, ~$0.23
+node eval/run.mjs --set full --paid --apply '--ack=US$1.26'  # 18 sheet + Vision, ~$1.32
 
 # aturan kuota dan pagar akses, gratis, jalankan setiap kali migrasi berubah
 supabase db query --file backend/tests/quota_rules.sql --linked
@@ -306,7 +310,14 @@ dari `link` sudah cukup; `psql` langsung ke pooler tidak punya password itu.
 
 `backend/tests/quota_rules.sql` aman dijalankan di proyek remote: ia satu blok `DO`, jadi satu transaksi. Assert yang gagal me-rollback semuanya termasuk user uji dan grant sementara yang dipakai untuk menguji trigger; kalau lulus, barisnya dihapus sendiri di akhir. Jangan mengubahnya menjadi banyak statement terpisah, karena sifat itulah yang membuatnya boleh menyentuh database produksi.
 
-Default-nya `smoke`, prompt `v7`, dan GPT Image 2 `medium`. Jangan jalankan `full` sebagai bagian dari iterasi biasa — ia enam kali lebih mahal dan tidak memberi informasi tambahan sampai Smoke Set sudah bersih. Sebelum memicu satu pun generation gambar, `--vision-only` sudah cukup untuk menguji gate keamanan dan pemetaan stat dengan biaya ~$0.015.
+Default-nya `smoke`, prompt `v7`, dan GPT Image 2 `medium`. Image generation
+lokal wajib memakai `--paid --apply` serta `--ack` sebesar jumlah sheet × harga
+konservatif; tanpa ketiganya harness berhenti sebelum request, dan raw output
+yang sudah ada juga memblokir generation kedua. Jangan jalankan `full` sebagai
+bagian dari iterasi biasa — ia enam kali lebih mahal dan tidak memberi informasi
+tambahan sampai Smoke Set sudah bersih. Sebelum memicu satu pun generation
+gambar, `--vision-only` sudah cukup untuk menguji gate keamanan dan pemetaan stat
+dengan biaya ~$0.018.
 
 **Kalau yang diubah cuma post-processing, jangan bayar generation lagi.** `--reprocess` menyusun ulang sheet, manifest, dan contact sheet dari `raw.png` run sebelumnya tanpa satu pun panggilan API, jadi perubahan keying/slicing bisa diverifikasi terhadap gambar model sungguhan dengan biaya nol. Ia sengaja tidak menimpa `vision.json` dan `prompt.txt`, karena keduanya catatan run yang menghasilkan `raw.png` itu.
 
@@ -374,9 +385,9 @@ dan `sfx-presentation.mdc`.
 
 | Dokumen | Isi |
 |---|---|
-| [`docs/14-deploy-log.md`](docs/14-deploy-log.md) | Riwayat rollout: Atlas, Name Lineage v41, gerbang Rename, Capture Vibe, gate IP, Evolution art, Battle polish, gate lawan Duel, daftar migration |
+| [`docs/14-deploy-log.md`](docs/14-deploy-log.md) | Riwayat rollout: Atlas, grounding v47/v48, Name Lineage, Evolution art, Battle polish, gate lawan Duel, daftar migration |
 | [`docs/15-commands.md`](docs/15-commands.md) | Katalog `--*-demo`, uji terhadap production, build/verifikasi APK, backend lokal |
-| [`docs/16-prompt-version-history.md`](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v41 dan provenance setiap versi yang ditolak |
+| [`docs/16-prompt-version-history.md`](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v48 dan provenance versi live maupun ditolak |
 
 Indeks dokumen selengkapnya ada di [README.md](README.md); panduan pemain di
 [`docs/wiki/`](docs/wiki/README.md).

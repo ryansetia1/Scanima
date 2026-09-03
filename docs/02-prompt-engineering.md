@@ -2,9 +2,38 @@
 
 Ini adalah dokumen paling menentukan kualitas Scanima. Kalau prompt-nya benar, sebuah mouse komputer jadi Anima yang jelas-jelas berasal dari mouse itu. Kalau salah, semua Anima terlihat seperti monster generik yang kebetulan diberi warna berbeda, dan seluruh premis game runtuh.
 
-## Kontrak capture v13, production v20, dan candidate art v16
+## Live art v47/v48 — grounding tubuh darat
 
-Sumber prompt production berada di `backend/prompts/v20/`; v19 menjadi rollback
+Capture dan Evolution live memakai v47; Synthesis memakai v48. Keempat template
+gambar live memakai kamera forward-left three-quarter dari dekat eye-level.
+Untuk setiap body plan darat,
+Idle/Happy/Hungry/Dirty/Damaged wajib grounded, Sleep beristirahat di bidang
+yang sama, dan Battle hanya boleh lepas saat benar-benar melompat atau terbang.
+Jika tubuh punya support depan dan belakang, minimal satu dari tiap bagian harus
+berakhir pada band kontak dangkal yang sama. Biped, alas lebar, rooted,
+serpentine, dan satu kaki memakai kontak yang sesuai anatominya; hanya body plan
+yang eksplisit hover/flying dikecualikan.
+
+Synthesis live memakai v48. Ia memperkeras kontrak v47: **setiap** support
+penahan bobot yang terlihat harus berakhir pada telapak, tread, akar, atau
+underside berupa piksel tubuh solid dengan tangent rata/kompresi bobot kecil.
+Glow, aura, sparks, debu, debris, trail, puddle, floor mark, dan shadow tidak
+dihitung sebagai kontak. Depth three-quarter tetap natural, tetapi offset
+support jauh dibatasi maksimal setengah tinggi atau radius support itu sendiri.
+
+Post-process mencatat `qa.idle_grounding` dari alpha sheet final sebagai
+observability, bukan acceptance gate. Metrik profil piksel tidak bisa mengenali
+anatomi dengan aman—Veridian beralas lebar adalah contoh false positive—jadi ia
+tidak menolak art, tidak menambah warning, dan tidak memicu retry. V46 ditolak
+karena hasil campur; v47 diterima untuk Capture/Evolution; Synthesis v47 ditolak
+karena Chromquartz masih tampak miring, lalu v48 diterima setelah second shallow
+minimum turun 11,8%→6,4% tanpa meratakan perspektif. Rollback production:
+v41 Capture/Evolution dan v45 Synthesis.
+
+## Kontrak capture v13–v20 dan candidate art v16
+
+Fondasi kontrak capture v47 tetap diturunkan dari `backend/prompts/v20/` melalui
+versi-versi immutable sesudahnya; v19 menjadi rollback
 gate, v18 rollback kebijakan tinggi handheld, v17 rollback kebijakan tinggi
 awal, v15 rollback art langsung, dan v13 rollback kontrak capture.
 V20 menerima ilustrasi non-manusia orisinal atau generik sebagai subjek Scan,
@@ -393,7 +422,10 @@ Ada dua adaptasi teknis dari mockup guide:
 1. Background transport tetap `#00FF00`, bukan putih, karena runtime GPT Image 2 menolak alpha. Sesudah post-processing hasil final transparan, jadi hijau bukan bagian dari art direction.
 2. Label IDLE/BATTLE/SLEEP/DAMAGED dilarang. Teks model akan ikut bbox dan merusak sprite; posisi kuadran sudah menjadi label mesin.
 
-Sudut pandang tetap 3/4 dari sedikit atas. White keyline dinaikkan menjadi 3–5px. Setiap appendage dan efek diminta berjarak minimal 6% dari center seam, tetapi post-processing juga wajib tahan jika model melanggar.
+Prompt live v47/v48 memakai pandangan 3/4 dari dekat eye-level; versi historis
+sampai v46 masih meminta sedikit dari atas. White keyline dinaikkan menjadi
+3–5px. Setiap appendage dan efek diminta berjarak minimal 6% dari center seam,
+tetapi post-processing juga wajib tahan jika model melanggar.
 
 ### Logo merek: v3 menyelesaikan reproduksi, lalu menciptakan logo semu
 
@@ -1165,13 +1197,13 @@ Dijalankan sekali sebagai gerbang penerimaan, bukan sebagai alat iterasi. Tiga f
 ### Cara menjalankan
 
 ```bash
-node eval/run.mjs --set smoke                       # v3, 5 foto, ~$0.225
-node eval/run.mjs --set full                        # v3, 20 foto, ~$1.32
+node eval/run.mjs --set smoke --paid --apply '--ack=US$0.21' # 3 generation + Vision, ~$0.23
+node eval/run.mjs --set full --paid --apply '--ack=US$1.26'  # 18 generation + Vision, ~$1.32
 node eval/run.mjs --set smoke --prompt-version v6 --dry-run    # gratis
 node eval/run.mjs --set smoke --prompt-version v2 --reprocess   # gratis, dari raw.png
 ```
 
-Ketiganya memakai harness yang sama dan hanya berbeda daftar foto, jadi tidak ada kode terpisah yang bisa menyimpang. `--reprocess` ada karena perubahan post-processing tidak boleh menuntut generation baru: ia memakai `raw.png` yang sudah dibayar, menyusun ulang sheet, manifest, dan contact sheet tanpa satu pun panggilan API, dan sengaja tidak menimpa `vision.json` maupun `prompt.txt` karena keduanya catatan run yang menghasilkan gambar itu. Hasil disimpan ke `eval/results/<version>/<set>/` sebagai contact sheet HTML (foto asli di kiri, sheet hasil di kanan, JSON Vision di bawahnya) plus metrik otomatis.
+Ketiganya memakai harness yang sama dan hanya berbeda daftar foto, jadi tidak ada kode terpisah yang bisa menyimpang. Image generation wajib memakai `--paid --apply` plus acknowledgement biaya sheet yang persis; tanpa ketiganya harness berhenti sebelum request. `--reprocess` ada karena perubahan post-processing tidak boleh menuntut generation baru: ia memakai `raw.png` yang sudah dibayar, menyusun ulang sheet, manifest, dan contact sheet tanpa satu pun panggilan API, dan sengaja tidak menimpa `vision.json` maupun `prompt.txt` karena keduanya catatan run yang menghasilkan gambar itu. Hasil disimpan ke `eval/results/<version>/<set>/` sebagai contact sheet HTML (foto asli di kiri, sheet hasil di kanan, JSON Vision di bawahnya) plus metrik otomatis.
 
 Simpan setiap hasil dan **jangan pernah hapus**. Perbandingan antar versi prompt harus bisa dilakukan tanpa re-run, karena re-run berarti membayar lagi.
 

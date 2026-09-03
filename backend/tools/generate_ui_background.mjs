@@ -251,7 +251,7 @@ async function generate(slot) {
   const args = new Set(process.argv.slice(2));
   if (!args.has("--paid") || !args.has("--apply") || !args.has(`--ack=${COST_ACK}`)) {
     throw new Error(
-      `PAID_ACK_REQUIRED: gunakan --paid --apply "--ack=${COST_ACK}" untuk satu ${MODEL} ${QUALITY}`,
+      `PAID_ACK_REQUIRED: gunakan --paid --apply '--ack=${COST_ACK}' untuk satu ${MODEL} ${QUALITY}`,
     );
   }
   loadEnv();

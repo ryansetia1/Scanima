@@ -102,6 +102,13 @@ export const DEFAULTS = {
   maxCellFillRatio: 0.95,
 };
 
+// Harus sama dengan AnimaPresenter.OPAQUE_ALPHA_MIN. Metrik grounding membaca
+// alpha sheet final seperti client, bukan alphaThreshold=8 milik segmentasi.
+export const GROUNDING_ALPHA_MIN = 0.12;
+const GROUNDING_ALPHA_BYTE = Math.floor(GROUNDING_ALPHA_MIN * 255);
+const GROUNDING_CONTACT_BAND_RATIO = 0.028;
+const GROUNDING_SHALLOW_DEPTH_RATIO = 0.4;
+
 /**
  * Apakah piksel ini warna kunci (hijau chroma)?
  * Memakai HSV, bukan jarak RGB: hue hijau sangat khas, sementara jarak RGB akan
@@ -759,6 +766,102 @@ export function greenResidueRatio(bitmap) {
 }
 
 /**
+ * Catat profil alpha bawah pose Idle seperti yang benar-benar dilihat client.
+ *
+ * Ini observability, bukan detektor kaki: piksel tidak bisa membedakan telapak,
+ * roda, ekor, pot, atau alas lebar dengan aman. Karena itu nama field sengaja
+ * mendeskripsikan profil piksel, dan hasilnya tidak pernah masuk warnings,
+ * rejection, repair, maupun retry berbayar.
+ */
+export function measureIdleGrounding(bitmap, sheetWidth, region) {
+  const [rx, ry, rw, rh] = region;
+  const lowest = new Int32Array(rw).fill(-1);
+  let top = rh;
+  let floor = -1;
+
+  for (let x = 0; x < rw; x++) {
+    for (let y = 0; y < rh; y++) {
+      const alpha = bitmap[((ry + y) * sheetWidth + rx + x) * 4 + 3];
+      if (alpha < GROUNDING_ALPHA_BYTE) continue;
+      if (y < top) top = y;
+      lowest[x] = y;
+      if (y > floor) floor = y;
+    }
+  }
+  if (floor < 0) return null;
+
+  const occupied = [...lowest].filter((y) => y >= 0).length;
+  const bodyHeight = floor - top + 1;
+  const contactBand = Math.max(1, Math.round(bodyHeight * GROUNDING_CONTACT_BAND_RATIO));
+  const depths = [...lowest].map((y) => (y < 0 ? null : floor - y));
+
+  const contactRunWidths = [];
+  let runWidth = 0;
+  let contactColumns = 0;
+  for (let x = 0; x <= rw; x++) {
+    const touching = x < rw && depths[x] != null && depths[x] <= contactBand;
+    if (touching) {
+      runWidth++;
+      contactColumns++;
+    } else if (runWidth > 0) {
+      contactRunWidths.push(runWidth);
+      runWidth = 0;
+    }
+  }
+  contactRunWidths.sort((a, b) => b - a);
+
+  // ponytail: local-minimum window and merge scale with silhouette width, not
+  // skeleton inference. Ceiling: a broad base or overlapping paws can collapse
+  // to one minimum; visual review remains authoritative.
+  const window = Math.max(2, Math.round(occupied * 0.04));
+  const merge = Math.max(window, Math.round(occupied * 0.085));
+  const shallowLimit = Math.round(bodyHeight * GROUNDING_SHALLOW_DEPTH_RATIO);
+  const minima = [];
+  for (let x = 0; x < rw; x++) {
+    const depth = depths[x];
+    if (depth == null || depth > shallowLimit) continue;
+    let localMinimum = true;
+    for (let other = Math.max(0, x - window); other <= Math.min(rw - 1, x + window); other++) {
+      if (depths[other] != null && depths[other] < depth) {
+        localMinimum = false;
+        break;
+      }
+    }
+    if (!localMinimum) continue;
+    const previous = minima.at(-1);
+    if (previous && x - previous.x <= merge) {
+      previous.x = x;
+      previous.depth = Math.min(previous.depth, depth);
+    } else {
+      minima.push({ x, depth });
+    }
+  }
+  const minimaDepths = minima.map((item) => item.depth).sort((a, b) => a - b);
+  const secondGap = minimaDepths.length > 1 ? minimaDepths[1] : null;
+
+  return {
+    version: 1,
+    method: "bottom_column_profile_v1",
+    alpha_min: GROUNDING_ALPHA_MIN,
+    body_span_px: { width: occupied, height: bodyHeight },
+    contact_band_px: contactBand,
+    occupied_columns: occupied,
+    contact_columns: contactColumns,
+    contact_fraction: Number((contactColumns / occupied).toFixed(3)),
+    contact_run_widths_px: contactRunWidths,
+    largest_contact_run_fraction: contactColumns > 0
+      ? Number(((contactRunWidths[0] ?? 0) / contactColumns).toFixed(3))
+      : 0,
+    shallow_depth_limit_px: shallowLimit,
+    shallow_local_minima_depths_px: minimaDepths,
+    second_shallow_minimum_gap_px: secondGap,
+    second_shallow_minimum_gap_ratio: secondGap == null
+      ? null
+      : Number((secondGap / bodyHeight).toFixed(3)),
+  };
+}
+
+/**
  * Susun sheet keluaran: tiap pose ditempel ke sel berukuran seragam, rata bawah
  * dan rata tengah horizontal.
  *
@@ -1040,6 +1143,9 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
   }
 
   const metrics = heightMetrics(bboxes, layout);
+  const idleGrounding = plan.placements.idle
+    ? measureIdleGrounding(out.bitmap, plan.sheetW, plan.placements.idle.region)
+    : null;
 
   const poses = {};
   for (const pose of detected) {
@@ -1073,6 +1179,7 @@ export async function postprocessSheet(pngBuffer, meta = {}, opts = DEFAULTS) {
       standing_height_variance: metrics.standingVariance,
       bbox_heights: metrics.heights,
       pose_ownership: segmented.ownership,
+      ...(idleGrounding ? { idle_grounding: idleGrounding } : {}),
       keyed_pixel_ratio: Number((keyedPixels / (bitmap.length / 4)).toFixed(4)),
       white_keyline_pixels_stripped: whiteKeylinePixelsStripped,
       ...(seamAudit ? { seam_margin: seamAudit } : {}),

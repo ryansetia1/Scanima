@@ -16,6 +16,7 @@ import {
   isCatalogKeyVapor,
   isKeyColor,
   LAYOUT_3X3,
+  measureIdleGrounding,
   POSE_QUADRANT,
   POSES,
   postprocessSheet,
@@ -440,6 +441,12 @@ const blobs = {
     [],
     "sheet bersih tidak boleh memberi peringatan",
   );
+  assert.equal(manifest.qa.idle_grounding?.alpha_min, 0.12);
+  assert.ok(manifest.qa.idle_grounding?.contact_fraction >= 0);
+  assert.ok(
+    !manifest.qa.warnings.some((warning) => warning.toLowerCase().includes("ground")),
+    "grounding hanya observability, tidak boleh menjadi warning/rejection",
+  );
 
   // frame_size = bbox terbesar + padding di dua sisi
   const maxW = Math.max(...POSES.map((p) => outer(blobs[p]).w));
@@ -512,6 +519,40 @@ const blobs = {
   for (const a of anchors) {
     assert.deepEqual(a, anchors[0], "jangkar antar pose harus sama");
   }
+}
+
+console.log("4a. profil grounding Idle mencatat dua titik rendah tanpa menjadi gate");
+{
+  const width = 64;
+  const height = 64;
+  const bitmap = new Uint8Array(width * height * 4);
+  const fill = (x0, y0, w, h) => {
+    for (let y = y0; y < y0 + h; y++) {
+      for (let x = x0; x < x0 + w; x++) {
+        bitmap[(y * width + x) * 4 + 3] = 255;
+      }
+    }
+  };
+
+  fill(8, 10, 48, 21);
+  fill(10, 31, 6, 28);
+  fill(44, 31, 6, 26);
+  const twoSupports = measureIdleGrounding(bitmap, width, [0, 0, width, height]);
+  assert.deepEqual(twoSupports.body_span_px, { width: 48, height: 49 });
+  assert.equal(twoSupports.shallow_local_minima_depths_px.length, 2);
+  assert.equal(twoSupports.second_shallow_minimum_gap_px, 2);
+  assert.equal(twoSupports.second_shallow_minimum_gap_ratio, 0.041);
+  assert.equal(twoSupports.contact_run_widths_px.length, 1);
+
+  const broadBase = new Uint8Array(width * height * 4);
+  for (let y = 10; y <= 58; y++) {
+    for (let x = 8; x <= 55; x++) broadBase[(y * width + x) * 4 + 3] = 255;
+  }
+  const oneMinimum = measureIdleGrounding(broadBase, width, [0, 0, width, height]);
+  assert.equal(oneMinimum.contact_fraction, 1);
+  assert.equal(oneMinimum.shallow_local_minima_depths_px.length, 1);
+  assert.equal(oneMinimum.second_shallow_minimum_gap_px, null);
+  assert.equal(oneMinimum.second_shallow_minimum_gap_ratio, null);
 }
 
 console.log("4b. anggota tubuh yang melewati garis tengah tidak terpotong");
@@ -1314,6 +1355,121 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
       "original or generic anthropomorphic non-human creature",
     ),
     "v20 memberi subject_kind valid pada ilustrasi antropomorfik non-franchise",
+  );
+
+  assert.equal(
+    bundel.v46?.vision_system,
+    bundel.v41?.vision_system,
+    "v46 mewarisi Vision capture v41",
+  );
+  assert.deepEqual(bundel.v46?.vision_schema, bundel.v41?.vision_schema);
+  assert.deepEqual(bundel.v46?.vibe_directions, bundel.v41?.vibe_directions);
+  assert.equal(bundel.v46?.facing_audit, bundel.v41?.facing_audit);
+  assert.equal(
+    bundel.v46?.sprite_sheet_evolve,
+    bundel.v41?.sprite_sheet_evolve,
+    "v46 tidak mengubah jalur Evolve",
+  );
+  assert.equal(
+    bundel.v46?.vision_synthesis_system,
+    bundel.v45?.vision_synthesis_system,
+    "v46 mewarisi planner Synthesis v45",
+  );
+  assert.deepEqual(
+    bundel.v46?.vision_synthesis_schema,
+    bundel.v45?.vision_synthesis_schema,
+  );
+  for (const prompt of [
+    bundel.v46?.sprite_sheet,
+    bundel.v46?.sprite_sheet_fauna,
+    bundel.v46?.sprite_sheet_synthesis,
+  ]) {
+    assert.ok(prompt?.includes("GROUND CONTACT — MULTI-SUPPORT BODIES ONLY"));
+    assert.ok(prompt?.includes("shared narrow band"));
+    assert.ok(prompt?.includes("one identical pixel row"));
+  }
+  assert.notEqual(bundel.v46?.sprite_sheet, bundel.v41?.sprite_sheet);
+  assert.notEqual(bundel.v46?.sprite_sheet_fauna, bundel.v41?.sprite_sheet_fauna);
+  assert.notEqual(
+    bundel.v46?.sprite_sheet_synthesis,
+    bundel.v45?.sprite_sheet_synthesis,
+  );
+
+  assert.equal(
+    bundel.v47?.vision_system,
+    bundel.v41?.vision_system,
+    "v47 mewarisi Vision capture v41",
+  );
+  assert.deepEqual(bundel.v47?.vision_schema, bundel.v41?.vision_schema);
+  assert.deepEqual(bundel.v47?.vibe_directions, bundel.v41?.vibe_directions);
+  assert.equal(
+    bundel.v47?.vision_synthesis_system,
+    bundel.v45?.vision_synthesis_system,
+    "v47 mewarisi planner Synthesis v45",
+  );
+  assert.deepEqual(
+    bundel.v47?.vision_synthesis_schema,
+    bundel.v45?.vision_synthesis_schema,
+  );
+  for (const prompt of [
+    bundel.v47?.sprite_sheet,
+    bundel.v47?.sprite_sheet_fauna,
+    bundel.v47?.sprite_sheet_synthesis,
+    bundel.v47?.sprite_sheet_evolve,
+  ]) {
+    assert.ok(prompt?.includes("GROUND PLANE LOCK — GROUNDED POSES"));
+    assert.ok(prompt?.includes("near eye-level"));
+    assert.ok(prompt?.includes("front half"));
+    assert.ok(prompt?.includes("rear half"));
+    assert.match(prompt, /Idle, Happy, Hungry, Dirty,\s+and Damaged/);
+    assert.ok(!/from slightly above/i.test(prompt));
+  }
+  assert.notEqual(bundel.v47?.sprite_sheet, bundel.v41?.sprite_sheet);
+  assert.notEqual(bundel.v47?.sprite_sheet_fauna, bundel.v41?.sprite_sheet_fauna);
+  assert.notEqual(
+    bundel.v47?.sprite_sheet_synthesis,
+    bundel.v45?.sprite_sheet_synthesis,
+  );
+  assert.notEqual(
+    bundel.v47?.sprite_sheet_evolve,
+    bundel.v41?.sprite_sheet_evolve,
+  );
+
+  assert.equal(bundel.v48?.sprite_sheet, bundel.v47?.sprite_sheet);
+  assert.equal(bundel.v48?.sprite_sheet_fauna, bundel.v47?.sprite_sheet_fauna);
+  assert.equal(bundel.v48?.sprite_sheet_evolve, bundel.v47?.sprite_sheet_evolve);
+  assert.equal(
+    bundel.v48?.vision_synthesis_system,
+    bundel.v45?.vision_synthesis_system,
+    "v48 mengubah sheet Synthesis saja",
+  );
+  assert.deepEqual(
+    bundel.v48?.vision_synthesis_schema,
+    bundel.v45?.vision_synthesis_schema,
+  );
+  assert.notEqual(
+    bundel.v48?.sprite_sheet_synthesis,
+    bundel.v47?.sprite_sheet_synthesis,
+  );
+  assert.ok(
+    bundel.v48?.sprite_sheet_synthesis?.includes(
+      "SOLID SUPPORT CONTACT — SYNTHESIS OVERRIDE",
+    ),
+  );
+  assert.ok(
+    bundel.v48?.sprite_sheet_synthesis?.includes(
+      "Every visible weight-bearing support",
+    ),
+  );
+  assert.ok(
+    bundel.v48?.sprite_sheet_synthesis?.includes(
+      "half of that support's own height or radius",
+    ),
+  );
+  assert.ok(
+    bundel.v48?.sprite_sheet_synthesis?.includes(
+      "do not count as contact",
+    ),
   );
 }
 
@@ -6800,7 +6956,7 @@ console.log(
 }
 
 console.log(
-  "36. evolution Plan validator, prompt placeholders, dan bundel v21–v41",
+  "36. evolution Plan validator, prompt placeholders, dan bundel v21–v48",
 );
 {
   const {

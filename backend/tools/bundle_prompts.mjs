@@ -60,9 +60,13 @@ const CAPTURE_KEYS = new Set([
   "vision_schema",
   "sprite_sheet",
   "sprite_sheet_fauna",
+  "vibe_directions",
   "facing_audit",
   "facing_audit_schema",
 ]);
+const CAPTURE_SPRITE_KEYS = new Set(["sprite_sheet", "sprite_sheet_fauna"]);
+const LOCAL_CAPTURE_SPRITE_VERSIONS = new Set(["v46", "v47"]);
+const CAPTURE_SPRITE_PARENT = new Map([["v48", "v47"]]);
 const EVOLVE_KEYS = new Set([
   "vision_evolve_system",
   "vision_evolve_schema",
@@ -87,17 +91,30 @@ const EVOLVE_PARENT = new Map([
   ["v43", "v41"],
   ["v44", "v41"],
   ["v45", "v41"],
+  ["v46", "v41"],
+  ["v48", "v47"],
 ]);
 // v42–v45 hanya mengubah Synthesis; capture/evolve tetap byte-identik v41.
 CAPTURE_PARENT.set("v42", "v41");
 CAPTURE_PARENT.set("v43", "v41");
 CAPTURE_PARENT.set("v44", "v41");
 CAPTURE_PARENT.set("v45", "v41");
+// v46 memakai fondasi capture v41, tetapi memiliki sprite object/fauna sendiri.
+// Pengecualian lokalnya ditangani CAPTURE_SPRITE_KEYS saat memilih parent.
+CAPTURE_PARENT.set("v46", "v41");
+CAPTURE_PARENT.set("v47", "v41");
+CAPTURE_PARENT.set("v48", "v41");
 // v43–v45 mengubah planner saja; prompt sheet berbayar tetap persis v42.
 const SYNTHESIS_SHEET_PARENT = new Map([
   ["v43", "v42"],
   ["v44", "v42"],
   ["v45", "v42"],
+]);
+// v46–v48 mengubah sheet Synthesis saja; planner/schema production tetap v45.
+const SYNTHESIS_PLANNER_PARENT = new Map([
+  ["v46", "v45"],
+  ["v47", "v45"],
+  ["v48", "v45"],
 ]);
 
 export async function buildBundle() {
@@ -110,13 +127,22 @@ export async function buildBundle() {
   for (const v of versi) {
     bundel[v] = {};
     for (const [kunci, berkas] of Object.entries(BERKAS)) {
-      const parent = CAPTURE_KEYS.has(kunci)
-        ? CAPTURE_PARENT.get(v)
+      const captureSpriteParent = CAPTURE_SPRITE_KEYS.has(kunci)
+        ? CAPTURE_SPRITE_PARENT.get(v)
+        : null;
+      const inheritsCapture = CAPTURE_KEYS.has(kunci)
+        && !captureSpriteParent
+        && !(LOCAL_CAPTURE_SPRITE_VERSIONS.has(v) && CAPTURE_SPRITE_KEYS.has(kunci));
+      const parent = captureSpriteParent
+        ?? (inheritsCapture
+          ? CAPTURE_PARENT.get(v)
         : EVOLVE_KEYS.has(kunci)
           ? EVOLVE_PARENT.get(v)
           : kunci === "sprite_sheet_synthesis"
             ? SYNTHESIS_SHEET_PARENT.get(v)
-            : null;
+            : kunci === "vision_synthesis_system" || kunci === "vision_synthesis_schema"
+              ? SYNTHESIS_PLANNER_PARENT.get(v)
+              : null);
       const jalur = join(DIR_PROMPT, parent ?? v, berkas);
       let isi;
       try {

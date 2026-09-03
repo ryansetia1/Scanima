@@ -111,7 +111,7 @@ node backend/tools/generate_seeker_art.mjs --reprocess automaton --apply  # tuli
 # dipakai keempat slug, jadi satu kalimat di sana membatalkan keempat hash dan
 # `--check` menuntut $0,28 regenerasi. Perbaikan yang hanya mengenai satu figur
 # ditulis di `figures/<slug>.md` supaya harganya tetap $0,07.
-node backend/tools/generate_seeker_art.mjs androgynous --paid --apply "--ack=US$0.07"
+node backend/tools/generate_seeker_art.mjs androgynous --paid --apply '--ack=US$0.07'
 
 # placeholder lokal untuk figur yang BELUM punya art; slug yang sudah ada
 # dilewati, sebab placeholder lolos semua pemeriksaan roster dan menimpa art
@@ -124,6 +124,48 @@ godot --headless --path game --export-pack Android /tmp/with.pck
 mv game/assets/seekers /tmp/hold && \
  godot --headless --path game --export-pack Android /tmp/without.pck; \
  mv /tmp/hold game/assets/seekers
+```
+
+## Eval prompt grounding
+
+```bash
+# Capture Object/Fauna memakai harness yang sama dengan Smoke Set dan Vision
+# tersimpan; --skip-facing menjaga eksperimen nol Vision.
+node eval/run.mjs \
+  --photo eval/results/v41/single/scanima_stock_vehicle.photo.jpg \
+  --prompt-version v47 \
+  --vision-file eval/results/v41/single/scanima_stock_vehicle.vision.json \
+  --skip-facing --dry-run
+node eval/run.mjs \
+  --photo eval/results/v15/single/scanima-v15-golden-retriever.photo.jpg \
+  --prompt-version v47 \
+  --vision-file eval/results/v15/single/scanima-v15-golden-retriever.vision.json \
+  --skip-facing --dry-run
+
+# Synthesis memakai Plan dan dua pasangan sheet/manifest Source yang sudah ada.
+# Help menampilkan argumen lengkap; ganti `/path/to/...` dengan cache lokal.
+node eval/synthesis_image.mjs --help
+node eval/synthesis_image.mjs \
+  --prompt-version v48 --plan-file "/path/to/plan.json" \
+  --source-a-sheet "/path/to/a.png" --source-a-manifest "/path/to/a.json" --source-a-name "Source A" \
+  --source-b-sheet "/path/to/b.png" --source-b-manifest "/path/to/b.json" --source-b-name "Source B" \
+  --mode dominant_a --dry-run
+
+# Evolution control Sunhound memakai Plan + reference yang sudah dibayar:
+# nol Vision; --dry-run tidak memanggil API.
+node eval/evolution_image.mjs \
+  --prompt-version v47 \
+  --plan-file eval/results/evolution-sunhound-adult-v28-approved/plan.json \
+  --reference-image eval/results/evolution-sunhound-adult-v28-approved/hatchling-idle-reference.png \
+  --dry-run
+
+# Tepat satu image generation. Tanda kutip tunggal wajib supaya `$` tidak
+# diekspansi shell. Raw output yang sudah ada memblokir generation kedua.
+node eval/evolution_image.mjs \
+  --prompt-version v47 \
+  --plan-file eval/results/evolution-sunhound-adult-v28-approved/plan.json \
+  --reference-image eval/results/evolution-sunhound-adult-v28-approved/hatchling-idle-reference.png \
+  --paid --apply '--ack=US$0.07'
 ```
 
 ## Uji terhadap production
