@@ -3,11 +3,13 @@ import { Image } from "imagescript";
 import {
   DEFAULTS,
   LAYOUT_3X3,
+  blitOwned,
   chromaKeyInPlace,
   layoutForPrompt,
   postprocessSheet,
   segmentPosePixels,
   softenAlphaEdges,
+  stripSeekerSpillInPlace,
 } from "../../supabase/functions/_shared/postprocess.mjs";
 import { BOSS_SEEKER_POSES } from "./constants.mjs";
 import { composeChapterCore, encodeRgbaPng } from "./core_vessel.mjs";
@@ -182,41 +184,162 @@ export async function postprocessChapterAnima(rawPng, cast, {
   return { png, manifest, hash: hashFile(png) };
 }
 
-export async function postprocessChromaGridSheet(rawPng, {
-  poses,
-  promptVersion = "chapter_factory/v1",
-  meta = {},
-}) {
-  const decoded = await Image.decode(rawPng);
-  const work = decoded.width === 1024 && decoded.height === 1024
+const GRID_SHEET_SIZE = 1024;
+
+function gridSheetImage(decoded) {
+  return decoded.width === GRID_SHEET_SIZE && decoded.height === GRID_SHEET_SIZE
     ? decoded
-    : decoded.resize(1024, 1024);
-  const keyed = chromaKeyInPlace(work.bitmap, DEFAULTS);
-  if (keyed / (work.bitmap.length / 4) < DEFAULTS.minKeyedRatio) {
+    : decoded.resize(GRID_SHEET_SIZE, GRID_SHEET_SIZE);
+}
+
+function keySegmentGrid(image, poses, despill = false) {
+  const keyed = chromaKeyInPlace(image.bitmap, DEFAULTS);
+  if (keyed / (image.bitmap.length / 4) < DEFAULTS.minKeyedRatio) {
     throw new Error("GRID_BACKGROUND_NOT_CHROMA_GREEN");
   }
-  softenAlphaEdges(work.bitmap, work.width, work.height, DEFAULTS);
-  const layout = {
+  // Sebelum soften, bukan sesudah: soften merata-ratakan alpha tetangga, jadi
+  // membuang spill lebih dulu membuat tepi baru itu dirata-ratakan dari art
+  // sungguhan. Urutan sebaliknya menghasilkan tepi keras di bekas spill.
+  const spillStripped = despill
+    ? stripSeekerSpillInPlace(image.bitmap, image.width, image.height, DEFAULTS)
+    : 0;
+  softenAlphaEdges(image.bitmap, image.width, image.height, DEFAULTS);
+  const segmented = segmentPosePixels(image.bitmap, image.width, image.height, DEFAULTS, {
     grid: 3,
     poses,
     quadrant: Object.fromEntries(
       poses.map((pose, index) => [pose, [index % 3, Math.floor(index / 3)]]),
     ),
-  };
-  const segmented = segmentPosePixels(
-    work.bitmap,
-    work.width,
-    work.height,
-    DEFAULTS,
-    layout,
-  );
+  });
   const missing = poses.filter((pose) => !segmented.bboxes[pose]);
   if (missing.length > 0) throw new Error(`GRID_CELLS_MISSING:${missing.join(",")}`);
+  return { ...segmented, spillStripped };
+}
+
+/** Skala terkecil yang membuat setiap pose muat di selnya; 1 kalau sudah muat. */
+function cellFitScale(bboxes, poses, width) {
+  const cell = Math.floor(width / 3);
+  let scale = 1;
+  for (const pose of poses) {
+    const box = bboxes[pose];
+    const worst = Math.max(box.w, box.h);
+    if (worst > cell) scale = Math.min(scale, cell / worst);
+  }
+  return scale;
+}
+
+/**
+ * Kecilkan isi sheet dari RAW-nya, bukan dari bitmap yang sudah dikeying.
+ *
+ * Resize pada bitmap transparan membaurkan hijau yang masih tersimpan di bawah
+ * alpha 0 kembali ke tepi figur — persis halo yang baru saja dibersihkan chroma
+ * key. Dari raw, padding-nya hijau chroma murni dan ikut terkeying seperti latar
+ * aslinya.
+ */
+function shrinkGridContent(decoded, scale) {
+  const inner = Math.max(1, Math.round(GRID_SHEET_SIZE * scale));
+  const canvas = new Image(GRID_SHEET_SIZE, GRID_SHEET_SIZE);
+  for (let offset = 0; offset < canvas.bitmap.length; offset += 4) {
+    canvas.bitmap[offset] = 0;
+    canvas.bitmap[offset + 1] = 255;
+    canvas.bitmap[offset + 2] = 0;
+    canvas.bitmap[offset + 3] = 255;
+  }
+  const margin = Math.floor((GRID_SHEET_SIZE - inner) / 2);
+  canvas.composite(gridSheetImage(decoded).resize(inner, inner), margin, margin);
+  return canvas;
+}
+
+/**
+ * Geser tiap pose seminimal mungkin sampai ia utuh di dalam selnya sendiri.
+ *
+ * Model menyusun sembilan pose pada pitch-nya sendiri, bukan pada sel 341px
+ * kita, jadi sebuah figur bisa menggantung ke sel sebelahnya. Terukur pada dua
+ * sheet Seeker Roster pertama: baris atas menggantung 5–9 piksel ke bawah
+ * selnya, `victory` menyembul 7 piksel ke atas selnya, dan satu `victory`
+ * berkepalan terangkat 353 piksel tinggi — 12 piksel lebih tinggi daripada
+ * selnya. Godot menggambar sel 341px penuh, jadi sisa itu muncul sebagai
+ * serpihan kaki atau rambut di tepi frame pose lain, dan generation-nya sudah
+ * dibayar — yang benar adalah memperbaiki komposisinya, bukan menolak art-nya.
+ *
+ * Hanya piksel milik pose itu yang disalin, pola yang sama dengan sheet Anima,
+ * jadi sel hasilnya tidak bisa membawa tetangganya. Yang tidak muat setelah
+ * `cellFitScale` mengecilkan isinya tetap gagal keras: itu berarti segmentasi
+ * menggabungkan dua figur, bukan sekadar komposisi yang bergeser.
+ */
+function alignGridCells(source, segmented, poses) {
+  const cell = Math.floor(source.width / 3);
+  const aligned = new Image(source.width, source.height);
+  aligned.bitmap.fill(0);
+  const shifts = {};
+  const bboxes = {};
+  for (let index = 0; index < poses.length; index += 1) {
+    const pose = poses[index];
+    const box = segmented.bboxes[pose];
+    const cellX = (index % 3) * cell;
+    const cellY = Math.floor(index / 3) * cell;
+    if (box.w > cell || box.h > cell) {
+      throw new Error(`GRID_CELL_OVERSIZED:${pose}:${box.w}x${box.h}>${cell}`);
+    }
+    let dx = 0;
+    if (box.x < cellX) dx = cellX - box.x;
+    else if (box.x + box.w > cellX + cell) dx = cellX + cell - (box.x + box.w);
+    let dy = 0;
+    if (box.y < cellY) dy = cellY - box.y;
+    else if (box.y + box.h > cellY + cell) dy = cellY + cell - (box.y + box.h);
+    blitOwned(
+      source.bitmap,
+      source.width,
+      box,
+      segmented.owners,
+      index,
+      aligned.bitmap,
+      aligned.width,
+      box.x + dx,
+      box.y + dy,
+    );
+    shifts[pose] = [dx, dy];
+    bboxes[pose] = { x: box.x + dx, y: box.y + dy, w: box.w, h: box.h };
+  }
+  const components = segmented.components.map((component) => {
+    const [dx, dy] = shifts[component.pose] ?? [0, 0];
+    return {
+      ...component,
+      bbox: { ...component.bbox, x: component.bbox.x + dx, y: component.bbox.y + dy },
+    };
+  });
+  return { image: aligned, bboxes, components, shifts };
+}
+
+export async function postprocessChromaGridSheet(rawPng, {
+  poses,
+  promptVersion = "chapter_factory/v1",
+  meta = {},
+  alignCells = false,
+  despill = false,
+}) {
+  let work = gridSheetImage(await Image.decode(rawPng));
+  let segmented = keySegmentGrid(work, poses, despill);
+  let contentScale = 1;
+  if (alignCells) {
+    contentScale = cellFitScale(segmented.bboxes, poses, work.width);
+    if (contentScale < 1) {
+      work = shrinkGridContent(await Image.decode(rawPng), contentScale);
+      segmented = keySegmentGrid(work, poses, despill);
+    }
+  }
   const frameSize = 300;
+  const aligned = alignCells ? alignGridCells(work, segmented, poses) : null;
+  const sheet = aligned?.image ?? work;
+  const bboxes = aligned?.bboxes ?? segmented.bboxes;
+  // Audit tetap berjalan sesudah alignment, bukan diganti olehnya: sesudah
+  // digeser setiap bbox ada di dalam selnya sendiri sehingga ini lulus dengan
+  // sendirinya, dan itulah gunanya — ia jaring untuk komposisi yang pergeseran
+  // TIDAK bisa selamatkan, bukan pemeriksaan yang dimatikan diam-diam.
   const seamAudit = auditGridCaptureOverlap(
-    segmented.components,
+    aligned?.components ?? segmented.components,
     poses,
-    work.width,
+    sheet.width,
     frameSize,
   );
   if (!seamAudit.passed) {
@@ -225,12 +348,12 @@ export async function postprocessChromaGridSheet(rawPng, {
       .join(", ");
     throw new Error(`GRID_SEAM_VIOLATION:${summary}`);
   }
-  const png = await encodeRgbaPng(work);
-  const referencePose = segmented.bboxes.intro_idle ? "intro_idle" : "idle";
+  const png = await encodeRgbaPng(sheet);
+  const referencePose = bboxes.intro_idle ? "intro_idle" : "idle";
   const referenceSize = capturedBBoxSize(
-    segmented.bboxes[referencePose],
+    bboxes[referencePose],
     poses.indexOf(referencePose),
-    work.width,
+    sheet.width,
     frameSize,
   );
   const manifest = buildGridManifest({
@@ -243,6 +366,10 @@ export async function postprocessChromaGridSheet(rawPng, {
   });
   manifest.qa.mode = "chroma_grid";
   manifest.qa.capture_overlap = seamAudit;
+  if (aligned) {
+    manifest.qa.cell_alignment = { content_scale: contentScale, shifts: aligned.shifts };
+  }
+  if (despill) manifest.qa.spill_stripped = segmented.spillStripped;
   return { png, manifest, hash: hashFile(png) };
 }
 

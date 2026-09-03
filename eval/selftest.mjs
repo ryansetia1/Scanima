@@ -19,6 +19,8 @@ import {
   POSE_QUADRANT,
   POSES,
   postprocessSheet,
+  isSeekerKeySpill,
+  stripSeekerSpillInPlace,
   stripWhiteKeylineFromRgba,
 } from "../backend/supabase/functions/_shared/postprocess.mjs";
 import {
@@ -11456,6 +11458,81 @@ if (emitIdx > -1 && process.argv[emitIdx + 1]) {
     JSON.stringify(manifest, null, 2),
   );
   console.log(`\nsheet uji ditulis ke ${dir}`);
+}
+
+console.log("44. spill hijau teduh dikupas dari sheet Seeker, art hijau selamat");
+{
+  // Warna-warna ini terukur di keempat sheet roster berbayar, bukan dikarang:
+  // garis 1px di tepi potong bust dan celah mantel yang diteduhkan figurnya.
+  for (const [r, g, b, nama] of [
+    [83, 208, 71, "celah mantel automaton"],
+    [72, 161, 80, "sliver mantel teduh"],
+    [10, 110, 48, "garis tepi bust masculine"],
+    [67, 135, 36, "bercak sepatu feminine"],
+  ]) {
+    assert.ok(isSeekerKeySpill(r, g, b), `${nama} rgb(${r},${g},${b}) adalah spill`);
+  }
+  assert.ok(
+    !isSeekerKeySpill(11, 105, 66),
+    "teal mantel androgynous hue 155 bukan spill",
+  );
+  assert.ok(!isSeekerKeySpill(255, 255, 255), "putih keyline bukan spill");
+  assert.ok(!isSeekerKeySpill(120, 140, 125), "abu kehijauan sat rendah bukan spill");
+  // Hijau daun MEMANG masuk pita hue ini, dan itu justru alasan pengupasan ini
+  // dipagari sambungan ke transparansi plus dipakai hanya di jalur Seeker.
+  assert.ok(isSeekerKeySpill(60, 160, 70), "hijau daun ikut pita hue spill");
+
+  const w = 48;
+  const h = 20;
+  const bm = new Uint8Array(w * h * 4);
+  const put = (x, y, [r, g, b]) => {
+    const i = (y * w + x) * 4;
+    bm[i] = r;
+    bm[i + 1] = g;
+    bm[i + 2] = b;
+    bm[i + 3] = 255;
+  };
+  const NAVY = [30, 50, 90];
+  const SPILL = [10, 110, 48];
+  const LEAF = [60, 160, 70];
+  const TEAL = [11, 105, 66];
+  // Blok art rapat dengan cincin spill 1px di sekelilingnya, jadi cincin itu
+  // satu-satunya yang menyentuh transparansi.
+  for (let y = 4; y <= 15; y++) {
+    for (let x = 4; x <= 24; x++) put(x, y, NAVY);
+  }
+  for (let x = 3; x <= 25; x++) {
+    put(x, 3, SPILL);
+    put(x, 16, SPILL);
+  }
+  for (let y = 3; y <= 16; y++) {
+    put(3, y, SPILL);
+    put(25, y, SPILL);
+  }
+  put(10, 10, LEAF); // hijau daun terkurung art: tidak tersambung ke luar
+  put(3, 9, TEAL); // teal di cincin: hue di luar pita, harus selamat
+  // Kanal spill panjang yang mulutnya bersambung ke cincin lalu menembus art,
+  // untuk memagari plafon 12px. Ujungnya ditutup navy supaya ia tidak jadi
+  // seed sendiri dari tepi gambar.
+  for (let y = 8; y <= 12; y++) {
+    for (let x = 26; x <= 45; x++) put(x, y, NAVY);
+  }
+  for (let x = 26; x <= 41; x++) put(x, 10, SPILL);
+
+  const alphaAt = (x, y) => bm[(y * w + x) * 4 + 3];
+  const stripped = stripSeekerSpillInPlace(bm, w, h, DEFAULTS);
+  assert.ok(stripped > 0, "cincin spill harus terkupas");
+  assert.equal(alphaAt(10, 3), 0, "spill di tepi atas terkupas");
+  assert.equal(alphaAt(3, 16), 0, "spill di sudut terkupas");
+  assert.equal(alphaAt(10, 10), 255, "hijau daun terkurung art tidak terkupas");
+  assert.equal(alphaAt(3, 9), 255, "teal di cincin tidak terkupas");
+  assert.equal(alphaAt(12, 8), 255, "badan navy tidak berlubang");
+  assert.equal(alphaAt(26, 10), 0, "spill di mulut kanal terkupas");
+  assert.equal(
+    alphaAt(41, 10),
+    255,
+    "plafon 12px menahan flood sebelum ujung kanal 16px",
+  );
 }
 
 console.log("\nselftest: OK");

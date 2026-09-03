@@ -75,6 +75,42 @@ godot --path game -- --hatch-demo  # mainkan loading + reveal sekali, gratis
 godot --path game res://scenes/anima_demo.tscn        # sheet placeholder
 godot --path game res://scenes/anima_demo.tscn \
     -- --manifest=<abs>.json --pose=sleep --screenshot=/tmp/a.png
+
+# landscape: Godot membaca --resolution, dan tidak ada flag demo untuk orientasi
+godot --path game --resolution 1600x720 -- --battle-demo --screenshot=/tmp/l.png
+```
+
+## Art Seeker Roster
+
+Art keempat figur sudah dibayar dan ter-commit. Yang di bawah ini hanya
+dibutuhkan kalau satu sheet harus diproses ulang, atau kalau roster tumbuh —
+baca ADR-0002 dulu, plafonnya ~6 figur.
+
+```bash
+# gratis: PNG ter-commit benar-benar keluaran prediction yang tercatat
+node backend/tools/generate_seeker_art.mjs --check   # ikut `npm run selftest`
+
+# gratis: proses ulang raw yang sudah dibayar sesudah post-processing berubah
+node backend/tools/generate_seeker_art.mjs --reprocess automaton          # preview hash
+node backend/tools/generate_seeker_art.mjs --reprocess automaton --apply  # tulis
+
+# BERBIAYA, satu slug per proses, tanpa retry otomatis. Kalau satu figur gagal,
+# ulangi hanya figur itu — jangan pernah dalam loop. Angka ack-nya dibaca dari
+# `pricing.mjs`, jadi ia plafon konservatif $0,07 dan bukan harga terukur ~$0,05;
+# tool-nya menolak ack yang tidak sama persis.
+node backend/tools/generate_seeker_art.mjs androgynous --paid --apply "--ack=US$0.07"
+
+# placeholder lokal untuk figur yang BELUM punya art; slug yang sudah ada
+# dilewati, sebab placeholder lolos semua pemeriksaan roster dan menimpa art
+# berbayar gagal senyap
+node eval/seeker_art.mjs
+node eval/seeker_art.mjs --overwrite   # paksa, hanya kalau memang itu maunya
+
+# ukur pertumbuhan build: export pack dengan dan tanpa asetnya, lalu bandingkan
+godot --headless --path game --export-pack Android /tmp/with.pck
+mv game/assets/seekers /tmp/hold && \
+ godot --headless --path game --export-pack Android /tmp/without.pck; \
+ mv /tmp/hold game/assets/seekers
 ```
 
 ## Uji terhadap production

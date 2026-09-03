@@ -1,0 +1,75 @@
+{
+  "slug": "masculine",
+  "status": "succeeded",
+  "prediction_id": "2y50kyj93srmy0d0cm1a4r4rr0",
+  "model": "openai/gpt-image-2",
+  "quality": "medium",
+  "prompt_version": "seekers/v1",
+  "prompt_paths": [
+    "backend/prompts/seekers/roster_sheet.md",
+    "backend/prompts/seekers/figures/masculine.md"
+  ],
+  "prompt_sha256": "fa0082aad8e010531e563b05ec41adbfd3e8f42bad0cdad0e9f6256ffda13909",
+  "created_at": "2026-09-03T02:04:03.918Z",
+  "updated_at": "2026-09-03T02:04:48.932Z",
+  "raw_path": "backend/generated/seekers/raw/masculine.png",
+  "raw_sha256": "3c73c6544b703db31b43f0f6109046759ce7f77e121fc42c14fde84235c39022",
+  "seconds": 48,
+  "output_path": "game/assets/seekers/masculine.png",
+  "output_sha256": "a1b8aed2584817d803c75e5c3e9803c4d1ab8ba3c492547335d2292c11001854",
+  "output_dimensions": [
+    1024,
+    1024
+  ],
+  "render_metrics": {
+    "reference_height_px": 270,
+    "reference_width_px": 138
+  },
+  "capture_overlap": {
+    "passed": true,
+    "violations": []
+  },
+  "cell_alignment": {
+    "content_scale": 0.9660056657223796,
+    "shifts": {
+      "intro_idle": [
+        0,
+        -4
+      ],
+      "attack_command": [
+        0,
+        -3
+      ],
+      "special_command": [
+        0,
+        -7
+      ],
+      "switch_command": [
+        0,
+        0
+      ],
+      "concern_hit": [
+        0,
+        0
+      ],
+      "last_anima": [
+        0,
+        0
+      ],
+      "victory": [
+        0,
+        22
+      ],
+      "defeat": [
+        0,
+        0
+      ],
+      "profile": [
+        22,
+        8
+      ]
+    }
+  },
+  "completed_at": "2026-09-03T02:27:25.451Z",
+  "spill_stripped": 4096
+}

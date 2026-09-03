@@ -297,14 +297,16 @@ export function isWhiteKeylineColor(r, g, b, opts = DEFAULTS) {
 }
 
 /**
- * Kupas hanya matte putih yang tersambung ke transparansi, dengan kedalaman
- * terbatas. Dark line art yang diminta prompt menjadi pagar alami sehingga
- * badan Anima putih tetap utuh.
+ * Nolkan alpha piksel bermatte yang TERSAMBUNG ke transparansi, dengan
+ * kedalaman terbatas.
+ *
+ * Sambungan itu yang membuat pengupasan ini aman: warna sendirian tidak bisa
+ * membedakan matte dari warna tubuh yang sah, tetapi matte selalu bersambung ke
+ * luar sementara warna tubuh dipagari art di sekelilingnya. Batas kedalaman
+ * adalah pagar kedua untuk kalau pagar art itu bocor satu piksel.
  */
-export function stripWhiteKeylineInPlace(bitmap, width, height, opts = DEFAULTS) {
-  if (!opts.stripWhiteKeyline) return 0;
-  const maxDepth = Math.max(0, Math.floor(opts.whiteKeylineMaxDepth));
-  if (maxDepth === 0) return 0;
+function stripConnectedToTransparency(bitmap, width, height, isMatte, alphaThreshold, maxDepth) {
+  if (maxDepth <= 0) return 0;
 
   const pixelCount = width * height;
   const depths = new Uint8Array(pixelCount);
@@ -317,10 +319,7 @@ export function stripWhiteKeylineInPlace(bitmap, width, height, opts = DEFAULTS)
     for (let x = 0; x < width; x++) {
       const p = y * width + x;
       const i = p * 4;
-      if (
-        bitmap[i + 3] <= opts.alphaThreshold ||
-        !isWhiteKeylineColor(bitmap[i], bitmap[i + 1], bitmap[i + 2], opts)
-      ) {
+      if (bitmap[i + 3] <= alphaThreshold || !isMatte(bitmap[i], bitmap[i + 1], bitmap[i + 2])) {
         continue;
       }
 
@@ -335,7 +334,7 @@ export function stripWhiteKeylineInPlace(bitmap, width, height, opts = DEFAULTS)
             ny < 0 ||
             nx >= width ||
             ny >= height ||
-            bitmap[(ny * width + nx) * 4 + 3] <= opts.alphaThreshold
+            bitmap[(ny * width + nx) * 4 + 3] <= alphaThreshold
           ) {
             touchesClear = true;
             break;
@@ -348,8 +347,6 @@ export function stripWhiteKeylineInPlace(bitmap, width, height, opts = DEFAULTS)
     }
   }
 
-  // ponytail: flood dibatasi 6px, bukan segmentasi matte penuh. Kalau model
-  // mulai menggambar keyline lebih tebal, naikkan depth setelah eval visual.
   while (start < end) {
     const p = queue[start++];
     const depth = depths[p];
@@ -368,8 +365,8 @@ export function stripWhiteKeylineInPlace(bitmap, width, height, opts = DEFAULTS)
         if (depths[np] !== 0) continue;
         const ni = np * 4;
         if (
-          bitmap[ni + 3] <= opts.alphaThreshold ||
-          !isWhiteKeylineColor(bitmap[ni], bitmap[ni + 1], bitmap[ni + 2], opts)
+          bitmap[ni + 3] <= alphaThreshold ||
+          !isMatte(bitmap[ni], bitmap[ni + 1], bitmap[ni + 2])
         ) {
           continue;
         }
@@ -387,6 +384,77 @@ export function stripWhiteKeylineInPlace(bitmap, width, height, opts = DEFAULTS)
     bitmap[i + 3] = 0;
   }
   return end;
+}
+
+/**
+ * Kupas hanya matte putih yang tersambung ke transparansi, dengan kedalaman
+ * terbatas. Dark line art yang diminta prompt menjadi pagar alami sehingga
+ * badan Anima putih tetap utuh.
+ */
+export function stripWhiteKeylineInPlace(bitmap, width, height, opts = DEFAULTS) {
+  if (!opts.stripWhiteKeyline) return 0;
+  // ponytail: flood dibatasi 6px, bukan segmentasi matte penuh. Kalau model
+  // mulai menggambar keyline lebih tebal, naikkan depth setelah eval visual.
+  return stripConnectedToTransparency(
+    bitmap,
+    width,
+    height,
+    (r, g, b) => isWhiteKeylineColor(r, g, b, opts),
+    opts.alphaThreshold,
+    Math.max(0, Math.floor(opts.whiteKeylineMaxDepth)),
+  );
+}
+
+/**
+ * Background `#00FF00` yang DITEDUHKAN oleh figurnya sendiri.
+ *
+ * `isKeyColor` disetel untuk hijau murni, dan `isKeyContaminatedEdge` untuk
+ * campurannya dengan keyline PUTIH — bentuknya `(t, 255, t)`, jadi ambang
+ * `g >= 220` cukup. Tidak ada yang menangkap campuran hijau dengan art GELAP:
+ * navy rgb(30,50,90) yang berbaur `#00FF00` mendarat di sekitar rgb(10,110,48),
+ * yaitu hue masih hijau tapi value 0,43 dan g jauh di bawah 220. Terukur di
+ * keempat sheet roster: garis 1px kehijauan di tepi potong bust, dan celah
+ * mantel yang teduh sampai rgb(83,208,71).
+ *
+ * Yang membedakannya dari kain hijau yang sah adalah hue, bukan saturasi:
+ * teal rgb(11,105,66) milik figur androgynous ada di hue 155° dan tidak
+ * tersentuh, sementara seluruh sisa background terukur di 114°–136°.
+ *
+ * Jangan dipakai di sheet Anima: itu jalur plant, dan daun teduh memang tinggal
+ * di pita hue yang sama.
+ */
+export function isSeekerKeySpill(r, g, b) {
+  if (g - Math.max(r, b) < 15) return false;
+  const max = Math.max(r, g, b);
+  if (max === 0) return false;
+  const v = max / 255;
+  if (v < 0.25) return false;
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  const s = delta / max;
+  if (s < 0.4) return false;
+  let hue;
+  if (max === r) hue = 60 * (((g - b) / delta) % 6);
+  else if (max === g) hue = 60 * ((b - r) / delta + 2);
+  else hue = 60 * ((r - g) / delta + 4);
+  if (hue < 0) hue += 360;
+  return hue >= 95 && hue <= 145;
+}
+
+/** Sisa background hijau teduh yang tersambung ke transparansi. Seeker saja. */
+export function stripSeekerSpillInPlace(bitmap, width, height, opts = DEFAULTS) {
+  // ponytail: flood dibatasi 12px. Terukur 8px pada sheet terburuk (automaton,
+  // celah mantel); sisanya headroom. Kalau figur baru butuh lebih, ukur dulu —
+  // pita hue-nya sempit, jadi kedalaman besar berarti ada kain hijau yang
+  // bersambung ke luar dan itu harus dilihat mata, bukan dinaikkan diam-diam.
+  return stripConnectedToTransparency(
+    bitmap,
+    width,
+    height,
+    isSeekerKeySpill,
+    opts.alphaThreshold,
+    12,
+  );
 }
 
 /** Reproses sheet RGBA lama tanpa membutuhkan raw green-screen dari model. */
@@ -734,7 +802,7 @@ export function planFrames(bboxes, opts = DEFAULTS, layout = LAYOUT_2X2) {
 }
 
 /** Salin hanya piksel yang memang dimiliki pose ini, bukan isi bbox tetangga. */
-function blitOwned(srcBitmap, srcW, src, owners, owner, dstBitmap, dstW, destX, destY) {
+export function blitOwned(srcBitmap, srcW, src, owners, owner, dstBitmap, dstW, destX, destY) {
   for (let y = 0; y < src.h; y++) {
     for (let x = 0; x < src.w; x++) {
       const srcPixel = (src.y + y) * srcW + src.x + x;

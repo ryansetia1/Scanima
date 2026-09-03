@@ -1,0 +1,75 @@
+{
+  "slug": "automaton",
+  "status": "succeeded",
+  "prediction_id": "snjcbbnpv9rmt0d0cm39jqc2x4",
+  "model": "openai/gpt-image-2",
+  "quality": "medium",
+  "prompt_version": "seekers/v1",
+  "prompt_paths": [
+    "backend/prompts/seekers/roster_sheet.md",
+    "backend/prompts/seekers/figures/automaton.md"
+  ],
+  "prompt_sha256": "c82a4c6f395226fded6b106b3c570b93bf0bc99a4b8d7a49922085a8c67e0656",
+  "created_at": "2026-09-03T02:08:54.139Z",
+  "updated_at": "2026-09-03T02:09:38.913Z",
+  "raw_path": "backend/generated/seekers/raw/automaton.png",
+  "raw_sha256": "ea1b0fe37cdd2059e160efd8eb8a6e237abbb0030cf3b57d4fd40a946fe8ce68",
+  "seconds": 47,
+  "output_path": "game/assets/seekers/automaton.png",
+  "output_sha256": "3f41343d4e7d617a9418b372e93de571f5248419f4e9105705092c416f401c30",
+  "output_dimensions": [
+    1024,
+    1024
+  ],
+  "render_metrics": {
+    "reference_height_px": 281,
+    "reference_width_px": 132
+  },
+  "capture_overlap": {
+    "passed": true,
+    "violations": []
+  },
+  "cell_alignment": {
+    "content_scale": 0.9827089337175793,
+    "shifts": {
+      "intro_idle": [
+        0,
+        -3
+      ],
+      "attack_command": [
+        0,
+        0
+      ],
+      "special_command": [
+        0,
+        0
+      ],
+      "switch_command": [
+        0,
+        0
+      ],
+      "concern_hit": [
+        0,
+        0
+      ],
+      "last_anima": [
+        0,
+        0
+      ],
+      "victory": [
+        0,
+        16
+      ],
+      "defeat": [
+        0,
+        0
+      ],
+      "profile": [
+        0,
+        2
+      ]
+    }
+  },
+  "completed_at": "2026-09-03T02:27:26.009Z",
+  "spill_stripped": 5809
+}

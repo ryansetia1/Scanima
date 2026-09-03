@@ -2,6 +2,57 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 3 September 2026: art final Seeker Roster menggantikan placeholder
+
+Empat generation `openai/gpt-image-2` medium, satu per figur, tanpa retry
+otomatis, lewat `backend/tools/generate_seeker_art.mjs <slug> --paid --apply
+"--ack=US$0.07"`. Angka ack-nya dibaca dari `pricing.mjs`, jadi ia plafon
+konservatif $0,07 per gambar, bukan harga medium terukur ~$0,05. Prompt
+`seekers/v1`: satu kontrak bersama
+`backend/prompts/seekers/roster_sheet.md` plus empat arahan per figur di
+`backend/prompts/seekers/figures/`. Raw prediction disimpan ke
+`backend/generated/seekers/raw/` bersama provenance per slug, jadi seluruh
+perbaikan post-processing di bawah ini dikerjakan dengan `--reprocess`, nol
+panggilan API tambahan.
+
+Pertumbuhan build diukur dengan dua `--export-pack Android`, dengan dan tanpa
+`game/assets/seekers/`: 29.311.712 versus 27.288.936 byte, jadi **2.022.776 byte
+= 1,93 MiB**. ADR-0002 memperkirakan ~3,2 MB, jadi angkanya di bawah perkiraan
+dan ADR-nya tidak perlu dievaluasi ulang. Empat `.ctex` hasil impor berjumlah
+1,93 MiB, cocok dengan delta PCK-nya.
+
+Dua cacat kosmetik ditemukan sesudah generation dibayar, dan keduanya diperbaiki
+alih-alih ditolak — sesuai aturan biaya di `CLAUDE.md`:
+
+- **Pose lebih tinggi daripada selnya.** Generation pertama gagal
+  `GRID_SEAM_VIOLATION` (`special_command->last_anima:26553px`) karena figur
+  meluber 5–9px ke sel tetangga, dan masculine `victory` bahkan 353px terhadap
+  sel 341px. `postprocessChromaGridSheet()` mendapat opsi `alignCells`: kalau
+  ada pose yang tidak muat, seluruh sheet diperkecil seragam sesuai
+  `cellFitScale()` lebih dulu, lalu setiap pose digeser minimal ke dalam selnya
+  dan hanya piksel miliknya yang di-blit. Terukur `content_scale` 0,9660
+  (masculine) dan 0,9827 (automaton); androgynous dan feminine 1,0.
+- **Spill hijau yang diteduhkan figurnya sendiri.** Terlihat sebagai bercak
+  hijau di mantel automaton pada arena Duel, plus garis 1px kehijauan di tepi
+  potong bust Profile. Sebabnya `isKeyContaminatedEdge` menuntut `g >= 220`
+  karena ia mengasumsikan campuran dengan keyline **putih**; campuran dengan
+  art **gelap** mendarat di `rgb(10,110,48)`. Ditambahkan
+  `stripSeekerSpillInPlace()`, opt-in lewat `despill` dan hanya untuk jalur
+  Seeker. Terukur turun dari 4.096–5.809px per sheet menjadi 10–32px. Cincin 1px
+  terluar tinggal 20,8%–34,1% green-dominant, dibandingkan **53,7%** milik Boss
+  Seeker Confectioner yang sudah production sejak chapter v1 — jadi lebih bersih
+  daripada baseline, dan sisanya sengaja tidak dikejar karena batas berikutnya
+  sudah menyentuh art sungguhan.
+
+Verifikasi visual lewat harness yang sudah ada, portrait 526×1024 dan landscape
+1600×720: picker `--seeker-avatar-demo`, potret Profile `--trophy-demo`, lalu
+ketiga arena `--battle-demo`, `--team-battle-demo`, dan
+`--sugarworks-zone-demo=1`. Suite yang dijalankan hijau: `npm run selftest` (44
+skenario, `generate_seeker_art.mjs --check` sekarang ikut di dalamnya),
+`test_sprite_slicing` 304, `test_scan_ui` 1576, `test_i18n` 5120,
+`test_client_state` 199, `test_auth_flow` 63, `test_game_rules` 181,
+`test_expedition_route_map` 91, `test_battle_sim_parity` 530.
+
 ## 30 Agustus 2026: kurva Level tajam + band Level matchmaking Duel
 
 Latar belakang penuh dan keputusan arah ada di

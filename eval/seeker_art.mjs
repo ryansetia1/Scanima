@@ -2,15 +2,18 @@
 //
 //   node eval/seeker_art.mjs
 //
-// Sengaja tidak ada mode berbayar di sini. Art final adalah tiket terpisah yang
-// dijalankan paling akhir — satu generation per figur, tanpa retry — supaya
-// picker, Profile, dan penempatan arena sudah terbukti benar dengan placeholder
-// sebelum satu sen pun dibelanjakan.
+// Sengaja tidak ada mode berbayar di sini; yang berbayar hidup di
+// `backend/tools/generate_seeker_art.mjs`, satu generation per figur tanpa
+// retry, dan sudah dijalankan — jadi keempat sheet di `game/assets/seekers/`
+// adalah art final dan skrip ini melewati slug yang sheet-nya sudah ada.
+// Placeholder tetap berguna untuk figur kelima: ia membuktikan picker, Profile,
+// dan penempatan arena sebelum satu sen pun dibelanjakan.
 //
 // Kontrak sheet-nya milik SeekerSheet dan tidak boleh bergeser di sini: 1024×1024,
 // grid 3×3 sel 341px, jendela capture 300px per sel, sembilan pose dengan nama
 // yang sama seperti Boss Seeker, chroma green yang lalu dikeying.
 
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -107,15 +110,25 @@ const FIGURES = [
 const OUTLINE = [22, 26, 40];
 
 async function main() {
+  // Art final sudah dibayar dan ter-commit, jadi menimpanya berarti membuang
+  // empat generation dan menagih ulang untuk mendapatkannya kembali — dan
+  // kegagalannya senyap, sebab sembilan sel placeholder tetap lolos semua
+  // pemeriksaan roster. Figur kelima nanti hanya menulis slug barunya.
+  const overwrite = process.argv.includes("--overwrite");
   await mkdir(OUT_DIR, { recursive: true });
   for (const figure of FIGURES) {
+    const path = join(OUT_DIR, `${figure.slug}.png`);
+    if (!overwrite && existsSync(path)) {
+      console.log("skip", `${figure.slug}.png`, "sudah ada; --overwrite untuk menimpanya");
+      continue;
+    }
     const img = new Image(SIZE, SIZE);
     img.fill(GREEN);
     POSES.forEach((pose, index) => {
       drawCell(img, (index % 3) * CELL, Math.trunc(index / 3) * CELL, figure, pose, index);
     });
     keyGreen(img);
-    await writeFile(join(OUT_DIR, `${figure.slug}.png`), await encodeImage(img));
+    await writeFile(path, await encodeImage(img));
     console.log("wrote", `${figure.slug}.png`);
   }
   console.log("seeker roster placeholders written to", OUT_DIR);

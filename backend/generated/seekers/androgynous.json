@@ -1,0 +1,75 @@
+{
+  "slug": "androgynous",
+  "status": "succeeded",
+  "prediction_id": "aj3sp3br19rmy0d0ckyab8yc5w",
+  "model": "openai/gpt-image-2",
+  "quality": "medium",
+  "prompt_version": "seekers/v1",
+  "prompt_paths": [
+    "backend/prompts/seekers/roster_sheet.md",
+    "backend/prompts/seekers/figures/androgynous.md"
+  ],
+  "prompt_sha256": "8c51acda3b62d9e73b32480cbdf5bf61203cabb793fe57c800de0bc56d48e07f",
+  "created_at": "2026-09-03T01:57:42.705Z",
+  "updated_at": "2026-09-03T01:58:30.869Z",
+  "raw_path": "backend/generated/seekers/raw/androgynous.png",
+  "raw_sha256": "d0e33d4d1ae34e9ee52db898d23bfa2f7f85a955498e0c92af2bd96b8543b866",
+  "seconds": 52,
+  "output_path": "game/assets/seekers/androgynous.png",
+  "output_sha256": "ae95c531e4c3af15b1e257f718a92af63d4e9ed9a50a13d6cf0b1b1fc83d3c53",
+  "output_dimensions": [
+    1024,
+    1024
+  ],
+  "render_metrics": {
+    "reference_height_px": 279,
+    "reference_width_px": 106
+  },
+  "capture_overlap": {
+    "passed": true,
+    "violations": []
+  },
+  "cell_alignment": {
+    "content_scale": 1,
+    "shifts": {
+      "intro_idle": [
+        0,
+        -5
+      ],
+      "attack_command": [
+        0,
+        -6
+      ],
+      "special_command": [
+        0,
+        -8
+      ],
+      "switch_command": [
+        0,
+        0
+      ],
+      "concern_hit": [
+        0,
+        0
+      ],
+      "last_anima": [
+        0,
+        0
+      ],
+      "victory": [
+        0,
+        7
+      ],
+      "defeat": [
+        0,
+        0
+      ],
+      "profile": [
+        0,
+        0
+      ]
+    }
+  },
+  "completed_at": "2026-09-03T02:27:25.141Z",
+  "spill_stripped": 4250
+}

@@ -12,12 +12,13 @@ extends RefCounted
 ##
 ## ponytail: art keempat figur ikut ter-bundel ke build alih-alih disajikan dari
 ## Storage (ADR-0002), jadi tidak ada bucket, unggahan, jalur unduh, atau avatar
-## yang hilang karena satu fetch gagal. Plafonnya sekitar enam figur: sheet
-## sembilan pose yang sudah dikeying ditaksir ~0,8 MB, jadi enam ~4,8 MB, dan di
-## atas itu biaya APK melewati kerumitan yang dibelinya — pindahkan pengiriman
-## art ke pola `chapter_assets` yang sudah dipakai Boss Seeker. Placeholder yang
-## ada sekarang jauh lebih ringan (~12 KB per `.ctex`, 112 KB untuk keempatnya),
-## jadi plafon itu baru benar-benar terasa setelah art final masuk.
+## yang hilang karena satu fetch gagal. Art final sudah masuk, dan harganya
+## terukur, bukan lagi taksiran: dua `--export-pack Android` dengan dan tanpa
+## `assets/seekers/` berselisih 2.022.776 byte, yaitu **1,93 MiB untuk empat
+## figur** — di bawah taksiran ~3,2 MB ADR-0002, sekitar 0,48 MiB per figur.
+## Plafonnya tetap sekitar enam figur (~2,9 MiB): di atas itu biaya APK melewati
+## kerumitan yang dibelinya, jadi pindahkan pengiriman art ke pola
+## `chapter_assets` yang sudah dipakai Boss Seeker.
 
 const SHEET_DIR := "res://assets/seekers"
 const DEFAULT_SLUG := "androgynous"
