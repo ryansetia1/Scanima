@@ -90,6 +90,14 @@ baca ADR-0002 dulu, plafonnya ~6 figur.
 # gratis: PNG ter-commit benar-benar keluaran prediction yang tercatat
 node backend/tools/generate_seeker_art.mjs --check   # ikut `npm run selftest`
 
+# gratis: audit visual, kesembilan pose x keempat slug jadi satu PNG. WAJIB
+# sesudah regenerasi — hash membuktikan art-nya dibayar, bukan bahwa arah
+# hadapnya benar. Ia juga mencetak reach skew `attack_command`/`concern_hit`
+# sebagai penunjuk "lihat sel ini duluan"; angka itu BUKAN gerbang, sebab
+# terukur 7/8 dengan satu alarm palsu (kuncir feminine memanjangkan bbox ke
+# kanan dan meniru tanda tangan cermin). Mata yang memutuskan.
+node backend/tools/generate_seeker_art.mjs --strip
+
 # gratis: proses ulang raw yang sudah dibayar sesudah post-processing berubah
 node backend/tools/generate_seeker_art.mjs --reprocess automaton          # preview hash
 node backend/tools/generate_seeker_art.mjs --reprocess automaton --apply  # tulis
@@ -98,6 +106,11 @@ node backend/tools/generate_seeker_art.mjs --reprocess automaton --apply  # tuli
 # ulangi hanya figur itu — jangan pernah dalam loop. Angka ack-nya dibaca dari
 # `pricing.mjs`, jadi ia plafon konservatif $0,07 dan bukan harga terukur ~$0,05;
 # tool-nya menolak ack yang tidak sama persis.
+#
+# Sebelum mengedit prompt, lihat file mana yang disentuh: `roster_sheet.md`
+# dipakai keempat slug, jadi satu kalimat di sana membatalkan keempat hash dan
+# `--check` menuntut $0,28 regenerasi. Perbaikan yang hanya mengenai satu figur
+# ditulis di `figures/<slug>.md` supaya harganya tetap $0,07.
 node backend/tools/generate_seeker_art.mjs androgynous --paid --apply "--ack=US$0.07"
 
 # placeholder lokal untuk figur yang BELUM punya art; slug yang sudah ada

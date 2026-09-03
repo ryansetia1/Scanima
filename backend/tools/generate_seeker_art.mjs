@@ -4,6 +4,7 @@
 //   node backend/tools/generate_seeker_art.mjs <slug> --paid --apply "--ack=US$0.07"
 //   node backend/tools/generate_seeker_art.mjs --reprocess <slug> [--apply]  # nol API
 //   node backend/tools/generate_seeker_art.mjs --check                        # nol API
+//   node backend/tools/generate_seeker_art.mjs --strip                        # nol API
 //
 // Placeholder-nya digambar `eval/seeker_art.mjs` dengan biaya nol dan sudah
 // membuktikan picker, Profile, dan ketiga arena; yang di sini menggantinya
@@ -34,7 +35,7 @@ const RAW_DIR = join(PROVENANCE_DIR, "raw");
 const OUTPUT_DIR = join(ROOT, "game", "assets", "seekers");
 const MODEL = "openai/gpt-image-2";
 const QUALITY = "medium";
-const PROMPT_VERSION = "seekers/v1";
+const PROMPT_VERSION = "seekers/v2";
 const POLL_MS = 2000;
 const POLL_TIMEOUT_MS = 180_000;
 const COST_ACK = `US$${biayaGambarUsd(MODEL, QUALITY).toFixed(2)}`;
@@ -205,7 +206,18 @@ async function generate(slug) {
   let source = await readJson(sourcePath);
 
   if (source && source.prompt_sha256 !== promptHash) {
-    throw new Error(`PROMPT_CHANGED_WITH_EXISTING_PREDICTION:${sourcePath}`);
+    // Prompt berubah sesudah generation sebelumnya SELESAI: itu ronde berbayar
+    // baru yang sah, jadi provenance lama diganti alih-alih memblokir — versi
+    // sebelumnya tetap bisa diambil dari riwayat git, jadi tidak ada jejak yang
+    // hilang. Yang tetap diblokir adalah prediction yang masih terbang:
+    // melanjutkan polling-nya akan mencatat prompt baru untuk gambar yang
+    // dibuat dari prompt lama, dan provenance yang berbohong lebih buruk
+    // daripada satu perintah yang gagal.
+    if (source.status === "succeeded" && source.output_sha256) {
+      source = null;
+    } else {
+      throw new Error(`PROMPT_CHANGED_WITH_PENDING_PREDICTION:${sourcePath}`);
+    }
   }
   if (source?.status === "failed" || source?.status === "canceled") {
     throw new Error(`NO_AUTO_RETRY:${source.prediction_id}:${source.status}`);
@@ -288,6 +300,82 @@ async function reprocess(slug, apply) {
   await writeProcessed(slug, raw, source, sourcePath);
 }
 
+// Sel penuh 341px, bukan jendela 300px yang dideklarasikan manifest: kaki figur
+// hidup di 41px yang "tidak diminta" itu, dan `SeekerSheet._full_grid_cell()`
+// memuainya kembali dengan cara yang sama sebelum dipakai. 1024 tidak habis
+// dibagi 3, jadi batasnya dihitung per sel alih-alih dikali 341.
+function gridCell(image, index) {
+  const col = index % 3;
+  const row = Math.floor(index / 3);
+  const x0 = Math.floor((col * image.width) / 3);
+  const y0 = Math.floor((row * image.height) / 3);
+  const x1 = Math.floor(((col + 1) * image.width) / 3);
+  const y1 = Math.floor(((row + 1) * image.height) / 3);
+  return { x0, y0, x1, y1 };
+}
+
+// Pose yang MENJANGKAU punya tanda tangan geometris yang bisa diukur: tungkai
+// yang terulur memanjangkan bbox ke arah canvas-left, sementara massa tubuh
+// (torso, kaki) tetap tertinggal di belakangnya, jadi pusat massa horizontal
+// duduk di sebelah kanan pusat bbox-nya sendiri dan pose yang dicerminkan
+// membalik tandanya.
+//
+// Angka ini sengaja BUKAN gerbang, dan itu keputusan terukur, bukan kemalasan.
+// Terhadap 8 sampel berlabel (v1 dan v2 keempat slug) tanda `concern_hit` benar
+// 7 dari 8: ia menangkap ketiga sel tercermin di v1 (-0,049/-0,068/-0,084
+// melawan +0,056 yang benar), tetapi menuduh feminine v2 yang sebenarnya benar
+// (-0,013) — kuncirnya memanjangkan bbox ke kanan sehingga meniru tanda tangan
+// cermin. Kandidat kedua, korelasi sidik jari 8×8 terhadap idle yang dibalik,
+// juga hanya 7 dari 8 dengan margin setipis 2% pada kasus sulit. Gerbang yang
+// bisa memberi alarm palsu pada aset $0.07 lebih berbahaya daripada tidak ada
+// gerbang, sebab ia mendorong regenerasi yang tidak perlu.
+//
+// ponytail: penunjuk, bukan putusan — ia memberi tahu sel mana yang dilihat
+// duluan di `--strip`, dan mata tetap yang memutuskan. Upgrade-nya bukan
+// menggeser ambang melainkan sinyal yang benar-benar melacak arah hadap
+// (posisi landmark asimetri, atau pose estimation), dan itu belum sepadan
+// untuk empat gambar yang diregenerasi sekali setahun.
+//
+// Jalur Anima punya penyelesaian yang jauh lebih baik dan SENGAJA tidak dipakai
+// di sini: `_shared/facing_audit.mjs` bertanya ke Vision, menuntut dua pass
+// independen setuju, lalu membalik sel yang tercermin lewat `meta.flipPoses`
+// dengan biaya ~$0.006 alih-alih $0.07. Ia tidak dipasang untuk roster karena
+// dua alasan yang keduanya struktural, bukan soal waktu: `auditableCells()`
+// terikat nama pose Anima (`idle`/`attack`/`sleep`…), dan yang lebih menentukan
+// — membalik satu sel ikut membalik landmark asimetri figur, sehingga strap
+// masculine atau kuncir feminine berpindah sisi dan sel itu jadi ganjil di
+// antara delapan lainnya. Untuk Anima flip itu bersih; untuk Seeker ia menukar
+// cacat arah dengan cacat landmark, jadi roster diperbaiki lewat regenerasi.
+const REACHING_POSES = Object.freeze(["attack_command", "concern_hit"]);
+const ALPHA_FLOOR = 30;
+
+function reachSkew(image, index) {
+  const { x0, y0, x1, y1 } = gridCell(image, index);
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let sum = 0;
+  let count = 0;
+  for (let y = y0; y < y1; y += 1) {
+    for (let x = x0; x < x1; x += 1) {
+      if ((image.getPixelAt(x + 1, y + 1) & 0xff) <= ALPHA_FLOOR) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      sum += x;
+      count += 1;
+    }
+  }
+  if (count === 0 || maxX <= minX) return null;
+  return (sum / count - (minX + maxX) / 2) / (maxX - minX);
+}
+
+function facingHints(image) {
+  return REACHING_POSES.map((pose) => {
+    const skew = reachSkew(image, pose ? SEEKER_SHEET_POSES.indexOf(pose) : 0);
+    const suspect = skew !== null && skew <= 0;
+    return `${pose} ${skew === null ? "empty" : skew.toFixed(3)}${suspect ? " <-- look" : ""}`;
+  }).join(", ");
+}
+
 // Pemeriksaan gratis yang dijalankan `npm run selftest`: art berbayar yang
 // ter-commit benar-benar keluaran prediction yang tercatat. Tanpa ini, satu
 // `node eval/seeker_art.mjs` bisa mengembalikan placeholder ke dalam build dan
@@ -296,29 +384,71 @@ async function check() {
   const failures = [];
   for (const slug of SLUGS) {
     const { source: sourcePath, output: outputPath } = paths(slug);
+    // Provenance dan art diperiksa terpisah supaya satu run melaporkan semua
+    // yang salah: prompt yang sudah diedit tidak boleh menyembunyikan verdict
+    // pose, sebab keduanya justru muncul bersamaan saat ronde baru disiapkan.
+    const problems = [];
+    let source = null;
     try {
-      const source = await readJson(sourcePath);
+      source = await readJson(sourcePath);
       if (source?.status !== "succeeded") throw new Error("provenance is not succeeded");
       if (sha256(await composePrompt(slug)) !== source.prompt_sha256) {
         throw new Error("prompt hash mismatch");
       }
+    } catch (error) {
+      problems.push(error instanceof Error ? error.message : String(error));
+    }
+    try {
       const output = await readFile(outputPath);
-      if (sha256(output) !== source.output_sha256) throw new Error("output hash mismatch");
+      if (source?.output_sha256 && sha256(output) !== source.output_sha256) {
+        throw new Error("output hash mismatch");
+      }
       const image = await Image.decode(output);
       if (image.width !== 1024 || image.height !== 1024) {
         throw new Error(`dimensions ${image.width}x${image.height}`);
       }
     } catch (error) {
-      failures.push(`${slug}: ${error instanceof Error ? error.message : String(error)}`);
+      problems.push(error instanceof Error ? error.message : String(error));
     }
+    if (problems.length > 0) failures.push(`${slug}: ${problems.join("; ")}`);
   }
   if (failures.length > 0) throw new Error(`SEEKER_ART_CHECK_FAILED\n${failures.join("\n")}`);
   console.log(`seeker roster art: ${SLUGS.length}/${SLUGS.length} valid`);
 }
 
+// Hash membuktikan art-nya yang dibayar, bukan bahwa art-nya bagus. Audit visual
+// karena itu tetap wajib, dan ini membuatnya satu perintah: kesembilan pose ×
+// keempat slug dalam satu PNG, jadi arah hadap, umur, dan build bisa
+// dibandingkan berdampingan alih-alih dengan membuka empat sheet bergantian.
+// Skew menjangkau ikut dicetak sebagai penunjuk arah lihat, bukan putusan.
+async function strip() {
+  const scale = 0.62;
+  const cell = Math.round(1024 / 3);
+  const size = Math.round(cell * scale);
+  const sheet = new Image(size * SEEKER_SHEET_POSES.length, size * SLUGS.length);
+  sheet.fill(0xff00ffff);
+  for (const [row, slug] of SLUGS.entries()) {
+    const image = await Image.decode(await readFile(paths(slug).output));
+    for (let index = 0; index < SEEKER_SHEET_POSES.length; index += 1) {
+      const { x0, y0, x1, y1 } = gridCell(image, index);
+      const pose = image.clone().crop(x0, y0, x1 - x0, y1 - y0).resize(size, size);
+      sheet.composite(pose, index * size, row * size);
+    }
+    console.log(`${slug.padEnd(12)} ${facingHints(image)}`);
+  }
+  const out = join(PROVENANCE_DIR, "roster_strip.png");
+  await mkdir(dirname(out), { recursive: true });
+  await writeFile(out, await sheet.encode(1));
+  console.log(`rows: ${SLUGS.join(", ")}`);
+  console.log(`columns: ${SEEKER_SHEET_POSES.join(" ")}`);
+  console.log(out);
+}
+
 const argv = process.argv.slice(2);
 if (argv.includes("--check")) {
   await check();
+} else if (argv.includes("--strip")) {
+  await strip();
 } else if (argv.includes("--reprocess")) {
   const slug = argv.find((value) => !value.startsWith("--"));
   if (!slug) throw new Error(`slug wajib: ${SLUGS.join(", ")}`);

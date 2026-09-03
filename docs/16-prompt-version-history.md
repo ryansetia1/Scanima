@@ -4,6 +4,8 @@ Pohon `backend/prompts/` lengkap beserta provenance setiap versi yang ditolak, d
 
 Alasan versi ditolak disimpan karena empat mekanisme berbeda pernah mendarat di band hasil yang sama — tanpa catatannya, revisi berikutnya mengulang percobaan yang sudah dibayar.
 
+Yang dicatat di sini hanya pohon bernomor `v1`–`v45` untuk capture, evolution, dan synthesis. Namespace prompt lain diversikan sendiri di luar penomoran itu — `backend/prompts/seekers/` ada di `seekers/v2`, dan riwayatnya (termasuk kenapa `seekers/v1` menggambar tiga pose hit yang tercermin) hidup di [`14-deploy-log.md`](14-deploy-log.md).
+
 ## Pohon versi
 
 ```

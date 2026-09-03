@@ -243,9 +243,9 @@ func _ready() -> void:
 	# seberang. Figur pemain berdiri di sisi kiri, jadi ia dibalik supaya
 	# komposisinya terbaca sebagai dua pihak yang berhadapan.
 	_player_seeker.flip_h = true
-	# Di bawah lantai z petarung mana pun (`_set_fighter_z` tidak pernah memberi
-	# angka di bawah 1), jadi ia tidak bisa menutupi Anima pemain.
-	_player_seeker.z_index = 0
+	# Lantai awalnya di belakang; `_apply_player_seeker_layer()` yang memindahkan
+	# figur ke depan begitu Anima pemain cukup tinggi untuk menelan siluetnya.
+	_player_seeker.z_index = BattleScale.PLAYER_SEEKER_Z_BEHIND
 	_fighter_layer.add_child(_player_seeker)
 	# Dua bayangan bersaudara di layer yang sama; tanpa nama sendiri yang kedua
 	# di-serialkan diam-diam jadi "GroundShadow2".
@@ -308,7 +308,9 @@ func set_player_avatar(loaded: Dictionary) -> void:
 		return
 	_player_seeker_loaded = loaded.duplicate(true) if bool(loaded.get("ok", false)) else {}
 	_player_seeker.apply(loaded)
-	_position_player_seeker()
+	# Bukan hanya `_position_player_seeker()`: kolom figurnya ikut menentukan
+	# bingkai kamera, jadi arena harus dibingkai ulang saat figur itu datang.
+	_position_fighters()
 
 
 func set_expedition_mode(enabled: bool) -> void:
@@ -1950,16 +1952,19 @@ func _position_fighters(cancel_transition: bool = true) -> void:
 	_sync_seeker_shadow()
 
 
-func _separate_fighter_bodies() -> void:
+func _fighter_pair_gap() -> float:
 	var player_width := _player_sprite.opaque_local_rect().size.x * absf(_player_anchor.scale.x)
 	var opponent_width := (
 		_opponent_sprite.opaque_local_rect().size.x * absf(_opponent_anchor.scale.x)
 	)
-	var gap := _battle_stage.size.x * CAMERA_FIGHTER_GAP_RATIO
-	var overlap := (
-		_player_anchor.position.x + player_width * 0.5 + gap
-		- (_opponent_anchor.position.x - opponent_width * 0.5)
+	return (
+		(_opponent_anchor.position.x - opponent_width * 0.5)
+		- (_player_anchor.position.x + player_width * 0.5)
 	)
+
+
+func _separate_fighter_bodies() -> void:
+	var overlap := _battle_stage.size.x * CAMERA_FIGHTER_GAP_RATIO - _fighter_pair_gap()
 	if overlap > 0.0:
 		_player_anchor.position.x -= overlap * 0.5
 		_opponent_anchor.position.x += overlap * 0.5
@@ -2079,23 +2084,45 @@ func _pin_player_seeker_to_camera_left(camera_zoom: float) -> void:
 	)
 
 
+## Kotak yang wajib terlihat kamera. Kedua figur Seeker dijepit ke tepi layar
+## **sesudah** kamera memilih zoom dan pusatnya, jadi posisi mereka saat ini
+## turunan dari bingkai sebelumnya — memasukkannya sebagai rect di posisi lama
+## hanya menjamin figurnya terlihat, bukan memberinya udara. Yang dicadangkan
+## karena itu kolom di sisi masing-masing: zoom hanya mengecil kalau memang tidak
+## cukup, dan pusatnya bergeser menjauhi figur, jadi Anima yang minggir alih-alih
+## komposisi shot yang dipindah.
 func _fighter_shot_bounds() -> Rect2:
 	var ground_y := _player_anchor.position.y
-	var player_rect := _anima_shot_rect(_player_sprite, _player_anchor, ground_y)
-	var opponent_rect := _anima_shot_rect(_opponent_sprite, _opponent_anchor, ground_y)
-	var bounds := player_rect.merge(opponent_rect)
-	# Figur pemain sengaja tidak ikut: ia dijepit ke tepi kamera sesudah zoom
-	# dipilih, jadi memasukkannya hanya akan mengecilkan setiap arena Team
-	# Battle yang selama ini tidak punya figur sama sekali.
-	if is_instance_valid(_seeker) and _seeker.has_sheet():
-		var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
-		var width := float(metrics.get("reference_width_px", 158.0)) * absf(_seeker.scale.x)
-		var height := float(metrics.get("reference_height_px", 282.0)) * absf(_seeker.scale.y)
-		var center := BattleScale.seeker_opaque_center(_seeker_loaded) * absf(_seeker.scale.x)
-		bounds = bounds.merge(
-			Rect2(_seeker.position.x + center - width * 0.5, ground_y - height, width, height)
-		)
+	var bounds := _anima_shot_rect(_player_sprite, _player_anchor, ground_y).merge(
+		_anima_shot_rect(_opponent_sprite, _opponent_anchor, ground_y)
+	)
+	bounds = bounds.grow_individual(
+		_seeker_column(_player_seeker, _player_seeker_loaded),
+		0.0,
+		_seeker_column(_seeker, _seeker_loaded),
+		0.0
+	)
+	var tallest := maxf(
+		_seeker_column_height(_player_seeker, _player_seeker_loaded),
+		_seeker_column_height(_seeker, _seeker_loaded)
+	)
+	if tallest > bounds.size.y:
+		bounds = bounds.grow_individual(0.0, tallest - bounds.size.y, 0.0, 0.0)
 	return bounds
+
+
+## Lebar kolom yang harus dicadangkan kamera untuk satu figur, nol kalau di sisi
+## itu tidak ada figur.
+func _seeker_column(seeker: SeekerPresenter, loaded: Dictionary) -> float:
+	if not is_instance_valid(seeker) or not seeker.has_sheet():
+		return 0.0
+	return BattleScale.seeker_reserved_column(loaded, seeker.scale.x, _battle_stage.size.x)
+
+
+func _seeker_column_height(seeker: SeekerPresenter, loaded: Dictionary) -> float:
+	if not is_instance_valid(seeker) or not seeker.has_sheet():
+		return 0.0
+	return BattleScale.seeker_reference_height(loaded) * absf(seeker.scale.y)
 
 
 func _anima_shot_rect(sprite: AnimaPresenter, anchor: Node2D, ground_y: float) -> Rect2:
@@ -2135,6 +2162,22 @@ func _set_fighter_z(player_z: int, opponent_z: int, seeker_z: int) -> void:
 	if is_instance_valid(_seeker):
 		_seeker.z_index = seeker_z
 	_order_stage_fighters()
+
+
+## Figur pemain berdiri di depan Anima-nya sendiri begitu Anima itu setinggi
+## `BattleScale.anima_behind_seeker()`; di bawah ambang itu ia tetap di belakang
+## lantai z petarung mana pun. Bayangan kontaknya wajib ikut lantai yang sama —
+## dibiarkan di lantai belakang, ia tertinggal di balik Anima yang figurnya baru
+## saja melewati.
+func _apply_player_seeker_layer() -> void:
+	if not is_instance_valid(_player_seeker):
+		return
+	var lane := BattleScale.player_seeker_z(
+		_active_body_heights()[0], PLAYER_SEEKER_HEIGHT_CM
+	)
+	_player_seeker.z_index = lane
+	if is_instance_valid(_player_seeker_shadow):
+		_player_seeker_shadow.z_index = lane
 
 
 func _order_stage_fighters() -> void:
@@ -2265,6 +2308,7 @@ func _position_player_seeker() -> void:
 		+ BattleScale.seeker_opaque_center(_player_seeker_loaded) * avatar_scale
 	)
 	_player_seeker.set_layout(Vector2(x, _player_anchor.position.y), avatar_scale)
+	_apply_player_seeker_layer()
 	# Zoom yang sedang berlaku, bukan yang akan datang: dipanggil dari
 	# `_position_fighters()` layer-nya baru di-reset ke 1.0 dan `_apply_dynamic_camera()`
 	# menjepit ulang sesudahnya, sementara dipanggil dari `set_player_avatar()`

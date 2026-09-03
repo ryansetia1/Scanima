@@ -1,48 +1,48 @@
 {
   "slug": "automaton",
   "status": "succeeded",
-  "prediction_id": "snjcbbnpv9rmt0d0cm39jqc2x4",
+  "prediction_id": "h9z426f41drmy0d0cvbaeze9mm",
   "model": "openai/gpt-image-2",
   "quality": "medium",
-  "prompt_version": "seekers/v1",
+  "prompt_version": "seekers/v2",
   "prompt_paths": [
     "backend/prompts/seekers/roster_sheet.md",
     "backend/prompts/seekers/figures/automaton.md"
   ],
-  "prompt_sha256": "c82a4c6f395226fded6b106b3c570b93bf0bc99a4b8d7a49922085a8c67e0656",
-  "created_at": "2026-09-03T02:08:54.139Z",
-  "updated_at": "2026-09-03T02:09:38.913Z",
+  "prompt_sha256": "c31a28f1f7d3c740de3410491290cc347b04752c9620b15490f617c0ba7cd2d7",
+  "created_at": "2026-09-03T10:35:54.409Z",
+  "updated_at": "2026-09-03T10:36:45.315Z",
   "raw_path": "backend/generated/seekers/raw/automaton.png",
-  "raw_sha256": "ea1b0fe37cdd2059e160efd8eb8a6e237abbb0030cf3b57d4fd40a946fe8ce68",
-  "seconds": 47,
+  "raw_sha256": "768d4e575b7906a9e86e1067b5dc8f81ef6eeb5f5b6d853b8f538a513ed9fad7",
+  "seconds": 54,
   "output_path": "game/assets/seekers/automaton.png",
-  "output_sha256": "3f41343d4e7d617a9418b372e93de571f5248419f4e9105705092c416f401c30",
+  "output_sha256": "ccf738da5295bedddd3e89fbfd362bb74fc6fdde3682fce35cab8f00734ea3e4",
   "output_dimensions": [
     1024,
     1024
   ],
   "render_metrics": {
-    "reference_height_px": 281,
-    "reference_width_px": 132
+    "reference_height_px": 274,
+    "reference_width_px": 130
   },
   "capture_overlap": {
     "passed": true,
     "violations": []
   },
   "cell_alignment": {
-    "content_scale": 0.9827089337175793,
+    "content_scale": 1,
     "shifts": {
       "intro_idle": [
         0,
-        -3
+        0
       ],
       "attack_command": [
         0,
-        0
+        -3
       ],
       "special_command": [
         0,
-        0
+        -4
       ],
       "switch_command": [
         0,
@@ -58,18 +58,18 @@
       ],
       "victory": [
         0,
-        16
+        17
       ],
       "defeat": [
         0,
         0
       ],
       "profile": [
-        0,
-        2
+        29,
+        0
       ]
     }
   },
-  "completed_at": "2026-09-03T02:27:26.009Z",
-  "spill_stripped": 5809
+  "spill_stripped": 5283,
+  "completed_at": "2026-09-03T10:36:47.520Z"
 }

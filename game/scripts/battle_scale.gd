@@ -14,6 +14,13 @@ const ANIMA_VISUAL_HEIGHT_CAP_CM := 300.0
 const SEEKER_OVERLAP_RATIO := 0.6
 const SEEKER_CAMERA_EDGE_PAD_RATIO := 0.025
 const SEEKER_REFERENCE_WIDTH_PX := 158.0
+const SEEKER_REFERENCE_HEIGHT_PX := 282.0
+## Sprite Anima duduk satu tingkat di atas anchor-nya (`z_as_relative` bawaan),
+## jadi lantai depan figur pemain harus melewati anchor tertinggi yang pernah
+## diberikan `_set_fighter_z` **berikut** sprite di atasnya — bukan anchor-nya
+## saja.
+const PLAYER_SEEKER_Z_BEHIND := 0
+const PLAYER_SEEKER_Z_FRONT := 5
 const BACKGROUND_PAN_EDGE_MARGIN := 0.04
 const STATIC_BACKGROUND_VERTICAL_PAN := 0.5
 
@@ -32,9 +39,47 @@ static func anima_behind_seeker(anima_height_cm: float, seeker_height_cm: float)
 	)
 
 
+## Lantai z figur Seeker pemain terhadap Anima-nya sendiri. Ambangnya sengaja
+## `anima_behind_seeker()` yang sama dengan Boss Seeker: begitu Anima setinggi
+## itu, figur di belakangnya kehilangan siluetnya, dan dua ambang untuk satu
+## gagasan yang sama akan berpisah diam-diam.
+static func player_seeker_z(anima_height_cm: float, seeker_height_cm: float) -> int:
+	return (
+		PLAYER_SEEKER_Z_FRONT
+		if anima_behind_seeker(anima_height_cm, seeker_height_cm)
+		else PLAYER_SEEKER_Z_BEHIND
+	)
+
+
+## Figur Seeker dijepit ke tepi layar **setelah** kamera memutuskan zoom dan
+## pusatnya, jadi dulu ia tidak pernah ikut dihitung: kamera membingkai kedua
+## Anima serapat mungkin lalu figurnya mendarat di atas mereka. Ini lebar kolom
+## di ruang layer yang harus dicadangkan di sisi yang punya figur — badan opaknya
+## plus dua pad, satu memisahkannya dari tepi kamera dan satu jadi udara ke Anima
+## terdekat.
+##
+## ponytail: pad-nya piksel layar dipakai apa adanya sebagai piksel layer.
+## Plafonnya zoom arena 0,72–1,14, jadi selisihnya <=5 px pada stage 720; kalau
+## rentang zoom melebar, ubah jadi pembagian dengan zoom yang sedang dipakai.
+static func seeker_reserved_column(
+	loaded: Dictionary, sprite_scale: float, stage_width: float
+) -> float:
+	if loaded.is_empty():
+		return 0.0
+	return (
+		seeker_reference_width(loaded) * absf(sprite_scale)
+		+ stage_width * SEEKER_CAMERA_EDGE_PAD_RATIO * 2.0
+	)
+
+
 ## Lebar badan Seeker yang benar-benar tergambar, dalam piksel sheet.
 static func seeker_reference_width(loaded: Dictionary) -> float:
 	return float(_metrics(loaded).get("reference_width_px", SEEKER_REFERENCE_WIDTH_PX))
+
+
+## Tinggi badan Seeker yang benar-benar tergambar, dalam piksel sheet.
+static func seeker_reference_height(loaded: Dictionary) -> float:
+	return float(_metrics(loaded).get("reference_height_px", SEEKER_REFERENCE_HEIGHT_PX))
 
 
 ## Lebar sel sheet Seeker; padding transparannya tidak boleh ikut menentukan

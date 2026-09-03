@@ -14,6 +14,10 @@ eval/photos/*
 !eval/photos/README.md
 build/
 
+# Audit visual roster Seeker: turunan gratis dari art yang sudah ter-commit,
+# jadi `--strip` membuatnya ulang kapan saja tanpa panggilan API.
+backend/generated/seekers/roster_strip.png
+
 # Godot
 game/.godot/
 game/.godotiq/

@@ -1,8 +1,7 @@
 Figure: the feminine Seeker.
 
-- Age and build: early twenties, shortest of the roster, light and quick, narrow
-  frame
-- Read: clearly feminine, practical and field-ready rather than decorative
+- Read: clearly feminine, practical and field-ready rather than decorative. Keep
+  the roster's shared height and frame — not shorter or slighter than the others
 - Face: rounded jaw, large bright eyes, small nose, open eager expression
 - Hair: long hair gathered high and swept to one side in a few large flat locks
 - Dominant outfit geometry: one short flared field dress over leggings, with a

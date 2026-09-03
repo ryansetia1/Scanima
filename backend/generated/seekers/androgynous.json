@@ -1,48 +1,48 @@
 {
   "slug": "androgynous",
   "status": "succeeded",
-  "prediction_id": "aj3sp3br19rmy0d0ckyab8yc5w",
+  "prediction_id": "rypv9g2w21rmt0d0cvabyrm81w",
   "model": "openai/gpt-image-2",
   "quality": "medium",
-  "prompt_version": "seekers/v1",
+  "prompt_version": "seekers/v2",
   "prompt_paths": [
     "backend/prompts/seekers/roster_sheet.md",
     "backend/prompts/seekers/figures/androgynous.md"
   ],
-  "prompt_sha256": "8c51acda3b62d9e73b32480cbdf5bf61203cabb793fe57c800de0bc56d48e07f",
-  "created_at": "2026-09-03T01:57:42.705Z",
-  "updated_at": "2026-09-03T01:58:30.869Z",
+  "prompt_sha256": "53ed720023c12173c54bfeb485dfd027c798a79eb6c0acaaca8030ca23ef2793",
+  "created_at": "2026-09-03T10:33:08.515Z",
+  "updated_at": "2026-09-03T10:33:56.009Z",
   "raw_path": "backend/generated/seekers/raw/androgynous.png",
-  "raw_sha256": "d0e33d4d1ae34e9ee52db898d23bfa2f7f85a955498e0c92af2bd96b8543b866",
-  "seconds": 52,
+  "raw_sha256": "292238b0d86cb8f4fabba303e1b458a068af6de1d3cdffe95e754afe91bfecf7",
+  "seconds": 51,
   "output_path": "game/assets/seekers/androgynous.png",
-  "output_sha256": "ae95c531e4c3af15b1e257f718a92af63d4e9ed9a50a13d6cf0b1b1fc83d3c53",
+  "output_sha256": "cba6c58aea6cc7e1fd6076e37558e2ab41c356f4b056ac4aca38c5cb07fa7d04",
   "output_dimensions": [
     1024,
     1024
   ],
   "render_metrics": {
-    "reference_height_px": 279,
-    "reference_width_px": 106
+    "reference_height_px": 284,
+    "reference_width_px": 107
   },
   "capture_overlap": {
     "passed": true,
     "violations": []
   },
   "cell_alignment": {
-    "content_scale": 1,
+    "content_scale": 0.9884057971014493,
     "shifts": {
       "intro_idle": [
         0,
-        -5
+        -10
       ],
       "attack_command": [
         0,
-        -6
+        -14
       ],
       "special_command": [
         0,
-        -8
+        -14
       ],
       "switch_command": [
         0,
@@ -58,7 +58,7 @@
       ],
       "victory": [
         0,
-        7
+        0
       ],
       "defeat": [
         0,
@@ -70,6 +70,6 @@
       ]
     }
   },
-  "completed_at": "2026-09-03T02:27:25.141Z",
-  "spill_stripped": 4250
+  "spill_stripped": 5182,
+  "completed_at": "2026-09-03T10:33:58.595Z"
 }

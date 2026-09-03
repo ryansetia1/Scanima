@@ -116,10 +116,16 @@ identitas Seeker, dan session yang sudah berjalan tidak ikut berubah.
 Di **Duel**, **Team Battle**, dan **Expedition** kamu ikut berdiri di sana. Figur
 Seeker-mu — yang kamu pilih lewat **Change Seeker Avatar** di
 [Seeker Profile](seeker.md#seeker-avatar) — berdiri di sisimu menghadap lawan,
-sejauh Boss Seeker berdiri dari tepi seberang, dengan bayangan di kaki dan
-selalu di belakang Anima-mu sehingga tidak pernah menutupinya maupun tombol
-aksi. Saat kamera menjauh untuk memuat petarung besar, ia ikut merapat ke tepi
-layar sisimu.
+sejauh Boss Seeker berdiri dari tepi seberang, dengan bayangan di kaki dan tidak
+pernah menutupi tombol aksi. Kamera menyisakan satu kolom untuk figur di sisi
+yang punya figur, jadi badannya dan badan Anima punya jarak alih-alih tumpang
+tindih; Anima yang minggir sedikit, bukan posisi shot-nya yang berubah. Saat
+kamera menjauh untuk memuat petarung besar, ia ikut merapat ke tepi layar sisimu.
+
+Anima yang tingginya sudah melewati kira-kira pinggang figur digambar di
+belakangnya: pada ukuran itu figur yang berdiri di belakang kehilangan
+siluetnya. Anima yang lebih kecil dari itu tetap berdiri di depan figur. Aturan
+yang sama sudah berlaku untuk Boss Seeker di sisi seberang.
 
 Ia bergerak mengikuti giliranmu: pose perintah saat kamu Attack atau Special
 (juga Switch, di mode yang punya Switch), pose khawatir saat Anima-mu terkena,

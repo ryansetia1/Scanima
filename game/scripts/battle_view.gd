@@ -164,8 +164,9 @@ func _ready() -> void:
 	_player_seeker = SEEKER_PRESENTER.new()
 	_player_seeker.name = "PlayerSeeker"
 	_player_seeker.flip_h = true
-	# Di bawah kedua petarung Duel (z 3 dan 2), jadi ia tidak bisa menutupi Anima.
-	_player_seeker.z_index = 0
+	# Lantai awalnya di belakang kedua petarung; `_apply_player_seeker_layer()`
+	# yang memindahkannya ke depan begitu Anima pemain cukup tinggi.
+	_player_seeker.z_index = BattleScale.PLAYER_SEEKER_Z_BEHIND
 	_fighter_layer.add_child(_player_seeker)
 	_player_seeker_shadow = _make_ground_shadow(_fighter_layer)
 	_player_seeker_shadow.name = "PlayerSeekerShadow"
@@ -449,7 +450,9 @@ func set_player_avatar(loaded: Dictionary) -> void:
 		return
 	_player_seeker_loaded = loaded.duplicate(true) if bool(loaded.get("ok", false)) else {}
 	_player_seeker.apply(loaded)
-	_position_player_seeker()
+	# Bukan hanya `_position_player_seeker()`: kolom figurnya ikut menentukan
+	# bingkai kamera, jadi arena harus dibingkai ulang saat figur itu datang.
+	_position_fighters()
 
 
 func session_data() -> Dictionary:
@@ -1177,6 +1180,19 @@ func _position_fighters() -> void:
 	))
 	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
 		return
+	# Figur pemain dijepit ke tepi layar sesudah kamera memilih bingkainya, jadi
+	# kotak yang hanya memuat kedua Anima membuatnya mendarat di atas Anima
+	# pemain. Kolomnya dicadangkan di sisi kiri: pusat bingkai bergeser ke kanan
+	# menjauhi figur, dan zoom baru mengecil kalau memang tidak cukup.
+	var figure_column := _seeker_column()
+	if figure_column > 0.0:
+		bounds = bounds.grow_individual(figure_column, 0.0, 0.0, 0.0)
+		var figure_height := (
+			BattleScale.seeker_reference_height(_player_seeker_loaded)
+			* absf(_player_seeker.scale.y)
+		)
+		if figure_height > bounds.size.y:
+			bounds = bounds.grow_individual(0.0, figure_height - bounds.size.y, 0.0, 0.0)
 	var fit_zoom := minf(
 		(_arena.size.x * 0.90) / bounds.size.x,
 		(_arena.size.y * (DUEL_GROUND_Y_RATIO - 0.05)) / bounds.size.y
@@ -1208,6 +1224,16 @@ func _position_fighters() -> void:
 	_layout_arena_background(background_zoom)
 
 
+## Lebar kolom yang harus dicadangkan kamera untuk figur pemain, nol kalau
+## figurnya belum ada. Bot Duel tidak punya figur, jadi hanya sisi kiri.
+func _seeker_column() -> float:
+	if not is_instance_valid(_player_seeker) or not _player_seeker.has_sheet():
+		return 0.0
+	return BattleScale.seeker_reserved_column(
+		_player_seeker_loaded, _player_seeker.scale.x, _arena.size.x
+	)
+
+
 ## Cermin `TeamBattleView._position_player_seeker()`: sisi pemain, ground line
 ## petarung yang sama, dan tanda `seeker_opaque_center()` terbalik karena
 ## figurnya di-`flip_h`. Skalanya berdiri sendiri alih-alih ikut
@@ -1226,12 +1252,33 @@ func _position_player_seeker() -> void:
 		+ BattleScale.seeker_opaque_center(_player_seeker_loaded) * avatar_scale
 	)
 	_player_seeker.set_layout(Vector2(x, _player_anchor.position.y), avatar_scale)
+	_apply_player_seeker_layer()
 	# Zoom yang sedang berlaku, bukan yang akan datang: dipanggil dari
 	# `_position_fighters()` layer-nya baru di-reset ke 1.0 dan dijepit ulang di
 	# akhir, sementara dipanggil dari `set_player_avatar()` kamera sudah final
 	# dan figur baru harus langsung mendarat di tepinya.
 	_pin_player_seeker_to_camera_left(_fighter_layer.scale.x)
 	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
+
+
+## Cermin `TeamBattleView._apply_player_seeker_layer()`: figur pemain maju ke
+## depan Anima-nya sendiri begitu Anima itu setinggi ambang
+## `BattleScale.anima_behind_seeker()`, dan bayangan kontaknya ikut lantai yang
+## sama supaya ia tidak tertinggal di balik Anima yang baru dilewati figurnya.
+func _apply_player_seeker_layer() -> void:
+	if not is_instance_valid(_player_seeker):
+		return
+	var lane := BattleScale.player_seeker_z(
+		float(
+			_as_dict(_session.get("player_snapshot")).get(
+				"body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM
+			)
+		),
+		TeamBattleView.PLAYER_SEEKER_HEIGHT_CM
+	)
+	_player_seeker.z_index = lane
+	if is_instance_valid(_player_seeker_shadow):
+		_player_seeker_shadow.z_index = lane
 
 
 ## Figur pemain sengaja tidak ikut menentukan zoom Duel: ia dijepit ke tepi

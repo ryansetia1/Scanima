@@ -3587,13 +3587,31 @@ func _test_battle_view() -> void:
 		and is_equal_approx(duel_avatar.position.y, bot_anchor.position.y),
 		"the Duel figure shares the one ground line both fighters stand on"
 	)
+	# Ambangnya milik `BattleScale.anima_behind_seeker()` dan sudah dijaga
+	# `test_game_rules`; yang diperiksa di sini wiring-nya. 120 cm bawaan sudah
+	# melewati 60% dari 165 cm, jadi figurnya melangkah ke depan Anima-nya
+	# sendiri alih-alih kehilangan siluetnya di belakang, dan bayangannya ikut
+	# pindah lane bersamanya.
 	_check(
-		duel_avatar.z_index < player_sprite.z_index
-		and duel_avatar.z_index < bot_sprite.z_index
+		duel_avatar.z_index > player_sprite.z_index
+		and duel_avatar.z_index > bot_sprite.z_index
 		and duel_avatar_shadow.z_index == duel_avatar.z_index
 		and duel_layer.get_index() < fighter_hud_plate.get_index(),
-		"the Duel figure draws behind both Animas and under the arena HUD plate"
+		"the Duel figure steps in front of an Anima as tall as itself, still under the HUD plate"
 	)
+	# Anima cebol tidak menutupi siapa pun, jadi figurnya kembali ke belakang:
+	# lane-nya ikut tinggi petarung, bukan dipatok sekali saat figur dipasang.
+	session["player_snapshot"]["body_height_cm"] = 25
+	view.set_session(session, loaded, loaded)
+	await process_frame
+	_check(
+		duel_avatar.z_index < player_sprite.z_index
+		and duel_avatar_shadow.z_index == duel_avatar.z_index,
+		"the Duel figure drops behind a knee-high Anima"
+	)
+	session["player_snapshot"].erase("body_height_cm")
+	view.set_session(session, loaded, loaded)
+	await process_frame
 	# Satu figur, bukan dua: bot Duel tidak punya Seeker, dan pemeriksaannya
 	# menghitung presenter alih-alih menebak nama node yang belum ada.
 	var duel_seeker_count := 0
@@ -4098,7 +4116,7 @@ func _test_duel_seeker_avatar_layout(
 		arena.size.x > 0.0,
 		"the Duel arena has a real camera viewport to pin against at %s" % viewport_size
 	)
-	var camera_before := layer.scale
+	var anima_screen_before := layer.position.x + player_anchor.position.x * layer.scale.x
 	var dock_height := footer.size.y
 	var dock_position := actions.global_position
 	var hud_position := hud_plate.global_position
@@ -4106,12 +4124,21 @@ func _test_duel_seeker_avatar_layout(
 	view.set_player_avatar(avatar_loaded)
 	await process_frame
 	var avatar := layer.find_child("PlayerSeeker", false, false) as AnimatedSprite2D
+	# Kamera memang membingkai ulang saat figur datang — kolomnya ikut menentukan
+	# bingkai, dan tanpa itu figur mendarat di atas Anima. Yang tidak boleh
+	# bergerak adalah chrome-nya: dock 2×2 dan pelat HUD di luar arena.
 	_check(
-		layer.scale.is_equal_approx(camera_before)
-		and is_equal_approx(footer.size.y, dock_height)
+		is_equal_approx(footer.size.y, dock_height)
 		and actions.global_position.is_equal_approx(dock_position)
 		and hud_plate.global_position.is_equal_approx(hud_position),
-		"the Duel figure never re-zooms the arena or moves the 2x2 dock and HUD at %s"
+		"the Duel figure never moves the 2x2 dock or the HUD plate at %s" % viewport_size
+	)
+	# Kolomnya dicadangkan di sisi kiri, jadi pusat bingkai bergeser ke kanan:
+	# Anima yang minggir memberi tempat, bukan komposisi shot-nya yang dipindah
+	# (anchor-nya tetap di `PLAYER_SHOT_X`).
+	_check(
+		layer.position.x + player_anchor.position.x * layer.scale.x > anima_screen_before,
+		"reserving the figure's column slides the Duel frame away from it at %s"
 			% viewport_size
 	)
 	# Dihitung ulang di sini alih-alih dibaca dari view: kalau rumus jepitnya
@@ -4135,6 +4162,22 @@ func _test_duel_seeker_avatar_layout(
 		avatar_center_x < arena.size.x * 0.5
 		and player_anchor.position.x < arena.size.x * 0.5,
 		"the Duel figure shares the player Anima's half of the screen at %s" % viewport_size
+	)
+	# Inti keluhannya: badan figur dan badan Anima tidak boleh saling menembus.
+	# Diukur di ruang layer pada sisi yang berhadapan saja — tepi kiri Anima
+	# terhadap tepi kanan figur — dan udaranya minimal sebesar pad yang sama yang
+	# memisahkan figur itu dari tepi kamera, karena kolom yang dicadangkan kamera
+	# memang dua pad lebar. Hanya bisa dibuktikan di viewport sungguhan: di
+	# `root` headless arena melapor lebar 0 dan setiap pad jadi nol.
+	var player_sprite := view.find_child("BattlePlayerSprite", true, false) as AnimaPresenter
+	var player_screen_left := layer.position.x + (
+		player_anchor.position.x
+		- player_sprite.opaque_local_rect().size.x * absf(player_anchor.scale.x) * 0.5
+	) * layer.scale.x
+	_check(
+		player_screen_left - (avatar_center_x + avatar_screen_w * 0.5) >= pad - 1.0,
+		"the Duel Anima keeps a pad of air between its body and the figure's at %s"
+			% viewport_size
 	)
 	host.queue_free()
 	await process_frame
@@ -5163,11 +5206,16 @@ func _test_team_battle_view() -> void:
 		and avatar.position.y == seeker.position.y,
 		"both Seeker figures stand on the one ground line the fighters use"
 	)
+	# Anima 2000 cm ini jauh di atas ambang `anima_behind_seeker()`, jadi
+	# figurnya wajib melangkah ke depan. Lantainya harus melewati anchor
+	# petarung **berikut** sprite di atasnya, karena sprite Anima relatif
+	# terhadap anchor-nya; bayangan kontaknya ikut lantai yang sama supaya ia
+	# tidak tertinggal di balik Anima yang figurnya baru saja lewati.
 	_check(
-		avatar.z_index < giant_anchor.z_index
-		and avatar.z_index < opponent_giant_anchor.z_index
+		avatar.z_index > giant_anchor.z_index + giant_player.z_index
+		and avatar.z_index > opponent_giant_anchor.z_index + giant_player.z_index
 		and avatar_shadow.z_index == avatar.z_index,
-		"the player figure draws behind its own Anima, never over it"
+		"the player figure steps in front of an Anima that would swallow it"
 	)
 	# Kedua figur memakai satu jalur bayangan di presenter, jadi diperiksa dari
 	# node hidup: tanpa fudge vertikal, piksel opak terbawah figur mendarat tepat
@@ -5187,9 +5235,12 @@ func _test_team_battle_view() -> void:
 		and stage.get_index() < arena_column.get_node("TeamDock").get_index(),
 		"the player figure can never cover the action dock, at any aspect"
 	)
+	# Kamera memang membingkai ulang: kolom figur pemain ikut menentukan bingkai,
+	# dan tanpa itu ia mendarat di atas Anima-nya sendiri. Arahnya yang dipagari —
+	# ruang hanya boleh dibeli dengan zoom, tidak pernah dengan memperbesar.
 	_check(
-		camera_layer.scale.is_equal_approx(avatar_camera_before),
-		"adding the player figure never re-zooms the arena its Animas already framed"
+		camera_layer.scale.x <= avatar_camera_before.x,
+		"reserving the player figure's column only ever costs zoom, never adds it"
 	)
 	# Dihitung ulang di sini alih-alih dibaca dari view: kalau rumus jepitnya
 	# bergeser, angka yang diharapkan tidak ikut bergeser diam-diam.

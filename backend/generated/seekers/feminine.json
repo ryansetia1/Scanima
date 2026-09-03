@@ -1,29 +1,29 @@
 {
   "slug": "feminine",
   "status": "succeeded",
-  "prediction_id": "ggjjb97a41rmr0d0cm2t4neea8",
+  "prediction_id": "42m8ff8fzhrmr0d0cvbbr3pkgm",
   "model": "openai/gpt-image-2",
   "quality": "medium",
-  "prompt_version": "seekers/v1",
+  "prompt_version": "seekers/v2",
   "prompt_paths": [
     "backend/prompts/seekers/roster_sheet.md",
     "backend/prompts/seekers/figures/feminine.md"
   ],
-  "prompt_sha256": "eb15df1e49b31d5bf4a60380f3a9e3f1a3191b253aff7e39396e8feb646618d3",
-  "created_at": "2026-09-03T02:08:01.725Z",
-  "updated_at": "2026-09-03T02:08:47.303Z",
+  "prompt_sha256": "fe0e046e2f8141f3e848406b93553966a2b758467193a0dbb5063705170104ea",
+  "created_at": "2026-09-03T10:35:00.138Z",
+  "updated_at": "2026-09-03T10:35:48.625Z",
   "raw_path": "backend/generated/seekers/raw/feminine.png",
-  "raw_sha256": "06c209d78a6e3256c39ddc542b440ff7aab515435e1bfecd413f05ae74d82bc1",
-  "seconds": 49,
+  "raw_sha256": "e8f41d77432485620b75a629f42983ee55a5791029c4df34a744f13b10defb28",
+  "seconds": 51,
   "output_path": "game/assets/seekers/feminine.png",
-  "output_sha256": "e1f020e8c35340a62b8817558873f4737ccaccd9dab68e37aeb3b98486e2b085",
+  "output_sha256": "bef1d51196b0ea8d90ca7e9c48ecee55bd9e92131d7c69eb69181483d814eb8c",
   "output_dimensions": [
     1024,
     1024
   ],
   "render_metrics": {
-    "reference_height_px": 284,
-    "reference_width_px": 141
+    "reference_height_px": 294,
+    "reference_width_px": 150
   },
   "capture_overlap": {
     "passed": true,
@@ -34,15 +34,15 @@
     "shifts": {
       "intro_idle": [
         0,
-        0
+        -1
       ],
       "attack_command": [
         0,
-        0
+        -1
       ],
       "special_command": [
         0,
-        -1
+        -7
       ],
       "switch_command": [
         0,
@@ -66,10 +66,10 @@
       ],
       "profile": [
         0,
-        -1
+        6
       ]
     }
   },
-  "completed_at": "2026-09-03T02:27:25.707Z",
-  "spill_stripped": 5091
+  "spill_stripped": 6940,
+  "completed_at": "2026-09-03T10:35:50.133Z"
 }

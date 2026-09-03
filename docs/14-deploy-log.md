@@ -2,6 +2,78 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 3 September 2026: `seekers/v2` — pose hit yang tercermin dan roster sebaya
+
+Enam generation berbayar, $0.42 pada plafon konservatif `pricing.mjs` ($0,07)
+atau ~$0,30 pada harga medium terukur, memperbaiki dua keluhan yang ternyata
+sama-sama tertulis di prompt-nya sendiri, bukan variansi model.
+
+**Yang rusak.** Tiga dari empat sel `concern_hit` digambar sebagai figur yang
+**dicerminkan**: menjangkau ke canvas-right padahal kontrak mengunci canvas-left.
+Buktinya bukan selera — kuncir feminine, landmark asimetrinya, pindah sisi
+antara `intro_idle` dan `concern_hit`. Akarnya kata "recoil" di arah pose 5: ia
+satu-satunya pose yang menyuruh badan menjauh dari arah yang dihadapinya, dan
+model menyelesaikan pertentangan itu dengan membalik figur. Ini pengulangan
+persis temuan v16 pada sheet Anima ("instruksi facing global saja belum cukup"),
+dan obatnya sama: kontraknya diulang **di dalam** baris pose itu, bukan hanya di
+blok global. Dua keluhan estetika juga tertulis eksplisit: `masculine.md` meminta
+"mid thirties … weathered" plus stubble, dan `automaton.md` meminta antena
+berdisc yang di art jadi blob melayang di atas kepala.
+
+**Yang berubah.** `roster_sheet.md` mendapat Roster consistency lock (umur
+pertengahan 20-an, tinggi dan rangka sama, pembeda hanya outfit/rambut/palet/
+gender read), aturan landmark asimetri tidak boleh pindah sisi, dan pose 5
+ditulis ulang sebagai *lean* ke belakang yang tetap menghadap canvas-left.
+Umur/build dicabut dari keempat file figur supaya tidak ada dua sumber
+kebenaran. Antena automaton diganti larangan eksplisit "nothing protrudes".
+
+**Biaya dan urutan.** Karena `roster_sheet.md` dipakai bersama, mengeditnya
+membatalkan hash prompt keempat slug, jadi ronde pertama empat generation
+($0.28). Hasilnya: androgynous, feminine, automaton bersih; masculine masih
+tercermin. Roll kedua masculine ($0.07) membuka penyebab kedua yang lebih halus
+— deskripsi strap "from the right shoulder to the left hip" **ambigu**, kanan
+menurut karakter atau penonton, dan pose yang diimprovisasi menyelesaikannya
+dengan memutar figur. Ditulis ulang dalam istilah kanvas (high canvas-RIGHT
+shoulder → low canvas-LEFT hip, diagonal yang sama di sembilan sel). Hasil roll
+kedua tidak tercermin lagi (strap dan wajah benar) tetapi tangan menjangkaunya
+terayun ke canvas-right sebagai penyeimbang, sebab teks pose 5 menyuruh bahu
+"draw **in**" sekaligus tangan "reaches **out**" sambil "torso tips back". Roll
+ketiga ($0.07) mengunci keduanya di `masculine.md` saja — kedua tangan tetap di
+paruh canvas-left, lengan jauh rapat di rusuk — dan lolos. Ketiga roll masculine
+hanya menyentuh `figures/masculine.md`; menyentuh file bersama untuk itu akan
+berharga $0.21 tambahan.
+
+**Deteksi otomatis dicoba dan sengaja diturunkan jadi penunjuk.** Dua metrik
+diuji terhadap 8 sampel berlabel (v1 dan v2 keempat slug). Reach skew — pusat
+massa horizontal relatif pusat bbox, positif kalau tungkai terulur memanjangkan
+bbox ke canvas-left sementara massa tertinggal — benar 7/8: ia menangkap ketiga
+sel tercermin v1 (-0,049/-0,068/-0,084 lawan +0,056) tetapi menuduh feminine v2
+yang benar (-0,013), sebab kuncirnya memanjangkan bbox ke kanan dan meniru
+tanda tangan cermin. Kandidat kedua, korelasi sidik jari 8×8 terhadap idle yang
+dibalik, juga 7/8 dengan margin setipis 2% pada kasus sulit. Gerbang yang bisa
+memberi alarm palsu pada aset $0.07 mendorong regenerasi yang tidak perlu, jadi
+angkanya dicetak `--strip` sebagai penunjuk "lihat sel ini duluan" dan `--check`
+tetap hanya menegakkan provenance, hash, dan dimensi — invarian tanpa alarm
+palsu. `--strip` sendiri yang jadi gerbang sungguhan: kesembilan pose × keempat
+slug dalam satu PNG, gitignore karena turunan gratis.
+
+**Kenapa `facing_audit.mjs` tidak dipakai di sini.** Jalur Anima sudah punya
+penyelesaian yang lebih murah: Vision dua pass yang harus setuju, lalu sel
+tercermin dibalik lewat `meta.flipPoses` seharga ~$0.006. Ia tidak dipasang
+untuk roster karena `auditableCells()` terikat nama pose Anima, dan — yang
+menentukan — membalik satu sel ikut membalik landmark asimetri figur, sehingga
+strap masculine atau kuncir feminine berpindah sisi dan sel itu jadi ganjil di
+antara delapan lainnya. Untuk Anima flip itu bersih; untuk Seeker ia menukar
+cacat arah dengan cacat landmark.
+
+**Verifikasi.** `--check` 4/4, `npm run selftest` hijau, `test_sprite_slicing`
+OK (304 check, pasangan pose termirip 72–118 terhadap ambang 12),
+`test_scan_ui` OK (1581 check). Sumber PNG 2,336 MiB versus 2,330 MiB
+sebelumnya, selisih 0,2%, jadi angka PCK 1,93 MiB di bawah ini tetap berlaku.
+Art dan provenance `seekers/v1` tidak diarsipkan ke path terpisah — riwayat git
+sudah menyimpannya, dan `git show HEAD~1:game/assets/seekers/<slug>.png`
+memulihkannya kalau perlu dibandingkan.
+
 ## 3 September 2026: art final Seeker Roster menggantikan placeholder
 
 Empat generation `openai/gpt-image-2` medium, satu per figur, tanpa retry
