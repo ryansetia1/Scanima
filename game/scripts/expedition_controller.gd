@@ -562,7 +562,7 @@ func _submit_pending(pending: Dictionary) -> void:
 	_encounter = next_encounter
 	GameState.confirm_expedition_response(_run, _encounter)
 	if operation != "turn":
-		await _present()
+		await _present(operation == "enter_node")
 	if operation == "start_run" and str(_run.get("status", "")) == "checkpoint":
 		_set_busy(false)
 		await _start_zone(str(_run.get("id", "")), str(pending.get("team_id", "")))
@@ -587,7 +587,7 @@ func _submit_pending(pending: Dictionary) -> void:
 	_set_busy(false)
 
 
-func _present() -> void:
+func _present(fresh_intro: bool = false) -> void:
 	var account_epoch := GameState.session_epoch
 	if _run.is_empty():
 		await _load_hub()
@@ -603,7 +603,15 @@ func _present() -> void:
 	art = await _attach_seeker_art(art)
 	if GameState.session_epoch != account_epoch:
 		return
-	_view.set_run(_run, _encounter, art)
+	var play_opening_intro := (
+		fresh_intro and str(_encounter.get("kind", "")) in ["battle", "elite"]
+	)
+	_view.set_run(_run, _encounter, art, play_opening_intro)
+	if play_opening_intro:
+		# Art sudah siap. Lepas LoadingScreen lebih dulu; combat view tetap mengunci
+		# input dan chrome sampai rangkaian summon selesai.
+		_set_busy(false)
+		await _view.play_combat_intro()
 	if _encounter.is_empty():
 		# Tanpa await: pemain sudah bisa membaca peta sementara art-nya turun.
 		_preload_run_art()

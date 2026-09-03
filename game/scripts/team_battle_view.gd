@@ -19,6 +19,8 @@ signal _boss_result_settled
 
 const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
+const INTRO_OPENING_BEAT_SEC := 0.4
+const INTRO_COMMAND_BEAT_SEC := 0.42
 const SEEKER_SHOT_X := 0.83
 ## Figur pemain berdiri sejauh dari tepinya seperti Boss Seeker berdiri dari
 ## tepi seberang, jadi angkanya diturunkan alih-alih ditulis ulang.
@@ -87,6 +89,7 @@ const COMMIT_COLORS := {
 @onready var _start_button: Button = %TeamStartButton
 @onready var _arena: VBoxContainer = %TeamArena
 @onready var _arena_hud: PanelContainer = %ArenaHud
+@onready var _arena_dock: PanelContainer = %TeamDock
 @onready var _turn: Label = %TeamTurn
 @onready var _forfeit: Button = %TeamForfeitButton
 @onready var _player_slots: Label = %TeamPlayerSlots
@@ -166,6 +169,9 @@ var _spoken: Dictionary = {}
 var _spoken_session := ""
 var _intro_started := false
 var _intro_pending_summon := false
+var _opening_intro_pending := false
+var _opening_intro_running := false
+var _opening_intro_revision := 0
 var _command_dialogue_used := false
 var _final_ace_pending := false
 var _boss_result_pending := false
@@ -461,8 +467,8 @@ func set_error(error_code: String) -> void:
 
 
 func set_busy(busy: bool) -> void:
-	_busy = busy
-	if not busy and is_instance_valid(_seeker_dialog) and _seeker_dialog.is_open():
+	_busy = busy or _opening_intro_pending or _opening_intro_running
+	if not _busy and is_instance_valid(_seeker_dialog) and _seeker_dialog.is_open():
 		_busy = true
 	if not _busy:
 		_clear_action_commit()
@@ -482,7 +488,12 @@ func set_result_continue_enabled(enabled: bool) -> void:
 	_retry.disabled = not enabled
 
 
-func set_session(session: Dictionary, art_cache: Dictionary = {}) -> void:
+func set_session(
+	session: Dictionary,
+	art_cache: Dictionary = {},
+	fresh_intro: bool = false
+) -> void:
+	_cancel_opening_intro()
 	_session = session.duplicate(true)
 	_sync_action_layout()
 	_art_cache.merge(art_cache, true)
@@ -491,13 +502,103 @@ func set_session(session: Dictionary, art_cache: Dictionary = {}) -> void:
 	_show_only(_arena)
 	_apply_arena_background(art_cache)
 	_present_seeker()
+	var opening_requested := (
+		fresh_intro
+		and str(_session.get("status", "active")) == "active"
+		and not _is_boss_encounter()
+	)
+	_opening_intro_pending = opening_requested
+	if opening_requested:
+		_busy = true
 	if _should_boss_intro():
 		_intro_started = true
 		_intro_pending_summon = true
 		_busy = true
 	_apply_session_state()
+	_set_opening_chrome_visible(not opening_requested)
+	_update_arena_actions()
 	if _intro_pending_summon:
 		_begin_boss_intro()
+
+
+func play_opening_intro() -> void:
+	if not _opening_intro_pending:
+		return
+	_opening_intro_pending = false
+	_opening_intro_running = true
+	_busy = true
+	_update_arena_actions()
+	var revision := _opening_intro_revision
+	await _event_pause(INTRO_OPENING_BEAT_SEC)
+	if not _opening_intro_is_active(revision):
+		return
+	if not await _summon_opening_side("opponent", revision):
+		return
+	_set_player_seeker_pose("switch_command")
+	await _event_pause(INTRO_COMMAND_BEAT_SEC)
+	if not _opening_intro_is_active(revision):
+		return
+	if not await _summon_opening_side("player", revision):
+		return
+	_opening_intro_running = false
+	_busy = false
+	_set_opening_chrome_visible(true)
+	_restore_player_seeker_idle()
+	_apply_session_state()
+	_sync_shadow("player")
+	_sync_shadow("opponent")
+	_update_arena_actions()
+
+
+func _summon_opening_side(side: String, revision: int) -> bool:
+	var sprite := _sprite_for(side)
+	var portal := _portal_for(side)
+	if not is_instance_valid(sprite):
+		return _opening_intro_is_active(revision)
+	_align_portal(side)
+	if is_instance_valid(portal):
+		await portal.start_portal()
+	if not _opening_intro_is_active(revision):
+		return false
+	if is_instance_valid(portal):
+		portal.burst()
+	if sprite.sprite_frames != null:
+		await sprite.summon_reveal()
+	else:
+		sprite.visible = true
+	if not _opening_intro_is_active(revision):
+		return false
+	_sync_shadow(side)
+	return true
+
+
+func _opening_intro_is_active(revision: int) -> bool:
+	return (
+		_opening_intro_running
+		and revision == _opening_intro_revision
+		and str(_session.get("status", "")) == "active"
+		and not _is_boss_encounter()
+	)
+
+
+func _cancel_opening_intro() -> void:
+	var was_active := _opening_intro_pending or _opening_intro_running
+	_opening_intro_revision += 1
+	_opening_intro_pending = false
+	_opening_intro_running = false
+	if was_active:
+		_busy = false
+	if is_instance_valid(_player_portal):
+		_player_portal.stop()
+	if is_instance_valid(_opponent_portal):
+		_opponent_portal.stop()
+
+
+func _set_opening_chrome_visible(shown: bool) -> void:
+	_arena_hud.visible = shown
+	_arena_dock.modulate.a = 1.0 if shown else 0.0
+	if not shown:
+		_turn.visible = false
 
 
 func session_data() -> Dictionary:
@@ -972,8 +1073,14 @@ func _apply_session_state() -> void:
 	var status := str(_session.get("status", state.get("status", "active")))
 	_sync_location_chrome()
 	_effectiveness.visible = false
-	_apply_side(_session, "player", true)
-	_apply_side(_session, "opponent", true, not _intro_pending_summon)
+	var opening_hidden := _opening_intro_pending or _opening_intro_running
+	_apply_side(_session, "player", true, not opening_hidden)
+	_apply_side(
+		_session,
+		"opponent",
+		true,
+		not opening_hidden and not _intro_pending_summon
+	)
 	_position_fighters()
 	_set_player_seeker_pose(
 		"intro_idle" if status == "active"

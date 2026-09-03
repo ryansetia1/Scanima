@@ -10,6 +10,8 @@ const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 const MOMENTUM_MAX := 3
 const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
+const INTRO_OPENING_BEAT_SEC := 0.4
+const INTRO_COMMAND_BEAT_SEC := 0.42
 # The opaque feet stay planted by AnimaPresenter; this line only chooses where
 # that shared anchor sits in Duel's static arena composition.
 const DUEL_GROUND_Y_RATIO := BattleScale.GROUND_Y_RATIO
@@ -69,6 +71,9 @@ const DUEL_BACKGROUND_NIGHT_LANDSCAPE: Texture2D = preload(
 @onready var _expedition_button: Button = %BattleExpeditionButton
 @onready var _expedition_view: ExpeditionView = %ExpeditionView
 @onready var _battle_content: VBoxContainer = %BattleContent
+@onready var _status_overlay: Control = %StatusOverlay
+@onready var _fighter_hud_plate: PanelContainer = %FighterHudPlate
+@onready var _footer: Control = %BattleFooter
 @onready var _turn_label: Label = %BattleTurn
 @onready var _daily_reward_label: Label = %BattleDailyReward
 @onready var _player_name: Label = %BattlePlayerName
@@ -129,11 +134,16 @@ var _background_pan := 0.5
 var _uses_static_background := false
 var _background_material: ShaderMaterial
 var _background_timer: Timer
+var _player_portal: IncubatorEffect
+var _bot_portal: IncubatorEffect
 var _player_shadow: Sprite2D
 var _bot_shadow: Sprite2D
 var _player_seeker: SEEKER_PRESENTER
 var _player_seeker_shadow: Sprite2D
 var _player_seeker_loaded: Dictionary = {}
+var _opening_intro_pending := false
+var _opening_intro_running := false
+var _opening_intro_revision := 0
 
 
 func _ready() -> void:
@@ -184,6 +194,8 @@ func _ready() -> void:
 	_background_timer.autostart = true
 	add_child(_background_timer)
 	_background_timer.timeout.connect(_refresh_static_background)
+	_player_portal = _make_portal(_player_anchor)
+	_bot_portal = _make_portal(_bot_anchor)
 	_player_shadow = _make_ground_shadow(_player_anchor)
 	_bot_shadow = _make_ground_shadow(_bot_anchor)
 	_player_sprite.pose_changed.connect(func(_pose: String) -> void: _sync_shadow("player"))
@@ -412,11 +424,19 @@ func set_session(
 	battle_session: Dictionary,
 	player_loaded: Dictionary = {},
 	bot_loaded: Dictionary = {},
-	art_cache: Dictionary = {}
+	art_cache: Dictionary = {},
+	fresh_intro: bool = false
 ) -> void:
+	_cancel_opening_intro()
 	_clear_event_plate()
 	_clear_action_commit()
 	_session = battle_session.duplicate(true)
+	var intro_requested := (
+		fresh_intro and str(_session.get("status", "active")) == "active"
+	)
+	_opening_intro_pending = intro_requested
+	if intro_requested:
+		_busy = true
 	_remember_lobby_daily_reward(_as_dict(_session.get("daily_reward")))
 	_header.visible = false
 	_lobby_panel.visible = false
@@ -427,8 +447,8 @@ func set_session(
 	if bool(bot_loaded.get("ok", false)):
 		_bot_loaded = bot_loaded.duplicate(true)
 		_bot_sprite.apply(bot_loaded)
-	_player_sprite.visible = _player_sprite.sprite_frames != null
-	_bot_sprite.visible = _bot_sprite.sprite_frames != null
+	_player_sprite.visible = _player_sprite.sprite_frames != null and not intro_requested
+	_bot_sprite.visible = _bot_sprite.sprite_frames != null and not intro_requested
 	_apply_arena_background(art_cache)
 
 	var player_snapshot := _as_dict(_session.get("player_snapshot"))
@@ -437,7 +457,87 @@ func set_session(
 	_bot_name.text = _fighter_hud_title(bot_snapshot, tr("BATTLE_BOT_NAME"))
 	_position_fighters()
 	_apply_state()
+	_set_opening_chrome_visible(not intro_requested)
+	_update_action_state()
 	_emit_arena_open()
+
+
+func play_opening_intro() -> void:
+	if not _opening_intro_pending:
+		return
+	_opening_intro_pending = false
+	_opening_intro_running = true
+	_busy = true
+	_update_action_state()
+	var revision := _opening_intro_revision
+	await _event_pause(INTRO_OPENING_BEAT_SEC)
+	if not _opening_intro_is_active(revision):
+		return
+	if not await _summon_opening_side("bot", revision):
+		return
+	_set_player_seeker_pose("switch_command")
+	await _event_pause(INTRO_COMMAND_BEAT_SEC)
+	if not _opening_intro_is_active(revision):
+		return
+	if not await _summon_opening_side("player", revision):
+		return
+	_opening_intro_running = false
+	_busy = false
+	_set_opening_chrome_visible(true)
+	_restore_player_seeker_idle()
+	_apply_state()
+	_sync_shadow("player")
+	_sync_shadow("bot")
+	_update_action_state()
+
+
+func _summon_opening_side(side: String, revision: int) -> bool:
+	var sprite := _player_sprite if side == "player" else _bot_sprite
+	var portal := _player_portal if side == "player" else _bot_portal
+	if not is_instance_valid(sprite):
+		return _opening_intro_is_active(revision)
+	_align_opening_portal(sprite, portal)
+	if is_instance_valid(portal):
+		await portal.start_portal()
+	if not _opening_intro_is_active(revision):
+		return false
+	if is_instance_valid(portal):
+		portal.burst()
+	if sprite.sprite_frames != null:
+		await sprite.summon_reveal()
+	else:
+		sprite.visible = true
+	if not _opening_intro_is_active(revision):
+		return false
+	_sync_shadow(side)
+	return true
+
+
+func _opening_intro_is_active(revision: int) -> bool:
+	return (
+		_opening_intro_running
+		and revision == _opening_intro_revision
+		and str(_session.get("status", "")) == "active"
+	)
+
+
+func _cancel_opening_intro() -> void:
+	var was_active := _opening_intro_pending or _opening_intro_running
+	_opening_intro_revision += 1
+	_opening_intro_pending = false
+	_opening_intro_running = false
+	if was_active:
+		_busy = false
+	if is_instance_valid(_player_portal):
+		_player_portal.stop()
+	if is_instance_valid(_bot_portal):
+		_bot_portal.stop()
+
+
+func _set_opening_chrome_visible(shown: bool) -> void:
+	_status_overlay.visible = shown
+	_fighter_hud_plate.visible = shown
+	_footer.modulate.a = 1.0 if shown else 0.0
 
 
 ## Sheet yang sama dibandingkan lebih dulu supaya shell boleh menyegarkan figur
@@ -479,8 +579,8 @@ func begin_action(action: String) -> void:
 
 
 func set_busy(busy: bool) -> void:
-	_busy = busy
-	if not busy:
+	_busy = busy or _opening_intro_pending or _opening_intro_running
+	if not _busy:
 		_clear_action_commit()
 	if _session.is_empty():
 		_apply_lobby()
@@ -1560,6 +1660,24 @@ func _layout_arena_background(background_zoom: float) -> void:
 		-overflow.x * pan,
 		-overflow.y * vertical_pan
 	)
+
+
+func _make_portal(anchor: Node2D) -> IncubatorEffect:
+	var portal := IncubatorEffect.new()
+	portal.name = "SummonPortal"
+	portal.position = Vector2(0.0, -140.0)
+	portal.z_index = 0
+	anchor.add_child(portal)
+	return portal
+
+
+func _align_opening_portal(sprite: AnimaPresenter, portal: IncubatorEffect) -> void:
+	if not is_instance_valid(sprite) or not is_instance_valid(portal):
+		return
+	if sprite.sprite_frames == null:
+		portal.position = Vector2(0.0, -140.0)
+		return
+	portal.align_visual_center(sprite.body_center_global())
 
 
 func _make_ground_shadow(anchor: Node2D) -> Sprite2D:

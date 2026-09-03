@@ -220,6 +220,7 @@ godot --headless --path game --script res://tests/test_sprite_slicing.gd # 304 c
 godot --headless --path game --script res://tests/test_auth_flow.gd    # 63 check PKCE secure, restart, transfer/separate, recovery, no-merge
 godot --headless --path game --script res://tests/test_client_state.gd  # 199 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, stale UID, retry transport
 godot --headless --path game --script res://tests/test_scan_ui.gd       # 1576 check shell + Battle + Shop + Bag + komponen + tap + touch + press/release roster sungguhan + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas + dialog Evolve gagal + preflight nama + Seeker Avatar arena + LoadingScreen
+godot --headless --path game --script res://tests/test_battle_intro.gd  # 3 mode check opening Duel/Team/Expedition, input lock, no replay, Boss gate
 godot --headless --path game --script res://tests/test_i18n.gd          # 5120 check katalog + key + formatter + wrapping
 godot --headless --path game --script res://tests/test_game_rules.gd    # 181 check care + EXP/Level/evolution + kontrak event Battle
 godot --headless --path game --script res://tests/test_expedition_route_map.gd # 91 check route tree + preview/Enter Node + Skip Shop + prediksi turn/Switch/penutup Boss + preload art run

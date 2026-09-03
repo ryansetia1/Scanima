@@ -122,6 +122,16 @@ yang punya figur, jadi badannya dan badan Anima punya jarak alih-alih tumpang
 tindih; Anima yang minggir sedikit, bukan posisi shot-nya yang berubah. Saat
 kamera menjauh untuk memuat petarung besar, ia ikut merapat ke tepi layar sisimu.
 
+Setiap fight baru di **Duel**, **Team Battle**, dan node Battle/Elite
+**Expedition** dibuka berurutan: Seeker-mu berdiri sendiri, Anima lawan keluar
+dari portal, Seeker-mu memberi perintah, lalu Anima aktifmu dipanggil dari
+portal. Nama, HP, turn, dan tombol aksi baru muncul setelah kedua Anima siap;
+selama itu arena belum bisa disentuh. Intro ini tidak diputar ulang saat
+melanjutkan fight yang tersimpan atau mencoba ulang koneksi. Di battle bertim,
+hanya Anima pertama yang dipanggil lewat intro; anggota cadangan masuk lewat
+animasi **Switch** biasa. Final Battle Expedition tetap memakai perkenalan dan
+summon milik Boss Seeker.
+
 Anima yang tingginya sudah melewati kira-kira pinggang figur digambar di
 belakangnya: pada ukuran itu figur yang berdiri di belakang kehilangan
 siluetnya. Anima yang lebih kecil dari itu tetap berdiri di depan figur. Aturan

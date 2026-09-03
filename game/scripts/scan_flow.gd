@@ -3666,9 +3666,10 @@ func _start_battle() -> void:
 		int(session.get("turn_number", 1)),
 		int(session.get("version", 1))
 	)
-	await _show_battle_session(session)
-	await _sync_active_care(false)
+	await _show_battle_session(session, true)
 	_set_busy(false)
+	await _battle_view.play_opening_intro()
+	await _sync_active_care(false)
 
 
 func _resume_battle() -> void:
@@ -4163,9 +4164,10 @@ func _start_team_battle(team_id: String, candidate_id: String) -> void:
 		int(session.get("version", 1))
 	)
 	_team_art_cache = {}
-	await _show_team_battle_session(session)
-	await _reload_roster()
+	await _show_team_battle_session(session, true)
 	_set_busy(false)
+	await _team_battle_view.play_opening_intro()
+	await _reload_roster()
 
 
 func _resume_team_battle() -> void:
@@ -4392,7 +4394,7 @@ func _forfeit_team_battle() -> void:
 	_set_busy(false)
 
 
-func _show_team_battle_session(session: Dictionary) -> bool:
+func _show_team_battle_session(session: Dictionary, fresh_intro: bool = false) -> bool:
 	if session.is_empty():
 		_team_battle_view.set_error("TEAM_BATTLE_NOT_FOUND")
 		return false
@@ -4400,7 +4402,7 @@ func _show_team_battle_session(session: Dictionary) -> bool:
 	if art.is_empty():
 		_team_battle_view.set_error("TEAM_ART_NOT_READY")
 		return false
-	_team_battle_view.set_session(session, art)
+	_team_battle_view.set_session(session, art, fresh_intro)
 	return true
 
 
@@ -4575,7 +4577,7 @@ static func _variant_array(value: Variant) -> Array:
 	return value if typeof(value) == TYPE_ARRAY else []
 
 
-func _show_battle_session(session: Dictionary) -> bool:
+func _show_battle_session(session: Dictionary, fresh_intro: bool = false) -> bool:
 	if session.is_empty():
 		_battle_view.set_error("BATTLE_NOT_FOUND")
 		return false
@@ -4589,7 +4591,7 @@ func _show_battle_session(session: Dictionary) -> bool:
 	if not bool(bot_loaded.get("ok", false)):
 		_battle_view.set_error("BATTLE_ERROR_GENERIC")
 		return false
-	_battle_view.set_session(session, player_loaded, bot_loaded)
+	_battle_view.set_session(session, player_loaded, bot_loaded, {}, fresh_intro)
 	_sync_shop_chrome()
 	return true
 

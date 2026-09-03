@@ -310,7 +310,8 @@ func set_team(team: Dictionary) -> void:
 func set_run(
 	run_data: Dictionary,
 	encounter: Dictionary = {},
-	art_cache: Dictionary = {}
+	art_cache: Dictionary = {},
+	fresh_intro: bool = false
 ) -> void:
 	_run = run_data.duplicate(true)
 	# Present happens while the controller is still busy. Build tappable
@@ -325,7 +326,7 @@ func set_run(
 		_column.visible = false
 		_combat.visible = true
 		_combat.set_arena_location(_location_text(encounter))
-		_combat.set_session(encounter, art_cache)
+		_combat.set_session(encounter, art_cache, fresh_intro)
 		_emit_combat_open()
 		return
 	_combat.set_arena_location("")
@@ -343,6 +344,10 @@ func set_run(
 	_show_only(_map)
 	set_busy(false)
 	_begin_chapter_intro(art_cache)
+
+
+func play_combat_intro() -> void:
+	await _combat.play_opening_intro()
 
 
 func combat_session_data() -> Dictionary:
