@@ -142,9 +142,12 @@ sedang kamu pakai.
   mengikuti, jadi figur mana pun boleh dipakai siapa pun.
 - Belum pernah memilih berarti kamu memakai figur default.
 - Selain di Seeker Profile, figurmu berdiri di arena **Duel**, **Team Battle**,
-  dan **Expedition** — lihat [Battle](battle.md#kamu-di-arena). Kartu Atlas dan
-  Top HUD belum menampilkannya; Top HUD tetap menulis nama Seeker sebagai teks
-  biasa.
+  dan **Expedition** — lihat [Battle](battle.md#kamu-di-arena).
+- Seeker lain melihatnya juga: kalau Anima-mu terpublish dan mereka pernah duel
+  denganmu, figurmu berdiri di sebelah namamu di profil Atlas Anima itu — lihat
+  [Atlas](atlas.md#isi-profil-atlas). Lawan di arena tetap anonim; figurmu tidak
+  ikut ke sana.
+- Top HUD belum menampilkannya; ia tetap menulis nama Seeker sebagai teks biasa.
 
 ## Seeker dan Anima berbeda
 

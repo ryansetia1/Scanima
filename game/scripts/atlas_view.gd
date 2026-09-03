@@ -9,6 +9,11 @@ signal toast_requested(message: String, is_error: bool)
 ## `x` adalah lantai lebar kolom yang dipakai `_fit_columns()`, `y` tinggi kartu.
 const CARD_MIN := Vector2(208, 280)
 const CARD_PORTRAIT_HEIGHT := 196.0
+## Kecil di sebelah nama, bukan potret kedua: sel Seeker berbagi baris dengan
+## sel Encounters, jadi figurnya harus muat tanpa melebarkan sheet.
+const OWNER_AVATAR_PX := 56.0
+## Lantai lebar wrap nama pemilik sesudah ia berbagi baris dengan figurnya.
+const OWNER_NAME_WRAP_PX := 180.0
 const VISIT_CACHE_TTL_MSEC := 60_000
 const LOADING_SHIMMER_SEC := 0.72
 const DETAIL_IDLE_SEC := 1.6
@@ -64,6 +69,7 @@ var _report_sheet_cancel: Button
 var _report_sheet_title: Label
 var _report_sheet_body: Label
 var _detail_owner_cell: PanelContainer
+var _detail_owner_avatar: TextureRect
 var _detail_discovery_grid: GridContainer
 var _detail_values: Dictionary = {}
 var _loading_portrait: TextureRect
@@ -196,6 +202,7 @@ func _build_detail_sheet() -> void:
 	_detail_owner_cell = _add_detail_value(
 		_detail_discovery_grid, "owner", "ATLAS_DETAIL_SEEKER_LABEL"
 	)
+	_build_owner_avatar()
 	_add_detail_value(
 		_detail_discovery_grid, "encounters", "ATLAS_DETAIL_ENCOUNTERS_LABEL"
 	)
@@ -261,6 +268,42 @@ func _build_report_sheet() -> void:
 	_report_sheet_cancel.text = tr("ACTION_CANCEL")
 	_report_sheet_cancel.pressed.connect(func() -> void: _report_sheet.close())
 	column.add_child(_report_sheet_cancel)
+
+
+## Wujud pemilik duduk di sel yang sama dengan namanya, bukan di baris atau
+## kartu baru: sel Seeker adalah satu-satunya tempat Atlas sudah menyebut pemain
+## lain, jadi ia satu-satunya tempat yang boleh menggambarkannya. Art-nya
+## ter-bundel (ADR-0002), jadi figur pemain lain nol permintaan jaringan sama
+## seperti figur sendiri.
+func _build_owner_avatar() -> void:
+	var value := _detail_values["owner"] as Label
+	var box := value.get_parent() as VBoxContainer
+	var row := HBoxContainer.new()
+	row.name = "AtlasOwnerRow"
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
+	box.move_child(row, value.get_index())
+	box.remove_child(value)
+	_detail_owner_avatar = TextureRect.new()
+	_detail_owner_avatar.name = "AtlasOwnerAvatar"
+	_detail_owner_avatar.custom_minimum_size = Vector2(OWNER_AVATAR_PX, OWNER_AVATAR_PX)
+	# Tanpa EXPAND_IGNORE_SIZE, minimumnya adalah frame roster 300 px penuh
+	# (`SeekerRoster.FRAME`) dan sel Seeker mendorong lebar sheet-nya sendiri.
+	_detail_owner_avatar.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_detail_owner_avatar.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_detail_owner_avatar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_detail_owner_avatar)
+	row.add_child(value)
+	# Dua baris ini adalah harga memindahkan label dari VBox ke HBox, dan
+	# keduanya wajib. `VBoxContainer` memberi anaknya lebar penuh, jadi label
+	# autowrap di dalamnya membungkus pada lebar yang sah; `HBoxContainer`
+	# memberi lebar minimum, dan minimum label autowrap adalah 1 px
+	# (godotengine/godot#83546). Terukur di `SubViewport` 720x1602 tanpa kedua
+	# baris ini: nama pemilik membungkus per karakter menjadi 16 baris setinggi
+	# 717 px, sel Seeker 96 -> 771 px, minimum tinggi sheet 1.126 -> 1.801 px.
+	value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	value.custom_minimum_size.x = OWNER_NAME_WRAP_PX
 
 
 func _make_detail_section(parent: VBoxContainer, node_name: String, title_key: String) -> VBoxContainer:
@@ -760,10 +803,24 @@ func _present_detail(entry: Dictionary) -> void:
 	_detail_owner_cell.visible = not owner_name.is_empty()
 	_detail_discovery_grid.columns = 2 if not owner_name.is_empty() else 1
 	_set_detail_value("owner", owner_name)
+	_set_owner_avatar(entry.get("owner_avatar"))
 	_set_detail_value(
 		"encounters", LocaleManager.format_integer(int(entry.get("encounter_count", 1)))
 	)
 	_detail_report.visible = bool(entry.get("can_report", false))
+
+
+## Slug adalah kontrak wire, jadi ia diperlakukan seperti kolom nullable lain di
+## project ini: hanya `String` yang berarti "pemilik ini punya figur roster".
+## Nilai di luar roster tetap menggambar figur default lewat
+## `SeekerRoster.normalize()`, supaya figur kelima yang ditambahkan di server
+## tidak membuat build lama menampilkan slot kosong. Payload tanpa slug — Boss
+## Seeker chapter, yang art-nya bukan roster — sengaja tidak digambar sama
+## sekali, sebab figur default di sebelah nama Boss adalah wajah karangan.
+func _set_owner_avatar(value: Variant) -> void:
+	var known := typeof(value) == TYPE_STRING and not (value as String).is_empty()
+	_detail_owner_avatar.visible = known
+	_detail_owner_avatar.texture = SeekerRoster.portrait(value) if known else null
 
 
 func _set_detail_value(key: String, value: String) -> void:

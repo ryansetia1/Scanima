@@ -1914,6 +1914,48 @@ sekali tidak terlihat terkait dengan baris kode yang salah.
 
 ## Daftar migration yang sudah live
 
+- Figur pemilik di sheet detail Atlas live 3 September 2026 lewat `gallery`
+  version 25, **tanpa migrasi**: `profiles.seeker_avatar` sudah ada sejak
+  `20260903032000_seeker_avatar_choice`, jadi rollout ini cuma satu kolom
+  tambahan di `select` dan satu field di proyeksi detail. Smoke sesudah deploy:
+  POST tanpa JWT menjawab 401, dan `functions list` mencatat `gallery` 25 ACTIVE
+  `verify_jwt=true`. Normalisasi ada di server (`atlasOwnerAvatar`): profil
+  `NULL` pulang sebagai `androgynous` karena pemain itu memang punya tampilan
+  default, sementara form `expedition` tetap `null` supaya Boss Seeker memakai
+  art chapter-nya sendiri alih-alih figur roster yang kita karang. Client cuma
+  perlu membaca satu aturan: string berarti gambar, `null` berarti sembunyikan.
+  Kartu grid **tidak** ikut walau payload-nya sudah membawa `owner_name` —
+  tidak ada surface client yang menggambar nama itu, jadi figur di sana berarti
+  surface baru, bukan surface yang didandani.
+
+  Dua angka yang mahal didapat. Pertama, memindahkan label nama pemilik ke dalam
+  `HBoxContainer` bersama figurnya **tanpa** `SIZE_EXPAND_FILL` + lantai lebar
+  membuat label itu menyusut ke 1 px: autowrap lalu membungkus per karakter,
+  16 baris, 717 px, dan `AtlasDetailSheet` tumbuh 1.126 → 1.801 px sementara
+  lebar selnya tetap terlihat sehat (99 px) — persis pola "layout diukur sebelum
+  settle" di `.cursor/rules/client-shell-ui.mdc`, ditemukan probe headless
+  `SubViewport` 720×1602, bukan oleh mata. Sesudah `SIZE_EXPAND_FILL` +
+  `OWNER_NAME_WRAP_PX = 180`: nama 15 karakter jadi 2 baris, sel 141 px, sheet
+  1.171 px, dan tiga kali `_present_detail` berturut-turut tidak menumbuhkan
+  apa pun. Kedua, **selama sheet masih tertutup, setiap label autowrap di
+  dalamnya melapor sampah** — `AtlasDetailIdentity` yang tidak disentuh siapa
+  pun juga melapor 717 px pada `size.x = 1`, sebab Godot tidak me-layout subtree
+  tak terlihat. Karena itu `_test_atlas_view()` sekarang `await sheet.open()`
+  sebelum satu pun ukuran diperiksa; assert ukuran pada sheet tertutup mengukur
+  keadaan yang tidak pernah dilihat pemain.
+
+  Pagar anonimitasnya masuk ke skenario 39 `npm run selftest` sebagai gerbang
+  kelima, di sebelah empat gerbang nickname yang sudah ada: `profiles.seeker_avatar`
+  hanya boleh dibaca `seeker` dan `gallery`, `owner_avatar` hanya boleh muncul
+  sekali dan persis di sebelah `owner_name` di `atlasDetail`, `atlasCard` tidak
+  boleh membawanya, dan `battle_anima`/`team_battle`/`expedition` tidak boleh
+  menyentuh `from("profiles")`, `seeker_name`, `seeker_avatar`, atau
+  `owner_avatar` sama sekali. Regex-nya diperiksa tidak vakum: ia menyala pada
+  `gallery` dan `seeker` yang memang membaca profil, dan `null` di ketiga perakit
+  lawan. Sembilan suite hijau: `npm run selftest` (43 skenario + 12 webhook),
+  `test_scan_ui` 1.576, `test_i18n` 5.120, `test_sprite_slicing` 304,
+  `test_client_state` 199, `test_auth_flow` 63, `test_game_rules` 181,
+  `test_expedition_route_map` 91, `test_battle_sim_parity` 530.
 - Seeker Avatar ikut submit onboarding live 3 September 2026 lewat
   `20260903043000_seeker_avatar_at_onboarding` + `seeker` version 9. Ini satu
   dari sedikit migrasi yang **drop lalu create** alih-alih `create or replace`:

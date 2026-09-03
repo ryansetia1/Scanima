@@ -6525,6 +6525,7 @@ func _test_atlas_view() -> void:
 		"strike_name": "Leaf Jab",
 		"surge_name": "Root Rise",
 		"owner_name": "AtlasOwner",
+		"owner_avatar": "masculine",
 		"encounter_count": 2,
 		"nickname": "PrivateNickname",
 		"care": {"hunger": 1},
@@ -6532,6 +6533,12 @@ func _test_atlas_view() -> void:
 	}
 	view.call("_present_detail", detail_entry)
 	await process_frame
+	# Produksi selalu present lalu open, dan Godot tidak me-layout subtree yang
+	# tak terlihat: selama sheet tertutup SETIAP label autowrap di dalamnya
+	# melapor lebar 1 px dan tinggi minimum sampah (terukur: AtlasDetailIdentity
+	# 717 px juga). Ukuran hanya boleh diperiksa sesudah sheet benar-benar buka.
+	await sheet.open()
+	await _await_juice_settled(sheet)
 	var portrait := view.find_child("AtlasDetailPortrait", true, false) as TextureRect
 	var about := view.find_child("AtlasAboutPanel", true, false) as PanelContainer
 	var combat := view.find_child("AtlasCombatPanel", true, false) as PanelContainer
@@ -6559,6 +6566,45 @@ func _test_atlas_view() -> void:
 	)
 	var owner_cell := view.find_child("AtlasOwnerCell", true, false) as PanelContainer
 	var discovery_grid := view.find_child("AtlasDiscoveryGrid", true, false) as GridContainer
+	var owner_value := view.find_child("AtlasOwnerValue", true, false) as Label
+	var owner_avatar := view.find_child("AtlasOwnerAvatar", true, false) as TextureRect
+	await process_frame
+	_check(
+		owner_avatar != null
+		and owner_avatar.visible
+		and owner_cell.is_ancestor_of(owner_avatar)
+		and owner_avatar.get_parent() == owner_value.get_parent(),
+		"the owner figure stands beside the Seeker name it belongs to, in the same cell"
+	)
+	_check(
+		owner_avatar != null
+		and owner_avatar.texture == SeekerRoster.portrait("masculine")
+		and owner_avatar.expand_mode == TextureRect.EXPAND_IGNORE_SIZE
+		and owner_avatar.get_combined_minimum_size().x <= 64.0,
+		"another Seeker's figure is drawn small from bundled roster art, with no fetch of its own"
+	)
+	# Sel Seeker berbagi baris dengan sel Encounters di sheet yang diukur dari
+	# kontennya, jadi kedua sumbu figurnya dipagari. Tinggi adalah yang penting:
+	# terukur, nama pemilik yang masuk HBox tanpa lebar wrap sendiri menyusut ke
+	# 1 px, membungkus per karakter, dan menumbuhkan sheet dari 1.126 px ke
+	# 1.801 px — sementara lebar selnya tetap terlihat sehat.
+	var owner_min := owner_cell.get_combined_minimum_size()
+	view.call("_present_detail", detail_entry)
+	view.call("_present_detail", detail_entry)
+	await process_frame
+	_check(
+		owner_min.x <= 320.0 and owner_min.y <= 200.0
+		and owner_value.get_line_count() <= 2
+		and owner_cell.get_combined_minimum_size() == owner_min,
+		"the Seeker cell with its figure stays a cell, at one stable size, %s" % owner_min
+	)
+	detail_entry["owner_avatar"] = "figure-from-a-newer-server"
+	view.call("_present_detail", detail_entry)
+	_check(
+		owner_avatar.visible
+		and owner_avatar.texture == SeekerRoster.portrait(SeekerRoster.DEFAULT_SLUG),
+		"a slug this build does not know falls back to the default figure, not an empty slot"
+	)
 	detail_entry["owner_name"] = null
 	view.call("_present_detail", detail_entry)
 	_check(
@@ -6569,12 +6615,17 @@ func _test_atlas_view() -> void:
 		"Atlas detail omits the Seeker field when the API returns null"
 	)
 	detail_entry["owner_name"] = "The Confectioner"
+	detail_entry["owner_avatar"] = null
 	view.call("_present_detail", detail_entry)
 	_check(
 		owner_cell.visible
 		and (view.find_child("AtlasOwnerValue", true, false) as Label).text
 			== "The Confectioner",
 		"special Expedition Anima show their authored Boss Seeker"
+	)
+	_check(
+		not owner_avatar.visible and owner_avatar.texture == null,
+		"a Boss Seeker keeps its own chapter art instead of borrowing a roster figure"
 	)
 	_check_eq(
 		(view.find_child("AtlasStrikeValue", true, false) as Label).text,

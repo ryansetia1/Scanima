@@ -513,6 +513,7 @@ async function atlasDetail(
   if (!form || !discovery) throw new Error("ATLAS_FORM_NOT_FOUND");
 
   let ownerName: string | null = null;
+  let ownerAvatar: string | null = null;
   let entryId: string | null = null;
   if (form.source_kind === "player" && form.owner_id !== ownerId) {
     const { data: publication, error } = await db
@@ -529,12 +530,13 @@ async function atlasDetail(
     entryId = publication.id;
     const { data: profile } = await db
       .from("profiles")
-      .select("seeker_name")
+      .select("seeker_name, seeker_avatar")
       .eq("id", form.owner_id)
       .maybeSingle();
     ownerName = typeof profile?.seeker_name === "string"
       ? profile.seeker_name
       : "Seeker";
+    ownerAvatar = atlasOwnerAvatar(profile);
   } else if (form.source_kind === "expedition") {
     ownerName = atlasChapterSeekerName(form as Record<string, unknown>);
   }
@@ -551,6 +553,7 @@ async function atlasDetail(
       entry_id: entryId,
       display_name: atlasDisplayName(form as Record<string, unknown>, ownerId),
       owner_name: ownerName,
+      owner_avatar: ownerAvatar,
       stage: form.stage,
       subject_kind: form.subject_kind,
       element: form.element,
@@ -643,6 +646,29 @@ function atlasCard(
     last_seen_at: discovery?.last_seen_at ?? null,
     encounter_count: discovery?.encounter_count ?? 0,
   };
+}
+
+// Rides in the Atlas profile projection and nowhere else: that sheet is the one
+// surface that actually draws another Seeker's name, so it is the one surface
+// that may draw their figure. The grid card payload carries owner_name too, but
+// no client surface renders it, so adding a figure there would open a new
+// surface instead of dressing an existing one.
+//
+// NULL means the owner never opened the picker, and that owner still has a
+// look — the default roster figure — so it is normalized here rather than left
+// for the client to guess. Boss Seekers keep null instead: their art is chapter
+// art, not a roster slug, and a default figure beside "The Confectioner" would
+// be a face we invented. The stored value is already fenced by the
+// profiles_seeker_avatar_in_roster CHECK, so it is passed through as-is; a slug
+// a client is too old to know falls back in SeekerRoster.normalize().
+const DEFAULT_SEEKER_AVATAR = "androgynous";
+
+function atlasOwnerAvatar(
+  profile: Record<string, unknown> | null | undefined,
+): string {
+  return typeof profile?.seeker_avatar === "string" && profile.seeker_avatar
+    ? profile.seeker_avatar
+    : DEFAULT_SEEKER_AVATAR;
 }
 
 function atlasChapterSeekerName(

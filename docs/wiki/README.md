@@ -41,7 +41,7 @@ memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
 | [Seeker](seeker.md) | Guest perangkat, Google, Sign Out, ganti akun, profil, Seeker Avatar, Trophy Showcase, onboarding, Settings, hapus akun |
 | [Anima](anima.md) | Traits, attributes, EXP, Level, Evolve, Synthesis, Collection, Summon, aturan nama |
 | [Battle](battle.md) | Duel, cara lawan dipilih, Team Battle, figurmu di arena, Expedition The Sugarworks, Boss Seeker, perintah, PP, hadiah, kartu hasil |
-| [Anima Atlas](atlas.md) | Scanned, Expedition, Duel, siluet, Publish Lineage, moderation, Report, dan privasi |
+| [Anima Atlas](atlas.md) | Scanned, Expedition, Duel, siluet, nama dan figur Seeker pemilik, Publish Lineage, moderation, Report, dan privasi |
 
 ## Yang perlu diingat
 

@@ -10657,18 +10657,26 @@ console.log("39. nickname pemain tidak pernah sampai ke pemain lain");
     "../backend/supabase/functions/",
     import.meta.url,
   );
-  const touched = [];
+  const sources = new Map();
   const walk = async (dir, prefix) => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       if (entry.isDirectory()) {
         await walk(new URL(`${entry.name}/`, dir), `${prefix}${entry.name}/`);
       } else if (/\.(ts|mjs)$/.test(entry.name)) {
-        const body = await readFile(new URL(entry.name, dir), "utf8");
-        if (body.includes("nickname")) touched.push(`${prefix}${entry.name}`);
+        sources.set(
+          `${prefix}${entry.name}`,
+          await readFile(new URL(entry.name, dir), "utf8"),
+        );
       }
     }
   };
   await walk(functionsDir, "");
+  const reading = (column) =>
+    [...sources]
+      .filter(([, body]) => body.includes(column))
+      .map(([name]) => name)
+      .sort();
+  const touched = reading("nickname");
 
   // prompts.generated.ts hanya menyalin teks prompt; ia tidak memproyeksikan
   // baris apa pun. Sisanya adalah seluruh permukaan yang boleh melihat kolom.
@@ -10689,17 +10697,16 @@ console.log("39. nickname pemain tidak pernah sampai ke pemain lain");
     "team_battle/index.ts",
   ];
   assert.deepEqual(
-    touched.sort(),
+    touched,
     [...allowed].sort(),
     "sumber baru menyentuh animas.nickname — putuskan dulu apakah ia tetap "
       + "privat; kalau menjadi publik, gerbang deterministik saja tidak cukup",
   );
 
-  const source = async (path) =>
-    await readFile(new URL(path, functionsDir), "utf8");
+  const source = (path) => sources.get(path) ?? "";
 
   // 1. Atlas: nickname hanya untuk pemiliknya, sisanya display_name generated.
-  const galleryBody = await source("gallery/index.ts");
+  const galleryBody = source("gallery/index.ts");
   const atlasFn = galleryBody.slice(
     galleryBody.indexOf("function atlasDisplayName"),
   ).split("\n}\n")[0];
@@ -10711,21 +10718,21 @@ console.log("39. nickname pemain tidak pernah sampai ke pemain lain");
 
   // 2. Snapshot roster yang sudah tersimpan tetap dibersihkan sebelum dikirim.
   assert.match(
-    await source("_shared/signed_roster.ts"),
+    source("_shared/signed_roster.ts"),
     /delete member\.nickname/,
     "withSignedRoster harus tetap membuang nickname dari roster lawan",
   );
 
   // 3. Satu-satunya jalan nickname masuk snapshot adalah includeName.
   assert.match(
-    await source("_shared/team_snapshot.mjs"),
+    source("_shared/team_snapshot.mjs"),
     /includeName\s*\?\s*String\(row\.nickname[^)]*\)\s*:\s*"Anima"/,
     "snapshot team tanpa includeName harus memakai nama netral",
   );
 
   // 4. Defense Team yang dipublikasikan adalah lawan pemain lain, jadi ia
   //    satu-satunya pemanggil teamSnapshot yang wajib false.
-  const teamBody = await source("team_battle/index.ts");
+  const teamBody = source("team_battle/index.ts");
   const publishDefense = teamBody.slice(
     teamBody.indexOf("async function publishDefense"),
   ).split("\n}\n")[0];
@@ -10733,6 +10740,60 @@ console.log("39. nickname pemain tidak pernah sampai ke pemain lain");
     publishDefense,
     /teamSnapshot\(team,\s*false\)/,
     "Defense Team terpublish tidak boleh membawa nickname pemiliknya",
+  );
+
+  // 5. Seeker Avatar publik karena pemainnya sendiri yang memilihnya, tapi ia
+  //    bukan alasan baru untuk menyebut pemilik. Dua pagar yang sama bentuknya
+  //    dengan empat di atas: siapa yang boleh membaca kolomnya, dan proyeksi
+  //    mana yang boleh membawanya.
+  assert.deepEqual(
+    reading("seeker_avatar"),
+    ["gallery/index.ts", "seeker/index.ts"],
+    "profiles.seeker_avatar hanya boleh dibaca Seeker (pilihan pemiliknya "
+      + "sendiri) dan Atlas (satu-satunya sheet yang memang menyebut pemilik)",
+  );
+
+  // Roster rival dirakit di tiga fungsi ini, dan ketiganya tetap anonim: tidak
+  // ada nama Seeker, tidak ada figur, tidak ada kolom profil pemilik. Boss
+  // Seeker chapter bukan pemain, jadi `boss_seeker` sengaja tidak dihitung.
+  for (const rival of [
+    "battle_anima/index.ts",
+    "team_battle/index.ts",
+    "expedition/index.ts",
+  ]) {
+    const identifying = source(rival).match(
+      /owner_avatar|seeker_avatar|seeker_name|from\("profiles"\)/g,
+    );
+    assert.equal(
+      identifying,
+      null,
+      `${rival} merakit lawan; roster rival harus tetap tanpa field `
+        + `pengidentifikasi pemilik (ditemukan: ${identifying})`,
+    );
+  }
+
+  // Figur menempel pada nama, jadi ia hidup di proyeksi detail saja — sekali,
+  // sebaris dengan owner_name. Kartu grid membawa owner_name tanpa ada surface
+  // yang menggambarnya, jadi figur di sana berarti surface baru.
+  assert.equal(
+    (galleryBody.match(/owner_avatar\s*:/g) ?? []).length,
+    1,
+    "owner_avatar hanya boleh diproyeksikan di satu tempat",
+  );
+  const detailFn = galleryBody
+    .slice(galleryBody.indexOf("async function atlasDetail"))
+    .split("\n}\n")[0];
+  assert.match(
+    detailFn,
+    /owner_name: ownerName,\s*owner_avatar: ownerAvatar,/,
+    "owner_avatar harus berdiri persis di sebelah owner_name di Atlas detail",
+  );
+  const cardFn = galleryBody
+    .slice(galleryBody.indexOf("function atlasCard"))
+    .split("\n}\n")[0];
+  assert.ok(
+    cardFn.includes("owner_name") && !cardFn.includes("owner_avatar"),
+    "kartu grid Atlas tidak boleh ikut membawa figur pemilik",
   );
 }
 

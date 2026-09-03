@@ -39,11 +39,19 @@ Entry yang sudah ditemukan dapat menampilkan art dengan gerak Idle, nama hasil
 generation, form, elemen, rarity, tinggi, attributes, Attack, Special, dan
 jumlah encounter.
 
-Untuk Anima Duel, nama Seeker pemilik ikut tampil. Nickname pribadi, kebutuhan
-Care, saldo, account ID, foto asli, dan link profil pemilik tidak pernah
-ditampilkan. Profil tidak menampilkan baris Seeker jika memang tidak ada nama.
-Special Anima milik Boss Expedition dapat menampilkan nama Seeker chapter-nya;
-di The Sugarworks, Nimbelisk menampilkan **The Confectioner**.
+Untuk Anima Duel, nama Seeker pemilik ikut tampil, dengan figur Seeker pilihannya
+berdiri kecil di sebelah nama itu. Pemilik yang belum pernah memilih figur tampil
+memakai figur default. Nickname pribadi, kebutuhan Care, saldo, account ID, foto
+asli, dan link profil pemilik tidak pernah ditampilkan. Profil tidak menampilkan
+baris Seeker jika memang tidak ada nama. Special Anima milik Boss Expedition
+dapat menampilkan nama Seeker chapter-nya — di The Sugarworks, Nimbelisk
+menampilkan **The Confectioner** — dan Boss seperti itu memakai art chapter-nya
+sendiri, jadi ia tampil tanpa figur roster.
+
+Figurnya ikut di dalam game, bukan diunduh, jadi menjelajah Atlas tidak menjadi
+lebih lambat walau kartunya milik Seeker lain. Kartu di grid Atlas tetap
+menampilkan art Anima saja; figur pemilik hanya ada di profil yang memang sudah
+menyebut namanya.
 
 ## Publish Lineage
 
