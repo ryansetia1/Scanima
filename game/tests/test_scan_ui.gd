@@ -3844,7 +3844,7 @@ func _test_battle_view() -> void:
 		"Guard and initiative hold the plate before hiding it"
 	)
 	var duel_ko := battle_source.substr(
-		battle_source.find("\"knockout\":", battle_source.find("func play_events")), 420
+		battle_source.find("\"knockout\":", battle_source.find("func play_events")), 520
 	)
 	_check(
 		duel_ko.find("set_pose(\"defeated\")") >= 0

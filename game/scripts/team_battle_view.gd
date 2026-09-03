@@ -632,11 +632,6 @@ func play_events(
 				elif attack_actor == "player":
 					_set_player_seeker_pose(command_pose)
 				await _play_attack(event)
-				# Keduanya: penyerangnya memegang pose perintah dan yang diserang
-				# memegang pose khawatir, jadi satu serangan selalu menyisakan dua
-				# figur yang harus tenang lagi.
-				_restore_seeker_idle()
-				_restore_player_seeker_idle()
 			"knockout":
 				var side := str(event.get("actor", ""))
 				_faint(side)
@@ -649,6 +644,7 @@ func play_events(
 					_set_player_seeker_pose("defeat")
 				elif not player_ko and final_status == "won":
 					_set_player_seeker_pose("victory")
+					_player_sprite.victory_celebration(_active_player_level())
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(side),
 					BattleView.DAMAGE_COLOR if player_ko else BattleView.WIN_COLOR,
@@ -709,6 +705,7 @@ func _apply_effect_hp_event(event: Dictionary, final_status: String = "active") 
 			_set_player_seeker_pose("defeat")
 		elif side == "opponent" and final_status == "won":
 			_set_player_seeker_pose("victory")
+			_player_sprite.victory_celebration(_active_player_level())
 
 
 func _show_only(panel: Control) -> void:
@@ -1254,6 +1251,7 @@ func _play_attack(event: Dictionary) -> void:
 			target.set_pose("defeated")
 	await _play_damage(int(event.get("damage", 0)), element_multiplier)
 	_restore_seeker_idle()
+	_restore_player_seeker_idle()
 	if not effect_key.is_empty():
 		var eff_type := BattleView.ToastType.SUCCESS if effect_key == "BATTLE_EFFECTIVE" else BattleView.ToastType.WARNING
 		await _present_banner(
@@ -1377,7 +1375,10 @@ func _show_result(status: String) -> void:
 			_result_body_base = _win_reward_text(reward, exp_lines)
 			if not exp_lines.is_empty():
 				_result_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			_player_sprite.victory_celebration(_active_player_level())
+			# Knockout/status-tick sudah memicu happy pose ini di saat yang sama
+			# Seeker berganti ke "victory" -- jangan mengulang flourish-nya di sini.
+			if _player_sprite.current_pose() != "happy":
+				_player_sprite.victory_celebration(_active_player_level())
 		"lost":
 			_result_title.text = tr(
 				"EXPEDITION_WIPE_TITLE" if _expedition_mode else "TEAM_LOSS_TITLE"

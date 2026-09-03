@@ -648,7 +648,6 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 						else "attack_command"
 					)
 				await _play_attack(event)
-				_restore_player_seeker_idle()
 			"knockout":
 				var defeated_side := str(event.get("actor", ""))
 				var defeated := _sprite_for(defeated_side)
@@ -656,6 +655,8 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 					defeated.set_pose("defeated")
 				var player_ko := defeated_side == "player"
 				_set_player_seeker_pose("defeat" if player_ko else "victory")
+				if not player_ko and _player_sprite.current_pose() != "happy":
+					_player_sprite.victory_celebration(_companion_level())
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(defeated_side),
 					DAMAGE_COLOR if player_ko else WIN_COLOR,
@@ -793,6 +794,8 @@ func _play_attack(event: Dictionary) -> void:
 		if int(event.get("target_hp", 0)) <= 0:
 			target.set_pose("defeated")
 			_set_player_seeker_pose("defeat" if target_name == "player" else "victory")
+			if target_name != "player":
+				_player_sprite.victory_celebration(_companion_level())
 	_damage.modulate = Color.WHITE
 	_damage.pivot_offset = _damage.size * 0.5
 	_damage.scale = Vector2(0.72, 0.72)
@@ -812,6 +815,7 @@ func _play_attack(event: Dictionary) -> void:
 	_damage.scale = Vector2.ONE
 	_damage.modulate = Color.WHITE
 	_damage.visible = false
+	_restore_player_seeker_idle()
 	if not effect_key.is_empty():
 		var eff_type := ToastType.SUCCESS if effect_key == "BATTLE_EFFECTIVE" else ToastType.WARNING
 		await _present_banner(
@@ -1029,7 +1033,10 @@ func _show_result(status: String) -> void:
 				"BATTLE_TRAINING_TITLE" if training else "BATTLE_WIN_TITLE"
 			)
 			_result_body_base = _win_body(reward)
-			_player_sprite.victory_celebration(_companion_level())
+			# "knockout" sudah memicu happy pose ini di saat yang sama Seeker
+			# berganti ke "victory" -- jangan mengulang flourish-nya di sini.
+			if _player_sprite.current_pose() != "happy":
+				_player_sprite.victory_celebration(_companion_level())
 		"lost":
 			_result_title.text = tr("BATTLE_LOSS_TITLE")
 			_result_body_base = tr("BATTLE_LOSS_BODY")
