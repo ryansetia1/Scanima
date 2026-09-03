@@ -113,19 +113,21 @@ identitas Seeker, dan session yang sudah berjalan tidak ikut berubah.
 
 ## Kamu di arena
 
-Di Team Battle dan Expedition kamu ikut berdiri di sana. Figur Seeker-mu — yang
-kamu pilih lewat **Change Seeker Avatar** di
+Di **Duel**, **Team Battle**, dan **Expedition** kamu ikut berdiri di sana. Figur
+Seeker-mu — yang kamu pilih lewat **Change Seeker Avatar** di
 [Seeker Profile](seeker.md#seeker-avatar) — berdiri di sisimu menghadap lawan,
 sejauh Boss Seeker berdiri dari tepi seberang, dengan bayangan di kaki dan
 selalu di belakang Anima-mu sehingga tidak pernah menutupinya maupun tombol
 aksi. Saat kamera menjauh untuk memuat petarung besar, ia ikut merapat ke tepi
 layar sisimu.
 
-Ia bergerak mengikuti giliranmu: pose perintah saat kamu Attack, Special, atau
-Switch, pose khawatir saat Anima-mu terkena, lalu pose menang atau kalah di
-penutup, dan kembali tenang di antaranya. Ia tidak pernah bicara — panel dialog
-hanya milik Boss Seeker. Belum pernah memilih figur berarti yang berdiri di sana
-adalah figur default. Duel belum menampilkannya.
+Ia bergerak mengikuti giliranmu: pose perintah saat kamu Attack atau Special
+(juga Switch, di mode yang punya Switch), pose khawatir saat Anima-mu terkena,
+lalu pose menang atau kalah di penutup, dan kembali tenang di antaranya. Guard
+dan Item tidak punya pose sendiri. Ia tidak pernah bicara — panel dialog hanya
+milik Boss Seeker. Belum pernah memilih figur berarti yang berdiri di sana adalah
+figur default. Lawan Duel tidak punya figur Seeker; sisi seberang hanya berisi
+Anima-nya.
 
 ## Expedition
 

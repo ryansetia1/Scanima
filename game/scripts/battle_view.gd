@@ -44,6 +44,7 @@ signal exit_requested
 signal arena_open_changed(open: bool)
 
 const BACKGROUND_DOF_SHADER: Shader = preload("res://shaders/battle_background_dof.gdshader")
+const SEEKER_PRESENTER := preload("res://scripts/seeker_presenter.gd")
 const DUEL_BACKGROUND_DAY: Texture2D = preload(
 	"res://assets/backgrounds/duel_day_background.png"
 )
@@ -130,6 +131,9 @@ var _background_material: ShaderMaterial
 var _background_timer: Timer
 var _player_shadow: Sprite2D
 var _bot_shadow: Sprite2D
+var _player_seeker: SEEKER_PRESENTER
+var _player_seeker_shadow: Sprite2D
+var _player_seeker_loaded: Dictionary = {}
 
 
 func _ready() -> void:
@@ -154,6 +158,17 @@ func _ready() -> void:
 	_arena.move_child(_fighter_layer, fighter_index)
 	_player_anchor.reparent(_fighter_layer)
 	_bot_anchor.reparent(_fighter_layer)
+	# Cermin figur pemain di Team Battle: sheet Seeker digambar menghadap kiri,
+	# jadi figur yang berdiri di sisi kiri dibalik supaya ia memandang lawan.
+	# Duel tidak punya Boss Seeker di sisi bot, dan bot memang tidak dapat figur.
+	_player_seeker = SEEKER_PRESENTER.new()
+	_player_seeker.name = "PlayerSeeker"
+	_player_seeker.flip_h = true
+	# Di bawah kedua petarung Duel (z 3 dan 2), jadi ia tidak bisa menutupi Anima.
+	_player_seeker.z_index = 0
+	_fighter_layer.add_child(_player_seeker)
+	_player_seeker_shadow = _make_ground_shadow(_fighter_layer)
+	_player_seeker_shadow.name = "PlayerSeekerShadow"
 	_position_fighters.call_deferred()
 	_player_sprite.set_facing(1.0)
 	_bot_sprite.set_facing(-1.0)
@@ -424,6 +439,19 @@ func set_session(
 	_emit_arena_open()
 
 
+## Sheet yang sama dibandingkan lebih dulu supaya shell boleh menyegarkan figur
+## ini sesering profil berubah — termasuk saat Bits bergerak — tanpa me-reset
+## pose di tengah turn.
+func set_player_avatar(loaded: Dictionary) -> void:
+	if not is_instance_valid(_player_seeker):
+		return
+	if _player_seeker.has_sheet() and _player_seeker.sprite_frames == loaded.get("frames"):
+		return
+	_player_seeker_loaded = loaded.duplicate(true) if bool(loaded.get("ok", false)) else {}
+	_player_seeker.apply(loaded)
+	_position_player_seeker()
+
+
 func session_data() -> Dictionary:
 	return _session.duplicate(true)
 
@@ -611,7 +639,13 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 			"item":
 				await _play_item(event)
 			"attack":
+				if str(event.get("actor", "")) == "player":
+					_set_player_seeker_pose(
+						"special_command" if str(event.get("action", "")) == "surge"
+						else "attack_command"
+					)
 				await _play_attack(event)
+				_restore_player_seeker_idle()
 			"knockout":
 				var defeated_side := str(event.get("actor", ""))
 				var defeated := _sprite_for(defeated_side)
@@ -644,6 +678,20 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 					await _hide_effectiveness()
 	set_session(next_session)
 	set_busy(false)
+
+
+## Pemetaan pose sisi pemain dimiliki view, sama seperti di Team Battle:
+## perintah saat Attack/Special, khawatir saat Anima pemain kena, menang atau
+## kalah di penutup, idle di antaranya. Guard dan Item tidak punya pose sendiri
+## di sheet, jadi keduanya tetap idle alih-alih meminjam pose perintah.
+func _set_player_seeker_pose(pose: String) -> void:
+	if is_instance_valid(_player_seeker) and _player_seeker.has_sheet():
+		_player_seeker.set_pose(pose)
+
+
+func _restore_player_seeker_idle() -> void:
+	if str(_session.get("status", "")) == "active":
+		_set_player_seeker_pose("intro_idle")
 
 
 func _apply_effect_hp_event(event: Dictionary) -> void:
@@ -720,6 +768,8 @@ func _play_attack(event: Dictionary) -> void:
 	else:
 		apply_hp_bar_state(_bot_hp, float(event.get("target_hp", 0)), _bot_hp.max_value)
 	if is_instance_valid(target):
+		if target_name == "player":
+			_set_player_seeker_pose("concern_hit")
 		target.hit_react(element_multiplier)
 		target.modulate = Color(1.65, 0.45, 0.55, 1.0)
 		var flash := create_tween()
@@ -938,6 +988,10 @@ func _apply_state() -> void:
 	# Reward limits explain the lobby/result, not the turn decision inside the arena.
 	_daily_reward_label.visible = false
 	var status := str(_session.get("status", state.get("status", "active")))
+	_set_player_seeker_pose(
+		"intro_idle" if status == "active"
+		else ("victory" if status == "won" else "defeat")
+	)
 	_result_panel.visible = status != "active"
 	_actions.visible = status == "active"
 	_forfeit_button.visible = status == "active"
@@ -1080,6 +1134,7 @@ func _position_fighters() -> void:
 	var ground_y := _arena.size.y * DUEL_GROUND_Y_RATIO
 	_player_anchor.position = Vector2(_arena.size.x * BattleScale.PLAYER_SHOT_X, ground_y)
 	_bot_anchor.position = Vector2(_arena.size.x * BattleScale.OPPONENT_SHOT_X, ground_y)
+	_position_player_seeker()
 	var player_snapshot := _as_dict(_session.get("player_snapshot"))
 	var bot_snapshot := _as_dict(_session.get("bot_snapshot"))
 	var player_height := float(
@@ -1148,8 +1203,56 @@ func _position_fighters() -> void:
 	)
 	_sync_shadow("player")
 	_sync_shadow("bot")
+	_pin_player_seeker_to_camera_left(zoom)
 	var background_zoom := lerpf(DUEL_BACKGROUND_MAX_SCALE, 1.0, size_mix)
 	_layout_arena_background(background_zoom)
+
+
+## Cermin `TeamBattleView._position_player_seeker()`: sisi pemain, ground line
+## petarung yang sama, dan tanda `seeker_opaque_center()` terbalik karena
+## figurnya di-`flip_h`. Skalanya berdiri sendiri alih-alih ikut
+## `fighter_pair_scales()` — Anima Duel sudah dikalibrasi terhadap satu sama
+## lain, dan figur ini tidak boleh mengubah ukuran salah satunya.
+func _position_player_seeker() -> void:
+	if not is_instance_valid(_player_seeker) or not _player_seeker.has_sheet():
+		if is_instance_valid(_player_seeker_shadow):
+			_player_seeker_shadow.visible = false
+		return
+	var avatar_scale := BattleScale.fighter_scale(
+		TeamBattleView.PLAYER_SEEKER_HEIGHT_CM, _player_seeker_loaded, _arena.size
+	)
+	var x := (
+		_arena.size.x * TeamBattleView.PLAYER_SEEKER_SHOT_X
+		+ BattleScale.seeker_opaque_center(_player_seeker_loaded) * avatar_scale
+	)
+	_player_seeker.set_layout(Vector2(x, _player_anchor.position.y), avatar_scale)
+	# Zoom yang sedang berlaku, bukan yang akan datang: dipanggil dari
+	# `_position_fighters()` layer-nya baru di-reset ke 1.0 dan dijepit ulang di
+	# akhir, sementara dipanggil dari `set_player_avatar()` kamera sudah final
+	# dan figur baru harus langsung mendarat di tepinya.
+	_pin_player_seeker_to_camera_left(_fighter_layer.scale.x)
+	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
+
+
+## Figur pemain sengaja tidak ikut menentukan zoom Duel: ia dijepit ke tepi
+## kamera sesudah zoom-nya dipilih, jadi memasukkannya ke bounds hanya akan
+## mengecilkan setiap Duel yang selama ini tidak punya figur sama sekali.
+func _pin_player_seeker_to_camera_left(camera_zoom: float) -> void:
+	if (
+		not is_instance_valid(_player_seeker)
+		or not _player_seeker.has_sheet()
+		or camera_zoom <= 0.0
+	):
+		return
+	_player_seeker.position.x = BattleScale.seeker_pinned_x(
+		_player_seeker_loaded,
+		_player_seeker.scale.x,
+		_arena.size.x,
+		_fighter_layer.position.x,
+		camera_zoom,
+		true
+	)
+	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
 
 
 func _sprite_for(actor: String) -> AnimaPresenter:

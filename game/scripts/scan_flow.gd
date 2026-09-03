@@ -6569,6 +6569,7 @@ func _refresh_header() -> void:
 ## yang sudah terpasang supaya pose tidak ter-reset di tengah turn.
 func _sync_seeker_avatar() -> void:
 	var loaded := SeekerRoster.sheet(GameState.profile.get("seeker_avatar"))
+	_battle_view.set_player_avatar(loaded)
 	_team_battle_view.set_player_avatar(loaded)
 	_expedition_view.set_player_avatar(loaded)
 

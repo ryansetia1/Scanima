@@ -3563,6 +3563,52 @@ func _test_battle_view() -> void:
 		),
 		"Duel fighters plant their opaque feet on the shared BattleScale ground line"
 	)
+
+	# Figur Seeker pemain di Duel: cermin Team Battle di arena 2×2. Dicari
+	# terbatas pada layer Duel, bukan rekursif dari view — scene ini juga
+	# meng-embed TeamBattleView dan ExpeditionView yang punya node senama.
+	var bot_anchor := view.find_child("BattleBotAnchor", true, false) as Node2D
+	var duel_layer := arena.find_child("DuelFighterLayer", false, false) as Node2D
+	view.set_player_avatar(_boss_seeker_loaded())
+	await process_frame
+	var duel_avatar := duel_layer.find_child("PlayerSeeker", false, false) as AnimatedSprite2D
+	var duel_avatar_shadow := duel_layer.find_child(
+		"PlayerSeekerShadow", false, false
+	) as Sprite2D
+	_check(
+		duel_avatar != null and duel_avatar.visible and duel_avatar.sprite_frames != null
+		and duel_avatar.flip_h
+		and duel_avatar_shadow != null and duel_avatar_shadow.visible,
+		"the player's Seeker Avatar stands in the Duel arena facing the bot"
+	)
+	_check(
+		bot_anchor != null
+		and is_equal_approx(duel_avatar.position.y, active_ground_y)
+		and is_equal_approx(duel_avatar.position.y, bot_anchor.position.y),
+		"the Duel figure shares the one ground line both fighters stand on"
+	)
+	_check(
+		duel_avatar.z_index < player_sprite.z_index
+		and duel_avatar.z_index < bot_sprite.z_index
+		and duel_avatar_shadow.z_index == duel_avatar.z_index
+		and duel_layer.get_index() < fighter_hud_plate.get_index(),
+		"the Duel figure draws behind both Animas and under the arena HUD plate"
+	)
+	# Satu figur, bukan dua: bot Duel tidak punya Seeker, dan pemeriksaannya
+	# menghitung presenter alih-alih menebak nama node yang belum ada.
+	var duel_seeker_count := 0
+	for child in duel_layer.get_children():
+		if child is SeekerPresenter:
+			duel_seeker_count += 1
+	_check(duel_seeker_count == 1, "the Duel bot never gets a Seeker figure of its own")
+	# Struktural, jadi ia berlaku di portrait maupun landscape: figur hidup di
+	# dalam arena yang meng-clip isinya, dan arena digambar sebelum footer.
+	_check(
+		arena.clip_contents
+		and arena.get_parent().get_index() < footer.get_index()
+		and arena.is_ancestor_of(duel_avatar),
+		"the Duel figure can never cover the action dock, at any aspect"
+	)
 	_check(
 		is_equal_approx(BATTLE_SCALE.STATIC_BACKGROUND_VERTICAL_PAN, 0.5)
 		and is_equal_approx(
@@ -3845,6 +3891,36 @@ func _test_battle_view() -> void:
 		"selected Battle action locks on the button without Resolving copy"
 	)
 
+	# Pose sisi pemain hidup di tengah `play_events()` lalu kembali idle, jadi
+	# nilai akhirnya saja tidak membuktikan apa pun. Kolektor jalan berdampingan.
+	var duel_avatar_poses := {}
+	_collect_poses(duel_avatar, duel_avatar_poses)
+	await view.play_events([
+		{
+			"type": "attack", "actor": "player", "target": "bot", "action": "strike",
+			"damage": 12, "target_hp": 193, "element_multiplier": 1.0,
+		},
+		{
+			"type": "attack", "actor": "player", "target": "bot", "action": "surge",
+			"damage": 18, "target_hp": 175, "element_multiplier": 1.0,
+		},
+		{
+			"type": "attack", "actor": "bot", "target": "player", "action": "strike",
+			"damage": 15, "target_hp": 205, "element_multiplier": 1.0,
+		},
+	], session)
+	duel_avatar_poses["stop"] = true
+	_check(
+		duel_avatar_poses.has("attack_command")
+		and duel_avatar_poses.has("special_command")
+		and duel_avatar_poses.has("concern_hit"),
+		"the Duel figure commands its own Attack and Special, and worries when hit"
+	)
+	_check(
+		duel_avatar.animation == "intro_idle",
+		"an unfinished Duel leaves the player figure calm between turns"
+	)
+
 	var won: Dictionary = session.duplicate(true)
 	won["status"] = "won"
 	won["state"]["bot"]["hp"] = 0
@@ -3866,6 +3942,10 @@ func _test_battle_view() -> void:
 	_check(
 		player_sprite.current_pose() == "happy",
 		"menang Battle memakai pose Happy"
+	)
+	_check(
+		duel_avatar.animation == "victory",
+		"a won Duel leaves the player figure celebrating"
 	)
 	_check(
 		battle_source.find("_player_sprite.victory_celebration(_companion_level())") >= 0,
@@ -3970,6 +4050,10 @@ func _test_battle_view() -> void:
 	lost["state"]["player"]["hp"] = 0
 	view.set_session(lost, loaded, loaded)
 	_check(result.visible, "loss session restores its terminal result")
+	_check(
+		duel_avatar.animation == "defeat",
+		"a lost Duel leaves the player figure defeated"
+	)
 	view.set_error("BATTLE_EXPIRED")
 	_check(
 		result.visible and content.visible and not lobby.visible,
@@ -3977,6 +4061,82 @@ func _test_battle_view() -> void:
 	)
 
 	view.queue_free()
+	await process_frame
+	# Portrait dan landscape keduanya: dock Duel dan arena-nya berubah bentuk di
+	# antara keduanya, jadi "dock tidak bergeser" hanya terbukti kalau figurnya
+	# ikut diperiksa pada kedua aspect.
+	for duel_viewport_size in [Vector2i(720, 1602), Vector2i(1600, 900)]:
+		await _test_duel_seeker_avatar_layout(packed, loaded, session, duel_viewport_size)
+
+
+## Arena Duel di dalam `root` headless melapor lebar 0, jadi jepit tepi kamera
+## dan pergeseran dock tidak bisa dibuktikan di sana — angka pad-nya akan selalu
+## nol. Geometri karena itu diperiksa pada viewport sungguhan, prosedur yang sama
+## seperti bug layout lain di shell ini.
+func _test_duel_seeker_avatar_layout(
+	packed: PackedScene,
+	loaded: Dictionary,
+	session: Dictionary,
+	viewport_size: Vector2i
+) -> void:
+	var host := SubViewport.new()
+	host.size = viewport_size
+	root.add_child(host)
+	var view := packed.instantiate()
+	host.add_child(view)
+	view.visible = true
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view.set_session(session, loaded, loaded)
+	await process_frame
+	var arena := view.find_child("BattleArena", true, false) as Control
+	var layer := arena.find_child("DuelFighterLayer", false, false) as Node2D
+	var player_anchor := view.find_child("BattlePlayerAnchor", true, false) as Node2D
+	var actions := view.find_child("Actions", true, false) as GridContainer
+	var hud_plate := view.find_child("FighterHudPlate", true, false) as Control
+	var footer := view.find_child("BattleFooter", true, false) as Control
+	_check(
+		arena.size.x > 0.0,
+		"the Duel arena has a real camera viewport to pin against at %s" % viewport_size
+	)
+	var camera_before := layer.scale
+	var dock_height := footer.size.y
+	var dock_position := actions.global_position
+	var hud_position := hud_plate.global_position
+	var avatar_loaded := _boss_seeker_loaded()
+	view.set_player_avatar(avatar_loaded)
+	await process_frame
+	var avatar := layer.find_child("PlayerSeeker", false, false) as AnimatedSprite2D
+	_check(
+		layer.scale.is_equal_approx(camera_before)
+		and is_equal_approx(footer.size.y, dock_height)
+		and actions.global_position.is_equal_approx(dock_position)
+		and hud_plate.global_position.is_equal_approx(hud_position),
+		"the Duel figure never re-zooms the arena or moves the 2x2 dock and HUD at %s"
+			% viewport_size
+	)
+	# Dihitung ulang di sini alih-alih dibaca dari view: kalau rumus jepitnya
+	# bergeser, angka yang diharapkan tidak ikut bergeser diam-diam.
+	var avatar_width := BattleScale.seeker_reference_width(avatar_loaded)
+	var avatar_body := BattleScale.seeker_opaque_center(avatar_loaded)
+	# `flip_h` mencerminkan sel terhadap origin, jadi pusat badan pindah tanda.
+	var avatar_center_x := layer.position.x + (
+		avatar.position.x - avatar_body * absf(avatar.scale.x)
+	) * layer.scale.x
+	var avatar_screen_w := avatar_width * absf(avatar.scale.x) * layer.scale.x
+	var pad := arena.size.x * BattleScale.SEEKER_CAMERA_EDGE_PAD_RATIO
+	_check(
+		pad > 1.0
+		and avatar_width > 1.0
+		and absf(avatar_center_x - (pad + avatar_screen_w * 0.5)) < 1.0,
+		"the Duel figure pins to its own screen edge after the camera zooms, at %s"
+			% viewport_size
+	)
+	_check(
+		avatar_center_x < arena.size.x * 0.5
+		and player_anchor.position.x < arena.size.x * 0.5,
+		"the Duel figure shares the player Anima's half of the screen at %s" % viewport_size
+	)
+	host.queue_free()
 	await process_frame
 
 
@@ -4426,11 +4586,6 @@ func _test_team_battle_view() -> void:
 		team_source.find("shadow.centered = true") >= 0
 		and team_source.find("shadow.position = Vector2.ZERO") >= 0,
 		"all generated Battle shadows use their node position as the visual center"
-	)
-	_check(
-		team_source.find("shadow.position = presenter.position") >= 0
-		and team_source.find("_seeker.position + Vector2(0.0, 4.0)") < 0,
-		"either Seeker's lowest opaque pixel meets the vertical center of its shadow"
 	)
 	var attack_fn := team_source.substr(team_source.find("func _play_attack"), 3600)
 	_check(
@@ -5014,6 +5169,16 @@ func _test_team_battle_view() -> void:
 		and avatar_shadow.z_index == avatar.z_index,
 		"the player figure draws behind its own Anima, never over it"
 	)
+	# Kedua figur memakai satu jalur bayangan di presenter, jadi diperiksa dari
+	# node hidup: tanpa fudge vertikal, piksel opak terbawah figur mendarat tepat
+	# di pusat visual bayangannya.
+	var boss_shadow := seeker.get_parent().find_child("GroundShadow", false, false) as Sprite2D
+	_check(
+		boss_shadow != null
+		and boss_shadow.position == seeker.position
+		and avatar_shadow.position == avatar.position,
+		"either Seeker's lowest opaque pixel meets the vertical center of its shadow"
+	)
 	# Struktural, jadi ia berlaku di portrait maupun landscape: figur hidup di
 	# dalam stage, dan stage digambar sebelum dock aksi di kolom arena yang sama.
 	var arena_column := stage.get_parent()
@@ -5156,11 +5321,12 @@ func _test_team_battle_view() -> void:
 	var sync_body := _func_body(arena_flow, "func _sync_seeker_avatar(")
 	_check(
 		sync_body.find("SeekerRoster.sheet(GameState.profile.get(\"seeker_avatar\"))") >= 0
+		and sync_body.find("_battle_view.set_player_avatar(") >= 0
 		and sync_body.find("_team_battle_view.set_player_avatar(") >= 0
 		and sync_body.find("_expedition_view.set_player_avatar(") >= 0
 		and _func_body(arena_flow, "func _refresh_header(").find("_sync_seeker_avatar()") >= 0
 		and _func_body(arena_flow, "func _change_seeker_avatar(").find("_sync_seeker_avatar()") >= 0,
-		"the shell feeds the chosen figure to both arenas whenever the profile moves"
+		"the shell feeds the chosen figure to all three arenas whenever the profile moves"
 	)
 	view.queue_free()
 	await process_frame

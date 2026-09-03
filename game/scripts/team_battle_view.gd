@@ -45,7 +45,6 @@ const TEAM_BACKGROUND_MAX_SCALE := 1.0
 const MIN_TEAM_SIZE := 2
 const MAX_TEAM_SIZE := 4
 const CAMERA_REFIT_SEC := 0.32
-const SEEKER_CAMERA_EDGE_PAD_RATIO := 0.025
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 const BACKGROUND_DOF_SHADER: Shader = preload("res://shaders/battle_background_dof.gdshader")
@@ -1873,28 +1872,10 @@ func _fit_sprite_opaque_height(sprite: AnimaPresenter, anchor: Node2D, target_px
 
 
 func _sync_seeker_shadow() -> void:
-	_sync_shadow_to_seeker(_seeker, _seeker_shadow, _seeker_loaded)
-	_sync_shadow_to_seeker(_player_seeker, _player_seeker_shadow, _player_seeker_loaded)
-
-
-func _sync_shadow_to_seeker(
-	presenter: SEEKER_PRESENTER,
-	shadow: Sprite2D,
-	loaded: Dictionary
-) -> void:
-	if not is_instance_valid(shadow):
-		return
-	if not is_instance_valid(presenter) or not presenter.has_sheet():
-		shadow.visible = false
-		return
-	var metrics := GameState.as_dict(loaded.get("render_metrics"))
-	var width := (
-		maxf(1.0, float(metrics.get("reference_width_px", 158.0))) * absf(presenter.scale.x)
-	)
-	shadow.visible = true
-	shadow.z_index = presenter.z_index
-	shadow.position = presenter.position
-	shadow.scale = Vector2(clampf(width / 130.0, 0.9, 3.0), 1.15)
+	if is_instance_valid(_seeker):
+		_seeker.sync_ground_shadow(_seeker_shadow)
+	if is_instance_valid(_player_seeker):
+		_player_seeker.sync_ground_shadow(_player_seeker_shadow)
 
 
 func _sync_shadow(side: String) -> void:
@@ -2066,40 +2047,16 @@ func _layout_arena_background(background_zoom: float) -> void:
 	)
 
 
-## Lebar sel sheet Seeker; padding transparannya tidak boleh ikut menentukan
-## komposisi, jadi ia selalu dipasangkan dengan `_seeker_opaque_center()`.
-static func _seeker_frame_width(loaded: Dictionary) -> float:
-	var frame_value: Variant = loaded.get("frame_size", Vector2i(341, 341))
-	if typeof(frame_value) == TYPE_VECTOR2I:
-		return float((frame_value as Vector2i).x)
-	if typeof(frame_value) == TYPE_VECTOR2:
-		return (frame_value as Vector2).x
-	return 341.0
-
-
-## Jarak pusat badan yang benar-benar tergambar dari origin sprite, dalam piksel
-## sheet. `flip_h` mencerminkan sel terhadap origin itu, jadi figur yang dibalik
-## memakai angka yang sama dengan tanda terbalik.
-static func _seeker_opaque_center(loaded: Dictionary) -> float:
-	var metrics := GameState.as_dict(loaded.get("render_metrics"))
-	var frame_w := _seeker_frame_width(loaded)
-	var width := float(metrics.get("reference_width_px", 158.0))
-	var min_x := float(metrics.get("reference_min_x_px", (frame_w - width) * 0.5))
-	return min_x + width * 0.5 - frame_w * 0.5
-
-
 func _pin_seeker_to_camera_right(camera_zoom: float) -> void:
 	if not is_instance_valid(_seeker) or not _seeker.has_sheet() or camera_zoom <= 0.0:
 		return
-	var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
-	var width := float(metrics.get("reference_width_px", 158.0))
-	var screen_width := width * absf(_seeker.scale.x) * camera_zoom
-	var target_center := (
-		_battle_stage.size.x * (1.0 - SEEKER_CAMERA_EDGE_PAD_RATIO) - screen_width * 0.5
-	)
-	_seeker.position.x = (
-		(target_center - _fighter_layer.position.x) / camera_zoom
-		- _seeker_opaque_center(_seeker_loaded) * absf(_seeker.scale.x)
+	_seeker.position.x = BattleScale.seeker_pinned_x(
+		_seeker_loaded,
+		_seeker.scale.x,
+		_battle_stage.size.x,
+		_fighter_layer.position.x,
+		camera_zoom,
+		false
 	)
 
 
@@ -2112,15 +2069,13 @@ func _pin_player_seeker_to_camera_left(camera_zoom: float) -> void:
 		or camera_zoom <= 0.0
 	):
 		return
-	var metrics := GameState.as_dict(_player_seeker_loaded.get("render_metrics"))
-	var width := float(metrics.get("reference_width_px", 158.0))
-	var screen_width := width * absf(_player_seeker.scale.x) * camera_zoom
-	var target_center := (
-		_battle_stage.size.x * SEEKER_CAMERA_EDGE_PAD_RATIO + screen_width * 0.5
-	)
-	_player_seeker.position.x = (
-		(target_center - _fighter_layer.position.x) / camera_zoom
-		+ _seeker_opaque_center(_player_seeker_loaded) * absf(_player_seeker.scale.x)
+	_player_seeker.position.x = BattleScale.seeker_pinned_x(
+		_player_seeker_loaded,
+		_player_seeker.scale.x,
+		_battle_stage.size.x,
+		_fighter_layer.position.x,
+		camera_zoom,
+		true
 	)
 
 
@@ -2136,7 +2091,7 @@ func _fighter_shot_bounds() -> Rect2:
 		var metrics := GameState.as_dict(_seeker_loaded.get("render_metrics"))
 		var width := float(metrics.get("reference_width_px", 158.0)) * absf(_seeker.scale.x)
 		var height := float(metrics.get("reference_height_px", 282.0)) * absf(_seeker.scale.y)
-		var center := _seeker_opaque_center(_seeker_loaded) * absf(_seeker.scale.x)
+		var center := BattleScale.seeker_opaque_center(_seeker_loaded) * absf(_seeker.scale.x)
 		bounds = bounds.merge(
 			Rect2(_seeker.position.x + center - width * 0.5, ground_y - height, width, height)
 		)
@@ -2286,14 +2241,14 @@ func _position_seeker() -> void:
 	# transparent 3×3 cell padding must not affect composition.
 	var x := (
 		_battle_stage.size.x * SEEKER_SHOT_X
-		- _seeker_opaque_center(_seeker_loaded) * seeker_scale
+		- BattleScale.seeker_opaque_center(_seeker_loaded) * seeker_scale
 	)
 	_seeker.set_layout(Vector2(x, _opponent_anchor.position.y), seeker_scale)
-	_sync_shadow_to_seeker(_seeker, _seeker_shadow, _seeker_loaded)
+	_seeker.sync_ground_shadow(_seeker_shadow)
 
 
 ## Cermin `_position_seeker()`: sisi pemain, ground line yang sama, dan tanda
-## `_seeker_opaque_center()` terbalik karena figurnya di-`flip_h`. Skalanya
+## `BattleScale.seeker_opaque_center()` terbalik karena figurnya di-`flip_h`. Skalanya
 ## sengaja berdiri sendiri alih-alih ikut `_arena_scales()` — Team Battle biasa
 ## tidak punya Seeker sama sekali di sana, dan menambahkannya akan mengubah
 ## ukuran setiap Anima yang sudah dikalibrasi.
@@ -2307,7 +2262,7 @@ func _position_player_seeker() -> void:
 	)
 	var x := (
 		_battle_stage.size.x * PLAYER_SEEKER_SHOT_X
-		+ _seeker_opaque_center(_player_seeker_loaded) * avatar_scale
+		+ BattleScale.seeker_opaque_center(_player_seeker_loaded) * avatar_scale
 	)
 	_player_seeker.set_layout(Vector2(x, _player_anchor.position.y), avatar_scale)
 	# Zoom yang sedang berlaku, bukan yang akan datang: dipanggil dari
@@ -2315,7 +2270,7 @@ func _position_player_seeker() -> void:
 	# menjepit ulang sesudahnya, sementara dipanggil dari `set_player_avatar()`
 	# kamera sudah final dan figur baru harus langsung mendarat di tepinya.
 	_pin_player_seeker_to_camera_left(_fighter_layer.scale.x)
-	_sync_shadow_to_seeker(_player_seeker, _player_seeker_shadow, _player_seeker_loaded)
+	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
 
 
 func _play_damage(amount: int, multiplier: float) -> void:

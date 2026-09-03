@@ -12,6 +12,8 @@ const OPPONENT_SHOT_X := 0.73
 const GROUND_Y_RATIO := 0.91
 const ANIMA_VISUAL_HEIGHT_CAP_CM := 300.0
 const SEEKER_OVERLAP_RATIO := 0.6
+const SEEKER_CAMERA_EDGE_PAD_RATIO := 0.025
+const SEEKER_REFERENCE_WIDTH_PX := 158.0
 const BACKGROUND_PAN_EDGE_MARGIN := 0.04
 const STATIC_BACKGROUND_VERTICAL_PAN := 0.5
 
@@ -28,6 +30,57 @@ static func anima_behind_seeker(anima_height_cm: float, seeker_height_cm: float)
 		seeker_height_cm > 0.0
 		and anima_display_height_cm(anima_height_cm) > seeker_height_cm * SEEKER_OVERLAP_RATIO
 	)
+
+
+## Lebar badan Seeker yang benar-benar tergambar, dalam piksel sheet.
+static func seeker_reference_width(loaded: Dictionary) -> float:
+	return float(_metrics(loaded).get("reference_width_px", SEEKER_REFERENCE_WIDTH_PX))
+
+
+## Lebar sel sheet Seeker; padding transparannya tidak boleh ikut menentukan
+## komposisi, jadi ia selalu dipasangkan dengan `seeker_opaque_center()`.
+static func seeker_frame_width(loaded: Dictionary) -> float:
+	var frame_value: Variant = loaded.get("frame_size", Vector2i(341, 341))
+	if typeof(frame_value) == TYPE_VECTOR2I:
+		return float((frame_value as Vector2i).x)
+	if typeof(frame_value) == TYPE_VECTOR2:
+		return (frame_value as Vector2).x
+	return 341.0
+
+
+## Jarak pusat badan yang benar-benar tergambar dari origin sprite, dalam piksel
+## sheet. `flip_h` mencerminkan sel terhadap origin itu, jadi figur yang dibalik
+## memakai angka yang sama dengan tanda terbalik.
+static func seeker_opaque_center(loaded: Dictionary) -> float:
+	var frame_w := seeker_frame_width(loaded)
+	var width := seeker_reference_width(loaded)
+	var min_x := float(_metrics(loaded).get("reference_min_x_px", (frame_w - width) * 0.5))
+	return min_x + width * 0.5 - frame_w * 0.5
+
+
+## Sesudah kamera memilih zoom-nya, pusat badan opak sebuah figur Seeker dijepit
+## `SEEKER_CAMERA_EDGE_PAD_RATIO` dari tepi sisinya. Satu rumus melayani kedua
+## sisi karena `flipped` adalah fakta yang sama dua kali: sheet Seeker digambar
+## menghadap canvas-left, jadi figur yang dibalik adalah figur yang berdiri di
+## tepi kiri — dan pembalikan itu juga yang menukar tanda pusat badannya.
+static func seeker_pinned_x(
+	loaded: Dictionary,
+	sprite_scale: float,
+	stage_width: float,
+	layer_x: float,
+	camera_zoom: float,
+	flipped: bool
+) -> float:
+	var half_screen_width := (
+		seeker_reference_width(loaded) * absf(sprite_scale) * camera_zoom * 0.5
+	)
+	var pad := stage_width * SEEKER_CAMERA_EDGE_PAD_RATIO
+	var target_center := (
+		pad + half_screen_width if flipped
+		else stage_width - pad - half_screen_width
+	)
+	var body := seeker_opaque_center(loaded) * absf(sprite_scale)
+	return (target_center - layer_x) / camera_zoom + (body if flipped else -body)
 
 
 static func background_pan_for_session(session_id: String) -> float:
@@ -108,9 +161,13 @@ static func shared_scales(
 	return scales
 
 
+static func _metrics(loaded: Dictionary) -> Dictionary:
+	var metrics: Variant = loaded.get("render_metrics", {})
+	return metrics if typeof(metrics) == TYPE_DICTIONARY else {}
+
+
 static func _reference_size(loaded: Dictionary) -> Vector2:
-	var metrics_value: Variant = loaded.get("render_metrics", {})
-	var metrics: Dictionary = metrics_value if typeof(metrics_value) == TYPE_DICTIONARY else {}
+	var metrics := _metrics(loaded)
 	var reference_height := maxf(1.0, float(metrics.get("reference_height_px", 300.0)))
 	var reference_width := maxf(1.0, float(metrics.get("reference_width_px", reference_height)))
 	return Vector2(reference_width, reference_height)

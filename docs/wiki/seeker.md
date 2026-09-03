@@ -141,10 +141,10 @@ sedang kamu pakai.
   Year** yang kamu isi di **Create Your Seeker** — keduanya tidak saling
   mengikuti, jadi figur mana pun boleh dipakai siapa pun.
 - Belum pernah memilih berarti kamu memakai figur default.
-- Selain di Seeker Profile, figurmu berdiri di arena **Team Battle** dan
-  **Expedition** — lihat [Battle](battle.md#kamu-di-arena). Duel, kartu Atlas,
-  dan Top HUD belum menampilkannya; Top HUD tetap menulis nama Seeker sebagai
-  teks biasa.
+- Selain di Seeker Profile, figurmu berdiri di arena **Duel**, **Team Battle**,
+  dan **Expedition** — lihat [Battle](battle.md#kamu-di-arena). Kartu Atlas dan
+  Top HUD belum menampilkannya; Top HUD tetap menulis nama Seeker sebagai teks
+  biasa.
 
 ## Seeker dan Anima berbeda
 
