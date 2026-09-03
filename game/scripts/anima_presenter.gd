@@ -311,11 +311,19 @@ func hit_react(element_multiplier: float = 1.0) -> void:
 	Sfx.play_effectiveness(element_multiplier)
 	_stop_tap_motion()
 	var knockback := -_facing_direction * 16.0
+	# Jitter vertikal di atas knockback horizontal supaya kesan impact-nya
+	# terasa sebagai shake, bukan cuma tersentak satu arah.
+	var shake_y := 6.0 * clampf(element_multiplier, 0.5, 2.0)
 	_feedback = create_tween()
-	_feedback.tween_property(self, "position", _base_position + Vector2(knockback, 0.0), 0.04) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_feedback.tween_property(self, "position", _base_position + Vector2(knockback * -0.55, 0.0), 0.05)
-	_feedback.tween_property(self, "position", _base_position + Vector2(knockback * 0.28, 0.0), 0.04)
+	_feedback.tween_property(
+		self, "position", _base_position + Vector2(knockback, -shake_y), 0.04
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_feedback.tween_property(
+		self, "position", _base_position + Vector2(knockback * -0.55, shake_y), 0.05
+	)
+	_feedback.tween_property(
+		self, "position", _base_position + Vector2(knockback * 0.28, -shake_y * 0.5), 0.04
+	)
 	_feedback.tween_property(self, "position", _base_position, 0.06) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_feedback.finished.connect(_resume_pose_motion)

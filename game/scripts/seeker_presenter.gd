@@ -63,6 +63,23 @@ func set_pose(pose: String) -> void:
 	play(pose)
 
 
+## Shake impact singkat saat figur pemain kena serangan lawan, dipasangkan
+## dengan pose "concern_hit" di pemanggil. Jangkarnya `position` saat dipanggil
+## (bukan `_rest_position`), sebab `_pin_player_seeker_to_camera_left()`
+## menimpa `position.x` di luar `set_layout()` tanpa memperbarui `_rest_position`.
+func shake_impact() -> void:
+	if sprite_frames == null:
+		return
+	var anchor := position
+	var shake := create_tween()
+	shake.tween_property(self, "position", anchor + Vector2(-6.0, -4.0), 0.04) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	shake.tween_property(self, "position", anchor + Vector2(5.0, 3.0), 0.05)
+	shake.tween_property(self, "position", anchor + Vector2(-3.0, -2.0), 0.04)
+	shake.tween_property(self, "position", anchor, 0.06) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
 func set_layout(rest_position: Vector2, body_scale: float) -> void:
 	_rest_position = rest_position
 	_body_scale = maxf(body_scale, 0.01)

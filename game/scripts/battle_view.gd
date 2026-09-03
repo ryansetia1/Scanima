@@ -655,6 +655,7 @@ func play_events(events: Array, next_session: Dictionary) -> void:
 				if is_instance_valid(defeated):
 					defeated.set_pose("defeated")
 				var player_ko := defeated_side == "player"
+				_set_player_seeker_pose("defeat" if player_ko else "victory")
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(defeated_side),
 					DAMAGE_COLOR if player_ko else WIN_COLOR,
@@ -693,6 +694,11 @@ func _set_player_seeker_pose(pose: String) -> void:
 
 
 func _restore_player_seeker_idle() -> void:
+	# Jangan timpa balik "defeat"/"victory" yang baru saja ditetapkan inline
+	# oleh event ini -- _session.status masih "active" sampai set_session() di
+	# akhir play_events(), jadi cek animasi berjalan alih-alih status sesi.
+	if is_instance_valid(_player_seeker) and _player_seeker.animation in ["defeat", "victory"]:
+		return
 	if str(_session.get("status", "")) == "active":
 		_set_player_seeker_pose("intro_idle")
 
@@ -712,6 +718,10 @@ func _apply_effect_hp_event(event: Dictionary) -> void:
 		var fainting := _sprite_for(target)
 		if is_instance_valid(fainting):
 			fainting.set_pose("defeated")
+		if target == "player":
+			_set_player_seeker_pose("defeat")
+		elif target == "bot":
+			_set_player_seeker_pose("victory")
 
 
 func _play_item(event: Dictionary) -> void:
@@ -773,6 +783,8 @@ func _play_attack(event: Dictionary) -> void:
 	if is_instance_valid(target):
 		if target_name == "player":
 			_set_player_seeker_pose("concern_hit")
+			if is_instance_valid(_player_seeker):
+				_player_seeker.shake_impact()
 		target.hit_react(element_multiplier)
 		target.modulate = Color(1.65, 0.45, 0.55, 1.0)
 		var flash := create_tween()
@@ -780,6 +792,7 @@ func _play_attack(event: Dictionary) -> void:
 		Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
 		if int(event.get("target_hp", 0)) <= 0:
 			target.set_pose("defeated")
+			_set_player_seeker_pose("defeat" if target_name == "player" else "victory")
 	_damage.modulate = Color.WHITE
 	_damage.pivot_offset = _damage.size * 0.5
 	_damage.scale = Vector2(0.72, 0.72)

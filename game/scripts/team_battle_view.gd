@@ -641,6 +641,14 @@ func play_events(
 				var side := str(event.get("actor", ""))
 				_faint(side)
 				var player_ko := side == "player"
+				# Kalau KO ini menghabiskan seluruh tim (bukan sekadar satu member
+				# yang masih bisa di-switch), sinkronkan pose figur pemain sekarang
+				# juga -- jangan tunggu set_session() di akhir play_events().
+				var final_status := str(next_session.get("status", "active"))
+				if player_ko and final_status == "lost":
+					_set_player_seeker_pose("defeat")
+				elif not player_ko and final_status == "won":
+					_set_player_seeker_pose("victory")
 				await _present_banner(
 					tr("BATTLE_EVENT_KO") % _actor_name(side),
 					BattleView.DAMAGE_COLOR if player_ko else BattleView.WIN_COLOR,
@@ -663,7 +671,7 @@ func play_events(
 				await _hide_effectiveness()
 			"move_effect", "status_tick", "status_expired":
 				var normalized := BATTLE_EVENT.normalized(event)
-				_apply_effect_hp_event(normalized)
+				_apply_effect_hp_event(normalized, str(next_session.get("status", "active")))
 				var plate := BATTLE_EVENT.plate_text(normalized)
 				if not plate.is_empty():
 					await _present_banner(plate, BattleView.CUE_COLOR, false, BattleView.ToastType.GENERAL)
@@ -677,7 +685,7 @@ func play_events(
 	set_busy(false)
 
 
-func _apply_effect_hp_event(event: Dictionary) -> void:
+func _apply_effect_hp_event(event: Dictionary, final_status: String = "active") -> void:
 	if not event.has("target_hp"):
 		return
 	var side := str(event.get("target", event.get("actor", "")))
@@ -697,6 +705,10 @@ func _apply_effect_hp_event(event: Dictionary) -> void:
 	value.text = LocaleManager.format_ratio(hp, int(bar.max_value))
 	if hp <= 0:
 		_faint(side)
+		if side == "player" and final_status == "lost":
+			_set_player_seeker_pose("defeat")
+		elif side == "opponent" and final_status == "won":
+			_set_player_seeker_pose("victory")
 
 
 func _show_only(panel: Control) -> void:
@@ -2500,6 +2512,11 @@ func _set_player_seeker_pose(pose: String) -> void:
 
 
 func _restore_player_seeker_idle() -> void:
+	# Jangan timpa balik "defeat"/"victory" yang baru saja ditetapkan inline oleh
+	# knockout/status event ini -- _session.status masih lama sampai
+	# set_session() di akhir play_events(), sama seperti BattleView.
+	if is_instance_valid(_player_seeker) and _player_seeker.animation in ["defeat", "victory"]:
+		return
 	if str(_session.get("status", "")) == "active":
 		_set_player_seeker_pose("intro_idle")
 
@@ -2507,6 +2524,8 @@ func _restore_player_seeker_idle() -> void:
 func _react_player_seeker_attack(event: Dictionary) -> void:
 	if str(event.get("target", "")) == "player":
 		_set_player_seeker_pose("concern_hit")
+		if is_instance_valid(_player_seeker):
+			_player_seeker.shake_impact()
 
 
 func _speak_seeker(
