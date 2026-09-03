@@ -84,7 +84,10 @@ const CAPTURE_PARENT = new Map([
   ["v29", "v20"],
   ["v30", "v20"],
 ]);
-// v31 mengubah capture saja; evolve production tetap v30.
+// v31 mengubah capture saja; evolve production tetap v30. This governs
+// sprite_sheet_evolve; v47 is deliberately absent because it has its own
+// grounded-pose sprite_sheet_evolve.md (see EVOLVE_PLANNER_PARENT below for
+// its vision_evolve_system/schema, which stayed byte-identical to v41).
 const EVOLVE_PARENT = new Map([
   ["v31", "v30"],
   ["v42", "v41"],
@@ -94,6 +97,20 @@ const EVOLVE_PARENT = new Map([
   ["v46", "v41"],
   ["v48", "v47"],
 ]);
+const EVOLVE_PLANNER_KEYS = new Set(["vision_evolve_system", "vision_evolve_schema"]);
+// v47 only changed the evolve art contract (sprite_sheet_evolve); the Vision
+// planner/schema for evolve stayed v41. Without this, the bundler falls back
+// to reading backend/prompts/v47/vision_evolve_system.md, which doesn't
+// exist — and since these keys are OPSIONAL below, that failure is silently
+// swallowed instead of thrown, so evolve_anima 500s on every request with a
+// "prompt tidak lengkap" error that never surfaces during `bundle_prompts.mjs`
+// itself. ponytail: v48 isn't given its own entry here because
+// evolution_prompt_version has never actually been v48 (v48 is Synthesis-only
+// per CLAUDE.md); if that changes, add ["v48", "v41"] here too.
+// Starts from the same inheritance as sprite_sheet_evolve — planner and sheet
+// agree for every version except v47 — then overrides just that one.
+const EVOLVE_PLANNER_PARENT = new Map(EVOLVE_PARENT);
+EVOLVE_PLANNER_PARENT.set("v47", "v41");
 // v42–v45 hanya mengubah Synthesis; capture/evolve tetap byte-identik v41.
 CAPTURE_PARENT.set("v42", "v41");
 CAPTURE_PARENT.set("v43", "v41");
@@ -137,7 +154,9 @@ export async function buildBundle() {
         ?? (inheritsCapture
           ? CAPTURE_PARENT.get(v)
         : EVOLVE_KEYS.has(kunci)
-          ? EVOLVE_PARENT.get(v)
+          ? (EVOLVE_PLANNER_KEYS.has(kunci)
+            ? EVOLVE_PLANNER_PARENT.get(v)
+            : EVOLVE_PARENT.get(v))
           : kunci === "sprite_sheet_synthesis"
             ? SYNTHESIS_SHEET_PARENT.get(v)
             : kunci === "vision_synthesis_system" || kunci === "vision_synthesis_schema"

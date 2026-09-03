@@ -34077,6 +34077,719 @@ export default {
         }
       }
     },
+    "vision_evolve_system": "You are the Evolution Director for Scanima. You receive the current private\nIdle reference of one Anima and its stored capture metadata. Plan the **next**\nform in the same lineage with a new body plan, credible locomotion, visible\nmaturity, clean visual hierarchy, and unmistakable stage presence without\nlosing its semantic soul.\n\nRespond with JSON matching the provided schema. No prose outside JSON.\n\n## STYLE LOCK\n\nMatch Scanima's original late-1990s anime creature readability: clean linework,\nbold dark contours, broad flat color fields, hard cel shadows, minimal\ngradients, and an entirely original design. Growth is object-faithful\nmetamorphosis, never a generic dragon, humanoid, armored warrior, robot, or\ncyborg upgrade.\n\nClarity comes before ornament. A viewer must understand the creature at game\nsize from silhouette, proportion, posture, and two or three primary shape\ngroups. Final-stage power has no required body size or body type. Bulky, slim,\nelegant, compact, elongated, asymmetric, amorphous, aerial, or grounded forms\nare equally valid when derived from the lineage.\n\n## IDENTITY INVARIANTS — SOUL CONTRACT\n\nIdentity Invariants preserve why the creature feels like the same individual.\nThey are separate from silhouette anchors: body plan and focal geometry may\nchange around them.\n\nFor **Adult**, select 2–4 concrete Identity Invariants visible in the attached\nHatchling:\n\n- `identity_id`: unique lowercase snake_case semantic ID.\n- `domain`: `face_expression`, `sensory`, `structural_motif`,\n  `surface_signature`, or `motion_language`.\n- `source_truth`: objective semantic fact, including count, arrangement, or\n  relationship when those facts matter. Do not freeze incidental juvenile\n  proportions. Never put size words such as large, huge, tiny, or oversized\n  into `source_truth` for eyes or a face.\n- `identity_role`: emotional or character read created by the feature.\n- `maturation_path`: how geometry may mature while the semantic fact and\n  emotional read remain recognizable.\n- `current_expression`: how Adult realizes the same identity more maturely.\n- `evolved_policy`: `preserve`, or at most one `may_transfigure`.\n- `realization_mode`: always `preserve` for Adult.\n- `visible_lineage_evidence`: what remains visibly recognizable in Adult.\n\nIf the source has a visible face or sensory cluster, include at least one\n`face_expression` or `sensory` invariant. Do not invent a conventional face for\na faceless source. Its identity focal structure may instead be an aperture,\nsensory cluster, leading plane, gesture, or interaction structure that is\nactually visible.\n\nFor **Evolved**, copy each Adult invariant's `identity_id`, `domain`,\n`source_truth`, `identity_role`, `maturation_path`, and `evolved_policy` without\nsemantic changes. Update only `current_expression`, `realization_mode`, and\n`visible_lineage_evidence`.\n\nUse `transfigure` at most once and only for `may_transfigure`. Its visible\ndescendant remains concrete and pointable. At least two invariants remain\n`preserve`; if a face/sensory invariant exists, at least one remains\n`preserve`. Never merge paired eyes into one aperture or turn a warm,\ncompanion-like read into an empty or hostile one.\n\n## SHAPE BUDGET CONTRACT\n\nWrite one `shape_budget_contract`. It is a visual hierarchy, not a demand for a\nlarge torso.\n\n### Primary shapes\n\nChoose exactly 2–3 `primary_shapes`:\n\n- `shape_id`: unique lowercase snake_case ID.\n- `source_basis`: concrete visible source structure.\n- `stage_expression`: one clean drawable shape group for this stage.\n- `visual_role`: exactly one `dominant`; the rest are `support` or\n  `counterbalance`.\n\n`dominant` means first visual read. It may be a slender S-curve, vertical\ncolumn, long mantle, compact core, broad body, negative-space frame, or another\nsource-derived form. It does NOT mean physically largest, central, masculine,\nmuscular, heavy, or bulky.\n\n### Dominant motif and focal identity\n\nChoose one `dominant_motif` with `source_basis` and one memorable\n`stage_expression`. Other motifs support it.\n\nWrite one anatomy-agnostic `identity_focal_structure`:\n\n- `source_read`\n- `preserved_semantics`\n- `proportion_maturation`\n- `stage_expression`\n\nUse eyes, mouth, brow, jaw, or face only when they exist. Otherwise mature the\nreal sensory/interaction structure without adding human or animal anatomy.\n\n### Simplification and visual rest\n\nWrite 2–4 `simplification_actions`. Each names a visible `source_detail`, an\naction (`merge`, `enlarge`, or `omit`), and the cleaner `result`.\n\nAllow zero or one `detail_zones`. Name at least two broad `quiet_zones` that\nstay free of incidental internal marks. Choose `repetition_policy`:\n\n- `none`\n- `single_cluster`\n- `broad_grouped_pattern`\n\nLeaves, fur, scales, feathers, roots, cables, vents, folds, and other repeated\nfeatures must read as grouped forms rather than many equal small units.\n\n## MATURITY CONTRACT\n\nMaturity is anatomy-agnostic age and capability progression, not bulk, gender,\nanger, accessories, or glow.\n\nFor **Adult**, `target_read=adult`. For **Evolved**, `target_read=apex`.\n\nDescribe:\n\n- `identity_focal_maturation`: exact maturation of the real focal identity\n  structure.\n- `proportion_delta`: concrete before → after ratios, spacing, support, or\n  shape relationships.\n- `body_maturation`: how structure becomes more capable without prescribing\n  thick, slim, feminine, masculine, humanoid, or animal anatomy.\n- `posture_maturation`: how pose becomes more composed and intentional.\n- `preserved_personality`: emotional identity that remains.\n- `stage_delta`: drawable evidence that the stage is older/more complete.\n\nEvolved must move beyond Adult focal proportions. “Sharper,” “wiser,”\n“majestic,” “bigger,” or “more detailed” without geometric evidence fails.\n\n## OPEN APEX PRESENCE CONTRACT\n\nWrite one `presence_contract`.\n\n- `presence_tier`: `developing` for Adult, `apex` for Evolved.\n- `apex_thesis`: an open source-derived fantasy describing why the complete\n  lineage feels formidable, majestic, and dependable. It is not a body-type\n  label.\n- `presence_channels`: exactly two unique choices from `silhouette_line`,\n  `proportion`, `posture`, `negative_space`, `motion_language`,\n  `shape_distribution`, and `focal_motif`.\n- `channel_evidence`: exactly one concrete drawable result for each selected\n  channel.\n- `shape_hierarchy`: first, second, and optional third visual reads without\n  requiring a large central mass.\n- `authority_pose`: calm, controlled stage-appropriate Idle pose.\n- `reliability_cue`: visible source-derived reason this specific body can be\n  depended on.\n\nVision is free to keep or replace the Adult body archetype. The change must be\ntraceable to source features and the metamorphosis thesis. Never default to\nbulk, muscles, armor, humanoid anatomy, femininity, regalia, wings, or a\ncatalogued “final form” silhouette as a shortcut for power.\n\nThere is NO aura around the creature. No halo, corona, orbit, surrounding\nenergy, external glow, supernatural particle cloud, floating runes, or\npersistent effects in any character pose. Supernatural spectacle belongs only\nto the two separate VFX cells.\n\n## SILHOUETTE DELTA CONTRACT\n\nDesign from the black outer contour inward. At 96 px, current and next forms\nmust read as different silhouettes before color, focal detail, or texture.\n\nChoose one `transformation_archetype`:\n\n- `breakout`: enclosure opens and the inner organism becomes the new read.\n- `unfolding`: compact parts deploy into a new spatial arrangement.\n- `inversion`: underside, interior, or rear feature becomes dominant.\n- `rooted_to_mobile`: supports become a credible locomotion system.\n- `shell_shedding`: old enclosure becomes partial structure around a new form.\n- `mass_redistribution`: material moves into a new center and contour.\n\nMark at least two `changed_dimensions`, then describe exact before → after\nchanges for `dominant_mass_shift`, `posture_change`, `outer_contour_change`,\nand `locomotion_or_body_plan_change`. `dominant_mass_shift` is legacy wire\nwording: describe visual weight distribution; it does not require bulk.\n\n“Larger,” “more numerous,” “thicker,” “intricate,” “deeply textured,”\n“multi-tiered,” “ornate,” “glowing,” or “more intimidating” alone does not\ncount.\n\n`changed_dimensions` must include `locomotion_or_body_plan`. Replacing one\nfixed base with another (pot → mound, stand → stump, wall bracket → fused\nplinth) fails.\n\n## MOBILITY CONTRACT\n\nEvery Adult and Evolved Anima must look able to hop, walk, roll, crawl, leap,\nor otherwise reposition itself in Home and Battle. This is anatomy-agnostic:\nplants, pots, statues, furniture, appliances, wall objects, and other\nstationary sources must gain a visible movement system derived from existing\nfeatures. Already-mobile sources keep or clarify that gait.\n\nWrite one `mobility_contract`:\n\n- `locomotion_mode`: concise source-appropriate movement method.\n- `source_derivation`: which visible source feature becomes the movement\n  system.\n- `support_geometry`: a few discrete, clearly separated supports or another\n  readable movement structure.\n- `movement_read`: what a viewer can point to and immediately understand as\n  capable of locomotion.\n- `idle_stability`: how the creature rests without fusing into a base.\n- `battle_mobility`: how it advances, retreats, dodges, hops, or pivots.\n\nIdle may touch the ground at a few discrete support points. Visible negative\nspace must remain under the body or between supports. Home hopping is a\ncreature bounce, never a planted object straining against soil.\n\nInvalid result language: immobile, stationary, planted, rooted to the ground,\nfused to the ground, pedestal, stump, locked base, subtle shifts, or future\nmobility. “Magic” alone is not locomotion. Floating or gliding requires\nvisible source-derived anatomy or material mechanics, never aura.\n\n## FACE AGE CONTRACT\n\nFaces and sensory focals must age like an anime character growing up, not like\na sticker copied onto a new body. Soul is count, pairing, and emotional role.\nAge is eye-to-face ratio, eye construction, craniofacial mass, and mouth scale.\n\nWrite one `face_age_contract`:\n\n- `age_read`: `adolescent` for Adult, `mature` for Evolved. Never `child` on\n  these stages.\n- `eye_to_face_ratio`: how much of the face the eyes occupy at this stage,\n  compared with the attached reference.\n- `eye_construction`: how the eyes are newly drawn at this age. Not the same\n  graphic with a sharper outline.\n- `craniofacial_mass`: how jaw, snout, brow, forehead, or the real focal plate\n  gains adult structure.\n- `mouth_to_eye_relationship`: how mouth scale sits relative to the eyes.\n- `prior_copy_forbidden`: the exact reference face graphic that must not be\n  copied, including oversized eyes.\n\nAdult is the teen/young-adult face: eyes recede, more cheek and brow, mouth\nno longer a Hatchling speck. Evolved is the mature face: smallest relative\neyes, set construction, more face real-estate, still the same individual.\nMature is not angry, fierce, masculine, or empty. Keep the companion read.\n\nIf the source has no face, apply the same ratio shift to the real identity\nfocal structure. Do not invent a human face.\n\nSize adjectives in a locked Adult `source_truth` (large, huge, tiny) do not\noverride this contract. Redraw the face at the contracted age.\n\n## SILHOUETTE BREAK CONTRACT\n\nThe attached Idle is identity, color, material, and the **kind of thing**.\nIt is not a composition blueprint. Two independent gates:\n\n1. Kind lock. The next form is still that photographed category of being.\n   A dog stays that animal. A jug stays a vessel. A tank stays a vehicle.\n   A building stays architecture. A plant stays a plant. Switching category\n   to solve silhouette — serpent, worm, ooze, unrelated animal, unrelated\n   machine — fails even when the new outline is distinct.\n2. Contour delta. The 96 px black outline must be new: mass, posture,\n   proportion, or source-derived appendages. A thicker, taller, or more\n   decorated copy of the current outline fails even when the archetype\n   name is new. The same support class is allowed when the outline is\n   distinct. Do not ban a gait family. Do not require coil, tether, or\n   limbless topology.\n\nWrite one `silhouette_break_contract`:\n\n- `kind_noun`: one short class noun taken from the source (canine, vessel,\n  tank, building, plant, …). Reuse this exact noun in both kind reads.\n- `source_kind_read`: what the attached Idle is as a thing, using `kind_noun`.\n- `continued_kind_read`: the next form as the same kind of thing, using\n  `kind_noun`.\n- `prior_silhouette_read`: the current black contour in one sentence: where\n  mass sits, not a locomotion ban.\n- `forbidden_copy`: the exact current outline that must not recur.\n- `new_contour_read`: the next black contour at 96 px, still that kind.\n- `topology_change`: how the 96 px contour changes. Mass, posture,\n  proportion, or appendages are enough. Topology change is optional.\n\n## LINEAGE ANCHORS\n\nChoose exactly three visible, non-synonymous source features. At least two use\n`transform`. Each `next_expression` changes function or expression while\nremaining traceable.\n\nList genuinely new anatomy in `derived_anatomy`. Its `source_anchor_index`\npoints to a `transform` anchor, and `derived_from` repeats that source feature.\nThe array may be empty. Never invent unrelated anatomy.\n\n## STAGE\n\nAdult is a complete mobile bridge with a new body plan, mature focal read,\nclean shape budget, visible locomotion, and one hook, while leaving room for\nthe final form.\n\nEvolved is the lineage culmination with a second metamorphosis and realized\n`apex_thesis`. Do not repeat the Adult archetype. Copy every Adult\n`identity_invariants` `identity_id`; never drop a face or sensory invariant.\nDo not add a detail zone. Keep discrete unfused supports with visible negative\nspace under the body. Do not merge supports into a root mass, mound, or\npedestal. `face_age_contract.age_read` must be `mature`. Do not copy the Adult\neye sticker; redraw a mature face of the same individual. Keep Adult\n`kind_noun`. Do not copy the Adult 96 px outline. Do not switch category to\na serpent, worm, ooze, or unrelated organism. Same support class is allowed\nwhen the new contour is distinct at 96 px. It may be more massive, more\nslender, more compact, or differently proportioned; stage power comes from\nthe selected presence channels, not size.\n\nWrite one `metamorphosis_thesis` and one concrete `stage_brief`.\n\n## HEIGHT\n\nPropose integer `body_height_cm` and explain it in\n`height_change_rationale`.\n\n- Adult: 1.15×–1.35× current height.\n- Evolved: 0.75×–1.50× current height.\n- Clamp absolute height to 20–2000 cm.\n\nEvolved may shrink when a compact, slender, or reorganized body archetype\njustifies it. Height does not indicate combat power.\n\n## NAME LINEAGE\n\nThe authoritative lineage anchor is a readable morpheme taken from the\nHatchling's visible silhouette, material, motion, temperament, or structure, and\nit carries through every stage unchanged — the way Charmander stays Charmeleon\nand Charizard. What changes is the morpheme after it: the server joins the anchor\nwith a stage-appropriate one, ordinary for Adult and commanding for Evolved, then\ndrops any candidate with an unreadable seam or an unsafe stem before selecting\namong the survivors. Later stages are not longer names; the escalation lives in\nwhat the morpheme means, not in letter count. The continuation derives from this\nvalidated Plan, not one dominant stat. Naming must not influence the visual\ndesign.\nReturn schema-valid temporary values for `suggested_name` and\n`name_lineage_anchor`; they are replaced before the Plan is stored.\n\n## MOVES, EFFECTS, AND COLOR SAFETY\n\nProvide two new two-word move names and two materially distinct VFX briefs.\nChoose `vfx_palette` as one or two colors from `gold`, `amber`, `orange`,\n`crimson`, `rose`, `magenta`, `violet`, `indigo`, `blue`, or `pale_cyan`.\nBoth VFX briefs explicitly name at least one selected color.\n\nVFX may be spectacular, especially for Evolved, but appear ONLY in\n`fx_strike` and `fx_surge`. Never put their particles, energy, glow, debris, or\ngeometry around the body in character cells.\n\nVFX may never request green, lime, chartreuse, emerald, verdant, yellow-green,\nneon green, or electric green. Natural green anatomy remains allowed in muted,\nobject-faithful hues.\n\nChoose `strike_effect_id` and `surge_effect_id` only from:\n`armor_pierce`, `guard_break`, `drain`, `barrier`, `poison`, `burn`, `slow`,\n`armor_break`.\n\n- Attack: `armor_pierce`, `guard_break`, `drain`, `poison`, `burn`, `slow`,\n  `armor_break`.\n- Special: `barrier`, `guard_break`, `drain`, `burn`, `slow`,\n  `armor_break`.\n\nEvolved effect upgrades:\n\n- `armor_pierce` → `armor_pierce` or `guard_break`\n- `guard_break` → `guard_break`\n- `drain` → `drain`\n- `barrier` → `barrier`\n- `poison` → `poison` or `burn`\n- `burn` → `burn`\n- `slow` → `slow` or `armor_break`\n- `armor_break` → `armor_break`\n\nNever invent mechanics, numbers, durations, or proc rates.\n\n## FORBIDDEN\n\n- Logos, text, named characters, copied costumes, or named franchise designs.\n- Reusing the old dominant contour, shape arrangement, or juvenile focal read.\n- Copying the previous stage's eye graphic or eye-to-face ratio.\n- More detail, repeated parts, accessories, size, aura, glow, muscles, armor,\n  humanoid anatomy, femininity, masculinity, or anger presented as power.\n- Selecting new Identity Invariants at Evolved or changing locked semantics.\n- Hiding, deleting, merging, covering, or abstracting a preserved invariant.\n- More than three primary shapes, more than one detail zone, or fewer than two\n  quiet zones.\n- Aura, halo, corona, orbit, external glow, surrounding energy, floating\n  particles, runes, or attack effects in character cells.\n- A body fused to soil, a mound, a pot, a plinth, a stump, a wall mount, or\n  any other fixed base. Movement that is only promised, not drawn.\n- Duplicate/empty anchors, move names, effects, presence channels, shape IDs,\n  or evidence channels.\n",
+    "vision_evolve_schema": {
+      "type": "object",
+      "properties": {
+        "identity_invariants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "identity_id": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string",
+                "enum": [
+                  "face_expression",
+                  "sensory",
+                  "structural_motif",
+                  "surface_signature",
+                  "motion_language"
+                ]
+              },
+              "source_truth": {
+                "type": "string"
+              },
+              "identity_role": {
+                "type": "string"
+              },
+              "maturation_path": {
+                "type": "string"
+              },
+              "current_expression": {
+                "type": "string"
+              },
+              "evolved_policy": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "may_transfigure"
+                ]
+              },
+              "realization_mode": {
+                "type": "string",
+                "enum": [
+                  "preserve",
+                  "transfigure"
+                ]
+              },
+              "visible_lineage_evidence": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "identity_id",
+              "domain",
+              "source_truth",
+              "identity_role",
+              "maturation_path",
+              "current_expression",
+              "evolved_policy",
+              "realization_mode",
+              "visible_lineage_evidence"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "shape_budget_contract": {
+          "type": "object",
+          "properties": {
+            "primary_shapes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shape_id": {
+                    "type": "string"
+                  },
+                  "source_basis": {
+                    "type": "string"
+                  },
+                  "stage_expression": {
+                    "type": "string"
+                  },
+                  "visual_role": {
+                    "type": "string",
+                    "enum": [
+                      "dominant",
+                      "support",
+                      "counterbalance"
+                    ]
+                  }
+                },
+                "required": [
+                  "shape_id",
+                  "source_basis",
+                  "stage_expression",
+                  "visual_role"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 3
+            },
+            "dominant_motif": {
+              "type": "object",
+              "properties": {
+                "source_basis": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_basis",
+                "stage_expression"
+              ]
+            },
+            "identity_focal_structure": {
+              "type": "object",
+              "properties": {
+                "source_read": {
+                  "type": "string"
+                },
+                "preserved_semantics": {
+                  "type": "string"
+                },
+                "proportion_maturation": {
+                  "type": "string"
+                },
+                "stage_expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source_read",
+                "preserved_semantics",
+                "proportion_maturation",
+                "stage_expression"
+              ]
+            },
+            "simplification_actions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source_detail": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "merge",
+                      "enlarge",
+                      "omit"
+                    ]
+                  },
+                  "result": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "source_detail",
+                  "action",
+                  "result"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "detail_zones": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "zone": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "zone",
+                  "purpose"
+                ]
+              },
+              "minItems": 0,
+              "maxItems": 1
+            },
+            "quiet_zones": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 4
+            },
+            "repetition_policy": {
+              "type": "string",
+              "enum": [
+                "none",
+                "single_cluster",
+                "broad_grouped_pattern"
+              ]
+            }
+          },
+          "required": [
+            "primary_shapes",
+            "dominant_motif",
+            "identity_focal_structure",
+            "simplification_actions",
+            "detail_zones",
+            "quiet_zones",
+            "repetition_policy"
+          ]
+        },
+        "mobility_contract": {
+          "type": "object",
+          "properties": {
+            "locomotion_mode": {
+              "type": "string"
+            },
+            "source_derivation": {
+              "type": "string"
+            },
+            "support_geometry": {
+              "type": "string"
+            },
+            "movement_read": {
+              "type": "string"
+            },
+            "idle_stability": {
+              "type": "string"
+            },
+            "battle_mobility": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "locomotion_mode",
+            "source_derivation",
+            "support_geometry",
+            "movement_read",
+            "idle_stability",
+            "battle_mobility"
+          ]
+        },
+        "face_age_contract": {
+          "type": "object",
+          "properties": {
+            "age_read": {
+              "type": "string",
+              "enum": [
+                "adolescent",
+                "mature"
+              ]
+            },
+            "eye_to_face_ratio": {
+              "type": "string"
+            },
+            "eye_construction": {
+              "type": "string"
+            },
+            "craniofacial_mass": {
+              "type": "string"
+            },
+            "mouth_to_eye_relationship": {
+              "type": "string"
+            },
+            "prior_copy_forbidden": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "age_read",
+            "eye_to_face_ratio",
+            "eye_construction",
+            "craniofacial_mass",
+            "mouth_to_eye_relationship",
+            "prior_copy_forbidden"
+          ]
+        },
+        "silhouette_break_contract": {
+          "type": "object",
+          "properties": {
+            "kind_noun": {
+              "type": "string"
+            },
+            "source_kind_read": {
+              "type": "string"
+            },
+            "continued_kind_read": {
+              "type": "string"
+            },
+            "prior_silhouette_read": {
+              "type": "string"
+            },
+            "forbidden_copy": {
+              "type": "string"
+            },
+            "new_contour_read": {
+              "type": "string"
+            },
+            "topology_change": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind_noun",
+            "source_kind_read",
+            "continued_kind_read",
+            "prior_silhouette_read",
+            "forbidden_copy",
+            "new_contour_read",
+            "topology_change"
+          ]
+        },
+        "maturity_contract": {
+          "type": "object",
+          "properties": {
+            "target_read": {
+              "type": "string",
+              "enum": [
+                "adult",
+                "apex"
+              ]
+            },
+            "identity_focal_maturation": {
+              "type": "string"
+            },
+            "proportion_delta": {
+              "type": "string"
+            },
+            "body_maturation": {
+              "type": "string"
+            },
+            "posture_maturation": {
+              "type": "string"
+            },
+            "preserved_personality": {
+              "type": "string"
+            },
+            "stage_delta": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "target_read",
+            "identity_focal_maturation",
+            "proportion_delta",
+            "body_maturation",
+            "posture_maturation",
+            "preserved_personality",
+            "stage_delta"
+          ]
+        },
+        "presence_contract": {
+          "type": "object",
+          "properties": {
+            "presence_tier": {
+              "type": "string",
+              "enum": [
+                "developing",
+                "apex"
+              ]
+            },
+            "apex_thesis": {
+              "type": "string"
+            },
+            "presence_channels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "silhouette_line",
+                  "proportion",
+                  "posture",
+                  "negative_space",
+                  "motion_language",
+                  "shape_distribution",
+                  "focal_motif"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "channel_evidence": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "silhouette_line",
+                      "proportion",
+                      "posture",
+                      "negative_space",
+                      "motion_language",
+                      "shape_distribution",
+                      "focal_motif"
+                    ]
+                  },
+                  "drawable_evidence": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "channel",
+                  "drawable_evidence"
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "shape_hierarchy": {
+              "type": "string"
+            },
+            "authority_pose": {
+              "type": "string"
+            },
+            "reliability_cue": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "presence_tier",
+            "apex_thesis",
+            "presence_channels",
+            "channel_evidence",
+            "shape_hierarchy",
+            "authority_pose",
+            "reliability_cue"
+          ]
+        },
+        "lineage_anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_feature": {
+                "type": "string"
+              },
+              "next_expression": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "retain",
+                  "transform"
+                ]
+              }
+            },
+            "required": [
+              "source_feature",
+              "next_expression",
+              "mode"
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "transformation_archetype": {
+          "type": "string",
+          "enum": [
+            "breakout",
+            "unfolding",
+            "inversion",
+            "rooted_to_mobile",
+            "shell_shedding",
+            "mass_redistribution"
+          ]
+        },
+        "metamorphosis_thesis": {
+          "type": "string"
+        },
+        "stage_brief": {
+          "type": "string"
+        },
+        "metamorphosis_notes": {
+          "type": "string",
+          "nullable": true
+        },
+        "changed_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "dominant_mass",
+              "posture",
+              "outer_contour",
+              "locomotion_or_body_plan"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "dominant_mass_shift": {
+          "type": "string"
+        },
+        "posture_change": {
+          "type": "string"
+        },
+        "outer_contour_change": {
+          "type": "string"
+        },
+        "locomotion_or_body_plan_change": {
+          "type": "string"
+        },
+        "derived_anatomy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "new_part": {
+                "type": "string"
+              },
+              "derived_from": {
+                "type": "string"
+              },
+              "source_anchor_index": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              }
+            },
+            "required": [
+              "new_part",
+              "derived_from",
+              "source_anchor_index"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "body_height_cm": {
+          "type": "integer"
+        },
+        "height_change_rationale": {
+          "type": "string"
+        },
+        "suggested_name": {
+          "type": "string",
+          "description": "Temporary schema value; the service replaces it with a deterministic next-stage name"
+        },
+        "name_lineage_anchor": {
+          "type": "string",
+          "description": "Temporary schema value; the service restores the authoritative lineage anchor"
+        },
+        "strike_name": {
+          "type": "string"
+        },
+        "surge_name": {
+          "type": "string"
+        },
+        "strike_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "surge_vfx": {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "arc",
+                "beam",
+                "trail",
+                "wave",
+                "eruption",
+                "ring",
+                "scatter",
+                "tether",
+                "stamp",
+                "cloud",
+                "shatter",
+                "growth"
+              ]
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "projectile",
+                "sweep",
+                "impact",
+                "bloom"
+              ]
+            },
+            "brief": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "form",
+            "motion",
+            "brief"
+          ]
+        },
+        "vfx_palette": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "gold",
+              "amber",
+              "orange",
+              "crimson",
+              "rose",
+              "magenta",
+              "violet",
+              "indigo",
+              "blue",
+              "pale_cyan"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2
+        },
+        "strike_effect_id": {
+          "type": "string",
+          "enum": [
+            "armor_pierce",
+            "guard_break",
+            "drain",
+            "poison",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        },
+        "surge_effect_id": {
+          "type": "string",
+          "enum": [
+            "barrier",
+            "guard_break",
+            "drain",
+            "burn",
+            "slow",
+            "armor_break"
+          ]
+        }
+      },
+      "required": [
+        "identity_invariants",
+        "shape_budget_contract",
+        "mobility_contract",
+        "face_age_contract",
+        "silhouette_break_contract",
+        "maturity_contract",
+        "presence_contract",
+        "lineage_anchors",
+        "transformation_archetype",
+        "metamorphosis_thesis",
+        "stage_brief",
+        "changed_dimensions",
+        "dominant_mass_shift",
+        "posture_change",
+        "outer_contour_change",
+        "locomotion_or_body_plan_change",
+        "derived_anatomy",
+        "body_height_cm",
+        "height_change_rationale",
+        "suggested_name",
+        "name_lineage_anchor",
+        "strike_name",
+        "surge_name",
+        "strike_vfx",
+        "surge_vfx",
+        "vfx_palette",
+        "strike_effect_id",
+        "surge_effect_id"
+      ]
+    },
     "vision_synthesis_system": "You are the Synthesis Planner for Scanima, an original non-biological virtual\ncreature game. Two private Source Anima images and their sanitized metadata are\nprovided. Design one coherent new Hatchling Result Anima.\n\nThe first image is Source A and the second is Source B. Respect the requested\ninheritance mode. Dominant A/B means the dominant Source supplies the primary\nsilhouette, mobility, and body structure while the other supplies integrated\nmaterial, palette, motif, or a secondary landmark. Balanced means at least two\nrecognizable visual features from each Source survive.\n\nNever draw or describe two creatures attached together, a vertical half-and-half\nsplit, a collage, a costume swap, a child/family relationship, or one Source\nmerely standing beside the other. The Result must read as one original creature\nat 96 px.\n\nThe Result is always a Hatchling: compact, readable, and energetic without\ncopying Adult/Evolved age markers from either reference. Preserve useful\nsilhouette truth, mobility logic, integrated face/sensory placement, material\nbehavior, and original motifs. Do not copy logos, text, named franchise\ncharacters, branded devices, human anatomy, or human cultural/religious symbols.\n\nChoose primary_element and optional secondary_element only from:\nmetal, wood, stone, ceramic, glass, plastic, cloth, paper, plant, food, fauna,\nflow, spark, flame, frost, air, toxin, sound.\n\nFor every base stat, choose only one semantic candidate kind:\nsource_a, source_b, blend, remix_up, remix_down. Do not output numeric stats.\nThe server calculates and normalizes every number.\n\n`name_roots`: write this array last, after every other field. Propose exactly\nsix ranked readable morphemes, strongest first. The server keeps the strongest\nintact as the first half of the species name and as the lineage anchor. Do not\nreturn `suggested_name`, `name_lineage_anchor`, or `name_quality`.\n\nEach entry has:\n\n- `root`: 3–5 lowercase ASCII letters containing at least one of `a e i o u`\n  (`y` does not count), clipped from a meaningful word a player can still read —\n  `nox` from night, `rime` from frost, `cindr` from cinder, `vela` from veil,\n  `dusk`. Longer words must be clipped: `resonate` → `reson`, `stride` → `strid`;\n- `channel`: exactly one of `silhouette`, `material`, `motion`, `temperament`,\n  or `structure`;\n- `evidence`: at most eight words from THIS Result, never a Source name.\n\nCover at least four different channels. Keep most roots to one punchy syllable.\nRegister is species, not product: `vitr` over `aqua`, `rime` over `cold`,\n`cindr` over `burnt`. Everyday shop, sport, or technology words read as\nmerchandise once a tail is attached: `gear`, `bit`, `byte`, `turbo`, `racer`,\n`pup`, `dash`, `play`. Never use a Source nickname, object label, animal kind,\ntitle, or rank. Describe what the new creature is like, not what the Sources\nwere called.\n\nReturn one complete compact JSON object only. No markdown fences, comments,\nconcatenated strings, or prose outside JSON. Every required field must be\npresent. Respect every maxLength and maxItems in the supplied schema; shorter is\nbetter. Strings are concrete visual instructions, not lore. Keep the entire\nresponse comfortably below 2,000 output tokens.\n",
     "vision_synthesis_schema": {
       "type": "object",
