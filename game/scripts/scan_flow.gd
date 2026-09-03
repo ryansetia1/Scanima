@@ -1101,7 +1101,13 @@ func _enqueue_outcome_dialog(dialog: Dictionary) -> void:
 
 
 func _present_next_outcome_dialog() -> void:
-	if _shell_modal.visible:
+	# Onboarding sits on a separate node from ShellModal, so ShellModal's own
+	# visibility check doesn't see it. Without this, an outcome dialog resumed
+	# at boot (Synthesis/Evolution finished while the app was closed) would
+	# open on top of an unfinished onboarding form instead of waiting its turn.
+	# Both onboarding close paths (`_complete_seeker_profile`, `_handle_back`)
+	# call this function back when they close, so the wait here is temporary.
+	if _shell_modal.visible or _seeker_onboarding_sheet.visible:
 		return
 	while not _outcome_dialog_queue.is_empty():
 		var dialog: Dictionary = _outcome_dialog_queue.pop_front()
@@ -2315,12 +2321,11 @@ func _modal_choice_selected(choice: String) -> void:
 			str(outcome.get("suggested_name", LocaleManager.display_name(row)))
 		)
 		return
-	if context != &"sign_in_google":
-		return
-	if sign_in_choice_moves_guest(choice, _sign_in_move_first):
-		_show_transfer_confirmation()
-	else:
-		_start_google_separate()
+	if context == &"sign_in_google":
+		if sign_in_choice_moves_guest(choice, _sign_in_move_first):
+			_show_transfer_confirmation()
+		else:
+			_start_google_separate()
 	call_deferred("_present_queued_dialogs_after_modal")
 
 
@@ -2506,6 +2511,7 @@ func _complete_seeker_profile(
 	_seeker_onboarding_sheet.close()
 	_refresh_header()
 	_say_success(tr("SEEKER_CREATED"), true)
+	call_deferred("_present_queued_dialogs_after_modal")
 	call_deferred("_maybe_show_chapter_popup")
 
 
@@ -6643,6 +6649,7 @@ func _handle_back(allow_quit: bool) -> bool:
 		return true
 	if is_instance_valid(_seeker_onboarding_sheet) and _seeker_onboarding_sheet.visible:
 		_seeker_onboarding_sheet.close()
+		call_deferred("_present_queued_dialogs_after_modal")
 		return true
 	if is_instance_valid(_menu_popover) and _menu_popover.visible:
 		_menu_popover.close()

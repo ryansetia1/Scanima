@@ -862,6 +862,55 @@ func _initialize() -> void:
 		) >= 0,
 		"the Level Up hero slot carries the new Level, not a wrapped form name"
 	)
+	# Seeker Onboarding lives on its own node, not ShellModal, so a Synthesis/
+	# Evolution outcome resumed at boot can otherwise open right on top of an
+	# unfinished onboarding form instead of waiting its turn.
+	_check(
+		outcome_presenter >= 0
+		and flow_source.substr(outcome_presenter, 700).find(
+			"_shell_modal.visible or _seeker_onboarding_sheet.visible"
+		) >= 0,
+		"queued outcome dialogs wait for Seeker Onboarding to close, not just ShellModal"
+	)
+	var complete_profile_start := flow_source.find("func _complete_seeker_profile")
+	var complete_profile_end := flow_source.find("\n\nfunc ", complete_profile_start)
+	var complete_profile_body := (
+		flow_source.substr(complete_profile_start, complete_profile_end - complete_profile_start)
+		if complete_profile_start >= 0 and complete_profile_end > complete_profile_start
+		else ""
+	)
+	_check(
+		complete_profile_body.find("_seeker_onboarding_sheet.close()") >= 0
+		and complete_profile_body.find("call_deferred(\"_present_queued_dialogs_after_modal\")") >= 0,
+		"finishing Seeker Onboarding re-checks the queued outcome dialog, not just the chapter popup"
+	)
+	var handle_back_start := flow_source.find("func _handle_back")
+	var handle_back_end := flow_source.find("\n\nfunc ", handle_back_start)
+	var handle_back_body := (
+		flow_source.substr(handle_back_start, handle_back_end - handle_back_start)
+		if handle_back_start >= 0 and handle_back_end > handle_back_start
+		else ""
+	)
+	var onboarding_back_at := handle_back_body.find("_seeker_onboarding_sheet.close()")
+	_check(
+		onboarding_back_at >= 0
+		and handle_back_body.substr(onboarding_back_at, 120).find(
+			"call_deferred(\"_present_queued_dialogs_after_modal\")"
+		) >= 0,
+		"backing out of Seeker Onboarding also re-checks the queued outcome dialog"
+	)
+	var choice_selected_start := flow_source.find("func _modal_choice_selected")
+	var choice_selected_end := flow_source.find("\n\nfunc ", choice_selected_start)
+	var choice_selected_body := (
+		flow_source.substr(choice_selected_start, choice_selected_end - choice_selected_start)
+		if choice_selected_start >= 0 and choice_selected_end > choice_selected_start
+		else ""
+	)
+	_check(
+		choice_selected_body.find("if context != &\"sign_in_google\":\n\t\treturn") < 0
+		and choice_selected_body.find("if context == &\"sign_in_google\":") >= 0,
+		"an unrecognized choice-dialog context still flushes the outcome queue instead of stalling it"
+	)
 	for name in ["NeedHunger", "NeedEnergy", "NeedHygiene", "NeedExp"]:
 		var meter := scene.find_child(name, true, false) as ProgressBar
 		_check(meter != null, "%s must exist" % name)
