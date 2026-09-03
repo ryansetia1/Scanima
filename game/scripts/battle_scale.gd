@@ -13,6 +13,15 @@ const GROUND_Y_RATIO := 0.91
 const ANIMA_VISUAL_HEIGHT_CAP_CM := 300.0
 const SEEKER_OVERLAP_RATIO := 0.6
 const SEEKER_CAMERA_EDGE_PAD_RATIO := 0.025
+## Dipilih dari perbandingan langsung 3 varian jarak di Duel (100%/70%/45%
+## dari kolom penuh yang dihitung `seeker_reserved_column()`). Kolom penuh
+## (100%) dijamin nol overlap di semua orientasi tapi terasa terlalu jauh;
+## 45% yang paling disukai secara visual overlap parah di potret (~46% lebar
+## figur di 720x1602). 0,75 adalah titik tengah yang diuji: overlap di
+## potret <=20% lebar figur (test_scan_ui.gd _test_duel_view), landscape
+## tetap nol -- figur dan Anima boleh bersinggungan tipis, ditanggung
+## z-order yang sudah ada di `player_seeker_z()`/`anima_behind_seeker()`.
+const SEEKER_COLUMN_GAP_SCALE := 0.75
 const SEEKER_REFERENCE_WIDTH_PX := 158.0
 const SEEKER_REFERENCE_HEIGHT_PX := 282.0
 ## Sprite Anima duduk satu tingkat di atas anchor-nya (`z_as_relative` bawaan),
@@ -69,7 +78,7 @@ static func seeker_reserved_column(
 	return (
 		seeker_reference_width(loaded) * absf(sprite_scale)
 		+ stage_width * SEEKER_CAMERA_EDGE_PAD_RATIO * 2.0
-	)
+	) * SEEKER_COLUMN_GAP_SCALE
 
 
 ## Lebar badan Seeker yang benar-benar tergambar, dalam piksel sheet.

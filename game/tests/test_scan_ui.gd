@@ -4163,20 +4163,23 @@ func _test_duel_seeker_avatar_layout(
 		and player_anchor.position.x < arena.size.x * 0.5,
 		"the Duel figure shares the player Anima's half of the screen at %s" % viewport_size
 	)
-	# Inti keluhannya: badan figur dan badan Anima tidak boleh saling menembus.
-	# Diukur di ruang layer pada sisi yang berhadapan saja — tepi kiri Anima
-	# terhadap tepi kanan figur — dan udaranya minimal sebesar pad yang sama yang
-	# memisahkan figur itu dari tepi kamera, karena kolom yang dicadangkan kamera
-	# memang dua pad lebar. Hanya bisa dibuktikan di viewport sungguhan: di
-	# `root` headless arena melapor lebar 0 dan setiap pad jadi nol.
+	# Inti keluhannya: badan figur dan badan Anima tidak boleh saling menembus
+	# lebih dari sedikit. Diukur di ruang layer pada sisi yang berhadapan saja —
+	# tepi kiri Anima terhadap tepi kanan figur. `SEEKER_COLUMN_GAP_SCALE` (0,75)
+	# sengaja mencadangkan kolom yang lebih sempit dari kebutuhan udara penuh
+	# supaya figur dan Anima terasa dekat; overlap yang tersisa ditanggung
+	# z-order `player_seeker_z()` dan dipagari di sini supaya tidak melebar diam-
+	# diam kalau formulanya berubah. Hanya bisa dibuktikan di viewport sungguhan:
+	# di `root` headless arena melapor lebar 0 dan setiap pad jadi nol.
 	var player_sprite := view.find_child("BattlePlayerSprite", true, false) as AnimaPresenter
 	var player_screen_left := layer.position.x + (
 		player_anchor.position.x
 		- player_sprite.opaque_local_rect().size.x * absf(player_anchor.scale.x) * 0.5
 	) * layer.scale.x
+	var max_overlap := avatar_screen_w * 0.2
 	_check(
-		player_screen_left - (avatar_center_x + avatar_screen_w * 0.5) >= pad - 1.0,
-		"the Duel Anima keeps a pad of air between its body and the figure's at %s"
+		player_screen_left - (avatar_center_x + avatar_screen_w * 0.5) >= -max_overlap,
+		"the Duel Anima and figure never overlap more than a fifth of the figure's width at %s"
 			% viewport_size
 	)
 	host.queue_free()
