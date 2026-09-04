@@ -197,162 +197,6 @@ horizontal_alignment = 1
 vertical_alignment = 1
 text_overrun_behavior = 3
 
-[node name="ArenaHud" type="PanelContainer" parent="Column/TeamArena/TeamBattleStage" unique_id=1541990209]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = 156.0
-grow_horizontal = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("ArenaHudPlate")
-
-[node name="HudColumn" type="VBoxContainer" parent="Column/TeamArena/TeamBattleStage/ArenaHud" unique_id=493753448]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="IdentityRow" type="HBoxContainer" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn" unique_id=213086192]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="PlayerIdentity" type="VBoxContainer" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/IdentityRow" unique_id=1092556328]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 2
-
-[node name="TeamPlayerSlots" type="Label" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/IdentityRow/PlayerIdentity" unique_id=2056256623]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.9)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 22
-text = "TEAM_SLOTS"
-
-[node name="TeamPlayerName" type="Label" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/IdentityRow/PlayerIdentity" unique_id=65722532]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/outline_size = 6
-text = "ANIMA_FALLBACK_NAME"
-text_overrun_behavior = 3
-
-[node name="Versus" type="Label" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/IdentityRow" unique_id=644709153]
-custom_minimum_size = Vector2(40, 0)
-layout_mode = 2
-theme_type_variation = &"EyebrowLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.95)
-theme_override_constants/outline_size = 4
-text = "BATTLE_VS"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="OpponentIdentity" type="VBoxContainer" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/IdentityRow" unique_id=1461018444]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 2
-
-[node name="TeamOpponentSlots" type="Label" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/IdentityRow/OpponentIdentity" unique_id=479100345]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.9)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 22
-text = "TEAM_SLOTS"
-horizontal_alignment = 2
-
-[node name="TeamOpponentName" type="Label" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/IdentityRow/OpponentIdentity" unique_id=1052117162]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/outline_size = 6
-text = "TEAM_RIVAL"
-horizontal_alignment = 2
-text_overrun_behavior = 3
-
-[node name="HpRow" type="HBoxContainer" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn" unique_id=836291556]
-layout_mode = 2
-theme_override_constants/separation = 16
-
-[node name="PlayerHpStack" type="Control" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/HpRow" unique_id=1100946269]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="TeamPlayerHp" type="ProgressBar" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/HpRow/PlayerHpStack" unique_id=263979075]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/background = SubResource("HpBackground")
-theme_override_styles/fill = SubResource("HpFill")
-value = 100.0
-fill_mode = 1
-show_percentage = false
-
-[node name="TeamPlayerHpValue" type="Label" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/HpRow/PlayerHpStack" unique_id=1584766397]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 22
-text = "FORMAT_RATIO"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="OpponentHpStack" type="Control" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/HpRow" unique_id=2004823074]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="TeamOpponentHp" type="ProgressBar" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/HpRow/OpponentHpStack" unique_id=1219237092]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/background = SubResource("HpBackground")
-theme_override_styles/fill = SubResource("HpFill")
-value = 100.0
-show_percentage = false
-
-[node name="TeamOpponentHpValue" type="Label" parent="Column/TeamArena/TeamBattleStage/ArenaHud/HudColumn/HpRow/OpponentHpStack" unique_id=1791093358]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 22
-text = "FORMAT_RATIO"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="TeamEffectiveness" type="Control" parent="Column/TeamArena/TeamBattleStage" unique_id=1534018301]
 unique_name_in_owner = true
 visible = false
@@ -464,6 +308,156 @@ vertical_alignment = 1
 autowrap_mode = 2
 text_overrun_behavior = 3
 max_lines_visible = 1
+
+[node name="ArenaHud" type="PanelContainer" parent="Column/TeamArena/TeamDock/DockColumn" unique_id=1541990209]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("ArenaHudPlate")
+
+[node name="HudColumn" type="VBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud" unique_id=493753448]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="IdentityRow" type="HBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn" unique_id=213086192]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PlayerIdentity" type="VBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow" unique_id=1092556328]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="TeamPlayerSlots" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/PlayerIdentity" unique_id=2056256623]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "TEAM_SLOTS"
+
+[node name="TeamPlayerName" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/PlayerIdentity" unique_id=65722532]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/outline_size = 6
+text = "ANIMA_FALLBACK_NAME"
+text_overrun_behavior = 3
+
+[node name="Versus" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow" unique_id=644709153]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.95)
+theme_override_constants/outline_size = 4
+text = "BATTLE_VS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentIdentity" type="VBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow" unique_id=1461018444]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="TeamOpponentSlots" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/OpponentIdentity" unique_id=479100345]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "TEAM_SLOTS"
+horizontal_alignment = 2
+
+[node name="TeamOpponentName" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/OpponentIdentity" unique_id=1052117162]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/outline_size = 6
+text = "TEAM_RIVAL"
+horizontal_alignment = 2
+text_overrun_behavior = 3
+
+[node name="HpRow" type="HBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn" unique_id=836291556]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="PlayerHpStack" type="Control" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow" unique_id=1100946269]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="TeamPlayerHp" type="ProgressBar" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/PlayerHpStack" unique_id=263979075]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("HpBackground")
+theme_override_styles/fill = SubResource("HpFill")
+value = 100.0
+fill_mode = 1
+show_percentage = false
+
+[node name="TeamPlayerHpValue" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/PlayerHpStack" unique_id=1584766397]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "FORMAT_RATIO"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentHpStack" type="Control" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow" unique_id=2004823074]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="TeamOpponentHp" type="ProgressBar" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/OpponentHpStack" unique_id=1219237092]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("HpBackground")
+theme_override_styles/fill = SubResource("HpFill")
+value = 100.0
+show_percentage = false
+
+[node name="TeamOpponentHpValue" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/OpponentHpStack" unique_id=1791093358]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "FORMAT_RATIO"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="TeamActions" type="VBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn" unique_id=29427052]
 unique_name_in_owner = true

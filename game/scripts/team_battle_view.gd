@@ -857,18 +857,6 @@ func _sync_location_chrome() -> void:
 	)
 	_turn.text = _arena_location
 	_turn.visible = show
-	if not is_instance_valid(_arena_hud):
-		return
-	if show:
-		_arena_hud.offset_top = 48.0
-		_arena_hud.offset_bottom = 196.0
-		_effectiveness.offset_top = 208.0
-		_effectiveness.offset_bottom = 290.0
-	else:
-		_arena_hud.offset_top = 8.0
-		_arena_hud.offset_bottom = 156.0
-		_effectiveness.offset_top = 184.0
-		_effectiveness.offset_bottom = 266.0
 
 
 func _update_builder() -> void:

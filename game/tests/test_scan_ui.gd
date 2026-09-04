@@ -5007,6 +5007,9 @@ func _test_team_battle_view() -> void:
 	var turn := view.find_child("TeamTurn", true, false) as Label
 	var forfeit := view.find_child("TeamForfeitButton", true, false) as Button
 	var arena_hud := view.find_child("ArenaHud", true, false) as PanelContainer
+	var dock_column := arena_hud.get_parent() as VBoxContainer
+	var team_feedback := view.find_child("TeamFeedback", true, false) as Label
+	var team_actions := view.find_child("TeamActions", true, false) as VBoxContainer
 	var arena_panel := view.find_child("ArenaPanel", true, false)
 	var player_anchor := view.find_child("TeamPlayerAnchor", true, false)
 	var player_shadow := player_anchor.find_child("GroundShadow", false, false)
@@ -5033,7 +5036,10 @@ func _test_team_battle_view() -> void:
 	)
 	_check(
 		arena_hud != null
-		and arena_hud.offset_right >= -16.0
+		and dock_column != null
+		and arena_hud.get_index() == team_feedback.get_index() + 1
+		and team_actions.get_index() == arena_hud.get_index() + 1
+		and not battle_stage.is_ancestor_of(arena_hud)
 		and arena_panel == null
 		and player_shadow != null
 		and opponent_shadow != null
@@ -5042,7 +5048,7 @@ func _test_team_battle_view() -> void:
 		and player_portal != null
 		and arena_fighter != null
 		and int(arena_fighter.z_index) > int(player_portal.z_index),
-		"arena is borderless, HUD is full width, and Anima draws in front of the summon portal"
+		"arena is borderless, HUD sits above actions, and Anima draws in front of the summon portal"
 	)
 	var shadow_texture := player_shadow.texture as GradientTexture2D
 	_check(
@@ -5058,7 +5064,9 @@ func _test_team_battle_view() -> void:
 	_check(
 		turn.visible
 		and turn.text.contains("Sugarworks")
-		and arena_hud.offset_top >= 40.0
+		and arena_hud.get_parent() == dock_column
+		and is_equal_approx(effectiveness.anchor_top, 0.3)
+		and is_equal_approx(effectiveness.offset_top, -41.0)
 		and primary_row.get_child_count() == 3
 		and support_row.get_child_count() == 3
 		and is_equal_approx(
