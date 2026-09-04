@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://cfkja88cd1bcn" path="res://assets/icons/paw-print.svg" id="2_profile"]
 [ext_resource type="Texture2D" uid="uid://ctdm6hl3fjru4" path="res://assets/icons/sparkles.svg" id="3_summon"]
 [ext_resource type="Script" uid="uid://blt7etm3he1nu" path="res://scripts/ui_bottom_sheet.gd" id="4_sheet"]
-[ext_resource type="PackedScene" path="res://scenes/ui/ui_skeleton.tscn" id="5_skeleton"]
+[ext_resource type="PackedScene" uid="uid://cop8r475ka68f" path="res://scenes/ui/ui_skeleton.tscn" id="5_skeleton"]
 
 [sub_resource type="StyleBoxFlat" id="NeedBackground"]
 bg_color = Color(0.025, 0.04, 0.09, 0.96)
@@ -134,8 +134,6 @@ theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 12
 theme_override_font_sizes/font_size = 25
 allow_reselect = true
-max_text_lines = 1
-text_overrun_behavior = 3
 max_columns = 2
 same_column_width = true
 fixed_column_width = 290
@@ -252,7 +250,7 @@ layout_mode = 2
 theme_type_variation = &"EyebrowLabel"
 text = "COLLECTION_ACTIVE"
 
-[node name="CollectionAtlasBadge" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Header/Identity"]
+[node name="CollectionAtlasBadge" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/Header/Identity" unique_id=223885140]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -385,6 +383,7 @@ text = "VALUE_UNAVAILABLE"
 horizontal_alignment = 1
 
 [node name="ConditionHeader" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column" unique_id=1799014371]
+custom_minimum_size = Vector2(0, 27)
 layout_mode = 2
 
 [node name="Title" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionHeader" unique_id=1993681865]
@@ -401,27 +400,31 @@ theme_override_font_sizes/font_size = 19
 text = "COLLECTION_CONDITION_LOADING"
 horizontal_alignment = 2
 
-[node name="ConditionSkeleton" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column" unique_id=1180398204 instance=ExtResource("5_skeleton")]
+[node name="ConditionSlot" type="MarginContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column" unique_id=677817719]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ConditionSkeleton" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot" unique_id=1180398204 instance=ExtResource("5_skeleton")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="CareRows" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column" unique_id=1181029771]
+[node name="CareRows" type="VBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot" unique_id=1181029771]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Hunger" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows" unique_id=1505551846]
+[node name="Hunger" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows" unique_id=1505551846]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Hunger" unique_id=234414535]
+[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows/Hunger" unique_id=234414535]
 custom_minimum_size = Vector2(118, 0)
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
 text = "CARE_HUNGER"
 
-[node name="SheetCareHunger" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Hunger" unique_id=1271281023]
+[node name="SheetCareHunger" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows/Hunger" unique_id=1271281023]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
@@ -431,18 +434,18 @@ theme_override_styles/fill = SubResource("HungerFill")
 value = 100.0
 show_percentage = false
 
-[node name="Energy" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows" unique_id=1654218672]
+[node name="Energy" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows" unique_id=1654218672]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Energy" unique_id=1390403900]
+[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows/Energy" unique_id=1390403900]
 custom_minimum_size = Vector2(118, 0)
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
 text = "CARE_ENERGY"
 
-[node name="SheetCareEnergy" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Energy" unique_id=913646711]
+[node name="SheetCareEnergy" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows/Energy" unique_id=913646711]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
@@ -452,18 +455,18 @@ theme_override_styles/fill = SubResource("EnergyFill")
 value = 100.0
 show_percentage = false
 
-[node name="Hygiene" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows" unique_id=995708670]
+[node name="Hygiene" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows" unique_id=995708670]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Hygiene" unique_id=1312743325]
+[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows/Hygiene" unique_id=1312743325]
 custom_minimum_size = Vector2(118, 0)
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
 text = "CARE_HYGIENE"
 
-[node name="SheetCareHygiene" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Hygiene" unique_id=1779501194]
+[node name="SheetCareHygiene" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows/Hygiene" unique_id=1779501194]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
@@ -473,18 +476,18 @@ theme_override_styles/fill = SubResource("HygieneFill")
 value = 100.0
 show_percentage = false
 
-[node name="Bond" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows" unique_id=1536510104]
+[node name="Bond" type="HBoxContainer" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows" unique_id=1536510104]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Bond" unique_id=343192784]
+[node name="Label" type="Label" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows/Bond" unique_id=343192784]
 custom_minimum_size = Vector2(118, 0)
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 20
 text = "CARE_EXP"
 
-[node name="SheetCareExp" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/CareRows/Bond" unique_id=1892653500]
+[node name="SheetCareExp" type="ProgressBar" parent="CollectionSheetOverlay/Bottom/CollectionSheetPanel/Column/ConditionSlot/CareRows/Bond" unique_id=1892653500]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2

@@ -4,10 +4,11 @@
 
 [node name="UiSkeleton" type="VBoxContainer" unique_id=1477885020]
 visible = false
-theme_override_constants/separation = 9
+theme_override_constants/separation = 8
 script = ExtResource("1_skeleton")
 
 [node name="Row1" type="HBoxContainer" parent="." unique_id=1114415306]
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 theme_override_constants/separation = 12
 
@@ -25,6 +26,7 @@ mouse_filter = 2
 theme_type_variation = &"StatValuePanel"
 
 [node name="Row2" type="HBoxContainer" parent="." unique_id=117414157]
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 theme_override_constants/separation = 12
 
@@ -42,6 +44,7 @@ mouse_filter = 2
 theme_type_variation = &"StatValuePanel"
 
 [node name="Row3" type="HBoxContainer" parent="." unique_id=1986163501]
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 theme_override_constants/separation = 12
 
@@ -59,6 +62,7 @@ mouse_filter = 2
 theme_type_variation = &"StatValuePanel"
 
 [node name="Row4" type="HBoxContainer" parent="." unique_id=1613129500]
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 theme_override_constants/separation = 12
 

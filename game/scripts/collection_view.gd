@@ -446,7 +446,11 @@ func _set_condition_loading() -> void:
 	_condition_synced = false
 	_condition_status.text = tr("COLLECTION_CONDITION_LOADING")
 	_condition_status.visible = true
-	_care_rows.visible = false
+	# Keep the final meter geometry in the overlay slot while its ink is hidden.
+	# Otherwise the loading skeleton measures shorter, then the sheet jumps when
+	# CareRows joins the crossfade (and only fits correctly after reopening).
+	_care_rows.visible = true
+	_care_rows.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	_condition_skeleton.set_loading(true)
 	for meter in _care_meters.values():
 		var care_meter := meter as ProgressBar

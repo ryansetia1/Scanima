@@ -34,6 +34,10 @@ func _initialize() -> void:
 		_test_shop_purchase_contract()
 		_finish()
 		return
+	if "--collection-layout-only" in OS.get_cmdline_user_args():
+		await _test_collection_loading_layout_stability()
+		_finish()
+		return
 	var packed := load("res://scenes/scan_flow.tscn") as PackedScene
 	_check(packed != null, "scan_flow.tscn must load")
 	if packed == null:
@@ -1079,6 +1083,7 @@ func _initialize() -> void:
 	await _test_expedition_view()
 	await _test_battle_pick_sheet()
 	await _test_collection_bottom_sheet()
+	await _test_collection_loading_layout_stability()
 	await _test_collection_row_hygiene()
 	await _test_atlas_view()
 	await _test_profile_info_rows()
@@ -6542,6 +6547,78 @@ func _test_sign_in_choice_follows_guest_roster() -> void:
 	)
 
 
+func _test_collection_loading_layout_stability() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(720, 1602)
+	root.add_child(viewport)
+	var collection := (
+		load("res://scenes/ui/collection_view.tscn") as PackedScene
+	).instantiate() as Control
+	viewport.add_child(collection)
+	collection.visible = true
+	collection.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await process_frame
+	var row := {
+		"id": "condition-layout-test",
+		"nickname": "Velumi",
+		"element": "spark",
+		"stage": 1,
+		"rarity": 4,
+		"base_stats": {"hp": 74, "atk": 62, "def": 58, "spd": 81, "special": 77},
+		"care": {"hunger": 68, "energy": 84, "hygiene": 57, "bond": 72},
+	}
+	var rows: Array[Dictionary] = [row]
+	collection.set_rows(rows, "", func(_row: Dictionary) -> Texture2D: return null)
+	collection.show_preview(row)
+	var overlay := collection.find_child("CollectionSheetOverlay", true, false) as Control
+	var panel := collection.find_child("CollectionSheetPanel", true, false) as Control
+	var skeleton := collection.find_child("ConditionSkeleton", true, false) as UiSkeleton
+	var care_rows := collection.find_child("CareRows", true, false) as Control
+	for _tick in 10:
+		if overlay.visible and overlay.has_meta(UiJuice.META_TWEEN):
+			break
+		await process_frame
+	_check(
+		overlay.visible and overlay.has_meta(UiJuice.META_TWEEN),
+		"Collection layout probe reaches the real bottom-sheet opening tween"
+	)
+	await _await_juice_settled(overlay, UiJuice.META_TWEEN)
+	var loading_height := panel.size.y
+	var skeleton_height := skeleton.get_combined_minimum_size().y
+	var care_height := care_rows.get_combined_minimum_size().y
+	var synced_row: Dictionary = row.duplicate(true)
+	synced_row["care"]["hunger"] = 42.0
+	_check(
+		collection.apply_care_sync(synced_row, collection.selected_revision()),
+		"Collection layout probe applies the authoritative care response"
+	)
+	await _await_juice_settled(skeleton, UiSkeleton.META_RESOLVE_TWEEN)
+	await process_frame
+	var resolved_height := panel.size.y
+	collection.close_sheet()
+	await _await_juice_settled(overlay, UiJuice.META_TWEEN)
+	collection.show_preview(row)
+	for _tick in 10:
+		if overlay.visible and overlay.has_meta(UiJuice.META_TWEEN):
+			break
+		await process_frame
+	await _await_juice_settled(overlay, UiJuice.META_TWEEN)
+	var reopened_height := panel.size.y
+	_check(
+		is_equal_approx(skeleton_height, care_height),
+		"Condition skeleton reserves the final meter height (%.1f vs %.1f)"
+			% [skeleton_height, care_height]
+	)
+	_check(
+		absf(loading_height - resolved_height) <= 1.0
+		and absf(resolved_height - reopened_height) <= 1.0,
+		"Collection sheet height stays stable loading → resolve → reopen (%.1f → %.1f → %.1f)"
+			% [loading_height, resolved_height, reopened_height]
+	)
+	viewport.queue_free()
+	await process_frame
+
+
 func _test_collection_bottom_sheet() -> void:
 	var packed := load("res://scenes/ui/collection_view.tscn") as PackedScene
 	var collection := packed.instantiate()
@@ -6623,8 +6700,12 @@ func _test_collection_bottom_sheet() -> void:
 		"sheet swipe follows the finger and dismisses past the threshold"
 	)
 	_check(
-		skeleton != null and skeleton.visible and care_rows != null and not care_rows.visible,
-		"uncached care sync replaces stale meters with a visible skeleton"
+		skeleton != null
+		and skeleton.visible
+		and care_rows != null
+		and care_rows.visible
+		and is_zero_approx(care_rows.modulate.a),
+		"uncached care sync hides meter ink while preserving its skeleton-sized layout slot"
 	)
 	_check_eq(hunger.value, 0.0, "loading state clears the previous Anima meter value")
 	_check(summon.disabled, "Summon waits for authoritative care while the skeleton is visible")
