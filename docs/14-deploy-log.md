@@ -2,6 +2,31 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 4 September 2026: nama legacy Evolution History dipulihkan
+
+Playtron ternyata **ada** di Atlas, tetapi form Hatchling-nya bernama `Anima`.
+Ia, Veridian, Sunhound, dan Mugshots adalah fixture hand-authored yang tidak
+pernah punya generation `create`; saat Evolve lewat lock, `anima_forms`
+menyimpan `generation_id = null`. Evolution History dan registrasi Atlas
+sama-sama mengira setiap form lama selalu punya generation asal, sehingga nama
+kanonisnya hilang dan fallback generik menang.
+
+Migration `20260904150951_snapshot_anima_form_names` menambah
+`anima_forms.nickname_snapshot` privat dan trigger yang menangkap nickname tepat
+sebelum form diarsipkan. `evolve_anima` version 21 membaca snapshot itu lebih
+dulu, lalu baru memakai `generations.vision_result.suggested_name` sebagai
+fallback row lama. Snapshot privat tidak pernah dipakai Atlas; empat fixture
+legacy dibackfill ke nama kanonis yang sudah terdokumentasi supaya Rename pemain
+tidak bocor ke katalog publik.
+
+Repro awal gagal dengan `Evolution History hatchling name must be Playtron`.
+Sesudah rollout, row yang sama menjawab snapshot dan Atlas `Playtron`,
+`authenticated` tidak punya EXECUTE ke trigger helper, `quota_rules.sql`
+lengkap lulus, `npm run selftest` lulus 44 skenario + 12 signature webhook,
+`test_scan_ui` lulus 1.621 check, dan smoke tanpa JWT ke `evolve_anima`
+version 21 menjawab
+`UNAUTHORIZED_NO_AUTH_HEADER` (fungsi boot, auth gate berdiri).
+
 ## 3 September 2026: tiga eval grounding v46 — belum dipromosikan
 
 Tepat tiga generation `openai/gpt-image-2` medium dijalankan tanpa Vision baru

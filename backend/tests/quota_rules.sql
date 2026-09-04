@@ -4200,6 +4200,12 @@ begin
          and (select cost_usd_estimate from public.generations where id = v_evolution_gen) = 0
          and (select genesis_cores from public.profiles where id = u1) = v_evolution_cores,
          'evolution lock harus commit Adult tanpa Core dan tanpa generation berbayar';
+  assert (
+           select nickname_snapshot
+             from public.anima_forms
+            where anima_id = v_evolution_other and stage = 1
+         ) = 'evolution-other',
+         'form legacy tanpa generation create harus menyimpan nama sebelum Evolve';
   v_j2 := public.apply_evolution_lock(u1, v_evolution_gen);
   assert (v_j2->>'replayed')::boolean,
          'apply_evolution_lock replay harus idempoten';

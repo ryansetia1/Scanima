@@ -139,10 +139,10 @@ async function formThumbUrl(
 }
 
 /// Silsilah bentuk untuk Profile: form lama dari `anima_forms`, form sekarang
-/// dari `animas`, diurutkan naik per stage. Nama form lama diambil dari
-/// generation yang melahirkannya (`create` atau `evolve` sebelumnya), sebab
-/// `animas.nickname` sudah menjadi nama bentuk terbaru. Read-only: tidak
-/// menyentuh Core, Bits, atau idempotency.
+/// dari `animas`, diurutkan naik per stage. Snapshot privat menyimpan nama yang
+/// benar-benar dipakai sebelum Evolve; generation tetap fallback untuk row lama
+/// sebelum snapshot tersedia. Read-only: tidak menyentuh Core, Bits, atau
+/// idempotency.
 async function evolutionHistory(uid: string, animaId: string): Promise<Response> {
   const { data: anima, error } = await db
     .from("animas")
@@ -155,7 +155,7 @@ async function evolutionHistory(uid: string, animaId: string): Promise<Response>
 
   const { data: priorRows, error: errForms } = await db
     .from("anima_forms")
-    .select("stage, sheet_path, manifest, generation_id")
+    .select("stage, sheet_path, manifest, generation_id, nickname_snapshot")
     .eq("anima_id", animaId)
     .order("stage", { ascending: true });
   if (errForms) return json(500, { error: errForms.message });
@@ -180,9 +180,12 @@ async function evolutionHistory(uid: string, animaId: string): Promise<Response>
   const forms: Array<Record<string, unknown>> = [];
   for (const row of priors) {
     const stage = Number(row.stage) || 1;
+    const snapshotName = typeof row.nickname_snapshot === "string"
+      ? row.nickname_snapshot.trim()
+      : "";
     forms.push({
       stage,
-      name: names.get(String(row.generation_id ?? "")) ?? "",
+      name: snapshotName || names.get(String(row.generation_id ?? "")) || "",
       thumbnail_url: await formThumbUrl(
         uid,
         animaId,

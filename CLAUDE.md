@@ -76,7 +76,7 @@ kontradiksi.
 | Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, `feature_synthesis`, dan `feature_atlas_moderation_v2` semuanya `true` | matikan per flag |
 
 Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 28,
-`evolve_anima` 19, `replicate_webhook` 18, `battle_anima` 33, `team_battle` 13,
+`evolve_anima` 21, `replicate_webhook` 18, `battle_anima` 33, `team_battle` 13,
 `expedition` 18, `seeker` 9, `gallery` 25, `shop` 5, `care_anima` 10,
 `synthesize_anima` 10, `admin_moderation` 5 (staff-only, tanpa rate limit publik).
 
