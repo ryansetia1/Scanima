@@ -1744,6 +1744,30 @@ func _test_shared_components() -> void:
 		not food_tab.disabled and not item_tab.disabled,
 		"tabs unlock again once the purchase settles"
 	)
+	shop_sheet.set_retry("pulse_cell")
+	await process_frame
+	var retry_count := 0
+	var retry_enabled := false
+	var retry_others_disabled := true
+	for node in shop_list.find_children("*", "Button", true, false):
+		var buy := node as Button
+		if buy == null or buy.is_queued_for_deletion():
+			continue
+		if buy.text == tr("ACTION_RETRY"):
+			retry_count += 1
+			retry_enabled = not buy.disabled
+		else:
+			retry_others_disabled = retry_others_disabled and buy.disabled
+	_check(
+		retry_count == 1 and retry_enabled and retry_others_disabled,
+		"a purchase whose response was lost exposes Retry only on the exact pending item"
+	)
+	_check(
+		food_tab.disabled and item_tab.disabled,
+		"purchase retry keeps the player on the pending item's category"
+	)
+	shop_sheet.set_retry("")
+	await process_frame
 
 	shop_sheet.open_bag("food")
 	await process_frame
@@ -1849,10 +1873,12 @@ func _test_care_feedback_is_immediate() -> void:
 		body.find("set_busy(true)") < 0,
 		"the Care Dock stays lit while its care action is in flight"
 	)
+	var pending_copy := body.find("GameState.pending_care.duplicate(true)")
+	var retry_match := body.find("care_intent_matches(", pending_copy)
+	var begin_care := body.find("GameState.begin_care", pending_copy)
 	_check(
-		body.find("GameState.pending_care.is_empty()") >= 0
-		and body.find("GameState.begin_care") > body.find("GameState.pending_care.is_empty()"),
-		"a second care action is refused where every caller passes, including Bag"
+		pending_copy >= 0 and retry_match > pending_copy and begin_care > pending_copy,
+		"the same durable Care intent can retry while a different action stays refused"
 	)
 	# Bag opens straight from BagButton without passing through Care Dock's
 	# own need_is_full check (home_view.gd _request_feed) -- the guard has to
@@ -2632,6 +2658,16 @@ func _test_scan_phase_visuals() -> void:
 		and hint.text == tr("SCAN_CAMERA_HINT"),
 		"a remaining Core restores the Scan CTA"
 	)
+	view.set_cores(0)
+	view.set_retry_pending(true)
+	_check(
+		scan_button.text == tr("ACTION_RETRY")
+		and is_equal_approx(scan_button.self_modulate.a, 1.0)
+		and hint.text == tr("STATUS_SCAN_RETRY"),
+		"a saved Scan exposes a lit Retry even after its Core may have been debited"
+	)
+	view.set_retry_pending(false)
+	view.set_cores(1)
 	var vibe_block := view.find_child("VibeBlock", true, false) as Control
 	_check(vibe_block != null and vibe_block.visible, "idle Scan shows the optional Vibe selector")
 	_check_eq(view.vibe(), "natural", "fresh Scan defaults to Natural")

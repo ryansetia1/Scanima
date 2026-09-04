@@ -4,6 +4,20 @@ Perintah yang tidak dijalankan setiap hari, dipindahkan verbatim dari `CLAUDE.md
 
 Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan tidak ada di PATH.
 
+## Uji internet terputus
+
+Harness ini memakai port lokal yang selalu menolak koneksi. Ia tidak menyentuh
+Supabase dan menguji klasifikasi transport, error state Home/Battle, serta
+Retry UI untuk penyimpanan server-authoritative. Wiring LoadingScreen yang lebih
+luas tetap ada di `test_scan_ui.gd`.
+
+```bash
+godot --headless --path game --script res://tests/test_offline_resilience.gd
+```
+
+Matriks perilaku dan checklist airplane mode Android ada di
+[docs/17-offline-resilience.md](17-offline-resilience.md).
+
 ## Menjalankan game dan demo visual
 
 Setiap flag `--*-demo` memeriksa satu layar tanpa jaringan dan tanpa biaya.

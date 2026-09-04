@@ -30,8 +30,11 @@ meredup, warnanya tidak berubah.
 Meter bergerak di detik yang sama dengan ketukanmu, dan tombol Care tidak mati
 sesudahnya. Angka resminya datang dari server sesaat kemudian dan menimpa
 tampilan itu; kalau aksinya ternyata ditolak (misalnya koneksi putus), meternya
-kembali ke nilai sebelumnya. Satu aksi Care diproses pada satu waktu, jadi aksi
-kedua yang datang sebelum yang pertama selesai akan diminta ulang sebentar.
+kembali ke nilai sebelumnya. Kalau koneksi benar-benar putus, sambungkan lagi
+lalu ulangi aksi Care yang sama; untuk **Feed** atau **Use**, pilih item yang
+sama. Game memakai ulang penyimpanan yang tertunda, bukan menghabiskan item dua
+kali. Aksi Care lain menunggu sampai retry itu selesai. Membuka app lagi juga
+akan mencoba menyelesaikan aksi yang tertunda.
 
 Membuka app juga tidak lagi memperlihatkan layar tunggu: companion terakhirmu
 langsung tampil beserta perkiraan meternya, lalu angka resmi dari server
@@ -54,6 +57,9 @@ memakai makanan dan Energy yang sudah ada.
 - **Bag** tab **Items**: Pulse Cell / Reactor Pack punya tombol **Use**. Item Battle tidak — itu dipakai dari tombol **Item** di arena.
 - Tas menumpuk sampai 999. Bits kurang atau tas penuh: pembelian ditolak, tidak terpotong dua kali kalau sinyal putus.
 - Tombol **Buy** yang ditekan berubah jadi **Buying...** dan seluruh tombol beli lain ikut mati sampai pembelian itu selesai, jadi tap ganda tidak memesan dua kali. Ikon barangnya terbang ke **Bag** dan Bag memberi pop kecil begitu sampai.
+- Kalau jawaban pembelian hilang karena koneksi putus, Bits dan barang kembali
+  dulu ke angka sebelumnya. Barang itu saja menampilkan **Retry**; sambungkan
+  internet lalu tekan tombolnya. Barang lain menunggu sampai retry selesai.
 
 ## Feed
 

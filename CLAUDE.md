@@ -32,11 +32,15 @@ lintas domain.
 Turn Battle sekarang **local-first**: client menyimulasikan turn dengan aturan
 yang identik lalu menganimasikannya sementara request-nya terbang, dan hasil
 server tetap yang tersimpan. Care dan Shop optimistis dengan rollback tanpa
-meredupkan dock/sheet-nya, Summon menyembunyikan round trip-nya di balik dissolve
-dan charge portal, Home digambar dari `user://boot_cache.json` sebelum jaringan
-menjawab, dan commit turn mengulang sendiri saat transport gagal. Detail, pagar
-parity, dan daftar jalur yang sengaja tetap menunggu server ada di
-[`docs/12-local-first-turns.md`](docs/12-local-first-turns.md).
+meredupkan dock/sheet-nya; response transport yang hilang mempertahankan
+idempotency key dan aksi/item yang sama menjadi jalur retry. Scan juga
+mempertahankan intent sesudah upload kalau response create hilang. Summon
+menyembunyikan round trip-nya di balik dissolve dan charge portal, Home digambar
+dari `user://boot_cache.json` sebelum jaringan menjawab, dan commit turn
+mengulang sendiri saat transport gagal. Detail, pagar parity, dan daftar jalur
+yang sengaja tetap menunggu server ada di
+[`docs/12-local-first-turns.md`](docs/12-local-first-turns.md); matriks offline
+ada di [`docs/17-offline-resilience.md`](docs/17-offline-resilience.md).
 
 ## Apa itu Scanima
 
@@ -219,6 +223,7 @@ npm run selftest                       # 44 skenario + 12 uji tanda tangan webho
 godot --headless --path game --script res://tests/test_sprite_slicing.gd # 304 check manifest, loader, presenter, Boss Seeker
 godot --headless --path game --script res://tests/test_auth_flow.gd    # 63 check PKCE secure, restart, transfer/separate, recovery, no-merge
 godot --headless --path game --script res://tests/test_client_state.gd  # 199 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, stale UID, retry transport
+godot --headless --path game --script res://tests/test_offline_resilience.gd # transport lokal + Retry UI; orchestration save dipindai
 godot --headless --path game --script res://tests/test_scan_ui.gd       # 1576 check shell + Battle + Shop + Bag + komponen + tap + touch + press/release roster sungguhan + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas + dialog Evolve gagal + preflight nama + Seeker Avatar arena + LoadingScreen
 godot --headless --path game --script res://tests/test_battle_intro.gd  # 3 mode check opening Duel/Team/Expedition, input lock, no replay, Boss gate
 godot --headless --path game --script res://tests/test_i18n.gd          # 5120 check katalog + key + formatter + wrapping

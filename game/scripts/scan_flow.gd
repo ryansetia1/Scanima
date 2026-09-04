@@ -3361,11 +3361,19 @@ func _on_care_blocked(message: String) -> void:
 func _perform_care(action: String) -> void:
 	if _busy or _current_anima.is_empty():
 		return
+	if not GameState.pending_care.is_empty():
+		var pending := GameState.pending_care
+		if (
+			action == "feed"
+			and str(pending.get("anima_id", "")) == str(_current_anima.get("id", ""))
+			and str(pending.get("action", "")) == action
+		):
+			_open_feed_picker()
+		else:
+			await _commit_care(action)
+		return
 	if CareRules.is_evolving(_current_anima):
 		_say_warning(tr("EVOLUTION_CARE_BLOCKED"), true)
-		return
-	if not GameState.pending_care.is_empty():
-		_say_warning(tr("ERROR_CARE_PENDING"), true)
 		return
 	if action == "feed":
 		_open_feed_picker()
@@ -3388,27 +3396,28 @@ func _commit_care(action: String, item_id: String = "", on_react: Callable = Cal
 	var anima_id := str(_current_anima.get("id", ""))
 	if anima_id.is_empty():
 		return
-	if CareRules.is_evolving(_current_anima):
-		_say_warning(tr("EVOLUTION_CARE_BLOCKED"), true)
-		return
-	if (action == "feed" or action == "use_item") and _is_sleeping(_current_anima):
-		_say_warning(tr("ERROR_SLEEPING_CONSUME"), true)
-		return
-	# Care Dock sudah menolak ini sebelum sheet-nya kebuka (home_view.gd
-	# _request_feed), tapi Bag dibuka lewat BagButton juga tanpa lewat Care
-	# Dock -- pagarnya harus di sini juga supaya kedua jalur benar-benar
-	# tertutup, bukan cuma salah satunya. Tanpa ini animasi terbang tetap
-	# main walau server menolak dan quantity tidak berkurang.
-	if action == "feed" and CareRules.need_is_full(_current_anima.get("care"), "hunger"):
-		_say_warning(tr("ERROR_NEED_FULL"), true)
-		return
-	if action == "use_item" and CareRules.need_is_full(_current_anima.get("care"), "energy"):
-		_say_warning(tr("ERROR_NEED_FULL"), true)
-		return
-	if not GameState.pending_care.is_empty():
+	var pending := GameState.pending_care.duplicate(true)
+	var retrying := not pending.is_empty()
+	if retrying and not care_intent_matches(pending, anima_id, action, item_id):
 		_say_warning(tr("ERROR_CARE_PENDING"), true)
 		return
-	var pending := GameState.begin_care(anima_id, action, item_id)
+	if not retrying:
+		if CareRules.is_evolving(_current_anima):
+			_say_warning(tr("EVOLUTION_CARE_BLOCKED"), true)
+			return
+		if (action == "feed" or action == "use_item") and _is_sleeping(_current_anima):
+			_say_warning(tr("ERROR_SLEEPING_CONSUME"), true)
+			return
+		# Bag memanggil `_commit_care` tanpa lewat guard Care Dock. Retry intent
+		# lama melewati preflight lokal ini: server mungkin sudah commit sebelum
+		# response hilang, dan idempotency key-lah yang menyelesaikannya aman.
+		if action == "feed" and CareRules.need_is_full(_current_anima.get("care"), "hunger"):
+			_say_warning(tr("ERROR_NEED_FULL"), true)
+			return
+		if action == "use_item" and CareRules.need_is_full(_current_anima.get("care"), "energy"):
+			_say_warning(tr("ERROR_NEED_FULL"), true)
+			return
+		pending = GameState.begin_care(anima_id, action, item_id)
 	if on_react.is_valid():
 		on_react.call()
 	else:
@@ -3421,6 +3430,16 @@ func _commit_care(action: String, item_id: String = "", on_react: Callable = Cal
 	if not committed and care_before != null:
 		_current_anima["care"] = care_before
 		_refresh_care()
+
+
+static func care_intent_matches(
+	pending: Dictionary, anima_id: String, action: String, item_id: String
+) -> bool:
+	return (
+		str(pending.get("anima_id", "")) == anima_id
+		and str(pending.get("action", "")) == action
+		and str(pending.get("item_id", "")) == item_id
+	)
 
 
 ## Meter sesudah satu aksi care, dihitung dari aturan decay yang sama dengan
@@ -3498,7 +3517,12 @@ func _send_pending_care(pending: Dictionary, show_feedback: bool) -> bool:
 	# selamanya akan mengunci semua tombol care walau saldo/kondisinya berubah.
 	if res.code >= 400 and res.code < 500:
 		GameState.finish_care()
-	_say_error(_care_error_message(res.error))
+	_say_error(
+		tr("ERROR_CONNECTION_RETRY")
+		if bool(res.get("transport", false))
+		else _care_error_message(res.error),
+		true
+	)
 	return false
 
 
@@ -4677,6 +4701,7 @@ func _refresh_battle_authority(session: Dictionary) -> void:
 ## itu satu-satunya cara pemain tidak kehilangan Core karena jaringan yang putus.
 func _resume_without_anima() -> void:
 	var account_epoch := GameState.session_epoch
+	_scan_view.set_retry_pending(false)
 	_set_busy(true)
 	var pending := GameState.pending_scan
 	var res := await Backend.create_anima(
@@ -4738,6 +4763,18 @@ func _on_pick_pressed() -> void:
 		return
 	if not GameState.pending_evolution.is_empty():
 		_say_warning(tr("EVOLUTION_ALREADY_ACTIVE"), true)
+		return
+	if not GameState.pending_scan.is_empty():
+		_switch_destination(BottomNav.SCAN)
+		_scan_view.set_retry_pending(false)
+		_say(tr("STATUS_RESUMING_SCAN"))
+		var pending_anima_id := str(GameState.pending_scan.get("anima_id", ""))
+		if pending_anima_id.is_empty():
+			await _resume_without_anima()
+		else:
+			_set_busy(true)
+			await _wait_for_hatch(pending_anima_id)
+			_set_busy(false)
 		return
 	if _guest_scan_locked():
 		_show_sign_in_confirmation()
@@ -4917,6 +4954,7 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 	if _busy:
 		return
 	_switch_destination(BottomNav.SCAN)
+	_scan_view.set_retry_pending(false)
 	_set_busy(true)
 
 	if bytes.size() > MAX_FOTO_BYTE:
@@ -4961,8 +4999,24 @@ func _scan_bytes(bytes: PackedByteArray, extension: String) -> void:
 		_set_busy(false)
 
 
+static func create_result_needs_retry(res: Dictionary) -> bool:
+	return (
+		not bool(res.get("ok", false))
+		and (
+			bool(res.get("transport", false))
+			or int(res.get("code", 0)) == 0
+			or int(res.get("code", 0)) >= 500
+		)
+	)
+
+
 func _handle_create_result(res: Dictionary, account_epoch: int) -> void:
 	if not Backend.response_applies(res, account_epoch):
+		return
+	if create_result_needs_retry(res):
+		_restore_previous_anima()
+		_scan_view.set_retry_pending(true)
+		_say_error(tr("STATUS_SCAN_RETRY"), true)
 		return
 	var profile_res := await Backend.fetch_profile()
 	if not Backend.response_applies(profile_res, account_epoch):
@@ -4990,10 +5044,12 @@ func _handle_create_result(res: Dictionary, account_epoch: int) -> void:
 			_:
 				print("create_anima error: %s" % res.error)
 				_say_error(tr("STATUS_SCAN_ERROR"))
+		_scan_view.set_retry_pending(false)
 		GameState.finish_scan()
 		_restore_previous_anima()
 		return
 
+	_scan_view.set_retry_pending(false)
 	var data := GameState.as_dict(res.data)
 
 	var is_rejected := (
@@ -5108,6 +5164,7 @@ func _wait_for_hatch(anima_id: String) -> void:
 	# Bukan kegagalan: webhook mungkin masih jalan. Scan-nya tetap tersimpan.
 	_say(tr("STATUS_GENERATION_PENDING"))
 	_restore_previous_anima()
+	_scan_view.set_retry_pending(true)
 
 
 # ---------------------------------------------------------------- tampilkan
@@ -5175,6 +5232,7 @@ func _present(
 	_populate_collection()
 	if complete_scan:
 		GameState.finish_scan()
+		_scan_view.set_retry_pending(false)
 		_scan_view.reset_vibe()
 	# Fotonya sudah selesai tugasnya begitu Anima-nya ada; membiarkannya di layar
 	# hanya menutupi hasil yang justru ingin dilihat pemain.
@@ -5979,9 +6037,12 @@ func _switch_destination(
 		call_deferred("_maybe_show_chapter_popup")
 	_sync_shop_chrome()
 	_bottom_nav.set_scan_emphasized(
-		_cores_remaining() > 0
-		and not _guest_scan_locked()
+		(
+			not GameState.pending_scan.is_empty()
+			or (_cores_remaining() > 0 and not _guest_scan_locked())
+		)
 		and destination != BottomNav.BATTLE
+		and not _update_required
 	)
 	UiJuice.reveal(_active_view())
 
@@ -6082,12 +6143,23 @@ func _open_battle_item_picker() -> void:
 ## antrean hanya kalau telemetri menunjukkan tap yang benar-benar hilang.
 func _buy_catalog_item(item: Dictionary) -> void:
 	var account_epoch := GameState.session_epoch
-	if _busy or not GameState.pending_purchase.is_empty():
+	if _busy:
 		return
 	if GameState.shop_locked():
 		_say_warning(tr("ERROR_SHOP_IN_BATTLE"), true)
 		return
 	var item_id := str(item.get("id", ""))
+	var existing := GameState.pending_purchase.duplicate(true)
+	if not existing.is_empty():
+		if str(existing.get("item_id", "")) != item_id:
+			_say_warning(tr("ERROR_PURCHASE_PENDING"), true)
+			return
+		_shop_sheet.set_pending(item_id)
+		if await _send_pending_purchase(existing):
+			_say_success(tr("FEEDBACK_PURCHASE"), true)
+		if GameState.session_epoch == account_epoch:
+			_shop_sheet.set_pending("")
+		return
 	var price := int(item.get("price", 0))
 	# Rect ikonnya diambil sebelum apa pun merombak baris ShopSheet --
 	# `_apply_optimistic_purchase` di bawah memanggil `set_catalog`, yang
@@ -6262,6 +6334,7 @@ func _send_pending_purchase(pending: Dictionary) -> bool:
 		return false
 	if res.ok:
 		GameState.finish_purchase()
+		_shop_sheet.set_retry("")
 		var data := GameState.as_dict(res.data)
 		if data.has("bits"):
 			GameState.profile["bits"] = int(data.get("bits", 0))
@@ -6276,7 +6349,15 @@ func _send_pending_purchase(pending: Dictionary) -> bool:
 		return true
 	if res.code >= 400 and res.code < 500:
 		GameState.finish_purchase()
-	_say_error(_care_error_message(str(res.error)), true)
+		_shop_sheet.set_retry("")
+	else:
+		_shop_sheet.set_retry(str(pending.get("item_id", "")))
+	_say_error(
+		tr("ERROR_CONNECTION_RETRY")
+		if bool(res.get("transport", false))
+		else _care_error_message(str(res.error)),
+		true
+	)
 	return false
 
 
@@ -6565,7 +6646,12 @@ func _refresh_header() -> void:
 	_scan_view.set_cores(cores)
 	_scan_view.set_sign_in_required(sign_in_required)
 	_bottom_nav.set_scan_emphasized(
-		cores > 0 and not sign_in_required and _destination != BottomNav.BATTLE and not _update_required
+		(
+			not GameState.pending_scan.is_empty()
+			or (cores > 0 and not sign_in_required)
+		)
+		and _destination != BottomNav.BATTLE
+		and not _update_required
 	)
 	UiJuice.pop(_top_hud, 1.012)
 

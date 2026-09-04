@@ -27,6 +27,7 @@ var _phase := &"idle"
 var _cores := -1
 var _busy := false
 var _sign_in_required := false
+var _retry_pending := false
 var _vibe: String = DEFAULT_VIBE
 var _vibe_buttons: Array[Button] = []
 
@@ -86,6 +87,12 @@ func set_sign_in_required(required: bool) -> void:
 	_refresh_lock()
 
 
+func set_retry_pending(pending: bool) -> void:
+	_retry_pending = pending
+	_refresh_lock()
+	_refresh_vibe_ui()
+
+
 func set_status(message: String) -> void:
 	_status.text = message
 
@@ -114,14 +121,20 @@ func set_phase(phase: StringName) -> void:
 
 
 func _refresh_lock() -> void:
-	var locked := _cores == 0 and not _sign_in_required
+	var locked := _cores == 0 and not _sign_in_required and not _retry_pending
 	_scan_button.self_modulate = (
 		Color(1, 1, 1, 0.42) if locked and not _busy else Color.WHITE
 	)
-	_scan_button.text = tr("SCAN_SIGN_IN_ACTION") if _sign_in_required else tr("SCAN_PRIMARY_ACTION")
+	_scan_button.text = (
+		tr("SCAN_SIGN_IN_ACTION") if _sign_in_required
+		else tr("ACTION_RETRY") if _retry_pending
+		else tr("SCAN_PRIMARY_ACTION")
+	)
 	if _phase == &"idle":
 		if _sign_in_required:
 			_hint.text = tr("SCAN_SIGN_IN_HINT")
+		elif _retry_pending:
+			_hint.text = tr("STATUS_SCAN_RETRY")
 		elif locked:
 			_hint.text = tr("SCAN_NO_CORE_HINT")
 		else:
@@ -175,7 +188,7 @@ func _refresh_vibe_ui() -> void:
 		var slug := str(button.get_meta("vibe", ""))
 		var selected := slug == _vibe
 		button.set_pressed_no_signal(selected)
-		button.disabled = _busy or not idle
+		button.disabled = _busy or not idle or _retry_pending
 		button.theme_type_variation = &"VibeSelected" if selected else &""
 		button.text = tr("SCAN_VIBE_%s" % slug.to_upper())
 	_vibe_hint.text = tr("SCAN_VIBE_HINT_%s" % _vibe.to_upper())

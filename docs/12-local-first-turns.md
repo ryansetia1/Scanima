@@ -176,7 +176,10 @@ terbang.
 
 Kalau `care_anima` menolak, `_commit_care` mengembalikan `care` sebelumnya dan
 mengecat ulang. Meter yang salah karena koneksi putus jadi tidak menetap sampai
-sync berikutnya.
+sync berikutnya. Kegagalan transport mempertahankan intent beserta
+`idempotency_key`; pemain dapat mengulang aksi Care yang sama (dan item yang
+sama untuk Feed/Use) sesudah tersambung. Aksi yang berbeda tetap ditahan sampai
+intent lama terkonfirmasi. Boot juga mencoba intent itu lagi.
 
 ## Ganti companion
 
@@ -200,7 +203,20 @@ transisi di sana untuk ditumpangi.
 pada frame yang sama dengan tap, lalu `purchase_catalog_item` tetap pagar akhir.
 Sheet Shop sengaja **tidak** dikunci selama request: `set_busy()` membangun ulang
 seluruh daftar, dan kedipan itulah yang dulu terbaca sebagai lag. Kalau server
-menolak, saldo dan tas dikembalikan lalu daftar dicat ulang sekali.
+menolak, saldo dan tas dikembalikan lalu daftar dicat ulang sekali. Kalau
+response hilang karena transport, key pembelian tetap tersimpan dan hanya item
+itu yang berubah menjadi tombol **Retry**; Buy lain ditahan sampai retry selesai.
+
+## Scan yang kehilangan response
+
+Upload yang gagal sebelum foto mencapai Storage tidak pernah mendebit Core dan
+meminta pemain memilih foto lagi. Sesudah upload berhasil, kehilangan response
+`create_anima` berbeda: percobaan mungkin sudah diklaim server. Client karena itu
+mempertahankan `pending_scan`, foto remote, dan `idempotency_key`, lalu mengubah
+CTA Scan menjadi **Retry**. Retry memanggil `create_anima` dengan key lama,
+bukan membuat Scan dan debit kedua. Aturan yang sama dipakai untuk response 5xx
+atau response tanpa code, karena keduanya tidak membuktikan transaksi belum
+commit.
 
 ## Loading di Expedition
 
@@ -267,6 +283,9 @@ forced switch butuh sprite sheet yang belum tentu ter-cache, dan reward tidak
 bisa ditampilkan sebelum server menghitungnya — jadi pemain yang bermain lima
 turn offline berisiko kehilangan semuanya sekaligus. Menunggu enam detik lalu
 mengulang satu aksi lebih jujur.
+
+Matriks QA lengkap untuk putus saat turn, loading, dan save ada di
+[docs/17-offline-resilience.md](17-offline-resilience.md).
 
 ## Boot dari cache
 

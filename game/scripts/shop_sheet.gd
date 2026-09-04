@@ -25,6 +25,7 @@ var _inventory: Array = []
 var _bits := 0
 var _busy := false
 var _pending_item_id := ""
+var _retry_item_id := ""
 
 
 func _ready() -> void:
@@ -51,6 +52,22 @@ func set_busy(busy: bool) -> void:
 ## dan sekarang terlihat, bukan cuma diam-diam ditolak.
 func set_pending(item_id: String) -> void:
 	_pending_item_id = item_id
+	if not item_id.is_empty():
+		_retry_item_id = ""
+	_rebuild()
+
+
+## Respons pembelian hilang sebelum bisa dikonfirmasi. Hanya item yang membawa
+## idempotency key lama yang boleh ditekan; item lain menunggu sampai intent itu
+## selesai supaya satu pembelian tidak menimpa pembelian lain.
+func set_retry(item_id: String) -> void:
+	_pending_item_id = ""
+	_retry_item_id = item_id
+	if not item_id.is_empty():
+		for item in _catalog:
+			if str(item.get("id", "")) == item_id:
+				_tab = "food" if Catalog.is_food(item) else "item"
+				break
 	_rebuild()
 
 
@@ -73,7 +90,8 @@ func icon_snapshot_for(item_id: String) -> Dictionary:
 
 func open_shop(tab: String = "food") -> void:
 	_mode = Mode.SHOP
-	_tab = tab if tab == "item" else "food"
+	if _retry_item_id.is_empty():
+		_tab = tab if tab == "item" else "food"
 	_rebuild()
 	_reveal()
 
@@ -125,8 +143,12 @@ func _show_tab(tab: String) -> void:
 func _rebuild() -> void:
 	_title.text = tr(_title_key())
 	_tabs.visible = _mode == Mode.SHOP or _mode == Mode.BAG
-	_food_tab.disabled = _busy or not _pending_item_id.is_empty()
-	_item_tab.disabled = _busy or not _pending_item_id.is_empty()
+	var purchase_locked := (
+		_mode == Mode.SHOP
+		and (not _pending_item_id.is_empty() or not _retry_item_id.is_empty())
+	)
+	_food_tab.disabled = _busy or purchase_locked
+	_item_tab.disabled = _busy or purchase_locked
 	_food_tab.theme_type_variation = &"PrimaryButton" if _tab == "food" else &""
 	_item_tab.theme_type_variation = &"PrimaryButton" if _tab == "item" else &""
 	_food_tab.self_modulate = Color.WHITE
@@ -218,11 +240,18 @@ func _make_row(item: Dictionary) -> Control:
 		var buy := Button.new()
 		var price := int(item.get("price", 0))
 		var is_pending := not _pending_item_id.is_empty() and item_id == _pending_item_id
+		var is_retry := not _retry_item_id.is_empty() and item_id == _retry_item_id
 		buy.custom_minimum_size = Vector2(148, 96)
 		buy.theme_type_variation = "PrimaryButton"
-		buy.disabled = _busy or not _pending_item_id.is_empty() or _bits < price
+		buy.disabled = (
+			_busy
+			or not _pending_item_id.is_empty()
+			or (not _retry_item_id.is_empty() and not is_retry)
+			or (not is_retry and _bits < price)
+		)
 		buy.text = (
 			tr("SHOP_BUYING") if is_pending
+			else tr("ACTION_RETRY") if is_retry
 			else tr("SHOP_BUY") % LocaleManager.format_integer(price)
 		)
 		buy.pressed.connect(func() -> void: buy_requested.emit(item))

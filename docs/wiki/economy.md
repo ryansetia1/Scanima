@@ -39,7 +39,9 @@ Dipakai di **Shop** dan Synthesis.
   punya Use di Bag. Keduanya tidak tampil di tab lain.
 - Beli terasa langsung: Bits turun dan barang masuk tas begitu tombolnya ditekan,
   dan Shop tetap bisa dipakai untuk membeli berikutnya. Kalau koneksi gagal,
-  keduanya dikembalikan seperti semula.
+  keduanya dikembalikan seperti semula dan barang itu berubah menjadi
+  **Retry**. Sambungkan internet lalu tekan **Retry**; pembelian memakai
+  percobaan lama, bukan memotong Bits dua kali.
 - **Feed** memakai makanan dari **Bag**, bukan Bits langsung. Beli dulu di Shop.
 - **Clean** gratis.
 - Menang Battle memberi Bits menurut seberapa berat lawannya — **7–12 dari Duel**, sedangkan Team Battle dan Expedition bisa 5–16 — paling banyak **100 Bits per hari** (reset tengah malam waktu setempat). Lapar atau kotor tidak mengunci duel, tapi Anima bertarung lebih lemah.
@@ -110,6 +112,11 @@ Telur dan analisis foto **boleh ditinggal**. Pindah tab atau tutup app tidak mem
 - Tab lain tetap bisa dibuka. Telurnya kelihatan di **Scan** (dan di Home kalau kamu balik). Collection / Battle / Anima tidak menampilkan telurnya, tapi prosesnya tetap jalan.
 - Selama menunggu, Scan baru, Shop, Bag, Feed / Clean / Play, Battle, Summon, dan Delete dikunci.
 - Tutup app atau biarkan di background tidak apa-apa. Buka lagi: game menyambung Scan yang belum selesai (*Reconnecting to your unfinished scan…*), telur nyala lagi.
+- Kalau foto sudah terunggah tetapi jawaban Scan hilang karena koneksi putus,
+  tombolnya berubah menjadi **Retry**. Sambungkan internet lalu tekan **Retry**:
+  foto dan percobaan tersimpan dipakai lagi, jadi tidak meminta Core kedua.
+  Kalau upload fotonya sendiri belum selesai, pilih foto lagi sesudah online;
+  belum ada Core yang dipakai.
 - Kalau nunggu di app terasa lama, bisa muncul *Still awakening. You can return later—your progress is saved.* Itu **bukan gagal**. Anima lama kembali ke Home, Scan tetap tersimpan, buka app lagi = lanjut. Core tidak dikembalikan, karena gambarnya mungkin masih dibuat.
 - Gagal sungguhan hanya kalau server bilang gagal. Baru itu Core dikembalikan;
   kesempatan Scan guest ikut kembali kalau belum ada Scan sukses lain.

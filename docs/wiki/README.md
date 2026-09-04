@@ -47,8 +47,9 @@ memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
 
 - Game tidak menunggu jaringan untuk merespons. Home terbuka langsung, meter Care
   dan turn Battle bergerak di detik yang sama dengan ketukanmu, dan angka resmi
-  dari server menyusul. Sinyal yang putus sebentar dicoba ulang sendiri; kalau
-  benar-benar gagal, tampilannya kembali ke keadaan terakhir yang sah.
+  dari server menyusul. Turn Battle yang putus sebentar dicoba ulang sendiri;
+  Care, Shop, dan Scan menyimpan percobaannya lalu menawarkan retry yang aman.
+  Kalau tetap gagal, tampilannya kembali ke keadaan terakhir yang sah.
 - Anima **tidak mati**. Kalau lama tidak dirawat, ia jadi Dormant — sedih dan tidak bisa Battle — lalu pulih setelah makan dan dibersihkan.
 - Hanya **satu** Anima hidup di Home. Yang lain tidur di Collection.
 - **Cores** untuk setiap Scan yang berhasil. Akun Google mendapat 1 Core otomatis
