@@ -72,6 +72,8 @@ var pending_account_switch: Dictionary = {}
 ## izin OS dan FCM topic subscription juga hidup per-device.
 var preferences: Dictionary = {
 	"chapter_push_enabled": false,
+	"battle_shake_enabled": true,
+	"haptics_enabled": true,
 }
 
 ## Anima terakhir yang berhasil dimuat, supaya app bisa langsung menampilkannya
@@ -461,6 +463,24 @@ func set_music_enabled(enabled: bool) -> void:
 
 func music_enabled() -> bool:
 	return bool(preferences.get("music_enabled", true))
+
+
+func set_battle_shake_enabled(enabled: bool) -> void:
+	preferences["battle_shake_enabled"] = enabled
+	save()
+
+
+func battle_shake_enabled() -> bool:
+	return bool(preferences.get("battle_shake_enabled", true))
+
+
+func set_haptics_enabled(enabled: bool) -> void:
+	preferences["haptics_enabled"] = enabled
+	save()
+
+
+func haptics_enabled() -> bool:
+	return bool(preferences.get("haptics_enabled", true))
 
 
 func set_chapter_push_enabled(enabled: bool) -> void:

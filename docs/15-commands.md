@@ -18,6 +18,17 @@ godot --headless --path game --script res://tests/test_offline_resilience.gd
 Matriks perilaku dan checklist airplane mode Android ada di
 [docs/17-offline-resilience.md](17-offline-resilience.md).
 
+## Uji Battle Impact
+
+Seam cepat ini memeriksa profil shake/haptic, copy Critical, wrapper
+fighter/scenery, reset saat refit, preference, dan suppression pada replay
+authoritative tanpa menjalankan seluruh suite UI:
+
+```bash
+godot --headless --path game --script res://tests/test_scan_ui.gd \
+  -- --battle-impact-only
+```
+
 ## Menjalankan game dan demo visual
 
 Setiap flag `--*-demo` memeriksa satu layar tanpa jaringan dan tanpa biaya.

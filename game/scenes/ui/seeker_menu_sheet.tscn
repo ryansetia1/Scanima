@@ -87,6 +87,20 @@ layout_mode = 2
 button_pressed = true
 text = "SETTINGS_MUSIC"
 
+[node name="BattleShake" type="CheckButton" parent="Bottom/Panel/Column/ContentSlot" unique_id=316651911]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+button_pressed = true
+text = "SETTINGS_BATTLE_SHAKE"
+
+[node name="Haptics" type="CheckButton" parent="Bottom/Panel/Column/ContentSlot" unique_id=227720606]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+button_pressed = true
+text = "SETTINGS_HAPTICS"
+
 [node name="ChapterPush" type="CheckButton" parent="Bottom/Panel/Column/ContentSlot" unique_id=1936802744]
 unique_name_in_owner = true
 visible = false

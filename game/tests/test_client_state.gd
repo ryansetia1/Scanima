@@ -161,6 +161,19 @@ func _test_sesi_bertahan() -> void:
 		"opt-in push chapter harus bertahan sebagai preference per-device"
 	)
 	_check(
+		GameState.battle_shake_enabled() and GameState.haptics_enabled(),
+		"Battle Shake dan Haptics default aktif sebagai preference terpisah"
+	)
+	GameState.set_battle_shake_enabled(false)
+	GameState.set_haptics_enabled(false)
+	_muat_ulang()
+	_check(
+		not GameState.battle_shake_enabled() and not GameState.haptics_enabled(),
+		"Battle Shake dan Haptics bertahan restart secara independen"
+	)
+	GameState.set_battle_shake_enabled(true)
+	GameState.set_haptics_enabled(true)
+	_check(
 		GameState.team_battle_available() and GameState.expedition_available(),
 		"mode Battle default permissive sebelum server menolak"
 	)

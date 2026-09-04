@@ -557,7 +557,12 @@ func _submit_pending(pending: Dictionary) -> void:
 			art = await _attach_trophy_art(turn_reward, str(data.get("asset_base_url", "")), art)
 			# Arena masih menampilkan prediksi, jadi log server diputar dari encounter
 			# sebelum turn — `_encounter` baru diganti sesudah blok ini.
-			await _view.play_combat_events(events, next_encounter, art, _encounter)
+			await _view.play_combat_events(
+				events,
+				next_encounter,
+				art,
+				_encounter if not predicted.is_empty() else {}
+			)
 	_run = next_run
 	_encounter = next_encounter
 	GameState.confirm_expedition_response(_run, _encounter)

@@ -51,3 +51,27 @@ _Avoid_: Sprite sheet (that means Anima art), avatar sheet
 The optional birth year and gender a player may give during onboarding. They
 describe the person holding the phone, never the Seeker Avatar.
 _Avoid_: Profile data, gender (as a stand-in for appearance)
+
+**Battle Impact Beat**:
+The single instant when a visible attack connects. Target reaction, damage
+feedback, world shake, and haptic feedback land together on this beat. A
+knockout strengthens the same beat instead of adding another impact when the
+result appears.
+_Avoid_: Attack start, result shake, repeated knockout hit
+
+**Battle World Shake**:
+Brief impact motion applied to the battle world—combatants and scenery
+together—while the HUD remains stable.
+_Avoid_: Fighter shake, full-screen shake, HUD shake
+
+**Haptics**:
+Device-wide tactile feedback for command acknowledgement, Battle Impact Beats,
+and progression celebrations. The player's device-local Haptics preference
+controls all of them together.
+_Avoid_: Battle vibration, rumble setting
+
+**Critical Hit**:
+A chance-based damage spike influenced by Speed. Battle presents it as a
+stronger Battle Impact Beat and an explicit arena message, independently of
+element effectiveness.
+_Avoid_: Critical effectiveness, critical move

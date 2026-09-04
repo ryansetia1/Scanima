@@ -375,6 +375,8 @@ func _ready() -> void:
 	_menu_popover.settings_requested.connect(_open_settings)
 	_seeker_menu_sheet.help_requested.connect(_show_seeker_help)
 	_seeker_menu_sheet.music_changed.connect(_set_music_enabled)
+	_seeker_menu_sheet.battle_shake_changed.connect(GameState.set_battle_shake_enabled)
+	_seeker_menu_sheet.haptics_changed.connect(GameState.set_haptics_enabled)
 	_seeker_menu_sheet.chapter_push_changed.connect(_set_chapter_push)
 	_seeker_onboarding_sheet.submit_requested.connect(_complete_seeker_profile)
 	_seeker_profile_view.back_requested.connect(_return_from_overlay)
@@ -2817,7 +2819,9 @@ func _open_settings() -> void:
 	_seeker_menu_sheet.show_menu(
 		ChapterPush.available(),
 		GameState.chapter_push_enabled(),
-		GameState.music_enabled()
+		GameState.music_enabled(),
+		GameState.battle_shake_enabled(),
+		GameState.haptics_enabled()
 	)
 
 
@@ -3968,7 +3972,7 @@ func _submit_pending_battle(pending: Dictionary) -> void:
 		# `_set_busy(false)` di bawah yang melepas tombolnya.
 		_battle_view.set_session(next_session)
 	else:
-		await _battle_view.play_events(events, next_session)
+		await _battle_view.play_events(events, next_session, predicted.is_empty())
 	GameState.confirm_battle_response(next_session)
 	# Katalog/profil boleh menyusul. Menahan _busy di sini membuat tap Special
 	# berikutnya menampilkan Resolving tanpa pernah mengirim turn.
@@ -4416,7 +4420,12 @@ func _submit_pending_team_battle(pending: Dictionary) -> void:
 				break
 		# Arena masih menampilkan prediksi, jadi log server diputar dari session
 		# sebelum turn supaya Summon membaca HP anggota yang masuk apa adanya.
-		await _team_battle_view.play_events(events, next_session, art, session_before)
+		await _team_battle_view.play_events(
+			events,
+			next_session,
+			art,
+			session_before if not predicted.is_empty() else {}
+		)
 	GameState.confirm_team_battle_response(next_session)
 	_set_busy(false)
 	if action == "item":
@@ -6659,7 +6668,7 @@ func _present_level_up_outcome(dialog: Dictionary) -> void:
 		and _anima.visible
 	):
 		_anima.celebrate_level_up()
-	Input.vibrate_handheld(70)
+	BattleImpact.vibrate(70)
 	_show_level_up_stats(
 		int(dialog.get("level", 1)),
 		int(dialog.get("previous_level", 1)),
@@ -7592,7 +7601,13 @@ func _run_battle_demo(
 	_battle_view.set_session(session, loaded, loaded)
 	_sync_shop_chrome()
 	if not is_zero_approx(effectiveness):
-		_battle_view.call("_show_effectiveness", effectiveness)
+		var impact_event := {"crit": false, "element_multiplier": effectiveness}
+		_battle_view.call(
+			"_show_impact_banner",
+			BattleImpact.message_keys(impact_event),
+			false,
+			effectiveness
+		)
 
 
 ## Visual gate untuk CTA result yang terpagari Energy: menang, lalu companion-nya

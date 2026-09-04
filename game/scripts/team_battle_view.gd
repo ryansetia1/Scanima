@@ -162,6 +162,7 @@ var _seeker_shadow: Sprite2D
 var _player_seeker: SEEKER_PRESENTER
 var _player_seeker_shadow: Sprite2D
 var _player_seeker_loaded: Dictionary = {}
+var _impact: BattleImpact
 var _fighter_layer: Node2D
 var _background_session_id := ""
 var _background_pan := 0.5
@@ -240,9 +241,11 @@ func _ready() -> void:
 	_opponent_shadow = _make_ground_shadow(_opponent_anchor)
 	_seeker = SEEKER_PRESENTER.new()
 	_seeker.name = "BossSeeker"
+	_impact = BattleImpact.new()
+	_impact.mount(_battle_stage, _arena_background)
 	_fighter_layer = Node2D.new()
 	_fighter_layer.name = "FighterLayer"
-	_battle_stage.add_child(_fighter_layer)
+	_impact.add_foreground(_fighter_layer)
 	_opponent_anchor.reparent(_fighter_layer)
 	_player_anchor.reparent(_fighter_layer)
 	_fighter_layer.add_child(_seeker)
@@ -586,6 +589,8 @@ func _opening_intro_is_active(revision: int) -> bool:
 
 
 func _cancel_opening_intro() -> void:
+	if is_instance_valid(_impact):
+		_impact.cancel()
 	var was_active := _opening_intro_pending or _opening_intro_running
 	_opening_intro_revision += 1
 	_opening_intro_pending = false
@@ -650,7 +655,7 @@ func begin_action(action: String) -> void:
 		return
 	_busy = true
 	_show_action_commit(action)
-	Input.vibrate_handheld(18)
+	BattleImpact.command_haptic()
 	_update_arena_actions()
 
 
@@ -667,6 +672,9 @@ func play_events(
 	from_session: Dictionary = {}
 ) -> void:
 	_art_cache.merge(art_cache, true)
+	var physical_feedback := from_session.is_empty()
+	if not physical_feedback:
+		_impact.cancel()
 	if not from_session.is_empty():
 		# Sengaja tanpa repaint: bar yang tampil ditimpa absolut oleh event log ini,
 		# dan memasangnya lewat set_session() akan terlihat sebagai arena mundur.
@@ -736,7 +744,7 @@ func play_events(
 					)
 				elif attack_actor == "player":
 					_set_player_seeker_pose(command_pose)
-				await _play_attack(event)
+				await _play_attack(event, physical_feedback)
 			"knockout":
 				var side := str(event.get("actor", ""))
 				_faint(side)
@@ -773,6 +781,8 @@ func play_events(
 			"move_effect", "status_tick", "status_expired":
 				var normalized := BATTLE_EVENT.normalized(event)
 				_apply_effect_hp_event(normalized, str(next_session.get("status", "active")))
+				if str(normalized.get("type", "")) == "status_tick":
+					_impact.play_event(normalized, physical_feedback)
 				var plate := BATTLE_EVENT.plate_text(normalized)
 				if not plate.is_empty():
 					await _present_banner(plate, BattleView.CUE_COLOR, false, BattleView.ToastType.GENERAL)
@@ -814,6 +824,8 @@ func _apply_effect_hp_event(event: Dictionary, final_status: String = "active") 
 
 
 func _show_only(panel: Control) -> void:
+	if is_instance_valid(_impact):
+		_impact.cancel()
 	for child in [_loading, _builder, _lobby, _arena]:
 		(child as Control).visible = child == panel
 	_builder_scroll.visible = panel == _builder
@@ -1331,7 +1343,7 @@ func _tween_fighter_layout(target: Dictionary) -> Tween:
 	return _layout_tween
 
 
-func _play_attack(event: Dictionary) -> void:
+func _play_attack(event: Dictionary, physical_feedback: bool = true) -> void:
 	var actor_side := str(event.get("actor", ""))
 	var target_side := str(event.get("target", ""))
 	var actor := _sprite_for(actor_side)
@@ -1352,8 +1364,10 @@ func _play_attack(event: Dictionary) -> void:
 		var fx := "fx_surge" if str(event.get("action", "")) == "surge" else "fx_strike"
 		actor.play_fx(fx, target.body_center_global())
 	var element_multiplier := float(event.get("element_multiplier", 1.0))
-	var effect_key := BattleView.effectiveness_key(element_multiplier)
+	var critical := bool(event.get("crit", false))
+	var message_keys := BattleImpact.message_keys(event)
 	await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)
+	_impact.play_event(event, physical_feedback)
 	if is_instance_valid(actor):
 		actor.set_pose("idle")
 	var hp := int(event.get("target_hp", 0))
@@ -1370,21 +1384,50 @@ func _play_attack(event: Dictionary) -> void:
 		target.modulate = Color(1.65, 0.45, 0.55, 1.0)
 		var flash := create_tween()
 		flash.tween_property(target, "modulate", Color.WHITE, 0.28)
-		Input.vibrate_handheld(55 if element_multiplier > 1.0 else 35)
 		if hp <= 0:
 			target.set_pose("defeated")
+	if critical:
+		_show_impact_banner(message_keys, true, element_multiplier)
 	await _play_damage(int(event.get("damage", 0)), element_multiplier)
 	_restore_seeker_idle()
 	_restore_player_seeker_idle()
-	if not effect_key.is_empty():
-		var eff_type := BattleView.ToastType.SUCCESS if effect_key == "BATTLE_EFFECTIVE" else BattleView.ToastType.WARNING
-		await _present_banner(
-			tr(effect_key),
-			BattleView.EFFECTIVE_COLOR if effect_key == "BATTLE_EFFECTIVE" else BattleView.RESISTED_COLOR,
-			effect_key == "BATTLE_EFFECTIVE",
-			eff_type
-		)
+	if critical:
+		await _readability_pause()
+	elif not message_keys.is_empty():
+		await _present_impact_banner(message_keys, false, element_multiplier)
 	await _hide_effectiveness()
+
+
+func _show_impact_banner(
+	message_keys: PackedStringArray,
+	critical: bool,
+	element_multiplier: float
+) -> void:
+	if message_keys.is_empty():
+		return
+	var lines := PackedStringArray()
+	for key in message_keys:
+		lines.append(tr(key))
+	var color := BattleView.CRITICAL_COLOR if critical else (
+		BattleView.EFFECTIVE_COLOR if element_multiplier > 1.0 else BattleView.RESISTED_COLOR
+	)
+	var type := (
+		BattleView.ToastType.SUCCESS
+		if critical or element_multiplier > 1.0
+		else BattleView.ToastType.WARNING
+	)
+	_show_banner("\n".join(lines), color, critical or element_multiplier > 1.0, type)
+
+
+func _present_impact_banner(
+	message_keys: PackedStringArray,
+	critical: bool,
+	element_multiplier: float
+) -> void:
+	_show_impact_banner(message_keys, critical, element_multiplier)
+	if is_instance_valid(_effectiveness_tween) and _effectiveness_tween.is_running():
+		await _effectiveness_tween.finished
+	await _readability_pause()
 
 
 func _present_banner(text: String, color: Color, big: bool = true, type: BattleView.ToastType = BattleView.ToastType.GENERAL) -> void:
@@ -1392,19 +1435,6 @@ func _present_banner(text: String, color: Color, big: bool = true, type: BattleV
 	if is_instance_valid(_effectiveness_tween) and _effectiveness_tween.is_running():
 		await _effectiveness_tween.finished
 	await _readability_pause()
-
-
-func _show_effectiveness(multiplier: float) -> void:
-	var key := BattleView.effectiveness_key(multiplier)
-	var color := BattleView.DAMAGE_COLOR
-	var type := BattleView.ToastType.GENERAL
-	if key == "BATTLE_EFFECTIVE":
-		color = BattleView.EFFECTIVE_COLOR
-		type = BattleView.ToastType.SUCCESS
-	elif key == "BATTLE_NOT_EFFECTIVE":
-		color = BattleView.RESISTED_COLOR
-		type = BattleView.ToastType.WARNING
-	_show_banner(tr(key) if not key.is_empty() else "", color, key == "BATTLE_EFFECTIVE", type)
 
 
 func _show_banner(text: String, color: Color, big: bool = true, type: BattleView.ToastType = BattleView.ToastType.GENERAL) -> void:
@@ -2063,6 +2093,8 @@ func _portal_for(side: String) -> IncubatorEffect:
 
 
 func _position_fighters(cancel_transition: bool = true) -> void:
+	if is_instance_valid(_impact):
+		_impact.cancel()
 	if cancel_transition and _layout_tween != null and _layout_tween.is_valid():
 		_layout_tween.kill()
 		_layout_tween = null
@@ -2189,7 +2221,9 @@ func _layout_arena_background(background_zoom: float) -> void:
 	var stage_size := _battle_stage.size
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0 or stage_size.x <= 0.0 or stage_size.y <= 0.0:
 		return
-	var cover_scale := maxf(stage_size.x / texture_size.x, stage_size.y / texture_size.y)
+	var guard := BattleImpact.background_overscan_px(stage_size.x)
+	var guarded_size := stage_size + Vector2.ONE * guard * 2.0
+	var cover_scale := maxf(guarded_size.x / texture_size.x, guarded_size.y / texture_size.y)
 	var geometry_zoom := 1.0 if _uses_static_background else maxf(1.0, background_zoom)
 	var draw_size := texture_size * cover_scale * geometry_zoom
 	var overflow := Vector2(

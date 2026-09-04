@@ -57,6 +57,7 @@ func _test_mid_game_disconnect() -> void:
 	var packed := load("res://scenes/ui/battle_view.tscn") as PackedScene
 	var battle := packed.instantiate()
 	get_root().add_child(battle)
+	battle.visible = true
 	battle.set_session({
 		"id": "offline-test",
 		"status": "active",
@@ -185,7 +186,7 @@ func _test_save_disconnect() -> void:
 		"Care retry accepts only the exact durable intent"
 	)
 	var care_start := flow_source.find("func _commit_care(")
-	var care_end := flow_source.find("\n\nfunc optimistic_care(", care_start)
+	var care_end := flow_source.find("static func optimistic_care(", care_start)
 	var care_body := (
 		flow_source.substr(care_start, care_end - care_start)
 		if care_start >= 0 and care_end > care_start

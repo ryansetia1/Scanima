@@ -20,6 +20,21 @@ jadi biasanya pertarungan lanjut tanpa kamu menyadari apa pun. Kalau koneksinya
 benar-benar hilang, arena mundur ke keadaan terakhir yang sudah disahkan server
 dan kamu bisa mengulang aksi yang sama.
 
+Saat serangan mengenai target, petarung dan arena berguncang singkat; latar
+bergerak lebih lembut supaya benturannya terasa tanpa menggoyangkan HUD atau
+tombol. Serangan yang ditahan terasa paling ringan, serangan kuat atau Critical
+lebih tegas, dan pukulan yang membuat KO paling berat. Haptics berlaku saat
+kamu memukul maupun dipukul. **Critical hit!** selalu disebut jelas dan dapat
+disusul **Super effective!** atau **Not very effective.** pada baris kedua.
+Damage dari status yang membuat KO juga mendapat satu benturan; pelat KO yang
+muncul sesudahnya tidak mengguncang atau bergetar lagi.
+
+**Battle Shake** dan **Haptics** dapat dimatikan secara terpisah lewat
+**Settings**. Mematikan Battle Shake tidak menghapus reaksi target, kilatan,
+angka damage, teks, atau suara serangan. Jika hasil resmi server harus
+memperbaiki animasi prediksi, koreksi visualnya tidak mengulang guncangan atau
+Haptics yang sudah kamu rasakan.
+
 ## Mode yang tersedia
 
 Layar Battle menampilkan **Duel**, **Team Battle**, dan **Expedition** sejak
@@ -241,8 +256,9 @@ Seeker.
 - The Confectioner tetap berpijak di tempat yang sama ketika mengganti pose.
   Ia tidak memakai pose terkena damage saat Anima-nya Guard, dan baru bereaksi
   tepat ketika serangan benar-benar mengenai Anima. Setelah beat damage selesai,
-  ia langsung kembali normal sebelum teks **Super effective!** atau
-  **Not very effective.** muncul.
+  ia langsung kembali normal sebelum teks efektivitas biasa muncul. Pada
+  Critical, pelat gabungan **Critical hit!** dan efektivitas memang tampil
+  bersama angka damage, sementara reaksinya masih berlangsung.
 - Ukuran Anima dan The Confectioner di arena mengikuti tinggi tubuh mereka.
   Anima setinggi manusia mengisi kurang dari setengah arena pada layar HP,
   supaya dua petarung plus trainer masih punya ruang. Anima

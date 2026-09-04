@@ -79,7 +79,7 @@ berbeda dari damage pada payload yang tidak memproyeksikan kolom itu.
 
 ```
 tap
- ├─ begin_action()               → underline pulse + haptic, frame yang sama
+ ├─ begin_action()               → underline pulse + haptic bila aktif, frame yang sama
  ├─ _predict_*_turn()            → simulasi lokal dari state authoritative
  ├─ _dispatch_*()                → request terbang, TIDAK di-await
  ├─ play_events(prediksi)        → animasi penuh berjalan
@@ -88,6 +88,31 @@ tap
       ├─ ringkasannya sama  → set_session(row authoritative), tanpa animasi ulang
       └─ berbeda            → play_events(event server), arena snap ke hasil resmi
 ```
+
+## Battle Impact dan replay
+
+`BattleImpact` memulai shake dan haptic tepat sesudah
+`AnimaPresenter.FX_TRAVEL_SEC`; tween-nya tidak di-`await`, jadi feedback fisik
+tidak memperpanjang playback turn. Profil produksi pada lebar arena 720px:
+resisted 4px/140ms/35ms, neutral 6px/180ms/35ms, strong atau crit
+8px/220ms/55ms, killing blow 10px/280ms/70ms, dan status-only KO
+8px/200ms/55ms. Amplitudo mengikuti lebar arena dengan cap 14px. Haptic 18ms
+saat memilih perintah tetap dipertahankan.
+
+Satu wrapper transient menggeser fighter penuh dan scenery 40%; HUD tetap di
+luarnya. Fighter/background base transform tetap milik layout arena. Wrapper
+selalu dikembalikan ke nol sebelum resize, Switch/refit, session reset,
+cancellation, atau koreksi authoritative. Cover background juga menyisihkan
+travel shake, refit 4px, dan safety 2px agar tepi tidak terbuka.
+
+`Battle Shake` dan `Haptics` adalah preference device yang terpisah. Mematikan
+shake tidak melewati `hit_react`, flash, damage float, SFX, atau copy Critical.
+Replay authoritative setelah prediksi menyimpang memutar visual dengan
+`physical_feedback=false`; shake/haptic dari prediksi tidak dibayar dua kali.
+Sebaliknya, event server yang menjadi playback pertama karena prediksi memang
+tidak tersedia tetap membawa feedback fisik. Killing blow dan status-only KO
+hanya memicu pada event damage; pelat `knockout` sesudahnya tidak pernah
+memanggil impact lagi.
 
 Pembandingnya ringkasan yang **dilihat pemain**, bukan seluruh state: status,
 nomor turn, HP/PP petarung Duel, lalu tiap event beserta `target_hp`, `damage`,

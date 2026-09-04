@@ -30,6 +30,10 @@ func _initialize() -> void:
 	# Jalur yang sama dengan `scan_flow._enter_tree()`; shell di sini hidup di luar
 	# pohon, jadi tanpa ini relay gulir sentuh tidak pernah terpasang saat diuji.
 	UiJuice.install_touch_scroll(self)
+	if "--battle-impact-only" in OS.get_cmdline_user_args():
+		await _test_battle_impact_contract()
+		_finish()
+		return
 	if "--shop-only" in OS.get_cmdline_user_args():
 		_test_shop_purchase_contract()
 		_finish()
@@ -1078,6 +1082,7 @@ func _initialize() -> void:
 	await _test_scan_phase_visuals()
 	await _test_scan_rejection_dialog()
 	await _test_seeker_ui()
+	await _test_battle_impact_contract()
 	await _test_battle_view()
 	await _test_team_battle_view()
 	await _test_expedition_view()
@@ -3082,7 +3087,7 @@ func _test_seeker_ui() -> void:
 	var menu = (load("res://scenes/ui/seeker_menu_sheet.tscn") as PackedScene).instantiate()
 	root.add_child(menu)
 	await process_frame
-	menu.show_menu(true, true, true)
+	menu.show_menu(true, true, true, true, true)
 	_check(
 		(menu.find_child("SeekerMenuTitle", true, false) as Label).text == tr("SETTINGS_TITLE"),
 		"Settings menu uses the shared title"
@@ -3102,11 +3107,23 @@ func _test_seeker_ui() -> void:
 		menu.find_child("ContentScroll", true, false) is ScrollContainer,
 		"Seeker menu still scrolls safely on short screens"
 	)
+	menu._fit_scroll_to_host(500.0)
+	_check(
+		(menu.panel() as Control).get_combined_minimum_size().y
+			<= 500.0 * menu.max_height_ratio + 1.0,
+		"the added Battle feedback toggles remain operable in landscape"
+	)
+	menu.fit_to_content()
 	_check(
 		(menu.find_child("MusicEnabled", true, false) as CheckButton).button_pressed,
 		"music plays by default and can be turned off from Settings"
 	)
-	menu.show_menu(false, false, false)
+	_check(
+		(menu.find_child("BattleShake", true, false) as CheckButton).button_pressed
+		and (menu.find_child("Haptics", true, false) as CheckButton).button_pressed,
+		"Battle Shake and Haptics are separate settings that default on"
+	)
+	menu.show_menu(false, false, false, false, false)
 	_check(
 		(menu.find_child("SeekerMenuTitle", true, false) as Label).text
 			== tr("SETTINGS_TITLE"),
@@ -3115,6 +3132,11 @@ func _test_seeker_ui() -> void:
 	_check(
 		not (menu.find_child("MusicEnabled", true, false) as CheckButton).button_pressed,
 		"a muted player reopens Settings with music still off"
+	)
+	_check(
+		not (menu.find_child("BattleShake", true, false) as CheckButton).button_pressed
+		and not (menu.find_child("Haptics", true, false) as CheckButton).button_pressed,
+		"Battle Shake and Haptics reopen with their persisted values"
 	)
 
 	var profile = (load("res://scenes/ui/seeker_profile_view.tscn") as PackedScene).instantiate()
@@ -3494,6 +3516,149 @@ func _marked_avatar_slugs(grid: GridContainer) -> PackedStringArray:
 		elif button.button_pressed:
 			marked.append(slug)
 	return marked
+
+
+func _test_battle_impact_contract() -> void:
+	var impact_script := load("res://scripts/battle_impact.gd") as GDScript
+	_check(impact_script != null, "Battle Impact has one shared production policy")
+	if impact_script == null:
+		return
+	var resisted: Dictionary = impact_script.profile_for_event({
+		"type": "attack", "damage": 5, "target_hp": 20, "element_multiplier": 0.67,
+	})
+	var neutral: Dictionary = impact_script.profile_for_event({
+		"type": "attack", "damage": 5, "target_hp": 20, "element_multiplier": 1.0,
+	})
+	var strong: Dictionary = impact_script.profile_for_event({
+		"type": "attack", "damage": 5, "target_hp": 20, "element_multiplier": 1.5,
+	})
+	var critical: Dictionary = impact_script.profile_for_event({
+		"type": "attack", "damage": 5, "target_hp": 20, "crit": true,
+		"element_multiplier": 0.67,
+	})
+	var killing: Dictionary = impact_script.profile_for_event({
+		"type": "attack", "damage": 20, "target_hp": 0, "crit": true,
+		"element_multiplier": 1.5,
+	})
+	var status_ko: Dictionary = impact_script.profile_for_event({
+		"type": "status_tick", "amount": 4, "target_hp": 0,
+	})
+	_check(
+		resisted == {"amplitude": 4.0, "duration": 0.14, "haptic_ms": 35}
+		and neutral == {"amplitude": 6.0, "duration": 0.18, "haptic_ms": 35}
+		and strong == {"amplitude": 8.0, "duration": 0.22, "haptic_ms": 55}
+		and critical == strong
+		and killing == {"amplitude": 10.0, "duration": 0.28, "haptic_ms": 70}
+		and status_ko == {"amplitude": 8.0, "duration": 0.20, "haptic_ms": 55},
+		"impact profiles preserve the calibrated resisted, neutral, strong, killing, and status-KO tiers"
+	)
+	_check(
+		impact_script.message_keys({"crit": true, "element_multiplier": 1.5})
+			== PackedStringArray(["BATTLE_CRITICAL", "BATTLE_EFFECTIVE"])
+		and impact_script.message_keys({"crit": true, "element_multiplier": 0.67})
+			== PackedStringArray(["BATTLE_CRITICAL", "BATTLE_NOT_EFFECTIVE"])
+		and impact_script.message_keys({"critical": true, "element": 1.5}).is_empty(),
+		"Critical copy is explicit, two lines at most, and reads only canonical event fields"
+	)
+	_check(
+		is_equal_approx(float(impact_script.scaled_amplitude(10.0, 360.0)), 5.0)
+		and is_equal_approx(float(impact_script.scaled_amplitude(10.0, 720.0)), 10.0)
+		and is_equal_approx(float(impact_script.scaled_amplitude(10.0, 1602.0)), 14.0)
+		and float(impact_script.background_overscan_px(1602.0)) >= 11.6,
+		"shake scales from 720px, caps at 14px, and reserves scenery travel plus refit overscan"
+	)
+	for path: String in [
+		"res://scripts/battle_view.gd", "res://scripts/team_battle_view.gd",
+	]:
+		var source := FileAccess.get_file_as_string(path)
+		var attack_start := source.find("func _play_attack(")
+		var attack_end := source.find("\n\nfunc ", attack_start + 1)
+		var attack_body := source.substr(attack_start, attack_end - attack_start)
+		_check(
+			attack_body.find("await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)")
+				< attack_body.find("_impact.play_event(event, physical_feedback)")
+			and attack_body.find("await _impact.play_event") < 0,
+			"%s starts impact at post-travel contact without extending playback" % path.get_file()
+		)
+		var damage_marker := (
+			"var damage_start_y" if path.get_file() == "battle_view.gd" else "await _play_damage"
+		)
+		_check(
+			attack_body.find("_show_impact_banner(message_keys, true") >= 0
+			and attack_body.find("_show_impact_banner(message_keys, true")
+				< attack_body.find(damage_marker),
+			"%s shows explicit Critical copy while the damage float is visible" % path.get_file()
+		)
+		_check(
+			source.find("Input.vibrate_handheld") < 0,
+			"%s routes every haptic through the player preference" % path.get_file()
+		)
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var expedition_source := FileAccess.get_file_as_string("res://scripts/expedition_controller.gd")
+	_check(
+		flow_source.find("play_events(events, next_session, predicted.is_empty())") >= 0
+		and flow_source.find("session_before if not predicted.is_empty() else {}") >= 0
+		and expedition_source.find("_encounter if not predicted.is_empty() else {}") >= 0,
+		"authoritative correction suppresses physical feedback while first-play server events keep it"
+	)
+	var game_state := get_root().get_node("GameState")
+	var old_shake: bool = bool(game_state.call("battle_shake_enabled"))
+	var old_haptics: bool = bool(game_state.call("haptics_enabled"))
+	game_state.call("set_battle_shake_enabled", true)
+	game_state.call("set_haptics_enabled", false)
+	for fixture: Array in [
+		[
+			"res://scenes/ui/battle_view.tscn", "BattleArenaBackground",
+			"DuelFighterLayer", "BattleContent",
+		],
+		[
+			"res://scenes/ui/team_battle_view.tscn", "TeamArenaBackground",
+			"FighterLayer", "TeamArena",
+		],
+	]:
+		var host := SubViewport.new()
+		host.size = Vector2i(720, 1280)
+		root.add_child(host)
+		var view := (load(str(fixture[0])) as PackedScene).instantiate() as Control
+		host.add_child(view)
+		view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		view.visible = true
+		await process_frame
+		await process_frame
+		(view.find_child(str(fixture[3]), true, false) as Control).visible = true
+		var world := view.find_child("BattleWorldOffset", true, false) as Control
+		var scenery := view.find_child("BattleSceneryOffset", true, false) as Control
+		var background := view.find_child(str(fixture[1]), true, false) as TextureRect
+		var fighters := view.find_child(str(fixture[2]), true, false) as Node2D
+		_check(
+			world != null and scenery != null and background.get_parent() == scenery
+			and fighters.get_parent() == world,
+			"%s mounts scenery and fighters under one transient world-offset owner" % fixture[2]
+		)
+		world.call("_apply_world_offset", Vector2(6.0, -1.0))
+		_check(
+			world.position.is_equal_approx(Vector2(6.0, -1.0))
+			and scenery.position.is_equal_approx(Vector2(-3.6, 0.6)),
+			"%s moves fighters fully and scenery at the calibrated 40%% ratio" % fixture[2]
+		)
+		view.call("_position_fighters")
+		_check(
+			world.position.is_zero_approx() and scenery.position.is_zero_approx(),
+			"%s restores transient offsets before an authoritative refit" % fixture[2]
+		)
+		world.call("play_event", {
+			"type": "attack", "actor": "player", "target": "opponent",
+			"damage": 5, "target_hp": 20, "element_multiplier": 1.0,
+		}, false)
+		await process_frame
+		_check(
+			world.position.is_zero_approx() and scenery.position.is_zero_approx(),
+			"%s authoritative visual correction never repeats physical feedback" % fixture[2]
+		)
+		host.queue_free()
+		await process_frame
+	game_state.call("set_battle_shake_enabled", old_shake)
+	game_state.call("set_haptics_enabled", old_haptics)
 
 
 func _test_battle_view() -> void:
@@ -3887,10 +4052,10 @@ func _test_battle_view() -> void:
 	)
 
 	# Figur Seeker pemain di Duel: cermin Team Battle di arena 2×2. Dicari
-	# terbatas pada layer Duel, bukan rekursif dari view — scene ini juga
-	# meng-embed TeamBattleView dan ExpeditionView yang punya node senama.
+	# terbatas pada subtree arena, melewati wrapper BattleWorldOffset — view ini
+	# juga meng-embed TeamBattleView dan ExpeditionView yang punya node senama.
 	var bot_anchor := view.find_child("BattleBotAnchor", true, false) as Node2D
-	var duel_layer := arena.find_child("DuelFighterLayer", false, false) as Node2D
+	var duel_layer := arena.find_child("DuelFighterLayer", true, false) as Node2D
 	view.set_player_avatar(_boss_seeker_loaded())
 	await process_frame
 	var duel_avatar := duel_layer.find_child("PlayerSeeker", false, false) as AnimatedSprite2D
@@ -4026,7 +4191,7 @@ func _test_battle_view() -> void:
 		and bot_hp.fill_mode == ProgressBar.FILL_BEGIN_TO_END,
 		"both HP meters drain from the outer screen edge inward like a fighting game"
 	)
-	view.call("_show_effectiveness", 1.5)
+	view.call("_show_impact_banner", PackedStringArray(["BATTLE_EFFECTIVE"]), false, 1.5)
 	_check(
 		effectiveness.visible and effectiveness_label.text == tr("BATTLE_EFFECTIVE"),
 		"advantaged attacks show a Super effective indicator"
@@ -4070,12 +4235,13 @@ func _test_battle_view() -> void:
 		and not str(view.call("_actor_name", "player")).contains(tr("LEVEL_SHORT")),
 		"Duel event plate names omit Level"
 	)
-	view.call("_show_effectiveness", 0.67)
+	view.call("_show_impact_banner", PackedStringArray(["BATTLE_NOT_EFFECTIVE"]), false, 0.67)
 	_check(
 		effectiveness.visible and effectiveness_label.text == tr("BATTLE_NOT_EFFECTIVE"),
 		"resisted attacks show a Not very effective indicator"
 	)
-	view.call("_show_effectiveness", 1.0)
+	effectiveness.visible = false
+	view.call("_show_impact_banner", PackedStringArray(), false, 1.0)
 	_check(not effectiveness.visible, "neutral attacks do not show a misleading indicator")
 	var battle_source := FileAccess.get_file_as_string("res://scripts/battle_view.gd")
 	var duel_attack_fn := battle_source.substr(battle_source.find("func _play_attack"), 4200)
@@ -4094,8 +4260,8 @@ func _test_battle_view() -> void:
 		and duel_attack_fn.find("await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)")
 		< duel_attack_fn.find("attacker.set_pose(\"idle\")")
 		and duel_attack_fn.find("attacker.set_pose(\"idle\")")
-		< duel_attack_fn.find("if not effect_key.is_empty()"),
-		"Duel Attack returns to Idle on impact before effectiveness copy"
+		< duel_attack_fn.find("if critical:"),
+		"Duel Attack returns to Idle on impact before Critical or effectiveness copy"
 	)
 	_check(
 		battle_source.find("func item_banner_text") >= 0
@@ -4272,7 +4438,7 @@ func _test_battle_view() -> void:
 	await view.play_events([
 		{
 			"type": "attack", "actor": "player", "target": "bot", "action": "strike",
-			"damage": 205, "target_hp": 0, "critical": false, "element": 1.0,
+			"damage": 205, "target_hp": 0, "crit": false, "element_multiplier": 1.0,
 		},
 		{"type": "knockout", "actor": "bot"},
 		{"type": "finished", "result": "won"},
@@ -4429,7 +4595,7 @@ func _test_duel_seeker_avatar_layout(
 	view.set_session(session, loaded, loaded)
 	await process_frame
 	var arena := view.find_child("BattleArena", true, false) as Control
-	var layer := arena.find_child("DuelFighterLayer", false, false) as Node2D
+	var layer := arena.find_child("DuelFighterLayer", true, false) as Node2D
 	var player_anchor := view.find_child("BattlePlayerAnchor", true, false) as Node2D
 	var actions := view.find_child("Actions", true, false) as GridContainer
 	var hud_plate := view.find_child("FighterHudPlate", true, false) as Control
@@ -4880,7 +5046,7 @@ func _test_team_battle_view() -> void:
 	view.set_expedition_mode(false)
 	await process_frame
 	view.set_arena_location("")
-	view.call("_show_effectiveness", 1.5)
+	view.call("_show_impact_banner", PackedStringArray(["BATTLE_EFFECTIVE"]), false, 1.5)
 	_check(
 		effectiveness.visible and effectiveness_label.text == tr("BATTLE_EFFECTIVE"),
 		"Team Battle shows Super effective in the arena"
@@ -4895,12 +5061,13 @@ func _test_team_battle_view() -> void:
 		and float(view.get_script().get_script_constant_map().get("ACTION_CUE_SEC", 0.0)) >= 1.4,
 		"Team Battle and Expedition share the readable event plate"
 	)
-	view.call("_show_effectiveness", 0.67)
+	view.call("_show_impact_banner", PackedStringArray(["BATTLE_NOT_EFFECTIVE"]), false, 0.67)
 	_check(
 		effectiveness.visible and effectiveness_label.text == tr("BATTLE_NOT_EFFECTIVE"),
 		"Team Battle shows Not very effective in the arena"
 	)
-	view.call("_show_effectiveness", 1.0)
+	effectiveness.visible = false
+	view.call("_show_impact_banner", PackedStringArray(), false, 1.0)
 	_check(not effectiveness.visible, "neutral Team attacks do not show a matchup banner")
 	view.show_retreat_banner()
 	_check(
@@ -5000,8 +5167,8 @@ func _test_team_battle_view() -> void:
 		and attack_fn.find("await _event_pause(AnimaPresenter.FX_TRAVEL_SEC)")
 		< attack_fn.find("actor.set_pose(\"idle\")")
 		and attack_fn.find("actor.set_pose(\"idle\")")
-		< attack_fn.find("if not effect_key.is_empty()"),
-		"Team and Expedition return Attack to Idle on impact before effectiveness copy"
+		< attack_fn.find("if critical:"),
+		"Team and Expedition return Attack to Idle on impact before Critical or effectiveness copy"
 	)
 	# Anchor on play_events: the first "guard": in the file is a COMMIT_COLORS
 	# entry, and a window opened there checks nothing about the event handler.
@@ -5023,8 +5190,8 @@ func _test_team_battle_view() -> void:
 		and attack_fn.find("target.hit_react(element_multiplier)") < attack_fn.find("_play_damage")
 		and attack_fn.find("_play_damage") < attack_fn.find("_restore_seeker_idle()")
 		and attack_fn.find("_restore_seeker_idle()")
-		< attack_fn.find("if not effect_key.is_empty()"),
-		"Boss Seeker reacts on impact and returns Idle before effectiveness copy"
+		< attack_fn.find("elif not message_keys.is_empty()"),
+		"Boss Seeker reacts on impact and returns Idle before ordinary effectiveness copy"
 	)
 	view.open_mode()
 	view.call("_open_switch_picker", false)
@@ -5186,8 +5353,8 @@ func _test_team_battle_view() -> void:
 			"action": "strike",
 			"damage": 50,
 			"target_hp": 0,
-			"critical": false,
-			"element": 1.0,
+			"crit": false,
+			"element_multiplier": 1.0,
 		},
 		{"type": "knockout", "actor": "player"},
 	], after_ko)
@@ -5616,7 +5783,8 @@ func _test_team_battle_view() -> void:
 	# dalam stage, dan stage digambar sebelum dock aksi di kolom arena yang sama.
 	var arena_column := stage.get_parent()
 	_check(
-		camera_layer.get_parent() == stage
+		camera_layer.get_parent().get_parent() == stage
+		and camera_layer.get_parent().name == "BattleWorldOffset"
 		and stage.get_index() < arena_column.get_node("TeamDock").get_index(),
 		"the player figure can never cover the action dock, at any aspect"
 	)
