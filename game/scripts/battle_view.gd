@@ -167,7 +167,9 @@ func _ready() -> void:
 	_impact.mount(_arena, _arena_background)
 	_fighter_layer = Node2D.new()
 	_fighter_layer.name = "DuelFighterLayer"
+	_fighter_layer.z_index = 1
 	_impact.add_foreground(_fighter_layer)
+	_impact.move_child(_fighter_layer, 0)
 	_player_anchor.reparent(_fighter_layer)
 	_bot_anchor.reparent(_fighter_layer)
 	# Cermin figur pemain di Team Battle: sheet Seeker digambar menghadap kiri,

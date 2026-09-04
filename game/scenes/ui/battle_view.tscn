@@ -371,146 +371,6 @@ vertical_alignment = 1
 autowrap_mode = 3
 max_lines_visible = 2
 
-[node name="FighterHudPlate" type="PanelContainer" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=1257048240]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 16.0
-offset_top = 136.0
-offset_right = -16.0
-offset_bottom = 264.0
-grow_horizontal = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_67k6a")
-
-[node name="FighterHud" type="HBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate" unique_id=5410699]
-z_index = 2
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="PlayerSide" type="VBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud" unique_id=1708245571]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
-
-[node name="PlayerIdentity" type="HBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/PlayerSide" unique_id=343016512]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="BattlePlayerName" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/PlayerSide/PlayerIdentity" unique_id=696873794]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"SectionLabel"
-text = "ANIMA_FALLBACK_NAME"
-text_overrun_behavior = 3
-
-[node name="BattlePlayerElement" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/PlayerSide/PlayerIdentity" unique_id=111358055]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-theme_override_font_sizes/font_size = 22
-text = "ELEMENT_UNKNOWN"
-
-[node name="PlayerHpStack" type="Control" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/PlayerSide" unique_id=2104403559]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="BattlePlayerHp" type="ProgressBar" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/PlayerSide/PlayerHpStack" unique_id=1394251010]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 28)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-theme_override_styles/background = SubResource("HpBackground")
-theme_override_styles/fill = SubResource("HpFill")
-value = 100.0
-fill_mode = 1
-show_percentage = false
-
-[node name="BattlePlayerHpValue" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/PlayerSide/PlayerHpStack" unique_id=90562155]
-unique_name_in_owner = true
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 22
-text = "FORMAT_RATIO"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Versus" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud" unique_id=1702306895]
-custom_minimum_size = Vector2(42, 0)
-layout_mode = 2
-theme_type_variation = &"EyebrowLabel"
-text = "BATTLE_VS"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="BotSide" type="VBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud" unique_id=1646504834]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
-
-[node name="BotIdentity" type="HBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/BotSide" unique_id=2118013531]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="BattleBotElement" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/BotSide/BotIdentity" unique_id=1356772291]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-theme_override_font_sizes/font_size = 22
-text = "ELEMENT_UNKNOWN"
-
-[node name="BattleBotName" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/BotSide/BotIdentity" unique_id=150219310]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"SectionLabel"
-text = "BATTLE_BOT_NAME"
-horizontal_alignment = 2
-text_overrun_behavior = 3
-
-[node name="BotHpStack" type="Control" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/BotSide" unique_id=311226675]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="BattleBotHp" type="ProgressBar" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/BotSide/BotHpStack" unique_id=1240854182]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 28)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-theme_override_styles/background = SubResource("HpBackground")
-theme_override_styles/fill = SubResource("HpFill")
-value = 100.0
-show_percentage = false
-
-[node name="BattleBotHpValue" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/FighterHudPlate/FighterHud/BotSide/BotHpStack" unique_id=1094603694]
-unique_name_in_owner = true
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 22
-text = "FORMAT_RATIO"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="BattleFooter" type="Control" parent="Column/BattleContent" unique_id=1382603803]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 216)
@@ -532,7 +392,7 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
-grow_vertical = 2
+grow_vertical = 0
 theme_override_constants/separation = 8
 
 [node name="BattleFeedback" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter" unique_id=1749762184]
@@ -547,6 +407,140 @@ vertical_alignment = 1
 autowrap_mode = 2
 text_overrun_behavior = 3
 max_lines_visible = 1
+
+[node name="FighterHudPlate" type="PanelContainer" parent="Column/BattleContent/BattleFooter/ActionFooter" unique_id=1257048240]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_67k6a")
+
+[node name="FighterHud" type="HBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate" unique_id=5410699]
+z_index = 2
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PlayerSide" type="VBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud" unique_id=1708245571]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="PlayerIdentity" type="HBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide" unique_id=343016512]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BattlePlayerName" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerIdentity" unique_id=696873794]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionLabel"
+text = "ANIMA_FALLBACK_NAME"
+text_overrun_behavior = 3
+
+[node name="BattlePlayerElement" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerIdentity" unique_id=111358055]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 22
+text = "ELEMENT_UNKNOWN"
+
+[node name="PlayerHpStack" type="Control" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide" unique_id=2104403559]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="BattlePlayerHp" type="ProgressBar" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerHpStack" unique_id=1394251010]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_styles/background = SubResource("HpBackground")
+theme_override_styles/fill = SubResource("HpFill")
+value = 100.0
+fill_mode = 1
+show_percentage = false
+
+[node name="BattlePlayerHpValue" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerHpStack" unique_id=90562155]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "FORMAT_RATIO"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Versus" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud" unique_id=1702306895]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+text = "BATTLE_VS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BotSide" type="VBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud" unique_id=1646504834]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="BotIdentity" type="HBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide" unique_id=2118013531]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BattleBotElement" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotIdentity" unique_id=1356772291]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 22
+text = "ELEMENT_UNKNOWN"
+
+[node name="BattleBotName" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotIdentity" unique_id=150219310]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SectionLabel"
+text = "BATTLE_BOT_NAME"
+horizontal_alignment = 2
+text_overrun_behavior = 3
+
+[node name="BotHpStack" type="Control" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide" unique_id=311226675]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="BattleBotHp" type="ProgressBar" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotHpStack" unique_id=1240854182]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_styles/background = SubResource("HpBackground")
+theme_override_styles/fill = SubResource("HpFill")
+value = 100.0
+show_percentage = false
+
+[node name="BattleBotHpValue" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotHpStack" unique_id=1094603694]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "FORMAT_RATIO"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="Actions" type="GridContainer" parent="Column/BattleContent/BattleFooter/ActionFooter" unique_id=1887825034]
 unique_name_in_owner = true
