@@ -7,12 +7,15 @@ uniform float saturation : hint_range(0.0, 1.0, 0.01) = 0.88;
 uniform float brightness : hint_range(0.5, 1.0, 0.01) = 0.92;
 uniform sampler2D day_texture : source_color, filter_linear_mipmap;
 uniform float daylight_blend : hint_range(0.0, 1.0) = 0.0;
+// Team Battle tween ini; Duel dan background chapter membiarkannya di 1.0.
+uniform float camera_zoom : hint_range(1.0, 1.08, 0.001) = 1.0;
 
 void fragment() {
 	float near_mix = smoothstep(0.55, 0.98, UV.y);
 	float blur_lod = mix(far_blur_lod, near_blur_lod, near_mix);
-	vec4 night_color = textureLod(TEXTURE, UV, blur_lod);
-	vec4 day_color = textureLod(day_texture, UV, blur_lod);
+	vec2 camera_uv = (UV - vec2(0.5)) / camera_zoom + vec2(0.5);
+	vec4 night_color = textureLod(TEXTURE, camera_uv, blur_lod);
+	vec4 day_color = textureLod(day_texture, camera_uv, blur_lod);
 	vec4 color = mix(night_color, day_color, daylight_blend);
 	float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
 	color.rgb = mix(vec3(luminance), color.rgb, saturation) * brightness;

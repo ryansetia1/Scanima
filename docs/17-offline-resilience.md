@@ -18,6 +18,7 @@ error transport mentah yang ditampilkan kepada pemain.
 | Internet mati sesudah foto terunggah tetapi jawaban Scan hilang | Pending Scan dan idempotency key tetap tersimpan; Core tidak dibuat menjadi percobaan kedua. | Tab Scan kembali ke state aman dengan tombol **Retry**. | Sambungkan internet lalu tekan **Retry**. Request memakai foto dan key yang sama. Generation yang sudah punya Anima tetap dapat dilanjutkan sesudah restart. |
 | Internet mati ketika foto belum selesai terunggah | Foto belum mencapai tahap debit Core. | Preview ditutup dan muncul error upload yang meminta cek koneksi. | Pilih foto lagi sesudah online. |
 | App ditutup ketika mutation sedang terbang | `pending_scan`, `pending_care`, `pending_purchase`, dan bookmark Battle/Team/Expedition ditulis ke `state.json` lewat file sementara + rename. | Tidak ada mutation kedua dengan key baru. | Care/Shop/Scan dipulihkan saat boot. Battle tetap menunggu pilihan **Continue** agar app tidak mengambil alih layar pemain. |
+| App ditutup sesudah Anima Team KO, sebelum pengganti dipilih | Resume membaca state `forced_switch` authoritative dan membuka replacement picker. | Pending Attack/Guard/Item pemicu KO dikonfirmasi, bukan direplay hingga mengunci input. Pending Switch yang response-nya hilang tetap direplay memakai key semula. | Pilih anggota yang masih hidup; forced Switch gratis dan battle berlanjut. |
 
 ## Pagar data
 
@@ -71,3 +72,6 @@ Automasi tidak menggantikan uji radio Android:
    kembali, intent dapat di-retry, dan restart tidak mendebit dua kali.
 4. Putuskan jaringan setelah upload Scan dimulai. Pastikan **Retry** memakai
    percobaan tersimpan, bukan meminta Core kedua.
+5. Tutup app ketika Team Battle meminta pengganti sesudah KO. Buka lagi lewat
+   **Continue Team Battle**, pilih anggota hidup, dan pastikan Switch berjalan
+   tanpa replay serangan lama atau input lock.

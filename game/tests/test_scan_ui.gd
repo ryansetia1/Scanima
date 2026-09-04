@@ -30,6 +30,10 @@ func _initialize() -> void:
 	# Jalur yang sama dengan `scan_flow._enter_tree()`; shell di sini hidup di luar
 	# pohon, jadi tanpa ini relay gulir sentuh tidak pernah terpasang saat diuji.
 	UiJuice.install_touch_scroll(self)
+	if "--shop-only" in OS.get_cmdline_user_args():
+		_test_shop_purchase_contract()
+		_finish()
+		return
 	var packed := load("res://scenes/scan_flow.tscn") as PackedScene
 	_check(packed != null, "scan_flow.tscn must load")
 	if packed == null:
@@ -1904,13 +1908,21 @@ func _test_care_feedback_is_immediate() -> void:
 		apply_at >= 0 and send_body.find("await _refresh_catalog") < 0,
 		"care meters update without waiting on a catalog refetch"
 	)
-	var buy_start := source.find("func _send_pending_purchase")
-	var buy_end := source.find("func _refresh_catalog", buy_start)
-	var buy_body := (
-		source.substr(buy_start, buy_end - buy_start)
-		if buy_start >= 0 and buy_end > buy_start
-		else ""
+	_test_shop_purchase_contract()
+	_test_optimistic_care()
+	_test_summon_overlaps_portal()
+	_test_sleeping_consume_guard()
+
+
+func _test_shop_purchase_contract() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var shell := load("res://scripts/scan_flow.gd") as GDScript
+	var initial_inventory: Array = [{"item_id": "pulse_cell", "quantity": 1}]
+	var predicted: Dictionary = shell.optimistic_purchase(
+		20, initial_inventory, "pulse_cell", 8
 	)
+	var predicted_inventory: Array = predicted.get("inventory", [])
+	var buy_body := _func_body(source, "func _send_pending_purchase(")
 	_check(
 		buy_body.find("Catalog.with_quantity") >= 0
 		and buy_body.find("await _refresh_catalog") < 0,
@@ -1920,40 +1932,51 @@ func _test_care_feedback_is_immediate() -> void:
 		buy_body.find("set_busy(true)") < 0,
 		"the Shop stays interactive while a purchase is in flight"
 	)
-	var tap_start := source.find("func _buy_catalog_item")
-	var tap_end := source.find("func _resume_pending_purchase", tap_start)
-	var tap_body := (
-		source.substr(tap_start, tap_end - tap_start)
-		if tap_start >= 0 and tap_end > tap_start
-		else ""
-	)
-	var optimistic_at := tap_body.find("_apply_optimistic_purchase(item_id, price)")
+
+	var tap_body := _func_body(source, "func _buy_catalog_item(")
+	var begin_at := tap_body.find("GameState.begin_purchase(item_id, price)")
+	var new_purchase_body := tap_body.substr(begin_at) if begin_at >= 0 else ""
+	var optimistic_at := new_purchase_body.find("_apply_optimistic_purchase(item_id, price)")
+	var fly_at := new_purchase_body.find("_fly_purchased_item(icon_snapshot)")
+	var request_at := new_purchase_body.find("await _send_pending_purchase(pending)")
 	_check(
-		optimistic_at >= 0 and tap_body.find("await _send_pending_purchase") > optimistic_at,
+		int(predicted.get("bits", -1)) == 12
+		and Catalog.quantity_of(predicted_inventory, "pulse_cell") == 2
+		and Catalog.quantity_of(initial_inventory, "pulse_cell") == 1
+		and optimistic_at >= 0
+		and request_at > optimistic_at,
 		"Bits and bag quantity move before the purchase response"
 	)
+	var fly_body := _func_body(source, "func _fly_purchased_item(")
 	_check(
-		tap_body.find("_say_success(tr(\"FEEDBACK_PURCHASE\"), true)") < 0,
+		fly_at > optimistic_at
+		and request_at > fly_at
+		and new_purchase_body.find("_say_success(tr(\"FEEDBACK_PURCHASE\"), true)") < 0
+		and fly_body.find("UiJuice.fly_to(") >= 0,
 		"the optimistic purchase path shows the fly-to-Bag animation instead of a toast"
 	)
 	_check(
-		tap_body.find("GameState.profile[\"bits\"] = bits_before") >= 0,
-		"a rejected purchase puts the Bits it predicted back"
+		new_purchase_body.find("GameState.profile[\"bits\"] = bits_before", request_at) > request_at
+		and new_purchase_body.find("_inventory = inventory_before", request_at) > request_at,
+		"a rejected purchase puts its predicted Bits and bag quantity back"
 	)
-	var resume_purchase_start := source.find("func _resume_pending_purchase")
-	var resume_purchase_end := source.find("func _send_pending_purchase", resume_purchase_start)
-	var resume_purchase_body := (
-		source.substr(resume_purchase_start, resume_purchase_end - resume_purchase_start)
-		if resume_purchase_start >= 0 and resume_purchase_end > resume_purchase_start
-		else ""
+
+	var existing_at := tap_body.find("GameState.pending_purchase.duplicate(true)")
+	var retry_send_at := tap_body.find("await _send_pending_purchase(existing)", existing_at)
+	_check(
+		existing_at >= 0
+		and retry_send_at > existing_at
+		and retry_send_at < begin_at
+		and tap_body.substr(existing_at, begin_at - existing_at).find(
+			"_apply_optimistic_purchase(item_id, price)"
+		) < 0,
+		"retry reuses the pending idempotency key without a second optimistic debit"
 	)
+	var resume_purchase_body := _func_body(source, "func _resume_pending_purchase(")
 	_check(
 		resume_purchase_body.find("_say_success(tr(\"FEEDBACK_PURCHASE\"), true)") >= 0,
 		"a purchase resumed after a restart still toasts -- there's no sheet or icon left to animate"
 	)
-	_test_optimistic_care()
-	_test_summon_overlaps_portal()
-	_test_sleeping_consume_guard()
 
 
 ## Feed dan Use Item tidak boleh diam-diam mengonsumsi item saat Anima tidur --
@@ -4566,6 +4589,16 @@ func _test_team_battle_view() -> void:
 		),
 		"Team Battle shares the lowered static framing without changing fighter placement"
 	)
+	var arena_background_material := arena_background.material as ShaderMaterial
+	var arena_camera_zoom := float(
+		arena_background_material.get_shader_parameter("camera_zoom")
+	)
+	_check(
+		arena_background_material.shader.code.contains("uniform float camera_zoom")
+		and arena_camera_zoom >= 1.0
+		and arena_camera_zoom <= 1.08,
+		"Team static camera response changes shader UV pixels within the safe crop cap"
+	)
 	var header := view.get_node("Column/Header") as Control
 	var turn := view.find_child("TeamTurn", true, false) as Label
 	var forfeit := view.find_child("TeamForfeitButton", true, false) as Button
@@ -4685,8 +4718,20 @@ func _test_team_battle_view() -> void:
 		and is_equal_approx(
 			float(view.get_script().get_script_constant_map().get("TEAM_BACKGROUND_MAX_SCALE", 0.0)),
 			1.0
+		)
+		and is_equal_approx(
+			float(view.get_script().get_script_constant_map().get(
+				"TEAM_STATIC_BACKGROUND_CAMERA_MAX", 0.0
+			)),
+			1.08
+		)
+		and is_equal_approx(
+			float(view.get_script().get_script_constant_map().get(
+				"TEAM_STATIC_BACKGROUND_CAMERA_FLOOR", 0.0
+			)),
+			0.60
 		),
-		"Team arena preserves expanded sky and plants opaque feet on the shared ground line"
+		"Team arena keeps camera parallax bounded and plants opaque feet on the shared ground line"
 	)
 	_check(
 		player_slots.get_index() < player_name.get_index(),
@@ -4973,6 +5018,27 @@ func _test_team_battle_view() -> void:
 		switch_panel.visible and actions.visible,
 		"resumed knockout still requires a free replacement before another action"
 	)
+	var resumed_switch: Array = []
+	var record_resumed_switch := func(action: String, slot: int) -> void:
+		resumed_switch.append([action, slot])
+	view.action_requested.connect(record_resumed_switch)
+	var resumed_replacement := view.find_child("TeamSwitchSlot1", true, false) as Button
+	var replacement_at := resumed_replacement.get_global_rect().get_center()
+	for pressed: bool in [true, false]:
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = pressed
+		click.position = replacement_at
+		click.global_position = replacement_at
+		view.get_viewport().push_input(click, true)
+		await process_frame
+	_check(
+		resumed_switch == [["switch", 1]],
+		"a real click on a resumed forced-switch card emits the replacement intent"
+	)
+	view.action_requested.disconnect(record_resumed_switch)
+	view.set_busy(false)
+	view.set_session(session, art_cache)
 	var last_stand := session.duplicate(true)
 	last_stand["state"]["player"]["forced_switch"] = true
 	last_stand["state"]["player"]["roster"][0]["hp"] = 0
@@ -5098,6 +5164,23 @@ func _test_team_battle_view() -> void:
 		"Expedition win lists Tokens, member EXP, and Level Up"
 	)
 	var flow_script := load("res://scripts/scan_flow.gd") as GDScript
+	var forced_resume := {
+		"status": "active",
+		"turn_number": 9,
+		"version": 4,
+		"state": {"player": {"forced_switch": true}},
+	}
+	var interrupted_attack := {
+		"action": "strike", "expected_turn": 9, "expected_version": 4,
+	}
+	var interrupted_switch := {
+		"action": "switch", "expected_turn": 9, "expected_version": 4,
+	}
+	_check(
+		not flow_script.team_pending_should_replay(interrupted_attack, forced_resume)
+		and flow_script.team_pending_should_replay(interrupted_switch, forced_resume),
+		"forced-switch resume confirms the pre-KO action but still replays a lost Switch response"
+	)
 	var item_payload: Dictionary = flow_script.team_battle_turn_payload({
 		"session_id": "team-session",
 		"expected_turn": 2,

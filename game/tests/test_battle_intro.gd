@@ -17,15 +17,29 @@ func _run() -> void:
 	var texture := ImageTexture.create_from_image(placeholder["image"])
 	var anima_loader := load("res://scripts/anima_loader.gd") as GDScript
 	var loaded: Dictionary = anima_loader.build(texture, placeholder["manifest"])
+	var measured_manifest: Dictionary = placeholder["manifest"].duplicate(true)
+	measured_manifest["render_metrics"] = {
+		"reference_height_px": 200.0,
+		"reference_width_px": 120.0,
+	}
+	var measured_loaded: Dictionary = anima_loader.build(texture, measured_manifest)
+	var wide_image: Image = placeholder["image"].duplicate()
+	wide_image.fill_rect(Rect2i(8, 50, 240, 200), Color("6fa8dc"))
+	var wide_manifest: Dictionary = measured_manifest.duplicate(true)
+	wide_manifest["render_metrics"]["reference_width_px"] = 240.0
+	var wide_loaded: Dictionary = anima_loader.build(
+		ImageTexture.create_from_image(wide_image), wide_manifest
+	)
 	var seeker_roster := load("res://scripts/seeker_roster.gd") as GDScript
 	var seeker_loaded: Dictionary = seeker_roster.sheet(null)
 	_test_fresh_intro_wiring()
 	await _test_duel_intro(host, loaded, seeker_loaded)
 	await _test_team_intro(host, loaded, seeker_loaded)
+	await _test_team_switch_reframe(host, measured_loaded, wide_loaded, seeker_loaded)
 	await _test_expedition_intro(host, loaded, seeker_loaded)
 	host.queue_free()
 	if _failures == 0:
-		print("test_battle_intro: OK (3 modes)")
+		print("test_battle_intro: OK (3 modes + switch framing)")
 		quit()
 		return
 	print("test_battle_intro: FAILED %d check(s)" % _failures)
@@ -240,6 +254,139 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		and not (player.get_parent().find_child("SummonPortal", false, false) as IncubatorEffect).is_active()
 		and not (opponent.get_parent().find_child("SummonPortal", false, false) as IncubatorEffect).is_active(),
 		"ordinary Team Battle session refresh does not replay the opening intro"
+	)
+	view.queue_free()
+	await process_frame
+
+
+## Repro pemain: Switch dari Anima kecil ke Anima raksasa ketika rival aktif
+## sudah raksasa. Perubahan bingkai memang diperlukan untuk lebar dua tubuh,
+## tetapi tubuh incoming harus muncul selama kamera bergerak dan background
+## statis harus ikut parallax; kalau tidak, semua figur menyusut di dunia beku.
+func _test_team_switch_reframe(
+	host: SubViewport,
+	loaded: Dictionary,
+	wide_loaded: Dictionary,
+	seeker_loaded: Dictionary
+) -> void:
+	var packed := load("res://scenes/ui/team_battle_view.tscn") as PackedScene
+	var view := packed.instantiate()
+	host.add_child(view)
+	view.visible = true
+	view.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	view.position = Vector2.ZERO
+	view.size = Vector2(host.size)
+	await process_frame
+	view.set_player_avatar(seeker_loaded)
+	var small_id := "00000000-0000-4000-8000-000000000021"
+	var giant_id := "00000000-0000-4000-8000-000000000022"
+	var rival_id := "10000000-0000-4000-8000-000000000021"
+	var small := {
+		"anima_id": small_id, "name": "Small", "level": 2,
+		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
+		"body_height_cm": 50,
+	}
+	var giant: Dictionary = small.duplicate(true)
+	giant["anima_id"] = giant_id
+	giant["name"] = "Giant"
+	giant["body_height_cm"] = 2000
+	var rival: Dictionary = giant.duplicate(true)
+	rival["anima_id"] = rival_id
+	rival["name"] = "Rival Giant"
+	var session := {
+		"id": "switch-framing-team",
+		"kind": "team_battle",
+		"status": "active",
+		"turn_number": 1,
+		"version": 1,
+		"player_snapshot": [{"anima_id": small_id}, {"anima_id": giant_id}],
+		"opponent_snapshot": [{"anima_id": rival_id}],
+		"state": {
+			"status": "active",
+			"turn": 1,
+			"player": {
+				"active_slot": 0,
+				"forced_switch": false,
+				"roster": [small, giant],
+			},
+			"opponent": {
+				"active_slot": 0,
+				"forced_switch": false,
+				"roster": [rival],
+			},
+		},
+	}
+	var art_cache := {
+		small_id: loaded,
+		giant_id: wide_loaded,
+		rival_id: loaded,
+	}
+	view.set_session(session, art_cache)
+	await process_frame
+	var layer := view.find_child("FighterLayer", true, false) as Node2D
+	var player := view.find_child("TeamPlayerSprite", true, false) as AnimatedSprite2D
+	var background := view.find_child("TeamArenaBackground", true, false) as TextureRect
+	var background_material := background.material as ShaderMaterial
+	_check(
+		background_material.shader.code.contains("uniform float camera_zoom"),
+		"Team background camera zoom is rendered through shader UVs, not only Control size"
+	)
+	var camera_zoom_before := layer.scale.x
+	var background_zoom_before := float(
+		background_material.get_shader_parameter("camera_zoom")
+	)
+	var switched: Dictionary = session.duplicate(true)
+	switched["state"]["player"]["active_slot"] = 1
+	var saw_player_hidden := false
+	var reveal_during_refit := false
+	view.play_events(
+		[{"type": "switch", "actor": "player", "from_slot": 0, "to_slot": 1}],
+		switched,
+		art_cache
+	)
+	var deadline := Time.get_ticks_msec() + 8000
+	while bool(view.get("_busy")) and Time.get_ticks_msec() < deadline:
+		var refit := view.get("_layout_tween") as Tween
+		if not player.visible:
+			saw_player_hidden = true
+		if saw_player_hidden and player.visible and refit != null and refit.is_running():
+			reveal_during_refit = true
+		await process_frame
+	var camera_zoom_after := layer.scale.x
+	var background_zoom_after := float(
+		background_material.get_shader_parameter("camera_zoom")
+	)
+	var camera_ratio := camera_zoom_after / camera_zoom_before
+	var background_ratio := background_zoom_after / background_zoom_before
+	_check(not bool(view.get("_busy")), "the giant Switch completes inside the regression deadline")
+	_check(
+		camera_ratio < 0.99,
+		"the wide incoming Anima forces the fixture camera to zoom out"
+	)
+	_check(
+		background_ratio <= 0.95 and background_ratio > camera_ratio,
+		"the static arena shows clear zoom-out with gentler background parallax"
+	)
+	_check(
+		reveal_during_refit,
+		"the giant incoming Anima reveals while camera and arena framing continue moving"
+	)
+	view.play_events(
+		[{"type": "switch", "actor": "player", "from_slot": 1, "to_slot": 0}],
+		session,
+		art_cache
+	)
+	var return_deadline := Time.get_ticks_msec() + 8000
+	while bool(view.get("_busy")) and Time.get_ticks_msec() < return_deadline:
+		await process_frame
+	_check(
+		not bool(view.get("_busy"))
+		and is_equal_approx(layer.scale.x, camera_zoom_before)
+		and is_equal_approx(
+			float(background_material.get_shader_parameter("camera_zoom")),
+			background_zoom_before
+		),
+		"the reverse giant-to-small Switch restores fighter and background camera zoom together"
 	)
 	view.queue_free()
 	await process_frame

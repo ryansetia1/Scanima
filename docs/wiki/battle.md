@@ -33,6 +33,9 @@ untuk melanjutkan mode yang tersimpan. Mode Battle lain diredupkan sampai mode
 itu selesai atau kamu Retreat. Turn yang sempat terkirim dipulihkan dengan aman
 dan biaya Energy tidak dipotong lagi. Duel yang dibiarkan lebih dari 30 menit
 tetap dapat kedaluwarsa.
+Kalau app ditutup sesudah Anima aktif KO, **Continue Team Battle** kembali ke
+pilihan pengganti yang wajib diselesaikan. Pilih Anima yang masih hidup untuk
+melanjutkan; aksi sebelum KO tidak diputar ulang dan pilihan ini tidak memakai turn.
 
 ## Team Battle
 
@@ -121,6 +124,9 @@ pernah menutupi tombol aksi. Kamera menyisakan satu kolom untuk figur di sisi
 yang punya figur, jadi badannya dan badan Anima punya jarak alih-alih tumpang
 tindih; Anima yang minggir sedikit, bukan posisi shot-nya yang berubah. Saat
 kamera menjauh untuk memuat petarung besar, ia ikut merapat ke tepi layar sisimu.
+Di **Team Battle**, latar ikut bergerak lebih lembut saat **Switch** ke Anima
+yang jauh lebih lebar mengubah jarak kamera, jadi perubahan ukuran para petarung
+terbaca sebagai gerak kamera dan bukan figur yang berubah sendiri.
 
 Setiap fight baru di **Duel**, **Team Battle**, dan node Battle/Elite
 **Expedition** dibuka berurutan: Seeker-mu berdiri sendiri, Anima lawan keluar

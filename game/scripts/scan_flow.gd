@@ -4219,12 +4219,7 @@ func _resume_team_battle() -> void:
 	if not await _show_team_battle_session(session):
 		_set_busy(false)
 		return
-	var should_replay := (
-		not str(pending.get("action", "")).is_empty()
-		and str(session.get("status", "")) == "active"
-		and int(session.get("turn_number", 0)) == int(pending.get("expected_turn", -1))
-		and int(session.get("version", 0)) == int(pending.get("expected_version", -1))
-	)
+	var should_replay := team_pending_should_replay(pending, session)
 	if should_replay:
 		_set_busy(false)
 		await _submit_pending_team_battle(pending)
@@ -4378,6 +4373,24 @@ func _submit_pending_team_battle(pending: Dictionary) -> void:
 	if action == "item":
 		_refresh_inventory()
 	await _apply_team_battle_reward(GameState.as_dict(data.get("reward")))
+
+
+## Resume boleh mengulang intent yang response-nya hilang, tetapi forced-switch
+## authoritative membuktikan aksi non-Switch sebelumnya sudah selesai dan
+## menghasilkan KO. Mengulang aksi itu mengunci replacement picker di `_busy`.
+## Pending Switch tetap direplay dengan idempotency key yang sama.
+static func team_pending_should_replay(pending: Dictionary, session: Dictionary) -> bool:
+	var action := str(pending.get("action", ""))
+	if (
+		action.is_empty()
+		or str(session.get("status", "")) != "active"
+		or int(session.get("turn_number", 0)) != int(pending.get("expected_turn", -1))
+		or int(session.get("version", 0)) != int(pending.get("expected_version", -1))
+	):
+		return false
+	var state := GameState.as_dict(session.get("state"))
+	var player := GameState.as_dict(state.get("player"))
+	return not bool(player.get("forced_switch", false)) or action == "switch"
 
 
 static func team_battle_turn_payload(pending: Dictionary) -> Dictionary:
@@ -6184,6 +6197,20 @@ func _buy_catalog_item(item: Dictionary) -> void:
 		_shop_sheet.set_pending("")
 
 
+## Transformasi state yang dipakai jalur tap sebelum request dikirim. Fungsi
+## murni ini menjaga prediksi Bits dan tas diuji dari seam yang sama dengan
+## production tanpa membuat request sungguhan.
+static func optimistic_purchase(
+	bits: int, inventory: Array, item_id: String, price: int
+) -> Dictionary:
+	return {
+		"bits": maxi(0, bits - maxi(0, price)),
+		"inventory": Catalog.with_quantity(
+			inventory, item_id, Catalog.quantity_of(inventory, item_id) + 1
+		),
+	}
+
+
 ## Saldo dan jumlah tas bergerak di frame yang sama dengan tap. Server tetap
 ## otoritas: `purchase_catalog_item` menimpa keduanya beberapa ratus milidetik
 ## kemudian, dan `_buy_catalog_item` mengembalikannya kalau pembelian ditolak.
@@ -6191,11 +6218,12 @@ func _buy_catalog_item(item: Dictionary) -> void:
 ## memberi feedback yang sama, dan toast digambar tepat di atas Bag yang
 ## sedang jadi target animasi itu.
 func _apply_optimistic_purchase(item_id: String, price: int) -> void:
-	var bits := maxi(0, int(GameState.profile.get("bits", 0)) - maxi(0, price))
-	GameState.profile["bits"] = bits
-	_inventory = Catalog.with_quantity(
-		_inventory, item_id, Catalog.quantity_of(_inventory, item_id) + 1
+	var state := optimistic_purchase(
+		int(GameState.profile.get("bits", 0)), _inventory, item_id, price
 	)
+	var bits := int(state.get("bits", 0))
+	GameState.profile["bits"] = bits
+	_inventory = state.get("inventory", [])
 	_refresh_header()
 	_shop_sheet.set_catalog(_catalog, _inventory, bits)
 

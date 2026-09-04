@@ -197,7 +197,7 @@ func _test_save_disconnect() -> void:
 	)
 
 	var buy_start := flow_source.find("func _buy_catalog_item(")
-	var buy_end := flow_source.find("\n\nfunc _apply_optimistic_purchase(", buy_start)
+	var buy_end := flow_source.find("static func optimistic_purchase(", buy_start)
 	var buy_body := (
 		flow_source.substr(buy_start, buy_end - buy_start)
 		if buy_start >= 0 and buy_end > buy_start

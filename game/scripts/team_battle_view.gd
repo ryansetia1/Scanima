@@ -36,6 +36,7 @@ const PLAYER_SEEKER_SHOT_X := 1.0 - SEEKER_SHOT_X
 const PLAYER_SEEKER_HEIGHT_CM := 165.0
 const CAMERA_MIN_ZOOM := 0.30
 const CAMERA_MAX_ZOOM := 1.30
+const CAMERA_LARGE_ANIMA_ZOOM := 0.72
 const CAMERA_TOP_PAD_RATIO := 0.05
 const CAMERA_SIDE_PAD_RATIO := 0.05
 const CAMERA_FIGHTER_GAP_RATIO := 0.025
@@ -44,9 +45,11 @@ const CAMERA_BACKGROUND_MAX_SCALE := 1.55
 # uses a higher foot line and a gentler background crop.
 const TEAM_GROUND_Y_RATIO := BattleScale.GROUND_Y_RATIO
 const TEAM_BACKGROUND_MAX_SCALE := 1.0
+const TEAM_STATIC_BACKGROUND_CAMERA_MAX := 1.08
+const TEAM_STATIC_BACKGROUND_CAMERA_FLOOR := 0.60
 const MIN_TEAM_SIZE := 2
 const MAX_TEAM_SIZE := 4
-const CAMERA_REFIT_SEC := 0.32
+const CAMERA_REFIT_SEC := 0.48
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 const BACKGROUND_DOF_SHADER: Shader = preload("res://shaders/battle_background_dof.gdshader")
@@ -209,6 +212,7 @@ func _ready() -> void:
 	_battle_stage.resized.connect(_position_fighters)
 	var background_material := ShaderMaterial.new()
 	background_material.shader = BACKGROUND_DOF_SHADER
+	background_material.set_shader_parameter("camera_zoom", 1.0)
 	_arena_background.material = background_material
 	_player_sprite.set_facing(1.0)
 	_opponent_sprite.set_facing(-1.0)
@@ -1189,15 +1193,18 @@ func _play_switch(event: Dictionary) -> void:
 	_align_portal(side)
 	if is_instance_valid(portal):
 		await portal.start_portal()
-	if is_instance_valid(refit) and refit.is_running():
-		await refit.finished
 	if is_instance_valid(portal):
 		portal.burst()
+	# Kamera mulai bersama charge portal, tetapi incoming harus terlihat sebelum
+	# sebagian besar reframe selesai. Kalau reveal menunggu kamera, Seeker dan
+	# background menyusut sendirian ketika dua Anima besar memaksa shot melebar.
 	if sprite.sprite_frames != null:
 		await sprite.summon_reveal()
 		_sync_shadow(side)
 	else:
 		sprite.visible = true
+	if is_instance_valid(refit) and refit.is_running():
+		await refit.finished
 	await _hide_effectiveness()
 
 
@@ -1233,6 +1240,7 @@ func _fighter_layout() -> Dictionary:
 		"player_seeker_shadow_scale": _player_seeker_shadow.scale,
 		"background_position": _arena_background.position,
 		"background_size": _arena_background.size,
+		"background_camera_zoom": _background_camera_zoom(),
 	}
 
 
@@ -1257,6 +1265,9 @@ func _apply_fighter_layout(layout: Dictionary) -> void:
 	)
 	_arena_background.position = layout.get("background_position", _arena_background.position)
 	_arena_background.size = layout.get("background_size", _arena_background.size)
+	_set_background_camera_zoom(float(layout.get(
+		"background_camera_zoom", _background_camera_zoom()
+	)))
 
 
 func _tween_fighter_layout(target: Dictionary) -> Tween:
@@ -1310,6 +1321,12 @@ func _tween_fighter_layout(target: Dictionary) -> Tween:
 	)
 	_layout_tween.tween_property(
 		_arena_background, "size", target["background_size"], CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_method(
+		_set_background_camera_zoom,
+		_background_camera_zoom(),
+		float(target["background_camera_zoom"]),
+		CAMERA_REFIT_SEC
 	)
 	return _layout_tween
 
@@ -2111,7 +2128,7 @@ func _apply_dynamic_camera() -> void:
 		0.0,
 		1.0
 	)
-	var preferred_zoom := lerpf(CAMERA_MAX_ZOOM, 0.72, size_mix)
+	var preferred_zoom := lerpf(CAMERA_MAX_ZOOM, CAMERA_LARGE_ANIMA_ZOOM, size_mix)
 	var zoom := clampf(minf(fit_zoom, preferred_zoom), CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
 	_fighter_layer.scale = Vector2(zoom, zoom)
 	_fighter_layer.position = Vector2(
@@ -2120,8 +2137,28 @@ func _apply_dynamic_camera() -> void:
 	)
 	_pin_seeker_to_camera_right(zoom)
 	_pin_player_seeker_to_camera_left(zoom)
-	var background_zoom := lerpf(_background_max_scale(), 1.0, size_mix)
-	_layout_arena_background(background_zoom)
+	_layout_arena_background(_background_zoom_for_camera(zoom, size_mix))
+
+
+## Background statis tidak boleh diam ketika camera-fit horizontal mengecilkan
+## seluruh FighterLayer: itu membuat Seeker dan lawan tampak berubah ukuran di
+## dunia yang beku. Responsnya sengaja lebih lembut dari foreground (parallax)
+## dan berhenti di 1,08×, jauh di bawah crop 1,18× yang pernah ditolak.
+## Fit 0,60 atau lebih lebar kembali ke cover penuh; memakai CAMERA_MIN_ZOOM
+## di sini pernah terukur hanya menghasilkan gerak 2,3% yang tak terlihat.
+func _background_zoom_for_camera(camera_zoom: float, size_mix: float) -> float:
+	if not _uses_static_background:
+		return lerpf(_background_max_scale(), 1.0, size_mix)
+	var camera_response := clampf(
+		inverse_lerp(
+			TEAM_STATIC_BACKGROUND_CAMERA_FLOOR,
+			CAMERA_LARGE_ANIMA_ZOOM,
+			camera_zoom
+		),
+		0.0,
+		1.0
+	)
+	return lerpf(1.0, TEAM_STATIC_BACKGROUND_CAMERA_MAX, camera_response)
 
 
 func _uses_expedition_framing() -> bool:
@@ -2153,7 +2190,8 @@ func _layout_arena_background(background_zoom: float) -> void:
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0 or stage_size.x <= 0.0 or stage_size.y <= 0.0:
 		return
 	var cover_scale := maxf(stage_size.x / texture_size.x, stage_size.y / texture_size.y)
-	var draw_size := texture_size * cover_scale * maxf(1.0, background_zoom)
+	var geometry_zoom := 1.0 if _uses_static_background else maxf(1.0, background_zoom)
+	var draw_size := texture_size * cover_scale * geometry_zoom
 	var overflow := Vector2(
 		maxf(0.0, draw_size.x - stage_size.x),
 		maxf(0.0, draw_size.y - stage_size.y)
@@ -2170,6 +2208,21 @@ func _layout_arena_background(background_zoom: float) -> void:
 		-overflow.x * pan,
 		-overflow.y * vertical_pan
 	)
+	_set_background_camera_zoom(background_zoom if _uses_static_background else 1.0)
+
+
+func _background_camera_zoom() -> float:
+	var background_material := _arena_background.material as ShaderMaterial
+	if background_material == null:
+		return 1.0
+	var value: Variant = background_material.get_shader_parameter("camera_zoom")
+	return float(value) if value != null else 1.0
+
+
+func _set_background_camera_zoom(value: float) -> void:
+	var background_material := _arena_background.material as ShaderMaterial
+	if background_material != null:
+		background_material.set_shader_parameter("camera_zoom", value)
 
 
 func _pin_seeker_to_camera_right(camera_zoom: float) -> void:
