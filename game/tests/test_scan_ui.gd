@@ -1068,6 +1068,7 @@ func _initialize() -> void:
 	await _test_card_grids_fill_width()
 	await _test_autowrap_labels_have_wrap_width()
 	await _test_shared_components()
+	await _test_thumbnail_texture_contract()
 	await _test_fly_to_animation()
 	await _test_consumable_flight_to_anima()
 	await _test_scan_phase_visuals()
@@ -1331,6 +1332,108 @@ func _test_autowrap_labels_have_wrap_width() -> void:
 			% [offenders]
 	)
 	await process_frame
+
+
+func _test_thumbnail_texture_contract() -> void:
+	var skeleton_script := load("res://scripts/ui_skeleton.gd") as GDScript
+	var skeleton_source := FileAccess.get_file_as_string("res://scripts/ui_skeleton.gd")
+	var has_thumbnail_api := (
+		skeleton_source.contains("static func thumbnail_loading_texture(")
+		and skeleton_source.contains("static func thumbnail_begin_resolve(")
+		and skeleton_source.contains("static func thumbnail_settle(")
+		and skeleton_source.contains("static func thumbnail_fail(")
+	)
+	_check(has_thumbnail_api, "UiSkeleton owns the canonical AnimatedTexture thumbnail contract")
+	if not has_thumbnail_api:
+		return
+	var loading_a := skeleton_script.call("thumbnail_loading_texture", 128) as AnimatedTexture
+	var loading_b := skeleton_script.call("thumbnail_loading_texture", 128) as AnimatedTexture
+	_check(
+		loading_a != null and loading_b != null
+		and loading_a != loading_b
+		and loading_a.frames > 1
+		and not loading_a.one_shot
+		and not loading_a.pause
+		and loading_a.get_frame_texture(0) == loading_b.get_frame_texture(0),
+		"each thumbnail key gets its own pulse resource while sharing canonical frames"
+	)
+	var pulse_duration := 0.0
+	for frame_index in loading_a.frames:
+		pulse_duration += loading_a.get_frame_duration(frame_index)
+	_check(
+		is_equal_approx(pulse_duration, UiSkeleton.PULSE_SIDE_SEC * 2.0),
+		"thumbnail pulse uses the canonical UiSkeleton timing"
+	)
+	var center := loading_a.get_frame_texture(0).get_image().get_pixel(64, 64)
+	var corner := loading_a.get_frame_texture(0).get_image().get_pixel(0, 0)
+	_check(
+		center.b > center.r and center.a > 0.3 and corner.a < 0.01,
+		"thumbnail pulse is a rounded cyan skeleton rather than a gray tile"
+	)
+	var final_image := Image.create(128, 128, false, Image.FORMAT_RGBA8)
+	final_image.fill(Color(0.9, 0.2, 0.1, 1.0))
+	var final_texture := ImageTexture.create_from_image(final_image)
+	skeleton_script.call("thumbnail_begin_resolve", loading_a, final_texture)
+	var resolve_duration := 0.0
+	for frame_index in loading_a.frames:
+		resolve_duration += loading_a.get_frame_duration(frame_index)
+	_check(
+		loading_a.frames == 6
+		and loading_a.one_shot
+		and not loading_a.pause
+		and is_equal_approx(resolve_duration, UiSkeleton.RESOLVE_SEC)
+		and loading_a.get_frame_texture(5) == final_texture,
+		"thumbnail resolve uses six alpha frames across the canonical 0.18 seconds"
+	)
+	skeleton_script.call("thumbnail_settle", loading_a, final_texture)
+	_check(
+		loading_a.frames == 1
+		and loading_a.pause
+		and loading_a.get_frame_texture(0) == final_texture,
+		"settled thumbnail releases temporary frames and holds only final art"
+	)
+	skeleton_script.call("thumbnail_fail", loading_b)
+	_check(
+		loading_b.frames == 1 and loading_b.pause,
+		"exhausted thumbnail stops on one static skeleton frame"
+	)
+	var collection := (
+		load("res://scenes/ui/collection_view.tscn") as PackedScene
+	).instantiate() as Control
+	root.add_child(collection)
+	await process_frame
+	var row := {
+		"id": "thumbnail-contract-anima",
+		"nickname": "Pulseon",
+		"element": "spark",
+		"stage": 1,
+		"status": "ready",
+		"base_stats": {"hp": 40, "atk": 40, "def": 40, "spd": 40, "special": 40},
+	}
+	var rows: Array[Dictionary] = [row]
+	collection.set_rows(rows, "", func(_row: Dictionary) -> Texture2D: return loading_b)
+	var list := collection.find_child("AnimaList", true, false) as ItemList
+	collection.show_preview(row)
+	var portrait := collection.find_child("CollectionSheetPortrait", true, false) as TextureRect
+	_check(
+		list != null and list.get_item_icon(0) == loading_b
+		and portrait != null and portrait.texture == loading_b
+		and list.fixed_icon_size == Vector2i(128, 128)
+		and portrait.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED,
+		"production Collection ItemList and portrait accept the same animated resource"
+	)
+	collection.queue_free()
+	await process_frame
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		flow_source.contains("var _thumbnail_loading_textures: Dictionary = {}")
+		and flow_source.contains("UiSkeleton.thumbnail_loading_texture(THUMBNAIL_SIZE)")
+		and flow_source.contains("func _resolve_thumbnail_texture(")
+		and flow_source.contains("func _fail_thumbnail_art(")
+		and flow_source.contains("func _clear_thumbnail_animations(")
+		and not flow_source.contains("_placeholder_icon"),
+		"production provider coordinates AnimatedTexture state per cache key"
+	)
 
 
 func _test_shared_components() -> void:
@@ -1854,6 +1957,35 @@ func _test_shared_components() -> void:
 		skeleton.visible and skeleton.get("_pulse") != null,
 		"UiSkeleton pulses while authoritative data is still loading"
 	)
+	var skeleton_shapes: Array[Node] = skeleton.find_children("*", "PanelContainer", true, false)
+	var skeleton_ignores_input: bool = (
+		skeleton.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and skeleton.focus_mode == Control.FOCUS_NONE
+	)
+	for control in skeleton.find_children("*", "Control", true, false):
+		skeleton_ignores_input = (
+			skeleton_ignores_input
+			and (control as Control).mouse_filter == Control.MOUSE_FILTER_IGNORE
+			and (control as Control).focus_mode == Control.FOCUS_NONE
+		)
+	var skeleton_uses_surface: bool = skeleton_shapes.size() == 8
+	for shape in skeleton_shapes:
+		skeleton_uses_surface = (
+			skeleton_uses_surface
+			and (shape as Control).theme_type_variation == &"StatValuePanel"
+		)
+	_check(
+		skeleton_uses_surface,
+		"Condition skeleton uses eight content-aware shapes from the canonical surface family"
+	)
+	_check(skeleton_ignores_input, "content skeletons never become focus or pointer targets")
+	skeleton.hide()
+	await process_frame
+	_check(
+		skeleton.get("_pulse") == null and skeleton.modulate == Color.WHITE,
+		"hiding a skeleton stops its pulse and restores neutral opacity"
+	)
+	skeleton.set_loading(true)
 	skeleton.set_loading(false)
 	_check(not skeleton.visible, "UiSkeleton clears when authoritative data arrives")
 
@@ -3002,14 +3134,23 @@ func _test_seeker_ui() -> void:
 	var trophy_skeleton := profile.find_child("TrophySkeleton", true, false) as UiSkeleton
 	var trophy_grid := profile.find_child("TrophyGrid", true, false) as GridContainer
 	var trophy_empty := profile.find_child("TrophyEmpty", true, false) as Label
+	var initial_trophy_slots: Array[Node] = trophy_skeleton.find_children(
+		"*", "PanelContainer", true, false
+	)
+	var initial_trophy_slots_canonical: bool = initial_trophy_slots.size() == 3
+	for slot in initial_trophy_slots:
+		initial_trophy_slots_canonical = (
+			initial_trophy_slots_canonical
+			and (slot as Control).theme_type_variation == UiSkeleton.SURFACE_THEME
+		)
 	_check(
 		trophy_section.visible
 		and trophy_skeleton.visible
 		and trophy_skeleton.get("_pulse") != null
 		and not trophy_grid.visible
 		and not trophy_empty.visible
-		and trophy_skeleton.get_child(0).get_child_count() == 3,
-		"Trophy Showcase shows a pulsing three-slot skeleton until Cores arrive"
+		and initial_trophy_slots_canonical,
+		"Trophy Showcase shows three canonical pulsing art slots until metadata arrives"
 	)
 	var trophy_rows: Array[Dictionary] = []
 	for index in 4:
@@ -3023,23 +3164,91 @@ func _test_seeker_ui() -> void:
 		and not trophy_empty.visible
 		and not trophy_skeleton.visible
 		and trophy_grid.get_child_count() == 4,
-		"Trophy Showcase renders one art card per owned Core"
+		"Trophy Showcase renders one stable card per owned Core"
 	)
-	var first_card := trophy_grid.get_child(0).get_child(0) as TextureRect
+	var first_card := trophy_grid.get_child(0) as Control
+	var first_art := first_card.find_child("TrophyArt", true, false) as TextureRect
+	var first_skeleton := first_card.find_child("TrophyArtSkeleton", true, false) as UiSkeleton
+	var second_skeleton := trophy_grid.get_child(1).find_child(
+		"TrophyArtSkeleton", true, false
+	) as UiSkeleton
 	_check(
-		first_card.texture == null and first_card.custom_minimum_size.y > 0.0,
-		"a Core card reserves its art slot before the PNG lands"
+		first_art != null
+		and first_art.texture == null
+		and first_art.custom_minimum_size.y > 0.0
+		and first_skeleton != null
+		and first_skeleton.visible
+		and first_skeleton.get("_pulse") != null
+		and second_skeleton != null
+		and second_skeleton.visible,
+		"metadata keeps an independent canonical skeleton in every uncached art slot"
 	)
 	profile.set_trophies(trophy_rows)
 	_check(
-		trophy_grid.get_child(0).get_child(0) == first_card,
+		trophy_grid.get_child(0) == first_card,
 		"repainting the same Cores keeps the cards instead of rebuilding them"
 	)
 	var core_art := ImageTexture.create_from_image(
 		Image.create(8, 8, false, Image.FORMAT_RGBA8)
 	)
 	profile.set_trophy_art("60000000-0000-4000-8000-000000000000", core_art)
-	_check(first_card.texture == core_art, "Core art drops into the card it belongs to")
+	_check(
+		first_art != null
+		and first_skeleton != null
+		and second_skeleton != null
+		and first_art.texture == core_art
+		and not first_skeleton.visible
+		and first_art.modulate == Color.WHITE
+		and second_skeleton.visible,
+		"cached Core art paints directly while uncached siblings keep pulsing"
+	)
+	profile.set_trophies(trophy_rows)
+	_check(
+		trophy_grid.get_child(0) == first_card
+		and first_art != null
+		and first_art.texture == core_art,
+		"metadata revalidation never downgrades resolved Core art to a skeleton"
+	)
+	var second_card := trophy_grid.get_child(1) as Control
+	var second_art := second_card.find_child("TrophyArt", true, false) as TextureRect
+	var third_card := trophy_grid.get_child(2) as Control
+	var third_skeleton := third_card.find_child("TrophyArtSkeleton", true, false) as UiSkeleton
+	var second_minimum_before := second_card.get_combined_minimum_size()
+	profile.call(
+		"set_trophy_art",
+		"60000000-0000-4000-8000-000000000001",
+		core_art,
+		true
+	)
+	_check(
+		second_art != null
+		and second_skeleton.visible
+		and second_skeleton.get("_pulse") == null
+		and second_skeleton.has_meta(UiSkeleton.META_RESOLVE_TWEEN)
+		and second_art.texture == core_art
+		and second_art.modulate.a < 1.0
+		and third_skeleton != null
+		and third_skeleton.get("_pulse") != null,
+		"one downloaded Core crossfades immediately while a slower sibling keeps pulsing"
+	)
+	await _await_juice_settled(second_skeleton, UiSkeleton.META_RESOLVE_TWEEN)
+	_check(
+		second_art.modulate == Color.WHITE
+		and not second_skeleton.visible
+		and third_skeleton.visible
+		and second_card.get_combined_minimum_size() == second_minimum_before,
+		"per-card resolve settles without moving or restarting sibling cards"
+	)
+	profile.call(
+		"set_trophy_art",
+		"60000000-0000-4000-8000-000000000002",
+		null,
+		true
+	)
+	_check(
+		not third_skeleton.visible and third_skeleton.get("_pulse") == null,
+		"a definitive Core art failure stops its pulse without adding another error surface"
+	)
 	profile.set_trophies([])
 	var trophy_title := trophy_section.find_child("Title", false, false) as Label
 	_check(
@@ -6385,7 +6594,7 @@ func _test_collection_bottom_sheet() -> void:
 	var profile := collection.find_child("CollectionProfileButton", true, false) as Button
 	var hp := collection.find_child("SheetStatHp", true, false) as Label
 	var hunger := collection.find_child("SheetCareHunger", true, false) as ProgressBar
-	var skeleton := collection.find_child("ConditionSkeleton", true, false) as Control
+	var skeleton := collection.find_child("ConditionSkeleton", true, false) as UiSkeleton
 	var care_rows := collection.find_child("CareRows", true, false) as Control
 	_check(overlay != null and overlay.visible, "selecting an Anima opens the bottom sheet immediately")
 	var sheet_panel := collection.find_child("CollectionSheetPanel", true, false) as Control
@@ -6427,8 +6636,22 @@ func _test_collection_bottom_sheet() -> void:
 		"matching care response updates the open sheet"
 	)
 
-	_check(skeleton != null and not skeleton.visible and care_rows.visible, "care sync reveals real meters")
-	await create_timer(0.45).timeout
+	_check(
+		skeleton != null
+		and skeleton.visible
+		and skeleton.get("_pulse") == null
+		and care_rows.visible
+		and care_rows.modulate.a < 1.0,
+		"care sync crossfades the whole Condition group while its pulse has stopped"
+	)
+	await _await_juice_settled(skeleton, &"_scanima_skeleton_resolve")
+	_check(
+		not skeleton.visible
+		and skeleton.modulate == Color.WHITE
+		and care_rows.modulate == Color.WHITE,
+		"Condition crossfade settles with only authoritative meters visible"
+	)
+	await _await_juice_settled(hunger, UiJuice.META_METER_TWEEN)
 	_check_eq(hp.text, "74", "bottom sheet exposes base stats at a glance")
 	_check_eq(hunger.value, 42.0, "bottom sheet exposes authoritative care at a glance")
 	_check(summon != null and not summon.disabled, "non-active Anima can be summoned")
@@ -6443,6 +6666,13 @@ func _test_collection_bottom_sheet() -> void:
 	collection.show_preview(row)
 	await process_frame
 	_check_eq(_preview_requests, 1, "care sync is cached for the current Collection visit")
+	_check(
+		not skeleton.visible
+		and care_rows.visible
+		and care_rows.modulate == Color.WHITE
+		and not skeleton.has_meta(&"_scanima_skeleton_resolve"),
+		"cached Condition paints directly without a skeleton or synthetic crossfade"
+	)
 	summon.pressed.emit()
 	_check_eq(_requested_summon_id, "sheet-test", "Summon emits the selected row")
 	_check(_requested_summon_synced, "fixture care is marked authoritative")
@@ -8184,41 +8414,81 @@ func _test_evolution_history_section() -> void:
 	# yang benar, jadi pemain tahu section ini ada dan berapa bentuk yang datang.
 	details.set_evolution_history_loading(true)
 	_check(panel.visible, "The section stands while its lineage is still loading")
+	var first_form_cell := row.get_child(0) as VBoxContainer
+	var lineage_arrow := row.get_child(1) as TextureRect
+	var second_form_cell := row.get_child(2) as VBoxContainer
+	var first_form_skeleton := first_form_cell.find_child(
+		"EvolutionFormSkeleton", true, false
+	) as UiSkeleton
+	var second_form_skeleton := second_form_cell.find_child(
+		"EvolutionFormSkeleton", true, false
+	) as UiSkeleton
 	_check(
 		row.get_child_count() == 3
-		and row.get_child(0) is UiSkeleton
-		and row.get_child(2) is UiSkeleton,
-		"A stage 2 Anima reserves two skeleton cards — got %d children" % row.get_child_count()
+		and first_form_skeleton != null
+		and first_form_skeleton.visible
+		and second_form_skeleton != null
+		and second_form_skeleton.visible,
+		"A stage 2 Anima reserves two stable skeleton cards — got %d children" % row.get_child_count()
 	)
 	details.set_evolution_history([])
 	_check(not panel.visible, "A single form is not a lineage, so the section stays hidden")
+	var lineage_image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	lineage_image.fill(Color.WHITE)
+	var lineage_texture := ImageTexture.create_from_image(lineage_image)
 	details.set_evolution_history([
 		{"stage": 1, "name": "Hydron"},
 		{"stage": 2, "name": "Drowake"},
-	])
+	], {"1": lineage_texture})
 	_check(panel.visible, "Two forms reveal the section")
 	_check(
-		row.get_child_count() == 3,
-		"Two forms draw form, arrow, form — got %d children" % row.get_child_count()
+		row.get_child_count() == 3
+		and row.get_child(0) == first_form_cell
+		and row.get_child(1) == lineage_arrow
+		and row.get_child(2) == second_form_cell,
+		"metadata fills the stable form, arrow, form structure without rebuilding it"
+	)
+	_check(lineage_arrow.flip_h, "The reused chevron is flipped so it points at the next form")
+	var first_form_art := first_form_cell.find_child(
+		"EvolutionFormArt", true, false
+	) as TextureRect
+	var second_form_art := second_form_cell.find_child(
+		"EvolutionFormArt", true, false
+	) as TextureRect
+	var first_form_name := first_form_cell.find_child(
+		"EvolutionFormName", true, false
+	) as Label
+	var second_form_name := second_form_cell.find_child(
+		"EvolutionFormName", true, false
+	) as Label
+	_check(
+		first_form_name != null and first_form_name.text == "Hydron"
+		and second_form_name != null and second_form_name.text == "Drowake",
+		"lineage metadata appears oldest-first while art continues loading"
 	)
 	_check(
-		row.get_child(0) is VBoxContainer
-		and row.get_child(1) is TextureRect
-		and row.get_child(2) is VBoxContainer,
-		"The arrow sits between the two forms"
+		first_form_art != null and first_form_art.texture == lineage_texture
+		and not first_form_skeleton.visible
+		and second_form_art != null and second_form_art.texture == null
+		and second_form_skeleton.visible,
+		"cached Evolution art paints directly while only its missing sibling keeps pulsing"
 	)
+	details.call("set_evolution_history_art", 2, lineage_texture, true)
 	_check(
-		(row.get_child(1) as TextureRect).flip_h,
-		"The reused chevron is flipped so it points at the next form"
+		second_form_art.texture == lineage_texture
+		and second_form_skeleton.visible
+		and second_form_skeleton.get("_pulse") == null
+		and second_form_skeleton.has_meta(UiSkeleton.META_RESOLVE_TWEEN)
+		and second_form_art.modulate.a < 1.0
+		and not first_form_skeleton.visible,
+		"one Evolution form crossfades as soon as its download finishes"
 	)
+	await _await_juice_settled(second_form_skeleton, UiSkeleton.META_RESOLVE_TWEEN)
 	_check(
-		not (row.get_child(0) is UiSkeleton),
-		"Real forms replace the skeleton instead of stacking on it"
-	)
-	_check(
-		(row.get_child(0).get_child(1) as Label).text == "Hydron"
-		and (row.get_child(2).get_child(1) as Label).text == "Drowake",
-		"The lineage reads oldest form first"
+		not second_form_skeleton.visible
+		and second_form_art.modulate == Color.WHITE
+		and not first_form_skeleton.has_meta(UiSkeleton.META_RESOLVE_TWEEN),
+		"Evolution form resolve settles without replaying its cached sibling"
 	)
 	details.set_evolution_history([
 		{"stage": 1, "name": "Hydron"},
@@ -8226,12 +8496,35 @@ func _test_evolution_history_section() -> void:
 		{"stage": 3, "name": "Drowarch"},
 	])
 	_check(
-		row.get_child_count() == 5,
-		"A third form extends the same row — got %d children" % row.get_child_count()
+		row.get_child_count() == 5
+		and row.get_child(0) == first_form_cell
+		and row.get_child(1) == lineage_arrow
+		and row.get_child(2) == second_form_cell,
+		"A third form extends the stable row without rebuilding earlier slots"
 	)
+	var third_form_name := row.get_child(4).find_child(
+		"EvolutionFormName", true, false
+	) as Label
 	_check(
-		(row.get_child(4).get_child(1) as Label).text == "Drowarch",
+		third_form_name != null and third_form_name.text == "Drowarch",
 		"The newest form is drawn last"
+	)
+	var third_form_cell := row.get_child(4) as VBoxContainer
+	var third_form_skeleton := third_form_cell.find_child(
+		"EvolutionFormSkeleton", true, false
+	) as UiSkeleton
+	_check(
+		first_form_art.texture == lineage_texture
+		and second_form_art.texture == lineage_texture
+		and not first_form_skeleton.visible
+		and not second_form_skeleton.visible
+		and third_form_skeleton.visible,
+		"metadata revalidation preserves ready Evolution forms and pulses only the new slot"
+	)
+	details.call("set_evolution_history_art", 3, null, true)
+	_check(
+		not third_form_skeleton.visible and third_form_skeleton.get("_pulse") == null,
+		"a definitive Evolution art failure stops only its own slot"
 	)
 	# Membuka Anima lain tidak boleh meninggalkan silsilah milik Anima sebelumnya.
 	var other := drowake.duplicate(true)
@@ -8252,8 +8545,13 @@ func _test_evolution_history_section() -> void:
 	# Edge Function untuknya sama sekali.
 	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
 	_check(
-		flow_source.find("CareRules.committed_stage(row) < 2") >= 0,
+		flow_source.find("committed_stage < 2") >= 0,
 		"Stage 1 skips the lineage request entirely"
+	)
+	_check(
+		flow_source.contains("func _resolve_evolution_history_form(")
+		and flow_source.contains("set_evolution_history_art(stage, texture, true)"),
+		"production dispatches each Evolution form download to its own guarded resolve"
 	)
 	# Read-only: silsilah tidak boleh ikut jalur yang membelanjakan Core.
 	var backend_source := FileAccess.get_file_as_string("res://scripts/backend.gd")
@@ -8382,16 +8680,38 @@ func _test_synthesis_profile_ui() -> void:
 	var history: Dictionary = row["synthesis_history"]
 	details.set_synthesis_history(history, {
 		"source_a": veridian_thumbnail,
-		"source_b": veridian_thumbnail,
 	})
-	details.set_synthesis_history_loading(false)
+	details.set_synthesis_history_loading(true)
 	_check(
-		not skeleton_a.visible and not skeleton_b.visible
+		not skeleton_a.visible and skeleton_b.visible
 		and history_source_a.texture == veridian_thumbnail
-		and history_source_b.texture == veridian_thumbnail
+		and history_source_b.texture == null
 		and history_source_a.texture.get_image().get_pixel(0, 0).g > 0.7
 		and history_source_a.texture.get_image().get_pixel(0, 0).a > 0.99,
-		"transparent History thumbnails replace skeletons without erasing Veridian green"
+		"cached Synthesis source art paints directly while only its missing sibling pulses"
+	)
+	details.call("set_synthesis_history_art", "source_b", veridian_thumbnail, true)
+	_check(
+		history_source_b.texture == veridian_thumbnail
+		and skeleton_b.visible
+		and skeleton_b.get("_pulse") == null
+		and skeleton_b.has_meta(UiSkeleton.META_RESOLVE_TWEEN)
+		and history_source_b.modulate.a < 1.0
+		and not skeleton_a.visible,
+		"one Synthesis source crossfades without waiting for or replaying its sibling"
+	)
+	await _await_juice_settled(skeleton_b, UiSkeleton.META_RESOLVE_TWEEN)
+	_check(
+		not skeleton_b.visible
+		and history_source_b.modulate == Color.WHITE
+		and not skeleton_a.has_meta(UiSkeleton.META_RESOLVE_TWEEN),
+		"Synthesis source resolve settles independently"
+	)
+	var flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	_check(
+		flow_source.contains("func _resolve_synthesis_history_source(")
+		and flow_source.contains("set_synthesis_history_art(slot, texture, true)"),
+		"production dispatches each Synthesis source download to its own guarded resolve"
 	)
 	button.pressed.emit()
 	_check_eq(_requested_synthesis_id, "anima-synthesis-source", "profile preselects Source A")

@@ -458,8 +458,9 @@ func _set_condition_loading() -> void:
 
 func _apply_condition(row: Dictionary, synced: bool) -> void:
 	var care := CareRules.normalized_care(row.get("care"))
-	_condition_skeleton.set_loading(false)
+	var resolve_loading := _condition_loading and synced and not CareRules.is_evolving(row)
 	_care_rows.visible = not CareRules.is_evolving(row)
+	_care_rows.modulate = Color.WHITE
 	for key in _care_meters:
 		var meter := _care_meters[key] as ProgressBar
 		meter.modulate = Color.WHITE
@@ -467,6 +468,10 @@ func _apply_condition(row: Dictionary, synced: bool) -> void:
 			UiJuice.tween_meter(meter, CareRules.exp_progress(int(row.get("care_score", 0))))
 		else:
 			UiJuice.tween_meter(meter, float(care[key]))
+	if resolve_loading:
+		_condition_skeleton.resolve_to(_care_rows)
+	else:
+		_condition_skeleton.set_loading(false)
 	_condition_loading = false
 	_condition_synced = synced
 	if not synced:

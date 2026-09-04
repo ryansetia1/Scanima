@@ -54,6 +54,8 @@ const CARE_RULES: GDScript = preload("res://scripts/care_rules.gd")
 const FOTO_MAX_PX := 1280
 const FOTO_QUALITY := 85
 const THUMBNAIL_SIZE := 128
+const THUMBNAIL_STATE_META := &"_scanima_thumbnail_state"
+const THUMBNAIL_REVISION_META := &"_scanima_thumbnail_revision"
 const BASE_MARGIN := 32.0
 const HUD_TOP_PAD := 24.0
 const HOME_GROUND_PORTRAIT_RATIO := HomeBackground.PLATFORM_TARGET_PORTRAIT_RATIO
@@ -159,8 +161,9 @@ var _roster_error := ""
 ## Urutan tombol pilihan sign-in terakhir; handler-nya butuh tahu aksi mana yang
 ## berdiri di slot utama karena urutannya bergantung pada isi roster guest.
 var _sign_in_move_first := false
-var _placeholder_icon: Texture2D = null
 var _thumbnail_cache: Dictionary = {}
+var _thumbnail_loading_textures: Dictionary = {}
+var _thumbnail_art_keys: Dictionary = {}
 ## Collection pasif: satu-satunya yang pernah mengunduh art adalah Summon/
 ## Synthesis/Evolve/capture, bukan Collection sendiri. Anima yang tidak pernah
 ## diaktifkan sejak install/login baru karena itu tetap placeholder selamanya.
@@ -460,8 +463,12 @@ func _ready() -> void:
 			_run_collection_sheet_demo()
 		if arg == "--collection-sheet-loading-demo":
 			_run_collection_sheet_demo(true)
+		if arg == "--thumbnail-loading-demo":
+			_run_thumbnail_loading_demo()
 		if arg == "--profile-demo":
 			_run_profile_help_demo(false)
+		if arg == "--evolution-history-loading-demo":
+			await _run_evolution_history_loading_demo()
 		if arg == "--profile-help-demo":
 			_run_profile_help_demo()
 		if arg == "--synthesis-history-demo":
@@ -1215,21 +1222,31 @@ func _refresh_synthesis_history() -> void:
 	if history.is_empty():
 		_details_view.set_synthesis_history_loading(false)
 		return
-	var source_a := GameState.as_dict(history.get("source_a"))
-	var source_b := GameState.as_dict(history.get("source_b"))
-	if not textures.has("source_a"):
-		textures["source_a"] = await _synthesis_history_texture(
-			str(source_a.get("thumbnail_url", "")),
-			_synthesis_history_cache_id(anima_id, "source_a")
+	_details_view.set_synthesis_history(history, textures)
+	for slot: String in ["source_a", "source_b"]:
+		if textures.has(slot):
+			continue
+		var source := GameState.as_dict(history.get(slot))
+		_resolve_synthesis_history_source(
+			anima_id,
+			slot,
+			str(source.get("thumbnail_url", "")),
+			revision,
+			account_epoch
 		)
-	if not textures.has("source_b"):
-		textures["source_b"] = await _synthesis_history_texture(
-			str(source_b.get("thumbnail_url", "")),
-			_synthesis_history_cache_id(anima_id, "source_b")
-		)
-	if revision == _synthesis_history_revision and anima_id == str(_profile_anima.get("id", "")):
-		_details_view.set_synthesis_history(history, textures)
-		_details_view.set_synthesis_history_loading(false)
+
+
+func _resolve_synthesis_history_source(
+	anima_id: String, slot: String, url: String, revision: int, account_epoch: int
+) -> void:
+	var texture := await _synthesis_history_texture(
+		url, _synthesis_history_cache_id(anima_id, slot)
+	)
+	if account_epoch != GameState.session_epoch or revision != _synthesis_history_revision:
+		return
+	if anima_id != str(_profile_anima.get("id", "")):
+		return
+	_details_view.set_synthesis_history_art(slot, texture, true)
 
 
 ## Silsilah bentuk untuk Profile. Thumbnail-nya melewati cache thumb yang sama
@@ -1241,10 +1258,19 @@ func _refresh_evolution_history() -> void:
 	var revision := _evolution_history_revision
 	var row := _profile_anima if not _profile_anima.is_empty() else _current_anima
 	var anima_id := str(row.get("id", ""))
-	if anima_id.is_empty() or CareRules.committed_stage(row) < 2:
+	var committed_stage := CareRules.committed_stage(row)
+	if anima_id.is_empty() or committed_stage < 2:
 		_details_view.set_evolution_history([])
 		return
 	_details_view.set_evolution_history_loading(true)
+	var textures: Dictionary = {}
+	for stage in range(1, committed_stage + 1):
+		var cached := _cached_synthesis_history_texture(
+			_synthesis_history_cache_id(anima_id, "form_%d" % stage)
+		)
+		if cached != null:
+			textures[str(stage)] = cached
+			_details_view.set_evolution_history_art(stage, cached)
 	var account_epoch := GameState.session_epoch
 	var res := await Backend.evolution_history(anima_id)
 	if not Backend.response_applies(res, account_epoch):
@@ -1260,20 +1286,32 @@ func _refresh_evolution_history() -> void:
 	if forms.size() < 2:
 		_details_view.set_evolution_history([])
 		return
-	var textures: Dictionary = {}
+	_details_view.set_evolution_history(forms, textures)
 	for entry: Variant in forms:
 		var form := GameState.as_dict(entry)
 		var stage := int(form.get("stage", 1))
-		var texture := await _synthesis_history_texture(
+		if textures.has(str(stage)):
+			continue
+		_resolve_evolution_history_form(
+			anima_id,
+			stage,
 			str(form.get("thumbnail_url", "")),
-			_synthesis_history_cache_id(anima_id, "form_%d" % stage)
+			revision,
+			account_epoch
 		)
-		if texture != null:
-			textures[str(stage)] = texture
-	if revision != _evolution_history_revision:
+
+
+func _resolve_evolution_history_form(
+	anima_id: String, stage: int, url: String, revision: int, account_epoch: int
+) -> void:
+	var texture := await _synthesis_history_texture(
+		url, _synthesis_history_cache_id(anima_id, "form_%d" % stage)
+	)
+	if account_epoch != GameState.session_epoch or revision != _evolution_history_revision:
 		return
-	if anima_id == str(_profile_anima.get("id", "")):
-		_details_view.set_evolution_history(forms, textures)
+	if anima_id != str(_profile_anima.get("id", "")):
+		return
+	_details_view.set_evolution_history_art(stage, texture, true)
 
 
 func _cached_synthesis_history_textures(anima_id: String) -> Dictionary:
@@ -2854,7 +2892,9 @@ func _paint_cached_trophies() -> void:
 	_seeker_profile_view.set_trophies(cached)
 	for trophy in SeekerProfileView.trophy_entries(cached):
 		var trophy_id := str(trophy.get("id", ""))
-		_seeker_profile_view.set_trophy_art(trophy_id, _stored_trophy_art(trophy_id))
+		var texture := _stored_trophy_art(trophy_id)
+		if texture != null:
+			_seeker_profile_view.set_trophy_art(trophy_id, texture)
 
 
 func _load_seeker_trophies() -> void:
@@ -2874,9 +2914,17 @@ func _load_seeker_trophies() -> void:
 	for trophy in SeekerProfileView.trophy_entries(rows):
 		var trophy_id := str(trophy.get("id", ""))
 		var texture := _stored_trophy_art(trophy_id)
-		if texture == null:
-			texture = await _download_trophy_art(trophy_id, str(trophy.get("art_url", "")))
-		_seeker_profile_view.set_trophy_art(trophy_id, texture)
+		if texture != null:
+			_seeker_profile_view.set_trophy_art(trophy_id, texture)
+		else:
+			_resolve_trophy_art(trophy_id, str(trophy.get("art_url", "")), account_epoch)
+
+
+func _resolve_trophy_art(trophy_id: String, art_url: String, account_epoch: int) -> void:
+	var texture := await _download_trophy_art(trophy_id, art_url)
+	if account_epoch != GameState.session_epoch:
+		return
+	_seeker_profile_view.set_trophy_art(trophy_id, texture, true)
 
 
 ## Art Core adalah aset chapter publik yang dikunci ke UUID trophy, jadi ia boleh
@@ -3191,6 +3239,7 @@ func _reset_account_presentation() -> void:
 	_current_anima = {}
 	_profile_anima = {}
 	_roster_error = ""
+	_clear_thumbnail_animations()
 	_thumbnail_cache.clear()
 	_thumbnail_backfill_queue.clear()
 	_thumbnail_backfill_inflight.clear()
@@ -5535,7 +5584,10 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 		if use_anima
 		else "%s|%s|%d|%s" % [species, color, stage, pose]
 	)
+	var animated := _thumbnail_loading_textures.get(cache_key) as AnimatedTexture
 	if _thumbnail_cache.has(cache_key):
+		if animated != null and str(animated.get_meta(THUMBNAIL_STATE_META, "")) == "resolving":
+			return animated
 		return _thumbnail_cache[cache_key] as Texture2D
 
 	var manifest_path := ""
@@ -5559,26 +5611,84 @@ func _thumbnail_for(row: Dictionary) -> Texture2D:
 							image.resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, Image.INTERPOLATE_LANCZOS)
 							var texture := ImageTexture.create_from_image(image)
 							_thumbnail_cache[cache_key] = texture
+							if animated != null:
+								_resolve_thumbnail_texture(cache_key, animated, texture)
+								return animated
 							return texture
 
 	var art_key := "%s|%d" % [anima_id, stage] if use_anima else "%s|%s|%d" % [species, color, stage]
-	if not _thumbnail_backfill_inflight.has(art_key):
-		var attempts := int(_thumbnail_art_attempts.get(art_key, 0))
-		if attempts < THUMBNAIL_ART_ATTEMPT_CAP:
-			_thumbnail_backfill_inflight[art_key] = true
-			_queue_thumbnail_backfill(row, anima_id, stage)
+	var attempts := int(_thumbnail_art_attempts.get(art_key, 0))
+	if not _thumbnail_backfill_inflight.has(art_key) and attempts < THUMBNAIL_ART_ATTEMPT_CAP:
+		_thumbnail_backfill_inflight[art_key] = true
+		_queue_thumbnail_backfill(row, anima_id, stage)
 
 	print(
 		"thumbnail placeholder: id=%s stage=%d pose=%s reason=%s"
 		% [anima_id, stage, pose, "no sheet_path" if manifest_path.is_empty() and sheet_path.is_empty() else "art di disk gagal dimuat"]
 	)
-	if _placeholder_icon == null:
-		var placeholder := Image.create_empty(
-			THUMBNAIL_SIZE, THUMBNAIL_SIZE, false, Image.FORMAT_RGBA8
+	if animated == null:
+		animated = UiSkeleton.thumbnail_loading_texture(THUMBNAIL_SIZE)
+		_thumbnail_loading_textures[cache_key] = animated
+	elif str(animated.get_meta(THUMBNAIL_STATE_META, "")) == "failed" and attempts < THUMBNAIL_ART_ATTEMPT_CAP:
+		UiSkeleton.thumbnail_restart_loading(animated, THUMBNAIL_SIZE)
+	animated.set_meta(
+		THUMBNAIL_STATE_META,
+		"failed" if attempts >= THUMBNAIL_ART_ATTEMPT_CAP else "loading"
+	)
+	_thumbnail_art_keys[cache_key] = art_key
+	if attempts >= THUMBNAIL_ART_ATTEMPT_CAP:
+		UiSkeleton.thumbnail_fail(animated)
+	return animated
+
+
+func _resolve_thumbnail_texture(
+	cache_key: String, animated: AnimatedTexture, final_texture: Texture2D
+) -> void:
+	if str(animated.get_meta(THUMBNAIL_STATE_META, "")) == "resolving":
+		return
+	var revision := int(animated.get_meta(THUMBNAIL_REVISION_META, 0)) + 1
+	var account_epoch := GameState.session_epoch
+	animated.set_meta(THUMBNAIL_REVISION_META, revision)
+	animated.set_meta(THUMBNAIL_STATE_META, "resolving")
+	UiSkeleton.thumbnail_begin_resolve(animated, final_texture)
+	await get_tree().create_timer(UiSkeleton.RESOLVE_SEC).timeout
+	if account_epoch != GameState.session_epoch:
+		return
+	if _thumbnail_loading_textures.get(cache_key) != animated:
+		return
+	if revision != int(animated.get_meta(THUMBNAIL_REVISION_META, 0)):
+		return
+	UiSkeleton.thumbnail_settle(animated, final_texture)
+	_thumbnail_loading_textures.erase(cache_key)
+	_thumbnail_art_keys.erase(cache_key)
+
+
+func _fail_thumbnail_art(art_key: String) -> void:
+	# ponytail: satu scan atas resource yang sedang terlihat, plafon roster ~100;
+	# indeks balik baru layak kalau roster nyata melampaui plafon itu.
+	for cache_key: Variant in _thumbnail_art_keys:
+		if str(_thumbnail_art_keys.get(cache_key, "")) != art_key:
+			continue
+		var animated := _thumbnail_loading_textures.get(cache_key) as AnimatedTexture
+		if animated == null:
+			continue
+		animated.set_meta(THUMBNAIL_STATE_META, "failed")
+		UiSkeleton.thumbnail_fail(animated)
+
+
+func _clear_thumbnail_animations() -> void:
+	for value: Variant in _thumbnail_loading_textures.values():
+		var animated := value as AnimatedTexture
+		if animated == null:
+			continue
+		animated.set_meta(
+			THUMBNAIL_REVISION_META,
+			int(animated.get_meta(THUMBNAIL_REVISION_META, 0)) + 1
 		)
-		placeholder.fill(Color(0.16, 0.18, 0.22, 1.0))
-		_placeholder_icon = ImageTexture.create_from_image(placeholder)
-	return _placeholder_icon
+		animated.set_meta(THUMBNAIL_STATE_META, "failed")
+		UiSkeleton.thumbnail_fail(animated)
+	_thumbnail_loading_textures.clear()
+	_thumbnail_art_keys.clear()
 
 
 func _queue_thumbnail_backfill(row: Dictionary, anima_id: String, stage: int) -> void:
@@ -5637,6 +5747,8 @@ func _run_thumbnail_backfill() -> void:
 			ok = bool(loaded.get("ok", false))
 		_thumbnail_backfill_inflight.erase(art_key)
 		_thumbnail_art_attempts[art_key] = int(_thumbnail_art_attempts.get(art_key, 0)) + 1
+		if not ok and int(_thumbnail_art_attempts[art_key]) >= THUMBNAIL_ART_ATTEMPT_CAP:
+			_fail_thumbnail_art(art_key)
 		if ok:
 			# Repaint juga deferred: sudah pasti dijalankan dari luar set_rows() di
 			# sini (drain-nya sendiri deferred), tapi tetap dipertahankan supaya
@@ -7121,6 +7233,25 @@ func _run_evolve_demo() -> void:
 	_say_success(tr("COLLECTION_READY_EVOLVE"), true)
 
 
+func _run_thumbnail_loading_demo() -> void:
+	var demo := {
+		"id": "thumbnail-loading-demo",
+		"nickname": "Pulseon",
+		"stage": 1,
+		"element": "spark",
+		"rarity": 3,
+		"care_score": 24,
+		"status": "ready",
+		"base_stats": {"hp": 74, "atk": 62, "def": 58, "spd": 81, "special": 77},
+		"care": {"hunger": 68, "energy": 84, "hygiene": 57},
+	}
+	var animated := UiSkeleton.thumbnail_loading_texture(THUMBNAIL_SIZE)
+	var rows: Array[Dictionary] = [demo]
+	_switch_destination(BottomNav.COLLECTION)
+	_collection_view.set_rows(rows, "", func(_row: Dictionary) -> Texture2D: return animated)
+	_collection_view.show_preview(demo, false)
+
+
 func _run_collection_sheet_demo(show_loading: bool = false) -> void:
 	var demo := _current_anima.duplicate(true)
 	if demo.is_empty():
@@ -7243,6 +7374,34 @@ func _finish_synthesis_history_demo(show_help: bool, scroll_history: bool) -> vo
 			"SynthesisHistoryPanel", true, false
 		) as Control
 		scroll.scroll_vertical = maxi(0, int(history_panel.position.y) - 24)
+
+
+func _run_evolution_history_loading_demo() -> void:
+	var demo := {
+		"id": "evolution-history-loading-demo",
+		"nickname": "Drowarch",
+		"species_key": "demo_companion",
+		"color_bucket": "cool_blue",
+		"stage": 3,
+		"element": "aqua",
+		"rarity": 4,
+		"care_score": 340,
+		"base_stats": {"hp": 74, "atk": 62, "def": 58, "spd": 81, "special": 77},
+	}
+	# Masuk sebagai stage 1 dulu supaya refresh deferred milik destination tidak
+	# membuat request History. Setelah itu harness memasang tiga slot lokal.
+	var navigation_row := demo.duplicate(true)
+	navigation_row["stage"] = 1
+	_switch_destination(ANIMA_PROFILE_DEST, navigation_row)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_profile_anima = demo.duplicate(true)
+	_details_view.set_anima(demo, null)
+	_details_view.set_evolution_history_loading(true)
+	await get_tree().process_frame
+	var scroll := _details_view.find_child("DetailsScroll", true, false) as ScrollContainer
+	var panel := _details_view.find_child("EvolutionHistoryPanel", true, false) as Control
+	scroll.scroll_vertical = maxi(0, int(panel.position.y) - 24)
 
 
 func _run_profile_help_demo(show_help: bool = true) -> void:

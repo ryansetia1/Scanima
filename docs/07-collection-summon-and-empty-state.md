@@ -17,8 +17,9 @@ Status: diimplementasikan dan diverifikasi 13 Agustus 2026.
 ## Asumsi non-fungsional
 
 - Roster tetap berukuran puluhan Anima per pemain.
-- Hanya art Anima yang dipilih yang boleh diunduh; Collection tidak mengunduh
-  seluruh sheet hanya untuk thumbnail.
+- Thumbnail selalu membaca memory/disk cache lebih dulu. Cache miss masuk ke
+  antrean backfill sheet yang sudah ada, satu unduhan pada satu waktu, dengan
+  maksimum tiga attempt per art dalam satu kunjungan Collection.
 - Satu care sync gratis per Anima per kunjungan Collection cukup. Tidak ada loop
   atau retry otomatis.
 - Endpoint care tetap owner-only dan server-authoritative. `Summon` menulis
@@ -50,6 +51,24 @@ ini sengaja menjaga komponen reusable bebas dari aturan domain.
 Footer memakai `View Profile` sebagai aksi sekunder dan `Summon` sebagai CTA.
 Pada companion aktif, CTA berubah menjadi `Summoned` dan disabled. Sheet ditutup
 lewat backdrop atau Back/Escape, tanpa X kecil. Semua aksi minimal 96px.
+
+### Thumbnail cache-first dengan fallback skeleton
+
+Thumbnail roster dan portrait memakai provider yang sama. Memory/disk cache hit
+langsung menampilkan art tanpa pulse atau minimum loading duration. Pada cache
+miss, provider mengembalikan `AnimatedTexture` per cache key berisi skeleton
+rounded dari keluarga `StatValuePanel`; resource yang sama dipakai Collection,
+picker Battle/Team/Expedition, Synthesis, dan portrait yang sedang terbuka.
+Karena itu kontrol production tetap `ItemList` dan kontrak drag-scroll,
+press-selection, urutan tap, deselect, level badge, serta dim state tidak
+berubah.
+
+Backfill tetap memakai antrean serial, guard session, dan batas tiga attempt
+yang sudah ada. Selama attempt atau retry masih mungkin skeleton pulse. Art yang
+berhasil diunduh masuk melalui crossfade enam frame selama 0,18 detik, lalu
+frame sementara dilepas. Setelah attempt ketiga gagal, resource berhenti pada
+skeleton statis tanpa dialog, toast, atau request tambahan. Pergantian akun
+menghentikan semua resource transisi sebelum cache UID lama dibersihkan.
 
 ### Summon menidurkan companion yang tidak dipakai
 
@@ -108,8 +127,9 @@ sehingga tidak diperlukan flag first-launch.
   route, stale-response guard, Loading/Error/Empty/Ready Home, dan touch target.
 - `test_sprite_slicing.gd`: dissolve/reveal mengembalikan visibility dan
   transform presenter.
-- Demo gratis: `--collection-sheet-demo`, `--empty-demo`, `--summon-demo`.
-- Screenshot diperiksa pada 720×1280 dan 360×640.
+- Demo gratis: `--collection-sheet-demo`, `--collection-sheet-loading-demo`,
+  `--thumbnail-loading-demo`, `--empty-demo`, `--summon-demo`.
+- Skeleton diperiksa pada viewport portrait 720×1602 dan landscape 1600×720.
 - Seluruh demo memakai fixture lokal dan tidak memanggil model atau generation.
 
 ## Decision log

@@ -93,6 +93,7 @@ var _layout_refresh_queued := false
 var _evolution_history: PanelContainer
 var _evolution_history_title: Label
 var _evolution_history_row: HBoxContainer
+var _evolution_form_cells: Array[VBoxContainer] = []
 var _evolution_forms: Array = []
 var _evolution_form_textures: Dictionary = {}
 var _evolution_history_loading := false
@@ -132,7 +133,13 @@ func _ready() -> void:
 func set_anima(row: Dictionary, portrait: Texture2D) -> void:
 	var next_id := str(row.get("id", ""))
 	if next_id != _anima_id:
+		set_synthesis_history_loading(false)
 		_synthesis_history_textures.clear()
+		_history_source_a.texture = null
+		_history_source_a.modulate = Color.WHITE
+		_history_source_b.texture = null
+		_history_source_b.modulate = Color.WHITE
+		_clear_evolution_history_slots()
 		_evolution_forms.clear()
 		_evolution_form_textures.clear()
 		_evolution_history_loading = false
@@ -249,9 +256,38 @@ func set_history_source_names(names: Dictionary) -> void:
 func set_synthesis_history(history: Dictionary, textures: Dictionary = {}) -> void:
 	if _row.is_empty():
 		return
-	if not textures.is_empty():
-		_synthesis_history_textures = textures.duplicate()
+	for slot: Variant in textures:
+		var texture := textures.get(slot) as Texture2D
+		if texture != null:
+			_synthesis_history_textures[str(slot)] = texture
 	_apply_synthesis_history(history, _synthesis_history_textures)
+
+
+func set_synthesis_history_art(
+	slot: String, texture: Texture2D, animate: bool = false
+) -> void:
+	var art := (
+		_history_source_a
+		if slot == "source_a"
+		else _history_source_b if slot == "source_b" else null
+	) as TextureRect
+	var skeleton := (
+		_history_source_a_skeleton
+		if slot == "source_a"
+		else _history_source_b_skeleton if slot == "source_b" else null
+	) as UiSkeleton
+	if not is_instance_valid(art) or not is_instance_valid(skeleton):
+		return
+	if texture == null:
+		skeleton.set_loading(false)
+		return
+	_synthesis_history_textures[slot] = texture
+	art.texture = texture
+	if animate and skeleton.visible:
+		skeleton.resolve_to(art)
+	else:
+		art.modulate = Color.WHITE
+		skeleton.set_loading(false)
 
 
 func set_synthesis_history_loading(loading: bool) -> void:
@@ -404,14 +440,10 @@ func _build_history_art_skeleton(parent: TextureRect, node_name: String) -> UiSk
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	skeleton.add_child(center)
-	var placeholder := PanelContainer.new()
-	placeholder.name = node_name.replace("Skeleton", "Placeholder")
-	placeholder.custom_minimum_size = Vector2(
-		HISTORY_SKELETON_ART_PX, HISTORY_SKELETON_ART_PX
-	)
-	placeholder.theme_type_variation = &"StatValuePanel"
-	placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.add_child(placeholder)
+	center.add_child(UiSkeleton.art_placeholder(
+		Vector2(HISTORY_SKELETON_ART_PX, HISTORY_SKELETON_ART_PX),
+		node_name.replace("Skeleton", "Placeholder")
+	))
 	return skeleton
 
 
@@ -449,11 +481,45 @@ func set_evolution_history(forms: Array, textures: Dictionary = {}) -> void:
 	if _row.is_empty():
 		return
 	_evolution_forms = forms.duplicate(true)
-	if not textures.is_empty():
-		_evolution_form_textures = textures.duplicate()
+	for stage: Variant in textures:
+		var texture := textures.get(stage) as Texture2D
+		if texture != null:
+			_evolution_form_textures[str(stage)] = texture
 	# Jawaban sudah datang, termasuk jawaban kosong, jadi skeleton berhenti.
 	_evolution_history_loading = false
 	_apply_evolution_history()
+
+
+func set_evolution_history_art(
+	stage: int, texture: Texture2D, animate: bool = false
+) -> void:
+	var cell: VBoxContainer
+	for index in _evolution_form_cells.size():
+		var fallback_stage := index + 1
+		var form := (
+			GameState.as_dict(_evolution_forms[index])
+			if index < _evolution_forms.size()
+			else {"stage": fallback_stage}
+		)
+		if int(form.get("stage", fallback_stage)) == stage:
+			cell = _evolution_form_cells[index]
+			break
+	if not is_instance_valid(cell):
+		return
+	var art := cell.find_child("EvolutionFormArt", true, false) as TextureRect
+	var skeleton := cell.find_child("EvolutionFormSkeleton", true, false) as UiSkeleton
+	if not is_instance_valid(art) or not is_instance_valid(skeleton):
+		return
+	if texture == null:
+		skeleton.set_loading(false)
+		return
+	_evolution_form_textures[str(stage)] = texture
+	art.texture = texture
+	if animate and skeleton.visible:
+		skeleton.resolve_to(art)
+	else:
+		art.modulate = Color.WHITE
+		skeleton.set_loading(false)
 
 
 func set_evolution_history_loading(loading: bool) -> void:
@@ -472,66 +538,104 @@ func _apply_evolution_history() -> void:
 	var lineage := _evolution_forms.size() >= 2
 	var pending := _evolution_history_loading and stages >= 2
 	_evolution_history.visible = lineage or pending
-	# remove_child dulu, bukan queue_free saja: node yang di-queue_free masih
-	# menempel sampai akhir frame, jadi baris akan sempat berisi dua silsilah.
-	for child in _evolution_history_row.get_children():
-		_evolution_history_row.remove_child(child)
-		child.queue_free()
 	if not _evolution_history.visible:
 		_queue_layout_refresh()
 		return
-	var cells := _evolution_forms.size() if lineage else stages
-	for index in cells:
-		if index > 0:
-			_evolution_history_row.add_child(_build_evolution_arrow())
-		if lineage:
-			_evolution_history_row.add_child(
-				_build_evolution_form(GameState.as_dict(_evolution_forms[index]))
-			)
-		else:
-			var cell := _build_evolution_skeleton_cell()
-			_evolution_history_row.add_child(cell)
-			# Sesudah masuk pohon: `set_loading()` membuat Tween, dan Tween hanya
-			# bisa dibuat oleh node yang sudah punya SceneTree.
-			cell.set_loading(true)
+	var cell_count := maxi(stages, _evolution_forms.size()) if lineage else stages
+	_ensure_evolution_history_slots(cell_count)
+	for index in cell_count:
+		var form := (
+			GameState.as_dict(_evolution_forms[index])
+			if index < _evolution_forms.size()
+			else {"stage": index + 1}
+		)
+		_apply_evolution_form_cell(_evolution_form_cells[index], form)
 	_queue_layout_refresh()
 
 
-func _build_evolution_skeleton_cell() -> UiSkeleton:
+func _ensure_evolution_history_slots(cell_count: int) -> void:
+	while _evolution_form_cells.size() < cell_count:
+		if not _evolution_form_cells.is_empty():
+			_evolution_history_row.add_child(_build_evolution_arrow())
+		var cell := _build_evolution_form_cell()
+		_evolution_history_row.add_child(cell)
+		_evolution_form_cells.append(cell)
+
+
+func _build_evolution_form_cell() -> VBoxContainer:
+	var cell := VBoxContainer.new()
+	cell.name = "EvolutionFormCell"
+	cell.add_theme_constant_override("separation", 2)
+	var art_slot := Control.new()
+	art_slot.name = "EvolutionFormArtSlot"
+	art_slot.custom_minimum_size = Vector2(EVOLUTION_FORM_ART_PX, EVOLUTION_FORM_ART_PX)
+	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(art_slot)
 	var skeleton := UiSkeleton.new()
-	skeleton.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	skeleton.add_theme_constant_override("separation", 2)
-	var art := PanelContainer.new()
-	art.custom_minimum_size = Vector2(EVOLUTION_FORM_ART_PX, EVOLUTION_FORM_ART_PX)
-	art.theme_type_variation = &"StatValuePanel"
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	skeleton.add_child(art)
-	return skeleton
-
-
-func _build_evolution_form(form: Dictionary) -> Control:
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
+	skeleton.name = "EvolutionFormSkeleton"
+	skeleton.visible = false
+	art_slot.add_child(skeleton)
+	skeleton.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	skeleton.add_child(UiSkeleton.art_placeholder(
+		Vector2(EVOLUTION_FORM_ART_PX, EVOLUTION_FORM_ART_PX),
+		"EvolutionFormPlaceholder"
+	))
 	var art := TextureRect.new()
-	art.custom_minimum_size = Vector2(EVOLUTION_FORM_ART_PX, EVOLUTION_FORM_ART_PX)
+	art.name = "EvolutionFormArt"
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.texture = _evolution_form_textures.get(
-		str(int(form.get("stage", 1)))
-	) as Texture2D
-	box.add_child(art)
-	var form_name := str(form.get("name", "")).strip_edges()
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art_slot.add_child(art)
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var name_label := Label.new()
+	name_label.name = "EvolutionFormName"
 	name_label.theme_type_variation = &"StatValueLabel"
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.text = form_name if not form_name.is_empty() else tr("ANIMA_FALLBACK_NAME")
-	box.add_child(name_label)
+	name_label.visible = false
+	cell.add_child(name_label)
 	var stage_label := Label.new()
+	stage_label.name = "EvolutionFormStage"
 	stage_label.theme_type_variation = &"StatNameLabel"
 	stage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stage_label.text = tr(_form_key(int(form.get("stage", 1))))
-	box.add_child(stage_label)
-	return box
+	stage_label.visible = false
+	cell.add_child(stage_label)
+	return cell
+
+
+func _apply_evolution_form_cell(cell: VBoxContainer, form: Dictionary) -> void:
+	var stage := int(form.get("stage", _evolution_form_cells.find(cell) + 1))
+	var art := cell.find_child("EvolutionFormArt", true, false) as TextureRect
+	var skeleton := cell.find_child("EvolutionFormSkeleton", true, false) as UiSkeleton
+	var name_label := cell.find_child("EvolutionFormName", true, false) as Label
+	var stage_label := cell.find_child("EvolutionFormStage", true, false) as Label
+	var has_metadata := not str(form.get("name", "")).strip_edges().is_empty()
+	name_label.visible = has_metadata
+	stage_label.visible = has_metadata
+	if has_metadata:
+		name_label.text = str(form.get("name", "")).strip_edges()
+		stage_label.text = tr(_form_key(stage))
+	var texture := _evolution_form_textures.get(str(stage)) as Texture2D
+	if texture != null:
+		art.texture = texture
+		art.modulate = Color.WHITE
+		skeleton.set_loading(false)
+	else:
+		art.texture = null
+		if not skeleton.visible:
+			skeleton.set_loading(true)
+
+
+func _clear_evolution_history_slots() -> void:
+	for cell in _evolution_form_cells:
+		var skeleton := cell.find_child("EvolutionFormSkeleton", true, false) as UiSkeleton
+		if is_instance_valid(skeleton):
+			skeleton.set_loading(false)
+	_evolution_form_cells.clear()
+	if not is_instance_valid(_evolution_history_row):
+		return
+	for child in _evolution_history_row.get_children():
+		_evolution_history_row.remove_child(child)
+		child.queue_free()
 
 
 func _build_evolution_arrow() -> Control:

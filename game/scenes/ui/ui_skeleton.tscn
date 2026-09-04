@@ -1,68 +1,76 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://cop8r475ka68f"]
 
-[ext_resource type="Script" path="res://scripts/ui_skeleton.gd" id="1_skeleton"]
+[ext_resource type="Script" uid="uid://pfyono7audue" path="res://scripts/ui_skeleton.gd" id="1_skeleton"]
 
-[node name="UiSkeleton" type="VBoxContainer"]
+[node name="UiSkeleton" type="VBoxContainer" unique_id=1477885020]
 visible = false
 theme_override_constants/separation = 9
 script = ExtResource("1_skeleton")
 
-[node name="Row1" type="HBoxContainer" parent="."]
+[node name="Row1" type="HBoxContainer" parent="." unique_id=1114415306]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Label" type="ColorRect" parent="Row1"]
+[node name="Label" type="PanelContainer" parent="Row1" unique_id=299553096]
 custom_minimum_size = Vector2(108, 20)
 layout_mode = 2
-color = Color(0.42, 0.5, 0.68, 0.72)
+mouse_filter = 2
+theme_type_variation = &"StatValuePanel"
 
-[node name="Bar" type="ColorRect" parent="Row1"]
+[node name="Bar" type="PanelContainer" parent="Row1" unique_id=1106240485]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 size_flags_horizontal = 3
-color = Color(0.18, 0.5, 0.7, 0.72)
+mouse_filter = 2
+theme_type_variation = &"StatValuePanel"
 
-[node name="Row2" type="HBoxContainer" parent="."]
+[node name="Row2" type="HBoxContainer" parent="." unique_id=117414157]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Label" type="ColorRect" parent="Row2"]
+[node name="Label" type="PanelContainer" parent="Row2" unique_id=2109165848]
 custom_minimum_size = Vector2(92, 20)
 layout_mode = 2
-color = Color(0.42, 0.5, 0.68, 0.72)
+mouse_filter = 2
+theme_type_variation = &"StatValuePanel"
 
-[node name="Bar" type="ColorRect" parent="Row2"]
+[node name="Bar" type="PanelContainer" parent="Row2" unique_id=551269489]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 size_flags_horizontal = 3
-color = Color(0.22, 0.62, 0.78, 0.72)
+mouse_filter = 2
+theme_type_variation = &"StatValuePanel"
 
-[node name="Row3" type="HBoxContainer" parent="."]
+[node name="Row3" type="HBoxContainer" parent="." unique_id=1986163501]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Label" type="ColorRect" parent="Row3"]
+[node name="Label" type="PanelContainer" parent="Row3" unique_id=1404101471]
 custom_minimum_size = Vector2(118, 20)
 layout_mode = 2
-color = Color(0.42, 0.5, 0.68, 0.72)
+mouse_filter = 2
+theme_type_variation = &"StatValuePanel"
 
-[node name="Bar" type="ColorRect" parent="Row3"]
+[node name="Bar" type="PanelContainer" parent="Row3" unique_id=2077477521]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 size_flags_horizontal = 3
-color = Color(0.3, 0.66, 0.72, 0.72)
+mouse_filter = 2
+theme_type_variation = &"StatValuePanel"
 
-[node name="Row4" type="HBoxContainer" parent="."]
+[node name="Row4" type="HBoxContainer" parent="." unique_id=1613129500]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Label" type="ColorRect" parent="Row4"]
+[node name="Label" type="PanelContainer" parent="Row4" unique_id=1809295271]
 custom_minimum_size = Vector2(82, 20)
 layout_mode = 2
-color = Color(0.42, 0.5, 0.68, 0.72)
+mouse_filter = 2
+theme_type_variation = &"StatValuePanel"
 
-[node name="Bar" type="ColorRect" parent="Row4"]
+[node name="Bar" type="PanelContainer" parent="Row4" unique_id=1724005877]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 size_flags_horizontal = 3
-color = Color(0.48, 0.42, 0.72, 0.72)
+mouse_filter = 2
+theme_type_variation = &"StatValuePanel"

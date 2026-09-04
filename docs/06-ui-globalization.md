@@ -67,7 +67,8 @@ Masing-masing view hanya menampilkan data dan memancarkan intent pemain.
 - **Collection:** roster dua kolom di lebar ponsel dan lebih banyak kolom saat
   layar melebar; tap langsung membuka bottom sheet identity +
   base stats. Condition memakai skeleton sampai care authoritative tersedia,
-  dengan aksi `View Profile` dan `Summon`. Thumbnail hanya dari cache.
+  dengan aksi `View Profile` dan `Summon`. Thumbnail memakai cache-first lalu
+  antrean backfill serial; cache miss menampilkan skeleton beranimasi.
 - **Anima Profile:** overlay yang hanya dibuka dari Collection atau picker
   Battle. Portrait dan sembilan row label/help/value menampilkan traits serta
   base stats. Konten scroll, dan setiap help membuka penjelasan singkat in-app.
@@ -165,7 +166,12 @@ Komponen reusable tinggal di `scenes/ui/` dengan logic di `scripts/`:
   satu `ShopScroll` internal dengan viewport pilihan 560px agar lima row katalog
   terbaca sekaligus; tinggi itu menyusut mengikuti cap 92% pada layar pendek,
   sedangkan empty state menyembunyikan viewport agar sheet tetap ringkas.
-- `UiSkeleton`: pulse bounded tanpa `_process`.
+- `UiSkeleton`: primitive kanonis untuk **content skeleton**, yaitu bentuk
+  sementara yang memesan geometri konten yang belum tersedia. Surface memakai
+  keluarga `StatValuePanel` (navy, radius dan border cyan yang sama), mengabaikan
+  pointer/focus, dan pulse bounded tanpa `_process`. Bentuknya tetap
+  content-aware: art memakai squircle, sedangkan Condition memakai pasangan
+  label/bar yang menyerupai meter final.
 - `InfoValueRow`: label, value rata kanan pada kolom lebar tetap, lalu help redup
   96px paling akhir. Urutan itu yang membuat baris tetap sejajar walau value
   sependek `5` atau sepanjang `Baby`; help sengaja lebih redup daripada value
@@ -173,6 +179,31 @@ Komponen reusable tinggal di `scenes/ui/` dengan logic di `scripts/`:
 
 FileDialog native, toast, Battle UI, Care Dock, dan efek Scan/Incubator tetap
 domain-specific. Jangan memperluas komponen generik dengan aturan game.
+
+### Kontrak content skeleton
+
+Cache memory atau disk selalu menang dan langsung menampilkan konten final:
+tidak ada minimum loading duration atau crossfade palsu untuk cache hit. Pada
+cache miss, placeholder pulse hanya selama data atau retry masih mungkin.
+Condition resolve sebagai satu grup karena seluruh meter datang dari satu
+payload authoritative; Trophy Showcase, Evolution History, Synthesis History,
+dan thumbnail Anima resolve per slot sehingga sibling yang lambat tidak menahan
+konten yang sudah siap.
+
+Resolve memakai crossfade 0,18 detik: skeleton keluar dengan ease-in quadratic
+dan konten masuk dengan ease-out quadratic, tanpa scale, stagger, atau delay.
+Slot art mempertahankan ukurannya selama transisi. Thumbnail memakai
+`AnimatedTexture` per cache key agar `ItemList`, picker, dan portrait dapat
+memegang resource yang sama tanpa overlay atau perubahan kontrak touch; resolve
+thumbnail terdiri dari enam frame dan frame sementara dilepas setelah settle.
+Setelah attempt ketiga gagal, pulse thumbnail berhenti pada fallback skeleton
+statis tanpa dialog atau copy baru. Pergantian session menghentikan resource
+lama sebelum cache UID sebelumnya dibuang.
+
+Content skeleton berbeda dari indikator pekerjaan operasional. Full-screen
+`LoadingScreen`, sweep Synthesis Review, Incubator, overlay Scan, shimmer Atlas,
+copy loading Battle/Team/Expedition, dan busy state tombol tetap memakai
+indikator domain masing-masing; jangan mengubahnya menjadi `UiSkeleton`.
 
 Rename dan Delete memakai satu `UiModal` shell. Rename selalu menawarkan
 `Save Name` + `Cancel`; Cancel tidak mengirim request, termasuk sesudah hatch.

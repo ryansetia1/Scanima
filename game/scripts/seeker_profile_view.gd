@@ -31,6 +31,7 @@ const MENU_ICON: Texture2D = preload("res://assets/icons/more-vertical.svg")
 ## trophy_id -> TextureRect kartunya, supaya art yang menyusul dari disk atau
 ## jaringan bisa dipasang tanpa membangun ulang grid.
 var _trophy_art: Dictionary = {}
+var _trophy_art_skeletons: Dictionary = {}
 var _trophy_ids := PackedStringArray()
 var _trophy_skeleton: UiSkeleton
 
@@ -121,23 +122,40 @@ func set_trophies(rows: Array) -> void:
 	if ids == _trophy_ids:
 		return
 	_trophy_ids = ids
+	_stop_trophy_card_skeletons()
 	_trophy_art.clear()
+	_trophy_art_skeletons.clear()
 	for child in _trophy_grid.get_children():
 		# queue_free() sendirian meninggalkan kartu lama di dalam grid sampai akhir
 		# frame, jadi jumlah anaknya sempat salah tepat saat kartu baru dipasang.
 		_trophy_grid.remove_child(child)
 		child.queue_free()
 	for trophy in trophies:
-		_trophy_grid.add_child(_build_trophy_card(
-			str(trophy.get("id", "")),
+		var trophy_id := str(trophy.get("id", ""))
+		var card := _build_trophy_card(
+			trophy_id,
 			str(trophy.get("display_name", tr("EXPEDITION_TROPHY_UNKNOWN")))
-		))
+		)
+		_trophy_grid.add_child(card)
+		var skeleton := _trophy_art_skeletons.get(trophy_id) as UiSkeleton
+		if is_instance_valid(skeleton):
+			skeleton.set_loading(true)
 
 
-func set_trophy_art(trophy_id: String, texture: Texture2D) -> void:
-	var card := _trophy_art.get(trophy_id) as TextureRect
-	if texture != null and is_instance_valid(card):
-		card.texture = texture
+func set_trophy_art(trophy_id: String, texture: Texture2D, animate: bool = false) -> void:
+	var art := _trophy_art.get(trophy_id) as TextureRect
+	var skeleton := _trophy_art_skeletons.get(trophy_id) as UiSkeleton
+	if not is_instance_valid(art) or not is_instance_valid(skeleton):
+		return
+	if texture == null:
+		skeleton.set_loading(false)
+		return
+	art.texture = texture
+	if animate and skeleton.visible:
+		skeleton.resolve_to(art)
+	else:
+		art.modulate = Color.WHITE
+		skeleton.set_loading(false)
 
 
 func set_trophies_loading(loading: bool) -> void:
@@ -145,12 +163,21 @@ func set_trophies_loading(loading: bool) -> void:
 		_trophy_section.visible = true
 		_trophy_empty.visible = false
 		_trophy_grid.visible = false
+		_stop_trophy_card_skeletons()
 	_trophy_skeleton.set_loading(loading)
 
 
 func hide_trophies() -> void:
 	_trophy_skeleton.set_loading(false)
+	_stop_trophy_card_skeletons()
 	_trophy_section.visible = false
+
+
+func _stop_trophy_card_skeletons() -> void:
+	for value in _trophy_art_skeletons.values():
+		var skeleton := value as UiSkeleton
+		if is_instance_valid(skeleton):
+			skeleton.set_loading(false)
 
 
 ## Baris `trophies` membungkus row embed PostgREST; pemanggil di luar view juga
@@ -261,12 +288,11 @@ func _build_trophy_skeleton() -> UiSkeleton:
 	skeleton.visible = false
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
-	for _index in 3:
-		var slot := ColorRect.new()
-		slot.custom_minimum_size = Vector2(TROPHY_CARD_PX, TROPHY_CARD_PX)
-		slot.color = Color(0.18, 0.5, 0.7, 0.72)
-		slot.mouse_filter = MOUSE_FILTER_IGNORE
-		row.add_child(slot)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for index in 3:
+		row.add_child(UiSkeleton.art_placeholder(
+			Vector2(TROPHY_CARD_PX, TROPHY_CARD_PX), "TrophyPlaceholder%d" % index
+		))
 	skeleton.add_child(row)
 	_trophy_section.add_child(skeleton)
 	_trophy_section.move_child(skeleton, 1)
@@ -278,11 +304,27 @@ func _build_trophy_skeleton() -> UiSkeleton:
 func _build_trophy_card(trophy_id: String, display_name: String) -> Control:
 	var card := VBoxContainer.new()
 	card.add_theme_constant_override("separation", 8)
+	var art_slot := Control.new()
+	art_slot.name = "TrophyArtSlot"
+	art_slot.custom_minimum_size = Vector2(TROPHY_CARD_PX, TROPHY_CARD_PX)
+	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(art_slot)
+	var skeleton := UiSkeleton.new()
+	skeleton.name = "TrophyArtSkeleton"
+	skeleton.visible = false
+	art_slot.add_child(skeleton)
+	skeleton.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	skeleton.add_child(UiSkeleton.art_placeholder(
+		Vector2(TROPHY_CARD_PX, TROPHY_CARD_PX), "TrophyArtPlaceholder"
+	))
 	var art := TextureRect.new()
+	art.name = "TrophyArt"
 	art.custom_minimum_size = Vector2(TROPHY_CARD_PX, TROPHY_CARD_PX)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	card.add_child(art)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art_slot.add_child(art)
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var label := Label.new()
 	label.text = display_name
 	label.custom_minimum_size = Vector2(TROPHY_CARD_PX, 0)
@@ -290,4 +332,5 @@ func _build_trophy_card(trophy_id: String, display_name: String) -> Control:
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.add_child(label)
 	_trophy_art[trophy_id] = art
+	_trophy_art_skeletons[trophy_id] = skeleton
 	return card
