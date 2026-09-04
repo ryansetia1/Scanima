@@ -30,6 +30,106 @@ karena Chromquartz masih tampak miring, lalu v48 diterima setelah second shallow
 minimum turun 11,8%→6,4% tanpa meratakan perspektif. Rollback production:
 v41 Capture/Evolution dan v45 Synthesis.
 
+## V49–v51 Neutral Idle Gaze — rejected
+
+V49 menargetkan satu cacat pada `Anima Idle Pose`: kepala atau pupil kadang
+mendongak walaupun Anima sedang menunggu lawan di depannya. Aturan baru hanya
+berlaku pada sel Idle. Kepala, face plane, atau leading sensory plane dibuat
+rileks dan level; pupil/iris yang arahnya memang terbaca memandang satu target
+jauh sepanjang sumbu alami kepala atau moncong. Ia tidak boleh menatap Seeker/
+kamera, atas, bawah, atau melakukan side-eye. Dalam sudut forward-left
+three-quarter, proyeksi tatapan itu tetap menuju canvas-left sehingga kontrak
+mirror Battle tidak berubah.
+
+Lock Idle ini menang atas `character_direction`, personality, authority pose,
+reference gaze, atau expression yang meminta kepala/mata mendongak, menunduk,
+keluar dari sumbu kepala, atau menatap viewer. Ini diperlukan karena Plan
+Sunhound v28 yang dipakai sebagai control masih memuat `head slightly raised`.
+
+Kontrak ini tidak boleh menciptakan anatomi demi membuat gaze terbaca. Mata
+tanpa pupil, solid-glow, compound, tunggal, tersembunyi, atau sensory plane
+tanpa wajah dipertahankan apa adanya. Pose Battle dan pose ekspresif lain tetap
+memakai kontraknya masing-masing.
+
+Kandidat membawa delta yang sama ke Capture object, Capture fauna, Evolution,
+dan Synthesis. Chapter Factory juga memakainya untuk aset chapter yang dibuat
+setelah ini; chapter yang sudah rilis tetap immutable. V49 belum live. Gate
+pertama adalah satu Adult Sunhound Evolution dari Plan dan reference tersimpan,
+tanpa Vision, lalu penilaian berdampingan terhadap art lama. Jika head/gaze
+Idle gagal, satu attempt manual kedua boleh dijalankan sesudah revisi prompt
+minimum; cacat stochastic lain tidak memicu retry. Production tetap memerlukan
+satu sample dari masing-masing template player lain sebelum rollout.
+
+Proof pertama selesai 9/9 dalam 58,664 detik dengan satu image generation dan
+nol Vision. Idle head/gaze lolos sasaran, tetapi telinga berubah dari floppy
+menjadi lebih tegak/runcing dan wajah bergeser wolf-like. Karena kontinuitas
+identitas belum bersih dan attempt kedua tidak boleh dipakai untuk cacat
+stochastic non-gaze, tidak ada retry. Operator menerima variasi bentuk itu dan
+menyetujui proof karena arah mata sudah sesuai target. V49 tetap candidate
+sampai tiga template player lain menyelesaikan gate visualnya.
+
+Capture fauna Golden Retriever kemudian diuji satu-per-satu dengan Vision v15
+tersimpan: satu image, nol Vision/facing audit, 9/9 sel dalam 65,863 detik.
+Idle mempertahankan telinga floppy dan gaze mengikuti sumbu moncong. Residu
+hijau naik dari control v47 0,52% menjadi 1,04% tetapi seam margin tetap lulus.
+Operator menolaknya sebagai proof rollout karena kepala Idle terlalu
+side-profile dan kehilangan sudut 3/4 control, walaupun gaze sudah tepat. Gate
+berhenti untuk revisi minimum head-angle; Capture object dan Synthesis belum
+diuji.
+
+Karena v49 sudah memiliki artefak proof berbayar, koreksinya difork menjadi
+candidate v50 agar provenance tetap reproduktif. V50 mempertahankan seluruh
+kontrak v49 lalu mewajibkan kepala dan badan tetap dalam forward-left
+three-quarter yang jelas. Kepala tidak boleh diputar menjauh menjadi side
+profile untuk mengarahkan gaze. Jika pasangan mata dan occlusion alaminya
+memungkinkan, mata dekat dan jauh tetap terlihat dengan far eye terforeshorten;
+hanya pupil/iris yang bergerak dalam rentang anatomisnya. Aturan ini berlaku
+pada empat template player dan Chapter Factory mendatang.
+
+Inheritance, placeholder render, precedence terhadap authority pose, dan delta
+teks tunggal v49→v50 dipagari `npm run selftest`. Production tetap v47/v48.
+Gate berikutnya adalah tepat satu re-proof fauna, lalu berhenti untuk review.
+
+Re-proof v50 selesai 9/9 dengan satu image generation, nol Vision/facing audit,
+dan 57 detik model. Residu hijau 0,63% serta seam margin lulus, tetapi inspeksi
+awal masih melihat moncong sebagai siluet profil dan far eye hilang pada Idle.
+Operator memilih control v47 sebagai target dan menolak v50: geometri kepala/
+badan Idle harus tetap seperti v47, sedangkan perubahan hanya boleh mengubah
+arah pupil.
+
+Candidate v51 karena itu mendefinisikan geometri secara konkret: forward-left
+three-quarter sekitar 30–45° dari front view, bukan profil 90°; front plane dan
+satu side plane wajah/moncong/sensory structure sama-sama terbaca. Head pose
+dibekukan sebelum gaze diatur. Hanya pupil/iris yang boleh bergerak; bila
+targeting berkonflik, geometri 3/4 menang dan pupil memakai posisi rileks dalam
+socket. Bundle, inheritance, render placeholder, precedence Evolution, suite
+penuh, dan dry-run fauna lulus. Belum ada generation v51 berbayar.
+
+Satu proof fauna v51 yang kemudian diizinkan selesai 9/9 dengan satu image,
+nol Vision/facing audit, dan 58 detik model. Residu hijau turun ke 0,34% serta
+seam margin lulus. Dibanding v50, geometri Idle kembali jauh lebih dekat ke
+control v47, tetapi operator menemukan kegagalan utama yang terlewat pada
+inspeksi awal: pupil kembali melihat ke atas. V51 ditolak dan operator memilih
+hasil v47. Sesudah tiga varian fauna gagal, tidak ada revisi prompt atau
+generation berikutnya tanpa perubahan strategi.
+
+Keputusan sementara dipisah per pipeline, bukan satu prompt universal. Capture
+object/fauna tetap v47. Proof Evolution v49 yang diterima tetap candidate
+khusus Evolution tetapi belum live. Synthesis tetap v48 sampai diuji sendiri.
+Chapter Factory kembali ke kontrak sebelumnya dan tidak membawa blok Idle
+v49–v51.
+
+Satu proof Synthesis v49 berikutnya memakai Chromquartz dari Gearbit Racer +
+Chromvein dan Plan `dominant_b` tersimpan: satu image, nol Vision, 9/9 sel,
+84,706 detik, residu hijau 0,37%, dan seam lulus. Idle-nya memakai dua bar
+cahaya tanpa pupil. V49 dengan benar tidak menambah anatomi mata, tetapi karena
+itu sample ini juga tidak membuktikan manfaat gaze dibanding live v48. Hasil
+ditolak untuk rollout Synthesis; operator memilih tetap v48.
+
+Keputusan terakhir juga mempertahankan Evolution v47 dan menutup eksperimen
+prompt-only. Seluruh v49–v51 ditolak; production tetap Capture/Evolution v47
+dan Synthesis v48.
+
 ## Kontrak capture v13–v20 dan candidate art v16
 
 Fondasi kontrak capture v47 tetap diturunkan dari `backend/prompts/v20/` melalui

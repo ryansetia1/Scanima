@@ -393,7 +393,7 @@ dan `sfx-presentation.mdc`.
 |---|---|
 | [`docs/14-deploy-log.md`](docs/14-deploy-log.md) | Riwayat rollout: Atlas, grounding v47/v48, Name Lineage, Evolution art, Battle polish, gate lawan Duel, daftar migration |
 | [`docs/15-commands.md`](docs/15-commands.md) | Katalog `--*-demo`, uji terhadap production, build/verifikasi APK, backend lokal |
-| [`docs/16-prompt-version-history.md`](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v48 dan provenance versi live maupun ditolak |
+| [`docs/16-prompt-version-history.md`](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v51 dan provenance versi live maupun ditolak |
 
 Indeks dokumen selengkapnya ada di [README.md](README.md); panduan pemain di
 [`docs/wiki/`](docs/wiki/README.md).

@@ -1471,6 +1471,271 @@ console.log("17. bundel prompt Edge Function cocok dengan file sumbernya");
       "do not count as contact",
     ),
   );
+
+  const neutralIdleClauses = [
+    "NEUTRAL IDLE GAZE — IDLE CELL ONLY",
+    "relaxed and level along its natural forward axis",
+    "one distant target straight ahead along the head or snout direction",
+    "never look at the viewer or camera, look up or down, or roll the eyes sideways into a side-eye",
+    "Do not add pupils, irises, eyes, or a new face",
+    "This Idle-only lock overrides any character direction, personality, authority pose, reference gaze, or expression",
+  ];
+  const idleThreeQuarterClauses = [
+    "IDLE THREE-QUARTER HEAD LOCK — IDLE CELL ONLY",
+    "same clearly readable forward-left three-quarter orientation as the body",
+    "keep both near and far eyes visible when anatomy and normal occlusion allow",
+    "Move only pupils or irises within their natural range",
+  ];
+  const idleGeometryClauses = [
+    "IDLE THREE-QUARTER GEOMETRY LOCK — IDLE CELL ONLY",
+    "about 30–45 degrees away from front view, never a 90-degree side profile",
+    "front plane and one side plane",
+    "Freeze this head pose before setting the gaze",
+    "preserve the three-quarter geometry and use relaxed pupils centered within their sockets",
+  ];
+  assert.equal(bundel.v49?.vision_system, bundel.v41?.vision_system);
+  assert.deepEqual(bundel.v49?.vision_schema, bundel.v41?.vision_schema);
+  assert.deepEqual(bundel.v49?.vibe_directions, bundel.v41?.vibe_directions);
+  assert.equal(bundel.v49?.facing_audit, bundel.v41?.facing_audit);
+  assert.equal(
+    bundel.v49?.vision_evolve_system,
+    bundel.v41?.vision_evolve_system,
+  );
+  assert.deepEqual(
+    bundel.v49?.vision_evolve_schema,
+    bundel.v41?.vision_evolve_schema,
+  );
+  assert.equal(
+    bundel.v49?.vision_synthesis_system,
+    bundel.v45?.vision_synthesis_system,
+  );
+  assert.deepEqual(
+    bundel.v49?.vision_synthesis_schema,
+    bundel.v45?.vision_synthesis_schema,
+  );
+  for (const [name, prompt] of Object.entries({
+    object: bundel.v49?.sprite_sheet,
+    fauna: bundel.v49?.sprite_sheet_fauna,
+    evolution: bundel.v49?.sprite_sheet_evolve,
+    synthesis: bundel.v49?.sprite_sheet_synthesis,
+  })) {
+    for (const clause of neutralIdleClauses) {
+      assert.ok(prompt?.includes(clause), `v49 ${name} memuat kontrak ${clause}`);
+    }
+    assert.equal(
+      prompt?.match(/NEUTRAL IDLE GAZE — IDLE CELL ONLY/g)?.length,
+      1,
+      `v49 ${name} hanya mengunci gaze di satu blok Idle`,
+    );
+    assert.ok(prompt?.includes("GROUND PLANE LOCK — GROUNDED POSES"));
+  }
+  assert.ok(
+    bundel.v49?.sprite_sheet_synthesis.includes(
+      "SOLID SUPPORT CONTACT — SYNTHESIS OVERRIDE",
+    ),
+  );
+  const withoutNeutralIdle = (prompt) =>
+    prompt.replace(
+      /NEUTRAL IDLE GAZE — IDLE CELL ONLY\n(?:[^\n]*\n){5}/,
+      "",
+    );
+  assert.equal(
+    withoutNeutralIdle(bundel.v49.sprite_sheet),
+    bundel.v47.sprite_sheet,
+  );
+  assert.equal(
+    withoutNeutralIdle(bundel.v49.sprite_sheet_fauna),
+    bundel.v47.sprite_sheet_fauna,
+  );
+  assert.equal(
+    withoutNeutralIdle(bundel.v49.sprite_sheet_evolve),
+    bundel.v47.sprite_sheet_evolve,
+  );
+  assert.equal(
+    withoutNeutralIdle(bundel.v49.sprite_sheet_synthesis),
+    bundel.v48.sprite_sheet_synthesis,
+  );
+  assert.equal(bundel.v50?.vision_system, bundel.v49?.vision_system);
+  assert.deepEqual(bundel.v50?.vision_schema, bundel.v49?.vision_schema);
+  assert.deepEqual(bundel.v50?.vibe_directions, bundel.v49?.vibe_directions);
+  assert.equal(bundel.v50?.facing_audit, bundel.v49?.facing_audit);
+  assert.equal(
+    bundel.v50?.vision_evolve_system,
+    bundel.v49?.vision_evolve_system,
+  );
+  assert.deepEqual(
+    bundel.v50?.vision_evolve_schema,
+    bundel.v49?.vision_evolve_schema,
+  );
+  assert.equal(
+    bundel.v50?.vision_synthesis_system,
+    bundel.v49?.vision_synthesis_system,
+  );
+  assert.deepEqual(
+    bundel.v50?.vision_synthesis_schema,
+    bundel.v49?.vision_synthesis_schema,
+  );
+  for (const [name, prompt] of Object.entries({
+    object: bundel.v50?.sprite_sheet,
+    fauna: bundel.v50?.sprite_sheet_fauna,
+    evolution: bundel.v50?.sprite_sheet_evolve,
+    synthesis: bundel.v50?.sprite_sheet_synthesis,
+  })) {
+    for (const clause of [...neutralIdleClauses, ...idleThreeQuarterClauses]) {
+      assert.ok(prompt?.includes(clause), `v50 ${name} memuat kontrak ${clause}`);
+    }
+    assert.equal(
+      prompt?.match(/IDLE THREE-QUARTER HEAD LOCK — IDLE CELL ONLY/g)?.length,
+      1,
+      `v50 ${name} hanya mengunci sudut kepala di satu blok Idle`,
+    );
+  }
+  const withoutIdleThreeQuarter = (prompt) =>
+    prompt.replace(
+      /IDLE THREE-QUARTER HEAD LOCK — IDLE CELL ONLY\n(?:[^\n]*\n){3}/,
+      "In the required forward-left three-quarter pose, this head-aligned gaze naturally projects toward canvas-left; do not turn the face toward the viewer to center the pupils.\n",
+    );
+  assert.equal(
+    withoutIdleThreeQuarter(bundel.v50.sprite_sheet),
+    bundel.v49.sprite_sheet,
+  );
+  assert.equal(
+    withoutIdleThreeQuarter(bundel.v50.sprite_sheet_fauna),
+    bundel.v49.sprite_sheet_fauna,
+  );
+  assert.equal(
+    withoutIdleThreeQuarter(bundel.v50.sprite_sheet_evolve),
+    bundel.v49.sprite_sheet_evolve,
+  );
+  assert.equal(
+    withoutIdleThreeQuarter(bundel.v50.sprite_sheet_synthesis),
+    bundel.v49.sprite_sheet_synthesis,
+  );
+  assert.equal(bundel.v51?.vision_system, bundel.v50?.vision_system);
+  assert.deepEqual(bundel.v51?.vision_schema, bundel.v50?.vision_schema);
+  assert.deepEqual(bundel.v51?.vibe_directions, bundel.v50?.vibe_directions);
+  assert.equal(bundel.v51?.facing_audit, bundel.v50?.facing_audit);
+  assert.equal(
+    bundel.v51?.vision_evolve_system,
+    bundel.v50?.vision_evolve_system,
+  );
+  assert.deepEqual(
+    bundel.v51?.vision_evolve_schema,
+    bundel.v50?.vision_evolve_schema,
+  );
+  assert.equal(
+    bundel.v51?.vision_synthesis_system,
+    bundel.v50?.vision_synthesis_system,
+  );
+  assert.deepEqual(
+    bundel.v51?.vision_synthesis_schema,
+    bundel.v50?.vision_synthesis_schema,
+  );
+  for (const [name, prompt] of Object.entries({
+    object: bundel.v51?.sprite_sheet,
+    fauna: bundel.v51?.sprite_sheet_fauna,
+    evolution: bundel.v51?.sprite_sheet_evolve,
+    synthesis: bundel.v51?.sprite_sheet_synthesis,
+  })) {
+    for (const clause of [...neutralIdleClauses, ...idleGeometryClauses]) {
+      assert.ok(prompt?.includes(clause), `v51 ${name} memuat kontrak ${clause}`);
+    }
+    assert.equal(
+      prompt?.match(/IDLE THREE-QUARTER GEOMETRY LOCK — IDLE CELL ONLY/g)?.length,
+      1,
+      `v51 ${name} hanya mengunci geometri kepala di satu blok Idle`,
+    );
+    assert.ok(
+      !prompt?.includes("IDLE THREE-QUARTER HEAD LOCK — IDLE CELL ONLY"),
+      `v51 ${name} tidak membawa wording head-angle v50 yang gagal`,
+    );
+  }
+  const withoutIdleGeometry = (prompt) =>
+    prompt.replace(
+      /IDLE THREE-QUARTER GEOMETRY LOCK — IDLE CELL ONLY\n(?:[^\n]*\n){4}/,
+      [
+        "IDLE THREE-QUARTER HEAD LOCK — IDLE CELL ONLY",
+        "Keep the head, face plane, or equivalent leading sensory plane in the same clearly readable forward-left three-quarter orientation as the body; never rotate it away into a side profile to satisfy gaze direction.",
+        "For naturally paired eyes on a face, keep both near and far eyes visible when anatomy and normal occlusion allow, with the far eye naturally foreshortened.",
+        "Move only pupils or irises within their natural range to align the gaze along the head or snout toward canvas-left. Do not change the head angle to aim the gaze, and do not turn the face toward the viewer.",
+        "",
+      ].join("\n"),
+    );
+  assert.equal(
+    withoutIdleGeometry(bundel.v51.sprite_sheet),
+    bundel.v50.sprite_sheet,
+  );
+  assert.equal(
+    withoutIdleGeometry(bundel.v51.sprite_sheet_fauna),
+    bundel.v50.sprite_sheet_fauna,
+  );
+  assert.equal(
+    withoutIdleGeometry(bundel.v51.sprite_sheet_evolve),
+    bundel.v50.sprite_sheet_evolve,
+  );
+  assert.equal(
+    withoutIdleGeometry(bundel.v51.sprite_sheet_synthesis),
+    bundel.v50.sprite_sheet_synthesis,
+  );
+
+  const captureFixture = {
+    object_label: "Golden Retriever dog",
+    creature_brief: "A loyal golden quadruped companion.",
+    character_direction: "Watchful, warm, and alert.",
+    signature_features: ["floppy ears", "feathered tail"],
+    surface_finish: "dense golden double coat",
+    damage_hints: ["ruffled fur", "dusty paws"],
+    dominant_colors: ["gold", "cream"],
+    stats: { hp: 45, atk: 75, def: 35, spd: 80, special: 65 },
+    strike_name: "Swift Bite",
+    surge_name: "Radiant Aura",
+  };
+  for (const [name, template] of Object.entries({
+    object: bundel.v51.sprite_sheet,
+    fauna: bundel.v51.sprite_sheet_fauna,
+  })) {
+    const prompt = assemblePrompt(
+      template,
+      captureFixture,
+      "natural",
+      bundel.v51.vibe_directions,
+    );
+    assert.doesNotMatch(prompt, /\{\{[^}]+\}\}/);
+    for (const clause of [...neutralIdleClauses, ...idleGeometryClauses]) {
+      assert.ok(prompt.includes(clause), `render v51 ${name} memuat ${clause}`);
+    }
+  }
+
+  const { promptForSlot } = await import(
+    "../backend/tools/chapter_factory/prompts.mjs"
+  );
+  const chapterAnimaPrompt = await promptForSlot("anima:test", {
+    design: { summary: { title: "Test Chapter" } },
+    brief: {},
+    getCastMember: () => ({
+      name: "Test Anima",
+      id: "test",
+      species_key: "test_anima",
+      element: "neutral",
+      secondary_element: "air",
+      strike_name: "Test Strike",
+      surge_name: "Test Surge",
+      color_bucket: "amber",
+    }),
+  });
+  const normalizedChapterAnimaPrompt = chapterAnimaPrompt.replace(/\s+/g, " ");
+  assert.ok(
+    !normalizedChapterAnimaPrompt.includes(
+      "NEUTRAL IDLE GAZE — IDLE CELL ONLY",
+    ),
+    "Chapter Factory tidak membawa kontrak gaze v49–v51 yang ditolak",
+  );
+  assert.ok(
+    !normalizedChapterAnimaPrompt.includes("IDLE THREE-QUARTER"),
+    "Chapter Factory tidak membawa kontrak geometri v50/v51 yang ditolak",
+  );
+  assert.ok(!bundel.v47?.sprite_sheet.includes("NEUTRAL IDLE GAZE"));
+  assert.ok(!bundel.v48?.sprite_sheet_synthesis.includes("NEUTRAL IDLE GAZE"));
 }
 
 console.log("17b. capture vibe hanya mengubah arah visual, bukan Vision");
@@ -6956,7 +7221,7 @@ console.log(
 }
 
 console.log(
-  "36. evolution Plan validator, prompt placeholders, dan bundel v21–v48",
+  "36. evolution Plan validator, prompt placeholders, dan bundel v21–v51",
 );
 {
   const {
@@ -8690,6 +8955,28 @@ console.log(
   );
   assert.ok(promptV28.includes("SILHOUETTE BREAK — MUST BE VISIBLE AT 96 PX"));
   assert.ok(promptV28.includes("long coiled stem body"));
+
+  const raisedHeadV51 = structuredClone(adultV28.plan);
+  raisedHeadV51.presence_contract.authority_pose =
+    "Head slightly raised, gaze forward and alert.";
+  const promptV51 = assembleEvolvePrompt(
+    bundel.v51.sprite_sheet_evolve,
+    raisedHeadV51,
+    {
+      species_key: "plant_organic_monstera_potted",
+      color_bucket: "cool_green",
+    },
+  );
+  assert.doesNotMatch(promptV51, /\{\{[a-z_]+\}\}/);
+  assert.ok(promptV51.includes("NEUTRAL IDLE GAZE — IDLE CELL ONLY"));
+  assert.ok(promptV51.includes("IDLE THREE-QUARTER GEOMETRY LOCK — IDLE CELL ONLY"));
+  assert.ok(promptV51.includes("Head slightly raised, gaze forward and alert."));
+  assert.ok(
+    promptV51.indexOf("This Idle-only lock overrides")
+      > promptV51.indexOf("Head slightly raised, gaze forward and alert."),
+    "override gaze v51 harus muncul sesudah authority pose yang bertentangan",
+  );
+
   assert.ok(
     !/Pok[eé]mon|Digimon/i.test(
       `${bundel.v28.vision_evolve_system}\n${bundel.v28.sprite_sheet_evolve}`,
@@ -11132,6 +11419,25 @@ console.log("40. Guided Synthesis menjaga budget stat dan roster elemen");
     "balanced",
   );
   assert.doesNotMatch(prompt, /\{\{[^}]+\}\}/, "Synthesis prompt may not leave placeholders");
+
+  const synthesisBundle = await (
+    await import("../backend/tools/bundle_prompts.mjs")
+  ).buildBundle();
+  const promptV51 = assembleSynthesisPrompt(
+    synthesisBundle.v51.sprite_sheet_synthesis,
+    plan,
+    sourceA,
+    sourceB,
+    "balanced",
+  );
+  assert.doesNotMatch(promptV51, /\{\{[^}]+\}\}/);
+  assert.ok(promptV51.includes("NEUTRAL IDLE GAZE — IDLE CELL ONLY"));
+  assert.ok(
+    promptV51.includes(
+      "This Idle-only lock overrides any character direction, personality, authority pose, reference gaze, or expression",
+    ),
+  );
+  assert.ok(promptV51.includes("IDLE THREE-QUARTER GEOMETRY LOCK — IDLE CELL ONLY"));
 
   assert.throws(
     () => validateSynthesisPlan({ ...raw, primary_element: "light" }, {

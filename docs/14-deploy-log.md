@@ -2,6 +2,101 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 4 September 2026: proof Neutral Idle Gaze v49 — gaze lolos, identitas bergeser
+
+Satu Adult Sunhound Evolution dibuat lewat `eval/evolution_image.mjs` memakai
+Plan v28 dan Hatchling Idle reference tersimpan. Run tepat satu
+`openai/gpt-image-2` medium, tanpa Vision dan tanpa retry, selesai dalam 58,664
+detik dengan 9/9 sel; plafon biaya konservatif **US$0.07**. Prompt final
+memuat override setelah authority pose v28 `head slightly raised`, sehingga
+kontrak Idle level tidak kalah oleh Plan lama.
+
+Secara visual, Idle v49 memperbaiki sasaran utama: kepala lebih level dan pupil
+mengikuti sumbu moncong alih-alih mendongak seperti art terkunci v28 dan control
+v47. Semua sel karakter tetap menghadap canvas-left, layout utuh, dan grounding
+masih terbaca. Metrik advisory: second shallow minimum **3,4%** (v47 2,7%),
+contact fraction **16,3%**, standing-height variance **13,7%**, dan residu hijau
+**0,588%**.
+
+Checklist keseluruhan belum bersih: telinga floppy berubah menjadi lebih
+tegak/runcing dan wajah bergeser lebih wolf-like, sehingga kontinuitas identitas
+lebih lemah daripada art v28/v47. Attempt kedua hanya diotorisasi untuk
+kegagalan head/gaze; karena gaze sudah lolos, tidak ada generation kedua untuk
+mengejar cacat identitas stochastic. Operator menerima perbedaan bentuk itu dan
+menyetujui proof karena arah mata v49 sudah sesuai target. V49 tetap candidate
+sampai sample Capture object, Capture fauna, dan Synthesis lulus. Tidak ada
+migration, deploy, perubahan `app_config`, atau penggantian art Sunhound live;
+production tetap v47 Capture/Evolution dan v48 Synthesis.
+
+Gate dilanjutkan satu-per-satu atas pilihan operator. Capture fauna Golden
+Retriever memakai foto dan Vision v15 tersimpan, `--skip-facing`, sehingga
+tepat satu image generation dan nol Vision/facing-audit. Proses selesai dalam
+65,863 detik (generation dilaporkan 59 detik), 9/9 sel, plafon **US$0.07**.
+Idle mempertahankan telinga floppy dan identitas canine; pupil mengikuti sumbu
+moncong dan tidak lagi mendongak seperti v15/v47. Grounding advisory tetap dekat
+control: second shallow minimum **2,6%** (v47 2,0%), contact fraction **26,6%**
+(v47 27,4%), standing-height variance **0,3%**. Residu hijau naik menjadi
+**1,04%** dari v47 **0,52%**, tetapi seam margin lulus dan tidak memicu retry.
+Operator menolak sample sebagai proof rollout: arah mata sudah tepat, tetapi
+kepala Idle terlalu side-profile dan kehilangan sudut 3/4 yang terbaca pada
+control. Gate berikutnya berhenti; tidak ada generation tambahan sebelum
+kontrak head angle direvisi dan budget sample baru disetujui.
+
+Koreksi difork sebagai v50 supaya artefak berbayar v49 tetap reproduktif.
+Keempat template player dan Chapter Factory mendatang sekarang mengunci kepala
+dan badan Idle pada forward-left 3/4 yang jelas, mempertahankan near/far eye
+bila anatomi serta occlusion alami memungkinkan, dan hanya menggerakkan pupil/
+iris untuk mengarahkan gaze. Vision, planner, layout, grounding, dan
+post-process tidak berubah. Bundle serta `npm run selftest` lulus. Operator
+mengizinkan satu re-proof fauna tambahan dengan plafon **US$0.07**, lalu gate
+kembali berhenti untuk review; production tetap v47/v48.
+
+Re-proof v50 selesai dalam 66,911 detik (generation dilaporkan 57 detik), satu
+image, nol Vision/facing audit, 9/9 sel, dan tepat **US$0.07**. Residu hijau
+turun ke **0,63%** dan seam margin lulus; contact fraction **13,9%**, second
+shallow minimum **3,7%**, standing-height variance **9,6%**. Namun inspeksi
+awal masih melihat moncong sebagai siluet profil dan far eye hilang pada Idle,
+jadi sample belum membuktikan strict readable 3/4. Gate berhenti menunggu
+keputusan operator; tidak ada retry atau template lain yang dijalankan.
+
+Operator memilih control v47 sebagai target geometri dan menolak v50. V51 lalu
+difork tanpa panggilan model: Idle didefinisikan 30–45° dari front view, front
+plane + satu side plane harus terbaca, head pose dibekukan lebih dulu, dan hanya
+pupil/iris yang boleh mengarahkan gaze. Jika keduanya berkonflik, geometri 3/4
+menang. Keempat template player serta Chapter Factory mendatang diperbarui;
+bundle, `npm run selftest`, lint, dan dry-run fauna lulus. Tidak ada generation
+v51 berbayar. Production tetap v47/v48.
+
+Sesudah operator mengizinkan satu proof, fauna v51 selesai dalam 70,193 detik
+(generation dilaporkan 58 detik), satu image, nol Vision/facing audit, 9/9 sel,
+dan tepat **US$0.07**. Residu hijau turun ke **0,34%**, seam margin lulus,
+contact fraction **22,7%**, second shallow minimum **2,8%**, dan
+standing-height variance **4,4%**. Geometri Idle kembali jauh lebih dekat ke
+control v47 daripada v50, tetapi operator menemukan kegagalan utama yang
+terlewat pada inspeksi awal: pupil kembali memandang ke atas. V51 ditolak;
+operator memilih hasil v47. Tidak ada generation berikutnya.
+
+Keputusan sementara dipisah per pipeline: Capture object/fauna tetap v47;
+proof Evolution v49 yang gaze-nya disukai sempat dipertahankan sebagai candidate
+terpisah; Synthesis tetap live v48 sampai punya proof sendiri. Chapter Factory
+dikembalikan ke kontrak sebelumnya dan tidak membawa blok v49–v51 yang sudah
+ditolak. Tidak ada perubahan `app_config`, deploy, atau panggilan model tambahan.
+
+Satu proof Synthesis v49 kemudian diizinkan memakai Plan Chromquartz serta
+Source Gearbit Racer + Chromvein tersimpan (`dominant_b`). Dry-run lulus, lalu
+tepat satu image generation medium selesai dalam 84,706 detik, nol Vision, 9/9
+sel, dan **US$0.07**. Residu hijau **0,37%**, seam margin lulus, contact fraction
+**19,3%**, second shallow minimum **7,6%**, dan standing-height variance
+**20,0%**. Idle memakai dua bar cahaya tanpa pupil, sehingga kontrak v49 dengan
+benar tidak menciptakan anatomi mata baru dan tidak memberi bukti perbaikan gaze
+dibanding live v48. Operator memilih tetap live v48; v49 tidak dipromosikan dan
+tidak ada retry.
+
+Operator juga memilih tetap v47 untuk Evolution dan menutup eksperimen
+prompt-only. Dengan demikian tidak ada bagian v49–v51 yang dipromosikan:
+Capture/Evolution tetap v47, Synthesis tetap v48, Chapter Factory tetap pada
+kontrak sebelumnya, dan existing art tidak berubah.
+
 ## 4 September 2026: nama legacy Evolution History dipulihkan
 
 Playtron ternyata **ada** di Atlas, tetapi form Hatchling-nya bernama `Anima`.

@@ -65,7 +65,13 @@ const CAPTURE_KEYS = new Set([
   "facing_audit_schema",
 ]);
 const CAPTURE_SPRITE_KEYS = new Set(["sprite_sheet", "sprite_sheet_fauna"]);
-const LOCAL_CAPTURE_SPRITE_VERSIONS = new Set(["v46", "v47"]);
+const LOCAL_CAPTURE_SPRITE_VERSIONS = new Set([
+  "v46",
+  "v47",
+  "v49",
+  "v50",
+  "v51",
+]);
 const CAPTURE_SPRITE_PARENT = new Map([["v48", "v47"]]);
 const EVOLVE_KEYS = new Set([
   "vision_evolve_system",
@@ -111,6 +117,9 @@ const EVOLVE_PLANNER_KEYS = new Set(["vision_evolve_system", "vision_evolve_sche
 // agree for every version except v47 — then overrides just that one.
 const EVOLVE_PLANNER_PARENT = new Map(EVOLVE_PARENT);
 EVOLVE_PLANNER_PARENT.set("v47", "v41");
+EVOLVE_PLANNER_PARENT.set("v49", "v41");
+EVOLVE_PLANNER_PARENT.set("v50", "v41");
+EVOLVE_PLANNER_PARENT.set("v51", "v41");
 // v42–v45 hanya mengubah Synthesis; capture/evolve tetap byte-identik v41.
 CAPTURE_PARENT.set("v42", "v41");
 CAPTURE_PARENT.set("v43", "v41");
@@ -121,6 +130,9 @@ CAPTURE_PARENT.set("v45", "v41");
 CAPTURE_PARENT.set("v46", "v41");
 CAPTURE_PARENT.set("v47", "v41");
 CAPTURE_PARENT.set("v48", "v41");
+CAPTURE_PARENT.set("v49", "v41");
+CAPTURE_PARENT.set("v50", "v41");
+CAPTURE_PARENT.set("v51", "v41");
 // v43–v45 mengubah planner saja; prompt sheet berbayar tetap persis v42.
 const SYNTHESIS_SHEET_PARENT = new Map([
   ["v43", "v42"],
@@ -132,6 +144,9 @@ const SYNTHESIS_PLANNER_PARENT = new Map([
   ["v46", "v45"],
   ["v47", "v45"],
   ["v48", "v45"],
+  ["v49", "v45"],
+  ["v50", "v45"],
+  ["v51", "v45"],
 ]);
 
 export async function buildBundle() {

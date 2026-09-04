@@ -145,16 +145,18 @@ mv game/assets/seekers /tmp/hold && \
 ## Eval prompt grounding
 
 ```bash
+# Contoh ini hanya mereproduksi prompt v51 yang sudah REJECTED; jangan jalankan
+# generation baru. Production tetap Capture/Evolution v47 dan Synthesis v48.
 # Capture Object/Fauna memakai harness yang sama dengan Smoke Set dan Vision
 # tersimpan; --skip-facing menjaga eksperimen nol Vision.
 node eval/run.mjs \
   --photo eval/results/v41/single/scanima_stock_vehicle.photo.jpg \
-  --prompt-version v47 \
+  --prompt-version v51 \
   --vision-file eval/results/v41/single/scanima_stock_vehicle.vision.json \
   --skip-facing --dry-run
 node eval/run.mjs \
   --photo eval/results/v15/single/scanima-v15-golden-retriever.photo.jpg \
-  --prompt-version v47 \
+  --prompt-version v51 \
   --vision-file eval/results/v15/single/scanima-v15-golden-retriever.vision.json \
   --skip-facing --dry-run
 
@@ -162,7 +164,7 @@ node eval/run.mjs \
 # Help menampilkan argumen lengkap; ganti `/path/to/...` dengan cache lokal.
 node eval/synthesis_image.mjs --help
 node eval/synthesis_image.mjs \
-  --prompt-version v48 --plan-file "/path/to/plan.json" \
+  --prompt-version v51 --plan-file "/path/to/plan.json" \
   --source-a-sheet "/path/to/a.png" --source-a-manifest "/path/to/a.json" --source-a-name "Source A" \
   --source-b-sheet "/path/to/b.png" --source-b-manifest "/path/to/b.json" --source-b-name "Source B" \
   --mode dominant_a --dry-run
@@ -170,18 +172,10 @@ node eval/synthesis_image.mjs \
 # Evolution control Sunhound memakai Plan + reference yang sudah dibayar:
 # nol Vision; --dry-run tidak memanggil API.
 node eval/evolution_image.mjs \
-  --prompt-version v47 \
+  --prompt-version v51 \
   --plan-file eval/results/evolution-sunhound-adult-v28-approved/plan.json \
   --reference-image eval/results/evolution-sunhound-adult-v28-approved/hatchling-idle-reference.png \
   --dry-run
-
-# Tepat satu image generation. Tanda kutip tunggal wajib supaya `$` tidak
-# diekspansi shell. Raw output yang sudah ada memblokir generation kedua.
-node eval/evolution_image.mjs \
-  --prompt-version v47 \
-  --plan-file eval/results/evolution-sunhound-adult-v28-approved/plan.json \
-  --reference-image eval/results/evolution-sunhound-adult-v28-approved/hatchling-idle-reference.png \
-  --paid --apply '--ack=US$0.07'
 ```
 
 ## Uji terhadap production

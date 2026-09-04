@@ -87,7 +87,7 @@ async function main() {
     console.log(`Single-shot Sunhound Adult Evolution image eval
 
 Wajib:
-  --prompt-version v47
+  --prompt-version <version>
   --plan-file <approved-plan.json>
   --reference-image <hatchling-idle-reference.png>
 

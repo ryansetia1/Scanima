@@ -316,7 +316,7 @@ Satu Anima = satu panggilan image generation. GPT Image 2 medium terbaru terukur
 | [docs/13-evolution-silhouette-design.md](docs/13-evolution-silhouette-design.md) | Desain v22 silhouette-first: body plan berbeda tiap stage, transformed anchors, archetype, dan rollout eval |
 | [docs/14-deploy-log.md](docs/14-deploy-log.md) | Riwayat rollout production: Atlas, grounding v47/v48, Name Lineage, Evolution art, Battle polish, daftar migration |
 | [docs/15-commands.md](docs/15-commands.md) | Katalog demo visual `--*-demo`, uji terhadap production, build dan verifikasi APK, backend lokal |
-| [docs/16-prompt-version-history.md](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v48 dan provenance versi prompt live maupun ditolak |
+| [docs/16-prompt-version-history.md](docs/16-prompt-version-history.md) | Pohon `backend/prompts/` v1–v51 dan provenance versi prompt live maupun ditolak |
 | [docs/17-offline-resilience.md](docs/17-offline-resilience.md) | Perilaku saat internet putus di tengah Battle, loading, dan save; retry UI, pending replay, serta checklist perangkat |
 | [docs/designs/2026-08-23-atlas-moderation-admin.md](docs/designs/2026-08-23-atlas-moderation-admin.md) | Kontrak moderation v2 dua-pass, role matrix, kebijakan report, dan console admin `admin/` |
 | [docs/designs/2026-08-21-anima-synthesis.md](docs/designs/2026-08-21-anima-synthesis.md) | Kontrak Guided Synthesis: Source tetap ada, Resonance, inheritance, biaya, recovery, dan snapshot Atlas |

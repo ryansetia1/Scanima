@@ -70,6 +70,40 @@ riwayat versi lengkap ada di `docs/16-prompt-version-history.md`.
 
 ## Provenance art direction
 
+- **V49/v50/v51 Neutral Idle Gaze ditolak.** V49 mengunci sel Idle
+  saja: head/face/sensory plane level, gaze ke target jauh sepanjang sumbu
+  kepala, bukan viewer/atas/bawah/side-eye, tanpa menciptakan pupil atau wajah.
+  Proof Adult Sunhound selesai 9/9 dan sasaran gaze diterima, tetapi sample
+  fauna Golden Retriever berikutnya ditolak karena kepala Idle terlalu
+  side-profile dibanding control 3/4. V50 memfork keempat prompt player v49
+  dan mengganti hanya kalimat ambigu itu: kepala serta badan tetap pada
+  forward-left 3/4 yang jelas, near/far eye dipertahankan bila anatomi dan
+  occlusion memungkinkan, dan hanya pupil/iris yang bergerak untuk mengarahkan
+  gaze. Kontrak yang sama dipakai Chapter Factory mendatang. Bundle dan
+  `npm run selftest` lulus. Re-proof fauna v50 selesai 9/9, satu image/US$0.07,
+  57 detik model, nol Vision/facing audit; residu 0,63% dan seam lulus, tetapi
+  far eye tetap hilang. Operator memilih geometri control v47 dan menolak v50.
+  V51 memfork empat prompt tanpa model call: Idle harus 30–45° dari front view,
+  front plane + satu side plane terbaca, head pose dibekukan, dan hanya pupil/
+  iris yang boleh mengarahkan gaze; bila konflik, geometri 3/4 menang. Bundle,
+  suite penuh, lint, dan dry-run fauna lulus. Proof fauna v51 berikutnya selesai
+  9/9, satu image/US$0.07, 58 detik model, nol Vision/facing audit; residu 0,34%
+  dan seam lulus. Geometri Idle kembali mendekati control v47, tetapi operator
+  menemukan pupil kembali melihat ke atas dan memilih hasil v47. V51 ditolak.
+  Sesudah tiga varian fauna gagal, jangan menulis v52 dengan wording tebakan;
+  ubah strategi atau riset dulu. Object, Synthesis, dan Evolution v51 belum
+  diuji. Keputusan akhir dipisah per pipeline: Capture object/fauna tetap v47;
+  proof Evolution v49 yang diterima sempat menjadi candidate khusus Evolution;
+  Synthesis tetap v48 sampai diuji sendiri; Chapter Factory
+  kembali ke kontrak sebelumnya tanpa blok v49–v51. Production tetap v47
+  Capture/Evolution dan v48 Synthesis. Proof Synthesis v49 Chromquartz
+  berikutnya selesai 9/9, satu image/US$0.07, 84,706 detik, nol Vision; residu
+  0,37% dan seam lulus. Idle memakai dua bar cahaya tanpa pupil, jadi v49 dengan
+  benar tidak menciptakan anatomi mata tetapi juga tidak membuktikan manfaat
+  gaze dibanding v48. Operator memilih tetap live v48; v49 tidak dipromosikan
+  untuk Synthesis dan tidak ada retry. Keputusan terakhir juga mempertahankan
+  Evolution v47 dan menutup eksperimen prompt-only: seluruh v49–v51 ditolak,
+  tidak live, dan tidak boleh dipromosikan tanpa eksperimen baru yang eksplisit.
 - **V46 grounding multi-support REJECTED dan tidak pernah live.** Ia mewarisi Vision/vibe/facing capture dan seluruh Evolution v41 serta planner/schema Synthesis v45, lalu hanya mengubah tiga prompt gambar: object, fauna, dan Synthesis. Kamera tetap forward-left three-quarter dari sedikit atas tetapi dibuat dangkal; body plan grounded dengan 4+ support wajib punya minimal dua support berjauhan pada satu band kontak bawah sempit. Biped, alas lebar/pot/rooted, serpentine, satu kaki, serta tubuh yang memang hover/flying dikecualikan. `manifest.qa.idle_grounding` membaca profil alpha final pada ambang client 0,12 untuk observability saja—bukan warning, rejection, repair, atau retry—karena piksel tidak bisa membedakan kaki, roda, ekor, dan alas lebar secara aman. Tiga generation manual 3 September (tepat $0,21, nol Vision) selesai 9/9: second shallow minimum object 4,2%→2,9%, fauna 2,7%→4,3%, Chromquartz Synthesis 11,8%→8,9%. Operator menilai Chromvein bagus, Fauna lebih buruk, dan Chromquartz sama saja; production tetap v41 Capture/v45 Synthesis.
 - **Fauna v13 sudah dibuktikan di production.** Satu foto Golden Retriever public-domain menghasilkan `subject_kind=animal`, primary `fauna`, secondary `air`, prompt v13, sheet privat yang dapat diunduh owner, dan nol row `species_library`; run selesai sekitar 86 detik termasuk Vision/polling. Akun dan blob uji dihapus sesudahnya.
 - **Fauna v13 terlalu realistis; v14 memperbaiki ekspresi tetapi tetap bukan monster Scanima.** Eval Golden Retriever v14 selesai 57 detik dan 9/9 sel, tetapi Idle masih berupa anjing anime biasa dan residu hijau 0,453%; v14 REJECTED dan tidak pernah dipromosikan. V15 menyalin Vision/schema/object/evolve v13 apa adanya lalu memperkeras fauna dengan tiga syarat serentak: proportion break, minimal dua landmark evolution, dan satu original organic motif terintegrasi; bright chroma green juga dilarang di seluruh foreground/VFX. Hewan tanpa mata/wajah yang terlihat memakai sensory feature dan body gesture, bukan anatomi manusia buatan. Eval v15 lulus visual 9/9 dalam 55 detik dan terbaca sebagai monster pada ukuran game; residu hijau 0,526% tidak mengganggu di ukuran itu tetapi tetap dipantau. V17 memakai sprite prompt v15 byte-for-byte dan menambah `body_height_cm`; v18 mempertahankan art itu lalu memperjelas keputusan tingginya. V19 hanya mengubah floor benda genggam dan v20 hanya mengubah gate/dukungan ilustrasi; ketiganya mempertahankan sprite prompt v15 byte-for-byte. V31 menambahkan Vibe pada sprite object/fauna tanpa mengubah Vision. `create_anima` version 20 dan `app_config.prompt_version = "v31"` sudah live; rollback capture v20, rollback gate v19, rollback kebijakan tinggi handheld v18, rollback kebijakan tinggi awal v17, rollback art v15, rollback kontrak capture v13.
