@@ -2251,25 +2251,19 @@ func _layout_arena_background(background_zoom: float) -> void:
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0 or stage_size.x <= 0.0 or stage_size.y <= 0.0:
 		return
 	var guard := BattleImpact.background_overscan_px(stage_size.x)
-	var guarded_size := stage_size + Vector2.ONE * guard * 2.0
-	var cover_scale := maxf(guarded_size.x / texture_size.x, guarded_size.y / texture_size.y)
 	var geometry_zoom := 1.0 if _uses_static_background else maxf(1.0, background_zoom)
-	var draw_size := texture_size * cover_scale * geometry_zoom
-	var overflow := Vector2(
-		maxf(0.0, draw_size.x - stage_size.x),
-		maxf(0.0, draw_size.y - stage_size.y)
+	var draw_size := BattleScale.background_draw_size(
+		texture_size, stage_size, guard, geometry_zoom
 	)
+	var overflow_x := maxf(0.0, draw_size.x - stage_size.x)
 	_arena_background.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_arena_background.pivot_offset = Vector2.ZERO
 	_arena_background.scale = Vector2.ONE
 	_arena_background.size = draw_size
 	var pan := 0.5 if _uses_static_background else _background_pan
-	var vertical_pan := (
-		BattleScale.STATIC_BACKGROUND_VERTICAL_PAN if _uses_static_background else 0.5
-	)
 	_arena_background.position = Vector2(
-		-overflow.x * pan,
-		-overflow.y * vertical_pan
+		-overflow_x * pan,
+		BattleScale.grounded_background_y(stage_size.y, draw_size.y)
 	)
 	_set_background_camera_zoom(background_zoom if _uses_static_background else 1.0)
 
@@ -2286,6 +2280,9 @@ func _set_background_camera_zoom(value: float) -> void:
 	var background_material := _arena_background.material as ShaderMaterial
 	if background_material != null:
 		background_material.set_shader_parameter("camera_zoom", value)
+		background_material.set_shader_parameter(
+			"camera_pivot_y", BattleScale.GROUND_Y_RATIO
+		)
 
 
 func _pin_seeker_to_camera_right(camera_zoom: float) -> void:

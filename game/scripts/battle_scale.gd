@@ -31,7 +31,6 @@ const SEEKER_REFERENCE_HEIGHT_PX := 282.0
 const PLAYER_SEEKER_Z_BEHIND := 0
 const PLAYER_SEEKER_Z_FRONT := 5
 const BACKGROUND_PAN_EDGE_MARGIN := 0.04
-const STATIC_BACKGROUND_VERTICAL_PAN := 0.5
 
 
 static func anima_display_height_cm(body_height_cm: float) -> float:
@@ -142,6 +141,37 @@ static func background_pan_for_session(session_id: String) -> float:
 		return 0.5
 	var normalized := float(posmod(session_id.hash(), 10001)) / 10000.0
 	return lerpf(BACKGROUND_PAN_EDGE_MARGIN, 1.0 - BACKGROUND_PAN_EDGE_MARGIN, normalized)
+
+
+## Background dan petarung berbagi foot-contact line 91%. Zoom/crop boleh
+## mengubah bagian langit yang terlihat, tetapi garis lantai sumber tidak boleh
+## bergeser dari kaki. Tinggi minimum menjaga overscan impact di kedua tepi
+## meski ground line dekat sekali dengan bagian bawah gambar.
+static func background_draw_size(
+	texture_size: Vector2,
+	stage_size: Vector2,
+	guard: float,
+	geometry_zoom: float = 1.0
+) -> Vector2:
+	var safe_guard := maxf(0.0, guard)
+	var guarded_size := stage_size + Vector2.ONE * safe_guard * 2.0
+	var cover_scale := maxf(
+		guarded_size.x / texture_size.x,
+		guarded_size.y / texture_size.y
+	)
+	var draw_size := texture_size * cover_scale * maxf(1.0, geometry_zoom)
+	var ground := clampf(GROUND_Y_RATIO, 0.001, 0.999)
+	var minimum_height := maxf(
+		(stage_size.y * ground + safe_guard) / ground,
+		(stage_size.y * (1.0 - ground) + safe_guard) / (1.0 - ground)
+	)
+	if draw_size.y < minimum_height:
+		draw_size *= minimum_height / draw_size.y
+	return draw_size
+
+
+static func grounded_background_y(stage_height: float, draw_height: float) -> float:
+	return (stage_height - draw_height) * GROUND_Y_RATIO
 
 
 static func usable_height(arena_size: Vector2) -> float:

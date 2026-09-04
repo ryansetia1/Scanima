@@ -25,6 +25,7 @@ func _run() -> void:
 	var measured_loaded: Dictionary = anima_loader.build(texture, measured_manifest)
 	var seeker_roster := load("res://scripts/seeker_roster.gd") as GDScript
 	var seeker_loaded: Dictionary = seeker_roster.sheet(null)
+	_test_grounded_background_math()
 	_test_fresh_intro_wiring()
 	await _test_duel_intro(host, loaded, seeker_loaded)
 	await _test_team_intro(host, loaded, seeker_loaded)
@@ -32,11 +33,38 @@ func _run() -> void:
 	await _test_expedition_intro(host, loaded, seeker_loaded)
 	host.queue_free()
 	if _failures == 0:
-		print("test_battle_intro: OK (3 modes + switch framing)")
+		print("test_battle_intro: OK (3 modes + size/aspect grounding + switch framing)")
 		quit()
 		return
 	print("test_battle_intro: FAILED %d check(s)" % _failures)
 	quit(1)
+
+
+func _test_grounded_background_math() -> void:
+	var impact_script := load("res://scripts/battle_impact.gd") as GDScript
+	var guard := float(impact_script.background_overscan_px(720.0))
+	for stage_size: Vector2 in [Vector2(720.0, 1378.0), Vector2(1378.0, 720.0)]:
+		for texture_size: Vector2 in [Vector2(1024.0, 576.0), Vector2(576.0, 1024.0)]:
+			for geometry_zoom: float in [1.0, 1.55]:
+				var draw_size := BattleScale.background_draw_size(
+					texture_size, stage_size, guard, geometry_zoom
+				)
+				var background_y := BattleScale.grounded_background_y(
+					stage_size.y, draw_size.y
+				)
+				var painted_floor_y := (
+					background_y + draw_size.y * BattleScale.GROUND_Y_RATIO
+				)
+				var fighter_floor_y := stage_size.y * BattleScale.GROUND_Y_RATIO
+				_check(
+					is_equal_approx(painted_floor_y, fighter_floor_y),
+					"grounded background math preserves the shared floor line"
+				)
+				_check(
+					background_y <= -guard + 0.01
+					and background_y + draw_size.y >= stage_size.y + guard - 0.01,
+					"grounded background math preserves vertical impact overscan"
+				)
 
 
 func _test_fresh_intro_wiring() -> void:
@@ -82,7 +110,10 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var packed := load("res://scenes/ui/battle_view.tscn") as PackedScene
 	var view := packed.instantiate()
 	host.add_child(view)
-	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view.visible = true
+	view.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	view.position = Vector2.ZERO
+	view.size = Vector2(host.size)
 	await process_frame
 	view.set_player_avatar(seeker_loaded)
 	var session := {
@@ -98,6 +129,7 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		},
 	}
 	view.set_session(session, loaded, loaded, {}, true)
+	await process_frame
 	var player := view.find_child("BattlePlayerSprite", true, false) as AnimatedSprite2D
 	var opponent := view.find_child("BattleBotSprite", true, false) as AnimatedSprite2D
 	var seeker := view.find_child("PlayerSeeker", true, false) as AnimatedSprite2D
@@ -105,6 +137,18 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var opponent_shadow := opponent.get_parent().find_child("GroundShadow", false, false) as Sprite2D
 	var footer := view.find_child("BattleFooter", true, false) as Control
 	var strike := view.find_child("BattleStrikeButton", true, false) as Button
+	var arena := view.find_child("BattleArena", true, false) as Control
+	var background := view.find_child("BattleArenaBackground", true, false) as TextureRect
+	var background_material := background.material as ShaderMaterial
+	var zoom_value: Variant = background_material.get_shader_parameter("camera_zoom")
+	_check_background_grounding(
+		arena,
+		background,
+		float(zoom_value) if zoom_value != null else 1.0,
+		"Duel arena"
+	)
+	_check_fighter_bounds(arena, player, "Duel player")
+	_check_fighter_bounds(arena, opponent, "Duel opponent")
 	_check(
 		seeker.visible
 		and player.sprite_frames != null
@@ -275,7 +319,7 @@ func _test_team_switch_reframe(
 	var small := {
 		"anima_id": small_id, "name": "Small", "level": 2,
 		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
-		"body_height_cm": 50,
+		"body_height_cm": 20,
 	}
 	var giant: Dictionary = small.duplicate(true)
 	giant["anima_id"] = giant_id
@@ -337,6 +381,14 @@ func _test_team_switch_reframe(
 	var background_zoom_before := float(
 		background_material.get_shader_parameter("camera_zoom")
 	)
+	var stage := view.find_child("TeamBattleStage", true, false) as Control
+	_check_fighter_bounds(stage, player, "20 cm Team player")
+	_check_background_grounding(
+		stage,
+		background,
+		background_zoom_before,
+		"Team arena before a size-changing Switch"
+	)
 	var switched: Dictionary = session.duplicate(true)
 	switched["state"]["player"]["active_slot"] = 1
 	var saw_player_hidden := false
@@ -360,6 +412,13 @@ func _test_team_switch_reframe(
 	)
 	var camera_ratio := camera_zoom_after / camera_zoom_before
 	var background_ratio := background_zoom_after / background_zoom_before
+	_check_background_grounding(
+		stage,
+		background,
+		background_zoom_after,
+		"Team arena after a size-changing Switch"
+	)
+	_check_fighter_bounds(stage, player, "2000 cm Team player")
 	_check(not bool(view.get("_busy")), "the giant Switch completes inside the regression deadline")
 	_check(
 		camera_ratio < 0.99,
@@ -395,6 +454,59 @@ func _test_team_switch_reframe(
 	await process_frame
 
 
+func _check_background_grounding(
+	stage: Control,
+	background: TextureRect,
+	camera_zoom: float,
+	label: String
+) -> void:
+	var stage_rect := stage.get_global_rect()
+	var background_rect := background.get_global_rect()
+	if stage_rect.size.x <= 0.0 or stage_rect.size.y <= 0.0:
+		_check(false, "%s has a settled, non-zero arena layout" % label)
+		return
+	var fighter_ground_y := stage_rect.position.y + stage_rect.size.y * BattleScale.GROUND_Y_RATIO
+	var material := background.material as ShaderMaterial
+	var pivot_value: Variant = material.get_shader_parameter("camera_pivot_y")
+	var camera_pivot_y := float(pivot_value) if pivot_value != null else 0.5
+	var source_ground_uv := (
+		camera_pivot_y
+		+ (BattleScale.GROUND_Y_RATIO - camera_pivot_y) * camera_zoom
+	)
+	var source_ground_y := (
+		background_rect.position.y + background_rect.size.y * source_ground_uv
+	)
+	var impact_script := load("res://scripts/battle_impact.gd") as GDScript
+	var guard := float(impact_script.background_overscan_px(stage_rect.size.x))
+	_check(
+		is_equal_approx(camera_pivot_y, BattleScale.GROUND_Y_RATIO),
+		"%s zoom pivots around the shared fighter ground line" % label
+	)
+	_check(
+		background_rect.position.y <= stage_rect.position.y - guard
+		and background_rect.end.y >= stage_rect.end.y + guard,
+		"%s keeps vertical impact overscan after ground anchoring" % label
+	)
+	_check(
+		absf(source_ground_y - fighter_ground_y) <= 1.0,
+		"%s keeps the painted floor under fighter feet (floor %.1f, feet %.1f)"
+		% [label, source_ground_y, fighter_ground_y]
+	)
+
+
+func _check_fighter_bounds(stage: Control, fighter: AnimatedSprite2D, label: String) -> void:
+	var body_value: Variant = fighter.call("body_viewport_rect")
+	if typeof(body_value) != TYPE_RECT2:
+		_check(false, "%s exposes its visible-body bounds" % label)
+		return
+	var body: Rect2 = body_value
+	var stage_rect := stage.get_global_rect()
+	_check(
+		stage_rect.encloses(body),
+		"%s visible body stays inside the battle arena" % label
+	)
+
+
 func _test_expedition_intro(
 	host: SubViewport,
 	loaded: Dictionary,
@@ -403,7 +515,10 @@ func _test_expedition_intro(
 	var packed := load("res://scenes/ui/expedition_view.tscn") as PackedScene
 	var view := packed.instantiate()
 	host.add_child(view)
-	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view.visible = true
+	view.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	view.position = Vector2.ZERO
+	view.size = Vector2(host.size)
 	await process_frame
 	if not view.has_method("play_combat_intro"):
 		_check(false, "Expedition exposes the awaited fresh-encounter intro seam")
@@ -411,16 +526,19 @@ func _test_expedition_intro(
 		await process_frame
 		return
 	view.open_mode()
+	await process_frame
 	view.set_player_avatar(seeker_loaded)
 	var player_id := "00000000-0000-4000-8000-000000000011"
 	var opponent_id := "10000000-0000-4000-8000-000000000011"
 	var player_member := {
-		"anima_id": player_id, "name": "Trail Player", "level": 2,
+		"anima_id": player_id, "name": "Sunhound", "level": 16,
 		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
+		"body_height_cm": 75,
 	}
 	var opponent_member := {
-		"anima_id": opponent_id, "name": "Trail Rival", "level": 2,
+		"anima_id": opponent_id, "name": "Rimespin", "level": 8,
 		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
+		"body_height_cm": 105,
 	}
 	var encounter := {
 		"id": "intro-expedition",
@@ -443,10 +561,29 @@ func _test_expedition_intro(
 		"zone": 1,
 		"chapter_version_id": "chapter-intro",
 	}
-	var art_cache := {player_id: loaded, opponent_id: loaded}
+	var background_image := Image.create(1024, 576, false, Image.FORMAT_RGBA8)
+	background_image.fill(Color(0.2, 0.4, 0.6, 1.0))
+	var background_texture := ImageTexture.create_from_image(background_image)
+	var art_cache := {
+		player_id: loaded,
+		opponent_id: loaded,
+		"arena_background": background_texture,
+	}
 	view.set_run(run_data, encounter, art_cache, true)
+	await process_frame
+	var stage := view.find_child("TeamBattleStage", true, false) as Control
+	var background := view.find_child("TeamArenaBackground", true, false) as TextureRect
+	var background_material := background.material as ShaderMaterial
+	_check_background_grounding(
+		stage,
+		background,
+		float(background_material.get_shader_parameter("camera_zoom")),
+		"Sugarworks Zone 2 Sunhound versus Rimespin Expedition arena"
+	)
 	var player := view.find_child("TeamPlayerSprite", true, false) as AnimatedSprite2D
 	var opponent := view.find_child("TeamOpponentSprite", true, false) as AnimatedSprite2D
+	_check_fighter_bounds(stage, player, "Sunhound")
+	_check_fighter_bounds(stage, opponent, "Rimespin")
 	var location := view.find_child("TeamTurn", true, false) as Label
 	_check(
 		view.is_combat_open()

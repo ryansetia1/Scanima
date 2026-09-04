@@ -4030,10 +4030,9 @@ func _test_battle_view() -> void:
 	_check(
 		is_equal_approx(
 			arena_background.position.y,
-			-(arena_background.size.y - arena.size.y)
-			* BattleScale.STATIC_BACKGROUND_VERTICAL_PAN
+			BattleScale.grounded_background_y(arena.size.y, arena_background.size.y)
 		),
-		"Duel static art uses the shared lowered framing without moving its ground line"
+		"Duel static art pins its painted floor to the fighter ground line"
 	)
 	_check(dock_fill != null, "Duel footer wears the Expedition dock plate")
 	_check(surge.theme_type_variation == &"", "Duel Special is not a PrimaryButton so the four actions match")
@@ -4131,12 +4130,16 @@ func _test_battle_view() -> void:
 		"the Duel figure can never cover the action dock, at any aspect"
 	)
 	_check(
-		is_equal_approx(BATTLE_SCALE.STATIC_BACKGROUND_VERTICAL_PAN, 0.5)
+		is_equal_approx(
+			BATTLE_SCALE.grounded_background_y(100.0, 120.0)
+			+ 120.0 * BATTLE_SCALE.GROUND_Y_RATIO,
+			100.0 * BATTLE_SCALE.GROUND_Y_RATIO
+		)
 		and is_equal_approx(
 			float(view.get_script().get_script_constant_map().get("DUEL_BACKGROUND_MAX_SCALE", 0.0)),
 			1.0
 		),
-		"static Duel background preserves expanded sky without camera crop"
+		"static Duel background shares the canonical ground anchor"
 	)
 	_check(
 		result.get_parent() == footer and result.z_index > player_anchor.z_index,
@@ -4980,10 +4983,11 @@ func _test_team_battle_view() -> void:
 	_check(
 		is_equal_approx(
 			arena_background.position.y,
-			-(arena_background.size.y - battle_stage.size.y)
-			* BattleScale.STATIC_BACKGROUND_VERTICAL_PAN
+			BattleScale.grounded_background_y(
+				battle_stage.size.y, arena_background.size.y
+			)
 		),
-		"Team Battle shares the lowered static framing without changing fighter placement"
+		"Team Battle pins its painted floor to the fighter ground line"
 	)
 	var arena_background_material := arena_background.material as ShaderMaterial
 	var arena_camera_zoom := float(
@@ -4991,9 +4995,13 @@ func _test_team_battle_view() -> void:
 	)
 	_check(
 		arena_background_material.shader.code.contains("uniform float camera_zoom")
+		and arena_background_material.shader.code.contains("uniform float camera_pivot_y")
+		and arena_background_material.shader.code.contains(
+			"vec2 camera_pivot = vec2(0.5, camera_pivot_y)"
+		)
 		and arena_camera_zoom >= 1.0
 		and arena_camera_zoom <= 1.08,
-		"Team static camera response changes shader UV pixels within the safe crop cap"
+		"Team static camera response zooms around the shared ground pivot"
 	)
 	var header := view.get_node("Column/Header") as Control
 	var turn := view.find_child("TeamTurn", true, false) as Label
