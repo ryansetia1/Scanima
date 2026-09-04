@@ -47,6 +47,7 @@ const TEAM_GROUND_Y_RATIO := BattleScale.GROUND_Y_RATIO
 const TEAM_BACKGROUND_MAX_SCALE := 1.0
 const TEAM_STATIC_BACKGROUND_CAMERA_MAX := 1.08
 const TEAM_STATIC_BACKGROUND_CAMERA_FLOOR := 0.60
+const TEAM_STATIC_BACKGROUND_REFIT_STRENGTH := 0.25
 const MIN_TEAM_SIZE := 2
 const MAX_TEAM_SIZE := 4
 const CAMERA_REFIT_SEC := 0.48
@@ -680,6 +681,7 @@ func play_events(
 		# dan memasangnya lewat set_session() akan terlihat sebagai arena mundur.
 		_session = from_session.duplicate(true)
 	set_busy(true)
+	var played_switch := false
 	await _announce_initiative(events)
 	for value in events:
 		var event := GameState.as_dict(value)
@@ -717,6 +719,7 @@ func play_events(
 			"final_ace":
 				await _cue_final_ace()
 			"switch":
+				played_switch = true
 				var switch_actor := str(event.get("actor", ""))
 				if switch_actor == "opponent" and not _final_ace_pending:
 					await _cue_seeker_command("first_switch", "switch_command")
@@ -790,7 +793,10 @@ func play_events(
 	if _final_ace_pending:
 		_final_ace_pending = false
 		_restore_seeker_idle()
+	var switch_background_zoom := _background_camera_zoom()
 	set_session(next_session)
+	if played_switch and _uses_static_background:
+		_set_background_camera_zoom(switch_background_zoom)
 	if _boss_result_pending:
 		await _boss_result_settled
 	set_busy(false)
@@ -1230,6 +1236,14 @@ func _reframe_for_switch(
 	var target_layout := _fighter_layout()
 	if not animate:
 		return null
+	if _uses_static_background:
+		var previous_scale: Vector2 = previous_layout.get("layer_scale", Vector2.ONE)
+		var target_scale: Vector2 = target_layout.get("layer_scale", Vector2.ONE)
+		target_layout["background_camera_zoom"] = background_zoom_for_switch(
+			previous_scale.x,
+			target_scale.x,
+			float(previous_layout.get("background_camera_zoom", 1.0))
+		)
 	_apply_fighter_layout(previous_layout)
 	return _tween_fighter_layout(target_layout)
 
@@ -2174,10 +2188,9 @@ func _apply_dynamic_camera() -> void:
 
 ## Background statis tidak boleh diam ketika camera-fit horizontal mengecilkan
 ## seluruh FighterLayer: itu membuat Seeker dan lawan tampak berubah ukuran di
-## dunia yang beku. Responsnya sengaja lebih lembut dari foreground (parallax)
-## dan berhenti di 1,08×, jauh di bawah crop 1,18× yang pernah ditolak.
-## Fit 0,60 atau lebih lebar kembali ke cover penuh; memakai CAMERA_MIN_ZOOM
-## di sini pernah terukur hanya menghasilkan gerak 2,3% yang tak terlihat.
+## dunia yang beku. Baseline absolut menyisakan rentang 1,0–1,08× untuk fighter
+## yang sudah besar; saat Switch, `background_zoom_for_switch()` memakai delta
+## kamera supaya perubahan tinggi di plateau baseline tetap menggerakkan latar.
 func _background_zoom_for_camera(camera_zoom: float, size_mix: float) -> float:
 	if not _uses_static_background:
 		return lerpf(_background_max_scale(), 1.0, size_mix)
@@ -2191,6 +2204,22 @@ func _background_zoom_for_camera(camera_zoom: float, size_mix: float) -> float:
 		1.0
 	)
 	return lerpf(1.0, TEAM_STATIC_BACKGROUND_CAMERA_MAX, camera_response)
+
+
+static func background_zoom_for_switch(
+	previous_camera_zoom: float,
+	target_camera_zoom: float,
+	previous_background_zoom: float
+) -> float:
+	if previous_camera_zoom <= 0.0 or target_camera_zoom <= 0.0:
+		return clampf(previous_background_zoom, 1.0, TEAM_STATIC_BACKGROUND_CAMERA_MAX)
+	var camera_ratio := target_camera_zoom / previous_camera_zoom
+	var parallax_ratio := lerpf(1.0, camera_ratio, TEAM_STATIC_BACKGROUND_REFIT_STRENGTH)
+	return clampf(
+		previous_background_zoom * parallax_ratio,
+		1.0,
+		TEAM_STATIC_BACKGROUND_CAMERA_MAX
+	)
 
 
 func _uses_expedition_framing() -> bool:

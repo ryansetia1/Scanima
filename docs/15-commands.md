@@ -204,7 +204,7 @@ godot --headless --path game --script res://tests/live_scan.gd \
 godot --headless --path game --script res://tests/live_battle.gd
 ```
 
-## Android: build, verifikasi, uji kamera
+## Android: build, verifikasi, uji kamera dan Haptics
 
 ```bash
 # Android. Tidak ada langkah editor yang wajib: --install-android-build-template
@@ -216,10 +216,10 @@ godot --headless --path game --script res://tests/live_battle.gd
 godot --headless --path game --install-android-build-template \
     --export-debug Android /tmp/scanima.apk
 
-# Verifikasi APK. Yang diperiksa bukan "file-nya ada" tetapi tepat dua izin dan
+# Verifikasi APK. Yang diperiksa bukan "file-nya ada" tetapi tepat tiga izin dan
 # kelas plugin benar-benar masuk dex; manifest yang ter-merge saja tidak cukup.
 B=~/Library/Android/sdk/build-tools/36.1.0
-$B/aapt2 dump permissions /tmp/scanima.apk | grep permission  # INTERNET + CAMERA
+$B/aapt2 dump permissions /tmp/scanima.apk | grep permission  # INTERNET + VIBRATE + CAMERA
 unzip -p /tmp/scanima.apk classes.dex | strings | grep -c GodotGetImage
 $B/apksigner verify /tmp/scanima.apk && echo tertandatangani
 
@@ -231,6 +231,10 @@ $B/apksigner verify /tmp/scanima.apk && echo tertandatangani
 # adb tidak ada di PATH di mesin ini; ia hidup di platform-tools SDK.
 A=~/Library/Android/sdk/platform-tools/adb
 $A install -r /tmp/scanima.apk && $A logcat -s godot:V
+
+# Haptics tidak punya dialog runtime. Sesudah satu aksi Battle atau Level Up,
+# main package (bukan `.impactprototype`) harus muncul di histori service:
+$A shell dumpsys vibrator_manager | grep 'com.rekansebangku.scanima (uid='
 ```
 
 ## Backend lokal

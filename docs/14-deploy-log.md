@@ -2,6 +2,31 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 5 September 2026: UAT Battle Impact di Android
+
+UAT pada Xiaomi 23127PN0CG membuktikan camera shake production terlihat, tetapi
+Haptics diam walau toggle On. Penyebabnya bukan `BattleImpact`: vibrator service
+berhasil memainkan probe shell 100 ms dan histori perangkat masih menyimpan
+pulse paket prototype lama, sedangkan APK main tidak pernah muncul. Manifest
+APK main hanya memuat `INTERNET` + `CAMERA`; preset lokal masih
+`permissions/vibrate=false`, sehingga `Input.vibrate_handheld()` dibuang Android
+tanpa error. Preset di mesin build diubah ke `true`, APK diekspor dan
+ditandatangani ulang, lalu `aapt2` serta `dumpsys package` membuktikan tepat
+`INTERNET`, `VIBRATE`, `CAMERA` dengan `VIBRATE granted=true`. Karena preset
+di-gitignore, tripwire dan perintah audit dinaikkan ke `CLAUDE.md` serta
+`docs/15-commands.md`.
+
+UAT yang sama menemukan Switch Team antara Anima beda tinggi membuat Seeker
+mengecil tetapi latar tampak beku. Test lama hijau karena hanya memakai fixture
+lebar ekstrem yang mendorong camera zoom ke bawah 0,72. Fixture tinggi-only
+mereproduksi bug dengan rasio foreground **0,677** dan background **1,000**:
+kurva background plateau pada seluruh zoom biasa. Refit Switch statis kini
+memakai 25% rasio perubahan camera zoom terhadap background sebelumnya, dijepit
+1,0–1,08×, sehingga perubahan tinggi maupun lebar bergerak searah dengan
+parallax lebih lembut. Nilai hasil tween juga dipertahankan melewati
+`set_session(next_session)` akhir turn; repaint itulah yang sebelumnya
+mengembalikannya ke baseline. Regression `test_battle_intro.gd` kembali hijau.
+
 ## 4 September 2026: proof Neutral Idle Gaze v49 — gaze lolos, identitas bergeser
 
 Satu Adult Sunhound Evolution dibuat lewat `eval/evolution_image.mjs` memakai

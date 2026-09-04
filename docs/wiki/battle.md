@@ -140,8 +140,8 @@ yang punya figur, jadi badannya dan badan Anima punya jarak alih-alih tumpang
 tindih; Anima yang minggir sedikit, bukan posisi shot-nya yang berubah. Saat
 kamera menjauh untuk memuat petarung besar, ia ikut merapat ke tepi layar sisimu.
 Di **Team Battle**, latar ikut bergerak lebih lembut saat **Switch** ke Anima
-yang jauh lebih lebar mengubah jarak kamera, jadi perubahan ukuran para petarung
-terbaca sebagai gerak kamera dan bukan figur yang berubah sendiri.
+yang jauh berbeda tinggi atau lebar mengubah jarak kamera, jadi perubahan ukuran
+para petarung terbaca sebagai gerak kamera dan bukan figur yang berubah sendiri.
 
 Setiap fight baru di **Duel**, **Team Battle**, dan node Battle/Elite
 **Expedition** dibuka berurutan: Seeker-mu berdiri sendiri, Anima lawan keluar
@@ -506,6 +506,9 @@ damage ≈ stat × (power ÷ 50) × peredam Defense
 - Special: `Special × 1.5 × (100 ÷ (100 + setengah Defense lawan))`
 
 Masih ada pengali kecil: elemen, crit dari Speed, Guard, dan sedikit random.
+Critical bukan jurus atau tombol tersendiri: ia muncul secara acak saat Attack
+atau Special mengenai target. Speed yang lebih tinggi membuatnya lebih sering,
+tetapi satu battle tetap bisa selesai tanpa Critical sama sekali.
 
 ## Elemen
 

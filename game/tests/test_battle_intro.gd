@@ -23,19 +23,12 @@ func _run() -> void:
 		"reference_width_px": 120.0,
 	}
 	var measured_loaded: Dictionary = anima_loader.build(texture, measured_manifest)
-	var wide_image: Image = placeholder["image"].duplicate()
-	wide_image.fill_rect(Rect2i(8, 50, 240, 200), Color("6fa8dc"))
-	var wide_manifest: Dictionary = measured_manifest.duplicate(true)
-	wide_manifest["render_metrics"]["reference_width_px"] = 240.0
-	var wide_loaded: Dictionary = anima_loader.build(
-		ImageTexture.create_from_image(wide_image), wide_manifest
-	)
 	var seeker_roster := load("res://scripts/seeker_roster.gd") as GDScript
 	var seeker_loaded: Dictionary = seeker_roster.sheet(null)
 	_test_fresh_intro_wiring()
 	await _test_duel_intro(host, loaded, seeker_loaded)
 	await _test_team_intro(host, loaded, seeker_loaded)
-	await _test_team_switch_reframe(host, measured_loaded, wide_loaded, seeker_loaded)
+	await _test_team_switch_reframe(host, measured_loaded, seeker_loaded)
 	await _test_expedition_intro(host, loaded, seeker_loaded)
 	host.queue_free()
 	if _failures == 0:
@@ -259,14 +252,12 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	await process_frame
 
 
-## Repro pemain: Switch dari Anima kecil ke Anima raksasa ketika rival aktif
-## sudah raksasa. Perubahan bingkai memang diperlukan untuk lebar dua tubuh,
-## tetapi tubuh incoming harus muncul selama kamera bergerak dan background
-## statis harus ikut parallax; kalau tidak, semua figur menyusut di dunia beku.
+## Repro pemain: Switch dari Anima pendek ke Anima tinggi dengan lebar art sama.
+## Kamera tetap wajib bergerak bersama background; kalau mapping parallax punya
+## plateau, Seeker menyusut di dunia beku walau shader menerima nilai valid.
 func _test_team_switch_reframe(
 	host: SubViewport,
 	loaded: Dictionary,
-	wide_loaded: Dictionary,
 	seeker_loaded: Dictionary
 ) -> void:
 	var packed := load("res://scenes/ui/team_battle_view.tscn") as PackedScene
@@ -290,9 +281,9 @@ func _test_team_switch_reframe(
 	giant["anima_id"] = giant_id
 	giant["name"] = "Giant"
 	giant["body_height_cm"] = 2000
-	var rival: Dictionary = giant.duplicate(true)
+	var rival: Dictionary = small.duplicate(true)
 	rival["anima_id"] = rival_id
-	rival["name"] = "Rival Giant"
+	rival["name"] = "Rival"
 	var session := {
 		"id": "switch-framing-team",
 		"kind": "team_battle",
@@ -318,7 +309,7 @@ func _test_team_switch_reframe(
 	}
 	var art_cache := {
 		small_id: loaded,
-		giant_id: wide_loaded,
+		giant_id: loaded,
 		rival_id: loaded,
 	}
 	view.set_session(session, art_cache)
@@ -330,6 +321,17 @@ func _test_team_switch_reframe(
 	_check(
 		background_material.shader.code.contains("uniform float camera_zoom"),
 		"Team background camera zoom is rendered through shader UVs, not only Control size"
+	)
+	var team_script := view.get_script() as GDScript
+	var width_background_zoom := float(team_script.background_zoom_for_switch(0.72, 0.54, 1.08))
+	_check(
+		width_background_zoom < 1.08
+		and width_background_zoom > 1.08 * (0.54 / 0.72)
+		and is_equal_approx(
+			float(team_script.background_zoom_for_switch(0.54, 0.72, width_background_zoom)),
+			1.08
+		),
+		"width-driven Switch keeps gentler bidirectional background parallax"
 	)
 	var camera_zoom_before := layer.scale.x
 	var background_zoom_before := float(
@@ -365,7 +367,8 @@ func _test_team_switch_reframe(
 	)
 	_check(
 		background_ratio <= 0.95 and background_ratio > camera_ratio,
-		"the static arena shows clear zoom-out with gentler background parallax"
+		"the static arena shows clear zoom-out with gentler background parallax "
+		+ "(camera=%.3f, background=%.3f)" % [camera_ratio, background_ratio]
 	)
 	_check(
 		reveal_during_refit,

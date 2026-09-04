@@ -3635,6 +3635,22 @@ func _test_battle_impact_contract() -> void:
 			and fighters.get_parent() == world,
 			"%s mounts scenery and fighters under one transient world-offset owner" % fixture[2]
 		)
+		var impact_label_name := (
+			"BattleEffectivenessLabel" if str(fixture[2]) == "DuelFighterLayer"
+			else "TeamEffectivenessLabel"
+		)
+		var impact_label := view.find_child(impact_label_name, true, false) as Label
+		view.call(
+			"_show_impact_banner",
+			impact_script.message_keys({"crit": true, "element_multiplier": 1.5}),
+			true,
+			1.5
+		)
+		_check(
+			impact_label != null
+			and impact_label.text == "%s\n%s" % [tr("BATTLE_CRITICAL"), tr("BATTLE_EFFECTIVE")],
+			"%s renders Critical and effectiveness as two explicit lines" % fixture[2]
+		)
 		world.call("_apply_world_offset", Vector2(6.0, -1.0))
 		_check(
 			world.position.is_equal_approx(Vector2(6.0, -1.0))
