@@ -48,9 +48,9 @@ Chrome dan input muncul.
 - [ ] Pergantian session, akun, mode, atau view menutup dialog, menghentikan
       portal, membatalkan pekerjaan lama, dan mencegah callback usang mengubah
       encounter baru.
-- [ ] Cancellation mempunyai pagar revision setara opening reguler; coroutine
-      Boss lama tidak dapat membuka input atau mengubah visibility setelah
-      konteksnya berganti.
+- [ ] Cancellation mempunyai pagar revision setara Duel/Team Opening dan
+      Expedition Opening; coroutine Boss lama tidak dapat membuka input atau
+      mengubah visibility setelah konteksnya berganti.
 - [ ] Line dialog kosong dilewati, sedangkan Seeker sheet atau portrait
       kosmetik yang gagal dimuat disembunyikan tanpa mengunci Summon maupun
       Battle.

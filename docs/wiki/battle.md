@@ -135,12 +135,15 @@ Di **Duel**, **Team Battle**, serta node Battle/Elite **Expedition**, latar dan
 dunia pertarungan memenuhi seluruh layar, termasuk area di belakang status
 fighter dan tombol aksi. Munculnya tombol, **Switch**, picker **Item**,
 konfirmasi **Retreat**, atau kartu hasil tidak mengecilkan arena maupun
-menggeser petarung. Opening memakai pandangan lebar tanpa interface; setelah
-kedua Anima selesai dipanggil, dunia bergeser halus ke pandangan bermain selama
-0,32 detik sambil status dan tombol muncul. Perintah baru dapat ditekan setelah
-perpindahan itu selesai. Dalam pandangan bermain, kamera menjaga kaki, badan
-utama, dan bayangan kontak fighter tetap terlihat di atas panel status dan
-tombol aksi, termasuk untuk Anima yang sangat tinggi.
+menggeser petarung. Opening memakai pandangan lebar tanpa interface. Di
+**Duel** dan **Team Battle**, Seeker-mu masuk ketika Anima lawan sudah menunggu,
+lalu memanggil Anima aktifmu. Di node Battle/Elite **Expedition**, Anima lawan
+masih dipanggil lebih dulu sebelum Anima-mu. Setelah fighter siap, dunia
+bergeser halus ke pandangan bermain selama 0,32 detik sambil status dan tombol
+muncul. Perintah baru dapat ditekan setelah perpindahan itu selesai. Dalam
+pandangan bermain, kamera menjaga kaki, badan utama, dan bayangan kontak fighter
+tetap terlihat di atas panel status dan tombol aksi, termasuk untuk Anima yang
+sangat tinggi.
 
 Di **Duel**, **Team Battle**, dan **Expedition** kamu ikut berdiri di sana. Figur
 Seeker-mu — yang kamu pilih lewat **Change Seeker Avatar** di

@@ -171,9 +171,9 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		and player.sprite_frames != null
 		and opponent.sprite_frames != null
 		and not player.visible
-		and not opponent.visible
+		and opponent.visible
 		and not player_shadow.visible
-		and not opponent_shadow.visible
+		and opponent_shadow.visible
 		and not (view.find_child("StatusOverlay", true, false) as Control).visible
 		and not (view.find_child("FighterHudPlate", true, false) as Control).visible
 		and is_zero_approx(footer.modulate.a)
@@ -181,29 +181,42 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		and strike.disabled
 		and strike.mouse_filter == Control.MOUSE_FILTER_IGNORE
 		and strike.focus_mode == Control.FOCUS_NONE,
-		"fresh Duel starts on the player Seeker alone with hidden chrome unable to receive input"
+		"fresh Duel starts on the player Seeker facing the waiting opponent Anima with hidden Chrome"
 	)
 	var reveal_order: Array[String] = []
-	var opponent_settled := [false]
+	var opponent_waited_without_portal := [true]
+	var player_revealed_in_stable_frame := [false]
+	var opponent_portal := opponent.get_parent().find_child(
+		"SummonPortal", false, false
+	) as IncubatorEffect
+	var cinematic_layer := player_anchor.get_parent() as Node2D
+	var cinematic_layer_position := cinematic_layer.position
+	var cinematic_layer_scale := cinematic_layer.scale
 	opponent.visibility_changed.connect(func() -> void:
-		if opponent.visible:
-			reveal_order.append("opponent")
-			_check(
-				not player.visible and seeker.animation == "intro_idle",
-				"Duel reveals the opponent before the player summon"
-			)
+		if not opponent.visible:
+			opponent_waited_without_portal[0] = false
 	)
 	player.visibility_changed.connect(func() -> void:
 		if player.visible:
 			reveal_order.append("player")
-			var portal := opponent.get_parent().find_child("SummonPortal", false, false) as IncubatorEffect
-			opponent_settled[0] = not portal.is_active() and seeker.animation == "switch_command"
+			opponent_waited_without_portal[0] = (
+				opponent_waited_without_portal[0]
+				and opponent.visible
+				and not opponent_portal.is_active()
+			)
+			player_revealed_in_stable_frame[0] = (
+				seeker.animation == "switch_command"
+				and cinematic_layer.position.is_equal_approx(cinematic_layer_position)
+				and cinematic_layer.scale.is_equal_approx(cinematic_layer_scale)
+			)
 	)
 	view.play_opening_intro()
 	var transition_started_at := -1
 	var saw_joint_transition := false
 	var transition_deadline := Time.get_ticks_msec() + 10000
 	while strike.disabled and Time.get_ticks_msec() < transition_deadline:
+		if not opponent.visible or opponent_portal.is_active():
+			opponent_waited_without_portal[0] = false
 		if footer.modulate.a > 0.01 and footer.modulate.a < 0.99:
 			if transition_started_at < 0:
 				transition_started_at = Time.get_ticks_msec()
@@ -219,8 +232,9 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		Time.get_ticks_msec() - transition_started_at if transition_started_at >= 0 else 0
 	)
 	_check(
-		reveal_order == ["opponent", "player"]
-		and opponent_settled[0]
+		reveal_order == ["player"]
+		and opponent_waited_without_portal[0]
+		and player_revealed_in_stable_frame[0]
 		and saw_joint_transition
 		and transition_elapsed >= 220
 		and transition_elapsed <= 520
@@ -289,6 +303,23 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	)
 	host.size = Vector2i(720, 1602)
 	await process_frame
+	var missing_avatar_session: Dictionary = session.duplicate(true)
+	missing_avatar_session["id"] = "intro-duel-missing-avatar"
+	view.set_player_avatar({})
+	view.set_session(missing_avatar_session, loaded, loaded, {}, true)
+	var player_portal := player.get_parent().find_child(
+		"SummonPortal", false, false
+	) as IncubatorEffect
+	var saw_player_portal := false
+	view.play_opening_intro()
+	var missing_avatar_deadline := Time.get_ticks_msec() + 10000
+	while strike.disabled and Time.get_ticks_msec() < missing_avatar_deadline:
+		saw_player_portal = saw_player_portal or player_portal.is_active()
+		await process_frame
+	_check(
+		saw_player_portal and player.visible and opponent.visible and not strike.disabled,
+		"Duel opening still Summons the player Anima and unlocks input without Seeker art"
+	)
 	safe_host.queue_free()
 	await process_frame
 
@@ -371,37 +402,50 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	_check(
 		seeker.visible
 		and not player.visible
-		and not opponent.visible
+		and opponent.visible
 		and not player_shadow.visible
-		and not opponent_shadow.visible
+		and opponent_shadow.visible
 		and is_zero_approx(chrome.modulate.a)
 		and dock.mouse_filter == Control.MOUSE_FILTER_IGNORE
 		and attack.disabled
 		and attack.mouse_filter == Control.MOUSE_FILTER_IGNORE
 		and attack.focus_mode == Control.FOCUS_NONE,
-		"fresh Team Battle starts on the player Seeker alone with hidden Chrome unable to receive input"
+		"fresh Team Battle starts on the player Seeker facing the waiting opponent Anima with hidden Chrome"
 	)
 	var reveal_order: Array[String] = []
-	var opponent_settled := [false]
+	var opponent_waited_without_portal := [true]
+	var player_revealed_in_stable_frame := [false]
+	var opponent_portal := opponent.get_parent().find_child(
+		"SummonPortal", false, false
+	) as IncubatorEffect
+	var cinematic_layer := player_anchor.get_parent() as Node2D
+	var cinematic_layer_position := cinematic_layer.position
+	var cinematic_layer_scale := cinematic_layer.scale
 	opponent.visibility_changed.connect(func() -> void:
-		if opponent.visible:
-			reveal_order.append("opponent")
-			_check(
-				not player.visible and seeker.animation == "intro_idle",
-				"Team Battle reveals the opponent before the player summon"
-			)
+		if not opponent.visible:
+			opponent_waited_without_portal[0] = false
 	)
 	player.visibility_changed.connect(func() -> void:
 		if player.visible:
 			reveal_order.append("player")
-			var portal := opponent.get_parent().find_child("SummonPortal", false, false) as IncubatorEffect
-			opponent_settled[0] = not portal.is_active() and seeker.animation == "switch_command"
+			opponent_waited_without_portal[0] = (
+				opponent_waited_without_portal[0]
+				and opponent.visible
+				and not opponent_portal.is_active()
+			)
+			player_revealed_in_stable_frame[0] = (
+				seeker.animation == "switch_command"
+				and cinematic_layer.position.is_equal_approx(cinematic_layer_position)
+				and cinematic_layer.scale.is_equal_approx(cinematic_layer_scale)
+			)
 	)
 	view.play_opening_intro()
 	var transition_started_at := -1
 	var saw_joint_transition := false
 	var transition_deadline := Time.get_ticks_msec() + 10000
 	while attack.disabled and Time.get_ticks_msec() < transition_deadline:
+		if not opponent.visible or opponent_portal.is_active():
+			opponent_waited_without_portal[0] = false
 		if chrome.modulate.a > 0.01 and chrome.modulate.a < 0.99:
 			if transition_started_at < 0:
 				transition_started_at = Time.get_ticks_msec()
@@ -417,8 +461,9 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		Time.get_ticks_msec() - transition_started_at if transition_started_at >= 0 else 0
 	)
 	_check(
-		reveal_order == ["opponent", "player"]
-		and opponent_settled[0]
+		reveal_order == ["player"]
+		and opponent_waited_without_portal[0]
+		and player_revealed_in_stable_frame[0]
 		and saw_joint_transition
 		and transition_elapsed >= 220
 		and transition_elapsed <= 520
@@ -479,6 +524,23 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	)
 	host.size = Vector2i(720, 1602)
 	await process_frame
+	var missing_avatar_session: Dictionary = session.duplicate(true)
+	missing_avatar_session["id"] = "intro-team-missing-avatar"
+	view.set_player_avatar({})
+	view.set_session(missing_avatar_session, art_cache, true)
+	var player_portal := player.get_parent().find_child(
+		"SummonPortal", false, false
+	) as IncubatorEffect
+	var saw_player_portal := false
+	view.play_opening_intro()
+	var missing_avatar_deadline := Time.get_ticks_msec() + 10000
+	while attack.disabled and Time.get_ticks_msec() < missing_avatar_deadline:
+		saw_player_portal = saw_player_portal or player_portal.is_active()
+		await process_frame
+	_check(
+		saw_player_portal and player.visible and opponent.visible and not attack.disabled,
+		"Team opening still Summons the player Anima and unlocks input without Seeker art"
+	)
 	safe_host.queue_free()
 	await process_frame
 
@@ -834,6 +896,15 @@ func _test_expedition_intro(
 		and attack.focus_mode == Control.FOCUS_NONE,
 		"a fresh non-Boss Expedition encounter opens on the player Seeker alone"
 	)
+	var expedition_reveal_order: Array[String] = []
+	opponent.visibility_changed.connect(func() -> void:
+		if opponent.visible:
+			expedition_reveal_order.append("opponent")
+	)
+	player.visibility_changed.connect(func() -> void:
+		if player.visible:
+			expedition_reveal_order.append("player")
+	)
 	view.play_combat_intro()
 	var transition_started_at := -1
 	var saw_joint_transition := false
@@ -854,7 +925,8 @@ func _test_expedition_intro(
 		Time.get_ticks_msec() - transition_started_at if transition_started_at >= 0 else 0
 	)
 	_check(
-		player.visible
+		expedition_reveal_order == ["opponent", "player"]
+		and player.visible
 		and opponent.visible
 		and saw_joint_transition
 		and transition_elapsed >= 220

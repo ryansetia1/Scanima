@@ -18,11 +18,23 @@ dikenal pemain.
       ticket 03.
 - [ ] Background full-bleed, safe area, zona occlusion, ground contact, dan
       framing karakter mengikuti kontrak yang sudah dibuktikan oleh Duel.
-- [ ] Opening Team Battle dan Expedition Battle/Elite mempertahankan urutan
-      lawan lalu pemain, memakai framing cinematic tanpa Chrome, dan beralih
-      selama 0,32 detik ke framing gameplay sebelum input terbuka.
-- [ ] Framing tidak snap ketika masing-masing Anima di-reveal, termasuk ketika
-      ukuran kedua fighter sangat berbeda.
+- [ ] Team Battle memakai Duel/Team Opening yang sama dengan Duel: Seeker
+      pemain dan Anima lawan aktif sudah terlihat saat shot awal, lalu hanya
+      Anima pemain yang dipanggil setelah beat 0,4 detik dan pose command 0,42
+      detik.
+- [ ] Anima lawan Team Battle tidak memakai portal atau entrance. Portal,
+      reveal, VFX, dan SFX existing hanya dipakai untuk Anima pemain.
+- [ ] Expedition Battle/Elite tetap memakai Expedition Opening: Seeker pemain
+      berdiri sendiri, lalu Anima lawan dan Anima pemain di-reveal berurutan.
+- [ ] Framing tidak snap ketika Anima pemain Team Battle atau kedua Anima
+      Expedition di-reveal, termasuk ketika ukuran fighter sangat berbeda.
+- [ ] Team Battle dan Expedition beralih selama 0,32 detik ke framing gameplay
+      dan Chrome sebelum input terbuka.
+- [ ] Setiap session Team Battle baru, termasuk Battle Again, memutar opening;
+      Continue, reconnect, authoritative refresh, dan transport retry session
+      yang sama tidak memutarnya ulang.
+- [ ] Sheet Seeker Avatar yang tidak tersedia tidak menghambat summon Anima
+      pemain maupun pembukaan input.
 - [ ] Camera gameplay menghindari HUD dan kontrol tanpa mengecilkan Arena;
       background tetap boleh terlihat di belakang Chrome.
 - [ ] Switch sukarela, forced Switch, dan pergantian fighter tetap melakukan

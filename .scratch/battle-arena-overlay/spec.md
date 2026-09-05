@@ -75,105 +75,108 @@ gameplay, Battle Chrome muncul, dan Battle dapat disentuh.
 11. Sebagai Seeker di Team Battle, aku ingin status roster dan action dock
     melapisi Arena tanpa mengecilkannya, supaya timku tetap terasa berada di
     dunia yang sama.
-12. Sebagai Seeker di Expedition Battle atau Elite, aku ingin presentasi Arena
+12. Sebagai Seeker di Duel atau Team Battle, aku ingin masuk ketika Anima lawan
+    sudah menunggu lalu memanggil Anima-ku sendiri, supaya Battle dimulai cepat
+    tanpa dua entrance yang tidak diperlukan.
+13. Sebagai Seeker di Expedition Battle atau Elite, aku ingin presentasi Arena
     konsisten dengan mode lain, supaya perpindahan antar-node tidak terasa
     seperti UI yang berbeda.
-13. Sebagai Seeker di Final Battle Expedition, aku ingin menghadapi Boss
+14. Sebagai Seeker di Final Battle Expedition, aku ingin menghadapi Boss
     Seeker di Arena full-screen, supaya encounter puncaknya punya komposisi
     paling kuat.
-14. Sebagai Seeker, aku ingin wajah, badan utama, kaki, dan shadow petarung
+15. Sebagai Seeker, aku ingin wajah, badan utama, kaki, dan shadow petarung
     tidak tertutup Chrome, supaya ukuran Arena penuh tidak mengurangi
     keterbacaan.
-15. Sebagai Seeker, aku ingin background dan efek dunia tetap boleh terlihat
+16. Sebagai Seeker, aku ingin background dan efek dunia tetap boleh terlihat
     di belakang Chrome, supaya overlay tidak kembali terasa seperti bagian
     layar yang kosong.
-16. Sebagai Seeker, aku ingin teks aksi dan feedback penting menghindari tombol
+17. Sebagai Seeker, aku ingin teks aksi dan feedback penting menghindari tombol
     interaktif, supaya informasi turn tidak tertutup ketika dibutuhkan.
-17. Sebagai Seeker, aku ingin perubahan dari framing opening ke framing
+18. Sebagai Seeker, aku ingin perubahan dari framing opening ke framing
     gameplay bergerak halus, supaya karakter tidak tiba-tiba melompat posisi.
-18. Sebagai Seeker, aku ingin background, ground line, karakter, shadow, dan
+19. Sebagai Seeker, aku ingin background, ground line, karakter, shadow, dan
     portal tetap bergerak sebagai satu dunia, supaya kaki tidak meluncur di
     atas lantai yang diam.
-19. Sebagai Seeker, aku ingin Chrome fade-in bersamaan dengan reframe dunia,
+20. Sebagai Seeker, aku ingin Chrome fade-in bersamaan dengan reframe dunia,
     supaya Battle mulai dalam satu beat yang jelas.
-20. Sebagai Seeker, aku ingin input tetap terkunci sampai transisi selesai,
+21. Sebagai Seeker, aku ingin input tetap terkunci sampai transisi selesai,
     supaya tap pertama tidak terjadi saat tombol atau kamera masih bergerak.
-21. Sebagai Seeker, aku ingin framing gameplay tetap stabil setelah dibuka,
+22. Sebagai Seeker, aku ingin framing gameplay tetap stabil setelah dibuka,
     supaya dialog dan picker tidak terus membuat karakter membesar atau
     mengecil.
-22. Sebagai Seeker yang membuka Switch atau Item picker, aku ingin picker
+23. Sebagai Seeker yang membuka Switch atau Item picker, aku ingin picker
     tampil di atas Battle tanpa mengubah dunia di belakangnya, supaya pilihan
     tidak mengganggu orientasiku.
-23. Sebagai Seeker yang menerima dialog Boss di tengah Battle, aku ingin
+24. Sebagai Seeker yang menerima dialog Boss di tengah Battle, aku ingin
     Chrome tetap terlihat tetapi tidak dapat disentuh, supaya aku tetap paham
     state Battle tanpa dapat mengirim aksi di balik dialog.
-24. Sebagai Seeker yang melihat result, aku ingin command Chrome menghilang dan
+25. Sebagai Seeker yang melihat result, aku ingin command Chrome menghilang dan
     result melapisi pose akhir yang stabil, supaya kemenangan atau kekalahan
     tidak memindahkan petarung.
-25. Sebagai Seeker, aku ingin Battle Shake hanya mengguncang dunia dan bukan
+26. Sebagai Seeker, aku ingin Battle Shake hanya mengguncang dunia dan bukan
     Chrome, supaya kontrol tetap mudah dibaca pada Arena full-screen.
-26. Sebagai Seeker yang memasuki Final Battle, aku ingin mula-mula hanya
+27. Sebagai Seeker yang memasuki Final Battle, aku ingin mula-mula hanya
     melihat Seeker Avatar-ku dan Boss Seeker, supaya encounter terbaca sebagai
     konfrontasi antara dua Seeker.
-27. Sebagai Seeker yang memasuki Final Battle, aku ingin kedua Anima masih
+28. Sebagai Seeker yang memasuki Final Battle, aku ingin kedua Anima masih
     tersembunyi pada shot pembuka, supaya setiap Summon mempunyai makna.
-28. Sebagai Seeker, aku ingin ada jeda natural sebelum Boss bicara, supaya
+29. Sebagai Seeker, aku ingin ada jeda natural sebelum Boss bicara, supaya
     kehadiran kedua Seeker sempat terbaca sebelum dialog mengambil fokus.
-29. Sebagai Seeker, aku ingin tap selama jeda awal diabaikan, supaya aku tidak
+30. Sebagai Seeker, aku ingin tap selama jeda awal diabaikan, supaya aku tidak
     melewati dialog yang bahkan belum muncul.
-30. Sebagai Seeker, aku ingin dialog opening tetap menampilkan nama dan
+31. Sebagai Seeker, aku ingin dialog opening tetap menampilkan nama dan
     portrait Boss tanpa overlay gelap, supaya identitas pembicara jelas dan
     arena tetap terlihat.
-31. Sebagai Seeker, aku ingin dapat menutup dialog opening dengan tap, tombol
+32. Sebagai Seeker, aku ingin dapat menutup dialog opening dengan tap, tombol
     konfirmasi, atau Back, supaya interaksinya sama dengan dialog Boss sekarang.
-32. Sebagai Seeker, aku ingin Boss Seeker mengambil pose command lalu memanggil
+33. Sebagai Seeker, aku ingin Boss Seeker mengambil pose command lalu memanggil
     Anima pertamanya setelah dialog, supaya lawan memperkenalkan ancamannya
     lebih dulu.
-33. Sebagai Seeker, aku ingin Seeker Avatar-ku kemudian mengambil pose command
+34. Sebagai Seeker, aku ingin Seeker Avatar-ku kemudian mengambil pose command
     dan memanggil Anima pertamaku, supaya pihak pemain mendapat entrance yang
     setara.
-34. Sebagai Seeker, aku ingin Summon kedua dimulai tanpa tap atau jeda tambahan,
+35. Sebagai Seeker, aku ingin Summon kedua dimulai tanpa tap atau jeda tambahan,
     supaya opening tetap mengalir dan tidak terasa lambat.
-35. Sebagai Seeker, aku ingin animasi Summon tidak dapat dilewati setelah
+36. Sebagai Seeker, aku ingin animasi Summon tidak dapat dilewati setelah
     dialog ditutup, supaya urutan Boss lalu pemain selalu terbaca utuh.
-36. Sebagai Seeker, aku ingin HUD dan action dock baru muncul setelah kedua
+37. Sebagai Seeker, aku ingin HUD dan action dock baru muncul setelah kedua
     Anima siap, supaya kontrol tidak mendahului dunia Battle.
-37. Sebagai Seeker, aku ingin opening khusus ini berlaku pada setiap Boss
-    Seeker Expedition, supaya chapter mendatang tidak kembali memakai opening
-    reguler.
-38. Sebagai Seeker yang mencoba ulang zona Boss, aku ingin koreografi penuh
+38. Sebagai Seeker, aku ingin opening khusus ini berlaku pada setiap Boss
+    Seeker Expedition, supaya chapter mendatang tidak kembali memakai
+    Expedition Opening.
+39. Sebagai Seeker yang mencoba ulang zona Boss, aku ingin koreografi penuh
     diputar dengan dialog rematch, supaya retry tetap diakui oleh Boss.
-39. Sebagai Seeker yang melanjutkan encounter tersimpan, aku ingin langsung
+40. Sebagai Seeker yang melanjutkan encounter tersimpan, aku ingin langsung
     kembali ke Battle tanpa replay opening, supaya Continue tidak membuang
     waktuku.
-40. Sebagai Seeker dengan koneksi yang memicu refresh session, aku ingin
+41. Sebagai Seeker dengan koneksi yang memicu refresh session, aku ingin
     encounter yang sama pulih menjadi Arena siap tanpa mengulang atau
     menyisakan setengah opening, supaya aku tidak terjebak.
-41. Sebagai Seeker yang berpindah akun atau meninggalkan encounter saat
+42. Sebagai Seeker yang berpindah akun atau meninggalkan encounter saat
     opening berjalan, aku ingin dialog, portal, dan animasi lama dibatalkan,
     supaya state akun sebelumnya tidak muncul kembali.
-42. Sebagai Seeker yang memindahkan app ke background lalu kembali ke view
+43. Sebagai Seeker yang memindahkan app ke background lalu kembali ke view
     yang sama, aku ingin opening melanjutkan fase yang sedang berjalan, supaya
     gangguan singkat tidak mengulang sequence.
-43. Sebagai Seeker ketika copy dialog atau art kosmetik gagal tersedia, aku
+44. Sebagai Seeker ketika copy dialog atau art kosmetik gagal tersedia, aku
     ingin Summon dan Battle tetap dapat berjalan, supaya kegagalan presentasi
     tidak mengunci Expedition.
-44. Sebagai Seeker, aku ingin dialog command, ace terakhir, victory, dan defeat
+45. Sebagai Seeker, aku ingin dialog command, ace terakhir, victory, dan defeat
     tetap bekerja seperti sekarang, supaya opening baru tidak mengubah karakter
     atau budget bicara Boss.
-45. Sebagai pemilik produk, aku ingin perubahan ini memakai pose, portal,
+46. Sebagai pemilik produk, aku ingin perubahan ini memakai pose, portal,
     dialog, musik, SFX, VFX, dan art yang sudah ada, supaya polish layout tidak
     menambah biaya produksi aset.
-46. Sebagai desainer UI masa depan, aku ingin Arena tidak bergantung pada
+47. Sebagai desainer UI masa depan, aku ingin Arena tidak bergantung pada
     tinggi Chrome hari ini, supaya HUD dapat didesain ulang sebagai elemen di
     dalam Arena tanpa migrasi struktur dunia lagi.
-47. Sebagai developer, aku ingin Duel, Team Battle, dan Expedition berbagi
+48. Sebagai developer, aku ingin Duel, Team Battle, dan Expedition berbagi
     kontrak layer dan framing yang sama, supaya mode baru tidak mengarang
     pembagian stage/footer sendiri.
-48. Sebagai developer, aku ingin regression test mengukur perilaku scene
+49. Sebagai developer, aku ingin regression test mengukur perilaku scene
     production, supaya refactor internal tetap bebas selama hasil pemain tidak
     berubah.
-49. Sebagai pemain yang membaca panduan, aku ingin opening dan presentasi
+50. Sebagai pemain yang membaca panduan, aku ingin opening dan presentasi
     Battle yang dijelaskan sesuai build yang benar-benar kumainkan, supaya
     panduan tidak mendokumentasikan rencana atau perilaku lama.
 
@@ -232,21 +235,38 @@ gameplay, Battle Chrome muncul, dan Battle dapat disentuh.
 - Battle World Shake dan feedback impact tetap hanya memengaruhi dunia;
   Chrome dan Overlay tidak ikut terguncang.
 
-### Opening reguler
+### Duel/Team Opening dan Expedition Opening
 
-- Duel, Team Battle, dan Expedition Battle/Elite mempertahankan urutan opening
-  yang live: Seeker Avatar pemain berdiri sendiri, Anima lawan di-Summon,
-  Seeker pemain memberi command, lalu Anima pemain di-Summon.
-- Perbedaannya hanya presentasi: opening memakai Battle Arena full-screen tanpa
-  Battle Chrome, lalu menjalankan transisi framing dan Chrome bersama setelah
-  kedua Anima siap.
-- Opening reguler tetap hanya diputar pada encounter baru, bukan Continue,
+- Duel/Team Opening berlaku pada session Duel atau Team Battle baru. Shot awal
+  menampilkan Seeker Avatar pemain dan Anima lawan aktif yang sudah Idle beserta
+  contact shadow; Anima pemain dan Battle Chrome masih tersembunyi.
+- Anima lawan tidak memakai portal atau animasi Summon. Shot awal ditahan selama
+  0,4 detik dengan seluruh input terkunci.
+- Seeker Avatar pemain lalu mengambil pose Switch Command selama beat 0,42
+  detik dan memanggil Anima pemain memakai portal, reveal, VFX, dan SFX yang
+  sudah ada. Tidak ada dialog, teks Battle Start, aset, atau entrance tambahan.
+- Framing cinematic sejak shot awal sudah memperhitungkan Anima pemain yang
+  tersembunyi, sehingga reveal tidak mengubah camera framing.
+- Setelah Anima pemain siap, seluruh dunia berpindah selama 0,32 detik ke
+  framing gameplay sambil Battle Chrome fade-in. Input baru terbuka setelah
+  keduanya settle.
+- Duel/Team Opening diputar pada setiap session baru, termasuk Battle Again.
+  Continue, reconnect, authoritative refresh, dan transport retry session yang
+  sama langsung kembali ke gameplay tanpa replay.
+- Seeker Avatar adalah kosmetik: jika sheet-nya tidak tersedia, portal dan
+  reveal Anima pemain tetap berjalan lalu Battle dibuka.
+- Expedition Opening tetap memakai koreografi empat langkah yang sudah live
+  untuk encounter Battle/Elite: Seeker Avatar pemain berdiri sendiri, Anima
+  lawan di-Summon, Seeker pemain memberi command, lalu Anima pemain di-Summon.
+  Sesudah kedua Anima siap, framing dan Chrome bertransisi bersama selama 0,32
+  detik sebelum input terbuka.
+- Expedition Opening hanya diputar pada encounter baru, bukan Continue,
   authoritative refresh, atau transport retry.
 
 ### Boss Encounter Opening
 
 - Boss Encounter Opening adalah jalur Expedition Boss khusus dan tidak
-  menggunakan koreografi opening reguler.
+  menggunakan Duel/Team Opening maupun Expedition Opening.
 - Sequence dimulai setelah Loading Screen benar-benar hilang. Boss opening
   tidak boleh berjalan tersembunyi di belakang loading.
 - Shot awal menampilkan background, contact shadow, Seeker Avatar pemain, dan
@@ -293,9 +313,9 @@ gameplay, Battle Chrome muncul, dan Battle dapat disentuh.
 - Pergantian session, akun, mode, atau view membatalkan seluruh pekerjaan
   opening lama: dialog ditutup, portal dihentikan, callback usang diabaikan,
   dan tidak ada state lama yang dapat membuka input pada encounter baru.
-- Boss opening memakai pagar cancellation/revision setara dengan opening
-  reguler. Satu coroutine lama tidak boleh menulis state setelah konteksnya
-  berubah.
+- Boss opening memakai pagar cancellation/revision setara dengan Duel/Team
+  Opening dan Expedition Opening. Satu coroutine lama tidak boleh menulis state
+  setelah konteksnya berubah.
 - Line opening kosong dilewati tanpa menampilkan dialog kosong. Seeker sheet
   atau portrait kosmetik yang gagal tersedia disembunyikan, dan sequence tetap
   berlanjut.
@@ -306,8 +326,8 @@ gameplay, Battle Chrome muncul, dan Battle dapat disentuh.
 ### Dokumentasi
 
 - Saat perubahan live, panduan pemain Battle diperbarui bersamaan dengan kode:
-  opening reguler, Boss Encounter Opening, dan fakta bahwa Chrome melapisi
-  Arena harus sesuai dengan build.
+  Duel/Team Opening, Expedition Opening, Boss Encounter Opening, dan fakta bahwa
+  Chrome melapisi Arena harus sesuai dengan build.
 - Spesifikasi Team Battle/Expedition diperbarui untuk sequence Boss dan
   kontrak Arena/Chrome yang baru.
 - Fakta arsitektur lintas mode dicatat singkat di `CLAUDE.md` setelah build
@@ -331,7 +351,9 @@ fungsi selama hasil visual dan interaksinya sama.
    ini sudah menjalankan scene Duel, Team Battle, dan Expedition sungguhan pada
    viewport ponsel. Perluas agar menjaga:
    - ukuran Arena identik sebelum, selama, dan sesudah Chrome tampil;
-   - opening reguler pada ketiga mode tetap opponent lalu pemain;
+   - Duel/Team dimulai dengan Seeker pemain dan Anima lawan yang sudah terlihat,
+     lalu hanya me-reveal Anima pemain;
+   - Expedition Battle/Elite tetap me-reveal lawan lalu pemain;
    - Boss dimulai dengan dua Seeker dan nol Anima/Chrome;
    - beat 0,7 detik tidak menerima input;
    - dismiss dialog memicu Summon Boss lalu Summon pemain;
@@ -356,7 +378,7 @@ fungsi selama hasil visual dan interaksinya sama.
      sebagai coverage paralel.
 
 Pemeriksaan visual wajib memakai scene production pada portrait dan landscape,
-minimal pada Duel, Team Battle, Expedition reguler, dan Expedition Boss. Ambil
+minimal pada Duel, Team Battle, Expedition Battle/Elite, dan Expedition Boss. Ambil
 keadaan opening tanpa Chrome, pertengahan transisi, gameplay dengan Chrome,
 dialog/picker, dan result. Verifikasi:
 
@@ -392,7 +414,7 @@ karena kontrak server dan aset tidak berubah.
   victory, defeat, dan Trophy.
 - Menambah tombol Skip Intro, preference Reduced Motion, atau variasi timing
   berdasarkan perangkat.
-- Mengubah opening reguler selain cara Arena, framing, dan Chrome
+- Mengubah Expedition Opening selain cara Arena, framing, dan Chrome
   mempresentasikannya.
 - Menyatukan seluruh implementasi Duel dan Team/Expedition ke satu view atau
   melakukan refactor combat yang tidak dibutuhkan oleh kontrak layer.

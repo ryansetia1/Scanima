@@ -99,13 +99,16 @@ Fakta arsitektur yang berlaku sekarang (bukan riwayat — riwayatnya di
   Dipakai `BattlePickSheet`, `TeamRosterList`, `CollectionView`. Detail dan
   pagar di `.cursor/rules/client-shell-ui.mdc`.
 - **Duel/Team/Expedition arena**: dunia Battle full-screen di bawah Chrome dan
- Overlay; opening fresh berpindah sekali dari framing cinematic ke gameplay
-  sebelum input dibuka. Framing gameplay menjaga garis kaki di atas
-  status/command Chrome tanpa mengubah rectangle Arena. Boss Expedition membuka
-  pada dua Seeker, lalu Summon Boss→pemain; rematch mengulang koreografi,
-  sedangkan resume/refresh tidak. Session boundary membersihkan pelat transient
-  lama saat start baru; music cue hanya membaca arena yang benar-benar terlihat
-  (session tersembunyi tidak menahan musik battle).
+  Overlay. Duel/Team fresh membuka pada Seeker pemain + Anima lawan yang sudah
+  Idle lalu hanya men-Summon Anima pemain; Expedition Battle/Elite tetap
+  Summon lawan→pemain, sedangkan Boss membuka pada dua Seeker lalu Summon
+  Boss→pemain. Semua opening berpindah sekali dari framing cinematic ke gameplay
+  sebelum input dibuka; rematch Boss mengulang koreografi, sedangkan
+  resume/refresh tidak. Framing gameplay menjaga garis kaki di atas
+  status/command Chrome tanpa mengubah rectangle Arena. Session boundary
+  membersihkan pelat transient lama saat start baru; music cue hanya membaca
+  arena yang benar-benar terlihat (session tersembunyi tidak menahan musik
+  battle).
 - Kegagalan Duel 500 tanpa mapping 4xx/409 dicatat ke `battle_failures`
   (default-deny, service-role only); Evolve/Synthesis pakai helper fail-open
   supaya kegagalan logging tidak menimpa response asli.

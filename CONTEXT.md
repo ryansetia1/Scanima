@@ -41,6 +41,18 @@ A Seeker authored as part of a chapter rather than played, who opposes the
 player during an Expedition.
 _Avoid_: NPC, rival, boss trainer
 
+**Duel/Team Opening**:
+The opening for a fresh Duel or Team Battle: the player's Seeker Avatar faces
+the opposing Anima already waiting in the arena, then calls the player's active
+Anima before battle controls become available.
+_Avoid_: Regular battle intro, opponent Summon
+
+**Expedition Opening**:
+The opening for a fresh non-Boss Expedition encounter: the player's Seeker
+Avatar enters before either Anima, then the opponent Anima and player Anima are
+revealed in order.
+_Avoid_: Regular battle intro, Boss Encounter Opening
+
 **Boss Encounter Opening**:
 The Final Battle opening that begins with the player's Seeker Avatar facing the
 Boss Seeker alone, then reveals the Boss Anima and player Anima in that order

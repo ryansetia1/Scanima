@@ -2,6 +2,25 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 6 September 2026: Duel/Team Opening dipersingkat
+
+Duel dan Team Battle tidak lagi memanggil Anima lawan pada opening fresh.
+Shot awal sekarang langsung menampilkan Seeker pemain menghadapi Anima lawan
+yang sudah Idle beserta contact shadow. Setelah beat 0,4 detik, Seeker memakai
+Switch Command selama 0,42 detik lalu hanya memanggil Anima pemain lewat portal
+dan reveal existing. Reframe cinematic→gameplay serta fade-in Chrome tetap 0,32
+detik dan input tetap terkunci sampai transisi selesai.
+
+Expedition Battle/Elite tetap memakai urutan Summon lawan→pemain, sedangkan
+Boss Encounter Opening tetap dua Seeker→dialog→Summon Boss→pemain. Continue,
+refresh authoritative, dan retry transport tidak memutar opening ulang.
+Regression scene production memeriksa visibility, shadow, portal, kestabilan
+framing, Chrome, input gate, serta ketiga sequence yang berbeda.
+
+Perubahan ini hanya menyentuh client dan dokumentasi; tidak ada backend, schema,
+request jaringan, aset, model call, atau biaya generation. Import Godot, seluruh
+suite Godot, `npm run selftest`, dan Smoke Set dry-run lulus.
+
 ## 6 September 2026: verifikasi lokal Battle Arena full-screen
 
 Integrasi ticket Battle Arena diverifikasi lokal tanpa build, deploy, request

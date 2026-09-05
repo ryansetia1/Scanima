@@ -97,12 +97,15 @@ dialog, picker, konfirmasi, dan result sementara di lapisan paling atas.
 Menampilkan atau menyembunyikan Chrome maupun Overlay tidak boleh mengubah
 rectangle Arena atau mengulang framing gameplay.
 
-Opening fresh memakai framing cinematic tanpa Chrome. Sesudah kedua summon
-selesai, seluruh dunia—background, ground line, fighter, Seeker, shadow, dan
-portal—bergerak sekali ke framing gameplay selama 0,32 detik sambil Chrome
-fade-in. Framing gameplay menahan garis kaki di atas status/command Chrome,
-termasuk ketika ukuran fighter memaksa camera-fit; Overlay berikutnya tidak
-memindahkannya lagi.
+Opening fresh memakai framing cinematic tanpa Chrome. Duel dan Team Battle
+dimulai dengan Seeker pemain menghadapi Anima lawan yang sudah Idle; setelah
+beat 0,4 detik, Seeker memakai Switch Command selama 0,42 detik lalu hanya
+memanggil Anima pemain. Expedition Battle/Elite tetap memanggil Anima lawan,
+kemudian Anima pemain. Sesudah fighter siap, seluruh dunia—background, ground
+line, fighter, Seeker, shadow, dan portal—bergerak sekali ke framing gameplay
+selama 0,32 detik sambil Chrome fade-in. Framing gameplay menahan garis kaki di
+atas status/command Chrome, termasuk ketika ukuran fighter memaksa camera-fit;
+Overlay berikutnya tidak memindahkannya lagi.
 
 Background tetap full-bleed di balik inset perangkat, sedangkan target
 interaktif Chrome dan Overlay berada di safe area. Battle World Shake hanya

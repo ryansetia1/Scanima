@@ -577,8 +577,9 @@ func play_opening_intro() -> void:
 		await _event_pause(INTRO_OPENING_BEAT_SEC)
 		if not _opening_intro_is_active(revision):
 			return
-		if not await _summon_opening_side("opponent", revision):
-			return
+		if _expedition_mode:
+			if not await _summon_opening_side("opponent", revision):
+				return
 		_set_player_seeker_pose("switch_command")
 		await _event_pause(INTRO_COMMAND_BEAT_SEC)
 		if not _opening_intro_is_active(revision):
@@ -1236,7 +1237,7 @@ func _apply_session_state() -> void:
 	_effectiveness.visible = false
 	var opening_hidden := _opening_intro_pending or _opening_intro_running
 	_apply_side(_session, "player", true, not opening_hidden)
-	_apply_side(_session, "opponent", true, not opening_hidden)
+	_apply_side(_session, "opponent", true, not opening_hidden or not _expedition_mode)
 	_position_fighters()
 	_set_player_seeker_pose(
 		"intro_idle" if status == "active"

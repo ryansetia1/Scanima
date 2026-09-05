@@ -26,8 +26,9 @@ ditutup sebelum kontrak baru dianggap selesai.
       tertutup Chrome.
 - [ ] Background, ground line, Anima, Seeker, shadow, dan portal tetap menyatu
       selama transisi; parallax tidak membuat karakter tampak meluncur.
-- [ ] Opening reguler dan Boss tidak snap saat reveal, sedangkan gameplay tidak
-      reframe ulang ketika Overlay muncul atau hilang.
+- [ ] Duel/Team Opening, Expedition Opening, dan Boss Encounter Opening tidak
+      snap saat reveal, sedangkan gameplay tidak reframe ulang ketika Overlay
+      muncul atau hilang.
 - [ ] Battle World Shake dan haptics mempertahankan perilaku live tanpa
       mengguncang Chrome atau mengulang impact saat koreksi authoritative.
 - [ ] Assertion dan komentar lama yang menyatakan dock berada di luar atau di
@@ -40,8 +41,9 @@ ditutup sebelum kontrak baru dianggap selesai.
       dan Expedition route lulus.
 - [ ] Perubahan direview untuk temuan in-scope berkeyakinan tinggi, dan temuan
       tersebut diperbaiki sebelum ticket selesai.
-- [ ] Panduan pemain Battle menggambarkan opening reguler, Boss Encounter
-      Opening, dan presentasi Arena yang benar-benar live.
+- [ ] Panduan pemain Battle menggambarkan Duel/Team Opening, Expedition
+      Opening, Boss Encounter Opening, dan presentasi Arena yang benar-benar
+      live.
 - [ ] Spesifikasi Team Battle/Expedition mencatat sequence Boss serta kontrak
       Arena/Chrome baru tanpa memindahkan detail internal ke wiki.
 - [ ] `CLAUDE.md` mendapat ringkasan fakta arsitektur lintas mode setelah

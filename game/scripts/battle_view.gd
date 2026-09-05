@@ -488,7 +488,7 @@ func set_session(
 		_bot_loaded = bot_loaded.duplicate(true)
 		_bot_sprite.apply(bot_loaded)
 	_player_sprite.visible = _player_sprite.sprite_frames != null and not intro_requested
-	_bot_sprite.visible = _bot_sprite.sprite_frames != null and not intro_requested
+	_bot_sprite.visible = _bot_sprite.sprite_frames != null
 	_apply_arena_background(art_cache)
 
 	var player_snapshot := _as_dict(_session.get("player_snapshot"))
@@ -512,8 +512,6 @@ func play_opening_intro() -> void:
 	var revision := _opening_intro_revision
 	await _event_pause(INTRO_OPENING_BEAT_SEC)
 	if not _opening_intro_is_active(revision):
-		return
-	if not await _summon_opening_side("bot", revision):
 		return
 	_set_player_seeker_pose("switch_command")
 	await _event_pause(INTRO_COMMAND_BEAT_SEC)

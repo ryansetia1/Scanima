@@ -18,14 +18,23 @@ sebelum pemain dapat memberi perintah.
 - [ ] Background boleh terlihat di belakang Chrome, sementara wajah, badan
       utama, kaki, contact shadow, feedback penting, dan kontrol interaktif
       tetap berada di area baca yang aman.
-- [ ] Opening Duel mempertahankan urutan live: Seeker Avatar pemain berdiri,
-      Anima lawan di-Summon, Seeker memberi command, lalu Anima pemain
-      di-Summon.
-- [ ] Opening memakai framing cinematic tanpa Chrome; setelah kedua Anima
-      siap, seluruh dunia berpindah selama 0,32 detik ke framing gameplay
-      sambil Chrome fade-in.
+- [ ] Duel/Team Opening dimulai dengan Seeker Avatar pemain dan Anima lawan
+      aktif yang sudah Idle beserta contact shadow; Anima pemain dan Chrome
+      masih tersembunyi.
+- [ ] Sesudah beat 0,4 detik, Seeker memakai pose Switch Command selama 0,42
+      detik lalu memanggil Anima pemain dengan portal, reveal, VFX, dan SFX
+      existing. Anima lawan tidak memakai entrance atau portal.
+- [ ] Framing cinematic sejak shot awal sudah memperhitungkan Anima pemain
+      tersembunyi, sehingga reveal tidak membuat camera snap.
+- [ ] Setelah Anima pemain siap, seluruh dunia berpindah selama 0,32 detik ke
+      framing gameplay sambil Chrome fade-in.
 - [ ] Input tetap terkunci sampai framing dan Chrome selesai settle; Chrome
       tersembunyi tidak menerima pointer, focus, Back, atau shortcut.
+- [ ] Setiap session Duel baru, termasuk Battle Again, memutar opening;
+      Continue, reconnect, authoritative refresh, dan transport retry session
+      yang sama langsung kembali ke gameplay.
+- [ ] Sheet Seeker Avatar yang tidak tersedia tidak menghambat portal, reveal
+      Anima pemain, transition, atau pembukaan input.
 - [ ] Camera, background, ground line, Anima, Seeker, shadow, dan portal tetap
       bergerak sebagai satu dunia tanpa kaki meluncur di atas lantai.
 - [ ] Membuka Item, konfirmasi Retreat, atau result tidak mengubah ukuran Arena
