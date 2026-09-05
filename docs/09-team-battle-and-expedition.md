@@ -305,11 +305,33 @@ menyediakan trigger `chapter_intro`, `boss_intro`, `first_attack`,
 `rematch`; director memilihnya sesuai budget di atas. Setiap line hanya boleh
 tampil sekali per session state; replay event tidak mengulang dialog. Runtime menempel `boss_seeker` plus `sheet_url` pada
 run/encounter; client memuat sheet 3×3. Encounter Boss pertama menampilkan
-Seeker saja, dialog tanpa overlay gelap, lalu pose command dan Summon Anima
-lawan sebelum input nyala. Sesudah mode intro dilepas, client menghitung ulang
-posisi dan layer sebelum Anima pertama di-reveal; ini mencegah satu turn awal
-dengan layer yang salah. Seeker di-clamp di dalam stage, pose command tetap
-berpijak, dan dialog memakai tap-to-continue.
+kedua Seeker dalam framing cinematic, tanpa Anima atau Battle Chrome. Sequence
+baru boleh dimulai setelah Loading Screen benar-benar hilang. Sesudah beat diam
+0,7 detik, Boss menyampaikan `boss_intro` tanpa overlay gelap; tap, confirm,
+atau Back hanya menutup dialog dan tidak melewati Summon. Boss lalu memakai
+Switch Command, memanggil Anima aktifnya lewat portal, dan kembali Idle. Seeker
+pemain melakukan rangkaian yang sama untuk Anima pemain tanpa jeda input
+tambahan. Framing sejak shot pertama sudah menghitung bounds kedua Anima yang
+masih tersembunyi, sehingga reveal tidak membuat kamera snap.
+
+Setelah kedua reveal selesai, dunia bergerak ke framing gameplay dan Battle
+Chrome fade-in bersama selama 0,32 detik. Input baru dibuka setelah transisi,
+pose, portal, dan visibility settle. Retry attempt zona memakai line `rematch`
+dan mengulang seluruh koreografi; Continue, reconnect, replay event, transport
+retry, serta authoritative refresh tidak mengulangnya. Refresh authoritative
+yang datang saat opening membatalkan sequence dan langsung memasang arena siap.
+Pergantian session, akun, mode, atau view menaikkan revision presentasi, menutup
+dialog, menghentikan portal, dan membuat callback lama tidak boleh mengubah
+konteks baru. Background/resume pada view dan session yang sama tidak dianggap
+pergantian konteks, sehingga fase yang sedang berjalan tetap diteruskan.
+
+Line opening kosong dilewati. Sheet atau portrait Seeker yang gagal dimuat
+dianggap kosmetik: figur/portrait itu disembunyikan, dialog tetap boleh tampil
+sebagai teks, dan Summon serta input Battle tetap harus selesai normal. Dialog
+command, final ace, victory, defeat, Trophy, result, dan budget dialog sesudah
+opening tetap memakai kontrak sebelumnya. Sebelum reveal pertama, client sudah
+menghitung posisi serta layer final; Seeker di-clamp di dalam stage, pose
+command tetap berpijak, dan dialog memakai tap-to-continue.
 
 Semua cast dan Boss Seeker content v2+ wajib mempunyai `body_height_cm`.
 Post-process menyimpan bbox opak pose Idle/Intro Idle sebagai

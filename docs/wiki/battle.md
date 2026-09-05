@@ -254,10 +254,15 @@ Seeker.
   Core-nya tersimpan permanen di **Trophy Showcase** pada profil Seeker, yang
   memajang semua Core yang pernah kamu menangkan. Tidak ada yang perlu diatur
   atau disimpan di sana — buka profilnya dan Core-nya sudah ada.
-- Boss menampilkan **The Confectioner** dulu, tanpa Anima lawan. Ia bicara
-  singkat dan tegas, tanpa overlay gelap. **Tap to continue** menutup baris
-  itu, lalu The Confectioner memanggil Anima-nya ke arena dan fight baru
-  dimulai. Selama
+- Final Battle dibuka sebagai konfrontasi dua Seeker: kamu dan **The
+  Confectioner** sudah berdiri di arena, sementara kedua Anima masih
+  tersembunyi. Setelah jeda singkat, Boss bicara tanpa overlay gelap. **Tap to
+  continue** menutup baris itu; Boss memanggil Anima-nya lebih dulu, lalu
+  Seeker-mu memanggil Anima aktifmu. Status dan tombol baru muncul sesudah
+  keduanya siap, dan rangkaian Summon tidak dapat dilewati. **Try Again**
+  memutar pembuka penuh dengan dialog rematch, sedangkan **Continue
+  Expedition** atau sambungan yang pulih langsung kembali ke arena siap tanpa
+  mengulang pembuka. Selama
   fight ia berdiri di belakang Anima lawan, paling banyak bicara sekali lagi
   saat perintah, ketika ace terakhirnya masuk, lalu saat menang atau kalah.
 - Nimbelisk adalah ace The Confectioner dan selalu disimpan sampai semua Anima

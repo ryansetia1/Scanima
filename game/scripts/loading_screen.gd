@@ -88,6 +88,14 @@ static func is_showing() -> bool:
 	return is_instance_valid(_singleton) and _singleton.is_painted()
 
 
+## Opening cinematics must not advance under the opaque tail of the loading
+## fade. A delayed request that never painted returns immediately; a painted
+## screen waits through both its minimum hold and final fade.
+static func wait_until_hidden() -> void:
+	while is_instance_valid(_singleton) and _singleton._screen.visible:
+		await _singleton.get_tree().process_frame
+
+
 static func _instance() -> LoadingScreen:
 	if is_instance_valid(_singleton):
 		return _singleton

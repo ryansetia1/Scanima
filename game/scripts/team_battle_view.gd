@@ -20,6 +20,7 @@ signal _boss_result_settled
 const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
 const INTRO_OPENING_BEAT_SEC := 0.4
+const BOSS_INTRO_OPENING_BEAT_SEC := 0.7
 const INTRO_COMMAND_BEAT_SEC := 0.42
 const INTRO_GAMEPLAY_TRANSITION_SEC := 0.32
 const GAMEPLAY_CHROME_GAP := 16.0
@@ -177,8 +178,6 @@ var _seeker_dialog: BOSS_SEEKER_DIALOG
 var _seeker_loaded: Dictionary = {}
 var _spoken: Dictionary = {}
 var _spoken_session := ""
-var _intro_started := false
-var _intro_pending_summon := false
 var _opening_intro_pending := false
 var _opening_intro_running := false
 var _opening_intro_revision := 0
@@ -552,23 +551,15 @@ func set_session(
 	_apply_arena_background(art_cache)
 	_present_seeker()
 	var opening_requested := (
-		fresh_intro
-		and str(_session.get("status", "active")) == "active"
-		and not _is_boss_encounter()
+		fresh_intro and str(_session.get("status", "active")) == "active"
 	)
 	_gameplay_framing = not opening_requested
 	_opening_intro_pending = opening_requested
 	if opening_requested:
 		_busy = true
-	if _should_boss_intro():
-		_intro_started = true
-		_intro_pending_summon = true
-		_busy = true
 	_apply_session_state()
 	_set_opening_chrome_visible(not opening_requested)
 	_update_arena_actions()
-	if _intro_pending_summon:
-		_begin_boss_intro()
 
 
 func play_opening_intro() -> void:
@@ -579,17 +570,21 @@ func play_opening_intro() -> void:
 	_busy = true
 	_update_arena_actions()
 	var revision := _opening_intro_revision
-	await _event_pause(INTRO_OPENING_BEAT_SEC)
-	if not _opening_intro_is_active(revision):
-		return
-	if not await _summon_opening_side("opponent", revision):
-		return
-	_set_player_seeker_pose("switch_command")
-	await _event_pause(INTRO_COMMAND_BEAT_SEC)
-	if not _opening_intro_is_active(revision):
-		return
-	if not await _summon_opening_side("player", revision):
-		return
+	if _is_boss_encounter():
+		if not await _play_boss_opening(revision):
+			return
+	else:
+		await _event_pause(INTRO_OPENING_BEAT_SEC)
+		if not _opening_intro_is_active(revision):
+			return
+		if not await _summon_opening_side("opponent", revision):
+			return
+		_set_player_seeker_pose("switch_command")
+		await _event_pause(INTRO_COMMAND_BEAT_SEC)
+		if not _opening_intro_is_active(revision):
+			return
+		if not await _summon_opening_side("player", revision):
+			return
 	if not await _transition_opening_to_gameplay(revision):
 		return
 	_opening_intro_running = false
@@ -599,6 +594,32 @@ func play_opening_intro() -> void:
 	_sync_shadow("player")
 	_sync_shadow("opponent")
 	_update_arena_actions()
+
+
+func _play_boss_opening(revision: int) -> bool:
+	await _event_pause(BOSS_INTRO_OPENING_BEAT_SEC)
+	if not _opening_intro_is_active(revision):
+		return false
+	var trigger := "rematch" if int(_session.get("zone_attempt", 1)) > 1 else "boss_intro"
+	await _speak_seeker(trigger, "intro_idle", false, false, revision)
+	if not _opening_intro_is_active(revision):
+		return false
+	if is_instance_valid(_seeker) and _seeker.has_sheet():
+		_seeker.set_pose("switch_command")
+	await _event_pause(INTRO_COMMAND_BEAT_SEC)
+	if not _opening_intro_is_active(revision):
+		return false
+	if not await _summon_opening_side("opponent", revision):
+		return false
+	_restore_seeker_idle()
+	_set_player_seeker_pose("switch_command")
+	await _event_pause(INTRO_COMMAND_BEAT_SEC)
+	if not _opening_intro_is_active(revision):
+		return false
+	if not await _summon_opening_side("player", revision):
+		return false
+	_restore_player_seeker_idle()
+	return true
 
 
 func _summon_opening_side(side: String, revision: int) -> bool:
@@ -628,7 +649,6 @@ func _opening_intro_is_active(revision: int) -> bool:
 		_opening_intro_running
 		and revision == _opening_intro_revision
 		and str(_session.get("status", "")) == "active"
-		and not _is_boss_encounter()
 	)
 
 
@@ -648,6 +668,8 @@ func _cancel_opening_intro() -> void:
 		_player_portal.stop()
 	if is_instance_valid(_opponent_portal):
 		_opponent_portal.stop()
+	if is_instance_valid(_seeker_dialog) and _seeker_dialog.is_open():
+		_seeker_dialog.dismiss()
 
 
 func _transition_opening_to_gameplay(revision: int) -> bool:
@@ -728,6 +750,10 @@ func _set_opening_chrome_visible(shown: bool) -> void:
 			_item_button, _switch_button, _forfeit,
 		]:
 			(button as Button).release_focus()
+
+
+func cancel_opening_intro() -> void:
+	_cancel_opening_intro()
 
 
 func session_data() -> Dictionary:
@@ -951,6 +977,8 @@ func _apply_effect_hp_event(event: Dictionary, final_status: String = "active") 
 
 
 func _show_only(panel: Control) -> void:
+	if panel != _arena:
+		_cancel_opening_intro()
 	if is_instance_valid(_impact):
 		_impact.cancel()
 	for child in [_loading, _builder, _lobby, _arena]:
@@ -1208,12 +1236,7 @@ func _apply_session_state() -> void:
 	_effectiveness.visible = false
 	var opening_hidden := _opening_intro_pending or _opening_intro_running
 	_apply_side(_session, "player", true, not opening_hidden)
-	_apply_side(
-		_session,
-		"opponent",
-		true,
-		not opening_hidden and not _intro_pending_summon
-	)
+	_apply_side(_session, "opponent", true, not opening_hidden)
 	_position_fighters()
 	_set_player_seeker_pose(
 		"intro_idle" if status == "active"
@@ -2554,9 +2577,6 @@ func _anima_shot_rect(sprite: AnimaPresenter, anchor: Node2D, ground_y: float) -
 
 
 func _apply_fighter_layers() -> void:
-	if _intro_pending_summon:
-		_set_fighter_z(3, 2, 1)
-		return
 	var heights := _active_body_heights()
 	var seeker_cm := heights[2]
 	var player_back := (
@@ -2791,8 +2811,6 @@ func _reset_spoken_if_needed() -> void:
 		return
 	_spoken_session = session_id
 	_spoken = {}
-	_intro_started = false
-	_intro_pending_summon = false
 	_command_dialogue_used = false
 	_final_ace_pending = false
 	_boss_result_pending = false
@@ -2812,56 +2830,6 @@ func _present_seeker() -> void:
 	else:
 		_seeker_loaded = {}
 		_seeker.clear()
-
-
-func _should_boss_intro() -> bool:
-	return (
-		_is_boss_encounter()
-		and str(_session.get("status", "")) == "active"
-		and int(_session.get("turn_number", 1)) <= 1
-		and not _intro_started
-		and not bool(_spoken.get("boss_intro", false))
-		and not bool(_spoken.get("rematch", false))
-	)
-
-
-func _begin_boss_intro() -> void:
-	var trigger := "rematch" if int(_session.get("zone_attempt", 1)) > 1 else "boss_intro"
-	_position_seeker()
-	await _speak_seeker(trigger, "intro_idle", false)
-	await _summon_boss_opening()
-	if str(_session.get("status", "")) == "active":
-		_busy = false
-		_update_arena_actions()
-
-
-func _summon_boss_opening() -> void:
-	if not _intro_pending_summon or not _is_boss_encounter():
-		_intro_pending_summon = false
-		return
-	if is_instance_valid(_seeker) and _seeker.has_sheet():
-		_seeker.set_pose("switch_command")
-	await _event_pause(0.42)
-	_intro_pending_summon = false
-	_apply_side(_session, "opponent", true, false)
-	# Intro forced the opponent above the Seeker; recompute before reveal.
-	_position_fighters()
-	var sprite := _opponent_sprite
-	var portal := _opponent_portal
-	if not is_instance_valid(sprite):
-		_apply_side(_session, "opponent", true)
-		_restore_seeker_idle()
-		return
-	_align_portal("opponent")
-	if is_instance_valid(portal):
-		await portal.start_portal()
-		portal.burst()
-	if sprite.sprite_frames != null:
-		await sprite.summon_reveal()
-		_sync_shadow("opponent")
-	else:
-		sprite.visible = true
-	_restore_seeker_idle()
 
 
 func _react_seeker_attack(event: Dictionary) -> void:
@@ -2941,7 +2909,8 @@ func _speak_seeker(
 	trigger: String,
 	pose: String,
 	cut_in: bool,
-	restore_idle: bool = true
+	restore_idle: bool = true,
+	presentation_revision: int = -1
 ) -> bool:
 	if bool(_spoken.get(trigger, false)) or not _is_boss_encounter():
 		return false
@@ -2963,6 +2932,8 @@ func _speak_seeker(
 				str(seeker.get("portrait_pose", "profile"))
 			)
 		)
+	if presentation_revision >= 0 and not _opening_intro_is_active(presentation_revision):
+		return false
 	if restore_idle and is_instance_valid(_seeker) and str(_session.get("status", "")) == "active":
 		_seeker.set_pose("intro_idle")
 	return true

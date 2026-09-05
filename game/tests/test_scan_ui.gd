@@ -5673,7 +5673,8 @@ func _test_team_battle_view() -> void:
 	boss_session["boss_seeker"] = _boss_seeker_payload()
 	boss_session["state"]["status"] = "active"
 	boss_session["last_reward"] = {}
-	view.set_session(boss_session, seeker_art)
+	view.set_session(boss_session, seeker_art, true)
+	view.play_opening_intro()
 	await process_frame
 	var seeker := view.find_child("BossSeeker", true, false) as AnimatedSprite2D
 	var boss_opponent := view.find_child("TeamOpponentSprite", true, false) as AnimaPresenter
@@ -5686,12 +5687,26 @@ func _test_team_battle_view() -> void:
 		and seeker.z_index > 0
 		and boss_opponent != null
 		and opponent_anchor != null
-		and seeker.z_index < opponent_anchor.z_index
 		and not boss_opponent.visible
 		and seeker.get_parent() != null
 		and seeker.get_parent().find_child("GroundShadow", false, false) != null,
 		"boss intro shows the Seeker before her Anima"
 	)
+	var dim := dialog.find_child("SeekerDim", true, false) as ColorRect if dialog != null else null
+	var intro_line := dialog.find_child("SeekerLine", true, false) as Label if dialog != null else null
+	var intro_deadline := Time.get_ticks_msec() + 2500
+	while not dialog.is_open() and Time.get_ticks_msec() < intro_deadline:
+		await process_frame
+	_check(
+		dialog != null and dialog.is_open()
+		and intro_line != null
+		and intro_line.text.contains("Show me")
+		and (dim == null or not dim.visible),
+		"boss intro opens without a dark overlay"
+	)
+	_check(view.handle_back(), "back dismisses boss intro instead of leaving the arena")
+	await process_frame
+	_check(not dialog.is_open(), "dismissed boss intro stays closed")
 	var stage := view.find_child("TeamBattleStage", true, false) as Control
 	var metrics_value: Variant = seeker_art["boss_seeker"].get("render_metrics")
 	var seeker_metrics: Dictionary = (
@@ -5736,27 +5751,6 @@ func _test_team_battle_view() -> void:
 		and player_left >= -1.0
 		and opponent_right <= stage.size.x + 1.0,
 		"dynamic camera zooms out until both capped Animas stay fully visible"
-	)
-	var dim := dialog.find_child("SeekerDim", true, false) as ColorRect if dialog != null else null
-	var intro_line := dialog.find_child("SeekerLine", true, false) as Label if dialog != null else null
-	_check(
-		dialog != null and dialog.is_open()
-		and intro_line != null
-		and intro_line.text.contains("Show me")
-		and (dim == null or not dim.visible),
-		"boss intro opens without a dark overlay"
-	)
-	_check(view.handle_back(), "back dismisses boss intro instead of leaving the arena")
-	await process_frame
-	_check(not dialog.is_open(), "dismissed boss intro stays closed")
-	for _step in 120:
-		if boss_opponent.visible:
-			break
-		await process_frame
-	_check(boss_opponent.visible, "tap continues into the Seeker summoning her Anima")
-	_check(
-		opponent_anchor.z_index < seeker.z_index,
-		"first Boss summon recomputes the tall Anima behind the Seeker before turn one"
 	)
 	var seeker_rest := seeker.position
 	seeker.call("play_cut_in")

@@ -31,9 +31,11 @@ func _run() -> void:
 	await _test_team_intro(host, loaded, seeker_loaded)
 	await _test_team_switch_reframe(host, measured_loaded, seeker_loaded)
 	await _test_expedition_intro(host, loaded, seeker_loaded)
+	await _test_boss_intro(host, loaded, seeker_loaded)
+	await _test_boss_replay_and_cancellation(host, loaded, seeker_loaded)
 	host.queue_free()
 	if _failures == 0:
-		print("test_battle_intro: OK (3 modes + size/aspect grounding + switch framing)")
+		print("test_battle_intro: OK (Duel/Team/Expedition + Boss opening/cancellation)")
 		quit()
 		return
 	print("test_battle_intro: FAILED %d check(s)" % _failures)
@@ -94,9 +96,9 @@ func _test_fresh_intro_wiring() -> void:
 	var present := _source_function(controller, "func _present(")
 	_check(
 		submit.find("_present(operation == \"enter_node\")") >= 0
-		and present.find("str(_encounter.get(\"kind\", \"\")) in [\"battle\", \"elite\"]") >= 0
+		and present.find("str(_encounter.get(\"kind\", \"\")) in [\"battle\", \"elite\", \"boss\"]") >= 0
 		and present.find("_set_busy(false)") < present.find("await _view.play_combat_intro()"),
-		"only a freshly entered non-Boss Expedition battle plays the shared opening"
+		"only a freshly entered Expedition encounter plays its opening after Loading is released"
 	)
 
 
@@ -864,6 +866,451 @@ func _test_expedition_intro(
 	host.size = Vector2i(720, 1602)
 	await process_frame
 	safe_host.queue_free()
+	await process_frame
+
+
+func _test_boss_intro(
+	host: SubViewport,
+	loaded: Dictionary,
+	seeker_loaded: Dictionary
+) -> void:
+	var packed := load("res://scenes/ui/expedition_view.tscn") as PackedScene
+	var view := packed.instantiate()
+	host.add_child(view)
+	view.visible = true
+	view.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	view.position = Vector2.ZERO
+	view.size = Vector2(host.size)
+	await process_frame
+	view.open_mode()
+	view.set_player_avatar(seeker_loaded)
+	var player_id := "00000000-0000-4000-8000-000000000031"
+	var opponent_id := "10000000-0000-4000-8000-000000000031"
+	var player_member := {
+		"anima_id": player_id, "name": "Sunhound", "level": 16,
+		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
+		"body_height_cm": 75,
+	}
+	var opponent_member := {
+		"anima_id": opponent_id, "name": "Nimbelisk", "level": 16,
+		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
+		"body_height_cm": 105,
+	}
+	var boss_seeker := {
+		"display_name": "The Confectioner",
+		"body_height_cm": 165,
+		"portrait_pose": "profile",
+		"dialogue": {
+			"boss_intro": "You made it. Show me what your team has learned.",
+			"rematch": "Again, then. Show me what changed.",
+		},
+	}
+	var encounter := {
+		"id": "boss-opening-first-attempt",
+		"kind": "boss",
+		"status": "active",
+		"turn_number": 1,
+		"version": 1,
+		"zone_attempt": 1,
+		"boss_seeker": boss_seeker,
+		"player_snapshot": [{"anima_id": player_id}],
+		"opponent_snapshot": [{"anima_id": opponent_id}],
+		"state": {
+			"status": "active",
+			"turn": 1,
+			"player": {"active_slot": 0, "forced_switch": false, "roster": [player_member]},
+			"opponent": {"active_slot": 0, "forced_switch": false, "roster": [opponent_member]},
+		},
+	}
+	var run_data := {
+		"id": "boss-opening-run",
+		"status": "active",
+		"zone": 3,
+		"chapter_version_id": "future-chapter-version",
+		"boss_seeker": boss_seeker,
+	}
+	var background_image := Image.create(1024, 576, false, Image.FORMAT_RGBA8)
+	background_image.fill(Color(0.15, 0.08, 0.22, 1.0))
+	var art_cache := {
+		player_id: loaded,
+		opponent_id: loaded,
+		"boss_seeker": seeker_loaded,
+		"arena_background": ImageTexture.create_from_image(background_image),
+	}
+	LoadingScreen.show_screen("EXPEDITION_RESUMING", true)
+	view.set_run(run_data, encounter, art_cache, true)
+	await process_frame
+	var player := view.find_child("TeamPlayerSprite", true, false) as AnimatedSprite2D
+	var opponent := view.find_child("TeamOpponentSprite", true, false) as AnimatedSprite2D
+	var player_seeker := view.find_child("PlayerSeeker", true, false) as AnimatedSprite2D
+	var boss := view.find_child("BossSeeker", true, false) as AnimatedSprite2D
+	var dialog := view.find_child("BossSeekerDialog", true, false) as BossSeekerDialog
+	var chrome := view.find_child("TeamChrome", true, false) as Control
+	var attack := view.find_child("TeamAttackButton", true, false) as Button
+	var layer := view.find_child("FighterLayer", true, false) as Node2D
+	var player_seeker_shadow := view.find_child("PlayerSeekerShadow", true, false) as Sprite2D
+	var boss_shadow := layer.find_child("GroundShadow", false, false) as Sprite2D
+	var loading_root := root.find_child("LoadingScreenRoot", true, false) as Control
+	_check(
+		loading_root != null and loading_root.visible
+		and player_seeker.visible and boss.visible
+		and player_seeker_shadow.visible and boss_shadow.visible
+		and not player.visible and not opponent.visible
+		and not dialog.is_open()
+		and is_zero_approx(chrome.modulate.a)
+		and attack.disabled
+		and attack.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and attack.focus_mode == Control.FOCUS_NONE,
+		"fresh Boss encounter waits behind Loading on two grounded Seekers with no Anima or Chrome"
+	)
+	view.play_combat_intro()
+	await create_timer(0.78).timeout
+	view.handle_back()
+	var accept := InputEventAction.new()
+	accept.action = "ui_accept"
+	accept.pressed = true
+	host.push_input(accept, true)
+	await process_frame
+	_check(
+		loading_root.visible and not dialog.is_open()
+		and not player.visible and not opponent.visible and attack.disabled,
+		"Boss opening and every dismiss input stay inert until Loading is fully hidden"
+	)
+	LoadingScreen.hide_screen()
+	var hidden_deadline := Time.get_ticks_msec() + 3000
+	while loading_root.visible and Time.get_ticks_msec() < hidden_deadline:
+		await process_frame
+	var loading_hidden_at := Time.get_ticks_msec()
+	await create_timer(0.18).timeout
+	view.handle_back()
+	host.push_input(accept, true)
+	var beat_tap := InputEventMouseButton.new()
+	beat_tap.button_index = MOUSE_BUTTON_LEFT
+	beat_tap.pressed = true
+	beat_tap.position = Vector2(host.size) * 0.5
+	host.push_input(beat_tap, true)
+	attack.pressed.emit()
+	await process_frame
+	_check(
+		not dialog.is_open() and not player.visible and not opponent.visible
+		and attack.disabled,
+		"tap, confirm, Back, and Battle commands stay inert during the clear-arena beat"
+	)
+	var dialog_deadline := loading_hidden_at + 2500
+	while not dialog.is_open() and Time.get_ticks_msec() < dialog_deadline:
+		await process_frame
+	var dialog_opened_at := Time.get_ticks_msec()
+	var dim := dialog.find_child("SeekerDim", true, false) as ColorRect
+	var portrait := dialog.find_child("SeekerPortrait", true, false) as TextureRect
+	if portrait == null:
+		portrait = dialog.find_child("@TextureRect@*", true, false) as TextureRect
+	var name_label := dialog.find_child("SeekerName", true, false) as Label
+	var continue_label := dialog.find_child("SeekerContinue", true, false) as Label
+	_check(
+		not loading_root.visible and dialog.is_open()
+		and dialog_opened_at - loading_hidden_at >= 600
+		and not player.visible and not opponent.visible
+		and dim != null and (not dim.visible or is_zero_approx(dim.color.a))
+		and name_label != null and name_label.text == "The Confectioner"
+		and continue_label != null and not continue_label.text.is_empty()
+		and portrait != null and portrait.visible,
+		"Boss speaks after a natural 0.7-second clear-arena beat with identity and no dark overlay"
+	)
+	var reveal_order: Array[String] = []
+	var boss_pose_at_reveal := [false]
+	var player_pose_at_reveal := [false]
+	var stable_reveals := [true]
+	var cinematic_position := layer.position
+	var cinematic_scale := layer.scale
+	opponent.visibility_changed.connect(func() -> void:
+		if opponent.visible:
+			reveal_order.append("opponent")
+			boss_pose_at_reveal[0] = boss.animation == "switch_command"
+			stable_reveals[0] = stable_reveals[0] and layer.position.is_equal_approx(cinematic_position) and layer.scale.is_equal_approx(cinematic_scale)
+	)
+	player.visibility_changed.connect(func() -> void:
+		if player.visible:
+			reveal_order.append("player")
+			player_pose_at_reveal[0] = player_seeker.animation == "switch_command"
+			stable_reveals[0] = stable_reveals[0] and layer.position.is_equal_approx(cinematic_position) and layer.scale.is_equal_approx(cinematic_scale)
+	)
+	_check(view.handle_back(), "Back dismisses Boss opening dialogue without leaving the encounter")
+	var saw_transition := false
+	var transition_started_at := -1
+	var settle_deadline := Time.get_ticks_msec() + 10000
+	while attack.disabled and Time.get_ticks_msec() < settle_deadline:
+		if chrome.modulate.a > 0.01 and chrome.modulate.a < 0.99:
+			if transition_started_at < 0:
+				transition_started_at = Time.get_ticks_msec()
+			saw_transition = true
+		await process_frame
+	var transition_elapsed := (
+		Time.get_ticks_msec() - transition_started_at if transition_started_at >= 0 else 0
+	)
+	_check(
+		reveal_order == ["opponent", "player"]
+		and boss_pose_at_reveal[0] and player_pose_at_reveal[0]
+		and stable_reveals[0] and saw_transition
+		and transition_elapsed >= 220 and transition_elapsed <= 520
+		and player.visible and opponent.visible
+		and boss.animation == "intro_idle" and player_seeker.animation == "intro_idle"
+		and is_equal_approx(chrome.modulate.a, 1.0)
+		and not attack.disabled
+		and attack.mouse_filter == Control.MOUSE_FILTER_STOP
+		and attack.focus_mode == Control.FOCUS_ALL,
+		"Boss then player Summon without camera snap before the 0.32-second Chrome transition unlocks input"
+	)
+	LoadingScreen.hide_screen()
+	view.queue_free()
+	await process_frame
+
+
+func _test_boss_replay_and_cancellation(
+	host: SubViewport,
+	loaded: Dictionary,
+	seeker_loaded: Dictionary
+) -> void:
+	var packed := load("res://scenes/ui/expedition_view.tscn") as PackedScene
+	var view := packed.instantiate()
+	host.add_child(view)
+	view.visible = true
+	view.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	view.position = Vector2.ZERO
+	view.size = Vector2(host.size)
+	await process_frame
+	view.open_mode()
+	view.set_player_avatar(seeker_loaded)
+	var player_id := "00000000-0000-4000-8000-000000000041"
+	var opponent_id := "10000000-0000-4000-8000-000000000041"
+	var boss_seeker := {
+		"display_name": "Future Boss",
+		"body_height_cm": 165,
+		"portrait_pose": "profile",
+		"dialogue": {
+			"boss_intro": "A first meeting.",
+			"rematch": "A rematch line.",
+		},
+	}
+	var member := {
+		"name": "Fighter", "level": 8,
+		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
+		"body_height_cm": 90,
+	}
+	var player_member: Dictionary = member.duplicate(true)
+	player_member["anima_id"] = player_id
+	var opponent_member: Dictionary = member.duplicate(true)
+	opponent_member["anima_id"] = opponent_id
+	var encounter := {
+		"id": "boss-resume",
+		"kind": "boss",
+		"status": "active",
+		"turn_number": 1,
+		"version": 1,
+		"zone_attempt": 1,
+		"boss_seeker": boss_seeker,
+		"player_snapshot": [{"anima_id": player_id}],
+		"opponent_snapshot": [{"anima_id": opponent_id}],
+		"state": {
+			"status": "active", "turn": 1,
+			"player": {"active_slot": 0, "forced_switch": false, "roster": [player_member]},
+			"opponent": {"active_slot": 0, "forced_switch": false, "roster": [opponent_member]},
+		},
+	}
+	var run_data := {
+		"id": "boss-replay-run",
+		"status": "active",
+		"zone": 3,
+		"chapter_version_id": "another-future-chapter",
+		"boss_seeker": boss_seeker,
+	}
+	var art_cache := {
+		player_id: loaded,
+		opponent_id: loaded,
+		"boss_seeker": seeker_loaded,
+	}
+	view.set_run(run_data, encounter, art_cache)
+	await process_frame
+	var player := view.find_child("TeamPlayerSprite", true, false) as AnimatedSprite2D
+	var opponent := view.find_child("TeamOpponentSprite", true, false) as AnimatedSprite2D
+	var dialog := view.find_child("BossSeekerDialog", true, false) as BossSeekerDialog
+	var line := dialog.find_child("SeekerLine", true, false) as Label
+	var chrome := view.find_child("TeamChrome", true, false) as Control
+	var attack := view.find_child("TeamAttackButton", true, false) as Button
+	var player_portal := player.get_parent().find_child("SummonPortal", false, false) as IncubatorEffect
+	var opponent_portal := opponent.get_parent().find_child("SummonPortal", false, false) as IncubatorEffect
+	var boss_actor := view.find_child("BossSeeker", true, false) as SeekerPresenter
+	var player_actor := view.find_child("PlayerSeeker", true, false) as SeekerPresenter
+	var layer := view.find_child("FighterLayer", true, false) as Node2D
+	var boss_shadow := layer.find_child("GroundShadow", false, false) as Sprite2D
+	var player_seeker_shadow := view.find_child("PlayerSeekerShadow", true, false) as Sprite2D
+	var loading := view.find_child("ExpeditionLoading", true, false) as Control
+	var global_loading := root.find_child("LoadingScreenRoot", true, false) as Control
+	var portrait := dialog.find_child("SeekerPortrait", true, false) as TextureRect
+	if portrait == null:
+		portrait = dialog.find_child("@TextureRect@*", true, false) as TextureRect
+	await create_timer(0.78).timeout
+	_check(
+		player.visible and opponent.visible and not dialog.is_open()
+		and is_equal_approx(chrome.modulate.a, 1.0) and not attack.disabled
+		and not player_portal.is_active() and not opponent_portal.is_active(),
+		"Continue and authoritative resume converge directly on the ready Boss arena without replay"
+	)
+	var rematch: Dictionary = encounter.duplicate(true)
+	rematch["id"] = "boss-rematch"
+	rematch["zone_attempt"] = 2
+	view.set_run(run_data, rematch, art_cache, true)
+	view.play_combat_intro()
+	var rematch_deadline := Time.get_ticks_msec() + 2500
+	while not dialog.is_open() and Time.get_ticks_msec() < rematch_deadline:
+		await process_frame
+	_check(
+		dialog.is_open() and line.text == "A rematch line."
+		and not player.visible and not opponent.visible and attack.disabled,
+		"a retry starts the full choreography with rematch copy instead of replaying boss_intro"
+	)
+	var tap := InputEventMouseButton.new()
+	tap.button_index = MOUSE_BUTTON_LEFT
+	tap.pressed = true
+	tap.position = Vector2(host.size) * 0.5
+	host.push_input(tap, true)
+	await process_frame
+	if dialog.is_open():
+		view.handle_back()
+	var rematch_settle_deadline := Time.get_ticks_msec() + 10000
+	while attack.disabled and Time.get_ticks_msec() < rematch_settle_deadline:
+		await process_frame
+	_check(
+		player.visible and opponent.visible and not dialog.is_open() and not attack.disabled,
+		"tap dismissal lets the unskippable rematch Summons finish and unlock the arena"
+	)
+	var cancelled: Dictionary = encounter.duplicate(true)
+	cancelled["id"] = "boss-cancelled-by-view"
+	view.set_run(run_data, cancelled, art_cache, true)
+	view.play_combat_intro()
+	await create_timer(0.18).timeout
+	view.close_mode(true)
+	await create_timer(0.72).timeout
+	_check(
+		not view.visible and not dialog.is_open()
+		and not player_portal.is_active() and not opponent_portal.is_active(),
+		"leaving the Expedition view cancels the Boss beat before hidden dialogue or portals can start"
+	)
+	view.open_mode()
+	var refreshed: Dictionary = encounter.duplicate(true)
+	refreshed["id"] = "boss-authoritative-refresh"
+	view.set_run(run_data, refreshed, art_cache, true)
+	view.play_combat_intro()
+	var refresh_dialog_deadline := Time.get_ticks_msec() + 2500
+	while not dialog.is_open() and Time.get_ticks_msec() < refresh_dialog_deadline:
+		await process_frame
+	view.set_run(run_data, refreshed, art_cache)
+	await create_timer(1.0).timeout
+	_check(
+		not dialog.is_open() and player.visible and opponent.visible
+		and is_equal_approx(chrome.modulate.a, 1.0) and not attack.disabled
+		and not player_portal.is_active() and not opponent_portal.is_active(),
+		"same-session authoritative refresh cancels the cinematic and stale callbacks cannot re-hide or unlock it"
+	)
+	var backgrounded: Dictionary = encounter.duplicate(true)
+	backgrounded["id"] = "boss-background-continuity"
+	view.set_run(run_data, backgrounded, art_cache, true)
+	view.play_combat_intro()
+	await create_timer(0.18).timeout
+	view.propagate_notification(MainLoop.NOTIFICATION_APPLICATION_PAUSED)
+	await create_timer(0.24).timeout
+	view.propagate_notification(MainLoop.NOTIFICATION_APPLICATION_RESUMED)
+	var resumed_dialog_deadline := Time.get_ticks_msec() + 2500
+	while not dialog.is_open() and Time.get_ticks_msec() < resumed_dialog_deadline:
+		await process_frame
+	_check(
+		dialog.is_open() and line.text == "A first meeting."
+		and not player.visible and not opponent.visible and attack.disabled,
+		"background then foreground on the same view resumes the active Boss opening phase"
+	)
+	view.handle_back()
+	var resumed_settle_deadline := Time.get_ticks_msec() + 10000
+	while attack.disabled and Time.get_ticks_msec() < resumed_settle_deadline:
+		await process_frame
+	var text_only: Dictionary = encounter.duplicate(true)
+	text_only["id"] = "boss-text-only-fallback"
+	var text_only_seeker: Dictionary = boss_seeker.duplicate(true)
+	text_only_seeker["dialogue"] = {"boss_intro": "Text survives missing art."}
+	text_only["boss_seeker"] = text_only_seeker
+	view.set_player_avatar({})
+	view.set_run(
+		run_data, text_only,
+		{player_id: loaded, opponent_id: loaded, "boss_seeker": {}}, true
+	)
+	view.play_combat_intro()
+	var text_deadline := Time.get_ticks_msec() + 2500
+	while not dialog.is_open() and Time.get_ticks_msec() < text_deadline:
+		await process_frame
+	_check(
+		dialog.is_open() and line.text == "Text survives missing art."
+		and portrait != null and not portrait.visible
+		and not boss_actor.has_sheet() and not player_actor.has_sheet()
+		and not boss_shadow.visible and not player_seeker_shadow.visible,
+		"missing Seeker sheets omit both cosmetics and portrait while Boss dialogue remains usable"
+	)
+	view.handle_back()
+	var text_settle_deadline := Time.get_ticks_msec() + 10000
+	while attack.disabled and Time.get_ticks_msec() < text_settle_deadline:
+		await process_frame
+	var no_line: Dictionary = text_only.duplicate(true)
+	no_line["id"] = "boss-missing-line-fallback"
+	var silent_seeker: Dictionary = text_only_seeker.duplicate(true)
+	silent_seeker["dialogue"] = {}
+	no_line["boss_seeker"] = silent_seeker
+	view.set_run(
+		run_data, no_line,
+		{player_id: loaded, opponent_id: loaded, "boss_seeker": {}}, true
+	)
+	view.play_combat_intro()
+	var silent_deadline := Time.get_ticks_msec() + 10000
+	while attack.disabled and Time.get_ticks_msec() < silent_deadline:
+		await process_frame
+	_check(
+		not dialog.is_open() and player.visible and opponent.visible and not attack.disabled,
+		"a missing Boss opening line skips dialogue without blocking Summons or Battle input"
+	)
+	var account_change: Dictionary = text_only.duplicate(true)
+	account_change["id"] = "boss-cancelled-by-account-context"
+	view.set_run(
+		run_data, account_change,
+		{player_id: loaded, opponent_id: loaded, "boss_seeker": {}}, true
+	)
+	view.play_combat_intro()
+	var account_dialog_deadline := Time.get_ticks_msec() + 2500
+	while not dialog.is_open() and Time.get_ticks_msec() < account_dialog_deadline:
+		await process_frame
+	view.set_loading()
+	await create_timer(0.6).timeout
+	_check(
+		loading.visible and not dialog.is_open()
+		and not player_portal.is_active() and not opponent_portal.is_active(),
+		"account-context loading cancels Boss dialogue and portal choreography before replacing the arena"
+	)
+	LoadingScreen.show_screen("EXPEDITION_RESUMING", true)
+	var waiting: Dictionary = encounter.duplicate(true)
+	waiting["id"] = "boss-waiting-behind-loading"
+	view.set_run(run_data, waiting, art_cache, true)
+	view.play_combat_intro()
+	await create_timer(0.1).timeout
+	var replacement: Dictionary = encounter.duplicate(true)
+	replacement["id"] = "boss-replaced-behind-loading"
+	view.set_run(run_data, replacement, art_cache, true)
+	LoadingScreen.hide_screen()
+	var replacement_hidden_deadline := Time.get_ticks_msec() + 3000
+	while global_loading.visible and Time.get_ticks_msec() < replacement_hidden_deadline:
+		await process_frame
+	await create_timer(0.85).timeout
+	_check(
+		not dialog.is_open() and not player.visible and not opponent.visible and attack.disabled,
+		"a stale Loading waiter cannot consume the replacement session's pending Boss opening"
+	)
+	view.set_loading()
+	LoadingScreen.hide_screen()
+	view.queue_free()
 	await process_frame
 
 

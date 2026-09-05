@@ -609,7 +609,7 @@ func _present(fresh_intro: bool = false) -> void:
 	if GameState.session_epoch != account_epoch:
 		return
 	var play_opening_intro := (
-		fresh_intro and str(_encounter.get("kind", "")) in ["battle", "elite"]
+		fresh_intro and str(_encounter.get("kind", "")) in ["battle", "elite", "boss"]
 	)
 	_view.set_run(_run, _encounter, art, play_opening_intro)
 	if play_opening_intro:

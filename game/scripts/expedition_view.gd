@@ -127,6 +127,7 @@ func open_mode() -> void:
 func close_mode(force: bool = false) -> void:
 	if not force and has_active_encounter():
 		return
+	cancel_opening_intro()
 	visible = false
 	_emit_combat_open()
 
@@ -177,6 +178,12 @@ func handle_back() -> bool:
 		return true
 	back_requested.emit()
 	return true
+
+
+func cancel_opening_intro() -> void:
+	_combat.cancel_opening_intro()
+	if _seeker_dialog.is_open():
+		_seeker_dialog.dismiss()
 
 
 func set_loading(message_key: String = "EXPEDITION_LOADING") -> void:
@@ -347,6 +354,10 @@ func set_run(
 
 
 func play_combat_intro() -> void:
+	var session_id := str(_combat.session_data().get("id", ""))
+	await LoadingScreen.wait_until_hidden()
+	if not is_combat_open() or str(_combat.session_data().get("id", "")) != session_id:
+		return
 	await _combat.play_opening_intro()
 
 
@@ -378,6 +389,7 @@ func set_combat_encounter(encounter: Dictionary, art_cache: Dictionary = {}) -> 
 
 
 func _show_only(panel: Control) -> void:
+	cancel_opening_intro()
 	_column.visible = true
 	_combat.visible = false
 	_emit_combat_open()
