@@ -43,7 +43,6 @@ Tap **Menu** di bottom navigation. Popover berisi:
 | Aksi | Fungsi |
 | --- | --- |
 | **Seeker Profile** | Identitas akunmu: sign in, Level, EXP, koleksi, kemenangan, tanggal bergabung, dan Trophy Showcase |
-| **Anima Atlas** | Lihat form yang sudah kamu Scan atau temui |
 | **Settings** | Pengaturan aplikasi |
 
 Di **Settings**:

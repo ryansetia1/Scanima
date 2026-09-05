@@ -1,11 +1,7 @@
 # Anima Atlas
 
 **Anima Atlas** adalah catatan form Anima yang pernah kamu buat atau temui.
-Buka **Collection**, lalu pilih tab **Atlas**. **Menu → Anima Atlas** tetap
-menjadi shortcut langsung ke tab yang sama.
-
-Server Atlas sudah aktif. Layar ini muncul setelah pemain memasang APK baru;
-build lama tetap menampilkan Gallery selama masa pembaruan.
+Buka **Animas**, lalu pilih tab **Atlas**.
 
 Atlas memakai satu grid kartu dengan filter. Di layar ponsel biasa grid itu tiga
 kolom; layar yang lebih lebar menambah kolom sendiri supaya kartunya mengisi

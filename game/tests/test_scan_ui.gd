@@ -156,7 +156,7 @@ func _initialize() -> void:
 		"ExpeditionChoiceAbandon",
 		"OnboardingSubmit", "SeekerProfileBack", "SeekerProfileMenu",
 		"SeekerActionRename", "SeekerActionDelete",
-		"ChapterPush", "MenuProfile", "MenuAtlas", "MenuSettings",
+		"ChapterPush", "MenuProfile", "MenuSettings",
 		"SeekerAccount", "SeekerHelp",
 	]:
 		var button := scene.find_child(name, true, false) as Button
@@ -176,6 +176,10 @@ func _initialize() -> void:
 	)
 	var menu_popover := scene.find_child("MenuPopover", true, false) as Control
 	_check(menu_popover != null and not menu_popover.visible, "Menu popover starts closed")
+	_check(
+		scene.find_child("MenuAtlas", true, false) == null,
+		"Menu omits the duplicate Anima Atlas access point"
+	)
 	var menu_source := FileAccess.get_file_as_string("res://scripts/menu_popover.gd")
 	_check(
 		menu_source.find("size = get_viewport_rect().size") >= 0,

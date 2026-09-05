@@ -27,7 +27,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/photo_source_sheet.tscn" id="22_photo"]
 [ext_resource type="Script" uid="uid://cw8shmpti4kvh" path="res://scripts/menu_popover.gd" id="23_n5v8b"]
 [ext_resource type="Texture2D" uid="uid://b1i2vmm8a4qh2" path="res://assets/icons/user.svg" id="24_menu_user"]
-[ext_resource type="Texture2D" uid="uid://cw3e80fv6bv38" path="res://assets/icons/library.svg" id="25_menu_atlas"]
 [ext_resource type="Script" uid="uid://bfbuujsg42m0" path="res://scripts/home_background.gd" id="26_0wixs"]
 [ext_resource type="Texture2D" uid="uid://dcmoq8khu8xnx" path="res://assets/icons/settings.svg" id="26_menu_settings"]
 
@@ -1150,7 +1149,7 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -352.0
-offset_top = -589.0
+offset_top = -479.0
 offset_right = -16.0
 offset_bottom = -156.0
 grow_vertical = 0
@@ -1178,15 +1177,6 @@ layout_mode = 2
 theme_type_variation = &"MenuRowButton"
 text = "MENU_SEEKER_PROFILE"
 icon = ExtResource("24_menu_user")
-alignment = 0
-
-[node name="MenuAtlas" type="Button" parent="UI/MenuPopover/MenuPanel/MenuColumn" unique_id=1544244935]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-theme_type_variation = &"MenuRowButton"
-text = "MENU_ANIMA_ATLAS"
-icon = ExtResource("25_menu_atlas")
 alignment = 0
 
 [node name="MenuSettings" type="Button" parent="UI/MenuPopover/MenuPanel/MenuColumn" unique_id=1146403946]

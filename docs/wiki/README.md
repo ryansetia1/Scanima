@@ -8,13 +8,11 @@ Ini wiki untuk pemain baru. Nama tombol sama seperti di game (bahasa Inggris). A
 
 Game langsung berjalan sebagai **guest Seeker** tanpa login. Bottom navigation
 berisi lima tab berurutan: **HOME, SCAN, BATTLE, ANIMAS, MENU**. Tab **ANIMAS**
-adalah Collection, dan di dalamnya ada tab Collection dan Atlas; tombol **MENU**
-tetap menjadi shortcut untuk Seeker Profile, Anima Atlas, dan Settings. Tab yang
-sedang dibuka ditandai kotak biru dan tulisan cyan. Kalau **SCAN** tampak redup,
+memuat tab Collection, Synthesis, dan Atlas; tombol **MENU** membuka Seeker
+Profile dan Settings. Tab yang sedang dibuka ditandai kotak biru dan tulisan
+cyan. Kalau **SCAN** tampak redup,
 Scan sedang tidak bisa dipakai — biasanya Core habis atau scan gratis guest sudah
 terpakai. Tabnya tetap bisa ditekan untuk melihat alasannya.
-Server Atlas sudah aktif. Menu/Atlas tetap memerlukan APK baru; build lama masih
-memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
 
 ## Mulai dari mana
 
@@ -28,8 +26,8 @@ memakai navigasi dan Gallery sebelumnya sampai aplikasi diperbarui.
    Lapar atau kotor tidak mengunci battle, tapi stats turun.
 5. **Animas** — kelola Anima milikmu, buka **Synthesis Lab** setelah punya dua
    Anima Level 10+, atau pindah ke tab **Atlas** di dalamnya.
-6. **Menu** — buka Seeker Profile, shortcut **Anima Atlas**, atau Settings.
-   Profil Anima dibuka lewat Animas atau picker Battle.
+6. **Menu** — buka Seeker Profile atau Settings. Profil Anima dibuka lewat
+   Animas atau picker Battle.
 7. **Anima Atlas** — catat form yang kamu Scan atau temui di Duel dan Expedition.
 
 ## Isi wiki

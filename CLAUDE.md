@@ -294,7 +294,7 @@ export SUPABASE_ACCESS_TOKEN=sbp_...
 supabase projects list   # Scanima harus muncul di sini sebelum lanjut
 ```
 
-Dengan env var itu, `link` tidak diperlukan; cukup `--project-ref`. Kalau ragu token siapa yang dipegang, tanya langsung ke Management API — `curl -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" https://api.supabase.com/v1/organizations` harus menjawab `rekansebangku`, bukan organisasi lain.
+Dengan env var itu, `link` tidak diperlukan; cukup `--project-ref`. Kalau ragu token siapa yang dipegang, `supabase orgs list` harus menjawab `rekansebangku`, bukan organisasi lain.
 
 Pisau itu bermata dua, dan pada 22 Agustus 2026 mata satunya yang kena: shell di
 mesin ini sudah membawa `SUPABASE_ACCESS_TOKEN` milik **org kerja**, jadi env var

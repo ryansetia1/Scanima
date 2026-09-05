@@ -371,7 +371,6 @@ func _ready() -> void:
 	_bag_button.pressed.connect(_on_bag_pressed)
 	_shop_button.pressed.connect(_open_shop)
 	_menu_popover.profile_requested.connect(_open_seeker_profile)
-	_menu_popover.atlas_requested.connect(_open_atlas)
 	_menu_popover.settings_requested.connect(_open_settings)
 	_seeker_menu_sheet.help_requested.connect(_show_seeker_help)
 	_seeker_menu_sheet.music_changed.connect(_set_music_enabled)
