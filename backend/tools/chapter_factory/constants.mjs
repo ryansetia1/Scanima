@@ -1,6 +1,8 @@
 /** Default chapter directory (repo-relative). Candy-specific IDs live only in that tree's JSON. */
 export const DEFAULT_CHAPTER_REL = "backend/chapters/the-sugarworks/v1";
 
+export const DESIGN_SCHEMA_VERSION = 2;
+
 export const REVIEW_CONFIRM_PHRASE = "I reviewed all chapter assets and dialogue";
 
 export const BOSS_SEEKER_POSES = Object.freeze([
@@ -25,6 +27,15 @@ export const DIALOGUE_TRIGGERS = Object.freeze([
   "victory",
   "defeat",
   "rematch",
+]);
+
+export const VOICE_PROFILE_FIELDS = Object.freeze([
+  "core_motive",
+  "player_relationship",
+  "speech_rhythm",
+  "emotional_arc",
+  "natural_language",
+  "avoid",
 ]);
 
 export const PAID_ACK_PREFIX = "I accept chapter factory spend up to $";

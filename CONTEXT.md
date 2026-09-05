@@ -41,6 +41,13 @@ A Seeker authored as part of a chapter rather than played, who opposes the
 player during an Expedition.
 _Avoid_: NPC, rival, boss trainer
 
+**Boss Seeker Voice Profile**:
+The six-part writing identity that fixes a Boss Seeker's motive, relationship
+with the player, speech rhythm, emotional arc, natural language, and patterns
+to avoid. It keeps all nine dialogue moments recognizably in character without
+forcing jargon or catchphrases.
+_Avoid_: Catchphrase list, dialogue gimmick
+
 **Seeker Sheet**:
 The nine-pose art contract every Seeker figure is drawn on: one idle pose, the
 four command poses, two reaction poses, a victory and a defeat pose, and a

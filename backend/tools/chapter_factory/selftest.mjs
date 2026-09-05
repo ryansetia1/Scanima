@@ -16,8 +16,10 @@ import {
 } from "./assets.mjs";
 import {
   BOSS_SEEKER_POSES,
+  DESIGN_SCHEMA_VERSION,
   DESIGN_ACK_PREFIX,
   REVIEW_CONFIRM_PHRASE,
+  VOICE_PROFILE_FIELDS,
 } from "./constants.mjs";
 import { createContext, defaultChapterDir, loadChapterContext } from "./context.mjs";
 import { designExecutionGate } from "./design.mjs";
@@ -132,7 +134,7 @@ function syntheticDesign() {
     ...(id === "garden-queen" ? { special: true } : {}),
   }));
   return {
-    schema_version: 1,
+    schema_version: DESIGN_SCHEMA_VERSION,
     map_seed: "clockwork-garden-v1",
     summary: {
       title: "Clockwork Garden",
@@ -196,6 +198,14 @@ function syntheticDesign() {
       visual_direction: "An original adult woman botanist-engineer with an all-ages commanding silhouette.",
       sheet_filename: "horticulturist-seeker.png",
       portrait_pose: "profile",
+      voice_profile: {
+        core_motive: "Protect the conservatory while proving that careful adaptation makes it stronger.",
+        player_relationship: "Treat the player as a capable visitor whose choices must earn her respect.",
+        speech_rhythm: "Use compact observations and clear commands with an alert, practical cadence.",
+        emotional_arc: "Begin watchful, grow energized in battle, then respond to the result with honest respect.",
+        natural_language: "Use everyday English and let horticulture language appear only when it sounds conversational.",
+        avoid: "Avoid forced gear jargon, repeated catchphrases, cruelty, threats, and emotional manipulation.",
+      },
       dialogue: {
         chapter_intro: "Welcome to my conservatory. Every gear here bites back.",
         boss_intro: "I tend these brass blooms. Your team wilts before my queen.",
@@ -505,6 +515,27 @@ export async function runChapterFactorySelftest(repoRoot) {
     () => validateDesign(invalidZoneReward, ctx.brief, invalidZoneContext),
     /INVALID_CHAPTER_ZONE_BITS/,
   );
+  const missingVoiceProfile = syntheticDesign();
+  delete missingVoiceProfile.boss_seeker.voice_profile;
+  assert.throws(
+    () => validateDesign(missingVoiceProfile, syntheticBrief()),
+    /boss_seeker\.voice_profile wajib/,
+  );
+  const legacyDesign = structuredClone(missingVoiceProfile);
+  legacyDesign.schema_version = 1;
+  assert.doesNotThrow(() => validateDesign(legacyDesign, syntheticBrief()));
+  const extraVoiceField = syntheticDesign();
+  extraVoiceField.boss_seeker.voice_profile.catchphrase = "Grow with the flow.";
+  assert.throws(
+    () => validateDesign(extraVoiceField, syntheticBrief()),
+    /voice_profile harus tepat memuat/,
+  );
+  const emDashDialogue = structuredClone(ctx.design);
+  emDashDialogue.boss_seeker.dialogue.first_attack = "Hold steady — then strike.";
+  assert.throws(
+    () => validateDesign(emDashDialogue, ctx.brief, ctx),
+    /tidak boleh memakai em dash/,
+  );
 
   await assert.rejects(
     () => approveChapter({
@@ -721,6 +752,11 @@ export async function runChapterFactorySelftest(repoRoot) {
     validateDesign(design, brief, syntheticCtx);
     const built = await buildCompleteManifest({ chapterDir: syntheticDir, ctx: syntheticCtx });
     assert.deepEqual(built.manifest.zones.map((zone) => zone.bits_reward), [10, 20, 30]);
+    assert.equal(
+      built.manifest.boss_seeker.voice_profile,
+      undefined,
+      "voice_profile harus tetap authoring-only",
+    );
     validateChapterDraft(built.manifest, syntheticCtx);
     const stringRewardManifest = structuredClone(built.manifest);
     stringRewardManifest.zones[0].bits_reward = "10";
@@ -813,6 +849,9 @@ export async function runChapterFactorySelftest(repoRoot) {
     assert.match(built.manifest.trophy.art_path, /^expeditions\/clockwork-garden\/trophy\//);
     assertNoSugarworksLeak(html, "synthetic review html");
     assert.match(html, /clockwork-garden/);
+    assert.match(html, /Boss Seeker Voice Profile/);
+    assert.match(html, /Read all lines aloud in trigger order/);
+    for (const field of VOICE_PROFILE_FIELDS) assert.match(html, new RegExp(field));
   } finally {
     await rm(syntheticDir, { recursive: true, force: true });
   }

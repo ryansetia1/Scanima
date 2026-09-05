@@ -1,0 +1,2825 @@
+{
+  "assets": {
+    "entries": [
+      {
+        "kind": "anima_sheet",
+        "path": "expeditions/the-sugarworks/v5/animas/sugarworks-gumdrop/sheet.png",
+        "sha256": "269f4fa290286d7fcad400436d042a85ec1054f31841bbfc9b0037293a09537f"
+      },
+      {
+        "kind": "anima_sheet",
+        "path": "expeditions/the-sugarworks/v5/animas/sugarworks-taffy/sheet.png",
+        "sha256": "1681f38085cd3d1575b8280ce2a3674c04b84297dcd05e6838061f5d9bc04126"
+      },
+      {
+        "kind": "anima_sheet",
+        "path": "expeditions/the-sugarworks/v5/animas/sugarworks-licorice/sheet.png",
+        "sha256": "f218e002f6705f7606d78b1595e9ae985e7b8cd228773a11fc616e313a5be97f"
+      },
+      {
+        "kind": "anima_sheet",
+        "path": "expeditions/the-sugarworks/v5/animas/sugarworks-caramel/sheet.png",
+        "sha256": "ecc2130987a99b2fa0d0cac96951c4d7a9b41fca0f986ec6433677689f4222bb"
+      },
+      {
+        "kind": "anima_sheet",
+        "path": "expeditions/the-sugarworks/v5/animas/sugarworks-peppermint/sheet.png",
+        "sha256": "45fc21709eed7f52bf055962eef2b8a892ffacdbe76bfcff4d2224bfc3ee5502"
+      },
+      {
+        "kind": "anima_sheet",
+        "path": "expeditions/the-sugarworks/v5/animas/sugarworks-nougat/sheet.png",
+        "sha256": "04adc150c99348f8417f227bbe45a6fae3f2ed90a0855f23a2743c1707acb782"
+      },
+      {
+        "kind": "anima_sheet",
+        "path": "expeditions/the-sugarworks/v5/animas/sugarworks-fudge/sheet.png",
+        "sha256": "f5d2b20cd6a04e71fa080cb59e3b38482b2b2bffcbfd2343357d9cc57e848ffe"
+      },
+      {
+        "kind": "anima_sheet",
+        "path": "expeditions/the-sugarworks/v5/animas/sugarworks-syrup/sheet.png",
+        "sha256": "1aab182c36b3f8944582c7f9cd2eff032e51ff6e99ebac0cf92fb2b96e12cc6a"
+      },
+      {
+        "kind": "anima_sheet",
+        "path": "expeditions/the-sugarworks/v5/animas/sugarworks-cotton/sheet.png",
+        "sha256": "a470e9690cb7301cb0e32456bc446c0e96ee18ff222ade4740a7e0e55a73f39a"
+      },
+      {
+        "kind": "zone_art",
+        "path": "expeditions/the-sugarworks/v5/zones/zone-1.png",
+        "sha256": "61a91679aa350afb21f6c4df5cd8fb47f5f4522e04008fafd8e08eff528f1c6d"
+      },
+      {
+        "kind": "zone_art",
+        "path": "expeditions/the-sugarworks/v5/zones/zone-2.png",
+        "sha256": "9b6f2ab15ec071920091d1a8c43a254ee6d36e6cff4c7e3028c229b6515a5657"
+      },
+      {
+        "kind": "zone_art",
+        "path": "expeditions/the-sugarworks/v5/zones/zone-3.png",
+        "sha256": "ecfe6a2a71fca05ca89508fadd2f88515a391a73b55978cd51b28347f3144da8"
+      },
+      {
+        "kind": "boss_seeker_sheet",
+        "path": "expeditions/the-sugarworks/v5/boss/confectioner-seeker.png",
+        "sha256": "41591f4a5e994122a731a045d8a6989a1e8e6643cf5e92294acb73c27bd9bee7"
+      },
+      {
+        "kind": "trophy_art",
+        "path": "expeditions/the-sugarworks/trophy/sugarworks-trophy.png",
+        "sha256": "af063bf31653a744c608edf8278bc979124a4ed3d33be3e30cfa6364c1a87dec"
+      }
+    ],
+    "prefix": "expeditions/the-sugarworks/v5/"
+  },
+  "boss": {
+    "ace_passive": {
+      "copy": "Final Confection: Nimbelisk enters with +1 PP.",
+      "name": "Final Confection",
+      "type": "bonus_pp",
+      "value": 1
+    },
+    "opponent_id": "sugarworks-boss",
+    "supplies_reward": 8,
+    "title_key": "SUGARWORKS_BOSS"
+  },
+  "boss_seeker": {
+    "body_height_cm": 165,
+    "dialogue": {
+      "boss_intro": "You made it! Now show me what your team can really do.",
+      "chapter_intro": "Get through every challenge in the Sugarworks. Then face me.",
+      "defeat": "You're close. Think about what you could change, then try again.",
+      "first_attack": "Hold steady! Wait for your opening.",
+      "first_special": "Now! Show them your full strength!",
+      "first_switch": "Change the pace! Keep them guessing.",
+      "last_anima": "Nimbelisk, you're up! Show them what you can do.",
+      "rematch": "Back again? Good. Show me what you changed.",
+      "victory": "Well done! Your team adjusted to everything I tried."
+    },
+    "display_name": "The Confectioner",
+    "id": "confectioner",
+    "manifest": {
+      "frame_size": [
+        300,
+        300
+      ],
+      "poses": {
+        "attack_command": {
+          "region": [
+            341,
+            0,
+            300,
+            300
+          ]
+        },
+        "concern_hit": {
+          "region": [
+            341,
+            341,
+            300,
+            300
+          ]
+        },
+        "defeat": {
+          "region": [
+            341,
+            682,
+            300,
+            300
+          ]
+        },
+        "intro_idle": {
+          "region": [
+            0,
+            0,
+            300,
+            300
+          ]
+        },
+        "last_anima": {
+          "region": [
+            682,
+            341,
+            300,
+            300
+          ]
+        },
+        "profile": {
+          "region": [
+            682,
+            682,
+            300,
+            300
+          ]
+        },
+        "special_command": {
+          "region": [
+            682,
+            0,
+            300,
+            300
+          ]
+        },
+        "switch_command": {
+          "region": [
+            0,
+            341,
+            300,
+            300
+          ]
+        },
+        "victory": {
+          "region": [
+            0,
+            682,
+            300,
+            300
+          ]
+        }
+      },
+      "prompt_version": "chapter_factory/v1",
+      "qa": {
+        "capture_overlap": {
+          "passed": true,
+          "violations": []
+        },
+        "cells_detected": 9,
+        "mode": "chroma_grid"
+      },
+      "render_metrics": {
+        "reference_height_px": 282,
+        "reference_width_px": 158
+      },
+      "seeker_id": "confectioner",
+      "sheet_size": [
+        1024,
+        1024
+      ],
+      "version": 1
+    },
+    "portrait_pose": "profile",
+    "poses": [
+      "intro_idle",
+      "attack_command",
+      "special_command",
+      "switch_command",
+      "concern_hit",
+      "last_anima",
+      "victory",
+      "defeat",
+      "profile"
+    ],
+    "sheet_hash": "41591f4a5e994122a731a045d8a6989a1e8e6643cf5e92294acb73c27bd9bee7",
+    "sheet_path": "expeditions/the-sugarworks/v5/boss/confectioner-seeker.png",
+    "title_key": "SUGARWORKS_BOSS_SEEKER"
+  },
+  "content_version": 9,
+  "factory": {
+    "asset_prefix": "expeditions/the-sugarworks/v5/",
+    "content_version": 9,
+    "generated_at": "1970-01-01T00:00:00.000Z",
+    "mode": "production",
+    "prompt_version": "chapter_factory/v1",
+    "sequence": 1,
+    "slug": "the-sugarworks"
+  },
+  "manifest_hash": "33b57fea3658fb64e7225cde0cab7fdc4fa14eea833dd2c130e9a3df151a9d0a",
+  "minimum_build": {
+    "android": 0,
+    "desktop": 0,
+    "ios": 0
+  },
+  "opponents": [
+    {
+      "id": "sugarworks-regular-1",
+      "roster": [
+        {
+          "anima_id": "sugarworks-gumdrop",
+          "base_stats": {
+            "atk": 52,
+            "def": 44,
+            "hp": 48,
+            "spd": 46,
+            "special": 50
+          },
+          "body_height_cm": 95,
+          "color_bucket": "pink",
+          "element": "food",
+          "hunger": 100,
+          "hygiene": 100,
+          "level": 5,
+          "manifest": {
+            "color_bucket": "pink",
+            "frame_size": [
+              329,
+              284
+            ],
+            "poses": {
+              "attack": {
+                "region": [
+                  329,
+                  0,
+                  329,
+                  284
+                ]
+              },
+              "defeated": {
+                "region": [
+                  0,
+                  568,
+                  329,
+                  284
+                ]
+              },
+              "dirty": {
+                "region": [
+                  658,
+                  284,
+                  329,
+                  284
+                ]
+              },
+              "fx_strike": {
+                "region": [
+                  329,
+                  568,
+                  329,
+                  284
+                ]
+              },
+              "fx_surge": {
+                "region": [
+                  658,
+                  568,
+                  329,
+                  284
+                ]
+              },
+              "happy": {
+                "region": [
+                  0,
+                  284,
+                  329,
+                  284
+                ]
+              },
+              "hungry": {
+                "region": [
+                  329,
+                  284,
+                  329,
+                  284
+                ]
+              },
+              "idle": {
+                "region": [
+                  0,
+                  0,
+                  329,
+                  284
+                ]
+              },
+              "sleep": {
+                "region": [
+                  658,
+                  0,
+                  329,
+                  284
+                ]
+              }
+            },
+            "prompt_version": "v12",
+            "qa": {
+              "bbox_heights": {
+                "attack": 186,
+                "defeated": 272,
+                "dirty": 203,
+                "fx_strike": 199,
+                "fx_surge": 265,
+                "happy": 227,
+                "hungry": 202,
+                "idle": 205,
+                "sleep": 232
+              },
+              "cells_detected": 9,
+              "cells_rejected": {},
+              "green_residue_ratio": 0.01085,
+              "keyed_pixel_ratio": 0.7129,
+              "pose_ownership": {
+                "attack": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 34655
+                },
+                "defeated": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 35388
+                },
+                "dirty": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 33831
+                },
+                "fx_strike": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 16611
+                },
+                "fx_surge": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 49948
+                },
+                "happy": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 32919
+                },
+                "hungry": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 31797
+                },
+                "idle": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 32007
+                },
+                "sleep": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 33527
+                }
+              },
+              "seam_margin": {
+                "passed": true,
+                "ratio": 0.12,
+                "violations": []
+              },
+              "source_size": [
+                1024,
+                1024
+              ],
+              "standing_height_variance": 0.093,
+              "warnings": [
+                "pose sleep lebih tinggi dari idle",
+                "pose defeated lebih tinggi dari idle",
+                "residu hijau 1.08%"
+              ],
+              "white_keyline_pixels_stripped": 280
+            },
+            "render_metrics": {
+              "reference_height_px": 205,
+              "reference_width_px": 259
+            },
+            "sheet": null,
+            "sheet_size": [
+              987,
+              852
+            ],
+            "species_key": "sugarworks_gumdrop",
+            "stage": 2,
+            "version": 1
+          },
+          "name": "Gellume",
+          "secondary_element": "spark",
+          "sheet_path": "expeditions/the-sugarworks/v5/animas/sugarworks-gumdrop/sheet.png",
+          "species_key": "sugarworks_gumdrop",
+          "stage": 2,
+          "strike_name": "Sugar Jab",
+          "surge_name": "Candy Burst"
+        },
+        {
+          "anima_id": "sugarworks-taffy",
+          "base_stats": {
+            "atk": 48,
+            "def": 46,
+            "hp": 46,
+            "spd": 54,
+            "special": 48
+          },
+          "body_height_cm": 120,
+          "color_bucket": "amber",
+          "element": "food",
+          "hunger": 100,
+          "hygiene": 100,
+          "level": 5,
+          "manifest": {
+            "color_bucket": "amber",
+            "frame_size": [
+              347,
+              281
+            ],
+            "poses": {
+              "attack": {
+                "region": [
+                  347,
+                  0,
+                  347,
+                  281
+                ]
+              },
+              "defeated": {
+                "region": [
+                  0,
+                  562,
+                  347,
+                  281
+                ]
+              },
+              "dirty": {
+                "region": [
+                  694,
+                  281,
+                  347,
+                  281
+                ]
+              },
+              "fx_strike": {
+                "region": [
+                  347,
+                  562,
+                  347,
+                  281
+                ]
+              },
+              "fx_surge": {
+                "region": [
+                  694,
+                  562,
+                  347,
+                  281
+                ]
+              },
+              "happy": {
+                "region": [
+                  0,
+                  281,
+                  347,
+                  281
+                ]
+              },
+              "hungry": {
+                "region": [
+                  347,
+                  281,
+                  347,
+                  281
+                ]
+              },
+              "idle": {
+                "region": [
+                  0,
+                  0,
+                  347,
+                  281
+                ]
+              },
+              "sleep": {
+                "region": [
+                  694,
+                  0,
+                  347,
+                  281
+                ]
+              }
+            },
+            "prompt_version": "v12",
+            "qa": {
+              "bbox_heights": {
+                "attack": 219,
+                "defeated": 269,
+                "dirty": 216,
+                "fx_strike": 165,
+                "fx_surge": 266,
+                "happy": 231,
+                "hungry": 217,
+                "idle": 216,
+                "sleep": 197
+              },
+              "cells_detected": 9,
+              "cells_rejected": {},
+              "green_residue_ratio": 0.00504,
+              "keyed_pixel_ratio": 0.7765,
+              "pose_ownership": {
+                "attack": {
+                  "cross_boundary_pixels": 78,
+                  "opaque_pixels": 27502
+                },
+                "defeated": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 28184
+                },
+                "dirty": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 24605
+                },
+                "fx_strike": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 13863
+                },
+                "fx_surge": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 37833
+                },
+                "happy": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 26483
+                },
+                "hungry": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 25025
+                },
+                "idle": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 25925
+                },
+                "sleep": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 24459
+                }
+              },
+              "seam_margin": {
+                "passed": true,
+                "ratio": 0.12,
+                "violations": []
+              },
+              "source_size": [
+                1024,
+                1024
+              ],
+              "standing_height_variance": 0.014,
+              "warnings": [
+                "pose defeated lebih tinggi dari idle",
+                "residu hijau 0.50%"
+              ],
+              "white_keyline_pixels_stripped": 483
+            },
+            "render_metrics": {
+              "reference_height_px": 216,
+              "reference_width_px": 296
+            },
+            "sheet": null,
+            "sheet_size": [
+              1041,
+              843
+            ],
+            "species_key": "sugarworks_taffy",
+            "stage": 2,
+            "version": 1
+          },
+          "name": "Velastra",
+          "secondary_element": "flow",
+          "sheet_path": "expeditions/the-sugarworks/v5/animas/sugarworks-taffy/sheet.png",
+          "species_key": "sugarworks_taffy",
+          "stage": 2,
+          "strike_name": "Stretch Snap",
+          "surge_name": "Taffy Whip"
+        }
+      ],
+      "title_key": "SUGARWORKS_OPPONENT_REGULAR"
+    },
+    {
+      "id": "sugarworks-elite-1",
+      "roster": [
+        {
+          "anima_id": "sugarworks-licorice",
+          "base_stats": {
+            "atk": 55,
+            "def": 48,
+            "hp": 50,
+            "spd": 44,
+            "special": 52
+          },
+          "body_height_cm": 170,
+          "color_bucket": "violet",
+          "element": "toxin",
+          "hunger": 100,
+          "hygiene": 100,
+          "level": 8,
+          "manifest": {
+            "color_bucket": "violet",
+            "frame_size": [
+              356,
+              299
+            ],
+            "poses": {
+              "attack": {
+                "region": [
+                  356,
+                  0,
+                  356,
+                  299
+                ]
+              },
+              "defeated": {
+                "region": [
+                  0,
+                  598,
+                  356,
+                  299
+                ]
+              },
+              "dirty": {
+                "region": [
+                  712,
+                  299,
+                  356,
+                  299
+                ]
+              },
+              "fx_strike": {
+                "region": [
+                  356,
+                  598,
+                  356,
+                  299
+                ]
+              },
+              "fx_surge": {
+                "region": [
+                  712,
+                  598,
+                  356,
+                  299
+                ]
+              },
+              "happy": {
+                "region": [
+                  0,
+                  299,
+                  356,
+                  299
+                ]
+              },
+              "hungry": {
+                "region": [
+                  356,
+                  299,
+                  356,
+                  299
+                ]
+              },
+              "idle": {
+                "region": [
+                  0,
+                  0,
+                  356,
+                  299
+                ]
+              },
+              "sleep": {
+                "region": [
+                  712,
+                  0,
+                  356,
+                  299
+                ]
+              }
+            },
+            "prompt_version": "v12",
+            "qa": {
+              "bbox_heights": {
+                "attack": 243,
+                "defeated": 287,
+                "dirty": 248,
+                "fx_strike": 214,
+                "fx_surge": 270,
+                "happy": 262,
+                "hungry": 242,
+                "idle": 244,
+                "sleep": 251
+              },
+              "cells_detected": 9,
+              "cells_rejected": {},
+              "green_residue_ratio": 0.01241,
+              "keyed_pixel_ratio": 0.6888,
+              "pose_ownership": {
+                "attack": {
+                  "cross_boundary_pixels": 196,
+                  "opaque_pixels": 39905
+                },
+                "defeated": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 36836
+                },
+                "dirty": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 36046
+                },
+                "fx_strike": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 22418
+                },
+                "fx_surge": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 53687
+                },
+                "happy": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 35455
+                },
+                "hungry": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 34009
+                },
+                "idle": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 33514
+                },
+                "sleep": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 34068
+                }
+              },
+              "seam_margin": {
+                "passed": true,
+                "ratio": 0.12,
+                "violations": []
+              },
+              "source_size": [
+                1024,
+                1024
+              ],
+              "standing_height_variance": 0.004,
+              "warnings": [
+                "pose defeated lebih tinggi dari idle",
+                "residu hijau 1.24%"
+              ],
+              "white_keyline_pixels_stripped": 378
+            },
+            "render_metrics": {
+              "reference_height_px": 244,
+              "reference_width_px": 266
+            },
+            "sheet": null,
+            "sheet_size": [
+              1068,
+              897
+            ],
+            "species_key": "sugarworks_licorice",
+            "stage": 2,
+            "version": 1
+          },
+          "name": "Noxcoil",
+          "secondary_element": "food",
+          "sheet_path": "expeditions/the-sugarworks/v5/animas/sugarworks-licorice/sheet.png",
+          "species_key": "sugarworks_licorice",
+          "stage": 2,
+          "strike_name": "Twist Lash",
+          "surge_name": "Dark Drizzle"
+        },
+        {
+          "anima_id": "sugarworks-caramel",
+          "base_stats": {
+            "atk": 50,
+            "def": 56,
+            "hp": 54,
+            "spd": 40,
+            "special": 50
+          },
+          "body_height_cm": 155,
+          "color_bucket": "gold",
+          "element": "food",
+          "hunger": 100,
+          "hygiene": 100,
+          "level": 8,
+          "manifest": {
+            "color_bucket": "gold",
+            "frame_size": [
+              375,
+              280
+            ],
+            "poses": {
+              "attack": {
+                "region": [
+                  375,
+                  0,
+                  375,
+                  280
+                ]
+              },
+              "defeated": {
+                "region": [
+                  0,
+                  560,
+                  375,
+                  280
+                ]
+              },
+              "dirty": {
+                "region": [
+                  750,
+                  280,
+                  375,
+                  280
+                ]
+              },
+              "fx_strike": {
+                "region": [
+                  375,
+                  560,
+                  375,
+                  280
+                ]
+              },
+              "fx_surge": {
+                "region": [
+                  750,
+                  560,
+                  375,
+                  280
+                ]
+              },
+              "happy": {
+                "region": [
+                  0,
+                  280,
+                  375,
+                  280
+                ]
+              },
+              "hungry": {
+                "region": [
+                  375,
+                  280,
+                  375,
+                  280
+                ]
+              },
+              "idle": {
+                "region": [
+                  0,
+                  0,
+                  375,
+                  280
+                ]
+              },
+              "sleep": {
+                "region": [
+                  750,
+                  0,
+                  375,
+                  280
+                ]
+              }
+            },
+            "prompt_version": "v12",
+            "qa": {
+              "bbox_heights": {
+                "attack": 231,
+                "defeated": 268,
+                "dirty": 227,
+                "fx_strike": 206,
+                "fx_surge": 263,
+                "happy": 263,
+                "hungry": 229,
+                "idle": 230,
+                "sleep": 224
+              },
+              "cells_detected": 9,
+              "cells_rejected": {},
+              "green_residue_ratio": 0.00479,
+              "keyed_pixel_ratio": 0.6522,
+              "pose_ownership": {
+                "attack": {
+                  "cross_boundary_pixels": 1724,
+                  "opaque_pixels": 50562
+                },
+                "defeated": {
+                  "cross_boundary_pixels": 2,
+                  "opaque_pixels": 39141
+                },
+                "dirty": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 43639
+                },
+                "fx_strike": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 17489
+                },
+                "fx_surge": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 45158
+                },
+                "happy": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 45782
+                },
+                "hungry": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 44116
+                },
+                "idle": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 44547
+                },
+                "sleep": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 33502
+                }
+              },
+              "seam_margin": {
+                "passed": true,
+                "ratio": 0.12,
+                "violations": []
+              },
+              "source_size": [
+                1024,
+                1024
+              ],
+              "standing_height_variance": 0.004,
+              "warnings": [
+                "pose defeated lebih tinggi dari idle",
+                "residu hijau 0.48%"
+              ],
+              "white_keyline_pixels_stripped": 655
+            },
+            "render_metrics": {
+              "reference_height_px": 230,
+              "reference_width_px": 298
+            },
+            "sheet": null,
+            "sheet_size": [
+              1125,
+              840
+            ],
+            "species_key": "sugarworks_caramel",
+            "stage": 2,
+            "version": 1
+          },
+          "name": "Cindrusk",
+          "secondary_element": "flame",
+          "sheet_path": "expeditions/the-sugarworks/v5/animas/sugarworks-caramel/sheet.png",
+          "species_key": "sugarworks_caramel",
+          "stage": 2,
+          "strike_name": "Shell Crack",
+          "surge_name": "Molten Coat"
+        },
+        {
+          "anima_id": "sugarworks-peppermint",
+          "base_stats": {
+            "atk": 52,
+            "def": 45,
+            "hp": 48,
+            "spd": 52,
+            "special": 54
+          },
+          "body_height_cm": 105,
+          "color_bucket": "mint",
+          "element": "frost",
+          "hunger": 100,
+          "hygiene": 100,
+          "level": 8,
+          "manifest": {
+            "color_bucket": "mint",
+            "frame_size": [
+              359,
+              297
+            ],
+            "poses": {
+              "attack": {
+                "region": [
+                  359,
+                  0,
+                  359,
+                  297
+                ]
+              },
+              "defeated": {
+                "region": [
+                  0,
+                  594,
+                  359,
+                  297
+                ]
+              },
+              "dirty": {
+                "region": [
+                  718,
+                  297,
+                  359,
+                  297
+                ]
+              },
+              "fx_strike": {
+                "region": [
+                  359,
+                  594,
+                  359,
+                  297
+                ]
+              },
+              "fx_surge": {
+                "region": [
+                  718,
+                  594,
+                  359,
+                  297
+                ]
+              },
+              "happy": {
+                "region": [
+                  0,
+                  297,
+                  359,
+                  297
+                ]
+              },
+              "hungry": {
+                "region": [
+                  359,
+                  297,
+                  359,
+                  297
+                ]
+              },
+              "idle": {
+                "region": [
+                  0,
+                  0,
+                  359,
+                  297
+                ]
+              },
+              "sleep": {
+                "region": [
+                  718,
+                  0,
+                  359,
+                  297
+                ]
+              }
+            },
+            "prompt_version": "v12",
+            "qa": {
+              "bbox_heights": {
+                "attack": 244,
+                "defeated": 285,
+                "dirty": 243,
+                "fx_strike": 227,
+                "fx_surge": 262,
+                "happy": 262,
+                "hungry": 243,
+                "idle": 247,
+                "sleep": 253
+              },
+              "cells_detected": 9,
+              "cells_rejected": {},
+              "green_residue_ratio": 0.006,
+              "keyed_pixel_ratio": 0.6772,
+              "pose_ownership": {
+                "attack": {
+                  "cross_boundary_pixels": 51,
+                  "opaque_pixels": 40537
+                },
+                "defeated": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 40473
+                },
+                "dirty": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 35578
+                },
+                "fx_strike": {
+                  "cross_boundary_pixels": 10,
+                  "opaque_pixels": 21075
+                },
+                "fx_surge": {
+                  "cross_boundary_pixels": 125,
+                  "opaque_pixels": 52528
+                },
+                "happy": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 36401
+                },
+                "hungry": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 35338
+                },
+                "idle": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 36278
+                },
+                "sleep": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 35158
+                }
+              },
+              "seam_margin": {
+                "passed": true,
+                "ratio": 0.12,
+                "violations": []
+              },
+              "source_size": [
+                1024,
+                1024
+              ],
+              "standing_height_variance": 0.012,
+              "warnings": [
+                "pose defeated lebih tinggi dari idle",
+                "residu hijau 0.60%"
+              ],
+              "white_keyline_pixels_stripped": 4401
+            },
+            "render_metrics": {
+              "reference_height_px": 247,
+              "reference_width_px": 300
+            },
+            "sheet": null,
+            "sheet_size": [
+              1077,
+              891
+            ],
+            "species_key": "sugarworks_peppermint",
+            "stage": 2,
+            "version": 1
+          },
+          "name": "Rimespin",
+          "secondary_element": "air",
+          "sheet_path": "expeditions/the-sugarworks/v5/animas/sugarworks-peppermint/sheet.png",
+          "species_key": "sugarworks_peppermint",
+          "stage": 2,
+          "strike_name": "Mint Slice",
+          "surge_name": "Cold Ribbon"
+        }
+      ],
+      "title_key": "SUGARWORKS_OPPONENT_ELITE"
+    },
+    {
+      "id": "sugarworks-elite-2",
+      "roster": [
+        {
+          "anima_id": "sugarworks-nougat",
+          "base_stats": {
+            "atk": 48,
+            "def": 58,
+            "hp": 58,
+            "spd": 38,
+            "special": 46
+          },
+          "body_height_cm": 190,
+          "color_bucket": "cream",
+          "element": "food",
+          "hunger": 100,
+          "hygiene": 100,
+          "level": 13,
+          "manifest": {
+            "color_bucket": "cream",
+            "frame_size": [
+              346,
+              298
+            ],
+            "poses": {
+              "attack": {
+                "region": [
+                  346,
+                  0,
+                  346,
+                  298
+                ]
+              },
+              "defeated": {
+                "region": [
+                  0,
+                  596,
+                  346,
+                  298
+                ]
+              },
+              "dirty": {
+                "region": [
+                  692,
+                  298,
+                  346,
+                  298
+                ]
+              },
+              "fx_strike": {
+                "region": [
+                  346,
+                  596,
+                  346,
+                  298
+                ]
+              },
+              "fx_surge": {
+                "region": [
+                  692,
+                  596,
+                  346,
+                  298
+                ]
+              },
+              "happy": {
+                "region": [
+                  0,
+                  298,
+                  346,
+                  298
+                ]
+              },
+              "hungry": {
+                "region": [
+                  346,
+                  298,
+                  346,
+                  298
+                ]
+              },
+              "idle": {
+                "region": [
+                  0,
+                  0,
+                  346,
+                  298
+                ]
+              },
+              "sleep": {
+                "region": [
+                  692,
+                  0,
+                  346,
+                  298
+                ]
+              }
+            },
+            "prompt_version": "v12",
+            "qa": {
+              "bbox_heights": {
+                "attack": 242,
+                "defeated": 286,
+                "dirty": 251,
+                "fx_strike": 221,
+                "fx_surge": 254,
+                "happy": 276,
+                "hungry": 247,
+                "idle": 249,
+                "sleep": 231
+              },
+              "cells_detected": 9,
+              "cells_rejected": {},
+              "green_residue_ratio": 0.0035,
+              "keyed_pixel_ratio": 0.6024,
+              "pose_ownership": {
+                "attack": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 47334
+                },
+                "defeated": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 49102
+                },
+                "dirty": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 47604
+                },
+                "fx_strike": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 32331
+                },
+                "fx_surge": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 55154
+                },
+                "happy": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 48586
+                },
+                "hungry": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 46435
+                },
+                "idle": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 46870
+                },
+                "sleep": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 41595
+                }
+              },
+              "seam_margin": {
+                "passed": true,
+                "ratio": 0.12,
+                "violations": []
+              },
+              "source_size": [
+                1024,
+                1024
+              ],
+              "standing_height_variance": 0.028,
+              "warnings": [
+                "pose defeated lebih tinggi dari idle",
+                "residu hijau 0.35%"
+              ],
+              "white_keyline_pixels_stripped": 1788
+            },
+            "render_metrics": {
+              "reference_height_px": 249,
+              "reference_width_px": 298
+            },
+            "sheet": null,
+            "sheet_size": [
+              1038,
+              894
+            ],
+            "species_key": "sugarworks_nougat",
+            "stage": 2,
+            "version": 1
+          },
+          "name": "Pralith",
+          "secondary_element": "stone",
+          "sheet_path": "expeditions/the-sugarworks/v5/animas/sugarworks-nougat/sheet.png",
+          "species_key": "sugarworks_nougat",
+          "stage": 2,
+          "strike_name": "Block Bash",
+          "surge_name": "Honey Guard"
+        }
+      ],
+      "title_key": "SUGARWORKS_OPPONENT_MINIBOSS"
+    },
+    {
+      "id": "sugarworks-boss",
+      "roster": [
+        {
+          "anima_id": "sugarworks-fudge",
+          "base_stats": {
+            "atk": 58,
+            "def": 52,
+            "hp": 56,
+            "spd": 42,
+            "special": 55
+          },
+          "body_height_cm": 135,
+          "color_bucket": "cocoa",
+          "element": "food",
+          "hunger": 100,
+          "hygiene": 100,
+          "level": 18,
+          "manifest": {
+            "color_bucket": "cocoa",
+            "frame_size": [
+              361,
+              292
+            ],
+            "poses": {
+              "attack": {
+                "region": [
+                  361,
+                  0,
+                  361,
+                  292
+                ]
+              },
+              "defeated": {
+                "region": [
+                  0,
+                  584,
+                  361,
+                  292
+                ]
+              },
+              "dirty": {
+                "region": [
+                  722,
+                  292,
+                  361,
+                  292
+                ]
+              },
+              "fx_strike": {
+                "region": [
+                  361,
+                  584,
+                  361,
+                  292
+                ]
+              },
+              "fx_surge": {
+                "region": [
+                  722,
+                  584,
+                  361,
+                  292
+                ]
+              },
+              "happy": {
+                "region": [
+                  0,
+                  292,
+                  361,
+                  292
+                ]
+              },
+              "hungry": {
+                "region": [
+                  361,
+                  292,
+                  361,
+                  292
+                ]
+              },
+              "idle": {
+                "region": [
+                  0,
+                  0,
+                  361,
+                  292
+                ]
+              },
+              "sleep": {
+                "region": [
+                  722,
+                  0,
+                  361,
+                  292
+                ]
+              }
+            },
+            "prompt_version": "v12",
+            "qa": {
+              "bbox_heights": {
+                "attack": 222,
+                "defeated": 270,
+                "dirty": 215,
+                "fx_strike": 229,
+                "fx_surge": 280,
+                "happy": 246,
+                "hungry": 217,
+                "idle": 235,
+                "sleep": 216
+              },
+              "cells_detected": 9,
+              "cells_rejected": {},
+              "green_residue_ratio": 0.00998,
+              "keyed_pixel_ratio": 0.6451,
+              "pose_ownership": {
+                "attack": {
+                  "cross_boundary_pixels": 409,
+                  "opaque_pixels": 42908
+                },
+                "defeated": {
+                  "cross_boundary_pixels": 35,
+                  "opaque_pixels": 45325
+                },
+                "dirty": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 40559
+                },
+                "fx_strike": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 24897
+                },
+                "fx_surge": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 63436
+                },
+                "happy": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 41120
+                },
+                "hungry": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 37239
+                },
+                "idle": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 44039
+                },
+                "sleep": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 32275
+                }
+              },
+              "seam_cleanup": {
+                "components": 1,
+                "mode": "remove_detached_idle_components_v1",
+                "pixels": 25
+              },
+              "seam_margin": {
+                "passed": true,
+                "ratio": 0.12,
+                "violations": []
+              },
+              "source_size": [
+                1024,
+                1024
+              ],
+              "standing_height_variance": 0.055,
+              "warnings": [
+                "pose defeated lebih tinggi dari idle",
+                "residu hijau 1.00%"
+              ],
+              "white_keyline_pixels_stripped": 199
+            },
+            "render_metrics": {
+              "reference_height_px": 235,
+              "reference_width_px": 326
+            },
+            "sheet": null,
+            "sheet_size": [
+              1083,
+              876
+            ],
+            "species_key": "sugarworks_fudge",
+            "stage": 2,
+            "version": 1
+          },
+          "name": "Duskadon",
+          "secondary_element": "metal",
+          "sheet_path": "expeditions/the-sugarworks/v5/animas/sugarworks-fudge/sheet.png",
+          "species_key": "sugarworks_fudge",
+          "stage": 2,
+          "strike_name": "Cocoa Claw",
+          "surge_name": "Bitter Surge"
+        },
+        {
+          "anima_id": "sugarworks-syrup",
+          "base_stats": {
+            "atk": 50,
+            "def": 50,
+            "hp": 52,
+            "spd": 48,
+            "special": 52
+          },
+          "body_height_cm": 170,
+          "color_bucket": "amber",
+          "element": "flow",
+          "hunger": 100,
+          "hygiene": 100,
+          "level": 18,
+          "manifest": {
+            "color_bucket": "amber",
+            "frame_size": [
+              355,
+              312
+            ],
+            "poses": {
+              "attack": {
+                "region": [
+                  355,
+                  0,
+                  355,
+                  312
+                ]
+              },
+              "defeated": {
+                "region": [
+                  0,
+                  624,
+                  355,
+                  312
+                ]
+              },
+              "dirty": {
+                "region": [
+                  710,
+                  312,
+                  355,
+                  312
+                ]
+              },
+              "fx_strike": {
+                "region": [
+                  355,
+                  624,
+                  355,
+                  312
+                ]
+              },
+              "fx_surge": {
+                "region": [
+                  710,
+                  624,
+                  355,
+                  312
+                ]
+              },
+              "happy": {
+                "region": [
+                  0,
+                  312,
+                  355,
+                  312
+                ]
+              },
+              "hungry": {
+                "region": [
+                  355,
+                  312,
+                  355,
+                  312
+                ]
+              },
+              "idle": {
+                "region": [
+                  0,
+                  0,
+                  355,
+                  312
+                ]
+              },
+              "sleep": {
+                "region": [
+                  710,
+                  0,
+                  355,
+                  312
+                ]
+              }
+            },
+            "prompt_version": "v12",
+            "qa": {
+              "bbox_heights": {
+                "attack": 283,
+                "defeated": 300,
+                "dirty": 289,
+                "fx_strike": 203,
+                "fx_surge": 260,
+                "happy": 297,
+                "hungry": 286,
+                "idle": 292,
+                "sleep": 289
+              },
+              "cells_detected": 9,
+              "cells_rejected": {},
+              "green_residue_ratio": 0.00362,
+              "keyed_pixel_ratio": 0.6511,
+              "pose_ownership": {
+                "attack": {
+                  "cross_boundary_pixels": 150,
+                  "opaque_pixels": 45956
+                },
+                "defeated": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 39140
+                },
+                "dirty": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 41162
+                },
+                "fx_strike": {
+                  "cross_boundary_pixels": 21,
+                  "opaque_pixels": 20232
+                },
+                "fx_surge": {
+                  "cross_boundary_pixels": 16,
+                  "opaque_pixels": 53200
+                },
+                "happy": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 42520
+                },
+                "hungry": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 40118
+                },
+                "idle": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 41524
+                },
+                "sleep": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 40393
+                }
+              },
+              "seam_margin": {
+                "passed": true,
+                "ratio": 0.12,
+                "violations": []
+              },
+              "source_size": [
+                1024,
+                1024
+              ],
+              "standing_height_variance": 0.031,
+              "warnings": [
+                "residu hijau 0.36%"
+              ],
+              "white_keyline_pixels_stripped": 1598
+            },
+            "render_metrics": {
+              "reference_height_px": 292,
+              "reference_width_px": 270
+            },
+            "sheet": null,
+            "sheet_size": [
+              1065,
+              936
+            ],
+            "species_key": "sugarworks_syrup",
+            "stage": 2,
+            "version": 1
+          },
+          "name": "Ambermire",
+          "secondary_element": "food",
+          "sheet_path": "expeditions/the-sugarworks/v5/animas/sugarworks-syrup/sheet.png",
+          "species_key": "sugarworks_syrup",
+          "stage": 2,
+          "strike_name": "Sticky Bind",
+          "surge_name": "Golden Flood"
+        },
+        {
+          "anima_id": "sugarworks-gumdrop",
+          "base_stats": {
+            "atk": 52,
+            "def": 44,
+            "hp": 48,
+            "spd": 46,
+            "special": 50
+          },
+          "body_height_cm": 95,
+          "color_bucket": "pink",
+          "element": "food",
+          "hunger": 100,
+          "hygiene": 100,
+          "level": 18,
+          "manifest": {
+            "color_bucket": "pink",
+            "frame_size": [
+              329,
+              284
+            ],
+            "poses": {
+              "attack": {
+                "region": [
+                  329,
+                  0,
+                  329,
+                  284
+                ]
+              },
+              "defeated": {
+                "region": [
+                  0,
+                  568,
+                  329,
+                  284
+                ]
+              },
+              "dirty": {
+                "region": [
+                  658,
+                  284,
+                  329,
+                  284
+                ]
+              },
+              "fx_strike": {
+                "region": [
+                  329,
+                  568,
+                  329,
+                  284
+                ]
+              },
+              "fx_surge": {
+                "region": [
+                  658,
+                  568,
+                  329,
+                  284
+                ]
+              },
+              "happy": {
+                "region": [
+                  0,
+                  284,
+                  329,
+                  284
+                ]
+              },
+              "hungry": {
+                "region": [
+                  329,
+                  284,
+                  329,
+                  284
+                ]
+              },
+              "idle": {
+                "region": [
+                  0,
+                  0,
+                  329,
+                  284
+                ]
+              },
+              "sleep": {
+                "region": [
+                  658,
+                  0,
+                  329,
+                  284
+                ]
+              }
+            },
+            "prompt_version": "v12",
+            "qa": {
+              "bbox_heights": {
+                "attack": 186,
+                "defeated": 272,
+                "dirty": 203,
+                "fx_strike": 199,
+                "fx_surge": 265,
+                "happy": 227,
+                "hungry": 202,
+                "idle": 205,
+                "sleep": 232
+              },
+              "cells_detected": 9,
+              "cells_rejected": {},
+              "green_residue_ratio": 0.01085,
+              "keyed_pixel_ratio": 0.7129,
+              "pose_ownership": {
+                "attack": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 34655
+                },
+                "defeated": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 35388
+                },
+                "dirty": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 33831
+                },
+                "fx_strike": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 16611
+                },
+                "fx_surge": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 49948
+                },
+                "happy": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 32919
+                },
+                "hungry": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 31797
+                },
+                "idle": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 32007
+                },
+                "sleep": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 33527
+                }
+              },
+              "seam_margin": {
+                "passed": true,
+                "ratio": 0.12,
+                "violations": []
+              },
+              "source_size": [
+                1024,
+                1024
+              ],
+              "standing_height_variance": 0.093,
+              "warnings": [
+                "pose sleep lebih tinggi dari idle",
+                "pose defeated lebih tinggi dari idle",
+                "residu hijau 1.08%"
+              ],
+              "white_keyline_pixels_stripped": 280
+            },
+            "render_metrics": {
+              "reference_height_px": 205,
+              "reference_width_px": 259
+            },
+            "sheet": null,
+            "sheet_size": [
+              987,
+              852
+            ],
+            "species_key": "sugarworks_gumdrop",
+            "stage": 2,
+            "version": 1
+          },
+          "name": "Gellume",
+          "secondary_element": "spark",
+          "sheet_path": "expeditions/the-sugarworks/v5/animas/sugarworks-gumdrop/sheet.png",
+          "species_key": "sugarworks_gumdrop",
+          "stage": 2,
+          "strike_name": "Sugar Jab",
+          "surge_name": "Candy Burst"
+        },
+        {
+          "anima_id": "sugarworks-cotton",
+          "base_stats": {
+            "atk": 60,
+            "def": 44,
+            "hp": 50,
+            "spd": 58,
+            "special": 62
+          },
+          "body_height_cm": 130,
+          "color_bucket": "cloud",
+          "element": "air",
+          "hunger": 100,
+          "hygiene": 100,
+          "level": 18,
+          "manifest": {
+            "color_bucket": "cloud",
+            "frame_size": [
+              355,
+              289
+            ],
+            "poses": {
+              "attack": {
+                "region": [
+                  355,
+                  0,
+                  355,
+                  289
+                ]
+              },
+              "defeated": {
+                "region": [
+                  0,
+                  578,
+                  355,
+                  289
+                ]
+              },
+              "dirty": {
+                "region": [
+                  710,
+                  289,
+                  355,
+                  289
+                ]
+              },
+              "fx_strike": {
+                "region": [
+                  355,
+                  578,
+                  355,
+                  289
+                ]
+              },
+              "fx_surge": {
+                "region": [
+                  710,
+                  578,
+                  355,
+                  289
+                ]
+              },
+              "happy": {
+                "region": [
+                  0,
+                  289,
+                  355,
+                  289
+                ]
+              },
+              "hungry": {
+                "region": [
+                  355,
+                  289,
+                  355,
+                  289
+                ]
+              },
+              "idle": {
+                "region": [
+                  0,
+                  0,
+                  355,
+                  289
+                ]
+              },
+              "sleep": {
+                "region": [
+                  710,
+                  0,
+                  355,
+                  289
+                ]
+              }
+            },
+            "prompt_version": "v12",
+            "qa": {
+              "bbox_heights": {
+                "attack": 262,
+                "defeated": 272,
+                "dirty": 245,
+                "fx_strike": 266,
+                "fx_surge": 277,
+                "happy": 253,
+                "hungry": 240,
+                "idle": 236,
+                "sleep": 271
+              },
+              "cells_detected": 9,
+              "cells_rejected": {},
+              "green_residue_ratio": 0.01027,
+              "keyed_pixel_ratio": 0.6573,
+              "pose_ownership": {
+                "attack": {
+                  "cross_boundary_pixels": 2,
+                  "opaque_pixels": 36257
+                },
+                "defeated": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 37555
+                },
+                "dirty": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 36688
+                },
+                "fx_strike": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 28866
+                },
+                "fx_surge": {
+                  "cross_boundary_pixels": 89,
+                  "opaque_pixels": 65882
+                },
+                "happy": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 36952
+                },
+                "hungry": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 35423
+                },
+                "idle": {
+                  "cross_boundary_pixels": 351,
+                  "opaque_pixels": 36124
+                },
+                "sleep": {
+                  "cross_boundary_pixels": 0,
+                  "opaque_pixels": 36417
+                }
+              },
+              "seam_cleanup": {
+                "components": 2,
+                "mode": "remove_detached_idle_components_v1",
+                "pixels": 78
+              },
+              "seam_margin": {
+                "passed": true,
+                "ratio": 0.12,
+                "violations": []
+              },
+              "source_size": [
+                1024,
+                1024
+              ],
+              "standing_height_variance": 0.099,
+              "warnings": [
+                "pose sleep lebih tinggi dari idle",
+                "pose defeated lebih tinggi dari idle",
+                "residu hijau 1.03%"
+              ],
+              "white_keyline_pixels_stripped": 8597
+            },
+            "render_metrics": {
+              "reference_height_px": 236,
+              "reference_width_px": 342
+            },
+            "sheet": null,
+            "sheet_size": [
+              1065,
+              867
+            ],
+            "species_key": "sugarworks_cotton",
+            "stage": 2,
+            "version": 1
+          },
+          "name": "Nimbelisk",
+          "secondary_element": "food",
+          "sheet_path": "expeditions/the-sugarworks/v5/animas/sugarworks-cotton/sheet.png",
+          "special": true,
+          "species_key": "sugarworks_cotton",
+          "stage": 2,
+          "strike_name": "Cloud Needle",
+          "surge_name": "Spun Tempest"
+        }
+      ],
+      "title_key": "SUGARWORKS_OPPONENT_BOSS"
+    }
+  ],
+  "qa": {
+    "map_previews": [
+      {
+        "attempt": 1,
+        "background_path": "expeditions/the-sugarworks/v5/zones/zone-1.png",
+        "entry": [
+          "z1-a1-d1-1",
+          "z1-a1-d1-2"
+        ],
+        "nodes": [
+          {
+            "depth": 1,
+            "id": "z1-a1-d1-1",
+            "kind": "mystery",
+            "next": [
+              "z1-a1-d2-1",
+              "z1-a1-d2-2"
+            ],
+            "options": [
+              {
+                "effect": {
+                  "type": "supplies",
+                  "value": 3
+                },
+                "id": "supply-cache"
+              }
+            ],
+            "title_key": "EXPEDITION_MYSTERY"
+          },
+          {
+            "depth": 1,
+            "id": "z1-a1-d1-2",
+            "kind": "battle",
+            "next": [
+              "z1-a1-d2-2"
+            ],
+            "opponent_id": "sugarworks-regular-1",
+            "supplies_reward": 3
+          },
+          {
+            "depth": 2,
+            "id": "z1-a1-d2-1",
+            "kind": "cache",
+            "next": [
+              "z1-a1-d3-1",
+              "z1-a1-d3-2"
+            ],
+            "options": [
+              {
+                "effect": {
+                  "stat": "atk",
+                  "type": "stat_boost",
+                  "value": 0.08
+                },
+                "id": "power-up"
+              }
+            ],
+            "title_key": "EXPEDITION_CACHE"
+          },
+          {
+            "depth": 2,
+            "id": "z1-a1-d2-2",
+            "kind": "recovery",
+            "next": [
+              "z1-a1-d3-1",
+              "z1-a1-d3-2"
+            ],
+            "options": [
+              {
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "heal-party"
+              }
+            ],
+            "title_key": "EXPEDITION_RECOVERY"
+          },
+          {
+            "depth": 3,
+            "id": "z1-a1-d3-1",
+            "kind": "battle",
+            "next": [
+              "z1-a1-d4-1"
+            ],
+            "opponent_id": "sugarworks-regular-1",
+            "supplies_reward": 3
+          },
+          {
+            "depth": 3,
+            "id": "z1-a1-d3-2",
+            "kind": "elite",
+            "next": [
+              "z1-a1-d4-2"
+            ],
+            "opponent_id": "sugarworks-elite-1",
+            "supplies_reward": 5
+          },
+          {
+            "depth": 4,
+            "id": "z1-a1-d4-1",
+            "kind": "cache",
+            "next": [],
+            "options": [
+              {
+                "effect": {
+                  "stat": "atk",
+                  "type": "stat_boost",
+                  "value": 0.08
+                },
+                "id": "power-up"
+              }
+            ],
+            "title_key": "EXPEDITION_CACHE"
+          },
+          {
+            "depth": 4,
+            "id": "z1-a1-d4-2",
+            "kind": "cache",
+            "next": [],
+            "options": [
+              {
+                "effect": {
+                  "stat": "atk",
+                  "type": "stat_boost",
+                  "value": 0.08
+                },
+                "id": "power-up"
+              }
+            ],
+            "title_key": "EXPEDITION_CACHE"
+          }
+        ],
+        "schema_version": 1,
+        "seed": "the-sugarworks-v3",
+        "zone": 1
+      },
+      {
+        "attempt": 1,
+        "background_path": "expeditions/the-sugarworks/v5/zones/zone-2.png",
+        "entry": [
+          "z2-a1-d1-1",
+          "z2-a1-d1-2"
+        ],
+        "nodes": [
+          {
+            "depth": 1,
+            "id": "z2-a1-d1-1",
+            "kind": "mystery",
+            "next": [
+              "z2-a1-d2-1"
+            ],
+            "options": [
+              {
+                "effect": {
+                  "type": "supplies",
+                  "value": 4
+                },
+                "id": "supply-cache"
+              }
+            ],
+            "title_key": "EXPEDITION_MYSTERY"
+          },
+          {
+            "depth": 1,
+            "id": "z2-a1-d1-2",
+            "kind": "mystery",
+            "next": [
+              "z2-a1-d2-2"
+            ],
+            "options": [
+              {
+                "effect": {
+                  "type": "supplies",
+                  "value": 4
+                },
+                "id": "supply-cache"
+              }
+            ],
+            "title_key": "EXPEDITION_MYSTERY"
+          },
+          {
+            "depth": 2,
+            "id": "z2-a1-d2-1",
+            "kind": "battle",
+            "next": [
+              "z2-a1-d3-1"
+            ],
+            "opponent_id": "sugarworks-elite-1",
+            "supplies_reward": 4
+          },
+          {
+            "depth": 2,
+            "id": "z2-a1-d2-2",
+            "kind": "battle",
+            "next": [
+              "z2-a1-d3-1",
+              "z2-a1-d3-2"
+            ],
+            "opponent_id": "sugarworks-elite-1",
+            "supplies_reward": 4
+          },
+          {
+            "depth": 3,
+            "id": "z2-a1-d3-1",
+            "kind": "shop",
+            "next": [
+              "z2-a1-d4-1",
+              "z2-a1-d4-2"
+            ],
+            "options": [
+              {
+                "cost_supplies": 2,
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "shop-heal"
+              }
+            ],
+            "title_key": "EXPEDITION_SHOP"
+          },
+          {
+            "depth": 3,
+            "id": "z2-a1-d3-2",
+            "kind": "elite",
+            "next": [
+              "z2-a1-d4-2"
+            ],
+            "opponent_id": "sugarworks-elite-2",
+            "supplies_reward": 6
+          },
+          {
+            "depth": 4,
+            "id": "z2-a1-d4-1",
+            "kind": "cache",
+            "next": [],
+            "options": [
+              {
+                "effect": {
+                  "stat": "atk",
+                  "type": "stat_boost",
+                  "value": 0.12
+                },
+                "id": "power-up"
+              }
+            ],
+            "title_key": "EXPEDITION_CACHE"
+          },
+          {
+            "depth": 4,
+            "id": "z2-a1-d4-2",
+            "kind": "recovery",
+            "next": [],
+            "options": [
+              {
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "heal-party"
+              }
+            ],
+            "title_key": "EXPEDITION_RECOVERY"
+          }
+        ],
+        "schema_version": 1,
+        "seed": "the-sugarworks-v3",
+        "zone": 2
+      },
+      {
+        "attempt": 1,
+        "background_path": "expeditions/the-sugarworks/v5/zones/zone-3.png",
+        "entry": [
+          "z3-a1-d1-1",
+          "z3-a1-d1-2"
+        ],
+        "nodes": [
+          {
+            "depth": 1,
+            "id": "z3-a1-d1-1",
+            "kind": "battle",
+            "next": [
+              "z3-a1-d2-1",
+              "z3-a1-d2-2"
+            ],
+            "opponent_id": "sugarworks-elite-2",
+            "supplies_reward": 5
+          },
+          {
+            "depth": 1,
+            "id": "z3-a1-d1-2",
+            "kind": "battle",
+            "next": [
+              "z3-a1-d2-1",
+              "z3-a1-d2-2"
+            ],
+            "opponent_id": "sugarworks-elite-2",
+            "supplies_reward": 5
+          },
+          {
+            "depth": 2,
+            "id": "z3-a1-d2-1",
+            "kind": "recovery",
+            "next": [
+              "z3-a1-d3-1",
+              "z3-a1-d3-2"
+            ],
+            "options": [
+              {
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "heal-party"
+              }
+            ],
+            "title_key": "EXPEDITION_RECOVERY"
+          },
+          {
+            "depth": 2,
+            "id": "z3-a1-d2-2",
+            "kind": "recovery",
+            "next": [
+              "z3-a1-d3-1",
+              "z3-a1-d3-2"
+            ],
+            "options": [
+              {
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "heal-party"
+              }
+            ],
+            "title_key": "EXPEDITION_RECOVERY"
+          },
+          {
+            "depth": 3,
+            "id": "z3-a1-d3-1",
+            "kind": "shop",
+            "next": [
+              "z3-a1-d4-1"
+            ],
+            "options": [
+              {
+                "cost_supplies": 2,
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "shop-heal"
+              }
+            ],
+            "title_key": "EXPEDITION_SHOP"
+          },
+          {
+            "depth": 3,
+            "id": "z3-a1-d3-2",
+            "kind": "elite",
+            "next": [
+              "z3-a1-d4-1",
+              "z3-a1-d4-2"
+            ],
+            "opponent_id": "sugarworks-boss",
+            "supplies_reward": 7
+          },
+          {
+            "depth": 4,
+            "id": "z3-a1-d4-1",
+            "kind": "battle",
+            "next": [
+              "z3-a1-boss"
+            ],
+            "opponent_id": "sugarworks-elite-2",
+            "supplies_reward": 5
+          },
+          {
+            "depth": 4,
+            "id": "z3-a1-d4-2",
+            "kind": "recovery",
+            "next": [
+              "z3-a1-boss"
+            ],
+            "options": [
+              {
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "heal-party"
+              }
+            ],
+            "title_key": "EXPEDITION_RECOVERY"
+          },
+          {
+            "depth": 5,
+            "id": "z3-a1-boss",
+            "kind": "boss",
+            "next": [],
+            "opponent_id": "sugarworks-boss",
+            "supplies_reward": 8,
+            "title_key": "SUGARWORKS_BOSS"
+          }
+        ],
+        "schema_version": 1,
+        "seed": "the-sugarworks-v3",
+        "zone": 3
+      }
+    ],
+    "map_seed": "the-sugarworks-v3"
+  },
+  "schema_version": 1,
+  "sequence": 1,
+  "summary": {
+    "description": "Follow the candy trails and challenge the Confectioner.",
+    "description_key": "EXPEDITION_CHAPTER_SUGARWORKS_DESC",
+    "title": "The Sugarworks",
+    "title_key": "EXPEDITION_CHAPTER_SUGARWORKS"
+  },
+  "trophy": {
+    "art_hash": "af063bf31653a744c608edf8278bc979124a4ed3d33be3e30cfa6364c1a87dec",
+    "art_path": "expeditions/the-sugarworks/trophy/sugarworks-trophy.png",
+    "description": "An adaptive Sugarfold Core proving you cleared The Sugarworks and earned a place in the Confectioner's archive.",
+    "display_name": "Sugarfold Core",
+    "metadata": {
+      "chapter_slug": "the-sugarworks",
+      "chassis": "chapter_core_v3",
+      "core_motif": "an amber central lozenge structurally locked by one ivory fold and one muted-mint fold entering from opposite sides, never forming a letter or stamped emblem",
+      "palette": [
+        "dark berry",
+        "raspberry",
+        "amber",
+        "ivory",
+        "muted mint"
+      ],
+      "silhouette_motif": "a compact octagonal envelope with one large shallow concave wrapper-pressure pinch on each side and short clipped top and bottom points",
+      "theme": "confection archive",
+      "vessel": "point_hex_vessel_v1"
+    },
+    "slug": "the-sugarworks-sugarfold-core"
+  },
+  "zones": [
+    {
+      "background_hash": "61a91679aa350afb21f6c4df5cd8fb47f5f4522e04008fafd8e08eff528f1c6d",
+      "background_path": "expeditions/the-sugarworks/v5/zones/zone-1.png",
+      "bits_reward": 10,
+      "id": "zone-1",
+      "node_pools": {
+        "battle": [
+          {
+            "opponent_id": "sugarworks-regular-1",
+            "supplies_reward": 3
+          }
+        ],
+        "cache": [
+          {
+            "options": [
+              {
+                "effect": {
+                  "stat": "atk",
+                  "type": "stat_boost",
+                  "value": 0.08
+                },
+                "id": "power-up"
+              }
+            ],
+            "title_key": "EXPEDITION_CACHE"
+          }
+        ],
+        "elite": [
+          {
+            "opponent_id": "sugarworks-elite-1",
+            "supplies_reward": 5
+          }
+        ],
+        "mystery": [
+          {
+            "options": [
+              {
+                "effect": {
+                  "type": "supplies",
+                  "value": 3
+                },
+                "id": "supply-cache"
+              }
+            ],
+            "title_key": "EXPEDITION_MYSTERY"
+          }
+        ],
+        "recovery": [
+          {
+            "options": [
+              {
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "heal-party"
+              }
+            ],
+            "title_key": "EXPEDITION_RECOVERY"
+          }
+        ],
+        "shop": [
+          {
+            "options": [
+              {
+                "cost_supplies": 2,
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "shop-heal"
+              }
+            ],
+            "title_key": "EXPEDITION_SHOP"
+          }
+        ]
+      },
+      "title_key": "SUGARWORKS_ZONE_1"
+    },
+    {
+      "background_hash": "9b6f2ab15ec071920091d1a8c43a254ee6d36e6cff4c7e3028c229b6515a5657",
+      "background_path": "expeditions/the-sugarworks/v5/zones/zone-2.png",
+      "bits_reward": 20,
+      "id": "zone-2",
+      "node_pools": {
+        "battle": [
+          {
+            "opponent_id": "sugarworks-elite-1",
+            "supplies_reward": 4
+          }
+        ],
+        "cache": [
+          {
+            "options": [
+              {
+                "effect": {
+                  "stat": "atk",
+                  "type": "stat_boost",
+                  "value": 0.12
+                },
+                "id": "power-up"
+              }
+            ],
+            "title_key": "EXPEDITION_CACHE"
+          }
+        ],
+        "elite": [
+          {
+            "opponent_id": "sugarworks-elite-2",
+            "supplies_reward": 6
+          }
+        ],
+        "mystery": [
+          {
+            "options": [
+              {
+                "effect": {
+                  "type": "supplies",
+                  "value": 4
+                },
+                "id": "supply-cache"
+              }
+            ],
+            "title_key": "EXPEDITION_MYSTERY"
+          }
+        ],
+        "recovery": [
+          {
+            "options": [
+              {
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "heal-party"
+              }
+            ],
+            "title_key": "EXPEDITION_RECOVERY"
+          }
+        ],
+        "shop": [
+          {
+            "options": [
+              {
+                "cost_supplies": 2,
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "shop-heal"
+              }
+            ],
+            "title_key": "EXPEDITION_SHOP"
+          }
+        ]
+      },
+      "title_key": "SUGARWORKS_ZONE_2"
+    },
+    {
+      "background_hash": "ecfe6a2a71fca05ca89508fadd2f88515a391a73b55978cd51b28347f3144da8",
+      "background_path": "expeditions/the-sugarworks/v5/zones/zone-3.png",
+      "bits_reward": 30,
+      "id": "zone-3",
+      "node_pools": {
+        "battle": [
+          {
+            "opponent_id": "sugarworks-elite-2",
+            "supplies_reward": 5
+          }
+        ],
+        "cache": [
+          {
+            "options": [
+              {
+                "effect": {
+                  "stat": "atk",
+                  "type": "stat_boost",
+                  "value": 0.15
+                },
+                "id": "power-up"
+              }
+            ],
+            "title_key": "EXPEDITION_CACHE"
+          }
+        ],
+        "elite": [
+          {
+            "opponent_id": "sugarworks-boss",
+            "supplies_reward": 7
+          }
+        ],
+        "mystery": [
+          {
+            "options": [
+              {
+                "effect": {
+                  "type": "supplies",
+                  "value": 5
+                },
+                "id": "supply-cache"
+              }
+            ],
+            "title_key": "EXPEDITION_MYSTERY"
+          }
+        ],
+        "recovery": [
+          {
+            "options": [
+              {
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "heal-party"
+              }
+            ],
+            "title_key": "EXPEDITION_RECOVERY"
+          }
+        ],
+        "shop": [
+          {
+            "options": [
+              {
+                "cost_supplies": 2,
+                "effect": {
+                  "ratio": 0.25,
+                  "type": "heal_party"
+                },
+                "id": "shop-heal"
+              }
+            ],
+            "title_key": "EXPEDITION_SHOP"
+          }
+        ]
+      },
+      "title_key": "SUGARWORKS_ZONE_3"
+    }
+  ]
+}

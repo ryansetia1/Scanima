@@ -1,0 +1,315 @@
+{
+  "boss": {
+    "ace_passive": {
+      "copy": "Final Confection: Nimbelisk enters with +1 PP.",
+      "name": "Final Confection",
+      "type": "bonus_pp",
+      "value": 1
+    },
+    "opponent_id": "sugarworks-boss",
+    "supplies_reward": 8,
+    "title_key": "SUGARWORKS_BOSS"
+  },
+  "boss_seeker": {
+    "background_story": "At twenty-three, she became the Sugarworks' youngest archive curator after reconstructing recipes damaged in a furnace failure. She treats every recipe and Anima as living evidence, challenging Seekers to prove that improvisation deserves a place beside tradition.",
+    "body_height_cm": 165,
+    "dialogue": {
+      "boss_intro": "You made it! Now show me what your team can really do.",
+      "chapter_intro": "Get through every challenge in the Sugarworks. Then face me.",
+      "defeat": "You're close. Think about what you could change, then try again.",
+      "first_attack": "Hold steady! Wait for your opening.",
+      "first_special": "Now! Show them your full strength!",
+      "first_switch": "Change the pace! Keep them guessing.",
+      "last_anima": "Nimbelisk, you're up! Show them what you can do.",
+      "rematch": "Back again? Good. Show me what you changed.",
+      "victory": "Well done! Your team adjusted to everything I tried."
+    },
+    "display_name": "The Confectioner",
+    "id": "confectioner",
+    "portrait_pose": "profile",
+    "sheet_filename": "confectioner-seeker.png",
+    "title_key": "SUGARWORKS_BOSS_SEEKER",
+    "visual_direction": "An original twenty-three-year-old woman Confection Archive Curator: short compact build, upright appraising posture, soft-square face, hooded almond eyes, blunt brows, straight nose, and dark-plum inverted bob with one long side lock. Her dominant silhouette is an ivory knee-length bell coat-dress with four large folded-wrapper hem panels, a short dark-plum shoulder cape falling longer only on the left, and a raspberry center panel over plum leggings and amber ankle boots. One oversized amber archive-seal clasp is the focal point. Her only prop is an octagonal plum recipe folio with amber corners and one muted-mint closure band, never a kitchen tool, wand, or weapon. Keep the all-ages non-sexualized design to six major flat colors, one hard cel-shadow, and no decorative clutter.",
+    "voice_profile": {
+      "avoid": "Avoid forced recipe jargon, formal evaluator language, catchphrases, em dashes, mockery, cruelty, threats, sexual framing, abuse, and emotional manipulation.",
+      "core_motive": "Protect the Sugarworks archive while proving that thoughtful change can strengthen tradition.",
+      "emotional_arc": "Begin as a distant evaluator, become focused and forceful in battle, then respond to either result with measured respect.",
+      "natural_language": "Use clear everyday English for a general age-12-and-up audience; let confection or archive language appear only when it sounds natural.",
+      "player_relationship": "Treat the player as a capable challenger whose choices are observed closely and respected when they work.",
+      "speech_rhythm": "Speak in short, direct sentences with calm authority; commands become energetic without turning theatrical."
+    }
+  },
+  "cast": [
+    {
+      "base_stats": {
+        "atk": 52,
+        "def": 44,
+        "hp": 48,
+        "spd": 46,
+        "special": 50
+      },
+      "body_height_cm": 95,
+      "color_bucket": "pink",
+      "element": "food",
+      "id": "sugarworks-gumdrop",
+      "name": "Gellume",
+      "secondary_element": "spark",
+      "species_key": "sugarworks_gumdrop",
+      "strike_name": "Sugar Jab",
+      "surge_name": "Candy Burst"
+    },
+    {
+      "base_stats": {
+        "atk": 48,
+        "def": 46,
+        "hp": 46,
+        "spd": 54,
+        "special": 48
+      },
+      "body_height_cm": 120,
+      "color_bucket": "amber",
+      "element": "food",
+      "id": "sugarworks-taffy",
+      "name": "Velastra",
+      "secondary_element": "flow",
+      "species_key": "sugarworks_taffy",
+      "strike_name": "Stretch Snap",
+      "surge_name": "Taffy Whip"
+    },
+    {
+      "base_stats": {
+        "atk": 55,
+        "def": 48,
+        "hp": 50,
+        "spd": 44,
+        "special": 52
+      },
+      "body_height_cm": 170,
+      "color_bucket": "violet",
+      "element": "toxin",
+      "id": "sugarworks-licorice",
+      "name": "Noxcoil",
+      "secondary_element": "food",
+      "species_key": "sugarworks_licorice",
+      "strike_name": "Twist Lash",
+      "surge_name": "Dark Drizzle"
+    },
+    {
+      "base_stats": {
+        "atk": 50,
+        "def": 56,
+        "hp": 54,
+        "spd": 40,
+        "special": 50
+      },
+      "body_height_cm": 155,
+      "color_bucket": "gold",
+      "element": "food",
+      "id": "sugarworks-caramel",
+      "name": "Cindrusk",
+      "secondary_element": "flame",
+      "species_key": "sugarworks_caramel",
+      "strike_name": "Shell Crack",
+      "surge_name": "Molten Coat"
+    },
+    {
+      "base_stats": {
+        "atk": 52,
+        "def": 45,
+        "hp": 48,
+        "spd": 52,
+        "special": 54
+      },
+      "body_height_cm": 105,
+      "color_bucket": "mint",
+      "element": "frost",
+      "id": "sugarworks-peppermint",
+      "name": "Rimespin",
+      "secondary_element": "air",
+      "species_key": "sugarworks_peppermint",
+      "strike_name": "Mint Slice",
+      "surge_name": "Cold Ribbon"
+    },
+    {
+      "base_stats": {
+        "atk": 48,
+        "def": 58,
+        "hp": 58,
+        "spd": 38,
+        "special": 46
+      },
+      "body_height_cm": 190,
+      "color_bucket": "cream",
+      "element": "food",
+      "id": "sugarworks-nougat",
+      "name": "Pralith",
+      "secondary_element": "stone",
+      "species_key": "sugarworks_nougat",
+      "strike_name": "Block Bash",
+      "surge_name": "Honey Guard"
+    },
+    {
+      "base_stats": {
+        "atk": 58,
+        "def": 52,
+        "hp": 56,
+        "spd": 42,
+        "special": 55
+      },
+      "body_height_cm": 135,
+      "color_bucket": "cocoa",
+      "element": "food",
+      "id": "sugarworks-fudge",
+      "name": "Duskadon",
+      "secondary_element": "metal",
+      "species_key": "sugarworks_fudge",
+      "strike_name": "Cocoa Claw",
+      "surge_name": "Bitter Surge"
+    },
+    {
+      "base_stats": {
+        "atk": 50,
+        "def": 50,
+        "hp": 52,
+        "spd": 48,
+        "special": 52
+      },
+      "body_height_cm": 170,
+      "color_bucket": "amber",
+      "element": "flow",
+      "id": "sugarworks-syrup",
+      "name": "Ambermire",
+      "secondary_element": "food",
+      "species_key": "sugarworks_syrup",
+      "strike_name": "Sticky Bind",
+      "surge_name": "Golden Flood"
+    },
+    {
+      "base_stats": {
+        "atk": 60,
+        "def": 44,
+        "hp": 50,
+        "spd": 58,
+        "special": 62
+      },
+      "body_height_cm": 130,
+      "color_bucket": "cloud",
+      "element": "air",
+      "id": "sugarworks-cotton",
+      "name": "Nimbelisk",
+      "secondary_element": "food",
+      "special": true,
+      "species_key": "sugarworks_cotton",
+      "strike_name": "Cloud Needle",
+      "surge_name": "Spun Tempest"
+    }
+  ],
+  "map_seed": "the-sugarworks-v3",
+  "minimum_build": {
+    "android": 0,
+    "desktop": 0,
+    "ios": 0
+  },
+  "opponents": [
+    {
+      "id": "sugarworks-regular-1",
+      "level": 5,
+      "roster": [
+        "sugarworks-gumdrop",
+        "sugarworks-taffy"
+      ],
+      "title_key": "SUGARWORKS_OPPONENT_REGULAR"
+    },
+    {
+      "id": "sugarworks-elite-1",
+      "level": 8,
+      "roster": [
+        "sugarworks-licorice",
+        "sugarworks-caramel",
+        "sugarworks-peppermint"
+      ],
+      "title_key": "SUGARWORKS_OPPONENT_ELITE"
+    },
+    {
+      "id": "sugarworks-elite-2",
+      "level": 13,
+      "roster": [
+        "sugarworks-nougat"
+      ],
+      "title_key": "SUGARWORKS_OPPONENT_MINIBOSS"
+    },
+    {
+      "id": "sugarworks-boss",
+      "level": 18,
+      "roster": [
+        "sugarworks-fudge",
+        "sugarworks-syrup",
+        "sugarworks-gumdrop",
+        "sugarworks-cotton"
+      ],
+      "title_key": "SUGARWORKS_OPPONENT_BOSS"
+    }
+  ],
+  "schema_version": 2,
+  "summary": {
+    "description": "Follow the candy trails and challenge the Confectioner.",
+    "description_key": "EXPEDITION_CHAPTER_SUGARWORKS_DESC",
+    "title": "The Sugarworks",
+    "title_key": "EXPEDITION_CHAPTER_SUGARWORKS"
+  },
+  "trophy": {
+    "description": "An adaptive Sugarfold Core proving you cleared The Sugarworks and earned a place in the Confectioner's archive.",
+    "display_name": "Sugarfold Core",
+    "filename": "sugarworks-trophy.png",
+    "metadata": {
+      "chassis": "chapter_core_v3",
+      "core_motif": "an amber central lozenge structurally locked by one ivory fold and one muted-mint fold entering from opposite sides, never forming a letter or stamped emblem",
+      "palette": [
+        "dark berry",
+        "raspberry",
+        "amber",
+        "ivory",
+        "muted mint"
+      ],
+      "silhouette_motif": "a compact octagonal envelope with one large shallow concave wrapper-pressure pinch on each side and short clipped top and bottom points",
+      "theme": "confection archive",
+      "vessel": "point_hex_vessel_v1"
+    },
+    "slug": "the-sugarworks-sugarfold-core"
+  },
+  "zones": [
+    {
+      "battle_opponent_id": "sugarworks-regular-1",
+      "battle_supplies": 3,
+      "bits_reward": 10,
+      "elite_opponent_id": "sugarworks-elite-1",
+      "elite_supplies": 5,
+      "id": "zone-1",
+      "index": 1,
+      "title": "Gumdrop Yard — candy-brick storage courtyard",
+      "title_key": "SUGARWORKS_ZONE_1"
+    },
+    {
+      "battle_opponent_id": "sugarworks-elite-1",
+      "battle_supplies": 4,
+      "bits_reward": 20,
+      "elite_opponent_id": "sugarworks-elite-2",
+      "elite_supplies": 6,
+      "id": "zone-2",
+      "index": 2,
+      "title": "Caramel Foundry — refractory caramel work floor",
+      "title_key": "SUGARWORKS_ZONE_2"
+    },
+    {
+      "battle_opponent_id": "sugarworks-elite-2",
+      "battle_supplies": 5,
+      "bits_reward": 30,
+      "elite_opponent_id": "sugarworks-boss",
+      "elite_supplies": 7,
+      "id": "zone-3",
+      "index": 3,
+      "title": "Peppermint Furnace — peppermint furnace forecourt",
+      "title_key": "SUGARWORKS_ZONE_3"
+    }
+  ]
+}

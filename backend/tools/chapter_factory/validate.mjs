@@ -4,11 +4,13 @@ import { normalizeBaseStats } from "../../supabase/functions/_shared/battle.mjs"
 import { LAYOUT_3X3 } from "../../supabase/functions/_shared/postprocess.mjs";
 import {
   BOSS_SEEKER_POSES,
+  DESIGN_SCHEMA_VERSION,
   DIALOGUE_TRIGGERS,
   IP_BLOCKLIST,
   SAFE_ID,
   SAFE_SLUG,
   SAFE_SPECIES_KEY,
+  VOICE_PROFILE_FIELDS,
 } from "./constants.mjs";
 import { CHAPTER_CORE_CHASSIS, CHAPTER_CORE_VESSEL } from "./core_vessel.mjs";
 import { buildGameplayManifest } from "./context.mjs";
@@ -49,6 +51,42 @@ function validationError(code, message) {
   const error = new Error(message);
   error.code = code;
   return error;
+}
+
+function assertBossDialogue(dialogue, code) {
+  if (!dialogue || typeof dialogue !== "object" || Array.isArray(dialogue)) {
+    throw validationError(code, "boss_seeker.dialogue wajib");
+  }
+  for (const trigger of DIALOGUE_TRIGGERS) {
+    const line = dialogue[trigger];
+    if (typeof line !== "string" || line.trim().length < 1) {
+      throw validationError(code, `dialogue.${trigger} wajib`);
+    }
+    if (line.includes("—")) {
+      throw validationError(code, `dialogue.${trigger} tidak boleh memakai em dash`);
+    }
+  }
+}
+
+function assertVoiceProfile(profile) {
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+    throw validationError("INVALID_VOICE_PROFILE", "boss_seeker.voice_profile wajib");
+  }
+  const fields = Object.keys(profile);
+  if (
+    fields.length !== VOICE_PROFILE_FIELDS.length
+    || fields.some((field) => !VOICE_PROFILE_FIELDS.includes(field))
+  ) {
+    throw validationError(
+      "INVALID_VOICE_PROFILE",
+      `voice_profile harus tepat memuat ${VOICE_PROFILE_FIELDS.join(", ")}`,
+    );
+  }
+  for (const field of VOICE_PROFILE_FIELDS) {
+    if (typeof profile[field] !== "string" || profile[field].trim().length < 2) {
+      throw validationError("INVALID_VOICE_PROFILE", `voice_profile.${field} wajib`);
+    }
+  }
 }
 
 function assertSafeId(value, label) {
@@ -162,8 +200,12 @@ export function validateDesign(design, brief, ctx = null) {
   if (!design || typeof design !== "object" || Array.isArray(design)) {
     throw validationError("INVALID_DESIGN", "design.json bukan object");
   }
-  if (Number(design.schema_version) !== 1) {
-    throw validationError("INVALID_DESIGN_SCHEMA", "schema_version harus 1");
+  const designSchemaVersion = Number(design.schema_version);
+  if (![1, DESIGN_SCHEMA_VERSION].includes(designSchemaVersion)) {
+    throw validationError(
+      "INVALID_DESIGN_SCHEMA",
+      `schema_version harus 1 atau ${DESIGN_SCHEMA_VERSION}`,
+    );
   }
   const ipHits = scanIpTerms(design);
   if (ipHits.length > 0) {
@@ -316,14 +358,8 @@ export function validateDesign(design, brief, ctx = null) {
   if (!BOSS_SEEKER_POSES.includes(seeker.portrait_pose)) {
     throw validationError("INVALID_DESIGN_BOSS_SEEKER", "portrait_pose harus pose Boss Seeker valid");
   }
-  if (!seeker.dialogue || typeof seeker.dialogue !== "object") {
-    throw validationError("INVALID_DESIGN_DIALOGUE", "boss_seeker.dialogue wajib");
-  }
-  for (const trigger of DIALOGUE_TRIGGERS) {
-    if (typeof seeker.dialogue[trigger] !== "string" || seeker.dialogue[trigger].length < 1) {
-      throw validationError("INVALID_DESIGN_DIALOGUE", `dialogue.${trigger} wajib`);
-    }
-  }
+  assertBossDialogue(seeker.dialogue, "INVALID_DESIGN_DIALOGUE");
+  if (designSchemaVersion >= DESIGN_SCHEMA_VERSION) assertVoiceProfile(seeker.voice_profile);
   const trophy = design.trophy;
   if (!trophy || typeof trophy !== "object") {
     throw validationError("INVALID_DESIGN_TROPHY", "trophy wajib");
@@ -531,15 +567,7 @@ export function validateChapterDraft(manifest, ctx) {
       throw validationError("INVALID_BOSS_MANIFEST", "boss seeker render_metrics wajib");
     }
   }
-  const dialogue = manifest.boss_seeker.dialogue;
-  if (!dialogue || typeof dialogue !== "object") {
-    throw validationError("INVALID_BOSS_DIALOGUE", "boss_seeker.dialogue wajib");
-  }
-  for (const trigger of DIALOGUE_TRIGGERS) {
-    if (typeof dialogue[trigger] !== "string" || dialogue[trigger].length < 1) {
-      throw validationError("INVALID_BOSS_DIALOGUE", `dialogue.${trigger} wajib`);
-    }
-  }
+  assertBossDialogue(manifest.boss_seeker.dialogue, "INVALID_BOSS_DIALOGUE");
   if (!manifest.trophy?.art_path || !manifest.trophy?.slug) {
     throw validationError("INVALID_TROPHY", "trophy metadata wajib");
   }

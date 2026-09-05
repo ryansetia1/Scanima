@@ -1,0 +1,18 @@
+{
+  "asset_source_version": 5,
+  "boss_seeker": "The Confectioner",
+  "cast_count": 9,
+  "content_version": 9,
+  "description": "Dialogue-only successor to v8: rewrites all nine Confectioner lines in natural, authoritative, all-ages English and adds the authoring-only Boss Seeker voice profile. Reuses v5 assets and keeps the v8 level ramp unchanged.",
+  "sequence": 1,
+  "slug": "the-sugarworks",
+  "theme": "candy factory / confectionery",
+  "title": "The Sugarworks",
+  "tone": "bright anime adventure without parodying other monster franchises",
+  "trophy": "Sugarfold Core",
+  "zones": [
+    "Gumdrop Yard — introductory battles and recovery",
+    "Caramel Foundry — elite teams and shop nodes",
+    "Peppermint Furnace — miniboss pressure before the boss gate"
+  ]
+}

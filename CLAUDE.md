@@ -72,7 +72,7 @@ kontradiksi.
 | `evolution_prompt_version` | `v47` | `v41`, lalu `v30` |
 | `synthesis_prompt_version` | `v48` | `v45` |
 | `RULES_VERSION` combat | `3` | snapshot `evolution_version=0` tetap legacy |
-| Chapter aktif | The Sugarworks v8 | v1–v7 immutable untuk run lama |
+| Chapter aktif | The Sugarworks v9 | v8; v1–v8 immutable untuk run lama |
 | Feature flag | `feature_evolution`, `feature_team_battle`, `feature_expedition`, `feature_chapter_push`, `feature_synthesis`, dan `feature_atlas_moderation_v2` semuanya `true` | matikan per flag |
 
 Edge Function ACTIVE, semua `verify_jwt=true` kecuali webhook: `create_anima` 28,

@@ -2,6 +2,34 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 5 September 2026: dialog Boss Seeker The Sugarworks v9 live
+
+The Sugarworks v9 mengganti kesembilan dialog The Confectioner yang sebelumnya
+terlalu sering memaksa kata resep/formula dengan English sehari-hari yang lebih
+natural, hangat, dan berwibawa. Canon kurator arsip, urutan trigger, timing
+dialog, Nimbelisk, Final Confection, reward, dan ramp Level v8 tidak berubah.
+Tidak ada perubahan client atau lokalisasi.
+
+Chapter Factory design schema v2 kini mewajibkan `voice_profile` authoring-only
+enam bagian: core motive, hubungan dengan pemain, ritme bicara, emotional arc,
+bahasa natural, dan pola yang harus dihindari. Validator menolak em dash pada
+seluruh dialog Boss Seeker, review HTML menampilkan profile dan meminta semua
+baris dibaca keras sesuai urutan trigger, sedangkan design schema v1 lama tetap
+diterima. Profile tidak masuk manifest runtime.
+
+Ryan Setiawan menyetujui manifest
+`33b57fea3658fb64e7225cde0cab7fdc4fa14eea833dd2c130e9a3df151a9d0a`.
+Version `17f3f5cb-eccd-48f1-8928-42d094b24377` di-stage pada
+12:25:29 UTC lalu diaktifkan atomik pada 12:26:57 UTC. Probe production
+membuktikan v9 satu-satunya version aktif, v8 sudah inactive sebagai rollback
+langsung, dan kesembilan line live sama dengan manifest yang disetujui. Run
+lama tetap terkunci ke v1–v8.
+
+`asset_source_version=5` mempertahankan 14 path dan hash aset yang sama dengan
+v8, jadi rollout memakai nol image call, nol biaya model, dan nol upload Storage
+baru. `npm run selftest`, Chapter Factory validate/build/review, lint, pemeriksa
+metadata-only, dan verifikasi hash/active-count production semuanya hijau.
+
 ## 5 September 2026: UAT Battle Impact di Android
 
 UAT pada Xiaomi 23127PN0CG membuktikan camera shake production terlihat, tetapi

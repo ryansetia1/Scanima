@@ -1,0 +1,16 @@
+{
+  "chapter_slug": "the-sugarworks",
+  "content_version": 9,
+  "design_call": {
+    "completed": [],
+    "planned_usd": 0.003
+  },
+  "image_calls": {
+    "completed": [],
+    "cost_ceiling_usd": 0.98,
+    "image_model": "openai/gpt-image-2",
+    "image_quality": "medium",
+    "planned_calls": 14,
+    "unit_usd": 0.07
+  }
+}

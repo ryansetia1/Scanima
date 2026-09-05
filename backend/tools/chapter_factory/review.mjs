@@ -1,7 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Image } from "imagescript";
-import { BOSS_SEEKER_POSES } from "./constants.mjs";
+import {
+  BOSS_SEEKER_POSES,
+  DIALOGUE_TRIGGERS,
+  VOICE_PROFILE_FIELDS,
+} from "./constants.mjs";
 import { escapeHtml, renderMapPreview } from "./review_html.mjs";
 
 async function imageCard(chapterDir, { title, relPath, subtitle = "", crop = null }) {
@@ -96,6 +100,22 @@ export async function buildReviewPage({ manifest, chapterDir, ctx }) {
   });
 
   const assetEntries = manifest.assets?.entries ?? [];
+  const voiceProfile = ctx.design?.boss_seeker?.voice_profile;
+  const voiceProfileSection = voiceProfile
+    ? `<section>
+    <h2>Boss Seeker Voice Profile</h2>
+    <p><strong>Background story</strong><br>${escapeHtml(ctx.design.boss_seeker.background_story)}</p>
+    <table>
+      <thead><tr><th>Dimension</th><th>Direction</th></tr></thead>
+      <tbody>
+        ${VOICE_PROFILE_FIELDS.map((field) => `<tr>
+          <td><code>${escapeHtml(field)}</code></td>
+          <td>${escapeHtml(voiceProfile[field])}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </section>`
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -180,14 +200,17 @@ export async function buildReviewPage({ manifest, chapterDir, ctx }) {
     </div>
   </section>
 
+  ${voiceProfileSection}
+
   <section>
     <h2>Boss Seeker Dialogue</h2>
+    <p class="muted">Read all lines aloud in trigger order. Approve only when each line sounds natural alone and the full set keeps one recognizable voice.</p>
     <table>
       <thead><tr><th>Trigger</th><th>Line</th></tr></thead>
       <tbody>
-        ${Object.entries(manifest.boss_seeker.dialogue).map(([trigger, line]) => `<tr>
+        ${DIALOGUE_TRIGGERS.map((trigger) => `<tr>
           <td><code>${escapeHtml(trigger)}</code></td>
-          <td>${escapeHtml(line)}</td>
+          <td>${escapeHtml(manifest.boss_seeker.dialogue[trigger])}</td>
         </tr>`).join("")}
       </tbody>
     </table>
