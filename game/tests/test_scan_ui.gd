@@ -6451,6 +6451,13 @@ func _test_expedition_view() -> void:
 	view.set_run(intro_run)
 	await process_frame
 	_check(not chapter_dialog.is_open(), "resumed same-run map skips chapter intro")
+	var replay_run := intro_run.duplicate(true)
+	replay_run["id"] = "sugarworks-replay"
+	view.set_run(replay_run, {}, {"boss_seeker": _boss_seeker_loaded()})
+	await process_frame
+	_check(chapter_dialog.is_open(), "a new run after a prior clear reopens the chapter intro")
+	_check(view.handle_back(), "back dismisses the replayed run chapter intro")
+	await process_frame
 	_check(
 		str(view.call("_location_text", {
 			"kind": "boss",
