@@ -138,7 +138,9 @@ konfirmasi **Retreat**, atau kartu hasil tidak mengecilkan arena maupun
 menggeser petarung. Opening memakai pandangan lebar tanpa interface; setelah
 kedua Anima selesai dipanggil, dunia bergeser halus ke pandangan bermain selama
 0,32 detik sambil status dan tombol muncul. Perintah baru dapat ditekan setelah
-perpindahan itu selesai.
+perpindahan itu selesai. Dalam pandangan bermain, kamera menjaga kaki, badan
+utama, dan bayangan kontak fighter tetap terlihat di atas panel status dan
+tombol aksi, termasuk untuk Anima yang sangat tinggi.
 
 Di **Duel**, **Team Battle**, dan **Expedition** kamu ikut berdiri di sana. Figur
 Seeker-mu — yang kamu pilih lewat **Change Seeker Avatar** di
@@ -159,8 +161,10 @@ portal. Nama, HP, turn, dan tombol aksi baru muncul setelah kedua Anima siap;
 selama itu arena belum bisa disentuh. Intro ini tidak diputar ulang saat
 melanjutkan fight yang tersimpan atau mencoba ulang koneksi. Di battle bertim,
 hanya Anima pertama yang dipanggil lewat intro; anggota cadangan masuk lewat
-animasi **Switch** biasa. Final Battle Expedition tetap memakai perkenalan dan
-summon milik Boss Seeker.
+animasi **Switch** biasa. Final Battle Expedition menjadi pengecualian: kamu
+dan Boss Seeker terlihat lebih dulu tanpa Anima, lalu Boss memanggil Anima-nya
+sebelum Seeker-mu memanggil Anima aktifmu. **Try Again** mengulang pembuka itu,
+sedangkan **Continue Expedition** tidak.
 
 Anima yang tingginya sudah melewati kira-kira pinggang figur digambar di
 belakangnya: pada ukuran itu figur yang berdiri di belakang kehilangan

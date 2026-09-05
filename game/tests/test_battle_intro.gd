@@ -142,6 +142,7 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var player_shadow := player.get_parent().find_child("GroundShadow", false, false) as Sprite2D
 	var opponent_shadow := opponent.get_parent().find_child("GroundShadow", false, false) as Sprite2D
 	var footer := view.find_child("BattleFooter", true, false) as Control
+	var fighter_hud_plate := view.find_child("FighterHudPlate", true, false) as Control
 	var strike := view.find_child("BattleStrikeButton", true, false) as Button
 	var arena := view.find_child("BattleArena", true, false) as Control
 	var player_anchor := view.find_child("BattlePlayerAnchor", true, false) as Node2D
@@ -233,6 +234,15 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		and not strike.disabled
 		and seeker.animation == "intro_idle",
 		"Duel intro reframes the whole world with Chrome for 0.32 seconds before input unlocks"
+	)
+	_check(
+		player_anchor.global_position.y < fighter_hud_plate.get_global_rect().position.y,
+		"Duel gameplay keeps fighter ground above status and command Chrome "
+		+ "(ground=%.1f hud_top=%.1f footer_top=%.1f)" % [
+			player_anchor.global_position.y,
+			fighter_hud_plate.get_global_rect().position.y,
+			footer.get_global_rect().position.y,
+		]
 	)
 	var gameplay_arena_rect := arena.get_global_rect()
 	var gameplay_player_position := player_anchor.global_position

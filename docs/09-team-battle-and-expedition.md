@@ -88,6 +88,27 @@ charge portal, sebelum Anima baru di-reveal atau serangan berikutnya dimainkan.
 Reframe tidak boleh ditunda sampai event Attack berikutnya atau commit session
 di akhir event log.
 
+### Arena, Chrome, dan Overlay
+
+Duel, Team Battle, Expedition Battle/Elite, dan Boss memakai satu kontrak:
+**Battle Arena** adalah dunia full-screen yang ukurannya tetap; **Battle Chrome**
+adalah status dan command screen-space di atasnya; **Battle Overlay** adalah
+dialog, picker, konfirmasi, dan result sementara di lapisan paling atas.
+Menampilkan atau menyembunyikan Chrome maupun Overlay tidak boleh mengubah
+rectangle Arena atau mengulang framing gameplay.
+
+Opening fresh memakai framing cinematic tanpa Chrome. Sesudah kedua summon
+selesai, seluruh dunia—background, ground line, fighter, Seeker, shadow, dan
+portal—bergerak sekali ke framing gameplay selama 0,32 detik sambil Chrome
+fade-in. Framing gameplay menahan garis kaki di atas status/command Chrome,
+termasuk ketika ukuran fighter memaksa camera-fit; Overlay berikutnya tidak
+memindahkannya lagi.
+
+Background tetap full-bleed di balik inset perangkat, sedangkan target
+interaktif Chrome dan Overlay berada di safe area. Battle World Shake hanya
+menggerakkan world layer; status, command, dialog, picker, konfirmasi, dan
+result tidak ikut berguncang.
+
 Semua mode Battle memakai warna HP kontinu: merah pada 0%, campuran di tengah,
 dan biru/cyan pada 100%. Angka `current / max` tetap wajib karena status tidak
 boleh bergantung pada warna. Alpha pusat ground shadow arena adalah 0,45 untuk
@@ -181,7 +202,7 @@ gratis sekaligus buff.
 
 Arena memakai `zones[].background_path` dari manifest.
 Art zona adalah backdrop Battle, bukan peta node: kaki petarung duduk dekat
-88% tinggi stage, layar tinggi mencrop sisi kiri/kanan, dan Boss Seeker
+91% tinggi stage, layar tinggi mencrop sisi kiri/kanan, dan Boss Seeker
 mengisi pita kanan. Background wajib menyediakan lantai padat lebar di pita
 bawah serta detail yang tenang di tengah supaya Anima tetap fokus. Kontrak
 prompt hidup di `backend/prompts/chapter_factory/zone_art.md` dan

@@ -100,11 +100,12 @@ Fakta arsitektur yang berlaku sekarang (bukan riwayat — riwayatnya di
   pagar di `.cursor/rules/client-shell-ui.mdc`.
 - **Duel/Team/Expedition arena**: dunia Battle full-screen di bawah Chrome dan
  Overlay; opening fresh berpindah sekali dari framing cinematic ke gameplay
- sebelum input dibuka. Boss Expedition membuka pada dua Seeker, lalu Summon
- Boss→pemain; rematch mengulang koreografi, sedangkan resume/refresh tidak.
- Session boundary membersihkan pelat transient lama saat start baru; music cue
- hanya membaca arena yang benar-benar terlihat (session tersembunyi tidak
- menahan musik battle).
+  sebelum input dibuka. Framing gameplay menjaga garis kaki di atas
+  status/command Chrome tanpa mengubah rectangle Arena. Boss Expedition membuka
+  pada dua Seeker, lalu Summon Boss→pemain; rematch mengulang koreografi,
+  sedangkan resume/refresh tidak. Session boundary membersihkan pelat transient
+  lama saat start baru; music cue hanya membaca arena yang benar-benar terlihat
+  (session tersembunyi tidak menahan musik battle).
 - Kegagalan Duel 500 tanpa mapping 4xx/409 dicatat ke `battle_failures`
   (default-deny, service-role only); Evolve/Synthesis pakai helper fail-open
   supaya kegagalan logging tidak menimpa response asli.
@@ -227,11 +228,11 @@ Di macOS, binary Godot ada di `/Applications/Godot.app/Contents/MacOS/Godot` dan
 npm run selftest                       # 44 skenario + 12 uji tanda tangan webhook
 godot --headless --path game --script res://tests/test_sprite_slicing.gd # 304 check manifest, loader, presenter, Boss Seeker
 godot --headless --path game --script res://tests/test_auth_flow.gd    # 63 check PKCE secure, restart, transfer/separate, recovery, no-merge
-godot --headless --path game --script res://tests/test_client_state.gd  # 199 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, stale UID, retry transport
+godot --headless --path game --script res://tests/test_client_state.gd  # 201 check sesi, refresh, pending scan/care/Battle/Shop/evolution, cache art, cache boot, stale UID, retry transport
 godot --headless --path game --script res://tests/test_offline_resilience.gd # transport lokal + Retry UI; orchestration save dipindai
-godot --headless --path game --script res://tests/test_scan_ui.gd       # 1592 check shell + Battle + Shop + Bag + komponen + tap + touch + press/release roster sungguhan + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas + dialog Evolve gagal + preflight nama + Seeker Avatar arena + LoadingScreen
+godot --headless --path game --script res://tests/test_scan_ui.gd       # 1642 check shell + Battle + Shop + Bag + komponen + tap + touch + press/release roster sungguhan + UI/SFX hooks + prediksi turn/care/Summon + rollback + cache boot + Trophy Showcase/evolution/Atlas + dialog Evolve gagal + preflight nama + Seeker Avatar arena + LoadingScreen
 godot --headless --path game --script res://tests/test_battle_intro.gd  # 3 mode opening Duel/Team/Expedition + switch framing, input lock, no replay, Boss gate
-godot --headless --path game --script res://tests/test_i18n.gd          # 5120 check katalog + key + formatter + wrapping
+godot --headless --path game --script res://tests/test_i18n.gd          # 5148 check katalog + key + formatter + wrapping
 godot --headless --path game --script res://tests/test_game_rules.gd    # 181 check care + EXP/Level/evolution + kontrak event Battle
 godot --headless --path game --script res://tests/test_expedition_route_map.gd # 91 check route tree + preview/Enter Node + Skip Shop + prediksi turn/Switch/penutup Boss + preload art run
 node backend/tools/emit_sim_vectors.mjs                                 # regen golden vector JS -> GDScript, nol panggilan API

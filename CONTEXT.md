@@ -41,6 +41,12 @@ A Seeker authored as part of a chapter rather than played, who opposes the
 player during an Expedition.
 _Avoid_: NPC, rival, boss trainer
 
+**Boss Encounter Opening**:
+The Final Battle opening that begins with the player's Seeker Avatar facing the
+Boss Seeker alone, then reveals the Boss Anima and player Anima in that order
+before battle controls become available.
+_Avoid_: Cinematic intro, Chapter Intro, regular battle intro
+
 **Boss Seeker Voice Profile**:
 The six-part writing identity that fixes a Boss Seeker's motive, relationship
 with the player, speech rhythm, emotional arc, natural language, and patterns
@@ -76,6 +82,22 @@ Device-wide tactile feedback for command acknowledgement, Battle Impact Beats,
 and progression celebrations. The player's device-local Haptics preference
 controls all of them together.
 _Avoid_: Battle vibration, rumble setting
+
+**Battle Arena**:
+The full-screen battle space containing the environment, Anima, Seekers,
+shadows, portals, and world effects. Its size never changes when battle
+interface elements appear or disappear.
+_Avoid_: Stage row, space above the action dock
+
+**Battle Chrome**:
+The persistent screen-space battle interface layered over the Battle Arena,
+including fighter status, encounter status, commands, and Retreat.
+_Avoid_: Battle Chroma, footer, dock section
+
+**Battle Overlay**:
+A temporary battle interface layered above the Battle Arena and Battle Chrome,
+such as dialogue, a picker, a confirmation, or a result.
+_Avoid_: Battle Chrome, arena element
 
 **Critical Hit**:
 A chance-based damage spike influenced by Speed. Battle presents it as a

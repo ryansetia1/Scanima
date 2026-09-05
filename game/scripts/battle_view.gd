@@ -1498,7 +1498,19 @@ func _position_fighters() -> void:
 func _camera_ground_y(cinematic_ground_y: float) -> float:
 	if not _gameplay_framing:
 		return cinematic_ground_y
-	return cinematic_ground_y - minf(32.0, _arena.size.y * 0.02)
+	var arena_top := _arena.get_global_rect().position.y
+	# FighterHudPlate is hidden during opening and results, so its global rect
+	# collapses; its content minimum remains the stable occlusion height.
+	var chrome_top := (
+		_footer.get_global_rect().position.y
+		- _fighter_hud_plate.get_combined_minimum_size().y
+		- arena_top
+	)
+	return clampf(
+		chrome_top - GAMEPLAY_CHROME_GAP,
+		_arena.size.y * 0.50,
+		cinematic_ground_y
+	)
 
 
 func _camera_top_y() -> float:

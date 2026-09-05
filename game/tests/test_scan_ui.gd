@@ -3634,6 +3634,12 @@ func _test_battle_impact_contract() -> void:
 		var scenery := view.find_child("BattleSceneryOffset", true, false) as Control
 		var background := view.find_child(str(fixture[1]), true, false) as TextureRect
 		var fighters := view.find_child(str(fixture[2]), true, false) as Node2D
+		var chrome_name := "BattleChrome" if str(fixture[2]) == "DuelFighterLayer" else "TeamChrome"
+		var overlay_name := "BattleOverlay" if str(fixture[2]) == "DuelFighterLayer" else "TeamOverlay"
+		var chrome := view.find_child(chrome_name, true, false) as Control
+		var overlay := view.find_child(overlay_name, true, false) as Control
+		var chrome_position := chrome.position
+		var overlay_position := overlay.position
 		_check(
 			world != null and scenery != null and background.get_parent() == scenery
 			and fighters.get_parent() == world,
@@ -3658,8 +3664,11 @@ func _test_battle_impact_contract() -> void:
 		world.call("_apply_world_offset", Vector2(6.0, -1.0))
 		_check(
 			world.position.is_equal_approx(Vector2(6.0, -1.0))
-			and scenery.position.is_equal_approx(Vector2(-3.6, 0.6)),
-			"%s moves fighters fully and scenery at the calibrated 40%% ratio" % fixture[2]
+			and scenery.position.is_equal_approx(Vector2(-3.6, 0.6))
+			and chrome.position.is_equal_approx(chrome_position)
+			and overlay.position.is_equal_approx(overlay_position),
+			"%s moves the world at calibrated ratios while Chrome and overlays stay fixed"
+			% fixture[2]
 		)
 		view.call("_position_fighters")
 		_check(
@@ -4646,7 +4655,7 @@ func _test_duel_seeker_avatar_layout(
 	var avatar := layer.find_child("PlayerSeeker", false, false) as AnimatedSprite2D
 	# Kamera memang membingkai ulang saat figur datang — kolomnya ikut menentukan
 	# bingkai, dan tanpa itu figur mendarat di atas Anima. Yang tidak boleh
-	# bergerak adalah chrome-nya: dock 2×2 dan pelat HUD di luar arena.
+	# bergerak adalah Battle Chrome screen-space: dock 2×2 dan pelat HUD di atas Arena.
 	_check(
 		is_equal_approx(footer.size.y, dock_height)
 		and actions.global_position.is_equal_approx(dock_position)

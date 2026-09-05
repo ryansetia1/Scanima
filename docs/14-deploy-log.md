@@ -2,6 +2,30 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 6 September 2026: verifikasi lokal Battle Arena full-screen
+
+Integrasi ticket Battle Arena diverifikasi lokal tanpa build, deploy, request
+jaringan, atau model call. Capture production demo pada viewport portrait dan
+landscape mencakup Duel kecil/normal/raksasa, Team Battle gameplay/result,
+Expedition Battle dan Elite, serta Boss normal/raksasa dan dialog ace. Harness
+opening juga memeriksa framing tanpa Chrome, reveal berurutan, transisi bersama
+0,32 detik, input lock, resume tanpa replay, cancellation, result tanpa reframe,
+safe area, background full-bleed, dan rectangle Arena yang tetap.
+
+QA menemukan satu gap nyata di Duel: garis kaki gameplay hanya dinaikkan paling
+banyak 32 px, sehingga fighter tertutup pelat status dan command. Kamera Duel
+sekarang mencadangkan tinggi minimum fighter HUD yang tetap dapat dihitung saat
+HUD tersembunyi, lalu menaruh garis kaki di atas Battle Chrome. Capture ulang
+small/normal/giant di kedua orientasi menunjukkan badan utama, kaki, dan contact
+shadow kembali terbaca. Team Battle, Expedition Battle/Elite, dan Boss tidak
+memerlukan koreksi framing.
+
+`npm run selftest`, dry-run Smoke Set, seluruh pemeriksaan GodotIQ, serta suite
+sprite slicing, Auth, client state, offline resilience, Battle intro, shell UI,
+i18n, game rules, Expedition route map, dan parity simulasi Battle lulus.
+README tidak diubah karena tidak memiliki ringkasan aktif yang membagi stage dan
+dock menjadi dua section.
+
 ## 5 September 2026: dialog Boss Seeker The Sugarworks v9 live
 
 The Sugarworks v9 mengganti kesembilan dialog The Confectioner yang sebelumnya
