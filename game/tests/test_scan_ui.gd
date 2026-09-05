@@ -5065,7 +5065,7 @@ func _test_team_battle_view() -> void:
 		turn.visible
 		and turn.text.contains("Sugarworks")
 		and arena_hud.get_parent() == dock_column
-		and is_equal_approx(effectiveness.anchor_top, 0.3)
+		and is_equal_approx(effectiveness.anchor_top, 0.4)
 		and is_equal_approx(effectiveness.offset_top, -41.0)
 		and primary_row.get_child_count() == 3
 		and support_row.get_child_count() == 3
