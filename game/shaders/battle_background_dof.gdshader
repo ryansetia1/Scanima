@@ -10,7 +10,7 @@ uniform float daylight_blend : hint_range(0.0, 1.0) = 0.0;
 // Team Battle tween ini; Duel dan background chapter membiarkannya di 1.0.
 uniform float camera_zoom : hint_range(1.0, 1.08, 0.001) = 1.0;
 uniform float camera_pivot_y : hint_range(0.0, 1.0, 0.001) = 0.91;
-uniform float camera_offset_y : hint_range(0.0, 0.1, 0.001) = 0.0;
+uniform float camera_offset_y : hint_range(0.0, 0.5, 0.001) = 0.0;
 
 void fragment() {
 	float near_mix = smoothstep(0.55, 0.98, UV.y);

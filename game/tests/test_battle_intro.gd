@@ -276,9 +276,16 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 
 func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dictionary) -> void:
 	var packed := load("res://scenes/ui/team_battle_view.tscn") as PackedScene
+	var safe_host := MarginContainer.new()
+	safe_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	safe_host.add_theme_constant_override("margin_left", 24)
+	safe_host.add_theme_constant_override("margin_top", 60)
+	safe_host.add_theme_constant_override("margin_right", 32)
+	safe_host.add_theme_constant_override("margin_bottom", 80)
+	host.add_child(safe_host)
 	var view := packed.instantiate()
-	host.add_child(view)
-	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	safe_host.add_child(view)
+	view.visible = true
 	await process_frame
 	view.set_player_avatar(seeker_loaded)
 	var player_id := "00000000-0000-4000-8000-000000000001"
@@ -308,6 +315,7 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	}
 	var art_cache := {player_id: loaded, opponent_id: loaded}
 	view.set_session(session, art_cache, true)
+	await process_frame
 	var player := view.find_child("TeamPlayerSprite", true, false) as AnimatedSprite2D
 	var opponent := view.find_child("TeamOpponentSprite", true, false) as AnimatedSprite2D
 	var seeker := view.find_child("PlayerSeeker", true, false) as AnimatedSprite2D
@@ -315,16 +323,44 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var opponent_shadow := opponent.get_parent().find_child("GroundShadow", false, false) as Sprite2D
 	var dock := view.find_child("TeamDock", true, false) as Control
 	var attack := view.find_child("TeamAttackButton", true, false) as Button
+	var stage := view.find_child("TeamBattleStage", true, false) as Control
+	var chrome := view.find_child("TeamChrome", true, false) as Control
+	var overlay := view.find_child("TeamOverlay", true, false) as Control
+	var arena_rect := stage.get_global_rect()
+	var safe_rect: Rect2 = view.get_global_rect()
+	var arena_layers := stage.get_parent()
+	var player_anchor := view.find_child("TeamPlayerAnchor", true, false) as Node2D
+	var cinematic_ground_y := player_anchor.global_position.y
+	_check(
+		arena_rect.is_equal_approx(Rect2(Vector2.ZERO, Vector2(host.size)))
+		and arena_rect.encloses(dock.get_global_rect())
+		and safe_rect.encloses(dock.get_global_rect())
+		and chrome != null
+		and overlay != null
+		and arena_layers.get_parent() == view.find_child("TeamArena", true, false)
+		and (chrome == null or chrome.get_parent() == arena_layers),
+		"Team arena fills behind device insets while Chrome stays in the safe area "
+		+ "(arena=%s host=%s safe=%s dock=%s chrome=%s)" % [
+			arena_rect, Rect2(Vector2.ZERO, Vector2(host.size)), safe_rect,
+			dock.get_global_rect(), chrome.get_global_rect() if chrome != null else Rect2(),
+		]
+	)
+	if chrome == null or overlay == null:
+		safe_host.queue_free()
+		await process_frame
+		return
 	_check(
 		seeker.visible
 		and not player.visible
 		and not opponent.visible
 		and not player_shadow.visible
 		and not opponent_shadow.visible
-		and not (view.find_child("ArenaHud", true, false) as Control).visible
-		and is_zero_approx(dock.modulate.a)
-		and attack.disabled,
-		"fresh Team Battle starts on the player Seeker alone with combat chrome locked"
+		and is_zero_approx(chrome.modulate.a)
+		and dock.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and attack.disabled
+		and attack.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and attack.focus_mode == Control.FOCUS_NONE,
+		"fresh Team Battle starts on the player Seeker alone with hidden Chrome unable to receive input"
 	)
 	var reveal_order: Array[String] = []
 	var opponent_settled := [false]
@@ -342,17 +378,39 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 			var portal := opponent.get_parent().find_child("SummonPortal", false, false) as IncubatorEffect
 			opponent_settled[0] = not portal.is_active() and seeker.animation == "switch_command"
 	)
-	await view.play_opening_intro()
+	view.play_opening_intro()
+	var transition_started_at := -1
+	var saw_joint_transition := false
+	var transition_deadline := Time.get_ticks_msec() + 10000
+	while attack.disabled and Time.get_ticks_msec() < transition_deadline:
+		if chrome.modulate.a > 0.01 and chrome.modulate.a < 0.99:
+			if transition_started_at < 0:
+				transition_started_at = Time.get_ticks_msec()
+			saw_joint_transition = (
+				player_anchor.global_position.y < cinematic_ground_y - 1.0
+				and stage.get_global_rect().is_equal_approx(arena_rect)
+				and attack.disabled
+				and attack.mouse_filter == Control.MOUSE_FILTER_IGNORE
+				and attack.focus_mode == Control.FOCUS_NONE
+			)
+		await process_frame
+	var transition_elapsed := (
+		Time.get_ticks_msec() - transition_started_at if transition_started_at >= 0 else 0
+	)
 	_check(
 		reveal_order == ["opponent", "player"]
 		and opponent_settled[0]
+		and saw_joint_transition
+		and transition_elapsed >= 220
+		and transition_elapsed <= 520
 		and player_shadow.visible
 		and opponent_shadow.visible
-		and (view.find_child("ArenaHud", true, false) as Control).visible
-		and is_equal_approx(dock.modulate.a, 1.0)
+		and is_equal_approx(chrome.modulate.a, 1.0)
+		and player_anchor.global_position.y < cinematic_ground_y - 1.0
+		and stage.get_global_rect().is_equal_approx(arena_rect)
 		and not attack.disabled
 		and seeker.animation == "intro_idle",
-		"Team Battle intro settles both summons before restoring combat UI"
+		"Team Battle reframes the world with Chrome for 0.32 seconds before input unlocks"
 	)
 	view.set_session(session, art_cache)
 	await view.play_opening_intro()
@@ -362,7 +420,40 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		and not (opponent.get_parent().find_child("SummonPortal", false, false) as IncubatorEffect).is_active(),
 		"ordinary Team Battle session refresh does not replay the opening intro"
 	)
-	view.queue_free()
+	var gameplay_arena_rect := stage.get_global_rect()
+	var gameplay_player_position := player_anchor.global_position
+	var result_session := session.duplicate(true)
+	result_session["status"] = "won"
+	var result_state := (result_session["state"] as Dictionary).duplicate(true)
+	result_state["status"] = "won"
+	result_session["state"] = result_state
+	view.set_session(result_session, art_cache)
+	await process_frame
+	var result := view.find_child("TeamResult", true, false) as Control
+	var actions := view.find_child("TeamActions", true, false) as Control
+	_check(
+		result.visible
+		and result.get_parent().get_parent() == overlay
+		and not actions.visible
+		and stage.get_global_rect().is_equal_approx(gameplay_arena_rect)
+		and player_anchor.global_position.is_equal_approx(gameplay_player_position),
+		"Team result overlays the final pose without resizing or reframing the arena"
+	)
+	host.size = Vector2i(1602, 720)
+	await process_frame
+	await process_frame
+	_check(
+		stage.get_global_rect().is_equal_approx(Rect2(Vector2.ZERO, Vector2(host.size)))
+		and view.get_global_rect().encloses(dock.get_global_rect()),
+		"Team arena remains full-bleed and Chrome remains safe in landscape "
+		+ "(arena=%s host=%s safe=%s dock=%s)" % [
+			stage.get_global_rect(), Rect2(Vector2.ZERO, Vector2(host.size)),
+			view.get_global_rect(), dock.get_global_rect(),
+		]
+	)
+	host.size = Vector2i(720, 1602)
+	await process_frame
+	safe_host.queue_free()
 	await process_frame
 
 
@@ -536,16 +627,26 @@ func _check_background_grounding(
 		_check(false, "%s has a settled, non-zero arena layout" % label)
 		return
 	var fighter_ground_y := stage_rect.position.y + stage_rect.size.y * BattleScale.GROUND_Y_RATIO
+	var player_anchor := stage.find_child("TeamPlayerAnchor", true, false) as Node2D
+	if player_anchor == null:
+		player_anchor = stage.find_child("BattlePlayerAnchor", true, false) as Node2D
+	if player_anchor != null:
+		fighter_ground_y = player_anchor.global_position.y
 	var material := background.material as ShaderMaterial
 	var pivot_value: Variant = material.get_shader_parameter("camera_pivot_y")
 	var camera_pivot_y := float(pivot_value) if pivot_value != null else 0.5
-	var source_ground_uv := (
+	var offset_value: Variant = material.get_shader_parameter("camera_offset_y")
+	var camera_offset_y := float(offset_value) if offset_value != null else 0.0
+	var painted_ground_uv := (
 		camera_pivot_y
-		+ (BattleScale.GROUND_Y_RATIO - camera_pivot_y) * camera_zoom
+		+ (BattleScale.GROUND_Y_RATIO - camera_pivot_y - camera_offset_y) * camera_zoom
 	)
 	var source_ground_y := (
-		background_rect.position.y + background_rect.size.y * source_ground_uv
+		background_rect.position.y + background_rect.size.y * painted_ground_uv
 	)
+	var dock := stage.get_parent().find_child("TeamDock", true, false) as Control
+	var dock_top := dock.get_global_rect().position.y if dock != null else -1.0
+	var layer := player_anchor.get_parent() as Node2D if player_anchor != null else null
 	var impact_script := load("res://scripts/battle_impact.gd") as GDScript
 	var guard := float(impact_script.background_overscan_px(stage_rect.size.x))
 	_check(
@@ -559,8 +660,15 @@ func _check_background_grounding(
 	)
 	_check(
 		absf(source_ground_y - fighter_ground_y) <= 1.0,
-		"%s keeps the painted floor under fighter feet (floor %.1f, feet %.1f)"
-		% [label, source_ground_y, fighter_ground_y]
+		(
+			"%s keeps the painted floor under fighter feet "
+			+ "(floor %.1f, feet %.1f, dock %.1f, zoom %.3f, offset %.4f, "
+			+ "layer_pos=%s, layer_scale=%s, background=%s)"
+		) % [
+			label, source_ground_y, fighter_ground_y, dock_top, camera_zoom,
+			camera_offset_y, layer.position if layer != null else Vector2.ZERO,
+			layer.scale if layer != null else Vector2.ZERO, background_rect,
+		]
 	)
 
 
@@ -583,12 +691,16 @@ func _test_expedition_intro(
 	seeker_loaded: Dictionary
 ) -> void:
 	var packed := load("res://scenes/ui/expedition_view.tscn") as PackedScene
+	var safe_host := MarginContainer.new()
+	safe_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	safe_host.add_theme_constant_override("margin_left", 24)
+	safe_host.add_theme_constant_override("margin_top", 60)
+	safe_host.add_theme_constant_override("margin_right", 32)
+	safe_host.add_theme_constant_override("margin_bottom", 80)
+	host.add_child(safe_host)
 	var view := packed.instantiate()
-	host.add_child(view)
+	safe_host.add_child(view)
 	view.visible = true
-	view.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	view.position = Vector2.ZERO
-	view.size = Vector2(host.size)
 	await process_frame
 	if not view.has_method("play_combat_intro"):
 		_check(false, "Expedition exposes the awaited fresh-encounter intro seam")
@@ -642,6 +754,21 @@ func _test_expedition_intro(
 	view.set_run(run_data, encounter, art_cache, true)
 	await process_frame
 	var stage := view.find_child("TeamBattleStage", true, false) as Control
+	var dock := view.find_child("TeamDock", true, false) as Control
+	var chrome := view.find_child("TeamChrome", true, false) as Control
+	var overlay := view.find_child("TeamOverlay", true, false) as Control
+	var arena_rect := stage.get_global_rect()
+	_check(
+		arena_rect.is_equal_approx(Rect2(Vector2.ZERO, Vector2(host.size)))
+		and view.get_global_rect().encloses(dock.get_global_rect())
+		and chrome != null
+		and overlay != null,
+		"Expedition Battle and Elite use the shared full-screen arena under safe Chrome "
+		+ "(arena=%s host=%s safe=%s dock=%s)" % [
+			arena_rect, Rect2(Vector2.ZERO, Vector2(host.size)),
+			view.get_global_rect(), dock.get_global_rect(),
+		]
+	)
 	var background := view.find_child("TeamArenaBackground", true, false) as TextureRect
 	var background_material := background.material as ShaderMaterial
 	_check_background_grounding(
@@ -655,23 +782,50 @@ func _test_expedition_intro(
 	_check_fighter_bounds(stage, player, "Sunhound")
 	_check_fighter_bounds(stage, opponent, "Rimespin")
 	var location := view.find_child("TeamTurn", true, false) as Label
+	var attack := view.find_child("TeamAttackButton", true, false) as Button
+	var player_anchor := view.find_child("TeamPlayerAnchor", true, false) as Node2D
+	var cinematic_ground_y := player_anchor.global_position.y
 	_check(
 		view.is_combat_open()
 		and not player.visible
 		and not opponent.visible
-		and not location.visible,
+		and not location.visible
+		and is_zero_approx(chrome.modulate.a)
+		and attack.disabled
+		and attack.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and attack.focus_mode == Control.FOCUS_NONE,
 		"a fresh non-Boss Expedition encounter opens on the player Seeker alone"
 	)
-	await view.play_combat_intro()
+	view.play_combat_intro()
+	var transition_started_at := -1
+	var saw_joint_transition := false
+	var transition_deadline := Time.get_ticks_msec() + 10000
+	while attack.disabled and Time.get_ticks_msec() < transition_deadline:
+		if chrome.modulate.a > 0.01 and chrome.modulate.a < 0.99:
+			if transition_started_at < 0:
+				transition_started_at = Time.get_ticks_msec()
+			saw_joint_transition = (
+				player_anchor.global_position.y < cinematic_ground_y - 1.0
+				and stage.get_global_rect().is_equal_approx(arena_rect)
+				and attack.disabled
+				and attack.mouse_filter == Control.MOUSE_FILTER_IGNORE
+				and attack.focus_mode == Control.FOCUS_NONE
+			)
+		await process_frame
+	var transition_elapsed := (
+		Time.get_ticks_msec() - transition_started_at if transition_started_at >= 0 else 0
+	)
 	_check(
 		player.visible
 		and opponent.visible
+		and saw_joint_transition
+		and transition_elapsed >= 220
+		and transition_elapsed <= 520
 		and (view.find_child("ArenaHud", true, false) as Control).visible
-		and is_equal_approx(
-			(view.find_child("TeamDock", true, false) as Control).modulate.a,
-			1.0
-		),
-		"non-Boss Expedition restores the shared combat arena after both summons"
+		and is_equal_approx(chrome.modulate.a, 1.0)
+		and player_anchor.global_position.y < cinematic_ground_y - 1.0
+		and not attack.disabled,
+		"non-Boss Expedition completes the shared 0.32-second reframe before input unlocks"
 	)
 	view.set_run(run_data, encounter, art_cache)
 	await view.play_combat_intro()
@@ -679,7 +833,37 @@ func _test_expedition_intro(
 		player.visible and opponent.visible,
 		"resuming the same Expedition encounter does not replay the opening intro"
 	)
-	view.queue_free()
+	var battle_encounter: Dictionary = encounter.duplicate(true)
+	battle_encounter["id"] = "intro-expedition-battle"
+	battle_encounter["kind"] = "battle"
+	view.set_run(run_data, battle_encounter, art_cache)
+	await process_frame
+	_check(
+		stage.get_global_rect().is_equal_approx(arena_rect),
+		"regular Expedition Battle keeps the same full-screen arena rectangle as Elite"
+	)
+	var boss_encounter: Dictionary = encounter.duplicate(true)
+	boss_encounter["id"] = "intro-expedition-boss-foundation"
+	boss_encounter["kind"] = "boss"
+	view.set_run(run_data, boss_encounter, art_cache)
+	await process_frame
+	_check(
+		stage.get_global_rect().is_equal_approx(arena_rect)
+		and chrome.get_parent() == stage.get_parent()
+		and overlay.get_parent() == stage.get_parent(),
+		"the Expedition Boss foundation shares the Arena, Chrome, and Overlay layer contract"
+	)
+	host.size = Vector2i(1602, 720)
+	await process_frame
+	await process_frame
+	_check(
+		stage.get_global_rect().is_equal_approx(Rect2(Vector2.ZERO, Vector2(host.size)))
+		and view.get_global_rect().encloses(dock.get_global_rect()),
+		"Expedition and its Boss foundation keep full-bleed Arena and safe Chrome in landscape"
+	)
+	host.size = Vector2i(720, 1602)
+	await process_frame
+	safe_host.queue_free()
 	await process_frame
 
 

@@ -131,13 +131,14 @@ identitas Seeker, dan session yang sudah berjalan tidak ikut berubah.
 
 ## Kamu di arena
 
-Di **Duel**, latar dan dunia pertarungan memenuhi seluruh layar, termasuk area
-di belakang status fighter dan tombol aksi. Munculnya tombol, konfirmasi
-**Retreat**, atau kartu hasil tidak mengecilkan arena maupun menggeser
-petarung. Opening memakai pandangan lebar tanpa interface; setelah kedua Anima
-selesai dipanggil, dunia bergeser halus ke pandangan bermain selama 0,32 detik
-sambil status dan tombol muncul. Perintah baru dapat ditekan setelah perpindahan
-itu selesai.
+Di **Duel**, **Team Battle**, serta node Battle/Elite **Expedition**, latar dan
+dunia pertarungan memenuhi seluruh layar, termasuk area di belakang status
+fighter dan tombol aksi. Munculnya tombol, **Switch**, picker **Item**,
+konfirmasi **Retreat**, atau kartu hasil tidak mengecilkan arena maupun
+menggeser petarung. Opening memakai pandangan lebar tanpa interface; setelah
+kedua Anima selesai dipanggil, dunia bergeser halus ke pandangan bermain selama
+0,32 detik sambil status dan tombol muncul. Perintah baru dapat ditekan setelah
+perpindahan itu selesai.
 
 Di **Duel**, **Team Battle**, dan **Expedition** kamu ikut berdiri di sana. Figur
 Seeker-mu — yang kamu pilih lewat **Change Seeker Avatar** di

@@ -21,6 +21,8 @@ const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
 const INTRO_OPENING_BEAT_SEC := 0.4
 const INTRO_COMMAND_BEAT_SEC := 0.42
+const INTRO_GAMEPLAY_TRANSITION_SEC := 0.32
+const GAMEPLAY_CHROME_GAP := 16.0
 const SEEKER_SHOT_X := 0.83
 ## Figur pemain berdiri sejauh dari tepinya seperti Boss Seeker berdiri dari
 ## tepi seberang, jadi angkanya diturunkan alih-alih ditulis ulang.
@@ -92,6 +94,9 @@ const COMMIT_COLORS := {
 @onready var _refresh_button: Button = %TeamRefreshButton
 @onready var _start_button: Button = %TeamStartButton
 @onready var _arena: VBoxContainer = %TeamArena
+@onready var _battle_chrome: Control = %TeamChrome
+@onready var _battle_overlay: Control = %TeamOverlay
+@onready var _result_panel: PanelContainer = %TeamResultPanel
 @onready var _arena_hud: PanelContainer = %ArenaHud
 @onready var _arena_dock: PanelContainer = %TeamDock
 @onready var _turn: Label = %TeamTurn
@@ -177,6 +182,10 @@ var _intro_pending_summon := false
 var _opening_intro_pending := false
 var _opening_intro_running := false
 var _opening_intro_revision := 0
+var _gameplay_framing := true
+var _opening_transition: Tween
+var _background_ground_offset := 0.0
+var _opening_chrome_shown := true
 var _command_dialogue_used := false
 var _final_ace_pending := false
 var _boss_result_pending := false
@@ -209,6 +218,7 @@ func _ready() -> void:
 	_forfeit.pressed.connect(forfeit_requested.emit)
 	_retry.pressed.connect(_on_retry_pressed)
 	_leave.pressed.connect(back_requested.emit)
+	resized.connect(_layout_full_bleed_arena)
 	for slot in _switch_buttons.size():
 		_switch_buttons[slot].pressed.connect(_request_switch.bind(slot))
 	_battle_stage.resized.connect(_position_fighters)
@@ -267,8 +277,39 @@ func _ready() -> void:
 	_player_seeker_shadow.name = "PlayerSeekerShadow"
 	_seeker_dialog = BOSS_SEEKER_DIALOG.new()
 	_seeker_dialog.name = "BossSeekerDialog"
-	add_child(_seeker_dialog)
+	_battle_overlay.add_child(_seeker_dialog)
+	_layout_full_bleed_arena.call_deferred()
+
+
+func _layout_full_bleed_arena() -> void:
+	if not is_instance_valid(_battle_stage) or not is_inside_tree():
+		return
+	var viewport_rect := get_viewport().get_visible_rect()
+	var inverse := get_global_transform_with_canvas().affine_inverse()
+	var top_left := inverse * viewport_rect.position
+	var bottom_right := inverse * viewport_rect.end
+	_battle_stage.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_battle_stage.position = top_left
+	_battle_stage.size = bottom_right - top_left
+	_layout_battle_chrome()
 	_position_fighters.call_deferred()
+
+
+func _layout_battle_chrome() -> void:
+	if not is_instance_valid(_battle_chrome) or not is_instance_valid(_arena_dock):
+		return
+	_battle_chrome.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dock_height := _arena_dock.get_combined_minimum_size().y
+	_arena_dock.offset_top = -dock_height
+	_arena_dock.offset_bottom = 0.0
+
+
+func _layout_result_panel() -> void:
+	if not is_instance_valid(_result_panel) or not _result_panel.visible:
+		return
+	var panel_height := _result_panel.get_combined_minimum_size().y
+	_result_panel.offset_top = -panel_height
+	_result_panel.offset_bottom = 0.0
 
 
 func open_mode() -> void:
@@ -515,6 +556,7 @@ func set_session(
 		and str(_session.get("status", "active")) == "active"
 		and not _is_boss_encounter()
 	)
+	_gameplay_framing = not opening_requested
 	_opening_intro_pending = opening_requested
 	if opening_requested:
 		_busy = true
@@ -548,9 +590,10 @@ func play_opening_intro() -> void:
 		return
 	if not await _summon_opening_side("player", revision):
 		return
+	if not await _transition_opening_to_gameplay(revision):
+		return
 	_opening_intro_running = false
 	_busy = false
-	_set_opening_chrome_visible(true)
 	_restore_player_seeker_idle()
 	_apply_session_state()
 	_sync_shadow("player")
@@ -592,6 +635,9 @@ func _opening_intro_is_active(revision: int) -> bool:
 func _cancel_opening_intro() -> void:
 	if is_instance_valid(_impact):
 		_impact.cancel()
+	if _opening_transition != null and _opening_transition.is_valid():
+		_opening_transition.kill()
+	_opening_transition = null
 	var was_active := _opening_intro_pending or _opening_intro_running
 	_opening_intro_revision += 1
 	_opening_intro_pending = false
@@ -604,11 +650,84 @@ func _cancel_opening_intro() -> void:
 		_opponent_portal.stop()
 
 
+func _transition_opening_to_gameplay(revision: int) -> bool:
+	var from_layer_position := _fighter_layer.position
+	var from_layer_scale := _fighter_layer.scale
+	var from_background_zoom := _background_camera_zoom()
+	var from_background_offset := _background_ground_offset
+	_prepare_opening_chrome_fade()
+	_gameplay_framing = true
+	_position_fighters()
+	var target_layer_position := _fighter_layer.position
+	var target_layer_scale := _fighter_layer.scale
+	var target_background_zoom := _background_camera_zoom()
+	var target_background_offset := _background_ground_offset
+	_fighter_layer.position = from_layer_position
+	_fighter_layer.scale = from_layer_scale
+	_set_background_camera_zoom(from_background_zoom)
+	_set_background_ground_offset(from_background_offset)
+	_opening_transition = create_tween()
+	_opening_transition.set_parallel(true)
+	_opening_transition.set_trans(Tween.TRANS_SINE)
+	_opening_transition.set_ease(Tween.EASE_IN_OUT)
+	_opening_transition.tween_property(
+		_fighter_layer, "position", target_layer_position, INTRO_GAMEPLAY_TRANSITION_SEC
+	)
+	_opening_transition.tween_property(
+		_fighter_layer, "scale", target_layer_scale, INTRO_GAMEPLAY_TRANSITION_SEC
+	)
+	_opening_transition.tween_method(
+		_set_background_camera_zoom,
+		from_background_zoom,
+		target_background_zoom,
+		INTRO_GAMEPLAY_TRANSITION_SEC
+	)
+	_opening_transition.tween_method(
+		_set_background_ground_offset,
+		from_background_offset,
+		target_background_offset,
+		INTRO_GAMEPLAY_TRANSITION_SEC
+	)
+	_opening_transition.tween_method(
+		_set_opening_chrome_alpha, 0.0, 1.0, INTRO_GAMEPLAY_TRANSITION_SEC
+	)
+	await _event_pause(INTRO_GAMEPLAY_TRANSITION_SEC)
+	if not _opening_intro_is_active(revision):
+		return false
+	_opening_transition = null
+	_fighter_layer.position = target_layer_position
+	_fighter_layer.scale = target_layer_scale
+	_set_background_camera_zoom(target_background_zoom)
+	_set_background_ground_offset(target_background_offset)
+	_set_opening_chrome_visible(true)
+	return true
+
+
+func _prepare_opening_chrome_fade() -> void:
+	_arena_hud.visible = true
+	_opening_chrome_shown = true
+	_sync_location_chrome()
+	_set_opening_chrome_alpha(0.0)
+
+
+func _set_opening_chrome_alpha(alpha: float) -> void:
+	_battle_chrome.modulate.a = alpha
+
+
 func _set_opening_chrome_visible(shown: bool) -> void:
-	_arena_hud.visible = shown
-	_arena_dock.modulate.a = 1.0 if shown else 0.0
+	_opening_chrome_shown = shown
+	_arena_hud.visible = true
+	_set_opening_chrome_alpha(1.0 if shown else 0.0)
+	_arena_dock.mouse_filter = (
+		Control.MOUSE_FILTER_STOP if shown else Control.MOUSE_FILTER_IGNORE
+	)
+	_sync_location_chrome()
 	if not shown:
-		_turn.visible = false
+		for button in [
+			_attack_button, _special_button, _guard_button,
+			_item_button, _switch_button, _forfeit,
+		]:
+			(button as Button).release_focus()
 
 
 func session_data() -> Dictionary:
@@ -794,9 +913,11 @@ func play_events(
 		_final_ace_pending = false
 		_restore_seeker_idle()
 	var switch_background_zoom := _background_camera_zoom()
+	var switch_background_offset := _background_ground_offset
 	set_session(next_session)
 	if played_switch and _uses_static_background:
 		_set_background_camera_zoom(switch_background_zoom)
+		_set_background_ground_offset(switch_background_offset)
 	if _boss_result_pending:
 		await _boss_result_settled
 	set_busy(false)
@@ -850,7 +971,8 @@ func _sync_header() -> void:
 
 func _sync_location_chrome() -> void:
 	var show := (
-		_expedition_mode
+		_opening_chrome_shown
+		and _expedition_mode
 		and _arena.visible
 		and not _session.is_empty()
 		and not _arena_location.is_empty()
@@ -966,7 +1088,6 @@ func _request_switch(slot: int) -> void:
 
 
 func _mount_switch_overlay() -> void:
-	# TeamArena is a VBoxContainer: a FULL_RECT child becomes a zero-height row.
 	var overlay := Control.new()
 	overlay.name = "SwitchOverlay"
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1001,7 +1122,7 @@ func _mount_switch_overlay() -> void:
 	_switch_panel.reparent(column)
 	sheet.add_child(column)
 	overlay.add_child(sheet)
-	add_child(overlay)
+	_battle_overlay.add_child(overlay)
 	_switch_overlay = overlay
 	_switch_sheet = sheet
 
@@ -1068,6 +1189,7 @@ func _open_switch_picker(forced: bool) -> void:
 		_switch_overlay.visible = true
 	_layout_switch_panel.call_deferred()
 	_actions.visible = true
+	_update_arena_actions()
 
 
 func _close_switch_picker() -> bool:
@@ -1075,6 +1197,7 @@ func _close_switch_picker() -> bool:
 		return false
 	_hide_switch_overlay()
 	_actions.visible = true
+	_update_arena_actions()
 	return true
 
 
@@ -1227,10 +1350,16 @@ func _reframe_for_switch(
 	if _uses_static_background:
 		var previous_scale: Vector2 = previous_layout.get("layer_scale", Vector2.ONE)
 		var target_scale: Vector2 = target_layout.get("layer_scale", Vector2.ONE)
-		target_layout["background_camera_zoom"] = background_zoom_for_switch(
+		var fitted_background_zoom := float(target_layout.get("background_camera_zoom", 1.0))
+		var switch_background_zoom := background_zoom_for_switch(
 			previous_scale.x,
 			target_scale.x,
 			float(previous_layout.get("background_camera_zoom", 1.0))
+		)
+		target_layout["background_camera_zoom"] = switch_background_zoom
+		target_layout["background_ground_offset"] = (
+			float(target_layout.get("background_ground_offset", 0.0))
+			* fitted_background_zoom / maxf(0.001, switch_background_zoom)
 		)
 	_apply_fighter_layout(previous_layout)
 	return _tween_fighter_layout(target_layout)
@@ -1255,6 +1384,7 @@ func _fighter_layout() -> Dictionary:
 		"background_position": _arena_background.position,
 		"background_size": _arena_background.size,
 		"background_camera_zoom": _background_camera_zoom(),
+		"background_ground_offset": _background_ground_offset,
 	}
 
 
@@ -1281,6 +1411,9 @@ func _apply_fighter_layout(layout: Dictionary) -> void:
 	_arena_background.size = layout.get("background_size", _arena_background.size)
 	_set_background_camera_zoom(float(layout.get(
 		"background_camera_zoom", _background_camera_zoom()
+	)))
+	_set_background_ground_offset(float(layout.get(
+		"background_ground_offset", _background_ground_offset
 	)))
 
 
@@ -1340,6 +1473,12 @@ func _tween_fighter_layout(target: Dictionary) -> Tween:
 		_set_background_camera_zoom,
 		_background_camera_zoom(),
 		float(target["background_camera_zoom"]),
+		CAMERA_REFIT_SEC
+	)
+	_layout_tween.tween_method(
+		_set_background_ground_offset,
+		_background_ground_offset,
+		float(target["background_ground_offset"]),
 		CAMERA_REFIT_SEC
 	)
 	return _layout_tween
@@ -1489,7 +1628,7 @@ func _update_arena_actions() -> void:
 	var state := GameState.as_dict(_session.get("state"))
 	var active := str(_session.get("status", state.get("status", ""))) == "active"
 	var member := _active_member("player")
-	var locked := _busy or _forced_switch()
+	var locked := _busy or _forced_switch() or _switch_panel.visible
 	var committed := _busy and not _queued_action.is_empty()
 	_attack_button.text = LocaleManager.move_name(member, "strike")
 	_special_button.text = tr("TEAM_SPECIAL_BUTTON") % [
@@ -1508,7 +1647,13 @@ func _update_arena_actions() -> void:
 	_switch_button.disabled = (
 		not active or not _has_living_bench() or (locked and not committed)
 	)
-	var accepts_input := active and not _busy and not _forced_switch()
+	var accepts_input := (
+		active
+		and not _busy
+		and not _forced_switch()
+		and not _switch_panel.visible
+		and _opening_chrome_shown
+	)
 	for button in [_attack_button, _special_button, _guard_button, _item_button, _switch_button]:
 		var action_button := button as Button
 		action_button.mouse_filter = (
@@ -1516,7 +1661,22 @@ func _update_arena_actions() -> void:
 			if accepts_input and not action_button.disabled
 			else Control.MOUSE_FILTER_IGNORE
 		)
+		action_button.focus_mode = (
+			Control.FOCUS_ALL
+			if accepts_input and not action_button.disabled
+			else Control.FOCUS_NONE
+		)
 	_forfeit.disabled = not active or _busy
+	_forfeit.mouse_filter = (
+		Control.MOUSE_FILTER_STOP
+		if accepts_input and not _forfeit.disabled
+		else Control.MOUSE_FILTER_IGNORE
+	)
+	_forfeit.focus_mode = (
+		Control.FOCUS_ALL
+		if accepts_input and not _forfeit.disabled
+		else Control.FOCUS_NONE
+	)
 
 
 func _show_result(status: String) -> void:
@@ -1576,9 +1736,12 @@ func _apply_result_actions() -> void:
 
 
 func _set_result_actions_visible(shown: bool) -> void:
+	_result_panel.visible = shown
 	_result_actions.visible = shown
 	_retry.visible = shown
 	_leave.visible = shown and not _expedition_mode
+	if shown:
+		_layout_result_panel.call_deferred()
 
 
 func _on_retry_pressed() -> void:
@@ -2148,9 +2311,11 @@ func _apply_dynamic_camera() -> void:
 	var side_pad := _battle_stage.size.x * CAMERA_SIDE_PAD_RATIO
 	var top_pad := _battle_stage.size.y * CAMERA_TOP_PAD_RATIO
 	var ground_y := _battle_stage.size.y * _ground_y_ratio()
+	var camera_ground_y := _camera_ground_y(ground_y)
+	var camera_top_y := _camera_top_y()
 	var fit_zoom := minf(
 		(_battle_stage.size.x - side_pad * 2.0) / bounds.size.x,
-		(ground_y - top_pad) / bounds.size.y
+		maxf(1.0, camera_ground_y - camera_top_y - top_pad) / bounds.size.y
 	)
 	var heights := _active_body_heights()
 	var tallest_anima := maxf(
@@ -2167,11 +2332,38 @@ func _apply_dynamic_camera() -> void:
 	_fighter_layer.scale = Vector2(zoom, zoom)
 	_fighter_layer.position = Vector2(
 		_battle_stage.size.x * 0.5 - bounds.get_center().x * zoom,
-		ground_y * (1.0 - zoom)
+		camera_ground_y - ground_y * zoom
 	)
 	_pin_seeker_to_camera_right(zoom)
 	_pin_player_seeker_to_camera_left(zoom)
 	_layout_arena_background(_background_zoom_for_camera(zoom, size_mix))
+	_set_background_ground_offset(
+		(ground_y - camera_ground_y)
+		/ maxf(1.0, _arena_background.size.y * _background_camera_zoom())
+	)
+
+
+func _camera_ground_y(cinematic_ground_y: float) -> float:
+	if not _gameplay_framing:
+		return cinematic_ground_y
+	var stage_top := _battle_stage.get_global_rect().position.y
+	var dock_top := _arena_dock.get_global_rect().position.y - stage_top
+	return clampf(
+		dock_top - GAMEPLAY_CHROME_GAP,
+		_battle_stage.size.y * 0.50,
+		cinematic_ground_y
+	)
+
+
+func _camera_top_y() -> float:
+	if not _gameplay_framing or not _turn.visible:
+		return 0.0
+	var stage_top := _battle_stage.get_global_rect().position.y
+	return clampf(
+		_turn.get_global_rect().end.y - stage_top + GAMEPLAY_CHROME_GAP,
+		0.0,
+		_battle_stage.size.y * 0.35
+	)
 
 
 ## Background statis tidak boleh diam ketika camera-fit horizontal mengecilkan
@@ -2254,6 +2446,7 @@ func _layout_arena_background(background_zoom: float) -> void:
 		BattleScale.grounded_background_y(stage_size.y, draw_size.y)
 	)
 	_set_background_camera_zoom(background_zoom if _uses_static_background else 1.0)
+	_set_background_ground_offset(_background_ground_offset)
 
 
 func _background_camera_zoom() -> float:
@@ -2271,6 +2464,13 @@ func _set_background_camera_zoom(value: float) -> void:
 		background_material.set_shader_parameter(
 			"camera_pivot_y", BattleScale.GROUND_Y_RATIO
 		)
+
+
+func _set_background_ground_offset(value: float) -> void:
+	_background_ground_offset = maxf(0.0, value)
+	var background_material := _arena_background.material as ShaderMaterial
+	if background_material != null:
+		background_material.set_shader_parameter("camera_offset_y", _background_ground_offset)
 
 
 func _pin_seeker_to_camera_right(camera_zoom: float) -> void:

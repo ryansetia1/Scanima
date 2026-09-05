@@ -5239,16 +5239,32 @@ func _test_team_battle_view() -> void:
 		"Boss Seeker reacts on impact and returns Idle before ordinary effectiveness copy"
 	)
 	view.open_mode()
+	var switch_camera_layer := player_anchor.get_parent() as Node2D
+	var picker_camera_position := switch_camera_layer.position
+	var picker_camera_scale := switch_camera_layer.scale
+	var picker_chrome := view.find_child("TeamChrome", true, false) as Control
 	view.call("_open_switch_picker", false)
 	var switch_grid := view.find_child("SwitchButtons", true, false) as GridContainer
 	var switch_slot := view.find_child("TeamSwitchSlot0", true, false) as Button
-	_check(switch_panel.visible and actions.visible, "Switch opens the picker without hiding the action dock")
+	_check(
+		switch_panel.visible
+		and actions.visible
+		and is_equal_approx(picker_chrome.modulate.a, 1.0)
+		and attack.disabled
+		and attack.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and attack.focus_mode == Control.FOCUS_NONE
+		and switch_camera_layer.position.is_equal_approx(picker_camera_position)
+		and switch_camera_layer.scale.is_equal_approx(picker_camera_scale),
+		"Switch overlays stable gameplay framing with visible, locked Battle Chrome"
+	)
 	await process_frame
 	var overlay := view.find_child("SwitchOverlay", true, false) as Control
+	var switch_battle_overlay := view.find_child("TeamOverlay", true, false) as Control
 	var sheet := view.find_child("SwitchSheet", true, false) as PanelContainer
 	_check(
 		overlay != null
-		and overlay.get_parent() == view
+		and switch_battle_overlay != null
+		and overlay.get_parent() == switch_battle_overlay
 		and overlay.clip_contents
 		and overlay.z_index > 2
 		and overlay.visible
@@ -5276,8 +5292,13 @@ func _test_team_battle_view() -> void:
 		"voluntary Switch exposes a 96px Cancel control"
 	)
 	_check(
-		view.handle_back() and not switch_panel.visible and actions.visible,
-		"Cancel/back closes the voluntary Switch picker and restores actions"
+		view.handle_back()
+		and not switch_panel.visible
+		and actions.visible
+		and not attack.disabled
+		and switch_camera_layer.position.is_equal_approx(picker_camera_position)
+		and switch_camera_layer.scale.is_equal_approx(picker_camera_scale),
+		"Cancel/back restores Chrome input without returning to cinematic framing"
 	)
 	view.call("_open_switch_picker", false)
 	switch_cancel.pressed.emit()
@@ -5296,7 +5317,6 @@ func _test_team_battle_view() -> void:
 	view.set_busy(false)
 	var switched := session.duplicate(true)
 	switched["state"]["player"]["active_slot"] = 1
-	var switch_camera_layer := player_anchor.get_parent() as Node2D
 	var camera_before := switch_camera_layer.scale
 	var previous_layout: Dictionary = view.call("_fighter_layout")
 	view.call("_apply_side", switched, "player", true, false)
@@ -5500,7 +5520,14 @@ func _test_team_battle_view() -> void:
 	view.set_session(session, art_cache)
 	var result := view.find_child("TeamResult", true, false) as VBoxContainer
 	var result_body := view.find_child("TeamResultBody", true, false) as Label
-	_check(result.visible, "terminal Team session restores its result")
+	var result_actions := view.find_child("TeamResultActions", true, false) as HBoxContainer
+	var result_battle_overlay := view.find_child("TeamOverlay", true, false) as Control
+	_check(
+		result.visible
+		and result.get_parent().get_parent() == result_battle_overlay
+		and result_actions.get_parent() == result,
+		"terminal Team session restores its result in Battle Overlay"
+	)
 	_check(
 		result_body.text.contains("Team 1")
 		and result_body.text.contains("Team 2")
@@ -5824,14 +5851,21 @@ func _test_team_battle_view() -> void:
 		and avatar_shadow.position == avatar.position,
 		"either Seeker's lowest opaque pixel meets the vertical center of its shadow"
 	)
-	# Struktural, jadi ia berlaku di portrait maupun landscape: figur hidup di
-	# dalam stage, dan stage digambar sebelum dock aksi di kolom arena yang sama.
-	var arena_column := stage.get_parent()
+	# Arena tetap full-screen di belakang Chrome; camera gameplay yang menjaga
+	# ground petarung di atas kontrol, bukan stage row yang dipendekkan.
+	var arena_layers := stage.get_parent()
+	var battle_chrome := view.find_child("TeamChrome", true, false) as Control
+	var arena_battle_overlay := view.find_child("TeamOverlay", true, false) as Control
+	var team_dock := view.find_child("TeamDock", true, false) as Control
 	_check(
 		camera_layer.get_parent().get_parent() == stage
 		and camera_layer.get_parent().name == "BattleWorldOffset"
-		and stage.get_index() < arena_column.get_node("TeamDock").get_index(),
-		"the player figure can never cover the action dock, at any aspect"
+		and battle_chrome.get_parent() == arena_layers
+		and arena_battle_overlay.get_parent() == arena_layers
+		and stage.get_global_rect().encloses(team_dock.get_global_rect())
+		and giant_anchor.global_position.y < team_dock.get_global_rect().position.y
+		and opponent_giant_anchor.global_position.y < team_dock.get_global_rect().position.y,
+		"full-screen arena camera keeps fighter ground above stable action Chrome"
 	)
 	# Kamera memang membingkai ulang: kolom figur pemain ikut menentukan bingkai,
 	# dan tanpa itu ia mendarat di atas Anima-nya sendiri. Arahnya yang dipagari —

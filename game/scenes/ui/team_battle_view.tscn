@@ -16,6 +16,17 @@ width = 8
 height = 256
 fill_to = Vector2(0, 1)
 
+[sub_resource type="StyleBoxFlat" id="ArenaDockPlate"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.018, 0.03, 0.07, 0.9)
+border_width_top = 1
+border_color = Color(0.278, 0.902, 1, 0.14)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+
 [sub_resource type="StyleBoxFlat" id="ArenaHudPlate"]
 content_margin_left = 16.0
 content_margin_top = 12.0
@@ -56,17 +67,6 @@ base_font = ExtResource("6_display")
 variation_opentype = {
 "wght": 800
 }
-
-[sub_resource type="StyleBoxFlat" id="ArenaDockPlate"]
-content_margin_left = 12.0
-content_margin_top = 12.0
-content_margin_right = 12.0
-content_margin_bottom = 12.0
-bg_color = Color(0.018, 0.03, 0.07, 0.9)
-border_width_top = 1
-border_color = Color(0.278, 0.902, 1, 0.14)
-corner_radius_top_left = 20
-corner_radius_top_right = 20
 
 [node name="TeamBattleView" type="Control" unique_id=1492072427]
 unique_name_in_owner = true
@@ -139,509 +139,6 @@ theme_type_variation = &"BodyLabel"
 text = "TEAM_LOADING"
 horizontal_alignment = 1
 autowrap_mode = 2
-
-[node name="TeamArena" type="VBoxContainer" parent="Column" unique_id=1134020524]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 0
-
-[node name="TeamBattleStage" type="Control" parent="Column/TeamArena" unique_id=833744733]
-unique_name_in_owner = true
-clip_contents = true
-custom_minimum_size = Vector2(0, 390)
-layout_mode = 2
-size_flags_vertical = 3
-mouse_filter = 2
-
-[node name="TeamArenaBackground" type="TextureRect" parent="Column/TeamArena/TeamBattleStage" unique_id=337221338]
-unique_name_in_owner = true
-visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-expand_mode = 1
-stretch_mode = 6
-
-[node name="TopScrim" type="TextureRect" parent="Column/TeamArena/TeamBattleStage" unique_id=1396859128]
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 220.0
-grow_horizontal = 2
-mouse_filter = 2
-texture = SubResource("TopScrimTexture")
-expand_mode = 1
-
-[node name="TeamTurn" type="Label" parent="Column/TeamArena/TeamBattleStage" unique_id=1287318570]
-unique_name_in_owner = true
-visible = false
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 16.0
-offset_top = 8.0
-offset_right = -16.0
-offset_bottom = 40.0
-grow_horizontal = 2
-theme_type_variation = &"EyebrowLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.95)
-theme_override_constants/outline_size = 4
-text = "TEAM_TITLE"
-horizontal_alignment = 1
-vertical_alignment = 1
-text_overrun_behavior = 3
-
-[node name="TeamEffectiveness" type="Control" parent="Column/TeamArena/TeamBattleStage" unique_id=1534018301]
-unique_name_in_owner = true
-visible = false
-z_index = 4
-layout_mode = 1
-anchor_top = 0.4
-anchor_right = 1.0
-anchor_bottom = 0.4
-offset_left = 16.0
-offset_top = -41.0
-offset_right = -16.0
-offset_bottom = 41.0
-grow_horizontal = 2
-mouse_filter = 2
-
-[node name="TeamEventPlate" type="PanelContainer" parent="Column/TeamArena/TeamBattleStage/TeamEffectiveness" unique_id=1116362150]
-unique_name_in_owner = true
-z_index = -1
-clip_contents = true
-custom_minimum_size = Vector2(0, 76)
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_type_variation = &"BattleEventPlate"
-
-[node name="TeamEffectivenessLabel" type="Label" parent="Column/TeamArena/TeamBattleStage/TeamEffectiveness/TeamEventPlate" unique_id=158627219]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_colors/font_shadow_color = Color(1, 0.82, 0.4, 0.48)
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/shadow_offset_x = 0
-theme_override_constants/shadow_offset_y = 0
-theme_override_constants/outline_size = 8
-theme_override_constants/shadow_outline_size = 12
-theme_override_fonts/font = SubResource("EffectivenessBold")
-theme_override_font_sizes/font_size = 36
-text = "BATTLE_EFFECTIVE"
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 3
-max_lines_visible = 2
-
-[node name="TeamPlayerAnchor" type="Node2D" parent="Column/TeamArena/TeamBattleStage" unique_id=493831421]
-unique_name_in_owner = true
-scale = Vector2(0.62, 0.62)
-
-[node name="TeamPlayerSprite" type="AnimatedSprite2D" parent="Column/TeamArena/TeamBattleStage/TeamPlayerAnchor" unique_id=370236390]
-unique_name_in_owner = true
-visible = false
-script = ExtResource("2_presenter")
-
-[node name="TeamOpponentAnchor" type="Node2D" parent="Column/TeamArena/TeamBattleStage" unique_id=1511576199]
-unique_name_in_owner = true
-scale = Vector2(0.62, 0.62)
-
-[node name="TeamOpponentSprite" type="AnimatedSprite2D" parent="Column/TeamArena/TeamBattleStage/TeamOpponentAnchor" unique_id=1882161969]
-unique_name_in_owner = true
-visible = false
-flip_h = true
-script = ExtResource("2_presenter")
-
-[node name="TeamDamage" type="Label" parent="Column/TeamArena/TeamBattleStage" unique_id=1648293751]
-unique_name_in_owner = true
-visible = false
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -100.0
-offset_top = -40.0
-offset_right = 100.0
-offset_bottom = 40.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_type_variation = &"AnimaNameLabel"
-theme_override_colors/font_color = Color(1, 0.35, 0.48, 1)
-text = "BATTLE_DAMAGE"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="TeamDock" type="PanelContainer" parent="Column/TeamArena" unique_id=428670625]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_styles/panel = SubResource("ArenaDockPlate")
-
-[node name="DockColumn" type="VBoxContainer" parent="Column/TeamArena/TeamDock" unique_id=1840572237]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="TeamFeedback" type="Label" parent="Column/TeamArena/TeamDock/DockColumn" unique_id=956163316]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.95)
-theme_override_constants/outline_size = 4
-text = "TEAM_CHOOSE_ACTION"
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 2
-text_overrun_behavior = 3
-max_lines_visible = 1
-
-[node name="ArenaHud" type="PanelContainer" parent="Column/TeamArena/TeamDock/DockColumn" unique_id=1541990209]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-theme_override_styles/panel = SubResource("ArenaHudPlate")
-
-[node name="HudColumn" type="VBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud" unique_id=493753448]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="IdentityRow" type="HBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn" unique_id=213086192]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="PlayerIdentity" type="VBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow" unique_id=1092556328]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 2
-
-[node name="TeamPlayerSlots" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/PlayerIdentity" unique_id=2056256623]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.9)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 22
-text = "TEAM_SLOTS"
-
-[node name="TeamPlayerName" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/PlayerIdentity" unique_id=65722532]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/outline_size = 6
-text = "ANIMA_FALLBACK_NAME"
-text_overrun_behavior = 3
-
-[node name="Versus" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow" unique_id=644709153]
-custom_minimum_size = Vector2(40, 0)
-layout_mode = 2
-theme_type_variation = &"EyebrowLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.95)
-theme_override_constants/outline_size = 4
-text = "BATTLE_VS"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="OpponentIdentity" type="VBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow" unique_id=1461018444]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 2
-
-[node name="TeamOpponentSlots" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/OpponentIdentity" unique_id=479100345]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.9)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 22
-text = "TEAM_SLOTS"
-horizontal_alignment = 2
-
-[node name="TeamOpponentName" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/OpponentIdentity" unique_id=1052117162]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/outline_size = 6
-text = "TEAM_RIVAL"
-horizontal_alignment = 2
-text_overrun_behavior = 3
-
-[node name="HpRow" type="HBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn" unique_id=836291556]
-layout_mode = 2
-theme_override_constants/separation = 16
-
-[node name="PlayerHpStack" type="Control" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow" unique_id=1100946269]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="TeamPlayerHp" type="ProgressBar" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/PlayerHpStack" unique_id=263979075]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/background = SubResource("HpBackground")
-theme_override_styles/fill = SubResource("HpFill")
-value = 100.0
-fill_mode = 1
-show_percentage = false
-
-[node name="TeamPlayerHpValue" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/PlayerHpStack" unique_id=1584766397]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 22
-text = "FORMAT_RATIO"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="OpponentHpStack" type="Control" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow" unique_id=2004823074]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="TeamOpponentHp" type="ProgressBar" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/OpponentHpStack" unique_id=1219237092]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/background = SubResource("HpBackground")
-theme_override_styles/fill = SubResource("HpFill")
-value = 100.0
-show_percentage = false
-
-[node name="TeamOpponentHpValue" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/OpponentHpStack" unique_id=1791093358]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_type_variation = &"SectionLabel"
-theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 22
-text = "FORMAT_RATIO"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="TeamActions" type="VBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn" unique_id=29427052]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="PrimaryRow" type="HBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/TeamActions" unique_id=1304279075]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="TeamAttackButton" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamActions/PrimaryRow" unique_id=1116666627]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "BATTLE_ACTION_STRIKE"
-text_overrun_behavior = 3
-
-[node name="TeamSpecialButton" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamActions/PrimaryRow" unique_id=189275996]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "BATTLE_ACTION_SURGE"
-text_overrun_behavior = 3
-
-[node name="TeamGuardButton" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamActions/PrimaryRow" unique_id=60799210]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "BATTLE_ACTION_GUARD"
-
-[node name="SupportRow" type="HBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn/TeamActions" unique_id=1087938823]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="TeamItemButton" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamActions/SupportRow" unique_id=143338976]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "BATTLE_ACTION_ITEM"
-
-[node name="TeamSwitchButton" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamActions/SupportRow" unique_id=469885442]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "TEAM_SWITCH"
-
-[node name="TeamForfeitButton" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamActions/SupportRow" unique_id=1802200446]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-text = "BATTLE_FORFEIT"
-text_overrun_behavior = 3
-
-[node name="TeamSwitchPanel" type="VBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn" unique_id=2099372939]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="TeamSwitchTitle" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/TeamSwitchPanel" unique_id=10651810]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"SectionLabel"
-text = "TEAM_SWITCH_TITLE"
-horizontal_alignment = 1
-
-[node name="SwitchButtons" type="GridContainer" parent="Column/TeamArena/TeamDock/DockColumn/TeamSwitchPanel" unique_id=155499485]
-layout_mode = 2
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
-columns = 2
-
-[node name="TeamSwitchSlot0" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamSwitchPanel/SwitchButtons" unique_id=2003171458]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 128)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/icon_max_width = 72
-theme_override_font_sizes/font_size = 22
-text = "TEAM_SWITCH_CARD"
-alignment = 0
-text_overrun_behavior = 3
-expand_icon = true
-
-[node name="TeamSwitchSlot1" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamSwitchPanel/SwitchButtons" unique_id=342836476]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 128)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/icon_max_width = 72
-theme_override_font_sizes/font_size = 22
-text = "TEAM_SWITCH_CARD"
-alignment = 0
-text_overrun_behavior = 3
-expand_icon = true
-
-[node name="TeamSwitchSlot2" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamSwitchPanel/SwitchButtons" unique_id=497498661]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 128)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/icon_max_width = 72
-theme_override_font_sizes/font_size = 22
-text = "TEAM_SWITCH_CARD"
-alignment = 0
-text_overrun_behavior = 3
-expand_icon = true
-
-[node name="TeamSwitchSlot3" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamSwitchPanel/SwitchButtons" unique_id=1533480754]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 128)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/icon_max_width = 72
-theme_override_font_sizes/font_size = 22
-text = "TEAM_SWITCH_CARD"
-alignment = 0
-text_overrun_behavior = 3
-expand_icon = true
-
-[node name="TeamSwitchCancel" type="Button" parent="Column/TeamArena/TeamDock/DockColumn/TeamSwitchPanel" unique_id=1280231012]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-text = "ACTION_CANCEL"
-
-[node name="TeamResult" type="VBoxContainer" parent="Column/TeamArena/TeamDock/DockColumn" unique_id=660314184]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="TeamResultTitle" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/TeamResult" unique_id=1385848642]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"AnimaNameLabel"
-text = "TEAM_WIN_TITLE"
-horizontal_alignment = 1
-
-[node name="TeamResultBody" type="Label" parent="Column/TeamArena/TeamDock/DockColumn/TeamResult" unique_id=1068141989]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"BodyLabel"
-text = "TEAM_WIN_BODY"
-horizontal_alignment = 1
-autowrap_mode = 2
-
-[node name="TeamResultActions" type="HBoxContainer" parent="Column" unique_id=751945528]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 16
-
-[node name="TeamLeaveButton" type="Button" parent="Column/TeamResultActions" unique_id=85100780]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(148, 96)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.72, 0.8, 0.92, 0.88)
-theme_override_colors/font_focus_color = Color(0.88, 0.94, 1, 1)
-theme_override_colors/font_pressed_color = Color(1, 0.82, 0.4, 1)
-theme_override_colors/font_hover_color = Color(0.88, 0.94, 1, 1)
-theme_override_font_sizes/font_size = 24
-text = "BATTLE_RETURN_LOBBY"
-flat = true
-
-[node name="TeamRetryButton" type="Button" parent="Column/TeamResultActions" unique_id=1423113171]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"PrimaryButton"
-text = "TEAM_FIND_RIVALS"
 
 [node name="TeamBuilderScroll" type="ScrollContainer" parent="Column" unique_id=230808260]
 unique_name_in_owner = true
@@ -792,3 +289,547 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PrimaryButton"
 text = "TEAM_START"
+
+[node name="TeamArena" type="VBoxContainer" parent="." unique_id=1134020524]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="TeamArenaLayers" type="Control" parent="TeamArena" unique_id=831379086]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="TeamChrome" type="Control" parent="TeamArena/TeamArenaLayers" unique_id=1063335558]
+unique_name_in_owner = true
+z_index = 10
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="TopScrim" type="TextureRect" parent="TeamArena/TeamArenaLayers/TeamChrome" unique_id=1396859128]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 220.0
+grow_horizontal = 2
+mouse_filter = 2
+texture = SubResource("TopScrimTexture")
+expand_mode = 1
+
+[node name="TeamTurn" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome" unique_id=1287318570]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 8.0
+offset_right = -16.0
+offset_bottom = 40.0
+grow_horizontal = 2
+theme_type_variation = &"EyebrowLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.95)
+theme_override_constants/outline_size = 4
+text = "TEAM_TITLE"
+horizontal_alignment = 1
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="TeamDock" type="PanelContainer" parent="TeamArena/TeamArenaLayers/TeamChrome" unique_id=428670625]
+unique_name_in_owner = true
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -340.0
+theme_override_styles/panel = SubResource("ArenaDockPlate")
+
+[node name="DockColumn" type="VBoxContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock" unique_id=1840572237]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TeamFeedback" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn" unique_id=956163316]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.95)
+theme_override_constants/outline_size = 4
+text = "TEAM_CHOOSE_ACTION"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+text_overrun_behavior = 3
+max_lines_visible = 1
+
+[node name="ArenaHud" type="PanelContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn" unique_id=1541990209]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("ArenaHudPlate")
+
+[node name="HudColumn" type="VBoxContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud" unique_id=493753448]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="IdentityRow" type="HBoxContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn" unique_id=213086192]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PlayerIdentity" type="VBoxContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow" unique_id=1092556328]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="TeamPlayerSlots" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/PlayerIdentity" unique_id=2056256623]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "TEAM_SLOTS"
+
+[node name="TeamPlayerName" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/PlayerIdentity" unique_id=65722532]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/outline_size = 6
+text = "ANIMA_FALLBACK_NAME"
+text_overrun_behavior = 3
+
+[node name="Versus" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow" unique_id=644709153]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+theme_type_variation = &"EyebrowLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.95)
+theme_override_constants/outline_size = 4
+text = "BATTLE_VS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentIdentity" type="VBoxContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow" unique_id=1461018444]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="TeamOpponentSlots" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/OpponentIdentity" unique_id=479100345]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.9)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "TEAM_SLOTS"
+horizontal_alignment = 2
+
+[node name="TeamOpponentName" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/IdentityRow/OpponentIdentity" unique_id=1052117162]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/outline_size = 6
+text = "TEAM_RIVAL"
+horizontal_alignment = 2
+text_overrun_behavior = 3
+
+[node name="HpRow" type="HBoxContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn" unique_id=836291556]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="PlayerHpStack" type="Control" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow" unique_id=1100946269]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="TeamPlayerHp" type="ProgressBar" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/PlayerHpStack" unique_id=263979075]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("HpBackground")
+theme_override_styles/fill = SubResource("HpFill")
+value = 100.0
+fill_mode = 1
+show_percentage = false
+
+[node name="TeamPlayerHpValue" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/PlayerHpStack" unique_id=1584766397]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "FORMAT_RATIO"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OpponentHpStack" type="Control" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow" unique_id=2004823074]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="TeamOpponentHp" type="ProgressBar" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/OpponentHpStack" unique_id=1219237092]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("HpBackground")
+theme_override_styles/fill = SubResource("HpFill")
+value = 100.0
+show_percentage = false
+
+[node name="TeamOpponentHpValue" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/ArenaHud/HudColumn/HpRow/OpponentHpStack" unique_id=1791093358]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"SectionLabel"
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 22
+text = "FORMAT_RATIO"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TeamActions" type="VBoxContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn" unique_id=29427052]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PrimaryRow" type="HBoxContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamActions" unique_id=1304279075]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TeamAttackButton" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamActions/PrimaryRow" unique_id=1116666627]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "BATTLE_ACTION_STRIKE"
+text_overrun_behavior = 3
+
+[node name="TeamSpecialButton" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamActions/PrimaryRow" unique_id=189275996]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "BATTLE_ACTION_SURGE"
+text_overrun_behavior = 3
+
+[node name="TeamGuardButton" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamActions/PrimaryRow" unique_id=60799210]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "BATTLE_ACTION_GUARD"
+
+[node name="SupportRow" type="HBoxContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamActions" unique_id=1087938823]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TeamItemButton" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamActions/SupportRow" unique_id=143338976]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "BATTLE_ACTION_ITEM"
+
+[node name="TeamSwitchButton" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamActions/SupportRow" unique_id=469885442]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "TEAM_SWITCH"
+
+[node name="TeamForfeitButton" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamActions/SupportRow" unique_id=1802200446]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "BATTLE_FORFEIT"
+text_overrun_behavior = 3
+
+[node name="TeamSwitchPanel" type="VBoxContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn" unique_id=2099372939]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TeamSwitchTitle" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamSwitchPanel" unique_id=10651810]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionLabel"
+text = "TEAM_SWITCH_TITLE"
+horizontal_alignment = 1
+
+[node name="SwitchButtons" type="GridContainer" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamSwitchPanel" unique_id=155499485]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="TeamSwitchSlot0" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamSwitchPanel/SwitchButtons" unique_id=2003171458]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/icon_max_width = 72
+theme_override_font_sizes/font_size = 22
+text = "TEAM_SWITCH_CARD"
+alignment = 0
+text_overrun_behavior = 3
+expand_icon = true
+
+[node name="TeamSwitchSlot1" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamSwitchPanel/SwitchButtons" unique_id=342836476]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/icon_max_width = 72
+theme_override_font_sizes/font_size = 22
+text = "TEAM_SWITCH_CARD"
+alignment = 0
+text_overrun_behavior = 3
+expand_icon = true
+
+[node name="TeamSwitchSlot2" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamSwitchPanel/SwitchButtons" unique_id=497498661]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/icon_max_width = 72
+theme_override_font_sizes/font_size = 22
+text = "TEAM_SWITCH_CARD"
+alignment = 0
+text_overrun_behavior = 3
+expand_icon = true
+
+[node name="TeamSwitchSlot3" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamSwitchPanel/SwitchButtons" unique_id=1533480754]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/icon_max_width = 72
+theme_override_font_sizes/font_size = 22
+text = "TEAM_SWITCH_CARD"
+alignment = 0
+text_overrun_behavior = 3
+expand_icon = true
+
+[node name="TeamSwitchCancel" type="Button" parent="TeamArena/TeamArenaLayers/TeamChrome/TeamDock/DockColumn/TeamSwitchPanel" unique_id=1280231012]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "ACTION_CANCEL"
+
+[node name="TeamOverlay" type="Control" parent="TeamArena/TeamArenaLayers" unique_id=1486175971]
+unique_name_in_owner = true
+z_index = 20
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="TeamResultPanel" type="PanelContainer" parent="TeamArena/TeamArenaLayers/TeamOverlay" unique_id=1849473561]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -236.0
+theme_type_variation = &"ModalPanel"
+
+[node name="TeamResult" type="VBoxContainer" parent="TeamArena/TeamArenaLayers/TeamOverlay/TeamResultPanel" unique_id=660314184]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TeamResultTitle" type="Label" parent="TeamArena/TeamArenaLayers/TeamOverlay/TeamResultPanel/TeamResult" unique_id=1385848642]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AnimaNameLabel"
+text = "TEAM_WIN_TITLE"
+horizontal_alignment = 1
+
+[node name="TeamResultBody" type="Label" parent="TeamArena/TeamArenaLayers/TeamOverlay/TeamResultPanel/TeamResult" unique_id=1068141989]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"BodyLabel"
+text = "TEAM_WIN_BODY"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="TeamResultActions" type="HBoxContainer" parent="TeamArena/TeamArenaLayers/TeamOverlay/TeamResultPanel/TeamResult" unique_id=751945528]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TeamLeaveButton" type="Button" parent="TeamArena/TeamArenaLayers/TeamOverlay/TeamResultPanel/TeamResult/TeamResultActions" unique_id=85100780]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(148, 96)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.8, 0.92, 0.88)
+theme_override_colors/font_focus_color = Color(0.88, 0.94, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.82, 0.4, 1)
+theme_override_colors/font_hover_color = Color(0.88, 0.94, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "BATTLE_RETURN_LOBBY"
+flat = true
+
+[node name="TeamRetryButton" type="Button" parent="TeamArena/TeamArenaLayers/TeamOverlay/TeamResultPanel/TeamResult/TeamResultActions" unique_id=1423113171]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PrimaryButton"
+text = "TEAM_FIND_RIVALS"
+
+[node name="TeamBattleStage" type="Control" parent="TeamArena/TeamArenaLayers" unique_id=833744733]
+unique_name_in_owner = true
+clip_contents = true
+custom_minimum_size = Vector2(0, 390)
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="TeamArenaBackground" type="TextureRect" parent="TeamArena/TeamArenaLayers/TeamBattleStage" unique_id=337221338]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="TeamEffectiveness" type="Control" parent="TeamArena/TeamArenaLayers/TeamBattleStage" unique_id=1534018301]
+unique_name_in_owner = true
+visible = false
+z_index = 4
+layout_mode = 1
+anchor_top = 0.4
+anchor_right = 1.0
+anchor_bottom = 0.4
+offset_left = 16.0
+offset_top = -41.0
+offset_right = -16.0
+offset_bottom = 41.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="TeamEventPlate" type="PanelContainer" parent="TeamArena/TeamArenaLayers/TeamBattleStage/TeamEffectiveness" unique_id=1116362150]
+unique_name_in_owner = true
+z_index = -1
+clip_contents = true
+custom_minimum_size = Vector2(0, 76)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"BattleEventPlate"
+
+[node name="TeamEffectivenessLabel" type="Label" parent="TeamArena/TeamArenaLayers/TeamBattleStage/TeamEffectiveness/TeamEventPlate" unique_id=158627219]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/font_shadow_color = Color(1, 0.82, 0.4, 0.48)
+theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.065, 0.98)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/outline_size = 8
+theme_override_constants/shadow_outline_size = 12
+theme_override_fonts/font = SubResource("EffectivenessBold")
+theme_override_font_sizes/font_size = 36
+text = "BATTLE_EFFECTIVE"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+max_lines_visible = 2
+
+[node name="TeamPlayerAnchor" type="Node2D" parent="TeamArena/TeamArenaLayers/TeamBattleStage" unique_id=493831421]
+unique_name_in_owner = true
+scale = Vector2(0.62, 0.62)
+
+[node name="TeamPlayerSprite" type="AnimatedSprite2D" parent="TeamArena/TeamArenaLayers/TeamBattleStage/TeamPlayerAnchor" unique_id=370236390]
+unique_name_in_owner = true
+visible = false
+script = ExtResource("2_presenter")
+
+[node name="TeamOpponentAnchor" type="Node2D" parent="TeamArena/TeamArenaLayers/TeamBattleStage" unique_id=1511576199]
+unique_name_in_owner = true
+scale = Vector2(0.62, 0.62)
+
+[node name="TeamOpponentSprite" type="AnimatedSprite2D" parent="TeamArena/TeamArenaLayers/TeamBattleStage/TeamOpponentAnchor" unique_id=1882161969]
+unique_name_in_owner = true
+visible = false
+flip_h = true
+script = ExtResource("2_presenter")
+
+[node name="TeamDamage" type="Label" parent="TeamArena/TeamArenaLayers/TeamBattleStage" unique_id=1648293751]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -40.0
+offset_right = 100.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"AnimaNameLabel"
+theme_override_colors/font_color = Color(1, 0.35, 0.48, 1)
+text = "BATTLE_DAMAGE"
+horizontal_alignment = 1
+vertical_alignment = 1
