@@ -59,12 +59,11 @@ static func player_seeker_z(anima_height_cm: float, seeker_height_cm: float) -> 
 	)
 
 
-## Figur Seeker dijepit ke tepi layar **setelah** kamera memutuskan zoom dan
-## pusatnya, jadi dulu ia tidak pernah ikut dihitung: kamera membingkai kedua
-## Anima serapat mungkin lalu figurnya mendarat di atas mereka. Ini lebar kolom
-## di ruang layer yang harus dicadangkan di sisi yang punya figur — badan opaknya
-## plus dua pad, satu memisahkannya dari tepi kamera dan satu jadi udara ke Anima
-## terdekat.
+## Figur Seeker ditempatkan **setelah** kamera memutuskan zoom dan pusatnya:
+## edge clamp menjaganya di viewport, companion clamp menjaganya tetap di samping
+## Anima. Ini lebar kolom di ruang layer yang harus dicadangkan di sisi yang punya
+## figur — badan opaknya plus dua pad, satu untuk tepi kamera dan satu untuk udara
+## ke Anima terdekat.
 ##
 ## ponytail: pad-nya piksel layar dipakai apa adanya sebagai piksel layer.
 ## Plafonnya zoom arena 0,72–1,14, jadi selisihnya <=5 px pada stage 720; kalau
@@ -111,26 +110,37 @@ static func seeker_opaque_center(loaded: Dictionary) -> float:
 	return min_x + width * 0.5 - frame_w * 0.5
 
 
-## Sesudah kamera memilih zoom-nya, pusat badan opak sebuah figur Seeker dijepit
-## `SEEKER_CAMERA_EDGE_PAD_RATIO` dari tepi sisinya. Satu rumus melayani kedua
-## sisi karena `flipped` adalah fakta yang sama dua kali: sheet Seeker digambar
-## menghadap canvas-left, jadi figur yang dibalik adalah figur yang berdiri di
-## tepi kiri — dan pembalikan itu juga yang menukar tanda pusat badannya.
+## Sesudah kamera memilih zoom-nya, pusat badan opak Seeker dijaga dari tepi
+## viewport sekaligus tetap di samping Anima miliknya. Edge clamp mencegah
+## clipping di layar sempit; companion clamp mencegah figur terlepas jauh ke
+## ujung layar saat Battle Arena melebar di landscape.
+##
+## `companion_edge_x` berada di koordinat X stage: tepi kiri Anima untuk figur
+## pemain yang `flipped`, atau tepi kanan Anima untuk Boss di sisi seberang.
 static func seeker_pinned_x(
 	loaded: Dictionary,
 	sprite_scale: float,
 	stage_width: float,
 	layer_x: float,
 	camera_zoom: float,
-	flipped: bool
+	flipped: bool,
+	companion_edge_x: float
 ) -> float:
 	var half_screen_width := (
 		seeker_reference_width(loaded) * absf(sprite_scale) * camera_zoom * 0.5
 	)
 	var pad := stage_width * SEEKER_CAMERA_EDGE_PAD_RATIO
-	var target_center := (
+	var edge_center := (
 		pad + half_screen_width if flipped
 		else stage_width - pad - half_screen_width
+	)
+	var companion_center := (
+		companion_edge_x - pad - half_screen_width if flipped
+		else companion_edge_x + pad + half_screen_width
+	)
+	var target_center := (
+		maxf(edge_center, companion_center) if flipped
+		else minf(edge_center, companion_center)
 	)
 	var body := seeker_opaque_center(loaded) * absf(sprite_scale)
 	return (target_center - layer_x) / camera_zoom + (body if flipped else -body)

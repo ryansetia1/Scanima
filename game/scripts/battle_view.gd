@@ -1450,10 +1450,9 @@ func _position_fighters() -> void:
 	))
 	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
 		return
-	# Figur pemain dijepit ke tepi layar sesudah kamera memilih bingkainya, jadi
-	# kotak yang hanya memuat kedua Anima membuatnya mendarat di atas Anima
-	# pemain. Kolomnya dicadangkan di sisi kiri: pusat bingkai bergeser ke kanan
-	# menjauhi figur, dan zoom baru mengecil kalau memang tidak cukup.
+	# Figur pemain ditempatkan sesudah kamera memilih bingkai kedua Anima. Kolom
+	# kiri memberi ruang untuk tubuhnya; edge clamp mencegah clipping dan
+	# companion clamp mencegahnya terlepas jauh dari Anima pada landscape.
 	var figure_column := _seeker_column()
 	if figure_column > 0.0:
 		bounds = bounds.grow_individual(figure_column, 0.0, 0.0, 0.0)
@@ -1584,9 +1583,10 @@ func _apply_player_seeker_layer() -> void:
 		_player_seeker_shadow.z_index = lane
 
 
-## Figur pemain sengaja tidak ikut menentukan zoom Duel: ia dijepit ke tepi
-## kamera sesudah zoom-nya dipilih, jadi memasukkannya ke bounds hanya akan
-## mengecilkan setiap Duel yang selama ini tidak punya figur sama sekali.
+## Figur pemain tidak ikut menentukan zoom Duel: sesudah kamera membingkai
+## kedua Anima, figur dijaga dari tepi viewport sekaligus tetap di samping
+## Anima pemain. Ini mempertahankan ruang portrait tanpa membuatnya terlepas ke
+## ujung layar pada Arena landscape yang lebar.
 func _pin_player_seeker_to_camera_left(camera_zoom: float) -> void:
 	if (
 		not is_instance_valid(_player_seeker)
@@ -1594,13 +1594,18 @@ func _pin_player_seeker_to_camera_left(camera_zoom: float) -> void:
 		or camera_zoom <= 0.0
 	):
 		return
+	var stage_left := _arena.get_global_rect().position.x
+	var player_edge := 0.0
+	if is_instance_valid(_player_sprite) and _player_sprite.sprite_frames != null:
+		player_edge = _player_sprite.body_viewport_rect().position.x - stage_left
 	_player_seeker.position.x = BattleScale.seeker_pinned_x(
 		_player_seeker_loaded,
 		_player_seeker.scale.x,
 		_arena.size.x,
 		_fighter_layer.position.x,
 		camera_zoom,
-		true
+		true,
+		player_edge
 	)
 	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
 

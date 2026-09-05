@@ -2499,18 +2499,23 @@ func _set_background_ground_offset(value: float) -> void:
 func _pin_seeker_to_camera_right(camera_zoom: float) -> void:
 	if not is_instance_valid(_seeker) or not _seeker.has_sheet() or camera_zoom <= 0.0:
 		return
+	var stage_left := _battle_stage.get_global_rect().position.x
+	var opponent_edge := _battle_stage.size.x
+	if is_instance_valid(_opponent_sprite) and _opponent_sprite.sprite_frames != null:
+		opponent_edge = _opponent_sprite.body_viewport_rect().end.x - stage_left
 	_seeker.position.x = BattleScale.seeker_pinned_x(
 		_seeker_loaded,
 		_seeker.scale.x,
 		_battle_stage.size.x,
 		_fighter_layer.position.x,
 		camera_zoom,
-		false
+		false,
+		opponent_edge
 	)
 
 
 ## Cermin dari `_pin_seeker_to_camera_right()`: sesudah kamera memilih zoom-nya,
-## figur pemain dijepit ke tepi sisi pemain dengan pad yang sama.
+## figur pemain dijaga dari tepi viewport sekaligus tetap di samping Anima-nya.
 func _pin_player_seeker_to_camera_left(camera_zoom: float) -> void:
 	if (
 		not is_instance_valid(_player_seeker)
@@ -2518,23 +2523,26 @@ func _pin_player_seeker_to_camera_left(camera_zoom: float) -> void:
 		or camera_zoom <= 0.0
 	):
 		return
+	var stage_left := _battle_stage.get_global_rect().position.x
+	var player_edge := 0.0
+	if is_instance_valid(_player_sprite) and _player_sprite.sprite_frames != null:
+		player_edge = _player_sprite.body_viewport_rect().position.x - stage_left
 	_player_seeker.position.x = BattleScale.seeker_pinned_x(
 		_player_seeker_loaded,
 		_player_seeker.scale.x,
 		_battle_stage.size.x,
 		_fighter_layer.position.x,
 		camera_zoom,
-		true
+		true,
+		player_edge
 	)
 
 
-## Kotak yang wajib terlihat kamera. Kedua figur Seeker dijepit ke tepi layar
-## **sesudah** kamera memilih zoom dan pusatnya, jadi posisi mereka saat ini
-## turunan dari bingkai sebelumnya — memasukkannya sebagai rect di posisi lama
-## hanya menjamin figurnya terlihat, bukan memberinya udara. Yang dicadangkan
-## karena itu kolom di sisi masing-masing: zoom hanya mengecil kalau memang tidak
-## cukup, dan pusatnya bergeser menjauhi figur, jadi Anima yang minggir alih-alih
-## komposisi shot yang dipindah.
+## Kotak yang wajib terlihat kamera. Kedua figur Seeker ditempatkan **sesudah**
+## kamera memilih zoom dan pusatnya, lalu dijaga antara tepi viewport dan Anima
+## miliknya. Yang dicadangkan karena itu kolom di sisi masing-masing: zoom hanya
+## mengecil kalau memang tidak cukup, sementara companion clamp mencegah figur
+## terlepas jauh pada landscape.
 func _fighter_shot_bounds() -> Rect2:
 	var ground_y := _player_anchor.position.y
 	var bounds := _anima_shot_rect(_player_sprite, _player_anchor, ground_y).merge(

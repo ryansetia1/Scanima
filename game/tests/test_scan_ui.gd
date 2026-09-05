@@ -4616,10 +4616,10 @@ func _test_battle_view() -> void:
 		await _test_duel_seeker_avatar_layout(packed, loaded, session, duel_viewport_size)
 
 
-## Arena Duel di dalam `root` headless melapor lebar 0, jadi jepit tepi kamera
-## dan pergeseran dock tidak bisa dibuktikan di sana — angka pad-nya akan selalu
-## nol. Geometri karena itu diperiksa pada viewport sungguhan, prosedur yang sama
-## seperti bug layout lain di shell ini.
+## Arena Duel di dalam `root` headless melapor lebar 0, jadi edge/companion
+## clamp dan pergeseran dock tidak bisa dibuktikan di sana — angka pad-nya akan
+## selalu nol. Geometri karena itu diperiksa pada viewport sungguhan, prosedur
+## yang sama seperti bug layout lain di shell ini.
 func _test_duel_seeker_avatar_layout(
 	packed: PackedScene,
 	loaded: Dictionary,
@@ -4670,8 +4670,8 @@ func _test_duel_seeker_avatar_layout(
 		"reserving the figure's column slides the Duel frame away from it at %s"
 			% viewport_size
 	)
-	# Dihitung ulang di sini alih-alih dibaca dari view: kalau rumus jepitnya
-	# bergeser, angka yang diharapkan tidak ikut bergeser diam-diam.
+	# Dihitung ulang di sini alih-alih dibaca dari view: kalau kontrak edge dan
+	# companion clamp bergeser, angka yang diharapkan tidak ikut bergeser diam-diam.
 	var avatar_width := BattleScale.seeker_reference_width(avatar_loaded)
 	var avatar_body := BattleScale.seeker_opaque_center(avatar_loaded)
 	# `flip_h` mencerminkan sel terhadap origin, jadi pusat badan pindah tanda.
@@ -4680,11 +4680,16 @@ func _test_duel_seeker_avatar_layout(
 	) * layer.scale.x
 	var avatar_screen_w := avatar_width * absf(avatar.scale.x) * layer.scale.x
 	var pad := arena.size.x * BattleScale.SEEKER_CAMERA_EDGE_PAD_RATIO
+	var player_sprite := view.find_child("BattlePlayerSprite", true, false) as AnimaPresenter
+	var player_screen_left := player_sprite.body_viewport_rect().position.x
+	var edge_center := pad + avatar_screen_w * 0.5
+	var companion_center := player_screen_left - pad - avatar_screen_w * 0.5
+	var expected_center := maxf(edge_center, companion_center)
 	_check(
 		pad > 1.0
 		and avatar_width > 1.0
-		and absf(avatar_center_x - (pad + avatar_screen_w * 0.5)) < 1.0,
-		"the Duel figure pins to its own screen edge after the camera zooms, at %s"
+		and absf(avatar_center_x - expected_center) < 1.0,
+		"the Duel figure stays edge-safe and attached to its Anima after camera zoom at %s"
 			% viewport_size
 	)
 	_check(
@@ -4692,24 +4697,22 @@ func _test_duel_seeker_avatar_layout(
 		and player_anchor.position.x < arena.size.x * 0.5,
 		"the Duel figure shares the player Anima's half of the screen at %s" % viewport_size
 	)
-	# Inti keluhannya: badan figur dan badan Anima tidak boleh saling menembus
-	# lebih dari sedikit. Diukur di ruang layer pada sisi yang berhadapan saja —
-	# tepi kiri Anima terhadap tepi kanan figur. `SEEKER_COLUMN_GAP_SCALE` (0,75)
-	# sengaja mencadangkan kolom yang lebih sempit dari kebutuhan udara penuh
-	# supaya figur dan Anima terasa dekat; overlap yang tersisa ditanggung
-	# z-order `player_seeker_z()` dan dipagari di sini supaya tidak melebar diam-
-	# diam kalau formulanya berubah. Hanya bisa dibuktikan di viewport sungguhan:
-	# di `root` headless arena melapor lebar 0 dan setiap pad jadi nol.
-	var player_sprite := view.find_child("BattlePlayerSprite", true, false) as AnimaPresenter
-	var player_screen_left := layer.position.x + (
-		player_anchor.position.x
-		- player_sprite.opaque_local_rect().size.x * absf(player_anchor.scale.x) * 0.5
-	) * layer.scale.x
+	# Badan figur dan Anima tidak boleh saling menembus lebih dari sedikit, dan
+	# di landscape keduanya juga tidak boleh terpisah lebih dari satu pad kamera.
+	# Hanya bisa dibuktikan di viewport sungguhan: di `root` headless arena
+	# melapor lebar 0 dan setiap pad jadi nol.
+	var figure_to_anima_gap := player_screen_left - (
+		avatar_center_x + avatar_screen_w * 0.5
+	)
 	var max_overlap := avatar_screen_w * 0.2
 	_check(
-		player_screen_left - (avatar_center_x + avatar_screen_w * 0.5) >= -max_overlap,
+		figure_to_anima_gap >= -max_overlap,
 		"the Duel Anima and figure never overlap more than a fifth of the figure's width at %s"
 			% viewport_size
+	)
+	_check(
+		figure_to_anima_gap <= pad + 1.0,
+		"the Duel figure never detaches from its Anima on a wide arena at %s" % viewport_size
 	)
 	host.queue_free()
 	await process_frame

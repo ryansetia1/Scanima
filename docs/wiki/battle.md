@@ -148,8 +148,9 @@ Seeker-mu — yang kamu pilih lewat **Change Seeker Avatar** di
 sejauh Boss Seeker berdiri dari tepi seberang, dengan bayangan di kaki dan tidak
 pernah menutupi tombol aksi. Kamera menyisakan satu kolom untuk figur di sisi
 yang punya figur, jadi badannya dan badan Anima punya jarak alih-alih tumpang
-tindih; Anima yang minggir sedikit, bukan posisi shot-nya yang berubah. Saat
-kamera menjauh untuk memuat petarung besar, ia ikut merapat ke tepi layar sisimu.
+tindih. Di layar lebar, figur tetap berdiri di samping Anima miliknya alih-alih
+tertinggal sendirian di ujung layar; tepi layar hanya menjadi batas agar badannya
+tidak terpotong.
 Di **Team Battle**, latar ikut bergerak lebih lembut saat **Switch** ke Anima
 yang jauh berbeda tinggi atau lebar mengubah jarak kamera, jadi perubahan ukuran
 para petarung terbaca sebagai gerak kamera dan bukan figur yang berubah sendiri.

@@ -246,6 +246,7 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	)
 	var gameplay_arena_rect := arena.get_global_rect()
 	var gameplay_player_position := player_anchor.global_position
+	var portrait_seeker_gap := _seeker_to_player_gap_ratio(arena, seeker, player)
 	view.set_session(session, loaded, loaded)
 	await view.play_opening_intro()
 	_check(
@@ -279,6 +280,12 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		arena.get_global_rect().is_equal_approx(Rect2(Vector2.ZERO, Vector2(host.size)))
 		and view.get_global_rect().encloses(footer.get_global_rect()),
 		"Duel arena remains full-bleed and Chrome remains safe in landscape"
+	)
+	var duel_landscape_gap := _seeker_to_player_gap_ratio(arena, seeker, player)
+	_check(
+		duel_landscape_gap <= portrait_seeker_gap + 0.04,
+		"Duel landscape keeps the player Seeker attached to their Anima "
+		+ "(portrait=%.3f landscape=%.3f)" % [portrait_seeker_gap, duel_landscape_gap]
 	)
 	host.size = Vector2i(720, 1602)
 	await process_frame
@@ -434,6 +441,7 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	)
 	var gameplay_arena_rect := stage.get_global_rect()
 	var gameplay_player_position := player_anchor.global_position
+	var portrait_seeker_gap := _seeker_to_player_gap_ratio(stage, seeker, player)
 	var result_session := session.duplicate(true)
 	result_session["status"] = "won"
 	var result_state := (result_session["state"] as Dictionary).duplicate(true)
@@ -462,6 +470,12 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 			stage.get_global_rect(), Rect2(Vector2.ZERO, Vector2(host.size)),
 			view.get_global_rect(), dock.get_global_rect(),
 		]
+	)
+	var team_landscape_gap := _seeker_to_player_gap_ratio(stage, seeker, player)
+	_check(
+		team_landscape_gap <= portrait_seeker_gap + 0.04,
+		"Team landscape keeps the player Seeker attached to their Anima "
+		+ "(portrait=%.3f landscape=%.3f)" % [portrait_seeker_gap, team_landscape_gap]
 	)
 	host.size = Vector2i(720, 1602)
 	await process_frame
@@ -695,6 +709,18 @@ func _check_fighter_bounds(stage: Control, fighter: AnimatedSprite2D, label: Str
 		stage_rect.encloses(body),
 		"%s visible body stays inside the battle arena" % label
 	)
+
+
+func _seeker_to_player_gap_ratio(
+	stage: Control,
+	seeker: AnimatedSprite2D,
+	player: AnimatedSprite2D
+) -> float:
+	var body_value: Variant = player.call("body_viewport_rect")
+	if typeof(body_value) != TYPE_RECT2:
+		return INF
+	var stage_width := maxf(1.0, stage.get_global_rect().size.x)
+	return maxf(0.0, (body_value as Rect2).position.x - seeker.global_position.x) / stage_width
 
 
 func _test_expedition_intro(

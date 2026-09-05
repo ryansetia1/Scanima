@@ -18,7 +18,17 @@ sekarang mencadangkan tinggi minimum fighter HUD yang tetap dapat dihitung saat
 HUD tersembunyi, lalu menaruh garis kaki di atas Battle Chrome. Capture ulang
 small/normal/giant di kedua orientasi menunjukkan badan utama, kaki, dan contact
 shadow kembali terbaca. Team Battle, Expedition Battle/Elite, dan Boss tidak
-memerlukan koreksi framing.
+memerlukan koreksi framing vertikal pada pass itu.
+
+Follow-up pada contact sheet yang sama menemukan masalah horizontal yang belum
+dipagari: figur pemain tetap dijepit ke 2,5% tepi viewport, sehingga pada
+landscape ia terlepas jauh dari Anima miliknya. Repro scene production mengukur
+rasio jarak Seeker→Anima Duel naik dari 0,128 portrait menjadi 0,375 landscape,
+dan Team dari 0,127 menjadi 0,182. `BattleScale.seeker_pinned_x()` sekarang
+memakai dua batas: edge clamp tetap mencegah clipping, sedangkan companion clamp
+menahan figur di samping tepi badan Anima miliknya. Capture ulang Duel, Team,
+dan Boss pada 1600×720 menunjukkan kedua Seeker kembali menyatu dengan kelompok
+petarung tanpa mengubah Arena, Chrome, zoom, atau ground contact.
 
 `npm run selftest`, dry-run Smoke Set, seluruh pemeriksaan GodotIQ, serta suite
 sprite slicing, Auth, client state, offline resilience, Battle intro, shell UI,

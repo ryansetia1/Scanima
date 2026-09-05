@@ -361,8 +361,10 @@ skala non-linear dari dua kontrak itu lewat satu `shared_scales()` untuk
 seluruh tubuh di arena, termasuk Seeker di back lane. Anima 120 cm mengisi
 sekitar 45% kartu desain 720×800, lalu shot lebar di-fit ke 50% lebar kartu;
 fit lebar hanya mengecilkan dua Anima karena Seeker memakai back lane
-terpisah. Posisi X memakai tepi piksel opak dengan margin 5,5%, bukan tengah
-sel transparan. Lebar jendela tidak mengubah skala, dan
+terpisah. Posisi X memakai tepi piksel opak, bukan tengah sel transparan:
+edge clamp mencegah figur terpotong di layar sempit, sedangkan companion clamp
+menjaganya tetap di samping Anima miliknya ketika landscape melebar. Lebar
+jendela tidak mengubah skala, dan
 ruang vertikal ekstra tidak membesarkan karakter. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px)
 di client supaya kaki Seeker tidak terpotong oleh capture 300 px. Tinggi
 visual tidak mengubah combat power.
