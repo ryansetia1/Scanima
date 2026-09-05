@@ -960,6 +960,8 @@ func _begin_chapter_intro(art_cache: Dictionary) -> void:
 
 
 func _should_chapter_intro() -> bool:
+	if str(_run.get("status", "")) != "active":
+		return false
 	var run_id := str(_run.get("id", ""))
 	if run_id.is_empty() or run_id == _chapter_intro_run:
 		return false

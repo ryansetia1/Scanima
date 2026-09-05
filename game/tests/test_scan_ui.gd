@@ -5005,14 +5005,20 @@ func _test_team_battle_view() -> void:
 		and arena_background.size.y >= battle_stage.size.y,
 		"Team Battle uses its generated arena and cover-crops it without gaps"
 	)
+	var calibration_script := load("res://scripts/battle_background_calibration.gd") as GDScript
+	var team_background_profile: Dictionary = calibration_script.profile_for(
+		&"team", battle_stage.size
+	)
 	_check(
-		is_equal_approx(
-			arena_background.position.y,
-			BattleScale.grounded_background_y(
-				battle_stage.size.y, arena_background.size.y
+		arena_background.position.is_equal_approx(
+			calibration_script.background_position(
+				battle_stage.size,
+				arena_background.size,
+				0.5,
+				team_background_profile
 			)
 		),
-		"Team Battle pins its painted floor to the fighter ground line"
+		"Team Battle applies the calibrated static-background position"
 	)
 	var arena_background_material := arena_background.material as ShaderMaterial
 	var arena_camera_zoom := float(
@@ -6418,9 +6424,19 @@ func _test_expedition_view() -> void:
 		"boss_seeker": _boss_seeker_payload(),
 	}
 	view.visible = true
+	var chapter_dialog := view.find_child("ChapterSeekerDialog", true, false) as BossSeekerDialog
+	var checkpoint_run := intro_run.duplicate(true)
+	checkpoint_run["status"] = "checkpoint"
+	checkpoint_run["available_node_ids"] = []
+	checkpoint_run["zone_map"] = null
+	view.set_run(checkpoint_run, {}, {"boss_seeker": _boss_seeker_loaded()})
+	await process_frame
+	_check(
+		chapter_dialog != null and not chapter_dialog.is_open(),
+		"start-run checkpoint waits for the active Zone 1 map before opening the chapter intro"
+	)
 	view.set_run(intro_run, {}, {"boss_seeker": _boss_seeker_loaded()})
 	await process_frame
-	var chapter_dialog := view.find_child("ChapterSeekerDialog", true, false) as BossSeekerDialog
 	var chapter_line := chapter_dialog.find_child("SeekerLine", true, false) as Label if chapter_dialog != null else null
 	_check(
 		chapter_dialog != null
