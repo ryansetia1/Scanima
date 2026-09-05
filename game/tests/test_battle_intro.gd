@@ -108,12 +108,16 @@ func _source_function(source: String, declaration: String) -> String:
 
 func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dictionary) -> void:
 	var packed := load("res://scenes/ui/battle_view.tscn") as PackedScene
+	var safe_host := MarginContainer.new()
+	safe_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	safe_host.add_theme_constant_override("margin_left", 24)
+	safe_host.add_theme_constant_override("margin_top", 60)
+	safe_host.add_theme_constant_override("margin_right", 32)
+	safe_host.add_theme_constant_override("margin_bottom", 80)
+	host.add_child(safe_host)
 	var view := packed.instantiate()
-	host.add_child(view)
+	safe_host.add_child(view)
 	view.visible = true
-	view.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	view.position = Vector2.ZERO
-	view.size = Vector2(host.size)
 	await process_frame
 	view.set_player_avatar(seeker_loaded)
 	var session := {
@@ -138,9 +142,19 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var footer := view.find_child("BattleFooter", true, false) as Control
 	var strike := view.find_child("BattleStrikeButton", true, false) as Button
 	var arena := view.find_child("BattleArena", true, false) as Control
+	var player_anchor := view.find_child("BattlePlayerAnchor", true, false) as Node2D
 	var background := view.find_child("BattleArenaBackground", true, false) as TextureRect
 	var background_material := background.material as ShaderMaterial
 	var zoom_value: Variant = background_material.get_shader_parameter("camera_zoom")
+	var arena_rect := arena.get_global_rect()
+	var safe_rect: Rect2 = view.get_global_rect()
+	var cinematic_ground_y := player_anchor.global_position.y
+	_check(
+		arena_rect.is_equal_approx(Rect2(Vector2.ZERO, Vector2(host.size)))
+		and arena_rect.encloses(footer.get_global_rect())
+		and safe_rect.encloses(footer.get_global_rect()),
+		"Duel arena fills behind device insets while command chrome stays in the safe area"
+	)
 	_check_background_grounding(
 		arena,
 		background,
@@ -160,8 +174,11 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		and not (view.find_child("StatusOverlay", true, false) as Control).visible
 		and not (view.find_child("FighterHudPlate", true, false) as Control).visible
 		and is_zero_approx(footer.modulate.a)
-		and strike.disabled,
-		"fresh Duel starts on the player Seeker alone with combat chrome locked"
+		and footer.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and strike.disabled
+		and strike.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and strike.focus_mode == Control.FOCUS_NONE,
+		"fresh Duel starts on the player Seeker alone with hidden chrome unable to receive input"
 	)
 	var reveal_order: Array[String] = []
 	var opponent_settled := [false]
@@ -179,19 +196,44 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 			var portal := opponent.get_parent().find_child("SummonPortal", false, false) as IncubatorEffect
 			opponent_settled[0] = not portal.is_active() and seeker.animation == "switch_command"
 	)
-	await view.play_opening_intro()
+	view.play_opening_intro()
+	var transition_started_at := -1
+	var saw_joint_transition := false
+	var transition_deadline := Time.get_ticks_msec() + 10000
+	while strike.disabled and Time.get_ticks_msec() < transition_deadline:
+		if footer.modulate.a > 0.01 and footer.modulate.a < 0.99:
+			if transition_started_at < 0:
+				transition_started_at = Time.get_ticks_msec()
+			saw_joint_transition = (
+				player_anchor.global_position.y < cinematic_ground_y - 1.0
+				and arena.get_global_rect().is_equal_approx(arena_rect)
+				and strike.disabled
+				and strike.mouse_filter == Control.MOUSE_FILTER_IGNORE
+				and strike.focus_mode == Control.FOCUS_NONE
+			)
+		await process_frame
+	var transition_elapsed := (
+		Time.get_ticks_msec() - transition_started_at if transition_started_at >= 0 else 0
+	)
 	_check(
 		reveal_order == ["opponent", "player"]
 		and opponent_settled[0]
+		and saw_joint_transition
+		and transition_elapsed >= 220
+		and transition_elapsed <= 520
 		and player_shadow.visible
 		and opponent_shadow.visible
 		and (view.find_child("StatusOverlay", true, false) as Control).visible
 		and (view.find_child("FighterHudPlate", true, false) as Control).visible
 		and is_equal_approx(footer.modulate.a, 1.0)
+		and player_anchor.global_position.y < cinematic_ground_y - 1.0
+		and arena.get_global_rect().is_equal_approx(arena_rect)
 		and not strike.disabled
 		and seeker.animation == "intro_idle",
-		"Duel intro settles both summons before restoring combat UI"
+		"Duel intro reframes the whole world with Chrome for 0.32 seconds before input unlocks"
 	)
+	var gameplay_arena_rect := arena.get_global_rect()
+	var gameplay_player_position := player_anchor.global_position
 	view.set_session(session, loaded, loaded)
 	await view.play_opening_intro()
 	_check(
@@ -200,7 +242,35 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		and not (opponent.get_parent().find_child("SummonPortal", false, false) as IncubatorEffect).is_active(),
 		"ordinary Duel session refresh does not replay the opening intro"
 	)
-	view.queue_free()
+	var result_session := session.duplicate(true)
+	result_session["status"] = "won"
+	var result_state := (result_session["state"] as Dictionary).duplicate(true)
+	result_state["status"] = "won"
+	result_session["state"] = result_state
+	view.set_session(result_session, loaded, loaded)
+	await process_frame
+	var result_panel := view.find_child("BattleResultPanel", true, false) as Control
+	var overlay := view.find_child("BattleOverlay", true, false) as Control
+	var actions := view.find_child("Actions", true, false) as Control
+	_check(
+		result_panel.visible
+		and result_panel.get_parent() == overlay
+		and not actions.visible
+		and arena.get_global_rect().is_equal_approx(gameplay_arena_rect)
+		and player_anchor.global_position.is_equal_approx(gameplay_player_position),
+		"Duel result overlays the final pose without resizing or reframing the arena"
+	)
+	host.size = Vector2i(1602, 720)
+	await process_frame
+	await process_frame
+	_check(
+		arena.get_global_rect().is_equal_approx(Rect2(Vector2.ZERO, Vector2(host.size)))
+		and view.get_global_rect().encloses(footer.get_global_rect()),
+		"Duel arena remains full-bleed and Chrome remains safe in landscape"
+	)
+	host.size = Vector2i(720, 1602)
+	await process_frame
+	safe_host.queue_free()
 	await process_frame
 
 

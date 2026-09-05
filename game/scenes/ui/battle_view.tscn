@@ -187,26 +187,34 @@ theme_override_font_sizes/font_size = 22
 text = "CHAPTER_NEW_BADGE"
 horizontal_alignment = 2
 
-[node name="BattleContent" type="VBoxContainer" parent="Column" unique_id=359509458]
+[node name="BattleContent" type="Control" parent="." unique_id=359509458]
 unique_name_in_owner = true
 visible = false
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="ArenaPanel" type="PanelContainer" parent="Column/BattleContent" unique_id=722882558]
-layout_mode = 2
-size_flags_vertical = 3
+[node name="ArenaPanel" type="PanelContainer" parent="BattleContent" unique_id=722882558]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_styles/panel = SubResource("Empty")
 
-[node name="BattleArena" type="Control" parent="Column/BattleContent/ArenaPanel" unique_id=272239319]
+[node name="BattleArena" type="Control" parent="BattleContent/ArenaPanel" unique_id=272239319]
 unique_name_in_owner = true
 clip_contents = true
 custom_minimum_size = Vector2(0, 400)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="BattleArenaBackground" type="TextureRect" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=505836325]
+[node name="BattleArenaBackground" type="TextureRect" parent="BattleContent/ArenaPanel/BattleArena" unique_id=505836325]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -219,7 +227,20 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="TopScrim" type="TextureRect" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=1767960143]
+[node name="BattleChrome" type="Control" parent="." unique_id=1785781094]
+unique_name_in_owner = true
+visible = false
+z_index = 10
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopScrim" type="TextureRect" parent="BattleChrome" unique_id=1767960143]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -229,7 +250,7 @@ mouse_filter = 2
 texture = SubResource("TopScrimTexture")
 expand_mode = 1
 
-[node name="StatusOverlay" type="VBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=715232036]
+[node name="StatusOverlay" type="VBoxContainer" parent="BattleChrome" unique_id=715232036]
 unique_name_in_owner = true
 z_index = 2
 layout_mode = 1
@@ -243,16 +264,16 @@ grow_horizontal = 2
 mouse_filter = 2
 theme_override_constants/separation = 4
 
-[node name="StatusRow" type="HBoxContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay" unique_id=936339040]
+[node name="StatusRow" type="HBoxContainer" parent="BattleChrome/StatusOverlay" unique_id=936339040]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="TurnSpacer" type="Control" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay/StatusRow" unique_id=1700662627]
+[node name="TurnSpacer" type="Control" parent="BattleChrome/StatusOverlay/StatusRow" unique_id=1700662627]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="BattleTurn" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay/StatusRow" unique_id=1404385428]
+[node name="BattleTurn" type="Label" parent="BattleChrome/StatusOverlay/StatusRow" unique_id=1404385428]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -262,7 +283,7 @@ text = "BATTLE_TURN"
 vertical_alignment = 1
 text_overrun_behavior = 3
 
-[node name="BattleForfeitButton" type="Button" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay/StatusRow" unique_id=389514031]
+[node name="BattleForfeitButton" type="Button" parent="BattleChrome/StatusOverlay/StatusRow" unique_id=389514031]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(108, 96)
 layout_mode = 2
@@ -274,7 +295,7 @@ theme_override_font_sizes/font_size = 24
 text = "BATTLE_FORFEIT"
 flat = true
 
-[node name="BattleDailyReward" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/StatusOverlay" unique_id=510418745]
+[node name="BattleDailyReward" type="Label" parent="BattleChrome/StatusOverlay" unique_id=510418745]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -282,26 +303,26 @@ theme_type_variation = &"EyebrowLabel"
 text = "BATTLE_DAILY_REWARDS"
 autowrap_mode = 3
 
-[node name="BattlePlayerAnchor" type="Node2D" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=1479236014]
+[node name="BattlePlayerAnchor" type="Node2D" parent="BattleContent/ArenaPanel/BattleArena" unique_id=1479236014]
 unique_name_in_owner = true
 scale = Vector2(0.68, 0.68)
 
-[node name="BattlePlayerSprite" type="AnimatedSprite2D" parent="Column/BattleContent/ArenaPanel/BattleArena/BattlePlayerAnchor" unique_id=1508115503]
+[node name="BattlePlayerSprite" type="AnimatedSprite2D" parent="BattleContent/ArenaPanel/BattleArena/BattlePlayerAnchor" unique_id=1508115503]
 unique_name_in_owner = true
 visible = false
 script = ExtResource("2_presenter")
 
-[node name="BattleBotAnchor" type="Node2D" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=1904692498]
+[node name="BattleBotAnchor" type="Node2D" parent="BattleContent/ArenaPanel/BattleArena" unique_id=1904692498]
 unique_name_in_owner = true
 scale = Vector2(0.68, 0.68)
 
-[node name="BattleBotSprite" type="AnimatedSprite2D" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleBotAnchor" unique_id=1637412231]
+[node name="BattleBotSprite" type="AnimatedSprite2D" parent="BattleContent/ArenaPanel/BattleArena/BattleBotAnchor" unique_id=1637412231]
 unique_name_in_owner = true
 visible = false
 flip_h = true
 script = ExtResource("2_presenter")
 
-[node name="BattleDamage" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=927050360]
+[node name="BattleDamage" type="Label" parent="BattleContent/ArenaPanel/BattleArena" unique_id=927050360]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
@@ -322,7 +343,7 @@ text = "BATTLE_DAMAGE"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="BattleEffectiveness" type="Control" parent="Column/BattleContent/ArenaPanel/BattleArena" unique_id=1276344403]
+[node name="BattleEffectiveness" type="Control" parent="BattleContent/ArenaPanel/BattleArena" unique_id=1276344403]
 unique_name_in_owner = true
 visible = false
 z_index = 4
@@ -338,7 +359,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="BattleEventPlate" type="PanelContainer" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleEffectiveness" unique_id=1929355368]
+[node name="BattleEventPlate" type="PanelContainer" parent="BattleContent/ArenaPanel/BattleArena/BattleEffectiveness" unique_id=1929355368]
 unique_name_in_owner = true
 z_index = -1
 clip_contents = true
@@ -352,7 +373,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme_type_variation = &"BattleEventPlate"
 
-[node name="BattleEffectivenessLabel" type="Label" parent="Column/BattleContent/ArenaPanel/BattleArena/BattleEffectiveness/BattleEventPlate" unique_id=1728447602]
+[node name="BattleEffectivenessLabel" type="Label" parent="BattleContent/ArenaPanel/BattleArena/BattleEffectiveness/BattleEventPlate" unique_id=1728447602]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -371,12 +392,20 @@ vertical_alignment = 1
 autowrap_mode = 3
 max_lines_visible = 2
 
-[node name="BattleFooter" type="Control" parent="Column/BattleContent" unique_id=1382603803]
+[node name="BattleFooter" type="Control" parent="BattleChrome" unique_id=1382603803]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 216)
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -216.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
 
-[node name="DockFill" type="Panel" parent="Column/BattleContent/BattleFooter" unique_id=434267468]
+[node name="DockFill" type="Panel" parent="BattleChrome/BattleFooter" unique_id=434267468]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -386,7 +415,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("ArenaDockPlate")
 
-[node name="ActionFooter" type="VBoxContainer" parent="Column/BattleContent/BattleFooter" unique_id=546138790]
+[node name="ActionFooter" type="VBoxContainer" parent="BattleChrome/BattleFooter" unique_id=546138790]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -395,7 +424,7 @@ grow_horizontal = 2
 grow_vertical = 0
 theme_override_constants/separation = 8
 
-[node name="BattleFeedback" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter" unique_id=1749762184]
+[node name="BattleFeedback" type="Label" parent="BattleChrome/BattleFooter/ActionFooter" unique_id=1749762184]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(0, 44)
@@ -408,28 +437,28 @@ autowrap_mode = 2
 text_overrun_behavior = 3
 max_lines_visible = 1
 
-[node name="FighterHudPlate" type="PanelContainer" parent="Column/BattleContent/BattleFooter/ActionFooter" unique_id=1257048240]
+[node name="FighterHudPlate" type="PanelContainer" parent="BattleChrome/BattleFooter/ActionFooter" unique_id=1257048240]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_67k6a")
 
-[node name="FighterHud" type="HBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate" unique_id=5410699]
+[node name="FighterHud" type="HBoxContainer" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate" unique_id=5410699]
 z_index = 2
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="PlayerSide" type="VBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud" unique_id=1708245571]
+[node name="PlayerSide" type="VBoxContainer" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud" unique_id=1708245571]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="PlayerIdentity" type="HBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide" unique_id=343016512]
+[node name="PlayerIdentity" type="HBoxContainer" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide" unique_id=343016512]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="BattlePlayerName" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerIdentity" unique_id=696873794]
+[node name="BattlePlayerName" type="Label" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerIdentity" unique_id=696873794]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -437,7 +466,7 @@ theme_type_variation = &"SectionLabel"
 text = "ANIMA_FALLBACK_NAME"
 text_overrun_behavior = 3
 
-[node name="BattlePlayerElement" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerIdentity" unique_id=111358055]
+[node name="BattlePlayerElement" type="Label" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerIdentity" unique_id=111358055]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -445,13 +474,13 @@ theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 22
 text = "ELEMENT_UNKNOWN"
 
-[node name="PlayerHpStack" type="Control" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide" unique_id=2104403559]
+[node name="PlayerHpStack" type="Control" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide" unique_id=2104403559]
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="BattlePlayerHp" type="ProgressBar" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerHpStack" unique_id=1394251010]
+[node name="BattlePlayerHp" type="ProgressBar" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerHpStack" unique_id=1394251010]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 28)
 layout_mode = 0
@@ -464,7 +493,7 @@ value = 100.0
 fill_mode = 1
 show_percentage = false
 
-[node name="BattlePlayerHpValue" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerHpStack" unique_id=90562155]
+[node name="BattlePlayerHpValue" type="Label" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/PlayerSide/PlayerHpStack" unique_id=90562155]
 unique_name_in_owner = true
 layout_mode = 0
 anchor_right = 1.0
@@ -477,7 +506,7 @@ text = "FORMAT_RATIO"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Versus" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud" unique_id=1702306895]
+[node name="Versus" type="Label" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud" unique_id=1702306895]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
 theme_type_variation = &"EyebrowLabel"
@@ -485,16 +514,16 @@ text = "BATTLE_VS"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="BotSide" type="VBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud" unique_id=1646504834]
+[node name="BotSide" type="VBoxContainer" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud" unique_id=1646504834]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="BotIdentity" type="HBoxContainer" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide" unique_id=2118013531]
+[node name="BotIdentity" type="HBoxContainer" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide" unique_id=2118013531]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="BattleBotElement" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotIdentity" unique_id=1356772291]
+[node name="BattleBotElement" type="Label" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotIdentity" unique_id=1356772291]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -502,7 +531,7 @@ theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 22
 text = "ELEMENT_UNKNOWN"
 
-[node name="BattleBotName" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotIdentity" unique_id=150219310]
+[node name="BattleBotName" type="Label" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotIdentity" unique_id=150219310]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -511,13 +540,13 @@ text = "BATTLE_BOT_NAME"
 horizontal_alignment = 2
 text_overrun_behavior = 3
 
-[node name="BotHpStack" type="Control" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide" unique_id=311226675]
+[node name="BotHpStack" type="Control" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide" unique_id=311226675]
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="BattleBotHp" type="ProgressBar" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotHpStack" unique_id=1240854182]
+[node name="BattleBotHp" type="ProgressBar" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotHpStack" unique_id=1240854182]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 28)
 layout_mode = 0
@@ -529,7 +558,7 @@ theme_override_styles/fill = SubResource("HpFill")
 value = 100.0
 show_percentage = false
 
-[node name="BattleBotHpValue" type="Label" parent="Column/BattleContent/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotHpStack" unique_id=1094603694]
+[node name="BattleBotHpValue" type="Label" parent="BattleChrome/BattleFooter/ActionFooter/FighterHudPlate/FighterHud/BotSide/BotHpStack" unique_id=1094603694]
 unique_name_in_owner = true
 layout_mode = 0
 anchor_right = 1.0
@@ -542,20 +571,20 @@ text = "FORMAT_RATIO"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Actions" type="GridContainer" parent="Column/BattleContent/BattleFooter/ActionFooter" unique_id=1887825034]
+[node name="Actions" type="GridContainer" parent="BattleChrome/BattleFooter/ActionFooter" unique_id=1887825034]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 columns = 2
 
-[node name="BattleStrikeButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=2048257738]
+[node name="BattleStrikeButton" type="Button" parent="BattleChrome/BattleFooter/ActionFooter/Actions" unique_id=2048257738]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BATTLE_ACTION_STRIKE"
 
-[node name="BattleStrikeCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleStrikeButton" unique_id=298144336]
+[node name="BattleStrikeCommit" type="ColorRect" parent="BattleChrome/BattleFooter/ActionFooter/Actions/BattleStrikeButton" unique_id=298144336]
 unique_name_in_owner = true
 visible = false
 layout_mode = 0
@@ -566,14 +595,14 @@ offset_top = -7.0
 mouse_filter = 2
 color = Color(0.28, 0.9, 1, 1)
 
-[node name="BattleSurgeButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=1286779086]
+[node name="BattleSurgeButton" type="Button" parent="BattleChrome/BattleFooter/ActionFooter/Actions" unique_id=1286779086]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BATTLE_ACTION_SURGE"
 
-[node name="BattleSurgeCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleSurgeButton" unique_id=534064595]
+[node name="BattleSurgeCommit" type="ColorRect" parent="BattleChrome/BattleFooter/ActionFooter/Actions/BattleSurgeButton" unique_id=534064595]
 unique_name_in_owner = true
 visible = false
 layout_mode = 0
@@ -584,14 +613,14 @@ offset_top = -7.0
 mouse_filter = 2
 color = Color(1, 0.82, 0.4, 1)
 
-[node name="BattleGuardButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=382400690]
+[node name="BattleGuardButton" type="Button" parent="BattleChrome/BattleFooter/ActionFooter/Actions" unique_id=382400690]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BATTLE_ACTION_GUARD"
 
-[node name="BattleGuardCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleGuardButton" unique_id=1108495948]
+[node name="BattleGuardCommit" type="ColorRect" parent="BattleChrome/BattleFooter/ActionFooter/Actions/BattleGuardButton" unique_id=1108495948]
 unique_name_in_owner = true
 visible = false
 layout_mode = 0
@@ -602,14 +631,14 @@ offset_top = -7.0
 mouse_filter = 2
 color = Color(0.66, 0.48, 1, 1)
 
-[node name="BattleItemButton" type="Button" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions" unique_id=884373222]
+[node name="BattleItemButton" type="Button" parent="BattleChrome/BattleFooter/ActionFooter/Actions" unique_id=884373222]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "BATTLE_ACTION_ITEM"
 
-[node name="BattleItemCommit" type="ColorRect" parent="Column/BattleContent/BattleFooter/ActionFooter/Actions/BattleItemButton" unique_id=272419287]
+[node name="BattleItemCommit" type="ColorRect" parent="BattleChrome/BattleFooter/ActionFooter/Actions/BattleItemButton" unique_id=272419287]
 unique_name_in_owner = true
 visible = false
 layout_mode = 0
@@ -620,10 +649,21 @@ offset_top = -7.0
 mouse_filter = 2
 color = Color(1, 0.9, 0.45, 1)
 
-[node name="BattleResultPanel" type="PanelContainer" parent="Column/BattleContent/BattleFooter" unique_id=1522132547]
+[node name="BattleOverlay" type="Control" parent="." unique_id=326128570]
 unique_name_in_owner = true
 visible = false
-z_index = 10
+z_index = 20
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BattleResultPanel" type="PanelContainer" parent="BattleOverlay" unique_id=1522132547]
+unique_name_in_owner = true
+visible = false
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -634,18 +674,18 @@ grow_horizontal = 2
 grow_vertical = 0
 theme_type_variation = &"ModalPanel"
 
-[node name="ResultColumn" type="VBoxContainer" parent="Column/BattleContent/BattleFooter/BattleResultPanel" unique_id=1219305617]
+[node name="ResultColumn" type="VBoxContainer" parent="BattleOverlay/BattleResultPanel" unique_id=1219305617]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="BattleResultTitle" type="Label" parent="Column/BattleContent/BattleFooter/BattleResultPanel/ResultColumn" unique_id=131144424]
+[node name="BattleResultTitle" type="Label" parent="BattleOverlay/BattleResultPanel/ResultColumn" unique_id=131144424]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"AnimaNameLabel"
 text = "BATTLE_WIN_TITLE"
 horizontal_alignment = 1
 
-[node name="BattleResultBody" type="Label" parent="Column/BattleContent/BattleFooter/BattleResultPanel/ResultColumn" unique_id=1348638026]
+[node name="BattleResultBody" type="Label" parent="BattleOverlay/BattleResultPanel/ResultColumn" unique_id=1348638026]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BodyLabel"
@@ -653,11 +693,11 @@ text = "BATTLE_WIN_BODY"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="ResultActions" type="HBoxContainer" parent="Column/BattleContent/BattleFooter/BattleResultPanel/ResultColumn" unique_id=1027371663]
+[node name="ResultActions" type="HBoxContainer" parent="BattleOverlay/BattleResultPanel/ResultColumn" unique_id=1027371663]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="BattleLeaveButton" type="Button" parent="Column/BattleContent/BattleFooter/BattleResultPanel/ResultColumn/ResultActions" unique_id=214880298]
+[node name="BattleLeaveButton" type="Button" parent="BattleOverlay/BattleResultPanel/ResultColumn/ResultActions" unique_id=214880298]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(148, 96)
 layout_mode = 2
@@ -669,7 +709,7 @@ theme_override_font_sizes/font_size = 24
 text = "BATTLE_RETURN_LOBBY"
 flat = true
 
-[node name="BattleRetryButton" type="Button" parent="Column/BattleContent/BattleFooter/BattleResultPanel/ResultColumn/ResultActions" unique_id=1410853816]
+[node name="BattleRetryButton" type="Button" parent="BattleOverlay/BattleResultPanel/ResultColumn/ResultActions" unique_id=1410853816]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2

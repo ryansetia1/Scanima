@@ -3707,6 +3707,8 @@ func _test_battle_view() -> void:
 	var page_title := view.find_child("Title", true, false) as Label
 	var page_subtitle := view.find_child("Subtitle", true, false) as Label
 	var content := view.find_child("BattleContent", true, false) as Control
+	var chrome := view.find_child("BattleChrome", true, false) as Control
+	var overlay := view.find_child("BattleOverlay", true, false) as Control
 	var result := view.find_child("BattleResultPanel", true, false) as Control
 	var start := view.find_child("BattleStartButton", true, false) as Button
 	var team_button := view.find_child("BattleTeamButton", true, false) as Button
@@ -4047,7 +4049,8 @@ func _test_battle_view() -> void:
 	_check(view.is_duel_arena_open(), "an active Duel session is an immersive arena")
 	_check(
 		not header.visible
-		and arena.is_ancestor_of(forfeit)
+		and chrome.is_ancestor_of(forfeit)
+		and not arena.is_ancestor_of(forfeit)
 		and forfeit.flat
 		and forfeit.custom_minimum_size.y >= TOUCH_MIN,
 		"active Battle uses a quiet Forfeit action with a full touch target inside its HUD"
@@ -4125,13 +4128,17 @@ func _test_battle_view() -> void:
 		if child is SeekerPresenter:
 			duel_seeker_count += 1
 	_check(duel_seeker_count == 1, "the Duel bot never gets a Seeker figure of its own")
-	# Struktural, jadi ia berlaku di portrait maupun landscape: figur hidup di
-	# dalam arena yang meng-clip isinya, dan arena digambar sebelum footer.
+	# Struktural, jadi ia berlaku di portrait maupun landscape: dunia, Chrome,
+	# dan overlay adalah sibling berurutan; figur tetap di arena yang di-clip.
 	_check(
 		arena.clip_contents
-		and arena.get_parent().get_index() < footer.get_index()
+		and content.get_parent() == view
+		and chrome.get_parent() == view
+		and overlay.get_parent() == view
+		and content.z_index < chrome.z_index
+		and chrome.z_index < overlay.z_index
 		and arena.is_ancestor_of(duel_avatar),
-		"the Duel figure can never cover the action dock, at any aspect"
+		"the Duel figure can never cover Battle Chrome or overlays, at any aspect"
 	)
 	_check(
 		is_equal_approx(
@@ -4146,8 +4153,10 @@ func _test_battle_view() -> void:
 		"static Duel background shares the canonical ground anchor"
 	)
 	_check(
-		result.get_parent() == footer and result.z_index > player_anchor.z_index,
-		"Battle result overlays the fixed footer above both fighters"
+		result.get_parent() == overlay
+		and overlay.z_index > chrome.z_index
+		and overlay.z_index > player_anchor.z_index,
+		"Battle result overlays Chrome and both fighters without owning arena space"
 	)
 	_check_eq(player_hp.value, 220.0, "Battle HUD displays authoritative HP")
 	var battle_script_resource := view.get_script() as GDScript

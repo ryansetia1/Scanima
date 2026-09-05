@@ -12,6 +12,8 @@ const SURGE_COST := 1
 const ACTION_CUE_SEC := 1.4
 const INTRO_OPENING_BEAT_SEC := 0.4
 const INTRO_COMMAND_BEAT_SEC := 0.42
+const INTRO_GAMEPLAY_TRANSITION_SEC := 0.32
+const GAMEPLAY_CHROME_GAP := 16.0
 # The opaque feet stay planted by AnimaPresenter; this line only chooses where
 # that shared anchor sits in Duel's static arena composition.
 const DUEL_GROUND_Y_RATIO := BattleScale.GROUND_Y_RATIO
@@ -71,7 +73,10 @@ const DUEL_BACKGROUND_NIGHT_LANDSCAPE: Texture2D = preload(
 @onready var _team_view: TeamBattleView = %TeamBattleView
 @onready var _expedition_button: Button = %BattleExpeditionButton
 @onready var _expedition_view: ExpeditionView = %ExpeditionView
-@onready var _battle_content: VBoxContainer = %BattleContent
+@onready var _battle_content: Control = %BattleContent
+@onready var _battle_chrome: Control = %BattleChrome
+@onready var _battle_overlay: Control = %BattleOverlay
+@onready var _top_scrim: TextureRect = %TopScrim
 @onready var _status_overlay: Control = %StatusOverlay
 @onready var _fighter_hud_plate: PanelContainer = %FighterHudPlate
 @onready var _footer: Control = %BattleFooter
@@ -146,6 +151,9 @@ var _player_seeker_loaded: Dictionary = {}
 var _opening_intro_pending := false
 var _opening_intro_running := false
 var _opening_intro_revision := 0
+var _gameplay_framing := true
+var _opening_transition: Tween
+var _background_ground_offset := 0.0
 
 
 func _ready() -> void:
@@ -159,6 +167,7 @@ func _ready() -> void:
 	_forfeit_button.pressed.connect(forfeit_requested.emit)
 	_retry_button.pressed.connect(_on_retry_pressed)
 	_leave_button.pressed.connect(exit_requested.emit)
+	resized.connect(_layout_full_bleed_arena)
 	_arena.resized.connect(_position_fighters)
 	_reward_reset_timer.timeout.connect(reward_status_refresh_requested.emit)
 	_feedback.visible = false
@@ -184,7 +193,7 @@ func _ready() -> void:
 	_fighter_layer.add_child(_player_seeker)
 	_player_seeker_shadow = _make_ground_shadow(_fighter_layer)
 	_player_seeker_shadow.name = "PlayerSeekerShadow"
-	_position_fighters.call_deferred()
+	_layout_full_bleed_arena.call_deferred()
 	_player_sprite.set_facing(1.0)
 	_bot_sprite.set_facing(-1.0)
 	_player_sprite.z_index = 3
@@ -260,6 +269,7 @@ func set_expedition_new(has_new: bool) -> void:
 
 func show_team_mode() -> void:
 	_duel_column.visible = false
+	_set_duel_layers_visible(false)
 	_expedition_view.close_mode(true)
 	_team_view.open_mode()
 	_emit_arena_open()
@@ -267,6 +277,7 @@ func show_team_mode() -> void:
 
 func show_expedition_mode() -> void:
 	_duel_column.visible = false
+	_set_duel_layers_visible(false)
 	_team_view.close_mode()
 	if _team_view.is_open():
 		return
@@ -280,7 +291,27 @@ func show_duel_mode() -> void:
 	if _team_view.is_open() or _expedition_view.is_open():
 		return
 	_duel_column.visible = true
+	_set_duel_layers_visible(not _session.is_empty())
 	_emit_arena_open()
+
+
+func _set_duel_layers_visible(shown: bool) -> void:
+	_battle_content.visible = shown
+	_battle_chrome.visible = shown
+	_battle_overlay.visible = shown
+
+
+func _layout_full_bleed_arena() -> void:
+	if not is_instance_valid(_battle_content) or not is_inside_tree():
+		return
+	var viewport_rect := get_viewport().get_visible_rect()
+	var inverse := get_global_transform_with_canvas().affine_inverse()
+	var top_left := inverse * viewport_rect.position
+	var bottom_right := inverse * viewport_rect.end
+	_battle_content.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_battle_content.position = top_left
+	_battle_content.size = bottom_right - top_left
+	_position_fighters.call_deferred()
 
 
 func is_team_mode() -> bool:
@@ -303,7 +334,7 @@ func set_lobby(row: Dictionary) -> void:
 	_expedition_pending = not GameState.pending_expedition.is_empty()
 	_header.visible = true
 	_lobby_panel.visible = true
-	_battle_content.visible = false
+	_set_duel_layers_visible(false)
 	_result_panel.visible = false
 	_start_button.visible = true
 	_refresh_pending_entries()
@@ -415,13 +446,13 @@ func set_loading(message_key: String = "BATTLE_CONNECTING") -> void:
 	if not _session.is_empty():
 		_header.visible = false
 		_lobby_panel.visible = false
-		_battle_content.visible = true
+		_set_duel_layers_visible(true)
 		_actions.visible = false
 		_forfeit_button.visible = false
 		return
 	_header.visible = true
 	_lobby_panel.visible = true
-	_battle_content.visible = false
+	_set_duel_layers_visible(false)
 	_lobby_name.text = tr("BATTLE_LOBBY_TITLE")
 	_lobby_meta.text = tr(message_key)
 	_start_button.disabled = true
@@ -442,13 +473,14 @@ func set_session(
 	var intro_requested := (
 		fresh_intro and str(_session.get("status", "active")) == "active"
 	)
+	_gameplay_framing = not intro_requested
 	_opening_intro_pending = intro_requested
 	if intro_requested:
 		_busy = true
 	_remember_lobby_daily_reward(_as_dict(_session.get("daily_reward")))
 	_header.visible = false
 	_lobby_panel.visible = false
-	_battle_content.visible = true
+	_set_duel_layers_visible(true)
 	if bool(player_loaded.get("ok", false)):
 		_player_loaded = player_loaded.duplicate(true)
 		_player_sprite.apply(player_loaded)
@@ -489,9 +521,10 @@ func play_opening_intro() -> void:
 		return
 	if not await _summon_opening_side("player", revision):
 		return
+	if not await _transition_opening_to_gameplay(revision):
+		return
 	_opening_intro_running = false
 	_busy = false
-	_set_opening_chrome_visible(true)
 	_restore_player_seeker_idle()
 	_apply_state()
 	_sync_shadow("player")
@@ -532,6 +565,9 @@ func _opening_intro_is_active(revision: int) -> bool:
 func _cancel_opening_intro() -> void:
 	if is_instance_valid(_impact):
 		_impact.cancel()
+	if _opening_transition != null and _opening_transition.is_valid():
+		_opening_transition.kill()
+	_opening_transition = null
 	var was_active := _opening_intro_pending or _opening_intro_running
 	_opening_intro_revision += 1
 	_opening_intro_pending = false
@@ -544,10 +580,84 @@ func _cancel_opening_intro() -> void:
 		_bot_portal.stop()
 
 
+func _transition_opening_to_gameplay(revision: int) -> bool:
+	var from_layer_position := _fighter_layer.position
+	var from_layer_scale := _fighter_layer.scale
+	var from_seeker_position := Vector2.ZERO
+	var has_seeker := is_instance_valid(_player_seeker) and _player_seeker.has_sheet()
+	if has_seeker:
+		from_seeker_position = _player_seeker.position
+	var from_background_offset := _background_ground_offset
+	_gameplay_framing = true
+	_position_fighters()
+	var target_layer_position := _fighter_layer.position
+	var target_layer_scale := _fighter_layer.scale
+	var target_seeker_position := _player_seeker.position if has_seeker else Vector2.ZERO
+	var target_background_offset := _background_ground_offset
+	_fighter_layer.position = from_layer_position
+	_fighter_layer.scale = from_layer_scale
+	if has_seeker:
+		_player_seeker.position = from_seeker_position
+	_set_background_ground_offset(from_background_offset)
+	_prepare_opening_chrome_fade()
+	_opening_transition = create_tween()
+	_opening_transition.set_parallel(true)
+	_opening_transition.set_trans(Tween.TRANS_SINE)
+	_opening_transition.set_ease(Tween.EASE_IN_OUT)
+	_opening_transition.tween_property(
+		_fighter_layer, "position", target_layer_position, INTRO_GAMEPLAY_TRANSITION_SEC
+	)
+	_opening_transition.tween_property(
+		_fighter_layer, "scale", target_layer_scale, INTRO_GAMEPLAY_TRANSITION_SEC
+	)
+	if has_seeker:
+		_opening_transition.tween_property(
+			_player_seeker, "position", target_seeker_position, INTRO_GAMEPLAY_TRANSITION_SEC
+		)
+	_opening_transition.tween_method(
+		_set_background_ground_offset,
+		from_background_offset,
+		target_background_offset,
+		INTRO_GAMEPLAY_TRANSITION_SEC
+	)
+	_opening_transition.tween_method(
+		_set_opening_chrome_alpha, 0.0, 1.0, INTRO_GAMEPLAY_TRANSITION_SEC
+	)
+	await _event_pause(INTRO_GAMEPLAY_TRANSITION_SEC)
+	if not _opening_intro_is_active(revision):
+		return false
+	_opening_transition = null
+	_fighter_layer.position = target_layer_position
+	_fighter_layer.scale = target_layer_scale
+	if has_seeker:
+		_player_seeker.position = target_seeker_position
+	_set_background_ground_offset(target_background_offset)
+	_set_opening_chrome_visible(true)
+	return true
+
+
+func _prepare_opening_chrome_fade() -> void:
+	_top_scrim.visible = true
+	_status_overlay.visible = true
+	_fighter_hud_plate.visible = true
+	_set_opening_chrome_alpha(0.0)
+
+
+func _set_opening_chrome_alpha(alpha: float) -> void:
+	_top_scrim.modulate.a = alpha
+	_status_overlay.modulate.a = alpha
+	_footer.modulate.a = alpha
+
+
 func _set_opening_chrome_visible(shown: bool) -> void:
+	_top_scrim.visible = shown
 	_status_overlay.visible = shown
 	_fighter_hud_plate.visible = shown
-	_footer.modulate.a = 1.0 if shown else 0.0
+	_set_opening_chrome_alpha(1.0 if shown else 0.0)
+	_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not shown:
+		for button in [_strike_button, _surge_button, _guard_button, _item_button, _forfeit_button]:
+			(button as Button).release_focus()
 
 
 ## Sheet yang sama dibandingkan lebih dulu supaya shell boleh menyegarkan figur
@@ -711,14 +821,14 @@ func set_error(error_code: String) -> void:
 	_header.visible = _session.is_empty()
 	if _session.is_empty():
 		_lobby_panel.visible = true
-		_battle_content.visible = false
+		_set_duel_layers_visible(false)
 		_result_panel.visible = false
 		_lobby_name.text = tr("BATTLE_ERROR_TITLE")
 		_lobby_meta.text = _error_copy(error_code)
 		_start_button.visible = false
 	else:
 		_lobby_panel.visible = false
-		_battle_content.visible = true
+		_set_duel_layers_visible(true)
 		_result_panel.visible = true
 	_result_title.text = tr("BATTLE_ERROR_TITLE")
 	_result_body.text = _error_copy(error_code)
@@ -1273,6 +1383,16 @@ func _update_action_state() -> void:
 	]
 	_item_button.text = tr("BATTLE_ACTION_ITEM")
 	_forfeit_button.disabled = _busy or not active
+	_forfeit_button.mouse_filter = (
+		Control.MOUSE_FILTER_STOP
+		if accepts_input and not _forfeit_button.disabled
+		else Control.MOUSE_FILTER_IGNORE
+	)
+	_forfeit_button.focus_mode = (
+		Control.FOCUS_ALL
+		if accepts_input and not _forfeit_button.disabled
+		else Control.FOCUS_NONE
+	)
 
 
 func _position_fighters() -> void:
@@ -1283,6 +1403,8 @@ func _position_fighters() -> void:
 	_fighter_layer.position = Vector2.ZERO
 	_fighter_layer.scale = Vector2.ONE
 	var ground_y := _arena.size.y * DUEL_GROUND_Y_RATIO
+	var camera_ground_y := _camera_ground_y(ground_y)
+	var camera_top_y := _camera_top_y()
 	_player_anchor.position = Vector2(_arena.size.x * BattleScale.PLAYER_SHOT_X, ground_y)
 	_bot_anchor.position = Vector2(_arena.size.x * BattleScale.OPPONENT_SHOT_X, ground_y)
 	_position_player_seeker()
@@ -1343,7 +1465,7 @@ func _position_fighters() -> void:
 			bounds = bounds.grow_individual(0.0, figure_height - bounds.size.y, 0.0, 0.0)
 	var fit_zoom := minf(
 		(_arena.size.x * 0.90) / bounds.size.x,
-		(_arena.size.y * (DUEL_GROUND_Y_RATIO - 0.05)) / bounds.size.y
+		maxf(1.0, camera_ground_y - camera_top_y) / bounds.size.y
 	)
 	var tallest := maxf(
 		BattleScale.anima_display_height_cm(player_height),
@@ -1363,13 +1485,34 @@ func _position_fighters() -> void:
 	_fighter_layer.scale = Vector2(zoom, zoom)
 	_fighter_layer.position = Vector2(
 		_arena.size.x * 0.5 - bounds.get_center().x * zoom,
-		ground_y * (1.0 - zoom)
+		camera_ground_y - ground_y * zoom
 	)
 	_sync_shadow("player")
 	_sync_shadow("bot")
 	_pin_player_seeker_to_camera_left(zoom)
 	var background_zoom := lerpf(DUEL_BACKGROUND_MAX_SCALE, 1.0, size_mix)
 	_layout_arena_background(background_zoom)
+	_set_background_ground_offset((ground_y - camera_ground_y) / maxf(1.0, _arena.size.y))
+
+
+func _camera_ground_y(cinematic_ground_y: float) -> float:
+	if not _gameplay_framing:
+		return cinematic_ground_y
+	return cinematic_ground_y - minf(32.0, _arena.size.y * 0.02)
+
+
+func _camera_top_y() -> float:
+	if not _gameplay_framing:
+		return 0.0
+	var arena_top := _arena.get_global_rect().position.y
+	var chrome_bottom := _status_overlay.get_global_rect().end.y - arena_top
+	return clampf(chrome_bottom + GAMEPLAY_CHROME_GAP, 0.0, _arena.size.y * 0.45)
+
+
+func _set_background_ground_offset(value: float) -> void:
+	_background_ground_offset = maxf(0.0, value)
+	if is_instance_valid(_background_material):
+		_background_material.set_shader_parameter("camera_offset_y", _background_ground_offset)
 
 
 ## Lebar kolom yang harus dicadangkan kamera untuk figur pemain, nol kalau
@@ -1688,6 +1831,7 @@ func _layout_arena_background(background_zoom: float) -> void:
 	_background_material.set_shader_parameter(
 		"camera_pivot_y", BattleScale.GROUND_Y_RATIO
 	)
+	_set_background_ground_offset(_background_ground_offset)
 
 
 func _make_portal(anchor: Node2D) -> IncubatorEffect:
