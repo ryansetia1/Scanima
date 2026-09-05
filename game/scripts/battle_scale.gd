@@ -89,6 +89,27 @@ static func seeker_reference_height(loaded: Dictionary) -> float:
 	return float(_metrics(loaded).get("reference_height_px", SEEKER_REFERENCE_HEIGHT_PX))
 
 
+## Skala satu Seeker terhadap Seeker lain yang sudah diletakkan. Bbox sheet
+## masing-masing dibatalkan dulu supaya rasio akhirnya hanya mengikuti tinggi
+## dunia kanonis, bukan tinggi piksel atau padding transparan.
+static func seeker_scale_relative_to(
+	body_height_cm: float,
+	loaded: Dictionary,
+	reference_body_height_cm: float,
+	reference_loaded: Dictionary,
+	reference_scale: float
+) -> float:
+	var reference_body_px := (
+		seeker_reference_height(reference_loaded) * absf(reference_scale)
+	)
+	return (
+		reference_body_px
+		* maxf(1.0, body_height_cm)
+		/ maxf(1.0, reference_body_height_cm)
+		/ maxf(1.0, seeker_reference_height(loaded))
+	)
+
+
 ## Lebar sel sheet Seeker; padding transparannya tidak boleh ikut menentukan
 ## komposisi, jadi ia selalu dipasangkan dengan `seeker_opaque_center()`.
 static func seeker_frame_width(loaded: Dictionary) -> float:

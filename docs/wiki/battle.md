@@ -153,7 +153,14 @@ pernah menutupi tombol aksi. Kamera menyisakan satu kolom untuk figur di sisi
 yang punya figur, jadi badannya dan badan Anima punya jarak alih-alih tumpang
 tindih. Di layar lebar, figur tetap berdiri di samping Anima miliknya alih-alih
 tertinggal sendirian di ujung layar; tepi layar hanya menjadi batas agar badannya
-tidak terpotong.
+tidak terpotong. Setiap pilihan figur punya proporsi tinggi sendiri. Di Final
+Battle, perbedaan tinggi itu dipertahankan saat ia berdiri berhadapan dengan
+Boss Seeker; sifatnya tetap kosmetik dan tidak mengubah Battle.
+
+Saat menunggu perintah, figur organik bernapas dan sesekali memindahkan berat
+badan dengan halus. Automaton memakai gerak mekanis kecil sebagai gantinya.
+Boss Seeker organik ikut bernapas saat Idle. Gerak tenang ini berhenti ketika
+pose perintah, reaksi, menang, atau kalah sedang tampil.
 Di **Team Battle**, latar ikut bergerak lebih lembut saat **Switch** ke Anima
 yang jauh berbeda tinggi atau lebar mengubah jarak kamera, jadi perubahan ukuran
 para petarung terbaca sebagai gerak kamera dan bukan figur yang berubah sendiri.

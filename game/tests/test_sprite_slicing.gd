@@ -22,6 +22,7 @@ func _initialize() -> void:
 	_test_partial_poses()
 	await _test_presenter()
 	_test_boss_seeker_sheet()
+	await _test_seeker_idle_motion()
 	_test_seeker_roster_sheets()
 	_test_real_sheet_if_given()
 
@@ -530,13 +531,72 @@ func _test_boss_seeker_sheet() -> void:
 	)
 
 
+## Motion diuji melalui transform publik presenter: detail Tween boleh berubah,
+## tetapi tubuh harus hidup saat Idle dan kembali tepat ke layout saat pose aktif.
+func _test_seeker_idle_motion() -> void:
+	print("9. Seeker Idle Motion: organic breathing, mechanical settle, dan interruption")
+	var seeker := SeekerPresenter.new()
+	root.add_child(seeker)
+	var organic := SeekerRoster.sheet("androgynous")
+	_check_eq(
+		str(organic.get("idle_motion_kind", "")),
+		"organic",
+		"figur organik membawa profil motion dari roster"
+	)
+	seeker.apply(organic)
+	seeker.set_layout(Vector2(120.0, 240.0), 1.0)
+	var organic_deadline := Time.get_ticks_msec() + 1200
+	while seeker.scale.y <= 1.001 and Time.get_ticks_msec() < organic_deadline:
+		await process_frame
+	_check(
+		seeker.scale.y > 1.001,
+		"figur organik bernapas halus dari ground anchor selama intro_idle"
+	)
+	var shift_deadline := Time.get_ticks_msec() + 5000
+	while absf(seeker.rotation) <= 0.0004 and Time.get_ticks_msec() < shift_deadline:
+		await process_frame
+	_check(
+		absf(seeker.rotation) > 0.0004,
+		"figur organik sesekali memindahkan berat badan saat intro_idle"
+	)
+	seeker.set_pose("concern_hit")
+	_check(
+		seeker.scale.is_equal_approx(Vector2.ONE) and is_zero_approx(seeker.rotation),
+		"reaction menghentikan motion dan memulihkan transform layout"
+	)
+	var mechanical := SeekerRoster.sheet("automaton")
+	_check_eq(
+		str(mechanical.get("idle_motion_kind", "")),
+		"mechanical",
+		"Automaton membawa profil mechanical, bukan organic breathing"
+	)
+	seeker.apply(mechanical)
+	seeker.set_layout(Vector2(120.0, 240.0), 1.0)
+	var mechanical_deadline := Time.get_ticks_msec() + 1200
+	while (
+		(seeker.scale.y >= 0.999 or is_zero_approx(seeker.rotation))
+		and Time.get_ticks_msec() < mechanical_deadline
+	):
+		await process_frame
+	_check(
+		seeker.scale.y < 0.999 and not is_zero_approx(seeker.rotation),
+		"Automaton membuat servo-settle kecil tanpa inhale organik"
+	)
+	seeker.set_pose("victory")
+	_check(
+		seeker.scale.is_equal_approx(Vector2.ONE) and is_zero_approx(seeker.rotation),
+		"result pose juga memutus mechanical settle tanpa drift"
+	)
+	seeker.free()
+
+
 ## Pemeriksaan paling penting dari Seeker Avatar: art-nya ter-bundel (ADR-0002),
 ## jadi tidak ada unduhan yang bisa gagal — dan karena begitu, satu-satunya cara
 ## sebuah figur menghilang adalah sheet-nya lenyap dari build atau slug baru
 ## ditambahkan tanpa art. Keduanya gagal senyap di tangan pemain; di sini
 ## keduanya merah.
 func _test_seeker_roster_sheets() -> void:
-	print("9. Seeker Roster: tiap slug punya sheet ter-bundel yang lolos sembilan pose")
+	print("10. Seeker Roster: tiap slug punya sheet ter-bundel yang lolos sembilan pose")
 	# Batas atasnya bukan gaya-gayaan: art ter-bundel berhenti gratis untuk
 	# ditumbuhkan, dan di atas sekitar enam figur biaya APK melewati kerumitan
 	# yang dibelinya, jadi pengiriman art harus pindah ke pola aset chapter
@@ -550,7 +610,23 @@ func _test_seeker_roster_sheets() -> void:
 		SeekerRoster.SLUGS.has(SeekerRoster.DEFAULT_SLUG),
 		"figur default wajib anggota roster, bukan slug di luar daftar"
 	)
+	var expected_heights := {
+		"androgynous": 172.0,
+		"masculine": 176.0,
+		"feminine": 170.0,
+		"automaton": 180.0,
+	}
+	_check_eq(
+		SeekerRoster.body_height_cm("future-unknown-avatar"),
+		expected_heights[SeekerRoster.DEFAULT_SLUG],
+		"build lama memakai tinggi figur default untuk slug roster yang belum dikenal"
+	)
 	for slug in SeekerRoster.SLUGS:
+		_check_eq(
+			SeekerRoster.body_height_cm(slug),
+			expected_heights.get(slug, 0.0),
+			"tinggi tubuh kanonis %s berasal dari roster, bukan konstanta arena" % slug
+		)
 		var path := SeekerRoster.sheet_path(slug)
 		_check(ResourceLoader.exists(path), "sheet %s wajib ter-bundel di %s" % [slug, path])
 		var loaded := SeekerRoster.load_sheet(slug)
@@ -560,6 +636,11 @@ func _test_seeker_roster_sheets() -> void:
 		)
 		if not bool(loaded.get("ok", false)):
 			continue
+		_check_eq(
+			float(loaded.get("body_height_cm", 0.0)),
+			expected_heights.get(slug, 0.0),
+			"sheet %s membawa tinggi tubuhnya ke arena" % slug
+		)
 		var poses: PackedStringArray = loaded.get("poses", PackedStringArray())
 		_check_eq(poses.size(), SeekerSheet.KNOWN_POSES.size(), "sheet %s lolos sembilan pose" % slug)
 		for pose in SeekerSheet.KNOWN_POSES:
@@ -680,7 +761,7 @@ func _test_real_sheet_if_given() -> void:
 			manifest_path = arg.trim_prefix("--manifest=")
 
 	if manifest_path.is_empty():
-		print("10. sheet nyata: dilewati (tidak ada --manifest=)")
+		print("11. sheet nyata: dilewati (tidak ada --manifest=)")
 		return
 
 	print("10. sheet nyata dari pipeline Node: %s" % manifest_path)

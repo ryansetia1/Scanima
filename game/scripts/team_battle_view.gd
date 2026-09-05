@@ -28,15 +28,9 @@ const SEEKER_SHOT_X := 0.83
 ## Figur pemain berdiri sejauh dari tepinya seperti Boss Seeker berdiri dari
 ## tepi seberang, jadi angkanya diturunkan alih-alih ditulis ulang.
 const PLAYER_SEEKER_SHOT_X := 1.0 - SEEKER_SHOT_X
-## Seeker Avatar bukan petarung, jadi ia tidak punya `body_height_cm`
-## authoritative. 165 cm adalah tinggi manusia yang dipakai catatan skala arena,
-## dan `fighter_scale()` menormalkan ke tinggi layar — figur pemain dan Boss
-## Seeker setinggi 165 cm karena itu digambar sama besar walau sheet-nya beda.
-##
-## ponytail: satu tinggi untuk seluruh roster. Plafonnya figur yang memang
-## dimaksudkan beda tinggi (automaton jangkung, figur anak); kalau itu datang,
-## taruh tingginya di manifest `SeekerRoster` dan baca dari sana, bukan di sini.
-const PLAYER_SEEKER_HEIGHT_CM := 165.0
+## Sheet roster baru membawa Seeker Body Height sendiri. Nilai ini hanya fallback
+## untuk fixture/response build lama yang masih mengirim sheet tanpa metadata.
+const PLAYER_SEEKER_HEIGHT_FALLBACK_CM := 165.0
 const CAMERA_MIN_ZOOM := 0.30
 const CAMERA_MAX_ZOOM := 1.30
 const CAMERA_LARGE_ANIMA_ZOOM := 0.72
@@ -169,6 +163,7 @@ var _seeker_shadow: Sprite2D
 var _player_seeker: SEEKER_PRESENTER
 var _player_seeker_shadow: Sprite2D
 var _player_seeker_loaded: Dictionary = {}
+var _player_seeker_height_cm := PLAYER_SEEKER_HEIGHT_FALLBACK_CM
 var _impact: BattleImpact
 var _fighter_layer: Node2D
 var _background_session_id := ""
@@ -358,9 +353,17 @@ func set_roster(roster: Array) -> void:
 func set_player_avatar(loaded: Dictionary) -> void:
 	if not is_instance_valid(_player_seeker):
 		return
-	if _player_seeker.has_sheet() and _player_seeker.sprite_frames == loaded.get("frames"):
+	var next_height := float(loaded.get(
+		"body_height_cm", PLAYER_SEEKER_HEIGHT_FALLBACK_CM
+	))
+	if (
+		_player_seeker.has_sheet()
+		and _player_seeker.sprite_frames == loaded.get("frames")
+		and is_equal_approx(_player_seeker_height_cm, next_height)
+	):
 		return
 	_player_seeker_loaded = loaded.duplicate(true) if bool(loaded.get("ok", false)) else {}
+	_player_seeker_height_cm = next_height
 	_player_seeker.apply(loaded)
 	# Bukan hanya `_position_player_seeker()`: kolom figurnya ikut menentukan
 	# bingkai kamera, jadi arena harus dibingkai ulang saat figur itu datang.
@@ -1398,11 +1401,9 @@ func _fighter_layout() -> Dictionary:
 		"opponent_position": _opponent_anchor.position,
 		"opponent_scale": _opponent_anchor.scale,
 		"seeker_position": _seeker.position,
-		"seeker_scale": _seeker.scale,
 		"seeker_shadow_position": _seeker_shadow.position,
 		"seeker_shadow_scale": _seeker_shadow.scale,
 		"player_seeker_position": _player_seeker.position,
-		"player_seeker_scale": _player_seeker.scale,
 		"player_seeker_shadow_position": _player_seeker_shadow.position,
 		"player_seeker_shadow_scale": _player_seeker_shadow.scale,
 		"background_position": _arena_background.position,
@@ -1420,11 +1421,9 @@ func _apply_fighter_layout(layout: Dictionary) -> void:
 	_opponent_anchor.position = layout.get("opponent_position", _opponent_anchor.position)
 	_opponent_anchor.scale = layout.get("opponent_scale", _opponent_anchor.scale)
 	_seeker.position = layout.get("seeker_position", _seeker.position)
-	_seeker.scale = layout.get("seeker_scale", _seeker.scale)
 	_seeker_shadow.position = layout.get("seeker_shadow_position", _seeker_shadow.position)
 	_seeker_shadow.scale = layout.get("seeker_shadow_scale", _seeker_shadow.scale)
 	_player_seeker.position = layout.get("player_seeker_position", _player_seeker.position)
-	_player_seeker.scale = layout.get("player_seeker_scale", _player_seeker.scale)
 	_player_seeker_shadow.position = layout.get(
 		"player_seeker_shadow_position", _player_seeker_shadow.position
 	)
@@ -1465,7 +1464,6 @@ func _tween_fighter_layout(target: Dictionary) -> Tween:
 		_opponent_anchor, "scale", target["opponent_scale"], CAMERA_REFIT_SEC
 	)
 	_layout_tween.tween_property(_seeker, "position", target["seeker_position"], CAMERA_REFIT_SEC)
-	_layout_tween.tween_property(_seeker, "scale", target["seeker_scale"], CAMERA_REFIT_SEC)
 	_layout_tween.tween_property(
 		_seeker_shadow, "position", target["seeker_shadow_position"], CAMERA_REFIT_SEC
 	)
@@ -1474,9 +1472,6 @@ func _tween_fighter_layout(target: Dictionary) -> Tween:
 	)
 	_layout_tween.tween_property(
 		_player_seeker, "position", target["player_seeker_position"], CAMERA_REFIT_SEC
-	)
-	_layout_tween.tween_property(
-		_player_seeker, "scale", target["player_seeker_scale"], CAMERA_REFIT_SEC
 	)
 	_layout_tween.tween_property(
 		_player_seeker_shadow,
@@ -2623,7 +2618,7 @@ func _apply_player_seeker_layer() -> void:
 	if not is_instance_valid(_player_seeker):
 		return
 	var lane := BattleScale.player_seeker_z(
-		_active_body_heights()[0], PLAYER_SEEKER_HEIGHT_CM
+		_active_body_heights()[0], _player_seeker_height_cm
 	)
 	_player_seeker.z_index = lane
 	if is_instance_valid(_player_seeker_shadow):
@@ -2741,18 +2736,31 @@ func _position_seeker() -> void:
 
 
 ## Cermin `_position_seeker()`: sisi pemain, ground line yang sama, dan tanda
-## `BattleScale.seeker_opaque_center()` terbalik karena figurnya di-`flip_h`. Skalanya
-## sengaja berdiri sendiri alih-alih ikut `_arena_scales()` — Team Battle biasa
-## tidak punya Seeker sama sekali di sana, dan menambahkannya akan mengubah
-## ukuran setiap Anima yang sudah dikalibrasi.
+## `BattleScale.seeker_opaque_center()` terbalik karena figurnya di-`flip_h`.
+## Team Battle memakai kurva manusia mandiri; pada Boss encounter, tinggi layar
+## kedua Seeker mengikuti rasio sentimeter persis agar figur roster tidak kembali
+## dianggap 165 cm hanya karena itu tinggi Boss chapter pertama.
 func _position_player_seeker() -> void:
 	if not is_instance_valid(_player_seeker) or not _player_seeker.has_sheet():
 		if is_instance_valid(_player_seeker_shadow):
 			_player_seeker_shadow.visible = false
 		return
 	var avatar_scale := BattleScale.fighter_scale(
-		PLAYER_SEEKER_HEIGHT_CM, _player_seeker_loaded, _battle_stage.size
+		_player_seeker_height_cm, _player_seeker_loaded, _battle_stage.size
 	)
+	var boss_data := GameState.as_dict(_session.get("boss_seeker"))
+	var boss_scales := _arena_scales(_session)
+	if not boss_data.is_empty() and boss_scales.size() >= 3:
+		var boss_height_cm := maxf(1.0, float(boss_data.get(
+			"body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM
+		)))
+		avatar_scale = BattleScale.seeker_scale_relative_to(
+			_player_seeker_height_cm,
+			_player_seeker_loaded,
+			boss_height_cm,
+			_seeker_loaded,
+			boss_scales[2]
+		)
 	var x := (
 		_battle_stage.size.x * PLAYER_SEEKER_SHOT_X
 		+ BattleScale.seeker_opaque_center(_player_seeker_loaded) * avatar_scale

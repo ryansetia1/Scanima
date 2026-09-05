@@ -148,6 +148,7 @@ var _bot_shadow: Sprite2D
 var _player_seeker: SEEKER_PRESENTER
 var _player_seeker_shadow: Sprite2D
 var _player_seeker_loaded: Dictionary = {}
+var _player_seeker_height_cm := TeamBattleView.PLAYER_SEEKER_HEIGHT_FALLBACK_CM
 var _opening_intro_pending := false
 var _opening_intro_running := false
 var _opening_intro_revision := 0
@@ -664,9 +665,17 @@ func _set_opening_chrome_visible(shown: bool) -> void:
 func set_player_avatar(loaded: Dictionary) -> void:
 	if not is_instance_valid(_player_seeker):
 		return
-	if _player_seeker.has_sheet() and _player_seeker.sprite_frames == loaded.get("frames"):
+	var next_height := float(loaded.get(
+		"body_height_cm", TeamBattleView.PLAYER_SEEKER_HEIGHT_FALLBACK_CM
+	))
+	if (
+		_player_seeker.has_sheet()
+		and _player_seeker.sprite_frames == loaded.get("frames")
+		and is_equal_approx(_player_seeker_height_cm, next_height)
+	):
 		return
 	_player_seeker_loaded = loaded.duplicate(true) if bool(loaded.get("ok", false)) else {}
+	_player_seeker_height_cm = next_height
 	_player_seeker.apply(loaded)
 	# Bukan hanya `_position_player_seeker()`: kolom figurnya ikut menentukan
 	# bingkai kamera, jadi arena harus dibingkai ulang saat figur itu datang.
@@ -1545,7 +1554,7 @@ func _position_player_seeker() -> void:
 			_player_seeker_shadow.visible = false
 		return
 	var avatar_scale := BattleScale.fighter_scale(
-		TeamBattleView.PLAYER_SEEKER_HEIGHT_CM, _player_seeker_loaded, _arena.size
+		_player_seeker_height_cm, _player_seeker_loaded, _arena.size
 	)
 	var x := (
 		_arena.size.x * TeamBattleView.PLAYER_SEEKER_SHOT_X
@@ -1574,7 +1583,7 @@ func _apply_player_seeker_layer() -> void:
 				"body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM
 			)
 		),
-		TeamBattleView.PLAYER_SEEKER_HEIGHT_CM
+		_player_seeker_height_cm
 	)
 	_player_seeker.z_index = lane
 	if is_instance_valid(_player_seeker_shadow):

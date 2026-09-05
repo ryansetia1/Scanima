@@ -31,6 +31,19 @@ from a fixed set, purely cosmetic, and never derived from anything the player
 told us about themselves.
 _Avoid_: Character, skin, player sprite, portrait
 
+**Seeker Body Height**:
+The canonical standing height of a Seeker figure in the game world. Each
+Seeker Avatar and Boss Seeker owns this cosmetic value independently; it
+controls their relative arena scale, never gameplay or Seeker Demographics.
+_Avoid_: Player height, sprite height, image height
+
+**Seeker Idle Motion**:
+The subtle motion of a full-body Seeker figure while waiting in its Intro/Idle
+pose in an arena. Organic figures breathe and shift their weight; constructed
+figures make a small mechanical settle. An active command, reaction, victory,
+or defeat pose replaces it.
+_Avoid_: Seeker pose, Anima Idle Pose
+
 **Seeker Roster**:
 The fixed, hand-authored set of Seeker Avatars a player may choose from.
 Growing it means drawing one more figure, never generating one per player.

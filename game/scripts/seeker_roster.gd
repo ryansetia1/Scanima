@@ -28,6 +28,12 @@ const SLUGS: PackedStringArray = [
 	"feminine",
 	"automaton",
 ]
+const BODY_HEIGHTS_CM := {
+	"androgynous": 172.0,
+	"masculine": 176.0,
+	"feminine": 170.0,
+	"automaton": 180.0,
+}
 
 ## Keempat sheet digambar pada grid yang sama dengan Boss Seeker chapter: sel
 ## 341px pada sheet 1024px dengan jendela capture 300px. Angkanya sengaja sama
@@ -38,6 +44,16 @@ const FRAME := 300
 
 static func sheet_path(slug: String) -> String:
 	return "%s/%s.png" % [SHEET_DIR, slug]
+
+
+## Tinggi tubuh adalah identitas kosmetik figur, bukan ukuran piksel sheet atau
+## data Seeker Demographics. Slug asing memakai figur default beserta tingginya.
+static func body_height_cm(value: Variant) -> float:
+	return float(BODY_HEIGHTS_CM[normalize(value)])
+
+
+static func idle_motion_kind(value: Variant) -> String:
+	return "mechanical" if normalize(value) == "automaton" else "organic"
 
 
 ## Sembilan pose-nya diturunkan dari SeekerSheet.KNOWN_POSES, bukan disalin, jadi
@@ -58,7 +74,11 @@ static func manifest() -> Dictionary:
 static func load_sheet(slug: String) -> Dictionary:
 	var path := sheet_path(slug)
 	var texture: Texture2D = ResourceLoader.load(path) if ResourceLoader.exists(path) else null
-	return SeekerSheet.build(texture, manifest())
+	var loaded := SeekerSheet.build(texture, manifest())
+	if bool(loaded.get("ok", false)):
+		loaded["body_height_cm"] = body_height_cm(slug)
+		loaded["idle_motion_kind"] = idle_motion_kind(slug)
+	return loaded
 
 
 ## `profiles.seeker_avatar` nullable, jadi nilainya datang sebagai Variant: `null`

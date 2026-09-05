@@ -25,13 +25,14 @@ func _run() -> void:
 	var measured_loaded: Dictionary = anima_loader.build(texture, measured_manifest)
 	var seeker_roster := load("res://scripts/seeker_roster.gd") as GDScript
 	var seeker_loaded: Dictionary = seeker_roster.sheet(null)
+	var tall_player_seeker_loaded: Dictionary = seeker_roster.sheet("automaton")
 	_test_grounded_background_math()
 	_test_fresh_intro_wiring()
 	await _test_duel_intro(host, loaded, seeker_loaded)
 	await _test_team_intro(host, loaded, seeker_loaded)
 	await _test_team_switch_reframe(host, measured_loaded, seeker_loaded)
 	await _test_expedition_intro(host, loaded, seeker_loaded)
-	await _test_boss_intro(host, loaded, seeker_loaded)
+	await _test_boss_intro(host, loaded, seeker_loaded, tall_player_seeker_loaded)
 	await _test_boss_replay_and_cancellation(host, loaded, seeker_loaded)
 	host.queue_free()
 	if _failures == 0:
@@ -980,7 +981,8 @@ func _test_expedition_intro(
 func _test_boss_intro(
 	host: SubViewport,
 	loaded: Dictionary,
-	seeker_loaded: Dictionary
+	seeker_loaded: Dictionary,
+	player_seeker_loaded: Dictionary
 ) -> void:
 	var packed := load("res://scenes/ui/expedition_view.tscn") as PackedScene
 	var view := packed.instantiate()
@@ -991,7 +993,9 @@ func _test_boss_intro(
 	view.size = Vector2(host.size)
 	await process_frame
 	view.open_mode()
-	view.set_player_avatar(seeker_loaded)
+	var legacy_player_seeker_loaded := player_seeker_loaded.duplicate(true)
+	legacy_player_seeker_loaded.erase("body_height_cm")
+	view.set_player_avatar(legacy_player_seeker_loaded)
 	var player_id := "00000000-0000-4000-8000-000000000031"
 	var opponent_id := "10000000-0000-4000-8000-000000000031"
 	var player_member := {
@@ -1059,6 +1063,32 @@ func _test_boss_intro(
 	var player_seeker_shadow := view.find_child("PlayerSeekerShadow", true, false) as Sprite2D
 	var boss_shadow := layer.find_child("GroundShadow", false, false) as Sprite2D
 	var loading_root := root.find_child("LoadingScreenRoot", true, false) as Control
+	var legacy_player_seeker_px := (
+		BattleScale.seeker_reference_height(legacy_player_seeker_loaded)
+		* absf(player_seeker.scale.y)
+	)
+	var boss_seeker_px := (
+		BattleScale.seeker_reference_height(seeker_loaded)
+		* absf(boss.scale.y)
+	)
+	_check(
+		absf(legacy_player_seeker_px / boss_seeker_px - 1.0) < 0.02,
+		"Boss opening keeps the 165 cm fallback for legacy avatar sheets without height metadata"
+	)
+	view.set_player_avatar(player_seeker_loaded)
+	await process_frame
+	var player_seeker_px := (
+		BattleScale.seeker_reference_height(player_seeker_loaded)
+		* absf(player_seeker.scale.y)
+	)
+	boss_seeker_px = (
+		BattleScale.seeker_reference_height(seeker_loaded)
+		* absf(boss.scale.y)
+	)
+	_check(
+		absf(player_seeker_px / boss_seeker_px - 180.0 / 165.0) < 0.02,
+		"Boss opening scales the selected 180 cm Automaton proportionally against the 165 cm Boss"
+	)
 	_check(
 		loading_root != null and loading_root.visible
 		and player_seeker.visible and boss.visible

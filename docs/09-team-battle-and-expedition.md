@@ -283,8 +283,10 @@ tetap satu kali serta berada di luar cap Zone Bits.
 ## 4. Boss Seeker dan dialog
 
 Setiap boss mempunyai Seeker original yang selalu terlihat bersama Anima
-lawan sesuai perbandingan tinggi. Pose idle dipakai saat menunggu; event
-authoritative dapat mengganti ke
+lawan sesuai perbandingan tinggi. Pose Intro/Idle memakai ambient motion
+bersama `SeekerPresenter`: figur organik bernapas halus dan sesekali memindahkan
+berat badan, sedangkan Automaton memakai servo-settle kecil. Motion berhenti dan
+transform kembali ke baseline sebelum event authoritative mengganti pose ke
 Attack Command, Special Command, Switch Command, Concern/Hit, Last Anima,
 Victory, atau Defeat. Semua pose tetap pada anchor horizontal yang sama, sementara
 client menghitung baseline dari batas opak bawah setiap pose. Titik piksel opak
@@ -358,6 +360,17 @@ menghitung posisi serta layer final; Seeker di-clamp di dalam stage, pose
 command tetap berpijak, dan dialog memakai tap-to-continue.
 
 Semua cast dan Boss Seeker content v2+ wajib mempunyai `body_height_cm`.
+Seeker Avatar pemain mengambil tinggi kosmetiknya dari metadata lokal
+`SeekerRoster`: androgynous 172 cm, masculine 176 cm, feminine 170 cm, dan
+automaton 180 cm. Nilai itu ikut di dictionary sheet yang sudah ter-bundel,
+bukan profil, database, Seeker Demographics, atau aturan combat. Fixture lama
+tanpa metadata tetap memakai fallback 165 cm.
+
+Dalam Boss encounter, tinggi layar Seeker pemain dihitung relatif secara linear
+terhadap tinggi layar dan `body_height_cm` Boss; karena itu Automaton 180 cm
+tetap terlihat 180:165 terhadap The Confectioner, walau kedua PNG memiliki bbox
+dan padding transparan berbeda. Duel, Team Battle, dan Expedition non-Boss
+memakai tinggi avatar yang sama melalui kurva framing manusia biasa.
 Post-process menyimpan bbox opak pose Idle/Intro Idle sebagai
 `render_metrics.reference_height_px` dan `reference_width_px`. Godot menghitung
 skala non-linear dari dua kontrak itu lewat satu `shared_scales()` untuk

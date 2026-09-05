@@ -66,8 +66,10 @@ empat anggota satu kali; zona dan Boss berikutnya tidak memakai Energy lagi,
 dan roster terkunci sampai run selesai atau di-Abandon. Boss menampilkan Seeker
 chapter di belakang Anima lawan. Dialog sekarang berbudget, pose mendahului
 teks/aksi, dan ace `special` Boss ditahan sampai akhir lalu memicu passive masuk
-authoritative. Tinggi kanonis Anima dan Boss Seeker menentukan proporsi arena
-tanpa mengubah stat tempur. Spesifikasi ada di
+authoritative. Tinggi kanonis Anima, Seeker Avatar pemain, dan Boss Seeker
+menentukan proporsi arena tanpa mengubah stat tempur. Figur Seeker bernapas atau
+melakukan idle mekanis kecil saat menunggu, lalu diam sebelum pose aktif.
+Spesifikasi ada di
 [`docs/09-team-battle-and-expedition.md`](docs/09-team-battle-and-expedition.md).
 
 Probe production berbayar setelah cutover memakai foto Golden Retriever
