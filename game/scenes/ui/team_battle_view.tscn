@@ -7,15 +7,6 @@
 [ext_resource type="Script" uid="uid://dqonc4v7yr1vw" path="res://scripts/team_roster_list.gd" id="5_roster"]
 [ext_resource type="FontFile" uid="uid://b0ugtjpmyt7ix" path="res://assets/fonts/Oxanium-Variable.ttf" id="6_display"]
 
-[sub_resource type="Gradient" id="TopScrimGradient"]
-colors = PackedColorArray(0.015, 0.025, 0.065, 0.78, 0.015, 0.025, 0.065, 0)
-
-[sub_resource type="GradientTexture2D" id="TopScrimTexture"]
-gradient = SubResource("TopScrimGradient")
-width = 8
-height = 256
-fill_to = Vector2(0, 1)
-
 [sub_resource type="StyleBoxFlat" id="ArenaDockPlate"]
 content_margin_left = 12.0
 content_margin_top = 12.0
@@ -313,16 +304,6 @@ anchors_preset = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
-
-[node name="TopScrim" type="TextureRect" parent="TeamArena/TeamArenaLayers/TeamChrome" unique_id=1396859128]
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 220.0
-grow_horizontal = 2
-mouse_filter = 2
-texture = SubResource("TopScrimTexture")
-expand_mode = 1
 
 [node name="TeamTurn" type="Label" parent="TeamArena/TeamArenaLayers/TeamChrome" unique_id=1287318570]
 unique_name_in_owner = true

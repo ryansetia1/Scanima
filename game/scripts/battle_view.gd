@@ -76,7 +76,6 @@ const DUEL_BACKGROUND_NIGHT_LANDSCAPE: Texture2D = preload(
 @onready var _battle_content: Control = %BattleContent
 @onready var _battle_chrome: Control = %BattleChrome
 @onready var _battle_overlay: Control = %BattleOverlay
-@onready var _top_scrim: TextureRect = %TopScrim
 @onready var _status_overlay: Control = %StatusOverlay
 @onready var _fighter_hud_plate: PanelContainer = %FighterHudPlate
 @onready var _footer: Control = %BattleFooter
@@ -636,20 +635,17 @@ func _transition_opening_to_gameplay(revision: int) -> bool:
 
 
 func _prepare_opening_chrome_fade() -> void:
-	_top_scrim.visible = true
 	_status_overlay.visible = true
 	_fighter_hud_plate.visible = true
 	_set_opening_chrome_alpha(0.0)
 
 
 func _set_opening_chrome_alpha(alpha: float) -> void:
-	_top_scrim.modulate.a = alpha
 	_status_overlay.modulate.a = alpha
 	_footer.modulate.a = alpha
 
 
 func _set_opening_chrome_visible(shown: bool) -> void:
-	_top_scrim.visible = shown
 	_status_overlay.visible = shown
 	_fighter_hud_plate.visible = shown
 	_set_opening_chrome_alpha(1.0 if shown else 0.0)

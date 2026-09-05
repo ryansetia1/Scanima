@@ -8,15 +8,6 @@
 
 [sub_resource type="StyleBoxEmpty" id="Empty"]
 
-[sub_resource type="Gradient" id="TopScrimGradient"]
-colors = PackedColorArray(0.015, 0.025, 0.065, 0.78, 0.015, 0.025, 0.065, 0)
-
-[sub_resource type="GradientTexture2D" id="TopScrimTexture"]
-gradient = SubResource("TopScrimGradient")
-width = 8
-height = 256
-fill_to = Vector2(0, 1)
-
 [sub_resource type="FontVariation" id="EffectivenessBold"]
 base_font = ExtResource("9_display")
 variation_opentype = {
@@ -238,17 +229,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-
-[node name="TopScrim" type="TextureRect" parent="BattleChrome" unique_id=1767960143]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 220.0
-grow_horizontal = 2
-mouse_filter = 2
-texture = SubResource("TopScrimTexture")
-expand_mode = 1
 
 [node name="StatusOverlay" type="VBoxContainer" parent="BattleChrome" unique_id=715232036]
 unique_name_in_owner = true
