@@ -51,6 +51,7 @@ const CAMERA_REFIT_SEC := 0.48
 const DIM := Color(1.0, 1.0, 1.0, 0.42)
 const BATTLE_EVENT := preload("res://scripts/battle_event.gd")
 const BACKGROUND_DOF_SHADER: Shader = preload("res://shaders/battle_background_dof.gdshader")
+const BACKGROUND_CALIBRATION := preload("res://scripts/battle_background_calibration.gd")
 const TEAM_BACKGROUND: Texture2D = preload(
 	"res://assets/backgrounds/team_battle_background.png"
 )
@@ -168,6 +169,7 @@ var _impact: BattleImpact
 var _fighter_layer: Node2D
 var _background_session_id := ""
 var _background_pan := 0.5
+var _debug_background_profiles: Dictionary = {}
 var _uses_static_background := false
 var _seeker_dialog: BOSS_SEEKER_DIALOG
 var _seeker_loaded: Dictionary = {}
@@ -766,6 +768,24 @@ func session_data() -> Dictionary:
 
 func session_kind() -> String:
 	return str(_session.get("kind", ""))
+
+
+func set_debug_background_profiles(profiles: Dictionary) -> void:
+	if not (OS.has_feature("debug") or OS.is_debug_build()):
+		return
+	_debug_background_profiles = (
+		{} if profiles.is_empty() else BACKGROUND_CALIBRATION.normalize_profiles(profiles)
+	)
+	if is_inside_tree():
+		_position_fighters()
+
+
+func _background_profile() -> Dictionary:
+	if not _uses_static_background:
+		return BACKGROUND_CALIBRATION.normalize_profile({})
+	return BACKGROUND_CALIBRATION.profile_for(
+		BACKGROUND_CALIBRATION.MODE_TEAM, _battle_stage.size, _debug_background_profiles
+	)
 
 
 func _apply_arena_background(art_cache: Dictionary) -> void:
@@ -1378,15 +1398,20 @@ func _reframe_for_switch(
 		var previous_scale: Vector2 = previous_layout.get("layer_scale", Vector2.ONE)
 		var target_scale: Vector2 = target_layout.get("layer_scale", Vector2.ONE)
 		var fitted_background_zoom := float(target_layout.get("background_camera_zoom", 1.0))
+		var profile := _background_profile()
+		var zoom_multiplier := maxf(0.001, float(profile["zoom_multiplier"]))
 		var switch_background_zoom := background_zoom_for_switch(
 			previous_scale.x,
 			target_scale.x,
-			float(previous_layout.get("background_camera_zoom", 1.0))
+			float(previous_layout.get("background_camera_zoom", 1.0)) / zoom_multiplier
 		)
-		target_layout["background_camera_zoom"] = switch_background_zoom
+		var effective_switch_zoom := BACKGROUND_CALIBRATION.camera_zoom(
+			switch_background_zoom, profile
+		)
+		target_layout["background_camera_zoom"] = effective_switch_zoom
 		target_layout["background_ground_offset"] = (
 			float(target_layout.get("background_ground_offset", 0.0))
-			* fitted_background_zoom / maxf(0.001, switch_background_zoom)
+			* fitted_background_zoom / maxf(0.001, effective_switch_zoom)
 		)
 	_apply_fighter_layout(previous_layout)
 	return _tween_fighter_layout(target_layout)
@@ -2353,6 +2378,9 @@ func _apply_dynamic_camera() -> void:
 		_battle_stage.size.x * 0.5 - bounds.get_center().x * zoom,
 		camera_ground_y - ground_y * zoom
 	)
+	_fighter_layer.position.y += BACKGROUND_CALIBRATION.fighter_offset_y(
+		_battle_stage.size, _background_profile()
+	)
 	_pin_seeker_to_camera_right(zoom)
 	_pin_player_seeker_to_camera_left(zoom)
 	_layout_arena_background(_background_zoom_for_camera(zoom, size_mix))
@@ -2450,21 +2478,30 @@ func _layout_arena_background(background_zoom: float) -> void:
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0 or stage_size.x <= 0.0 or stage_size.y <= 0.0:
 		return
 	var guard := BattleImpact.background_overscan_px(stage_size.x)
-	var geometry_zoom := 1.0 if _uses_static_background else maxf(1.0, background_zoom)
-	var draw_size := BattleScale.background_draw_size(
-		texture_size, stage_size, guard, geometry_zoom
+	var profile := _background_profile()
+	var profile_zoom := (
+		BACKGROUND_CALIBRATION.camera_zoom(1.0, profile) if _uses_static_background else 1.0
 	)
-	var overflow_x := maxf(0.0, draw_size.x - stage_size.x)
+	var geometry_zoom := profile_zoom if _uses_static_background else maxf(1.0, background_zoom)
+	var cover_guard := (
+		BACKGROUND_CALIBRATION.vertical_cover_guard(stage_size, guard, profile)
+		if _uses_static_background else guard
+	)
+	var draw_size := BattleScale.background_draw_size(
+		texture_size, stage_size, cover_guard, geometry_zoom
+	)
 	_arena_background.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_arena_background.pivot_offset = Vector2.ZERO
 	_arena_background.scale = Vector2.ONE
 	_arena_background.size = draw_size
 	var pan := 0.5 if _uses_static_background else _background_pan
-	_arena_background.position = Vector2(
-		-overflow_x * pan,
-		BattleScale.grounded_background_y(stage_size.y, draw_size.y)
+	_arena_background.position = BACKGROUND_CALIBRATION.background_position(
+		stage_size, draw_size, pan, profile
 	)
-	_set_background_camera_zoom(background_zoom if _uses_static_background else 1.0)
+	_set_background_camera_zoom(
+		BACKGROUND_CALIBRATION.camera_zoom(background_zoom, profile)
+		if _uses_static_background else 1.0
+	)
 	_set_background_ground_offset(_background_ground_offset)
 
 
@@ -2479,17 +2516,25 @@ func _background_camera_zoom() -> float:
 func _set_background_camera_zoom(value: float) -> void:
 	var background_material := _arena_background.material as ShaderMaterial
 	if background_material != null:
+		var profile := _background_profile()
 		background_material.set_shader_parameter("camera_zoom", value)
 		background_material.set_shader_parameter(
-			"camera_pivot_y", BattleScale.GROUND_Y_RATIO
+			"camera_pivot_y",
+			float(profile["pivot_y"]) if _uses_static_background else BattleScale.GROUND_Y_RATIO
 		)
+		_set_background_ground_offset(_background_ground_offset)
 
 
 func _set_background_ground_offset(value: float) -> void:
 	_background_ground_offset = maxf(0.0, value)
 	var background_material := _arena_background.material as ShaderMaterial
 	if background_material != null:
-		background_material.set_shader_parameter("camera_offset_y", _background_ground_offset)
+		var shader_offset := _background_ground_offset
+		if _uses_static_background:
+			shader_offset = BACKGROUND_CALIBRATION.camera_offset(
+				_background_ground_offset, _background_camera_zoom(), _background_profile()
+			)
+		background_material.set_shader_parameter("camera_offset_y", shader_offset)
 
 
 func _pin_seeker_to_camera_right(camera_zoom: float) -> void:

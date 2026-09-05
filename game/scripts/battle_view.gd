@@ -49,6 +49,7 @@ signal exit_requested
 signal arena_open_changed(open: bool)
 
 const BACKGROUND_DOF_SHADER: Shader = preload("res://shaders/battle_background_dof.gdshader")
+const BACKGROUND_CALIBRATION := preload("res://scripts/battle_background_calibration.gd")
 const SEEKER_PRESENTER := preload("res://scripts/seeker_presenter.gd")
 const DUEL_BACKGROUND_DAY: Texture2D = preload(
 	"res://assets/backgrounds/duel_day_background.png"
@@ -137,6 +138,8 @@ var _fighter_layer: Node2D
 var _art_cache: Dictionary = {}
 var _background_session_id := ""
 var _background_pan := 0.5
+var _debug_background_profiles: Dictionary = {}
+var _debug_daylight_blend := -1.0
 var _uses_static_background := false
 var _background_material: ShaderMaterial
 var _background_timer: Timer
@@ -1489,6 +1492,9 @@ func _position_fighters() -> void:
 		_arena.size.x * 0.5 - bounds.get_center().x * zoom,
 		camera_ground_y - ground_y * zoom
 	)
+	_fighter_layer.position.y += BACKGROUND_CALIBRATION.fighter_offset_y(
+		_arena.size, _background_profile()
+	)
 	_sync_shadow("player")
 	_sync_shadow("bot")
 	_pin_player_seeker_to_camera_left(zoom)
@@ -1526,7 +1532,14 @@ func _camera_top_y() -> float:
 func _set_background_ground_offset(value: float) -> void:
 	_background_ground_offset = maxf(0.0, value)
 	if is_instance_valid(_background_material):
-		_background_material.set_shader_parameter("camera_offset_y", _background_ground_offset)
+		var zoom_value: Variant = _background_material.get_shader_parameter("camera_zoom")
+		var camera_zoom := float(zoom_value) if zoom_value != null else 1.0
+		var shader_offset := _background_ground_offset
+		if _uses_static_background:
+			shader_offset = BACKGROUND_CALIBRATION.camera_offset(
+				_background_ground_offset, camera_zoom, _background_profile()
+			)
+		_background_material.set_shader_parameter("camera_offset_y", shader_offset)
 
 
 ## Lebar kolom yang harus dicadangkan kamera untuk figur pemain, nol kalau
@@ -1760,6 +1773,31 @@ func _emit_arena_open() -> void:
 	arena_open_changed.emit(is_duel_arena_open())
 
 
+func set_debug_background_profiles(profiles: Dictionary) -> void:
+	if not (OS.has_feature("debug") or OS.is_debug_build()):
+		return
+	_debug_background_profiles = (
+		{} if profiles.is_empty() else BACKGROUND_CALIBRATION.normalize_profiles(profiles)
+	)
+	if is_inside_tree():
+		_position_fighters()
+
+
+func set_debug_daylight_blend(value: float) -> void:
+	if not (OS.has_feature("debug") or OS.is_debug_build()):
+		return
+	_debug_daylight_blend = clampf(value, 0.0, 1.0)
+	_refresh_static_background()
+
+
+func _background_profile() -> Dictionary:
+	if not _uses_static_background:
+		return BACKGROUND_CALIBRATION.normalize_profile({})
+	return BACKGROUND_CALIBRATION.profile_for(
+		BACKGROUND_CALIBRATION.MODE_DUEL, _arena.size, _debug_background_profiles
+	)
+
+
 func _apply_arena_background(art_cache: Dictionary) -> void:
 	if not art_cache.is_empty():
 		_art_cache = art_cache.duplicate(true)
@@ -1783,7 +1821,8 @@ func _refresh_static_background() -> void:
 	if not _uses_static_background or not is_instance_valid(_background_material):
 		return
 	_background_material.set_shader_parameter(
-		"daylight_blend", LocalDaylight.daylight_blend()
+		"daylight_blend",
+		_debug_daylight_blend if _debug_daylight_blend >= 0.0 else LocalDaylight.daylight_blend()
 	)
 
 
@@ -1834,22 +1873,33 @@ func _layout_arena_background(background_zoom: float) -> void:
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0 or stage_size.x <= 0.0 or stage_size.y <= 0.0:
 		return
 	var guard := BattleImpact.background_overscan_px(stage_size.x)
-	var draw_size := BattleScale.background_draw_size(
-		texture_size, stage_size, guard, background_zoom
+	var profile := _background_profile()
+	var profile_zoom := (
+		BACKGROUND_CALIBRATION.camera_zoom(1.0, profile) if _uses_static_background else 1.0
 	)
-	var overflow_x := maxf(0.0, draw_size.x - stage_size.x)
+	var geometry_zoom := background_zoom * profile_zoom
+	var cover_guard := (
+		BACKGROUND_CALIBRATION.vertical_cover_guard(stage_size, guard, profile)
+		if _uses_static_background else guard
+	)
+	var draw_size := BattleScale.background_draw_size(
+		texture_size, stage_size, cover_guard, geometry_zoom
+	)
 	_arena_background.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_arena_background.pivot_offset = Vector2.ZERO
 	_arena_background.scale = Vector2.ONE
 	_arena_background.size = draw_size
 	var pan := 0.5 if _uses_static_background else _background_pan
-	_arena_background.position = Vector2(
-		-overflow_x * pan,
-		BattleScale.grounded_background_y(stage_size.y, draw_size.y)
+	_arena_background.position = BACKGROUND_CALIBRATION.background_position(
+		stage_size, draw_size, pan, profile
 	)
-	_background_material.set_shader_parameter("camera_zoom", 1.0)
 	_background_material.set_shader_parameter(
-		"camera_pivot_y", BattleScale.GROUND_Y_RATIO
+		"camera_zoom",
+		profile_zoom if _uses_static_background else 1.0
+	)
+	_background_material.set_shader_parameter(
+		"camera_pivot_y",
+		float(profile["pivot_y"]) if _uses_static_background else BattleScale.GROUND_Y_RATIO
 	)
 	_set_background_ground_offset(_background_ground_offset)
 

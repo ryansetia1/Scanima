@@ -29,6 +29,44 @@ godot --headless --path game --script res://tests/test_scan_ui.gd \
   -- --battle-impact-only
 ```
 
+## Fine-tune background Duel / Team
+
+Tuner ini hanya hidup di editor atau debug build dan baru aktif dengan flag
+eksplisit. Ia berhenti sebelum account recovery dan boot backend, lalu memakai
+fixture Battle lokal di view production:
+
+```bash
+godot --path game -- --battle-background-tuner
+
+# buka profile tertentu langsung; pilihan lain duel/team × portrait/landscape
+godot --path game -- --battle-background-tuner=team-landscape
+
+# capture keadaan awal tanpa akun/jaringan
+godot --path game -- --battle-background-tuner \
+  --screenshot=/tmp/battle-background-tuner.png
+```
+
+- Drag area di luar panel untuk menggeser background; mouse wheel mengubah zoom.
+- Arrow menggeser 1 px, Shift+Arrow 10 px, Alt+Arrow 0,1 px.
+- `All characters Y` menggeser kedua Anima dan seluruh figur Seeker sebagai
+  satu foreground. Slider untuk gerak cepat; kotak angka di sebelahnya menerima
+  presisi 0,1 px. Nilai positif turun, nilai negatif naik.
+- Pilih Duel/Team, portrait/landscape, Opening/Gameplay, serta ukuran fighter
+  Small/Normal/Giant. Duel juga menyediakan Night/50%/Day.
+- `Replay Transition` mengulang opening sampai framing gameplay.
+- Garis cyan mengikuti ground karakter sesudah `All characters Y`; gold adalah
+  source foot row background, purple adalah offset X, dan kotak hijau adalah
+  safe frame kamera.
+- Nilai production Duel dan Team sekarang sama: portrait memakai
+  `Offset Y +100 px` + `All characters Y -117 px`; landscape memakai
+  `Offset Y +5 px` + `All characters Y -113 px`.
+- `Save Local` menulis empat working profile ke
+  `user://battle_background_tuning.json`. `Copy GDScript` menyalin sekaligus
+  mencetak dictionary empat profile untuk direview lalu ditempel ke
+  `BattleBackgroundCalibration.PROFILES`.
+- Save/Copy nonaktif kalau salah satu profile tidak menutup impact guard.
+  `Clean Preview (H)` menyembunyikan panel dan guides; tekan H lagi untuk kembali.
+
 ## Menjalankan game dan demo visual
 
 Setiap flag `--*-demo` memeriksa satu layar tanpa jaringan dan tanpa biaya.

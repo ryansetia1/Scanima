@@ -9,6 +9,10 @@ func _init() -> void:
 
 func _run() -> void:
 	await process_frame
+	if "--background-calibration-only" in OS.get_cmdline_user_args():
+		_test_background_calibration_contract()
+		_finish_calibration_only()
+		return
 	var host := SubViewport.new()
 	host.size = Vector2i(720, 1602)
 	root.add_child(host)
@@ -26,6 +30,7 @@ func _run() -> void:
 	var seeker_roster := load("res://scripts/seeker_roster.gd") as GDScript
 	var seeker_loaded: Dictionary = seeker_roster.sheet(null)
 	var tall_player_seeker_loaded: Dictionary = seeker_roster.sheet("automaton")
+	_test_background_calibration_contract()
 	_test_grounded_background_math()
 	_test_fresh_intro_wiring()
 	await _test_duel_intro(host, loaded, seeker_loaded)
@@ -40,6 +45,264 @@ func _run() -> void:
 		quit()
 		return
 	print("test_battle_intro: FAILED %d check(s)" % _failures)
+	quit(1)
+
+
+func _test_background_calibration_contract() -> void:
+	var calibration_script := load("res://scripts/battle_background_calibration.gd") as GDScript
+	_check(calibration_script != null, "Battle background calibration has one public production seam")
+	if calibration_script == null:
+		return
+	var profiles: Dictionary = calibration_script.canonical_profiles()
+	_check(
+		profiles.keys() == [
+			"duel_landscape", "duel_portrait", "team_landscape", "team_portrait",
+		],
+		"canonical calibration owns exactly four mode-orientation profiles"
+	)
+	for case: Dictionary in [
+		{"mode": &"duel", "size": Vector2(720.0, 1602.0)},
+		{"mode": &"duel", "size": Vector2(1602.0, 720.0)},
+		{"mode": &"team", "size": Vector2(720.0, 1602.0)},
+		{"mode": &"team", "size": Vector2(1602.0, 720.0)},
+	]:
+		var case_size: Vector2 = case["size"]
+		var profile: Dictionary = calibration_script.profile_for(
+			case["mode"], case_size, profiles
+		)
+		var portrait := case_size.y > case_size.x
+		var expected_background_y := 100.0 if portrait else 5.0
+		var offset_ratio: Vector2 = profile.get("offset_ratio")
+		_check(
+			is_zero_approx(offset_ratio.x)
+			and is_equal_approx(offset_ratio.y * case_size.y, expected_background_y),
+			"canonical background Y matches the approved orientation value"
+		)
+		_check(is_equal_approx(float(profile.get("zoom_multiplier")), 1.0), "canonical zoom stays neutral")
+		_check(
+			is_equal_approx(float(profile.get("pivot_y")), BattleScale.GROUND_Y_RATIO),
+			"canonical pivot preserves today's shared ground line"
+		)
+		_check(
+			is_equal_approx(float(profile.get("source_foot_y")), BattleScale.GROUND_Y_RATIO),
+			"canonical source foot row preserves today's backdrop alignment"
+		)
+		var expected_fighter_y := -117.0 if portrait else -113.0
+		_check(
+			is_equal_approx(
+				float(profile.get("fighter_offset_ratio_y", 999.0)) * case_size.y,
+				expected_fighter_y
+			),
+			"canonical character Y matches the approved orientation value"
+		)
+	var stage_size := Vector2(720.0, 1602.0)
+	var draw_size := Vector2(900.0, 1800.0)
+	var canonical: Dictionary = calibration_script.profile_for(&"duel", stage_size, profiles)
+	var canonical_position: Vector2 = calibration_script.background_position(
+		stage_size, draw_size, 0.5, canonical
+	)
+	_check(
+		canonical_position.is_equal_approx(Vector2(
+			(stage_size.x - draw_size.x) * 0.5,
+			BattleScale.grounded_background_y(stage_size.y, draw_size.y) + 100.0,
+		)),
+		"canonical portrait background applies the approved 100 px vertical offset"
+	)
+	_check(
+		is_equal_approx(calibration_script.camera_offset(0.02, 1.08, canonical), 0.02),
+		"canonical profile preserves the live shader offset"
+	)
+	_check(
+		calibration_script.has_method("fighter_offset_y"),
+		"calibration exposes one shared character vertical offset"
+	)
+	if calibration_script.has_method("fighter_offset_y"):
+		var shifted_fighters := canonical.duplicate(true)
+		shifted_fighters["fighter_offset_ratio_y"] = 0.1
+		_check(
+			is_equal_approx(calibration_script.fighter_offset_y(stage_size, shifted_fighters), 160.2),
+			"character offset remains normalized across orientations"
+		)
+	var tuned := {
+		"offset_ratio": Vector2(0.1, -0.05),
+		"zoom_multiplier": 1.05,
+		"pivot_y": 0.8,
+		"source_foot_y": 0.85,
+	}
+	var tuned_position: Vector2 = calibration_script.background_position(
+		stage_size, draw_size, 0.5, tuned
+	)
+	_check(
+		is_equal_approx(tuned_position.x, -18.0)
+		and is_equal_approx(
+			tuned_position.y + draw_size.y * float(tuned["source_foot_y"]),
+			stage_size.y * BattleScale.GROUND_Y_RATIO + stage_size.y * -0.05,
+		),
+		"tuned offsets stay normalized while source-foot calibration remains explicit"
+	)
+	var tuned_zoom: float = calibration_script.camera_zoom(1.04, tuned)
+	_check(is_equal_approx(tuned_zoom, 1.092), "profile zoom multiplies Team's live camera response")
+	_check(
+		is_equal_approx(
+			calibration_script.camera_offset(0.02, tuned_zoom, tuned),
+			0.02 + 0.05 * (1.0 - 1.0 / tuned_zoom),
+		),
+		"source foot and vertical pivot compose without replacing the live camera offset"
+	)
+	_check(
+		calibration_script.has_method("profile_is_safe"),
+		"calibration exposes the save-safety gate"
+	)
+	if not calibration_script.has_method("profile_is_safe"):
+		return
+	var impact_script := load("res://scripts/battle_impact.gd") as GDScript
+	var guard := float(impact_script.background_overscan_px(stage_size.x))
+	_check(
+		calibration_script.profile_is_safe(
+			stage_size, Vector2(720.0, 1602.0), guard, [1.0, 1.04, 1.08], canonical
+		),
+		"canonical profile covers the full opening/gameplay and fighter-size matrix"
+	)
+	var unsafe := canonical.duplicate(true)
+	unsafe["offset_ratio"] = Vector2(0.5, 0.5)
+	_check(
+		not calibration_script.profile_is_safe(
+			stage_size, Vector2(720.0, 1602.0), guard, [1.0, 1.04, 1.08], unsafe
+		),
+		"free exploration may leave coverage, but unsafe profiles cannot be saved"
+	)
+	var safe_pan := canonical.duplicate(true)
+	safe_pan["zoom_multiplier"] = 1.1
+	safe_pan["offset_ratio"] = Vector2(0.01, 0.0)
+	_check(
+		calibration_script.profile_is_safe(
+			stage_size, Vector2(720.0, 1602.0), guard, [1.0, 1.04, 1.08], safe_pan
+		),
+		"profile zoom creates enough cover crop to save a precise non-zero pan"
+	)
+	_check(
+		calibration_script.has_method("profiles_to_json")
+		and calibration_script.has_method("profiles_from_json")
+		and calibration_script.has_method("gdscript_snippet"),
+		"calibration exposes local persistence and deliberate production export"
+	)
+	if not calibration_script.has_method("profiles_to_json"):
+		return
+	var edited_profiles := profiles.duplicate(true)
+	edited_profiles["duel_portrait"]["offset_ratio"] = Vector2(0.125, -0.25)
+	var preset_json: String = calibration_script.profiles_to_json(edited_profiles)
+	var restored: Dictionary = calibration_script.profiles_from_json(preset_json)
+	_check(
+		restored["duel_portrait"]["offset_ratio"] == Vector2(0.125, -0.25)
+		and restored.size() == 4,
+		"user preset JSON round-trips normalized vectors and all four profiles"
+	)
+	_check(
+		calibration_script.profiles_from_json("not json") == profiles,
+		"a corrupt local preset falls back to canonical production values"
+	)
+	var wrong_types: Dictionary = calibration_script.profiles_from_json(
+		'{"duel_portrait":{"offset_ratio":["bad",null],"zoom_multiplier":"bad"}}'
+	)
+	_check(
+		wrong_types["duel_portrait"] == profiles["duel_portrait"],
+		"valid JSON with wrong field types is normalized without debugger errors"
+	)
+	var snippet: String = calibration_script.gdscript_snippet(edited_profiles)
+	_check(
+		snippet.begins_with("const PROFILES := {")
+		and snippet.contains("\"duel_portrait\"")
+		and snippet.contains("\"team_landscape\"")
+		and snippet.contains("Vector2(0.125")
+		and snippet.contains("-0.25"),
+		"export emits one complete human-reviewable GDScript dictionary"
+	)
+	var tuner_script := load("res://scripts/battle_background_tuner.gd") as GDScript
+	_check(tuner_script != null, "Battle background tuner has a developer-only UI seam")
+	if tuner_script == null:
+		return
+	_check(
+		tuner_script.should_start(["--battle-background-tuner"], true)
+		and tuner_script.should_start(["--battle-background-tuner=team-landscape"], true),
+		"the explicit flag and profile suffix start the tuner in a debug build"
+	)
+	_check(
+		not tuner_script.should_start([], true)
+		and not tuner_script.should_start(["--battle-background-tuner"], false),
+		"the tuner cannot appear without its flag or in a release build"
+	)
+	var tuner_scene := load("res://scenes/components/battle_background_tuner.tscn") as PackedScene
+	_check(tuner_scene != null, "Background tuner has a reusable overlay scene")
+	if tuner_scene != null:
+		var tuner := tuner_scene.instantiate()
+		for control_name: String in [
+			"DragSurface", "Mode", "Orientation", "Lighting", "Framing", "FighterPreset",
+			"OffsetX", "OffsetY", "Zoom", "PivotY", "SourceFootY",
+			"FighterOffsetYSlider", "FighterOffsetY", "Replay", "Save", "Copy",
+		]:
+			_check(
+				tuner.find_child(control_name, true, false) != null,
+				"Background tuner exposes %s" % control_name
+			)
+		var preview_modes: Array[StringName] = []
+		var emitted_profiles: Array[Dictionary] = []
+		tuner.preview_requested.connect(
+			func(mode: StringName, _framing: StringName, _fighter: StringName, _light: float) -> void:
+				preview_modes.append(mode)
+		)
+		tuner.profiles_changed.connect(
+			func(value: Dictionary) -> void: emitted_profiles.append(value)
+		)
+		root.add_child(tuner)
+		tuner.start()
+		_check(preview_modes == [&"duel"], "Background tuner starts on a local Duel fixture")
+		var zoom_field := tuner.find_child("Zoom", true, false) as SpinBox
+		var offset_field := tuner.find_child("OffsetX", true, false) as SpinBox
+		var offset_y_field := tuner.find_child("OffsetY", true, false) as SpinBox
+		var fighter_offset_field := tuner.find_child("FighterOffsetY", true, false) as SpinBox
+		zoom_field.value = 1.1
+		offset_field.value = 7.2
+		fighter_offset_field.value = 160.2
+		_check(
+			is_equal_approx(
+				float(emitted_profiles[-1]["duel_portrait"]["fighter_offset_ratio_y"]), 0.1
+			),
+			"Character slider updates the active normalized profile"
+		)
+		var mode_picker := tuner.find_child("Mode", true, false) as OptionButton
+		mode_picker.select(1)
+		mode_picker.item_selected.emit(1)
+		_check(preview_modes[-1] == &"team", "Background tuner switches to a local Team fixture")
+		_check(is_zero_approx(offset_field.value), "Profile switches refresh their own X value")
+		_check(
+			is_equal_approx(offset_y_field.value, 100.0),
+			"Profile switches refresh their own background Y value"
+		)
+		_check(
+			is_equal_approx(fighter_offset_field.value, -117.0),
+			"Character slider refreshes for the selected profile"
+		)
+		var status := tuner.find_child("Status", true, false) as Label
+		_check(
+			status.text.begins_with("BACKGROUND SAFE"),
+			"Canonical tuner profiles pass the background safety matrix"
+		)
+		tuner.free()
+	var scan_flow_source := FileAccess.get_file_as_string("res://scripts/scan_flow.gd")
+	var tuner_entry_index := scan_flow_source.find("if _try_start_battle_background_tuner():")
+	var auth_recovery_index := scan_flow_source.find("await AuthFlow.ensure_recovered()")
+	_check(
+		tuner_entry_index >= 0 and tuner_entry_index < auth_recovery_index,
+		"Background tuner bypasses account recovery and backend boot"
+	)
+
+
+func _finish_calibration_only() -> void:
+	if _failures == 0:
+		print("test_battle_intro: background calibration OK")
+		quit()
+		return
+	print("test_battle_intro: background calibration FAILED %d check(s)" % _failures)
 	quit(1)
 
 
@@ -152,6 +415,9 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var zoom_value: Variant = background_material.get_shader_parameter("camera_zoom")
 	var arena_rect := arena.get_global_rect()
 	var safe_rect: Rect2 = view.get_global_rect()
+	_check_shared_character_offset(
+		view, arena, player_anchor, opponent.get_parent(), seeker, "duel_portrait", "Duel"
+	)
 	var cinematic_ground_y := player_anchor.global_position.y
 	_check(
 		arena_rect.is_equal_approx(Rect2(Vector2.ZERO, Vector2(host.size)))
@@ -381,6 +647,9 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var safe_rect: Rect2 = view.get_global_rect()
 	var arena_layers := stage.get_parent()
 	var player_anchor := view.find_child("TeamPlayerAnchor", true, false) as Node2D
+	_check_shared_character_offset(
+		view, stage, player_anchor, opponent.get_parent(), seeker, "team_portrait", "Team"
+	)
 	var cinematic_ground_y := player_anchor.global_position.y
 	_check(
 		arena_rect.is_equal_approx(Rect2(Vector2.ZERO, Vector2(host.size)))
@@ -704,6 +973,34 @@ func _test_team_switch_reframe(
 	await process_frame
 
 
+func _check_shared_character_offset(
+	view: Control,
+	stage: Control,
+	player_anchor: Node2D,
+	opponent_anchor: Node2D,
+	seeker: Node2D,
+	profile_key: String,
+	label: String
+) -> void:
+	var actors: Array[Node2D] = [player_anchor, opponent_anchor, seeker]
+	var baseline := PackedFloat32Array()
+	for actor: Node2D in actors:
+		baseline.append(actor.global_position.y)
+	var profiles := BattleBackgroundCalibration.canonical_profiles()
+	profiles[profile_key]["fighter_offset_ratio_y"] = (
+		float(profiles[profile_key]["fighter_offset_ratio_y"]) + 0.05
+	)
+	view.call("set_debug_background_profiles", profiles)
+	var expected_shift := stage.size.y * 0.05
+	var shifted_together := true
+	for index: int in actors.size():
+		shifted_together = shifted_together and absf(
+			actors[index].global_position.y - baseline[index] - expected_shift
+		) < 0.1
+	_check(shifted_together, "%s character offset moves both Anima and Seeker together" % label)
+	view.call("set_debug_background_profiles", BattleBackgroundCalibration.canonical_profiles())
+
+
 func _check_background_grounding(
 	stage: Control,
 	background: TextureRect,
@@ -747,10 +1044,19 @@ func _check_background_grounding(
 		and background_rect.end.y >= stage_rect.end.y + guard,
 		"%s keeps vertical impact overscan after ground anchoring" % label
 	)
+	var profile: Dictionary = BattleBackgroundCalibration.DEFAULT_PROFILE
+	if label.begins_with("Duel"):
+		profile = BattleBackgroundCalibration.profile_for(&"duel", stage_rect.size)
+	elif label.begins_with("Team"):
+		profile = BattleBackgroundCalibration.profile_for(&"team", stage_rect.size)
+	var profile_offset: Vector2 = profile["offset_ratio"]
+	var expected_floor_delta := stage_rect.size.y * (
+		profile_offset.y - float(profile["fighter_offset_ratio_y"])
+	)
 	_check(
-		absf(source_ground_y - fighter_ground_y) <= 1.0,
+		absf(source_ground_y - fighter_ground_y - expected_floor_delta) <= 1.0,
 		(
-			"%s keeps the painted floor under fighter feet "
+			"%s preserves the calibrated painted-floor/character separation "
 			+ "(floor %.1f, feet %.1f, dock %.1f, zoom %.3f, offset %.4f, "
 			+ "layer_pos=%s, layer_scale=%s, background=%s)"
 		) % [

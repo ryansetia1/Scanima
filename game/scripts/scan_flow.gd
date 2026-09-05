@@ -265,7 +265,8 @@ func _ready() -> void:
 	# Deferred karena `root` masih menyiapkan anak scene utama selama `_ready()`,
 	# jadi `add_child` di titik ini ditolak; flush-nya tetap jatuh sebelum frame
 	# pertama digambar. Yang menutupnya `_set_busy(false)` milik `_boot()`.
-	LoadingScreen.show_screen.call_deferred("STATUS_LOADING", true)
+	if not _background_tuner_requested():
+		LoadingScreen.show_screen.call_deferred("STATUS_LOADING", true)
 	_chapter_push = ChapterPush.new()
 	_chapter_push.name = "ChapterPush"
 	add_child(_chapter_push)
@@ -408,6 +409,8 @@ func _ready() -> void:
 	UiJuice.reveal(_home_view, 0.08)
 	UiJuice.reveal(_bottom_nav, 0.14)
 	_switch_destination(BottomNav.HOME)
+	if _try_start_battle_background_tuner():
+		return
 	_setup_picker()
 	await AuthFlow.ensure_recovered()
 	_show_cached_anima()
@@ -563,6 +566,78 @@ func _ready() -> void:
 			_run_chapter_announcement_demo()
 		if arg.begins_with("--screenshot="):
 			await _capture_and_quit(arg.trim_prefix("--screenshot="))
+
+
+func _background_tuner_requested() -> bool:
+	var developer_build := OS.has_feature("debug") or OS.is_debug_build()
+	return BattleBackgroundTuner.should_start(OS.get_cmdline_user_args(), developer_build)
+
+
+func _try_start_battle_background_tuner() -> bool:
+	if not _background_tuner_requested():
+		return false
+	var tuner_scene := load("res://scenes/components/battle_background_tuner.tscn") as PackedScene
+	if tuner_scene == null:
+		push_error("Battle background tuner scene is unavailable")
+		return false
+	var tuner := tuner_scene.instantiate() as BattleBackgroundTuner
+	var tuner_layer := CanvasLayer.new()
+	tuner_layer.name = "BattleBackgroundTunerLayer"
+	tuner_layer.layer = 100
+	print("Battle background tuner active")
+	add_child(tuner_layer)
+	tuner_layer.add_child(tuner)
+	tuner.profiles_changed.connect(_apply_background_tuner_profiles)
+	tuner.preview_requested.connect(_preview_background_tuner)
+	tuner.replay_requested.connect(_replay_background_tuner_transition)
+	_set_busy(false)
+	# The normal boot scheduled its loading screen before this local-only branch.
+	# Queue the matching hide after it so the tuner can never inherit that overlay.
+	LoadingScreen.hide_screen.call_deferred()
+	_booting = false
+	tuner.start()
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--screenshot="):
+			_capture_and_quit.call_deferred(arg.trim_prefix("--screenshot="))
+	return true
+
+
+func _apply_background_tuner_profiles(profiles: Dictionary) -> void:
+	_battle_view.set_debug_background_profiles(profiles)
+	_team_battle_view.set_debug_background_profiles(profiles)
+
+
+func _preview_background_tuner(
+	mode: StringName, framing: StringName, fighter_preset: StringName, daylight_blend: float
+) -> void:
+	var height_cm := _background_tuner_height(fighter_preset)
+	var opening := framing == &"opening"
+	if mode == &"team":
+		_run_team_battle_demo(false, height_cm, opening)
+	else:
+		_run_battle_demo("active", false, 0.0, height_cm, height_cm, opening)
+		_battle_view.set_debug_daylight_blend(daylight_blend)
+
+
+func _replay_background_tuner_transition(
+	mode: StringName, fighter_preset: StringName, daylight_blend: float
+) -> void:
+	_preview_background_tuner(mode, &"opening", fighter_preset, daylight_blend)
+	await get_tree().process_frame
+	if mode == &"team":
+		await _team_battle_view.play_opening_intro()
+	else:
+		await _battle_view.play_opening_intro()
+
+
+func _background_tuner_height(fighter_preset: StringName) -> int:
+	match fighter_preset:
+		&"small":
+			return 50
+		&"giant":
+			return int(BattleScale.BODY_HEIGHT_MAX_CM)
+		_:
+			return int(BattleScale.BODY_HEIGHT_REFERENCE_CM)
 
 
 func _notification(what: int) -> void:
@@ -7546,7 +7621,8 @@ func _run_battle_demo(
 	training: bool = false,
 	effectiveness: float = 0.0,
 	player_height_cm: float = BattleScale.BODY_HEIGHT_REFERENCE_CM,
-	bot_height_cm: float = BattleScale.BODY_HEIGHT_REFERENCE_CM
+	bot_height_cm: float = BattleScale.BODY_HEIGHT_REFERENCE_CM,
+	fresh_intro: bool = false
 ) -> void:
 	var placeholder := PlaceholderSheet.build()
 	var texture := ImageTexture.create_from_image(placeholder["image"])
@@ -7597,7 +7673,7 @@ func _run_battle_demo(
 	}
 	_switch_destination(BottomNav.BATTLE, {}, false)
 	_battle_view.show_duel_mode()
-	_battle_view.set_session(session, loaded, loaded)
+	_battle_view.set_session(session, loaded, loaded, {}, fresh_intro)
 	_sync_shop_chrome()
 	if not is_zero_approx(effectiveness):
 		var impact_event := {"crit": false, "element_multiplier": effectiveness}
@@ -7649,7 +7725,9 @@ func _run_team_result_demo() -> void:
 	_team_battle_view.set_roster(roster)
 
 
-func _run_team_battle_demo(boss: bool = false) -> Dictionary:
+func _run_team_battle_demo(
+	boss: bool = false, active_height_cm: int = -1, fresh_intro: bool = false
+) -> Dictionary:
 	_team_battle_demo_active = true
 	var placeholder := PlaceholderSheet.build()
 	var loaded := AnimaLoader.build(
@@ -7662,8 +7740,13 @@ func _run_team_battle_demo(boss: bool = false) -> Dictionary:
 	var opponent_snapshots: Array[Dictionary] = []
 	var art: Dictionary = {}
 	var player_heights: Array[int] = [175, 90, 50, 75]
+	var opponent_heights: Array[int] = [110, 130, 150, 170]
 	var boss_names: Array[String] = ["Fudge Fang", "Syrup Sentry", "Gumdrop Grunt", "Nimbelisk"]
 	var boss_heights: Array[int] = [135, 170, 95, 130]
+	if active_height_cm > 0:
+		player_heights[0] = active_height_cm
+		opponent_heights[0] = active_height_cm
+		boss_heights[0] = active_height_cm
 	for slot in 4:
 		var player_id := "team-demo-player-%d" % slot
 		var opponent_id := "team-demo-opponent-%d" % slot
@@ -7691,7 +7774,7 @@ func _run_team_battle_demo(boss: bool = false) -> Dictionary:
 			"max_hp": 172,
 			"momentum": 3,
 			"momentum_max": 3,
-			"body_height_cm": boss_heights[slot] if boss else 110 + slot * 20,
+			"body_height_cm": boss_heights[slot] if boss else opponent_heights[slot],
 			"is_ace": boss and slot == 3,
 			"strike_name": "Pixel Jab",
 			"surge_name": "Static Arc",
@@ -7757,7 +7840,7 @@ func _run_team_battle_demo(boss: bool = false) -> Dictionary:
 		}
 	_switch_destination(BottomNav.BATTLE, {}, false)
 	_battle_view.show_team_mode()
-	_team_battle_view.set_session(session, art)
+	_team_battle_view.set_session(session, art, fresh_intro)
 	_sync_shop_chrome()
 	return {"session": session, "art": art}
 

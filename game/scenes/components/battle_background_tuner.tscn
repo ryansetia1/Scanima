@@ -1,0 +1,216 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/battle_background_tuner.gd" id="1_tuner"]
+
+[node name="BattleBackgroundTuner" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_tuner")
+
+[node name="DragSurface" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="TunerPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 576.0
+offset_bottom = 704.0
+mouse_filter = 0
+
+[node name="TunerScroll" type="ScrollContainer" parent="TunerPanel"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Margin" type="MarginContainer" parent="TunerPanel/TunerScroll"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Column" type="VBoxContainer" parent="TunerPanel/TunerScroll/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="TunerPanel/TunerScroll/Margin/Column"]
+layout_mode = 2
+text = "Battle Background Tuner · Debug Only"
+
+[node name="Context" type="Label" parent="TunerPanel/TunerScroll/Margin/Column"]
+layout_mode = 2
+text = "Drag arena to pan · Wheel to zoom · Arrows 1 px · Shift 10 px · Alt 0.1 px · H clean preview"
+autowrap_mode = 2
+
+[node name="ProfileRow" type="HBoxContainer" parent="TunerPanel/TunerScroll/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ModeLabel" type="Label" parent="TunerPanel/TunerScroll/Margin/Column/ProfileRow"]
+layout_mode = 2
+text = "Mode"
+
+[node name="Mode" type="OptionButton" parent="TunerPanel/TunerScroll/Margin/Column/ProfileRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OrientationLabel" type="Label" parent="TunerPanel/TunerScroll/Margin/Column/ProfileRow"]
+layout_mode = 2
+text = "Orientation"
+
+[node name="Orientation" type="OptionButton" parent="TunerPanel/TunerScroll/Margin/Column/ProfileRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PreviewRow" type="HBoxContainer" parent="TunerPanel/TunerScroll/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Lighting" type="OptionButton" parent="TunerPanel/TunerScroll/Margin/Column/PreviewRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Framing" type="OptionButton" parent="TunerPanel/TunerScroll/Margin/Column/PreviewRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FighterPreset" type="OptionButton" parent="TunerPanel/TunerScroll/Margin/Column/PreviewRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Fields" type="GridContainer" parent="TunerPanel/TunerScroll/Margin/Column"]
+layout_mode = 2
+columns = 2
+
+[node name="OffsetXLabel" type="Label" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+layout_mode = 2
+text = "Offset X"
+
+[node name="OffsetX" type="SpinBox" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OffsetYLabel" type="Label" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+layout_mode = 2
+text = "Offset Y"
+
+[node name="OffsetY" type="SpinBox" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ZoomLabel" type="Label" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+layout_mode = 2
+text = "Zoom multiplier"
+
+[node name="Zoom" type="SpinBox" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PivotLabel" type="Label" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+layout_mode = 2
+text = "Zoom pivot Y"
+
+[node name="PivotY" type="SpinBox" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SourceFootLabel" type="Label" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+layout_mode = 2
+text = "Source foot row"
+
+[node name="SourceFootY" type="SpinBox" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FighterOffsetLabel" type="Label" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+layout_mode = 2
+text = "All characters Y"
+
+[node name="FighterOffsetControls" type="HBoxContainer" parent="TunerPanel/TunerScroll/Margin/Column/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FighterOffsetYSlider" type="HSlider" parent="TunerPanel/TunerScroll/Margin/Column/Fields/FighterOffsetControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Positive moves every character down; negative moves them up."
+
+[node name="FighterOffsetY" type="SpinBox" parent="TunerPanel/TunerScroll/Margin/Column/Fields/FighterOffsetControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "Positive moves every character down; negative moves them up."
+
+[node name="GuideLegend" type="Label" parent="TunerPanel/TunerScroll/Margin/Column"]
+layout_mode = 2
+text = "Guides: cyan fighter ground · gold source foot · purple X offset · green safe frame"
+autowrap_mode = 2
+
+[node name="Status" type="Label" parent="TunerPanel/TunerScroll/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Not validated"
+autowrap_mode = 2
+
+[node name="ActionsTop" type="HBoxContainer" parent="TunerPanel/TunerScroll/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Replay" type="Button" parent="TunerPanel/TunerScroll/Margin/Column/ActionsTop"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Replay Transition"
+
+[node name="Save" type="Button" parent="TunerPanel/TunerScroll/Margin/Column/ActionsTop"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Save Local"
+
+[node name="Copy" type="Button" parent="TunerPanel/TunerScroll/Margin/Column/ActionsTop"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Copy GDScript"
+
+[node name="ActionsBottom" type="HBoxContainer" parent="TunerPanel/TunerScroll/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ResetCurrent" type="Button" parent="TunerPanel/TunerScroll/Margin/Column/ActionsBottom"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Reset Profile"
+
+[node name="ResetAll" type="Button" parent="TunerPanel/TunerScroll/Margin/Column/ActionsBottom"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Reset All"
+
+[node name="Hide" type="Button" parent="TunerPanel/TunerScroll/Margin/Column/ActionsBottom"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clean Preview (H)"
