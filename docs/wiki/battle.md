@@ -276,8 +276,12 @@ Seeker.
   atau disimpan di sana — buka profilnya dan Core-nya sudah ada.
 - Final Battle dibuka sebagai konfrontasi dua Seeker: kamu dan **The
   Confectioner** sudah berdiri di arena, sementara kedua Anima masih
-  tersembunyi. Setelah jeda singkat, Boss bicara tanpa overlay gelap. **Tap to
-  continue** menutup baris itu; Boss memanggil Anima-nya lebih dulu, lalu
+  tersembunyi. Setelah jeda singkat, Boss bicara tanpa overlay gelap. Panelnya
+  muncul di tempat pelat event arena; status HP, tombol Battle, dan picker
+  **Switch** disembunyikan sementara supaya hanya dialog dan satu tombol **Tap
+  to Continue** yang terlihat. Menekan tombol itu atau mengetuk area dialog
+  menutup baris lalu mengembalikan tampilan Battle sebelumnya tanpa mengubah
+  pilihan **Switch**. Boss memanggil Anima-nya lebih dulu, lalu
   Seeker-mu memanggil Anima aktifmu. Status dan tombol baru muncul sesudah
   keduanya siap, dan rangkaian Summon tidak dapat dilewati. **Try Again**
   memutar pembuka penuh dengan dialog rematch, sedangkan **Continue

@@ -76,6 +76,7 @@ const REQUIRED_KEYS := [
 	"FORMAT_PERCENT",
 	"VALUE_UNAVAILABLE",
 	"EXPEDITION_NODE_UNKNOWN",
+	"BATTLE_SEEKER_CONTINUE",
 ]
 const GATE_REASON_CODES := [
 	"human_face",
@@ -97,6 +98,7 @@ const PLAYER_UI_FILES := [
 	"res://scripts/collection_view.gd",
 	"res://scripts/battle_view.gd",
 	"res://scripts/team_battle_view.gd",
+	"res://scripts/boss_seeker_dialog.gd",
 	"res://scripts/expedition_view.gd",
 	"res://scripts/expedition_route_map.gd",
 	"res://scripts/expedition_controller.gd",
@@ -172,6 +174,10 @@ func _initialize() -> void:
 	if locale_manager != null:
 		locale_manager.call("set_locale", "en")
 		_check(TranslationServer.translate("CARE_PLAY") == "Play", "English translation must resolve")
+		_check(
+			TranslationServer.translate("BATTLE_SEEKER_CONTINUE") == "Tap to Continue",
+			"Boss Seeker Continue action must resolve through the runtime catalog"
+		)
 		_check(locale_manager.call("format_integer", 12345) == "12,345", "numbers use one formatter")
 		_check(locale_manager.call("format_ratio", 3, 5) == "3 / 5", "ratios use one formatter")
 		_check(

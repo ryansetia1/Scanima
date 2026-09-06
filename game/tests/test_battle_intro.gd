@@ -1409,6 +1409,7 @@ func _test_boss_intro(
 	view.size = Vector2(host.size)
 	await process_frame
 	view.open_mode()
+	var combat: Node = view.find_child("ExpeditionCombat", true, false)
 	var legacy_player_seeker_loaded := player_seeker_loaded.duplicate(true)
 	legacy_player_seeker_loaded.erase("body_height_cm")
 	view.set_player_avatar(legacy_player_seeker_loaded)
@@ -1475,6 +1476,9 @@ func _test_boss_intro(
 	var dialog := view.find_child("BossSeekerDialog", true, false) as BossSeekerDialog
 	var chrome := view.find_child("TeamChrome", true, false) as Control
 	var attack := view.find_child("TeamAttackButton", true, false) as Button
+	var switch_panel := view.find_child("TeamSwitchPanel", true, false) as Control
+	var switch_overlay := view.find_child("SwitchOverlay", true, false) as Control
+	var effectiveness := view.find_child("TeamEffectiveness", true, false) as Control
 	var layer := view.find_child("FighterLayer", true, false) as Node2D
 	var player_seeker_shadow := view.find_child("PlayerSeekerShadow", true, false) as Sprite2D
 	var boss_shadow := layer.find_child("GroundShadow", false, false) as Sprite2D
@@ -1559,16 +1563,31 @@ func _test_boss_intro(
 	if portrait == null:
 		portrait = dialog.find_child("@TextureRect@*", true, false) as TextureRect
 	var name_label := dialog.find_child("SeekerName", true, false) as Label
-	var continue_label := dialog.find_child("SeekerContinue", true, false) as Label
+	var continue_button := dialog.find_child("SeekerContinue", true, false) as Button
+	var dialog_panel := dialog.find_child("SeekerPanel", true, false) as PanelContainer
 	_check(
 		not loading_root.visible and dialog.is_open()
 		and dialog_opened_at - loading_hidden_at >= 600
 		and not player.visible and not opponent.visible
+		and not chrome.visible
 		and dim != null and (not dim.visible or is_zero_approx(dim.color.a))
 		and name_label != null and name_label.text == "The Confectioner"
-		and continue_label != null and not continue_label.text.is_empty()
-		and portrait != null and portrait.visible,
-		"Boss speaks after a natural 0.7-second clear-arena beat with identity and no dark overlay"
+		and continue_button != null
+		and continue_button.text == tr("BATTLE_SEEKER_CONTINUE")
+		and portrait != null and portrait.visible
+		and dialog_panel != null and effectiveness != null
+		and is_equal_approx(dialog_panel.anchor_top, effectiveness.anchor_top)
+		and is_equal_approx(dialog_panel.anchor_bottom, effectiveness.anchor_bottom)
+		and is_equal_approx(dialog_panel.anchor_right, effectiveness.anchor_right)
+		and absf(
+			dialog_panel.get_global_rect().get_center().y
+			- effectiveness.get_global_rect().get_center().y
+		) < 1.0
+		and dialog_panel.size.y <= 320.0,
+		(
+			"Boss dialogue replaces Chrome with one localized Continue action "
+			+ "at the arena event-banner anchor"
+		)
 	)
 	var reveal_order: Array[String] = []
 	var boss_pose_at_reveal := [false]
@@ -1589,6 +1608,10 @@ func _test_boss_intro(
 			stable_reveals[0] = stable_reveals[0] and layer.position.is_equal_approx(cinematic_position) and layer.scale.is_equal_approx(cinematic_scale)
 	)
 	_check(view.handle_back(), "Back dismisses Boss opening dialogue without leaving the encounter")
+	_check(
+		chrome.visible and not dialog.is_open(),
+		"dismissing Boss dialogue restores the opening Chrome visibility state"
+	)
 	var saw_transition := false
 	var transition_started_at := -1
 	var settle_deadline := Time.get_ticks_msec() + 10000
@@ -1614,6 +1637,37 @@ func _test_boss_intro(
 		and attack.focus_mode == Control.FOCUS_ALL,
 		"Boss then player Summon without camera snap before the 0.32-second Chrome transition unlocks input"
 	)
+	dialog.present("The Confectioner", "A mid-battle line.", portrait.texture)
+	await process_frame
+	_check(
+		dialog.is_open() and not chrome.visible
+		and continue_button.visible and continue_button.has_focus()
+		and not switch_overlay.visible,
+		"mid-battle Boss dialogue hides HP, actions, and the Switch overlay behind one focused action"
+	)
+	continue_button.pressed.emit()
+	await process_frame
+	_check(
+		not dialog.is_open() and chrome.visible and not attack.disabled
+		and attack.mouse_filter == Control.MOUSE_FILTER_STOP,
+		"dismissing a mid-battle Boss line restores canonical action availability"
+	)
+	switch_panel.visible = true
+	switch_overlay.visible = true
+	dialog.present("The Confectioner", "Keep the current Switch choice.", portrait.texture)
+	await process_frame
+	_check(
+		switch_panel.visible and not switch_overlay.visible,
+		"Boss dialogue hides an open Switch picker without mutating its content state"
+	)
+	dialog.dismiss()
+	await process_frame
+	_check(
+		switch_panel.visible and switch_overlay.visible,
+		"dismissing Boss dialogue restores the previously open Switch picker"
+	)
+	combat.call("_hide_switch_overlay")
+	combat.call("_update_arena_actions")
 	var settled_layer_position := layer.position
 	var settled_layer_scale := layer.scale
 	var settled_boss_position := boss.position

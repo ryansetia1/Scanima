@@ -189,6 +189,9 @@ var _final_ace_pending := false
 var _boss_result_pending := false
 var _switch_overlay: Control
 var _switch_sheet: PanelContainer
+var _dialog_chrome_active := false
+var _dialog_chrome_was_visible := false
+var _dialog_switch_overlay_was_visible := false
 
 
 func _ready() -> void:
@@ -276,6 +279,8 @@ func _ready() -> void:
 	_seeker_dialog = BOSS_SEEKER_DIALOG.new()
 	_seeker_dialog.name = "BossSeekerDialog"
 	_battle_overlay.add_child(_seeker_dialog)
+	_seeker_dialog.opened.connect(_on_seeker_dialog_opened)
+	_seeker_dialog.dismissed.connect(_on_seeker_dialog_dismissed)
 	_layout_full_bleed_arena.call_deferred()
 
 
@@ -308,6 +313,35 @@ func _layout_result_panel() -> void:
 	var panel_height := _result_panel.get_combined_minimum_size().y
 	_result_panel.offset_top = -panel_height
 	_result_panel.offset_bottom = 0.0
+
+
+func _on_seeker_dialog_opened() -> void:
+	if not _is_boss_encounter() or _dialog_chrome_active:
+		return
+	_dialog_chrome_active = true
+	_dialog_chrome_was_visible = _battle_chrome.visible
+	_dialog_switch_overlay_was_visible = (
+		is_instance_valid(_switch_overlay) and _switch_overlay.visible
+	)
+	_battle_chrome.visible = false
+	if is_instance_valid(_switch_overlay):
+		_switch_overlay.visible = false
+	for button in [
+		_attack_button, _special_button, _guard_button,
+		_item_button, _switch_button, _forfeit,
+	]:
+		(button as Button).release_focus()
+
+
+func _on_seeker_dialog_dismissed() -> void:
+	if not _dialog_chrome_active:
+		return
+	_dialog_chrome_active = false
+	_battle_chrome.visible = _dialog_chrome_was_visible
+	if is_instance_valid(_switch_overlay):
+		_switch_overlay.visible = _dialog_switch_overlay_was_visible
+	_sync_location_chrome()
+	_update_arena_actions()
 
 
 func open_mode() -> void:

@@ -1,14 +1,18 @@
 class_name BossSeekerDialog
 extends Control
 
+signal opened
 signal dismissed
+
+const PANEL_STYLE: StyleBox = preload("res://themes/toast/toast_panel_general.tres")
 
 var _open := false
 var _backdrop: ColorRect
+var _panel: PanelContainer
 var _portrait: TextureRect
 var _speaker: Label
 var _line: Label
-var _hint: Label
+var _continue: Button
 
 
 func _ready() -> void:
@@ -23,20 +27,25 @@ func _ready() -> void:
 	_backdrop.visible = false
 	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_backdrop)
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	panel.offset_left = 16.0
-	panel.offset_right = -16.0
-	panel.offset_top = -336.0
-	panel.offset_bottom = -24.0
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.theme_type_variation = "HudSurface"
-	add_child(panel)
+	_panel = PanelContainer.new()
+	_panel.name = "SeekerPanel"
+	_panel.anchor_top = 0.4
+	_panel.anchor_right = 1.0
+	_panel.anchor_bottom = 0.4
+	_panel.offset_left = 16.0
+	_panel.offset_top = -156.0
+	_panel.offset_right = -16.0
+	_panel.offset_bottom = 156.0
+	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel.theme_type_variation = "BattleEventPlate"
+	_panel.add_theme_stylebox_override("panel", PANEL_STYLE)
+	add_child(_panel)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 20)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(row)
+	_panel.add_child(row)
 	_portrait = TextureRect.new()
+	_portrait.name = "SeekerPortrait"
 	_portrait.custom_minimum_size = Vector2(160, 160)
 	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -57,11 +66,12 @@ func _ready() -> void:
 	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_line.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	copy.add_child(_line)
-	_hint = Label.new()
-	_hint.name = "SeekerContinue"
-	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_hint.modulate = Color(1, 1, 1, 0.72)
-	copy.add_child(_hint)
+	_continue = Button.new()
+	_continue.name = "SeekerContinue"
+	_continue.custom_minimum_size = Vector2(0, 96)
+	_continue.theme_type_variation = "PrimaryButton"
+	_continue.pressed.connect(dismiss)
+	copy.add_child(_continue)
 
 
 func is_open() -> bool:
@@ -75,11 +85,13 @@ func present(speaker: String, line: String, portrait: Texture2D = null) -> void:
 		dismiss()
 	_speaker.text = speaker
 	_line.text = line
-	_hint.text = tr("EXPEDITION_SEEKER_CONTINUE")
+	_continue.text = tr("BATTLE_SEEKER_CONTINUE")
 	_portrait.texture = portrait
 	_portrait.visible = portrait != null
 	visible = true
 	_open = true
+	opened.emit()
+	_continue.grab_focus()
 	await dismissed
 
 
@@ -88,6 +100,7 @@ func dismiss() -> void:
 		return
 	_open = false
 	visible = false
+	_continue.release_focus()
 	dismissed.emit()
 
 
