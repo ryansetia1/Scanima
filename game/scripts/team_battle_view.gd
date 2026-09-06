@@ -45,6 +45,8 @@ const TEAM_BACKGROUND_MAX_SCALE := 1.0
 const TEAM_STATIC_BACKGROUND_CAMERA_MAX := 1.08
 const TEAM_STATIC_BACKGROUND_CAMERA_FLOOR := 0.60
 const TEAM_STATIC_BACKGROUND_REFIT_STRENGTH := 0.25
+const BOSS_DIALOG_CONTINUE_HEIGHT := 192.0
+const BOSS_DIALOG_CONTINUE_BLEED := 24.0
 const MIN_TEAM_SIZE := 2
 const MAX_TEAM_SIZE := 4
 const CAMERA_REFIT_SEC := 0.48
@@ -92,6 +94,7 @@ const COMMIT_COLORS := {
 @onready var _arena: VBoxContainer = %TeamArena
 @onready var _battle_chrome: Control = %TeamChrome
 @onready var _battle_overlay: Control = %TeamOverlay
+@onready var _dialog_continue: Button = %BossSeekerContinue
 @onready var _result_panel: PanelContainer = %TeamResultPanel
 @onready var _arena_hud: PanelContainer = %ArenaHud
 @onready var _arena_dock: PanelContainer = %TeamDock
@@ -217,6 +220,7 @@ func _ready() -> void:
 	_forfeit.pressed.connect(forfeit_requested.emit)
 	_retry.pressed.connect(_on_retry_pressed)
 	_leave.pressed.connect(back_requested.emit)
+	_dialog_continue.pressed.connect(_dismiss_seeker_dialog)
 	resized.connect(_layout_full_bleed_arena)
 	for slot in _switch_buttons.size():
 		_switch_buttons[slot].pressed.connect(_request_switch.bind(slot))
@@ -276,9 +280,11 @@ func _ready() -> void:
 	_player_seeker_shadow.name = "PlayerSeekerShadow"
 	_seeker_dialog = BOSS_SEEKER_DIALOG.new()
 	_seeker_dialog.name = "BossSeekerDialog"
+	_seeker_dialog.configure_external_continue(true)
 	_battle_overlay.add_child(_seeker_dialog)
 	_seeker_dialog.opened.connect(_on_seeker_dialog_opened)
 	_seeker_dialog.dismissed.connect(_on_seeker_dialog_dismissed)
+	_dialog_continue.text = tr("BATTLE_SEEKER_CONTINUE")
 	_layout_full_bleed_arena.call_deferred()
 
 
@@ -292,8 +298,26 @@ func _layout_full_bleed_arena() -> void:
 	_battle_stage.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_battle_stage.position = top_left
 	_battle_stage.size = bottom_right - top_left
+	_layout_dialog_continue(viewport_rect)
 	_layout_battle_chrome()
 	_position_fighters.call_deferred()
+
+
+func _layout_dialog_continue(viewport_rect: Rect2) -> void:
+	if not is_instance_valid(_dialog_continue):
+		return
+	var inverse := _battle_overlay.get_global_transform_with_canvas().affine_inverse()
+	var top_left := inverse * viewport_rect.position
+	var bottom_right := inverse * viewport_rect.end
+	_dialog_continue.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_dialog_continue.position = Vector2(
+		top_left.x - BOSS_DIALOG_CONTINUE_BLEED,
+		bottom_right.y - BOSS_DIALOG_CONTINUE_HEIGHT
+	)
+	_dialog_continue.size = Vector2(
+		bottom_right.x - top_left.x + BOSS_DIALOG_CONTINUE_BLEED * 2.0,
+		BOSS_DIALOG_CONTINUE_HEIGHT + BOSS_DIALOG_CONTINUE_BLEED
+	)
 
 
 func _layout_battle_chrome() -> void:
@@ -322,6 +346,11 @@ func _on_seeker_dialog_opened() -> void:
 		is_instance_valid(_switch_overlay) and _switch_overlay.visible
 	)
 	_battle_chrome.visible = false
+	# ponytail: masker full-bleed ini menutup clamp baris tekstur paling bawah
+	# saat dock disembunyikan. Plafon: jika dialog kelak tak lagi menutup dock,
+	# perbaiki sampling/overscan shader arena lalu hapus bleed ini.
+	_dialog_continue.visible = true
+	_dialog_continue.disabled = false
 	if is_instance_valid(_switch_overlay):
 		_switch_overlay.visible = false
 	for button in [
@@ -335,11 +364,17 @@ func _on_seeker_dialog_dismissed() -> void:
 	if not _dialog_chrome_active:
 		return
 	_dialog_chrome_active = false
+	_dialog_continue.visible = false
 	_battle_chrome.visible = _dialog_chrome_was_visible
 	if is_instance_valid(_switch_overlay):
 		_switch_overlay.visible = _dialog_switch_overlay_was_visible
 	_sync_location_chrome()
 	_update_arena_actions()
+
+
+func _dismiss_seeker_dialog() -> void:
+	if is_instance_valid(_seeker_dialog):
+		_seeker_dialog.dismiss()
 
 
 func open_mode() -> void:
@@ -441,7 +476,6 @@ func handle_back() -> bool:
 	if not visible:
 		return false
 	if is_instance_valid(_seeker_dialog) and _seeker_dialog.is_open():
-		_seeker_dialog.dismiss()
 		return true
 	if _close_switch_picker():
 		return true

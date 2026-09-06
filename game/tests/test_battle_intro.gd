@@ -1550,6 +1550,7 @@ func _test_boss_intro(
 	var boss := view.find_child("BossSeeker", true, false) as AnimatedSprite2D
 	var dialog := view.find_child("BossSeekerDialog", true, false) as BossSeekerDialog
 	var chrome := view.find_child("TeamChrome", true, false) as Control
+	var external_continue := view.find_child("BossSeekerContinue", true, false) as Button
 	var attack := view.find_child("TeamAttackButton", true, false) as Button
 	var switch_panel := view.find_child("TeamSwitchPanel", true, false) as Control
 	var switch_overlay := view.find_child("SwitchOverlay", true, false) as Control
@@ -1647,7 +1648,7 @@ func _test_boss_intro(
 	if portrait == null:
 		portrait = dialog.find_child("@TextureRect@*", true, false) as TextureRect
 	var name_label := dialog.find_child("SeekerName", true, false) as Label
-	var continue_button := dialog.find_child("SeekerContinue", true, false) as Button
+	var internal_continue := dialog.find_child("SeekerContinue", true, false) as Button
 	var dialog_panel := dialog.find_child("SeekerPanel", true, false) as PanelContainer
 	_check(
 		not loading_root.visible and dialog.is_open()
@@ -1656,8 +1657,16 @@ func _test_boss_intro(
 		and not chrome.visible
 		and dim != null and (not dim.visible or is_zero_approx(dim.color.a))
 		and name_label != null and name_label.text == "The Confectioner"
-		and continue_button != null
-		and continue_button.text == tr("BATTLE_SEEKER_CONTINUE")
+		and internal_continue != null and not internal_continue.visible
+		and external_continue != null and external_continue.visible
+		and external_continue.text == tr("BATTLE_SEEKER_CONTINUE")
+		and external_continue.focus_mode == Control.FOCUS_NONE
+		and external_continue.get_global_rect().position.x <= 0.0
+		and external_continue.get_global_rect().end.x >= host.size.x
+		and external_continue.get_global_rect().end.y >= host.size.y
+		and external_continue.custom_minimum_size.y >= 192.0
+		and external_continue.get_global_rect().size.y
+		>= external_continue.custom_minimum_size.y
 		and portrait != null and portrait.visible
 		and dialog_panel != null and effectiveness != null
 		and is_equal_approx(dialog_panel.anchor_top, effectiveness.anchor_top)
@@ -1695,9 +1704,24 @@ func _test_boss_intro(
 	dialog_tap.button_index = MOUSE_BUTTON_LEFT
 	dialog_tap.pressed = true
 	dialog.call("_gui_input", dialog_tap)
+	var cancel := InputEventAction.new()
+	cancel.action = &"ui_cancel"
+	cancel.pressed = true
+	dialog.call("_gui_input", cancel)
+	var accept_dialog := InputEventAction.new()
+	accept_dialog.action = &"ui_accept"
+	accept_dialog.pressed = true
+	dialog.call("_gui_input", accept_dialog)
 	_check(
-		chrome.visible and not dialog.is_open(),
-		"the default in-combat dialog still dismisses on backdrop tap and restores Chrome"
+		view.handle_back() and dialog.is_open() and not chrome.visible
+		and external_continue.visible,
+		"Boss dialogue ignores backdrop, ui_accept, ui_cancel, and Back until external Continue"
+	)
+	external_continue.pressed.emit()
+	await process_frame
+	_check(
+		chrome.visible and not dialog.is_open() and not external_continue.visible,
+		"external Continue dismisses Boss dialogue and restores its prior Chrome state"
 	)
 	var saw_transition := false
 	var transition_started_at := -1
@@ -1728,11 +1752,11 @@ func _test_boss_intro(
 	await process_frame
 	_check(
 		dialog.is_open() and not chrome.visible
-		and continue_button.visible and continue_button.has_focus()
+		and not internal_continue.visible and external_continue.visible
 		and not switch_overlay.visible,
-		"mid-battle Boss dialogue hides HP, actions, and the Switch overlay behind one focused action"
+		"mid-battle Boss dialogue hides HP, actions, and Switch behind one external action"
 	)
-	continue_button.pressed.emit()
+	external_continue.pressed.emit()
 	await process_frame
 	_check(
 		not dialog.is_open() and chrome.visible and not attack.disabled
@@ -1747,12 +1771,22 @@ func _test_boss_intro(
 		switch_panel.visible and not switch_overlay.visible,
 		"Boss dialogue hides an open Switch picker without mutating its content state"
 	)
-	dialog.dismiss()
+	external_continue.pressed.emit()
 	await process_frame
 	_check(
 		switch_panel.visible and switch_overlay.visible,
 		"dismissing Boss dialogue restores the previously open Switch picker"
 	)
+	chrome.visible = false
+	dialog.present("The Confectioner", "Keep hidden Chrome hidden.", portrait.texture)
+	await process_frame
+	external_continue.pressed.emit()
+	await process_frame
+	_check(
+		not dialog.is_open() and not chrome.visible,
+		"dismissing Boss dialogue restores a previously hidden Chrome state"
+	)
+	chrome.visible = true
 	combat.call("_hide_switch_overlay")
 	combat.call("_update_arena_actions")
 	var settled_layer_position := layer.position
@@ -1847,6 +1881,7 @@ func _test_boss_replay_and_cancellation(
 	var player := view.find_child("TeamPlayerSprite", true, false) as AnimatedSprite2D
 	var opponent := view.find_child("TeamOpponentSprite", true, false) as AnimatedSprite2D
 	var dialog := view.find_child("BossSeekerDialog", true, false) as BossSeekerDialog
+	var external_continue := view.find_child("BossSeekerContinue", true, false) as Button
 	var line := dialog.find_child("SeekerLine", true, false) as Label
 	var chrome := view.find_child("TeamChrome", true, false) as Control
 	var attack := view.find_child("TeamAttackButton", true, false) as Button
@@ -1888,8 +1923,11 @@ func _test_boss_replay_and_cancellation(
 	tap.position = Vector2(host.size) * 0.5
 	host.push_input(tap, true)
 	await process_frame
-	if dialog.is_open():
-		view.handle_back()
+	_check(
+		dialog.is_open() and external_continue.visible,
+		"the in-combat rematch dialog also ignores arena backdrop taps"
+	)
+	external_continue.pressed.emit()
 	var rematch_settle_deadline := Time.get_ticks_msec() + 10000
 	while attack.disabled and Time.get_ticks_msec() < rematch_settle_deadline:
 		await process_frame
@@ -1941,7 +1979,7 @@ func _test_boss_replay_and_cancellation(
 		and not player.visible and not opponent.visible and attack.disabled,
 		"background then foreground on the same view resumes the active Boss opening phase"
 	)
-	view.handle_back()
+	external_continue.pressed.emit()
 	var resumed_settle_deadline := Time.get_ticks_msec() + 10000
 	while attack.disabled and Time.get_ticks_msec() < resumed_settle_deadline:
 		await process_frame
@@ -1966,7 +2004,7 @@ func _test_boss_replay_and_cancellation(
 		and not boss_shadow.visible and not player_seeker_shadow.visible,
 		"missing Seeker sheets omit both cosmetics and portrait while Boss dialogue remains usable"
 	)
-	view.handle_back()
+	external_continue.pressed.emit()
 	var text_settle_deadline := Time.get_ticks_msec() + 10000
 	while attack.disabled and Time.get_ticks_msec() < text_settle_deadline:
 		await process_frame

@@ -5698,6 +5698,7 @@ func _test_team_battle_view() -> void:
 	var boss_opponent := view.find_child("TeamOpponentSprite", true, false) as AnimaPresenter
 	var opponent_anchor := view.find_child("TeamOpponentAnchor", true, false) as Node2D
 	var dialog := view.find_child("BossSeekerDialog", true, false) as BossSeekerDialog
+	var boss_continue := view.find_child("BossSeekerContinue", true, false) as Button
 	_check(
 		seeker != null
 		and seeker.visible
@@ -5722,9 +5723,16 @@ func _test_team_battle_view() -> void:
 		and (dim == null or not dim.visible),
 		"boss intro opens without a dark overlay"
 	)
-	_check(view.handle_back(), "back dismisses boss intro instead of leaving the arena")
+	_check(
+		view.handle_back() and dialog.is_open(),
+		"back is consumed without dismissing the in-combat Boss intro"
+	)
+	boss_continue.pressed.emit()
 	await process_frame
-	_check(not dialog.is_open(), "dismissed boss intro stays closed")
+	_check(
+		not dialog.is_open() and not boss_continue.visible,
+		"the external Boss Continue dismisses the intro and then hides"
+	)
 	var stage := view.find_child("TeamBattleStage", true, false) as Control
 	var metrics_value: Variant = seeker_art["boss_seeker"].get("render_metrics")
 	var seeker_metrics: Dictionary = (
@@ -6443,6 +6451,7 @@ func _test_expedition_view() -> void:
 	var map_scroll := view.find_child("MapScroll", true, false) as ScrollContainer
 	var abandon := view.find_child("ExpeditionAbandon", true, false) as Button
 	var chapter_continue := view.find_child("ExpeditionChapterContinue", true, false) as Button
+	var combat_continue := view.find_child("BossSeekerContinue", true, false) as Button
 	var checkpoint_run := intro_run.duplicate(true)
 	checkpoint_run["status"] = "checkpoint"
 	checkpoint_run["available_node_ids"] = []
@@ -6478,18 +6487,20 @@ func _test_expedition_view() -> void:
 		internal_continue != null and not internal_continue.visible
 		and not map_primary.visible and not abandon.visible
 		and chapter_continue.visible and not chapter_continue.disabled
+		and combat_continue != null and not combat_continue.visible
 		and chapter_continue.focus_mode == Control.FOCUS_NONE
 		and not chapter_continue.has_focus()
 		and chapter_continue.text == tr("BATTLE_SEEKER_CONTINUE")
 		and is_equal_approx(chapter_continue.size.x, map_primary.size.x),
 		(
-			"chapter intro replaces both map actions with one full-width external Continue "
-			+ "(internal=%s primary=%s abandon=%s external=%s disabled=%s text=%s widths=%s/%s)"
+			"chapter intro replaces map actions without leaking the combat Continue "
+			+ "(internal=%s primary=%s abandon=%s external=%s combat=%s disabled=%s text=%s widths=%s/%s)"
 		) % [
 			internal_continue.visible,
 			map_primary.visible,
 			abandon.visible,
 			chapter_continue.visible,
+			combat_continue.visible,
 			chapter_continue.disabled,
 			chapter_continue.text,
 			chapter_continue.size.x,

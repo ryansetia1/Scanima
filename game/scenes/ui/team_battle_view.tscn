@@ -647,6 +647,20 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 
+[node name="BossSeekerContinue" type="Button" parent="TeamArena/TeamArenaLayers/TeamOverlay"]
+unique_name_in_owner = true
+visible = false
+z_index = 25
+custom_minimum_size = Vector2(0, 192)
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -192.0
+focus_mode = 0
+theme_type_variation = &"PrimaryButton"
+text = "BATTLE_SEEKER_CONTINUE"
+
 [node name="TeamResultPanel" type="PanelContainer" parent="TeamArena/TeamArenaLayers/TeamOverlay" unique_id=1849473561]
 unique_name_in_owner = true
 visible = false

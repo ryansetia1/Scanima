@@ -283,9 +283,10 @@ Seeker.
   tersembunyi. Setelah jeda singkat, Boss bicara tanpa overlay gelap. Panelnya
   muncul di tempat pelat event arena; status HP, tombol Battle, dan picker
   **Switch** disembunyikan sementara supaya hanya dialog dan satu tombol **Tap
-  to Continue** yang terlihat. Menekan tombol itu atau mengetuk area dialog
-  menutup baris lalu mengembalikan tampilan Battle sebelumnya tanpa mengubah
-  pilihan **Switch**. Boss memanggil Anima-nya lebih dulu, lalu
+  to Continue** selebar layar di tepi bawah yang terlihat. Hanya tombol bawah
+  itu yang menutup baris; ketukan pada dialog, area lain, atau tombol Back tidak
+  melewatinya. Sesudah ditutup, tampilan Battle sebelumnya kembali tanpa
+  mengubah pilihan **Switch**. Boss memanggil Anima-nya lebih dulu, lalu
   Seeker-mu memanggil Anima aktifmu. Status dan tombol baru muncul sesudah
   keduanya siap, dan rangkaian Summon tidak dapat dilewati. **Try Again**
   memutar pembuka penuh dengan dialog rematch, sedangkan **Continue
