@@ -282,6 +282,10 @@ func _ready() -> void:
 	_seeker_dialog.name = "BossSeekerDialog"
 	_seeker_dialog.configure_external_continue(true)
 	_battle_overlay.add_child(_seeker_dialog)
+	# Control hit-testing follows sibling order even when the visible button has
+	# a higher z_index. Keep the external action after the full-screen dialog so
+	# a real touch reaches it instead of the dialog consuming the event.
+	_battle_overlay.move_child(_dialog_continue, -1)
 	_seeker_dialog.opened.connect(_on_seeker_dialog_opened)
 	_seeker_dialog.dismissed.connect(_on_seeker_dialog_dismissed)
 	_dialog_continue.text = tr("BATTLE_SEEKER_CONTINUE")

@@ -1513,6 +1513,7 @@ func _test_boss_intro(
 		"id": "boss-opening-first-attempt",
 		"kind": "boss",
 		"status": "active",
+		"practice": true,
 		"turn_number": 1,
 		"version": 1,
 		"zone_attempt": 1,
@@ -1529,8 +1530,12 @@ func _test_boss_intro(
 	var run_data := {
 		"id": "boss-opening-run",
 		"status": "active",
+		"practice": true,
 		"zone": 3,
 		"chapter_version_id": "future-chapter-version",
+		"team_id": "",
+		"available_node_ids": [],
+		"pending_node": null,
 		"boss_seeker": boss_seeker,
 	}
 	var background_image := Image.create(1024, 576, false, Image.FORMAT_RGBA8)
@@ -1717,11 +1722,19 @@ func _test_boss_intro(
 		and external_continue.visible,
 		"Boss dialogue ignores backdrop, ui_accept, ui_cancel, and Back until external Continue"
 	)
-	external_continue.pressed.emit()
+	var continue_at := external_continue.get_global_rect().get_center()
+	for pressed: bool in [true, false]:
+		var continue_tap := InputEventMouseButton.new()
+		continue_tap.button_index = MOUSE_BUTTON_LEFT
+		continue_tap.pressed = pressed
+		continue_tap.position = continue_at
+		continue_tap.global_position = continue_at
+		host.push_input(continue_tap, true)
+		await process_frame
 	await process_frame
 	_check(
 		chrome.visible and not dialog.is_open() and not external_continue.visible,
-		"external Continue dismisses Boss dialogue and restores its prior Chrome state"
+		"real practice Boss Continue tap dismisses the dialog and restores Chrome"
 	)
 	var saw_transition := false
 	var transition_started_at := -1
@@ -1927,7 +1940,15 @@ func _test_boss_replay_and_cancellation(
 		dialog.is_open() and external_continue.visible,
 		"the in-combat rematch dialog also ignores arena backdrop taps"
 	)
-	external_continue.pressed.emit()
+	var normal_continue_at := external_continue.get_global_rect().get_center()
+	for pressed: bool in [true, false]:
+		var normal_continue_tap := InputEventMouseButton.new()
+		normal_continue_tap.button_index = MOUSE_BUTTON_LEFT
+		normal_continue_tap.pressed = pressed
+		normal_continue_tap.position = normal_continue_at
+		normal_continue_tap.global_position = normal_continue_at
+		host.push_input(normal_continue_tap, true)
+		await process_frame
 	var rematch_settle_deadline := Time.get_ticks_msec() + 10000
 	while attack.disabled and Time.get_ticks_msec() < rematch_settle_deadline:
 		await process_frame
