@@ -49,6 +49,7 @@ const SEEKER_SHEET := preload("res://scripts/seeker_sheet.gd")
 @onready var _map_meta: Label = %ExpeditionMapMeta
 @onready var _party_meta: Label = %ExpeditionPartyMeta
 @onready var _route_map: ExpeditionRouteMap = %ExpeditionRouteMap
+@onready var _chapter_dialog_host: Control = %ChapterDialogHost
 @onready var _map_primary: Button = %ExpeditionMapPrimary
 @onready var _abandon: Button = %ExpeditionAbandon
 @onready var _choice: VBoxContainer = %ExpeditionChoice
@@ -116,7 +117,7 @@ func _ready() -> void:
 	_combat.retry_requested.connect(combat_continue_requested.emit)
 	_seeker_dialog = BOSS_SEEKER_DIALOG.new()
 	_seeker_dialog.name = "ChapterSeekerDialog"
-	add_child(_seeker_dialog)
+	_chapter_dialog_host.add_child(_seeker_dialog)
 	_show_only(_loading)
 
 

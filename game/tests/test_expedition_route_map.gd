@@ -121,9 +121,17 @@ func _run() -> void:
 	var abandon := view.get_node("%ExpeditionAbandon") as Button
 	var party_meta := view.get_node("%ExpeditionPartyMeta") as Label
 	var map_scroll := view_route.get_parent() as ScrollContainer
+	var dialog_host := view.get_node("%ChapterDialogHost") as Control
 	var route_size_before: Vector2 = view_route.size
 	var node_position_before: Vector2 = selected_button.position
 	var scroll_before: int = map_scroll.scroll_vertical
+	_check(
+		dialog_host.get_parent() == map_scroll.get_parent()
+		and dialog_host.position.is_equal_approx(map_scroll.position)
+		and dialog_host.size.is_equal_approx(map_scroll.size)
+		and not dialog_host.clip_contents,
+		"chapter dialog host overlays exactly the unclipped map viewport"
+	)
 	_check(
 		party_meta.visible and party_meta.text.is_empty(),
 		"full-health party reserves an empty preview row without clutter"

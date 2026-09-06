@@ -199,17 +199,35 @@ text = "EXPEDITION_PARTY_STATUS"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="MapScroll" type="ScrollContainer" parent="ExpeditionColumn/ExpeditionMap" unique_id=1615950180]
+[node name="MapStage" type="Control" parent="ExpeditionColumn/ExpeditionMap"]
 layout_mode = 2
 size_flags_vertical = 3
+
+[node name="MapScroll" type="ScrollContainer" parent="ExpeditionColumn/ExpeditionMap/MapStage" unique_id=1615950180]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 horizontal_scroll_mode = 0
 scroll_deadzone = 10
 
-[node name="ExpeditionRouteMap" type="Control" parent="ExpeditionColumn/ExpeditionMap/MapScroll" unique_id=1950924366]
+[node name="ExpeditionRouteMap" type="Control" parent="ExpeditionColumn/ExpeditionMap/MapStage/MapScroll" unique_id=1950924366]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 script = ExtResource("4_s831p")
+
+[node name="ChapterDialogHost" type="Control" parent="ExpeditionColumn/ExpeditionMap/MapStage"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="ExpeditionMapPrimary" type="Button" parent="ExpeditionColumn/ExpeditionMap" unique_id=377746793]
 unique_name_in_owner = true

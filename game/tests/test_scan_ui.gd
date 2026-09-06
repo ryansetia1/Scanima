@@ -6443,6 +6443,9 @@ func _test_expedition_view() -> void:
 	}
 	view.visible = true
 	var chapter_dialog := view.find_child("ChapterSeekerDialog", true, false) as BossSeekerDialog
+	var chapter_dialog_host := view.find_child("ChapterDialogHost", true, false) as Control
+	var map_scroll := view.find_child("MapScroll", true, false) as ScrollContainer
+	var abandon := view.find_child("ExpeditionAbandon", true, false) as Button
 	var checkpoint_run := intro_run.duplicate(true)
 	checkpoint_run["status"] = "checkpoint"
 	checkpoint_run["available_node_ids"] = []
@@ -6456,6 +6459,7 @@ func _test_expedition_view() -> void:
 	view.set_run(intro_run, {}, {"boss_seeker": _boss_seeker_loaded()})
 	await process_frame
 	var chapter_line := chapter_dialog.find_child("SeekerLine", true, false) as Label if chapter_dialog != null else null
+	var chapter_panel := chapter_dialog.find_child("SeekerPanel", true, false) as PanelContainer if chapter_dialog != null else null
 	_check(
 		chapter_dialog != null
 		and chapter_dialog.is_open()
@@ -6463,9 +6467,27 @@ func _test_expedition_view() -> void:
 		and chapter_line.text.contains("Every path"),
 		"fresh Zone 1 map with no current node opens the chapter intro"
 	)
+	var map_rect := map_scroll.get_global_rect()
+	var panel_rect := chapter_panel.get_global_rect()
+	_check(
+		chapter_dialog.get_parent() == chapter_dialog_host
+		and chapter_dialog_host.get_global_rect().is_equal_approx(map_rect)
+		and map_rect.encloses(panel_rect)
+		and absf(panel_rect.get_center().y - (map_rect.position.y + map_rect.size.y * 0.4)) < 1.0,
+		"chapter intro is anchored within the map artwork instead of the full screen"
+	)
+	_check(
+		abandon.disabled
+		and abandon.get_theme_color("font_disabled_color").a
+		< abandon.get_theme_color("font_color").a,
+		"chapter intro locks Abandon and uses the visibly dimmed disabled style"
+	)
 	_check(view.handle_back(), "back dismisses chapter intro before leaving the map")
 	await process_frame
-	_check(not chapter_dialog.is_open(), "chapter intro does not reopen on the same run")
+	_check(
+		not chapter_dialog.is_open() and not abandon.disabled,
+		"acknowledging the chapter intro restores Abandon without replaying the line"
+	)
 	view.set_run(intro_run)
 	await process_frame
 	_check(not chapter_dialog.is_open(), "resumed same-run map skips chapter intro")
