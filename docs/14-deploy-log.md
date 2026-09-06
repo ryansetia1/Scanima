@@ -2,6 +2,20 @@
 
 Riwayat rollout yang sebelumnya hidup di `CLAUDE.md`. Isinya dipindahkan verbatim; urutannya sama dengan urutan di file asal, bukan kronologis. Yang berlaku sekarang diringkas sebagai tabel status di `CLAUDE.md` — file ini adalah catatan bagaimana keadaan itu tercapai, termasuk probe production dan angka yang terukur saat itu.
 
+## 6 September 2026: Test Boss Seeker lokal, belum dideploy
+
+Debug lobby Battle mendapat shortcut staff-only untuk membuka Boss chapter aktif
+dengan empat Anima eligible terbaik tanpa membuat run/encounter database,
+memungut biaya, atau memberi reward/progresi. Edge Function `expedition` sengaja
+belum dideploy.
+
+`npm run selftest`, Battle intro, shell UI, dan Expedition route map lulus.
+Debug APK 59.700.230 byte dibangun pada 15:32 WIB; manifest final memuat tepat
+`INTERNET`, `VIBRATE`, dan `CAMERA`, serta signature valid. Perangkat sempat
+terlihat di `100.96.188.61:39073`, tetapi menjadi offline saat streamed install;
+setelah daemon ADB dimulai ulang, endpoint menolak koneksi, jadi APK belum
+terpasang ke perangkat.
+
 ## 6 September 2026: Duel/Team Opening dipersingkat
 
 Duel dan Team Battle tidak lagi memanggil Anima lawan pada opening fresh.
