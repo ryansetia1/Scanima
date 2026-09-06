@@ -528,6 +528,18 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var gameplay_arena_rect := arena.get_global_rect()
 	var gameplay_player_position := player_anchor.global_position
 	var portrait_seeker_gap := _seeker_to_player_gap_ratio(arena, seeker, player)
+	var duel_seeker_screen_scale := seeker.global_scale.x
+	var giant_duel: Dictionary = session.duplicate(true)
+	giant_duel["player_snapshot"]["body_height_cm"] = 2000
+	view.set_session(giant_duel, loaded, loaded)
+	await process_frame
+	_check(
+		is_equal_approx(seeker.global_scale.x, duel_seeker_screen_scale)
+		and is_equal_approx(
+			float(background_material.get_shader_parameter("camera_zoom")), 1.0
+		),
+		"Duel keeps its background at cover 1.0 and player Seeker screen size invariant"
+	)
 	view.set_session(session, loaded, loaded)
 	await view.play_opening_intro()
 	_check(
@@ -900,6 +912,8 @@ func _test_team_switch_reframe(
 	var background_zoom_before := float(
 		background_material.get_shader_parameter("camera_zoom")
 	)
+	var player_seeker := view.find_child("PlayerSeeker", true, false) as Node2D
+	var seeker_screen_scale_before := player_seeker.global_scale
 	var stage := view.find_child("TeamBattleStage", true, false) as Control
 	_check_fighter_bounds(stage, player, "20 cm Team player")
 	_check_background_grounding(
@@ -912,6 +926,7 @@ func _test_team_switch_reframe(
 	switched["state"]["player"]["active_slot"] = 1
 	var saw_player_hidden := false
 	var reveal_during_refit := false
+	var seeker_scale_stayed_invariant := true
 	view.play_events(
 		[{"type": "switch", "actor": "player", "from_slot": 0, "to_slot": 1}],
 		switched,
@@ -920,6 +935,10 @@ func _test_team_switch_reframe(
 	var deadline := Time.get_ticks_msec() + 8000
 	while bool(view.get("_busy")) and Time.get_ticks_msec() < deadline:
 		var refit := view.get("_layout_tween") as Tween
+		seeker_scale_stayed_invariant = (
+			seeker_scale_stayed_invariant
+			and is_equal_approx(player_seeker.global_scale.x, seeker_screen_scale_before.x)
+		)
 		if not player.visible:
 			saw_player_hidden = true
 		if saw_player_hidden and player.visible and refit != null and refit.is_running():
@@ -952,6 +971,32 @@ func _test_team_switch_reframe(
 		reveal_during_refit,
 		"the giant incoming Anima reveals while camera and arena framing continue moving"
 	)
+	_check(
+		seeker_scale_stayed_invariant
+		and is_equal_approx(player_seeker.global_scale.x, seeker_screen_scale_before.x),
+		"the player Seeker keeps invariant screen size throughout a size-changing Switch"
+	)
+	var switched_layout: Dictionary = view.call("_fighter_layout")
+	var hit_only: Dictionary = switched.duplicate(true)
+	hit_only["state"]["player"]["roster"][1]["hp"] = 41
+	view.set_session(hit_only, art_cache)
+	await process_frame
+	var hit_layout: Dictionary = view.call("_fighter_layout")
+	_check(
+		(hit_layout["layer_position"] as Vector2).is_equal_approx(switched_layout["layer_position"])
+		and (hit_layout["layer_scale"] as Vector2).is_equal_approx(switched_layout["layer_scale"])
+		and is_equal_approx(
+			float(hit_layout["background_camera_zoom"]),
+			float(switched_layout["background_camera_zoom"])
+		)
+		and (hit_layout["background_position"] as Vector2).is_equal_approx(
+			switched_layout["background_position"]
+		)
+		and (hit_layout["background_size"] as Vector2).is_equal_approx(
+			switched_layout["background_size"]
+		),
+		"an HP-only authoritative repaint preserves the settled fighter/background framing"
+	)
 	view.play_events(
 		[{"type": "switch", "actor": "player", "from_slot": 1, "to_slot": 0}],
 		session,
@@ -968,6 +1013,71 @@ func _test_team_switch_reframe(
 			background_zoom_before
 		),
 		"the reverse giant-to-small Switch restores fighter and background camera zoom together"
+	)
+	var frames := loaded.get("frames") as SpriteFrames
+	var custom_art := art_cache.duplicate()
+	custom_art["arena_background"] = frames.get_frame_texture("idle", 0)
+	view.set_session(session, custom_art)
+	await process_frame
+	var custom_camera_before := layer.scale.x
+	var custom_background_before := float(
+		background_material.get_shader_parameter("camera_zoom")
+	)
+	var custom_seeker_scale_before := player_seeker.global_scale
+	var custom_previous_layout: Dictionary = view.call("_fighter_layout")
+	view.call("_apply_side", switched, "player", true, false)
+	var custom_refit := view.call(
+		"_reframe_for_switch", switched, custom_previous_layout, true
+	) as Tween
+	var custom_background_moved := false
+	var custom_seeker_scale_stayed_invariant := true
+	while custom_refit != null and custom_refit.is_running():
+		custom_seeker_scale_stayed_invariant = (
+			custom_seeker_scale_stayed_invariant
+			and is_equal_approx(player_seeker.global_scale.x, custom_seeker_scale_before.x)
+		)
+		custom_background_moved = (
+			custom_background_moved
+			or not is_equal_approx(
+				float(background_material.get_shader_parameter("camera_zoom")),
+				custom_background_before
+			)
+		)
+		await process_frame
+	var custom_camera_after := layer.scale.x
+	var custom_background_after := float(
+		background_material.get_shader_parameter("camera_zoom")
+	)
+	_check(
+		custom_background_moved
+		and custom_background_after < custom_background_before
+		and custom_background_after / custom_background_before
+			> custom_camera_after / custom_camera_before,
+		"a custom Team background animates gentler parallax with the fighter Switch"
+	)
+	_check(
+		custom_seeker_scale_stayed_invariant
+		and is_equal_approx(player_seeker.global_scale.x, custom_seeker_scale_before.x),
+		"custom-background Switch keeps player Seeker size invariant throughout the refit"
+	)
+	view.set_session(session, art_cache)
+	await process_frame
+	var art_camera_before := layer.scale.x
+	var resized_loaded: Dictionary = loaded.duplicate(true)
+	var resized_metrics: Dictionary = (
+		resized_loaded.get("render_metrics", {}) as Dictionary
+	).duplicate(true)
+	resized_metrics["reference_height_px"] = (
+		float(resized_metrics.get("reference_height_px", 200.0)) * 0.5
+	)
+	resized_loaded["render_metrics"] = resized_metrics
+	var resized_art := art_cache.duplicate()
+	resized_art[small_id] = resized_loaded
+	view.set_session(session, resized_art)
+	await process_frame
+	_check(
+		not is_equal_approx(layer.scale.x, art_camera_before),
+		"new active-fighter art metrics invalidate preserved Team framing"
 	)
 	view.queue_free()
 	await process_frame
@@ -1371,11 +1481,11 @@ func _test_boss_intro(
 	var loading_root := root.find_child("LoadingScreenRoot", true, false) as Control
 	var legacy_player_seeker_px := (
 		BattleScale.seeker_reference_height(legacy_player_seeker_loaded)
-		* absf(player_seeker.scale.y)
+		* absf(player_seeker.global_scale.y)
 	)
 	var boss_seeker_px := (
 		BattleScale.seeker_reference_height(seeker_loaded)
-		* absf(boss.scale.y)
+		* absf(boss.global_scale.y)
 	)
 	_check(
 		absf(legacy_player_seeker_px / boss_seeker_px - 1.0) < 0.02,
@@ -1385,11 +1495,11 @@ func _test_boss_intro(
 	await process_frame
 	var player_seeker_px := (
 		BattleScale.seeker_reference_height(player_seeker_loaded)
-		* absf(player_seeker.scale.y)
+		* absf(player_seeker.global_scale.y)
 	)
 	boss_seeker_px = (
 		BattleScale.seeker_reference_height(seeker_loaded)
-		* absf(boss.scale.y)
+		* absf(boss.global_scale.y)
 	)
 	_check(
 		absf(player_seeker_px / boss_seeker_px - 180.0 / 165.0) < 0.02,
@@ -1503,6 +1613,25 @@ func _test_boss_intro(
 		and attack.mouse_filter == Control.MOUSE_FILTER_STOP
 		and attack.focus_mode == Control.FOCUS_ALL,
 		"Boss then player Summon without camera snap before the 0.32-second Chrome transition unlocks input"
+	)
+	var settled_layer_position := layer.position
+	var settled_layer_scale := layer.scale
+	var settled_boss_position := boss.position
+	var settled_player_seeker_position := player_seeker.position
+	var settled_boss_scale := boss.global_scale.x
+	var settled_player_seeker_scale := player_seeker.global_scale.x
+	var hp_refresh: Dictionary = encounter.duplicate(true)
+	hp_refresh["state"]["player"]["roster"][0]["hp"] = 37
+	view.set_run(run_data, hp_refresh, art_cache)
+	await process_frame
+	_check(
+		layer.position.is_equal_approx(settled_layer_position)
+		and layer.scale.is_equal_approx(settled_layer_scale)
+		and boss.position.is_equal_approx(settled_boss_position)
+		and player_seeker.position.is_equal_approx(settled_player_seeker_position)
+		and is_equal_approx(boss.global_scale.x, settled_boss_scale)
+		and is_equal_approx(player_seeker.global_scale.x, settled_player_seeker_scale),
+		"Boss HP-only refresh preserves framing and both Seeker screen sizes"
 	)
 	LoadingScreen.hide_screen()
 	view.queue_free()

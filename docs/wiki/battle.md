@@ -163,7 +163,9 @@ Boss Seeker organik ikut bernapas saat Idle. Gerak tenang ini berhenti ketika
 pose perintah, reaksi, menang, atau kalah sedang tampil.
 Di **Team Battle**, latar ikut bergerak lebih lembut saat **Switch** ke Anima
 yang jauh berbeda tinggi atau lebar mengubah jarak kamera, jadi perubahan ukuran
-para petarung terbaca sebagai gerak kamera dan bukan figur yang berubah sendiri.
+Anima terbaca sebagai gerak kamera dan bukan figur yang berubah sendiri. Ukuran
+Seeker-mu tetap sama di layar sepanjang gerakan itu. Serangan dan perubahan HP
+biasa tidak menghitung ulang framing, jadi latar tidak meloncat saat Anima kena.
 
 Setiap fight baru di **Duel**, **Team Battle**, dan node Battle/Elite
 **Expedition** dibuka berurutan: Seeker-mu berdiri sendiri, Anima lawan keluar

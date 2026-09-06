@@ -108,7 +108,11 @@ Fakta arsitektur yang berlaku sekarang (bukan riwayat — riwayatnya di
   status/command Chrome tanpa mengubah rectangle Arena. Session boundary
   membersihkan pelat transient lama saat start baru; music cue hanya membaca
   arena yang benar-benar terlihat (session tersembunyi tidak menahan musik
-  battle).
+  battle). Zoom `FighterLayer` hanya mengubah ukuran Anima: kedua Seeker
+  mengompensasi skala parent supaya ukuran layarnya tetap, termasuk sepanjang
+  Switch. Refresh authoritative yang tidak mengganti petarung mempertahankan
+  framing yang sudah settle, dan background Team bundled maupun custom mengikuti
+  parallax Switch 1,0–1,08×; Duel tetap cover 1,0×.
 - Kegagalan Duel 500 tanpa mapping 4xx/409 dicatat ke `battle_failures`
   (default-deny, service-role only); Evolve/Synthesis pakai helper fail-open
   supaya kegagalan logging tidak menimpa response asli.

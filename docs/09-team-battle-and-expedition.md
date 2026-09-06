@@ -83,8 +83,12 @@ untuk seluruh encounter.
 
 Sesudah art anggota baru dipasang dalam keadaan tersembunyi, client langsung
 menghitung ulang rasio tinggi, posisi, layer, framing kamera, Boss Seeker, dan
-backdrop. Layout lama lalu bergerak ke target selama 0,32 detik bersamaan dengan
+backdrop. Layout lama lalu bergerak ke target selama 0,48 detik bersamaan dengan
 charge portal, sebelum Anima baru di-reveal atau serangan berikutnya dimainkan.
+Zoom parent hanya membesarkan/mengecilkan Anima; Seeker mengompensasinya supaya
+ukuran layarnya tetap. Background Team bundled maupun custom mengikuti parallax
+yang sama. Refresh authoritative tanpa perubahan identitas/ukuran petarung
+mempertahankan framing settle, sehingga update HP/PP tidak menyebabkan snap.
 Reframe tidak boleh ditunda sampai event Attack berikutnya atau commit session
 di akhir event log.
 

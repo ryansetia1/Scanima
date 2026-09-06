@@ -151,6 +151,7 @@ var _player_seeker: SEEKER_PRESENTER
 var _player_seeker_shadow: Sprite2D
 var _player_seeker_loaded: Dictionary = {}
 var _player_seeker_height_cm := TeamBattleView.PLAYER_SEEKER_HEIGHT_FALLBACK_CM
+var _player_seeker_screen_scale := 1.0
 var _opening_intro_pending := false
 var _opening_intro_running := false
 var _opening_intro_revision := 0
@@ -472,6 +473,19 @@ func set_session(
 	_cancel_opening_intro()
 	_clear_event_plate()
 	_clear_action_commit()
+	var previous_session: Dictionary = _session
+	var previous_static_background: bool = _uses_static_background
+	var loaded_geometry_changed: bool = (
+		(bool(player_loaded.get("ok", false))
+			and player_loaded.get("frames") != _player_loaded.get("frames"))
+		or (bool(bot_loaded.get("ok", false))
+			and bot_loaded.get("frames") != _bot_loaded.get("frames"))
+	)
+	var preserve_framing: bool = (
+		not fresh_intro
+		and not loaded_geometry_changed
+		and _same_fighter_geometry(previous_session, battle_session)
+	)
 	_session = battle_session.duplicate(true)
 	var intro_requested := (
 		fresh_intro and str(_session.get("status", "active")) == "active"
@@ -493,12 +507,16 @@ func set_session(
 	_player_sprite.visible = _player_sprite.sprite_frames != null and not intro_requested
 	_bot_sprite.visible = _bot_sprite.sprite_frames != null
 	_apply_arena_background(art_cache)
+	preserve_framing = (
+		preserve_framing and previous_static_background == _uses_static_background
+	)
 
 	var player_snapshot := _as_dict(_session.get("player_snapshot"))
 	var bot_snapshot := _as_dict(_session.get("bot_snapshot"))
 	_player_name.text = _fighter_hud_title(player_snapshot)
 	_bot_name.text = _fighter_hud_title(bot_snapshot, tr("BATTLE_BOT_NAME"))
-	_position_fighters()
+	if not preserve_framing:
+		_position_fighters()
 	_apply_state()
 	_set_opening_chrome_visible(not intro_requested)
 	_update_action_state()
@@ -596,7 +614,7 @@ func _transition_opening_to_gameplay(revision: int) -> bool:
 	var target_seeker_position := _player_seeker.position if has_seeker else Vector2.ZERO
 	var target_background_offset := _background_ground_offset
 	_fighter_layer.position = from_layer_position
-	_fighter_layer.scale = from_layer_scale
+	_set_fighter_camera_zoom(from_layer_scale.x)
 	if has_seeker:
 		_player_seeker.position = from_seeker_position
 	_set_background_ground_offset(from_background_offset)
@@ -608,8 +626,11 @@ func _transition_opening_to_gameplay(revision: int) -> bool:
 	_opening_transition.tween_property(
 		_fighter_layer, "position", target_layer_position, INTRO_GAMEPLAY_TRANSITION_SEC
 	)
-	_opening_transition.tween_property(
-		_fighter_layer, "scale", target_layer_scale, INTRO_GAMEPLAY_TRANSITION_SEC
+	_opening_transition.tween_method(
+		_set_fighter_camera_zoom,
+		from_layer_scale.x,
+		target_layer_scale.x,
+		INTRO_GAMEPLAY_TRANSITION_SEC
 	)
 	if has_seeker:
 		_opening_transition.tween_property(
@@ -629,7 +650,7 @@ func _transition_opening_to_gameplay(revision: int) -> bool:
 		return false
 	_opening_transition = null
 	_fighter_layer.position = target_layer_position
-	_fighter_layer.scale = target_layer_scale
+	_set_fighter_camera_zoom(target_layer_scale.x)
 	if has_seeker:
 		_player_seeker.position = target_seeker_position
 	_set_background_ground_offset(target_background_offset)
@@ -1443,7 +1464,7 @@ func _position_fighters() -> void:
 	if overlap > 0.0:
 		_player_anchor.position.x -= overlap * 0.5
 		_bot_anchor.position.x += overlap * 0.5
-	var bounds := Rect2(
+	var anima_bounds := Rect2(
 		_player_anchor.position.x - player_size.x * 0.5,
 		ground_y - player_size.y,
 		player_size.x,
@@ -1454,23 +1475,16 @@ func _position_fighters() -> void:
 		bot_size.x,
 		bot_size.y
 	))
-	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
+	if anima_bounds.size.x <= 0.0 or anima_bounds.size.y <= 0.0:
 		return
 	# Figur pemain ditempatkan sesudah kamera memilih bingkai kedua Anima. Kolom
-	# kiri memberi ruang untuk tubuhnya; edge clamp mencegah clipping dan
-	# companion clamp mencegahnya terlepas jauh dari Anima pada landscape.
+	# kiri adalah ukuran layar tetap, jadi ia dikurangi dari ruang kamera alih-alih
+	# ikut dikecilkan bersama bounds Anima.
 	var figure_column := _seeker_column()
-	if figure_column > 0.0:
-		bounds = bounds.grow_individual(figure_column, 0.0, 0.0, 0.0)
-		var figure_height := (
-			BattleScale.seeker_reference_height(_player_seeker_loaded)
-			* absf(_player_seeker.scale.y)
-		)
-		if figure_height > bounds.size.y:
-			bounds = bounds.grow_individual(0.0, figure_height - bounds.size.y, 0.0, 0.0)
+	var camera_width := maxf(1.0, _arena.size.x * 0.90 - figure_column)
 	var fit_zoom := minf(
-		(_arena.size.x * 0.90) / bounds.size.x,
-		maxf(1.0, camera_ground_y - camera_top_y) / bounds.size.y
+		camera_width / anima_bounds.size.x,
+		maxf(1.0, camera_ground_y - camera_top_y) / anima_bounds.size.y
 	)
 	var tallest := maxf(
 		BattleScale.anima_display_height_cm(player_height),
@@ -1487,7 +1501,10 @@ func _position_fighters() -> void:
 		TeamBattleView.CAMERA_MIN_ZOOM,
 		TeamBattleView.CAMERA_MAX_ZOOM
 	)
-	_fighter_layer.scale = Vector2(zoom, zoom)
+	var bounds := anima_bounds.grow_individual(
+		figure_column / maxf(0.001, zoom), 0.0, 0.0, 0.0
+	)
+	_set_fighter_camera_zoom(zoom)
 	_fighter_layer.position = Vector2(
 		_arena.size.x * 0.5 - bounds.get_center().x * zoom,
 		camera_ground_y - ground_y * zoom
@@ -1565,6 +1582,7 @@ func _position_player_seeker() -> void:
 	var avatar_scale := BattleScale.fighter_scale(
 		_player_seeker_height_cm, _player_seeker_loaded, _arena.size
 	)
+	_player_seeker_screen_scale = avatar_scale
 	var x := (
 		_arena.size.x * TeamBattleView.PLAYER_SEEKER_SHOT_X
 		+ BattleScale.seeker_opaque_center(_player_seeker_loaded) * avatar_scale
@@ -1577,6 +1595,37 @@ func _position_player_seeker() -> void:
 	# dan figur baru harus langsung mendarat di tepinya.
 	_pin_player_seeker_to_camera_left(_fighter_layer.scale.x)
 	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
+
+
+func _set_fighter_camera_zoom(value: float) -> void:
+	var camera_zoom := maxf(0.001, value)
+	_fighter_layer.scale = Vector2(camera_zoom, camera_zoom)
+	if not is_instance_valid(_player_seeker) or not _player_seeker.has_sheet():
+		return
+	var local_scale := BattleScale.camera_invariant_local_scale(
+		_player_seeker_screen_scale, camera_zoom
+	)
+	_player_seeker.set_body_scale(local_scale)
+	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
+
+
+static func _same_fighter_geometry(previous: Dictionary, current: Dictionary) -> bool:
+	if previous.is_empty() or current.is_empty():
+		return false
+	return (
+		_duel_fighter_geometry(previous, "player_snapshot")
+			== _duel_fighter_geometry(current, "player_snapshot")
+		and _duel_fighter_geometry(previous, "bot_snapshot")
+			== _duel_fighter_geometry(current, "bot_snapshot")
+	)
+
+
+static func _duel_fighter_geometry(session: Dictionary, key: String) -> Array:
+	var fighter := _as_dict(session.get(key))
+	return [
+		str(fighter.get("id", fighter.get("anima_id", ""))),
+		float(fighter.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)),
+	]
 
 
 ## Cermin `TeamBattleView._apply_player_seeker_layer()`: figur pemain maju ke

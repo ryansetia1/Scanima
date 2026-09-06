@@ -5746,8 +5746,13 @@ func _test_team_battle_view() -> void:
 	var giant_anchor := view.find_child("TeamPlayerAnchor", true, false) as Node2D
 	var opponent_giant_anchor := view.find_child("TeamOpponentAnchor", true, false) as Node2D
 	var camera_layer := giant_anchor.get_parent() as Node2D
-	var seeker_h := float(seeker_metrics.get("reference_height_px", 300.0)) * absf(seeker.scale.y)
-	var player_h := giant_player.opaque_local_rect().size.y * absf(giant_anchor.scale.y)
+	var seeker_h := (
+		float(seeker_metrics.get("reference_height_px", 300.0))
+		* absf(seeker.global_scale.y)
+	)
+	var player_h := (
+		giant_player.opaque_local_rect().size.y * absf(giant_anchor.global_scale.y)
+	)
 	var player_half := giant_player.opaque_local_rect().size.x * absf(giant_anchor.scale.x) * 0.5
 	var opponent_half := (
 		giant_opponent.opaque_local_rect().size.x * absf(opponent_giant_anchor.scale.x) * 0.5
@@ -5755,8 +5760,19 @@ func _test_team_battle_view() -> void:
 	_check(
 		seeker_h > 1.0
 		and player_h > 1.0
-		and absf(player_h / seeker_h - 300.0 / 165.0) < 0.08,
-		"capped 20 m Anima is almost 2× the Seeker on screen"
+		and is_equal_approx(
+			seeker.global_scale.x, float(view.get("_seeker_screen_scale"))
+		)
+		and player_h / seeker_h < 300.0 / 165.0,
+		(
+			"camera zoom shrinks capped Animas without shrinking the Boss Seeker "
+			+ "(seeker=%.3f expected=%.3f ratio=%.3f camera=%.3f)"
+		) % [
+			seeker.global_scale.x,
+			float(view.get("_seeker_screen_scale")),
+			player_h / seeker_h,
+			camera_layer.scale.x,
+		]
 	)
 	var player_left := camera_layer.position.x + (
 		giant_anchor.position.x - player_half

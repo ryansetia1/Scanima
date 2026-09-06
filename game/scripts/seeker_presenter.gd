@@ -114,6 +114,17 @@ func set_layout(rest_position: Vector2, body_scale: float) -> void:
 		_start_idle_motion()
 
 
+## Camera compensation must update the presenter's baseline, not only `scale`:
+## every pose transition restores `_body_scale` before starting its own motion.
+func set_body_scale(body_scale: float) -> void:
+	var resume_idle := animation == IDLE_POSE
+	_stop_idle_motion()
+	_body_scale = maxf(body_scale, 0.01)
+	scale = Vector2(_body_scale, _body_scale)
+	if resume_idle:
+		_start_idle_motion()
+
+
 ## Ambient motion owns only scale/rotation; arena layout owns position and the
 ## parent fighter layer. Changing pose always kills both loops and restores this
 ## layout baseline before any command or reaction.

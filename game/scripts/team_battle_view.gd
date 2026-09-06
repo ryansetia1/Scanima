@@ -161,10 +161,12 @@ var _player_shadow: Sprite2D
 var _opponent_shadow: Sprite2D
 var _seeker: SEEKER_PRESENTER
 var _seeker_shadow: Sprite2D
+var _seeker_screen_scale := 1.0
 var _player_seeker: SEEKER_PRESENTER
 var _player_seeker_shadow: Sprite2D
 var _player_seeker_loaded: Dictionary = {}
 var _player_seeker_height_cm := PLAYER_SEEKER_HEIGHT_FALLBACK_CM
+var _player_seeker_screen_scale := 1.0
 var _impact: BattleImpact
 var _fighter_layer: Node2D
 var _background_session_id := ""
@@ -547,6 +549,14 @@ func set_session(
 	fresh_intro: bool = false
 ) -> void:
 	_cancel_opening_intro()
+	var previous_session: Dictionary = _session
+	var previous_static_background: bool = _uses_static_background
+	var loaded_geometry_changed: bool = _fighter_art_geometry_changed(session, art_cache)
+	var preserve_framing: bool = (
+		not fresh_intro
+		and not loaded_geometry_changed
+		and _same_fighter_geometry(previous_session, session)
+	)
 	_session = session.duplicate(true)
 	_sync_action_layout()
 	_art_cache.merge(art_cache, true)
@@ -554,7 +564,13 @@ func set_session(
 	_sync_background_pan()
 	_show_only(_arena)
 	_apply_arena_background(art_cache)
+	preserve_framing = (
+		preserve_framing and previous_static_background == _uses_static_background
+	)
 	_present_seeker()
+	if preserve_framing:
+		_set_fighter_camera_zoom(_fighter_layer.scale.x)
+		_pin_seeker_to_camera_right(_fighter_layer.scale.x)
 	var opening_requested := (
 		fresh_intro and str(_session.get("status", "active")) == "active"
 	)
@@ -562,7 +578,7 @@ func set_session(
 	_opening_intro_pending = opening_requested
 	if opening_requested:
 		_busy = true
-	_apply_session_state()
+	_apply_session_state(not preserve_framing)
 	_set_opening_chrome_visible(not opening_requested)
 	_update_arena_actions()
 
@@ -691,7 +707,7 @@ func _transition_opening_to_gameplay(revision: int) -> bool:
 	var target_background_zoom := _background_camera_zoom()
 	var target_background_offset := _background_ground_offset
 	_fighter_layer.position = from_layer_position
-	_fighter_layer.scale = from_layer_scale
+	_set_fighter_camera_zoom(from_layer_scale.x)
 	_set_background_camera_zoom(from_background_zoom)
 	_set_background_ground_offset(from_background_offset)
 	_opening_transition = create_tween()
@@ -701,8 +717,11 @@ func _transition_opening_to_gameplay(revision: int) -> bool:
 	_opening_transition.tween_property(
 		_fighter_layer, "position", target_layer_position, INTRO_GAMEPLAY_TRANSITION_SEC
 	)
-	_opening_transition.tween_property(
-		_fighter_layer, "scale", target_layer_scale, INTRO_GAMEPLAY_TRANSITION_SEC
+	_opening_transition.tween_method(
+		_set_fighter_camera_zoom,
+		from_layer_scale.x,
+		target_layer_scale.x,
+		INTRO_GAMEPLAY_TRANSITION_SEC
 	)
 	_opening_transition.tween_method(
 		_set_background_camera_zoom,
@@ -724,7 +743,7 @@ func _transition_opening_to_gameplay(revision: int) -> bool:
 		return false
 	_opening_transition = null
 	_fighter_layer.position = target_layer_position
-	_fighter_layer.scale = target_layer_scale
+	_set_fighter_camera_zoom(target_layer_scale.x)
 	_set_background_camera_zoom(target_background_zoom)
 	_set_background_ground_offset(target_background_offset)
 	_set_opening_chrome_visible(true)
@@ -850,7 +869,6 @@ func play_events(
 		# dan memasangnya lewat set_session() akan terlihat sebagai arena mundur.
 		_session = from_session.duplicate(true)
 	set_busy(true)
-	var played_switch := false
 	await _announce_initiative(events)
 	for value in events:
 		var event := GameState.as_dict(value)
@@ -888,7 +906,6 @@ func play_events(
 			"final_ace":
 				await _cue_final_ace()
 			"switch":
-				played_switch = true
 				var switch_actor := str(event.get("actor", ""))
 				if switch_actor == "opponent" and not _final_ace_pending:
 					await _cue_seeker_command("first_switch", "switch_command")
@@ -962,12 +979,7 @@ func play_events(
 	if _final_ace_pending:
 		_final_ace_pending = false
 		_restore_seeker_idle()
-	var switch_background_zoom := _background_camera_zoom()
-	var switch_background_offset := _background_ground_offset
 	set_session(next_session)
-	if played_switch and _uses_static_background:
-		_set_background_camera_zoom(switch_background_zoom)
-		_set_background_ground_offset(switch_background_offset)
 	if _boss_result_pending:
 		await _boss_result_settled
 	set_busy(false)
@@ -1253,7 +1265,7 @@ func _close_switch_picker() -> bool:
 	return true
 
 
-func _apply_session_state() -> void:
+func _apply_session_state(reframe: bool = true) -> void:
 	var state := GameState.as_dict(_session.get("state"))
 	var status := str(_session.get("status", state.get("status", "active")))
 	_sync_location_chrome()
@@ -1261,7 +1273,8 @@ func _apply_session_state() -> void:
 	var opening_hidden := _opening_intro_pending or _opening_intro_running
 	_apply_side(_session, "player", true, not opening_hidden)
 	_apply_side(_session, "opponent", true, not opening_hidden or not _expedition_mode)
-	_position_fighters()
+	if reframe:
+		_position_fighters()
 	_set_player_seeker_pose(
 		"intro_idle" if status == "active"
 		else ("victory" if status == "won" else "defeat")
@@ -1394,7 +1407,7 @@ func _reframe_for_switch(
 	var target_layout := _fighter_layout()
 	if not animate:
 		return null
-	if _uses_static_background:
+	if _uses_team_background_parallax():
 		var previous_scale: Vector2 = previous_layout.get("layer_scale", Vector2.ONE)
 		var target_scale: Vector2 = target_layout.get("layer_scale", Vector2.ONE)
 		var fitted_background_zoom := float(target_layout.get("background_camera_zoom", 1.0))
@@ -1440,7 +1453,8 @@ func _fighter_layout() -> Dictionary:
 
 func _apply_fighter_layout(layout: Dictionary) -> void:
 	_fighter_layer.position = layout.get("layer_position", _fighter_layer.position)
-	_fighter_layer.scale = layout.get("layer_scale", _fighter_layer.scale)
+	var layer_scale: Vector2 = layout.get("layer_scale", _fighter_layer.scale)
+	_set_fighter_camera_zoom(layer_scale.x)
 	_player_anchor.position = layout.get("player_position", _player_anchor.position)
 	_player_anchor.scale = layout.get("player_scale", _player_anchor.scale)
 	_opponent_anchor.position = layout.get("opponent_position", _opponent_anchor.position)
@@ -1473,8 +1487,11 @@ func _tween_fighter_layout(target: Dictionary) -> Tween:
 	_layout_tween.tween_property(
 		_fighter_layer, "position", target["layer_position"], CAMERA_REFIT_SEC
 	)
-	_layout_tween.tween_property(
-		_fighter_layer, "scale", target["layer_scale"], CAMERA_REFIT_SEC
+	_layout_tween.tween_method(
+		_set_fighter_camera_zoom,
+		_fighter_layer.scale.x,
+		float((target["layer_scale"] as Vector2).x),
+		CAMERA_REFIT_SEC
 	)
 	_layout_tween.tween_property(
 		_player_anchor, "position", target["player_position"], CAMERA_REFIT_SEC
@@ -2349,17 +2366,22 @@ func _separate_fighter_bodies() -> void:
 
 
 func _apply_dynamic_camera() -> void:
-	var bounds := _fighter_shot_bounds()
-	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
+	var anima_bounds := _anima_shot_bounds()
+	if anima_bounds.size.x <= 0.0 or anima_bounds.size.y <= 0.0:
 		return
 	var side_pad := _battle_stage.size.x * CAMERA_SIDE_PAD_RATIO
 	var top_pad := _battle_stage.size.y * CAMERA_TOP_PAD_RATIO
 	var ground_y := _battle_stage.size.y * _ground_y_ratio()
 	var camera_ground_y := _camera_ground_y(ground_y)
 	var camera_top_y := _camera_top_y()
+	var fixed_columns := (
+		_seeker_column(_player_seeker, _player_seeker_loaded)
+		+ _seeker_column(_seeker, _seeker_loaded)
+	)
 	var fit_zoom := minf(
-		(_battle_stage.size.x - side_pad * 2.0) / bounds.size.x,
-		maxf(1.0, camera_ground_y - camera_top_y - top_pad) / bounds.size.y
+		maxf(1.0, _battle_stage.size.x - side_pad * 2.0 - fixed_columns)
+			/ anima_bounds.size.x,
+		maxf(1.0, camera_ground_y - camera_top_y - top_pad) / anima_bounds.size.y
 	)
 	var heights := _active_body_heights()
 	var tallest_anima := maxf(
@@ -2373,7 +2395,8 @@ func _apply_dynamic_camera() -> void:
 	)
 	var preferred_zoom := lerpf(CAMERA_MAX_ZOOM, CAMERA_LARGE_ANIMA_ZOOM, size_mix)
 	var zoom := clampf(minf(fit_zoom, preferred_zoom), CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
-	_fighter_layer.scale = Vector2(zoom, zoom)
+	var bounds := _fighter_shot_bounds(zoom)
+	_set_fighter_camera_zoom(zoom)
 	_fighter_layer.position = Vector2(
 		_battle_stage.size.x * 0.5 - bounds.get_center().x * zoom,
 		camera_ground_y - ground_y * zoom
@@ -2419,7 +2442,7 @@ func _camera_top_y() -> float:
 ## yang sudah besar; saat Switch, `background_zoom_for_switch()` memakai delta
 ## kamera supaya perubahan tinggi di plateau baseline tetap menggerakkan latar.
 func _background_zoom_for_camera(camera_zoom: float, size_mix: float) -> float:
-	if not _uses_static_background:
+	if _uses_expedition_framing():
 		return lerpf(_background_max_scale(), 1.0, size_mix)
 	var camera_response := clampf(
 		inverse_lerp(
@@ -2453,6 +2476,10 @@ func _uses_expedition_framing() -> bool:
 	return _expedition_mode or _is_boss_encounter()
 
 
+func _uses_team_background_parallax() -> bool:
+	return not _uses_expedition_framing()
+
+
 func _ground_y_ratio() -> float:
 	return BattleScale.GROUND_Y_RATIO if _uses_expedition_framing() else TEAM_GROUND_Y_RATIO
 
@@ -2482,7 +2509,10 @@ func _layout_arena_background(background_zoom: float) -> void:
 	var profile_zoom := (
 		BACKGROUND_CALIBRATION.camera_zoom(1.0, profile) if _uses_static_background else 1.0
 	)
-	var geometry_zoom := profile_zoom if _uses_static_background else maxf(1.0, background_zoom)
+	var geometry_zoom := (
+		profile_zoom if _uses_team_background_parallax()
+		else maxf(1.0, background_zoom)
+	)
 	var cover_guard := (
 		BACKGROUND_CALIBRATION.vertical_cover_guard(stage_size, guard, profile)
 		if _uses_static_background else guard
@@ -2500,7 +2530,7 @@ func _layout_arena_background(background_zoom: float) -> void:
 	)
 	_set_background_camera_zoom(
 		BACKGROUND_CALIBRATION.camera_zoom(background_zoom, profile)
-		if _uses_static_background else 1.0
+		if _uses_team_background_parallax() else 1.0
 	)
 	_set_background_ground_offset(_background_ground_offset)
 
@@ -2584,23 +2614,22 @@ func _pin_player_seeker_to_camera_left(camera_zoom: float) -> void:
 ## miliknya. Yang dicadangkan karena itu kolom di sisi masing-masing: zoom hanya
 ## mengecil kalau memang tidak cukup, sementara companion clamp mencegah figur
 ## terlepas jauh pada landscape.
-func _fighter_shot_bounds() -> Rect2:
+func _anima_shot_bounds() -> Rect2:
 	var ground_y := _player_anchor.position.y
-	var bounds := _anima_shot_rect(_player_sprite, _player_anchor, ground_y).merge(
+	return _anima_shot_rect(_player_sprite, _player_anchor, ground_y).merge(
 		_anima_shot_rect(_opponent_sprite, _opponent_anchor, ground_y)
 	)
+
+
+func _fighter_shot_bounds(camera_zoom: float) -> Rect2:
+	var bounds := _anima_shot_bounds()
+	var inverse_zoom := 1.0 / maxf(0.001, camera_zoom)
 	bounds = bounds.grow_individual(
-		_seeker_column(_player_seeker, _player_seeker_loaded),
+		_seeker_column(_player_seeker, _player_seeker_loaded) * inverse_zoom,
 		0.0,
-		_seeker_column(_seeker, _seeker_loaded),
+		_seeker_column(_seeker, _seeker_loaded) * inverse_zoom,
 		0.0
 	)
-	var tallest := maxf(
-		_seeker_column_height(_player_seeker, _player_seeker_loaded),
-		_seeker_column_height(_seeker, _seeker_loaded)
-	)
-	if tallest > bounds.size.y:
-		bounds = bounds.grow_individual(0.0, tallest - bounds.size.y, 0.0, 0.0)
 	return bounds
 
 
@@ -2610,12 +2639,6 @@ func _seeker_column(seeker: SeekerPresenter, loaded: Dictionary) -> float:
 	if not is_instance_valid(seeker) or not seeker.has_sheet():
 		return 0.0
 	return BattleScale.seeker_reserved_column(loaded, seeker.scale.x, _battle_stage.size.x)
-
-
-func _seeker_column_height(seeker: SeekerPresenter, loaded: Dictionary) -> float:
-	if not is_instance_valid(seeker) or not seeker.has_sheet():
-		return 0.0
-	return BattleScale.seeker_reference_height(loaded) * absf(seeker.scale.y)
 
 
 func _anima_shot_rect(sprite: AnimaPresenter, anchor: Node2D, ground_y: float) -> Rect2:
@@ -2770,6 +2793,7 @@ func _position_seeker() -> void:
 	if scales.size() < 3:
 		return
 	var seeker_scale := scales[2]
+	_seeker_screen_scale = seeker_scale
 	# The camera owns the final fit. Place the visible body in the shot first;
 	# transparent 3×3 cell padding must not affect composition.
 	var x := (
@@ -2806,6 +2830,7 @@ func _position_player_seeker() -> void:
 			_seeker_loaded,
 			boss_scales[2]
 		)
+	_player_seeker_screen_scale = avatar_scale
 	var x := (
 		_battle_stage.size.x * PLAYER_SEEKER_SHOT_X
 		+ BattleScale.seeker_opaque_center(_player_seeker_loaded) * avatar_scale
@@ -2818,6 +2843,81 @@ func _position_player_seeker() -> void:
 	# kamera sudah final dan figur baru harus langsung mendarat di tepinya.
 	_pin_player_seeker_to_camera_left(_fighter_layer.scale.x)
 	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
+
+
+func _set_fighter_camera_zoom(value: float) -> void:
+	var camera_zoom := maxf(0.001, value)
+	_fighter_layer.scale = Vector2(camera_zoom, camera_zoom)
+	if is_instance_valid(_seeker) and _seeker.has_sheet():
+		_seeker.set_body_scale(BattleScale.camera_invariant_local_scale(
+			_seeker_screen_scale, camera_zoom
+		))
+		_seeker.sync_ground_shadow(_seeker_shadow)
+	if not is_instance_valid(_player_seeker) or not _player_seeker.has_sheet():
+		return
+	var local_scale := BattleScale.camera_invariant_local_scale(
+		_player_seeker_screen_scale, camera_zoom
+	)
+	_player_seeker.set_body_scale(local_scale)
+	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
+
+
+static func _same_fighter_geometry(previous: Dictionary, current: Dictionary) -> bool:
+	if previous.is_empty() or current.is_empty():
+		return false
+	return (
+		_active_fighter_geometry(previous, "player")
+			== _active_fighter_geometry(current, "player")
+		and _active_fighter_geometry(previous, "opponent")
+			== _active_fighter_geometry(current, "opponent")
+		and _boss_geometry(previous) == _boss_geometry(current)
+	)
+
+
+static func _active_fighter_geometry(session: Dictionary, side: String) -> Array:
+	var state := GameState.as_dict(session.get("state"))
+	var party := GameState.as_dict(state.get(side))
+	var slot := int(party.get("active_slot", -1))
+	var roster := _as_array(party.get("roster"))
+	if slot < 0 or slot >= roster.size():
+		return []
+	var member := GameState.as_dict(roster[slot])
+	return [
+		slot,
+		str(member.get("anima_id", "")),
+		float(member.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)),
+	]
+
+
+static func _boss_geometry(session: Dictionary) -> Array:
+	var boss := GameState.as_dict(session.get("boss_seeker"))
+	if boss.is_empty():
+		return []
+	return [
+		str(boss.get("id", boss.get("display_name", ""))),
+		float(boss.get("body_height_cm", BattleScale.BODY_HEIGHT_REFERENCE_CM)),
+	]
+
+
+func _fighter_art_geometry_changed(session: Dictionary, incoming: Dictionary) -> bool:
+	for side: String in ["player", "opponent"]:
+		var geometry := _active_fighter_geometry(session, side)
+		if geometry.size() >= 2 and _art_geometry_changed(str(geometry[1]), incoming):
+			return true
+	return _art_geometry_changed("boss_seeker", incoming)
+
+
+func _art_geometry_changed(key: String, incoming: Dictionary) -> bool:
+	if not incoming.has(key):
+		return false
+	var previous := GameState.as_dict(_art_cache.get(key))
+	var current := GameState.as_dict(incoming.get(key))
+	return (
+		bool(previous.get("ok", false)) != bool(current.get("ok", false))
+		or previous.get("frames") != current.get("frames")
+		or GameState.as_dict(previous.get("render_metrics"))
+			!= GameState.as_dict(current.get("render_metrics"))
+	)
 
 
 func _play_damage(amount: int, multiplier: float) -> void:
