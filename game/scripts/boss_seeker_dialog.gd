@@ -13,6 +13,7 @@ var _portrait: TextureRect
 var _speaker: Label
 var _line: Label
 var _continue: Button
+var _external_continue := false
 
 
 func _ready() -> void:
@@ -71,11 +72,18 @@ func _ready() -> void:
 	_continue.custom_minimum_size = Vector2(0, 96)
 	_continue.theme_type_variation = "PrimaryButton"
 	_continue.pressed.connect(dismiss)
+	_continue.visible = not _external_continue
 	copy.add_child(_continue)
 
 
 func is_open() -> bool:
 	return _open
+
+
+func configure_external_continue(enabled: bool) -> void:
+	_external_continue = enabled
+	if is_instance_valid(_continue):
+		_continue.visible = not enabled
 
 
 func present(speaker: String, line: String, portrait: Texture2D = null) -> void:
@@ -91,7 +99,8 @@ func present(speaker: String, line: String, portrait: Texture2D = null) -> void:
 	visible = true
 	_open = true
 	opened.emit()
-	_continue.grab_focus()
+	if not _external_continue:
+		_continue.grab_focus()
 	await dismissed
 
 
@@ -105,7 +114,7 @@ func dismiss() -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if not _open:
+	if not _open or _external_continue:
 		return
 	if event is InputEventMouseButton and event.pressed:
 		accept_event()

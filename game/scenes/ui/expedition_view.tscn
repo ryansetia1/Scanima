@@ -229,6 +229,15 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
+[node name="ExpeditionChapterContinue" type="Button" parent="ExpeditionColumn/ExpeditionMap"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"PrimaryButton"
+text = "BATTLE_SEEKER_CONTINUE"
+
 [node name="ExpeditionMapPrimary" type="Button" parent="ExpeditionColumn/ExpeditionMap" unique_id=377746793]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)

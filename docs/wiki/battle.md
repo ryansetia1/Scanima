@@ -205,7 +205,10 @@ Seeker.
   Battle.
 - Saat peta Zone 1 pertama kali terbuka untuk run baru, Boss Seeker menyambutmu
   sebelum node dipilih. Sambutan muncul sekali untuk run itu; memulai run baru
-  setelah clear dan menerima Trophy akan memunculkannya lagi.
+  setelah clear dan menerima Trophy akan memunculkannya lagi. Selama sambutan,
+  **Enter Node** dan **Abandon** diganti satu tombol **Tap to Continue**. Ketuk
+  tombol itu setelah selesai membaca; ketukan pada panel atau area lain tidak
+  menutup sambutan.
 - Peta zona berupa jalur bercabang. Ikon menunjukkan jenis node: pedang untuk
   Battle, pedang berkilau untuk Elite, peti untuk Cache, hati untuk Recovery,
   tanda tanya untuk Mystery, dan pedang bersilang untuk Boss. Ketuk node yang

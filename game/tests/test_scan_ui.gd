@@ -6442,6 +6442,7 @@ func _test_expedition_view() -> void:
 	var chapter_dialog_host := view.find_child("ChapterDialogHost", true, false) as Control
 	var map_scroll := view.find_child("MapScroll", true, false) as ScrollContainer
 	var abandon := view.find_child("ExpeditionAbandon", true, false) as Button
+	var chapter_continue := view.find_child("ExpeditionChapterContinue", true, false) as Button
 	var checkpoint_run := intro_run.duplicate(true)
 	checkpoint_run["status"] = "checkpoint"
 	checkpoint_run["available_node_ids"] = []
@@ -6456,6 +6457,7 @@ func _test_expedition_view() -> void:
 	await process_frame
 	var chapter_line := chapter_dialog.find_child("SeekerLine", true, false) as Label if chapter_dialog != null else null
 	var chapter_panel := chapter_dialog.find_child("SeekerPanel", true, false) as PanelContainer if chapter_dialog != null else null
+	var internal_continue := chapter_dialog.find_child("SeekerContinue", true, false) as Button if chapter_dialog != null else null
 	_check(
 		chapter_dialog != null
 		and chapter_dialog.is_open()
@@ -6473,16 +6475,48 @@ func _test_expedition_view() -> void:
 		"chapter intro is anchored within the map artwork instead of the full screen"
 	)
 	_check(
-		abandon.disabled
-		and abandon.get_theme_color("font_disabled_color").a
-		< abandon.get_theme_color("font_color").a,
-		"chapter intro locks Abandon and uses the visibly dimmed disabled style"
+		internal_continue != null and not internal_continue.visible
+		and not map_primary.visible and not abandon.visible
+		and chapter_continue.visible and not chapter_continue.disabled
+		and chapter_continue.focus_mode == Control.FOCUS_NONE
+		and not chapter_continue.has_focus()
+		and chapter_continue.text == tr("BATTLE_SEEKER_CONTINUE")
+		and is_equal_approx(chapter_continue.size.x, map_primary.size.x),
+		(
+			"chapter intro replaces both map actions with one full-width external Continue "
+			+ "(internal=%s primary=%s abandon=%s external=%s disabled=%s text=%s widths=%s/%s)"
+		) % [
+			internal_continue.visible,
+			map_primary.visible,
+			abandon.visible,
+			chapter_continue.visible,
+			chapter_continue.disabled,
+			chapter_continue.text,
+			chapter_continue.size.x,
+			map_primary.size.x,
+		]
 	)
-	_check(view.handle_back(), "back dismisses chapter intro before leaving the map")
+	var backdrop_tap := InputEventMouseButton.new()
+	backdrop_tap.button_index = MOUSE_BUTTON_LEFT
+	backdrop_tap.pressed = true
+	chapter_dialog.call("_gui_input", backdrop_tap)
+	var cancel_action := InputEventAction.new()
+	cancel_action.action = &"ui_cancel"
+	cancel_action.pressed = true
+	chapter_dialog.call("_gui_input", cancel_action)
 	await process_frame
 	_check(
-		not chapter_dialog.is_open() and not abandon.disabled,
-		"acknowledging the chapter intro restores Abandon without replaying the line"
+		chapter_dialog.is_open() and view.handle_back() and chapter_dialog.is_open(),
+		"map chapter intro ignores backdrop, ui_cancel, and Back until external Continue"
+	)
+	chapter_continue.pressed.emit()
+	await process_frame
+	_check(
+		not chapter_dialog.is_open()
+		and map_primary.visible and map_primary.disabled
+		and abandon.visible and not abandon.disabled
+		and not chapter_continue.visible,
+		"external Continue restores the map actions to their prior visibility and disabled state"
 	)
 	view.set_run(intro_run)
 	await process_frame
@@ -6492,7 +6526,7 @@ func _test_expedition_view() -> void:
 	view.set_run(replay_run, {}, {"boss_seeker": _boss_seeker_loaded()})
 	await process_frame
 	_check(chapter_dialog.is_open(), "a new run after a prior clear reopens the chapter intro")
-	_check(view.handle_back(), "back dismisses the replayed run chapter intro")
+	chapter_continue.pressed.emit()
 	await process_frame
 	_check(
 		str(view.call("_location_text", {

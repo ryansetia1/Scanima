@@ -1691,10 +1691,13 @@ func _test_boss_intro(
 			player_pose_at_reveal[0] = player_seeker.animation == "switch_command"
 			stable_reveals[0] = stable_reveals[0] and layer.position.is_equal_approx(cinematic_position) and layer.scale.is_equal_approx(cinematic_scale)
 	)
-	_check(view.handle_back(), "Back dismisses Boss opening dialogue without leaving the encounter")
+	var dialog_tap := InputEventMouseButton.new()
+	dialog_tap.button_index = MOUSE_BUTTON_LEFT
+	dialog_tap.pressed = true
+	dialog.call("_gui_input", dialog_tap)
 	_check(
 		chrome.visible and not dialog.is_open(),
-		"dismissing Boss dialogue restores the opening Chrome visibility state"
+		"the default in-combat dialog still dismisses on backdrop tap and restores Chrome"
 	)
 	var saw_transition := false
 	var transition_started_at := -1

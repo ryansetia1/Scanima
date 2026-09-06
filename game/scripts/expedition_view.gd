@@ -50,6 +50,7 @@ const SEEKER_SHEET := preload("res://scripts/seeker_sheet.gd")
 @onready var _party_meta: Label = %ExpeditionPartyMeta
 @onready var _route_map: ExpeditionRouteMap = %ExpeditionRouteMap
 @onready var _chapter_dialog_host: Control = %ChapterDialogHost
+@onready var _chapter_continue: Button = %ExpeditionChapterContinue
 @onready var _map_primary: Button = %ExpeditionMapPrimary
 @onready var _abandon: Button = %ExpeditionAbandon
 @onready var _choice: VBoxContainer = %ExpeditionChoice
@@ -77,10 +78,16 @@ var _busy := false
 var _thumbnail_provider: Callable
 var _seeker_dialog: BOSS_SEEKER_DIALOG
 var _chapter_intro_run := ""
+var _chapter_intro_chrome_active := false
+var _chapter_intro_primary_was_visible := false
+var _chapter_intro_primary_was_disabled := false
+var _chapter_intro_abandon_was_visible := false
+var _chapter_intro_abandon_was_disabled := false
 
 
 func _ready() -> void:
 	_back.tooltip_text = tr("ACTION_BACK")
+	_chapter_continue.text = tr("BATTLE_SEEKER_CONTINUE")
 	_choice_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_builder_back.flat = true
 	_roster_list.fixed_icon_size = Vector2i(96, 96)
@@ -97,6 +104,7 @@ func _ready() -> void:
 	_map_primary.pressed.connect(_request_map_primary)
 	_route_map.node_previewed.connect(_preview_route_node)
 	_abandon.pressed.connect(abandon_requested.emit)
+	_chapter_continue.pressed.connect(_dismiss_chapter_intro)
 	_map_primary.focus_neighbor_bottom = _abandon.get_path()
 	_abandon.focus_neighbor_top = _map_primary.get_path()
 	_target_confirm.pressed.connect(_confirm_target)
@@ -117,6 +125,7 @@ func _ready() -> void:
 	_combat.retry_requested.connect(combat_continue_requested.emit)
 	_seeker_dialog = BOSS_SEEKER_DIALOG.new()
 	_seeker_dialog.name = "ChapterSeekerDialog"
+	_seeker_dialog.configure_external_continue(true)
 	_chapter_dialog_host.add_child(_seeker_dialog)
 	_show_only(_loading)
 
@@ -160,7 +169,6 @@ func handle_back() -> bool:
 	if not visible:
 		return false
 	if is_instance_valid(_seeker_dialog) and _seeker_dialog.is_open():
-		_seeker_dialog.dismiss()
 		return true
 	if _combat.visible:
 		if _combat.handle_back():
@@ -520,6 +528,36 @@ func _sync_map_primary() -> void:
 		(_team_id().is_empty() or bool(_run.get("checkpoint_choice_pending", false)))
 		if checkpoint else _selected_route_node.is_empty()
 	)
+
+
+func _show_chapter_intro_continue() -> void:
+	if _chapter_intro_chrome_active:
+		return
+	_chapter_intro_chrome_active = true
+	_chapter_intro_primary_was_visible = _map_primary.visible
+	_chapter_intro_primary_was_disabled = _map_primary.disabled
+	_chapter_intro_abandon_was_visible = _abandon.visible
+	_chapter_intro_abandon_was_disabled = _abandon.disabled
+	_map_primary.visible = false
+	_abandon.visible = false
+	_chapter_continue.visible = true
+	_chapter_continue.disabled = false
+
+
+func _restore_chapter_intro_chrome() -> void:
+	if not _chapter_intro_chrome_active:
+		return
+	_chapter_intro_chrome_active = false
+	_chapter_continue.visible = false
+	_map_primary.visible = _chapter_intro_primary_was_visible
+	_map_primary.disabled = _chapter_intro_primary_was_disabled
+	_abandon.visible = _chapter_intro_abandon_was_visible
+	_abandon.disabled = _chapter_intro_abandon_was_disabled
+
+
+func _dismiss_chapter_intro() -> void:
+	if is_instance_valid(_seeker_dialog):
+		_seeker_dialog.dismiss()
 
 
 func _route_preview_text(node: Dictionary) -> String:
@@ -948,6 +986,7 @@ func _begin_chapter_intro(art_cache: Dictionary) -> void:
 	if line.is_empty() or not is_instance_valid(_seeker_dialog):
 		return
 	_chapter_intro_run = str(_run.get("id", ""))
+	_show_chapter_intro_continue()
 	set_busy(true)
 	await _seeker_dialog.present(
 		str(seeker.get("display_name", "")),
@@ -958,6 +997,7 @@ func _begin_chapter_intro(art_cache: Dictionary) -> void:
 		)
 	)
 	set_busy(false)
+	_restore_chapter_intro_chrome()
 
 
 func _should_chapter_intro() -> bool:
