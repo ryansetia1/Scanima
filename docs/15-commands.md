@@ -67,6 +67,20 @@ godot --path game -- --battle-background-tuner \
 - Save/Copy nonaktif kalau salah satu profile tidak menutup impact guard.
   `Clean Preview (H)` menyembunyikan panel dan guides; tekan H lagi untuk kembali.
 
+## Test Boss Seeker
+
+Debug build menampilkan **Test Boss Seeker** di lobby Battle. Shortcut ini
+memilih empat Anima eligible dengan Level tertinggi (total base stat sebagai
+tiebreak), lalu membuka Boss dari versi chapter aktif. Endpoint Expedition
+tetap mewajibkan row `staff_accounts` untuk akun pemanggil.
+
+Fight ini practice murni: tidak membuat run/encounter database, tidak memungut
+Bits atau item, dan tidak memberi EXP, Bits, Core, Trophy, maupun chapter clear.
+State combat bolak-balik di request dan di-resolve oleh helper Team combat yang
+sama. Client debug yang belum dipasangkan dengan deployment Edge Function
+terbaru akan ditolak sebagai operation yang tidak dikenal; jangan deploy
+`expedition` hanya untuk mencoba UI tanpa review pagar staff/zero-persistence.
+
 ## Menjalankan game dan demo visual
 
 Setiap flag `--*-demo` memeriksa satu layar tanpa jaringan dan tanpa biaya.

@@ -46,6 +46,8 @@ var _request_result: Dictionary = {}
 var _request_in_flight := false
 var _request_revision := 0
 var _preload_running := false
+# DEV TEST MODE — remove this block and its call sites to fully retire Test Boss Seeker.
+var _boss_practice := false
 
 
 func configure(view: ExpeditionView, battle_view: BattleView) -> void:
@@ -96,6 +98,8 @@ func reset_account_context() -> void:
 	_request_revision += 1
 	_request_settled.emit()
 	_preload_running = false
+	# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+	_boss_practice = false
 
 
 func discover() -> void:
@@ -130,6 +134,10 @@ func open() -> void:
 func close() -> void:
 	if _busy or _view.has_active_encounter():
 		return
+	# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+	if _boss_practice:
+		_end_boss_practice()
+		return
 	_battle_view.set_expedition_pending(not GameState.pending_expedition.is_empty())
 	_battle_view.show_duel_mode()
 
@@ -149,6 +157,10 @@ func encounter_kind() -> String:
 func use_item(item_id: String) -> bool:
 	if _busy or _encounter.is_empty() or str(_encounter.get("status", "")) != "active":
 		return false
+	# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+	if _boss_practice:
+		await _submit_boss_practice_turn("item", -1, item_id)
+		return true
 	var pending := GameState.begin_expedition_operation("turn", {
 		"action": "item",
 		"item_id": item_id,
@@ -156,6 +168,43 @@ func use_item(item_id: String) -> bool:
 	})
 	await _submit_pending(pending)
 	return true
+
+
+# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+func start_boss_practice(anima_ids: Array[String]) -> String:
+	if not (OS.has_feature("debug") or OS.is_debug_build()):
+		return "STAFF_FORBIDDEN"
+	if _busy:
+		return "DEBUG_TEST_BOSS_BUSY"
+	if anima_ids.size() != 4:
+		return "DEBUG_TEST_BOSS_NEEDS_FOUR"
+	var account_epoch := GameState.session_epoch
+	_art_cache.clear()
+	_battle_view.show_expedition_mode()
+	_view.set_loading("DEBUG_TEST_BOSS_LOADING")
+	LoadingScreen.show_screen("DEBUG_TEST_BOSS_LOADING")
+	_set_busy(true)
+	var res := await Backend.expedition("practice_boss_start", {"anima_ids": anima_ids})
+	if not Backend.response_applies(res, account_epoch):
+		_set_busy(false)
+		return ""
+	if not res.ok:
+		_set_busy(false)
+		_battle_view.show_duel_mode()
+		return str(res.error)
+	var data := GameState.as_dict(res.data)
+	_run = GameState.as_dict(data.get("run"))
+	_encounter = GameState.as_dict(data.get("encounter"))
+	if _run.is_empty() or _encounter.is_empty():
+		_set_busy(false)
+		_battle_view.show_duel_mode()
+		return "INVALID_EXPEDITION_ENCOUNTER"
+	_boss_practice = true
+	await _present(true)
+	if not _view.has_active_encounter():
+		_end_boss_practice()
+		return "TEAM_ART_NOT_READY"
+	return ""
 
 
 func resume_pending() -> void:
@@ -351,6 +400,10 @@ func _abandon() -> void:
 func _request_turn(action: String, switch_to_slot: int) -> void:
 	if _busy or _encounter.is_empty() or str(_encounter.get("status", "")) != "active":
 		return
+	# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+	if _boss_practice:
+		await _submit_boss_practice_turn(action, switch_to_slot)
+		return
 	var pending := GameState.begin_expedition_operation("turn", {
 		"action": action,
 		"item_id": "",
@@ -362,6 +415,10 @@ func _request_turn(action: String, switch_to_slot: int) -> void:
 func _forfeit() -> void:
 	var account_epoch := GameState.session_epoch
 	if _busy or _encounter.is_empty():
+		return
+	# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+	if _boss_practice:
+		_end_boss_practice()
 		return
 	_view.show_retreat_banner()
 	_set_busy(true)
@@ -382,6 +439,10 @@ func _forfeit() -> void:
 
 
 func _continue_after_combat() -> void:
+	# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+	if _boss_practice:
+		_end_boss_practice()
+		return
 	if str(_run.get("status", "")) in ["complete", "abandoned"]:
 		if str(_run.get("status", "")) == "complete":
 			GameState.finish_expedition()
@@ -401,6 +462,63 @@ func _leave_complete() -> void:
 		await _load_hub()
 	else:
 		close()
+
+
+# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+func _submit_boss_practice_turn(
+	action: String,
+	switch_to_slot: int,
+	item_id: String = ""
+) -> void:
+	var account_epoch := GameState.session_epoch
+	_view.begin_combat_action(action)
+	_set_busy(true)
+	var payload := {
+		"encounter": _encounter.duplicate(true),
+		"expected_turn": int(_encounter.get("turn_number", 1)),
+		"expected_version": int(_encounter.get("version", 1)),
+		"action": action,
+		"idempotency_key": "%d-%08x%08x" % [
+			int(Time.get_unix_time_from_system()),
+			randi(),
+			randi(),
+		],
+	}
+	if action == "switch":
+		payload["switch_to_slot"] = switch_to_slot
+	elif action == "item":
+		payload["item_id"] = item_id
+	var res := await Backend.expedition("practice_boss_turn", payload)
+	if not Backend.response_applies(res, account_epoch):
+		_set_busy(false)
+		return
+	if not res.ok:
+		_view.set_combat_encounter(_encounter, _art_cache.duplicate())
+		_view.set_error(res.error)
+		_set_busy(false)
+		return
+	var data := GameState.as_dict(res.data)
+	var next_encounter := GameState.as_dict(data.get("encounter"))
+	if next_encounter.is_empty():
+		_view.set_error("INVALID_EXPEDITION_ENCOUNTER")
+		_set_busy(false)
+		return
+	var events := _array(data.get("events"))
+	var art := await _prepare_active_art(next_encounter, false)
+	art = await _attach_seeker_art(art)
+	await _view.play_combat_events(events, next_encounter, art)
+	_encounter = next_encounter
+	_set_busy(false)
+
+
+func _end_boss_practice() -> void:
+	_boss_practice = false
+	_run = {}
+	_encounter = {}
+	_art_cache.clear()
+	_view.set_run({})
+	_battle_view.show_duel_mode()
+	_set_busy(false)
 
 
 ## Simulasi turn dari state encounter authoritative yang sudah ada di client.

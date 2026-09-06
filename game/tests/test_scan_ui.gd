@@ -145,7 +145,8 @@ func _initialize() -> void:
 		"AtlasLoadMore",
 		"HomePrimaryAction", "CollectionEmptyAction", "CollectionProfileButton",
 		"CollectionSummonButton", "BattlePickProfileButton", "BattlePickBattleButton",
-		"BattleStartButton", "BattleTeamButton", "BattleExpeditionButton", "BattleStrikeButton",
+		"BattleStartButton", "BattleTeamButton", "BattleExpeditionButton",
+		"BattleDebugBossButton", "BattleStrikeButton",
 		"BattleSurgeButton", "BattleGuardButton", "BattleItemButton", "BattleForfeitButton", "BattleRetryButton",
 		"BattleLeaveButton",
 		"TeamBackButton", "TeamSaveButton", "TeamEditButton", "TeamDefenseButton",
@@ -3703,12 +3704,47 @@ func _test_battle_view() -> void:
 	await process_frame
 	var battle_script := load("res://scripts/battle_view.gd") as GDScript
 	var team_script := load("res://scripts/team_battle_view.gd") as GDScript
+	var expedition_script := load("res://scripts/expedition_view.gd") as GDScript
 	_check(
 		not battle_script.static_background_uses_landscape(Vector2(720, 900))
 		and battle_script.static_background_uses_landscape(Vector2(1600, 900))
 		and not team_script.static_background_uses_landscape(Vector2(720, 900))
 		and team_script.static_background_uses_landscape(Vector2(1600, 900)),
 		"Duel and Team Battle select static art from the live arena aspect"
+	)
+	# DEV TEST MODE — remove this block and button assertions with Test Boss Seeker.
+	_check(
+		not battle_script.debug_boss_shortcut_enabled(false, false)
+		and battle_script.debug_boss_shortcut_enabled(true, false)
+		and battle_script.debug_boss_shortcut_enabled(false, true),
+		"Test Boss Seeker stays unavailable outside debug builds"
+	)
+	var practice_roster: Array = []
+	for index in range(5):
+		practice_roster.append({
+			"id": "practice-%d" % index,
+			"status": "ready",
+			"dormant_since": null,
+			"level": index + 1,
+			"care_score": index * 100,
+			"care": {"energy": 100.0},
+			"base_stats": {
+				"hp": 50 + index,
+				"atk": 50,
+				"def": 50,
+				"spd": 50,
+				"special": 50,
+			},
+		})
+	_check_eq(
+		expedition_script.boss_practice_roster_error(practice_roster.slice(0, 3)),
+		"DEBUG_TEST_BOSS_NEEDS_FOUR",
+		"Boss practice rejects fewer than four eligible Anima before a request"
+	)
+	_check_eq(
+		expedition_script.boss_practice_team(practice_roster),
+		["practice-4", "practice-3", "practice-2", "practice-1"],
+		"Boss practice auto-picks the four highest-level eligible Anima"
 	)
 
 	var lobby := view.find_child("BattleLobbyPanel", true, false) as Control
@@ -3722,6 +3758,7 @@ func _test_battle_view() -> void:
 	var start := view.find_child("BattleStartButton", true, false) as Button
 	var team_button := view.find_child("BattleTeamButton", true, false) as Button
 	var expedition_button := view.find_child("BattleExpeditionButton", true, false) as Button
+	var debug_boss_button := view.find_child("BattleDebugBossButton", true, false) as Button
 	var expedition_badge := view.find_child("ExpeditionNewBadge", true, false) as Label
 	var lobby_name := view.find_child("BattleLobbyName", true, false) as Label
 	var lobby_meta := view.find_child("BattleLobbyMeta", true, false) as Label
@@ -3777,6 +3814,12 @@ func _test_battle_view() -> void:
 		expedition_button.visible and not expedition_button.disabled,
 		"Expedition entry is ready immediately from last-known availability"
 	)
+	_check(
+		debug_boss_button.visible == (
+			OS.has_feature("debug") or OS.is_debug_build()
+		),
+		"Test Boss Seeker visibility follows the runtime debug-build gate"
+	)
 	view.set_expedition_pending(true)
 	_check(
 		expedition_button.visible
@@ -3786,6 +3829,7 @@ func _test_battle_view() -> void:
 		and start.disabled,
 		"an open run exposes only Continue Expedition from the Battle lobby"
 	)
+	_check(debug_boss_button.disabled, "Boss practice waits while an Expedition is pending")
 	view.set_expedition_pending(false)
 	view.set_team_pending(true)
 	_check(
@@ -3796,6 +3840,7 @@ func _test_battle_view() -> void:
 		and start.disabled,
 		"an unfinished Team Battle exposes one explicit continuation entry"
 	)
+	_check(debug_boss_button.disabled, "Boss practice waits while a Team Battle is pending")
 	view.set_team_pending(false)
 	view.set_expedition_new(true)
 	_check(expedition_badge.visible, "unopened chapter marks the Expedition entry as New")

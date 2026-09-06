@@ -316,6 +316,8 @@ func _ready() -> void:
 	_expedition_controller.name = "ExpeditionController"
 	add_child(_expedition_controller)
 	_expedition_controller.configure(_expedition_view, _battle_view)
+	# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+	_battle_view.debug_boss_practice_requested.connect(_start_boss_practice)
 	_expedition_view.forfeit_requested.connect(_confirm_retreat.bind("expedition"))
 	_expedition_view.abandon_requested.connect(_confirm_expedition_abandon)
 	_expedition_controller.item_picker_requested.connect(_open_battle_item_picker)
@@ -4153,6 +4155,28 @@ func _open_team_battle_mode() -> void:
 		await _resume_team_battle()
 		return
 	await _load_team_battle_hub()
+
+
+# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+func _start_boss_practice() -> void:
+	if _busy or not (OS.has_feature("debug") or OS.is_debug_build()):
+		return
+	var roster_error := ExpeditionView.boss_practice_roster_error(_roster)
+	if not roster_error.is_empty():
+		_say_error(tr(roster_error), true)
+		return
+	var error_code := await _expedition_controller.start_boss_practice(
+		ExpeditionView.boss_practice_team(_roster)
+	)
+	if error_code.is_empty():
+		return
+	var error_key := str({
+		"STAFF_FORBIDDEN": "DEBUG_TEST_BOSS_FORBIDDEN",
+		"TEAM_MEMBER_UNAVAILABLE": "EXPEDITION_TEAM_INVALID",
+		"TEAM_MEMBER_LOW_ENERGY": "EXPEDITION_ENERGY_LOW",
+		"CHAPTER_NOT_AVAILABLE": "EXPEDITION_UNAVAILABLE",
+	}.get(error_code, "EXPEDITION_ERROR_GENERIC"))
+	_say_error(tr(error_key), true)
 
 
 func _close_team_battle_mode() -> void:

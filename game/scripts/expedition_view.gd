@@ -765,6 +765,10 @@ func _team_member_ids() -> Array[String]:
 
 
 func _member_unavailable(row: Dictionary) -> String:
+	return member_unavailable(row)
+
+
+static func member_unavailable(row: Dictionary) -> String:
 	if CareRules.is_evolving(row):
 		return "TEAM_MEMBER_EVOLVING_COPY"
 	if str(row.get("status", "")) != "ready":
@@ -774,6 +778,47 @@ func _member_unavailable(row: Dictionary) -> String:
 	if float(GameState.as_dict(row.get("care")).get("energy", 0.0)) < 30.0:
 		return "TEAM_MEMBER_LOW_ENERGY_COPY"
 	return ""
+
+
+# DEV TEST MODE — remove this block and its callers to fully retire Test Boss Seeker.
+static func boss_practice_team(roster: Array) -> Array[String]:
+	var eligible: Array[Dictionary] = []
+	for value: Variant in roster:
+		var row := GameState.as_dict(value)
+		if member_unavailable(row).is_empty():
+			eligible.append(row)
+	# ponytail: level dominates broad combat readiness; total base stats breaks
+	# ties. Upgrade to Boss-specific simulation only if four-slot optimization
+	# becomes useful outside this removable developer shortcut.
+	eligible.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_level := CareRules.level_from_exp(int(left.get("care_score", 0)))
+		var right_level := CareRules.level_from_exp(int(right.get("care_score", 0)))
+		if left_level != right_level:
+			return left_level > right_level
+		var left_stats := _base_stat_total(GameState.as_dict(left.get("base_stats")))
+		var right_stats := _base_stat_total(GameState.as_dict(right.get("base_stats")))
+		if left_stats != right_stats:
+			return left_stats > right_stats
+		return str(left.get("id", "")) < str(right.get("id", ""))
+	)
+	var ids: Array[String] = []
+	for row: Dictionary in eligible.slice(0, 4):
+		ids.append(str(row.get("id", "")))
+	return ids
+
+
+static func boss_practice_roster_error(roster: Array) -> String:
+	return "" if boss_practice_team(roster).size() == 4 else "DEBUG_TEST_BOSS_NEEDS_FOUR"
+
+
+static func _base_stat_total(stats: Dictionary) -> int:
+	return (
+		int(stats.get("hp", 0))
+		+ int(stats.get("atk", 0))
+		+ int(stats.get("def", 0))
+		+ int(stats.get("spd", 0))
+		+ int(stats.get("special", 0))
+	)
 
 
 static func _member_status_key(unavailable: String) -> String:

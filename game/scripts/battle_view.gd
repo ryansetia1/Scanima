@@ -40,6 +40,8 @@ signal start_requested
 signal choose_anima_requested
 signal team_mode_requested
 signal expedition_mode_requested
+# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+signal debug_boss_practice_requested
 signal action_requested(action: String)
 signal item_picker_requested
 signal resume_requested
@@ -74,6 +76,8 @@ const DUEL_BACKGROUND_NIGHT_LANDSCAPE: Texture2D = preload(
 @onready var _team_view: TeamBattleView = %TeamBattleView
 @onready var _expedition_button: Button = %BattleExpeditionButton
 @onready var _expedition_view: ExpeditionView = %ExpeditionView
+# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+@onready var _debug_boss_button: Button = %BattleDebugBossButton
 @onready var _battle_content: Control = %BattleContent
 @onready var _battle_chrome: Control = %BattleChrome
 @onready var _battle_overlay: Control = %BattleOverlay
@@ -163,6 +167,12 @@ func _ready() -> void:
 	_start_button.pressed.connect(_on_start_pressed)
 	_team_button.pressed.connect(team_mode_requested.emit)
 	_expedition_button.pressed.connect(expedition_mode_requested.emit)
+	# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+	_debug_boss_button.visible = debug_boss_shortcut_enabled(
+		OS.has_feature("debug"),
+		OS.is_debug_build()
+	)
+	_debug_boss_button.pressed.connect(_on_debug_boss_pressed)
 	_strike_button.pressed.connect(_request_action.bind("strike"))
 	_surge_button.pressed.connect(_request_action.bind("surge"))
 	_guard_button.pressed.connect(_request_action.bind("guard"))
@@ -436,6 +446,13 @@ func _apply_lobby() -> void:
 	else:
 		_start_button.text = tr("BATTLE_TRAIN") if training else tr("BATTLE_START")
 	_start_button.disabled = _busy or not other_pending_key.is_empty()
+	# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+	_debug_boss_button.disabled = (
+		_busy
+		or _duel_pending
+		or _team_pending
+		or _expedition_pending
+	)
 	_schedule_daily_reward_reset(_lobby_daily_reward)
 
 
@@ -749,6 +766,26 @@ func _on_start_pressed() -> void:
 		start_requested.emit()
 		return
 	choose_anima_requested.emit()
+
+
+# DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+static func debug_boss_shortcut_enabled(
+	has_debug_feature: bool,
+	is_debug_build: bool
+) -> bool:
+	return has_debug_feature or is_debug_build
+
+
+func _on_debug_boss_pressed() -> void:
+	if (
+		not debug_boss_shortcut_enabled(OS.has_feature("debug"), OS.is_debug_build())
+		or _busy
+		or _duel_pending
+		or _team_pending
+		or _expedition_pending
+	):
+		return
+	debug_boss_practice_requested.emit()
 
 
 func _on_retry_pressed() -> void:

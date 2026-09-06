@@ -145,6 +145,11 @@ import {
   teamCombatPower,
   teamRewardPreview,
 } from "../backend/supabase/functions/_shared/team_combat.mjs";
+// DEV TEST MODE — remove this import and marked checks with Test Boss Seeker.
+import {
+  createBossPractice,
+  resolveBossPracticeTurn,
+} from "../backend/supabase/functions/_shared/boss_practice.mjs";
 import {
   atlasRosterSources,
   teamSnapshotFromMembers,
@@ -3465,6 +3470,64 @@ console.log(
     },
   };
   assert.equal(validateChapterManifest(manifest).zones.length, 3);
+  // DEV TEST MODE — remove this block with Test Boss Seeker.
+  const practice = createBossPractice({
+    chapterVersionId: "current-version",
+    playerSnapshot: roster("practice-player"),
+    opponentSnapshot: roster("practice-boss"),
+    backgroundPath: manifest.zones[2].background_path,
+    seed: "practice-start",
+  });
+  assert.equal(practice.practice, true);
+  assert.equal(practice.run.nodes_completed, 0);
+  assert.equal(practice.run.supplies, 0);
+  assert.deepEqual(practice.run.available_node_ids, []);
+  const practiceTurn = resolveBossPracticeTurn({
+    encounter: practice.encounter,
+    expectedTurn: 1,
+    expectedVersion: 1,
+    action: "guard",
+    idempotencyKey: "practice-turn",
+  });
+  assert.equal(practiceTurn.practice, true);
+  assert.deepEqual(practiceTurn.reward, {});
+  assert.equal(practiceTurn.encounter.version, 2);
+  assert.equal(
+    practice.encounter.turn_number,
+    1,
+    "resolve Boss practice tidak boleh memutasi state request sebelumnya",
+  );
+  let terminalPractice = practiceTurn;
+  for (
+    let turn = 0;
+    turn < TEAM_MAX_TURNS + 10 && terminalPractice.encounter.status === "active";
+    turn++
+  ) {
+    const party = terminalPractice.encounter.state.player;
+    const forcedSlot = party.forced_switch
+      ? party.roster.findIndex((member, slot) => slot !== party.active_slot && member.hp > 0)
+      : -1;
+    terminalPractice = resolveBossPracticeTurn({
+      encounter: terminalPractice.encounter,
+      expectedTurn: terminalPractice.encounter.turn_number,
+      expectedVersion: terminalPractice.encounter.version,
+      action: forcedSlot >= 0 ? "switch" : "strike",
+      idempotencyKey: `practice-terminal-${turn}`,
+      switchToSlot: forcedSlot >= 0 ? forcedSlot : null,
+    });
+  }
+  assert.notEqual(terminalPractice.encounter.status, "active");
+  assert.deepEqual(
+    terminalPractice.reward,
+    {
+      practice: true,
+      bits: 0,
+      clear_bits: 0,
+      supplies: 0,
+      anima_exp: [],
+    },
+    "hasil terminal Boss practice tidak boleh membawa hadiah ekonomi/progresi",
+  );
   assert.throws(
     () =>
       validateChapterManifest({
@@ -3879,6 +3942,66 @@ console.log(
       import.meta.url,
     ),
     "utf8",
+  );
+  // DEV TEST MODE — remove this block with Test Boss Seeker.
+  const bossPractice = await readFile(
+    new URL(
+      "../backend/supabase/functions/_shared/boss_practice.mjs",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const practiceHandlers = expeditionEdge.slice(
+    expeditionEdge.indexOf("async function practiceBossStart"),
+    expeditionEdge.indexOf("async function listTrophies"),
+  );
+  const expeditionController = await readFile(
+    new URL("../game/scripts/expedition_controller.gd", import.meta.url),
+    "utf8",
+  );
+  const scanFlow = await readFile(
+    new URL("../game/scripts/scan_flow.gd", import.meta.url),
+    "utf8",
+  );
+  const practicePreflight = scanFlow.slice(
+    scanFlow.indexOf("func _start_boss_practice"),
+    scanFlow.indexOf("func _close_team_battle_mode"),
+  );
+  const practiceController = expeditionController.slice(
+    expeditionController.indexOf("func _submit_boss_practice_turn"),
+    expeditionController.indexOf(
+      "## Simulasi turn",
+      expeditionController.indexOf("func _submit_boss_practice_turn"),
+    ),
+  );
+  assert.ok(
+    expeditionEdge.indexOf("const staff = await requireStaff(db, req)") <
+      expeditionEdge.indexOf("return await practiceBossStart(ownerId, body, req)"),
+    "Boss practice harus melewati staff_accounts sebelum handler dijalankan",
+  );
+  assert.ok(
+    !bossPractice.includes("SupabaseClient") &&
+      !bossPractice.includes(".from(") &&
+      !bossPractice.includes(".rpc(") &&
+      !practiceHandlers.includes('"start_expedition_run"') &&
+      !practiceHandlers.includes('"start_expedition_encounter"') &&
+      !practiceHandlers.includes('"commit_expedition_turn"') &&
+      !practiceHandlers.includes('"complete_expedition"'),
+    "Boss practice hanya boleh membaca roster/chapter lalu resolve in-memory",
+  );
+  assert.ok(
+    !practiceController.includes("GameState.begin_expedition_operation") &&
+      !practiceController.includes("GameState.confirm_expedition_response") &&
+      !practiceController.includes("GameState.remember_expedition") &&
+      !practiceController.includes("reward_presented.emit") &&
+      !practiceController.includes("inventory_refresh_requested.emit") &&
+      !practiceController.includes("authority_refresh_requested.emit"),
+    "client Boss practice tidak boleh masuk pending/reward/currency Expedition",
+  );
+  assert.match(
+    practicePreflight,
+    /boss_practice_roster_error[\s\S]*if not roster_error\.is_empty\(\):\s+_say_error\(tr\(roster_error\), true\)\s+return[\s\S]*_expedition_controller\.start_boss_practice/,
+    "kurang dari empat Anima harus menampilkan error lalu berhenti sebelum request",
   );
   const expeditionTurn = expeditionEdge.slice(
     expeditionEdge.indexOf("async function playTurn"),

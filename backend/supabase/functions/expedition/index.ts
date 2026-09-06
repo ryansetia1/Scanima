@@ -21,6 +21,13 @@ import {
   createTeamParty,
   resolveTeamTurn,
 } from "../_shared/team_combat.mjs";
+// DEV TEST MODE — remove this import and the marked block below to fully
+// retire Test Boss Seeker.
+import {
+  createBossPractice,
+  resolveBossPracticeTurn,
+} from "../_shared/boss_practice.mjs";
+import { requireStaff } from "../_shared/admin_auth.ts";
 import {
   asSnapshotArray,
   teamSnapshotFromMembers,
@@ -29,6 +36,7 @@ import { withSignedRoster } from "../_shared/signed_roster.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const COMBAT_ACTIONS = new Set(["strike", "surge", "guard", "item", "switch"]);
+const PRACTICE_OPERATIONS = new Set(["practice_boss_start", "practice_boss_turn"]);
 const LIFECYCLE_OPERATIONS = new Set([
   "chapter",
   "team",
@@ -110,6 +118,8 @@ const ERROR_STATUS: Record<string, number> = {
   INVALID_TROPHY_SELECTION: 400,
   TROPHY_NOT_CONFIGURED: 409,
   INVALID_ANNOUNCEMENT_SELECTION: 400,
+  UNAUTHENTICATED: 401,
+  STAFF_FORBIDDEN: 403,
 };
 
 type ExpeditionBody = {
@@ -131,6 +141,7 @@ type ExpeditionBody = {
   expected_version?: unknown;
   idempotency_key?: unknown;
   timezone_offset_minutes?: unknown;
+  encounter?: unknown;
 };
 
 type TeamMemberRow = {
@@ -190,11 +201,12 @@ type VersionRow = {
   minimum_build: Record<string, unknown>;
 };
 
-const TEAM_FIELDS =
-  "id, owner_id, kind, anima_team_members(slot, animas!inner("
-  + "id, owner_id, nickname, species_key, color_bucket, stage, element, secondary_element, "
+const ANIMA_SNAPSHOT_FIELDS =
+  "id, owner_id, nickname, species_key, color_bucket, stage, element, secondary_element, "
   + "base_stats, body_height_cm, care_score, care, sleep_started_at, dormant_since, status, "
-  + "strike_name, surge_name, evolution_version, strike_effect_id, surge_effect_id, sheet_path, manifest))";
+  + "strike_name, surge_name, evolution_version, strike_effect_id, surge_effect_id, sheet_path, manifest";
+const TEAM_FIELDS =
+  `id, owner_id, kind, anima_team_members(slot, animas!inner(${ANIMA_SNAPSHOT_FIELDS}))`;
 
 const db = adminClient();
 let featureCache = false;
@@ -218,12 +230,25 @@ Deno.serve(async (req) => {
     return json(400, { error: "body bukan JSON" });
   }
   const operation = typeof body.operation === "string" ? body.operation : "";
-  if (!LIFECYCLE_OPERATIONS.has(operation) && !await expeditionEnabled()) {
+  const practiceOperation = PRACTICE_OPERATIONS.has(operation);
+  if (!practiceOperation && !LIFECYCLE_OPERATIONS.has(operation) && !await expeditionEnabled()) {
     return json(404, { error: "FEATURE_DISABLED" });
   }
-  await syncProfileTimezone(db, ownerId, body.timezone_offset_minutes);
 
   try {
+    // DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+    // Every practice request re-checks staff_accounts. These branches only read
+    // chapter/Anima rows and resolve combat in memory; no progression RPC runs.
+    if (practiceOperation) {
+      const staff = await requireStaff(db, req);
+      if (staff.userId !== ownerId) throw new Error("STAFF_FORBIDDEN");
+      if (operation === "practice_boss_start") {
+        return await practiceBossStart(ownerId, body, req);
+      }
+      return await practiceBossTurn(body);
+    }
+
+    await syncProfileTimezone(db, ownerId, body.timezone_offset_minutes);
     if (operation === "chapters") return await listChapters(ownerId);
     if (operation === "announcements") return await listAnnouncements(ownerId);
     if (operation === "ack_home_popup") return await ackHomePopup(ownerId, body);
@@ -695,6 +720,93 @@ async function abandon(ownerId: string, body: ExpeditionBody): Promise<Response>
   });
   if (error) throw error;
   return json(200, await withFreshExpeditionArt({ run: data }));
+}
+
+// DEV TEST MODE — remove this block to fully retire Test Boss Seeker.
+async function practiceBossStart(
+  ownerId: string,
+  body: ExpeditionBody,
+  req: Request,
+): Promise<Response> {
+  const animaIds = asUuidArray(body.anima_ids, "anima_ids", 4);
+  const { data: catalog, error: catalogError } = await db.rpc(
+    "expedition_chapter_catalog",
+    { p_owner: ownerId },
+  );
+  if (catalogError) throw catalogError;
+  const chapters = Array.isArray(catalog) ? catalog : [];
+  const current = chapters.at(-1) as Record<string, unknown> | undefined;
+  if (!current) throw new Error("CHAPTER_NOT_AVAILABLE");
+  const version = await loadVersion(asUuid(current.version_id, "chapter_version_id"));
+  const buildError = chapterBuildError(req, version.minimum_build);
+  if (buildError) return buildError;
+
+  const manifest = validateChapterManifest(version.manifest);
+  const playerSnapshot = await loadPracticeRoster(ownerId, animaIds);
+  const bossNode = {
+    kind: "boss",
+    opponent_id: manifest.boss.opponent_id,
+  };
+  const opponentSnapshot = chapterRoster(
+    opponentRosterForEncounter(manifest, bossNode, 3),
+    version.asset_prefix,
+  );
+  const response = createBossPractice({
+    chapterVersionId: version.id,
+    playerSnapshot,
+    opponentSnapshot,
+    acePassive: manifest.boss.ace_passive,
+    backgroundPath: manifest.zones[2].background_path,
+    seed: crypto.randomUUID(),
+  });
+  return json(200, await withFreshExpeditionArt(response));
+}
+
+async function practiceBossTurn(body: ExpeditionBody): Promise<Response> {
+  const action = typeof body.action === "string" ? body.action : "";
+  if (!COMBAT_ACTIONS.has(action)) throw new Error("INVALID_ACTION");
+  const switchToSlot = action === "switch"
+    ? asSlot(body.switch_to_slot, "switch_to_slot")
+    : null;
+  const itemId = action === "item" && typeof body.item_id === "string" ? body.item_id : "";
+  if (action === "item" && !itemId) throw new Error("INVALID_ITEM");
+  if (action !== "item" && body.item_id !== undefined && body.item_id !== null) {
+    throw new Error("INVALID_ITEM");
+  }
+  return json(200, resolveBossPracticeTurn({
+    encounter: body.encounter,
+    expectedTurn: asPositiveInteger(body.expected_turn, "expected_turn"),
+    expectedVersion: asPositiveInteger(body.expected_version, "expected_version"),
+    action,
+    idempotencyKey: asKey(body.idempotency_key),
+    itemId,
+    switchToSlot,
+  }));
+}
+
+async function loadPracticeRoster(
+  ownerId: string,
+  animaIds: string[],
+): Promise<Record<string, unknown>[]> {
+  const { data, error } = await db
+    .from("animas")
+    .select(ANIMA_SNAPSHOT_FIELDS)
+    .eq("owner_id", ownerId)
+    .in("id", animaIds);
+  if (error) throw error;
+  const byId = new Map(
+    (Array.isArray(data) ? data : []).map((row) => [String(row.id), row]),
+  );
+  const members = animaIds.map((id, slot) => {
+    const anima = byId.get(id) as Record<string, unknown> | undefined;
+    if (!anima || anima.status !== "ready" || anima.dormant_since != null) {
+      throw new Error("TEAM_MEMBER_UNAVAILABLE");
+    }
+    const care = anima.care as Record<string, unknown> | null;
+    if (Number(care?.energy ?? 0) < 30) throw new Error("TEAM_MEMBER_LOW_ENERGY");
+    return { slot, animas: anima };
+  });
+  return teamSnapshotFromMembers(members, true) as Record<string, unknown>[];
 }
 
 async function listTrophies(ownerId: string): Promise<Response> {

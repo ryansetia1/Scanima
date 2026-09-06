@@ -1,5 +1,5 @@
-// Staff authorization for admin_moderation. Deno-only (admin edge function
-// only consumer); see docs/designs/2026-08-23-atlas-moderation-admin.md.
+// Shared staff authorization for privileged Edge Function paths. Deno-only;
+// see docs/designs/2026-08-23-atlas-moderation-admin.md.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const UUID_RE =
