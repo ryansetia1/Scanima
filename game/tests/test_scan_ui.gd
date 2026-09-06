@@ -6433,6 +6433,8 @@ func _test_expedition_view() -> void:
 		"status": "active",
 		"zone": 1,
 		"nodes_completed": 0,
+		# The Postgres payload includes this nullable column instead of omitting it.
+		"current_node_id": null,
 		"supplies": 0,
 		"team_id": "expedition-team",
 		"available_node_ids": ["battle-1"],
@@ -6459,7 +6461,7 @@ func _test_expedition_view() -> void:
 		and chapter_dialog.is_open()
 		and chapter_line != null
 		and chapter_line.text.contains("Every path"),
-		"fresh Zone 1 map opens the chapter intro"
+		"fresh Zone 1 map with no current node opens the chapter intro"
 	)
 	_check(view.handle_back(), "back dismisses chapter intro before leaving the map")
 	await process_frame

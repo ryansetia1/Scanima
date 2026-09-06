@@ -967,7 +967,7 @@ func _should_chapter_intro() -> bool:
 		return false
 	if int(_run.get("zone", 1)) != 1 or int(_run.get("nodes_completed", 0)) > 0:
 		return false
-	if not str(_run.get("current_node_id", "")).is_empty():
+	if _run.get("current_node_id") != null:
 		return false
 	var line := str(
 		GameState.as_dict(GameState.as_dict(_run.get("boss_seeker")).get("dialogue")).get(
