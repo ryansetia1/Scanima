@@ -5760,17 +5760,13 @@ func _test_team_battle_view() -> void:
 	_check(
 		seeker_h > 1.0
 		and player_h > 1.0
-		and is_equal_approx(
-			seeker.global_scale.x, float(view.get("_seeker_screen_scale"))
-		)
-		and player_h / seeker_h < 300.0 / 165.0,
+		and absf(player_h / seeker_h - 300.0 / 165.0) < 0.02,
 		(
-			"camera zoom shrinks capped Animas without shrinking the Boss Seeker "
-			+ "(seeker=%.3f expected=%.3f ratio=%.3f camera=%.3f)"
+			"camera zoom preserves capped Anima height relative to the Boss Seeker "
+			+ "(ratio=%.3f expected=%.3f camera=%.3f)"
 		) % [
-			seeker.global_scale.x,
-			float(view.get("_seeker_screen_scale")),
 			player_h / seeker_h,
+			300.0 / 165.0,
 			camera_layer.scale.x,
 		]
 	)

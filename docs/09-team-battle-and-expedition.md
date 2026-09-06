@@ -85,10 +85,11 @@ Sesudah art anggota baru dipasang dalam keadaan tersembunyi, client langsung
 menghitung ulang rasio tinggi, posisi, layer, framing kamera, Boss Seeker, dan
 backdrop. Layout lama lalu bergerak ke target selama 0,48 detik bersamaan dengan
 charge portal, sebelum Anima baru di-reveal atau serangan berikutnya dimainkan.
-Zoom parent hanya membesarkan/mengecilkan Anima; Seeker mengompensasinya supaya
-ukuran layarnya tetap. Background Team bundled maupun custom mengikuti parallax
-yang sama. Refresh authoritative tanpa perubahan identitas/ukuran petarung
-mempertahankan framing settle, sehingga update HP/PP tidak menyebabkan snap.
+Zoom parent membesarkan/mengecilkan Anima dan Seeker bersama supaya rasio tinggi
+kanonisnya tetap benar sepanjang perpindahan kamera. Background Team bundled
+maupun custom mengikuti parallax yang sama. Refresh authoritative tanpa
+perubahan identitas/ukuran petarung mempertahankan framing settle, sehingga
+update HP/PP tidak menyebabkan snap.
 Reframe tidak boleh ditunda sampai event Attack berikutnya atau commit session
 di akhir event log.
 
@@ -380,10 +381,10 @@ Post-process menyimpan bbox opak pose Idle/Intro Idle sebagai
 skala non-linear dari dua kontrak itu lewat satu `shared_scales()` untuk
 seluruh tubuh di arena, termasuk Seeker di back lane. Anima 120 cm mengisi
 sekitar 45% kartu desain 720×800, lalu shot lebar di-fit ke 50% lebar kartu;
-fit lebar hanya mengecilkan dua Anima karena Seeker memakai back lane
-terpisah. Posisi X memakai tepi piksel opak, bukan tengah sel transparan:
-edge clamp mencegah figur terpotong di layar sempit, sedangkan companion clamp
-menjaganya tetap di samping Anima miliknya ketika landscape melebar. Lebar
+fit kamera memakai gabungan Anima dan kolom Seeker, lalu mengubah seluruh
+karakter dunia dengan faktor yang sama. Posisi X memakai tepi piksel opak,
+bukan tengah sel transparan: edge clamp mencegah figur terpotong di layar sempit,
+sedangkan companion clamp menjaganya tetap di samping Anima miliknya ketika landscape melebar. Lebar
 jendela tidak mengubah skala, dan
 ruang vertikal ekstra tidak membesarkan karakter. Sheet Boss 3×3 1024 dibuka per sel penuh (341 px)
 di client supaya kaki Seeker tidak terpotong oleh capture 300 px. Tinggi

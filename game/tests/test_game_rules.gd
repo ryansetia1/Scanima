@@ -444,9 +444,18 @@ func _initialize() -> void:
 	var old_handheld_scale := BATTLE_SCALE.fighter_scale(100.0, render, design_arena)
 	var normal_scale := BATTLE_SCALE.fighter_scale(120.0, render, design_arena)
 	var giant_scale := BATTLE_SCALE.fighter_scale(2000.0, render, design_arena)
+	# Production ground truth from the reported account on 2026-09-06.
+	var padronic_scale := BATTLE_SCALE.fighter_scale(55.0, render, design_arena)
+	var stridarc_scale := BATTLE_SCALE.fighter_scale(55.0, render, design_arena)
+	var drakabyss_scale := BATTLE_SCALE.fighter_scale(203.0, render, design_arena)
 	_check(small_scale < normal_scale, "Anima 20 cm tampil lebih kecil dari Anima 120 cm")
 	_check(doll_scale < old_handheld_scale, "floor boneka 50 cm lebih kecil dari companion 100 cm")
 	_check(normal_scale < giant_scale, "Anima 2000 cm tetap terasa lebih besar")
+	_check(
+		is_equal_approx(padronic_scale, stridarc_scale)
+		and drakabyss_scale / padronic_scale > 1.65,
+		"Padronic/Stridarc 55 cm setara, sedangkan Drakabyss 203 cm tetap jelas lebih tinggi"
+	)
 	_check(
 		300.0 * giant_scale <= BATTLE_SCALE.usable_height(design_arena) * 0.88 + 0.01,
 		"tinggi raksasa tidak menutup HUD"

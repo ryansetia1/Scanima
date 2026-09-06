@@ -1,5 +1,11 @@
 extends SceneTree
 
+## Read-only production query on 2026-09-06. These three account-owned Anima
+## reproduce the reported cross-arena scale mismatch.
+const PADRONIC_HEIGHT_CM := 55.0
+const STRIDARC_HEIGHT_CM := 55.0
+const DRAKABYSS_HEIGHT_CM := 203.0
+
 var _failures := 0
 
 
@@ -391,8 +397,14 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 		"status": "active",
 		"turn_number": 1,
 		"version": 1,
-		"player_snapshot": {"id": "player", "name": "Player", "element": "spark"},
-		"bot_snapshot": {"id": "opponent", "name": "Opponent", "element": "flow"},
+		"player_snapshot": {
+			"id": "player", "name": "Drakabyss", "element": "spark",
+			"body_height_cm": DRAKABYSS_HEIGHT_CM,
+		},
+		"bot_snapshot": {
+			"id": "opponent", "name": "Padronic", "element": "flow",
+			"body_height_cm": PADRONIC_HEIGHT_CM,
+		},
 		"state": {
 			"player": {"hp": 50, "max_hp": 50, "momentum": 3, "spd": 20},
 			"bot": {"hp": 50, "max_hp": 50, "momentum": 3, "spd": 10},
@@ -528,17 +540,24 @@ func _test_duel_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var gameplay_arena_rect := arena.get_global_rect()
 	var gameplay_player_position := player_anchor.global_position
 	var portrait_seeker_gap := _seeker_to_player_gap_ratio(arena, seeker, player)
+	_check_regular_drakabyss_ratio(
+		player_anchor, loaded, seeker, seeker_loaded, "Duel"
+	)
 	var duel_seeker_screen_scale := seeker.global_scale.x
+	var duel_camera_scale := cinematic_layer.scale.x
 	var giant_duel: Dictionary = session.duplicate(true)
 	giant_duel["player_snapshot"]["body_height_cm"] = 2000
 	view.set_session(giant_duel, loaded, loaded)
 	await process_frame
 	_check(
-		is_equal_approx(seeker.global_scale.x, duel_seeker_screen_scale)
+		is_equal_approx(
+			seeker.global_scale.x / duel_seeker_screen_scale,
+			cinematic_layer.scale.x / duel_camera_scale
+		)
 		and is_equal_approx(
 			float(background_material.get_shader_parameter("camera_zoom")), 1.0
 		),
-		"Duel keeps its background at cover 1.0 and player Seeker screen size invariant"
+		"Duel keeps its background at cover 1.0 while the player Seeker follows world camera scale"
 	)
 	view.set_session(session, loaded, loaded)
 	await view.play_opening_intro()
@@ -620,12 +639,14 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var player_id := "00000000-0000-4000-8000-000000000001"
 	var opponent_id := "10000000-0000-4000-8000-000000000001"
 	var player_member := {
-		"anima_id": player_id, "name": "Player", "level": 2,
+		"anima_id": player_id, "name": "Drakabyss", "level": 2,
 		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
+		"body_height_cm": DRAKABYSS_HEIGHT_CM,
 	}
 	var opponent_member := {
-		"anima_id": opponent_id, "name": "Opponent", "level": 2,
+		"anima_id": opponent_id, "name": "Stridarc", "level": 2,
 		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
+		"body_height_cm": STRIDARC_HEIGHT_CM,
 	}
 	var session := {
 		"id": "intro-team",
@@ -769,6 +790,9 @@ func _test_team_intro(host: SubViewport, loaded: Dictionary, seeker_loaded: Dict
 	var gameplay_arena_rect := stage.get_global_rect()
 	var gameplay_player_position := player_anchor.global_position
 	var portrait_seeker_gap := _seeker_to_player_gap_ratio(stage, seeker, player)
+	_check_regular_drakabyss_ratio(
+		player_anchor, loaded, seeker, seeker_loaded, "Team Battle"
+	)
 	var result_session := session.duplicate(true)
 	result_session["status"] = "won"
 	var result_state := (result_session["state"] as Dictionary).duplicate(true)
@@ -914,6 +938,7 @@ func _test_team_switch_reframe(
 	)
 	var player_seeker := view.find_child("PlayerSeeker", true, false) as Node2D
 	var seeker_screen_scale_before := player_seeker.global_scale
+	var seeker_local_scale := player_seeker.scale.x
 	var stage := view.find_child("TeamBattleStage", true, false) as Control
 	_check_fighter_bounds(stage, player, "20 cm Team player")
 	_check_background_grounding(
@@ -926,7 +951,7 @@ func _test_team_switch_reframe(
 	switched["state"]["player"]["active_slot"] = 1
 	var saw_player_hidden := false
 	var reveal_during_refit := false
-	var seeker_scale_stayed_invariant := true
+	var seeker_scale_followed_camera := true
 	view.play_events(
 		[{"type": "switch", "actor": "player", "from_slot": 0, "to_slot": 1}],
 		switched,
@@ -935,9 +960,12 @@ func _test_team_switch_reframe(
 	var deadline := Time.get_ticks_msec() + 8000
 	while bool(view.get("_busy")) and Time.get_ticks_msec() < deadline:
 		var refit := view.get("_layout_tween") as Tween
-		seeker_scale_stayed_invariant = (
-			seeker_scale_stayed_invariant
-			and is_equal_approx(player_seeker.global_scale.x, seeker_screen_scale_before.x)
+		seeker_scale_followed_camera = (
+			seeker_scale_followed_camera
+			and is_equal_approx(
+				player_seeker.global_scale.x,
+				seeker_local_scale * layer.scale.x
+			)
 		)
 		if not player.visible:
 			saw_player_hidden = true
@@ -972,9 +1000,12 @@ func _test_team_switch_reframe(
 		"the giant incoming Anima reveals while camera and arena framing continue moving"
 	)
 	_check(
-		seeker_scale_stayed_invariant
-		and is_equal_approx(player_seeker.global_scale.x, seeker_screen_scale_before.x),
-		"the player Seeker keeps invariant screen size throughout a size-changing Switch"
+		seeker_scale_followed_camera
+		and is_equal_approx(
+			player_seeker.global_scale.x / seeker_screen_scale_before.x,
+			camera_zoom_after / camera_zoom_before
+		),
+		"the player Seeker follows the same camera scale as Anima throughout a size-changing Switch"
 	)
 	var switched_layout: Dictionary = view.call("_fighter_layout")
 	var hit_only: Dictionary = switched.duplicate(true)
@@ -1024,17 +1055,21 @@ func _test_team_switch_reframe(
 		background_material.get_shader_parameter("camera_zoom")
 	)
 	var custom_seeker_scale_before := player_seeker.global_scale
+	var custom_seeker_local_scale := player_seeker.scale.x
 	var custom_previous_layout: Dictionary = view.call("_fighter_layout")
 	view.call("_apply_side", switched, "player", true, false)
 	var custom_refit := view.call(
 		"_reframe_for_switch", switched, custom_previous_layout, true
 	) as Tween
 	var custom_background_moved := false
-	var custom_seeker_scale_stayed_invariant := true
+	var custom_seeker_scale_followed_camera := true
 	while custom_refit != null and custom_refit.is_running():
-		custom_seeker_scale_stayed_invariant = (
-			custom_seeker_scale_stayed_invariant
-			and is_equal_approx(player_seeker.global_scale.x, custom_seeker_scale_before.x)
+		custom_seeker_scale_followed_camera = (
+			custom_seeker_scale_followed_camera
+			and is_equal_approx(
+				player_seeker.global_scale.x,
+				custom_seeker_local_scale * layer.scale.x
+			)
 		)
 		custom_background_moved = (
 			custom_background_moved
@@ -1056,9 +1091,12 @@ func _test_team_switch_reframe(
 		"a custom Team background animates gentler parallax with the fighter Switch"
 	)
 	_check(
-		custom_seeker_scale_stayed_invariant
-		and is_equal_approx(player_seeker.global_scale.x, custom_seeker_scale_before.x),
-		"custom-background Switch keeps player Seeker size invariant throughout the refit"
+		custom_seeker_scale_followed_camera
+		and is_equal_approx(
+			player_seeker.global_scale.x / custom_seeker_scale_before.x,
+			custom_camera_after / custom_camera_before
+		),
+		"custom-background Switch keeps player Seeker and Anima on one camera scale"
 	)
 	view.set_session(session, art_cache)
 	await process_frame
@@ -1202,6 +1240,39 @@ func _seeker_to_player_gap_ratio(
 	return maxf(0.0, (body_value as Rect2).position.x - seeker.global_position.x) / stage_width
 
 
+func _reference_screen_height(node: Node2D, loaded: Dictionary) -> float:
+	var metrics_value: Variant = loaded.get("render_metrics", {})
+	var metrics: Dictionary = (
+		metrics_value if typeof(metrics_value) == TYPE_DICTIONARY else {}
+	)
+	return (
+		maxf(1.0, float(metrics.get("reference_height_px", 300.0)))
+		* absf(node.global_scale.y)
+	)
+
+
+func _check_regular_drakabyss_ratio(
+	anima_anchor: Node2D,
+	anima_loaded: Dictionary,
+	seeker: Node2D,
+	seeker_loaded: Dictionary,
+	arena_name: String
+) -> void:
+	var seeker_cm := maxf(1.0, float(seeker_loaded.get("body_height_cm", 165.0)))
+	var expected := pow(DRAKABYSS_HEIGHT_CM / seeker_cm, BattleScale.BODY_HEIGHT_CURVE)
+	var actual := (
+		_reference_screen_height(anima_anchor, anima_loaded)
+		/ _reference_screen_height(seeker, seeker_loaded)
+	)
+	_check(
+		absf(actual - expected) < 0.03,
+		(
+			"%s keeps the 203 cm Drakabyss ratio against the %.0f cm player Seeker "
+			+ "after camera fit (actual=%.3f expected=%.3f)"
+		) % [arena_name, seeker_cm, actual, expected]
+	)
+
+
 func _test_expedition_intro(
 	host: SubViewport,
 	loaded: Dictionary,
@@ -1230,14 +1301,14 @@ func _test_expedition_intro(
 	var player_id := "00000000-0000-4000-8000-000000000011"
 	var opponent_id := "10000000-0000-4000-8000-000000000011"
 	var player_member := {
-		"anima_id": player_id, "name": "Sunhound", "level": 16,
+		"anima_id": player_id, "name": "Drakabyss", "level": 16,
 		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
-		"body_height_cm": 75,
+		"body_height_cm": DRAKABYSS_HEIGHT_CM,
 	}
 	var opponent_member := {
-		"anima_id": opponent_id, "name": "Rimespin", "level": 8,
+		"anima_id": opponent_id, "name": "Padronic", "level": 8,
 		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
-		"body_height_cm": 105,
+		"body_height_cm": PADRONIC_HEIGHT_CM,
 	}
 	var encounter := {
 		"id": "intro-expedition",
@@ -1354,6 +1425,10 @@ func _test_expedition_intro(
 		and not attack.disabled,
 		"non-Boss Expedition completes the shared 0.32-second reframe before input unlocks"
 	)
+	var expedition_seeker := view.find_child("PlayerSeeker", true, false) as Node2D
+	_check_regular_drakabyss_ratio(
+		player_anchor, loaded, expedition_seeker, seeker_loaded, "Expedition"
+	)
 	view.set_run(run_data, encounter, art_cache)
 	await view.play_combat_intro()
 	_check(
@@ -1416,14 +1491,14 @@ func _test_boss_intro(
 	var player_id := "00000000-0000-4000-8000-000000000031"
 	var opponent_id := "10000000-0000-4000-8000-000000000031"
 	var player_member := {
-		"anima_id": player_id, "name": "Sunhound", "level": 16,
+		"anima_id": player_id, "name": "Drakabyss", "level": 16,
 		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
-		"body_height_cm": 75,
+		"body_height_cm": DRAKABYSS_HEIGHT_CM,
 	}
 	var opponent_member := {
-		"anima_id": opponent_id, "name": "Nimbelisk", "level": 16,
+		"anima_id": opponent_id, "name": "Stridarc", "level": 16,
 		"hp": 50, "max_hp": 50, "momentum": 3, "momentum_max": 3,
-		"body_height_cm": 105,
+		"body_height_cm": STRIDARC_HEIGHT_CM,
 	}
 	var boss_seeker := {
 		"display_name": "The Confectioner",
@@ -1508,6 +1583,15 @@ func _test_boss_intro(
 	_check(
 		absf(player_seeker_px / boss_seeker_px - 180.0 / 165.0) < 0.02,
 		"Boss opening scales the selected 180 cm Automaton proportionally against the 165 cm Boss"
+	)
+	var drakabyss_rect: Rect2 = player.call("body_viewport_rect")
+	var drakabyss_px := drakabyss_rect.size.y
+	_check(
+		absf(drakabyss_px / player_seeker_px - DRAKABYSS_HEIGHT_CM / 180.0) < 0.03,
+		(
+			"Final Battle preserves Drakabyss 203:180 against the player Seeker "
+			+ "after fitting both Seeker columns (actual=%.3f expected=%.3f)"
+		) % [drakabyss_px / player_seeker_px, DRAKABYSS_HEIGHT_CM / 180.0]
 	)
 	_check(
 		loading_root != null and loading_root.visible

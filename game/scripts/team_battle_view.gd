@@ -161,12 +161,10 @@ var _player_shadow: Sprite2D
 var _opponent_shadow: Sprite2D
 var _seeker: SEEKER_PRESENTER
 var _seeker_shadow: Sprite2D
-var _seeker_screen_scale := 1.0
 var _player_seeker: SEEKER_PRESENTER
 var _player_seeker_shadow: Sprite2D
 var _player_seeker_loaded: Dictionary = {}
 var _player_seeker_height_cm := PLAYER_SEEKER_HEIGHT_FALLBACK_CM
-var _player_seeker_screen_scale := 1.0
 var _impact: BattleImpact
 var _fighter_layer: Node2D
 var _background_session_id := ""
@@ -2400,22 +2398,17 @@ func _separate_fighter_bodies() -> void:
 
 
 func _apply_dynamic_camera() -> void:
-	var anima_bounds := _anima_shot_bounds()
-	if anima_bounds.size.x <= 0.0 or anima_bounds.size.y <= 0.0:
+	var bounds := _fighter_shot_bounds()
+	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
 		return
 	var side_pad := _battle_stage.size.x * CAMERA_SIDE_PAD_RATIO
 	var top_pad := _battle_stage.size.y * CAMERA_TOP_PAD_RATIO
 	var ground_y := _battle_stage.size.y * _ground_y_ratio()
 	var camera_ground_y := _camera_ground_y(ground_y)
 	var camera_top_y := _camera_top_y()
-	var fixed_columns := (
-		_seeker_column(_player_seeker, _player_seeker_loaded)
-		+ _seeker_column(_seeker, _seeker_loaded)
-	)
 	var fit_zoom := minf(
-		maxf(1.0, _battle_stage.size.x - side_pad * 2.0 - fixed_columns)
-			/ anima_bounds.size.x,
-		maxf(1.0, camera_ground_y - camera_top_y - top_pad) / anima_bounds.size.y
+		maxf(1.0, _battle_stage.size.x - side_pad * 2.0) / bounds.size.x,
+		maxf(1.0, camera_ground_y - camera_top_y - top_pad) / bounds.size.y
 	)
 	var heights := _active_body_heights()
 	var tallest_anima := maxf(
@@ -2429,7 +2422,6 @@ func _apply_dynamic_camera() -> void:
 	)
 	var preferred_zoom := lerpf(CAMERA_MAX_ZOOM, CAMERA_LARGE_ANIMA_ZOOM, size_mix)
 	var zoom := clampf(minf(fit_zoom, preferred_zoom), CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
-	var bounds := _fighter_shot_bounds(zoom)
 	_set_fighter_camera_zoom(zoom)
 	_fighter_layer.position = Vector2(
 		_battle_stage.size.x * 0.5 - bounds.get_center().x * zoom,
@@ -2643,11 +2635,9 @@ func _pin_player_seeker_to_camera_left(camera_zoom: float) -> void:
 	)
 
 
-## Kotak yang wajib terlihat kamera. Kedua figur Seeker ditempatkan **sesudah**
-## kamera memilih zoom dan pusatnya, lalu dijaga antara tepi viewport dan Anima
-## miliknya. Yang dicadangkan karena itu kolom di sisi masing-masing: zoom hanya
-## mengecil kalau memang tidak cukup, sementara companion clamp mencegah figur
-## terlepas jauh pada landscape.
+## Kotak dunia yang wajib terlihat kamera. Kolom dan tinggi kedua figur Seeker
+## ikut fit yang sama dengan Anima, jadi zoom tidak dapat mengubah rasio tubuh
+## mereka. Sesudahnya companion clamp tetap mencegah figur terlepas di landscape.
 func _anima_shot_bounds() -> Rect2:
 	var ground_y := _player_anchor.position.y
 	return _anima_shot_rect(_player_sprite, _player_anchor, ground_y).merge(
@@ -2655,15 +2645,20 @@ func _anima_shot_bounds() -> Rect2:
 	)
 
 
-func _fighter_shot_bounds(camera_zoom: float) -> Rect2:
+func _fighter_shot_bounds() -> Rect2:
 	var bounds := _anima_shot_bounds()
-	var inverse_zoom := 1.0 / maxf(0.001, camera_zoom)
 	bounds = bounds.grow_individual(
-		_seeker_column(_player_seeker, _player_seeker_loaded) * inverse_zoom,
+		_seeker_column(_player_seeker, _player_seeker_loaded),
 		0.0,
-		_seeker_column(_seeker, _seeker_loaded) * inverse_zoom,
+		_seeker_column(_seeker, _seeker_loaded),
 		0.0
 	)
+	var tallest := maxf(
+		_seeker_column_height(_player_seeker, _player_seeker_loaded),
+		_seeker_column_height(_seeker, _seeker_loaded)
+	)
+	if tallest > bounds.size.y:
+		bounds = bounds.grow_individual(0.0, tallest - bounds.size.y, 0.0, 0.0)
 	return bounds
 
 
@@ -2673,6 +2668,12 @@ func _seeker_column(seeker: SeekerPresenter, loaded: Dictionary) -> float:
 	if not is_instance_valid(seeker) or not seeker.has_sheet():
 		return 0.0
 	return BattleScale.seeker_reserved_column(loaded, seeker.scale.x, _battle_stage.size.x)
+
+
+func _seeker_column_height(seeker: SeekerPresenter, loaded: Dictionary) -> float:
+	if not is_instance_valid(seeker) or not seeker.has_sheet():
+		return 0.0
+	return BattleScale.seeker_reference_height(loaded) * absf(seeker.scale.y)
 
 
 func _anima_shot_rect(sprite: AnimaPresenter, anchor: Node2D, ground_y: float) -> Rect2:
@@ -2827,7 +2828,6 @@ func _position_seeker() -> void:
 	if scales.size() < 3:
 		return
 	var seeker_scale := scales[2]
-	_seeker_screen_scale = seeker_scale
 	# The camera owns the final fit. Place the visible body in the shot first;
 	# transparent 3×3 cell padding must not affect composition.
 	var x := (
@@ -2864,7 +2864,6 @@ func _position_player_seeker() -> void:
 			_seeker_loaded,
 			boss_scales[2]
 		)
-	_player_seeker_screen_scale = avatar_scale
 	var x := (
 		_battle_stage.size.x * PLAYER_SEEKER_SHOT_X
 		+ BattleScale.seeker_opaque_center(_player_seeker_loaded) * avatar_scale
@@ -2882,18 +2881,6 @@ func _position_player_seeker() -> void:
 func _set_fighter_camera_zoom(value: float) -> void:
 	var camera_zoom := maxf(0.001, value)
 	_fighter_layer.scale = Vector2(camera_zoom, camera_zoom)
-	if is_instance_valid(_seeker) and _seeker.has_sheet():
-		_seeker.set_body_scale(BattleScale.camera_invariant_local_scale(
-			_seeker_screen_scale, camera_zoom
-		))
-		_seeker.sync_ground_shadow(_seeker_shadow)
-	if not is_instance_valid(_player_seeker) or not _player_seeker.has_sheet():
-		return
-	var local_scale := BattleScale.camera_invariant_local_scale(
-		_player_seeker_screen_scale, camera_zoom
-	)
-	_player_seeker.set_body_scale(local_scale)
-	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
 
 
 static func _same_fighter_geometry(previous: Dictionary, current: Dictionary) -> bool:

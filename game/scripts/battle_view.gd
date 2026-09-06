@@ -151,7 +151,6 @@ var _player_seeker: SEEKER_PRESENTER
 var _player_seeker_shadow: Sprite2D
 var _player_seeker_loaded: Dictionary = {}
 var _player_seeker_height_cm := TeamBattleView.PLAYER_SEEKER_HEIGHT_FALLBACK_CM
-var _player_seeker_screen_scale := 1.0
 var _opening_intro_pending := false
 var _opening_intro_running := false
 var _opening_intro_revision := 0
@@ -1464,7 +1463,7 @@ func _position_fighters() -> void:
 	if overlap > 0.0:
 		_player_anchor.position.x -= overlap * 0.5
 		_bot_anchor.position.x += overlap * 0.5
-	var anima_bounds := Rect2(
+	var bounds := Rect2(
 		_player_anchor.position.x - player_size.x * 0.5,
 		ground_y - player_size.y,
 		player_size.x,
@@ -1475,16 +1474,23 @@ func _position_fighters() -> void:
 		bot_size.x,
 		bot_size.y
 	))
-	if anima_bounds.size.x <= 0.0 or anima_bounds.size.y <= 0.0:
+	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
 		return
-	# Figur pemain ditempatkan sesudah kamera memilih bingkai kedua Anima. Kolom
-	# kiri adalah ukuran layar tetap, jadi ia dikurangi dari ruang kamera alih-alih
-	# ikut dikecilkan bersama bounds Anima.
+	# Figur pemain sudah punya skala dunia sebelum kamera memilih bingkai. Kolom
+	# kiri dan tingginya ikut bounds supaya satu zoom berlaku untuk Anima dan
+	# Seeker; jika hanya Anima yang mengecil, rasio sentimeter mereka rusak.
 	var figure_column := _seeker_column()
-	var camera_width := maxf(1.0, _arena.size.x * 0.90 - figure_column)
+	if figure_column > 0.0:
+		bounds = bounds.grow_individual(figure_column, 0.0, 0.0, 0.0)
+		var figure_height := (
+			BattleScale.seeker_reference_height(_player_seeker_loaded)
+			* absf(_player_seeker.scale.y)
+		)
+		if figure_height > bounds.size.y:
+			bounds = bounds.grow_individual(0.0, figure_height - bounds.size.y, 0.0, 0.0)
 	var fit_zoom := minf(
-		camera_width / anima_bounds.size.x,
-		maxf(1.0, camera_ground_y - camera_top_y) / anima_bounds.size.y
+		(_arena.size.x * 0.90) / bounds.size.x,
+		maxf(1.0, camera_ground_y - camera_top_y) / bounds.size.y
 	)
 	var tallest := maxf(
 		BattleScale.anima_display_height_cm(player_height),
@@ -1500,9 +1506,6 @@ func _position_fighters() -> void:
 		minf(fit_zoom, preferred_zoom),
 		TeamBattleView.CAMERA_MIN_ZOOM,
 		TeamBattleView.CAMERA_MAX_ZOOM
-	)
-	var bounds := anima_bounds.grow_individual(
-		figure_column / maxf(0.001, zoom), 0.0, 0.0, 0.0
 	)
 	_set_fighter_camera_zoom(zoom)
 	_fighter_layer.position = Vector2(
@@ -1582,7 +1585,6 @@ func _position_player_seeker() -> void:
 	var avatar_scale := BattleScale.fighter_scale(
 		_player_seeker_height_cm, _player_seeker_loaded, _arena.size
 	)
-	_player_seeker_screen_scale = avatar_scale
 	var x := (
 		_arena.size.x * TeamBattleView.PLAYER_SEEKER_SHOT_X
 		+ BattleScale.seeker_opaque_center(_player_seeker_loaded) * avatar_scale
@@ -1600,13 +1602,6 @@ func _position_player_seeker() -> void:
 func _set_fighter_camera_zoom(value: float) -> void:
 	var camera_zoom := maxf(0.001, value)
 	_fighter_layer.scale = Vector2(camera_zoom, camera_zoom)
-	if not is_instance_valid(_player_seeker) or not _player_seeker.has_sheet():
-		return
-	var local_scale := BattleScale.camera_invariant_local_scale(
-		_player_seeker_screen_scale, camera_zoom
-	)
-	_player_seeker.set_body_scale(local_scale)
-	_player_seeker.sync_ground_shadow(_player_seeker_shadow)
 
 
 static func _same_fighter_geometry(previous: Dictionary, current: Dictionary) -> bool:

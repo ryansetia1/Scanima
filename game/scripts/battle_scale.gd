@@ -59,21 +59,10 @@ static func player_seeker_z(anima_height_cm: float, seeker_height_cm: float) -> 
 	)
 
 
-## Player Seeker is screen-space presentation inside the world-space FighterLayer.
-## Cancel the parent camera zoom so changing Anima size never resizes the avatar.
-static func camera_invariant_local_scale(screen_scale: float, camera_zoom: float) -> float:
-	return screen_scale / maxf(0.001, absf(camera_zoom))
-
-
 ## Figur Seeker ditempatkan **setelah** kamera memutuskan zoom dan pusatnya:
 ## edge clamp menjaganya di viewport, companion clamp menjaganya tetap di samping
-## Anima. Ini lebar kolom di ruang layer yang harus dicadangkan di sisi yang punya
-## figur — badan opaknya plus dua pad, satu untuk tepi kamera dan satu untuk udara
-## ke Anima terdekat.
-##
-## ponytail: pad-nya piksel layar dipakai apa adanya sebagai piksel layer.
-## Plafonnya zoom arena 0,72–1,14, jadi selisihnya <=5 px pada stage 720; kalau
-## rentang zoom melebar, ubah jadi pembagian dengan zoom yang sedang dipakai.
+## Anima. Ini lebar kolom ruang-dunia yang ikut zoom kamera bersama seluruh tubuh,
+## sehingga rasio tinggi Anima↔Seeker tidak berubah hanya karena shot perlu mundur.
 static func seeker_reserved_column(
 	loaded: Dictionary, sprite_scale: float, stage_width: float
 ) -> float:
@@ -250,7 +239,8 @@ static func fighter_pair_scales(
 
 ## Height follows the 720×800 design card; extra window height is background.
 ## Beside a Seeker, Anima height is linear to her on-screen height so 3 m is
-## about 2× a 165 cm Seeker. A wide body still shrinks only the Animas.
+## about 2× a 165 cm Seeker. The arena camera may shrink that whole group, but
+## must not alter this ratio by counter-scaling either Seeker.
 static func shared_scales(
 	heights: Array,
 	loadeds: Array,
